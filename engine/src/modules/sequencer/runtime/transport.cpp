@@ -48,6 +48,24 @@ void Transport::setActiveSequenceId(std::optional<std::string>& sequenceId) {
   sendConfigToAudioThread();
 }
 
+void Transport::setActiveTrackId(std::optional<std::string>& trackId) {
+  config.activeTrackId = trackId;
+
+  bool shouldRebuildJumpEvents = false;
+  if (config.activeSequenceId.has_value()) {
+    auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
+    shouldRebuildJumpEvents =
+      patterns.find(config.activeSequenceId.value()) != patterns.end();
+  }
+
+  if (shouldRebuildJumpEvents) {
+    updateLoopPoints(false);
+    updatePlayheadJumpEventForStart(false);
+  }
+
+  sendConfigToAudioThread();
+}
+
 void Transport::setTicksPerQuarter(int64_t ticksPerQuarter) {
   config.ticksPerQuarter = ticksPerQuarter;
   sendConfigToAudioThread();
@@ -207,11 +225,14 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
   if (config.activeSequenceId.has_value()) {
     auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
     if (patterns.find(config.activeSequenceId.value()) != patterns.end()) {
-      // TODO: Patterns are now track-less. Start events for direct pattern
-      // playback should be produced from a track-less compiled event list and
-      // then routed to the currently active track. This scaffolding does not
-      // exist yet, so we intentionally do nothing here for now.
-      event.eventsToPlayAtJump.clear();
+      if (config.activeTrackId.has_value()) {
+        addStartEventsForPattern(
+          config.activeSequenceId.value(),
+          config.activeTrackId.value(),
+          playheadPosition,
+          event.eventsToPlayAtJump
+        );
+      }
     }
 
     auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();

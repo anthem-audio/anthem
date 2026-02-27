@@ -29,10 +29,14 @@
 #include "modules/sequencer/events/event.h"
 #include "modules/util/ring_buffer.h"
 
+namespace anthem_sequencer_track_ids {
+inline const std::string noTrack = "NO_TRACK";
+}
+
 /*
   Anthem compiles each pattern and arrangement into a list of events for each
-  channel. When that pattern or arrangement is updated, its event lists are
-  updated as well. The entire pattern can be updated, or a specific channel can
+  track. When that pattern or arrangement is updated, its event lists are
+  updated as well. The entire pattern can be updated, or a specific track can
   be surgically replaced.
 
   The goal of this file is to provide a way to:
@@ -46,7 +50,7 @@
   the audio thread.
 */
 
-// Stores a list of events meant for a single channel.
+// Stores a list of events meant for a single track.
 //
 // There will be at least one of these per sequence (pattern or arrangement),
 // unless the sequence is completely empty.
@@ -55,7 +59,7 @@ private:
   JUCE_LEAK_DETECTOR(SequenceEventList)
 
 public:
-  // List of events for this channel.
+  // List of events for this track.
   std::vector<AnthemSequenceEvent>* events;
 
   // List of invalidation ranges for the current processing block, if any. If
@@ -90,9 +94,9 @@ private:
   JUCE_LEAK_DETECTOR(SequenceEventListCollection)
 
 public:
-  // Map of channel ID to list of events for that channel. If there is no entry
-  // for a given channel, it means that there are no events for that channel.
-  std::unordered_map<std::string, SequenceEventList>* channels;
+  // Map of track ID to list of events for that track. If there is no entry
+  // for a given track, it means that there are no events for that track.
+  std::unordered_map<std::string, SequenceEventList>* tracks;
 
   SequenceEventListCollection();
 
@@ -112,11 +116,11 @@ public:
   //      first clones the AnthemRuntimeSequenceStore::eventLists map below.
   //      Note that this does not result in any of the actual sequence data
   //      being cloned, since each SequenceEventListCollection just holds a
-  //      pointer to its channel map. That pointer remains the same for every
+  //      pointer to its track map. That pointer remains the same for every
   //      cloned SequenceEventListCollection.
   //   2. The main thread specifically wants to replace the item at sequence id
   //      "mySequenceId", so it prepares a new value for that key. This value
-  //      includes a new map of channels with new pointers to new data.
+  //      includes a new map of tracks with new pointers to new data.
   //   3. The main thread grabs the old value at "mySequenceId", and stores it
   //      in AnthemRuntimeSequenceStore::pendingSequenceDeletions for deletion.
   //      Note again that this is just a pointer to the old map. The audio
@@ -144,14 +148,14 @@ public:
 //
 // In Anthem, the sequence model is complex. To manage the complexity with
 // respect to the audio thread, we "compile" sequences into time-sorted lists of
-// events for each channel. These lists are much easier to deal with from the
+// events for each track. These lists are much easier to deal with from the
 // sequencer's perspective. The runtime component of the sequencer doesn't even
 // know about patterns - it just sees these event lists.
 //
 // We store event lists for each arrangement and for each pattern. When
 // something is changed, e.g. some notes are moved around for a given pattern,
 // we don't recompile the entire sequence. Instead, we just update the event
-// lists for the relevant channel.
+// lists for the relevant track.
 class AnthemRuntimeSequenceStore {
 friend class RuntimeSequenceStoreTest;
 
@@ -186,31 +190,31 @@ private:
   // SequenceEventListCollection.
   std::unordered_map<SequenceIdToEventsMap*, SequenceEventListCollection> pendingSequenceDeletions;
 
-  // The same as the above, except for replacing individual channels in a
+  // The same as the above, except for replacing individual tracks in a
   // sequence. We will still clone the outer map in this case, except we will
-  // also clone the inner map (the channel map for that sequence). When we
-  // replace the channel, we add the old channel to this map. When the audio
-  // thread releases the old channel, we will clean it up.
+  // also clone the inner map (the track map for that sequence). When we
+  // replace the track, we add the old track to this map. When the audio thread
+  // releases the old track, we will clean it up.
   std::unordered_map<
     SequenceIdToEventsMap*,
-    // This is a vector because removeChannel will remove a channel in a bunch of
+    // This is a vector because removeTrack will remove a track in a bunch of
     // sequences at once. We need to clean up all of them when the audio thread
     // releases the old pointer.
     std::vector<
       std::tuple<
-        // The channel event list that was replaced - we need to clean up any heap
-        // memory it holds. If there was no entry for a given channel when we
+        // The track event list that was replaced - we need to clean up any heap
+        // memory it holds. If there was no entry for a given track when we
         // replaced it, we don't need to clean up anything for it.
         std::optional<SequenceEventList>,
 
-        // When we replace a channel, we clone the map for that sequence (stored
+        // When we replace a track, we clone the map for that sequence (stored
         // in SequenceEventListCollection). When the audio thread releases the old
         // outer map (eventLists), we need to clean up the old inner map as well
-        // (SequenceEventListCollection::channels).
+        // (SequenceEventListCollection::tracks).
         std::unordered_map<std::string, SequenceEventList>*
       >
     >
-  > pendingSequenceChannelDeletions;
+  > pendingSequenceTrackDeletions;
 
   void processDeletionQueues();
 
@@ -249,23 +253,23 @@ public:
   // Removes a sequence from the event lists map.
   void removeSequence(const std::string& sequenceId);
 
-  // Adds or updates a channel in a sequence in the event lists map.
+  // Adds or updates a track in a sequence in the event lists map.
   //
   // This method is intended to be called from the main thread. It will clone
-  // the current map, clone the channel map for the given sequence, add the new
-  // channel, and push the new map to the mapUpdateQueue. If the channel already
-  // exists, it will be replaced, and the old channel will be added to the
-  // pendingSequenceChannelDeletions map.
-  void addOrUpdateChannelInSequence(
+  // the current map, clone the track map for the given sequence, add the new
+  // track, and push the new map to the mapUpdateQueue. If the track already
+  // exists, it will be replaced, and the old track will be added to the
+  // pendingSequenceTrackDeletions map.
+  void addOrUpdateTrackInSequence(
     const std::string& sequenceId,
-    const std::string& channelId,
-    SequenceEventList channel);
+    const std::string& trackId,
+    SequenceEventList track);
 
-  // Removes a channel from a sequence in the event lists map.
-  void removeChannelFromSequence(const std::string& sequenceId, const std::string& channelId);
+  // Removes a track from a sequence in the event lists map.
+  void removeTrackFromSequence(const std::string& sequenceId, const std::string& trackId);
 
-  // Removes every instance of the given channel from every sequence.
-  void removeChannelFromAllSequences(const std::string& channelId);
+  // Removes every instance of the given track from every sequence.
+  void removeTrackFromAllSequences(const std::string& trackId);
 
   // Sends invalidation lists back to be deleted. Must be run at the end of each
   // processing block.

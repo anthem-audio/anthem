@@ -50,6 +50,15 @@ private:
 
 public:
   std::optional<std::string> activeSequenceId;
+
+  // If the active sequence is a bare pattern, the pattern's events are read
+  // from the special "no track" event list in the sequence store. In that
+  // case, this field determines where those events should be routed.
+  //
+  // This is updated from the UI-selected track and is used by real-time code
+  // (e.g. sequence note providers) as the source of truth when mapping
+  // track-less pattern events to a concrete destination track.
+  std::optional<std::string> activeTrackId;
   int64_t ticksPerQuarter = 96;
   double beatsPerMinute = 120.0;
   bool isPlaying = false;
@@ -135,6 +144,7 @@ public:
 
   void setIsPlaying(bool isPlaying);
   void setActiveSequenceId(std::optional<std::string>& sequenceId);
+  void setActiveTrackId(std::optional<std::string>& trackId);
   void setTicksPerQuarter(int64_t ticksPerQuarter);
   void setBeatsPerMinute(double beatsPerMinute);
 

@@ -19,121 +19,178 @@
 
 part of 'pattern.dart';
 
-// A note here, since I'm likely to return to this later.
-//
-// We have an operation in the engine, called "sequence compiling", that takes
-// each sequence that we may want to play back - every pattern and the full
-// arrangement - and "compiles" them into flat event lists for each track.
-//
-// The codebase is currently transitioning to a track-first system, where
-// previously tracks and instruments were separate and could have a many-to-many
-// relationship.
-//
-// This transition is happening with the UI first. This file deals with signals
-// we send to the engine in order to trigger sequence recompiling, but since we
-// are fundamentally changing the layout of everything, this will change too,
-// but I can't yet predict how. For this reason, I am disabling this behavior
-// for now, until the UI transition is finished.
-
-/*
-
 mixin _PatternCompilerMixin on _PatternModel {
-  void _recompileOnNotesAddedOrRemoved(
-    String channelId,
-    NoteModel? oldNote,
-    NoteModel? newNote,
-  ) {
-    if (oldNote != null) {
-      _channelsToCompile.add(channelId);
-      _patternInvalidationRangeCollector.addRange(
-        oldNote.offset,
-        oldNote.offset + oldNote.length,
-      );
+  static const String _noTrackEventListKey = 'NO_TRACK';
+  // 0x001F_FFFF_FFFF_FFFF is the max safe integer in JavaScript.
+  static const int _unboundedClipEnd = 0x001F_FFFF_FFFF_FFFF;
 
-      _schedulePatternCompile(true);
-    }
-
-    if (newNote != null) {
-      _channelsToCompile.add(channelId);
-      _patternInvalidationRangeCollector.addRange(
-        newNote.offset,
-        newNote.offset + newNote.length,
-      );
-
-      _schedulePatternCompile(true);
-    }
-  }
-
-  void _recompileOnNoteFieldChanged(
-    Iterable<FieldAccessor> fieldAccessors,
-    FieldOperation operation,
-  ) {
-    final channelIdFieldAccessor = fieldAccessors.elementAt(1);
-    final channelId = channelIdFieldAccessor.key;
-
-    // Shouldn't happen, but safety first
-    if (channelId == null) {
-      return;
-    }
-
-    // This is for editing note attributes
-    final listAccessor = fieldAccessors.elementAt(2);
-    final accessor = fieldAccessors.elementAt(3);
-
-    if (accessor.fieldName == 'offset' ||
-        accessor.fieldName == 'length' ||
-        accessor.fieldName == 'key') {
-      final channel = notes[channelId]!;
-      final note = channel[listAccessor.index!];
-      operation as RawFieldUpdate;
-
-      if (accessor.fieldName == 'offset') {
-        final oldValue = operation.oldValueAs<int>();
-        final newValue = operation.newValueAs<int>();
-
-        _channelsToCompile.add(channelId);
-        _patternInvalidationRangeCollector.addRange(
-          oldValue,
-          oldValue + note.length,
-        );
-        _patternInvalidationRangeCollector.addRange(
-          newValue,
-          newValue + note.length,
-        );
-
-        _schedulePatternCompile(true);
-      } else if (accessor.fieldName == 'length') {
-        final oldValue = operation.oldValueAs<int>();
-        final newValue = operation.newValueAs<int>();
-
-        _channelsToCompile.add(channelId);
-        _patternInvalidationRangeCollector.addRange(
-          note.offset + min(oldValue, newValue),
-          note.offset + max(oldValue, newValue),
-        );
-
-        _schedulePatternCompile(true);
-      } else if (accessor.fieldName == 'key') {
-        // If the key is changed, we need to recompile the pattern
-        _channelsToCompile.add(channelId);
-        _patternInvalidationRangeCollector.addRange(
-          note.offset,
-          note.offset + note.length,
-        );
-
-        _schedulePatternCompile(true);
-      }
-    }
-  }
-
-  final Set<Id> _channelsToCompile = {};
   final InvalidationRangeCollector _patternInvalidationRangeCollector =
       InvalidationRangeCollector();
   final InvalidationRangeCollector _arrangementInvalidationRangeCollector =
       InvalidationRangeCollector();
   bool _updateArrangements = false;
   bool _isScheduled = false;
-  void _schedulePatternCompile(bool updateArrangements) {
+
+  void _addPatternInvalidationRange(int start, int end) {
+    if (end <= start) {
+      return;
+    }
+
+    _patternInvalidationRangeCollector.addRange(start, end);
+  }
+
+  void _recompileOnNotesAddedOrRemoved(NoteModel? oldNote, NoteModel? newNote) {
+    if (oldNote != null) {
+      _addPatternInvalidationRange(
+        oldNote.offset,
+        oldNote.offset + oldNote.length,
+      );
+    }
+
+    if (newNote != null) {
+      _addPatternInvalidationRange(
+        newNote.offset,
+        newNote.offset + newNote.length,
+      );
+    }
+
+    _schedulePatternCompile(updateArrangements: true);
+  }
+
+  FieldAccessor? _getLastFieldAccessor(Iterable<FieldAccessor> fieldAccessors) {
+    FieldAccessor? result;
+    for (final accessor in fieldAccessors) {
+      result = accessor;
+    }
+    return result;
+  }
+
+  int? _getListIndex(Iterable<FieldAccessor> fieldAccessors) {
+    for (final accessor in fieldAccessors) {
+      if (accessor.index != null) {
+        return accessor.index;
+      }
+    }
+
+    return null;
+  }
+
+  void _recompileOnNoteFieldChanged(
+    Iterable<FieldAccessor> fieldAccessors,
+    FieldOperation operation,
+  ) {
+    if (operation is! RawFieldUpdate) {
+      return;
+    }
+
+    final noteFieldAccessor = _getLastFieldAccessor(fieldAccessors);
+    final noteFieldName = noteFieldAccessor?.fieldName;
+
+    if (noteFieldName != 'offset' &&
+        noteFieldName != 'length' &&
+        noteFieldName != 'key' &&
+        noteFieldName != 'velocity') {
+      return;
+    }
+
+    final noteIndex = _getListIndex(fieldAccessors);
+    if (noteIndex == null || noteIndex < 0 || noteIndex >= notes.length) {
+      return;
+    }
+
+    final note = notes[noteIndex];
+
+    if (noteFieldName == 'offset') {
+      final oldValue = operation.oldValueAs<int>();
+      final newValue = operation.newValueAs<int>();
+
+      _addPatternInvalidationRange(oldValue, oldValue + note.length);
+      _addPatternInvalidationRange(newValue, newValue + note.length);
+    } else if (noteFieldName == 'length') {
+      final oldValue = operation.oldValueAs<int>();
+      final newValue = operation.newValueAs<int>();
+
+      _addPatternInvalidationRange(
+        note.offset + min(oldValue, newValue),
+        note.offset + max(oldValue, newValue),
+      );
+    } else {
+      _addPatternInvalidationRange(note.offset, note.offset + note.length);
+    }
+
+    _schedulePatternCompile(updateArrangements: true);
+  }
+
+  void _compileAffectedArrangements() {
+    final engine = project.engine;
+    final patternInvalidationSize = _patternInvalidationRangeCollector.size;
+    final patternInvalidationData = _patternInvalidationRangeCollector.rawData;
+
+    for (final arrangement in project.sequence.arrangements.values) {
+      if (arrangement.getPatternClipReferenceCount(id) == 0) {
+        continue;
+      }
+
+      _arrangementInvalidationRangeCollector.reset();
+      final tracksToCompile = <Id>{};
+
+      for (final clip in arrangement.clips.values) {
+        if (clip.patternId != id) {
+          continue;
+        }
+
+        final clipTimeViewStart = clip.timeView?.start ?? 0;
+        final clipTimeViewEnd = clip.timeView?.end ?? _unboundedClipEnd;
+        var clipInvalidationOccurred = false;
+
+        for (var i = 0; i < patternInvalidationSize; i++) {
+          final patternInvalidationRangeStart = patternInvalidationData[i * 2];
+          final patternInvalidationRangeEnd =
+              patternInvalidationData[i * 2 + 1];
+
+          final adjustedPatternRangeStart =
+              max(clipTimeViewStart, patternInvalidationRangeStart) -
+              clipTimeViewStart;
+          final adjustedPatternRangeEnd =
+              min(clipTimeViewEnd, patternInvalidationRangeEnd) -
+              clipTimeViewStart;
+
+          if (adjustedPatternRangeStart >= adjustedPatternRangeEnd) {
+            continue;
+          }
+
+          clipInvalidationOccurred = true;
+
+          final arrangementRangeStart = adjustedPatternRangeStart + clip.offset;
+          final arrangementRangeEnd = adjustedPatternRangeEnd + clip.offset;
+
+          _arrangementInvalidationRangeCollector.addRange(
+            arrangementRangeStart,
+            arrangementRangeEnd,
+          );
+        }
+
+        if (clipInvalidationOccurred) {
+          tracksToCompile.add(clip.trackId);
+        }
+      }
+
+      if (tracksToCompile.isEmpty ||
+          _arrangementInvalidationRangeCollector.size == 0) {
+        continue;
+      }
+
+      engine.sequencerApi.compileArrangement(
+        arrangement.id,
+        tracksToRebuild: tracksToCompile.toList(),
+        invalidationRanges: _arrangementInvalidationRangeCollector.getRanges(),
+      );
+    }
+
+    _arrangementInvalidationRangeCollector.reset();
+  }
+
+  void _schedulePatternCompile({required bool updateArrangements}) {
     _updateArrangements = _updateArrangements || updateArrangements;
 
     if (_isScheduled) {
@@ -142,101 +199,44 @@ mixin _PatternCompilerMixin on _PatternModel {
 
     _isScheduled = true;
 
-    // Schedule a microtask to compile the pattern
     Future.microtask(() {
       void reset() {
-        _channelsToCompile.clear();
         _patternInvalidationRangeCollector.reset();
-        _isScheduled = false;
         _updateArrangements = false;
+        _isScheduled = false;
       }
 
-      if (_channelsToCompile.isEmpty) {
+      if (_patternInvalidationRangeCollector.size == 0) {
         reset();
         return;
       }
 
-      final project = this.project;
       final engine = project.engine;
       if (!engine.isRunning) {
         reset();
         return;
       }
 
-      final channelsToRebuild = _channelsToCompile.toList();
-
-      // Compile the pattern
       engine.sequencerApi.compilePattern(
         id,
-        channelsToRebuild: channelsToRebuild,
+        tracksToRebuild: [_noTrackEventListKey],
         invalidationRanges: _patternInvalidationRangeCollector.getRanges(),
       );
 
-      // If we need to update the arrangement, do so
       if (_updateArrangements) {
-        for (final arrangement in project.sequence.arrangements.values) {
-          // For each clip, we need to apply the invalidation
-          for (final clip in arrangement.clips.values) {
-            if (clip.patternId != id) {
-              continue;
-            }
-
-            var clipTimeViewStart = 0;
-            // Max safe integer for web. We need to convert to double for
-            // everything, but this is a hack for now for web compatibility.
-            var clipTimeViewEnd = 0x001F_FFFF_FFFF_FFFF;
-
-            if (clip.timeView != null) {
-              clipTimeViewStart = clip.timeView!.start;
-              clipTimeViewEnd = clip.timeView!.end;
-            }
-
-            for (var i = 0; i < _patternInvalidationRangeCollector.size; i++) {
-              final patternInvalidationRangeStart =
-                  _patternInvalidationRangeCollector.rawData[i * 2];
-              final patternInvalidationRangeEnd =
-                  _patternInvalidationRangeCollector.rawData[i * 2 + 1];
-
-              final adjustedPatternRangeStart =
-                  max(clipTimeViewStart, patternInvalidationRangeStart) -
-                  clipTimeViewStart;
-
-              final adjustedPatternRangeEnd =
-                  min(clipTimeViewEnd, patternInvalidationRangeEnd) -
-                  clipTimeViewStart;
-
-              if (adjustedPatternRangeStart >= adjustedPatternRangeEnd) {
-                continue;
-              }
-
-              final arrangementRangeStart =
-                  adjustedPatternRangeStart + clip.offset;
-              final arrangementRangeEnd = adjustedPatternRangeEnd + clip.offset;
-
-              _arrangementInvalidationRangeCollector.addRange(
-                arrangementRangeStart,
-                arrangementRangeEnd,
-              );
-            }
-          }
-
-          // We have invalidation ranges for the pattern - we need to apply them
-          // for each clip in the arrangement.
-          engine.sequencerApi.compileArrangement(
-            arrangement.id,
-            channelsToRebuild: channelsToRebuild,
-            invalidationRanges: _arrangementInvalidationRangeCollector
-                .getRanges(),
-          );
-
-          _arrangementInvalidationRangeCollector.reset();
-        }
+        _compileAffectedArrangements();
       }
 
-      // Reset the state after compiling
       reset();
     });
   }
-}
 
-*/
+  /// Compiles the entire pattern in the engine.
+  void _compileInEngine() {
+    if (!project.engine.isRunning) {
+      return;
+    }
+
+    project.engine.sequencerApi.compilePattern(id);
+  }
+}

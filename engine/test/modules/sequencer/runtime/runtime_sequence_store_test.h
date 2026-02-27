@@ -39,7 +39,7 @@ class RuntimeSequenceStoreTest : public juce::UnitTest {
 
   void expectNoPendingDeletions(AnthemRuntimeSequenceStore* store) {
     expect(store->pendingSequenceDeletions.empty(), "No pending sequence deletions");
-    expect(store->pendingSequenceChannelDeletions.empty(), "No pending channel deletions");
+    expect(store->pendingSequenceTrackDeletions.empty(), "No pending track deletions");
   }
 
 public:
@@ -48,8 +48,8 @@ public:
   void runTest() override {
     testCreateAndReadEmptyStore();
     testAddAndRemoveSequences();
-    testAddAndRemoveChannels();
-    testRemoveChannelFromAllSequences();
+    testAddAndRemoveTracks();
+    testRemoveTrackFromAllSequences();
   }
 
   void testCreateAndReadEmptyStore() {
@@ -98,8 +98,8 @@ public:
     delete store;
   }
 
-  void testAddAndRemoveChannels() {
-    beginTest("Add, replace, and remove channels in a sequence");
+  void testAddAndRemoveTracks() {
+    beginTest("Add, replace, and remove tracks in a sequence");
 
     auto* store = new AnthemRuntimeSequenceStore();
 
@@ -107,48 +107,48 @@ public:
     applyPendingRtUpdates(store);
     store->processDeletionQueues();
 
-    SequenceEventList channel1;
-    channel1.events->push_back(AnthemSequenceEvent {
+    SequenceEventList track1;
+    track1.events->push_back(AnthemSequenceEvent {
       .offset = 0.0,
       .event = AnthemEvent(AnthemNoteOnEvent())
     });
 
-    store->addOrUpdateChannelInSequence("sequence1", "channel1", channel1);
-    store->addOrUpdateChannelInSequence("sequence1", "channel2", SequenceEventList());
+    store->addOrUpdateTrackInSequence("sequence1", "track1", track1);
+    store->addOrUpdateTrackInSequence("sequence1", "track2", SequenceEventList());
     applyPendingRtUpdates(store);
 
     auto& eventLists = store->rt_getEventLists();
-    expect(eventLists.at("sequence1").channels->size() == 2, "Two channels were added");
-    expect(eventLists.at("sequence1").channels->find("channel1") != eventLists.at("sequence1").channels->end(), "channel1 exists");
-    expect(eventLists.at("sequence1").channels->find("channel2") != eventLists.at("sequence1").channels->end(), "channel2 exists");
+    expect(eventLists.at("sequence1").tracks->size() == 2, "Two tracks were added");
+    expect(eventLists.at("sequence1").tracks->find("track1") != eventLists.at("sequence1").tracks->end(), "track1 exists");
+    expect(eventLists.at("sequence1").tracks->find("track2") != eventLists.at("sequence1").tracks->end(), "track2 exists");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
 
-    // Replace channel2
+    // Replace track2
     SequenceEventList replacement;
     replacement.events->push_back(AnthemSequenceEvent {
       .offset = 1.0,
       .event = AnthemEvent(AnthemNoteOffEvent())
     });
 
-    store->addOrUpdateChannelInSequence("sequence1", "channel2", replacement);
+    store->addOrUpdateTrackInSequence("sequence1", "track2", replacement);
     applyPendingRtUpdates(store);
 
     auto& eventListsAfterReplace = store->rt_getEventLists();
-    expect(eventListsAfterReplace.at("sequence1").channels->size() == 2, "Channel count stays at two after replace");
-    expect(eventListsAfterReplace.at("sequence1").channels->at("channel2").events->size() == 1, "Replaced channel has one event");
+    expect(eventListsAfterReplace.at("sequence1").tracks->size() == 2, "Track count stays at two after replace");
+    expect(eventListsAfterReplace.at("sequence1").tracks->at("track2").events->size() == 1, "Replaced track has one event");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
 
-    // Remove channel1
-    store->removeChannelFromSequence("sequence1", "channel1");
+    // Remove track1
+    store->removeTrackFromSequence("sequence1", "track1");
     applyPendingRtUpdates(store);
 
     auto& eventListsAfterRemove = store->rt_getEventLists();
-    expect(eventListsAfterRemove.at("sequence1").channels->size() == 1, "One channel remains after remove");
-    expect(eventListsAfterRemove.at("sequence1").channels->find("channel1") == eventListsAfterRemove.at("sequence1").channels->end(), "channel1 removed");
+    expect(eventListsAfterRemove.at("sequence1").tracks->size() == 1, "One track remains after remove");
+    expect(eventListsAfterRemove.at("sequence1").tracks->find("track1") == eventListsAfterRemove.at("sequence1").tracks->end(), "track1 removed");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
@@ -156,15 +156,15 @@ public:
     delete store;
   }
 
-  void testRemoveChannelFromAllSequences() {
-    beginTest("Remove one channel from all sequences");
+  void testRemoveTrackFromAllSequences() {
+    beginTest("Remove one track from all sequences");
 
     auto* store = new AnthemRuntimeSequenceStore();
 
-    store->addOrUpdateChannelInSequence("sequence1", "channel1", SequenceEventList());
-    store->addOrUpdateChannelInSequence("sequence2", "channel1", SequenceEventList());
-    store->addOrUpdateChannelInSequence("sequence3", "channel1", SequenceEventList());
-    store->addOrUpdateChannelInSequence("sequence3", "channel2", SequenceEventList());
+    store->addOrUpdateTrackInSequence("sequence1", "track1", SequenceEventList());
+    store->addOrUpdateTrackInSequence("sequence2", "track1", SequenceEventList());
+    store->addOrUpdateTrackInSequence("sequence3", "track1", SequenceEventList());
+    store->addOrUpdateTrackInSequence("sequence3", "track2", SequenceEventList());
 
     applyPendingRtUpdates(store);
 
@@ -174,14 +174,14 @@ public:
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
 
-    store->removeChannelFromAllSequences("channel1");
+    store->removeTrackFromAllSequences("track1");
     applyPendingRtUpdates(store);
 
     auto& eventLists = store->rt_getEventLists();
-    expect(eventLists.at("sequence1").channels->find("channel1") == eventLists.at("sequence1").channels->end(), "channel1 removed from sequence1");
-    expect(eventLists.at("sequence2").channels->find("channel1") == eventLists.at("sequence2").channels->end(), "channel1 removed from sequence2");
-    expect(eventLists.at("sequence3").channels->find("channel1") == eventLists.at("sequence3").channels->end(), "channel1 removed from sequence3");
-    expect(eventLists.at("sequence3").channels->find("channel2") != eventLists.at("sequence3").channels->end(), "channel2 preserved in sequence3");
+    expect(eventLists.at("sequence1").tracks->find("track1") == eventLists.at("sequence1").tracks->end(), "track1 removed from sequence1");
+    expect(eventLists.at("sequence2").tracks->find("track1") == eventLists.at("sequence2").tracks->end(), "track1 removed from sequence2");
+    expect(eventLists.at("sequence3").tracks->find("track1") == eventLists.at("sequence3").tracks->end(), "track1 removed from sequence3");
+    expect(eventLists.at("sequence3").tracks->find("track2") != eventLists.at("sequence3").tracks->end(), "track2 preserved in sequence3");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);

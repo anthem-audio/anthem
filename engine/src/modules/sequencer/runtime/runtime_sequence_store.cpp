@@ -36,18 +36,18 @@ void SequenceEventList::cleanUpInstance(SequenceEventList& instance) {
 }
 
 SequenceEventListCollection::SequenceEventListCollection() {
-  channels = new std::unordered_map<std::string, SequenceEventList>();
+  tracks = new std::unordered_map<std::string, SequenceEventList>();
 }
 
 // This is essentially a destructor for SequenceEventListCollection. We just
 // need very tight control over when specific event lists are deallocated. See
 // the comments in the header file for more information.
 void SequenceEventListCollection::cleanUpInstance(SequenceEventListCollection& instance) {
-  for (auto& [key, seqListObj] : *instance.channels) {
+  for (auto& [key, seqListObj] : *instance.tracks) {
     SequenceEventList::cleanUpInstance(seqListObj);
   }
 
-  delete instance.channels;
+  delete instance.tracks;
 }
 
 void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
@@ -89,37 +89,37 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
     // This block checks invalidation ranges and flags any relevant sequences as
     // invalid for the current playhead position if necessary.
     for (auto& [seqKey, seqListObj] : *newMap) {
-      // First, we need to find all channel event lists that are new or have
+      // First, we need to find all track event lists that are new or have
       // changed
       auto oldSeqObj = oldMap->find(seqKey);
 
       bool oldSeqObjExists = oldSeqObj != oldMap->end();
 
       bool shouldCheckSequenceKey = !oldSeqObjExists ||
-        oldSeqObj->second.channels != seqListObj.channels;
+        oldSeqObj->second.tracks != seqListObj.tracks;
 
       if (!shouldCheckSequenceKey) {
-        // The channel list is not new or updated, so we can skip it
+        // The track list is not new or updated, so we can skip it
         continue;
       }
 
-      for (auto& [channelId, channelListObj] : *seqListObj.channels) {
+      for (auto& [trackId, trackListObj] : *seqListObj.tracks) {
         if (oldSeqObjExists &&
-            oldSeqObj->second.channels->find(channelId) != oldSeqObj->second.channels->end()) {
-          auto oldChannelListObj = oldSeqObj->second.channels->find(channelId);
-          if (oldChannelListObj != oldSeqObj->second.channels->end()) {
+            oldSeqObj->second.tracks->find(trackId) != oldSeqObj->second.tracks->end()) {
+          auto oldTrackListObj = oldSeqObj->second.tracks->find(trackId);
+          if (oldTrackListObj != oldSeqObj->second.tracks->end()) {
             // If the old event list exists, it may not have had a chance to be
             // used yet. In that case, it may be marked as invalid for the current
-            // block, so we will carry over that state to the new channel
-            if (oldChannelListObj->second.invalidationOccurred) {
-              channelListObj.invalidationOccurred = true;
+            // block, so we will carry over that state to the new track
+            if (oldTrackListObj->second.invalidationOccurred) {
+              trackListObj.invalidationOccurred = true;
             }
 
             // If the inner event list pointer is identical, then the event list
             // wasn't updated. We still need to carry over the invalidation
             // state so we don't need to recalculate it (which we do above), but
-            // we can skip processing further for this channel.
-            if (oldChannelListObj->second.events == channelListObj.events) {
+            // we can skip processing further for this track.
+            if (oldTrackListObj->second.events == trackListObj.events) {
               continue;
             }
           }
@@ -128,16 +128,16 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
         // If the invalidation didn't carry over, or if the event list is brand
         // new, we need to check and see if the playhead is within any of the
         // invalidation ranges for this event list update.
-        if (!channelListObj.invalidationOccurred) {
-          if (channelListObj.invalidationRanges == nullptr) {
-            // If there are no invalidation ranges, we can skip this channel.
+        if (!trackListObj.invalidationOccurred) {
+          if (trackListObj.invalidationRanges == nullptr) {
+            // If there are no invalidation ranges, we can skip this track.
             continue;
           }
 
-          auto& invalidationRanges = *channelListObj.invalidationRanges;
+          auto& invalidationRanges = *trackListObj.invalidationRanges;
           for (const auto& range : invalidationRanges) {
             // If the playhead is within the invalidation range, we need to
-            // mark this channel as invalid for the current processing block.
+            // mark this track as invalid for the current processing block.
 
             bool isWithinMainRange = playheadStart <= std::get<1>(range) &&
               playheadEnd >= std::get<0>(range);
@@ -146,7 +146,7 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
               loopStartRangeEnd >= std::get<0>(range));
 
             if (isWithinMainRange || isWithinLoopRange) {
-              channelListObj.invalidationOccurred = true;
+              trackListObj.invalidationOccurred = true;
               break; // We only need to set this once
             }
           }
@@ -175,7 +175,7 @@ AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
   rt_eventLists = eventLists;
 
   pendingSequenceDeletions = std::unordered_map<AnthemRuntimeSequenceStore::SequenceIdToEventsMap*, SequenceEventListCollection>();
-  pendingSequenceChannelDeletions = std::unordered_map<
+  pendingSequenceTrackDeletions = std::unordered_map<
     AnthemRuntimeSequenceStore::SequenceIdToEventsMap*,
     std::vector<
       std::tuple<
@@ -216,17 +216,17 @@ void AnthemRuntimeSequenceStore::processDeletionQueues() {
     }
 
     {
-      auto it = pendingSequenceChannelDeletions.find(map);
-      if (it != pendingSequenceChannelDeletions.end()) {
-        for (auto& [oldEventsForChannel, oldChannelMap] : it->second) {
-          if (oldEventsForChannel.has_value()) {
-            SequenceEventList::cleanUpInstance(oldEventsForChannel.value());
+      auto it = pendingSequenceTrackDeletions.find(map);
+      if (it != pendingSequenceTrackDeletions.end()) {
+        for (auto& [oldEventsForTrack, oldTrackMap] : it->second) {
+          if (oldEventsForTrack.has_value()) {
+            SequenceEventList::cleanUpInstance(oldEventsForTrack.value());
           }
 
-          delete oldChannelMap;
+          delete oldTrackMap;
         }
 
-        pendingSequenceChannelDeletions.erase(it);
+        pendingSequenceTrackDeletions.erase(it);
       }
     }
 
@@ -284,10 +284,10 @@ void AnthemRuntimeSequenceStore::removeSequence(const std::string& sequenceId) {
   }
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(
+void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
   const std::string& sequenceId,
-  const std::string& channelId,
-  SequenceEventList channel
+  const std::string& trackId,
+  SequenceEventList track
 ) {
   auto newSequenceMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
   auto sequenceMapIt = newSequenceMap->find(sequenceId);
@@ -301,12 +301,12 @@ void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(
     sequenceMapIt = newSequenceMap->find(sequenceId);
   }
 
-  // We need to replace the channel and add the old channel to the pending
+  // We need to replace the track and add the old track to the pending
   // deletions map.
   auto& sequence = sequenceMapIt->second;
-  auto channelIt = sequence.channels->find(channelId);
+  auto trackIt = sequence.tracks->find(trackId);
 
-  auto* newChannelsMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.channels);
+  auto* newTracksMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.tracks);
 
   {
     auto vec = std::vector<
@@ -316,19 +316,19 @@ void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(
       >
     >();
 
-    if (channelIt != sequence.channels->end()) {
-      vec.push_back(std::make_tuple(channelIt->second, sequence.channels));
+    if (trackIt != sequence.tracks->end()) {
+      vec.push_back(std::make_tuple(trackIt->second, sequence.tracks));
     } else {
-      vec.push_back(std::make_tuple(std::nullopt, sequence.channels));
+      vec.push_back(std::make_tuple(std::nullopt, sequence.tracks));
     }
 
-    pendingSequenceChannelDeletions.insert_or_assign(eventLists, vec);
+    pendingSequenceTrackDeletions.insert_or_assign(eventLists, vec);
   }
 
-  newChannelsMap->insert_or_assign(channelId, channel);
+  newTracksMap->insert_or_assign(trackId, track);
 
   SequenceEventListCollection newSequenceEventListObject;
-  newSequenceEventListObject.channels = newChannelsMap;
+  newSequenceEventListObject.tracks = newTracksMap;
 
   newSequenceMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
 
@@ -339,21 +339,21 @@ void AnthemRuntimeSequenceStore::addOrUpdateChannelInSequence(
   eventLists = newSequenceMap;
 }
 
-void AnthemRuntimeSequenceStore::removeChannelFromSequence(const std::string& sequenceId, const std::string& channelId) {
+void AnthemRuntimeSequenceStore::removeTrackFromSequence(const std::string& sequenceId, const std::string& trackId) {
   auto sequenceMapIt = eventLists->find(sequenceId);
   if (sequenceMapIt == eventLists->end()) {
     return;
   }
 
-  auto channelMapIt = sequenceMapIt->second.channels->find(channelId);
-  if (channelMapIt == sequenceMapIt->second.channels->end()) {
+  auto trackMapIt = sequenceMapIt->second.tracks->find(trackId);
+  if (trackMapIt == sequenceMapIt->second.tracks->end()) {
     return;
   }
 
   auto newSequenceMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
   auto& sequence = newSequenceMap->at(sequenceId);
 
-  auto newChannelsMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.channels);
+  auto newTracksMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.tracks);
   
   {
     auto vec = std::vector<
@@ -363,15 +363,15 @@ void AnthemRuntimeSequenceStore::removeChannelFromSequence(const std::string& se
       >
     >();
 
-    vec.push_back(std::make_tuple(channelMapIt->second, sequence.channels));
+    vec.push_back(std::make_tuple(trackMapIt->second, sequence.tracks));
 
-    pendingSequenceChannelDeletions.insert_or_assign(eventLists, vec);
+    pendingSequenceTrackDeletions.insert_or_assign(eventLists, vec);
   }
 
-  newChannelsMap->erase(channelId);
+  newTracksMap->erase(trackId);
 
   SequenceEventListCollection newSequenceEventListObject;
-  newSequenceEventListObject.channels = newChannelsMap;
+  newSequenceEventListObject.tracks = newTracksMap;
 
   newSequenceMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
 
@@ -382,7 +382,7 @@ void AnthemRuntimeSequenceStore::removeChannelFromSequence(const std::string& se
   eventLists = newSequenceMap;
 }
 
-void AnthemRuntimeSequenceStore::removeChannelFromAllSequences(const std::string& channelId) {
+void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(const std::string& trackId) {
   auto newMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
 
   auto cleanupVec = std::vector<
@@ -393,23 +393,23 @@ void AnthemRuntimeSequenceStore::removeChannelFromAllSequences(const std::string
   >();
 
   for (auto& [sequenceId, sequence] : *newMap) {
-    auto channelIt = sequence.channels->find(channelId);
+    auto trackIt = sequence.tracks->find(trackId);
 
-    if (channelIt != sequence.channels->end()) {
-      auto newChannelsMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.channels);
+    if (trackIt != sequence.tracks->end()) {
+      auto newTracksMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.tracks);
 
-      cleanupVec.push_back(std::make_tuple(channelIt->second, sequence.channels));
+      cleanupVec.push_back(std::make_tuple(trackIt->second, sequence.tracks));
 
-      newChannelsMap->erase(channelId);
+      newTracksMap->erase(trackId);
 
       SequenceEventListCollection newSequenceEventListObject;
-      newSequenceEventListObject.channels = newChannelsMap;
+      newSequenceEventListObject.tracks = newTracksMap;
 
       newMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
     }
   }
 
-  pendingSequenceChannelDeletions.insert_or_assign(eventLists, cleanupVec);
+  pendingSequenceTrackDeletions.insert_or_assign(eventLists, cleanupVec);
 
   mapUpdateQueue.add(newMap);
 
@@ -420,8 +420,8 @@ void AnthemRuntimeSequenceStore::removeChannelFromAllSequences(const std::string
 
 void AnthemRuntimeSequenceStore::rt_cleanupAfterBlock() {
   for (auto& [key, seqListObj] : *rt_eventLists) {
-    for (auto& [channelId, channelEvents] : *seqListObj.channels) {
-      channelEvents.invalidationOccurred = false;
+    for (auto& [trackId, trackEvents] : *seqListObj.tracks) {
+      trackEvents.invalidationOccurred = false;
     }
   }
 }

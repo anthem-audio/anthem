@@ -20,6 +20,7 @@
 #include "sequence_note_provider.h"
 
 #include "modules/core/anthem.h"
+#include "modules/sequencer/runtime/runtime_sequence_store.h"
 
 #include <optional>
 
@@ -91,11 +92,22 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   }
 
   auto& eventsForSequence = sequenceMap.at(*activeSequenceId);
-  if (eventsForSequence.channels->find(trackId) == eventsForSequence.channels->end()) {
+
+  const std::string* sourceTrackId = &trackId;
+  if (config->activeTrackId.has_value() && config->activeTrackId.value() == trackId) {
+    auto noTrackEventListIter =
+      eventsForSequence.tracks->find(anthem_sequencer_track_ids::noTrack);
+    if (noTrackEventListIter != eventsForSequence.tracks->end()) {
+      sourceTrackId = &anthem_sequencer_track_ids::noTrack;
+    }
+  }
+
+  auto sourceTrackEventListIter = eventsForSequence.tracks->find(*sourceTrackId);
+  if (sourceTrackEventListIter == eventsForSequence.tracks->end()) {
     return;
   }
 
-  auto& channelEvents = eventsForSequence.channels->at(trackId);
+  auto& channelEvents = sourceTrackEventListIter->second;
 
   double playheadPos = transport->rt_playhead;
 

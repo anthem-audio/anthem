@@ -70,6 +70,13 @@ class SequenceNoteProviderProcessorModel
 
   static int get eventOutputPortId =>
       _SequenceNoteProviderProcessorModel.eventOutputPortId;
+
+  /// Reserved sequence event-list key used for events that are not associated
+  /// with a specific track in the source sequence.
+  ///
+  /// Note that this constant is duplicated in the engine. Search for "NO_TRACK"
+  /// in the repo to find it.
+  static const String noTrackEventListKey = 'NO_TRACK';
 }
 
 abstract class _SequenceNoteProviderProcessorModel

@@ -28,7 +28,7 @@ import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-// import 'package:anthem/model/shared/invalidation_range_collector.dart';
+import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
@@ -95,8 +95,8 @@ class PatternModel extends _PatternModel
         _$PatternModel,
         _$PatternModelAnthemModelMixin,
         _ClipTitleRenderCacheMixin,
-        _ClipNotesRenderCacheMixin
-/*_PatternCompilerMixin*/ {
+        _ClipNotesRenderCacheMixin,
+        _PatternCompilerMixin {
   /// Action to tell the engine to send new loop points to the audio thread.
   late final _updateLoopPointsAction = MicrotaskDebouncedAction(() {
     final engine = project.engine;
@@ -142,26 +142,24 @@ class PatternModel extends _PatternModel
 
       // Make sure the engine knows about this sequence when it is created, in
       // case it is created from project load or undo/redo
-      // _channelsToCompile.addAll(channelsWithContent);
-      // _schedulePatternCompile(false);
+      _compileInEngine();
 
       // When notes are changed in the pattern, we need to:
       //   1. Update the clip notes render cache.
       //   2. Tell the engine to re-compile all relevant sequences.
 
       // Notes added or removed
-      // onChange((b) => b.notes.anyElement, (e) {
-      //   _recompileOnNotesAddedOrRemoved(
-      //     e.fieldAccessors[1].key as String,
-      //     e.operation.oldValue as NoteModel?,
-      //     e.operation.newValue as NoteModel?,
-      //   );
-      // });
+      onChange((b) => b.notes.anyElement, (e) {
+        _recompileOnNotesAddedOrRemoved(
+          e.operation.oldValue as NoteModel?,
+          e.operation.newValue as NoteModel?,
+        );
+      });
 
       // Note attributes changed
-      // onChange((b) => b.notes.anyElement.anyField, (e) {
-      //   _recompileOnNoteFieldChanged(e.fieldAccessors, e.operation);
-      // });
+      onChange((b) => b.notes.anyElement.anyField, (e) {
+        _recompileOnNoteFieldChanged(e.fieldAccessors, e.operation);
+      });
 
       // When notes change, we also need to update the clip notes render cache
       // and the clip's default width.

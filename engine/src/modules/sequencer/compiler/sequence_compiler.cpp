@@ -31,10 +31,17 @@ void AnthemSequenceCompiler::compilePattern(std::string patternId) {
     return;
   }
 
-  // TODO: Patterns no longer route directly to tracks. Until we have a
-  // track-less pattern event list in the runtime store, keep compiled pattern
-  // entries empty instead of writing incorrect per-track data.
   SequenceEventListCollection newSequence;
+  SequenceEventList noTrackEvents;
+
+  getPatternNoteEvents(patternId, std::nullopt, std::nullopt, *noTrackEvents.events);
+  sortEventList(*noTrackEvents.events);
+
+  newSequence.tracks->insert_or_assign(
+    anthem_sequencer_track_ids::noTrack,
+    std::move(noTrackEvents)
+  );
+
   auto& store = *anthem.sequenceStore;
   store.addOrUpdateSequence(patternId, newSequence);
 }
@@ -44,9 +51,53 @@ void AnthemSequenceCompiler::compilePattern(
   std::vector<std::string>& trackIdsToRebuild,
   std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
-  (void)trackIdsToRebuild;
-  (void)invalidationRanges;
-  compilePattern(patternId);
+  // When compiling a bare pattern, we put all events into a special "no track"
+  // event list. For now, it's not possible for a pattern to contribute events
+  // to any other track.
+  //
+  // This allows us to choose where to send a pattern's events, depending on
+  // which track is currently active. If a pattern has multiple clips on
+  // multiple different tracks and we double-click on one of them, the active
+  // track is set. Then, when the pattern is played in e.g. the piano roll, the
+  // active sequence is set to the pattern's sequence, but we are able to choose
+  // the correct destination for those events because we know to forward them to
+  // the active track.
+  //
+  // The transport contains the real-time-facing source of truth for the active
+  // sequence ID.
+
+  auto& anthem = Anthem::getInstance();
+
+  auto patternIter = anthem.project->sequence()->patterns()->find(patternId);
+  if (patternIter == anthem.project->sequence()->patterns()->end()) {
+    return;
+  }
+
+  bool shouldCompileNoTrackEvents = std::find(
+    trackIdsToRebuild.begin(),
+    trackIdsToRebuild.end(),
+    anthem_sequencer_track_ids::noTrack
+  ) != trackIdsToRebuild.end();
+
+  if (!shouldCompileNoTrackEvents) {
+    return;
+  }
+
+  SequenceEventList noTrackEvents;
+  if (!invalidationRanges.empty()) {
+    noTrackEvents.invalidationRanges =
+      new std::vector<std::tuple<double, double>>(invalidationRanges);
+  }
+
+  getPatternNoteEvents(patternId, std::nullopt, std::nullopt, *noTrackEvents.events);
+  sortEventList(*noTrackEvents.events);
+
+  auto& store = *anthem.sequenceStore;
+  store.addOrUpdateTrackInSequence(
+    patternId,
+    anthem_sequencer_track_ids::noTrack,
+    noTrackEvents
+  );
 }
 
 void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
@@ -69,7 +120,7 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
     getTrackNoteEventsForArrangement(trackId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    newSequence.channels->insert_or_assign(trackId, std::move(newChannelEvents));
+    newSequence.tracks->insert_or_assign(trackId, std::move(newChannelEvents));
   }
 
   // Add the new sequence to the store
@@ -92,14 +143,14 @@ void AnthemSequenceCompiler::compileArrangement(
     getTrackNoteEventsForArrangement(trackId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    store.addOrUpdateChannelInSequence(arrangementId, trackId, newChannelEvents);
+    store.addOrUpdateTrackInSequence(arrangementId, trackId, newChannelEvents);
   }
 }
 
 void AnthemSequenceCompiler::cleanUpTrack(std::string trackId) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
-  store.removeChannelFromAllSequences(trackId);
+  store.removeTrackFromAllSequences(trackId);
 }
 
 void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(

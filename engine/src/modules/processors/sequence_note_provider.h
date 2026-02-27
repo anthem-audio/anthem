@@ -28,6 +28,10 @@
 // This processor is a bridge between the sequencer and the node graph. It's a
 // special node that the sequencer can use to send notes from the sequence to the
 // node graph as note events.
+//
+// If this node's track ID matches the transport's active track ID, the node may
+// read from the reserved track-less sequence event list instead of the
+// per-track list.
 class SequenceNoteProviderProcessor : public AnthemProcessor, public SequenceNoteProviderProcessorModelBase {
 private:
   uint64_t rt_nextIndexToRead;

@@ -72,6 +72,7 @@ public:
 
   // The transport contains information about:
   // - The sequence being played
+  // - The track currently selected for direct pattern playback
   // - The playhead position
   // - The project tempo
   // - The current playhead reset point and loop points

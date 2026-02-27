@@ -28,6 +28,7 @@ void Sequencer::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_pt
   transport.setTicksPerQuarter(this->ticksPerQuarter());
   transport.setBeatsPerMinute(this->beatsPerMinuteRaw() / 100.0);
   transport.setActiveSequenceId(this->activeTransportSequenceID());
+  transport.setActiveTrackId(this->activeTrackID());
   transport.setIsPlaying(this->isPlaying());
 
   transport.jumpTo(this->playbackStartPosition());
@@ -51,6 +52,10 @@ void Sequencer::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_pt
 
   addActiveTransportSequenceIDObserver([this](std::optional<std::string> value) {
     Anthem::getInstance().transport->setActiveSequenceId(value);
+  });
+
+  addActiveTrackIDObserver([this](std::optional<std::string> value) {
+    Anthem::getInstance().transport->setActiveTrackId(value);
   });
 
   addIsPlayingObserver([this](bool value) {
