@@ -77,20 +77,17 @@ target_compile_features(project_options INTERFACE cxx_std_20)
 # This cuts MSVC output by a factor of 10, due to warnings originating in
 # upstream packages.
 if(MSVC)
-  # Disables a couple warnings about struct alignment (C4324, C4820), which
-  # don't seem to indicate anything, though I may be wrong.
-  #
-  # https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-4-c4324?view=msvc-170
-  add_definitions("/wd4324")
-  add_definitions("/wd4820")
+  # Treat angle-bracket includes as external, and silence warnings from them.
+  # This keeps third-party header noise (e.g. reflect-cpp/JUCE internals) out
+  # of our build output.
+  add_compile_options("/external:anglebrackets")
+  add_compile_options("/external:W0")
+  add_compile_options("/Zc:__cplusplus")
 
-  # Disables "relative include path contains '..'" warning, which shows up in
-  # reflect-cpp.
-  add_definitions("/wd4464")
-
-  # I guess reflect-cpp just chucks GNU preprocessor macros into the void on
-  # MSVC, and it makes the compiler unhappy.
-  add_definitions("/wd4668")
+  # These are currently noisy in generated/model-heavy engine code.
+  add_definitions("/wd4100") # unreferenced formal parameter
+  add_definitions("/wd4189") # initialized but unused local variable
+  add_definitions("/wd4458") # declaration hides class member
 endif()
 
 # JUCE can't find GTK without this

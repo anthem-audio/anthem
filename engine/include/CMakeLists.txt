@@ -2,6 +2,7 @@
 
 add_subdirectory(reflect-cpp)
 target_compile_options(reflectcpp PRIVATE)
+set_target_properties(reflectcpp PROPERTIES SYSTEM TRUE)
 
 # Brickworks
 
