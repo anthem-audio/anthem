@@ -22,6 +22,7 @@
 #include "generated/lib/model/processing_graph/node.h"
 
 #include <optional>
+#include <cstdint>
 
 class AnthemProcessContext;
 class AnthemProcessor;
@@ -64,7 +65,7 @@ public:
     NodeModelBase::initialize(self, parent);
   }
 
-  std::optional<std::shared_ptr<NodePort>> getPortById(int32_t id);
+  std::optional<std::shared_ptr<NodePort>> getPortById(int64_t id);
 
   std::optional<std::shared_ptr<AnthemProcessor>> getProcessor();
 };

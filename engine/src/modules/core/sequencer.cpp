@@ -31,7 +31,7 @@ void Sequencer::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_pt
   transport.setActiveTrackId(this->activeTrackID());
   transport.setIsPlaying(this->isPlaying());
 
-  transport.jumpTo(this->playbackStartPosition());
+  transport.jumpTo(static_cast<double>(this->playbackStartPosition()));
 
   addBeatsPerMinuteRawObserver([this](int64_t value) {
     auto beatsPerMinute = static_cast<double>(value) / 100.0;

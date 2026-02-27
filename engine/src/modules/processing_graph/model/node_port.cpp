@@ -72,7 +72,7 @@ bool NodePort::trySendParameterValueToAudioThread(double value) {
     return false;
   }
 
-  node->runtimeContext.value()->setParameterValue(this->id(), value);
+  node->runtimeContext.value()->setParameterValue(this->id(), static_cast<float>(value));
 
   return true;
 }

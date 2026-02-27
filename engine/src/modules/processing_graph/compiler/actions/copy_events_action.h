@@ -20,6 +20,7 @@
 #pragma once
 
 #include <juce_core/juce_core.h>
+#include <cstdint>
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
@@ -29,16 +30,16 @@ private:
   JUCE_LEAK_DETECTOR(CopyEventsAction)
 public:
   AnthemProcessContext* source;
-  int32_t sourcePortId;
+  int64_t sourcePortId;
 
   AnthemProcessContext* destination;
-  int32_t destinationPortId;
+  int64_t destinationPortId;
 
   CopyEventsAction(
     AnthemProcessContext* source,
-    int32_t sourcePortId,
+    int64_t sourcePortId,
     AnthemProcessContext* destination,
-    int32_t destinationPortId
+    int64_t destinationPortId
   ) : source(source), sourcePortId(sourcePortId), destination(destination), destinationPortId(destinationPortId) {}
 
   void execute(int numSamples) override;

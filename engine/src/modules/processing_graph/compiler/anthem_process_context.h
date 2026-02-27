@@ -22,6 +22,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <cstdint>
 
 #include <juce_core/juce_core.h>
 #include <juce_audio_basics/juce_audio_basics.h>
@@ -39,17 +40,17 @@ class AnthemProcessContext {
 private:
   JUCE_LEAK_DETECTOR(AnthemProcessContext)
 
-  std::unordered_map<int32_t, juce::AudioSampleBuffer> inputAudioBuffers;
-  std::unordered_map<int32_t, juce::AudioSampleBuffer> outputAudioBuffers;
+  std::unordered_map<int64_t, juce::AudioSampleBuffer> inputAudioBuffers;
+  std::unordered_map<int64_t, juce::AudioSampleBuffer> outputAudioBuffers;
 
-  std::unordered_map<int32_t, juce::AudioSampleBuffer> inputControlBuffers;
-  std::unordered_map<int32_t, juce::AudioSampleBuffer> outputControlBuffers;
+  std::unordered_map<int64_t, juce::AudioSampleBuffer> inputControlBuffers;
+  std::unordered_map<int64_t, juce::AudioSampleBuffer> outputControlBuffers;
 
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> inputEventBuffers;
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>> outputEventBuffers;
+  std::unordered_map<int64_t, std::unique_ptr<AnthemEventBuffer>> inputEventBuffers;
+  std::unordered_map<int64_t, std::unique_ptr<AnthemEventBuffer>> outputEventBuffers;
 
-  std::unordered_map<int32_t, std::atomic<float>*> parameterValues;
-  std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
+  std::unordered_map<int64_t, std::atomic<float>*> parameterValues;
+  std::unordered_map<int64_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
 
   std::weak_ptr<Node> graphNode;
 public:
@@ -69,41 +70,41 @@ public:
     return graphNode.lock();
   }
 
-  void setParameterValue(int32_t id, float value);
-  float getParameterValue(int32_t id);
+  void setParameterValue(int64_t id, float value);
+  float getParameterValue(int64_t id);
 
-  void setAllInputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
-  void setAllOutputAudioBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllInputAudioBuffers(std::unordered_map<int64_t, juce::AudioSampleBuffer>& buffers);
+  void setAllOutputAudioBuffers(std::unordered_map<int64_t, juce::AudioSampleBuffer>& buffers);
 
-  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllInputAudioBuffers();
-  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllOutputAudioBuffers();
+  std::unordered_map<int64_t, juce::AudioSampleBuffer>& getAllInputAudioBuffers();
+  std::unordered_map<int64_t, juce::AudioSampleBuffer>& getAllOutputAudioBuffers();
 
-  juce::AudioSampleBuffer& getInputAudioBuffer(int32_t id);
-  juce::AudioSampleBuffer& getOutputAudioBuffer(int32_t id);
+  juce::AudioSampleBuffer& getInputAudioBuffer(int64_t id);
+  juce::AudioSampleBuffer& getOutputAudioBuffer(int64_t id);
 
-  void setAllInputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
-  void setAllOutputControlBuffers(std::unordered_map<int32_t, juce::AudioSampleBuffer>& buffers);
+  void setAllInputControlBuffers(std::unordered_map<int64_t, juce::AudioSampleBuffer>& buffers);
+  void setAllOutputControlBuffers(std::unordered_map<int64_t, juce::AudioSampleBuffer>& buffers);
 
-  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllInputControlBuffers();
-  std::unordered_map<int32_t, juce::AudioSampleBuffer>& getAllOutputControlBuffers();
+  std::unordered_map<int64_t, juce::AudioSampleBuffer>& getAllInputControlBuffers();
+  std::unordered_map<int64_t, juce::AudioSampleBuffer>& getAllOutputControlBuffers();
 
-  juce::AudioSampleBuffer& getInputControlBuffer(int32_t id);
-  juce::AudioSampleBuffer& getOutputControlBuffer(int32_t id);
+  juce::AudioSampleBuffer& getInputControlBuffer(int64_t id);
+  juce::AudioSampleBuffer& getOutputControlBuffer(int64_t id);
 
-  void setAllInputEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
-  void setAllOutputEventBuffers(std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
+  void setAllInputEventBuffers(std::unordered_map<int64_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
+  void setAllOutputEventBuffers(std::unordered_map<int64_t, std::unique_ptr<AnthemEventBuffer>>& buffers);
 
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllInputEventBuffers();
-  std::unordered_map<int32_t, std::unique_ptr<AnthemEventBuffer>>& getAllOutputEventBuffers();
+  std::unordered_map<int64_t, std::unique_ptr<AnthemEventBuffer>>& getAllInputEventBuffers();
+  std::unordered_map<int64_t, std::unique_ptr<AnthemEventBuffer>>& getAllOutputEventBuffers();
 
-  std::unique_ptr<AnthemEventBuffer>& getInputEventBuffer(int32_t id);
-  std::unique_ptr<AnthemEventBuffer>& getOutputEventBuffer(int32_t id);
+  std::unique_ptr<AnthemEventBuffer>& getInputEventBuffer(int64_t id);
+  std::unique_ptr<AnthemEventBuffer>& getOutputEventBuffer(int64_t id);
 
-  std::unordered_map<int32_t, std::atomic<float>*>& getParameterValues() {
+  std::unordered_map<int64_t, std::atomic<float>*>& getParameterValues() {
     return parameterValues;
   }
 
-  std::unordered_map<int32_t, std::unique_ptr<LinearParameterSmoother>>& getParameterSmoothers() {
+  std::unordered_map<int64_t, std::unique_ptr<LinearParameterSmoother>>& getParameterSmoothers() {
     return parameterSmoothers;
   }
 };

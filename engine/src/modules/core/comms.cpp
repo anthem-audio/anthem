@@ -19,7 +19,16 @@
 
 #include "comms.h"
 
+#include <limits>
+
 #include "modules/core/anthem.h"
+
+namespace {
+int checkedSizeToSocketInt(size_t value) {
+  jassert(value <= static_cast<size_t>(std::numeric_limits<int>::max()));
+  return static_cast<int>(value);
+}
+}
 
 AnthemSocketThread::AnthemSocketThread() : juce::Thread("AnthemSocketThread"), socket() {
   pendingHeader.setSize(HEADER_SIZE);
@@ -138,7 +147,10 @@ int AnthemSocketThread::writePendingBytes() {
   if (writeIndex < HEADER_SIZE) {
     // Write the header
     auto bytesToWrite = HEADER_SIZE - writeIndex;
-    auto bytesWritten = socket.write(((char *) pendingHeader.getData()) + writeIndex, bytesToWrite);
+    auto bytesWritten = socket.write(
+      static_cast<char*>(pendingHeader.getData()) + writeIndex,
+      checkedSizeToSocketInt(bytesToWrite)
+    );
     if (bytesWritten < 0) {
       jassertfalse;
       return -1; // Error state
@@ -164,7 +176,10 @@ int AnthemSocketThread::writePendingBytes() {
     return 1; // Timeout
   }
 
-  auto bytesWritten = socket.write(((char *) pendingBytes.getData()) + writeIndexInPendingBytes, bytesToWrite);
+  auto bytesWritten = socket.write(
+    static_cast<char*>(pendingBytes.getData()) + writeIndexInPendingBytes,
+    checkedSizeToSocketInt(bytesToWrite)
+  );
   if (bytesWritten < 0) {
     jassertfalse;
     return -1; // Error state

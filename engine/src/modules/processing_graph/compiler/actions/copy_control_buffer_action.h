@@ -20,6 +20,7 @@
 #pragma once
 
 #include <memory>
+#include <cstdint>
 
 #include <juce_core/juce_core.h>
 
@@ -36,19 +37,19 @@ private:
   JUCE_LEAK_DETECTOR(CopyControlBufferAction)
 public:
   AnthemProcessContext* source;
-  int32_t sourcePortId;
+  int64_t sourcePortId;
 
   AnthemProcessContext* destination;
-  int32_t destinationPortId;
+  int64_t destinationPortId;
 
   float minParameterValue;
   float maxParameterValue;
 
   CopyControlBufferAction(
     AnthemProcessContext* source,
-    int32_t sourcePortId,
+    int64_t sourcePortId,
     AnthemProcessContext* destination,
-    int32_t destinationPortId,
+    int64_t destinationPortId,
     float minParameterValue,
     float maxParameterValue
   ) : source(source),
