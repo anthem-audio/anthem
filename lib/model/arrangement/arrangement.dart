@@ -112,6 +112,7 @@ class ArrangementModel extends _ArrangementModel
       onChange(
         (b) => b.clips.anyValue.multiple([
           (b) => b.offset,
+          (b) => b.trackId,
           (b) => b.patternId,
           (b) => b.timeView.withDescendants,
         ]),

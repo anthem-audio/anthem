@@ -26,8 +26,8 @@ class SequencerApi {
 
   /// Tells the engine to compile the given arrangement.
   ///
-  /// If [channelsToRebuild] is specified, only the given channels will be
-  /// rebuilt. Otherwise, all channels will be rebuilt.
+  /// If [tracksToRebuild] is specified, only the given tracks will be
+  /// rebuilt. Otherwise, all tracks will be rebuilt.
   ///
   /// If [invalidationRanges] is specified, these are the ranges of the sequence
   /// that are no longer "valid". Valid in this context means that the data within
@@ -36,17 +36,17 @@ class SequencerApi {
   /// within one of these ranges, the instrument is not guaranteed to receive a
   /// matching note off event.
   ///
-  /// If [invalidationRanges] is specified, [channelsToRebuild] must also be
+  /// If [invalidationRanges] is specified, [tracksToRebuild] must also be
   /// specified, and vice versa.
   void compileArrangement(
     Id arrangementId, {
-    List<String>? channelsToRebuild,
+    List<String>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
     final request = CompileSequenceRequest.arrangement(
       id: _engine._getRequestId(),
       arrangementId: arrangementId.toString(),
-      channelsToRebuild: channelsToRebuild,
+      tracksToRebuild: tracksToRebuild,
       invalidationRanges: invalidationRanges,
     );
 
@@ -55,8 +55,8 @@ class SequencerApi {
 
   /// Tells the engine to compile the given pattern.
   ///
-  /// If [channelsToRebuild] is specified, only the given channels will be
-  /// rebuilt. Otherwise, all channels will be rebuilt.
+  /// If [tracksToRebuild] is specified, only the given tracks will be
+  /// rebuilt. Otherwise, all tracks will be rebuilt.
   ///
   /// If [invalidationRanges] is specified, these are the ranges of the sequence
   /// that are no longer "valid". Valid in this context means that the data within
@@ -65,17 +65,17 @@ class SequencerApi {
   /// within one of these ranges, the instrument is not guaranteed to receive a
   /// matching note off event.
   ///
-  /// If [invalidationRanges] is specified, [channelsToRebuild] must also be
+  /// If [invalidationRanges] is specified, [tracksToRebuild] must also be
   /// specified, and vice versa.
   void compilePattern(
     Id patternId, {
-    List<String>? channelsToRebuild,
+    List<String>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
     final request = CompileSequenceRequest.pattern(
       id: _engine._getRequestId(),
       patternId: patternId.toString(),
-      channelsToRebuild: channelsToRebuild,
+      tracksToRebuild: tracksToRebuild,
       invalidationRanges: invalidationRanges,
     );
 

@@ -39,10 +39,10 @@ abstract class _InvalidationRange {
 
 /// A request to compile either a pattern or an arrangement.
 class CompileSequenceRequest extends Request {
-  /// The channel IDs to rebuild.
+  /// The track IDs to rebuild.
   ///
-  /// If unspecified, all channels will be rebuilt.
-  List<String>? channelsToRebuild;
+  /// If unspecified, all tracks will be rebuilt.
+  List<String>? tracksToRebuild;
 
   /// If specified, these are the ranges of the sequence that are no longer
   /// valid.
@@ -56,9 +56,9 @@ class CompileSequenceRequest extends Request {
   /// The audio thread in the engine is expected to honor these ranges. If the
   /// playhead is within one of these ranges when the audio thread picks up the
   /// updated sequence data, it should send "release all notes" events (or
-  /// equivalent) to all channels that were rebuilt.
+  /// equivalent) to all tracks that were rebuilt.
   ///
-  /// This should not be defined unless [channelsToRebuild] is also defined.
+  /// This should not be defined unless [tracksToRebuild] is also defined.
   List<InvalidationRange>? invalidationRanges;
 
   /// The pattern ID to compile.
@@ -77,7 +77,7 @@ class CompileSequenceRequest extends Request {
   CompileSequenceRequest.pattern({
     required int id,
     required this.patternId,
-    this.channelsToRebuild,
+    this.tracksToRebuild,
     this.invalidationRanges,
   }) {
     super.id = id;
@@ -87,7 +87,7 @@ class CompileSequenceRequest extends Request {
   CompileSequenceRequest.arrangement({
     required int id,
     required this.arrangementId,
-    this.channelsToRebuild,
+    this.tracksToRebuild,
     this.invalidationRanges,
   }) {
     super.id = id;

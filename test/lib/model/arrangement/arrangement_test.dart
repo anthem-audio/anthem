@@ -18,9 +18,31 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/project.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+
+class _MockSequencerApi extends Mock implements SequencerApi {}
+
+class _RunningEngine extends Mock implements Engine {
+  final SequencerApi _sequencerApi;
+  final Stream<EngineState> _engineStateStream =
+      const Stream<EngineState>.empty();
+
+  _RunningEngine(this._sequencerApi);
+
+  @override
+  bool get isRunning => true;
+
+  @override
+  SequencerApi get sequencerApi => _sequencerApi;
+
+  @override
+  Stream<EngineState> get engineStateStream => _engineStateStream;
+}
 
 ClipModel _createClip({required Id id, required Id patternId, int offset = 0}) {
   return ClipModel.create(
@@ -35,6 +57,37 @@ ArrangementModel _createArrangement() {
   final arrangement = ArrangementModel.create(name: 'A', id: getId());
   arrangement.setParentPropertiesOnChildren();
   return arrangement;
+}
+
+ClipModel _createClipWithTimeView({
+  required Id id,
+  required Id patternId,
+  required Id trackId,
+  required int offset,
+  required int start,
+  required int end,
+}) {
+  return ClipModel.create(
+    id: id,
+    patternId: patternId,
+    trackId: trackId,
+    offset: offset,
+    timeView: TimeViewModel(start: start, end: end),
+  );
+}
+
+ProjectModel _createProjectWithRunningMockEngine({
+  required _RunningEngine engine,
+}) {
+  final project = ProjectModel.create();
+
+  project.engine = engine;
+  return project;
+}
+
+Future<void> _flushMicrotasks() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
 }
 
 void main() {
@@ -144,5 +197,122 @@ void main() {
         isFalse,
       );
     });
+  });
+
+  group('ArrangementModel track compile invalidation', () {
+    test(
+      'rebuilds both old and new tracks when clip trackId changes',
+      () async {
+        final sequencerApi = _MockSequencerApi();
+        final runningEngine = _RunningEngine(sequencerApi);
+        final project = _createProjectWithRunningMockEngine(
+          engine: runningEngine,
+        );
+
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]!;
+
+        final oldTrackId = getId();
+        final newTrackId = getId();
+        final clip = _createClipWithTimeView(
+          id: getId(),
+          patternId: getId(),
+          trackId: oldTrackId,
+          offset: 96,
+          start: 0,
+          end: 48,
+        );
+
+        arrangement.clips[clip.id] = clip;
+        await _flushMicrotasks();
+        clearInteractions(sequencerApi);
+
+        clip.trackId = newTrackId;
+        await _flushMicrotasks();
+
+        final verification = verify(
+          sequencerApi.compileArrangement(
+            arrangement.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+            invalidationRanges: captureAnyNamed('invalidationRanges'),
+          ),
+        );
+        verification.called(1);
+
+        final captured = verification.captured;
+        final tracksToRebuild = captured[0] as List<String>;
+        final invalidationRanges = captured[1] as List<InvalidationRange>;
+
+        expect(
+          tracksToRebuild.toSet(),
+          equals(<String>{oldTrackId, newTrackId}),
+        );
+        expect(invalidationRanges, hasLength(1));
+        expect(invalidationRanges[0].start, equals(96));
+        expect(invalidationRanges[0].end, equals(144));
+      },
+    );
+
+    test(
+      'rebuilds both old and new tracks when replacing a clip on a new track',
+      () async {
+        final sequencerApi = _MockSequencerApi();
+        final runningEngine = _RunningEngine(sequencerApi);
+        final project = _createProjectWithRunningMockEngine(
+          engine: runningEngine,
+        );
+
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]!;
+
+        final clipId = getId();
+        final oldTrackId = getId();
+        final newTrackId = getId();
+
+        arrangement.clips[clipId] = _createClipWithTimeView(
+          id: clipId,
+          patternId: getId(),
+          trackId: oldTrackId,
+          offset: 100,
+          start: 0,
+          end: 96,
+        );
+        await _flushMicrotasks();
+        clearInteractions(sequencerApi);
+
+        arrangement.clips[clipId] = _createClipWithTimeView(
+          id: clipId,
+          patternId: getId(),
+          trackId: newTrackId,
+          offset: 140,
+          start: 0,
+          end: 48,
+        );
+        await _flushMicrotasks();
+
+        final verification = verify(
+          sequencerApi.compileArrangement(
+            arrangement.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+            invalidationRanges: captureAnyNamed('invalidationRanges'),
+          ),
+        );
+        verification.called(1);
+
+        final captured = verification.captured;
+        final tracksToRebuild = captured[0] as List<String>;
+        final invalidationRanges = captured[1] as List<InvalidationRange>;
+
+        expect(
+          tracksToRebuild.toSet(),
+          equals(<String>{oldTrackId, newTrackId}),
+        );
+        expect(invalidationRanges, hasLength(1));
+        expect(invalidationRanges[0].start, equals(100));
+        expect(invalidationRanges[0].end, equals(196));
+      },
+    );
   });
 }
