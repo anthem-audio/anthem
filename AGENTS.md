@@ -9,6 +9,7 @@ Anthem is an open-source DAW. It is written in Dart and C++, using Flutter and J
 # Repository setup and project-specific commands
 
 - `dart run :cli codegen generate` to generate code. Prefer adding `--root-only` unless running for the first time, if it is not necessary to re-generate model files for the tests in `codegen/` (which is most of the time).
+- When building the engine, CI uses the `--release` flag. Prefer `--debug` to `--release` during development.
 
 # Documentation
 
