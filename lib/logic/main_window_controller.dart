@@ -21,7 +21,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -47,11 +46,8 @@ class MainWindowController {
   Future<Id> newProject() async {
     ProjectModel project = ProjectModel.create();
 
-    await project.engine.engineStateStream.firstWhere(
-      (element) => element == EngineState.running,
-    );
-
     _addProject(project);
+    await project.engine.start();
 
     return project.id;
   }
@@ -123,6 +119,7 @@ class MainWindowController {
     project.filePath = path;
     project.isDirty = false;
 
+    await project.engine.start();
     return project.id;
   }
 

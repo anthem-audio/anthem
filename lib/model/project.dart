@@ -276,8 +276,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       }
     });
 
-    engine.start();
-
     visualizationProvider = VisualizationProvider(this as ProjectModel);
 
     isHydrated = true;

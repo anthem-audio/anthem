@@ -54,6 +54,7 @@ void main() async {
   store.projects[projectModel.id] = projectModel;
   store.projectOrder.add(projectModel.id);
   store.activeProjectId = projectModel.id;
+  unawaited(projectModel.engine.start());
 
   runApp(const App());
 
