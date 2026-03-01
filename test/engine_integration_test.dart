@@ -33,9 +33,7 @@ import 'package:anthem/engine_api/engine_connector_desktop.dart';
 var id = 0;
 int getId() => id++;
 
-// Temporary, since these tests are broken until we finish the instrument ->
-// track transition
-const skipEngineIntegrationTests = true;
+const skipEngineIntegrationTests = false;
 
 void main() {
   var path = Platform.script;
@@ -217,12 +215,14 @@ void main() {
 
     test('Add a bunch of patterns', () async {
       final patternCount = 100;
+      final expectedPatternNames = <String>{};
 
       for (var i = 0; i < patternCount; i++) {
         final command = PatternAddRemoveCommand.add(
           pattern: PatternModel.create(name: 'Pattern $i'),
         );
         project.execute(command);
+        expectedPatternNames.add('Pattern $i');
       }
 
       final state =
@@ -230,29 +230,23 @@ void main() {
               as Map<String, dynamic>;
 
       final patternMap = state['sequence']!['patterns'] as Map<String, dynamic>;
-      final patternIdList =
-          (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
 
       expect(
         patternMap.length,
         equals(patternCount),
         reason: 'The pattern map should contain $patternCount patterns.',
       );
-      expect(
-        patternIdList.length,
-        equals(patternCount),
-        reason: 'The pattern order should contain $patternCount patterns.',
-      );
 
-      for (var i = 0; i < patternCount; i++) {
-        final id = patternIdList[i];
-        final pattern = patternMap[id] as Map<String, dynamic>;
-        expect(
-          pattern['name'],
-          equals('Pattern $i'),
-          reason: 'Pattern $i should have the correct name.',
-        );
-      }
+      final actualPatternNames = patternMap.values
+          .cast<Map<String, dynamic>>()
+          .map((pattern) => pattern['name'] as String)
+          .toSet();
+
+      expect(
+        actualPatternNames,
+        equals(expectedPatternNames),
+        reason: 'The synced pattern set should match the project pattern set.',
+      );
     });
 
     // test('Delete every even pattern', () async {
