@@ -22,6 +22,7 @@ import 'dart:collection';
 import 'dart:convert';
 
 import 'package:anthem/engine_api/engine_connector.dart';
+import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -38,6 +39,32 @@ part 'api/visualization_api.dart';
 enum EngineState { stopped, starting, running }
 
 var _engineIdGenerator = 0;
+
+typedef EngineConnectorFactory =
+    EngineConnectorBase Function(
+      int id, {
+      required bool kDebugMode,
+      void Function(Response)? onReply,
+      void Function()? onExit,
+      bool noHeartbeat,
+      String? enginePathOverride,
+    });
+
+EngineConnectorBase _defaultEngineConnectorFactory(
+  int id, {
+  required bool kDebugMode,
+  void Function(Response)? onReply,
+  void Function()? onExit,
+  bool noHeartbeat = false,
+  String? enginePathOverride,
+}) => EngineConnector(
+  id,
+  kDebugMode: kDebugMode,
+  onReply: onReply,
+  onExit: onExit,
+  noHeartbeat: noHeartbeat,
+  enginePathOverride: enginePathOverride,
+);
 
 /// Returns a unique engine ID for associating a project with an engine
 /// instance.
@@ -97,7 +124,7 @@ class _PendingReply {
 /// processes and presents a higher-level async API to the rest of the UI.
 class Engine {
   int id;
-  late EngineConnector _engineConnector;
+  late EngineConnectorBase _engineConnector;
 
   /// The project that this engine is attached to
   ProjectModel project;
@@ -179,14 +206,15 @@ class Engine {
   }
 
   final String? enginePathOverride;
+  final EngineConnectorFactory _engineConnectorFactory;
 
-  /// Attaches no-op handlers to a future that we are intentionally abandoning.
+  /// Attaches no-op completion handlers so a future cannot surface as an
+  /// unhandled async error.
   ///
-  /// Some startup futures may still complete after `Engine.start()` has bailed
-  /// out early, for example if initialization was canceled while an async
-  /// request was in flight. Draining the future this way prevents those later
-  /// completions from surfacing as unhandled async errors.
-  void _ignoreFuture<T>(Future<T> future) {
+  /// This does not change the behavior of awaiting the original future later.
+  /// It only ensures that if control flow moves on before the future settles,
+  /// a later error will still be observed.
+  void _consumeFutureError<T>(Future<T> future) {
     unawaited(future.then<void>((_) {}, onError: (_, _) {}));
   }
 
@@ -240,7 +268,13 @@ class Engine {
     }
   }
 
-  Engine(this.id, this.project, {this.enginePathOverride}) {
+  Engine(
+    this.id,
+    this.project, {
+    this.enginePathOverride,
+    EngineConnectorFactory? engineConnectorFactory,
+  }) : _engineConnectorFactory =
+           engineConnectorFactory ?? _defaultEngineConnectorFactory {
     engineStateStream = _engineStateStreamController.stream;
 
     modelSyncApi = ModelSyncApi(this);
@@ -343,7 +377,7 @@ class Engine {
 
     _setEngineState(EngineState.starting);
 
-    _engineConnector = EngineConnector(
+    _engineConnector = _engineConnectorFactory(
       id,
       kDebugMode: kDebugMode,
       onReply: _onReply,
@@ -352,16 +386,15 @@ class Engine {
     );
 
     final modelInitFuture = project.initializeEngine();
+    _consumeFutureError(modelInitFuture);
 
     final success = await _engineConnector.onInit;
 
     if (_engineState != EngineState.starting) {
-      _ignoreFuture(modelInitFuture);
       return;
     }
 
     if (!success) {
-      _ignoreFuture(modelInitFuture);
       _setEngineState(EngineState.stopped);
       return;
     }
@@ -400,6 +433,10 @@ class Engine {
       _autoFlushStartupQueue = true;
       _flushStartupQueue();
     } catch (e, st) {
+      if (_engineState != EngineState.starting) {
+        return;
+      }
+
       debugPrint('Engine[$id]: startup handshake failed: $e');
       debugPrint('$st');
       _engineConnector.dispose();
