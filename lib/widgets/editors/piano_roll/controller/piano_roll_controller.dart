@@ -90,8 +90,10 @@ class _PianoRollController {
     PianoRollInteractionFamily.erase: PianoRollInteractionBackend.stateMachine,
     PianoRollInteractionFamily.moveNotes:
         PianoRollInteractionBackend.stateMachine,
-    PianoRollInteractionFamily.resizeNotes: PianoRollInteractionBackend.legacy,
-    PianoRollInteractionFamily.createNote: PianoRollInteractionBackend.legacy,
+    PianoRollInteractionFamily.resizeNotes:
+        PianoRollInteractionBackend.stateMachine,
+    PianoRollInteractionFamily.createNote:
+        PianoRollInteractionBackend.stateMachine,
   };
   _PianoRollInteractionRoute? _activeInteractionRoute;
 
@@ -308,6 +310,34 @@ class _PianoRollController {
     return note;
   }
 
+  NoteModel? createNoteFromPointerDown({
+    required PianoRollPointerDownEvent event,
+  }) {
+    viewModel.selectedNotes.clear();
+
+    final eventTime = event.offset.floor();
+    if (eventTime < 0) {
+      return null;
+    }
+
+    final targetTime = event.keyboardModifiers.alt
+        ? eventTime
+        : snapTimeInActivePattern(
+            rawTime: eventTime,
+            viewWidthInPixels: event.pianoRollSize.width,
+          );
+
+    project.startUndoGroup();
+
+    return addNoteToActivePattern(
+      key: event.key.floor(),
+      velocity: viewModel.cursorNoteVelocity,
+      length: viewModel.cursorNoteLength,
+      offset: targetTime,
+      pan: viewModel.cursorNotePan,
+    );
+  }
+
   /// Adds a time signature change to the pattern.
   void addTimeSignatureChange({
     required TimeSignatureModel timeSignature,
@@ -485,6 +515,143 @@ class _PianoRollController {
               newOffset: note.offset,
               oldKey: sessionData.startKeys[note.id]!,
               newKey: note.key,
+            );
+          })
+          .toList(growable: false),
+    );
+  }
+
+  PianoRollResizeNotesSessionData createResizeNotesSessionData({
+    required PianoRollPointerDownEvent event,
+    required NoteModel pressedNote,
+    required Iterable<NoteModel> notesToResize,
+    required bool isSelectionResize,
+  }) {
+    final resizingNotesById = <Id, NoteModel>{pressedNote.id: pressedNote};
+    for (final note in notesToResize) {
+      resizingNotesById[note.id] = note;
+    }
+
+    final resizingNotes = resizingNotesById.values.toList(growable: false);
+    if (resizingNotes.isEmpty) {
+      throw StateError('Resize session requires at least one note.');
+    }
+
+    var smallestNote = resizingNotes.first;
+    final startLengths = <Id, Time>{};
+
+    for (final note in resizingNotes) {
+      startLengths[note.id] = note.length;
+      if (note.length < smallestNote.length) {
+        smallestNote = note;
+      }
+    }
+
+    return PianoRollResizeNotesSessionData(
+      pointerStartOffset: event.offset,
+      startLengths: startLengths,
+      smallestStartLength: smallestNote.length,
+      smallestNote: smallestNote.id,
+      pressedNote: pressedNote,
+      isSelectionResize: isSelectionResize,
+    );
+  }
+
+  List<NoteModel> notesForResizeSession(
+    PianoRollResizeNotesSessionData sessionData,
+  ) {
+    final resizingNoteIds = sessionData.startLengths.keys.toSet();
+
+    return requireActivePattern().notes
+        .where((note) => resizingNoteIds.contains(note.id))
+        .toList(growable: false);
+  }
+
+  void applyResizeNotesSessionUpdate({
+    required PianoRollPointerMoveEvent event,
+    required PianoRollResizeNotesSessionData sessionData,
+  }) {
+    final notes = notesForResizeSession(sessionData);
+    if (notes.isEmpty) {
+      return;
+    }
+
+    var snappedOriginalTime = sessionData.pointerStartOffset.floor();
+    var snappedEventTime = event.offset.floor();
+
+    final divisionChanges = divisionChangesForPatternView(
+      viewWidthInPixels: event.pianoRollSize.width,
+    );
+
+    if (!event.keyboardModifiers.alt) {
+      snappedOriginalTime = snapTimeInActivePattern(
+        rawTime: sessionData.pointerStartOffset.floor(),
+        viewWidthInPixels: event.pianoRollSize.width,
+        round: true,
+      );
+
+      snappedEventTime = snapTimeInActivePattern(
+        rawTime: event.offset.floor(),
+        viewWidthInPixels: event.pianoRollSize.width,
+        round: true,
+      );
+    }
+
+    late int snapAtSmallestNoteStart;
+
+    final offsetOfSmallestNoteAtStart =
+        sessionData.startLengths[sessionData.smallestNote]!;
+
+    for (var i = 0; i < divisionChanges.length; i++) {
+      if (i < divisionChanges.length - 1 &&
+          divisionChanges[i + 1].offset <= offsetOfSmallestNoteAtStart) {
+        continue;
+      }
+
+      snapAtSmallestNoteStart = divisionChanges[i].divisionSnapSize;
+      break;
+    }
+
+    var diff = snappedEventTime - snappedOriginalTime;
+
+    // Preserve the legacy minimum-length behavior exactly during migration.
+    if (!event.keyboardModifiers.alt &&
+        sessionData.smallestStartLength + diff < snapAtSmallestNoteStart) {
+      final snapCount =
+          ((snapAtSmallestNoteStart -
+                      (sessionData.smallestStartLength + diff)) /
+                  snapAtSmallestNoteStart)
+              .ceil();
+      diff += snapCount * snapAtSmallestNoteStart;
+    }
+
+    if (event.keyboardModifiers.alt) {
+      final newSmallestNoteSize = sessionData.smallestStartLength + diff;
+      if (newSmallestNoteSize < 1) {
+        diff += 1 - newSmallestNoteSize;
+      }
+    }
+
+    for (final note in notes) {
+      note.length = sessionData.startLengths[note.id]! + diff;
+    }
+
+    setCursorNoteParameters(sessionData.pressedNote);
+  }
+
+  ResizeNotesCommand buildResizeNotesCommand({
+    required PianoRollResizeNotesSessionData sessionData,
+  }) {
+    final notes = notesForResizeSession(sessionData);
+
+    return ResizeNotesCommand(
+      patternID: requireActivePattern().id,
+      noteResizes: notes
+          .map((note) {
+            return (
+              noteID: note.id,
+              oldLength: sessionData.startLengths[note.id]!,
+              newLength: note.length,
             );
           })
           .toList(growable: false),

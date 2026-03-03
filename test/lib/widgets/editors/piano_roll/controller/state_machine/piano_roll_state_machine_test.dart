@@ -590,7 +590,7 @@ void main() {
     });
 
     test(
-      'controller defaults selection, erase, and move to machine while resize and create stay legacy',
+      'controller defaults every interaction family to the state machine',
       () {
         expect(
           fixture.controller.backendForFamily(
@@ -612,13 +612,13 @@ void main() {
           fixture.controller.backendForFamily(
             PianoRollInteractionFamily.resizeNotes,
           ),
-          equals(PianoRollInteractionBackend.legacy),
+          equals(PianoRollInteractionBackend.stateMachine),
         );
         expect(
           fixture.controller.backendForFamily(
             PianoRollInteractionFamily.createNote,
           ),
-          equals(PianoRollInteractionBackend.legacy),
+          equals(PianoRollInteractionBackend.stateMachine),
         );
       },
     );
@@ -749,35 +749,87 @@ void main() {
       expect(fixture.activeInteractionBackend, isNull);
     });
 
-    test(
-      'a configured legacy note family can still route to the machine seam',
-      () {
-        fixture.routeFamilyToStateMachineForTesting(
-          PianoRollInteractionFamily.createNote,
-        );
+    test('resize routing latches a machine route until pointer up', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 96);
 
-        fixture.pointerDown(key: 60.5, offset: 100);
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 196,
+        noteUnderCursor: note.id,
+        isResize: true,
+      );
 
-        expect(
-          fixture.activeInteractionFamily,
-          equals(PianoRollInteractionFamily.createNote),
-        );
-        expect(
-          fixture.activeInteractionBackend,
-          equals(PianoRollInteractionBackend.stateMachine),
-        );
-        expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
-        expect(
-          fixture.stateMachine.currentState,
-          same(fixture.noteInteractionState),
-        );
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.resizeNotes),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.stateMachine),
+      );
+      expect(fixture.stateMachine.currentState, same(fixture.resizeNotesState));
+      expect(fixture.resizeNotesState.sessionData, isNotNull);
 
-        fixture.pointerUp(key: 60.5, offset: 100);
+      fixture.pointerMove(key: 60.5, offset: 240, alt: true);
 
-        expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
-        expect(fixture.stateMachine.currentState, same(fixture.idleState));
-      },
-    );
+      expect(fixture.stateMachine.currentState, same(fixture.resizeNotesState));
+
+      fixture.pointerUp(key: 60.5, offset: 240, alt: true);
+
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.activeInteractionBackend, isNull);
+    });
+
+    test('create routing latches a machine route until pointer up', () {
+      fixture.pointerDown(key: 60.5, offset: 100);
+
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.createNote),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.stateMachine),
+      );
+      expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
+      expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
+      expect(fixture.createNoteState.sessionData, isNotNull);
+
+      fixture.pointerMove(key: 61.5, offset: 120);
+
+      expect(fixture.stateMachine.adaptedPointerMoveCount, equals(1));
+      expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
+
+      fixture.pointerUp(key: 61.5, offset: 120);
+
+      expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.activeInteractionBackend, isNull);
+    });
+
+    test('negative-time create does not initialize a create-note session', () {
+      fixture.pointerDown(key: 60.5, offset: -1);
+
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.createNote),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.stateMachine),
+      );
+      expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
+      expect(fixture.createNoteState.sessionData, isNull);
+      expect(fixture.notes, isEmpty);
+
+      fixture.pointerUp(key: 60.5, offset: -1);
+
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.activeInteractionBackend, isNull);
+    });
   });
 
   group('selection box interactions', () {
