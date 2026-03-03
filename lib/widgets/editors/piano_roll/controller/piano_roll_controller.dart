@@ -34,7 +34,6 @@ import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_live_not
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/gestures.dart';
@@ -89,7 +88,7 @@ class _PianoRollController {
   _interactionBackends = {
     PianoRollInteractionFamily.selectionBox:
         PianoRollInteractionBackend.stateMachine,
-    PianoRollInteractionFamily.erase: PianoRollInteractionBackend.legacy,
+    PianoRollInteractionFamily.erase: PianoRollInteractionBackend.stateMachine,
     PianoRollInteractionFamily.moveNotes: PianoRollInteractionBackend.legacy,
     PianoRollInteractionFamily.resizeNotes: PianoRollInteractionBackend.legacy,
     PianoRollInteractionFamily.createNote: PianoRollInteractionBackend.legacy,

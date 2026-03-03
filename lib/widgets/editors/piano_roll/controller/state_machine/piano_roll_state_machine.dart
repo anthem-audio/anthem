@@ -20,6 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';

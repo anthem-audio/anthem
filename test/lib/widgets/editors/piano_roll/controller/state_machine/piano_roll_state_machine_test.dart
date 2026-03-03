@@ -590,7 +590,7 @@ void main() {
     });
 
     test(
-      'controller defaults selection to machine and all other families to legacy',
+      'controller defaults selection and erase to machine and all note interactions to legacy',
       () {
         expect(
           fixture.controller.backendForFamily(
@@ -600,7 +600,7 @@ void main() {
         );
         expect(
           fixture.controller.backendForFamily(PianoRollInteractionFamily.erase),
-          equals(PianoRollInteractionBackend.legacy),
+          equals(PianoRollInteractionBackend.stateMachine),
         );
         expect(
           fixture.controller.backendForFamily(
@@ -684,17 +684,48 @@ void main() {
       expect(fixture.activeInteractionBackend, isNull);
     });
 
-    test('a configured legacy family can route to the machine intake stub', () {
-      fixture.routeFamilyToStateMachineForTesting(
-        PianoRollInteractionFamily.erase,
-      );
-      fixture.setTool(EditorTool.eraser);
+    test('erase routing latches a machine route until pointer up', () {
+      final note = fixture.addNote(key: 60, offset: 96, length: 48);
 
-      fixture.pointerDown(key: 60.5, offset: 100);
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 96,
+        noteUnderCursor: note.id,
+        buttons: kSecondaryMouseButton,
+      );
 
       expect(
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.erase),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.stateMachine),
+      );
+      expect(fixture.stateMachine.currentState, same(fixture.eraseNotesState));
+
+      fixture.pointerMove(key: 60.5, offset: 120);
+
+      expect(fixture.stateMachine.currentState, same(fixture.eraseNotesState));
+
+      fixture.pointerUp(key: 60.5, offset: 120);
+
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.activeInteractionBackend, isNull);
+    });
+
+    test('a configured legacy family can route to the machine intake stub', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 48);
+      fixture.routeFamilyToStateMachineForTesting(
+        PianoRollInteractionFamily.moveNotes,
+      );
+
+      fixture.pointerDown(key: 60.5, offset: 100, noteUnderCursor: note.id);
+
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.moveNotes),
       );
       expect(
         fixture.activeInteractionBackend,

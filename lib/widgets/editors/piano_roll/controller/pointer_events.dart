@@ -39,9 +39,6 @@ enum EventHandlingState {
 
   /// A selection of notes are being resized.
   resizingSelection,
-
-  /// Notes under the cursor are being deleted.
-  deleting,
 }
 
 mixin _PianoRollPointerEventsMixin on _PianoRollController {
@@ -54,9 +51,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
   /// Data for note resize
   PianoRollResizeNotesSessionData? _noteResizeActionData;
-
-  /// Data for deleting notes
-  PianoRollEraseNotesSessionData? _deleteActionData;
 
   void leftPointerDown(PianoRollPointerDownEvent event) {
     final pattern = requireActivePattern();
@@ -270,41 +264,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     viewModel.pressedNote = note.id;
   }
 
-  void rightPointerDown(PianoRollPointerDownEvent event) {
-    _eventHandlingState = EventHandlingState.deleting;
-
-    project.startUndoGroup();
-
-    final pattern = requireActivePattern();
-    final notes = pattern.notes;
-
-    _deleteActionData = PianoRollEraseNotesSessionData(
-      mostRecentPoint: Point(event.offset, event.key),
-      notesDeleted: {},
-      notesToTemporarilyIgnore: {},
-    );
-
-    if (event.noteUnderCursor != null) {
-      notes.removeWhere((note) {
-        final remove =
-            note.id == event.noteUnderCursor &&
-            // Ignore events that come from the resize handle but aren't over
-            // the note.
-            note.offset + note.length > event.offset;
-
-        if (remove) {
-          _deleteActionData!.notesDeleted.add(note);
-          viewModel.selectedNotes.remove(note.id);
-        }
-        return remove;
-      });
-
-      _deleteActionData!.notesToTemporarilyIgnore.addAll(
-        getNotesUnderCursor(notes, event.key, event.offset),
-      );
-    }
-  }
-
   void legacyPointerDown(PianoRollPointerDownEvent event) {
     if (project.sequence.activePatternID == null) {
       return;
@@ -317,7 +276,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     } else if (event.pointerEvent.buttons & kSecondaryMouseButton ==
             kSecondaryMouseButton ||
         viewModel.tool == EditorTool.eraser) {
-      rightPointerDown(event);
+      throw StateError(
+        'Erase gestures are handled by the piano-roll state machine.',
+      );
     }
   }
 
@@ -408,63 +369,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             pan: noteUnderCursor.pan,
           );
         }
-
-        break;
-      case EventHandlingState.deleting:
-        final pattern = requireActivePattern();
-        final notes = pattern.notes;
-
-        final thisPoint = Point(event.offset, event.key);
-
-        // We make a line between the previous event point and this point, and
-        // we delete all notes that intersect that line
-        final notesUnderCursorPath = notes.where((note) {
-          final noteTopLeft = Point(note.offset, note.key);
-          final noteBottomRight = Point(
-            note.offset + note.length,
-            note.key + 1,
-          );
-
-          // Discard if bounding boxes don't intersect
-          return rectanglesIntersect(
-                Rectangle.fromPoints(
-                  _deleteActionData!.mostRecentPoint,
-                  thisPoint,
-                ),
-                Rectangle.fromPoints(noteTopLeft, noteBottomRight),
-              ) &&
-              // Calculate if path segment intersects note
-              lineIntersectsBox(
-                _deleteActionData!.mostRecentPoint,
-                thisPoint,
-                noteTopLeft,
-                noteBottomRight,
-              );
-        }).toList();
-
-        final notesToRemoveFromIgnore = <NoteModel>[];
-
-        for (final note in _deleteActionData!.notesToTemporarilyIgnore) {
-          if (!notesUnderCursorPath.contains(note)) {
-            notesToRemoveFromIgnore.add(note);
-          }
-        }
-
-        for (final note in notesToRemoveFromIgnore) {
-          _deleteActionData!.notesToTemporarilyIgnore.remove(note);
-        }
-
-        for (final note in notesUnderCursorPath) {
-          if (_deleteActionData!.notesToTemporarilyIgnore.contains(note)) {
-            continue;
-          }
-
-          notes.remove(note);
-          _deleteActionData!.notesDeleted.add(note);
-          viewModel.selectedNotes.remove(note.id);
-        }
-
-        _deleteActionData!.mostRecentPoint = thisPoint;
 
         break;
       case EventHandlingState.resizingSingleNote:
@@ -597,17 +501,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       );
 
       project.push(command);
-    } else if (_eventHandlingState == EventHandlingState.deleting) {
-      // There should already be an active journal page, so we don't need to
-      // collect these manually.
-      for (final note in _deleteActionData!.notesDeleted) {
-        final command = DeleteNoteCommand(
-          patternID: requireActivePattern().id,
-          note: note,
-        );
-
-        project.push(command);
-      }
     } else if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
         _eventHandlingState == EventHandlingState.resizingSelection) {
       final diff =
@@ -639,7 +532,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     viewModel.pressedNote = null;
 
     _noteMoveActionData = null;
-    _deleteActionData = null;
     _noteResizeActionData = null;
 
     _eventHandlingState = EventHandlingState.idle;
