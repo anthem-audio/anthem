@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,6 +32,7 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
     juce::Logger::writeToLog("Loading project model...");
 
     auto& modelInitRequest = rfl::get<ModelInitRequest>(request.variant());
+    auto requestId = modelInitRequest.requestBase.get().id;
 
     // std::cout << modelInitRequest.serializedModel << std::endl;
 
@@ -40,11 +41,15 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
     );
 
     if (!result.has_value()) {
-      juce::Logger::writeToLog("Error during deserialize:");
-      std::cout << result.error().what() << std::endl;
-      jassertfalse;
-      // This shouldn't be possible if the UI loaded the project successfully,
-      // but if it does happen, we should probably handle it better.
+      auto error = std::string(result.error().what());
+      juce::Logger::writeToLog("Error during deserialize: " + juce::String(error));
+      return std::optional(ModelInitResponse {
+        .success = false,
+        .error = error,
+        .responseBase = ResponseBase {
+          .id = requestId
+        }
+      });
     }
     else {
       anthem.project = std::move(
@@ -61,7 +66,17 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
       // We could probably move this action to a command, but for now we always
       // want to start as soon as we have a valid project anyway, so this is
       // probably fine.
+      juce::Logger::writeToLog("Starting audio callback after model init...");
       anthem.startAudioCallback();
+      juce::Logger::writeToLog("startAudioCallback() returned.");
+
+      return std::optional(ModelInitResponse {
+        .success = true,
+        .error = std::nullopt,
+        .responseBase = ResponseBase {
+          .id = requestId
+        }
+      });
     }
   }
   else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {

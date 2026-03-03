@@ -133,6 +133,17 @@ void main() {
         onExit: () => exitStreamController.add(null),
       );
 
+      expect(
+        await engineConnector.onInit,
+        isTrue,
+        reason: 'The engine connector should initialize successfully.',
+      );
+
+      // Heartbeat startup belongs to Engine.start(). Engine wraps
+      // EngineConnector. Since we are testing the bare EngineConnector, we need
+      // to start the heartbeat timer manually.
+      engineConnector.startHeartbeatTimer();
+
       exitCalled = false;
 
       exitStreamController.stream.first.then((_) => exitCalled = true);

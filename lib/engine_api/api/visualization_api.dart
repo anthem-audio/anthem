@@ -19,6 +19,7 @@
 
 part of 'package:anthem/engine_api/engine.dart';
 
+/// Provides APIs for configuring engine-side visualization streams.
 class VisualizationApi {
   final Engine _engine;
 
@@ -28,21 +29,29 @@ class VisualizationApi {
   static const String playheadSequenceIdKey = 'playhead_sequence_id';
   static const String cpuKey = 'cpu';
 
+  /// Sets the visualization streams that the engine should publish.
   void setSubscriptions(List<String> subscriptions) {
     final request = SetVisualizationSubscriptionsRequest(
       id: _engine._getRequestId(),
       subscriptions: subscriptions,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
+  /// Sets how often the engine should publish visualization updates.
   void setUpdateInterval(double intervalMilliseconds) {
     final request = SetVisualizationUpdateIntervalRequest(
       id: _engine._getRequestId(),
       intervalMilliseconds: intervalMilliseconds,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 }

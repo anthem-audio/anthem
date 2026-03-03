@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -173,10 +173,6 @@ class EngineConnector extends EngineConnectorBase {
               : ProcessStartMode.normal,
         ),
       );
-    }
-
-    if (!noHeartbeat) {
-      startHeartbeatTimer();
     }
 
     // Wait for the engine to connect before setting our initialized state to

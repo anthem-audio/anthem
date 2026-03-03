@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -72,8 +72,7 @@ void CommandHandler::processNextCommand() {
 
   // Convert the command bytes to a string
   std::string commandStr(static_cast<const char*>(command.getData()), command.getSize());
-
-  // std::cout << "Received command: " << commandStr << std::endl;
+  // juce::Logger::writeToLog("Received command: " + juce::String(commandStr));
 
   auto requestWrapped = rfl::json::read<Request>(commandStr);
 
@@ -115,6 +114,22 @@ void CommandHandler::processNextCommand() {
 
     response = std::optional(
       std::move(heartbeatReply)
+    );
+  }
+
+  else if (rfl::holds_alternative<EngineReadyCheckRequest>(request.variant())) {
+    auto& requestAsReadyCheck = rfl::get<EngineReadyCheckRequest>(request.variant());
+
+    auto readyCheckReply = EngineReadyCheckResponse{
+      .success = true,
+      .error = std::nullopt,
+      .responseBase = ResponseBase {
+        .id = requestAsReadyCheck.requestBase.get().id
+      }
+    };
+
+    response = std::optional(
+      std::move(readyCheckReply)
     );
   }
 

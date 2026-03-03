@@ -60,6 +60,29 @@ class HeartbeatReply extends Response {
   }
 }
 
+class EngineReadyCheckRequest extends Request {
+  EngineReadyCheckRequest.uninitialized();
+
+  EngineReadyCheckRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+class EngineReadyCheckResponse extends Response {
+  bool success = false;
+  String? error;
+
+  EngineReadyCheckResponse.uninitialized();
+
+  EngineReadyCheckResponse({
+    required int id,
+    required this.success,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
 /// Unsolicited response that is sent back one time, when the audio device has
 /// initialized.
 class AudioReadyEvent extends Response {

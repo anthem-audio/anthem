@@ -36,12 +36,16 @@ class ModelSyncApi {
   ModelSyncApi(this._engine);
 
   /// Initializes the engine model with the given serialized model representation.
-  void initModel(String serializedModel) {
+  Future<ModelInitResponse> initModel(String serializedModel) async {
     final id = _engine._getRequestId();
 
     final request = ModelInitRequest(id: id, serializedModel: serializedModel);
 
-    _engine._requestNoReply(request);
+    return (await _engine._request(
+          request,
+          startupBehavior: StartupSendBehavior.queueDuringStartup,
+        ))
+        as ModelInitResponse;
   }
 
   /// Updates the engine model with the given field update.
@@ -59,7 +63,10 @@ class ModelSyncApi {
       serializedValue: serializedValue,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
   /// Gets the current state of the engine model.

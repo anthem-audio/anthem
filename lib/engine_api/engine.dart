@@ -18,6 +18,7 @@
 */
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:anthem/engine_api/engine_connector.dart';
@@ -38,7 +39,57 @@ enum EngineState { stopped, starting, running }
 
 var _engineIdGenerator = 0;
 
+/// Returns a unique engine ID for associating a project with an engine
+/// instance.
 int getEngineID() => _engineIdGenerator++;
+
+/// Controls how a request behaves while the engine is in [EngineState.starting].
+enum StartupSendBehavior {
+  /// Queue the request and replay it in-order after the startup handshake
+  /// completes.
+  ///
+  /// This is for durable state-sync style messages where replaying them later
+  /// is still correct, as long as relative ordering is preserved.
+  queueDuringStartup,
+
+  /// Reject the request unless the engine is fully running.
+  ///
+  /// This is for requests where delaying them would change their meaning or
+  /// mislead the caller, such as "read current engine state" operations.
+  requireRunning,
+
+  /// Ignore the request while the engine is starting or stopped.
+  ///
+  /// This is for ephemeral actions that should not be replayed later, such as
+  /// live input events.
+  dropDuringStartup,
+
+  /// Send the request immediately once the socket is available, bypassing the
+  /// startup queue.
+  ///
+  /// This is reserved for internal control-plane messages that are used to
+  /// bring the engine to a state where the queued requests can safely flush.
+  bypassStartupQueue,
+}
+
+class _QueuedStartupRequest {
+  final Request request;
+  final Completer<Response>? responseCompleter;
+
+  _QueuedStartupRequest(this.request, {this.responseCompleter});
+}
+
+class _PendingReply {
+  final void Function(Response response) onReply;
+  final void Function(Object error) onError;
+  final Timer timeoutTimer;
+
+  _PendingReply({
+    required this.onReply,
+    required this.onError,
+    required this.timeoutTimer,
+  });
+}
 
 /// Engine class, used for communicating with the Anthem engine process.
 ///
@@ -56,23 +107,37 @@ class Engine {
   late SequencerApi sequencerApi;
   late VisualizationApi visualizationApi;
 
-  Map<int, ({void Function(Response response) onReply, Timer timeoutTimer})>
-  replyFunctions = {};
+  final Map<int, _PendingReply> _replyFunctions = {};
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
   final StreamController<EngineState> _engineStateStreamController =
       StreamController.broadcast();
   late final Stream<EngineState> engineStateStream;
+  Completer<void> _readyForMessagesCompleter = Completer<void>();
 
   EngineState _engineState = EngineState.stopped;
+
+  /// The engine's current lifecycle state.
   EngineState get engineState => _engineState;
+
+  /// Returns whether the engine has completed startup and is ready for normal
+  /// request traffic.
   bool get isRunning => _engineState == EngineState.running;
+  bool _socketReady = false;
+  bool _canFlushStartupQueue = false;
+  bool _autoFlushStartupQueue = false;
+  bool _isFlushingStartupQueue = false;
+  final ListQueue<_QueuedStartupRequest> _startupQueue = ListQueue();
 
   bool _isAudioReady = false;
 
   /// Completer that completes when the audio thread is ready.
-  final Completer<void> audioReadyCompleter = Completer<void>();
+  Completer<void> _audioReadyCompleter = Completer<void>();
+
+  /// Completes when the engine's audio thread is ready for audio-dependent
+  /// work.
+  Future<void> get audioReadyFuture => _audioReadyCompleter.future;
 
   /// Indicates that the audio thread is active.
   ///
@@ -80,11 +145,12 @@ class Engine {
   /// set this via an event once it has initialized the audio thread.
   set isAudioReady(bool value) {
     _isAudioReady = value;
-    if (value && !audioReadyCompleter.isCompleted) {
-      audioReadyCompleter.complete();
+    if (value && !_audioReadyCompleter.isCompleted) {
+      _audioReadyCompleter.complete();
     }
   }
 
+  /// Returns whether the engine's audio thread has finished starting.
   bool get isAudioReady => _isAudioReady;
 
   /// Returns a [Future] that completes when the engine is ready to receive
@@ -97,11 +163,7 @@ class Engine {
   /// the engine to start, which may never happen.
   Future<void> get readyForMessages => _engineState == EngineState.running
       ? Future.value()
-      : Future(() async {
-          await _engineStateStreamController.stream.firstWhere(
-            (state) => state == EngineState.running,
-          );
-        });
+      : _readyForMessagesCompleter.future;
 
   final List<void Function()> _startupCallbacks = [];
 
@@ -118,8 +180,61 @@ class Engine {
 
   final String? enginePathOverride;
 
+  /// Attaches no-op handlers to a future that we are intentionally abandoning.
+  ///
+  /// Some startup futures may still complete after `Engine.start()` has bailed
+  /// out early, for example if initialization was canceled while an async
+  /// request was in flight. Draining the future this way prevents those later
+  /// completions from surfacing as unhandled async errors.
+  void _ignoreFuture<T>(Future<T> future) {
+    unawaited(future.then<void>((_) {}, onError: (_, _) {}));
+  }
+
+  void _failPendingReplies(Object error) {
+    for (final pendingReply in _replyFunctions.values) {
+      pendingReply.timeoutTimer.cancel();
+      pendingReply.onError(error);
+    }
+    _replyFunctions.clear();
+  }
+
+  void _clearStartupQueue(Object error) {
+    while (_startupQueue.isNotEmpty) {
+      final queuedRequest = _startupQueue.removeFirst();
+      queuedRequest.responseCompleter?.completeError(error);
+    }
+    _isFlushingStartupQueue = false;
+    _autoFlushStartupQueue = false;
+    _canFlushStartupQueue = false;
+  }
+
   void _setEngineState(EngineState state) {
     _engineState = state;
+
+    if (state == EngineState.running &&
+        !_readyForMessagesCompleter.isCompleted) {
+      _readyForMessagesCompleter.complete();
+    }
+
+    if (state == EngineState.stopped) {
+      _socketReady = false;
+      _isAudioReady = false;
+      _clearStartupQueue(
+        StateError('Engine stopped before startup completed.'),
+      );
+      _failPendingReplies(
+        StateError('Engine stopped while waiting for reply.'),
+      );
+
+      if (_readyForMessagesCompleter.isCompleted) {
+        _readyForMessagesCompleter = Completer<void>();
+      }
+
+      if (_audioReadyCompleter.isCompleted) {
+        _audioReadyCompleter = Completer<void>();
+      }
+    }
+
     if (!_engineStateStreamController.isClosed) {
       _engineStateStreamController.add(state);
     }
@@ -176,10 +291,10 @@ class Engine {
       isAudioReady = true;
     }
 
-    if (replyFunctions[response.id] != null) {
-      replyFunctions[response.id]!.onReply(response);
-      replyFunctions[response.id]!.timeoutTimer.cancel();
-      replyFunctions.remove(response.id);
+    final pendingReply = _replyFunctions.remove(response.id);
+    if (pendingReply != null) {
+      pendingReply.onReply(response);
+      pendingReply.timeoutTimer.cancel();
     }
   }
 
@@ -197,17 +312,21 @@ class Engine {
   }
 
   Future<void> dispose() async {
-    if (_engineState != EngineState.stopped) {
-      await _exit();
-    }
+    await stop();
 
     _engineStateStreamController.close();
   }
 
   /// Stops the engine process, if it is running.
   Future<void> stop() async {
-    if (_engineState != EngineState.stopped) {
+    if (_engineState == EngineState.running) {
       await _exit();
+      return;
+    }
+
+    if (_engineState == EngineState.starting) {
+      _engineConnector.dispose();
+      _setEngineState(EngineState.stopped);
     }
   }
 
@@ -215,6 +334,11 @@ class Engine {
   Future<void> start() async {
     if (_engineState != EngineState.stopped) {
       return;
+    }
+
+    _isAudioReady = false;
+    if (_audioReadyCompleter.isCompleted) {
+      _audioReadyCompleter = Completer<void>();
     }
 
     _setEngineState(EngineState.starting);
@@ -227,59 +351,244 @@ class Engine {
       enginePathOverride: enginePathOverride,
     );
 
+    final modelInitFuture = project.initializeEngine();
+
     final success = await _engineConnector.onInit;
 
-    _setEngineState(success ? EngineState.running : EngineState.stopped);
+    if (_engineState != EngineState.starting) {
+      _ignoreFuture(modelInitFuture);
+      return;
+    }
 
-    if (_engineState == EngineState.running) {
-      for (final callback in _startupCallbacks) {
-        callback();
+    if (!success) {
+      _ignoreFuture(modelInitFuture);
+      _setEngineState(EngineState.stopped);
+      return;
+    }
+
+    _socketReady = true;
+
+    try {
+      final response =
+          await _request(
+                EngineReadyCheckRequest(id: _getRequestId()),
+                startupBehavior: StartupSendBehavior.bypassStartupQueue,
+              )
+              as EngineReadyCheckResponse;
+      if (!response.success) {
+        throw StateError(
+          'Engine startup handshake failed: ${response.error ?? 'Unknown error.'}',
+        );
       }
+
+      _canFlushStartupQueue = true;
+      if (_startupQueue.isEmpty ||
+          _startupQueue.first.request is! ModelInitRequest) {
+        throw StateError(
+          'Startup queue must begin with ModelInitRequest before startup messages flush.',
+        );
+      }
+      _flushStartupQueue(maxRequests: 1);
+
+      final didInitializeProject = await modelInitFuture;
+      if (!didInitializeProject.success) {
+        throw StateError(
+          'Engine model init failed: ${didInitializeProject.error ?? 'Unknown error.'}',
+        );
+      }
+
+      _autoFlushStartupQueue = true;
+      _flushStartupQueue();
+    } catch (e, st) {
+      debugPrint('Engine[$id]: startup handshake failed: $e');
+      debugPrint('$st');
+      _engineConnector.dispose();
+      _setEngineState(EngineState.stopped);
+      return;
+    }
+
+    if (_engineState != EngineState.starting) {
+      return;
+    }
+
+    _setEngineState(EngineState.running);
+
+    // We don't do this on web, and on web the engine won't listen for it.
+    //
+    // On desktop, we use the heartbeat mechanism to make sure that, if
+    // something goes very wrong, the engine will eventually time out and exit
+    // itself in the worst case.
+    //
+    // This isn't necessary on web, but on web our timer is also throttled when
+    // the browser tab is not active, so it trips a heartbeat timeout under
+    // regular use. Since it doesn't work (without modification) and we don't
+    // need it anyway, we disable it on web.
+    if (!_engineConnector.noHeartbeat && !kIsWeb) {
+      _engineConnector.startHeartbeatTimer();
+    }
+
+    for (final callback in _startupCallbacks) {
+      callback();
     }
   }
 
-  /// Sends a request to the engine, and asynchronously returns the response.
-  Future<Response> _request(Request request) {
-    if (engineState != EngineState.running) {
-      throw AssertionError('Engine must be running to send commands.');
-    }
+  void _sendRequest(Request request) {
+    final encoder = JsonUtf8Encoder();
+    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+  }
 
-    final completer = Completer<Response>();
-
-    void onReply(Response response) {
-      completer.complete(response);
-    }
-
+  Future<Response> _dispatchRequestWithReply(
+    Request request, {
+    Completer<Response>? responseCompleter,
+  }) {
+    final completer = responseCompleter ?? Completer<Response>();
     final timeout = Duration(seconds: 5);
     final timer = Timer(timeout, () {
-      if (replyFunctions[request.id] != null) {
+      if (_replyFunctions.containsKey(request.id)) {
         completer.completeError(
           TimeoutException(
             'Request ${request.id} of type ${request.runtimeType} timed out after ${timeout.inSeconds} seconds.',
             timeout,
           ),
         );
-        replyFunctions.remove(request.id);
+        _replyFunctions.remove(request.id);
       }
     });
 
-    replyFunctions[request.id] = (onReply: onReply, timeoutTimer: timer);
+    _replyFunctions[request.id] = _PendingReply(
+      onReply: (response) {
+        completer.complete(response);
+      },
+      onError: (error) {
+        if (!completer.isCompleted) {
+          completer.completeError(error);
+        }
+      },
+      timeoutTimer: timer,
+    );
 
-    final encoder = JsonUtf8Encoder();
-
-    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+    _sendRequest(request);
 
     return completer.future;
   }
 
-  /// Sends a request to the engine, but does not wait for a response.
-  void _requestNoReply(Request request) {
+  void _dispatchRequestNoReply(Request request) {
+    _sendRequest(request);
+  }
+
+  void _queueStartupRequest(
+    Request request, {
+    Completer<Response>? responseCompleter,
+  }) {
+    _startupQueue.add(
+      _QueuedStartupRequest(request, responseCompleter: responseCompleter),
+    );
+
+    if (_autoFlushStartupQueue &&
+        _canFlushStartupQueue &&
+        !_isFlushingStartupQueue) {
+      _flushStartupQueue();
+    }
+  }
+
+  void _flushStartupQueue({int? maxRequests}) {
+    if (_isFlushingStartupQueue || !_canFlushStartupQueue || !_socketReady) {
+      return;
+    }
+
+    _isFlushingStartupQueue = true;
+
+    try {
+      var requestsFlushed = 0;
+
+      while (_startupQueue.isNotEmpty && _engineState == EngineState.starting) {
+        final queuedRequest = _startupQueue.removeFirst();
+
+        if (queuedRequest.responseCompleter != null) {
+          _dispatchRequestWithReply(
+            queuedRequest.request,
+            responseCompleter: queuedRequest.responseCompleter,
+          );
+        } else {
+          _dispatchRequestNoReply(queuedRequest.request);
+        }
+
+        requestsFlushed++;
+        if (maxRequests != null && requestsFlushed >= maxRequests) {
+          break;
+        }
+      }
+    } finally {
+      _isFlushingStartupQueue = false;
+    }
+  }
+
+  Future<Response> _request(
+    Request request, {
+    StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
+  }) {
+    if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
+        engineState == EngineState.starting) {
+      final completer = Completer<Response>();
+      _queueStartupRequest(request, responseCompleter: completer);
+      return completer.future;
+    }
+
+    if (startupBehavior == StartupSendBehavior.dropDuringStartup &&
+        engineState != EngineState.running) {
+      return Future.error(
+        StateError(
+          'Request ${request.runtimeType} was dropped because the engine is not running.',
+        ),
+      );
+    }
+
+    if (startupBehavior == StartupSendBehavior.bypassStartupQueue) {
+      if (!_socketReady && engineState != EngineState.running) {
+        throw AssertionError(
+          'Engine socket must be ready to send bypass requests.',
+        );
+      }
+      return _dispatchRequestWithReply(request);
+    }
+
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
     }
 
-    final encoder = JsonUtf8Encoder();
+    return _dispatchRequestWithReply(request);
+  }
 
-    _engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+  /// Sends a request to the engine, but does not wait for a response.
+  void _requestNoReply(
+    Request request, {
+    StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
+  }) {
+    if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
+        engineState == EngineState.starting) {
+      _queueStartupRequest(request);
+      return;
+    }
+
+    if (startupBehavior == StartupSendBehavior.dropDuringStartup &&
+        engineState != EngineState.running) {
+      return;
+    }
+
+    if (startupBehavior == StartupSendBehavior.bypassStartupQueue) {
+      if (!_socketReady && engineState != EngineState.running) {
+        throw AssertionError(
+          'Engine socket must be ready to send bypass requests.',
+        );
+      }
+      _dispatchRequestNoReply(request);
+      return;
+    }
+
+    if (engineState != EngineState.running) {
+      throw AssertionError('Engine must be running to send commands.');
+    }
+
+    _dispatchRequestNoReply(request);
   }
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,20 +20,50 @@
 #include "anthem_audio_callback.h"
 #include "modules/core/anthem.h"
 
+#include <stdexcept>
+
 AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   this->anthem = anthem;
 
-  auto& processingGraph = Anthem::getInstance().project->processingGraph();
+  juce::Logger::writeToLog("AnthemAudioCallback: constructing...");
 
-  auto masterOutputNodeSharedPtr = processingGraph->nodes()->at(
-    processingGraph->masterOutputNodeId()
+  if (Anthem::getInstance().project == nullptr) {
+    throw std::runtime_error("project model is null");
+  }
+
+  auto& processingGraph = Anthem::getInstance().project->processingGraph();
+  auto masterOutputNodeId = processingGraph->masterOutputNodeId();
+
+  juce::Logger::writeToLog(
+    "AnthemAudioCallback: master output node id = " +
+    juce::String(masterOutputNodeId)
   );
-  masterOutputProcessorSharedPtr = std::static_pointer_cast<MasterOutputProcessor>(masterOutputNodeSharedPtr->getProcessor().value());
+
+  auto& nodes = *processingGraph->nodes();
+  auto masterOutputNodeIter = nodes.find(masterOutputNodeId);
+  if (masterOutputNodeIter == nodes.end()) {
+    throw std::runtime_error("master output node not found in processing graph");
+  }
+
+  auto masterOutputNodeSharedPtr = masterOutputNodeIter->second;
+  auto masterOutputProcessorOpt = masterOutputNodeSharedPtr->getProcessor();
+  if (!masterOutputProcessorOpt.has_value()) {
+    throw std::runtime_error("master output node does not have a processor");
+  }
+
+  masterOutputProcessorSharedPtr =
+    std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputProcessorOpt.value());
+  if (masterOutputProcessorSharedPtr == nullptr) {
+    throw std::runtime_error("master output processor is not a MasterOutputProcessor");
+  }
+
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
   cpuBurdenProvider = Anthem::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
   playheadPositionProvider = Anthem::getInstance().globalVisualizationSources->playheadPositionProvider.get();
   playheadSequenceIdProvider = Anthem::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
+
+  juce::Logger::writeToLog("AnthemAudioCallback: constructed successfully.");
 }
 
 void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
@@ -87,7 +117,10 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
   if (now - lastDebugOutputTime > 2000) {
     if (badValue) {
-      std::cout << "Bad value detected in audio callback. Last bad value: " << lastBadValue << std::endl;
+      juce::Logger::writeToLog(
+        "Bad value detected in audio callback. Last bad value: " +
+        juce::String(lastBadValue)
+      );
     }
     lastDebugOutputTime = now;
   }
@@ -117,12 +150,30 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
   // -- we don't have any guarantees about which thread this will be called on, so we
   // schedule this update to run on the message thread.
 
-  juce::MessageManager::callAsync([device, this]() {
+  if (device == nullptr) {
+    juce::Logger::writeToLog("audioDeviceAboutToStart() received a null device.");
+    return;
+  }
+
+  const auto deviceName = device->getName();
+  const auto deviceSampleRate = device->getCurrentSampleRate();
+  const auto bufferSize = device->getCurrentBufferSizeSamples();
+
+  juce::Logger::writeToLog(
+    "audioDeviceAboutToStart(): device=" + deviceName +
+    ", sampleRate=" + juce::String(deviceSampleRate) +
+    ", bufferSize=" + juce::String(bufferSize)
+  );
+
+  juce::MessageManager::callAsync([deviceName, deviceSampleRate, this]() {
     auto& anthem = Anthem::getInstance();
 
-    this->sampleRate = device->getCurrentSampleRate();
+    this->sampleRate = deviceSampleRate;
 
     anthem.transport->prepareToProcess();
+    juce::Logger::writeToLog(
+      "audioDeviceAboutToStart(): transport prepared for device " + deviceName
+    );
     
     // This notifies the UI that the engine has started
     Response response = AudioReadyEvent {
@@ -133,6 +184,9 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
     
     auto responseText = rfl::json::write(response);
     Anthem::getInstance().comms.send(responseText);
+    juce::Logger::writeToLog(
+      "audioDeviceAboutToStart(): AudioReadyEvent sent to UI."
+    );
   });
 }
 

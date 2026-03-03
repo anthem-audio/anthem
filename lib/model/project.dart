@@ -255,10 +255,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
 
-      // Send model state change messages to the engine
       if (state == EngineState.running) {
-        _initializeEngine();
-        _attachModelChangeListener();
+        _finishEngineStartup();
       }
 
       if (state == EngineState.stopped) {
@@ -281,10 +279,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     isHydrated = true;
   }
 
-  /// Initializes the engine. This is called when the engine is started.
-  void _initializeEngine() {
-    // Any time the engine starts, we send the entire current model state to the engine
-    engine.modelSyncApi.initModel(
+  /// Initializes the engine model while the engine is still in the startup
+  /// phase.
+  Future<message_api.ModelInitResponse> initializeEngine() {
+    _attachModelChangeListener();
+
+    return engine.modelSyncApi.initModel(
       jsonEncode(
         (this as _$ProjectModelAnthemModelMixin).toJson(
           forEngine: true,
@@ -292,10 +292,13 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         ),
       ),
     );
-    // We won't wait for the engine to acknowledge this before saying that
-    // we're synced, since any subsequent messages will be processed after
-    // the engine has finished processing the init request.
-    _modelSyncCompleter.complete();
+  }
+
+  /// Finishes startup work after the engine has acknowledged the initial model.
+  void _finishEngineStartup() {
+    if (!_modelSyncCompleter.isCompleted) {
+      _modelSyncCompleter.complete();
+    }
 
     // The engine will receive the processing graph when we sync the model,
     // but it still needs to be compiled by the engine for use on the audio
@@ -362,6 +365,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           serializedMapKey: serializeMapKey(access.key),
         );
       }).toList();
+
+      if (engine.engineState == EngineState.stopped) {
+        return;
+      }
 
       engine.modelSyncApi.updateModel(
         updateKind: switch (operation) {

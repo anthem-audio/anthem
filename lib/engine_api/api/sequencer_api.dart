@@ -50,7 +50,10 @@ class SequencerApi {
       invalidationRanges: invalidationRanges,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
   /// Tells the engine to compile the given pattern.
@@ -79,7 +82,10 @@ class SequencerApi {
       invalidationRanges: invalidationRanges,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
   /// Cleans up the given track from the sequencer.
@@ -98,7 +104,10 @@ class SequencerApi {
       trackId: trackId,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
   /// Jumps the playhead to the given timestamp.

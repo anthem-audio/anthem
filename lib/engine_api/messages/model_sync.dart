@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -85,6 +85,17 @@ class ModelInitRequest extends Request {
   ModelInitRequest.uninitialized();
 
   ModelInitRequest({required int id, required this.serializedModel}) {
+    super.id = id;
+  }
+}
+
+class ModelInitResponse extends Response {
+  bool success = false;
+  String? error;
+
+  ModelInitResponse.uninitialized();
+
+  ModelInitResponse({required int id, required this.success, this.error}) {
     super.id = id;
   }
 }

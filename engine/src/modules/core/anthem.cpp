@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -68,17 +68,78 @@ void Anthem::shutdown() {
 
 void Anthem::startAudioCallback() {
   if (isAudioCallbackRunning) {
-    std::cout << "Tried to start audio callback when it was already running. This probably doesn't break anything, but it's definitely a bug." << std::endl;
+    juce::Logger::writeToLog(
+      "Tried to start audio callback when it was already running. This probably doesn't break anything, but it's definitely a bug."
+    );
     return;
   }
 
-  audioCallback = std::make_unique<AnthemAudioCallback>(this);
+  juce::Logger::writeToLog("Creating audio callback...");
+
+  try {
+    audioCallback = std::make_unique<AnthemAudioCallback>(this);
+  } catch (const std::exception& e) {
+    juce::Logger::writeToLog(
+      "Failed to create audio callback: " + juce::String(e.what())
+    );
+    return;
+  }
+
+  juce::Logger::writeToLog("Initializing audio device manager...");
+  juce::Logger::writeToLog("Listing available audio devices...");
+  auto& deviceTypes = audioDeviceManager.getAvailableDeviceTypes();
+  juce::Logger::writeToLog(
+    "Found " + juce::String(static_cast<int>(deviceTypes.size())) +
+    " device types:"
+  );
+  for (int i = 0; i < deviceTypes.size(); i++) {
+    auto* deviceType = deviceTypes[i];
+    juce::Logger::writeToLog(" - " + deviceType->getTypeName());
+  }
 
   // Initialize the audio device manager with 2 input and 2 output channels
-  this->audioDeviceManager.initialiseWithDefaultDevices(2, 2);
+  auto initError = this->audioDeviceManager.initialiseWithDefaultDevices(2, 2);
+  if (initError.isNotEmpty()) {
+    juce::Logger::writeToLog(
+      "initialiseWithDefaultDevices(2, 2) failed: " + initError
+    );
+    juce::Logger::writeToLog(
+      "Retrying with 0 input channels and 2 output channels..."
+    );
+
+    initError = this->audioDeviceManager.initialiseWithDefaultDevices(0, 2);
+  }
+
+  if (initError.isNotEmpty()) {
+    juce::Logger::writeToLog(
+      "initialiseWithDefaultDevices() failed again: " + initError
+    );
+    return;
+  }
+
+  auto* device = this->audioDeviceManager.getCurrentAudioDevice();
+  if (device == nullptr) {
+    juce::Logger::writeToLog(
+      "Audio device manager initialized, but no current audio device is available."
+    );
+    return;
+  }
+
+  juce::Logger::writeToLog("Selected audio device: " + device->getName());
+  juce::Logger::writeToLog(
+    "Sample rate: " + juce::String(device->getCurrentSampleRate())
+  );
+  juce::Logger::writeToLog(
+    "Buffer size: " + juce::String(device->getCurrentBufferSizeSamples())
+  );
+  juce::Logger::writeToLog(
+    "Active output channels: " +
+    juce::String(device->getActiveOutputChannels().countNumberOfSetBits())
+  );
 
   // Set up the audio callback
   this->audioDeviceManager.addAudioCallback(this->audioCallback.get());
+  juce::Logger::writeToLog("Audio callback registered with device manager.");
 
   isAudioCallbackRunning = true;
 }
