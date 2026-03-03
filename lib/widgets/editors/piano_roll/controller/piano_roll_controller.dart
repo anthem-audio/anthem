@@ -87,8 +87,12 @@ class _PianoRollController {
   bool _isDisposed = false;
   final Map<PianoRollInteractionFamily, PianoRollInteractionBackend>
   _interactionBackends = {
-    for (final family in PianoRollInteractionFamily.values)
-      family: PianoRollInteractionBackend.legacy,
+    PianoRollInteractionFamily.selectionBox:
+        PianoRollInteractionBackend.stateMachine,
+    PianoRollInteractionFamily.erase: PianoRollInteractionBackend.legacy,
+    PianoRollInteractionFamily.moveNotes: PianoRollInteractionBackend.legacy,
+    PianoRollInteractionFamily.resizeNotes: PianoRollInteractionBackend.legacy,
+    PianoRollInteractionFamily.createNote: PianoRollInteractionBackend.legacy,
   };
   _PianoRollInteractionRoute? _activeInteractionRoute;
 

@@ -26,14 +26,44 @@ import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controll
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
+import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/foundation.dart';
+import 'package:mobx/mobx.dart';
 
 part 'create_note_state.dart';
 part 'erase_notes_state.dart';
 part 'move_notes_state.dart';
 part 'resize_notes_state.dart';
 part 'selection_box_state.dart';
+
+sealed class _PianoRollAdaptedPointerSignal {
+  const _PianoRollAdaptedPointerSignal();
+}
+
+class _PianoRollAdaptedPointerDownSignal
+    extends _PianoRollAdaptedPointerSignal {
+  final PianoRollInteractionFamily family;
+  final PianoRollPointerDownEvent event;
+
+  const _PianoRollAdaptedPointerDownSignal({
+    required this.family,
+    required this.event,
+  });
+}
+
+class _PianoRollAdaptedPointerMoveSignal
+    extends _PianoRollAdaptedPointerSignal {
+  final PianoRollPointerMoveEvent event;
+
+  const _PianoRollAdaptedPointerMoveSignal(this.event);
+}
+
+class _PianoRollAdaptedPointerUpSignal extends _PianoRollAdaptedPointerSignal {
+  final PianoRollPointerUpEvent event;
+
+  const _PianoRollAdaptedPointerUpSignal(this.event);
+}
 
 /// The long-term interaction state machine for the piano roll.
 ///
@@ -105,15 +135,36 @@ class PianoRollStateMachine
   int get adaptedPointerUpCount => _adaptedPointerUpCount;
 
   void onAdaptedPointerDown(PianoRollPointerDownEvent event) {
+    final family = controller.activeInteractionFamily;
+    if (family == null) {
+      return;
+    }
+
     _adaptedPointerDownCount++;
+    data.beginAdaptedPointerSession(family: family, downEvent: event);
+    emitSignal(
+      _PianoRollAdaptedPointerDownSignal(family: family, event: event),
+    );
   }
 
   void onAdaptedPointerMove(PianoRollPointerMoveEvent event) {
+    if (!data.hasActiveAdaptedPointerSession) {
+      return;
+    }
+
     _adaptedPointerMoveCount++;
+    data.handleAdaptedPointerMove(event);
+    emitSignal(_PianoRollAdaptedPointerMoveSignal(event));
   }
 
   void onAdaptedPointerUp(PianoRollPointerUpEvent event) {
+    if (!data.hasActiveAdaptedPointerSession) {
+      return;
+    }
+
     _adaptedPointerUpCount++;
+    data.endAdaptedPointerSession(event);
+    emitSignal(_PianoRollAdaptedPointerUpSignal(event));
   }
 }
 
@@ -122,7 +173,34 @@ class PianoRollStateMachine
 /// This starts intentionally minimal. Later steps will move pointer and view
 /// transform ownership here as gesture routing shifts from the legacy path to
 /// the machine.
-class PianoRollStateMachineData {}
+class PianoRollStateMachineData {
+  PianoRollInteractionFamily? activeAdaptedInteractionFamily;
+  PianoRollPointerDownEvent? adaptedPointerDownEvent;
+  PianoRollPointerMoveEvent? adaptedPointerMoveEvent;
+  PianoRollPointerUpEvent? adaptedPointerUpEvent;
+
+  bool get hasActiveAdaptedPointerSession =>
+      activeAdaptedInteractionFamily != null;
+
+  void beginAdaptedPointerSession({
+    required PianoRollInteractionFamily family,
+    required PianoRollPointerDownEvent downEvent,
+  }) {
+    activeAdaptedInteractionFamily = family;
+    adaptedPointerDownEvent = downEvent;
+    adaptedPointerMoveEvent = null;
+    adaptedPointerUpEvent = null;
+  }
+
+  void handleAdaptedPointerMove(PianoRollPointerMoveEvent moveEvent) {
+    adaptedPointerMoveEvent = moveEvent;
+  }
+
+  void endAdaptedPointerSession(PianoRollPointerUpEvent upEvent) {
+    adaptedPointerUpEvent = upEvent;
+    activeAdaptedInteractionFamily = null;
+  }
+}
 
 class PianoRollIdleState
     extends EditorStateMachineState<PianoRollStateMachineData> {
@@ -149,6 +227,25 @@ class PianoRollPointerSessionState
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
   PianoRollController get controller => pianoRollStateMachine.controller;
+
+  @override
+  Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
+  get transitions => [
+    .new(
+      name: 'Enter adapted pointer session',
+      from: PianoRollIdleState,
+      to: PianoRollPointerSessionState,
+      canTransition: ({required data, required event, required currentState}) =>
+          data.hasActiveAdaptedPointerSession,
+    ),
+    .new(
+      name: 'Exit adapted pointer session',
+      from: PianoRollPointerSessionState,
+      to: PianoRollIdleState,
+      canTransition: ({required data, required event, required currentState}) =>
+          !data.hasActiveAdaptedPointerSession,
+    ),
+  ];
 
   PianoRollPointerSessionState(super.parentState);
 }

@@ -40,14 +40,6 @@ enum EventHandlingState {
   /// A selection of notes are being resized.
   resizingSelection,
 
-  /// An additive selection box is being drawn. Notes under this box will be
-  /// added to the current selection.
-  creatingAdditiveSelectionBox,
-
-  /// A subtractive selection box is being drawn. Notes under this box will be
-  /// removed from the current selection if they are selected.
-  creatingSubtractiveSelectionBox,
-
   /// Notes under the cursor are being deleted.
   deleting,
 }
@@ -66,35 +58,14 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   /// Data for deleting notes
   PianoRollEraseNotesSessionData? _deleteActionData;
 
-  /// Data for selection box
-  PianoRollSelectionBoxSessionData? _selectionBoxActionData;
-
   void leftPointerDown(PianoRollPointerDownEvent event) {
     final pattern = requireActivePattern();
     final notes = pattern.notes.nonObservableInner;
 
     if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
-      if (event.keyboardModifiers.shift &&
-          event.noteUnderCursor != null &&
-          viewModel.selectedNotes.nonObservableInner.contains(
-            event.noteUnderCursor,
-          )) {
-        _eventHandlingState =
-            EventHandlingState.creatingSubtractiveSelectionBox;
-      } else {
-        _eventHandlingState = EventHandlingState.creatingAdditiveSelectionBox;
-      }
-
-      if (!event.keyboardModifiers.shift) {
-        viewModel.selectedNotes.clear();
-      }
-
-      _selectionBoxActionData = PianoRollSelectionBoxSessionData(
-        start: Point(event.offset, event.key),
-        originalSelection: viewModel.selectedNotes.nonObservableInner,
+      throw StateError(
+        'Selection-box gestures are handled by the piano-roll state machine.',
       );
-
-      return;
     }
 
     if (event.isResize && viewModel.tool == EditorTool.pencil) {
@@ -439,43 +410,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         }
 
         break;
-      case EventHandlingState.creatingAdditiveSelectionBox:
-      case EventHandlingState.creatingSubtractiveSelectionBox:
-        final pattern = requireActivePattern();
-        final notes = pattern.notes;
-
-        final isSubtractive =
-            _eventHandlingState ==
-            EventHandlingState.creatingSubtractiveSelectionBox;
-
-        viewModel.selectionBox = Rectangle.fromPoints(
-          _selectionBoxActionData!.start,
-          Point(event.offset, event.key),
-        );
-
-        final notesInSelection = notes
-            .where(
-              (note) => rectanglesIntersect(
-                viewModel.selectionBox!,
-                Rectangle(note.offset, note.key, note.length, 1),
-              ),
-            )
-            .map((note) => note.id)
-            .toSet();
-
-        if (isSubtractive) {
-          viewModel.selectedNotes = ObservableSet.of(
-            _selectionBoxActionData!.originalSelection.difference(
-              notesInSelection,
-            ),
-          );
-        } else {
-          viewModel.selectedNotes = ObservableSet.of(
-            _selectionBoxActionData!.originalSelection.union(notesInSelection),
-          );
-        }
-
-        break;
       case EventHandlingState.deleting:
         final pattern = requireActivePattern();
         final notes = pattern.notes;
@@ -674,11 +608,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         project.push(command);
       }
-    } else if (_eventHandlingState ==
-            EventHandlingState.creatingAdditiveSelectionBox ||
-        _eventHandlingState ==
-            EventHandlingState.creatingSubtractiveSelectionBox) {
-      viewModel.selectionBox = null;
     } else if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
         _eventHandlingState == EventHandlingState.resizingSelection) {
       final diff =
@@ -711,7 +640,6 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
     _noteMoveActionData = null;
     _deleteActionData = null;
-    _selectionBoxActionData = null;
     _noteResizeActionData = null;
 
     _eventHandlingState = EventHandlingState.idle;

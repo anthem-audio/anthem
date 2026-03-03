@@ -590,51 +590,79 @@ void main() {
     });
 
     test(
-      'controller defaults every interaction family to the legacy backend',
+      'controller defaults selection to machine and all other families to legacy',
       () {
-        for (final family in PianoRollInteractionFamily.values) {
-          expect(
-            fixture.controller.backendForFamily(family),
-            equals(PianoRollInteractionBackend.legacy),
-          );
-        }
+        expect(
+          fixture.controller.backendForFamily(
+            PianoRollInteractionFamily.selectionBox,
+          ),
+          equals(PianoRollInteractionBackend.stateMachine),
+        );
+        expect(
+          fixture.controller.backendForFamily(PianoRollInteractionFamily.erase),
+          equals(PianoRollInteractionBackend.legacy),
+        );
+        expect(
+          fixture.controller.backendForFamily(
+            PianoRollInteractionFamily.moveNotes,
+          ),
+          equals(PianoRollInteractionBackend.legacy),
+        );
+        expect(
+          fixture.controller.backendForFamily(
+            PianoRollInteractionFamily.resizeNotes,
+          ),
+          equals(PianoRollInteractionBackend.legacy),
+        );
+        expect(
+          fixture.controller.backendForFamily(
+            PianoRollInteractionFamily.createNote,
+          ),
+          equals(PianoRollInteractionBackend.legacy),
+        );
       },
     );
   });
 
   group('routing', () {
-    test(
-      'pointer-down classification latches a legacy route until pointer up',
-      () {
-        fixture.pointerDown(key: 59.5, offset: 80, ctrl: true);
+    test('selection-box routing latches a machine route until pointer up', () {
+      fixture.pointerDown(key: 59.5, offset: 80, ctrl: true);
 
-        expect(
-          fixture.activeInteractionFamily,
-          equals(PianoRollInteractionFamily.selectionBox),
-        );
-        expect(
-          fixture.activeInteractionBackend,
-          equals(PianoRollInteractionBackend.legacy),
-        );
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.selectionBox),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.stateMachine),
+      );
+      expect(
+        fixture.stateMachine.currentState,
+        same(fixture.selectionBoxState),
+      );
 
-        fixture.pointerMove(key: 65.5, offset: 360, ctrl: true);
+      fixture.pointerMove(key: 65.5, offset: 360, ctrl: true);
 
-        expect(
-          fixture.activeInteractionFamily,
-          equals(PianoRollInteractionFamily.selectionBox),
-        );
-        expect(
-          fixture.activeInteractionBackend,
-          equals(PianoRollInteractionBackend.legacy),
-        );
-        expect(fixture.viewModel.selectionBox, isNotNull);
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.selectionBox),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.stateMachine),
+      );
+      expect(fixture.viewModel.selectionBox, isNotNull);
+      expect(
+        fixture.stateMachine.currentState,
+        same(fixture.selectionBoxState),
+      );
 
-        fixture.pointerUp(key: 65.5, offset: 360, ctrl: true);
+      fixture.pointerUp(key: 65.5, offset: 360, ctrl: true);
 
-        expect(fixture.activeInteractionFamily, isNull);
-        expect(fixture.activeInteractionBackend, isNull);
-      },
-    );
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.activeInteractionBackend, isNull);
+    });
 
     test('pointer cancel clears the latched route', () {
       final note = fixture.addNote(key: 60, offset: 100, length: 48);
@@ -656,16 +684,17 @@ void main() {
       expect(fixture.activeInteractionBackend, isNull);
     });
 
-    test('a configured family can route to the machine intake stub', () {
+    test('a configured legacy family can route to the machine intake stub', () {
       fixture.routeFamilyToStateMachineForTesting(
-        PianoRollInteractionFamily.selectionBox,
+        PianoRollInteractionFamily.erase,
       );
+      fixture.setTool(EditorTool.eraser);
 
-      fixture.pointerDown(key: 59.5, offset: 80, ctrl: true);
+      fixture.pointerDown(key: 60.5, offset: 100);
 
       expect(
         fixture.activeInteractionFamily,
-        equals(PianoRollInteractionFamily.selectionBox),
+        equals(PianoRollInteractionFamily.erase),
       );
       expect(
         fixture.activeInteractionBackend,
@@ -674,15 +703,20 @@ void main() {
       expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
       expect(fixture.stateMachine.adaptedPointerMoveCount, equals(0));
       expect(fixture.stateMachine.adaptedPointerUpCount, equals(0));
+      expect(
+        fixture.stateMachine.currentState,
+        same(fixture.pointerSessionState),
+      );
 
-      fixture.pointerMove(key: 65.5, offset: 360, ctrl: true);
+      fixture.pointerMove(key: 61.5, offset: 120);
 
       expect(fixture.stateMachine.adaptedPointerMoveCount, equals(1));
       expect(fixture.viewModel.selectionBox, isNull);
 
-      fixture.pointerUp(key: 65.5, offset: 360, ctrl: true);
+      fixture.pointerUp(key: 61.5, offset: 120);
 
       expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
       expect(fixture.activeInteractionBackend, isNull);
     });
