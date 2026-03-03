@@ -535,7 +535,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
-                    height: 38,
+                    height: 40,
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(color: AnthemTheme.panel.border),
