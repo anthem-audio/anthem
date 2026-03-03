@@ -32,6 +32,7 @@ class PianoRollCreateNoteState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollCreateNoteState(super.parentState);
 }

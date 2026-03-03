@@ -17,9 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
+import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:flutter/foundation.dart';
 
 part 'create_note_state.dart';
 part 'erase_notes_state.dart';
@@ -36,6 +44,10 @@ class PianoRollStateMachine
     extends EditorStateMachine<PianoRollStateMachineData> {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
+  final PianoRollController controller;
+  int _adaptedPointerDownCount = 0;
+  int _adaptedPointerMoveCount = 0;
+  int _adaptedPointerUpCount = 0;
 
   PianoRollStateMachine._({
     required super.data,
@@ -43,11 +55,13 @@ class PianoRollStateMachine
     required super.states,
     required this.project,
     required this.viewModel,
+    required this.controller,
   });
 
   factory PianoRollStateMachine.create({
     required ProjectModel project,
     required PianoRollViewModel viewModel,
+    required PianoRollController controller,
   }) {
     final data = PianoRollStateMachineData();
     final idleState = PianoRollIdleState();
@@ -77,7 +91,29 @@ class PianoRollStateMachine
       states: states,
       project: project,
       viewModel: viewModel,
+      controller: controller,
     );
+  }
+
+  @visibleForTesting
+  int get adaptedPointerDownCount => _adaptedPointerDownCount;
+
+  @visibleForTesting
+  int get adaptedPointerMoveCount => _adaptedPointerMoveCount;
+
+  @visibleForTesting
+  int get adaptedPointerUpCount => _adaptedPointerUpCount;
+
+  void onAdaptedPointerDown(PianoRollPointerDownEvent event) {
+    _adaptedPointerDownCount++;
+  }
+
+  void onAdaptedPointerMove(PianoRollPointerMoveEvent event) {
+    _adaptedPointerMoveCount++;
+  }
+
+  void onAdaptedPointerUp(PianoRollPointerUpEvent event) {
+    _adaptedPointerUpCount++;
   }
 }
 
@@ -97,6 +133,7 @@ class PianoRollIdleState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 }
 
 class PianoRollPointerSessionState
@@ -111,6 +148,7 @@ class PianoRollPointerSessionState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollPointerSessionState(super.parentState);
 }
@@ -128,6 +166,7 @@ class PianoRollNoteInteractionState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollNoteInteractionState(super.parentState);
 }

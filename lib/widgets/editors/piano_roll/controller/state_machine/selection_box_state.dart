@@ -19,6 +19,16 @@
 
 part of 'piano_roll_state_machine.dart';
 
+class PianoRollSelectionBoxSessionData {
+  final Point<double> start;
+  final Set<Id> originalSelection;
+
+  PianoRollSelectionBoxSessionData({
+    required this.start,
+    required this.originalSelection,
+  });
+}
+
 class PianoRollSelectionBoxState
     extends EditorStateMachineState<PianoRollStateMachineData> {
   @override
@@ -32,6 +42,7 @@ class PianoRollSelectionBoxState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollSelectionBoxState(super.parentState);
 }

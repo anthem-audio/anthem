@@ -52,172 +52,25 @@ enum EventHandlingState {
   deleting,
 }
 
-class _DeleteActionData {
-  /// We ignore notes under the cursor, except the topmost one, until the user
-  /// moves the mouse off the note and back on. This means that the user
-  /// doesn't right click to delete an overlapping note, accidentally move the
-  /// mouse by one pixel, and delete additional notes.
-  Set<NoteModel> notesToTemporarilyIgnore;
-  Set<NoteModel> notesDeleted;
-  Point mostRecentPoint;
-
-  _DeleteActionData({
-    required this.notesToTemporarilyIgnore,
-    required this.notesDeleted,
-    required this.mostRecentPoint,
-  });
-}
-
-class _SelectionBoxActionData {
-  Point<double> start;
-  Set<Id> originalSelection;
-
-  _SelectionBoxActionData({
-    required this.start,
-    required this.originalSelection,
-  });
-}
-
-class _NoteResizeActionData {
-  double pointerStartOffset;
-  Map<Id, Time> startLengths;
-  Time smallestStartLength;
-  Id smallestNote;
-  NoteModel pressedNote;
-
-  _NoteResizeActionData({
-    required this.pointerStartOffset,
-    required this.startLengths,
-    required this.smallestStartLength,
-    required this.smallestNote,
-    required this.pressedNote,
-  });
-}
-
-class _NoteMoveActionData {
-  NoteModel noteUnderCursor;
-  double
-  timeOffset; // difference between the start of the pressed note and the cursor X, in time
-  double
-  noteOffset; // difference between the start of the pressed note and the cursor Y, in notes
-  Map<Id, Time> startTimes;
-  Map<Id, int> startKeys;
-  Time
-  startOfFirstNote; // Start offset of the earliest note. Used to ensure none of the notes are moved to before the start of the pattern.
-  int keyOfTopNote;
-  int keyOfBottomNote;
-
-  _NoteMoveActionData({
-    required this.noteUnderCursor,
-    required this.timeOffset,
-    required this.noteOffset,
-    required this.startTimes,
-    required this.startKeys,
-    required this.startOfFirstNote,
-    required this.keyOfTopNote,
-    required this.keyOfBottomNote,
-  });
-}
-
-/// Tracks notes that are sent to the engine during editing.
-class _LiveNotes {
-  final Map<int, ({double velocity, double pan})> _notes = {};
-  ProjectModel project;
-
-  _LiveNotes(this.project);
-
-  Id? _activeTrackId() {
-    return project.sequence.activeTrackID;
-  }
-
-  bool hasNoteForKey(int key) {
-    return _notes.containsKey(key);
-  }
-
-  void addNote({
-    required int key,
-    required double velocity,
-    required double pan,
-  }) {
-    final activeTrackId = _activeTrackId();
-    if (activeTrackId == null) {
-      return;
-    }
-
-    final liveEventManager = ServiceRegistry.forProject(
-      project.id,
-    ).projectController.liveEventManager;
-
-    if (_notes.containsKey(key)) {
-      liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
-    }
-
-    liveEventManager.noteOn(
-      trackId: activeTrackId,
-      pitch: key,
-      velocity: velocity,
-      pan: pan,
-    );
-
-    _notes[key] = (velocity: velocity, pan: pan);
-  }
-
-  void removeNote(int key) {
-    final activeTrackId = _activeTrackId();
-    if (activeTrackId == null) {
-      return;
-    }
-
-    final liveEventManager = ServiceRegistry.forProject(
-      project.id,
-    ).projectController.liveEventManager;
-
-    if (_notes.containsKey(key)) {
-      liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
-      _notes.remove(key);
-    }
-  }
-
-  void removeAll() {
-    final activeTrackId = _activeTrackId();
-    if (activeTrackId == null) {
-      return;
-    }
-
-    final liveEventManager = ServiceRegistry.forProject(
-      project.id,
-    ).projectController.liveEventManager;
-
-    for (final key in _notes.keys) {
-      liveEventManager.noteOff(trackId: activeTrackId, pitch: key);
-    }
-    _notes.clear();
-  }
-}
-
 mixin _PianoRollPointerEventsMixin on _PianoRollController {
   // Fields for event handling
 
   var _eventHandlingState = EventHandlingState.idle;
 
   /// Data for note moves
-  _NoteMoveActionData? _noteMoveActionData;
+  PianoRollMoveNotesSessionData? _noteMoveActionData;
 
   /// Data for note resize
-  _NoteResizeActionData? _noteResizeActionData;
+  PianoRollResizeNotesSessionData? _noteResizeActionData;
 
   /// Data for deleting notes
-  _DeleteActionData? _deleteActionData;
+  PianoRollEraseNotesSessionData? _deleteActionData;
 
   /// Data for selection box
-  _SelectionBoxActionData? _selectionBoxActionData;
-
-  /// Live notes for sending note on/off events to the engine
-  late final _LiveNotes _liveNotes = _LiveNotes(project);
+  PianoRollSelectionBoxSessionData? _selectionBoxActionData;
 
   void leftPointerDown(PianoRollPointerDownEvent event) {
-    final pattern =
-        project.sequence.patterns[project.sequence.activePatternID]!;
+    final pattern = requireActivePattern();
     final notes = pattern.notes.nonObservableInner;
 
     if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
@@ -236,7 +89,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         viewModel.selectedNotes.clear();
       }
 
-      _selectionBoxActionData = _SelectionBoxActionData(
+      _selectionBoxActionData = PianoRollSelectionBoxSessionData(
         start: Point(event.offset, event.key),
         originalSelection: viewModel.selectedNotes.nonObservableInner,
       );
@@ -249,9 +102,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         throw ArgumentError("Resize event didn't provide a noteUnderCursor");
       }
 
-      final pressedNote = notes.firstWhere(
-        (note) => note.id == event.noteUnderCursor,
-      );
+      final pressedNote = requireActivePatternNote(event.noteUnderCursor!);
 
       viewModel.pressedNote = event.noteUnderCursor;
 
@@ -287,7 +138,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       setCursorNoteParameters(pressedNote);
 
-      _noteResizeActionData = _NoteResizeActionData(
+      _noteResizeActionData = PianoRollResizeNotesSessionData(
         pointerStartOffset: event.offset,
         pressedNote: pressedNote,
         startLengths: startLengths,
@@ -299,54 +150,66 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     }
 
     void setMoveNoteInfo(NoteModel noteUnderCursor) {
-      _noteMoveActionData = _NoteMoveActionData(
-        noteUnderCursor: noteUnderCursor,
-        timeOffset: event.offset - noteUnderCursor.offset,
-        noteOffset: 0.5,
-        startTimes: {noteUnderCursor.id: noteUnderCursor.offset},
-        startKeys: {noteUnderCursor.id: noteUnderCursor.key},
-        startOfFirstNote: -1,
-        keyOfTopNote: -1,
-        keyOfBottomNote: -1,
-      );
+      final startTimes = <Id, Time>{noteUnderCursor.id: noteUnderCursor.offset};
+      final startKeys = <Id, int>{noteUnderCursor.id: noteUnderCursor.key};
 
       // If we're moving a selection, record the start times
       for (final note in notes.where(
         (note) => viewModel.selectedNotes.nonObservableInner.contains(note.id),
       )) {
-        _noteMoveActionData!.startTimes[note.id] = note.offset;
-        _noteMoveActionData!.startKeys[note.id] = note.key;
+        startTimes[note.id] = note.offset;
+        startKeys[note.id] = note.key;
       }
 
-      if (_eventHandlingState == EventHandlingState.movingSelection) {
-        _noteMoveActionData!.startOfFirstNote = notes.fold<int>(
-          maxSafeIntWeb,
-          (previousValue, element) =>
-              viewModel.selectedNotes.nonObservableInner.contains(element.id)
-              ? min(previousValue, element.offset)
-              : previousValue,
-        );
-        _noteMoveActionData!.keyOfTopNote = notes.fold<int>(
-          0,
-          (previousValue, element) =>
-              viewModel.selectedNotes.nonObservableInner.contains(element.id)
-              ? max(previousValue, element.key)
-              : previousValue,
-        );
-        _noteMoveActionData!.keyOfBottomNote = notes.fold<int>(
-          maxSafeIntWeb,
-          (previousValue, element) =>
-              viewModel.selectedNotes.nonObservableInner.contains(element.id)
-              ? min(previousValue, element.key)
-              : previousValue,
-        );
-      } else {
-        _noteMoveActionData!.startOfFirstNote = noteUnderCursor.offset;
-        _noteMoveActionData!.keyOfTopNote = noteUnderCursor.key;
-        _noteMoveActionData!.keyOfBottomNote = noteUnderCursor.key;
-      }
+      final startOfFirstNote =
+          _eventHandlingState == EventHandlingState.movingSelection
+          ? notes.fold<int>(
+              maxSafeIntWeb,
+              (previousValue, element) =>
+                  viewModel.selectedNotes.nonObservableInner.contains(
+                    element.id,
+                  )
+                  ? min(previousValue, element.offset)
+                  : previousValue,
+            )
+          : noteUnderCursor.offset;
+      final keyOfTopNote =
+          _eventHandlingState == EventHandlingState.movingSelection
+          ? notes.fold<int>(
+              0,
+              (previousValue, element) =>
+                  viewModel.selectedNotes.nonObservableInner.contains(
+                    element.id,
+                  )
+                  ? max(previousValue, element.key)
+                  : previousValue,
+            )
+          : noteUnderCursor.key;
+      final keyOfBottomNote =
+          _eventHandlingState == EventHandlingState.movingSelection
+          ? notes.fold<int>(
+              maxSafeIntWeb,
+              (previousValue, element) =>
+                  viewModel.selectedNotes.nonObservableInner.contains(
+                    element.id,
+                  )
+                  ? min(previousValue, element.key)
+                  : previousValue,
+            )
+          : noteUnderCursor.key;
 
-      _liveNotes.addNote(
+      _noteMoveActionData = PianoRollMoveNotesSessionData(
+        noteUnderCursor: noteUnderCursor,
+        timeOffset: event.offset - noteUnderCursor.offset,
+        noteOffset: 0.5,
+        startTimes: startTimes,
+        startKeys: startKeys,
+        startOfFirstNote: startOfFirstNote,
+        keyOfTopNote: keyOfTopNote,
+        keyOfBottomNote: keyOfBottomNote,
+      );
+
+      liveNotes.addNote(
         key: noteUnderCursor.key,
         velocity: noteUnderCursor.velocity,
         pan: noteUnderCursor.pan,
@@ -354,9 +217,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     }
 
     if (event.noteUnderCursor != null) {
-      var pressedNote = notes.firstWhere(
-        (element) => element.id == event.noteUnderCursor,
-      );
+      var pressedNote = requireActivePatternNote(event.noteUnderCursor!);
 
       if (viewModel.selectedNotes.nonObservableInner.contains(
         event.noteUnderCursor,
@@ -378,10 +239,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
             final newNote = NoteModel.fromNoteModel(note);
 
             project.execute(
-              AddNoteCommand(
-                patternID: project.sequence.activePatternID!,
-                note: newNote,
-              ),
+              AddNoteCommand(patternID: pattern.id, note: newNote),
             );
 
             newSelectedNotes.add(newNote.id);
@@ -400,12 +258,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         if (event.keyboardModifiers.shift) {
           final newNote = NoteModel.fromNoteModel(pressedNote);
 
-          project.execute(
-            AddNoteCommand(
-              patternID: project.sequence.activePatternID!,
-              note: newNote,
-            ),
-          );
+          project.execute(AddNoteCommand(patternID: pattern.id, note: newNote));
         }
 
         setCursorNoteParameters(pressedNote);
@@ -424,23 +277,16 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     final eventTime = event.offset.floor();
     if (eventTime < 0) return;
 
-    final divisionChanges = getDivisionChanges(
-      viewWidthInPixels: event.pianoRollSize.width,
-      snap: AutoSnap(),
-      defaultTimeSignature: project.sequence.defaultTimeSignature,
-      timeSignatureChanges: pattern.timeSignatureChanges,
-      ticksPerQuarter: project.sequence.ticksPerQuarter,
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
-    );
-
     final targetTime = event.keyboardModifiers.alt
         ? eventTime
-        : getSnappedTime(rawTime: eventTime, divisionChanges: divisionChanges);
+        : snapTimeInActivePattern(
+            rawTime: eventTime,
+            viewWidthInPixels: event.pianoRollSize.width,
+          );
 
     project.startUndoGroup();
 
-    final note = _addNote(
+    final note = addNoteToActivePattern(
       key: event.key.floor(),
       velocity: viewModel.cursorNoteVelocity,
       length: viewModel.cursorNoteLength,
@@ -458,11 +304,10 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
     project.startUndoGroup();
 
-    final pattern =
-        project.sequence.patterns[project.sequence.activePatternID]!;
+    final pattern = requireActivePattern();
     final notes = pattern.notes;
 
-    _deleteActionData = _DeleteActionData(
+    _deleteActionData = PianoRollEraseNotesSessionData(
       mostRecentPoint: Point(event.offset, event.key),
       notesDeleted: {},
       notesToTemporarilyIgnore: {},
@@ -483,15 +328,13 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         return remove;
       });
 
-      _deleteActionData!.notesToTemporarilyIgnore = _getNotesUnderCursor(
-        notes,
-        event.key,
-        event.offset,
-      ).toSet();
+      _deleteActionData!.notesToTemporarilyIgnore.addAll(
+        getNotesUnderCursor(notes, event.key, event.offset),
+      );
     }
   }
 
-  void pointerDown(PianoRollPointerDownEvent event) {
+  void legacyPointerDown(PianoRollPointerDownEvent event) {
     if (project.sequence.activePatternID == null) {
       return;
     }
@@ -507,7 +350,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     }
   }
 
-  void pointerMove(PianoRollPointerMoveEvent event) {
+  void legacyPointerMove(PianoRollPointerMoveEvent event) {
     switch (_eventHandlingState) {
       case EventHandlingState.idle:
         break;
@@ -519,8 +362,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         final key = event.key - _noteMoveActionData!.noteOffset;
         final offset = event.offset - _noteMoveActionData!.timeOffset;
 
-        final pattern =
-            project.sequence.patterns[project.sequence.activePatternID]!;
+        final pattern = requireActivePattern();
 
         final notes = isSelectionMove
             ? pattern.notes
@@ -533,20 +375,10 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         var snappedOffset = offset.floor();
 
-        final divisionChanges = getDivisionChanges(
-          viewWidthInPixels: event.pianoRollSize.width,
-          snap: AutoSnap(),
-          defaultTimeSignature: project.sequence.defaultTimeSignature,
-          timeSignatureChanges: pattern.timeSignatureChanges,
-          ticksPerQuarter: project.sequence.ticksPerQuarter,
-          timeViewStart: viewModel.timeView.start,
-          timeViewEnd: viewModel.timeView.end,
-        );
-
         if (!event.keyboardModifiers.alt) {
-          snappedOffset = getSnappedTime(
+          snappedOffset = snapTimeInActivePattern(
             rawTime: offset.floor(),
-            divisionChanges: divisionChanges,
+            viewWidthInPixels: event.pianoRollSize.width,
             round: true,
             startTime: _noteMoveActionData!
                 .startTimes[_noteMoveActionData!.noteUnderCursor.id]!,
@@ -597,9 +429,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         // Update the live note
         final noteUnderCursor = _noteMoveActionData!.noteUnderCursor;
-        if (!_liveNotes.hasNoteForKey(noteUnderCursor.key)) {
-          _liveNotes.removeAll();
-          _liveNotes.addNote(
+        if (!liveNotes.hasNoteForKey(noteUnderCursor.key)) {
+          liveNotes.removeAll();
+          liveNotes.addNote(
             key: noteUnderCursor.key,
             velocity: noteUnderCursor.velocity,
             pan: noteUnderCursor.pan,
@@ -609,8 +441,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         break;
       case EventHandlingState.creatingAdditiveSelectionBox:
       case EventHandlingState.creatingSubtractiveSelectionBox:
-        final pattern =
-            project.sequence.patterns[project.sequence.activePatternID]!;
+        final pattern = requireActivePattern();
         final notes = pattern.notes;
 
         final isSubtractive =
@@ -646,8 +477,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
         break;
       case EventHandlingState.deleting:
-        final pattern =
-            project.sequence.patterns[project.sequence.activePatternID]!;
+        final pattern = requireActivePattern();
         final notes = pattern.notes;
 
         final thisPoint = Point(event.offset, event.key);
@@ -705,34 +535,27 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
         break;
       case EventHandlingState.resizingSingleNote:
       case EventHandlingState.resizingSelection:
-        final pattern =
-            project.sequence.patterns[project.sequence.activePatternID]!;
+        final pattern = requireActivePattern();
         final notes = pattern.notes;
 
         var snappedOriginalTime = _noteResizeActionData!.pointerStartOffset
             .floor();
         var snappedEventTime = event.offset.floor();
 
-        final divisionChanges = getDivisionChanges(
+        final divisionChanges = divisionChangesForPatternView(
           viewWidthInPixels: event.pianoRollSize.width,
-          snap: AutoSnap(),
-          defaultTimeSignature: project.sequence.defaultTimeSignature,
-          timeSignatureChanges: pattern.timeSignatureChanges,
-          ticksPerQuarter: project.sequence.ticksPerQuarter,
-          timeViewStart: viewModel.timeView.start,
-          timeViewEnd: viewModel.timeView.end,
         );
 
         if (!event.keyboardModifiers.alt) {
-          snappedOriginalTime = getSnappedTime(
+          snappedOriginalTime = snapTimeInActivePattern(
             rawTime: _noteResizeActionData!.pointerStartOffset.floor(),
-            divisionChanges: divisionChanges,
+            viewWidthInPixels: event.pianoRollSize.width,
             round: true,
           );
 
-          snappedEventTime = getSnappedTime(
+          snappedEventTime = snapTimeInActivePattern(
             rawTime: event.offset.floor(),
-            divisionChanges: divisionChanges,
+            viewWidthInPixels: event.pianoRollSize.width,
             round: true,
           );
         }
@@ -793,11 +616,10 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     }
   }
 
-  void pointerUp(PianoRollPointerUpEvent event) {
+  void legacyPointerUp(PianoRollPointerUpEvent event) {
     if (_eventHandlingState == EventHandlingState.movingSingleNote ||
         _eventHandlingState == EventHandlingState.movingSelection) {
-      final pattern =
-          project.sequence.patterns[project.sequence.activePatternID]!;
+      final pattern = requireActivePattern();
       final notes = pattern.notes;
 
       final isSingleNote =
@@ -846,7 +668,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       // collect these manually.
       for (final note in _deleteActionData!.notesDeleted) {
         final command = DeleteNoteCommand(
-          patternID: project.sequence.activePatternID!,
+          patternID: requireActivePattern().id,
           note: note,
         );
 
@@ -867,7 +689,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
 
       final commands = _noteResizeActionData!.startLengths.entries.map((entry) {
         return SetNoteAttributeCommand(
-          patternID: project.sequence.activePatternID!,
+          patternID: requireActivePattern().id,
           noteID: entry.key,
           attribute: NoteAttribute.length,
           oldValue: entry.value,
@@ -881,7 +703,7 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
     }
 
     // No matter what, we need to reset the playing notes
-    _liveNotes.removeAll();
+    liveNotes.removeAll();
 
     project.commitUndoGroup();
 

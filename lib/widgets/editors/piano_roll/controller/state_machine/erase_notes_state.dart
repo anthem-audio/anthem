@@ -19,6 +19,18 @@
 
 part of 'piano_roll_state_machine.dart';
 
+class PianoRollEraseNotesSessionData {
+  final Set<NoteModel> notesToTemporarilyIgnore;
+  final Set<NoteModel> notesDeleted;
+  Point<double> mostRecentPoint;
+
+  PianoRollEraseNotesSessionData({
+    required this.notesToTemporarilyIgnore,
+    required this.notesDeleted,
+    required this.mostRecentPoint,
+  });
+}
+
 class PianoRollEraseNotesState
     extends EditorStateMachineState<PianoRollStateMachineData> {
   @override
@@ -32,6 +44,7 @@ class PianoRollEraseNotesState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollEraseNotesState(super.parentState);
 }

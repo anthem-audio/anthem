@@ -19,6 +19,38 @@
 
 part of 'piano_roll_state_machine.dart';
 
+class PianoRollMoveNotesSessionData {
+  final NoteModel noteUnderCursor;
+
+  /// Difference between the start of the pressed note and the cursor X, in
+  /// time.
+  final double timeOffset;
+
+  /// Difference between the start of the pressed note and the cursor Y, in
+  /// notes.
+  final double noteOffset;
+
+  final Map<Id, Time> startTimes;
+  final Map<Id, int> startKeys;
+
+  /// Start offset of the earliest note. Used to ensure no note moves before
+  /// the start of the pattern.
+  final Time startOfFirstNote;
+  final int keyOfTopNote;
+  final int keyOfBottomNote;
+
+  PianoRollMoveNotesSessionData({
+    required this.noteUnderCursor,
+    required this.timeOffset,
+    required this.noteOffset,
+    required this.startTimes,
+    required this.startKeys,
+    required this.startOfFirstNote,
+    required this.keyOfTopNote,
+    required this.keyOfBottomNote,
+  });
+}
+
 class PianoRollMoveNotesState
     extends EditorStateMachineState<PianoRollStateMachineData> {
   @override
@@ -32,6 +64,7 @@ class PianoRollMoveNotesState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollMoveNotesState(super.parentState);
 }

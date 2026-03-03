@@ -19,6 +19,22 @@
 
 part of 'piano_roll_state_machine.dart';
 
+class PianoRollResizeNotesSessionData {
+  final double pointerStartOffset;
+  final Map<Id, Time> startLengths;
+  final Time smallestStartLength;
+  final Id smallestNote;
+  final NoteModel pressedNote;
+
+  PianoRollResizeNotesSessionData({
+    required this.pointerStartOffset,
+    required this.startLengths,
+    required this.smallestStartLength,
+    required this.smallestNote,
+    required this.pressedNote,
+  });
+}
+
 class PianoRollResizeNotesState
     extends EditorStateMachineState<PianoRollStateMachineData> {
   @override
@@ -32,6 +48,7 @@ class PianoRollResizeNotesState
 
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
+  PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollResizeNotesState(super.parentState);
 }

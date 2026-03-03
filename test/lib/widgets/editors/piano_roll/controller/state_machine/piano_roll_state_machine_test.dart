@@ -255,6 +255,10 @@ class _PianoRollStateMachineTestFixture {
       recordingProcessingGraphApi?.liveEvents.toList(growable: false) ??
       const <_RecordedLiveEvent>[];
   PianoRollStateMachine get stateMachine => controller.stateMachine;
+  PianoRollInteractionFamily? get activeInteractionFamily =>
+      controller.activeInteractionFamily;
+  PianoRollInteractionBackend? get activeInteractionBackend =>
+      controller.activeInteractionBackend;
 
   PianoRollIdleState get idleState =>
       stateMachine.states[PianoRollIdleState]! as PianoRollIdleState;
@@ -278,6 +282,13 @@ class _PianoRollStateMachineTestFixture {
   PianoRollCreateNoteState get createNoteState =>
       stateMachine.states[PianoRollCreateNoteState]!
           as PianoRollCreateNoteState;
+
+  void routeFamilyToStateMachineForTesting(PianoRollInteractionFamily family) {
+    controller.setInteractionBackendForTesting(
+      family,
+      PianoRollInteractionBackend.stateMachine,
+    );
+  }
 
   KeyboardModifiers _keyboardModifiers({
     bool ctrl = false,
@@ -545,6 +556,7 @@ void main() {
 
     test('controller owns an inert state machine shell', () {
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.stateMachine.controller, same(fixture.controller));
       expect(fixture.pointerSessionState.parentState, same(fixture.idleState));
       expect(
         fixture.noteInteractionState.parentState,
@@ -575,6 +587,104 @@ void main() {
     test('controller dispose is idempotent', () {
       fixture.controller.dispose();
       fixture.controller.dispose();
+    });
+
+    test(
+      'controller defaults every interaction family to the legacy backend',
+      () {
+        for (final family in PianoRollInteractionFamily.values) {
+          expect(
+            fixture.controller.backendForFamily(family),
+            equals(PianoRollInteractionBackend.legacy),
+          );
+        }
+      },
+    );
+  });
+
+  group('routing', () {
+    test(
+      'pointer-down classification latches a legacy route until pointer up',
+      () {
+        fixture.pointerDown(key: 59.5, offset: 80, ctrl: true);
+
+        expect(
+          fixture.activeInteractionFamily,
+          equals(PianoRollInteractionFamily.selectionBox),
+        );
+        expect(
+          fixture.activeInteractionBackend,
+          equals(PianoRollInteractionBackend.legacy),
+        );
+
+        fixture.pointerMove(key: 65.5, offset: 360, ctrl: true);
+
+        expect(
+          fixture.activeInteractionFamily,
+          equals(PianoRollInteractionFamily.selectionBox),
+        );
+        expect(
+          fixture.activeInteractionBackend,
+          equals(PianoRollInteractionBackend.legacy),
+        );
+        expect(fixture.viewModel.selectionBox, isNotNull);
+
+        fixture.pointerUp(key: 65.5, offset: 360, ctrl: true);
+
+        expect(fixture.activeInteractionFamily, isNull);
+        expect(fixture.activeInteractionBackend, isNull);
+      },
+    );
+
+    test('pointer cancel clears the latched route', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 48);
+
+      fixture.pointerDown(key: 60.5, offset: 100, noteUnderCursor: note.id);
+
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.moveNotes),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.legacy),
+      );
+
+      fixture.pointerCancel(key: 61.5, offset: 173.8, alt: true);
+
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.activeInteractionBackend, isNull);
+    });
+
+    test('a configured family can route to the machine intake stub', () {
+      fixture.routeFamilyToStateMachineForTesting(
+        PianoRollInteractionFamily.selectionBox,
+      );
+
+      fixture.pointerDown(key: 59.5, offset: 80, ctrl: true);
+
+      expect(
+        fixture.activeInteractionFamily,
+        equals(PianoRollInteractionFamily.selectionBox),
+      );
+      expect(
+        fixture.activeInteractionBackend,
+        equals(PianoRollInteractionBackend.stateMachine),
+      );
+      expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
+      expect(fixture.stateMachine.adaptedPointerMoveCount, equals(0));
+      expect(fixture.stateMachine.adaptedPointerUpCount, equals(0));
+
+      fixture.pointerMove(key: 65.5, offset: 360, ctrl: true);
+
+      expect(fixture.stateMachine.adaptedPointerMoveCount, equals(1));
+      expect(fixture.viewModel.selectionBox, isNull);
+
+      fixture.pointerUp(key: 65.5, offset: 360, ctrl: true);
+
+      expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.activeInteractionBackend, isNull);
     });
   });
 
@@ -926,6 +1036,50 @@ void main() {
         expect((events[2] as LiveEventRequestNoteOnEvent).pitch, equals(63));
         expect(events[3], isA<LiveEventRequestNoteOffEvent>());
         expect((events[3] as LiveEventRequestNoteOffEvent).pitch, equals(63));
+      },
+    );
+
+    test(
+      'controller dispose sends note off for any active live preview note',
+      () async {
+        final liveFixture = _PianoRollStateMachineTestFixture.create(
+          enableLiveEvents: true,
+        );
+        addTearDown(liveFixture.dispose);
+        await Future<void>.delayed(Duration.zero);
+        liveFixture.enableLiveEvents();
+
+        final note = liveFixture.addNote(key: 60, offset: 100, length: 48);
+
+        liveFixture.pointerDown(
+          key: 60.5,
+          offset: 100,
+          noteUnderCursor: note.id,
+        );
+
+        expect(liveFixture.liveEvents, hasLength(1));
+        expect(
+          liveFixture.liveEvents.single.event,
+          isA<LiveEventRequestNoteOnEvent>(),
+        );
+        expect(
+          (liveFixture.liveEvents.single.event as LiveEventRequestNoteOnEvent)
+              .pitch,
+          equals(60),
+        );
+
+        liveFixture.controller.dispose();
+
+        expect(liveFixture.liveEvents, hasLength(2));
+        expect(
+          liveFixture.liveEvents[1].event,
+          isA<LiveEventRequestNoteOffEvent>(),
+        );
+        expect(
+          (liveFixture.liveEvents[1].event as LiveEventRequestNoteOffEvent)
+              .pitch,
+          equals(60),
+        );
       },
     );
   });
