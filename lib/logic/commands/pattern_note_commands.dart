@@ -35,6 +35,42 @@ NoteModel _getNote(PatternModel pattern, Id noteID) {
   return pattern.notes.firstWhere((element) => element.id == noteID);
 }
 
+PatternModel _requirePattern(ProjectModel project, Id patternID) {
+  final pattern = project.sequence.patterns[patternID];
+  if (pattern == null) {
+    throw StateError('Pattern $patternID was not found.');
+  }
+
+  return pattern;
+}
+
+NoteModel _requireNote(PatternModel pattern, Id noteID) {
+  try {
+    return _getNote(pattern, noteID);
+  } on StateError {
+    throw StateError('Note $noteID was not found in pattern ${pattern.id}.');
+  }
+}
+
+typedef _DeleteNoteSnapshot = ({
+  Id id,
+  int key,
+  double velocity,
+  int length,
+  int offset,
+  double pan,
+});
+
+NoteModel _restoreDeletedNote(_DeleteNoteSnapshot snapshot) {
+  return NoteModel(
+    key: snapshot.key,
+    velocity: snapshot.velocity,
+    length: snapshot.length,
+    offset: snapshot.offset,
+    pan: snapshot.pan,
+  )..id = snapshot.id;
+}
+
 class AddNoteCommand extends Command {
   Id patternID;
   NoteModel note;
@@ -90,6 +126,116 @@ class DeleteNoteCommand extends Command {
     }
 
     _addNote(pattern, note);
+  }
+}
+
+class MoveNotesCommand extends Command {
+  final Id patternID;
+  final List<
+    ({Id noteID, int oldOffset, int newOffset, int oldKey, int newKey})
+  >
+  noteMoves;
+
+  MoveNotesCommand({
+    required this.patternID,
+    required List<
+      ({Id noteID, int oldOffset, int newOffset, int oldKey, int newKey})
+    >
+    noteMoves,
+  }) : noteMoves = List.unmodifiable(noteMoves),
+       super();
+
+  @override
+  void execute(ProjectModel project) {
+    final pattern = _requirePattern(project, patternID);
+
+    for (final noteMove in noteMoves) {
+      final note = _requireNote(pattern, noteMove.noteID);
+      note.offset = noteMove.newOffset;
+      note.key = noteMove.newKey;
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    final pattern = _requirePattern(project, patternID);
+
+    for (final noteMove in noteMoves.reversed) {
+      final note = _requireNote(pattern, noteMove.noteID);
+      note.offset = noteMove.oldOffset;
+      note.key = noteMove.oldKey;
+    }
+  }
+}
+
+class ResizeNotesCommand extends Command {
+  final Id patternID;
+  final List<({Id noteID, int oldLength, int newLength})> noteResizes;
+
+  ResizeNotesCommand({
+    required this.patternID,
+    required List<({Id noteID, int oldLength, int newLength})> noteResizes,
+  }) : noteResizes = List.unmodifiable(noteResizes),
+       super();
+
+  @override
+  void execute(ProjectModel project) {
+    final pattern = _requirePattern(project, patternID);
+
+    for (final noteResize in noteResizes) {
+      final note = _requireNote(pattern, noteResize.noteID);
+      note.length = noteResize.newLength;
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    final pattern = _requirePattern(project, patternID);
+
+    for (final noteResize in noteResizes.reversed) {
+      final note = _requireNote(pattern, noteResize.noteID);
+      note.length = noteResize.oldLength;
+    }
+  }
+}
+
+class DeleteNotesCommand extends Command {
+  final Id patternID;
+  final List<_DeleteNoteSnapshot> notes;
+
+  DeleteNotesCommand({
+    required this.patternID,
+    required Iterable<NoteModel> notes,
+  }) : notes = List.unmodifiable(
+         notes.map(
+           (note) => (
+             id: note.id,
+             key: note.key,
+             velocity: note.velocity,
+             length: note.length,
+             offset: note.offset,
+             pan: note.pan,
+           ),
+         ),
+       ),
+       super();
+
+  @override
+  void execute(ProjectModel project) {
+    final pattern = _requirePattern(project, patternID);
+
+    for (final note in notes) {
+      _removeNote(pattern, note.id);
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    final pattern = _requirePattern(project, patternID);
+
+    for (final note in notes.reversed) {
+      _addNote(pattern, _restoreDeletedNote(note));
+    }
   }
 }
 

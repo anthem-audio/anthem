@@ -215,15 +215,13 @@ class PianoRollEraseNotesState
     required EditorStateMachineState<PianoRollStateMachineData> to,
   }) {
     final sessionData = _sessionData;
-    if (sessionData != null) {
-      for (final note in sessionData.notesDeleted) {
-        project.push(
-          DeleteNoteCommand(
-            patternID: controller.requireActivePattern().id,
-            note: note,
-          ),
-        );
-      }
+    if (sessionData != null && sessionData.notesDeleted.isNotEmpty) {
+      project.push(
+        DeleteNotesCommand(
+          patternID: controller.requireActivePattern().id,
+          notes: sessionData.notesDeleted,
+        ),
+      );
     }
 
     project.commitUndoGroup();

@@ -473,31 +473,17 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
                 )
                 .toList();
 
-      // We already moved these notes to their target positions. Now, we create
-      // a command to move it from its original position to the target position,
-      // which will be used for undo/redo.
-      final offsetCommands = relevantNotes.map((note) {
-        return SetNoteAttributeCommand(
-          patternID: pattern.id,
-          noteID: note.id,
-          attribute: NoteAttribute.offset,
-          oldValue: _noteMoveActionData!.startTimes[note.id]!,
-          newValue: note.offset,
-        );
-      });
-
-      final keyCommands = relevantNotes.map((note) {
-        return SetNoteAttributeCommand(
-          patternID: pattern.id,
-          noteID: note.id,
-          attribute: NoteAttribute.key,
-          oldValue: _noteMoveActionData!.startKeys[note.id]!,
-          newValue: note.key,
-        );
-      });
-
-      final command = JournalPageCommand(
-        offsetCommands.followedBy(keyCommands).toList(),
+      final command = MoveNotesCommand(
+        patternID: pattern.id,
+        noteMoves: relevantNotes.map((note) {
+          return (
+            noteID: note.id,
+            oldOffset: _noteMoveActionData!.startTimes[note.id]!,
+            newOffset: note.offset,
+            oldKey: _noteMoveActionData!.startKeys[note.id]!,
+            newKey: note.key,
+          );
+        }).toList(),
       );
 
       project.push(command);
@@ -509,17 +495,16 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
               .pressedNote
               .id]!;
 
-      final commands = _noteResizeActionData!.startLengths.entries.map((entry) {
-        return SetNoteAttributeCommand(
-          patternID: requireActivePattern().id,
-          noteID: entry.key,
-          attribute: NoteAttribute.length,
-          oldValue: entry.value,
-          newValue: entry.value + diff,
-        );
-      }).toList();
-
-      final command = JournalPageCommand(commands);
+      final command = ResizeNotesCommand(
+        patternID: requireActivePattern().id,
+        noteResizes: _noteResizeActionData!.startLengths.entries.map((entry) {
+          return (
+            noteID: entry.key,
+            oldLength: entry.value,
+            newLength: entry.value + diff,
+          );
+        }).toList(),
+      );
 
       project.push(command);
     }

@@ -19,7 +19,6 @@
 
 import 'dart:math';
 
-import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
@@ -354,14 +353,12 @@ class _PianoRollController {
       return;
     }
 
-    final commands = pattern.notes
-        .where((note) => viewModel.selectedNotes.contains(note.id))
-        .map((note) {
-          return DeleteNoteCommand(patternID: pattern.id, note: note);
-        })
-        .toList();
-
-    final command = JournalPageCommand(commands);
+    final command = DeleteNotesCommand(
+      patternID: pattern.id,
+      notes: pattern.notes.where(
+        (note) => viewModel.selectedNotes.contains(note.id),
+      ),
+    );
 
     project.execute(command);
 
