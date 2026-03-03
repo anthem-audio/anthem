@@ -30,6 +30,7 @@ import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
+import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -55,9 +56,14 @@ class PianoRollController extends _PianoRollController
 class _PianoRollController {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
+  final PianoRollStateMachine stateMachine;
   bool _isDisposed = false;
 
-  _PianoRollController({required this.project, required this.viewModel});
+  _PianoRollController({required this.project, required this.viewModel})
+    : stateMachine = PianoRollStateMachine.create(
+        project: project,
+        viewModel: viewModel,
+      );
 
   void dispose() {
     if (_isDisposed) {
@@ -65,6 +71,7 @@ class _PianoRollController {
     }
 
     _isDisposed = true;
+    stateMachine.dispose();
   }
 
   NoteModel _addNote({

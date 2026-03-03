@@ -34,6 +34,7 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
+import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
@@ -253,6 +254,30 @@ class _PianoRollStateMachineTestFixture {
   List<_RecordedLiveEvent> get liveEvents =>
       recordingProcessingGraphApi?.liveEvents.toList(growable: false) ??
       const <_RecordedLiveEvent>[];
+  PianoRollStateMachine get stateMachine => controller.stateMachine;
+
+  PianoRollIdleState get idleState =>
+      stateMachine.states[PianoRollIdleState]! as PianoRollIdleState;
+  PianoRollPointerSessionState get pointerSessionState =>
+      stateMachine.states[PianoRollPointerSessionState]!
+          as PianoRollPointerSessionState;
+  PianoRollNoteInteractionState get noteInteractionState =>
+      stateMachine.states[PianoRollNoteInteractionState]!
+          as PianoRollNoteInteractionState;
+  PianoRollSelectionBoxState get selectionBoxState =>
+      stateMachine.states[PianoRollSelectionBoxState]!
+          as PianoRollSelectionBoxState;
+  PianoRollEraseNotesState get eraseNotesState =>
+      stateMachine.states[PianoRollEraseNotesState]!
+          as PianoRollEraseNotesState;
+  PianoRollMoveNotesState get moveNotesState =>
+      stateMachine.states[PianoRollMoveNotesState]! as PianoRollMoveNotesState;
+  PianoRollResizeNotesState get resizeNotesState =>
+      stateMachine.states[PianoRollResizeNotesState]!
+          as PianoRollResizeNotesState;
+  PianoRollCreateNoteState get createNoteState =>
+      stateMachine.states[PianoRollCreateNoteState]!
+          as PianoRollCreateNoteState;
 
   KeyboardModifiers _keyboardModifiers({
     bool ctrl = false,
@@ -516,6 +541,35 @@ void main() {
       );
       expect(fixture.notes, isEmpty);
       expect(fixture.viewModel.tool, equals(EditorTool.pencil));
+    });
+
+    test('controller owns an inert state machine shell', () {
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.pointerSessionState.parentState, same(fixture.idleState));
+      expect(
+        fixture.noteInteractionState.parentState,
+        same(fixture.pointerSessionState),
+      );
+      expect(
+        fixture.selectionBoxState.parentState,
+        same(fixture.pointerSessionState),
+      );
+      expect(
+        fixture.eraseNotesState.parentState,
+        same(fixture.pointerSessionState),
+      );
+      expect(
+        fixture.moveNotesState.parentState,
+        same(fixture.noteInteractionState),
+      );
+      expect(
+        fixture.resizeNotesState.parentState,
+        same(fixture.noteInteractionState),
+      );
+      expect(
+        fixture.createNoteState.parentState,
+        same(fixture.noteInteractionState),
+      );
     });
 
     test('controller dispose is idempotent', () {
