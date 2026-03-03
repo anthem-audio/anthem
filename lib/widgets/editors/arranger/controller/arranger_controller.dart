@@ -38,7 +38,6 @@ import 'package:mobx/mobx.dart';
 
 import '../helpers.dart';
 
-part 'pointer_events.dart';
 part 'shortcuts.dart';
 
 class ArrangerController extends _ArrangerController
