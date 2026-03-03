@@ -88,7 +88,8 @@ class _PianoRollController {
     PianoRollInteractionFamily.selectionBox:
         PianoRollInteractionBackend.stateMachine,
     PianoRollInteractionFamily.erase: PianoRollInteractionBackend.stateMachine,
-    PianoRollInteractionFamily.moveNotes: PianoRollInteractionBackend.legacy,
+    PianoRollInteractionFamily.moveNotes:
+        PianoRollInteractionBackend.stateMachine,
     PianoRollInteractionFamily.resizeNotes: PianoRollInteractionBackend.legacy,
     PianoRollInteractionFamily.createNote: PianoRollInteractionBackend.legacy,
   };
@@ -344,6 +345,150 @@ class _PianoRollController {
     viewModel.cursorNoteLength = note.length;
     viewModel.cursorNoteVelocity = note.velocity;
     viewModel.cursorNotePan = note.pan;
+  }
+
+  PianoRollMoveNotesSessionData createMoveNotesSessionData({
+    required PianoRollPointerDownEvent event,
+    required NoteModel noteUnderCursor,
+    required Iterable<NoteModel> notesToMove,
+    required bool isSelectionMove,
+    required bool didDuplicateOnPointerDown,
+    required Set<Id> duplicatedNoteIds,
+  }) {
+    final movingNotesById = <Id, NoteModel>{
+      noteUnderCursor.id: noteUnderCursor,
+    };
+    for (final note in notesToMove) {
+      movingNotesById[note.id] = note;
+    }
+
+    final movingNotes = movingNotesById.values.toList(growable: false);
+    if (movingNotes.isEmpty) {
+      throw StateError('Move session requires at least one note.');
+    }
+
+    final startTimes = <Id, Time>{};
+    final startKeys = <Id, int>{};
+    var startOfFirstNote = maxSafeIntWeb;
+    var keyOfTopNote = 0;
+    var keyOfBottomNote = maxSafeIntWeb;
+
+    for (final note in movingNotes) {
+      startTimes[note.id] = note.offset;
+      startKeys[note.id] = note.key;
+      startOfFirstNote = min(startOfFirstNote, note.offset);
+      keyOfTopNote = max(keyOfTopNote, note.key);
+      keyOfBottomNote = min(keyOfBottomNote, note.key);
+    }
+
+    return PianoRollMoveNotesSessionData(
+      noteUnderCursor: noteUnderCursor,
+      timeOffset: event.offset - noteUnderCursor.offset,
+      noteOffset: 0.5,
+      startTimes: startTimes,
+      startKeys: startKeys,
+      startOfFirstNote: startOfFirstNote,
+      keyOfTopNote: keyOfTopNote,
+      keyOfBottomNote: keyOfBottomNote,
+      isSelectionMove: isSelectionMove,
+      didDuplicateOnPointerDown: didDuplicateOnPointerDown,
+      duplicatedNoteIds: duplicatedNoteIds,
+    );
+  }
+
+  List<NoteModel> notesForMoveSession(
+    PianoRollMoveNotesSessionData sessionData,
+  ) {
+    final movingNoteIds = sessionData.startTimes.keys.toSet();
+
+    return requireActivePattern().notes
+        .where((note) {
+          return movingNoteIds.contains(note.id);
+        })
+        .toList(growable: false);
+  }
+
+  void applyMoveNotesSessionUpdate({
+    required PianoRollPointerMoveEvent event,
+    required PianoRollMoveNotesSessionData sessionData,
+  }) {
+    final notes = notesForMoveSession(sessionData);
+    if (notes.isEmpty) {
+      return;
+    }
+
+    final key = event.key - sessionData.noteOffset;
+    final offset = event.offset - sessionData.timeOffset;
+    var snappedOffset = offset.floor();
+
+    if (!event.keyboardModifiers.alt) {
+      snappedOffset = snapTimeInActivePattern(
+        rawTime: offset.floor(),
+        viewWidthInPixels: event.pianoRollSize.width,
+        round: true,
+        startTime: sessionData.startTimes[sessionData.noteUnderCursor.id]!,
+      );
+    }
+
+    var timeOffsetFromEventStart =
+        snappedOffset - sessionData.startTimes[sessionData.noteUnderCursor.id]!;
+    var keyOffsetFromEventStart =
+        key.round() - sessionData.startKeys[sessionData.noteUnderCursor.id]!;
+
+    if (sessionData.startOfFirstNote + timeOffsetFromEventStart < 0) {
+      timeOffsetFromEventStart = -sessionData.startOfFirstNote;
+    }
+
+    if (sessionData.keyOfTopNote + keyOffsetFromEventStart > maxKeyValue) {
+      keyOffsetFromEventStart = maxKeyValue.round() - sessionData.keyOfTopNote;
+    }
+
+    if (sessionData.keyOfBottomNote + keyOffsetFromEventStart < minKeyValue) {
+      keyOffsetFromEventStart =
+          minKeyValue.round() - sessionData.keyOfBottomNote;
+    }
+
+    for (final note in notes) {
+      final shift = event.keyboardModifiers.shift;
+      final ctrl = event.keyboardModifiers.ctrl;
+      note.key =
+          sessionData.startKeys[note.id]! +
+          (shift ? 0 : keyOffsetFromEventStart);
+      note.offset =
+          sessionData.startTimes[note.id]! +
+          (!shift && ctrl ? 0 : timeOffsetFromEventStart);
+    }
+
+    final noteUnderCursor = sessionData.noteUnderCursor;
+    if (!liveNotes.hasNoteForKey(noteUnderCursor.key)) {
+      liveNotes.removeAll();
+      liveNotes.addNote(
+        key: noteUnderCursor.key,
+        velocity: noteUnderCursor.velocity,
+        pan: noteUnderCursor.pan,
+      );
+    }
+  }
+
+  MoveNotesCommand buildMoveNotesCommand({
+    required PianoRollMoveNotesSessionData sessionData,
+  }) {
+    final notes = notesForMoveSession(sessionData);
+
+    return MoveNotesCommand(
+      patternID: requireActivePattern().id,
+      noteMoves: notes
+          .map((note) {
+            return (
+              noteID: note.id,
+              oldOffset: sessionData.startTimes[note.id]!,
+              newOffset: note.offset,
+              oldKey: sessionData.startKeys[note.id]!,
+              newKey: note.key,
+            );
+          })
+          .toList(growable: false),
+    );
   }
 
   /// Deletes notes in the selectedNotes set from the view model.

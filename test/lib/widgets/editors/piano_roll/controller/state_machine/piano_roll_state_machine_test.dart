@@ -590,7 +590,7 @@ void main() {
     });
 
     test(
-      'controller defaults selection and erase to machine and all note interactions to legacy',
+      'controller defaults selection, erase, and move to machine while resize and create stay legacy',
       () {
         expect(
           fixture.controller.backendForFamily(
@@ -606,7 +606,7 @@ void main() {
           fixture.controller.backendForFamily(
             PianoRollInteractionFamily.moveNotes,
           ),
-          equals(PianoRollInteractionBackend.legacy),
+          equals(PianoRollInteractionBackend.stateMachine),
         );
         expect(
           fixture.controller.backendForFamily(
@@ -675,11 +675,13 @@ void main() {
       );
       expect(
         fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.legacy),
+        equals(PianoRollInteractionBackend.stateMachine),
       );
+      expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
 
       fixture.pointerCancel(key: 61.5, offset: 173.8, alt: true);
 
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
       expect(fixture.activeInteractionBackend, isNull);
     });
@@ -715,11 +717,8 @@ void main() {
       expect(fixture.activeInteractionBackend, isNull);
     });
 
-    test('a configured legacy family can route to the machine intake stub', () {
+    test('move routing latches a machine route until pointer up', () {
       final note = fixture.addNote(key: 60, offset: 100, length: 48);
-      fixture.routeFamilyToStateMachineForTesting(
-        PianoRollInteractionFamily.moveNotes,
-      );
 
       fixture.pointerDown(key: 60.5, offset: 100, noteUnderCursor: note.id);
 
@@ -734,15 +733,13 @@ void main() {
       expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
       expect(fixture.stateMachine.adaptedPointerMoveCount, equals(0));
       expect(fixture.stateMachine.adaptedPointerUpCount, equals(0));
-      expect(
-        fixture.stateMachine.currentState,
-        same(fixture.pointerSessionState),
-      );
+      expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
+      expect(fixture.moveNotesState.sessionData, isNotNull);
 
       fixture.pointerMove(key: 61.5, offset: 120);
 
       expect(fixture.stateMachine.adaptedPointerMoveCount, equals(1));
-      expect(fixture.viewModel.selectionBox, isNull);
+      expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
 
       fixture.pointerUp(key: 61.5, offset: 120);
 
@@ -751,6 +748,36 @@ void main() {
       expect(fixture.activeInteractionFamily, isNull);
       expect(fixture.activeInteractionBackend, isNull);
     });
+
+    test(
+      'a configured legacy note family can still route to the machine seam',
+      () {
+        fixture.routeFamilyToStateMachineForTesting(
+          PianoRollInteractionFamily.createNote,
+        );
+
+        fixture.pointerDown(key: 60.5, offset: 100);
+
+        expect(
+          fixture.activeInteractionFamily,
+          equals(PianoRollInteractionFamily.createNote),
+        );
+        expect(
+          fixture.activeInteractionBackend,
+          equals(PianoRollInteractionBackend.stateMachine),
+        );
+        expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
+        expect(
+          fixture.stateMachine.currentState,
+          same(fixture.noteInteractionState),
+        );
+
+        fixture.pointerUp(key: 60.5, offset: 100);
+
+        expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
+        expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      },
+    );
   });
 
   group('selection box interactions', () {

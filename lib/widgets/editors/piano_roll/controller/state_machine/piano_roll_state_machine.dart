@@ -66,6 +66,17 @@ class _PianoRollAdaptedPointerUpSignal extends _PianoRollAdaptedPointerSignal {
   const _PianoRollAdaptedPointerUpSignal(this.event);
 }
 
+bool _isPianoRollNoteInteractionFamily(PianoRollInteractionFamily? family) {
+  return switch (family) {
+    PianoRollInteractionFamily.moveNotes ||
+    PianoRollInteractionFamily.resizeNotes ||
+    PianoRollInteractionFamily.createNote => true,
+    null ||
+    PianoRollInteractionFamily.selectionBox ||
+    PianoRollInteractionFamily.erase => false,
+  };
+}
+
 /// The long-term interaction state machine for the piano roll.
 ///
 /// This first scaffolding pass only establishes the state hierarchy and
@@ -265,6 +276,31 @@ class PianoRollNoteInteractionState
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
   PianoRollController get controller => pianoRollStateMachine.controller;
+
+  @override
+  Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
+  get transitions => [
+    .new(
+      name: 'Enter note interaction',
+      from: PianoRollPointerSessionState,
+      to: PianoRollNoteInteractionState,
+      canTransition: ({required data, required event, required currentState}) =>
+          _isPianoRollNoteInteractionFamily(
+            data.activeAdaptedInteractionFamily,
+          ) &&
+          event is EditorStateMachineSignalEvent &&
+          event.signal is _PianoRollAdaptedPointerSignal,
+    ),
+    .new(
+      name: 'Exit note interaction',
+      from: PianoRollNoteInteractionState,
+      to: PianoRollPointerSessionState,
+      canTransition: ({required data, required event, required currentState}) =>
+          !_isPianoRollNoteInteractionFamily(
+            data.activeAdaptedInteractionFamily,
+          ),
+    ),
+  ];
 
   PianoRollNoteInteractionState(super.parentState);
 }

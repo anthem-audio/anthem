@@ -31,9 +31,6 @@ enum EventHandlingState {
   /// A single note is being moved.
   movingSingleNote,
 
-  /// A selection of notes are being moved.
-  movingSelection,
-
   /// A single note is being resized.
   resizingSingleNote,
 
@@ -114,126 +111,10 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       return;
     }
 
-    void setMoveNoteInfo(NoteModel noteUnderCursor) {
-      final startTimes = <Id, Time>{noteUnderCursor.id: noteUnderCursor.offset};
-      final startKeys = <Id, int>{noteUnderCursor.id: noteUnderCursor.key};
-
-      // If we're moving a selection, record the start times
-      for (final note in notes.where(
-        (note) => viewModel.selectedNotes.nonObservableInner.contains(note.id),
-      )) {
-        startTimes[note.id] = note.offset;
-        startKeys[note.id] = note.key;
-      }
-
-      final startOfFirstNote =
-          _eventHandlingState == EventHandlingState.movingSelection
-          ? notes.fold<int>(
-              maxSafeIntWeb,
-              (previousValue, element) =>
-                  viewModel.selectedNotes.nonObservableInner.contains(
-                    element.id,
-                  )
-                  ? min(previousValue, element.offset)
-                  : previousValue,
-            )
-          : noteUnderCursor.offset;
-      final keyOfTopNote =
-          _eventHandlingState == EventHandlingState.movingSelection
-          ? notes.fold<int>(
-              0,
-              (previousValue, element) =>
-                  viewModel.selectedNotes.nonObservableInner.contains(
-                    element.id,
-                  )
-                  ? max(previousValue, element.key)
-                  : previousValue,
-            )
-          : noteUnderCursor.key;
-      final keyOfBottomNote =
-          _eventHandlingState == EventHandlingState.movingSelection
-          ? notes.fold<int>(
-              maxSafeIntWeb,
-              (previousValue, element) =>
-                  viewModel.selectedNotes.nonObservableInner.contains(
-                    element.id,
-                  )
-                  ? min(previousValue, element.key)
-                  : previousValue,
-            )
-          : noteUnderCursor.key;
-
-      _noteMoveActionData = PianoRollMoveNotesSessionData(
-        noteUnderCursor: noteUnderCursor,
-        timeOffset: event.offset - noteUnderCursor.offset,
-        noteOffset: 0.5,
-        startTimes: startTimes,
-        startKeys: startKeys,
-        startOfFirstNote: startOfFirstNote,
-        keyOfTopNote: keyOfTopNote,
-        keyOfBottomNote: keyOfBottomNote,
-      );
-
-      liveNotes.addNote(
-        key: noteUnderCursor.key,
-        velocity: noteUnderCursor.velocity,
-        pan: noteUnderCursor.pan,
-      );
-    }
-
     if (event.noteUnderCursor != null) {
-      var pressedNote = requireActivePatternNote(event.noteUnderCursor!);
-
-      if (viewModel.selectedNotes.nonObservableInner.contains(
-        event.noteUnderCursor,
-      )) {
-        _eventHandlingState = EventHandlingState.movingSelection;
-
-        if (event.keyboardModifiers.shift) {
-          project.startUndoGroup();
-
-          final newSelectedNotes = ObservableSet<Id>();
-
-          for (final note
-              in notes
-                  .where(
-                    (note) => viewModel.selectedNotes.nonObservableInner
-                        .contains(note.id),
-                  )
-                  .toList()) {
-            final newNote = NoteModel.fromNoteModel(note);
-
-            project.execute(
-              AddNoteCommand(patternID: pattern.id, note: newNote),
-            );
-
-            newSelectedNotes.add(newNote.id);
-
-            if (note.id == event.noteUnderCursor) {
-              pressedNote = newNote;
-            }
-          }
-
-          viewModel.selectedNotes = newSelectedNotes;
-        }
-      } else {
-        _eventHandlingState = EventHandlingState.movingSingleNote;
-        viewModel.selectedNotes.clear();
-
-        if (event.keyboardModifiers.shift) {
-          final newNote = NoteModel.fromNoteModel(pressedNote);
-
-          project.execute(AddNoteCommand(patternID: pattern.id, note: newNote));
-        }
-
-        setCursorNoteParameters(pressedNote);
-      }
-
-      viewModel.pressedNote = pressedNote.id;
-
-      setMoveNoteInfo(pressedNote);
-
-      return;
+      throw StateError(
+        'Note-body move gestures are handled by the piano-roll state machine.',
+      );
     }
 
     _eventHandlingState = EventHandlingState.movingSingleNote;
@@ -259,9 +140,16 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       pan: viewModel.cursorNotePan,
     );
 
-    setMoveNoteInfo(note);
-
     viewModel.pressedNote = note.id;
+    _noteMoveActionData = createMoveNotesSessionData(
+      event: event,
+      noteUnderCursor: note,
+      notesToMove: [note],
+      isSelectionMove: false,
+      didDuplicateOnPointerDown: false,
+      duplicatedNoteIds: const {},
+    );
+    liveNotes.addNote(key: note.key, velocity: note.velocity, pan: note.pan);
   }
 
   void legacyPointerDown(PianoRollPointerDownEvent event) {
@@ -287,87 +175,9 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
       case EventHandlingState.idle:
         break;
       case EventHandlingState.movingSingleNote:
-      case EventHandlingState.movingSelection:
-        final isSelectionMove =
-            _eventHandlingState == EventHandlingState.movingSelection;
-
-        final key = event.key - _noteMoveActionData!.noteOffset;
-        final offset = event.offset - _noteMoveActionData!.timeOffset;
-
-        final pattern = requireActivePattern();
-
-        final notes = isSelectionMove
-            ? pattern.notes
-                  .where(
-                    (note) => viewModel.selectedNotes.nonObservableInner
-                        .contains(note.id),
-                  )
-                  .toList()
-            : [_noteMoveActionData!.noteUnderCursor];
-
-        var snappedOffset = offset.floor();
-
-        if (!event.keyboardModifiers.alt) {
-          snappedOffset = snapTimeInActivePattern(
-            rawTime: offset.floor(),
-            viewWidthInPixels: event.pianoRollSize.width,
-            round: true,
-            startTime: _noteMoveActionData!
-                .startTimes[_noteMoveActionData!.noteUnderCursor.id]!,
-          );
-        }
-
-        var timeOffsetFromEventStart =
-            snappedOffset -
-            _noteMoveActionData!.startTimes[_noteMoveActionData!
-                .noteUnderCursor
-                .id]!;
-        var keyOffsetFromEventStart =
-            key.round() -
-            _noteMoveActionData!.startKeys[_noteMoveActionData!
-                .noteUnderCursor
-                .id]!;
-
-        // Prevent the leftmost key from going earlier than the start of the pattern
-        if (_noteMoveActionData!.startOfFirstNote + timeOffsetFromEventStart <
-            0) {
-          timeOffsetFromEventStart = -_noteMoveActionData!.startOfFirstNote;
-        }
-
-        // Prevent the top key from going above the highest allowed note
-        if (_noteMoveActionData!.keyOfTopNote + keyOffsetFromEventStart >
-            maxKeyValue) {
-          keyOffsetFromEventStart =
-              maxKeyValue.round() - _noteMoveActionData!.keyOfTopNote;
-        }
-
-        // Prevent the bottom key from going below the lowest allowed note
-        if (_noteMoveActionData!.keyOfBottomNote + keyOffsetFromEventStart <
-            minKeyValue) {
-          keyOffsetFromEventStart =
-              minKeyValue.round() - _noteMoveActionData!.keyOfBottomNote;
-        }
-
-        for (final note in notes) {
-          final shift = event.keyboardModifiers.shift;
-          final ctrl = event.keyboardModifiers.ctrl;
-          note.key =
-              _noteMoveActionData!.startKeys[note.id]! +
-              (shift ? 0 : keyOffsetFromEventStart);
-          note.offset =
-              _noteMoveActionData!.startTimes[note.id]! +
-              (!shift && ctrl ? 0 : timeOffsetFromEventStart);
-        }
-
-        // Update the live note
-        final noteUnderCursor = _noteMoveActionData!.noteUnderCursor;
-        if (!liveNotes.hasNoteForKey(noteUnderCursor.key)) {
-          liveNotes.removeAll();
-          liveNotes.addNote(
-            key: noteUnderCursor.key,
-            velocity: noteUnderCursor.velocity,
-            pan: noteUnderCursor.pan,
-          );
+        final sessionData = _noteMoveActionData;
+        if (sessionData != null) {
+          applyMoveNotesSessionUpdate(event: event, sessionData: sessionData);
         }
 
         break;
@@ -455,38 +265,11 @@ mixin _PianoRollPointerEventsMixin on _PianoRollController {
   }
 
   void legacyPointerUp(PianoRollPointerUpEvent event) {
-    if (_eventHandlingState == EventHandlingState.movingSingleNote ||
-        _eventHandlingState == EventHandlingState.movingSelection) {
-      final pattern = requireActivePattern();
-      final notes = pattern.notes;
-
-      final isSingleNote =
-          _eventHandlingState == EventHandlingState.movingSingleNote;
-
-      final relevantNotes = isSingleNote
-          ? [_noteMoveActionData!.noteUnderCursor]
-          : notes
-                .where(
-                  (note) => viewModel.selectedNotes.nonObservableInner.contains(
-                    note.id,
-                  ),
-                )
-                .toList();
-
-      final command = MoveNotesCommand(
-        patternID: pattern.id,
-        noteMoves: relevantNotes.map((note) {
-          return (
-            noteID: note.id,
-            oldOffset: _noteMoveActionData!.startTimes[note.id]!,
-            newOffset: note.offset,
-            oldKey: _noteMoveActionData!.startKeys[note.id]!,
-            newKey: note.key,
-          );
-        }).toList(),
-      );
-
-      project.push(command);
+    if (_eventHandlingState == EventHandlingState.movingSingleNote) {
+      final sessionData = _noteMoveActionData;
+      if (sessionData != null) {
+        project.push(buildMoveNotesCommand(sessionData: sessionData));
+      }
     } else if (_eventHandlingState == EventHandlingState.resizingSingleNote ||
         _eventHandlingState == EventHandlingState.resizingSelection) {
       final diff =
