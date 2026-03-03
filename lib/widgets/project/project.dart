@@ -21,9 +21,6 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/panel_border.dart';
-import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
-import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -39,7 +36,6 @@ import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart'
 import 'package:anthem/widgets/editors/channel_rack/channel_rack.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
@@ -55,63 +51,23 @@ class Project extends StatefulWidget {
 }
 
 class _ProjectState extends State<Project> {
-  late ProjectController _controller;
-  late ProjectViewModel _viewModel;
-
-  bool _initialized = false;
-
-  /// Initializes the controller and view model, if not already done.
-  ///
-  /// This is done on render, because on initState the project model doesn't
-  /// exist yet.
-  void _initIfNeeded() {
-    if (_initialized) return;
-    _initialized = true;
-
-    final projectModel = AnthemStore.instance.projects[widget.id]!;
-
-    _viewModel = ProjectViewModel();
-    _controller = ProjectController(projectModel, _viewModel);
-
-    final serviceRegistry = ServiceRegistry.forProject(widget.id);
-
-    serviceRegistry.register(_viewModel);
-    serviceRegistry.register(_controller);
-
-    // Multiple downstream widgets may need these, so we will register them here
-    // to avoid not-yet-initialized errors that depend on render order.
-
-    serviceRegistry.register(
-      ArrangerViewModel(
-        project: projectModel,
-        baseTrackHeight: 53,
-        timeView: TimeRange(0, 3072),
-      ),
-    );
-    serviceRegistry.register(
-      ArrangerController(
-        viewModel: serviceRegistry.arrangerViewModel,
-        project: projectModel,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    _initIfNeeded();
-
     final projectModel = AnthemStore.instance.projects[widget.id]!;
+    final serviceRegistry = ServiceRegistry.forProject(widget.id);
+    final controller = serviceRegistry.projectController;
+    final viewModel = serviceRegistry.projectViewModel;
 
     return MultiProvider(
       providers: [
         Provider.value(value: projectModel),
-        Provider.value(value: _controller),
-        Provider.value(value: _viewModel),
+        Provider.value(value: controller),
+        Provider.value(value: viewModel),
       ],
       child: ShortcutConsumer(
         id: 'project',
         global: true,
-        shortcutHandler: _controller.onShortcut,
+        shortcutHandler: controller.onShortcut,
         child: Column(
           children: [
             const RepaintBoundary(child: ProjectHeader()),
@@ -125,7 +81,7 @@ class _ProjectState extends State<Project> {
                   const mixer = Text('Mixer');
 
                   final selectedEditorIndex =
-                      switch (_viewModel.selectedEditor) {
+                      switch (viewModel.selectedEditor) {
                         EditorKind.automation => 0,
                         EditorKind.channelRack => 1,
                         EditorKind.detail => 2,
@@ -134,7 +90,7 @@ class _ProjectState extends State<Project> {
                       };
 
                   final selectedEditor = PanelBorder(
-                    panelKind: switch (_viewModel.selectedEditor) {
+                    panelKind: switch (viewModel.selectedEditor) {
                       .automation => .automationEditor,
                       .channelRack => .channelRack,
                       .detail => .pianoRoll,
@@ -175,12 +131,12 @@ class _ProjectState extends State<Project> {
                         orientation: .bottom,
                         panelMinSize: 200,
                         contentMinSize: 150,
-                        hidden: _viewModel.selectedEditor == null,
+                        hidden: viewModel.selectedEditor == null,
                         // Bottom panel content (selected editor)
                         panelContent: RepaintBoundary(child: selectedEditor),
                         child: _PanelOverlay(
-                          builder: _viewModel.topPanelOverlayContentBuilder,
-                          close: () => _viewModel.clearTopPanelOverlay(),
+                          builder: viewModel.topPanelOverlayContentBuilder,
+                          close: () => viewModel.clearTopPanelOverlay(),
                           child: const RepaintBoundary(
                             child: PanelBorder(
                               panelKind: .arranger,

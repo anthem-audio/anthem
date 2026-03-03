@@ -268,9 +268,12 @@ void main() {
         baseTrackHeight: 40,
         timeView: TimeRange(0, 4),
       );
-      ServiceRegistry.forProject(
-        projectId,
-      ).register<ArrangerViewModel>(arrangerViewModel);
+      ServiceRegistry.initializeProject(
+        project,
+        overrides: ProjectServiceFactoryOverrides(
+          arrangerViewModel: (_, _) => arrangerViewModel,
+        ),
+      );
 
       when(project.execute(any)).thenAnswer((invocation) {
         final command = invocation.positionalArguments[0] as Command;
@@ -491,14 +494,15 @@ void main() {
         baseTrackHeight: 40,
         timeView: TimeRange(0, 4),
       );
-      ServiceRegistry.forProject(
-        projectId,
-      ).register<ArrangerViewModel>(arrangerViewModel);
 
       projectController = ProjectController(project, MockProjectViewModel());
-      ServiceRegistry.forProject(
-        projectId,
-      ).register<ProjectController>(projectController);
+      ServiceRegistry.initializeProject(
+        project,
+        overrides: ProjectServiceFactoryOverrides(
+          arrangerViewModel: (_, _) => arrangerViewModel,
+          projectController: (_, _) => projectController,
+        ),
+      );
     });
 
     tearDown(() {

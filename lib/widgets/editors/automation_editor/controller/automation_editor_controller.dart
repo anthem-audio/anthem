@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'dart:ui';
 
 import 'package:anthem/logic/commands/pattern_automation_commands.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -37,7 +38,8 @@ import '../events.dart';
 part 'pointer_events.dart';
 
 class AutomationEditorController extends _AutomationEditorController
-    with _AutomationEditorPointerEventsMixin {
+    with _AutomationEditorPointerEventsMixin
+    implements DisposableService {
   AutomationEditorController({
     required super.viewModel,
     required super.project,
@@ -48,6 +50,7 @@ class _AutomationEditorController {
   AutomationEditorViewModel viewModel;
   ProjectModel project;
   late ReactionDisposer pointAnimationAutorunDisposer;
+  bool _isDisposed = false;
 
   _AutomationEditorController({
     required this.viewModel,
@@ -124,6 +127,11 @@ class _AutomationEditorController {
   }
 
   void dispose() {
+    if (_isDisposed) {
+      return;
+    }
+
+    _isDisposed = true;
     pointAnimationAutorunDisposer();
   }
 }

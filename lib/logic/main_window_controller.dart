@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -40,6 +40,7 @@ class MainWindowController {
     store.projects[project.id] = project;
     store.projectOrder.add(project.id);
     store.activeProjectId = project.id;
+    ServiceRegistry.initializeProject(project);
   }
 
   // Returns the ID of the new tab
@@ -63,9 +64,16 @@ class MainWindowController {
 
   void closeProjectWithoutSaving(Id projectId) {
     final store = AnthemStore.instance;
+    final project = store.projects[projectId];
+
+    if (project == null) {
+      return;
+    }
+
+    ServiceRegistry.removeProject(projectId);
 
     // Clean up project resources
-    store.projects[projectId]!.dispose();
+    project.dispose();
 
     // Remove project from model
     store.projects.remove(projectId);

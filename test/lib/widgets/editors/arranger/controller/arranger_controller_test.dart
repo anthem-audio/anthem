@@ -129,9 +129,12 @@ class _ArrangerControllerTestFixture {
       project: project,
     );
     final mockProjectController = MockProjectController();
-    ServiceRegistry.forProject(
-      project.id,
-    ).register<ProjectController>(mockProjectController);
+    ServiceRegistry.initializeProject(
+      project,
+      overrides: ProjectServiceFactoryOverrides(
+        projectController: (_, _) => mockProjectController,
+      ),
+    );
 
     return _ArrangerControllerTestFixture._(
       project: project,

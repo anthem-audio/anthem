@@ -97,9 +97,13 @@ class _ArrangerStateMachineTestFixture {
     final projectController = ProjectController(project, projectViewModel);
 
     AnthemStore.instance.projects[project.id] = project;
-    final serviceRegistry = ServiceRegistry.forProject(project.id);
-    serviceRegistry.register<ProjectViewModel>(projectViewModel);
-    serviceRegistry.register<ProjectController>(projectController);
+    ServiceRegistry.initializeProject(
+      project,
+      overrides: ProjectServiceFactoryOverrides(
+        projectViewModel: (_, _) => projectViewModel,
+        projectController: (_, _) => projectController,
+      ),
+    );
 
     final controller = ArrangerController(
       viewModel: viewModel,

@@ -41,7 +41,8 @@ import '../helpers.dart';
 part 'shortcuts.dart';
 
 class ArrangerController extends _ArrangerController
-    with _ArrangerShortcutsMixin {
+    with _ArrangerShortcutsMixin
+    implements DisposableService {
   ArrangerController({required super.viewModel, required super.project}) {
     // Register shortcuts for this editor
     registerShortcuts();
@@ -57,6 +58,7 @@ abstract class _ArrangerController {
     viewModel: viewModel,
     controller: this as ArrangerController,
   );
+  bool _isDisposed = false;
 
   late final ReactionDisposer patternCursorAutorunDispose;
 
@@ -73,6 +75,11 @@ abstract class _ArrangerController {
   }
 
   void dispose() {
+    if (_isDisposed) {
+      return;
+    }
+
+    _isDisposed = true;
     patternCursorAutorunDispose();
     stateMachine.dispose();
   }

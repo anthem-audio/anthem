@@ -78,29 +78,17 @@ class PianoRoll extends StatefulWidget {
 }
 
 class _PianoRollState extends State<PianoRoll> {
-  PianoRollController? controller;
-  PianoRollViewModel? viewModel;
-
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-
-    viewModel ??= PianoRollViewModel(
-      keyHeight: 14.0,
-      // Hack: cuts off the top horizontal line. Otherwise the default view looks off
-      keyValueAtTop: 63.95,
-      timeView: TimeRange(0, 3072),
-    );
-
-    if (controller == null) {
-      controller = PianoRollController(project: project, viewModel: viewModel!);
-      ServiceRegistry.forProject(project.id).register(controller!);
-    }
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final controller = serviceRegistry.pianoRollController;
+    final viewModel = serviceRegistry.pianoRollViewModel;
 
     return Provider.value(
-      value: controller!,
+      value: controller,
       child: Provider.value(
-        value: viewModel!,
+        value: viewModel,
         child: PianoRollTimeViewProvider(
           child: Container(
             color: AnthemTheme.panel.background,

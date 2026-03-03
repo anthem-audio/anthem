@@ -654,10 +654,6 @@ class ProjectController {
       completer.complete(true);
     }
 
-    completer.future.then((_) {
-      ServiceRegistry.removeProject(project.id);
-    });
-
     return completer.future;
   }
 }

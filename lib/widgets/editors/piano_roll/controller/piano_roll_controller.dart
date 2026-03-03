@@ -43,7 +43,8 @@ part 'shortcuts.dart';
 part 'pointer_events.dart';
 
 class PianoRollController extends _PianoRollController
-    with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin {
+    with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin
+    implements DisposableService {
   @override
   PianoRollController({required super.project, required super.viewModel}) {
     // Register shortcuts for this editor
@@ -54,8 +55,17 @@ class PianoRollController extends _PianoRollController
 class _PianoRollController {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
+  bool _isDisposed = false;
 
   _PianoRollController({required this.project, required this.viewModel});
+
+  void dispose() {
+    if (_isDisposed) {
+      return;
+    }
+
+    _isDisposed = true;
+  }
 
   NoteModel _addNote({
     required int key,

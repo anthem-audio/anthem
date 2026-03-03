@@ -61,34 +61,12 @@ class Arranger extends StatefulWidget {
 }
 
 class _ArrangerState extends State<Arranger> {
-  double x = 0;
-  double y = 0;
-
-  ArrangerViewModel? viewModel;
-
-  ArrangerController? controller;
-
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final serviceRegistry = ServiceRegistry.forProject(project.id);
-
-    if (this.viewModel == null) {
-      this.viewModel = serviceRegistry.arrangerViewModel;
-    }
-
-    if (this.controller == null) {
-      this.controller = serviceRegistry.arrangerController;
-    }
-
-    final viewModel = this.viewModel!;
-    final controller = this.controller!;
+    final viewModel = serviceRegistry.arrangerViewModel;
+    final controller = serviceRegistry.arrangerController;
 
     return MultiProvider(
       providers: [

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,12 +23,10 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
-import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
 import 'package:anthem/widgets/editors/automation_editor/content_renderer.dart';
 import 'package:anthem/widgets/editors/automation_editor/event_listener.dart';
 import 'package:anthem/widgets/editors/automation_editor/point_context_menu.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
@@ -48,27 +46,17 @@ class AutomationEditor extends StatefulWidget {
 }
 
 class AutomationEditorState extends State<AutomationEditor> {
-  AutomationEditorViewModel? viewModel;
-  AutomationEditorController? controller;
-
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-
-    viewModel ??= AutomationEditorViewModel(timeView: TimeRange(0, 3072));
-
-    if (controller == null) {
-      controller = AutomationEditorController(
-        viewModel: viewModel!,
-        project: project,
-      );
-      ServiceRegistry.forProject(project.id).register(controller!);
-    }
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final viewModel = serviceRegistry.automationEditorViewModel;
+    final controller = serviceRegistry.automationEditorController;
 
     return MultiProvider(
       providers: [
-        Provider.value(value: viewModel!),
-        Provider.value(value: controller!),
+        Provider.value(value: viewModel),
+        Provider.value(value: controller),
       ],
       child: Container(
         decoration: BoxDecoration(color: AnthemTheme.panel.background),

@@ -332,13 +332,19 @@ void main() {
         }
       }
 
-      final serviceRegistry = ServiceRegistry.forProject(project.id);
-      serviceRegistry.register(
-        ProjectController(project, MockProjectViewModel()),
-      );
       final mockArrangerViewModel = MockArrangerViewModel();
       when(mockArrangerViewModel.selectedTracks).thenReturn(ObservableSet());
-      serviceRegistry.register<ArrangerViewModel>(mockArrangerViewModel);
+      final projectController = ProjectController(
+        project,
+        MockProjectViewModel(),
+      );
+      ServiceRegistry.initializeProject(
+        project,
+        overrides: ProjectServiceFactoryOverrides(
+          projectController: (_, _) => projectController,
+          arrangerViewModel: (_, _) => mockArrangerViewModel,
+        ),
+      );
     });
 
     group('Group/ungroup', () {

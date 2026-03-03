@@ -214,6 +214,7 @@ class _PianoRollStateMachineTestFixture {
 
     final viewModel = PianoRollViewModel(
       keyHeight: 14.0,
+      // Hack: cuts off the top horizontal line. Otherwise the default view looks off
       keyValueAtTop: 63.95,
       timeView: TimeRange(0, 3072),
     );
@@ -222,9 +223,13 @@ class _PianoRollStateMachineTestFixture {
     final projectController = ProjectController(project, projectViewModel);
 
     AnthemStore.instance.projects[project.id] = project;
-    final serviceRegistry = ServiceRegistry.forProject(project.id);
-    serviceRegistry.register<ProjectViewModel>(projectViewModel);
-    serviceRegistry.register<ProjectController>(projectController);
+    ServiceRegistry.initializeProject(
+      project,
+      overrides: ProjectServiceFactoryOverrides(
+        projectViewModel: (_, _) => projectViewModel,
+        projectController: (_, _) => projectController,
+      ),
+    );
 
     final controller = PianoRollController(
       project: project,
@@ -480,6 +485,7 @@ class _PianoRollStateMachineTestFixture {
   }
 
   void dispose() {
+    controller.dispose();
     AnthemStore.instance.projects.remove(project.id);
     ServiceRegistry.removeProject(project.id);
   }
@@ -510,6 +516,11 @@ void main() {
       );
       expect(fixture.notes, isEmpty);
       expect(fixture.viewModel.tool, equals(EditorTool.pencil));
+    });
+
+    test('controller dispose is idempotent', () {
+      fixture.controller.dispose();
+      fixture.controller.dispose();
     });
   });
 
