@@ -67,7 +67,7 @@ class ServiceRegistry {
     _services[(T, key)] = controller;
   }
 
-  T? get<T>(String key) {
+  T? get<T>([String? key]) {
     if (T == dynamic) {
       throw Exception('Cannot get controller of type dynamic');
     }
@@ -79,7 +79,7 @@ class ServiceRegistry {
     return null;
   }
 
-  void unregister<T>(String key) {
+  void unregister<T>([String? key]) {
     if (T == dynamic) {
       throw Exception('Cannot unregister controller of type dynamic');
     }
