@@ -257,8 +257,6 @@ class _PianoRollStateMachineTestFixture {
   PianoRollStateMachine get stateMachine => controller.stateMachine;
   PianoRollInteractionFamily? get activeInteractionFamily =>
       controller.activeInteractionFamily;
-  PianoRollInteractionBackend? get activeInteractionBackend =>
-      controller.activeInteractionBackend;
 
   PianoRollIdleState get idleState =>
       stateMachine.states[PianoRollIdleState]! as PianoRollIdleState;
@@ -282,13 +280,6 @@ class _PianoRollStateMachineTestFixture {
   PianoRollCreateNoteState get createNoteState =>
       stateMachine.states[PianoRollCreateNoteState]!
           as PianoRollCreateNoteState;
-
-  void routeFamilyToStateMachineForTesting(PianoRollInteractionFamily family) {
-    controller.setInteractionBackendForTesting(
-      family,
-      PianoRollInteractionBackend.stateMachine,
-    );
-  }
 
   KeyboardModifiers _keyboardModifiers({
     bool ctrl = false,
@@ -396,6 +387,38 @@ class _PianoRollStateMachineTestFixture {
     int pointer = 1,
   }) {
     controller.pointerDown(
+      PianoRollPointerDownEvent(
+        key: key,
+        offset: offset,
+        pointerEvent: PointerDownEvent(
+          pointer: pointer,
+          position: Offset(offset, key),
+          buttons: buttons,
+        ),
+        pianoRollSize: pianoRollSize,
+        keyboardModifiers: _keyboardModifiers(
+          ctrl: ctrl,
+          alt: alt,
+          shift: shift,
+        ),
+        noteUnderCursor: noteUnderCursor,
+        isResize: isResize,
+      ),
+    );
+  }
+
+  PianoRollInteractionFamily? classifyPointerDown({
+    required double key,
+    required double offset,
+    Id? noteUnderCursor,
+    bool isResize = false,
+    int buttons = kPrimaryMouseButton,
+    bool ctrl = false,
+    bool alt = false,
+    bool shift = false,
+    int pointer = 1,
+  }) {
+    return controller.classifyPointerDownInteraction(
       PianoRollPointerDownEvent(
         key: key,
         offset: offset,
@@ -590,35 +613,44 @@ void main() {
     });
 
     test(
-      'controller defaults every interaction family to the state machine',
+      'controller classifies pointer-down gestures by interaction family',
       () {
+        final moveNote = fixture.addNote(key: 60, offset: 100, length: 48);
+        final resizeNote = fixture.addNote(key: 64, offset: 220, length: 96);
+
         expect(
-          fixture.controller.backendForFamily(
-            PianoRollInteractionFamily.selectionBox,
-          ),
-          equals(PianoRollInteractionBackend.stateMachine),
+          fixture.classifyPointerDown(key: 59.5, offset: 80, ctrl: true),
+          equals(PianoRollInteractionFamily.selectionBox),
         );
         expect(
-          fixture.controller.backendForFamily(PianoRollInteractionFamily.erase),
-          equals(PianoRollInteractionBackend.stateMachine),
+          fixture.classifyPointerDown(
+            key: 60.5,
+            offset: 100,
+            noteUnderCursor: moveNote.id,
+          ),
+          equals(PianoRollInteractionFamily.moveNotes),
         );
         expect(
-          fixture.controller.backendForFamily(
-            PianoRollInteractionFamily.moveNotes,
+          fixture.classifyPointerDown(
+            key: 64.5,
+            offset: 316,
+            noteUnderCursor: resizeNote.id,
+            isResize: true,
           ),
-          equals(PianoRollInteractionBackend.stateMachine),
+          equals(PianoRollInteractionFamily.resizeNotes),
         );
         expect(
-          fixture.controller.backendForFamily(
-            PianoRollInteractionFamily.resizeNotes,
-          ),
-          equals(PianoRollInteractionBackend.stateMachine),
+          fixture.classifyPointerDown(key: 60.5, offset: 100),
+          equals(PianoRollInteractionFamily.createNote),
         );
         expect(
-          fixture.controller.backendForFamily(
-            PianoRollInteractionFamily.createNote,
+          fixture.classifyPointerDown(
+            key: 60.5,
+            offset: 100,
+            noteUnderCursor: moveNote.id,
+            buttons: kSecondaryMouseButton,
           ),
-          equals(PianoRollInteractionBackend.stateMachine),
+          equals(PianoRollInteractionFamily.erase),
         );
       },
     );
@@ -633,10 +665,6 @@ void main() {
         equals(PianoRollInteractionFamily.selectionBox),
       );
       expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
-      );
-      expect(
         fixture.stateMachine.currentState,
         same(fixture.selectionBoxState),
       );
@@ -646,10 +674,6 @@ void main() {
       expect(
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.selectionBox),
-      );
-      expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
       );
       expect(fixture.viewModel.selectionBox, isNotNull);
       expect(
@@ -661,7 +685,6 @@ void main() {
 
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
-      expect(fixture.activeInteractionBackend, isNull);
     });
 
     test('pointer cancel clears the latched route', () {
@@ -673,17 +696,12 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.moveNotes),
       );
-      expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
-      );
       expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
 
       fixture.pointerCancel(key: 61.5, offset: 173.8, alt: true);
 
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
-      expect(fixture.activeInteractionBackend, isNull);
     });
 
     test('erase routing latches a machine route until pointer up', () {
@@ -700,10 +718,6 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.erase),
       );
-      expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
-      );
       expect(fixture.stateMachine.currentState, same(fixture.eraseNotesState));
 
       fixture.pointerMove(key: 60.5, offset: 120);
@@ -714,7 +728,6 @@ void main() {
 
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
-      expect(fixture.activeInteractionBackend, isNull);
     });
 
     test('move routing latches a machine route until pointer up', () {
@@ -725,10 +738,6 @@ void main() {
       expect(
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.moveNotes),
-      );
-      expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
       );
       expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
       expect(fixture.stateMachine.adaptedPointerMoveCount, equals(0));
@@ -746,7 +755,6 @@ void main() {
       expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
-      expect(fixture.activeInteractionBackend, isNull);
     });
 
     test('resize routing latches a machine route until pointer up', () {
@@ -763,10 +771,6 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.resizeNotes),
       );
-      expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
-      );
       expect(fixture.stateMachine.currentState, same(fixture.resizeNotesState));
       expect(fixture.resizeNotesState.sessionData, isNotNull);
 
@@ -778,7 +782,6 @@ void main() {
 
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
-      expect(fixture.activeInteractionBackend, isNull);
     });
 
     test('create routing latches a machine route until pointer up', () {
@@ -787,10 +790,6 @@ void main() {
       expect(
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.createNote),
-      );
-      expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
       );
       expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
@@ -806,7 +805,6 @@ void main() {
       expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
-      expect(fixture.activeInteractionBackend, isNull);
     });
 
     test('negative-time create does not initialize a create-note session', () {
@@ -816,10 +814,6 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.createNote),
       );
-      expect(
-        fixture.activeInteractionBackend,
-        equals(PianoRollInteractionBackend.stateMachine),
-      );
       expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
       expect(fixture.createNoteState.sessionData, isNull);
       expect(fixture.notes, isEmpty);
@@ -828,7 +822,6 @@ void main() {
 
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
-      expect(fixture.activeInteractionBackend, isNull);
     });
   });
 

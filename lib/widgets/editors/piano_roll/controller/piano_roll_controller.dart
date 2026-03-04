@@ -41,7 +41,8 @@ import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 part 'shortcuts.dart';
-part 'pointer_events.dart';
+
+const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
 
 enum PianoRollInteractionFamily {
   selectionBox,
@@ -51,20 +52,8 @@ enum PianoRollInteractionFamily {
   createNote,
 }
 
-enum PianoRollInteractionBackend { legacy, stateMachine }
-
-class _PianoRollInteractionRoute {
-  final PianoRollInteractionFamily family;
-  final PianoRollInteractionBackend backend;
-
-  const _PianoRollInteractionRoute({
-    required this.family,
-    required this.backend,
-  });
-}
-
 class PianoRollController extends _PianoRollController
-    with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin
+    with _PianoRollShortcutsMixin
     implements DisposableService {
   @override
   PianoRollController({required super.project, required super.viewModel}) {
@@ -83,19 +72,7 @@ class _PianoRollController {
     controller: this as PianoRollController,
   );
   bool _isDisposed = false;
-  final Map<PianoRollInteractionFamily, PianoRollInteractionBackend>
-  _interactionBackends = {
-    PianoRollInteractionFamily.selectionBox:
-        PianoRollInteractionBackend.stateMachine,
-    PianoRollInteractionFamily.erase: PianoRollInteractionBackend.stateMachine,
-    PianoRollInteractionFamily.moveNotes:
-        PianoRollInteractionBackend.stateMachine,
-    PianoRollInteractionFamily.resizeNotes:
-        PianoRollInteractionBackend.stateMachine,
-    PianoRollInteractionFamily.createNote:
-        PianoRollInteractionBackend.stateMachine,
-  };
-  _PianoRollInteractionRoute? _activeInteractionRoute;
+  PianoRollInteractionFamily? _activeInteractionFamily;
 
   _PianoRollController({required this.project, required this.viewModel})
     : liveNotes = PianoRollLiveNotes(project);
@@ -113,26 +90,7 @@ class _PianoRollController {
 
   @visibleForTesting
   PianoRollInteractionFamily? get activeInteractionFamily =>
-      _activeInteractionRoute?.family;
-
-  @visibleForTesting
-  PianoRollInteractionBackend? get activeInteractionBackend =>
-      _activeInteractionRoute?.backend;
-
-  @visibleForTesting
-  PianoRollInteractionBackend backendForFamily(
-    PianoRollInteractionFamily family,
-  ) {
-    return _interactionBackends[family]!;
-  }
-
-  @visibleForTesting
-  void setInteractionBackendForTesting(
-    PianoRollInteractionFamily family,
-    PianoRollInteractionBackend backend,
-  ) {
-    _interactionBackends[family] = backend;
-  }
+      _activeInteractionFamily;
 
   PianoRollInteractionFamily? classifyPointerDownInteraction(
     PianoRollPointerDownEvent event,
@@ -171,7 +129,7 @@ class _PianoRollController {
   }
 
   void _clearActiveInteractionRoute() {
-    _activeInteractionRoute = null;
+    _activeInteractionFamily = null;
   }
 
   void pointerDown(PianoRollPointerDownEvent event) {
@@ -181,47 +139,25 @@ class _PianoRollController {
       return;
     }
 
-    final backend = _interactionBackends[family]!;
-    _activeInteractionRoute = _PianoRollInteractionRoute(
-      family: family,
-      backend: backend,
-    );
-
-    switch (backend) {
-      case PianoRollInteractionBackend.legacy:
-        (this as PianoRollController).legacyPointerDown(event);
-      case PianoRollInteractionBackend.stateMachine:
-        stateMachine.onAdaptedPointerDown(event);
-    }
+    _activeInteractionFamily = family;
+    stateMachine.onAdaptedPointerDown(event);
   }
 
   void pointerMove(PianoRollPointerMoveEvent event) {
-    final route = _activeInteractionRoute;
-    if (route == null) {
+    if (_activeInteractionFamily == null) {
       return;
     }
 
-    switch (route.backend) {
-      case PianoRollInteractionBackend.legacy:
-        (this as PianoRollController).legacyPointerMove(event);
-      case PianoRollInteractionBackend.stateMachine:
-        stateMachine.onAdaptedPointerMove(event);
-    }
+    stateMachine.onAdaptedPointerMove(event);
   }
 
   void pointerUp(PianoRollPointerUpEvent event) {
-    final route = _activeInteractionRoute;
-    if (route == null) {
+    if (_activeInteractionFamily == null) {
       return;
     }
 
     try {
-      switch (route.backend) {
-        case PianoRollInteractionBackend.legacy:
-          (this as PianoRollController).legacyPointerUp(event);
-        case PianoRollInteractionBackend.stateMachine:
-          stateMachine.onAdaptedPointerUp(event);
-      }
+      stateMachine.onAdaptedPointerUp(event);
     } finally {
       _clearActiveInteractionRoute();
     }
