@@ -468,6 +468,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
           onPointerDown: handlePointerDown,
           onPointerMove: handlePointerMove,
           onPointerUp: handlePointerUp,
+          onPointerCancel: handlePointerUp,
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
