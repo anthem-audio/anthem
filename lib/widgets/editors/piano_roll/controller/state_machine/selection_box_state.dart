@@ -89,9 +89,7 @@ class PianoRollSelectionBoxState
       Point(dragCurrentContext.offset, dragCurrentContext.key),
     );
 
-    final notesInSelection = parentState
-        .activePattern
-        .notes
+    final notesInSelection = parentState.activePattern.notes
         .where(
           (note) => rectanglesIntersect(
             viewModel.selectionBox!,
