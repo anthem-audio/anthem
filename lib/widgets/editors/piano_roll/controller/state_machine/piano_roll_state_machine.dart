@@ -24,7 +24,6 @@ import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
@@ -57,17 +56,6 @@ class _PianoRollPointerMoveSignal extends _PianoRollPointerSignal {
 
 class _PianoRollPointerUpSignal extends _PianoRollPointerSignal {
   const _PianoRollPointerUpSignal();
-}
-
-bool _isPianoRollNoteInteractionFamily(PianoRollInteractionFamily? family) {
-  return switch (family) {
-    PianoRollInteractionFamily.moveNotes ||
-    PianoRollInteractionFamily.resizeNotes ||
-    PianoRollInteractionFamily.createNote => true,
-    null ||
-    PianoRollInteractionFamily.selectionBox ||
-    PianoRollInteractionFamily.erase => false,
-  };
 }
 
 class PianoRollActivePointer {
@@ -130,18 +118,14 @@ class PianoRollStateMachine
       ..renderedKeyValueAtTop = viewModel.keyValueAtTop;
     final idleState = PianoRollIdleState();
     final pointerSessionState = PianoRollPointerSessionState(idleState);
-    final noteInteractionState = PianoRollNoteInteractionState(
-      pointerSessionState,
-    );
     final selectionBoxState = PianoRollSelectionBoxState(pointerSessionState);
     final eraseNotesState = PianoRollEraseNotesState(pointerSessionState);
-    final moveNotesState = PianoRollMoveNotesState(noteInteractionState);
-    final resizeNotesState = PianoRollResizeNotesState(noteInteractionState);
-    final createNoteState = PianoRollCreateNoteState(noteInteractionState);
+    final moveNotesState = PianoRollMoveNotesState(pointerSessionState);
+    final resizeNotesState = PianoRollResizeNotesState(pointerSessionState);
+    final createNoteState = PianoRollCreateNoteState(pointerSessionState);
     final states = <EditorStateMachineState<PianoRollStateMachineData>>[
       idleState,
       pointerSessionState,
-      noteInteractionState,
       selectionBoxState,
       eraseNotesState,
       moveNotesState,
@@ -156,16 +140,6 @@ class PianoRollStateMachine
       project: project,
       viewModel: viewModel,
       controller: controller,
-    );
-  }
-
-  @visibleForTesting
-  PianoRollPointerContext resolvePointerContextForPosition(
-    Offset localPosition,
-  ) {
-    return data.resolvePointerContext(
-      viewModel: viewModel,
-      localPosition: localPosition,
     );
   }
 
@@ -191,6 +165,24 @@ class PianoRollStateMachine
     data.renderedTimeViewEnd = timeViewEnd;
     data.renderedKeyHeight = keyHeight;
     data.renderedKeyValueAtTop = keyValueAtTop;
+    notifyDataUpdated();
+  }
+
+  void modifierPressed(PianoRollModifierKey modifier) {
+    if (data.isModifierPressed(modifier)) {
+      return;
+    }
+
+    data.setModifier(modifier, true);
+    notifyDataUpdated();
+  }
+
+  void modifierReleased(PianoRollModifierKey modifier) {
+    if (!data.isModifierPressed(modifier)) {
+      return;
+    }
+
+    data.setModifier(modifier, false);
     notifyDataUpdated();
   }
 
@@ -230,15 +222,15 @@ class PianoRollStateMachine
     return null;
   }
 
-  void onPointerDown(
-    PointerDownEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    data.handlePointerDown(event, keyboardModifiers: keyboardModifiers);
+  void onPointerDown(PointerDownEvent event) {
+    data.handlePointerDown(event);
     final family = _classifyPointerDownInteraction(
       buttons: event.buttons,
       ctrlPressed: data.isCtrlPressed,
-      context: resolvePointerContextForPosition(event.localPosition),
+      context: data.resolvePointerContext(
+        viewModel: viewModel,
+        localPosition: event.localPosition,
+      ),
     );
     if (family == null) {
       data.clearInteractionSession();
@@ -249,11 +241,8 @@ class PianoRollStateMachine
     emitSignal(const _PianoRollPointerDownSignal());
   }
 
-  void onPointerMove(
-    PointerMoveEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    data.handlePointerMove(event, keyboardModifiers: keyboardModifiers);
+  void onPointerMove(PointerMoveEvent event) {
+    data.handlePointerMove(event);
     if (!data.hasActiveInteractionSession) {
       return;
     }
@@ -261,12 +250,9 @@ class PianoRollStateMachine
     emitSignal(const _PianoRollPointerMoveSignal());
   }
 
-  void onPointerUp(
-    PointerEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
+  void onPointerUp(PointerEvent event) {
     final hadActiveInteractionSession = data.hasActiveInteractionSession;
-    data.handlePointerUp(event, keyboardModifiers: keyboardModifiers);
+    data.handlePointerUp(event);
     if (!hadActiveInteractionSession) {
       return;
     }
@@ -305,18 +291,26 @@ class PianoRollStateMachineData {
     return pointers[pointerId];
   }
 
-  void _syncKeyboardModifiers(KeyboardModifiers keyboardModifiers) {
-    isCtrlPressed = keyboardModifiers.ctrl;
-    isAltPressed = keyboardModifiers.alt;
-    isShiftPressed = keyboardModifiers.shift;
+  bool isModifierPressed(PianoRollModifierKey modifier) {
+    return switch (modifier) {
+      PianoRollModifierKey.ctrl => isCtrlPressed,
+      PianoRollModifierKey.alt => isAltPressed,
+      PianoRollModifierKey.shift => isShiftPressed,
+    };
   }
 
-  void handlePointerDown(
-    PointerDownEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    _syncKeyboardModifiers(keyboardModifiers);
+  void setModifier(PianoRollModifierKey modifier, bool isPressed) {
+    switch (modifier) {
+      case PianoRollModifierKey.ctrl:
+        isCtrlPressed = isPressed;
+      case PianoRollModifierKey.alt:
+        isAltPressed = isPressed;
+      case PianoRollModifierKey.shift:
+        isShiftPressed = isPressed;
+    }
+  }
 
+  void handlePointerDown(PointerDownEvent event) {
     final position = event.localPosition;
     pointers[event.pointer] = PianoRollActivePointer(position.dx, position.dy);
 
@@ -327,12 +321,7 @@ class PianoRollStateMachineData {
     );
   }
 
-  void handlePointerMove(
-    PointerMoveEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    _syncKeyboardModifiers(keyboardModifiers);
-
+  void handlePointerMove(PointerMoveEvent event) {
     final pointer = pointers[event.pointer];
     if (pointer == null) {
       return;
@@ -343,12 +332,7 @@ class PianoRollStateMachineData {
     pointer.y = position.dy;
   }
 
-  void handlePointerUp(
-    PointerEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    _syncKeyboardModifiers(keyboardModifiers);
-
+  void handlePointerUp(PointerEvent event) {
     final pointerId = event.pointer;
     pointers.remove(pointerId);
 
@@ -521,7 +505,7 @@ class PianoRollPointerSessionState
   PianoRollPointerSessionState(super.parentState);
 }
 
-class PianoRollNoteInteractionState
+abstract class PianoRollNoteInteractionState
     extends EditorStateMachineState<PianoRollStateMachineData> {
   @override
   PianoRollPointerSessionState get parentState =>
@@ -690,7 +674,8 @@ class PianoRollNoteInteractionState
               (interactionState.isShiftPressed ? 0 : keyOffsetFromEventStart),
           offset:
               sessionData.startTimes[noteId]! +
-              (!interactionState.isShiftPressed && interactionState.isCtrlPressed
+              (!interactionState.isShiftPressed &&
+                      interactionState.isCtrlPressed
                   ? 0
                   : timeOffsetFromEventStart),
         ));
@@ -739,27 +724,6 @@ class PianoRollNoteInteractionState
           .toList(growable: false),
     );
   }
-
-  @override
-  Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
-  get transitions => [
-    .new(
-      name: 'Enter note interaction',
-      from: PianoRollPointerSessionState,
-      to: PianoRollNoteInteractionState,
-      canTransition: ({required data, required event, required currentState}) =>
-          _isPianoRollNoteInteractionFamily(data.activeInteractionFamily) &&
-          event is EditorStateMachineSignalEvent &&
-          event.signal is _PianoRollPointerDownSignal,
-    ),
-    .new(
-      name: 'Exit note interaction',
-      from: PianoRollNoteInteractionState,
-      to: PianoRollPointerSessionState,
-      canTransition: ({required data, required event, required currentState}) =>
-          !_isPianoRollNoteInteractionFamily(data.activeInteractionFamily),
-    ),
-  ];
 
   PianoRollNoteInteractionState(super.parentState);
 }

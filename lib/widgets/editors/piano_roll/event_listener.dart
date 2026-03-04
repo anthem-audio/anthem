@@ -54,17 +54,99 @@ class PianoRollEventListener extends StatefulWidget {
 }
 
 class _PianoRollEventListenerState extends State<PianoRollEventListener> {
+  KeyboardModifiers? _keyboardModifiers;
+  PianoRollController? _controller;
+  bool _ctrlPressed = false;
+  bool _altPressed = false;
+  bool _shiftPressed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final nextKeyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
+    if (!identical(_keyboardModifiers, nextKeyboardModifiers)) {
+      _keyboardModifiers?.removeListener(_handleKeyboardModifiersChanged);
+      _keyboardModifiers = nextKeyboardModifiers
+        ..addListener(_handleKeyboardModifiersChanged);
+    }
+
+    final nextController = Provider.of<PianoRollController>(
+      context,
+      listen: false,
+    );
+    final didControllerChange = !identical(_controller, nextController);
+    _controller = nextController;
+
+    if (didControllerChange) {
+      _ctrlPressed = false;
+      _altPressed = false;
+      _shiftPressed = false;
+    }
+
+    _handleKeyboardModifiersChanged();
+  }
+
+  @override
+  void dispose() {
+    _keyboardModifiers?.removeListener(_handleKeyboardModifiersChanged);
+    super.dispose();
+  }
+
+  void _syncModifier({
+    required PianoRollModifierKey modifier,
+    required bool isPressed,
+    required bool wasPressed,
+  }) {
+    final controller = _controller;
+    if (controller == null || isPressed == wasPressed) {
+      return;
+    }
+
+    if (isPressed) {
+      controller.modifierPressed(modifier);
+    } else {
+      controller.modifierReleased(modifier);
+    }
+  }
+
+  void _handleKeyboardModifiersChanged() {
+    final keyboardModifiers = _keyboardModifiers;
+    if (keyboardModifiers == null) {
+      return;
+    }
+
+    _syncModifier(
+      modifier: PianoRollModifierKey.ctrl,
+      isPressed: keyboardModifiers.ctrl,
+      wasPressed: _ctrlPressed,
+    );
+    _syncModifier(
+      modifier: PianoRollModifierKey.alt,
+      isPressed: keyboardModifiers.alt,
+      wasPressed: _altPressed,
+    );
+    _syncModifier(
+      modifier: PianoRollModifierKey.shift,
+      isPressed: keyboardModifiers.shift,
+      wasPressed: _shiftPressed,
+    );
+
+    _ctrlPressed = keyboardModifiers.ctrl;
+    _altPressed = keyboardModifiers.alt;
+    _shiftPressed = keyboardModifiers.shift;
+  }
+
   void handlePointerDown(BuildContext context, PointerDownEvent e) {
     if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
       return;
     }
 
     final controller = Provider.of<PianoRollController>(context, listen: false);
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-    controller.pointerDown(e, keyboardModifiers: keyboardModifiers);
+    controller.pointerDown(e);
   }
 
   void handlePointerMove(BuildContext context, PointerMoveEvent e) {
@@ -73,20 +155,12 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     }
 
     final controller = Provider.of<PianoRollController>(context, listen: false);
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-    controller.pointerMove(e, keyboardModifiers: keyboardModifiers);
+    controller.pointerMove(e);
   }
 
   void handlePointerUp(BuildContext context, PointerEvent e) {
     final controller = Provider.of<PianoRollController>(context, listen: false);
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-    controller.pointerUp(e, keyboardModifiers: keyboardModifiers);
+    controller.pointerUp(e);
   }
 
   var _panPointerYStart = double.nan;

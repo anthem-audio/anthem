@@ -37,21 +37,7 @@ class PianoRollResizeNotesSessionData {
   });
 }
 
-class PianoRollResizeNotesState
-    extends EditorStateMachineState<PianoRollStateMachineData> {
-  @override
-  PianoRollNoteInteractionState get parentState =>
-      super.parentState as PianoRollNoteInteractionState;
-
-  PianoRollStateMachine get pianoRollStateMachine =>
-      stateMachine as PianoRollStateMachine;
-
-  PianoRollStateMachineData get interactionState => pianoRollStateMachine.data;
-
-  ProjectModel get project => pianoRollStateMachine.project;
-  PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
-  PianoRollController get controller => pianoRollStateMachine.controller;
-
+class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
   PianoRollResizeNotesSessionData? _sessionData;
   Map<Id, PianoRollResizeNotePreview>? _preview;
 
@@ -124,12 +110,12 @@ class PianoRollResizeNotesState
     );
 
     if (!interactionState.isAltPressed) {
-      snappedOriginalTime = parentState.snapTimeInActivePattern(
+      snappedOriginalTime = snapTimeInActivePattern(
         rawTime: sessionData.pointerStartOffset.floor(),
         round: true,
       );
 
-      snappedEventTime = parentState.snapTimeInActivePattern(
+      snappedEventTime = snapTimeInActivePattern(
         rawTime: currentOffset.floor(),
         round: true,
       );
@@ -241,7 +227,7 @@ class PianoRollResizeNotesState
     }
 
     viewModel.pressedNote = pressedNote.id;
-    parentState.setCursorNoteParameters(pressedNote);
+    setCursorNoteParameters(pressedNote);
 
     final notesToResize = isSelectionResize
         ? pattern.notes.where(
@@ -278,7 +264,7 @@ class PianoRollResizeNotesState
   get transitions => [
     .new(
       name: 'Delegate pointer session to resize notes',
-      from: PianoRollNoteInteractionState,
+      from: PianoRollPointerSessionState,
       to: PianoRollResizeNotesState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
@@ -288,7 +274,7 @@ class PianoRollResizeNotesState
     .new(
       name: 'Exit resize notes',
       from: PianoRollResizeNotesState,
-      to: PianoRollNoteInteractionState,
+      to: PianoRollPointerSessionState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily !=
           PianoRollInteractionFamily.resizeNotes,
@@ -309,10 +295,7 @@ class PianoRollResizeNotesState
   void onActive({required EditorStateMachineEvent event}) {
     final sessionData = _sessionData;
     final currentOffset = parentState.currentOffset;
-    if (event is! EditorStateMachineSignalEvent ||
-        event.signal is! _PianoRollPointerMoveSignal ||
-        sessionData == null ||
-        currentOffset == null) {
+    if (sessionData == null || currentOffset == null) {
       return;
     }
 
@@ -334,10 +317,7 @@ class PianoRollResizeNotesState
     final preview = _preview;
     if (sessionData != null && preview != null) {
       project.push(
-        _buildResizeNotesCommand(
-          sessionData: sessionData,
-          preview: preview,
-        ),
+        _buildResizeNotesCommand(sessionData: sessionData, preview: preview),
         execute: true,
       );
     }

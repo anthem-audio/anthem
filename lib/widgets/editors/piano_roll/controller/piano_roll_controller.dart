@@ -23,7 +23,6 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_live_notes.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
@@ -45,6 +44,8 @@ enum PianoRollInteractionFamily {
   resizeNotes,
   createNote,
 }
+
+enum PianoRollModifierKey { ctrl, alt, shift }
 
 typedef PianoRollMoveNotePreview = ({int key, Time offset});
 typedef PianoRollResizeNotePreview = ({Time length});
@@ -91,25 +92,24 @@ class _PianoRollController {
   PianoRollInteractionFamily? get activeInteractionFamily =>
       stateMachine.data.activeInteractionFamily;
 
-  void pointerDown(
-    PointerDownEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    stateMachine.onPointerDown(event, keyboardModifiers: keyboardModifiers);
+  void modifierPressed(PianoRollModifierKey modifier) {
+    stateMachine.modifierPressed(modifier);
   }
 
-  void pointerMove(
-    PointerMoveEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    stateMachine.onPointerMove(event, keyboardModifiers: keyboardModifiers);
+  void modifierReleased(PianoRollModifierKey modifier) {
+    stateMachine.modifierReleased(modifier);
   }
 
-  void pointerUp(
-    PointerEvent event, {
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    stateMachine.onPointerUp(event, keyboardModifiers: keyboardModifiers);
+  void pointerDown(PointerDownEvent event) {
+    stateMachine.onPointerDown(event);
+  }
+
+  void pointerMove(PointerMoveEvent event) {
+    stateMachine.onPointerMove(event);
+  }
+
+  void pointerUp(PointerEvent event) {
+    stateMachine.onPointerUp(event);
   }
 
   void onRenderedViewMetricsChanged({
@@ -246,5 +246,4 @@ class _PianoRollController {
       pattern.notes.map((note) => note.id).toSet(),
     );
   }
-
 }

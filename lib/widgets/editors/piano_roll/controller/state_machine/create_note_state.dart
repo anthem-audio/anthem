@@ -29,21 +29,7 @@ class PianoRollCreateNoteSessionData {
   });
 }
 
-class PianoRollCreateNoteState
-    extends EditorStateMachineState<PianoRollStateMachineData> {
-  @override
-  PianoRollNoteInteractionState get parentState =>
-      super.parentState as PianoRollNoteInteractionState;
-
-  PianoRollStateMachine get pianoRollStateMachine =>
-      stateMachine as PianoRollStateMachine;
-
-  PianoRollStateMachineData get interactionState => pianoRollStateMachine.data;
-
-  ProjectModel get project => pianoRollStateMachine.project;
-  PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
-  PianoRollController get controller => pianoRollStateMachine.controller;
-
+class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
   PianoRollCreateNoteSessionData? _sessionData;
   Map<Id, PianoRollMoveNotePreview>? _preview;
 
@@ -69,7 +55,7 @@ class PianoRollCreateNoteState
 
     final targetTime = interactionState.isAltPressed
         ? eventTime
-        : parentState.snapTimeInActivePattern(rawTime: eventTime);
+        : snapTimeInActivePattern(rawTime: eventTime);
 
     return PianoRollTransientNote(
       id: getId(),
@@ -103,7 +89,7 @@ class PianoRollCreateNoteState
           pan: transientNote.pan,
         );
 
-    parentState.syncLivePreviewForMoveSession(
+    syncLivePreviewForMoveSession(
       sessionData: sessionData.moveSessionData,
       preview: preview,
     );
@@ -134,7 +120,7 @@ class PianoRollCreateNoteState
     viewModel.pressedTransientNote = createdNote.id;
 
     final createdNoteSnapshot = createdNote.toNoteModel();
-    final moveSessionData = parentState.createMoveNotesSessionData(
+    final moveSessionData = createMoveNotesSessionData(
       pointerOffset: dragStartContext.offset,
       noteUnderCursor: createdNoteSnapshot,
       notesToMove: [createdNoteSnapshot],
@@ -151,7 +137,7 @@ class PianoRollCreateNoteState
 
     _applyPreview(
       sessionData: _sessionData!,
-      preview: parentState.createInitialMoveNotesPreview(moveSessionData),
+      preview: createInitialMoveNotesPreview(moveSessionData),
     );
   }
 
@@ -165,7 +151,7 @@ class PianoRollCreateNoteState
   get transitions => [
     .new(
       name: 'Delegate pointer session to create note',
-      from: PianoRollNoteInteractionState,
+      from: PianoRollPointerSessionState,
       to: PianoRollCreateNoteState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
@@ -175,7 +161,7 @@ class PianoRollCreateNoteState
     .new(
       name: 'Exit create note',
       from: PianoRollCreateNoteState,
-      to: PianoRollNoteInteractionState,
+      to: PianoRollPointerSessionState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily != PianoRollInteractionFamily.createNote,
     ),
@@ -196,17 +182,13 @@ class PianoRollCreateNoteState
     final sessionData = _sessionData;
     final currentKey = parentState.currentKey;
     final currentOffset = parentState.currentOffset;
-    if (event is! EditorStateMachineSignalEvent ||
-        event.signal is! _PianoRollPointerMoveSignal ||
-        sessionData == null ||
-        currentKey == null ||
-        currentOffset == null) {
+    if (sessionData == null || currentKey == null || currentOffset == null) {
       return;
     }
 
     _applyPreview(
       sessionData: sessionData,
-      preview: parentState.resolveMoveNotesSessionPreview(
+      preview: resolveMoveNotesSessionPreview(
         key: currentKey,
         offset: currentOffset,
         sessionData: sessionData.moveSessionData,

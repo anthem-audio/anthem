@@ -32,7 +32,6 @@ import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
@@ -272,9 +271,6 @@ class _PianoRollStateMachineTestFixture {
   PianoRollPointerSessionState get pointerSessionState =>
       stateMachine.states[PianoRollPointerSessionState]!
           as PianoRollPointerSessionState;
-  PianoRollNoteInteractionState get noteInteractionState =>
-      stateMachine.states[PianoRollNoteInteractionState]!
-          as PianoRollNoteInteractionState;
   PianoRollSelectionBoxState get selectionBoxState =>
       stateMachine.states[PianoRollSelectionBoxState]!
           as PianoRollSelectionBoxState;
@@ -290,22 +286,30 @@ class _PianoRollStateMachineTestFixture {
       stateMachine.states[PianoRollCreateNoteState]!
           as PianoRollCreateNoteState;
 
-  KeyboardModifiers _keyboardModifiers({
-    bool ctrl = false,
-    bool alt = false,
-    bool shift = false,
-  }) {
-    final modifiers = KeyboardModifiers();
-    if (ctrl) {
-      modifiers.setCtrl(true);
+  void _setModifier(PianoRollModifierKey modifier, bool isPressed) {
+    if (stateMachine.data.isModifierPressed(modifier) == isPressed) {
+      return;
     }
-    if (alt) {
-      modifiers.setAlt(true);
+
+    if (isPressed) {
+      controller.modifierPressed(modifier);
+    } else {
+      controller.modifierReleased(modifier);
     }
-    if (shift) {
-      modifiers.setShift(true);
-    }
-    return modifiers;
+  }
+
+  void setModifiers({bool ctrl = false, bool alt = false, bool shift = false}) {
+    _setModifier(PianoRollModifierKey.ctrl, ctrl);
+    _setModifier(PianoRollModifierKey.alt, alt);
+    _setModifier(PianoRollModifierKey.shift, shift);
+  }
+
+  void modifierPressed(PianoRollModifierKey modifier) {
+    _setModifier(modifier, true);
+  }
+
+  void modifierReleased(PianoRollModifierKey modifier) {
+    _setModifier(modifier, false);
   }
 
   NoteModel addNote({
@@ -445,6 +449,7 @@ class _PianoRollStateMachineTestFixture {
     int pointer = 1,
   }) {
     syncRenderedViewMetrics();
+    setModifiers(ctrl: ctrl, alt: alt, shift: shift);
     _seedContentUnderCursor(
       localPosition: localPosition,
       noteUnderCursor: noteUnderCursor,
@@ -457,7 +462,6 @@ class _PianoRollStateMachineTestFixture {
         position: localPosition,
         buttons: buttons,
       ),
-      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -494,12 +498,12 @@ class _PianoRollStateMachineTestFixture {
     int pointer = 1,
   }) {
     syncRenderedViewMetrics();
+    setModifiers(ctrl: ctrl, alt: alt, shift: shift);
     final localPosition = _localPositionFor(key: key, offset: offset);
     _seedContentUnderCursor(localPosition: localPosition);
 
     controller.pointerMove(
       PointerMoveEvent(pointer: pointer, position: localPosition),
-      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -512,12 +516,12 @@ class _PianoRollStateMachineTestFixture {
     int pointer = 1,
   }) {
     syncRenderedViewMetrics();
+    setModifiers(ctrl: ctrl, alt: alt, shift: shift);
     final localPosition = _localPositionFor(key: key, offset: offset);
     _seedContentUnderCursor(localPosition: localPosition);
 
     controller.pointerUp(
       PointerUpEvent(pointer: pointer, position: localPosition),
-      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -530,12 +534,12 @@ class _PianoRollStateMachineTestFixture {
     int pointer = 1,
   }) {
     syncRenderedViewMetrics();
+    setModifiers(ctrl: ctrl, alt: alt, shift: shift);
     final localPosition = _localPositionFor(key: key, offset: offset);
     _seedContentUnderCursor(localPosition: localPosition);
 
     controller.pointerUp(
       PointerCancelEvent(pointer: pointer, position: localPosition),
-      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -609,10 +613,6 @@ void main() {
       expect(fixture.stateMachine.controller, same(fixture.controller));
       expect(fixture.pointerSessionState.parentState, same(fixture.idleState));
       expect(
-        fixture.noteInteractionState.parentState,
-        same(fixture.pointerSessionState),
-      );
-      expect(
         fixture.selectionBoxState.parentState,
         same(fixture.pointerSessionState),
       );
@@ -622,15 +622,15 @@ void main() {
       );
       expect(
         fixture.moveNotesState.parentState,
-        same(fixture.noteInteractionState),
+        same(fixture.pointerSessionState),
       );
       expect(
         fixture.resizeNotesState.parentState,
-        same(fixture.noteInteractionState),
+        same(fixture.pointerSessionState),
       );
       expect(
         fixture.createNoteState.parentState,
-        same(fixture.noteInteractionState),
+        same(fixture.pointerSessionState),
       );
     });
 
@@ -1443,6 +1443,34 @@ void main() {
 
       expect(fixture.noteById(note.id).offset, equals(155));
       expect(fixture.noteById(note.id).key, equals(61));
+    });
+
+    test('modifier changes during drag recompute the move preview', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 48);
+
+      fixture.pointerDown(key: 60.5, offset: 100, noteUnderCursor: note.id);
+      fixture.pointerMove(key: 61.5, offset: 155.9);
+
+      final snappedOffset = fixture.snappedTime(
+        155,
+        round: true,
+        startTime: 100,
+      );
+      expect(
+        fixture.viewModel.noteOverrides[note.id]?.offset,
+        equals(snappedOffset),
+      );
+
+      fixture.modifierPressed(PianoRollModifierKey.alt);
+
+      expect(fixture.viewModel.noteOverrides[note.id]?.offset, equals(155));
+
+      fixture.modifierReleased(PianoRollModifierKey.alt);
+
+      expect(
+        fixture.viewModel.noteOverrides[note.id]?.offset,
+        equals(snappedOffset),
+      );
     });
 
     test('holding shift during drag locks pitch changes', () {
