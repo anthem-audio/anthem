@@ -443,15 +443,34 @@ class _PianoRollContentState extends State<_PianoRollContent>
           ),
         );
 
-        return PianoRollEventListener(
-          child: _PianoRollCanvasCursor(
-            child: ClipRect(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [grid, notes, selectionBox, playhead],
-              ),
+        final eventListenerChild = _PianoRollCanvasCursor(
+          child: ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [grid, notes, selectionBox, playhead],
             ),
           ),
+        );
+
+        return AnimatedBuilder(
+          animation: timeViewAnimationHelper!.animationController,
+          child: eventListenerChild,
+          builder: (context, child) {
+            return AnimatedBuilder(
+              animation: keyValueAtTopAnimationHelper!.animationController,
+              child: child,
+              builder: (context, child) {
+                return PianoRollEventListener(
+                  viewSize: constraints.biggest,
+                  renderedTimeViewStart: timeViewStartAnimItem.animation.value,
+                  renderedTimeViewEnd: timeViewEndAnimItem.animation.value,
+                  renderedKeyHeight: viewModel.keyHeight,
+                  renderedKeyValueAtTop: keyValueAtTopAnimItem.animation.value,
+                  child: child!,
+                );
+              },
+            );
+          },
         );
       },
     );

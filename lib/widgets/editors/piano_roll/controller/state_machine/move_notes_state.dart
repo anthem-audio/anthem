@@ -90,24 +90,6 @@ class PianoRollMoveNotesState
   @visibleForTesting
   Map<Id, PianoRollMoveNotePreview>? get preview => _preview;
 
-  PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerDownSignal ? signal.event : null;
-  }
-
-  PianoRollPointerMoveEvent? _pointerMoveEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerMoveSignal ? signal.event : null;
-  }
-
   bool _isMovePointerSignal(EditorStateMachineEvent event) {
     return event is EditorStateMachineSignalEvent &&
         event.signal is _PianoRollAdaptedPointerSignal;
@@ -164,8 +146,9 @@ class PianoRollMoveNotesState
     );
   }
 
-  void _initializeSession(PianoRollPointerDownEvent event) {
-    final noteId = event.noteUnderCursor;
+  void _initializeSession() {
+    final dragStartContext = parentState.dragStartContext;
+    final noteId = parentState.dragStartRealNoteId;
     if (noteId == null) {
       throw StateError(
         'Move-note sessions require a note under the cursor on pointer down.',
@@ -186,7 +169,7 @@ class PianoRollMoveNotesState
     late final List<NoteModel> notesToMove;
 
     if (isSelectionMove) {
-      if (event.keyboardModifiers.shift) {
+      if (interactionState.isShiftPressed) {
         didDuplicateOnPointerDown = true;
 
         final newSelectedNotes = <Id>{};
@@ -240,7 +223,7 @@ class PianoRollMoveNotesState
       viewModel.selectedNotes.clear();
       viewModel.selectedTransientNotes.clear();
 
-      if (event.keyboardModifiers.shift) {
+      if (interactionState.isShiftPressed) {
         didDuplicateOnPointerDown = true;
 
         final transientNote = PianoRollTransientNote(
@@ -262,7 +245,7 @@ class PianoRollMoveNotesState
     }
 
     _sessionData = controller.createMoveNotesSessionData(
-      event: event,
+      pointerOffset: dragStartContext!.offset,
       noteUnderCursor: sessionPressedNote,
       notesToMove: notesToMove,
       isSelectionMove: isSelectionMove,
@@ -295,7 +278,7 @@ class PianoRollMoveNotesState
       from: PianoRollNoteInteractionState,
       to: PianoRollMoveNotesState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily ==
+          data.activeInteractionFamily ==
               PianoRollInteractionFamily.moveNotes &&
           _isMovePointerSignal(event),
     ),
@@ -304,8 +287,7 @@ class PianoRollMoveNotesState
       from: PianoRollMoveNotesState,
       to: PianoRollNoteInteractionState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily !=
-          PianoRollInteractionFamily.moveNotes,
+          data.activeInteractionFamily != PianoRollInteractionFamily.moveNotes,
     ),
   ];
 
@@ -316,26 +298,31 @@ class PianoRollMoveNotesState
     required EditorStateMachineEvent event,
     required EditorStateMachineState<PianoRollStateMachineData> from,
   }) {
-    final pointerDownEvent = _pointerDownEvent(event);
-    if (pointerDownEvent == null) {
-      return;
-    }
-
-    _initializeSession(pointerDownEvent);
+    _initializeSession();
   }
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
-    final pointerMoveEvent = _pointerMoveEvent(event);
     final sessionData = _sessionData;
-    if (pointerMoveEvent == null || sessionData == null) {
+    final currentKey = parentState.currentKey;
+    final currentOffset = parentState.currentOffset;
+    if (event is! EditorStateMachineSignalEvent ||
+        event.signal is! _PianoRollAdaptedPointerMoveSignal ||
+        sessionData == null ||
+        currentKey == null ||
+        currentOffset == null) {
       return;
     }
 
     _applyPreview(
       sessionData: sessionData,
       preview: controller.resolveMoveNotesSessionPreview(
-        event: pointerMoveEvent,
+        key: currentKey,
+        offset: currentOffset,
+        viewWidthInPixels: interactionState.viewSize.width,
+        altPressed: interactionState.isAltPressed,
+        shiftPressed: interactionState.isShiftPressed,
+        ctrlPressed: interactionState.isCtrlPressed,
         sessionData: sessionData,
       ),
     );

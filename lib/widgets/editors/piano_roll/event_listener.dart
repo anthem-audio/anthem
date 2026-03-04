@@ -36,8 +36,21 @@ import 'helpers.dart';
 
 class PianoRollEventListener extends StatefulWidget {
   final Widget child;
+  final Size viewSize;
+  final double renderedTimeViewStart;
+  final double renderedTimeViewEnd;
+  final double renderedKeyHeight;
+  final double renderedKeyValueAtTop;
 
-  const PianoRollEventListener({super.key, required this.child});
+  const PianoRollEventListener({
+    super.key,
+    required this.child,
+    required this.viewSize,
+    required this.renderedTimeViewStart,
+    required this.renderedTimeViewEnd,
+    required this.renderedKeyHeight,
+    required this.renderedKeyValueAtTop,
+  });
 
   @override
   State<PianoRollEventListener> createState() => _PianoRollEventListenerState();
@@ -49,43 +62,15 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       return;
     }
 
-    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pointerPos = contentRenderBox.globalToLocal(e.position);
-
     final controller = Provider.of<PianoRollController>(context, listen: false);
-
-    final (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor) =
-        viewModel.getContentUnderCursor(e.localPosition);
-
-    final note = pixelsToKeyValue(
-      keyHeight: viewModel.keyHeight,
-      keyValueAtTop: viewModel.keyValueAtTop,
-      pixelOffsetFromTop: pointerPos.dy,
-    );
-
-    final time = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
-      viewPixelWidth: context.size?.width ?? 1,
-      pixelOffsetFromLeft: pointerPos.dx,
-    );
-
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
       listen: false,
     );
 
     final event = PianoRollPointerDownEvent(
-      key: note,
-      offset: time,
       pointerEvent: e,
-      pianoRollSize: contentRenderBox.size,
-      noteUnderCursor:
-          noteUnderCursor?.metadata.realNoteId ??
-          resizeHandleUnderCursor?.metadata.realNoteId,
       keyboardModifiers: keyboardModifiers,
-      isResize: resizeHandleUnderCursor?.metadata.realNoteId != null,
     );
 
     controller.pointerDown(event);
@@ -96,31 +81,14 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       return;
     }
 
-    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pointerPos = contentRenderBox.globalToLocal(e.position);
-
     final controller = Provider.of<PianoRollController>(context, listen: false);
-
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
       listen: false,
     );
 
     final event = PianoRollPointerMoveEvent(
-      key: pixelsToKeyValue(
-        keyHeight: viewModel.keyHeight,
-        keyValueAtTop: viewModel.keyValueAtTop,
-        pixelOffsetFromTop: pointerPos.dy,
-      ),
-      offset: pixelsToTime(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-        viewPixelWidth: context.size?.width ?? 1,
-        pixelOffsetFromLeft: pointerPos.dx,
-      ),
       pointerEvent: e,
-      pianoRollSize: contentRenderBox.size,
       keyboardModifiers: keyboardModifiers,
     );
 
@@ -128,29 +96,14 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   }
 
   void handlePointerUp(BuildContext context, PointerEvent e) {
-    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final controller = Provider.of<PianoRollController>(context, listen: false);
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
       listen: false,
     );
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pointerPos = contentRenderBox.globalToLocal(e.position);
 
     final event = PianoRollPointerUpEvent(
-      key: pixelsToKeyValue(
-        keyHeight: viewModel.keyHeight,
-        keyValueAtTop: viewModel.keyValueAtTop,
-        pixelOffsetFromTop: pointerPos.dy,
-      ),
-      offset: pixelsToTime(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-        viewPixelWidth: context.size?.width ?? 1,
-        pixelOffsetFromLeft: pointerPos.dx,
-      ),
       pointerEvent: e,
-      pianoRollSize: contentRenderBox.size,
       keyboardModifiers: keyboardModifiers,
     );
 
@@ -163,6 +116,14 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
+    final controller = Provider.of<PianoRollController>(context);
+    controller.onRenderedViewMetricsChanged(
+      viewSize: widget.viewSize,
+      timeViewStart: widget.renderedTimeViewStart,
+      timeViewEnd: widget.renderedTimeViewEnd,
+      keyHeight: widget.renderedKeyHeight,
+      keyValueAtTop: widget.renderedKeyValueAtTop,
+    );
     return LayoutBuilder(
       builder: (context, boxConstraints) {
         return Observer(

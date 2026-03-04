@@ -23,13 +23,18 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
+import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 part 'create_note_state.dart';
@@ -77,6 +82,38 @@ bool _isPianoRollNoteInteractionFamily(PianoRollInteractionFamily? family) {
   };
 }
 
+class PianoRollActivePointer {
+  double x;
+  double y;
+
+  PianoRollActivePointer(this.x, this.y);
+
+  PianoRollActivePointer clone() => PianoRollActivePointer(x, y);
+
+  Offset toOffset() => Offset(x, y);
+}
+
+class PianoRollPointerContext {
+  final Offset localPosition;
+  final double key;
+  final double offset;
+  final PianoRollRenderedNoteRef? noteUnderCursor;
+  final PianoRollRenderedNoteRef? resizeHandleUnderCursor;
+
+  const PianoRollPointerContext({
+    required this.localPosition,
+    required this.key,
+    required this.offset,
+    required this.noteUnderCursor,
+    required this.resizeHandleUnderCursor,
+  });
+
+  Id? get realNoteUnderCursorId =>
+      noteUnderCursor?.realNoteId ?? resizeHandleUnderCursor?.realNoteId;
+
+  bool get isOverResizeHandle => resizeHandleUnderCursor?.realNoteId != null;
+}
+
 /// The long-term interaction state machine for the piano roll.
 ///
 /// This first scaffolding pass only establishes the state hierarchy and
@@ -105,7 +142,11 @@ class PianoRollStateMachine
     required PianoRollViewModel viewModel,
     required PianoRollController controller,
   }) {
-    final data = PianoRollStateMachineData();
+    final data = PianoRollStateMachineData()
+      ..renderedTimeViewStart = viewModel.timeView.start
+      ..renderedTimeViewEnd = viewModel.timeView.end
+      ..renderedKeyHeight = viewModel.keyHeight
+      ..renderedKeyValueAtTop = viewModel.keyValueAtTop;
     final idleState = PianoRollIdleState();
     final pointerSessionState = PianoRollPointerSessionState(idleState);
     final noteInteractionState = PianoRollNoteInteractionState(
@@ -146,36 +187,81 @@ class PianoRollStateMachine
   @visibleForTesting
   int get adaptedPointerUpCount => _adaptedPointerUpCount;
 
-  void onAdaptedPointerDown(PianoRollPointerDownEvent event) {
-    final family = controller.activeInteractionFamily;
-    if (family == null) {
+  @visibleForTesting
+  PianoRollPointerContext? resolvePointerContextForEvent(
+    PianoRollPointerEvent event,
+  ) {
+    return data.resolvePointerContext(
+      viewModel: viewModel,
+      localPosition: event.pointerEvent.localPosition,
+    );
+  }
+
+  void onRenderedViewMetricsChanged({
+    required Size viewSize,
+    required double timeViewStart,
+    required double timeViewEnd,
+    required double keyHeight,
+    required double keyValueAtTop,
+  }) {
+    final didChange =
+        data.viewSize != viewSize ||
+        data.renderedTimeViewStart != timeViewStart ||
+        data.renderedTimeViewEnd != timeViewEnd ||
+        data.renderedKeyHeight != keyHeight ||
+        data.renderedKeyValueAtTop != keyValueAtTop;
+    if (!didChange) {
       return;
     }
 
+    data.viewSize = viewSize;
+    data.renderedTimeViewStart = timeViewStart;
+    data.renderedTimeViewEnd = timeViewEnd;
+    data.renderedKeyHeight = keyHeight;
+    data.renderedKeyValueAtTop = keyValueAtTop;
+    notifyDataUpdated();
+  }
+
+  void onAdaptedPointerDown(PianoRollPointerDownEvent event) {
     _adaptedPointerDownCount++;
-    data.beginAdaptedPointerSession(family: family, downEvent: event);
+    data.handlePointerDown(event);
+    final context = resolvePointerContextForEvent(event);
+    final family = controller.classifyPointerDownInteraction(
+      buttons: event.pointerEvent.buttons,
+      ctrlPressed: data.isCtrlPressed,
+      isResizeHandle: context?.isOverResizeHandle ?? false,
+      realNoteUnderCursorId: context?.realNoteUnderCursorId,
+    );
+    if (family == null) {
+      data.clearInteractionSession();
+      return;
+    }
+
+    data.beginInteractionSession(family: family);
     emitSignal(
       _PianoRollAdaptedPointerDownSignal(family: family, event: event),
     );
   }
 
   void onAdaptedPointerMove(PianoRollPointerMoveEvent event) {
-    if (!data.hasActiveAdaptedPointerSession) {
+    data.handlePointerMove(event);
+    if (!data.hasActiveInteractionSession) {
       return;
     }
 
     _adaptedPointerMoveCount++;
-    data.handleAdaptedPointerMove(event);
     emitSignal(_PianoRollAdaptedPointerMoveSignal(event));
   }
 
   void onAdaptedPointerUp(PianoRollPointerUpEvent event) {
-    if (!data.hasActiveAdaptedPointerSession) {
+    final hadActiveInteractionSession = data.hasActiveInteractionSession;
+    data.handlePointerUp(event);
+    if (!hadActiveInteractionSession) {
       return;
     }
 
     _adaptedPointerUpCount++;
-    data.endAdaptedPointerSession(event);
+    data.clearInteractionSession();
     emitSignal(_PianoRollAdaptedPointerUpSignal(event));
   }
 }
@@ -186,31 +272,116 @@ class PianoRollStateMachine
 /// transform ownership here as gesture routing shifts from the legacy path to
 /// the machine.
 class PianoRollStateMachineData {
-  PianoRollInteractionFamily? activeAdaptedInteractionFamily;
-  PianoRollPointerDownEvent? adaptedPointerDownEvent;
-  PianoRollPointerMoveEvent? adaptedPointerMoveEvent;
-  PianoRollPointerUpEvent? adaptedPointerUpEvent;
+  bool isCtrlPressed = false;
+  bool isAltPressed = false;
+  bool isShiftPressed = false;
 
-  bool get hasActiveAdaptedPointerSession =>
-      activeAdaptedInteractionFamily != null;
+  Size viewSize = Size.zero;
+  Map<int, PianoRollActivePointer> pointers = {};
+  int? activePointerId;
+  PianoRollActivePointer? activePointerDownPosition;
+  Offset? lastPointerUpPosition;
 
-  void beginAdaptedPointerSession({
-    required PianoRollInteractionFamily family,
-    required PianoRollPointerDownEvent downEvent,
+  double renderedTimeViewStart = 0;
+  double renderedTimeViewEnd = 0;
+  double renderedKeyHeight = 0;
+  double renderedKeyValueAtTop = 0;
+
+  PianoRollInteractionFamily? activeInteractionFamily;
+
+  bool get hasActiveInteractionSession => activeInteractionFamily != null;
+
+  PianoRollActivePointer? get activePointer {
+    final pointerId = activePointerId;
+    if (pointerId == null) {
+      return null;
+    }
+
+    return pointers[pointerId];
+  }
+
+  void _syncKeyboardModifiers(KeyboardModifiers keyboardModifiers) {
+    isCtrlPressed = keyboardModifiers.ctrl;
+    isAltPressed = keyboardModifiers.alt;
+    isShiftPressed = keyboardModifiers.shift;
+  }
+
+  void handlePointerDown(PianoRollPointerDownEvent event) {
+    _syncKeyboardModifiers(event.keyboardModifiers);
+
+    final position = event.pointerEvent.localPosition;
+    pointers[event.pointerEvent.pointer] = PianoRollActivePointer(
+      position.dx,
+      position.dy,
+    );
+
+    if (event.pointerEvent is PointerDownEvent) {
+      activePointerId = event.pointerEvent.pointer;
+      activePointerDownPosition = PianoRollActivePointer(
+        position.dx,
+        position.dy,
+      );
+      lastPointerUpPosition = null;
+    }
+  }
+
+  void handlePointerMove(PianoRollPointerMoveEvent event) {
+    _syncKeyboardModifiers(event.keyboardModifiers);
+
+    final pointer = pointers[event.pointerEvent.pointer];
+    if (pointer == null) {
+      return;
+    }
+
+    final position = event.pointerEvent.localPosition;
+    pointer.x = position.dx;
+    pointer.y = position.dy;
+  }
+
+  void handlePointerUp(PianoRollPointerUpEvent event) {
+    _syncKeyboardModifiers(event.keyboardModifiers);
+
+    lastPointerUpPosition = event.pointerEvent.localPosition;
+    final pointerId = event.pointerEvent.pointer;
+    pointers.remove(pointerId);
+
+    if (activePointerId == pointerId) {
+      activePointerId = null;
+      activePointerDownPosition = null;
+    }
+  }
+
+  void beginInteractionSession({required PianoRollInteractionFamily family}) {
+    activeInteractionFamily = family;
+  }
+
+  void clearInteractionSession() {
+    activeInteractionFamily = null;
+  }
+
+  PianoRollPointerContext resolvePointerContext({
+    required PianoRollViewModel viewModel,
+    required Offset localPosition,
   }) {
-    activeAdaptedInteractionFamily = family;
-    adaptedPointerDownEvent = downEvent;
-    adaptedPointerMoveEvent = null;
-    adaptedPointerUpEvent = null;
-  }
+    final contentUnderCursor = viewModel.getContentUnderCursor(localPosition);
+    final viewWidth = max(viewSize.width, 1.0);
 
-  void handleAdaptedPointerMove(PianoRollPointerMoveEvent moveEvent) {
-    adaptedPointerMoveEvent = moveEvent;
-  }
-
-  void endAdaptedPointerSession(PianoRollPointerUpEvent upEvent) {
-    adaptedPointerUpEvent = upEvent;
-    activeAdaptedInteractionFamily = null;
+    return PianoRollPointerContext(
+      localPosition: localPosition,
+      key: pixelsToKeyValue(
+        keyHeight: renderedKeyHeight,
+        keyValueAtTop: renderedKeyValueAtTop,
+        pixelOffsetFromTop: localPosition.dy,
+      ),
+      offset: pixelsToTime(
+        timeViewStart: renderedTimeViewStart,
+        timeViewEnd: renderedTimeViewEnd,
+        viewPixelWidth: viewWidth,
+        pixelOffsetFromLeft: localPosition.dx,
+      ),
+      noteUnderCursor: contentUnderCursor.note?.metadata,
+      resizeHandleUnderCursor: contentUnderCursor.resizeHandle?.metadata,
+    );
   }
 }
 
@@ -240,6 +411,87 @@ class PianoRollPointerSessionState
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
   PianoRollController get controller => pianoRollStateMachine.controller;
 
+  int? activePointerId;
+  PianoRollActivePointer? dragStartPosition;
+  PianoRollActivePointer? dragCurrentPosition;
+  PianoRollPointerContext? dragStartContext;
+  PianoRollPointerContext? dragCurrentContext;
+  PianoRollPointerContext? lastPointerUpContext;
+  PianoRollInteractionFamily? latchedInteractionFamily;
+
+  @visibleForTesting
+  PianoRollPointerContext? get currentPointerContext => dragCurrentContext;
+
+  @visibleForTesting
+  PianoRollPointerContext? get startPointerContext => dragStartContext;
+
+  Id? get dragStartRealNoteId => dragStartContext?.realNoteUnderCursorId;
+
+  bool get dragStartIsResizeHandle =>
+      dragStartContext?.isOverResizeHandle ?? false;
+
+  double? get dragStartKey => dragStartContext?.key;
+  double? get dragStartOffset => dragStartContext?.offset;
+  double? get currentKey => dragCurrentContext?.key;
+  double? get currentOffset => dragCurrentContext?.offset;
+
+  void _syncPointerSessionContext() {
+    final nextActivePointerId = interactionState.activePointerId;
+
+    if (nextActivePointerId == null) {
+      activePointerId = null;
+      dragStartPosition = null;
+      dragCurrentPosition = null;
+      dragStartContext = null;
+      dragCurrentContext = null;
+
+      final lastPointerUpPosition = interactionState.lastPointerUpPosition;
+      lastPointerUpContext = lastPointerUpPosition == null
+          ? null
+          : interactionState.resolvePointerContext(
+              viewModel: viewModel,
+              localPosition: lastPointerUpPosition,
+            );
+      latchedInteractionFamily = interactionState.activeInteractionFamily;
+      return;
+    }
+
+    if (activePointerId != nextActivePointerId) {
+      activePointerId = nextActivePointerId;
+      dragStartPosition = interactionState.activePointerDownPosition?.clone();
+      final startPosition = dragStartPosition;
+      dragStartContext = startPosition == null
+          ? null
+          : interactionState.resolvePointerContext(
+              viewModel: viewModel,
+              localPosition: startPosition.toOffset(),
+            );
+    }
+
+    dragCurrentPosition = interactionState.activePointer?.clone();
+    final currentPosition = dragCurrentPosition;
+    dragCurrentContext = currentPosition == null
+        ? null
+        : interactionState.resolvePointerContext(
+            viewModel: viewModel,
+            localPosition: currentPosition.toOffset(),
+          );
+    latchedInteractionFamily = interactionState.activeInteractionFamily;
+  }
+
+  @override
+  void onEntry({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<PianoRollStateMachineData> from,
+  }) {
+    _syncPointerSessionContext();
+  }
+
+  @override
+  void onActive({required EditorStateMachineEvent event}) {
+    _syncPointerSessionContext();
+  }
+
   @override
   Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
   get transitions => [
@@ -248,14 +500,14 @@ class PianoRollPointerSessionState
       from: PianoRollIdleState,
       to: PianoRollPointerSessionState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.hasActiveAdaptedPointerSession,
+          data.hasActiveInteractionSession,
     ),
     .new(
       name: 'Exit adapted pointer session',
       from: PianoRollPointerSessionState,
       to: PianoRollIdleState,
       canTransition: ({required data, required event, required currentState}) =>
-          !data.hasActiveAdaptedPointerSession,
+          !data.hasActiveInteractionSession,
     ),
   ];
 
@@ -277,6 +529,16 @@ class PianoRollNoteInteractionState
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
   PianoRollController get controller => pianoRollStateMachine.controller;
 
+  PianoRollPointerContext? get dragStartContext => parentState.dragStartContext;
+  PianoRollPointerContext? get dragCurrentContext =>
+      parentState.dragCurrentContext;
+  Id? get dragStartRealNoteId => parentState.dragStartRealNoteId;
+  bool get dragStartIsResizeHandle => parentState.dragStartIsResizeHandle;
+  double? get dragStartKey => parentState.dragStartKey;
+  double? get dragStartOffset => parentState.dragStartOffset;
+  double? get currentKey => parentState.currentKey;
+  double? get currentOffset => parentState.currentOffset;
+
   @override
   Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
   get transitions => [
@@ -285,9 +547,7 @@ class PianoRollNoteInteractionState
       from: PianoRollPointerSessionState,
       to: PianoRollNoteInteractionState,
       canTransition: ({required data, required event, required currentState}) =>
-          _isPianoRollNoteInteractionFamily(
-            data.activeAdaptedInteractionFamily,
-          ) &&
+          _isPianoRollNoteInteractionFamily(data.activeInteractionFamily) &&
           event is EditorStateMachineSignalEvent &&
           event.signal is _PianoRollAdaptedPointerSignal,
     ),
@@ -296,9 +556,7 @@ class PianoRollNoteInteractionState
       from: PianoRollNoteInteractionState,
       to: PianoRollPointerSessionState,
       canTransition: ({required data, required event, required currentState}) =>
-          !_isPianoRollNoteInteractionFamily(
-            data.activeAdaptedInteractionFamily,
-          ),
+          !_isPianoRollNoteInteractionFamily(data.activeInteractionFamily),
     ),
   ];
 

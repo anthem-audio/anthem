@@ -51,34 +51,21 @@ class PianoRollEraseNotesState
   @visibleForTesting
   PianoRollEraseNotesSessionData? get sessionData => _sessionData;
 
-  PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
+  void _initializeSession() {
+    final dragStartContext = parentState.dragStartContext;
+    if (dragStartContext == null) {
+      return;
     }
 
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerDownSignal ? signal.event : null;
-  }
-
-  PianoRollPointerMoveEvent? _pointerMoveEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerMoveSignal ? signal.event : null;
-  }
-
-  void _initializeSession(PianoRollPointerDownEvent event) {
     project.startUndoGroup();
 
     _sessionData = PianoRollEraseNotesSessionData(
-      mostRecentPoint: Point(event.offset, event.key),
+      mostRecentPoint: Point(dragStartContext.offset, dragStartContext.key),
       notesDeleted: {},
       notesToTemporarilyIgnore: {},
     );
 
-    final noteId = event.noteUnderCursor;
+    final noteId = parentState.dragStartRealNoteId;
     if (noteId == null) {
       return;
     }
@@ -91,7 +78,7 @@ class PianoRollEraseNotesState
           note.id == noteId &&
           // Ignore events that come from the resize handle but aren't over
           // the note.
-          note.offset + note.length > event.offset;
+          note.offset + note.length > dragStartContext.offset;
 
       if (remove) {
         _sessionData!.notesDeleted.add(note);
@@ -102,18 +89,23 @@ class PianoRollEraseNotesState
     });
 
     _sessionData!.notesToTemporarilyIgnore.addAll(
-      controller.getNotesUnderCursor(notes, event.key, event.offset),
+      controller.getNotesUnderCursor(
+        notes,
+        dragStartContext.key,
+        dragStartContext.offset,
+      ),
     );
   }
 
-  void _handleMove(PianoRollPointerMoveEvent event) {
+  void _handleMove() {
     final sessionData = _sessionData;
-    if (sessionData == null) {
+    final dragCurrentContext = parentState.dragCurrentContext;
+    if (sessionData == null || dragCurrentContext == null) {
       return;
     }
 
     final notes = controller.requireActivePattern().notes;
-    final thisPoint = Point(event.offset, event.key);
+    final thisPoint = Point(dragCurrentContext.offset, dragCurrentContext.key);
 
     // We make a line between the previous event point and this point, and
     // we delete all notes that intersect that line.
@@ -169,8 +161,7 @@ class PianoRollEraseNotesState
       from: PianoRollPointerSessionState,
       to: PianoRollEraseNotesState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily ==
-              PianoRollInteractionFamily.erase &&
+          data.activeInteractionFamily == PianoRollInteractionFamily.erase &&
           event is EditorStateMachineSignalEvent &&
           event.signal is _PianoRollAdaptedPointerSignal,
     ),
@@ -179,8 +170,7 @@ class PianoRollEraseNotesState
       from: PianoRollEraseNotesState,
       to: PianoRollPointerSessionState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily !=
-          PianoRollInteractionFamily.erase,
+          data.activeInteractionFamily != PianoRollInteractionFamily.erase,
     ),
   ];
 
@@ -191,22 +181,17 @@ class PianoRollEraseNotesState
     required EditorStateMachineEvent event,
     required EditorStateMachineState<PianoRollStateMachineData> from,
   }) {
-    final pointerDownEvent = _pointerDownEvent(event);
-    if (pointerDownEvent == null) {
-      return;
-    }
-
-    _initializeSession(pointerDownEvent);
+    _initializeSession();
   }
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
-    final pointerMoveEvent = _pointerMoveEvent(event);
-    if (pointerMoveEvent == null) {
+    if (event is! EditorStateMachineSignalEvent ||
+        event.signal is! _PianoRollAdaptedPointerMoveSignal) {
       return;
     }
 
-    _handleMove(pointerMoveEvent);
+    _handleMove();
   }
 
   @override

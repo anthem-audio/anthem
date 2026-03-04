@@ -75,7 +75,6 @@ class _PianoRollController {
     controller: this as PianoRollController,
   );
   bool _isDisposed = false;
-  PianoRollInteractionFamily? _activeInteractionFamily;
 
   _PianoRollController({required this.project, required this.viewModel})
     : liveNotes = PianoRollLiveNotes(project);
@@ -93,31 +92,32 @@ class _PianoRollController {
 
   @visibleForTesting
   PianoRollInteractionFamily? get activeInteractionFamily =>
-      _activeInteractionFamily;
+      stateMachine.data.activeInteractionFamily;
 
-  PianoRollInteractionFamily? classifyPointerDownInteraction(
-    PianoRollPointerDownEvent event,
-  ) {
+  PianoRollInteractionFamily? classifyPointerDownInteraction({
+    required int buttons,
+    required bool ctrlPressed,
+    required bool isResizeHandle,
+    required Id? realNoteUnderCursorId,
+  }) {
     if (project.sequence.activePatternID == null) {
       return null;
     }
 
-    final isPrimaryClick =
-        event.pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton;
+    final isPrimaryClick = buttons & kPrimaryMouseButton == kPrimaryMouseButton;
     final isSecondaryClick =
-        event.pointerEvent.buttons & kSecondaryMouseButton ==
-        kSecondaryMouseButton;
+        buttons & kSecondaryMouseButton == kSecondaryMouseButton;
 
     if (isPrimaryClick && viewModel.tool != EditorTool.eraser) {
-      if (event.keyboardModifiers.ctrl || viewModel.tool == EditorTool.select) {
+      if (ctrlPressed || viewModel.tool == EditorTool.select) {
         return PianoRollInteractionFamily.selectionBox;
       }
 
-      if (event.isResize && viewModel.tool == EditorTool.pencil) {
+      if (isResizeHandle && viewModel.tool == EditorTool.pencil) {
         return PianoRollInteractionFamily.resizeNotes;
       }
 
-      if (event.noteUnderCursor != null) {
+      if (realNoteUnderCursorId != null) {
         return PianoRollInteractionFamily.moveNotes;
       }
 
@@ -132,38 +132,35 @@ class _PianoRollController {
   }
 
   void _clearActiveInteractionRoute() {
-    _activeInteractionFamily = null;
+    stateMachine.data.clearInteractionSession();
   }
 
   void pointerDown(PianoRollPointerDownEvent event) {
-    final family = classifyPointerDownInteraction(event);
-    if (family == null) {
-      _clearActiveInteractionRoute();
-      return;
-    }
-
-    _activeInteractionFamily = family;
     stateMachine.onAdaptedPointerDown(event);
   }
 
   void pointerMove(PianoRollPointerMoveEvent event) {
-    if (_activeInteractionFamily == null) {
-      return;
-    }
-
     stateMachine.onAdaptedPointerMove(event);
   }
 
   void pointerUp(PianoRollPointerUpEvent event) {
-    if (_activeInteractionFamily == null) {
-      return;
-    }
+    stateMachine.onAdaptedPointerUp(event);
+  }
 
-    try {
-      stateMachine.onAdaptedPointerUp(event);
-    } finally {
-      _clearActiveInteractionRoute();
-    }
+  void onRenderedViewMetricsChanged({
+    required Size viewSize,
+    required double timeViewStart,
+    required double timeViewEnd,
+    required double keyHeight,
+    required double keyValueAtTop,
+  }) {
+    stateMachine.onRenderedViewMetricsChanged(
+      viewSize: viewSize,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      keyHeight: keyHeight,
+      keyValueAtTop: keyValueAtTop,
+    );
   }
 
   PatternModel? get activePatternOrNull {
@@ -250,25 +247,28 @@ class _PianoRollController {
   }
 
   PianoRollTransientNote? createTransientNoteFromPointerDown({
-    required PianoRollPointerDownEvent event,
+    required double key,
+    required double offset,
+    required double viewWidthInPixels,
+    required bool altPressed,
   }) {
     viewModel.selectedNotes.clear();
 
-    final eventTime = event.offset.floor();
+    final eventTime = offset.floor();
     if (eventTime < 0) {
       return null;
     }
 
-    final targetTime = event.keyboardModifiers.alt
+    final targetTime = altPressed
         ? eventTime
         : snapTimeInActivePattern(
             rawTime: eventTime,
-            viewWidthInPixels: event.pianoRollSize.width,
+            viewWidthInPixels: viewWidthInPixels,
           );
 
     return PianoRollTransientNote(
       id: getId(),
-      key: event.key.floor(),
+      key: key.floor(),
       velocity: viewModel.cursorNoteVelocity,
       length: viewModel.cursorNoteLength,
       offset: targetTime,
@@ -326,7 +326,7 @@ class _PianoRollController {
   }
 
   PianoRollMoveNotesSessionData createMoveNotesSessionData({
-    required PianoRollPointerDownEvent event,
+    required double pointerOffset,
     required NoteModel noteUnderCursor,
     required Iterable<NoteModel> notesToMove,
     required bool isSelectionMove,
@@ -368,7 +368,7 @@ class _PianoRollController {
 
     return PianoRollMoveNotesSessionData(
       noteUnderCursor: noteUnderCursor,
-      timeOffset: event.offset - noteUnderCursor.offset,
+      timeOffset: pointerOffset - noteUnderCursor.offset,
       noteOffset: 0.5,
       startTimes: startTimes,
       startKeys: startKeys,
@@ -411,17 +411,22 @@ class _PianoRollController {
   }
 
   Map<Id, PianoRollMoveNotePreview> resolveMoveNotesSessionPreview({
-    required PianoRollPointerMoveEvent event,
+    required double key,
+    required double offset,
+    required double viewWidthInPixels,
+    required bool altPressed,
+    required bool shiftPressed,
+    required bool ctrlPressed,
     required PianoRollMoveNotesSessionData sessionData,
   }) {
-    final key = event.key - sessionData.noteOffset;
-    final offset = event.offset - sessionData.timeOffset;
-    var snappedOffset = offset.floor();
+    final targetKey = key - sessionData.noteOffset;
+    final targetOffset = offset - sessionData.timeOffset;
+    var snappedOffset = targetOffset.floor();
 
-    if (!event.keyboardModifiers.alt) {
+    if (!altPressed) {
       snappedOffset = snapTimeInActivePattern(
-        rawTime: offset.floor(),
-        viewWidthInPixels: event.pianoRollSize.width,
+        rawTime: targetOffset.floor(),
+        viewWidthInPixels: viewWidthInPixels,
         round: true,
         startTime: sessionData.startTimes[sessionData.noteUnderCursor.id]!,
       );
@@ -430,7 +435,8 @@ class _PianoRollController {
     var timeOffsetFromEventStart =
         snappedOffset - sessionData.startTimes[sessionData.noteUnderCursor.id]!;
     var keyOffsetFromEventStart =
-        key.round() - sessionData.startKeys[sessionData.noteUnderCursor.id]!;
+        targetKey.round() -
+        sessionData.startKeys[sessionData.noteUnderCursor.id]!;
 
     if (sessionData.startOfFirstNote + timeOffsetFromEventStart < 0) {
       timeOffsetFromEventStart = -sessionData.startOfFirstNote;
@@ -445,18 +451,15 @@ class _PianoRollController {
           minKeyValue.round() - sessionData.keyOfBottomNote;
     }
 
-    final shift = event.keyboardModifiers.shift;
-    final ctrl = event.keyboardModifiers.ctrl;
-
     return Map<Id, PianoRollMoveNotePreview>.fromEntries(
       sessionData.startTimes.keys.map((noteId) {
         return MapEntry(noteId, (
           key:
               sessionData.startKeys[noteId]! +
-              (shift ? 0 : keyOffsetFromEventStart),
+              (shiftPressed ? 0 : keyOffsetFromEventStart),
           offset:
               sessionData.startTimes[noteId]! +
-              (!shift && ctrl ? 0 : timeOffsetFromEventStart),
+              (!shiftPressed && ctrlPressed ? 0 : timeOffsetFromEventStart),
         ));
       }),
     );
@@ -505,7 +508,7 @@ class _PianoRollController {
   }
 
   PianoRollResizeNotesSessionData createResizeNotesSessionData({
-    required PianoRollPointerDownEvent event,
+    required double pointerStartOffset,
     required NoteModel pressedNote,
     required Iterable<NoteModel> notesToResize,
     required bool isSelectionResize,
@@ -531,7 +534,7 @@ class _PianoRollController {
     }
 
     return PianoRollResizeNotesSessionData(
-      pointerStartOffset: event.offset,
+      pointerStartOffset: pointerStartOffset,
       startLengths: startLengths,
       smallestStartLength: smallestNote.length,
       smallestNote: smallestNote.id,
@@ -561,26 +564,28 @@ class _PianoRollController {
   }
 
   Map<Id, PianoRollResizeNotePreview> resolveResizeNotesSessionPreview({
-    required PianoRollPointerMoveEvent event,
+    required double currentOffset,
+    required double viewWidthInPixels,
+    required bool altPressed,
     required PianoRollResizeNotesSessionData sessionData,
   }) {
     var snappedOriginalTime = sessionData.pointerStartOffset.floor();
-    var snappedEventTime = event.offset.floor();
+    var snappedEventTime = currentOffset.floor();
 
     final divisionChanges = divisionChangesForPatternView(
-      viewWidthInPixels: event.pianoRollSize.width,
+      viewWidthInPixels: viewWidthInPixels,
     );
 
-    if (!event.keyboardModifiers.alt) {
+    if (!altPressed) {
       snappedOriginalTime = snapTimeInActivePattern(
         rawTime: sessionData.pointerStartOffset.floor(),
-        viewWidthInPixels: event.pianoRollSize.width,
+        viewWidthInPixels: viewWidthInPixels,
         round: true,
       );
 
       snappedEventTime = snapTimeInActivePattern(
-        rawTime: event.offset.floor(),
-        viewWidthInPixels: event.pianoRollSize.width,
+        rawTime: currentOffset.floor(),
+        viewWidthInPixels: viewWidthInPixels,
         round: true,
       );
     }
@@ -603,7 +608,7 @@ class _PianoRollController {
     var diff = snappedEventTime - snappedOriginalTime;
 
     // Preserve the legacy minimum-length behavior exactly during migration.
-    if (!event.keyboardModifiers.alt &&
+    if (!altPressed &&
         sessionData.smallestStartLength + diff < snapAtSmallestNoteStart) {
       final snapCount =
           ((snapAtSmallestNoteStart -
@@ -613,7 +618,7 @@ class _PianoRollController {
       diff += snapCount * snapAtSmallestNoteStart;
     }
 
-    if (event.keyboardModifiers.alt) {
+    if (altPressed) {
       final newSmallestNoteSize = sessionData.smallestStartLength + diff;
       if (newSmallestNoteSize < 1) {
         diff += 1 - newSmallestNoteSize;

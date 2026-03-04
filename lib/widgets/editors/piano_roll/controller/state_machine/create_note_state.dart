@@ -53,24 +53,6 @@ class PianoRollCreateNoteState
   @visibleForTesting
   Map<Id, PianoRollMoveNotePreview>? get preview => _preview;
 
-  PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerDownSignal ? signal.event : null;
-  }
-
-  PianoRollPointerMoveEvent? _pointerMoveEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerMoveSignal ? signal.event : null;
-  }
-
   bool _isCreatePointerSignal(EditorStateMachineEvent event) {
     return event is EditorStateMachineSignalEvent &&
         event.signal is _PianoRollAdaptedPointerSignal;
@@ -104,12 +86,20 @@ class PianoRollCreateNoteState
     );
   }
 
-  void _initializeSession(PianoRollPointerDownEvent event) {
+  void _initializeSession() {
+    final dragStartContext = parentState.dragStartContext;
+    if (dragStartContext == null) {
+      return;
+    }
+
     viewModel.clearTransientPreviewState();
     viewModel.selectedNotes.clear();
 
     final createdNote = controller.createTransientNoteFromPointerDown(
-      event: event,
+      key: dragStartContext.key,
+      offset: dragStartContext.offset,
+      viewWidthInPixels: interactionState.viewSize.width,
+      altPressed: interactionState.isAltPressed,
     );
     if (createdNote == null) {
       _sessionData = null;
@@ -126,7 +116,7 @@ class PianoRollCreateNoteState
       createdNote,
     );
     final moveSessionData = controller.createMoveNotesSessionData(
-      event: event,
+      pointerOffset: dragStartContext.offset,
       noteUnderCursor: createdNoteSnapshot,
       notesToMove: [createdNoteSnapshot],
       isSelectionMove: false,
@@ -159,7 +149,7 @@ class PianoRollCreateNoteState
       from: PianoRollNoteInteractionState,
       to: PianoRollCreateNoteState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily ==
+          data.activeInteractionFamily ==
               PianoRollInteractionFamily.createNote &&
           _isCreatePointerSignal(event),
     ),
@@ -168,8 +158,7 @@ class PianoRollCreateNoteState
       from: PianoRollCreateNoteState,
       to: PianoRollNoteInteractionState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily !=
-          PianoRollInteractionFamily.createNote,
+          data.activeInteractionFamily != PianoRollInteractionFamily.createNote,
     ),
   ];
 
@@ -180,26 +169,31 @@ class PianoRollCreateNoteState
     required EditorStateMachineEvent event,
     required EditorStateMachineState<PianoRollStateMachineData> from,
   }) {
-    final pointerDownEvent = _pointerDownEvent(event);
-    if (pointerDownEvent == null) {
-      return;
-    }
-
-    _initializeSession(pointerDownEvent);
+    _initializeSession();
   }
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
-    final pointerMoveEvent = _pointerMoveEvent(event);
     final sessionData = _sessionData;
-    if (pointerMoveEvent == null || sessionData == null) {
+    final currentKey = parentState.currentKey;
+    final currentOffset = parentState.currentOffset;
+    if (event is! EditorStateMachineSignalEvent ||
+        event.signal is! _PianoRollAdaptedPointerMoveSignal ||
+        sessionData == null ||
+        currentKey == null ||
+        currentOffset == null) {
       return;
     }
 
     _applyPreview(
       sessionData: sessionData,
       preview: controller.resolveMoveNotesSessionPreview(
-        event: pointerMoveEvent,
+        key: currentKey,
+        offset: currentOffset,
+        viewWidthInPixels: interactionState.viewSize.width,
+        altPressed: interactionState.isAltPressed,
+        shiftPressed: interactionState.isShiftPressed,
+        ctrlPressed: interactionState.isCtrlPressed,
         sessionData: sessionData.moveSessionData,
       ),
     );

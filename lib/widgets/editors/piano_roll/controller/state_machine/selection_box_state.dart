@@ -51,48 +51,25 @@ class PianoRollSelectionBoxState
   @visibleForTesting
   PianoRollSelectionBoxSessionData? get sessionData => _sessionData;
 
-  bool _isSelectionBoxPointerSignal(EditorStateMachineEvent event) {
-    return event is EditorStateMachineSignalEvent &&
-        event.signal is _PianoRollAdaptedPointerSignal;
-  }
-
-  bool _isPointerMoveSignal(EditorStateMachineEvent event) {
-    return event is EditorStateMachineSignalEvent &&
-        event.signal is _PianoRollAdaptedPointerMoveSignal;
-  }
-
-  PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
+  void _initializeSelectionSession() {
+    final dragStartContext = parentState.dragStartContext;
+    if (dragStartContext == null) {
+      return;
     }
 
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerDownSignal ? signal.event : null;
-  }
-
-  PianoRollPointerMoveEvent? _pointerMoveEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerMoveSignal ? signal.event : null;
-  }
-
-  void _initializeSelectionSession(PianoRollPointerDownEvent event) {
     final isSubtractiveSelectionLatched =
-        event.keyboardModifiers.shift &&
-        event.noteUnderCursor != null &&
+        interactionState.isShiftPressed &&
+        parentState.dragStartRealNoteId != null &&
         viewModel.selectedNotes.nonObservableInner.contains(
-          event.noteUnderCursor,
+          parentState.dragStartRealNoteId,
         );
 
-    if (!event.keyboardModifiers.shift) {
+    if (!interactionState.isShiftPressed) {
       viewModel.selectedNotes.clear();
     }
 
     _sessionData = PianoRollSelectionBoxSessionData(
-      start: Point(event.offset, event.key),
+      start: Point(dragStartContext.offset, dragStartContext.key),
       originalSelection: Set<Id>.unmodifiable(
         viewModel.selectedNotes.nonObservableInner,
       ),
@@ -100,15 +77,16 @@ class PianoRollSelectionBoxState
     );
   }
 
-  void _syncSelection(PianoRollPointerMoveEvent event) {
+  void _syncSelection() {
     final sessionData = _sessionData;
-    if (sessionData == null) {
+    final dragCurrentContext = parentState.dragCurrentContext;
+    if (sessionData == null || dragCurrentContext == null) {
       return;
     }
 
     viewModel.selectionBox = Rectangle.fromPoints(
       sessionData.start,
-      Point(event.offset, event.key),
+      Point(dragCurrentContext.offset, dragCurrentContext.key),
     );
 
     final notesInSelection = controller
@@ -142,16 +120,17 @@ class PianoRollSelectionBoxState
       from: PianoRollPointerSessionState,
       to: PianoRollSelectionBoxState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily ==
+          data.activeInteractionFamily ==
               PianoRollInteractionFamily.selectionBox &&
-          _isSelectionBoxPointerSignal(event),
+          event is EditorStateMachineSignalEvent &&
+          event.signal is _PianoRollAdaptedPointerSignal,
     ),
     .new(
       name: 'Exit selection box',
       from: PianoRollSelectionBoxState,
       to: PianoRollPointerSessionState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily !=
+          data.activeInteractionFamily !=
           PianoRollInteractionFamily.selectionBox,
     ),
   ];
@@ -163,22 +142,17 @@ class PianoRollSelectionBoxState
     required EditorStateMachineEvent event,
     required EditorStateMachineState<PianoRollStateMachineData> from,
   }) {
-    final pointerDownEvent = _pointerDownEvent(event);
-    if (pointerDownEvent == null) {
-      return;
-    }
-
-    _initializeSelectionSession(pointerDownEvent);
+    _initializeSelectionSession();
   }
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
-    final pointerMoveEvent = _pointerMoveEvent(event);
-    if (pointerMoveEvent == null) {
+    if (event is! EditorStateMachineSignalEvent ||
+        event.signal is! _PianoRollAdaptedPointerMoveSignal) {
       return;
     }
 
-    _syncSelection(pointerMoveEvent);
+    _syncSelection();
   }
 
   @override

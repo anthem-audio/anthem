@@ -61,24 +61,6 @@ class PianoRollResizeNotesState
   @visibleForTesting
   Map<Id, PianoRollResizeNotePreview>? get preview => _preview;
 
-  PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerDownSignal ? signal.event : null;
-  }
-
-  PianoRollPointerMoveEvent? _pointerMoveEvent(EditorStateMachineEvent event) {
-    if (event is! EditorStateMachineSignalEvent) {
-      return null;
-    }
-
-    final signal = event.signal;
-    return signal is _PianoRollAdaptedPointerMoveSignal ? signal.event : null;
-  }
-
   bool _isResizePointerSignal(EditorStateMachineEvent event) {
     return event is EditorStateMachineSignalEvent &&
         event.signal is _PianoRollAdaptedPointerSignal;
@@ -111,8 +93,8 @@ class PianoRollResizeNotesState
     }
   }
 
-  void _initializeSession(PianoRollPointerDownEvent event) {
-    final noteId = event.noteUnderCursor;
+  void _initializeSession() {
+    final noteId = parentState.dragStartRealNoteId;
     if (noteId == null) {
       throw ArgumentError("Resize event didn't provide a noteUnderCursor");
     }
@@ -139,7 +121,7 @@ class PianoRollResizeNotesState
         : <NoteModel>[pressedNote];
 
     _sessionData = controller.createResizeNotesSessionData(
-      event: event,
+      pointerStartOffset: parentState.dragStartOffset!,
       pressedNote: pressedNote,
       notesToResize: notesToResize,
       isSelectionResize: isSelectionResize,
@@ -169,7 +151,7 @@ class PianoRollResizeNotesState
       from: PianoRollNoteInteractionState,
       to: PianoRollResizeNotesState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily ==
+          data.activeInteractionFamily ==
               PianoRollInteractionFamily.resizeNotes &&
           _isResizePointerSignal(event),
     ),
@@ -178,7 +160,7 @@ class PianoRollResizeNotesState
       from: PianoRollResizeNotesState,
       to: PianoRollNoteInteractionState,
       canTransition: ({required data, required event, required currentState}) =>
-          data.activeAdaptedInteractionFamily !=
+          data.activeInteractionFamily !=
           PianoRollInteractionFamily.resizeNotes,
     ),
   ];
@@ -190,26 +172,26 @@ class PianoRollResizeNotesState
     required EditorStateMachineEvent event,
     required EditorStateMachineState<PianoRollStateMachineData> from,
   }) {
-    final pointerDownEvent = _pointerDownEvent(event);
-    if (pointerDownEvent == null) {
-      return;
-    }
-
-    _initializeSession(pointerDownEvent);
+    _initializeSession();
   }
 
   @override
   void onActive({required EditorStateMachineEvent event}) {
-    final pointerMoveEvent = _pointerMoveEvent(event);
     final sessionData = _sessionData;
-    if (pointerMoveEvent == null || sessionData == null) {
+    final currentOffset = parentState.currentOffset;
+    if (event is! EditorStateMachineSignalEvent ||
+        event.signal is! _PianoRollAdaptedPointerMoveSignal ||
+        sessionData == null ||
+        currentOffset == null) {
       return;
     }
 
     _applyPreview(
       sessionData: sessionData,
       preview: controller.resolveResizeNotesSessionPreview(
-        event: pointerMoveEvent,
+        currentOffset: currentOffset,
+        viewWidthInPixels: interactionState.viewSize.width,
+        altPressed: interactionState.isAltPressed,
         sessionData: sessionData,
       ),
     );

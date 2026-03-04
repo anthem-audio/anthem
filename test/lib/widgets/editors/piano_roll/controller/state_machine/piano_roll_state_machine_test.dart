@@ -36,6 +36,7 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/events.dart';
+import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -236,6 +237,13 @@ class _PianoRollStateMachineTestFixture {
       project: project,
       viewModel: viewModel,
     );
+    controller.onRenderedViewMetricsChanged(
+      viewSize: pianoRollSize,
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
+      keyHeight: viewModel.keyHeight,
+      keyValueAtTop: viewModel.keyValueAtTop,
+    );
 
     return _PianoRollStateMachineTestFixture._(
       project: project,
@@ -381,6 +389,52 @@ class _PianoRollStateMachineTestFixture {
     return activeChange.divisionSnapSize;
   }
 
+  void syncRenderedViewMetrics() {
+    controller.onRenderedViewMetricsChanged(
+      viewSize: pianoRollSize,
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
+      keyHeight: viewModel.keyHeight,
+      keyValueAtTop: viewModel.keyValueAtTop,
+    );
+  }
+
+  Offset _localPositionFor({required double key, required double offset}) {
+    return Offset(
+      timeToPixels(
+        timeViewStart: viewModel.timeView.start,
+        timeViewEnd: viewModel.timeView.end,
+        viewPixelWidth: pianoRollSize.width,
+        time: offset,
+      ),
+      keyValueToPixels(
+        keyValue: key,
+        keyValueAtTop: viewModel.keyValueAtTop,
+        keyHeight: viewModel.keyHeight,
+      ),
+    );
+  }
+
+  void _seedContentUnderCursor({
+    required Offset localPosition,
+    Id? noteUnderCursor,
+    bool isResize = false,
+  }) {
+    viewModel.visibleNotes.clear();
+    viewModel.visibleResizeAreas.clear();
+
+    if (noteUnderCursor == null) {
+      return;
+    }
+
+    final ref = PianoRollRenderedNoteRef.real(noteUnderCursor);
+    final hitRect = Rect.fromCircle(center: localPosition, radius: 1);
+    viewModel.visibleNotes.add(rect: hitRect, metadata: ref);
+    if (isResize) {
+      viewModel.visibleResizeAreas.add(rect: hitRect, metadata: ref);
+    }
+  }
+
   void pointerDown({
     required double key,
     required double offset,
@@ -392,23 +446,26 @@ class _PianoRollStateMachineTestFixture {
     bool shift = false,
     int pointer = 1,
   }) {
+    syncRenderedViewMetrics();
+    final localPosition = _localPositionFor(key: key, offset: offset);
+    _seedContentUnderCursor(
+      localPosition: localPosition,
+      noteUnderCursor: noteUnderCursor,
+      isResize: isResize,
+    );
+
     controller.pointerDown(
       PianoRollPointerDownEvent(
-        key: key,
-        offset: offset,
         pointerEvent: PointerDownEvent(
           pointer: pointer,
-          position: Offset(offset, key),
+          position: localPosition,
           buttons: buttons,
         ),
-        pianoRollSize: pianoRollSize,
         keyboardModifiers: _keyboardModifiers(
           ctrl: ctrl,
           alt: alt,
           shift: shift,
         ),
-        noteUnderCursor: noteUnderCursor,
-        isResize: isResize,
       ),
     );
   }
@@ -424,24 +481,27 @@ class _PianoRollStateMachineTestFixture {
     bool shift = false,
     int pointer = 1,
   }) {
-    return controller.classifyPointerDownInteraction(
-      PianoRollPointerDownEvent(
-        key: key,
-        offset: offset,
-        pointerEvent: PointerDownEvent(
-          pointer: pointer,
-          position: Offset(offset, key),
-          buttons: buttons,
-        ),
-        pianoRollSize: pianoRollSize,
-        keyboardModifiers: _keyboardModifiers(
-          ctrl: ctrl,
-          alt: alt,
-          shift: shift,
-        ),
-        noteUnderCursor: noteUnderCursor,
-        isResize: isResize,
+    syncRenderedViewMetrics();
+    final localPosition = _localPositionFor(key: key, offset: offset);
+    _seedContentUnderCursor(
+      localPosition: localPosition,
+      noteUnderCursor: noteUnderCursor,
+      isResize: isResize,
+    );
+    final event = PianoRollPointerDownEvent(
+      pointerEvent: PointerDownEvent(
+        pointer: pointer,
+        position: localPosition,
+        buttons: buttons,
       ),
+      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
+    );
+    final context = stateMachine.resolvePointerContextForEvent(event);
+    return controller.classifyPointerDownInteraction(
+      buttons: buttons,
+      ctrlPressed: ctrl,
+      isResizeHandle: context?.isOverResizeHandle ?? false,
+      realNoteUnderCursorId: context?.realNoteUnderCursorId,
     );
   }
 
@@ -453,15 +513,16 @@ class _PianoRollStateMachineTestFixture {
     bool shift = false,
     int pointer = 1,
   }) {
+    syncRenderedViewMetrics();
+    final localPosition = _localPositionFor(key: key, offset: offset);
+    _seedContentUnderCursor(localPosition: localPosition);
+
     controller.pointerMove(
       PianoRollPointerMoveEvent(
-        key: key,
-        offset: offset,
         pointerEvent: PointerMoveEvent(
           pointer: pointer,
-          position: Offset(offset, key),
+          position: localPosition,
         ),
-        pianoRollSize: pianoRollSize,
         keyboardModifiers: _keyboardModifiers(
           ctrl: ctrl,
           alt: alt,
@@ -479,15 +540,13 @@ class _PianoRollStateMachineTestFixture {
     bool shift = false,
     int pointer = 1,
   }) {
+    syncRenderedViewMetrics();
+    final localPosition = _localPositionFor(key: key, offset: offset);
+    _seedContentUnderCursor(localPosition: localPosition);
+
     controller.pointerUp(
       PianoRollPointerUpEvent(
-        key: key,
-        offset: offset,
-        pointerEvent: PointerUpEvent(
-          pointer: pointer,
-          position: Offset(offset, key),
-        ),
-        pianoRollSize: pianoRollSize,
+        pointerEvent: PointerUpEvent(pointer: pointer, position: localPosition),
         keyboardModifiers: _keyboardModifiers(
           ctrl: ctrl,
           alt: alt,
@@ -505,15 +564,16 @@ class _PianoRollStateMachineTestFixture {
     bool shift = false,
     int pointer = 1,
   }) {
+    syncRenderedViewMetrics();
+    final localPosition = _localPositionFor(key: key, offset: offset);
+    _seedContentUnderCursor(localPosition: localPosition);
+
     controller.pointerUp(
       PianoRollPointerUpEvent(
-        key: key,
-        offset: offset,
         pointerEvent: PointerCancelEvent(
           pointer: pointer,
-          position: Offset(offset, key),
+          position: localPosition,
         ),
-        pianoRollSize: pianoRollSize,
         keyboardModifiers: _keyboardModifiers(
           ctrl: ctrl,
           alt: alt,
@@ -816,6 +876,40 @@ void main() {
       expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
+    });
+
+    test('pointer-session parent stores drag start derived context', () {
+      final note = fixture.addNote(key: 64, offset: 220, length: 96);
+
+      fixture.pointerDown(
+        key: 64.5,
+        offset: 316,
+        noteUnderCursor: note.id,
+        isResize: true,
+      );
+
+      final startContext = fixture.pointerSessionState.startPointerContext;
+      expect(startContext, isNotNull);
+      expect(startContext!.realNoteUnderCursorId, equals(note.id));
+      expect(startContext.isOverResizeHandle, isTrue);
+      expect(startContext.key, closeTo(64.5, 0.0001));
+      expect(startContext.offset, closeTo(316, 0.0001));
+      expect(fixture.pointerSessionState.dragStartRealNoteId, equals(note.id));
+      expect(fixture.pointerSessionState.dragStartIsResizeHandle, isTrue);
+    });
+
+    test('pointer-session parent updates current derived context on move', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 48);
+
+      fixture.pointerDown(key: 60.5, offset: 100, noteUnderCursor: note.id);
+      fixture.pointerMove(key: 61.5, offset: 173.8, alt: true);
+
+      final currentContext = fixture.pointerSessionState.currentPointerContext;
+      expect(currentContext, isNotNull);
+      expect(currentContext!.key, closeTo(61.5, 0.0001));
+      expect(currentContext.offset, closeTo(173.8, 0.0001));
+      expect(fixture.pointerSessionState.dragStartKey, closeTo(60.5, 0.0001));
+      expect(fixture.pointerSessionState.dragStartOffset, closeTo(100, 0.0001));
     });
 
     test('negative-time create does not initialize a create-note session', () {
@@ -1631,11 +1725,17 @@ void main() {
     );
 
     test(
-      'resize press without a note under cursor throws an argument error',
+      'synthetic resize hints without a rendered resize hit are ignored',
       () {
+        fixture.pointerDown(key: 60.5, offset: 196, isResize: true);
+
         expect(
-          () => fixture.pointerDown(key: 60.5, offset: 196, isResize: true),
-          throwsArgumentError,
+          fixture.activeInteractionFamily,
+          equals(PianoRollInteractionFamily.createNote),
+        );
+        expect(
+          fixture.stateMachine.currentState,
+          same(fixture.createNoteState),
         );
       },
     );
@@ -1701,6 +1801,203 @@ void main() {
 
         fixture.project.undo();
         expect(fixture.notes, isEmpty);
+      },
+    );
+  });
+
+  group('preview vs commit regression', () {
+    test('move preview leaves the real note unchanged until commit', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 48);
+
+      fixture.pointerDown(key: 60.5, offset: 100, noteUnderCursor: note.id);
+      fixture.pointerMove(key: 62.5, offset: 155);
+
+      final expectedOffset = fixture.snappedTime(
+        155,
+        round: true,
+        startTime: 100,
+      );
+      final preview = fixture.viewModel.noteOverrides[note.id];
+
+      expect(fixture.noteById(note.id).offset, equals(100));
+      expect(fixture.noteById(note.id).key, equals(60));
+      expect(preview, isNotNull);
+      expect(preview!.offset, equals(expectedOffset));
+      expect(preview.key, equals(62));
+      expect(fixture.viewModel.pressedNote, equals(note.id));
+
+      fixture.pointerUp(key: 62.5, offset: 155);
+
+      expect(fixture.noteById(note.id).offset, equals(expectedOffset));
+      expect(fixture.noteById(note.id).key, equals(62));
+      fixture.expectNoActiveTransientState();
+    });
+
+    test('resize preview leaves the real note unchanged until commit', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 96);
+
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 196,
+        noteUnderCursor: note.id,
+        isResize: true,
+      );
+      fixture.pointerMove(key: 60.5, offset: 250);
+
+      final snappedOriginal = fixture.snappedTime(196, round: true);
+      final snappedEvent = fixture.snappedTime(250, round: true);
+      final expectedLength = 96 + (snappedEvent - snappedOriginal);
+      final preview = fixture.viewModel.noteOverrides[note.id];
+
+      expect(fixture.noteById(note.id).length, equals(96));
+      expect(preview, isNotNull);
+      expect(preview!.length, equals(expectedLength));
+      expect(fixture.viewModel.pressedNote, equals(note.id));
+
+      fixture.pointerUp(key: 60.5, offset: 250);
+
+      expect(fixture.noteById(note.id).length, equals(expectedLength));
+      fixture.expectNoActiveTransientState();
+    });
+
+    test('create preview stays transient until commit', () {
+      fixture.viewModel.cursorNoteLength = 48;
+
+      fixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
+
+      expect(fixture.notes, isEmpty);
+      expect(fixture.transientNotes, hasLength(1));
+      final createdNoteId = fixture.transientNotes.single.id;
+
+      fixture.pointerMove(key: 63.5, offset: 173.8, alt: true);
+
+      final preview = fixture.transientNoteById(createdNoteId);
+      expect(fixture.notes, isEmpty);
+      expect(preview.key, equals(63));
+      expect(preview.offset, equals(173));
+      expect(preview.length, equals(48));
+      expect(fixture.viewModel.pressedTransientNote, equals(createdNoteId));
+
+      fixture.pointerUp(key: 63.5, offset: 173.8, alt: true);
+
+      final committed = fixture.noteById(createdNoteId);
+      expect(committed.key, equals(63));
+      expect(committed.offset, equals(173));
+      expect(committed.length, equals(48));
+      fixture.expectNoActiveTransientState();
+    });
+
+    test(
+      'single-note duplicate preview keeps the duplicate transient until commit',
+      () {
+        final note = fixture.addNote(key: 60, offset: 100, length: 48);
+
+        fixture.pointerDown(
+          key: 60.5,
+          offset: 100,
+          noteUnderCursor: note.id,
+          shift: true,
+        );
+        expect(
+          fixture.notes.map((note) => note.id).toList(growable: false),
+          orderedEquals([note.id]),
+        );
+        expect(fixture.transientNotes, hasLength(1));
+        final duplicateId = fixture.transientNotes.single.id;
+
+        fixture.pointerMove(key: 62.5, offset: 200);
+
+        final expectedOffset = fixture.snappedTime(
+          200,
+          round: true,
+          startTime: 100,
+        );
+        final movedOriginalPreview = fixture.viewModel.noteOverrides[note.id];
+        final stationaryDuplicatePreview = fixture.transientNoteById(
+          duplicateId,
+        );
+
+        expect(fixture.noteById(note.id).offset, equals(100));
+        expect(fixture.noteById(note.id).key, equals(60));
+        expect(movedOriginalPreview, isNotNull);
+        expect(movedOriginalPreview!.offset, equals(expectedOffset));
+        expect(movedOriginalPreview.key, equals(62));
+        expect(stationaryDuplicatePreview.offset, equals(100));
+        expect(stationaryDuplicatePreview.key, equals(60));
+        expect(fixture.viewModel.pressedNote, equals(note.id));
+        expect(fixture.viewModel.pressedTransientNote, isNull);
+
+        fixture.pointerUp(key: 62.5, offset: 200);
+
+        expect(fixture.noteById(note.id).offset, equals(expectedOffset));
+        expect(fixture.noteById(note.id).key, equals(62));
+        expect(fixture.noteById(duplicateId).offset, equals(100));
+        expect(fixture.noteById(duplicateId).key, equals(60));
+        fixture.expectNoActiveTransientState();
+      },
+    );
+
+    test(
+      'selected-group duplicate preview keeps clones transient until commit',
+      () {
+        final noteA = fixture.addNote(key: 60, offset: 100, length: 48);
+        final noteB = fixture.addNote(key: 64, offset: 180, length: 48);
+        fixture.selectNotes([noteA.id, noteB.id]);
+
+        fixture.pointerDown(
+          key: 60.5,
+          offset: 100,
+          noteUnderCursor: noteA.id,
+          shift: true,
+        );
+
+        final clonedIds = fixture.viewModel.selectedNotes.nonObservableInner
+            .toSet();
+        expect(
+          fixture.notes.map((note) => note.id).toSet(),
+          equals({noteA.id, noteB.id}),
+        );
+        expect(fixture.transientNotes, hasLength(2));
+
+        fixture.pointerMove(key: 61.5, offset: 200);
+
+        final movedDistance =
+            fixture.snappedTime(200, round: true, startTime: 100) - 100;
+        final previewPositions = clonedIds.map((clonedId) {
+          final note = fixture.transientNoteById(clonedId);
+          return (key: note.key, offset: note.offset);
+        }).toSet();
+
+        expect(fixture.noteById(noteA.id).offset, equals(100));
+        expect(fixture.noteById(noteA.id).key, equals(60));
+        expect(fixture.noteById(noteB.id).offset, equals(180));
+        expect(fixture.noteById(noteB.id).key, equals(64));
+        expect(fixture.viewModel.noteOverrides, isEmpty);
+        expect(
+          fixture.viewModel.selectedTransientNotes.toSet(),
+          equals(clonedIds),
+        );
+        expect(
+          previewPositions,
+          equals({
+            (key: 61, offset: 100 + movedDistance),
+            (key: 65, offset: 180 + movedDistance),
+          }),
+        );
+
+        fixture.pointerUp(key: 61.5, offset: 200);
+
+        expect(fixture.noteById(noteA.id).offset, equals(100));
+        expect(fixture.noteById(noteA.id).key, equals(60));
+        expect(fixture.noteById(noteB.id).offset, equals(180));
+        expect(fixture.noteById(noteB.id).key, equals(64));
+
+        final committedClonePositions = clonedIds.map((clonedId) {
+          final note = fixture.noteById(clonedId);
+          return (key: note.key, offset: note.offset);
+        }).toSet();
+        expect(committedClonePositions, equals(previewPositions));
+        fixture.expectNoActiveTransientState();
       },
     );
   });
