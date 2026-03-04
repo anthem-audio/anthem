@@ -24,11 +24,17 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 
 void _addNote(PatternModel pattern, NoteModel note) {
+  if (pattern.notes.any((existingNote) => existingNote.id == note.id)) {
+    throw StateError(
+      'Note ${note.id} already exists in pattern ${pattern.id}.',
+    );
+  }
+
   pattern.notes.add(note);
 }
 
 void _removeNote(PatternModel pattern, Id noteID) {
-  pattern.notes.removeWhere((element) => element.id == noteID);
+  pattern.notes.remove(_requireNote(pattern, noteID));
 }
 
 NoteModel _getNote(PatternModel pattern, Id noteID) {
@@ -72,84 +78,69 @@ NoteModel _restoreDeletedNote(_DeleteNoteSnapshot snapshot) {
 }
 
 class AddNoteCommand extends Command {
-  Id patternID;
-  NoteModel note;
+  final Id _patternID;
+  final NoteModel _note;
 
-  AddNoteCommand({required this.patternID, required this.note});
+  AddNoteCommand({required Id patternID, required NoteModel note})
+    : _patternID = patternID,
+      _note = note;
 
   @override
   void execute(ProjectModel project) {
-    final pattern = project.sequence.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _addNote(pattern, note);
+    final pattern = _requirePattern(project, _patternID);
+    _addNote(pattern, _note);
   }
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = project.sequence.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _removeNote(pattern, note.id);
+    final pattern = _requirePattern(project, _patternID);
+    _removeNote(pattern, _note.id);
   }
 }
 
 class DeleteNoteCommand extends Command {
-  Id patternID;
-  NoteModel note;
+  final Id _patternID;
+  final NoteModel _note;
 
-  DeleteNoteCommand({required this.patternID, required this.note});
+  DeleteNoteCommand({required Id patternID, required NoteModel note})
+    : _patternID = patternID,
+      _note = note;
 
   @override
   void execute(ProjectModel project) {
-    final pattern = project.sequence.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _removeNote(pattern, note.id);
+    final pattern = _requirePattern(project, _patternID);
+    _removeNote(pattern, _note.id);
   }
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = project.sequence.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    _addNote(pattern, note);
+    final pattern = _requirePattern(project, _patternID);
+    _addNote(pattern, _note);
   }
 }
 
 class MoveNotesCommand extends Command {
-  final Id patternID;
+  final Id _patternID;
   final List<
     ({Id noteID, int oldOffset, int newOffset, int oldKey, int newKey})
   >
-  noteMoves;
+  _noteMoves;
 
   MoveNotesCommand({
-    required this.patternID,
+    required Id patternID,
     required List<
       ({Id noteID, int oldOffset, int newOffset, int oldKey, int newKey})
     >
     noteMoves,
-  }) : noteMoves = List.unmodifiable(noteMoves),
+  }) : _patternID = patternID,
+       _noteMoves = List.unmodifiable(noteMoves),
        super();
 
   @override
   void execute(ProjectModel project) {
-    final pattern = _requirePattern(project, patternID);
+    final pattern = _requirePattern(project, _patternID);
 
-    for (final noteMove in noteMoves) {
+    for (final noteMove in _noteMoves) {
       final note = _requireNote(pattern, noteMove.noteID);
       note.offset = noteMove.newOffset;
       note.key = noteMove.newKey;
@@ -158,9 +149,9 @@ class MoveNotesCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = _requirePattern(project, patternID);
+    final pattern = _requirePattern(project, _patternID);
 
-    for (final noteMove in noteMoves.reversed) {
+    for (final noteMove in _noteMoves.reversed) {
       final note = _requireNote(pattern, noteMove.noteID);
       note.offset = noteMove.oldOffset;
       note.key = noteMove.oldKey;
@@ -169,20 +160,21 @@ class MoveNotesCommand extends Command {
 }
 
 class ResizeNotesCommand extends Command {
-  final Id patternID;
-  final List<({Id noteID, int oldLength, int newLength})> noteResizes;
+  final Id _patternID;
+  final List<({Id noteID, int oldLength, int newLength})> _noteResizes;
 
   ResizeNotesCommand({
-    required this.patternID,
+    required Id patternID,
     required List<({Id noteID, int oldLength, int newLength})> noteResizes,
-  }) : noteResizes = List.unmodifiable(noteResizes),
+  }) : _patternID = patternID,
+       _noteResizes = List.unmodifiable(noteResizes),
        super();
 
   @override
   void execute(ProjectModel project) {
-    final pattern = _requirePattern(project, patternID);
+    final pattern = _requirePattern(project, _patternID);
 
-    for (final noteResize in noteResizes) {
+    for (final noteResize in _noteResizes) {
       final note = _requireNote(pattern, noteResize.noteID);
       note.length = noteResize.newLength;
     }
@@ -190,9 +182,9 @@ class ResizeNotesCommand extends Command {
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = _requirePattern(project, patternID);
+    final pattern = _requirePattern(project, _patternID);
 
-    for (final noteResize in noteResizes.reversed) {
+    for (final noteResize in _noteResizes.reversed) {
       final note = _requireNote(pattern, noteResize.noteID);
       note.length = noteResize.oldLength;
     }
@@ -200,13 +192,14 @@ class ResizeNotesCommand extends Command {
 }
 
 class DeleteNotesCommand extends Command {
-  final Id patternID;
-  final List<_DeleteNoteSnapshot> notes;
+  final Id _patternID;
+  final List<_DeleteNoteSnapshot> _notes;
 
   DeleteNotesCommand({
-    required this.patternID,
+    required Id patternID,
     required Iterable<NoteModel> notes,
-  }) : notes = List.unmodifiable(
+  }) : _patternID = patternID,
+       _notes = List.unmodifiable(
          notes.map(
            (note) => (
              id: note.id,
@@ -222,18 +215,18 @@ class DeleteNotesCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final pattern = _requirePattern(project, patternID);
+    final pattern = _requirePattern(project, _patternID);
 
-    for (final note in notes) {
+    for (final note in _notes) {
       _removeNote(pattern, note.id);
     }
   }
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = _requirePattern(project, patternID);
+    final pattern = _requirePattern(project, _patternID);
 
-    for (final note in notes.reversed) {
+    for (final note in _notes.reversed) {
       _addNote(pattern, _restoreDeletedNote(note));
     }
   }
@@ -242,22 +235,26 @@ class DeleteNotesCommand extends Command {
 enum NoteAttribute { key, offset, length, velocity, pan }
 
 class SetNoteAttributeCommand extends Command {
-  Id patternID;
-  Id noteID;
-  NoteAttribute attribute;
-  num oldValue;
-  num newValue;
+  final Id _patternID;
+  final Id _noteID;
+  final NoteAttribute _attribute;
+  final num _oldValue;
+  final num _newValue;
 
   SetNoteAttributeCommand({
-    required this.patternID,
-    required this.noteID,
-    required this.attribute,
-    required this.oldValue,
-    required this.newValue,
-  });
+    required Id patternID,
+    required Id noteID,
+    required NoteAttribute attribute,
+    required num oldValue,
+    required num newValue,
+  }) : _patternID = patternID,
+       _noteID = noteID,
+       _attribute = attribute,
+       _oldValue = oldValue,
+       _newValue = newValue;
 
-  void setAttribute(NoteModel note, num value) {
-    switch (attribute) {
+  void _setAttribute(NoteModel note, num value) {
+    switch (_attribute) {
       case NoteAttribute.key:
         note.key = value.toInt();
         break;
@@ -278,27 +275,15 @@ class SetNoteAttributeCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final pattern = project.sequence.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    final note = _getNote(pattern, noteID);
-
-    setAttribute(note, newValue);
+    final pattern = _requirePattern(project, _patternID);
+    final note = _requireNote(pattern, _noteID);
+    _setAttribute(note, _newValue);
   }
 
   @override
   void rollback(ProjectModel project) {
-    final pattern = project.sequence.patterns[patternID];
-
-    if (pattern == null) {
-      return;
-    }
-
-    final note = _getNote(pattern, noteID);
-
-    setAttribute(note, oldValue);
+    final pattern = _requirePattern(project, _patternID);
+    final note = _requireNote(pattern, _noteID);
+    _setAttribute(note, _oldValue);
   }
 }

@@ -73,6 +73,94 @@ void main() {
     project = MockProjectModel(sequence);
   });
 
+  group('AddNoteCommand', () {
+    test('execute and rollback add and remove a note', () {
+      final pattern = addPatternToProject('Pattern');
+      final note = NoteModel(
+        key: 60,
+        velocity: 0.75,
+        length: 48,
+        offset: 64,
+        pan: 0,
+      );
+      final command = AddNoteCommand(patternID: pattern.id, note: note);
+
+      command.execute(project);
+      expect(pattern.notes.single.id, equals(note.id));
+
+      command.rollback(project);
+      expect(pattern.notes, isEmpty);
+    });
+
+    test('execute throws when pattern does not exist', () {
+      final command = AddNoteCommand(
+        patternID: getId(),
+        note: NoteModel(
+          key: 60,
+          velocity: 0.75,
+          length: 48,
+          offset: 64,
+          pan: 0,
+        ),
+      );
+
+      expect(() => command.execute(project), throwsA(isA<StateError>()));
+    });
+
+    test('execute throws when note already exists in the pattern', () {
+      final pattern = addPatternToProject('Pattern');
+      final note = addNote(pattern, key: 60, offset: 64, length: 48);
+      final command = AddNoteCommand(patternID: pattern.id, note: note);
+
+      expect(() => command.execute(project), throwsA(isA<StateError>()));
+    });
+  });
+
+  group('DeleteNoteCommand', () {
+    test('execute and rollback delete and restore a note', () {
+      final pattern = addPatternToProject('Pattern');
+      final note = addNote(pattern, key: 60, offset: 64, length: 48);
+      final command = DeleteNoteCommand(patternID: pattern.id, note: note);
+
+      command.execute(project);
+      expect(pattern.notes, isEmpty);
+
+      command.rollback(project);
+      expect(pattern.notes.single.id, equals(note.id));
+    });
+
+    test('execute throws when pattern does not exist', () {
+      final command = DeleteNoteCommand(
+        patternID: getId(),
+        note: NoteModel(
+          key: 60,
+          velocity: 0.75,
+          length: 48,
+          offset: 64,
+          pan: 0,
+        ),
+      );
+
+      expect(() => command.execute(project), throwsA(isA<StateError>()));
+    });
+
+    test('execute throws when note does not exist', () {
+      final pattern = addPatternToProject('Pattern');
+      final command = DeleteNoteCommand(
+        patternID: pattern.id,
+        note: NoteModel(
+          key: 60,
+          velocity: 0.75,
+          length: 48,
+          offset: 64,
+          pan: 0,
+        ),
+      );
+
+      expect(() => command.execute(project), throwsA(isA<StateError>()));
+    });
+  });
+
   group('MoveNotesCommand', () {
     test('execute and rollback update keys and offsets for multiple notes', () {
       final pattern = addPatternToProject('Pattern');
@@ -231,5 +319,50 @@ void main() {
         expect(restoredAgain.pan, equals(-0.25));
       },
     );
+  });
+
+  group('SetNoteAttributeCommand', () {
+    test('execute and rollback update a note attribute', () {
+      final pattern = addPatternToProject('Pattern');
+      final note = addNote(pattern, key: 60, offset: 64, length: 48);
+      final command = SetNoteAttributeCommand(
+        patternID: pattern.id,
+        noteID: note.id,
+        attribute: NoteAttribute.velocity,
+        oldValue: note.velocity,
+        newValue: 0.25,
+      );
+
+      command.execute(project);
+      expect(note.velocity, equals(0.25));
+
+      command.rollback(project);
+      expect(note.velocity, equals(0.75));
+    });
+
+    test('execute throws when pattern does not exist', () {
+      final command = SetNoteAttributeCommand(
+        patternID: getId(),
+        noteID: getId(),
+        attribute: NoteAttribute.key,
+        oldValue: 60,
+        newValue: 61,
+      );
+
+      expect(() => command.execute(project), throwsA(isA<StateError>()));
+    });
+
+    test('execute throws when note does not exist', () {
+      final pattern = addPatternToProject('Pattern');
+      final command = SetNoteAttributeCommand(
+        patternID: pattern.id,
+        noteID: getId(),
+        attribute: NoteAttribute.key,
+        oldValue: 60,
+        newValue: 61,
+      );
+
+      expect(() => command.execute(project), throwsA(isA<StateError>()));
+    });
   });
 }
