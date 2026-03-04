@@ -52,6 +52,9 @@ enum PianoRollInteractionFamily {
   createNote,
 }
 
+typedef PianoRollMoveNotePreview = ({int key, Time offset});
+typedef PianoRollResizeNotePreview = ({Time length});
+
 class PianoRollController extends _PianoRollController
     with _PianoRollShortcutsMixin
     implements DisposableService {
@@ -246,7 +249,7 @@ class _PianoRollController {
     return note;
   }
 
-  NoteModel? createNoteFromPointerDown({
+  PianoRollTransientNote? createTransientNoteFromPointerDown({
     required PianoRollPointerDownEvent event,
   }) {
     viewModel.selectedNotes.clear();
@@ -263,15 +266,24 @@ class _PianoRollController {
             viewWidthInPixels: event.pianoRollSize.width,
           );
 
-    project.startUndoGroup();
-
-    return addNoteToActivePattern(
+    return PianoRollTransientNote(
+      id: getId(),
       key: event.key.floor(),
       velocity: viewModel.cursorNoteVelocity,
       length: viewModel.cursorNoteLength,
       offset: targetTime,
       pan: viewModel.cursorNotePan,
     );
+  }
+
+  NoteModel createCommittedNoteFromTransient(PianoRollTransientNote note) {
+    return NoteModel(
+      key: note.key,
+      velocity: note.velocity,
+      length: note.length,
+      offset: note.offset,
+      pan: note.pan,
+    )..id = note.id;
   }
 
   /// Adds a time signature change to the pattern.
@@ -320,6 +332,7 @@ class _PianoRollController {
     required bool isSelectionMove,
     required bool didDuplicateOnPointerDown,
     required Set<Id> duplicatedNoteIds,
+    required Set<Id> movingTransientNoteIds,
   }) {
     final movingNotesById = <Id, NoteModel>{
       noteUnderCursor.id: noteUnderCursor,
@@ -335,6 +348,9 @@ class _PianoRollController {
 
     final startTimes = <Id, Time>{};
     final startKeys = <Id, int>{};
+    final lengths = <Id, Time>{};
+    final velocities = <Id, double>{};
+    final pans = <Id, double>{};
     var startOfFirstNote = maxSafeIntWeb;
     var keyOfTopNote = 0;
     var keyOfBottomNote = maxSafeIntWeb;
@@ -342,6 +358,9 @@ class _PianoRollController {
     for (final note in movingNotes) {
       startTimes[note.id] = note.offset;
       startKeys[note.id] = note.key;
+      lengths[note.id] = note.length;
+      velocities[note.id] = note.velocity;
+      pans[note.id] = note.pan;
       startOfFirstNote = min(startOfFirstNote, note.offset);
       keyOfTopNote = max(keyOfTopNote, note.key);
       keyOfBottomNote = min(keyOfBottomNote, note.key);
@@ -353,12 +372,16 @@ class _PianoRollController {
       noteOffset: 0.5,
       startTimes: startTimes,
       startKeys: startKeys,
+      lengths: lengths,
+      velocities: velocities,
+      pans: pans,
       startOfFirstNote: startOfFirstNote,
       keyOfTopNote: keyOfTopNote,
       keyOfBottomNote: keyOfBottomNote,
       isSelectionMove: isSelectionMove,
       didDuplicateOnPointerDown: didDuplicateOnPointerDown,
       duplicatedNoteIds: duplicatedNoteIds,
+      movingTransientNoteIds: movingTransientNoteIds,
     );
   }
 
@@ -374,15 +397,23 @@ class _PianoRollController {
         .toList(growable: false);
   }
 
-  void applyMoveNotesSessionUpdate({
+  Map<Id, PianoRollMoveNotePreview> createInitialMoveNotesPreview(
+    PianoRollMoveNotesSessionData sessionData,
+  ) {
+    return Map<Id, PianoRollMoveNotePreview>.fromEntries(
+      sessionData.startTimes.keys.map((noteId) {
+        return MapEntry(noteId, (
+          key: sessionData.startKeys[noteId]!,
+          offset: sessionData.startTimes[noteId]!,
+        ));
+      }),
+    );
+  }
+
+  Map<Id, PianoRollMoveNotePreview> resolveMoveNotesSessionPreview({
     required PianoRollPointerMoveEvent event,
     required PianoRollMoveNotesSessionData sessionData,
   }) {
-    final notes = notesForMoveSession(sessionData);
-    if (notes.isEmpty) {
-      return;
-    }
-
     final key = event.key - sessionData.noteOffset;
     final offset = event.offset - sessionData.timeOffset;
     var snappedOffset = offset.floor();
@@ -414,43 +445,59 @@ class _PianoRollController {
           minKeyValue.round() - sessionData.keyOfBottomNote;
     }
 
-    for (final note in notes) {
-      final shift = event.keyboardModifiers.shift;
-      final ctrl = event.keyboardModifiers.ctrl;
-      note.key =
-          sessionData.startKeys[note.id]! +
-          (shift ? 0 : keyOffsetFromEventStart);
-      note.offset =
-          sessionData.startTimes[note.id]! +
-          (!shift && ctrl ? 0 : timeOffsetFromEventStart);
+    final shift = event.keyboardModifiers.shift;
+    final ctrl = event.keyboardModifiers.ctrl;
+
+    return Map<Id, PianoRollMoveNotePreview>.fromEntries(
+      sessionData.startTimes.keys.map((noteId) {
+        return MapEntry(noteId, (
+          key:
+              sessionData.startKeys[noteId]! +
+              (shift ? 0 : keyOffsetFromEventStart),
+          offset:
+              sessionData.startTimes[noteId]! +
+              (!shift && ctrl ? 0 : timeOffsetFromEventStart),
+        ));
+      }),
+    );
+  }
+
+  void syncLivePreviewForMoveSession({
+    required PianoRollMoveNotesSessionData sessionData,
+    required Map<Id, PianoRollMoveNotePreview> preview,
+  }) {
+    final notePreview = preview[sessionData.noteUnderCursor.id];
+    if (notePreview == null) {
+      return;
     }
 
-    final noteUnderCursor = sessionData.noteUnderCursor;
-    if (!liveNotes.hasNoteForKey(noteUnderCursor.key)) {
+    if (!liveNotes.hasNoteForKey(notePreview.key)) {
       liveNotes.removeAll();
       liveNotes.addNote(
-        key: noteUnderCursor.key,
-        velocity: noteUnderCursor.velocity,
-        pan: noteUnderCursor.pan,
+        key: notePreview.key,
+        velocity: sessionData.noteUnderCursor.velocity,
+        pan: sessionData.noteUnderCursor.pan,
       );
     }
   }
 
   MoveNotesCommand buildMoveNotesCommand({
     required PianoRollMoveNotesSessionData sessionData,
+    required Map<Id, PianoRollMoveNotePreview> preview,
   }) {
-    final notes = notesForMoveSession(sessionData);
-
     return MoveNotesCommand(
       patternID: requireActivePattern().id,
-      noteMoves: notes
-          .map((note) {
+      noteMoves: preview.entries
+          .where(
+            (entry) => !sessionData.movingTransientNoteIds.contains(entry.key),
+          )
+          .map((entry) {
             return (
-              noteID: note.id,
-              oldOffset: sessionData.startTimes[note.id]!,
-              newOffset: note.offset,
-              oldKey: sessionData.startKeys[note.id]!,
-              newKey: note.key,
+              noteID: entry.key,
+              oldOffset: sessionData.startTimes[entry.key]!,
+              newOffset: entry.value.offset,
+              oldKey: sessionData.startKeys[entry.key]!,
+              newKey: entry.value.key,
             );
           })
           .toList(growable: false),
@@ -503,15 +550,20 @@ class _PianoRollController {
         .toList(growable: false);
   }
 
-  void applyResizeNotesSessionUpdate({
+  Map<Id, PianoRollResizeNotePreview> createInitialResizeNotesPreview(
+    PianoRollResizeNotesSessionData sessionData,
+  ) {
+    return Map<Id, PianoRollResizeNotePreview>.fromEntries(
+      sessionData.startLengths.keys.map((noteId) {
+        return MapEntry(noteId, (length: sessionData.startLengths[noteId]!));
+      }),
+    );
+  }
+
+  Map<Id, PianoRollResizeNotePreview> resolveResizeNotesSessionPreview({
     required PianoRollPointerMoveEvent event,
     required PianoRollResizeNotesSessionData sessionData,
   }) {
-    final notes = notesForResizeSession(sessionData);
-    if (notes.isEmpty) {
-      return;
-    }
-
     var snappedOriginalTime = sessionData.pointerStartOffset.floor();
     var snappedEventTime = event.offset.floor();
 
@@ -568,26 +620,27 @@ class _PianoRollController {
       }
     }
 
-    for (final note in notes) {
-      note.length = sessionData.startLengths[note.id]! + diff;
-    }
-
-    setCursorNoteParameters(sessionData.pressedNote);
+    return Map<Id, PianoRollResizeNotePreview>.fromEntries(
+      sessionData.startLengths.keys.map((noteId) {
+        return MapEntry(noteId, (
+          length: sessionData.startLengths[noteId]! + diff,
+        ));
+      }),
+    );
   }
 
   ResizeNotesCommand buildResizeNotesCommand({
     required PianoRollResizeNotesSessionData sessionData,
+    required Map<Id, PianoRollResizeNotePreview> preview,
   }) {
-    final notes = notesForResizeSession(sessionData);
-
     return ResizeNotesCommand(
       patternID: requireActivePattern().id,
-      noteResizes: notes
-          .map((note) {
+      noteResizes: preview.entries
+          .map((entry) {
             return (
-              noteID: note.id,
-              oldLength: sessionData.startLengths[note.id]!,
-              newLength: note.length,
+              noteID: entry.key,
+              oldLength: sessionData.startLengths[entry.key]!,
+              newLength: entry.value.length,
             );
           })
           .toList(growable: false),

@@ -251,6 +251,8 @@ class _PianoRollStateMachineTestFixture {
   }
 
   List<NoteModel> get notes => pattern.notes.toList(growable: false);
+  List<PianoRollTransientNote> get transientNotes =>
+      viewModel.transientNotes.values.toList(growable: false);
   List<_RecordedLiveEvent> get liveEvents =>
       recordingProcessingGraphApi?.liveEvents.toList(growable: false) ??
       const <_RecordedLiveEvent>[];
@@ -322,6 +324,10 @@ class _PianoRollStateMachineTestFixture {
 
   NoteModel noteById(Id id) {
     return pattern.notes.firstWhere((note) => note.id == id);
+  }
+
+  PianoRollTransientNote transientNoteById(Id id) {
+    return viewModel.transientNotes[id]!;
   }
 
   void selectNotes(Iterable<Id> noteIds) {
@@ -541,6 +547,11 @@ class _PianoRollStateMachineTestFixture {
   void expectNoActiveTransientState() {
     expect(viewModel.selectionBox, isNull);
     expect(viewModel.pressedNote, isNull);
+    expect(viewModel.pressedTransientNote, isNull);
+    expect(viewModel.hoveredTransientNote, isNull);
+    expect(viewModel.transientNotes, isEmpty);
+    expect(viewModel.noteOverrides, isEmpty);
+    expect(viewModel.selectedTransientNotes, isEmpty);
   }
 
   void dispose() {
@@ -1230,11 +1241,17 @@ void main() {
       fixture.pointerMove(key: 62.5, offset: 155);
 
       final movedNote = fixture.noteById(note.id);
-      expect(
-        movedNote.offset,
-        equals(fixture.snappedTime(155, round: true, startTime: 100)),
+      final movedNoteOverride = fixture.viewModel.noteOverrides[note.id];
+      final expectedOffset = fixture.snappedTime(
+        155,
+        round: true,
+        startTime: 100,
       );
-      expect(movedNote.key, equals(62));
+      expect(movedNote.offset, equals(100));
+      expect(movedNote.key, equals(60));
+      expect(movedNoteOverride, isNotNull);
+      expect(movedNoteOverride!.offset, equals(expectedOffset));
+      expect(movedNoteOverride.key, equals(62));
 
       fixture.pointerUp(key: 62.5, offset: 155);
 
@@ -1246,10 +1263,7 @@ void main() {
       expect(fixture.noteById(note.id).key, equals(60));
 
       fixture.project.redo();
-      expect(
-        fixture.noteById(note.id).offset,
-        equals(fixture.snappedTime(155, round: true, startTime: 100)),
-      );
+      expect(fixture.noteById(note.id).offset, equals(expectedOffset));
       expect(fixture.noteById(note.id).key, equals(62));
     });
 
@@ -1314,15 +1328,15 @@ void main() {
         shift: true,
       );
 
-      expect(fixture.notes.length, equals(2));
+      expect(fixture.notes.length, equals(1));
+      expect(fixture.transientNotes, hasLength(1));
+      final duplicateId = fixture.transientNotes.single.id;
 
       fixture.pointerMove(key: 62.5, offset: 200);
       fixture.pointerUp(key: 62.5, offset: 200);
 
       final original = fixture.noteById(note.id);
-      final duplicate = fixture.notes.firstWhere(
-        (candidate) => candidate.id != note.id,
-      );
+      final duplicate = fixture.noteById(duplicateId);
       expect(
         original.offset,
         equals(fixture.snappedTime(200, round: true, startTime: 100)),
@@ -1390,12 +1404,17 @@ void main() {
           shift: true,
         );
 
-        expect(fixture.notes.length, equals(4));
+        expect(fixture.notes.length, equals(2));
+        expect(fixture.transientNotes, hasLength(2));
         final clonedIds = fixture.viewModel.selectedNotes.nonObservableInner
             .toSet();
         expect(clonedIds, hasLength(2));
         expect(clonedIds.contains(noteA.id), isFalse);
         expect(clonedIds.contains(noteB.id), isFalse);
+        expect(
+          fixture.viewModel.selectedTransientNotes.toSet(),
+          equals(clonedIds),
+        );
 
         fixture.pointerMove(key: 61.5, offset: 200);
         fixture.pointerUp(key: 61.5, offset: 200);
@@ -1513,7 +1532,11 @@ void main() {
         final snappedEvent = fixture.snappedTime(250, round: true);
         final expectedLength = 96 + (snappedEvent - snappedOriginal);
 
-        expect(fixture.noteById(note.id).length, equals(expectedLength));
+        expect(fixture.noteById(note.id).length, equals(96));
+        expect(
+          fixture.viewModel.noteOverrides[note.id]?.length,
+          equals(expectedLength),
+        );
         expect(fixture.viewModel.cursorNoteLength, equals(expectedLength));
         expect(fixture.viewModel.cursorNoteVelocity, equals(0.4));
         expect(fixture.viewModel.cursorNotePan, equals(-0.2));
@@ -1628,18 +1651,21 @@ void main() {
 
         fixture.pointerDown(key: 60.9, offset: 145.2);
 
-        expect(fixture.notes, hasLength(1));
-        final note = fixture.notes.single;
+        expect(fixture.notes, isEmpty);
+        expect(fixture.transientNotes, hasLength(1));
+        final note = fixture.transientNotes.single;
         expect(note.key, equals(60));
         expect(note.offset, equals(fixture.snappedTime(145)));
         expect(note.length, equals(48));
         expect(note.velocity, equals(0.25));
         expect(note.pan, equals(0.6));
-        expect(fixture.viewModel.pressedNote, equals(note.id));
+        expect(fixture.viewModel.pressedNote, isNull);
+        expect(fixture.viewModel.pressedTransientNote, equals(note.id));
 
         fixture.pointerUp(key: 60.9, offset: 145.2);
 
         fixture.expectNoActiveTransientState();
+        expect(fixture.notes, hasLength(1));
 
         fixture.project.undo();
         expect(fixture.notes, isEmpty);
@@ -1660,9 +1686,13 @@ void main() {
 
         fixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
 
-        final createdNoteId = fixture.notes.single.id;
+        expect(fixture.notes, isEmpty);
+        final createdNoteId = fixture.transientNotes.single.id;
 
         fixture.pointerMove(key: 63.5, offset: 173.8, alt: true);
+        expect(fixture.notes, isEmpty);
+        expect(fixture.transientNoteById(createdNoteId).key, equals(63));
+        expect(fixture.transientNoteById(createdNoteId).offset, equals(173));
         fixture.pointerCancel(key: 63.5, offset: 173.8, alt: true);
 
         final note = fixture.noteById(createdNoteId);

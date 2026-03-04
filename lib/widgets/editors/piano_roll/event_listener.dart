@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -82,9 +82,10 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       pointerEvent: e,
       pianoRollSize: contentRenderBox.size,
       noteUnderCursor:
-          noteUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
+          noteUnderCursor?.metadata.realNoteId ??
+          resizeHandleUnderCursor?.metadata.realNoteId,
       keyboardModifiers: keyboardModifiers,
-      isResize: resizeHandleUnderCursor != null,
+      isResize: resizeHandleUnderCursor?.metadata.realNoteId != null,
     );
 
     controller.pointerDown(event);

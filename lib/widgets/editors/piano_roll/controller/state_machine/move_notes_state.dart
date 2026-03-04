@@ -32,6 +32,9 @@ class PianoRollMoveNotesSessionData {
 
   final Map<Id, Time> startTimes;
   final Map<Id, int> startKeys;
+  final Map<Id, Time> lengths;
+  final Map<Id, double> velocities;
+  final Map<Id, double> pans;
 
   /// Start offset of the earliest note. Used to ensure no note moves before
   /// the start of the pattern.
@@ -41,6 +44,7 @@ class PianoRollMoveNotesSessionData {
   final bool isSelectionMove;
   final bool didDuplicateOnPointerDown;
   final Set<Id> duplicatedNoteIds;
+  final Set<Id> movingTransientNoteIds;
 
   PianoRollMoveNotesSessionData({
     required this.noteUnderCursor,
@@ -48,13 +52,18 @@ class PianoRollMoveNotesSessionData {
     required this.noteOffset,
     required this.startTimes,
     required this.startKeys,
+    required this.lengths,
+    required this.velocities,
+    required this.pans,
     required this.startOfFirstNote,
     required this.keyOfTopNote,
     required this.keyOfBottomNote,
     required this.isSelectionMove,
     required this.didDuplicateOnPointerDown,
     required Set<Id> duplicatedNoteIds,
-  }) : duplicatedNoteIds = Set<Id>.unmodifiable(duplicatedNoteIds);
+    required Set<Id> movingTransientNoteIds,
+  }) : duplicatedNoteIds = Set<Id>.unmodifiable(duplicatedNoteIds),
+       movingTransientNoteIds = Set<Id>.unmodifiable(movingTransientNoteIds);
 }
 
 class PianoRollMoveNotesState
@@ -73,9 +82,13 @@ class PianoRollMoveNotesState
   PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollMoveNotesSessionData? _sessionData;
+  Map<Id, PianoRollMoveNotePreview>? _preview;
 
   @visibleForTesting
   PianoRollMoveNotesSessionData? get sessionData => _sessionData;
+
+  @visibleForTesting
+  Map<Id, PianoRollMoveNotePreview>? get preview => _preview;
 
   PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
     if (event is! EditorStateMachineSignalEvent) {
@@ -100,6 +113,57 @@ class PianoRollMoveNotesState
         event.signal is _PianoRollAdaptedPointerSignal;
   }
 
+  NoteModel _snapshotFromTransientNote(PianoRollTransientNote note) {
+    return controller.createCommittedNoteFromTransient(note);
+  }
+
+  void _applyPreview({
+    required PianoRollMoveNotesSessionData sessionData,
+    required Map<Id, PianoRollMoveNotePreview> preview,
+  }) {
+    _preview = preview;
+    viewModel.noteOverrides.clear();
+
+    for (final entry in preview.entries) {
+      final noteId = entry.key;
+      final previewNote = entry.value;
+
+      if (sessionData.movingTransientNoteIds.contains(noteId)) {
+        final transientNote = viewModel.transientNotes[noteId];
+        if (transientNote == null) {
+          continue;
+        }
+
+        viewModel.transientNotes[noteId] = PianoRollTransientNote(
+          id: transientNote.id,
+          key: previewNote.key,
+          velocity: transientNote.velocity,
+          length: transientNote.length,
+          offset: previewNote.offset,
+          pan: transientNote.pan,
+        );
+        continue;
+      }
+
+      final hasKeyOverride = previewNote.key != sessionData.startKeys[noteId]!;
+      final hasOffsetOverride =
+          previewNote.offset != sessionData.startTimes[noteId]!;
+      if (!hasKeyOverride && !hasOffsetOverride) {
+        continue;
+      }
+
+      viewModel.noteOverrides[noteId] = PianoRollNoteOverride(
+        key: hasKeyOverride ? previewNote.key : null,
+        offset: hasOffsetOverride ? previewNote.offset : null,
+      );
+    }
+
+    controller.syncLivePreviewForMoveSession(
+      sessionData: sessionData,
+      preview: preview,
+    );
+  }
+
   void _initializeSession(PianoRollPointerDownEvent event) {
     final noteId = event.noteUnderCursor;
     if (noteId == null) {
@@ -108,20 +172,26 @@ class PianoRollMoveNotesState
       );
     }
 
+    viewModel.clearTransientPreviewState();
+
     final pattern = controller.requireActivePattern();
     final notes = pattern.notes.nonObservableInner;
     final selectedNotes = viewModel.selectedNotes.nonObservableInner;
     var pressedNote = controller.requireActivePatternNote(noteId);
+    var sessionPressedNote = pressedNote;
     final isSelectionMove = selectedNotes.contains(noteId);
     var didDuplicateOnPointerDown = false;
     final duplicatedNoteIds = <Id>{};
+    final movingTransientNoteIds = <Id>{};
+    late final List<NoteModel> notesToMove;
 
     if (isSelectionMove) {
       if (event.keyboardModifiers.shift) {
-        project.startUndoGroup();
         didDuplicateOnPointerDown = true;
 
-        final newSelectedNotes = ObservableSet<Id>();
+        final newSelectedNotes = <Id>{};
+        final transientNotesToMove = <NoteModel>[];
+        viewModel.selectedTransientNotes.clear();
 
         for (final note
             in notes
@@ -129,61 +199,92 @@ class PianoRollMoveNotesState
                   return selectedNotes.contains(note.id);
                 })
                 .toList(growable: false)) {
-          final newNote = NoteModel.fromNoteModel(note);
+          final transientNote = PianoRollTransientNote(
+            id: getId(),
+            key: note.key,
+            velocity: note.velocity,
+            length: note.length,
+            offset: note.offset,
+            pan: note.pan,
+          );
+          final transientSnapshot = _snapshotFromTransientNote(transientNote);
 
-          project.execute(AddNoteCommand(patternID: pattern.id, note: newNote));
-
-          newSelectedNotes.add(newNote.id);
-          duplicatedNoteIds.add(newNote.id);
+          viewModel.transientNotes[transientNote.id] = transientNote;
+          newSelectedNotes.add(transientNote.id);
+          duplicatedNoteIds.add(transientNote.id);
+          movingTransientNoteIds.add(transientNote.id);
+          transientNotesToMove.add(transientSnapshot);
 
           if (note.id == noteId) {
-            pressedNote = newNote;
+            sessionPressedNote = transientSnapshot;
+            viewModel.pressedTransientNote = transientNote.id;
+            viewModel.pressedNote = null;
           }
         }
 
-        viewModel.selectedNotes = newSelectedNotes;
+        viewModel.selectedNotes = ObservableSet.of(newSelectedNotes);
+        viewModel.selectedTransientNotes.addAll(newSelectedNotes);
+        notesToMove = transientNotesToMove;
+      } else {
+        viewModel.pressedNote = pressedNote.id;
+        viewModel.pressedTransientNote = null;
+        viewModel.selectedTransientNotes.clear();
+        notesToMove = pattern.notes
+            .where(
+              (note) =>
+                  viewModel.selectedNotes.nonObservableInner.contains(note.id),
+            )
+            .toList(growable: false);
       }
     } else {
       viewModel.selectedNotes.clear();
+      viewModel.selectedTransientNotes.clear();
 
       if (event.keyboardModifiers.shift) {
         didDuplicateOnPointerDown = true;
 
-        final newNote = NoteModel.fromNoteModel(pressedNote);
-        project.execute(AddNoteCommand(patternID: pattern.id, note: newNote));
-        duplicatedNoteIds.add(newNote.id);
+        final transientNote = PianoRollTransientNote(
+          id: getId(),
+          key: pressedNote.key,
+          velocity: pressedNote.velocity,
+          length: pressedNote.length,
+          offset: pressedNote.offset,
+          pan: pressedNote.pan,
+        );
+        viewModel.transientNotes[transientNote.id] = transientNote;
+        duplicatedNoteIds.add(transientNote.id);
       }
 
       controller.setCursorNoteParameters(pressedNote);
+      viewModel.pressedNote = pressedNote.id;
+      viewModel.pressedTransientNote = null;
+      notesToMove = [pressedNote];
     }
-
-    viewModel.pressedNote = pressedNote.id;
-
-    final notesToMove = isSelectionMove
-        ? pattern.notes.where(
-            (note) =>
-                viewModel.selectedNotes.nonObservableInner.contains(note.id),
-          )
-        : <NoteModel>[pressedNote];
 
     _sessionData = controller.createMoveNotesSessionData(
       event: event,
-      noteUnderCursor: pressedNote,
+      noteUnderCursor: sessionPressedNote,
       notesToMove: notesToMove,
       isSelectionMove: isSelectionMove,
       didDuplicateOnPointerDown: didDuplicateOnPointerDown,
       duplicatedNoteIds: duplicatedNoteIds,
+      movingTransientNoteIds: movingTransientNoteIds,
     );
 
-    controller.liveNotes.addNote(
-      key: pressedNote.key,
-      velocity: pressedNote.velocity,
-      pan: pressedNote.pan,
+    final sessionData = _sessionData;
+    if (sessionData == null) {
+      return;
+    }
+
+    _applyPreview(
+      sessionData: sessionData,
+      preview: controller.createInitialMoveNotesPreview(sessionData),
     );
   }
 
   void _clearSession() {
     _sessionData = null;
+    _preview = null;
   }
 
   @override
@@ -231,9 +332,12 @@ class PianoRollMoveNotesState
       return;
     }
 
-    controller.applyMoveNotesSessionUpdate(
-      event: pointerMoveEvent,
+    _applyPreview(
       sessionData: sessionData,
+      preview: controller.resolveMoveNotesSessionPreview(
+        event: pointerMoveEvent,
+        sessionData: sessionData,
+      ),
     );
   }
 
@@ -243,13 +347,57 @@ class PianoRollMoveNotesState
     required EditorStateMachineState<PianoRollStateMachineData> to,
   }) {
     final sessionData = _sessionData;
-    if (sessionData != null) {
-      project.push(controller.buildMoveNotesCommand(sessionData: sessionData));
+    final preview = _preview;
+    final pattern = controller.activePatternOrNull;
+    if (sessionData != null && preview != null && pattern != null) {
+      if (sessionData.movingTransientNoteIds.isNotEmpty) {
+        project.startUndoGroup();
+        for (final noteId in sessionData.startTimes.keys) {
+          final transientNote = viewModel.transientNotes[noteId];
+          if (transientNote == null) {
+            continue;
+          }
+
+          project.execute(
+            AddNoteCommand(
+              patternID: pattern.id,
+              note: controller.createCommittedNoteFromTransient(transientNote),
+            ),
+          );
+        }
+        project.commitUndoGroup();
+      } else {
+        if (sessionData.didDuplicateOnPointerDown) {
+          for (final noteId in sessionData.duplicatedNoteIds) {
+            final transientNote = viewModel.transientNotes[noteId];
+            if (transientNote == null) {
+              continue;
+            }
+
+            project.execute(
+              AddNoteCommand(
+                patternID: pattern.id,
+                note: controller.createCommittedNoteFromTransient(
+                  transientNote,
+                ),
+              ),
+            );
+          }
+        }
+
+        project.push(
+          controller.buildMoveNotesCommand(
+            sessionData: sessionData,
+            preview: preview,
+          ),
+          execute: true,
+        );
+      }
     }
 
     controller.liveNotes.removeAll();
-    project.commitUndoGroup();
     viewModel.pressedNote = null;
+    viewModel.clearTransientPreviewState();
     _clearSession();
   }
 }

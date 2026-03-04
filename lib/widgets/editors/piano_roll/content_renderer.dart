@@ -128,8 +128,11 @@ class PianoRollPainter extends CustomPainterObserver {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
+    final resolvedNotes = viewModel.resolveRenderedNotes(
+      notes.nonObservableInner,
+    );
 
-    for (final note in notes) {
+    for (final note in resolvedNotes) {
       final keyHeight = viewModel.keyHeight;
       final key = note.key;
       final x =
@@ -160,9 +163,9 @@ class PianoRollPainter extends CustomPainterObserver {
       if (x > size.width || x + width < 0) continue;
       if (y > size.height || y + height < 0) continue;
 
-      final isPressed = viewModel.pressedNote == note.id;
-      final isSelected = viewModel.selectedNotes.contains(note.id);
-      final isHovered = viewModel.hoveredNote == note.id;
+      final isPressed = note.isPressed;
+      final isSelected = note.isSelected;
+      final isHovered = note.isHovered;
 
       var color = colorShifter.noteBase;
       if (isHovered && !isPressed) {
@@ -263,7 +266,7 @@ class PianoRollPainter extends CustomPainterObserver {
         canvas.restore();
       }
 
-      viewModel.visibleNotes.add(rect: rect.outerRect, metadata: (id: note.id));
+      viewModel.visibleNotes.add(rect: rect.outerRect, metadata: note.ref);
 
       // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
       final endResizeHandleRect = Rect.fromLTRB(
@@ -279,7 +282,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
       viewModel.visibleResizeAreas.add(
         rect: endResizeHandleRect,
-        metadata: (id: note.id),
+        metadata: note.ref,
       );
     }
   }

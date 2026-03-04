@@ -45,9 +45,13 @@ class PianoRollCreateNoteState
   PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollCreateNoteSessionData? _sessionData;
+  Map<Id, PianoRollMoveNotePreview>? _preview;
 
   @visibleForTesting
   PianoRollCreateNoteSessionData? get sessionData => _sessionData;
+
+  @visibleForTesting
+  Map<Id, PianoRollMoveNotePreview>? get preview => _preview;
 
   PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
     if (event is! EditorStateMachineSignalEvent) {
@@ -72,23 +76,63 @@ class PianoRollCreateNoteState
         event.signal is _PianoRollAdaptedPointerSignal;
   }
 
-  void _initializeSession(PianoRollPointerDownEvent event) {
-    final createdNote = controller.createNoteFromPointerDown(event: event);
-    if (createdNote == null) {
-      _sessionData = null;
-      viewModel.pressedNote = null;
+  void _applyPreview({
+    required PianoRollCreateNoteSessionData sessionData,
+    required Map<Id, PianoRollMoveNotePreview> preview,
+  }) {
+    _preview = preview;
+
+    final transientNote = viewModel.transientNotes[sessionData.createdNoteId];
+    final previewNote = preview[sessionData.createdNoteId];
+    if (transientNote == null || previewNote == null) {
       return;
     }
 
-    viewModel.pressedNote = createdNote.id;
+    viewModel.transientNotes[sessionData.createdNoteId] =
+        PianoRollTransientNote(
+          id: transientNote.id,
+          key: previewNote.key,
+          velocity: transientNote.velocity,
+          length: transientNote.length,
+          offset: previewNote.offset,
+          pan: transientNote.pan,
+        );
 
+    controller.syncLivePreviewForMoveSession(
+      sessionData: sessionData.moveSessionData,
+      preview: preview,
+    );
+  }
+
+  void _initializeSession(PianoRollPointerDownEvent event) {
+    viewModel.clearTransientPreviewState();
+    viewModel.selectedNotes.clear();
+
+    final createdNote = controller.createTransientNoteFromPointerDown(
+      event: event,
+    );
+    if (createdNote == null) {
+      _sessionData = null;
+      viewModel.pressedNote = null;
+      viewModel.pressedTransientNote = null;
+      return;
+    }
+
+    viewModel.transientNotes[createdNote.id] = createdNote;
+    viewModel.pressedNote = null;
+    viewModel.pressedTransientNote = createdNote.id;
+
+    final createdNoteSnapshot = controller.createCommittedNoteFromTransient(
+      createdNote,
+    );
     final moveSessionData = controller.createMoveNotesSessionData(
       event: event,
-      noteUnderCursor: createdNote,
-      notesToMove: [createdNote],
+      noteUnderCursor: createdNoteSnapshot,
+      notesToMove: [createdNoteSnapshot],
       isSelectionMove: false,
       didDuplicateOnPointerDown: false,
       duplicatedNoteIds: const {},
+      movingTransientNoteIds: {createdNote.id},
     );
 
     _sessionData = PianoRollCreateNoteSessionData(
@@ -96,15 +140,15 @@ class PianoRollCreateNoteState
       moveSessionData: moveSessionData,
     );
 
-    controller.liveNotes.addNote(
-      key: createdNote.key,
-      velocity: createdNote.velocity,
-      pan: createdNote.pan,
+    _applyPreview(
+      sessionData: _sessionData!,
+      preview: controller.createInitialMoveNotesPreview(moveSessionData),
     );
   }
 
   void _clearSession() {
     _sessionData = null;
+    _preview = null;
   }
 
   @override
@@ -152,9 +196,12 @@ class PianoRollCreateNoteState
       return;
     }
 
-    controller.applyMoveNotesSessionUpdate(
-      event: pointerMoveEvent,
-      sessionData: sessionData.moveSessionData,
+    _applyPreview(
+      sessionData: sessionData,
+      preview: controller.resolveMoveNotesSessionPreview(
+        event: pointerMoveEvent,
+        sessionData: sessionData.moveSessionData,
+      ),
     );
   }
 
@@ -164,17 +211,22 @@ class PianoRollCreateNoteState
     required EditorStateMachineState<PianoRollStateMachineData> to,
   }) {
     final sessionData = _sessionData;
-    if (sessionData != null) {
-      project.push(
-        controller.buildMoveNotesCommand(
-          sessionData: sessionData.moveSessionData,
-        ),
-      );
+    final pattern = controller.activePatternOrNull;
+    if (sessionData != null && pattern != null) {
+      final transientNote = viewModel.transientNotes[sessionData.createdNoteId];
+      if (transientNote != null) {
+        project.execute(
+          AddNoteCommand(
+            patternID: pattern.id,
+            note: controller.createCommittedNoteFromTransient(transientNote),
+          ),
+        );
+      }
     }
 
     controller.liveNotes.removeAll();
-    project.commitUndoGroup();
     viewModel.pressedNote = null;
+    viewModel.clearTransientPreviewState();
     _clearSession();
   }
 }

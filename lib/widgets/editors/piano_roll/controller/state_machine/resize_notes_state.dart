@@ -53,9 +53,13 @@ class PianoRollResizeNotesState
   PianoRollController get controller => pianoRollStateMachine.controller;
 
   PianoRollResizeNotesSessionData? _sessionData;
+  Map<Id, PianoRollResizeNotePreview>? _preview;
 
   @visibleForTesting
   PianoRollResizeNotesSessionData? get sessionData => _sessionData;
+
+  @visibleForTesting
+  Map<Id, PianoRollResizeNotePreview>? get preview => _preview;
 
   PianoRollPointerDownEvent? _pointerDownEvent(EditorStateMachineEvent event) {
     if (event is! EditorStateMachineSignalEvent) {
@@ -80,11 +84,40 @@ class PianoRollResizeNotesState
         event.signal is _PianoRollAdaptedPointerSignal;
   }
 
+  void _applyPreview({
+    required PianoRollResizeNotesSessionData sessionData,
+    required Map<Id, PianoRollResizeNotePreview> preview,
+  }) {
+    _preview = preview;
+    viewModel.noteOverrides.clear();
+
+    for (final entry in preview.entries) {
+      final noteId = entry.key;
+      final previewNote = entry.value;
+      if (previewNote.length == sessionData.startLengths[noteId]!) {
+        continue;
+      }
+
+      viewModel.noteOverrides[noteId] = PianoRollNoteOverride(
+        length: previewNote.length,
+      );
+    }
+
+    final pressedLength = preview[sessionData.pressedNote.id]?.length;
+    if (pressedLength != null) {
+      viewModel.cursorNoteLength = pressedLength;
+      viewModel.cursorNoteVelocity = sessionData.pressedNote.velocity;
+      viewModel.cursorNotePan = sessionData.pressedNote.pan;
+    }
+  }
+
   void _initializeSession(PianoRollPointerDownEvent event) {
     final noteId = event.noteUnderCursor;
     if (noteId == null) {
       throw ArgumentError("Resize event didn't provide a noteUnderCursor");
     }
+
+    viewModel.clearTransientPreviewState();
 
     final pattern = controller.requireActivePattern();
     final pressedNote = controller.requireActivePatternNote(noteId);
@@ -111,10 +144,21 @@ class PianoRollResizeNotesState
       notesToResize: notesToResize,
       isSelectionResize: isSelectionResize,
     );
+
+    final sessionData = _sessionData;
+    if (sessionData == null) {
+      return;
+    }
+
+    _applyPreview(
+      sessionData: sessionData,
+      preview: controller.createInitialResizeNotesPreview(sessionData),
+    );
   }
 
   void _clearSession() {
     _sessionData = null;
+    _preview = null;
   }
 
   @override
@@ -162,9 +206,12 @@ class PianoRollResizeNotesState
       return;
     }
 
-    controller.applyResizeNotesSessionUpdate(
-      event: pointerMoveEvent,
+    _applyPreview(
       sessionData: sessionData,
+      preview: controller.resolveResizeNotesSessionPreview(
+        event: pointerMoveEvent,
+        sessionData: sessionData,
+      ),
     );
   }
 
@@ -174,14 +221,19 @@ class PianoRollResizeNotesState
     required EditorStateMachineState<PianoRollStateMachineData> to,
   }) {
     final sessionData = _sessionData;
-    if (sessionData != null) {
+    final preview = _preview;
+    if (sessionData != null && preview != null) {
       project.push(
-        controller.buildResizeNotesCommand(sessionData: sessionData),
+        controller.buildResizeNotesCommand(
+          sessionData: sessionData,
+          preview: preview,
+        ),
+        execute: true,
       );
     }
 
-    project.commitUndoGroup();
     viewModel.pressedNote = null;
+    viewModel.clearTransientPreviewState();
     _clearSession();
   }
 }
