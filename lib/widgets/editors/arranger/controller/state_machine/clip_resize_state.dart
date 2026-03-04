@@ -60,7 +60,8 @@ class ArrangerClipResizeState
       from: ArrangerDragState,
       to: ArrangerClipResizeState,
       canTransition: ({required data, required event, required currentState}) =>
-          (currentState as ArrangerDragState).shouldDelegateToClipResize,
+          (currentState as ArrangerDragState).interactionFamily ==
+          ArrangerInteractionFamily.clipResize,
     ),
     .new(
       name: 'Cancel clip resize',

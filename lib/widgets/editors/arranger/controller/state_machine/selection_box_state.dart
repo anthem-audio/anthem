@@ -143,7 +143,8 @@ class ArrangerSelectionBoxState
       from: ArrangerDragState,
       to: ArrangerSelectionBoxState,
       canTransition: ({required data, required event, required currentState}) =>
-          (currentState as ArrangerDragState).shouldDelegateToSelectionBox,
+          (currentState as ArrangerDragState).interactionFamily ==
+          ArrangerInteractionFamily.selectionBox,
     ),
     .new(
       name: 'Cancel selection box',

@@ -44,6 +44,13 @@ enum ArrangerModifierKey { ctrl, alt, shift }
 
 enum ArrangerCancelTrigger { escapeKey }
 
+enum ArrangerInteractionFamily {
+  selectionBox,
+  createClip,
+  clipResize,
+  clipMove,
+}
+
 sealed class _ArrangerPointerSignal {
   final PointerEvent event;
 
@@ -756,41 +763,42 @@ class ArrangerDragState
 
   ResizeAreaType? get dragStartResizeAreaType => dragStartResizeHandle?.type;
 
-  bool get shouldDelegateToSelectionBox =>
-      isDragPointerActive &&
-      hasCrossedActivationDistance &&
-      !interactionState.isCurrentInteractionCanceled &&
-      (interactionState.isCtrlPressed || viewModel.tool == EditorTool.select);
-
-  bool get shouldDelegateToCreateClip =>
-      isDragPointerActive &&
-      parentState.doubleClickPressed &&
-      !interactionState.isCurrentInteractionCanceled &&
-      !shouldDelegateToSelectionBox &&
-      !_isDragStartOverClip &&
-      !_isDragStartOverResizeHandle &&
-      viewModel.tool == EditorTool.pencil;
-
-  bool get shouldDelegateToClipResize =>
-      isDragPointerActive &&
-      hasCrossedActivationDistance &&
-      !interactionState.isCurrentInteractionCanceled &&
-      !shouldDelegateToSelectionBox &&
-      !shouldDelegateToCreateClip &&
-      _isDragStartOverResizeHandle;
-
-  bool get shouldDelegateToClipMove =>
-      isDragPointerActive &&
-      hasCrossedActivationDistance &&
-      !interactionState.isCurrentInteractionCanceled &&
-      !shouldDelegateToSelectionBox &&
-      !shouldDelegateToCreateClip &&
-      !shouldDelegateToClipResize &&
-      !_isDragStartOverResizeHandle &&
-      _isDragStartOverClip;
-
   bool get _isSelectionModeActive =>
       interactionState.isCtrlPressed || viewModel.tool == EditorTool.select;
+
+  /// Resolves the interaction family this drag should delegate to, if any.
+  ///
+  /// The result is intentionally not latched in shared state yet. We use it to
+  /// centralize precedence while preserving the existing per-state latching
+  /// behavior after entry.
+  ArrangerInteractionFamily? get interactionFamily {
+    if (!isDragPointerActive || interactionState.isCurrentInteractionCanceled) {
+      return null;
+    }
+
+    if (hasCrossedActivationDistance && _isSelectionModeActive) {
+      return ArrangerInteractionFamily.selectionBox;
+    }
+
+    if (parentState.doubleClickPressed &&
+        !_isDragStartOverClip &&
+        !_isDragStartOverResizeHandle &&
+        viewModel.tool == EditorTool.pencil) {
+      return ArrangerInteractionFamily.createClip;
+    }
+
+    if (hasCrossedActivationDistance && _isDragStartOverResizeHandle) {
+      return ArrangerInteractionFamily.clipResize;
+    }
+
+    if (hasCrossedActivationDistance &&
+        !_isDragStartOverResizeHandle &&
+        _isDragStartOverClip) {
+      return ArrangerInteractionFamily.clipMove;
+    }
+
+    return null;
+  }
 
   bool get _isClipPressEligible =>
       isDragPointerActive &&

@@ -41,6 +41,11 @@ class ArrangerCreateClipState
   double? _defaultStartOffset;
   bool _didCrossActivationDistance = false;
 
+  bool _shouldExitCreateClipState() {
+    return parentState.interactionFamily !=
+        ArrangerInteractionFamily.createClip;
+  }
+
   @override
   void onEntry({required event, required from}) {
     _didCrossActivationDistance = false;
@@ -72,16 +77,16 @@ class ArrangerCreateClipState
       from: ArrangerDragState,
       to: ArrangerCreateClipState,
       canTransition: ({required data, required event, required currentState}) =>
-          (currentState as ArrangerDragState).shouldDelegateToCreateClip,
+          (currentState as ArrangerDragState).interactionFamily ==
+          ArrangerInteractionFamily.createClip,
     ),
     .new(
       name: 'Clip creation fallback to drag',
       from: ArrangerCreateClipState,
       to: ArrangerDragState,
       canTransition: ({required data, required event, required currentState}) =>
-          !(currentState as ArrangerCreateClipState)
-              .parentState
-              .shouldDelegateToCreateClip,
+          (currentState as ArrangerCreateClipState)
+              ._shouldExitCreateClipState(),
     ),
   ];
 

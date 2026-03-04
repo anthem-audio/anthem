@@ -51,7 +51,8 @@ class ArrangerClipMoveState
       from: ArrangerDragState,
       to: ArrangerClipMoveState,
       canTransition: ({required data, required event, required currentState}) =>
-          (currentState as ArrangerDragState).shouldDelegateToClipMove,
+          (currentState as ArrangerDragState).interactionFamily ==
+          ArrangerInteractionFamily.clipMove,
     ),
     .new(
       name: 'Cancel clip move',
