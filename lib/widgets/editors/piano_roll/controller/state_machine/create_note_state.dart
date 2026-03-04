@@ -58,6 +58,29 @@ class PianoRollCreateNoteState
         event.signal is _PianoRollPointerDownSignal;
   }
 
+  PianoRollTransientNote? _createTransientNoteFromPointerDown({
+    required double key,
+    required double offset,
+  }) {
+    final eventTime = offset.floor();
+    if (eventTime < 0) {
+      return null;
+    }
+
+    final targetTime = interactionState.isAltPressed
+        ? eventTime
+        : parentState.snapTimeInActivePattern(rawTime: eventTime);
+
+    return PianoRollTransientNote(
+      id: getId(),
+      key: key.floor(),
+      velocity: viewModel.cursorNoteVelocity,
+      length: viewModel.cursorNoteLength,
+      offset: targetTime,
+      pan: viewModel.cursorNotePan,
+    );
+  }
+
   void _applyPreview({
     required PianoRollCreateNoteSessionData sessionData,
     required Map<Id, PianoRollMoveNotePreview> preview,
@@ -80,7 +103,7 @@ class PianoRollCreateNoteState
           pan: transientNote.pan,
         );
 
-    controller.syncLivePreviewForMoveSession(
+    parentState.syncLivePreviewForMoveSession(
       sessionData: sessionData.moveSessionData,
       preview: preview,
     );
@@ -95,11 +118,9 @@ class PianoRollCreateNoteState
     viewModel.clearTransientPreviewState();
     viewModel.selectedNotes.clear();
 
-    final createdNote = controller.createTransientNoteFromPointerDown(
+    final createdNote = _createTransientNoteFromPointerDown(
       key: dragStartContext.key,
       offset: dragStartContext.offset,
-      viewWidthInPixels: interactionState.viewSize.width,
-      altPressed: interactionState.isAltPressed,
     );
     if (createdNote == null) {
       _sessionData = null;
@@ -112,10 +133,8 @@ class PianoRollCreateNoteState
     viewModel.pressedNote = null;
     viewModel.pressedTransientNote = createdNote.id;
 
-    final createdNoteSnapshot = controller.createCommittedNoteFromTransient(
-      createdNote,
-    );
-    final moveSessionData = controller.createMoveNotesSessionData(
+    final createdNoteSnapshot = createdNote.toNoteModel();
+    final moveSessionData = parentState.createMoveNotesSessionData(
       pointerOffset: dragStartContext.offset,
       noteUnderCursor: createdNoteSnapshot,
       notesToMove: [createdNoteSnapshot],
@@ -132,7 +151,7 @@ class PianoRollCreateNoteState
 
     _applyPreview(
       sessionData: _sessionData!,
-      preview: controller.createInitialMoveNotesPreview(moveSessionData),
+      preview: parentState.createInitialMoveNotesPreview(moveSessionData),
     );
   }
 
@@ -187,13 +206,9 @@ class PianoRollCreateNoteState
 
     _applyPreview(
       sessionData: sessionData,
-      preview: controller.resolveMoveNotesSessionPreview(
+      preview: parentState.resolveMoveNotesSessionPreview(
         key: currentKey,
         offset: currentOffset,
-        viewWidthInPixels: interactionState.viewSize.width,
-        altPressed: interactionState.isAltPressed,
-        shiftPressed: interactionState.isShiftPressed,
-        ctrlPressed: interactionState.isCtrlPressed,
         sessionData: sessionData.moveSessionData,
       ),
     );
@@ -205,14 +220,14 @@ class PianoRollCreateNoteState
     required EditorStateMachineState<PianoRollStateMachineData> to,
   }) {
     final sessionData = _sessionData;
-    final pattern = controller.activePatternOrNull;
+    final pattern = parentState.activePatternOrNull;
     if (sessionData != null && pattern != null) {
       final transientNote = viewModel.transientNotes[sessionData.createdNoteId];
       if (transientNote != null) {
         project.execute(
           AddNoteCommand(
             patternID: pattern.id,
-            note: controller.createCommittedNoteFromTransient(transientNote),
+            note: transientNote.toNoteModel(),
           ),
         );
       }

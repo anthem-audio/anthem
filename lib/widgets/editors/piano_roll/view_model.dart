@@ -80,6 +80,16 @@ class PianoRollTransientNote {
     required this.offset,
     required this.pan,
   });
+
+  NoteModel toNoteModel() {
+    return NoteModel(
+      key: key,
+      velocity: velocity,
+      length: length,
+      offset: offset,
+      pan: pan,
+    )..id = id;
+  }
 }
 
 class PianoRollNoteOverride {

@@ -96,7 +96,7 @@ class PianoRollMoveNotesState
   }
 
   NoteModel _snapshotFromTransientNote(PianoRollTransientNote note) {
-    return controller.createCommittedNoteFromTransient(note);
+    return note.toNoteModel();
   }
 
   void _applyPreview({
@@ -140,7 +140,7 @@ class PianoRollMoveNotesState
       );
     }
 
-    controller.syncLivePreviewForMoveSession(
+    parentState.syncLivePreviewForMoveSession(
       sessionData: sessionData,
       preview: preview,
     );
@@ -157,10 +157,10 @@ class PianoRollMoveNotesState
 
     viewModel.clearTransientPreviewState();
 
-    final pattern = controller.requireActivePattern();
+    final pattern = parentState.activePattern;
     final notes = pattern.notes.nonObservableInner;
     final selectedNotes = viewModel.selectedNotes.nonObservableInner;
-    var pressedNote = controller.requireActivePatternNote(noteId);
+    var pressedNote = parentState.requireActivePatternNote(noteId);
     var sessionPressedNote = pressedNote;
     final isSelectionMove = selectedNotes.contains(noteId);
     var didDuplicateOnPointerDown = false;
@@ -238,13 +238,13 @@ class PianoRollMoveNotesState
         duplicatedNoteIds.add(transientNote.id);
       }
 
-      controller.setCursorNoteParameters(pressedNote);
+      parentState.setCursorNoteParameters(pressedNote);
       viewModel.pressedNote = pressedNote.id;
       viewModel.pressedTransientNote = null;
       notesToMove = [pressedNote];
     }
 
-    _sessionData = controller.createMoveNotesSessionData(
+    _sessionData = parentState.createMoveNotesSessionData(
       pointerOffset: dragStartContext!.offset,
       noteUnderCursor: sessionPressedNote,
       notesToMove: notesToMove,
@@ -261,7 +261,7 @@ class PianoRollMoveNotesState
 
     _applyPreview(
       sessionData: sessionData,
-      preview: controller.createInitialMoveNotesPreview(sessionData),
+      preview: parentState.createInitialMoveNotesPreview(sessionData),
     );
   }
 
@@ -316,13 +316,9 @@ class PianoRollMoveNotesState
 
     _applyPreview(
       sessionData: sessionData,
-      preview: controller.resolveMoveNotesSessionPreview(
+      preview: parentState.resolveMoveNotesSessionPreview(
         key: currentKey,
         offset: currentOffset,
-        viewWidthInPixels: interactionState.viewSize.width,
-        altPressed: interactionState.isAltPressed,
-        shiftPressed: interactionState.isShiftPressed,
-        ctrlPressed: interactionState.isCtrlPressed,
         sessionData: sessionData,
       ),
     );
@@ -335,7 +331,7 @@ class PianoRollMoveNotesState
   }) {
     final sessionData = _sessionData;
     final preview = _preview;
-    final pattern = controller.activePatternOrNull;
+    final pattern = parentState.activePatternOrNull;
     if (sessionData != null && preview != null && pattern != null) {
       if (sessionData.movingTransientNoteIds.isNotEmpty) {
         project.startUndoGroup();
@@ -348,7 +344,7 @@ class PianoRollMoveNotesState
           project.execute(
             AddNoteCommand(
               patternID: pattern.id,
-              note: controller.createCommittedNoteFromTransient(transientNote),
+              note: transientNote.toNoteModel(),
             ),
           );
         }
@@ -364,16 +360,14 @@ class PianoRollMoveNotesState
             project.execute(
               AddNoteCommand(
                 patternID: pattern.id,
-                note: controller.createCommittedNoteFromTransient(
-                  transientNote,
-                ),
+                note: transientNote.toNoteModel(),
               ),
             );
           }
         }
 
         project.push(
-          controller.buildMoveNotesCommand(
+          parentState.buildMoveNotesCommand(
             sessionData: sessionData,
             preview: preview,
           ),

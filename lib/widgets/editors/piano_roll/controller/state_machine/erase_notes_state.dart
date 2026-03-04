@@ -51,6 +51,20 @@ class PianoRollEraseNotesState
   @visibleForTesting
   PianoRollEraseNotesSessionData? get sessionData => _sessionData;
 
+  List<NoteModel> _getNotesUnderCursor(
+    Iterable<NoteModel> notes,
+    double key,
+    double offset,
+  ) {
+    final keyFloor = key.floor();
+
+    return notes.where((note) {
+      return offset >= note.offset &&
+          offset < note.offset + note.length &&
+          keyFloor == note.key;
+    }).toList();
+  }
+
   void _initializeSession() {
     final dragStartContext = parentState.dragStartContext;
     if (dragStartContext == null) {
@@ -70,7 +84,7 @@ class PianoRollEraseNotesState
       return;
     }
 
-    final pattern = controller.requireActivePattern();
+    final pattern = parentState.activePattern;
     final notes = pattern.notes;
 
     notes.removeWhere((note) {
@@ -89,7 +103,7 @@ class PianoRollEraseNotesState
     });
 
     _sessionData!.notesToTemporarilyIgnore.addAll(
-      controller.getNotesUnderCursor(
+      _getNotesUnderCursor(
         notes,
         dragStartContext.key,
         dragStartContext.offset,
@@ -104,7 +118,7 @@ class PianoRollEraseNotesState
       return;
     }
 
-    final notes = controller.requireActivePattern().notes;
+    final notes = parentState.activePattern.notes;
     final thisPoint = Point(dragCurrentContext.offset, dragCurrentContext.key);
 
     // We make a line between the previous event point and this point, and
@@ -203,7 +217,7 @@ class PianoRollEraseNotesState
     if (sessionData != null && sessionData.notesDeleted.isNotEmpty) {
       project.push(
         DeleteNotesCommand(
-          patternID: controller.requireActivePattern().id,
+          patternID: parentState.activePattern.id,
           notes: sessionData.notesDeleted,
         ),
       );

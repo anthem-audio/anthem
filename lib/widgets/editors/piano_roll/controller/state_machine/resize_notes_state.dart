@@ -66,6 +66,136 @@ class PianoRollResizeNotesState
         event.signal is _PianoRollPointerDownSignal;
   }
 
+  PianoRollResizeNotesSessionData _createResizeNotesSessionData({
+    required double pointerStartOffset,
+    required NoteModel pressedNote,
+    required Iterable<NoteModel> notesToResize,
+    required bool isSelectionResize,
+  }) {
+    final resizingNotesById = <Id, NoteModel>{pressedNote.id: pressedNote};
+    for (final note in notesToResize) {
+      resizingNotesById[note.id] = note;
+    }
+
+    final resizingNotes = resizingNotesById.values.toList(growable: false);
+    if (resizingNotes.isEmpty) {
+      throw StateError('Resize session requires at least one note.');
+    }
+
+    var smallestNote = resizingNotes.first;
+    final startLengths = <Id, Time>{};
+
+    for (final note in resizingNotes) {
+      startLengths[note.id] = note.length;
+      if (note.length < smallestNote.length) {
+        smallestNote = note;
+      }
+    }
+
+    return PianoRollResizeNotesSessionData(
+      pointerStartOffset: pointerStartOffset,
+      startLengths: startLengths,
+      smallestStartLength: smallestNote.length,
+      smallestNote: smallestNote.id,
+      pressedNote: pressedNote,
+      isSelectionResize: isSelectionResize,
+    );
+  }
+
+  Map<Id, PianoRollResizeNotePreview> _createInitialResizeNotesPreview(
+    PianoRollResizeNotesSessionData sessionData,
+  ) {
+    return Map<Id, PianoRollResizeNotePreview>.fromEntries(
+      sessionData.startLengths.keys.map((noteId) {
+        return MapEntry(noteId, (length: sessionData.startLengths[noteId]!));
+      }),
+    );
+  }
+
+  Map<Id, PianoRollResizeNotePreview> _resolveResizeNotesSessionPreview({
+    required double currentOffset,
+    required PianoRollResizeNotesSessionData sessionData,
+  }) {
+    var snappedOriginalTime = sessionData.pointerStartOffset.floor();
+    var snappedEventTime = currentOffset.floor();
+
+    final divisionChanges = controller.divisionChangesForPatternView(
+      viewWidthInPixels: interactionState.viewSize.width,
+    );
+
+    if (!interactionState.isAltPressed) {
+      snappedOriginalTime = parentState.snapTimeInActivePattern(
+        rawTime: sessionData.pointerStartOffset.floor(),
+        round: true,
+      );
+
+      snappedEventTime = parentState.snapTimeInActivePattern(
+        rawTime: currentOffset.floor(),
+        round: true,
+      );
+    }
+
+    late int snapAtSmallestNoteStart;
+
+    final offsetOfSmallestNoteAtStart =
+        sessionData.startLengths[sessionData.smallestNote]!;
+
+    for (var i = 0; i < divisionChanges.length; i++) {
+      if (i < divisionChanges.length - 1 &&
+          divisionChanges[i + 1].offset <= offsetOfSmallestNoteAtStart) {
+        continue;
+      }
+
+      snapAtSmallestNoteStart = divisionChanges[i].divisionSnapSize;
+      break;
+    }
+
+    var diff = snappedEventTime - snappedOriginalTime;
+
+    if (!interactionState.isAltPressed &&
+        sessionData.smallestStartLength + diff < snapAtSmallestNoteStart) {
+      final snapCount =
+          ((snapAtSmallestNoteStart -
+                      (sessionData.smallestStartLength + diff)) /
+                  snapAtSmallestNoteStart)
+              .ceil();
+      diff += snapCount * snapAtSmallestNoteStart;
+    }
+
+    if (interactionState.isAltPressed) {
+      final newSmallestNoteSize = sessionData.smallestStartLength + diff;
+      if (newSmallestNoteSize < 1) {
+        diff += 1 - newSmallestNoteSize;
+      }
+    }
+
+    return Map<Id, PianoRollResizeNotePreview>.fromEntries(
+      sessionData.startLengths.keys.map((noteId) {
+        return MapEntry(noteId, (
+          length: sessionData.startLengths[noteId]! + diff,
+        ));
+      }),
+    );
+  }
+
+  ResizeNotesCommand _buildResizeNotesCommand({
+    required PianoRollResizeNotesSessionData sessionData,
+    required Map<Id, PianoRollResizeNotePreview> preview,
+  }) {
+    return ResizeNotesCommand(
+      patternID: parentState.activePattern.id,
+      noteResizes: preview.entries
+          .map((entry) {
+            return (
+              noteID: entry.key,
+              oldLength: sessionData.startLengths[entry.key]!,
+              newLength: entry.value.length,
+            );
+          })
+          .toList(growable: false),
+    );
+  }
+
   void _applyPreview({
     required PianoRollResizeNotesSessionData sessionData,
     required Map<Id, PianoRollResizeNotePreview> preview,
@@ -101,8 +231,8 @@ class PianoRollResizeNotesState
 
     viewModel.clearTransientPreviewState();
 
-    final pattern = controller.requireActivePattern();
-    final pressedNote = controller.requireActivePatternNote(noteId);
+    final pattern = parentState.activePattern;
+    final pressedNote = parentState.requireActivePatternNote(noteId);
     final isSelectionResize = viewModel.selectedNotes.nonObservableInner
         .contains(pressedNote.id);
 
@@ -111,7 +241,7 @@ class PianoRollResizeNotesState
     }
 
     viewModel.pressedNote = pressedNote.id;
-    controller.setCursorNoteParameters(pressedNote);
+    parentState.setCursorNoteParameters(pressedNote);
 
     final notesToResize = isSelectionResize
         ? pattern.notes.where(
@@ -120,7 +250,7 @@ class PianoRollResizeNotesState
           )
         : <NoteModel>[pressedNote];
 
-    _sessionData = controller.createResizeNotesSessionData(
+    _sessionData = _createResizeNotesSessionData(
       pointerStartOffset: parentState.dragStartOffset!,
       pressedNote: pressedNote,
       notesToResize: notesToResize,
@@ -134,7 +264,7 @@ class PianoRollResizeNotesState
 
     _applyPreview(
       sessionData: sessionData,
-      preview: controller.createInitialResizeNotesPreview(sessionData),
+      preview: _createInitialResizeNotesPreview(sessionData),
     );
   }
 
@@ -188,10 +318,8 @@ class PianoRollResizeNotesState
 
     _applyPreview(
       sessionData: sessionData,
-      preview: controller.resolveResizeNotesSessionPreview(
+      preview: _resolveResizeNotesSessionPreview(
         currentOffset: currentOffset,
-        viewWidthInPixels: interactionState.viewSize.width,
-        altPressed: interactionState.isAltPressed,
         sessionData: sessionData,
       ),
     );
@@ -206,7 +334,7 @@ class PianoRollResizeNotesState
     final preview = _preview;
     if (sessionData != null && preview != null) {
       project.push(
-        controller.buildResizeNotesCommand(
+        _buildResizeNotesCommand(
           sessionData: sessionData,
           preview: preview,
         ),

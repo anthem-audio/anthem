@@ -434,9 +434,8 @@ class _PianoRollStateMachineTestFixture {
     }
   }
 
-  void pointerDown({
-    required double key,
-    required double offset,
+  void rawPointerDown({
+    required Offset localPosition,
     Id? noteUnderCursor,
     bool isResize = false,
     int buttons = kPrimaryMouseButton,
@@ -446,7 +445,6 @@ class _PianoRollStateMachineTestFixture {
     int pointer = 1,
   }) {
     syncRenderedViewMetrics();
-    final localPosition = _localPositionFor(key: key, offset: offset);
     _seedContentUnderCursor(
       localPosition: localPosition,
       noteUnderCursor: noteUnderCursor,
@@ -463,7 +461,7 @@ class _PianoRollStateMachineTestFixture {
     );
   }
 
-  PianoRollInteractionFamily? classifyPointerDown({
+  void pointerDown({
     required double key,
     required double offset,
     Id? noteUnderCursor,
@@ -474,17 +472,16 @@ class _PianoRollStateMachineTestFixture {
     bool shift = false,
     int pointer = 1,
   }) {
-    syncRenderedViewMetrics();
     final localPosition = _localPositionFor(key: key, offset: offset);
-    _seedContentUnderCursor(
+    rawPointerDown(
       localPosition: localPosition,
       noteUnderCursor: noteUnderCursor,
       isResize: isResize,
-    );
-    return stateMachine.classifyPointerDownForPosition(
-      localPosition: localPosition,
       buttons: buttons,
-      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
+      ctrl: ctrl,
+      alt: alt,
+      shift: shift,
+      pointer: pointer,
     );
   }
 
@@ -642,46 +639,104 @@ void main() {
       fixture.controller.dispose();
     });
 
-    test(
-      'controller classifies pointer-down gestures by interaction family',
-      () {
-        final moveNote = fixture.addNote(key: 60, offset: 100, length: 48);
-        final resizeNote = fixture.addNote(key: 64, offset: 220, length: 96);
+    test('controller dispose clears in-progress transient preview state', () {
+      fixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
 
-        expect(
-          fixture.classifyPointerDown(key: 59.5, offset: 80, ctrl: true),
-          equals(PianoRollInteractionFamily.selectionBox),
-        );
-        expect(
-          fixture.classifyPointerDown(
+      expect(fixture.transientNotes, hasLength(1));
+      expect(fixture.viewModel.pressedTransientNote, isNotNull);
+
+      fixture.controller.dispose();
+
+      fixture.expectNoActiveTransientState();
+      expect(fixture.activeInteractionFamily, isNull);
+    });
+
+    test('controller dispose clears an active selection box', () {
+      fixture.pointerDown(key: 59.5, offset: 80, ctrl: true);
+      fixture.pointerMove(key: 65.5, offset: 360, ctrl: true);
+
+      expect(fixture.viewModel.selectionBox, isNotNull);
+
+      fixture.controller.dispose();
+
+      fixture.expectNoActiveTransientState();
+      expect(fixture.activeInteractionFamily, isNull);
+    });
+
+    test(
+      'pointer-down gestures classify through the public controller path',
+      () {
+        final selectionFixture = _PianoRollStateMachineTestFixture.create();
+        try {
+          selectionFixture.pointerDown(key: 59.5, offset: 80, ctrl: true);
+          expect(
+            selectionFixture.activeInteractionFamily,
+            equals(PianoRollInteractionFamily.selectionBox),
+          );
+        } finally {
+          selectionFixture.dispose();
+        }
+
+        final moveFixture = _PianoRollStateMachineTestFixture.create();
+        try {
+          final note = moveFixture.addNote(key: 60, offset: 100, length: 48);
+          moveFixture.pointerDown(
             key: 60.5,
             offset: 100,
-            noteUnderCursor: moveNote.id,
-          ),
-          equals(PianoRollInteractionFamily.moveNotes),
-        );
-        expect(
-          fixture.classifyPointerDown(
+            noteUnderCursor: note.id,
+          );
+          expect(
+            moveFixture.activeInteractionFamily,
+            equals(PianoRollInteractionFamily.moveNotes),
+          );
+        } finally {
+          moveFixture.dispose();
+        }
+
+        final resizeFixture = _PianoRollStateMachineTestFixture.create();
+        try {
+          final note = resizeFixture.addNote(key: 64, offset: 220, length: 96);
+          resizeFixture.pointerDown(
             key: 64.5,
             offset: 316,
-            noteUnderCursor: resizeNote.id,
+            noteUnderCursor: note.id,
             isResize: true,
-          ),
-          equals(PianoRollInteractionFamily.resizeNotes),
-        );
-        expect(
-          fixture.classifyPointerDown(key: 60.5, offset: 100),
-          equals(PianoRollInteractionFamily.createNote),
-        );
-        expect(
-          fixture.classifyPointerDown(
+          );
+          expect(
+            resizeFixture.activeInteractionFamily,
+            equals(PianoRollInteractionFamily.resizeNotes),
+          );
+        } finally {
+          resizeFixture.dispose();
+        }
+
+        final createFixture = _PianoRollStateMachineTestFixture.create();
+        try {
+          createFixture.pointerDown(key: 60.5, offset: 100);
+          expect(
+            createFixture.activeInteractionFamily,
+            equals(PianoRollInteractionFamily.createNote),
+          );
+        } finally {
+          createFixture.dispose();
+        }
+
+        final eraseFixture = _PianoRollStateMachineTestFixture.create();
+        try {
+          final note = eraseFixture.addNote(key: 60, offset: 100, length: 48);
+          eraseFixture.pointerDown(
             key: 60.5,
             offset: 100,
-            noteUnderCursor: moveNote.id,
+            noteUnderCursor: note.id,
             buttons: kSecondaryMouseButton,
-          ),
-          equals(PianoRollInteractionFamily.erase),
-        );
+          );
+          expect(
+            eraseFixture.activeInteractionFamily,
+            equals(PianoRollInteractionFamily.erase),
+          );
+        } finally {
+          eraseFixture.dispose();
+        }
       },
     );
   });
@@ -769,20 +824,15 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.moveNotes),
       );
-      expect(fixture.stateMachine.pointerDownCount, equals(1));
-      expect(fixture.stateMachine.pointerMoveCount, equals(0));
-      expect(fixture.stateMachine.pointerUpCount, equals(0));
       expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
       expect(fixture.moveNotesState.sessionData, isNotNull);
 
       fixture.pointerMove(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.pointerMoveCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
 
       fixture.pointerUp(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.pointerUpCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
     });
@@ -821,20 +871,31 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.createNote),
       );
-      expect(fixture.stateMachine.pointerDownCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
       expect(fixture.createNoteState.sessionData, isNotNull);
 
       fixture.pointerMove(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.pointerMoveCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
 
       fixture.pointerUp(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.pointerUpCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
+    });
+
+    test('unsupported raw pointer sessions are ignored', () {
+      final localPosition = fixture._localPositionFor(key: 60.5, offset: 100);
+
+      fixture.rawPointerDown(
+        localPosition: localPosition,
+        buttons: kMiddleMouseButton,
+      );
+
+      expect(fixture.activeInteractionFamily, isNull);
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.notes, isEmpty);
+      fixture.expectNoActiveTransientState();
     });
 
     test('pointer-session parent stores drag start derived context', () {
@@ -869,6 +930,44 @@ void main() {
       expect(currentContext.offset, closeTo(173.8, 0.0001));
       expect(fixture.pointerSessionState.dragStartKey, closeTo(60.5, 0.0001));
       expect(fixture.pointerSessionState.dragStartOffset, closeTo(100, 0.0001));
+    });
+
+    test('raw controller input uses the latest rendered view metrics', () {
+      fixture.viewModel.timeView = TimeRange(480, 960);
+      fixture.viewModel.keyHeight = 20;
+      fixture.viewModel.keyValueAtTop = 72;
+      fixture.syncRenderedViewMetrics();
+
+      const localPosition = Offset(240, 60);
+      fixture.rawPointerDown(localPosition: localPosition);
+
+      final startContext = fixture.pointerSessionState.startPointerContext;
+      expect(startContext, isNotNull);
+      expect(
+        startContext!.offset,
+        closeTo(
+          pixelsToTime(
+            timeViewStart: 480,
+            timeViewEnd: 960,
+            viewPixelWidth:
+                _PianoRollStateMachineTestFixture.pianoRollSize.width,
+            pixelOffsetFromLeft: localPosition.dx,
+          ),
+          0.0001,
+        ),
+      );
+      expect(
+        startContext.key,
+        closeTo(
+          pixelsToKeyValue(
+            keyHeight: 20,
+            keyValueAtTop: 72,
+            pixelOffsetFromTop: localPosition.dy,
+          ),
+          0.0001,
+        ),
+      );
+      expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
     });
 
     test('negative-time create does not initialize a create-note session', () {

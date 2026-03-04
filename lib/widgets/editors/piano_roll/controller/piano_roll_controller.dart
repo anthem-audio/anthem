@@ -17,19 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_live_notes.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
@@ -84,18 +79,17 @@ class _PianoRollController {
     }
 
     _isDisposed = true;
-    _clearActiveInteractionRoute();
+    stateMachine.data.clearInteractionSession();
     liveNotes.removeAll();
+    viewModel.selectionBox = null;
+    viewModel.pressedNote = null;
+    viewModel.clearTransientPreviewState();
     stateMachine.dispose();
   }
 
   @visibleForTesting
   PianoRollInteractionFamily? get activeInteractionFamily =>
       stateMachine.data.activeInteractionFamily;
-
-  void _clearActiveInteractionRoute() {
-    stateMachine.data.clearInteractionSession();
-  }
 
   void pointerDown(
     PointerDownEvent event, {
@@ -157,10 +151,6 @@ class _PianoRollController {
     return pattern;
   }
 
-  NoteModel requireActivePatternNote(Id noteId) {
-    return requireActivePattern().notes.firstWhere((note) => note.id == noteId);
-  }
-
   List<DivisionChange> divisionChangesForPatternView({
     required double viewWidthInPixels,
   }) {
@@ -195,68 +185,6 @@ class _PianoRollController {
     );
   }
 
-  NoteModel addNoteToActivePattern({
-    required int key,
-    required double velocity,
-    required int length,
-    required int offset,
-    required double pan,
-  }) {
-    final pattern = requireActivePattern();
-
-    final note = NoteModel(
-      key: key,
-      velocity: velocity,
-      length: length,
-      offset: offset,
-      pan: pan,
-    );
-
-    project.execute(AddNoteCommand(patternID: pattern.id, note: note));
-
-    return note;
-  }
-
-  PianoRollTransientNote? createTransientNoteFromPointerDown({
-    required double key,
-    required double offset,
-    required double viewWidthInPixels,
-    required bool altPressed,
-  }) {
-    viewModel.selectedNotes.clear();
-
-    final eventTime = offset.floor();
-    if (eventTime < 0) {
-      return null;
-    }
-
-    final targetTime = altPressed
-        ? eventTime
-        : snapTimeInActivePattern(
-            rawTime: eventTime,
-            viewWidthInPixels: viewWidthInPixels,
-          );
-
-    return PianoRollTransientNote(
-      id: getId(),
-      key: key.floor(),
-      velocity: viewModel.cursorNoteVelocity,
-      length: viewModel.cursorNoteLength,
-      offset: targetTime,
-      pan: viewModel.cursorNotePan,
-    );
-  }
-
-  NoteModel createCommittedNoteFromTransient(PianoRollTransientNote note) {
-    return NoteModel(
-      key: note.key,
-      velocity: note.velocity,
-      length: note.length,
-      offset: note.offset,
-      pan: note.pan,
-    )..id = note.id;
-  }
-
   /// Adds a time signature change to the pattern.
   void addTimeSignatureChange({
     required TimeSignatureModel timeSignature,
@@ -285,341 +213,6 @@ class _PianoRollController {
           timeSignature: timeSignature,
         ),
       ),
-    );
-  }
-
-  /// Records the parameters of this note so the next placed note has the same
-  /// parameters.
-  void setCursorNoteParameters(NoteModel note) {
-    viewModel.cursorNoteLength = note.length;
-    viewModel.cursorNoteVelocity = note.velocity;
-    viewModel.cursorNotePan = note.pan;
-  }
-
-  PianoRollMoveNotesSessionData createMoveNotesSessionData({
-    required double pointerOffset,
-    required NoteModel noteUnderCursor,
-    required Iterable<NoteModel> notesToMove,
-    required bool isSelectionMove,
-    required bool didDuplicateOnPointerDown,
-    required Set<Id> duplicatedNoteIds,
-    required Set<Id> movingTransientNoteIds,
-  }) {
-    final movingNotesById = <Id, NoteModel>{
-      noteUnderCursor.id: noteUnderCursor,
-    };
-    for (final note in notesToMove) {
-      movingNotesById[note.id] = note;
-    }
-
-    final movingNotes = movingNotesById.values.toList(growable: false);
-    if (movingNotes.isEmpty) {
-      throw StateError('Move session requires at least one note.');
-    }
-
-    final startTimes = <Id, Time>{};
-    final startKeys = <Id, int>{};
-    final lengths = <Id, Time>{};
-    final velocities = <Id, double>{};
-    final pans = <Id, double>{};
-    var startOfFirstNote = maxSafeIntWeb;
-    var keyOfTopNote = 0;
-    var keyOfBottomNote = maxSafeIntWeb;
-
-    for (final note in movingNotes) {
-      startTimes[note.id] = note.offset;
-      startKeys[note.id] = note.key;
-      lengths[note.id] = note.length;
-      velocities[note.id] = note.velocity;
-      pans[note.id] = note.pan;
-      startOfFirstNote = min(startOfFirstNote, note.offset);
-      keyOfTopNote = max(keyOfTopNote, note.key);
-      keyOfBottomNote = min(keyOfBottomNote, note.key);
-    }
-
-    return PianoRollMoveNotesSessionData(
-      noteUnderCursor: noteUnderCursor,
-      timeOffset: pointerOffset - noteUnderCursor.offset,
-      noteOffset: 0.5,
-      startTimes: startTimes,
-      startKeys: startKeys,
-      lengths: lengths,
-      velocities: velocities,
-      pans: pans,
-      startOfFirstNote: startOfFirstNote,
-      keyOfTopNote: keyOfTopNote,
-      keyOfBottomNote: keyOfBottomNote,
-      isSelectionMove: isSelectionMove,
-      didDuplicateOnPointerDown: didDuplicateOnPointerDown,
-      duplicatedNoteIds: duplicatedNoteIds,
-      movingTransientNoteIds: movingTransientNoteIds,
-    );
-  }
-
-  List<NoteModel> notesForMoveSession(
-    PianoRollMoveNotesSessionData sessionData,
-  ) {
-    final movingNoteIds = sessionData.startTimes.keys.toSet();
-
-    return requireActivePattern().notes
-        .where((note) {
-          return movingNoteIds.contains(note.id);
-        })
-        .toList(growable: false);
-  }
-
-  Map<Id, PianoRollMoveNotePreview> createInitialMoveNotesPreview(
-    PianoRollMoveNotesSessionData sessionData,
-  ) {
-    return Map<Id, PianoRollMoveNotePreview>.fromEntries(
-      sessionData.startTimes.keys.map((noteId) {
-        return MapEntry(noteId, (
-          key: sessionData.startKeys[noteId]!,
-          offset: sessionData.startTimes[noteId]!,
-        ));
-      }),
-    );
-  }
-
-  Map<Id, PianoRollMoveNotePreview> resolveMoveNotesSessionPreview({
-    required double key,
-    required double offset,
-    required double viewWidthInPixels,
-    required bool altPressed,
-    required bool shiftPressed,
-    required bool ctrlPressed,
-    required PianoRollMoveNotesSessionData sessionData,
-  }) {
-    final targetKey = key - sessionData.noteOffset;
-    final targetOffset = offset - sessionData.timeOffset;
-    var snappedOffset = targetOffset.floor();
-
-    if (!altPressed) {
-      snappedOffset = snapTimeInActivePattern(
-        rawTime: targetOffset.floor(),
-        viewWidthInPixels: viewWidthInPixels,
-        round: true,
-        startTime: sessionData.startTimes[sessionData.noteUnderCursor.id]!,
-      );
-    }
-
-    var timeOffsetFromEventStart =
-        snappedOffset - sessionData.startTimes[sessionData.noteUnderCursor.id]!;
-    var keyOffsetFromEventStart =
-        targetKey.round() -
-        sessionData.startKeys[sessionData.noteUnderCursor.id]!;
-
-    if (sessionData.startOfFirstNote + timeOffsetFromEventStart < 0) {
-      timeOffsetFromEventStart = -sessionData.startOfFirstNote;
-    }
-
-    if (sessionData.keyOfTopNote + keyOffsetFromEventStart > maxKeyValue) {
-      keyOffsetFromEventStart = maxKeyValue.round() - sessionData.keyOfTopNote;
-    }
-
-    if (sessionData.keyOfBottomNote + keyOffsetFromEventStart < minKeyValue) {
-      keyOffsetFromEventStart =
-          minKeyValue.round() - sessionData.keyOfBottomNote;
-    }
-
-    return Map<Id, PianoRollMoveNotePreview>.fromEntries(
-      sessionData.startTimes.keys.map((noteId) {
-        return MapEntry(noteId, (
-          key:
-              sessionData.startKeys[noteId]! +
-              (shiftPressed ? 0 : keyOffsetFromEventStart),
-          offset:
-              sessionData.startTimes[noteId]! +
-              (!shiftPressed && ctrlPressed ? 0 : timeOffsetFromEventStart),
-        ));
-      }),
-    );
-  }
-
-  void syncLivePreviewForMoveSession({
-    required PianoRollMoveNotesSessionData sessionData,
-    required Map<Id, PianoRollMoveNotePreview> preview,
-  }) {
-    final notePreview = preview[sessionData.noteUnderCursor.id];
-    if (notePreview == null) {
-      return;
-    }
-
-    if (!liveNotes.hasNoteForKey(notePreview.key)) {
-      liveNotes.removeAll();
-      liveNotes.addNote(
-        key: notePreview.key,
-        velocity: sessionData.noteUnderCursor.velocity,
-        pan: sessionData.noteUnderCursor.pan,
-      );
-    }
-  }
-
-  MoveNotesCommand buildMoveNotesCommand({
-    required PianoRollMoveNotesSessionData sessionData,
-    required Map<Id, PianoRollMoveNotePreview> preview,
-  }) {
-    return MoveNotesCommand(
-      patternID: requireActivePattern().id,
-      noteMoves: preview.entries
-          .where(
-            (entry) => !sessionData.movingTransientNoteIds.contains(entry.key),
-          )
-          .map((entry) {
-            return (
-              noteID: entry.key,
-              oldOffset: sessionData.startTimes[entry.key]!,
-              newOffset: entry.value.offset,
-              oldKey: sessionData.startKeys[entry.key]!,
-              newKey: entry.value.key,
-            );
-          })
-          .toList(growable: false),
-    );
-  }
-
-  PianoRollResizeNotesSessionData createResizeNotesSessionData({
-    required double pointerStartOffset,
-    required NoteModel pressedNote,
-    required Iterable<NoteModel> notesToResize,
-    required bool isSelectionResize,
-  }) {
-    final resizingNotesById = <Id, NoteModel>{pressedNote.id: pressedNote};
-    for (final note in notesToResize) {
-      resizingNotesById[note.id] = note;
-    }
-
-    final resizingNotes = resizingNotesById.values.toList(growable: false);
-    if (resizingNotes.isEmpty) {
-      throw StateError('Resize session requires at least one note.');
-    }
-
-    var smallestNote = resizingNotes.first;
-    final startLengths = <Id, Time>{};
-
-    for (final note in resizingNotes) {
-      startLengths[note.id] = note.length;
-      if (note.length < smallestNote.length) {
-        smallestNote = note;
-      }
-    }
-
-    return PianoRollResizeNotesSessionData(
-      pointerStartOffset: pointerStartOffset,
-      startLengths: startLengths,
-      smallestStartLength: smallestNote.length,
-      smallestNote: smallestNote.id,
-      pressedNote: pressedNote,
-      isSelectionResize: isSelectionResize,
-    );
-  }
-
-  List<NoteModel> notesForResizeSession(
-    PianoRollResizeNotesSessionData sessionData,
-  ) {
-    final resizingNoteIds = sessionData.startLengths.keys.toSet();
-
-    return requireActivePattern().notes
-        .where((note) => resizingNoteIds.contains(note.id))
-        .toList(growable: false);
-  }
-
-  Map<Id, PianoRollResizeNotePreview> createInitialResizeNotesPreview(
-    PianoRollResizeNotesSessionData sessionData,
-  ) {
-    return Map<Id, PianoRollResizeNotePreview>.fromEntries(
-      sessionData.startLengths.keys.map((noteId) {
-        return MapEntry(noteId, (length: sessionData.startLengths[noteId]!));
-      }),
-    );
-  }
-
-  Map<Id, PianoRollResizeNotePreview> resolveResizeNotesSessionPreview({
-    required double currentOffset,
-    required double viewWidthInPixels,
-    required bool altPressed,
-    required PianoRollResizeNotesSessionData sessionData,
-  }) {
-    var snappedOriginalTime = sessionData.pointerStartOffset.floor();
-    var snappedEventTime = currentOffset.floor();
-
-    final divisionChanges = divisionChangesForPatternView(
-      viewWidthInPixels: viewWidthInPixels,
-    );
-
-    if (!altPressed) {
-      snappedOriginalTime = snapTimeInActivePattern(
-        rawTime: sessionData.pointerStartOffset.floor(),
-        viewWidthInPixels: viewWidthInPixels,
-        round: true,
-      );
-
-      snappedEventTime = snapTimeInActivePattern(
-        rawTime: currentOffset.floor(),
-        viewWidthInPixels: viewWidthInPixels,
-        round: true,
-      );
-    }
-
-    late int snapAtSmallestNoteStart;
-
-    final offsetOfSmallestNoteAtStart =
-        sessionData.startLengths[sessionData.smallestNote]!;
-
-    for (var i = 0; i < divisionChanges.length; i++) {
-      if (i < divisionChanges.length - 1 &&
-          divisionChanges[i + 1].offset <= offsetOfSmallestNoteAtStart) {
-        continue;
-      }
-
-      snapAtSmallestNoteStart = divisionChanges[i].divisionSnapSize;
-      break;
-    }
-
-    var diff = snappedEventTime - snappedOriginalTime;
-
-    // Preserve the legacy minimum-length behavior exactly during migration.
-    if (!altPressed &&
-        sessionData.smallestStartLength + diff < snapAtSmallestNoteStart) {
-      final snapCount =
-          ((snapAtSmallestNoteStart -
-                      (sessionData.smallestStartLength + diff)) /
-                  snapAtSmallestNoteStart)
-              .ceil();
-      diff += snapCount * snapAtSmallestNoteStart;
-    }
-
-    if (altPressed) {
-      final newSmallestNoteSize = sessionData.smallestStartLength + diff;
-      if (newSmallestNoteSize < 1) {
-        diff += 1 - newSmallestNoteSize;
-      }
-    }
-
-    return Map<Id, PianoRollResizeNotePreview>.fromEntries(
-      sessionData.startLengths.keys.map((noteId) {
-        return MapEntry(noteId, (
-          length: sessionData.startLengths[noteId]! + diff,
-        ));
-      }),
-    );
-  }
-
-  ResizeNotesCommand buildResizeNotesCommand({
-    required PianoRollResizeNotesSessionData sessionData,
-    required Map<Id, PianoRollResizeNotePreview> preview,
-  }) {
-    return ResizeNotesCommand(
-      patternID: requireActivePattern().id,
-      noteResizes: preview.entries
-          .map((entry) {
-            return (
-              noteID: entry.key,
-              oldLength: sessionData.startLengths[entry.key]!,
-              newLength: entry.value.length,
-            );
-          })
-          .toList(growable: false),
     );
   }
 
@@ -654,17 +247,4 @@ class _PianoRollController {
     );
   }
 
-  List<NoteModel> getNotesUnderCursor(
-    Iterable<NoteModel> notes,
-    double key,
-    double offset,
-  ) {
-    final keyFloor = key.floor();
-
-    return notes.where((note) {
-      return offset >= note.offset &&
-          offset < note.offset + note.length &&
-          keyFloor == note.key;
-    }).toList();
-  }
 }

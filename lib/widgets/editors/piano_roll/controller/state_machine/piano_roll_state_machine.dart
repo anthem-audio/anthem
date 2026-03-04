@@ -22,10 +22,12 @@ import 'dart:math';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
@@ -100,19 +102,12 @@ class PianoRollPointerContext {
   bool get isOverResizeHandle => resizeHandleUnderCursor?.realNoteId != null;
 }
 
-/// The long-term interaction state machine for the piano roll.
-///
-/// This first scaffolding pass only establishes the state hierarchy and
-/// controller ownership. All interaction behavior still lives on the legacy
-/// controller path until routing is introduced.
+/// The primary interaction state machine for piano-roll canvas editing.
 class PianoRollStateMachine
     extends EditorStateMachine<PianoRollStateMachineData> {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
   final PianoRollController controller;
-  int _pointerDownCount = 0;
-  int _pointerMoveCount = 0;
-  int _pointerUpCount = 0;
 
   PianoRollStateMachine._({
     required super.data,
@@ -165,15 +160,6 @@ class PianoRollStateMachine
   }
 
   @visibleForTesting
-  int get pointerDownCount => _pointerDownCount;
-
-  @visibleForTesting
-  int get pointerMoveCount => _pointerMoveCount;
-
-  @visibleForTesting
-  int get pointerUpCount => _pointerUpCount;
-
-  @visibleForTesting
   PianoRollPointerContext resolvePointerContextForPosition(
     Offset localPosition,
   ) {
@@ -206,19 +192,6 @@ class PianoRollStateMachine
     data.renderedKeyHeight = keyHeight;
     data.renderedKeyValueAtTop = keyValueAtTop;
     notifyDataUpdated();
-  }
-
-  @visibleForTesting
-  PianoRollInteractionFamily? classifyPointerDownForPosition({
-    required Offset localPosition,
-    required int buttons,
-    required KeyboardModifiers keyboardModifiers,
-  }) {
-    return _classifyPointerDownInteraction(
-      buttons: buttons,
-      ctrlPressed: keyboardModifiers.ctrl,
-      context: resolvePointerContextForPosition(localPosition),
-    );
   }
 
   PianoRollInteractionFamily? _classifyPointerDownInteraction({
@@ -261,7 +234,6 @@ class PianoRollStateMachine
     PointerDownEvent event, {
     required KeyboardModifiers keyboardModifiers,
   }) {
-    _pointerDownCount++;
     data.handlePointerDown(event, keyboardModifiers: keyboardModifiers);
     final family = _classifyPointerDownInteraction(
       buttons: event.buttons,
@@ -286,7 +258,6 @@ class PianoRollStateMachine
       return;
     }
 
-    _pointerMoveCount++;
     emitSignal(const _PianoRollPointerMoveSignal());
   }
 
@@ -300,17 +271,12 @@ class PianoRollStateMachine
       return;
     }
 
-    _pointerUpCount++;
     data.clearInteractionSession();
     emitSignal(const _PianoRollPointerUpSignal());
   }
 }
 
-/// Shared interaction data for the future piano-roll state machine.
-///
-/// This starts intentionally minimal. Later steps will move pointer and view
-/// transform ownership here as gesture routing shifts from the legacy path to
-/// the machine.
+/// Shared input and rendered-view state for the piano-roll interaction machine.
 class PianoRollStateMachineData {
   bool isCtrlPressed = false;
   bool isAltPressed = false;
@@ -320,7 +286,6 @@ class PianoRollStateMachineData {
   Map<int, PianoRollActivePointer> pointers = {};
   int? activePointerId;
   PianoRollActivePointer? activePointerDownPosition;
-  Offset? lastPointerUpPosition;
 
   double renderedTimeViewStart = 0;
   double renderedTimeViewEnd = 0;
@@ -360,7 +325,6 @@ class PianoRollStateMachineData {
       position.dx,
       position.dy,
     );
-    lastPointerUpPosition = null;
   }
 
   void handlePointerMove(
@@ -385,7 +349,6 @@ class PianoRollStateMachineData {
   }) {
     _syncKeyboardModifiers(keyboardModifiers);
 
-    lastPointerUpPosition = event.localPosition;
     final pointerId = event.pointer;
     pointers.remove(pointerId);
 
@@ -439,6 +402,12 @@ class PianoRollIdleState
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
   PianoRollController get controller => pianoRollStateMachine.controller;
+  PatternModel? get activePatternOrNull => controller.activePatternOrNull;
+  PatternModel get activePattern => controller.requireActivePattern();
+
+  NoteModel requireActivePatternNote(Id noteId) {
+    return activePattern.notes.firstWhere((note) => note.id == noteId);
+  }
 }
 
 class PianoRollPointerSessionState
@@ -454,14 +423,18 @@ class PianoRollPointerSessionState
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
   PianoRollController get controller => pianoRollStateMachine.controller;
+  PatternModel? get activePatternOrNull => parentState.activePatternOrNull;
+  PatternModel get activePattern => parentState.activePattern;
+
+  NoteModel requireActivePatternNote(Id noteId) {
+    return parentState.requireActivePatternNote(noteId);
+  }
 
   int? activePointerId;
   PianoRollActivePointer? dragStartPosition;
   PianoRollActivePointer? dragCurrentPosition;
   PianoRollPointerContext? dragStartContext;
   PianoRollPointerContext? dragCurrentContext;
-  PianoRollPointerContext? lastPointerUpContext;
-  PianoRollInteractionFamily? latchedInteractionFamily;
 
   @visibleForTesting
   PianoRollPointerContext? get currentPointerContext => dragCurrentContext;
@@ -488,15 +461,6 @@ class PianoRollPointerSessionState
       dragCurrentPosition = null;
       dragStartContext = null;
       dragCurrentContext = null;
-
-      final lastPointerUpPosition = interactionState.lastPointerUpPosition;
-      lastPointerUpContext = lastPointerUpPosition == null
-          ? null
-          : interactionState.resolvePointerContext(
-              viewModel: viewModel,
-              localPosition: lastPointerUpPosition,
-            );
-      latchedInteractionFamily = interactionState.activeInteractionFamily;
       return;
     }
 
@@ -520,7 +484,6 @@ class PianoRollPointerSessionState
             viewModel: viewModel,
             localPosition: currentPosition.toOffset(),
           );
-    latchedInteractionFamily = interactionState.activeInteractionFamily;
   }
 
   @override
@@ -572,6 +535,8 @@ class PianoRollNoteInteractionState
   ProjectModel get project => pianoRollStateMachine.project;
   PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
   PianoRollController get controller => pianoRollStateMachine.controller;
+  PatternModel? get activePatternOrNull => parentState.activePatternOrNull;
+  PatternModel get activePattern => parentState.activePattern;
 
   PianoRollPointerContext? get dragStartContext => parentState.dragStartContext;
   PianoRollPointerContext? get dragCurrentContext =>
@@ -582,6 +547,198 @@ class PianoRollNoteInteractionState
   double? get dragStartOffset => parentState.dragStartOffset;
   double? get currentKey => parentState.currentKey;
   double? get currentOffset => parentState.currentOffset;
+
+  NoteModel requireActivePatternNote(Id noteId) {
+    return parentState.requireActivePatternNote(noteId);
+  }
+
+  int snapTimeInActivePattern({
+    required int rawTime,
+    bool ceil = false,
+    bool round = false,
+    int startTime = 0,
+  }) {
+    return controller.snapTimeInActivePattern(
+      rawTime: rawTime,
+      viewWidthInPixels: interactionState.viewSize.width,
+      ceil: ceil,
+      round: round,
+      startTime: startTime,
+    );
+  }
+
+  void setCursorNoteParameters(NoteModel note) {
+    viewModel.cursorNoteLength = note.length;
+    viewModel.cursorNoteVelocity = note.velocity;
+    viewModel.cursorNotePan = note.pan;
+  }
+
+  PianoRollMoveNotesSessionData createMoveNotesSessionData({
+    required double pointerOffset,
+    required NoteModel noteUnderCursor,
+    required Iterable<NoteModel> notesToMove,
+    required bool isSelectionMove,
+    required bool didDuplicateOnPointerDown,
+    required Set<Id> duplicatedNoteIds,
+    required Set<Id> movingTransientNoteIds,
+  }) {
+    final movingNotesById = <Id, NoteModel>{
+      noteUnderCursor.id: noteUnderCursor,
+    };
+    for (final note in notesToMove) {
+      movingNotesById[note.id] = note;
+    }
+
+    final movingNotes = movingNotesById.values.toList(growable: false);
+    if (movingNotes.isEmpty) {
+      throw StateError('Move session requires at least one note.');
+    }
+
+    final startTimes = <Id, Time>{};
+    final startKeys = <Id, int>{};
+    final lengths = <Id, Time>{};
+    final velocities = <Id, double>{};
+    final pans = <Id, double>{};
+    var startOfFirstNote = maxSafeIntWeb;
+    var keyOfTopNote = 0;
+    var keyOfBottomNote = maxSafeIntWeb;
+
+    for (final note in movingNotes) {
+      startTimes[note.id] = note.offset;
+      startKeys[note.id] = note.key;
+      lengths[note.id] = note.length;
+      velocities[note.id] = note.velocity;
+      pans[note.id] = note.pan;
+      startOfFirstNote = min(startOfFirstNote, note.offset);
+      keyOfTopNote = max(keyOfTopNote, note.key);
+      keyOfBottomNote = min(keyOfBottomNote, note.key);
+    }
+
+    return PianoRollMoveNotesSessionData(
+      noteUnderCursor: noteUnderCursor,
+      timeOffset: pointerOffset - noteUnderCursor.offset,
+      noteOffset: 0.5,
+      startTimes: startTimes,
+      startKeys: startKeys,
+      lengths: lengths,
+      velocities: velocities,
+      pans: pans,
+      startOfFirstNote: startOfFirstNote,
+      keyOfTopNote: keyOfTopNote,
+      keyOfBottomNote: keyOfBottomNote,
+      isSelectionMove: isSelectionMove,
+      didDuplicateOnPointerDown: didDuplicateOnPointerDown,
+      duplicatedNoteIds: duplicatedNoteIds,
+      movingTransientNoteIds: movingTransientNoteIds,
+    );
+  }
+
+  Map<Id, PianoRollMoveNotePreview> createInitialMoveNotesPreview(
+    PianoRollMoveNotesSessionData sessionData,
+  ) {
+    return Map<Id, PianoRollMoveNotePreview>.fromEntries(
+      sessionData.startTimes.keys.map((noteId) {
+        return MapEntry(noteId, (
+          key: sessionData.startKeys[noteId]!,
+          offset: sessionData.startTimes[noteId]!,
+        ));
+      }),
+    );
+  }
+
+  Map<Id, PianoRollMoveNotePreview> resolveMoveNotesSessionPreview({
+    required double key,
+    required double offset,
+    required PianoRollMoveNotesSessionData sessionData,
+  }) {
+    final targetKey = key - sessionData.noteOffset;
+    final targetOffset = offset - sessionData.timeOffset;
+    var snappedOffset = targetOffset.floor();
+
+    if (!interactionState.isAltPressed) {
+      snappedOffset = snapTimeInActivePattern(
+        rawTime: targetOffset.floor(),
+        round: true,
+        startTime: sessionData.startTimes[sessionData.noteUnderCursor.id]!,
+      );
+    }
+
+    var timeOffsetFromEventStart =
+        snappedOffset - sessionData.startTimes[sessionData.noteUnderCursor.id]!;
+    var keyOffsetFromEventStart =
+        targetKey.round() -
+        sessionData.startKeys[sessionData.noteUnderCursor.id]!;
+
+    if (sessionData.startOfFirstNote + timeOffsetFromEventStart < 0) {
+      timeOffsetFromEventStart = -sessionData.startOfFirstNote;
+    }
+
+    if (sessionData.keyOfTopNote + keyOffsetFromEventStart > maxKeyValue) {
+      keyOffsetFromEventStart = maxKeyValue.round() - sessionData.keyOfTopNote;
+    }
+
+    if (sessionData.keyOfBottomNote + keyOffsetFromEventStart < minKeyValue) {
+      keyOffsetFromEventStart =
+          minKeyValue.round() - sessionData.keyOfBottomNote;
+    }
+
+    return Map<Id, PianoRollMoveNotePreview>.fromEntries(
+      sessionData.startTimes.keys.map((noteId) {
+        return MapEntry(noteId, (
+          key:
+              sessionData.startKeys[noteId]! +
+              (interactionState.isShiftPressed ? 0 : keyOffsetFromEventStart),
+          offset:
+              sessionData.startTimes[noteId]! +
+              (!interactionState.isShiftPressed && interactionState.isCtrlPressed
+                  ? 0
+                  : timeOffsetFromEventStart),
+        ));
+      }),
+    );
+  }
+
+  void syncLivePreviewForMoveSession({
+    required PianoRollMoveNotesSessionData sessionData,
+    required Map<Id, PianoRollMoveNotePreview> preview,
+  }) {
+    final notePreview = preview[sessionData.noteUnderCursor.id];
+    if (notePreview == null) {
+      return;
+    }
+
+    if (!controller.liveNotes.hasNoteForKey(notePreview.key)) {
+      controller.liveNotes.removeAll();
+      controller.liveNotes.addNote(
+        key: notePreview.key,
+        velocity: sessionData.noteUnderCursor.velocity,
+        pan: sessionData.noteUnderCursor.pan,
+      );
+    }
+  }
+
+  MoveNotesCommand buildMoveNotesCommand({
+    required PianoRollMoveNotesSessionData sessionData,
+    required Map<Id, PianoRollMoveNotePreview> preview,
+  }) {
+    return MoveNotesCommand(
+      patternID: activePattern.id,
+      noteMoves: preview.entries
+          .where(
+            (entry) => !sessionData.movingTransientNoteIds.contains(entry.key),
+          )
+          .map((entry) {
+            return (
+              noteID: entry.key,
+              oldOffset: sessionData.startTimes[entry.key]!,
+              newOffset: entry.value.offset,
+              oldKey: sessionData.startKeys[entry.key]!,
+              newKey: entry.value.key,
+            );
+          })
+          .toList(growable: false),
+    );
+  }
 
   @override
   Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>

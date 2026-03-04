@@ -89,8 +89,8 @@ class PianoRollSelectionBoxState
       Point(dragCurrentContext.offset, dragCurrentContext.key),
     );
 
-    final notesInSelection = controller
-        .requireActivePattern()
+    final notesInSelection = parentState
+        .activePattern
         .notes
         .where(
           (note) => rectanglesIntersect(
