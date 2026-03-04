@@ -21,7 +21,6 @@ import 'dart:math';
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -29,10 +28,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-import '../shared/helpers/time_helpers.dart';
 import '../shared/scroll_manager.dart';
 import 'controller/piano_roll_controller.dart';
-import 'helpers.dart';
 
 class PianoRollEventListener extends StatefulWidget {
   final Widget child;
@@ -67,13 +64,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       context,
       listen: false,
     );
-
-    final event = PianoRollPointerDownEvent(
-      pointerEvent: e,
-      keyboardModifiers: keyboardModifiers,
-    );
-
-    controller.pointerDown(event);
+    controller.pointerDown(e, keyboardModifiers: keyboardModifiers);
   }
 
   void handlePointerMove(BuildContext context, PointerMoveEvent e) {
@@ -86,13 +77,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       context,
       listen: false,
     );
-
-    final event = PianoRollPointerMoveEvent(
-      pointerEvent: e,
-      keyboardModifiers: keyboardModifiers,
-    );
-
-    controller.pointerMove(event);
+    controller.pointerMove(e, keyboardModifiers: keyboardModifiers);
   }
 
   void handlePointerUp(BuildContext context, PointerEvent e) {
@@ -101,13 +86,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       context,
       listen: false,
     );
-
-    final event = PianoRollPointerUpEvent(
-      pointerEvent: e,
-      keyboardModifiers: keyboardModifiers,
-    );
-
-    controller.pointerUp(event);
+    controller.pointerUp(e, keyboardModifiers: keyboardModifiers);
   }
 
   var _panPointerYStart = double.nan;
@@ -151,11 +130,13 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
                 final deltaKeySincePanInit = (deltaY / viewModel.keyHeight);
 
                 viewModel.keyValueAtTop =
-                    (_panKeyAtTopStart + deltaKeySincePanInit).clamp(
-                      minKeyValue +
-                          (boxConstraints.maxHeight / viewModel.keyHeight),
-                      maxKeyValue,
-                    );
+                    (_panKeyAtTopStart + deltaKeySincePanInit)
+                        .clamp(
+                          minKeyValue +
+                              (boxConstraints.maxHeight / viewModel.keyHeight),
+                          maxKeyValue,
+                        )
+                        .toDouble();
               },
               onVerticalZoom: (pointerY, delta) {
                 final viewHeight = boxConstraints.maxHeight;

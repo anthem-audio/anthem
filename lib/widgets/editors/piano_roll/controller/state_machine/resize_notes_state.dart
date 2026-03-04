@@ -61,9 +61,9 @@ class PianoRollResizeNotesState
   @visibleForTesting
   Map<Id, PianoRollResizeNotePreview>? get preview => _preview;
 
-  bool _isResizePointerSignal(EditorStateMachineEvent event) {
+  bool _isResizePointerDownSignal(EditorStateMachineEvent event) {
     return event is EditorStateMachineSignalEvent &&
-        event.signal is _PianoRollAdaptedPointerSignal;
+        event.signal is _PianoRollPointerDownSignal;
   }
 
   void _applyPreview({
@@ -147,13 +147,13 @@ class PianoRollResizeNotesState
   Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
   get transitions => [
     .new(
-      name: 'Delegate adapted session to resize notes',
+      name: 'Delegate pointer session to resize notes',
       from: PianoRollNoteInteractionState,
       to: PianoRollResizeNotesState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
               PianoRollInteractionFamily.resizeNotes &&
-          _isResizePointerSignal(event),
+          _isResizePointerDownSignal(event),
     ),
     .new(
       name: 'Exit resize notes',
@@ -180,7 +180,7 @@ class PianoRollResizeNotesState
     final sessionData = _sessionData;
     final currentOffset = parentState.currentOffset;
     if (event is! EditorStateMachineSignalEvent ||
-        event.signal is! _PianoRollAdaptedPointerMoveSignal ||
+        event.signal is! _PianoRollPointerMoveSignal ||
         sessionData == null ||
         currentOffset == null) {
       return;

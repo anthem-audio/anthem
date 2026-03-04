@@ -116,14 +116,14 @@ class PianoRollSelectionBoxState
   Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
   get transitions => [
     .new(
-      name: 'Delegate adapted session to selection box',
+      name: 'Delegate pointer session to selection box',
       from: PianoRollPointerSessionState,
       to: PianoRollSelectionBoxState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
               PianoRollInteractionFamily.selectionBox &&
           event is EditorStateMachineSignalEvent &&
-          event.signal is _PianoRollAdaptedPointerSignal,
+          event.signal is _PianoRollPointerDownSignal,
     ),
     .new(
       name: 'Exit selection box',
@@ -148,7 +148,7 @@ class PianoRollSelectionBoxState
   @override
   void onActive({required EditorStateMachineEvent event}) {
     if (event is! EditorStateMachineSignalEvent ||
-        event.signal is! _PianoRollAdaptedPointerMoveSignal) {
+        event.signal is! _PianoRollPointerMoveSignal) {
       return;
     }
 

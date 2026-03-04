@@ -35,7 +35,6 @@ import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
-import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
@@ -455,18 +454,12 @@ class _PianoRollStateMachineTestFixture {
     );
 
     controller.pointerDown(
-      PianoRollPointerDownEvent(
-        pointerEvent: PointerDownEvent(
-          pointer: pointer,
-          position: localPosition,
-          buttons: buttons,
-        ),
-        keyboardModifiers: _keyboardModifiers(
-          ctrl: ctrl,
-          alt: alt,
-          shift: shift,
-        ),
+      PointerDownEvent(
+        pointer: pointer,
+        position: localPosition,
+        buttons: buttons,
       ),
+      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -488,20 +481,10 @@ class _PianoRollStateMachineTestFixture {
       noteUnderCursor: noteUnderCursor,
       isResize: isResize,
     );
-    final event = PianoRollPointerDownEvent(
-      pointerEvent: PointerDownEvent(
-        pointer: pointer,
-        position: localPosition,
-        buttons: buttons,
-      ),
-      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
-    );
-    final context = stateMachine.resolvePointerContextForEvent(event);
-    return controller.classifyPointerDownInteraction(
+    return stateMachine.classifyPointerDownForPosition(
+      localPosition: localPosition,
       buttons: buttons,
-      ctrlPressed: ctrl,
-      isResizeHandle: context?.isOverResizeHandle ?? false,
-      realNoteUnderCursorId: context?.realNoteUnderCursorId,
+      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -518,17 +501,8 @@ class _PianoRollStateMachineTestFixture {
     _seedContentUnderCursor(localPosition: localPosition);
 
     controller.pointerMove(
-      PianoRollPointerMoveEvent(
-        pointerEvent: PointerMoveEvent(
-          pointer: pointer,
-          position: localPosition,
-        ),
-        keyboardModifiers: _keyboardModifiers(
-          ctrl: ctrl,
-          alt: alt,
-          shift: shift,
-        ),
-      ),
+      PointerMoveEvent(pointer: pointer, position: localPosition),
+      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -545,14 +519,8 @@ class _PianoRollStateMachineTestFixture {
     _seedContentUnderCursor(localPosition: localPosition);
 
     controller.pointerUp(
-      PianoRollPointerUpEvent(
-        pointerEvent: PointerUpEvent(pointer: pointer, position: localPosition),
-        keyboardModifiers: _keyboardModifiers(
-          ctrl: ctrl,
-          alt: alt,
-          shift: shift,
-        ),
-      ),
+      PointerUpEvent(pointer: pointer, position: localPosition),
+      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -569,17 +537,8 @@ class _PianoRollStateMachineTestFixture {
     _seedContentUnderCursor(localPosition: localPosition);
 
     controller.pointerUp(
-      PianoRollPointerUpEvent(
-        pointerEvent: PointerCancelEvent(
-          pointer: pointer,
-          position: localPosition,
-        ),
-        keyboardModifiers: _keyboardModifiers(
-          ctrl: ctrl,
-          alt: alt,
-          shift: shift,
-        ),
-      ),
+      PointerCancelEvent(pointer: pointer, position: localPosition),
+      keyboardModifiers: _keyboardModifiers(ctrl: ctrl, alt: alt, shift: shift),
     );
   }
 
@@ -810,20 +769,20 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.moveNotes),
       );
-      expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
-      expect(fixture.stateMachine.adaptedPointerMoveCount, equals(0));
-      expect(fixture.stateMachine.adaptedPointerUpCount, equals(0));
+      expect(fixture.stateMachine.pointerDownCount, equals(1));
+      expect(fixture.stateMachine.pointerMoveCount, equals(0));
+      expect(fixture.stateMachine.pointerUpCount, equals(0));
       expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
       expect(fixture.moveNotesState.sessionData, isNotNull);
 
       fixture.pointerMove(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.adaptedPointerMoveCount, equals(1));
+      expect(fixture.stateMachine.pointerMoveCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.moveNotesState));
 
       fixture.pointerUp(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
+      expect(fixture.stateMachine.pointerUpCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
     });
@@ -862,18 +821,18 @@ void main() {
         fixture.activeInteractionFamily,
         equals(PianoRollInteractionFamily.createNote),
       );
-      expect(fixture.stateMachine.adaptedPointerDownCount, equals(1));
+      expect(fixture.stateMachine.pointerDownCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
       expect(fixture.createNoteState.sessionData, isNotNull);
 
       fixture.pointerMove(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.adaptedPointerMoveCount, equals(1));
+      expect(fixture.stateMachine.pointerMoveCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.createNoteState));
 
       fixture.pointerUp(key: 61.5, offset: 120);
 
-      expect(fixture.stateMachine.adaptedPointerUpCount, equals(1));
+      expect(fixture.stateMachine.pointerUpCount, equals(1));
       expect(fixture.stateMachine.currentState, same(fixture.idleState));
       expect(fixture.activeInteractionFamily, isNull);
     });

@@ -157,13 +157,13 @@ class PianoRollEraseNotesState
   Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
   get transitions => [
     .new(
-      name: 'Delegate adapted session to erase notes',
+      name: 'Delegate pointer session to erase notes',
       from: PianoRollPointerSessionState,
       to: PianoRollEraseNotesState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily == PianoRollInteractionFamily.erase &&
           event is EditorStateMachineSignalEvent &&
-          event.signal is _PianoRollAdaptedPointerSignal,
+          event.signal is _PianoRollPointerDownSignal,
     ),
     .new(
       name: 'Exit erase notes',
@@ -187,7 +187,7 @@ class PianoRollEraseNotesState
   @override
   void onActive({required EditorStateMachineEvent event}) {
     if (event is! EditorStateMachineSignalEvent ||
-        event.signal is! _PianoRollAdaptedPointerMoveSignal) {
+        event.signal is! _PianoRollPointerMoveSignal) {
       return;
     }
 

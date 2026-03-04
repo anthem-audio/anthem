@@ -90,9 +90,9 @@ class PianoRollMoveNotesState
   @visibleForTesting
   Map<Id, PianoRollMoveNotePreview>? get preview => _preview;
 
-  bool _isMovePointerSignal(EditorStateMachineEvent event) {
+  bool _isMovePointerDownSignal(EditorStateMachineEvent event) {
     return event is EditorStateMachineSignalEvent &&
-        event.signal is _PianoRollAdaptedPointerSignal;
+        event.signal is _PianoRollPointerDownSignal;
   }
 
   NoteModel _snapshotFromTransientNote(PianoRollTransientNote note) {
@@ -274,13 +274,13 @@ class PianoRollMoveNotesState
   Iterable<EditorStateMachineStateTransition<PianoRollStateMachineData>>
   get transitions => [
     .new(
-      name: 'Delegate adapted session to move notes',
+      name: 'Delegate pointer session to move notes',
       from: PianoRollNoteInteractionState,
       to: PianoRollMoveNotesState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
               PianoRollInteractionFamily.moveNotes &&
-          _isMovePointerSignal(event),
+          _isMovePointerDownSignal(event),
     ),
     .new(
       name: 'Exit move notes',
@@ -307,7 +307,7 @@ class PianoRollMoveNotesState
     final currentKey = parentState.currentKey;
     final currentOffset = parentState.currentOffset;
     if (event is! EditorStateMachineSignalEvent ||
-        event.signal is! _PianoRollAdaptedPointerMoveSignal ||
+        event.signal is! _PianoRollPointerMoveSignal ||
         sessionData == null ||
         currentKey == null ||
         currentOffset == null) {

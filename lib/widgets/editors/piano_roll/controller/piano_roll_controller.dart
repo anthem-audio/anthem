@@ -27,15 +27,14 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_live_notes.dart';
-import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
@@ -94,57 +93,29 @@ class _PianoRollController {
   PianoRollInteractionFamily? get activeInteractionFamily =>
       stateMachine.data.activeInteractionFamily;
 
-  PianoRollInteractionFamily? classifyPointerDownInteraction({
-    required int buttons,
-    required bool ctrlPressed,
-    required bool isResizeHandle,
-    required Id? realNoteUnderCursorId,
-  }) {
-    if (project.sequence.activePatternID == null) {
-      return null;
-    }
-
-    final isPrimaryClick = buttons & kPrimaryMouseButton == kPrimaryMouseButton;
-    final isSecondaryClick =
-        buttons & kSecondaryMouseButton == kSecondaryMouseButton;
-
-    if (isPrimaryClick && viewModel.tool != EditorTool.eraser) {
-      if (ctrlPressed || viewModel.tool == EditorTool.select) {
-        return PianoRollInteractionFamily.selectionBox;
-      }
-
-      if (isResizeHandle && viewModel.tool == EditorTool.pencil) {
-        return PianoRollInteractionFamily.resizeNotes;
-      }
-
-      if (realNoteUnderCursorId != null) {
-        return PianoRollInteractionFamily.moveNotes;
-      }
-
-      return PianoRollInteractionFamily.createNote;
-    }
-
-    if (isSecondaryClick || viewModel.tool == EditorTool.eraser) {
-      return PianoRollInteractionFamily.erase;
-    }
-
-    return null;
-  }
-
   void _clearActiveInteractionRoute() {
     stateMachine.data.clearInteractionSession();
   }
 
-  void pointerDown(PianoRollPointerDownEvent event) {
-    stateMachine.onAdaptedPointerDown(event);
+  void pointerDown(
+    PointerDownEvent event, {
+    required KeyboardModifiers keyboardModifiers,
+  }) {
+    stateMachine.onPointerDown(event, keyboardModifiers: keyboardModifiers);
   }
 
-  void pointerMove(PianoRollPointerMoveEvent event) {
-    stateMachine.onAdaptedPointerMove(event);
+  void pointerMove(
+    PointerMoveEvent event, {
+    required KeyboardModifiers keyboardModifiers,
+  }) {
+    stateMachine.onPointerMove(event, keyboardModifiers: keyboardModifiers);
   }
 
-  void pointerUp(PianoRollPointerUpEvent event) {
-    stateMachine.onAdaptedPointerUp(event);
+  void pointerUp(
+    PointerEvent event, {
+    required KeyboardModifiers keyboardModifiers,
+  }) {
+    stateMachine.onPointerUp(event, keyboardModifiers: keyboardModifiers);
   }
 
   void onRenderedViewMetricsChanged({
