@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -60,8 +60,6 @@ public:
   }
 
   bool tryEnqueue(uint8_t value) {
-    incrementTicket();
-
     uint32_t currentHead = emscripten_atomic_load_u32((uint32_t*)&head);
     uint32_t currentTail = emscripten_atomic_load_u32((uint32_t*)&tail);
     if (((currentHead + 1) & mask) == (currentTail & mask)) {
@@ -73,8 +71,6 @@ public:
     uint8_t* bufferPtr = static_cast<uint8_t*>(buffer.getData());
     emscripten_atomic_store_u8((uint8_t*)&bufferPtr[currentHead], value);
     emscripten_atomic_store_u32((uint32_t*)&head, nextHead);
-
-    notifyTicketChange();
 
     return true;
   }
