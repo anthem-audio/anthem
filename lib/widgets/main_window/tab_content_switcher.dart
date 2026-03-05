@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -38,8 +38,14 @@ class TabContentSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (tabs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final selectedIndex = tabs.indexWhere((tab) => tab.id == selectedTabId);
+
     return IndexedStack(
-      index: tabs.indexWhere((tab) => tab.id == selectedTabId),
+      index: selectedIndex >= 0 ? selectedIndex : 0,
       children: tabs.map((tab) {
         return ShortcutProvider(
           active: tab.id == selectedTabId,

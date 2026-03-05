@@ -86,27 +86,29 @@ class _ProjectState extends State<Project> {
                         EditorKind.channelRack => 1,
                         EditorKind.detail => 2,
                         EditorKind.mixer => 3,
-                        null => -1,
+                        null => null,
                       };
 
-                  final selectedEditor = PanelBorder(
-                    panelKind: switch (viewModel.selectedEditor) {
-                      .automation => .automationEditor,
-                      .channelRack => .channelRack,
-                      .detail => .pianoRoll,
-                      .mixer => .mixer,
-                      null => null,
-                    },
-                    child: IndexedStack(
-                      index: selectedEditorIndex,
-                      children: [
-                        automationEditor,
-                        channelRack,
-                        pianoRoll,
-                        mixer,
-                      ],
-                    ),
-                  );
+                  final selectedEditor = selectedEditorIndex == null
+                      ? const SizedBox.shrink()
+                      : PanelBorder(
+                          panelKind: switch (viewModel.selectedEditor) {
+                            .automation => .automationEditor,
+                            .channelRack => .channelRack,
+                            .detail => .pianoRoll,
+                            .mixer => .mixer,
+                            null => null,
+                          },
+                          child: IndexedStack(
+                            index: selectedEditorIndex,
+                            children: [
+                              automationEditor,
+                              channelRack,
+                              pianoRoll,
+                              mixer,
+                            ],
+                          ),
+                        );
 
                   return Panel(
                     hidden: !projectModel.isDetailViewOpen,
