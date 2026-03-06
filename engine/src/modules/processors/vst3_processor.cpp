@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,6 +26,14 @@
 #include "modules/core/anthem.h"
 #include "generated/lib/model/model.h"
 
+namespace {
+void writeVST3Log(VST3Processor& processor, const juce::String& message) {
+  juce::Logger::writeToLog(
+    "[VST3:" + juce::String(processor.nodeId()) + "] " + message
+  );
+}
+} // namespace
+
 VST3Processor::VST3Processor(const VST3ProcessorModelImpl& _impl)
       : AnthemProcessor("VST3"), VST3ProcessorModelBase(_impl) {
   // Nothing to do here
@@ -38,6 +46,11 @@ VST3Processor::~VST3Processor() {
 
 // We expect that a valid device is available when this method is called
 void VST3Processor::prepareToProcess() {
+  writeVST3Log(
+    *this,
+    "prepareToProcess() called for path: " + juce::String(vst3Path())
+  );
+
   // If the plugin is not initialized, try to initialize it
   tryInitializePlugin();
 }
@@ -95,15 +108,31 @@ void VST3Processor::initialize(
 }
 
 void VST3Processor::tryInitializePlugin() {
+  if (pluginInstance != nullptr) {
+    writeVST3Log(*this, "Plugin instance already exists. Skipping initialization.");
+    return;
+  }
+
   auto& audioPluginFormatManager = Anthem::getInstance().audioPluginFormatManager;
   auto& audioDeviceManager = Anthem::getInstance().audioDeviceManager;
 
   auto* device = audioDeviceManager.getCurrentAudioDevice();
 
   if (device == nullptr) {
-    std::cerr << "No audio device available. Cannot initialize VST3 plugin." << std::endl;
+    writeVST3Log(
+      *this,
+      "No audio device available. Cannot initialize plugin."
+    );
     return;
   }
+
+  writeVST3Log(
+    *this,
+    "Initializing plugin. Sample rate: " +
+      juce::String(device->getCurrentSampleRate()) +
+      ", buffer size: " +
+      juce::String(device->getCurrentBufferSizeSamples())
+  );
 
   // First, scan the VST3 file to get proper plugin descriptions
   juce::VST3PluginFormat vst3Format;
@@ -112,9 +141,29 @@ void VST3Processor::tryInitializePlugin() {
   vst3Format.findAllTypesForFile(foundPlugins, vst3Path());
 
   if (foundPlugins.isEmpty()) {
-    // We need proper error handling for this
-    std::cerr << "No plugins found in VST3 file: " << vst3Path() << std::endl;
+    writeVST3Log(
+      *this,
+      "No plugins found in VST3 file: " + juce::String(vst3Path())
+    );
     return;
+  }
+
+  writeVST3Log(
+    *this,
+    "Found " + juce::String(foundPlugins.size()) + " plugin description(s) in file."
+  );
+  for (int i = 0; i < foundPlugins.size(); ++i) {
+    auto* description = foundPlugins[i];
+    writeVST3Log(
+      *this,
+      "  [" + juce::String(i) + "] " +
+        description->name +
+        " by " +
+        description->manufacturerName +
+        " (" +
+        description->pluginFormatName +
+        ")"
+    );
   }
 
   // Use the first plugin found (not the proper way to do this)
@@ -129,14 +178,53 @@ void VST3Processor::tryInitializePlugin() {
     bufferSize,
     [this, sampleRate, bufferSize](std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& error) {
       if (error.isNotEmpty()) {
-        std::cerr << "Failed to create plugin instance: " << error.toStdString() << std::endl;
+        writeVST3Log(
+          *this,
+          "Failed to create plugin instance: " + error
+        );
         return;
       }
 
+      if (instance == nullptr) {
+        writeVST3Log(
+          *this,
+          "Plugin creation callback returned a null instance without an error message."
+        );
+        return;
+      }
+
+      auto enabledAllBuses = instance->enableAllBuses();
       hasEditor = instance->hasEditor();
+      writeVST3Log(
+        *this,
+        "Plugin instance created. Name: " +
+          instance->getName() +
+          ", hasEditor=" +
+          juce::String(hasEditor ? "true" : "false") +
+          ", acceptsMidi=" +
+          juce::String(instance->acceptsMidi() ? "true" : "false") +
+          ", producesMidi=" +
+          juce::String(instance->producesMidi() ? "true" : "false") +
+          ", enabledAllBuses=" +
+          juce::String(enabledAllBuses ? "true" : "false") +
+          ", inputChannels=" +
+          juce::String(instance->getTotalNumInputChannels()) +
+          ", outputChannels=" +
+          juce::String(instance->getTotalNumOutputChannels())
+      );
+
       instance->prepareToPlay(sampleRate, bufferSize);
+      writeVST3Log(
+        *this,
+        "prepareToPlay() completed."
+      );
+
       pluginInstance = std::move(instance);
       pluginInstance->addListener(this);
+      writeVST3Log(
+        *this,
+        "Plugin listener attached. Sending PluginLoadedEvent to UI."
+      );
 
       Response event = PluginLoadedEvent {
         .nodeId = this->nodeId(),
@@ -154,23 +242,44 @@ void VST3Processor::tryInitializePlugin() {
 }
 
 void VST3Processor::showPluginGUI() {
-  if (!pluginInstance || !hasEditor) {
+  if (!pluginInstance) {
+    writeVST3Log(
+      *this,
+      "showPluginGUI() skipped because no plugin instance exists yet."
+    );
+    return;
+  }
+
+  if (!hasEditor) {
+    writeVST3Log(
+      *this,
+      "Plugin does not expose an editor. No plugin window will be shown."
+    );
     return;
   }
 
   if (editorWindow != nullptr) {
     // Window already exists, just bring it to front
+    writeVST3Log(*this, "Plugin editor window already exists. Bringing it to front.");
     editorWindow->toFront(true);
     return;
   }
 
   // Create the plugin editor
-  pluginEditor = std::unique_ptr<juce::AudioProcessorEditor>(pluginInstance->createEditor());
+  pluginEditor = std::unique_ptr<juce::AudioProcessorEditor>(
+    pluginInstance->createEditorIfNeeded()
+  );
   
   if (!pluginEditor) {
-    std::cerr << "Failed to create plugin editor" << std::endl;
+    writeVST3Log(
+      *this,
+      "Plugin reported hasEditor() but createEditorIfNeeded() returned null."
+    );
     return;
   }
+
+  auto editorWidth = pluginEditor->getWidth();
+  auto editorHeight = pluginEditor->getHeight();
 
   // Create a window to host the editor with close callback
   editorWindow = std::make_unique<PluginEditorWindow>(
@@ -181,14 +290,24 @@ void VST3Processor::showPluginGUI() {
   editorWindow->setContentOwned(pluginEditor.release(), true);
   editorWindow->setResizable(false, false);
   editorWindow->setUsingNativeTitleBar(true);
+  editorWindow->setSize(editorWidth, editorHeight);
   
   // Center the window on screen
   editorWindow->centreWithSize(editorWindow->getWidth(), editorWindow->getHeight());
   editorWindow->setVisible(true);
+  writeVST3Log(
+    *this,
+    "Plugin editor window opened at " +
+      juce::String(editorWindow->getWidth()) +
+      "x" +
+      juce::String(editorWindow->getHeight()) +
+      "."
+  );
 }
 
 void VST3Processor::hidePluginGUI() {
   if (editorWindow) {
+    writeVST3Log(*this, "Closing plugin editor window.");
     editorWindow->setVisible(false);
     editorWindow.reset();
   }
@@ -237,6 +356,12 @@ void VST3Processor::getState(juce::MemoryBlock& target) {
 
 void VST3Processor::setState(const juce::MemoryBlock& state) {
   if (pluginInstance) {
+    writeVST3Log(
+      *this,
+      "Applying plugin state block of " +
+        juce::String(static_cast<int>(state.getSize())) +
+        " bytes."
+    );
     pluginInstance->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
   }
 }

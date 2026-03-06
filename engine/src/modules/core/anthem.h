@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,6 +23,10 @@
 #include <iostream>
 
 #include <juce_audio_devices/juce_audio_devices.h>
+
+#ifndef __EMSCRIPTEN__
+#include <juce_audio_processors/juce_audio_processors.h>
+#endif // #ifndef __EMSCRIPTEN__
 
 #include "comms.h"
 

@@ -34,7 +34,10 @@ void Anthem::initialize() {
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 
   #ifndef __EMSCRIPTEN__
-  audioPluginFormatManager.addDefaultFormats();
+  juce::addDefaultFormatsToManager(audioPluginFormatManager);
+  juce::Logger::writeToLog(
+    "Initialized audio plugin format manager with UI-capable plugin formats."
+  );
   #endif // #ifndef __EMSCRIPTEN__
 
   comms.init();
