@@ -90,6 +90,35 @@ class PianoRollPointerContext {
   bool get isOverResizeHandle => resizeHandleUnderCursor?.realNoteId != null;
 }
 
+class PianoRollSessionNoteState {
+  final Id id;
+  final int key;
+  final Time offset;
+  final Time length;
+  final double velocity;
+  final double pan;
+
+  const PianoRollSessionNoteState({
+    required this.id,
+    required this.key,
+    required this.offset,
+    required this.length,
+    required this.velocity,
+    required this.pan,
+  });
+
+  factory PianoRollSessionNoteState.fromNoteModel(NoteModel note) {
+    return PianoRollSessionNoteState(
+      id: note.id,
+      key: note.key,
+      offset: note.offset,
+      length: note.length,
+      velocity: note.velocity,
+      pan: note.pan,
+    );
+  }
+}
+
 /// The primary interaction state machine for piano-roll canvas editing.
 class PianoRollStateMachine
     extends EditorStateMachine<PianoRollStateMachineData> {
@@ -143,7 +172,7 @@ class PianoRollStateMachine
     );
   }
 
-  void onRenderedViewMetricsChanged({
+  void onRenderedViewTransformChanged({
     required Size viewSize,
     required double timeViewStart,
     required double timeViewEnd,
@@ -561,16 +590,17 @@ abstract class PianoRollNoteInteractionState
     required double pointerOffset,
     required NoteModel noteUnderCursor,
     required Iterable<NoteModel> notesToMove,
-    required bool isSelectionMove,
     required bool didDuplicateOnPointerDown,
     required Set<Id> duplicatedNoteIds,
     required Set<Id> movingTransientNoteIds,
   }) {
-    final movingNotesById = <Id, NoteModel>{
-      noteUnderCursor.id: noteUnderCursor,
+    final movingNotesById = <Id, PianoRollSessionNoteState>{
+      noteUnderCursor.id: PianoRollSessionNoteState.fromNoteModel(
+        noteUnderCursor,
+      ),
     };
     for (final note in notesToMove) {
-      movingNotesById[note.id] = note;
+      movingNotesById[note.id] = PianoRollSessionNoteState.fromNoteModel(note);
     }
 
     final movingNotes = movingNotesById.values.toList(growable: false);
@@ -578,39 +608,26 @@ abstract class PianoRollNoteInteractionState
       throw StateError('Move session requires at least one note.');
     }
 
-    final startTimes = <Id, Time>{};
-    final startKeys = <Id, int>{};
-    final lengths = <Id, Time>{};
-    final velocities = <Id, double>{};
-    final pans = <Id, double>{};
     var startOfFirstNote = maxSafeIntWeb;
     var keyOfTopNote = 0;
     var keyOfBottomNote = maxSafeIntWeb;
 
     for (final note in movingNotes) {
-      startTimes[note.id] = note.offset;
-      startKeys[note.id] = note.key;
-      lengths[note.id] = note.length;
-      velocities[note.id] = note.velocity;
-      pans[note.id] = note.pan;
       startOfFirstNote = min(startOfFirstNote, note.offset);
       keyOfTopNote = max(keyOfTopNote, note.key);
       keyOfBottomNote = min(keyOfBottomNote, note.key);
     }
 
+    final anchorNote = movingNotesById[noteUnderCursor.id]!;
+
     return PianoRollMoveNotesSessionData(
-      noteUnderCursor: noteUnderCursor,
-      timeOffset: pointerOffset - noteUnderCursor.offset,
+      anchorNoteId: anchorNote.id,
+      notesById: movingNotesById,
+      timeOffset: pointerOffset - anchorNote.offset,
       noteOffset: 0.5,
-      startTimes: startTimes,
-      startKeys: startKeys,
-      lengths: lengths,
-      velocities: velocities,
-      pans: pans,
       startOfFirstNote: startOfFirstNote,
       keyOfTopNote: keyOfTopNote,
       keyOfBottomNote: keyOfBottomNote,
-      isSelectionMove: isSelectionMove,
       didDuplicateOnPointerDown: didDuplicateOnPointerDown,
       duplicatedNoteIds: duplicatedNoteIds,
       movingTransientNoteIds: movingTransientNoteIds,
@@ -621,11 +638,9 @@ abstract class PianoRollNoteInteractionState
     PianoRollMoveNotesSessionData sessionData,
   ) {
     return Map<Id, PianoRollMoveNotePreview>.fromEntries(
-      sessionData.startTimes.keys.map((noteId) {
-        return MapEntry(noteId, (
-          key: sessionData.startKeys[noteId]!,
-          offset: sessionData.startTimes[noteId]!,
-        ));
+      sessionData.noteIds.map((noteId) {
+        final note = sessionData.requireNote(noteId);
+        return MapEntry(noteId, (key: note.key, offset: note.offset));
       }),
     );
   }
@@ -635,6 +650,7 @@ abstract class PianoRollNoteInteractionState
     required double offset,
     required PianoRollMoveNotesSessionData sessionData,
   }) {
+    final anchorNote = sessionData.anchorNote;
     final targetKey = key - sessionData.noteOffset;
     final targetOffset = offset - sessionData.timeOffset;
     var snappedOffset = targetOffset.floor();
@@ -643,15 +659,12 @@ abstract class PianoRollNoteInteractionState
       snappedOffset = snapTimeInActivePattern(
         rawTime: targetOffset.floor(),
         round: true,
-        startTime: sessionData.startTimes[sessionData.noteUnderCursor.id]!,
+        startTime: anchorNote.offset,
       );
     }
 
-    var timeOffsetFromEventStart =
-        snappedOffset - sessionData.startTimes[sessionData.noteUnderCursor.id]!;
-    var keyOffsetFromEventStart =
-        targetKey.round() -
-        sessionData.startKeys[sessionData.noteUnderCursor.id]!;
+    var timeOffsetFromEventStart = snappedOffset - anchorNote.offset;
+    var keyOffsetFromEventStart = targetKey.round() - anchorNote.key;
 
     if (sessionData.startOfFirstNote + timeOffsetFromEventStart < 0) {
       timeOffsetFromEventStart = -sessionData.startOfFirstNote;
@@ -667,17 +680,15 @@ abstract class PianoRollNoteInteractionState
     }
 
     return Map<Id, PianoRollMoveNotePreview>.fromEntries(
-      sessionData.startTimes.keys.map((noteId) {
+      sessionData.noteIds.map((noteId) {
+        final note = sessionData.requireNote(noteId);
+
+        final constrainKey = interactionState.isShiftPressed;
+        final constrainTime = !constrainKey && interactionState.isCtrlPressed;
+
         return MapEntry(noteId, (
-          key:
-              sessionData.startKeys[noteId]! +
-              (interactionState.isShiftPressed ? 0 : keyOffsetFromEventStart),
-          offset:
-              sessionData.startTimes[noteId]! +
-              (!interactionState.isShiftPressed &&
-                      interactionState.isCtrlPressed
-                  ? 0
-                  : timeOffsetFromEventStart),
+          key: note.key + (constrainKey ? 0 : keyOffsetFromEventStart),
+          offset: note.offset + (constrainTime ? 0 : timeOffsetFromEventStart),
         ));
       }),
     );
@@ -687,7 +698,8 @@ abstract class PianoRollNoteInteractionState
     required PianoRollMoveNotesSessionData sessionData,
     required Map<Id, PianoRollMoveNotePreview> preview,
   }) {
-    final notePreview = preview[sessionData.noteUnderCursor.id];
+    final anchorNote = sessionData.anchorNote;
+    final notePreview = preview[anchorNote.id];
     if (notePreview == null) {
       return;
     }
@@ -696,8 +708,8 @@ abstract class PianoRollNoteInteractionState
       controller.liveNotes.removeAll();
       controller.liveNotes.addNote(
         key: notePreview.key,
-        velocity: sessionData.noteUnderCursor.velocity,
-        pan: sessionData.noteUnderCursor.pan,
+        velocity: anchorNote.velocity,
+        pan: anchorNote.pan,
       );
     }
   }
@@ -713,11 +725,12 @@ abstract class PianoRollNoteInteractionState
             (entry) => !sessionData.movingTransientNoteIds.contains(entry.key),
           )
           .map((entry) {
+            final note = sessionData.requireNote(entry.key);
             return (
               noteID: entry.key,
-              oldOffset: sessionData.startTimes[entry.key]!,
+              oldOffset: note.offset,
               newOffset: entry.value.offset,
-              oldKey: sessionData.startKeys[entry.key]!,
+              oldKey: note.key,
               newKey: entry.value.key,
             );
           })

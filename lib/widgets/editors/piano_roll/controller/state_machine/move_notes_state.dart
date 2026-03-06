@@ -20,7 +20,7 @@
 part of 'piano_roll_state_machine.dart';
 
 class PianoRollMoveNotesSessionData {
-  final NoteModel noteUnderCursor;
+  final Id anchorNoteId;
 
   /// Difference between the start of the pressed note and the cursor X, in
   /// time.
@@ -30,39 +30,43 @@ class PianoRollMoveNotesSessionData {
   /// notes.
   final double noteOffset;
 
-  final Map<Id, Time> startTimes;
-  final Map<Id, int> startKeys;
-  final Map<Id, Time> lengths;
-  final Map<Id, double> velocities;
-  final Map<Id, double> pans;
+  final Map<Id, PianoRollSessionNoteState> notesById;
 
   /// Start offset of the earliest note. Used to ensure no note moves before
   /// the start of the pattern.
   final Time startOfFirstNote;
   final int keyOfTopNote;
   final int keyOfBottomNote;
-  final bool isSelectionMove;
   final bool didDuplicateOnPointerDown;
   final Set<Id> duplicatedNoteIds;
   final Set<Id> movingTransientNoteIds;
 
+  PianoRollSessionNoteState get anchorNote => requireNote(anchorNoteId);
+
+  Iterable<Id> get noteIds => notesById.keys;
+
+  PianoRollSessionNoteState requireNote(Id noteId) {
+    final note = notesById[noteId];
+    if (note == null) {
+      throw StateError('Session note $noteId is missing.');
+    }
+
+    return note;
+  }
+
   PianoRollMoveNotesSessionData({
-    required this.noteUnderCursor,
+    required this.anchorNoteId,
     required this.timeOffset,
     required this.noteOffset,
-    required this.startTimes,
-    required this.startKeys,
-    required this.lengths,
-    required this.velocities,
-    required this.pans,
+    required Map<Id, PianoRollSessionNoteState> notesById,
     required this.startOfFirstNote,
     required this.keyOfTopNote,
     required this.keyOfBottomNote,
-    required this.isSelectionMove,
     required this.didDuplicateOnPointerDown,
     required Set<Id> duplicatedNoteIds,
     required Set<Id> movingTransientNoteIds,
-  }) : duplicatedNoteIds = Set<Id>.unmodifiable(duplicatedNoteIds),
+  }) : notesById = Map<Id, PianoRollSessionNoteState>.unmodifiable(notesById),
+       duplicatedNoteIds = Set<Id>.unmodifiable(duplicatedNoteIds),
        movingTransientNoteIds = Set<Id>.unmodifiable(movingTransientNoteIds);
 }
 
@@ -113,9 +117,9 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
         continue;
       }
 
-      final hasKeyOverride = previewNote.key != sessionData.startKeys[noteId]!;
-      final hasOffsetOverride =
-          previewNote.offset != sessionData.startTimes[noteId]!;
+      final startNote = sessionData.requireNote(noteId);
+      final hasKeyOverride = previewNote.key != startNote.key;
+      final hasOffsetOverride = previewNote.offset != startNote.offset;
       if (!hasKeyOverride && !hasOffsetOverride) {
         continue;
       }
@@ -231,7 +235,6 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
       pointerOffset: dragStartContext!.offset,
       noteUnderCursor: sessionPressedNote,
       notesToMove: notesToMove,
-      isSelectionMove: isSelectionMove,
       didDuplicateOnPointerDown: didDuplicateOnPointerDown,
       duplicatedNoteIds: duplicatedNoteIds,
       movingTransientNoteIds: movingTransientNoteIds,
@@ -314,7 +317,7 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
     if (sessionData != null && preview != null && pattern != null) {
       if (sessionData.movingTransientNoteIds.isNotEmpty) {
         project.startUndoGroup();
-        for (final noteId in sessionData.startTimes.keys) {
+        for (final noteId in sessionData.noteIds) {
           final transientNote = viewModel.transientNotes[noteId];
           if (transientNote == null) {
             continue;

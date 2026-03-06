@@ -119,7 +119,7 @@ class _PianoRollController {
     required double keyHeight,
     required double keyValueAtTop,
   }) {
-    stateMachine.onRenderedViewMetricsChanged(
+    stateMachine.onRenderedViewTransformChanged(
       viewSize: viewSize,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,

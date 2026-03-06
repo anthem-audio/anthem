@@ -21,20 +21,35 @@ part of 'piano_roll_state_machine.dart';
 
 class PianoRollResizeNotesSessionData {
   final double pointerStartOffset;
-  final Map<Id, Time> startLengths;
-  final Time smallestStartLength;
-  final Id smallestNote;
-  final NoteModel pressedNote;
+  final Map<Id, PianoRollSessionNoteState> notesById;
+  final Id smallestNoteId;
+  final Id pressedNoteId;
   final bool isSelectionResize;
+
+  Iterable<Id> get noteIds => notesById.keys;
+
+  PianoRollSessionNoteState get smallestNote => requireNote(smallestNoteId);
+
+  PianoRollSessionNoteState get pressedNote => requireNote(pressedNoteId);
+
+  Time get smallestStartLength => smallestNote.length;
+
+  PianoRollSessionNoteState requireNote(Id noteId) {
+    final note = notesById[noteId];
+    if (note == null) {
+      throw StateError('Session note $noteId is missing.');
+    }
+
+    return note;
+  }
 
   PianoRollResizeNotesSessionData({
     required this.pointerStartOffset,
-    required this.startLengths,
-    required this.smallestStartLength,
-    required this.smallestNote,
-    required this.pressedNote,
+    required Map<Id, PianoRollSessionNoteState> notesById,
+    required this.smallestNoteId,
+    required this.pressedNoteId,
     required this.isSelectionResize,
-  });
+  }) : notesById = Map<Id, PianoRollSessionNoteState>.unmodifiable(notesById);
 }
 
 class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
@@ -58,9 +73,13 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     required Iterable<NoteModel> notesToResize,
     required bool isSelectionResize,
   }) {
-    final resizingNotesById = <Id, NoteModel>{pressedNote.id: pressedNote};
+    final resizingNotesById = <Id, PianoRollSessionNoteState>{
+      pressedNote.id: PianoRollSessionNoteState.fromNoteModel(pressedNote),
+    };
     for (final note in notesToResize) {
-      resizingNotesById[note.id] = note;
+      resizingNotesById[note.id] = PianoRollSessionNoteState.fromNoteModel(
+        note,
+      );
     }
 
     final resizingNotes = resizingNotesById.values.toList(growable: false);
@@ -69,21 +88,17 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     }
 
     var smallestNote = resizingNotes.first;
-    final startLengths = <Id, Time>{};
-
-    for (final note in resizingNotes) {
-      startLengths[note.id] = note.length;
-      if (note.length < smallestNote.length) {
-        smallestNote = note;
+    for (final noteState in resizingNotes) {
+      if (noteState.length < smallestNote.length) {
+        smallestNote = noteState;
       }
     }
 
     return PianoRollResizeNotesSessionData(
       pointerStartOffset: pointerStartOffset,
-      startLengths: startLengths,
-      smallestStartLength: smallestNote.length,
-      smallestNote: smallestNote.id,
-      pressedNote: pressedNote,
+      notesById: resizingNotesById,
+      smallestNoteId: smallestNote.id,
+      pressedNoteId: pressedNote.id,
       isSelectionResize: isSelectionResize,
     );
   }
@@ -92,8 +107,10 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     PianoRollResizeNotesSessionData sessionData,
   ) {
     return Map<Id, PianoRollResizeNotePreview>.fromEntries(
-      sessionData.startLengths.keys.map((noteId) {
-        return MapEntry(noteId, (length: sessionData.startLengths[noteId]!));
+      sessionData.noteIds.map((noteId) {
+        return MapEntry(noteId, (
+          length: sessionData.requireNote(noteId).length,
+        ));
       }),
     );
   }
@@ -123,8 +140,7 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
 
     late int snapAtSmallestNoteStart;
 
-    final offsetOfSmallestNoteAtStart =
-        sessionData.startLengths[sessionData.smallestNote]!;
+    final offsetOfSmallestNoteAtStart = sessionData.smallestStartLength;
 
     for (var i = 0; i < divisionChanges.length; i++) {
       if (i < divisionChanges.length - 1 &&
@@ -156,10 +172,9 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     }
 
     return Map<Id, PianoRollResizeNotePreview>.fromEntries(
-      sessionData.startLengths.keys.map((noteId) {
-        return MapEntry(noteId, (
-          length: sessionData.startLengths[noteId]! + diff,
-        ));
+      sessionData.noteIds.map((noteId) {
+        final note = sessionData.requireNote(noteId);
+        return MapEntry(noteId, (length: note.length + diff));
       }),
     );
   }
@@ -172,9 +187,10 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
       patternID: parentState.activePattern.id,
       noteResizes: preview.entries
           .map((entry) {
+            final note = sessionData.requireNote(entry.key);
             return (
               noteID: entry.key,
-              oldLength: sessionData.startLengths[entry.key]!,
+              oldLength: note.length,
               newLength: entry.value.length,
             );
           })
@@ -192,7 +208,7 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     for (final entry in preview.entries) {
       final noteId = entry.key;
       final previewNote = entry.value;
-      if (previewNote.length == sessionData.startLengths[noteId]!) {
+      if (previewNote.length == sessionData.requireNote(noteId).length) {
         continue;
       }
 

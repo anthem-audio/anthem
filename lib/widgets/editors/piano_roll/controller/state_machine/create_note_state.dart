@@ -124,7 +124,6 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
       pointerOffset: dragStartContext.offset,
       noteUnderCursor: createdNoteSnapshot,
       notesToMove: [createdNoteSnapshot],
-      isSelectionMove: false,
       didDuplicateOnPointerDown: false,
       duplicatedNoteIds: const {},
       movingTransientNoteIds: {createdNote.id},
