@@ -21,15 +21,21 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 
+import 'state_machine/timeline_state_machine.dart';
+import 'timeline_interaction_target.dart';
+
 /// The timeline controller, which owns logic for the timeline widget.
 ///
-/// The first migration step only establishes controller lifecycle ownership in
-/// [Timeline]. Behavior stays on the legacy widget-owned interaction path until
-/// later migration steps wire pointer and modifier updates into this object.
+/// The current migration step establishes controller ownership of the timeline
+/// state machine, while leaving live gesture handling on the legacy
+/// widget-owned path in `timeline.dart`.
 class TimelineController {
   final ProjectModel project;
   final Id? arrangementID;
   final Id? patternID;
+  final TimelineInteractionTarget? interactionTarget;
+
+  late final TimelineStateMachine stateMachine;
 
   bool _isDisposed = false;
 
@@ -37,12 +43,21 @@ class TimelineController {
     required this.project,
     required this.arrangementID,
     required this.patternID,
-  }) : assert(
+  }) : interactionTarget = TimelineInteractionTarget.tryCreate(
+         arrangementID: arrangementID,
+         patternID: patternID,
+       ),
+       assert(
          arrangementID == null || patternID == null,
          'TimelineController can target at most one sequence at a time.',
-       );
+       ) {
+    stateMachine = TimelineStateMachine.create(
+      project: project,
+      controller: this,
+    );
+  }
 
-  Id? get sequenceId => arrangementID ?? patternID;
+  Id? get sequenceId => interactionTarget?.sequenceId;
 
   @visibleForTesting
   bool get isDisposed => _isDisposed;
@@ -53,5 +68,6 @@ class TimelineController {
     }
 
     _isDisposed = true;
+    stateMachine.dispose();
   }
 }
