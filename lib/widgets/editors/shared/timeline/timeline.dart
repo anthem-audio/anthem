@@ -32,6 +32,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+import 'controller/timeline_controller.dart';
 import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
 import 'loop_indicator.dart';
@@ -72,6 +73,7 @@ class Timeline extends StatefulWidget {
 
 class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   late Size _lastTimelineSize;
+  TimelineController? _controller;
   DateTime? _lastMouseDownTime;
 
   bool _playheadMoveActive = false;
@@ -87,6 +89,76 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
   bool _loopHandleMoveActive = false;
   int _loopHandleMoveTimeAtEventStart = 0;
+
+  TimelineController get _requiredController {
+    final controller = _controller;
+    if (controller == null) {
+      throw StateError('TimelineController was not initialized.');
+    }
+
+    return controller;
+  }
+
+  TimelineController _createController() {
+    return TimelineController(
+      project: Provider.of<ProjectModel>(context, listen: false),
+      arrangementID: widget.arrangementID,
+      patternID: widget.patternID,
+    );
+  }
+
+  /// Recreates the controller if needed.
+  ///
+  /// Unlike most other high-level editor components, the timeline can have
+  /// multiple instances live at once, and the context for each instance is
+  /// controlled at the widget level by the parent. This allows each editor to
+  /// say, "I want a timeline with these parameters", and the timeline does not
+  /// have to interface with each editor's view model or controller in order to
+  /// behave correctly.
+  ///
+  /// This unique setup gives way to a unique architecture here. Unlike the
+  /// editors, which have project-wide ownership of view models and controllers
+  /// in the service registry, the controller for the timeline (and possibly
+  /// view model in the future) is owned by the timeline widget.
+  ///
+  /// To help keep things clean, the controller is rebuilt any time the incoming
+  /// parameters (pattern ID / arrangement ID) change. This allows us to rebuild
+  /// the interaction state machine, along with anything else necessary that
+  /// might need to be rebuilt.
+  void _syncControllerLifecycle({bool forceRecreate = false}) {
+    final existingController = _controller;
+
+    if (!forceRecreate && existingController != null) {
+      final doesControllerTargetMatchWidget =
+          existingController.arrangementID == widget.arrangementID &&
+          existingController.patternID == widget.patternID;
+
+      if (doesControllerTargetMatchWidget) {
+        return;
+      }
+    }
+
+    existingController?.dispose();
+    _controller = _createController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncControllerLifecycle();
+  }
+
+  @override
+  void didUpdateWidget(covariant Timeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final didTargetChange =
+        oldWidget.arrangementID != widget.arrangementID ||
+        oldWidget.patternID != widget.patternID;
+    if (didTargetChange) {
+      _syncControllerLifecycle(forceRecreate: true);
+    }
+  }
 
   PatternModel? get _pattern {
     final project = Provider.of<ProjectModel>(context, listen: false);
@@ -439,7 +511,18 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   }
 
   @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    assert(
+      _requiredController.sequenceId ==
+          (widget.arrangementID ?? widget.patternID),
+    );
+
     return LayoutBuilder(
       builder: (context, constraints) {
         _lastTimelineSize = constraints.biggest;
