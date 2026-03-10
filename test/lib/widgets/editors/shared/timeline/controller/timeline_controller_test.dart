@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -152,6 +153,28 @@ class _TimelineControllerTestFixture {
       timeViewEnd: timeViewEnd,
       round: true,
     );
+  }
+
+  int expectedLoopTargetTime(
+    double rawTime, {
+    required bool ignoreSnap,
+    int startTime = 0,
+  }) {
+    return controller.resolveTimelineTime(
+      rawTime: rawTime,
+      ignoreSnap: ignoreSnap,
+      viewWidthInPixels: viewSize.width,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      round: true,
+      startTime: startTime,
+    );
+  }
+
+  LoopPointsModel? get loopPoints => pattern.loopPoints;
+
+  void setLoopPoints(int start, int end) {
+    pattern.loopPoints = LoopPointsModel(start, end);
   }
 }
 
@@ -446,5 +469,154 @@ void main() {
         );
       },
     );
+  });
+
+  group('TimelineController Step 9 loop create', () {
+    late _TimelineControllerTestFixture fixture;
+
+    setUp(() {
+      fixture = _TimelineControllerTestFixture.create();
+      fixture.syncRenderedView();
+    });
+
+    tearDown(() {
+      fixture.controller.dispose();
+    });
+
+    test(
+      'beginning loop create enters the loop-create state, captures the anchor time, and clears existing loop points when alt is not pressed',
+      () {
+        fixture.setLoopPoints(192, 384);
+
+        final controller = fixture.controller;
+        const startTime = 355.8;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(startTime), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.beginLoopCreate();
+
+        final loopCreateState =
+            controller.stateMachine.currentState as TimelineLoopCreateState;
+        expect(
+          controller.stateMachine.data.activeInteractionFamily,
+          TimelineInteractionFamily.loopCreate,
+        );
+        expect(loopCreateState.startTime, isNotNull);
+        expect(
+          loopCreateState.startTime,
+          fixture.expectedLoopTargetTime(startTime, ignoreSnap: false),
+        );
+        expect(fixture.loopPoints, isNull);
+      },
+    );
+
+    test(
+      'pointer move and alt changes update loop points while loop create is active',
+      () {
+        final controller = fixture.controller;
+        const startTime = 355.8;
+        const endTime = 140.1;
+        final expectedStart = fixture.expectedLoopTargetTime(
+          endTime,
+          ignoreSnap: false,
+        );
+        final expectedEnd = fixture.expectedLoopTargetTime(
+          startTime,
+          ignoreSnap: false,
+        );
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(startTime), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.beginLoopCreate();
+
+        controller.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(endTime), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+
+        expect(fixture.loopPoints, isNotNull);
+        expect(fixture.loopPoints!.start, expectedStart);
+        expect(fixture.loopPoints!.end, expectedEnd);
+
+        controller.syncModifierState(
+          ctrlPressed: false,
+          altPressed: true,
+          shiftPressed: false,
+        );
+
+        expect(fixture.loopPoints, isNotNull);
+        expect(fixture.loopPoints!.start, endTime.round());
+        expect(
+          fixture.loopPoints!.end,
+          fixture.expectedLoopTargetTime(startTime, ignoreSnap: false),
+        );
+      },
+    );
+
+    test('zero-width loop create clears loop points', () {
+      fixture.setLoopPoints(192, 384);
+
+      final controller = fixture.controller;
+      const startTime = 355.8;
+
+      controller.syncModifierState(
+        ctrlPressed: false,
+        altPressed: true,
+        shiftPressed: false,
+      );
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(startTime), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+      controller.beginLoopCreate();
+
+      controller.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(startTime), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+
+      expect(fixture.loopPoints, isNull);
+    });
+
+    test('pointer up exits loop create back to idle', () {
+      final controller = fixture.controller;
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(220), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+      controller.beginLoopCreate();
+      controller.pointerUp(
+        PointerUpEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(420), 5),
+        ),
+      );
+
+      expect(controller.stateMachine.currentState, isA<TimelineIdleState>());
+      expect(controller.stateMachine.data.activeInteractionFamily, isNull);
+    });
   });
 }

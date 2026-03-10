@@ -75,9 +75,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   KeyboardModifiers? _keyboardModifiers;
   DateTime? _lastMouseDownTime;
 
-  bool _loopCreateActive = false;
-  int? _loopCreateStart;
-
   // During event handling, if the start or end loop markers are pressed before
   // the event reaches the timeline, one of these will be set to true.
   bool _loopStartPressed = false;
@@ -267,27 +264,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         _loopHandleMoveTimeAtEventStart = loopPoints?.end ?? 0;
       }
     } else if (isLoopCreate) {
-      final time = pixelsToTime(
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize!.width,
-        pixelOffsetFromLeft: event.localPosition.dx,
-      );
-
-      _loopCreateStart = controller.resolveTimelineTime(
-        rawTime: time,
-        ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize!.width,
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        round: true,
-      );
-
-      if (!keyboardModifiers.alt) {
-        controller.clearLoopPoints();
-      }
-
-      _loopCreateActive = true;
+      controller.beginLoopCreate();
     }
   }
 
@@ -340,37 +317,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
         controller.updateLoopPoints(end: targetTime);
       }
-    } else if (_loopCreateActive) {
-      final time = pixelsToTime(
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize!.width,
-        pixelOffsetFromLeft: event.localPosition.dx,
-      );
-
-      var loopStart = _loopCreateStart!;
-      var loopEnd = controller.resolveTimelineTime(
-        rawTime: time,
-        ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize!.width,
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        round: true,
-      );
-
-      if (loopStart == loopEnd) {
-        controller.clearLoopPoints();
-        return;
-      }
-
-      if (loopStart > loopEnd) {
-        // If the start is after the end, swap them
-        final temp = loopStart;
-        loopStart = loopEnd;
-        loopEnd = temp;
-      }
-
-      controller.setLoopPoints(start: loopStart, end: loopEnd);
     }
   }
 
@@ -381,9 +327,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     } else {
       controller.pointerUp(event);
     }
-
-    _loopCreateActive = false;
-    _loopCreateStart = null;
 
     _loopHandleMoveActive = false;
     _loopStartPressed = false;

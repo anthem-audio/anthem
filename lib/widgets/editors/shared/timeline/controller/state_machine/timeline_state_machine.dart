@@ -106,6 +106,16 @@ class TimelineStateMachine
     notifyDataUpdated();
   }
 
+  void beginLoopCreate() {
+    if (!data.hasActivePointerSession ||
+        data.activeInteractionFamily == TimelineInteractionFamily.loopCreate) {
+      return;
+    }
+
+    data.beginInteractionSession(family: TimelineInteractionFamily.loopCreate);
+    notifyDataUpdated();
+  }
+
   void onViewSizeChanged(Size viewSize) {
     if (data.viewSize == viewSize) {
       return;

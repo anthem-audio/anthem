@@ -120,6 +120,10 @@ class TimelineController {
     stateMachine.beginPlayheadDrag();
   }
 
+  void beginLoopCreate() {
+    stateMachine.beginLoopCreate();
+  }
+
   void activateTransportSequence() {
     final sequenceId = this.sequenceId;
     if (sequenceId == null) {
@@ -200,13 +204,16 @@ class TimelineController {
     );
   }
 
-  void setPlaybackStartFromPointerX({
+  int? resolveTimelineTimeFromPointerX({
     required double pointerX,
     required bool ignoreSnap,
+    bool ceil = false,
+    bool round = false,
+    int startTime = 0,
   }) {
     final viewWidthInPixels = stateMachine.data.viewSize.width;
     if (viewWidthInPixels <= 0) {
-      return;
+      return null;
     }
 
     final timeViewStart = stateMachine.data.renderedTimeViewStart;
@@ -218,13 +225,73 @@ class TimelineController {
       pixelOffsetFromLeft: pointerX,
     );
 
-    setPlaybackStartPosition(
+    return resolveTimelineTime(
       rawTime: rawTime,
       ignoreSnap: ignoreSnap,
       viewWidthInPixels: viewWidthInPixels,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
+      ceil: ceil,
+      round: round,
+      startTime: startTime,
     );
+  }
+
+  void updateLoopCreateFromPointerX({
+    required int startTime,
+    required double pointerX,
+    required bool ignoreSnap,
+  }) {
+    final loopEnd = resolveTimelineTimeFromPointerX(
+      pointerX: pointerX,
+      ignoreSnap: ignoreSnap,
+      round: true,
+    );
+    if (loopEnd == null) {
+      return;
+    }
+
+    var loopStart = startTime;
+    var resolvedLoopEnd = loopEnd;
+    if (loopStart == resolvedLoopEnd) {
+      clearLoopPoints();
+      return;
+    }
+
+    if (loopStart > resolvedLoopEnd) {
+      final temp = loopStart;
+      loopStart = resolvedLoopEnd;
+      resolvedLoopEnd = temp;
+    }
+
+    setLoopPoints(start: loopStart, end: resolvedLoopEnd);
+  }
+
+  void setPlaybackStartFromPointerX({
+    required double pointerX,
+    required bool ignoreSnap,
+  }) {
+    final targetTime = resolveTimelineTimeFromPointerX(
+      pointerX: pointerX,
+      ignoreSnap: ignoreSnap,
+      round: true,
+    );
+    if (targetTime == null) {
+      return;
+    }
+
+    if (project.sequence.playbackStartPosition != targetTime) {
+      project.sequence.playbackStartPosition = targetTime;
+    }
+
+    if (_lastPlayheadPositionSet != targetTime) {
+      final targetTimeAsDouble = targetTime.toDouble();
+      if (project.engine.isRunning) {
+        project.engine.sequencerApi.jumpPlayheadTo(targetTimeAsDouble);
+      }
+
+      _lastPlayheadPositionSet = targetTimeAsDouble;
+    }
   }
 
   void setPlaybackStartPosition({

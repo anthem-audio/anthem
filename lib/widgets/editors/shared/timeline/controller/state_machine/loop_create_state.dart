@@ -19,7 +19,15 @@
 
 part of 'timeline_state_machine.dart';
 
+class _TimelineLoopCreateSessionData {
+  final int startTime;
+
+  const _TimelineLoopCreateSessionData({required this.startTime});
+}
+
 class TimelineLoopCreateState extends TimelineMachineState {
+  _TimelineLoopCreateSessionData? _sessionData;
+
   @override
   TimelineLoopEditState get parentState =>
       super.parentState as TimelineLoopEditState;
@@ -30,6 +38,50 @@ class TimelineLoopCreateState extends TimelineMachineState {
   TimelineActivePointer? get dragStartPosition => parentState.dragStartPosition;
   TimelineActivePointer? get dragCurrentPosition =>
       parentState.dragCurrentPosition;
+
+  int? get startTime => _sessionData?.startTime;
+
+  void _initializeSession() {
+    final dragStartPosition = this.dragStartPosition;
+    if (dragStartPosition == null) {
+      _sessionData = null;
+      return;
+    }
+
+    final startTime = controller.resolveTimelineTimeFromPointerX(
+      pointerX: dragStartPosition.x,
+      ignoreSnap: interactionState.isAltPressed,
+      round: true,
+    );
+    if (startTime == null) {
+      _sessionData = null;
+      return;
+    }
+
+    if (!interactionState.isAltPressed) {
+      controller.clearLoopPoints();
+    }
+
+    _sessionData = _TimelineLoopCreateSessionData(startTime: startTime);
+  }
+
+  void _applyLoopPreview() {
+    final sessionData = _sessionData;
+    final dragCurrentPosition = this.dragCurrentPosition;
+    if (sessionData == null || dragCurrentPosition == null) {
+      return;
+    }
+
+    controller.updateLoopCreateFromPointerX(
+      startTime: sessionData.startTime,
+      pointerX: dragCurrentPosition.x,
+      ignoreSnap: interactionState.isAltPressed,
+    );
+  }
+
+  void _clearSession() {
+    _sessionData = null;
+  }
 
   @override
   Iterable<EditorStateMachineStateTransition<TimelineStateMachineData>>
@@ -53,4 +105,25 @@ class TimelineLoopCreateState extends TimelineMachineState {
   ];
 
   TimelineLoopCreateState(super.parentState);
+
+  @override
+  void onEntry({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TimelineStateMachineData> from,
+  }) {
+    _initializeSession();
+  }
+
+  @override
+  void onActive({required EditorStateMachineEvent event}) {
+    _applyLoopPreview();
+  }
+
+  @override
+  void onExit({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TimelineStateMachineData> to,
+  }) {
+    _clearSession();
+  }
 }
