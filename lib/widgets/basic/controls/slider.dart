@@ -25,6 +25,7 @@ import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 
 import 'control_mouse_handler.dart';
+import 'sticky_drag_controller.dart';
 
 const _stickyTrapSize = 0.08;
 
@@ -69,6 +70,9 @@ class Slider extends StatefulWidget {
 
 class _SliderState extends State<Slider> with TickerProviderStateMixin {
   LazyFollowAnimationHelper? animationHelper;
+  final StickyDragController dragController = StickyDragController(
+    stickyTrapSize: _stickyTrapSize,
+  );
 
   bool isOver = false;
   bool isPressed = false;
@@ -77,11 +81,8 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
 
   double scaledToRaw(double value) =>
       (value - widget.min) / (widget.max - widget.min);
-
-  double? stickyTrapCounter;
-
-  double pastStart = 0;
-  double pastEnd = 0;
+  double rawToScaled(double rawValue) =>
+      rawValue * (widget.max - widget.min) + widget.min;
 
   int? currentHintId;
 
@@ -173,9 +174,12 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
             isPressed = true;
           });
 
-          pastStart = 0;
-          pastEnd = 0;
-          stickyTrapCounter = null;
+          dragController.reset(
+            rawValue: scaledToRaw(widget.value),
+            stickyPoints: widget.stickyPoints
+                .map(scaledToRaw)
+                .toList(growable: false),
+          );
 
           lastValue = widget.value;
           setHint(hover: false);
@@ -204,91 +208,11 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
             SliderAxis.vertical => e.delta.dy,
           };
 
-          var valueChange = rawPixelChange / 300;
-
-          // Handle existing overshoot past beginning
-          if (pastStart < 0) {
-            pastStart += valueChange;
-            if (pastStart > 0) {
-              valueChange = pastStart;
-              pastStart = 0;
-            } else {
-              valueChange = 0;
-            }
-          }
-
-          // Handle existing overshoot past end
-          if (pastEnd > 0) {
-            pastEnd += valueChange;
-            if (pastEnd < 0) {
-              valueChange = pastEnd;
-              pastEnd = 0;
-            } else {
-              valueChange = 0;
-            }
-          }
-
-          if (valueChange == 0) return;
-
-          // Handle new overshoot past beginning
-          final lastValueRaw = scaledToRaw(lastValue);
-          if (lastValueRaw + valueChange < 0) {
-            pastStart += lastValueRaw + valueChange;
-            valueChange = -lastValueRaw;
-          }
-
-          // Handle new overshoot past end
-          if (lastValueRaw + valueChange > 1) {
-            pastEnd += lastValueRaw + valueChange - 1;
-            valueChange = 1 - lastValueRaw;
-          }
-
-          var newValueRaw = lastValueRaw + valueChange;
-
-          if (pastEnd > 0) {
-            newValueRaw = 1;
-          } else if (pastStart < 0) {
-            newValueRaw = 0;
-          }
-
-          final newValue = newValueRaw * (widget.max - widget.min) + widget.min;
-
-          if (stickyTrapCounter == null) {
-            double? stickyValue;
-
-            // Check if this change crosses one of the sticky points
-            for (final stickyPoint in widget.stickyPoints) {
-              if (lastValue < stickyPoint && newValue >= stickyPoint) {
-                stickyTrapCounter = -_stickyTrapSize;
-                stickyValue = stickyPoint;
-                break;
-              } else if (lastValue > stickyPoint && newValue <= stickyPoint) {
-                stickyTrapCounter = _stickyTrapSize;
-                stickyValue = stickyPoint;
-                break;
-              }
-            }
-
-            widget.onValueChanged?.call(stickyValue ?? newValue);
-            lastValue = stickyValue ?? newValue;
-          } else {
-            stickyTrapCounter = stickyTrapCounter! + valueChange;
-
-            if (stickyTrapCounter!.abs() > _stickyTrapSize) {
-              final overshoot = stickyTrapCounter! > 0
-                  ? stickyTrapCounter! - _stickyTrapSize
-                  : stickyTrapCounter! + _stickyTrapSize;
-
-              final newValue =
-                  (scaledToRaw(lastValue) + overshoot) *
-                      (widget.max - widget.min) +
-                  widget.min;
-
-              widget.onValueChanged?.call(newValue);
-
-              stickyTrapCounter = null;
-              lastValue = newValue;
-            }
+          final result = dragController.applyRawDelta(rawPixelChange / 300);
+          if (result.changed) {
+            final newValue = rawToScaled(result.rawValue);
+            widget.onValueChanged?.call(newValue);
+            lastValue = newValue;
           }
 
           setHint(hover: false);
