@@ -93,6 +93,19 @@ class TimelineStateMachine
     onPointerUp(event);
   }
 
+  void beginPlayheadDrag() {
+    if (!data.hasActivePointerSession ||
+        data.activeInteractionFamily ==
+            TimelineInteractionFamily.playheadDrag) {
+      return;
+    }
+
+    data.beginInteractionSession(
+      family: TimelineInteractionFamily.playheadDrag,
+    );
+    notifyDataUpdated();
+  }
+
   void onViewSizeChanged(Size viewSize) {
     if (data.viewSize == viewSize) {
       return;

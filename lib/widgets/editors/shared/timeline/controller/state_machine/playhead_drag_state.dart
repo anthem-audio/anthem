@@ -31,6 +31,17 @@ class TimelinePlayheadDragState extends TimelineMachineState {
   TimelineActivePointer? get dragCurrentPosition =>
       parentState.dragCurrentPosition;
 
+  void _syncPlaybackStartFromPointer(TimelineActivePointer? pointer) {
+    if (pointer == null) {
+      return;
+    }
+
+    controller.setPlaybackStartFromPointerX(
+      pointerX: pointer.x,
+      ignoreSnap: interactionState.isAltPressed,
+    );
+  }
+
   @override
   Iterable<EditorStateMachineStateTransition<TimelineStateMachineData>>
   get transitions => [
@@ -53,4 +64,26 @@ class TimelinePlayheadDragState extends TimelineMachineState {
   ];
 
   TimelinePlayheadDragState(super.parentState);
+
+  @override
+  void onEntry({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TimelineStateMachineData> from,
+  }) {
+    controller.activateTransportSequence();
+    _syncPlaybackStartFromPointer(dragCurrentPosition ?? dragStartPosition);
+  }
+
+  @override
+  void onActive({required EditorStateMachineEvent event}) {
+    _syncPlaybackStartFromPointer(dragCurrentPosition ?? dragStartPosition);
+  }
+
+  @override
+  void onExit({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TimelineStateMachineData> to,
+  }) {
+    controller.clearPlayheadJumpDedupState();
+  }
 }

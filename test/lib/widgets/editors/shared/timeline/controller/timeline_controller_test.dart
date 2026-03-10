@@ -17,27 +17,96 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/timeline/controller/state_machine/timeline_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/timeline/controller/timeline_controller.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+
+class _RecordingSequencerApi implements SequencerApi {
+  final List<double> jumpedTo = [];
+
+  @override
+  void cleanUpTrack(String trackId) {}
+
+  @override
+  void compileArrangement(
+    String arrangementId, {
+    List<String>? tracksToRebuild,
+    List<InvalidationRange>? invalidationRanges,
+  }) {}
+
+  @override
+  void compilePattern(
+    String patternId, {
+    List<String>? tracksToRebuild,
+    List<InvalidationRange>? invalidationRanges,
+  }) {}
+
+  @override
+  void jumpPlayheadTo(double offset) {
+    jumpedTo.add(offset);
+  }
+
+  @override
+  void updateLoopPoints(String sequenceId) {}
+}
+
+class _TimelineTestEngine extends Mock implements Engine {
+  final Stream<EngineState> _engineStateStream =
+      const Stream<EngineState>.empty();
+  final _RecordingSequencerApi _sequencerApi;
+  final bool _isRunning;
+
+  _TimelineTestEngine(this._sequencerApi, {bool isRunning = false})
+    : _isRunning = isRunning;
+
+  @override
+  bool get isRunning => _isRunning;
+
+  @override
+  Stream<EngineState> get engineStateStream => _engineStateStream;
+
+  @override
+  SequencerApi get sequencerApi => _sequencerApi;
+
+  @override
+  Future<void> dispose() async {}
+}
 
 class _TimelineControllerTestFixture {
+  static const viewSize = Size(800, 38);
+  static const timeViewStart = 0.0;
+  static const timeViewEnd = 960.0;
+
   final ProjectModel project;
   final PatternModel pattern;
   final TimelineController controller;
+  final _RecordingSequencerApi sequencerApi;
+  final _TimelineTestEngine engine;
 
   _TimelineControllerTestFixture._({
     required this.project,
     required this.pattern,
     required this.controller,
+    required this.sequencerApi,
+    required this.engine,
   });
 
-  factory _TimelineControllerTestFixture.create() {
+  factory _TimelineControllerTestFixture.create({bool engineRunning = false}) {
     final project = ProjectModel.create();
+    final sequencerApi = _RecordingSequencerApi();
+    final engine = _TimelineTestEngine(sequencerApi, isRunning: engineRunning);
+    project.engine = engine;
+    project.engineState = engineRunning
+        ? EngineState.running
+        : EngineState.stopped;
+
     final pattern = PatternModel.create(name: 'Pattern 1');
     project.sequence.patterns[pattern.id] = pattern;
     project.sequence.setActivePattern(pattern.id);
@@ -52,6 +121,36 @@ class _TimelineControllerTestFixture {
       project: project,
       pattern: pattern,
       controller: controller,
+      sequencerApi: sequencerApi,
+      engine: engine,
+    );
+  }
+
+  void syncRenderedView() {
+    controller.onViewSizeChanged(viewSize);
+    controller.onRenderedTimeViewChanged(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+  }
+
+  double pointerXForTime(double time) {
+    return timeToPixels(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: viewSize.width,
+      time: time,
+    );
+  }
+
+  int expectedPlayheadTargetTime(double rawTime, {required bool ignoreSnap}) {
+    return controller.resolveTimelineTime(
+      rawTime: rawTime,
+      ignoreSnap: ignoreSnap,
+      viewWidthInPixels: viewSize.width,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      round: true,
     );
   }
 }
@@ -171,6 +270,180 @@ void main() {
         expect(controller.stateMachine.currentState, isA<TimelineIdleState>());
         expect(controller.stateMachine.data.pendingLoopHandlePress, isNull);
         expect(controller.stateMachine.data.activePointerId, isNull);
+      },
+    );
+  });
+
+  group('TimelineController Step 8 playhead drag', () {
+    late _TimelineControllerTestFixture fixture;
+
+    setUp(() {
+      fixture = _TimelineControllerTestFixture.create();
+      fixture.syncRenderedView();
+    });
+
+    tearDown(() {
+      fixture.controller.dispose();
+    });
+
+    test(
+      'beginning playhead drag enters the playhead state and updates playback start',
+      () {
+        final controller = fixture.controller;
+        const downTime = 145.2;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(downTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.beginPlayheadDrag();
+
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelinePlayheadDragState>(),
+        );
+        expect(
+          controller.stateMachine.data.activeInteractionFamily,
+          TimelineInteractionFamily.playheadDrag,
+        );
+        expect(
+          fixture.project.sequence.activeTransportSequenceID,
+          fixture.pattern.id,
+        );
+        expect(
+          fixture.project.sequence.playbackStartPosition,
+          fixture.expectedPlayheadTargetTime(downTime, ignoreSnap: false),
+        );
+      },
+    );
+
+    test(
+      'pointer move and alt changes update playback start while playhead drag is active',
+      () {
+        final controller = fixture.controller;
+        const downTime = 145.2;
+        const moveTime = 193.7;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(downTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.beginPlayheadDrag();
+
+        controller.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(moveTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+
+        expect(
+          fixture.project.sequence.playbackStartPosition,
+          fixture.expectedPlayheadTargetTime(moveTime, ignoreSnap: false),
+        );
+
+        controller.syncModifierState(
+          ctrlPressed: false,
+          altPressed: true,
+          shiftPressed: false,
+        );
+
+        expect(
+          fixture.project.sequence.playbackStartPosition,
+          fixture.expectedPlayheadTargetTime(moveTime, ignoreSnap: true),
+        );
+      },
+    );
+
+    test('pointer up clears playhead jump dedup state for the next drag', () {
+      fixture.controller.dispose();
+      fixture = _TimelineControllerTestFixture.create(engineRunning: true);
+      fixture.syncRenderedView();
+
+      final controller = fixture.controller;
+      const downTime = 145.2;
+      final expectedTargetTime = fixture
+          .expectedPlayheadTargetTime(downTime, ignoreSnap: false)
+          .toDouble();
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(downTime), 24),
+          buttons: kPrimaryButton,
+        ),
+      );
+      controller.beginPlayheadDrag();
+      controller.pointerUp(
+        PointerUpEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(downTime), 24),
+        ),
+      );
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 2,
+          position: Offset(fixture.pointerXForTime(downTime), 24),
+          buttons: kPrimaryButton,
+        ),
+      );
+      controller.beginPlayheadDrag();
+
+      expect(
+        fixture.sequencerApi.jumpedTo,
+        equals([expectedTargetTime, expectedTargetTime]),
+      );
+    });
+
+    test(
+      'pointer cancel clears playhead jump dedup state for the next drag',
+      () {
+        fixture.controller.dispose();
+        fixture = _TimelineControllerTestFixture.create(engineRunning: true);
+        fixture.syncRenderedView();
+
+        final controller = fixture.controller;
+        const downTime = 145.2;
+        final expectedTargetTime = fixture
+            .expectedPlayheadTargetTime(downTime, ignoreSnap: false)
+            .toDouble();
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(downTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.beginPlayheadDrag();
+        controller.pointerCancel(
+          PointerCancelEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(downTime), 24),
+          ),
+        );
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 2,
+            position: Offset(fixture.pointerXForTime(downTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.beginPlayheadDrag();
+
+        expect(
+          fixture.sequencerApi.jumpedTo,
+          equals([expectedTargetTime, expectedTargetTime]),
+        );
       },
     );
   });

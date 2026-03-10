@@ -116,6 +116,10 @@ class TimelineController {
     );
   }
 
+  void beginPlayheadDrag() {
+    stateMachine.beginPlayheadDrag();
+  }
+
   void activateTransportSequence() {
     final sequenceId = this.sequenceId;
     if (sequenceId == null) {
@@ -193,6 +197,33 @@ class TimelineController {
       ceil: ceil,
       round: round,
       startTime: startTime,
+    );
+  }
+
+  void setPlaybackStartFromPointerX({
+    required double pointerX,
+    required bool ignoreSnap,
+  }) {
+    final viewWidthInPixels = stateMachine.data.viewSize.width;
+    if (viewWidthInPixels <= 0) {
+      return;
+    }
+
+    final timeViewStart = stateMachine.data.renderedTimeViewStart;
+    final timeViewEnd = stateMachine.data.renderedTimeViewEnd;
+    final rawTime = pixelsToTime(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: viewWidthInPixels,
+      pixelOffsetFromLeft: pointerX,
+    );
+
+    setPlaybackStartPosition(
+      rawTime: rawTime,
+      ignoreSnap: ignoreSnap,
+      viewWidthInPixels: viewWidthInPixels,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
     );
   }
 

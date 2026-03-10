@@ -75,8 +75,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   KeyboardModifiers? _keyboardModifiers;
   DateTime? _lastMouseDownTime;
 
-  bool _playheadMoveActive = false;
-
   bool _loopCreateActive = false;
   int? _loopCreateStart;
 
@@ -258,22 +256,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         event.localPosition.dy <= loopAreaHeight;
 
     if (isPlayheadMove) {
-      final time = pixelsToTime(
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize!.width,
-        pixelOffsetFromLeft: event.localPosition.dx,
-      );
-
-      controller.setPlaybackStartPosition(
-        rawTime: time,
-        ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize!.width,
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-      );
-
-      _playheadMoveActive = true;
+      controller.beginPlayheadDrag();
     } else if (isLoopHandleMove) {
       _loopHandleMoveActive = true;
       final loopPoints = controller.loopPoints();
@@ -317,22 +300,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       listen: false,
     );
 
-    if (_playheadMoveActive) {
-      final time = pixelsToTime(
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize!.width,
-        pixelOffsetFromLeft: event.localPosition.dx,
-      );
-
-      controller.setPlaybackStartPosition(
-        rawTime: time,
-        ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize!.width,
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-      );
-    } else if (_loopHandleMoveActive) {
+    if (_loopHandleMoveActive) {
       final loopPoints = controller.loopPoints();
 
       if (loopPoints == null) {
@@ -413,9 +381,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     } else {
       controller.pointerUp(event);
     }
-
-    _playheadMoveActive = false;
-    controller.clearPlayheadJumpDedupState();
 
     _loopCreateActive = false;
     _loopCreateStart = null;
