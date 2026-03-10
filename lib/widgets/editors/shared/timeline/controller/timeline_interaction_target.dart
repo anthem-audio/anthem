@@ -19,6 +19,11 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
+import 'package:anthem/model/arrangement/arrangement.dart';
+import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/loop_points.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 
 /// Identifies which shared timeline target is being edited.
 ///
@@ -39,6 +44,106 @@ class TimelineInteractionTarget {
 
   bool get isArrangement => kind == TimelineKind.arrangement;
   bool get isPattern => kind == TimelineKind.pattern;
+
+  PatternModel? pattern(ProjectModel project) {
+    final patternID = this.patternID;
+    if (patternID == null) {
+      return null;
+    }
+
+    return project.sequence.patterns[patternID];
+  }
+
+  ArrangementModel? arrangement(ProjectModel project) {
+    final arrangementID = this.arrangementID;
+    if (arrangementID == null) {
+      return null;
+    }
+
+    return project.sequence.arrangements[arrangementID];
+  }
+
+  List<TimeSignatureChangeModel> timeSignatureChanges(ProjectModel project) {
+    return switch (kind) {
+      TimelineKind.pattern => pattern(project)?.timeSignatureChanges ?? [],
+      TimelineKind.arrangement =>
+        arrangement(project)?.timeSignatureChanges ?? [],
+    };
+  }
+
+  LoopPointsModel? loopPoints(ProjectModel project) {
+    return switch (kind) {
+      TimelineKind.pattern => pattern(project)?.loopPoints,
+      TimelineKind.arrangement => arrangement(project)?.loopPoints,
+    };
+  }
+
+  void clearLoopPoints(ProjectModel project) {
+    switch (kind) {
+      case TimelineKind.pattern:
+        final pattern = this.pattern(project);
+        if (pattern == null) {
+          return;
+        }
+
+        pattern.loopPoints = null;
+        return;
+      case TimelineKind.arrangement:
+        final arrangement = this.arrangement(project);
+        if (arrangement == null) {
+          return;
+        }
+
+        arrangement.loopPoints = null;
+        return;
+    }
+  }
+
+  void setLoopPoints(
+    ProjectModel project, {
+    required int start,
+    required int end,
+  }) {
+    final existingLoopPoints = loopPoints(project);
+    if (existingLoopPoints == null) {
+      switch (kind) {
+        case TimelineKind.pattern:
+          final pattern = this.pattern(project);
+          if (pattern == null) {
+            return;
+          }
+
+          pattern.loopPoints = LoopPointsModel(start, end);
+          return;
+        case TimelineKind.arrangement:
+          final arrangement = this.arrangement(project);
+          if (arrangement == null) {
+            return;
+          }
+
+          arrangement.loopPoints = LoopPointsModel(start, end);
+          return;
+      }
+    }
+
+    existingLoopPoints.start = start;
+    existingLoopPoints.end = end;
+  }
+
+  void updateLoopPoints(ProjectModel project, {int? start, int? end}) {
+    final existingLoopPoints = loopPoints(project);
+    if (existingLoopPoints == null) {
+      return;
+    }
+
+    if (start != null) {
+      existingLoopPoints.start = start;
+    }
+
+    if (end != null) {
+      existingLoopPoints.end = end;
+    }
+  }
 
   static TimelineInteractionTarget? tryCreate({
     required Id? arrangementID,

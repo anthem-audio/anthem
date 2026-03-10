@@ -19,6 +19,10 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/loop_points.dart';
+import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/foundation.dart';
 
 import 'state_machine/timeline_state_machine.dart';
@@ -38,6 +42,7 @@ class TimelineController {
   late final TimelineStateMachine stateMachine;
 
   bool _isDisposed = false;
+  double? _lastPlayheadPositionSet;
 
   TimelineController({
     required this.project,
@@ -58,6 +63,120 @@ class TimelineController {
   }
 
   Id? get sequenceId => interactionTarget?.sequenceId;
+
+  void activateTransportSequence() {
+    final sequenceId = this.sequenceId;
+    if (sequenceId == null) {
+      return;
+    }
+
+    if (project.sequence.activeTransportSequenceID != sequenceId) {
+      project.sequence.activeTransportSequenceID = sequenceId;
+    }
+  }
+
+  List<TimeSignatureChangeModel> timeSignatureChanges() {
+    return interactionTarget?.timeSignatureChanges(project) ?? [];
+  }
+
+  LoopPointsModel? loopPoints() {
+    return interactionTarget?.loopPoints(project);
+  }
+
+  void clearLoopPoints() {
+    interactionTarget?.clearLoopPoints(project);
+  }
+
+  void setLoopPoints({required int start, required int end}) {
+    interactionTarget?.setLoopPoints(project, start: start, end: end);
+  }
+
+  void updateLoopPoints({int? start, int? end}) {
+    interactionTarget?.updateLoopPoints(project, start: start, end: end);
+  }
+
+  double clampTimelineTime(double rawTime) {
+    return rawTime < 0 ? 0 : rawTime;
+  }
+
+  List<DivisionChange> divisionChanges({
+    required double viewWidthInPixels,
+    required double timeViewStart,
+    required double timeViewEnd,
+  }) {
+    return getDivisionChanges(
+      viewWidthInPixels: viewWidthInPixels,
+      snap: AutoSnap(),
+      defaultTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: timeSignatureChanges(),
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      minPixelsPerSection: minorMinPixels,
+    );
+  }
+
+  int resolveTimelineTime({
+    required double rawTime,
+    required bool ignoreSnap,
+    required double viewWidthInPixels,
+    required double timeViewStart,
+    required double timeViewEnd,
+    bool ceil = false,
+    bool round = false,
+    int startTime = 0,
+  }) {
+    final clampedTime = clampTimelineTime(rawTime);
+    if (ignoreSnap) {
+      return clampedTime.round();
+    }
+
+    return getSnappedTime(
+      rawTime: clampedTime.toInt(),
+      divisionChanges: divisionChanges(
+        viewWidthInPixels: viewWidthInPixels,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+      ),
+      ceil: ceil,
+      round: round,
+      startTime: startTime,
+    );
+  }
+
+  void setPlaybackStartPosition({
+    required double rawTime,
+    required bool ignoreSnap,
+    required double viewWidthInPixels,
+    required double timeViewStart,
+    required double timeViewEnd,
+  }) {
+    final targetTime = resolveTimelineTime(
+      rawTime: rawTime,
+      ignoreSnap: ignoreSnap,
+      viewWidthInPixels: viewWidthInPixels,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      round: true,
+    );
+
+    if (project.sequence.playbackStartPosition != targetTime) {
+      project.sequence.playbackStartPosition = targetTime;
+    }
+
+    if (_lastPlayheadPositionSet != targetTime) {
+      final targetTimeAsDouble = targetTime.toDouble();
+      if (project.engine.isRunning) {
+        project.engine.sequencerApi.jumpPlayheadTo(targetTimeAsDouble);
+      }
+
+      _lastPlayheadPositionSet = targetTimeAsDouble;
+    }
+  }
+
+  void clearPlayheadJumpDedupState() {
+    _lastPlayheadPositionSet = null;
+  }
 
   @visibleForTesting
   bool get isDisposed => _isDisposed;
