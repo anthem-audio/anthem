@@ -262,7 +262,7 @@ void main() {
     });
 
     test(
-      'pending loop-handle press syncs into pointer session and clears on cancel',
+      'pointer-down pressed-loop-handle metadata syncs into pointer session and clears on cancel',
       () {
         final controller = fixture.controller;
 
@@ -272,18 +272,15 @@ void main() {
             position: Offset(32, 5),
             buttons: kPrimaryButton,
           ),
-        );
-        controller.registerPendingLoopHandlePress(
-          pointerId: 7,
-          handle: TimelineLoopHandle.end,
+          pressedLoopHandle: TimelineLoopHandle.end,
         );
 
-        final pointerSessionState =
-            controller.stateMachine.currentState as TimelinePointerSessionState;
-        expect(pointerSessionState.pressedLoopHandle, TimelineLoopHandle.end);
+        final loopHandleMoveState =
+            controller.stateMachine.currentState as TimelineLoopHandleMoveState;
+        expect(loopHandleMoveState.pressedLoopHandle, TimelineLoopHandle.end);
         expect(
-          controller.stateMachine.data.pendingLoopHandlePress?.pointerId,
-          7,
+          controller.stateMachine.data.activePressedLoopHandle,
+          TimelineLoopHandle.end,
         );
 
         controller.pointerCancel(
@@ -291,7 +288,7 @@ void main() {
         );
 
         expect(controller.stateMachine.currentState, isA<TimelineIdleState>());
-        expect(controller.stateMachine.data.pendingLoopHandlePress, isNull);
+        expect(controller.stateMachine.data.activePressedLoopHandle, isNull);
         expect(controller.stateMachine.data.activePointerId, isNull);
       },
     );
@@ -322,7 +319,6 @@ void main() {
             buttons: kPrimaryButton,
           ),
         );
-        controller.beginPlayheadDrag();
 
         expect(
           controller.stateMachine.currentState,
@@ -357,7 +353,6 @@ void main() {
             buttons: kPrimaryButton,
           ),
         );
-        controller.beginPlayheadDrag();
 
         controller.pointerMove(
           PointerMoveEvent(
@@ -385,6 +380,89 @@ void main() {
       },
     );
 
+    test(
+      'additional pointer downs are ignored while playhead drag is active',
+      () {
+        final controller = fixture.controller;
+        const initialDownTime = 145.2;
+        const ignoredDownTime = 320.4;
+        const moveTime = 193.7;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(initialDownTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+
+        expect(
+          fixture.project.sequence.playbackStartPosition,
+          fixture.expectedPlayheadTargetTime(
+            initialDownTime,
+            ignoreSnap: false,
+          ),
+        );
+        expect(controller.stateMachine.data.activePointerId, 1);
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 2,
+            position: Offset(fixture.pointerXForTime(ignoredDownTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelinePlayheadDragState>(),
+        );
+        expect(controller.stateMachine.data.activePointerId, 1);
+        expect(
+          fixture.project.sequence.playbackStartPosition,
+          fixture.expectedPlayheadTargetTime(
+            initialDownTime,
+            ignoreSnap: false,
+          ),
+        );
+
+        controller.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(moveTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+
+        expect(
+          fixture.project.sequence.playbackStartPosition,
+          fixture.expectedPlayheadTargetTime(moveTime, ignoreSnap: false),
+        );
+
+        controller.pointerUp(
+          PointerUpEvent(
+            pointer: 2,
+            position: Offset(fixture.pointerXForTime(ignoredDownTime), 24),
+          ),
+        );
+
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelinePlayheadDragState>(),
+        );
+        expect(controller.stateMachine.data.activePointerId, 1);
+
+        controller.pointerUp(
+          PointerUpEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(moveTime), 24),
+          ),
+        );
+
+        expect(controller.stateMachine.currentState, isA<TimelineIdleState>());
+      },
+    );
+
     test('pointer up clears playhead jump dedup state for the next drag', () {
       fixture.controller.dispose();
       fixture = _TimelineControllerTestFixture.create(engineRunning: true);
@@ -403,7 +481,6 @@ void main() {
           buttons: kPrimaryButton,
         ),
       );
-      controller.beginPlayheadDrag();
       controller.pointerUp(
         PointerUpEvent(
           pointer: 1,
@@ -418,7 +495,6 @@ void main() {
           buttons: kPrimaryButton,
         ),
       );
-      controller.beginPlayheadDrag();
 
       expect(
         fixture.sequencerApi.jumpedTo,
@@ -446,7 +522,6 @@ void main() {
             buttons: kPrimaryButton,
           ),
         );
-        controller.beginPlayheadDrag();
         controller.pointerCancel(
           PointerCancelEvent(
             pointer: 1,
@@ -461,7 +536,6 @@ void main() {
             buttons: kPrimaryButton,
           ),
         );
-        controller.beginPlayheadDrag();
 
         expect(
           fixture.sequencerApi.jumpedTo,
@@ -477,6 +551,11 @@ void main() {
     setUp(() {
       fixture = _TimelineControllerTestFixture.create();
       fixture.syncRenderedView();
+      fixture.controller.syncModifierState(
+        ctrlPressed: true,
+        altPressed: false,
+        shiftPressed: false,
+      );
     });
 
     tearDown(() {
@@ -498,7 +577,6 @@ void main() {
             buttons: kPrimaryButton,
           ),
         );
-        controller.beginLoopCreate();
 
         final loopCreateState =
             controller.stateMachine.currentState as TimelineLoopCreateState;
@@ -537,7 +615,6 @@ void main() {
             buttons: kPrimaryButton,
           ),
         );
-        controller.beginLoopCreate();
 
         controller.pointerMove(
           PointerMoveEvent(
@@ -573,7 +650,7 @@ void main() {
       const startTime = 355.8;
 
       controller.syncModifierState(
-        ctrlPressed: false,
+        ctrlPressed: true,
         altPressed: true,
         shiftPressed: false,
       );
@@ -584,7 +661,6 @@ void main() {
           buttons: kPrimaryButton,
         ),
       );
-      controller.beginLoopCreate();
 
       controller.pointerMove(
         PointerMoveEvent(
@@ -607,7 +683,6 @@ void main() {
           buttons: kPrimaryButton,
         ),
       );
-      controller.beginLoopCreate();
       controller.pointerUp(
         PointerUpEvent(
           pointer: 1,
@@ -644,12 +719,8 @@ void main() {
             position: Offset(fixture.pointerXForTime(192), 5),
             buttons: kPrimaryButton,
           ),
+          pressedLoopHandle: TimelineLoopHandle.start,
         );
-        controller.registerPendingLoopHandlePress(
-          pointerId: 1,
-          handle: TimelineLoopHandle.start,
-        );
-        controller.beginLoopHandleMove();
 
         final loopHandleMoveState =
             controller.stateMachine.currentState as TimelineLoopHandleMoveState;
@@ -674,12 +745,8 @@ void main() {
             position: Offset(fixture.pointerXForTime(192), 5),
             buttons: kPrimaryButton,
           ),
+          pressedLoopHandle: TimelineLoopHandle.start,
         );
-        controller.registerPendingLoopHandlePress(
-          pointerId: 1,
-          handle: TimelineLoopHandle.start,
-        );
-        controller.beginLoopHandleMove();
 
         controller.pointerMove(
           PointerMoveEvent(
@@ -727,12 +794,8 @@ void main() {
           position: Offset(fixture.pointerXForTime(384), 5),
           buttons: kPrimaryButton,
         ),
+        pressedLoopHandle: TimelineLoopHandle.end,
       );
-      controller.registerPendingLoopHandlePress(
-        pointerId: 1,
-        handle: TimelineLoopHandle.end,
-      );
-      controller.beginLoopHandleMove();
 
       controller.pointerMove(
         PointerMoveEvent(
@@ -763,12 +826,8 @@ void main() {
           position: Offset(fixture.pointerXForTime(192), 5),
           buttons: kPrimaryButton,
         ),
+        pressedLoopHandle: TimelineLoopHandle.start,
       );
-      controller.registerPendingLoopHandlePress(
-        pointerId: 1,
-        handle: TimelineLoopHandle.start,
-      );
-      controller.beginLoopHandleMove();
 
       controller.pointerMove(
         PointerMoveEvent(
@@ -781,5 +840,222 @@ void main() {
       expect(fixture.loopPoints!.start, 192);
       expect(fixture.loopPoints!.end, 384);
     });
+  });
+
+  group('TimelineController Step 11 automatic classification', () {
+    late _TimelineControllerTestFixture fixture;
+
+    setUp(() {
+      fixture = _TimelineControllerTestFixture.create();
+      fixture.syncRenderedView();
+    });
+
+    tearDown(() {
+      fixture.controller.dispose();
+    });
+
+    test(
+      'pointer down below the loop bar automatically starts playhead drag',
+      () {
+        final controller = fixture.controller;
+        const downTime = 145.2;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(downTime), 24),
+            buttons: kPrimaryButton,
+          ),
+        );
+
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelinePlayheadDragState>(),
+        );
+        expect(
+          controller.stateMachine.data.activeInteractionFamily,
+          TimelineInteractionFamily.playheadDrag,
+        );
+        expect(
+          fixture.project.sequence.activeTransportSequenceID,
+          fixture.pattern.id,
+        );
+        expect(
+          fixture.project.sequence.playbackStartPosition,
+          fixture.expectedPlayheadTargetTime(downTime, ignoreSnap: false),
+        );
+      },
+    );
+
+    test(
+      'double-click in the loop bar automatically starts loop create on the second press',
+      () {
+        final controller = fixture.controller;
+        const startTime = 120.0;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(startTime), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+        expect(
+          controller.stateMachine.data.activePointerIsDoubleClick,
+          isFalse,
+        );
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelinePointerSessionState>(),
+        );
+        controller.pointerUp(
+          PointerUpEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(startTime), 5),
+          ),
+        );
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 2,
+            position: Offset(fixture.pointerXForTime(startTime), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+        expect(controller.stateMachine.data.activePointerIsDoubleClick, isTrue);
+
+        final loopCreateState =
+            controller.stateMachine.currentState as TimelineLoopCreateState;
+        expect(
+          controller.stateMachine.data.activeInteractionFamily,
+          TimelineInteractionFamily.loopCreate,
+        );
+        expect(loopCreateState.startTime, isNotNull);
+        expect(
+          loopCreateState.startTime,
+          fixture.expectedLoopTargetTime(startTime, ignoreSnap: false),
+        );
+        expect(
+          fixture.project.sequence.activeTransportSequenceID,
+          fixture.pattern.id,
+        );
+      },
+    );
+
+    test(
+      'secondary click in the loop bar automatically starts loop create',
+      () {
+        final controller = fixture.controller;
+        const startTime = 320.4;
+        const endTime = 470.2;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(startTime), 5),
+            buttons: kSecondaryButton,
+          ),
+        );
+        controller.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(endTime), 5),
+            buttons: kSecondaryButton,
+          ),
+        );
+
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelineLoopCreateState>(),
+        );
+        expect(
+          fixture.project.sequence.activeTransportSequenceID,
+          fixture.pattern.id,
+        );
+        expect(fixture.loopPoints, isNotNull);
+        expect(
+          fixture.loopPoints!.start,
+          fixture.expectedLoopTargetTime(startTime, ignoreSnap: false),
+        );
+        expect(
+          fixture.loopPoints!.end,
+          fixture.expectedLoopTargetTime(endTime, ignoreSnap: false),
+        );
+      },
+    );
+
+    test('ctrl-primary loop bar press automatically starts loop create', () {
+      final controller = fixture.controller;
+      const startTime = 355.8;
+      const endTime = 140.1;
+
+      controller.syncModifierState(
+        ctrlPressed: true,
+        altPressed: false,
+        shiftPressed: false,
+      );
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(startTime), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+      controller.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(endTime), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+
+      expect(
+        controller.stateMachine.currentState,
+        isA<TimelineLoopCreateState>(),
+      );
+      expect(
+        fixture.project.sequence.activeTransportSequenceID,
+        fixture.pattern.id,
+      );
+      expect(fixture.loopPoints, isNotNull);
+      expect(
+        fixture.loopPoints!.start,
+        fixture.expectedLoopTargetTime(endTime, ignoreSnap: false),
+      );
+      expect(
+        fixture.loopPoints!.end,
+        fixture.expectedLoopTargetTime(startTime, ignoreSnap: false),
+      );
+    });
+
+    test(
+      'pressed loop-handle metadata automatically starts loop-handle drag on pointer down',
+      () {
+        fixture.setLoopPoints(192, 384);
+        final controller = fixture.controller;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(192), 5),
+            buttons: kPrimaryButton,
+          ),
+          pressedLoopHandle: TimelineLoopHandle.start,
+        );
+
+        final loopHandleMoveState =
+            controller.stateMachine.currentState as TimelineLoopHandleMoveState;
+        expect(
+          controller.stateMachine.data.activeInteractionFamily,
+          TimelineInteractionFamily.loopHandleMove,
+        );
+        expect(loopHandleMoveState.activeHandle, TimelineLoopHandle.start);
+        expect(loopHandleMoveState.originalHandleTime, 192);
+        expect(
+          fixture.project.sequence.activeTransportSequenceID,
+          fixture.pattern.id,
+        );
+      },
+    );
   });
 }

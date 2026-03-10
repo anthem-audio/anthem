@@ -37,8 +37,7 @@ import 'loop_indicator.dart';
 import 'playhead_handle.dart';
 import 'timeline_labels.dart';
 import 'timeline_painter.dart';
-
-const loopAreaHeight = 17.0;
+export 'timeline_constants.dart';
 
 /// Draws the timeline for editors.
 class Timeline extends StatefulWidget {
@@ -73,7 +72,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   Size? _lastTimelineSize;
   TimelineController? _controller;
   KeyboardModifiers? _keyboardModifiers;
-  DateTime? _lastMouseDownTime;
+  (int pointerId, TimelineLoopHandle handle)? _nextPointerDownHandlePress;
 
   void _handleKeyboardModifiersChanged() {
     final keyboardModifiers = _keyboardModifiers;
@@ -114,6 +113,29 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     }
 
     return controller;
+  }
+
+  void _markNextPointerDownAsLoopHandlePress({
+    required int pointerId,
+    required TimelineLoopHandle handle,
+  }) {
+    _nextPointerDownHandlePress = (pointerId, handle);
+  }
+
+  TimelineLoopHandle? _consumePressedLoopHandleForPointer(int pointerId) {
+    final nextPointerDownHandlePress = _nextPointerDownHandlePress;
+    if (nextPointerDownHandlePress?.$1 != pointerId) {
+      return null;
+    }
+
+    _nextPointerDownHandlePress = null;
+    return nextPointerDownHandlePress?.$2;
+  }
+
+  void _clearNextPointerDownHandlePressForPointer(int pointerId) {
+    if (_nextPointerDownHandlePress?.$1 == pointerId) {
+      _nextPointerDownHandlePress = null;
+    }
   }
 
   TimelineController _createController() {
@@ -205,55 +227,10 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   }
 
   void handlePointerDown(PointerDownEvent event) {
-    final controller = _requiredController;
-    controller.pointerDown(event);
-
-    final sequenceId = controller.sequenceId;
-    if (sequenceId == null) {
-      // If there is no arrangement or pattern, we can't handle the pointer down
-      return;
-    }
-
-    controller.activateTransportSequence();
-
-    final deltaSinceLastMouseDown = _lastMouseDownTime == null
-        ? Duration(days: 1)
-        : DateTime.now().difference(_lastMouseDownTime!);
-    final isDoubleClick =
-        deltaSinceLastMouseDown.inMilliseconds < 500 &&
-        event.buttons & kPrimaryButton != 0;
-    _lastMouseDownTime = DateTime.now();
-
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
+    _requiredController.pointerDown(
+      event,
+      pressedLoopHandle: _consumePressedLoopHandleForPointer(event.pointer),
     );
-
-    final isPlayheadMove =
-        event.buttons & kPrimaryButton != 0 &&
-        event.localPosition.dy > loopAreaHeight;
-    final pressedLoopHandle = controller.pendingLoopHandleForPointer(
-      event.pointer,
-    );
-
-    final isLoopHandleMove =
-        (event.buttons & kPrimaryButton != 0 &&
-        !isDoubleClick &&
-        pressedLoopHandle != null);
-
-    final isLoopCreate =
-        (isDoubleClick ||
-            (event.buttons & kSecondaryButton != 0) ||
-            (event.buttons & kPrimaryButton != 0 && keyboardModifiers.ctrl)) &&
-        event.localPosition.dy <= loopAreaHeight;
-
-    if (isPlayheadMove) {
-      controller.beginPlayheadDrag();
-    } else if (isLoopHandleMove) {
-      controller.beginLoopHandleMove();
-    } else if (isLoopCreate) {
-      controller.beginLoopCreate();
-    }
   }
 
   void handlePointerMove(PointerMoveEvent event) {
@@ -263,6 +240,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
   void handlePointerUp(PointerEvent event) {
     final controller = _requiredController;
+    _clearNextPointerDownHandlePressForPointer(event.pointer);
     if (event is PointerCancelEvent) {
       controller.pointerCancel(event);
     } else {
@@ -399,13 +377,13 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                       loopStart: loopPoints?.start,
                       loopEnd: loopPoints?.end,
                       onLoopStartPressed: (pointerId) {
-                        controller.registerPendingLoopHandlePress(
+                        _markNextPointerDownAsLoopHandlePress(
                           pointerId: pointerId,
                           handle: TimelineLoopHandle.start,
                         );
                       },
                       onLoopEndPressed: (pointerId) {
-                        controller.registerPendingLoopHandlePress(
+                        _markNextPointerDownAsLoopHandlePress(
                           pointerId: pointerId,
                           handle: TimelineLoopHandle.end,
                         );

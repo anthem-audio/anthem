@@ -20,7 +20,7 @@
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
 
-import 'timeline.dart';
+import 'timeline_constants.dart';
 
 class LoopIndicator extends StatelessWidget {
   final AnimationController timeViewAnimationController;

@@ -70,7 +70,6 @@ class TimelinePlayheadDragState extends TimelineMachineState {
     required EditorStateMachineEvent event,
     required EditorStateMachineState<TimelineStateMachineData> from,
   }) {
-    controller.activateTransportSequence();
     _syncPlaybackStartFromPointer(dragCurrentPosition ?? dragStartPosition);
   }
 

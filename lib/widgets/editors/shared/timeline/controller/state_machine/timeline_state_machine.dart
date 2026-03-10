@@ -19,16 +19,16 @@
 
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
+import 'package:anthem/widgets/editors/shared/timeline/timeline_constants.dart';
 import 'package:anthem/widgets/editors/shared/timeline/controller/timeline_controller.dart';
 import 'package:anthem/widgets/editors/shared/timeline/controller/timeline_interaction_target.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 part 'loop_create_state.dart';
 part 'loop_edit_state.dart';
 part 'loop_handle_move_state.dart';
 part 'playhead_drag_state.dart';
-
-enum TimelineModifierKey { ctrl, alt, shift }
 
 enum TimelineInteractionFamily { playheadDrag, loopCreate, loopHandleMove }
 
@@ -42,22 +42,14 @@ bool isTimelineLoopInteractionFamily(TimelineInteractionFamily? family) {
 class TimelineActivePointer {
   double x;
   double y;
+  final TimelineLoopHandle? pressedLoopHandle;
 
-  TimelineActivePointer(this.x, this.y);
+  TimelineActivePointer(this.x, this.y, {this.pressedLoopHandle});
 
-  TimelineActivePointer clone() => TimelineActivePointer(x, y);
+  TimelineActivePointer clone() =>
+      TimelineActivePointer(x, y, pressedLoopHandle: pressedLoopHandle);
 
   Offset toOffset() => Offset(x, y);
-}
-
-class TimelinePendingLoopHandlePress {
-  final int pointerId;
-  final TimelineLoopHandle handle;
-
-  const TimelinePendingLoopHandlePress({
-    required this.pointerId,
-    required this.handle,
-  });
 }
 
 /// The shared timeline interaction state machine.
@@ -67,8 +59,54 @@ class TimelineStateMachine
   final TimelineController controller;
   final TimelineInteractionTarget? interactionTarget;
 
-  void onPointerDown(PointerDownEvent event) {
-    data.handlePointerDown(event);
+  TimelineInteractionFamily? _classifyPointerDownInteraction(
+    PointerDownEvent event,
+  ) {
+    final inLoopBar = event.localPosition.dy <= loopAreaHeight;
+    final isPrimaryPress = event.buttons & kPrimaryButton != 0;
+    final isSecondaryPress = event.buttons & kSecondaryButton != 0;
+    final pressedLoopHandle = data.activePressedLoopHandle;
+    final isDoubleClick = data.activePointerIsDoubleClick;
+
+    if (isPrimaryPress && !inLoopBar) {
+      return TimelineInteractionFamily.playheadDrag;
+    }
+
+    if (isPrimaryPress && !isDoubleClick && pressedLoopHandle != null) {
+      return TimelineInteractionFamily.loopHandleMove;
+    }
+
+    final isLoopCreate =
+        inLoopBar &&
+        (isDoubleClick ||
+            isSecondaryPress ||
+            (isPrimaryPress && data.isCtrlPressed));
+    if (isLoopCreate) {
+      return TimelineInteractionFamily.loopCreate;
+    }
+
+    return null;
+  }
+
+  void onPointerDown(
+    PointerDownEvent event, {
+    TimelineLoopHandle? pressedLoopHandle,
+  }) {
+    if (interactionTarget == null) {
+      return;
+    }
+
+    if (data.hasActivePointerSession) {
+      return;
+    }
+
+    data.handlePointerDown(event, pressedLoopHandle: pressedLoopHandle);
+
+    final interactionFamily = _classifyPointerDownInteraction(event);
+    if (interactionFamily != null) {
+      data.beginInteractionSession(family: interactionFamily);
+    }
+
     notifyDataUpdated();
   }
 
@@ -88,44 +126,6 @@ class TimelineStateMachine
 
   void onPointerCancel(PointerCancelEvent event) {
     onPointerUp(event);
-  }
-
-  void beginPlayheadDrag() {
-    if (!data.hasActivePointerSession ||
-        data.activeInteractionFamily ==
-            TimelineInteractionFamily.playheadDrag) {
-      return;
-    }
-
-    data.beginInteractionSession(
-      family: TimelineInteractionFamily.playheadDrag,
-    );
-    notifyDataUpdated();
-  }
-
-  void beginLoopCreate() {
-    if (!data.hasActivePointerSession ||
-        data.activeInteractionFamily == TimelineInteractionFamily.loopCreate) {
-      return;
-    }
-
-    data.beginInteractionSession(family: TimelineInteractionFamily.loopCreate);
-    notifyDataUpdated();
-  }
-
-  void beginLoopHandleMove() {
-    final activePointerId = data.activePointerId;
-    if (activePointerId == null ||
-        data.activeInteractionFamily ==
-            TimelineInteractionFamily.loopHandleMove ||
-        data.pendingLoopHandleForPointer(activePointerId) == null) {
-      return;
-    }
-
-    data.beginInteractionSession(
-      family: TimelineInteractionFamily.loopHandleMove,
-    );
-    notifyDataUpdated();
   }
 
   void onViewSizeChanged(Size viewSize) {
@@ -178,24 +178,6 @@ class TimelineStateMachine
     notifyDataUpdated();
   }
 
-  void registerPendingLoopHandlePress({
-    required int pointerId,
-    required TimelineLoopHandle handle,
-  }) {
-    final pendingLoopHandlePress = data.pendingLoopHandlePress;
-    if (pendingLoopHandlePress?.pointerId == pointerId &&
-        pendingLoopHandlePress?.handle == handle) {
-      return;
-    }
-
-    data.setPendingLoopHandlePress(pointerId: pointerId, handle: handle);
-    notifyDataUpdated();
-  }
-
-  TimelineLoopHandle? pendingLoopHandleForPointer(int pointerId) {
-    return data.pendingLoopHandleForPointer(pointerId);
-  }
-
   TimelineStateMachine._({
     required super.data,
     required super.idleState,
@@ -241,6 +223,8 @@ class TimelineStateMachineData {
   bool isCtrlPressed = false;
   bool isAltPressed = false;
   bool isShiftPressed = false;
+  DateTime? lastPointerDownTimestamp;
+  bool activePointerIsDoubleClick = false;
 
   Size viewSize = Size.zero;
   Map<int, TimelineActivePointer> pointers = {};
@@ -251,7 +235,6 @@ class TimelineStateMachineData {
   double renderedTimeViewStart = 0;
   double renderedTimeViewEnd = 0;
 
-  TimelinePendingLoopHandlePress? pendingLoopHandlePress;
   TimelineInteractionFamily? activeInteractionFamily;
 
   bool get hasActivePointerSession => activePointerId != null;
@@ -268,31 +251,34 @@ class TimelineStateMachineData {
     return pointers[pointerId];
   }
 
-  bool isModifierPressed(TimelineModifierKey modifier) {
-    return switch (modifier) {
-      TimelineModifierKey.ctrl => isCtrlPressed,
-      TimelineModifierKey.alt => isAltPressed,
-      TimelineModifierKey.shift => isShiftPressed,
-    };
-  }
+  TimelineLoopHandle? get activePressedLoopHandle =>
+      activePointerDownPosition?.pressedLoopHandle;
 
-  void setModifier(TimelineModifierKey modifier, bool isPressed) {
-    switch (modifier) {
-      case TimelineModifierKey.ctrl:
-        isCtrlPressed = isPressed;
-      case TimelineModifierKey.alt:
-        isAltPressed = isPressed;
-      case TimelineModifierKey.shift:
-        isShiftPressed = isPressed;
-    }
-  }
+  void handlePointerDown(
+    PointerDownEvent event, {
+    TimelineLoopHandle? pressedLoopHandle,
+  }) {
+    final timestamp = DateTime.now();
+    activePointerIsDoubleClick =
+        lastPointerDownTimestamp != null &&
+        timestamp.difference(lastPointerDownTimestamp!) <
+            timelineDoubleClickThreshold &&
+        event.buttons & kPrimaryButton != 0;
+    lastPointerDownTimestamp = timestamp;
 
-  void handlePointerDown(PointerDownEvent event) {
     final position = event.localPosition;
-    pointers[event.pointer] = TimelineActivePointer(position.dx, position.dy);
+    pointers[event.pointer] = TimelineActivePointer(
+      position.dx,
+      position.dy,
+      pressedLoopHandle: pressedLoopHandle,
+    );
     activePointerId = event.pointer;
     activePointerButtons = event.buttons;
-    activePointerDownPosition = TimelineActivePointer(position.dx, position.dy);
+    activePointerDownPosition = TimelineActivePointer(
+      position.dx,
+      position.dy,
+      pressedLoopHandle: pressedLoopHandle,
+    );
   }
 
   void handlePointerMove(PointerMoveEvent event) {
@@ -313,15 +299,11 @@ class TimelineStateMachineData {
     final pointerId = event.pointer;
     pointers.remove(pointerId);
 
-    final pendingLoopHandlePress = this.pendingLoopHandlePress;
-    if (pendingLoopHandlePress?.pointerId == pointerId) {
-      clearPendingLoopHandlePress();
-    }
-
     if (activePointerId == pointerId) {
       activePointerId = null;
       activePointerButtons = null;
       activePointerDownPosition = null;
+      activePointerIsDoubleClick = false;
     }
   }
 
@@ -331,29 +313,6 @@ class TimelineStateMachineData {
 
   void clearInteractionSession() {
     activeInteractionFamily = null;
-  }
-
-  void setPendingLoopHandlePress({
-    required int pointerId,
-    required TimelineLoopHandle handle,
-  }) {
-    pendingLoopHandlePress = TimelinePendingLoopHandlePress(
-      pointerId: pointerId,
-      handle: handle,
-    );
-  }
-
-  void clearPendingLoopHandlePress() {
-    pendingLoopHandlePress = null;
-  }
-
-  TimelineLoopHandle? pendingLoopHandleForPointer(int pointerId) {
-    final pendingLoopHandlePress = this.pendingLoopHandlePress;
-    if (pendingLoopHandlePress?.pointerId != pointerId) {
-      return null;
-    }
-
-    return pendingLoopHandlePress?.handle;
   }
 }
 
@@ -372,79 +331,32 @@ abstract class TimelineMachineState
   TimelineMachineState([super.parentState]);
 }
 
-class TimelineIdleState extends TimelineMachineState {
-  static const Duration doubleClickThreshold = Duration(milliseconds: 500);
-
-  DateTime? lastPointerDownTimestamp;
-  bool pendingDoubleClickQualification = false;
-}
+class TimelineIdleState extends TimelineMachineState {}
 
 class TimelinePointerSessionState extends TimelineMachineState {
   @override
   TimelineIdleState get parentState => super.parentState as TimelineIdleState;
 
-  int? activePointerId;
-  int? activeButtons;
-  TimelineActivePointer? dragStartPosition;
-  TimelineActivePointer? dragCurrentPosition;
-  TimelineInteractionFamily? interactionFamily;
-  TimelineLoopHandle? pressedLoopHandle;
-  bool isDoubleClickQualified = false;
+  int? get activePointerId => interactionState.activePointerId;
+  int? get activeButtons => interactionState.activePointerButtons;
+  TimelineActivePointer? get dragStartPosition =>
+      interactionState.activePointerDownPosition?.clone();
+  TimelineActivePointer? get dragCurrentPosition =>
+      interactionState.activePointer?.clone();
+  TimelineInteractionFamily? get interactionFamily =>
+      interactionState.activeInteractionFamily;
+  TimelineLoopHandle? get pressedLoopHandle =>
+      interactionState.activePressedLoopHandle;
 
-  void _syncPointerSessionData() {
-    final nextActivePointerId = interactionState.activePointerId;
-
-    if (nextActivePointerId == null) {
-      activePointerId = null;
-      activeButtons = null;
-      dragStartPosition = null;
-      dragCurrentPosition = null;
-      interactionFamily = null;
-      pressedLoopHandle = null;
-      isDoubleClickQualified = false;
-      return;
-    }
-
-    if (activePointerId != nextActivePointerId) {
-      activePointerId = nextActivePointerId;
-      activeButtons = interactionState.activePointerButtons;
-      dragStartPosition = interactionState.activePointerDownPosition?.clone();
-      dragCurrentPosition = interactionState.activePointer?.clone();
-      interactionFamily = interactionState.activeInteractionFamily;
-
-      final pendingLoopHandlePress = interactionState.pendingLoopHandlePress;
-      pressedLoopHandle =
-          pendingLoopHandlePress != null &&
-              pendingLoopHandlePress.pointerId == nextActivePointerId
-          ? pendingLoopHandlePress.handle
-          : null;
-      isDoubleClickQualified = parentState.pendingDoubleClickQualification;
-      return;
-    }
-
-    activeButtons = interactionState.activePointerButtons;
-    dragCurrentPosition = interactionState.activePointer?.clone();
-    interactionFamily = interactionState.activeInteractionFamily;
-
-    final pendingLoopHandlePress = interactionState.pendingLoopHandlePress;
-    pressedLoopHandle =
-        pendingLoopHandlePress != null &&
-            pendingLoopHandlePress.pointerId == nextActivePointerId
-        ? pendingLoopHandlePress.handle
-        : null;
-  }
+  bool get isDoubleClickQualified =>
+      interactionState.activePointerIsDoubleClick;
 
   @override
   void onEntry({
     required EditorStateMachineEvent event,
     required EditorStateMachineState<TimelineStateMachineData> from,
   }) {
-    _syncPointerSessionData();
-  }
-
-  @override
-  void onActive({required EditorStateMachineEvent event}) {
-    _syncPointerSessionData();
+    controller.activateTransportSequence();
   }
 
   @override

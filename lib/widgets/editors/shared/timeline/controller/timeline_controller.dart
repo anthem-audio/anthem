@@ -60,8 +60,11 @@ class TimelineController {
 
   Id? get sequenceId => interactionTarget?.sequenceId;
 
-  void pointerDown(PointerDownEvent event) {
-    stateMachine.onPointerDown(event);
+  void pointerDown(
+    PointerDownEvent event, {
+    TimelineLoopHandle? pressedLoopHandle,
+  }) {
+    stateMachine.onPointerDown(event, pressedLoopHandle: pressedLoopHandle);
   }
 
   void pointerMove(PointerMoveEvent event) {
@@ -100,32 +103,6 @@ class TimelineController {
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
     );
-  }
-
-  void registerPendingLoopHandlePress({
-    required int pointerId,
-    required TimelineLoopHandle handle,
-  }) {
-    stateMachine.registerPendingLoopHandlePress(
-      pointerId: pointerId,
-      handle: handle,
-    );
-  }
-
-  TimelineLoopHandle? pendingLoopHandleForPointer(int pointerId) {
-    return stateMachine.pendingLoopHandleForPointer(pointerId);
-  }
-
-  void beginPlayheadDrag() {
-    stateMachine.beginPlayheadDrag();
-  }
-
-  void beginLoopCreate() {
-    stateMachine.beginLoopCreate();
-  }
-
-  void beginLoopHandleMove() {
-    stateMachine.beginLoopHandleMove();
   }
 
   void activateTransportSequence() {
@@ -320,36 +297,6 @@ class TimelineController {
     if (targetTime == null) {
       return;
     }
-
-    if (project.sequence.playbackStartPosition != targetTime) {
-      project.sequence.playbackStartPosition = targetTime;
-    }
-
-    if (_lastPlayheadPositionSet != targetTime) {
-      final targetTimeAsDouble = targetTime.toDouble();
-      if (project.engine.isRunning) {
-        project.engine.sequencerApi.jumpPlayheadTo(targetTimeAsDouble);
-      }
-
-      _lastPlayheadPositionSet = targetTimeAsDouble;
-    }
-  }
-
-  void setPlaybackStartPosition({
-    required double rawTime,
-    required bool ignoreSnap,
-    required double viewWidthInPixels,
-    required double timeViewStart,
-    required double timeViewEnd,
-  }) {
-    final targetTime = resolveTimelineTime(
-      rawTime: rawTime,
-      ignoreSnap: ignoreSnap,
-      viewWidthInPixels: viewWidthInPixels,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      round: true,
-    );
 
     if (project.sequence.playbackStartPosition != targetTime) {
       project.sequence.playbackStartPosition = targetTime;
