@@ -19,7 +19,19 @@
 
 part of 'timeline_state_machine.dart';
 
+class _TimelineLoopHandleMoveSessionData {
+  final TimelineLoopHandle handle;
+  final int originalHandleTime;
+
+  const _TimelineLoopHandleMoveSessionData({
+    required this.handle,
+    required this.originalHandleTime,
+  });
+}
+
 class TimelineLoopHandleMoveState extends TimelineMachineState {
+  _TimelineLoopHandleMoveSessionData? _sessionData;
+
   @override
   TimelineLoopEditState get parentState =>
       super.parentState as TimelineLoopEditState;
@@ -31,6 +43,47 @@ class TimelineLoopHandleMoveState extends TimelineMachineState {
   TimelineActivePointer? get dragStartPosition => parentState.dragStartPosition;
   TimelineActivePointer? get dragCurrentPosition =>
       parentState.dragCurrentPosition;
+
+  TimelineLoopHandle? get activeHandle => _sessionData?.handle;
+  int? get originalHandleTime => _sessionData?.originalHandleTime;
+
+  void _initializeSession() {
+    final pressedLoopHandle = this.pressedLoopHandle;
+    final loopPoints = controller.loopPoints();
+    if (pressedLoopHandle == null || loopPoints == null) {
+      _sessionData = null;
+      return;
+    }
+
+    final originalHandleTime = switch (pressedLoopHandle) {
+      TimelineLoopHandle.start => loopPoints.start,
+      TimelineLoopHandle.end => loopPoints.end,
+    };
+
+    _sessionData = _TimelineLoopHandleMoveSessionData(
+      handle: pressedLoopHandle,
+      originalHandleTime: originalHandleTime,
+    );
+  }
+
+  void _applyLoopHandleMove() {
+    final sessionData = _sessionData;
+    final dragCurrentPosition = this.dragCurrentPosition;
+    if (sessionData == null || dragCurrentPosition == null) {
+      return;
+    }
+
+    controller.updateLoopHandleMoveFromPointerX(
+      handle: sessionData.handle,
+      originalHandleTime: sessionData.originalHandleTime,
+      pointerX: dragCurrentPosition.x,
+      ignoreSnap: interactionState.isAltPressed,
+    );
+  }
+
+  void _clearSession() {
+    _sessionData = null;
+  }
 
   @override
   Iterable<EditorStateMachineStateTransition<TimelineStateMachineData>>
@@ -54,4 +107,25 @@ class TimelineLoopHandleMoveState extends TimelineMachineState {
   ];
 
   TimelineLoopHandleMoveState(super.parentState);
+
+  @override
+  void onEntry({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TimelineStateMachineData> from,
+  }) {
+    _initializeSession();
+  }
+
+  @override
+  void onActive({required EditorStateMachineEvent event}) {
+    _applyLoopHandleMove();
+  }
+
+  @override
+  void onExit({
+    required EditorStateMachineEvent event,
+    required EditorStateMachineState<TimelineStateMachineData> to,
+  }) {
+    _clearSession();
+  }
 }

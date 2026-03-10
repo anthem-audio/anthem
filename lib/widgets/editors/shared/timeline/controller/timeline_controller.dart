@@ -28,11 +28,7 @@ import 'package:flutter/widgets.dart';
 import 'state_machine/timeline_state_machine.dart';
 import 'timeline_interaction_target.dart';
 
-/// The timeline controller, which owns logic for the timeline widget.
-///
-/// The current migration step establishes controller ownership of the timeline
-/// state machine, while leaving live gesture handling on the legacy
-/// widget-owned path in `timeline.dart`.
+/// The timeline controller, which owns logic for the shared timeline widget.
 class TimelineController {
   final ProjectModel project;
   final Id? arrangementID;
@@ -116,12 +112,20 @@ class TimelineController {
     );
   }
 
+  TimelineLoopHandle? pendingLoopHandleForPointer(int pointerId) {
+    return stateMachine.pendingLoopHandleForPointer(pointerId);
+  }
+
   void beginPlayheadDrag() {
     stateMachine.beginPlayheadDrag();
   }
 
   void beginLoopCreate() {
     stateMachine.beginLoopCreate();
+  }
+
+  void beginLoopHandleMove() {
+    stateMachine.beginLoopHandleMove();
   }
 
   void activateTransportSequence() {
@@ -265,6 +269,43 @@ class TimelineController {
     }
 
     setLoopPoints(start: loopStart, end: resolvedLoopEnd);
+  }
+
+  void updateLoopHandleMoveFromPointerX({
+    required TimelineLoopHandle handle,
+    required int originalHandleTime,
+    required double pointerX,
+    required bool ignoreSnap,
+  }) {
+    final currentLoopPoints = loopPoints();
+    if (currentLoopPoints == null) {
+      return;
+    }
+
+    final targetTime = resolveTimelineTimeFromPointerX(
+      pointerX: pointerX,
+      ignoreSnap: ignoreSnap,
+      round: true,
+      startTime: originalHandleTime,
+    );
+    if (targetTime == null) {
+      return;
+    }
+
+    switch (handle) {
+      case TimelineLoopHandle.start:
+        if (targetTime >= currentLoopPoints.end) {
+          return;
+        }
+
+        updateLoopPoints(start: targetTime);
+      case TimelineLoopHandle.end:
+        if (targetTime <= currentLoopPoints.start) {
+          return;
+        }
+
+        updateLoopPoints(end: targetTime);
+    }
   }
 
   void setPlaybackStartFromPointerX({

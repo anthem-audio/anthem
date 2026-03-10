@@ -619,4 +619,167 @@ void main() {
       expect(controller.stateMachine.data.activeInteractionFamily, isNull);
     });
   });
+
+  group('TimelineController Step 10 loop-handle drag', () {
+    late _TimelineControllerTestFixture fixture;
+
+    setUp(() {
+      fixture = _TimelineControllerTestFixture.create();
+      fixture.syncRenderedView();
+      fixture.setLoopPoints(192, 384);
+    });
+
+    tearDown(() {
+      fixture.controller.dispose();
+    });
+
+    test(
+      'beginning loop-handle move enters the loop-handle state and captures the pressed handle',
+      () {
+        final controller = fixture.controller;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(192), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.registerPendingLoopHandlePress(
+          pointerId: 1,
+          handle: TimelineLoopHandle.start,
+        );
+        controller.beginLoopHandleMove();
+
+        final loopHandleMoveState =
+            controller.stateMachine.currentState as TimelineLoopHandleMoveState;
+        expect(
+          controller.stateMachine.data.activeInteractionFamily,
+          TimelineInteractionFamily.loopHandleMove,
+        );
+        expect(loopHandleMoveState.activeHandle, TimelineLoopHandle.start);
+        expect(loopHandleMoveState.originalHandleTime, 192);
+      },
+    );
+
+    test(
+      'start-handle drag updates only the start bound and alt changes re-resolve it mid-drag',
+      () {
+        final controller = fixture.controller;
+        const moveTime = 121.4;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(192), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+        controller.registerPendingLoopHandlePress(
+          pointerId: 1,
+          handle: TimelineLoopHandle.start,
+        );
+        controller.beginLoopHandleMove();
+
+        controller.pointerMove(
+          PointerMoveEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(moveTime), 5),
+            buttons: kPrimaryButton,
+          ),
+        );
+
+        expect(
+          fixture.loopPoints!.start,
+          fixture.expectedLoopTargetTime(
+            moveTime,
+            ignoreSnap: false,
+            startTime: 192,
+          ),
+        );
+        expect(fixture.loopPoints!.end, 384);
+
+        controller.syncModifierState(
+          ctrlPressed: false,
+          altPressed: true,
+          shiftPressed: false,
+        );
+
+        expect(
+          fixture.loopPoints!.start,
+          fixture.expectedLoopTargetTime(
+            moveTime,
+            ignoreSnap: true,
+            startTime: 192,
+          ),
+        );
+        expect(fixture.loopPoints!.end, 384);
+      },
+    );
+
+    test('end-handle drag updates only the end bound', () {
+      final controller = fixture.controller;
+      const moveTime = 515.6;
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(384), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+      controller.registerPendingLoopHandlePress(
+        pointerId: 1,
+        handle: TimelineLoopHandle.end,
+      );
+      controller.beginLoopHandleMove();
+
+      controller.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(moveTime), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+
+      expect(fixture.loopPoints!.start, 192);
+      expect(
+        fixture.loopPoints!.end,
+        fixture.expectedLoopTargetTime(
+          moveTime,
+          ignoreSnap: false,
+          startTime: 384,
+        ),
+      );
+    });
+
+    test('invalid handle crossing is ignored', () {
+      final controller = fixture.controller;
+      const moveTime = 420.0;
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(192), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+      controller.registerPendingLoopHandlePress(
+        pointerId: 1,
+        handle: TimelineLoopHandle.start,
+      );
+      controller.beginLoopHandleMove();
+
+      controller.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(moveTime), 5),
+          buttons: kPrimaryButton,
+        ),
+      );
+
+      expect(fixture.loopPoints!.start, 192);
+      expect(fixture.loopPoints!.end, 384);
+    });
+  });
 }

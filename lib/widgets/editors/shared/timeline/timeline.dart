@@ -75,14 +75,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   KeyboardModifiers? _keyboardModifiers;
   DateTime? _lastMouseDownTime;
 
-  // During event handling, if the start or end loop markers are pressed before
-  // the event reaches the timeline, one of these will be set to true.
-  bool _loopStartPressed = false;
-  bool _loopEndPressed = false;
-
-  bool _loopHandleMoveActive = false;
-  int _loopHandleMoveTimeAtEventStart = 0;
-
   void _handleKeyboardModifiersChanged() {
     final keyboardModifiers = _keyboardModifiers;
     final controller = _controller;
@@ -240,11 +232,14 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     final isPlayheadMove =
         event.buttons & kPrimaryButton != 0 &&
         event.localPosition.dy > loopAreaHeight;
+    final pressedLoopHandle = controller.pendingLoopHandleForPointer(
+      event.pointer,
+    );
 
     final isLoopHandleMove =
         (event.buttons & kPrimaryButton != 0 &&
         !isDoubleClick &&
-        (_loopStartPressed || _loopEndPressed));
+        pressedLoopHandle != null);
 
     final isLoopCreate =
         (isDoubleClick ||
@@ -255,14 +250,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     if (isPlayheadMove) {
       controller.beginPlayheadDrag();
     } else if (isLoopHandleMove) {
-      _loopHandleMoveActive = true;
-      final loopPoints = controller.loopPoints();
-
-      if (_loopStartPressed) {
-        _loopHandleMoveTimeAtEventStart = loopPoints?.start ?? 0;
-      } else if (_loopEndPressed) {
-        _loopHandleMoveTimeAtEventStart = loopPoints?.end ?? 0;
-      }
+      controller.beginLoopHandleMove();
     } else if (isLoopCreate) {
       controller.beginLoopCreate();
     }
@@ -271,53 +259,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   void handlePointerMove(PointerMoveEvent event) {
     final controller = _requiredController;
     controller.pointerMove(event);
-
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
-    if (_loopHandleMoveActive) {
-      final loopPoints = controller.loopPoints();
-
-      if (loopPoints == null) {
-        // If this happens it's probably a bug
-        return;
-      }
-
-      final time = pixelsToTime(
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize!.width,
-        pixelOffsetFromLeft: event.localPosition.dx,
-      );
-
-      final targetTime = controller.resolveTimelineTime(
-        rawTime: time,
-        ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize!.width,
-        timeViewStart: widget.timeViewStartAnimation.value,
-        timeViewEnd: widget.timeViewEndAnimation.value,
-        round: true,
-        startTime: _loopHandleMoveTimeAtEventStart,
-      );
-
-      if (_loopStartPressed) {
-        if (targetTime >= loopPoints.end) {
-          // This would be invalid
-          return;
-        }
-
-        controller.updateLoopPoints(start: targetTime);
-      } else if (_loopEndPressed) {
-        if (targetTime <= loopPoints.start) {
-          // This would be invalid
-          return;
-        }
-
-        controller.updateLoopPoints(end: targetTime);
-      }
-    }
   }
 
   void handlePointerUp(PointerEvent event) {
@@ -327,10 +268,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     } else {
       controller.pointerUp(event);
     }
-
-    _loopHandleMoveActive = false;
-    _loopStartPressed = false;
-    _loopEndPressed = false;
   }
 
   @override
@@ -462,14 +399,12 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                       loopStart: loopPoints?.start,
                       loopEnd: loopPoints?.end,
                       onLoopStartPressed: (pointerId) {
-                        _loopStartPressed = true;
                         controller.registerPendingLoopHandlePress(
                           pointerId: pointerId,
                           handle: TimelineLoopHandle.start,
                         );
                       },
                       onLoopEndPressed: (pointerId) {
-                        _loopEndPressed = true;
                         controller.registerPendingLoopHandlePress(
                           pointerId: pointerId,
                           handle: TimelineLoopHandle.end,

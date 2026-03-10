@@ -61,9 +61,6 @@ class TimelinePendingLoopHandlePress {
 }
 
 /// The shared timeline interaction state machine.
-///
-/// This scaffold establishes the target hierarchy and controller ownership
-/// without taking over live gesture handling from `timeline.dart` yet.
 class TimelineStateMachine
     extends EditorStateMachine<TimelineStateMachineData> {
   final ProjectModel project;
@@ -113,6 +110,21 @@ class TimelineStateMachine
     }
 
     data.beginInteractionSession(family: TimelineInteractionFamily.loopCreate);
+    notifyDataUpdated();
+  }
+
+  void beginLoopHandleMove() {
+    final activePointerId = data.activePointerId;
+    if (activePointerId == null ||
+        data.activeInteractionFamily ==
+            TimelineInteractionFamily.loopHandleMove ||
+        data.pendingLoopHandleForPointer(activePointerId) == null) {
+      return;
+    }
+
+    data.beginInteractionSession(
+      family: TimelineInteractionFamily.loopHandleMove,
+    );
     notifyDataUpdated();
   }
 
@@ -178,6 +190,10 @@ class TimelineStateMachine
 
     data.setPendingLoopHandlePress(pointerId: pointerId, handle: handle);
     notifyDataUpdated();
+  }
+
+  TimelineLoopHandle? pendingLoopHandleForPointer(int pointerId) {
+    return data.pendingLoopHandleForPointer(pointerId);
   }
 
   TimelineStateMachine._({
@@ -329,6 +345,15 @@ class TimelineStateMachineData {
 
   void clearPendingLoopHandlePress() {
     pendingLoopHandlePress = null;
+  }
+
+  TimelineLoopHandle? pendingLoopHandleForPointer(int pointerId) {
+    final pendingLoopHandlePress = this.pendingLoopHandlePress;
+    if (pendingLoopHandlePress?.pointerId != pointerId) {
+      return null;
+    }
+
+    return pendingLoopHandlePress?.handle;
   }
 }
 
