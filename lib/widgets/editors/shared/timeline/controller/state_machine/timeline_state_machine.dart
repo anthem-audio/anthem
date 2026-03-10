@@ -223,13 +223,15 @@ class TimelineStateMachineData {
   bool isCtrlPressed = false;
   bool isAltPressed = false;
   bool isShiftPressed = false;
-  DateTime? lastPointerDownTimestamp;
+  Duration? lastPrimaryClickTimestamp;
+  Offset? lastPrimaryClickPosition;
   bool activePointerIsDoubleClick = false;
 
   Size viewSize = Size.zero;
   Map<int, TimelineActivePointer> pointers = {};
   int? activePointerId;
   int? activePointerButtons;
+  int? activePointerDownButtons;
   TimelineActivePointer? activePointerDownPosition;
 
   double renderedTimeViewStart = 0;
@@ -254,17 +256,43 @@ class TimelineStateMachineData {
   TimelineLoopHandle? get activePressedLoopHandle =>
       activePointerDownPosition?.pressedLoopHandle;
 
+  bool _isPrimaryPress(int buttons) => buttons & kPrimaryButton != 0;
+
+  void _clearLastPrimaryClick() {
+    lastPrimaryClickTimestamp = null;
+    lastPrimaryClickPosition = null;
+  }
+
+  bool _isWithinDoubleClickThreshold(Duration timestamp) {
+    final lastPrimaryClickTimestamp = this.lastPrimaryClickTimestamp;
+    if (lastPrimaryClickTimestamp == null) {
+      return false;
+    }
+
+    final elapsed = timestamp - lastPrimaryClickTimestamp;
+    return elapsed >= Duration.zero && elapsed <= timelineDoubleClickThreshold;
+  }
+
+  bool _qualifiesAsDoubleClick(PointerDownEvent event) {
+    final lastPrimaryClickPosition = this.lastPrimaryClickPosition;
+    if (!_isPrimaryPress(event.buttons) ||
+        lastPrimaryClickPosition == null ||
+        !_isWithinDoubleClickThreshold(event.timeStamp)) {
+      return false;
+    }
+
+    return (event.localPosition - lastPrimaryClickPosition).distance <=
+        timelineMaxDoubleClickDistance;
+  }
+
   void handlePointerDown(
     PointerDownEvent event, {
     TimelineLoopHandle? pressedLoopHandle,
   }) {
-    final timestamp = DateTime.now();
-    activePointerIsDoubleClick =
-        lastPointerDownTimestamp != null &&
-        timestamp.difference(lastPointerDownTimestamp!) <
-            timelineDoubleClickThreshold &&
-        event.buttons & kPrimaryButton != 0;
-    lastPointerDownTimestamp = timestamp;
+    activePointerIsDoubleClick = _qualifiesAsDoubleClick(event);
+    if (!_isPrimaryPress(event.buttons)) {
+      _clearLastPrimaryClick();
+    }
 
     final position = event.localPosition;
     pointers[event.pointer] = TimelineActivePointer(
@@ -274,6 +302,7 @@ class TimelineStateMachineData {
     );
     activePointerId = event.pointer;
     activePointerButtons = event.buttons;
+    activePointerDownButtons = event.buttons;
     activePointerDownPosition = TimelineActivePointer(
       position.dx,
       position.dy,
@@ -300,8 +329,31 @@ class TimelineStateMachineData {
     pointers.remove(pointerId);
 
     if (activePointerId == pointerId) {
+      final pointerDownButtons = activePointerDownButtons;
+      final pointerDownPosition = activePointerDownPosition;
+      final isPrimaryPointer =
+          pointerDownButtons != null && _isPrimaryPress(pointerDownButtons);
+      final didCompletePrimaryClick =
+          event is PointerUpEvent &&
+          isPrimaryPointer &&
+          pointerDownPosition != null &&
+          (event.localPosition - pointerDownPosition.toOffset()).distance <=
+              timelineMaxClickTravelDistance;
+
+      if (didCompletePrimaryClick) {
+        if (activePointerIsDoubleClick) {
+          _clearLastPrimaryClick();
+        } else {
+          lastPrimaryClickTimestamp = event.timeStamp;
+          lastPrimaryClickPosition = event.localPosition;
+        }
+      } else if (isPrimaryPointer) {
+        _clearLastPrimaryClick();
+      }
+
       activePointerId = null;
       activePointerButtons = null;
+      activePointerDownButtons = null;
       activePointerDownPosition = null;
       activePointerIsDoubleClick = false;
     }

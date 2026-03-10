@@ -19,3 +19,5 @@
 
 const loopAreaHeight = 17.0;
 const timelineDoubleClickThreshold = Duration(milliseconds: 500);
+const timelineMaxClickTravelDistance = 8.0;
+const timelineMaxDoubleClickDistance = 8.0;

@@ -892,12 +892,16 @@ void main() {
       () {
         final controller = fixture.controller;
         const startTime = 120.0;
+        const firstDownTimestamp = Duration(milliseconds: 100);
+        const firstUpTimestamp = Duration(milliseconds: 120);
+        const secondDownTimestamp = Duration(milliseconds: 220);
 
         controller.pointerDown(
           PointerDownEvent(
             pointer: 1,
             position: Offset(fixture.pointerXForTime(startTime), 5),
             buttons: kPrimaryButton,
+            timeStamp: firstDownTimestamp,
           ),
         );
         expect(
@@ -912,6 +916,7 @@ void main() {
           PointerUpEvent(
             pointer: 1,
             position: Offset(fixture.pointerXForTime(startTime), 5),
+            timeStamp: firstUpTimestamp,
           ),
         );
 
@@ -920,6 +925,7 @@ void main() {
             pointer: 2,
             position: Offset(fixture.pointerXForTime(startTime), 5),
             buttons: kPrimaryButton,
+            timeStamp: secondDownTimestamp,
           ),
         );
         expect(controller.stateMachine.data.activePointerIsDoubleClick, isTrue);
@@ -941,6 +947,226 @@ void main() {
         );
       },
     );
+
+    test(
+      'double-click in the loop bar requires the second press to stay near the first click',
+      () {
+        final controller = fixture.controller;
+        const firstTime = 120.0;
+        const secondTime = 320.0;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(firstTime), 5),
+            buttons: kPrimaryButton,
+            timeStamp: Duration(milliseconds: 100),
+          ),
+        );
+        controller.pointerUp(
+          PointerUpEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(firstTime), 5),
+            timeStamp: Duration(milliseconds: 120),
+          ),
+        );
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 2,
+            position: Offset(fixture.pointerXForTime(secondTime), 5),
+            buttons: kPrimaryButton,
+            timeStamp: Duration(milliseconds: 220),
+          ),
+        );
+
+        expect(
+          controller.stateMachine.data.activePointerIsDoubleClick,
+          isFalse,
+        );
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelinePointerSessionState>(),
+        );
+        expect(controller.stateMachine.data.activeInteractionFamily, isNull);
+      },
+    );
+
+    test(
+      'secondary presses clear pending primary double-click qualification',
+      () {
+        final controller = fixture.controller;
+        const clickTime = 120.0;
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(clickTime), 5),
+            buttons: kPrimaryButton,
+            timeStamp: Duration(milliseconds: 100),
+          ),
+        );
+        controller.pointerUp(
+          PointerUpEvent(
+            pointer: 1,
+            position: Offset(fixture.pointerXForTime(clickTime), 5),
+            timeStamp: Duration(milliseconds: 120),
+          ),
+        );
+
+        controller.pointerDown(
+          const PointerDownEvent(
+            pointer: 2,
+            position: Offset(80, 24),
+            buttons: kSecondaryButton,
+            timeStamp: Duration(milliseconds: 220),
+          ),
+        );
+        controller.pointerUp(
+          const PointerUpEvent(
+            pointer: 2,
+            position: Offset(80, 24),
+            timeStamp: Duration(milliseconds: 240),
+          ),
+        );
+
+        controller.pointerDown(
+          PointerDownEvent(
+            pointer: 3,
+            position: Offset(fixture.pointerXForTime(clickTime), 5),
+            buttons: kPrimaryButton,
+            timeStamp: Duration(milliseconds: 320),
+          ),
+        );
+
+        expect(
+          controller.stateMachine.data.activePointerIsDoubleClick,
+          isFalse,
+        );
+        expect(
+          controller.stateMachine.currentState,
+          isA<TimelinePointerSessionState>(),
+        );
+        expect(controller.stateMachine.data.activeInteractionFamily, isNull);
+      },
+    );
+
+    test('primary drags clear pending primary double-click qualification', () {
+      final controller = fixture.controller;
+      const initialClickTime = 120.0;
+      const dragDownTime = 320.0;
+      const dragMoveTime = 420.0;
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(initialClickTime), 5),
+          buttons: kPrimaryButton,
+          timeStamp: Duration(milliseconds: 100),
+        ),
+      );
+      controller.pointerUp(
+        PointerUpEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(initialClickTime), 5),
+          timeStamp: Duration(milliseconds: 120),
+        ),
+      );
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 2,
+          position: Offset(fixture.pointerXForTime(dragDownTime), 5),
+          buttons: kPrimaryButton,
+          timeStamp: Duration(milliseconds: 220),
+        ),
+      );
+      controller.pointerMove(
+        PointerMoveEvent(
+          pointer: 2,
+          position: Offset(fixture.pointerXForTime(dragMoveTime), 5),
+          buttons: kPrimaryButton,
+          timeStamp: Duration(milliseconds: 260),
+        ),
+      );
+      controller.pointerUp(
+        PointerUpEvent(
+          pointer: 2,
+          position: Offset(fixture.pointerXForTime(dragMoveTime), 5),
+          timeStamp: Duration(milliseconds: 300),
+        ),
+      );
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 3,
+          position: Offset(fixture.pointerXForTime(initialClickTime), 5),
+          buttons: kPrimaryButton,
+          timeStamp: Duration(milliseconds: 360),
+        ),
+      );
+
+      expect(controller.stateMachine.data.activePointerIsDoubleClick, isFalse);
+      expect(
+        controller.stateMachine.currentState,
+        isA<TimelinePointerSessionState>(),
+      );
+      expect(controller.stateMachine.data.activeInteractionFamily, isNull);
+    });
+
+    test('double-click does not chain to a third rapid primary press', () {
+      final controller = fixture.controller;
+      const clickTime = 120.0;
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(clickTime), 5),
+          buttons: kPrimaryButton,
+          timeStamp: Duration(milliseconds: 100),
+        ),
+      );
+      controller.pointerUp(
+        PointerUpEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(clickTime), 5),
+          timeStamp: Duration(milliseconds: 120),
+        ),
+      );
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 2,
+          position: Offset(fixture.pointerXForTime(clickTime), 5),
+          buttons: kPrimaryButton,
+          timeStamp: Duration(milliseconds: 220),
+        ),
+      );
+      expect(controller.stateMachine.data.activePointerIsDoubleClick, isTrue);
+      controller.pointerUp(
+        PointerUpEvent(
+          pointer: 2,
+          position: Offset(fixture.pointerXForTime(clickTime), 5),
+          timeStamp: Duration(milliseconds: 240),
+        ),
+      );
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 3,
+          position: Offset(fixture.pointerXForTime(clickTime), 5),
+          buttons: kPrimaryButton,
+          timeStamp: Duration(milliseconds: 320),
+        ),
+      );
+
+      expect(controller.stateMachine.data.activePointerIsDoubleClick, isFalse);
+      expect(
+        controller.stateMachine.currentState,
+        isA<TimelinePointerSessionState>(),
+      );
+      expect(controller.stateMachine.data.activeInteractionFamily, isNull);
+    });
 
     test(
       'secondary click in the loop bar automatically starts loop create',
