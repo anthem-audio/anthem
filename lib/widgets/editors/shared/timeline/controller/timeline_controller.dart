@@ -23,7 +23,7 @@ import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'state_machine/timeline_state_machine.dart';
 import 'timeline_interaction_target.dart';
@@ -63,6 +63,58 @@ class TimelineController {
   }
 
   Id? get sequenceId => interactionTarget?.sequenceId;
+
+  void pointerDown(PointerDownEvent event) {
+    stateMachine.onPointerDown(event);
+  }
+
+  void pointerMove(PointerMoveEvent event) {
+    stateMachine.onPointerMove(event);
+  }
+
+  void pointerUp(PointerEvent event) {
+    stateMachine.onPointerUp(event);
+  }
+
+  void pointerCancel(PointerCancelEvent event) {
+    stateMachine.onPointerCancel(event);
+  }
+
+  void syncModifierState({
+    required bool ctrlPressed,
+    required bool altPressed,
+    required bool shiftPressed,
+  }) {
+    stateMachine.syncModifierState(
+      ctrlPressed: ctrlPressed,
+      altPressed: altPressed,
+      shiftPressed: shiftPressed,
+    );
+  }
+
+  void onViewSizeChanged(Size viewSize) {
+    stateMachine.onViewSizeChanged(viewSize);
+  }
+
+  void onRenderedTimeViewChanged({
+    required double timeViewStart,
+    required double timeViewEnd,
+  }) {
+    stateMachine.onRenderedTimeViewChanged(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+  }
+
+  void registerPendingLoopHandlePress({
+    required int pointerId,
+    required TimelineLoopHandle handle,
+  }) {
+    stateMachine.registerPendingLoopHandlePress(
+      pointerId: pointerId,
+      handle: handle,
+    );
+  }
 
   void activateTransportSequence() {
     final sequenceId = this.sequenceId;

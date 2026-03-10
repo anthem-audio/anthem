@@ -70,6 +70,93 @@ class TimelineStateMachine
   final TimelineController controller;
   final TimelineInteractionTarget? interactionTarget;
 
+  void onPointerDown(PointerDownEvent event) {
+    data.handlePointerDown(event);
+    notifyDataUpdated();
+  }
+
+  void onPointerMove(PointerMoveEvent event) {
+    data.handlePointerMove(event);
+    notifyDataUpdated();
+  }
+
+  void onPointerUp(PointerEvent event) {
+    final activePointerId = data.activePointerId;
+    data.handlePointerUp(event);
+    if (activePointerId == event.pointer) {
+      data.clearInteractionSession();
+    }
+    notifyDataUpdated();
+  }
+
+  void onPointerCancel(PointerCancelEvent event) {
+    onPointerUp(event);
+  }
+
+  void onViewSizeChanged(Size viewSize) {
+    if (data.viewSize == viewSize) {
+      return;
+    }
+
+    data.viewSize = viewSize;
+    notifyDataUpdated();
+  }
+
+  void onRenderedTimeViewChanged({
+    required double timeViewStart,
+    required double timeViewEnd,
+  }) {
+    if (data.renderedTimeViewStart == timeViewStart &&
+        data.renderedTimeViewEnd == timeViewEnd) {
+      return;
+    }
+
+    data.renderedTimeViewStart = timeViewStart;
+    data.renderedTimeViewEnd = timeViewEnd;
+    notifyDataUpdated();
+  }
+
+  void syncModifierState({
+    required bool ctrlPressed,
+    required bool altPressed,
+    required bool shiftPressed,
+  }) {
+    var didChange = false;
+
+    if (data.isCtrlPressed != ctrlPressed) {
+      data.isCtrlPressed = ctrlPressed;
+      didChange = true;
+    }
+    if (data.isAltPressed != altPressed) {
+      data.isAltPressed = altPressed;
+      didChange = true;
+    }
+    if (data.isShiftPressed != shiftPressed) {
+      data.isShiftPressed = shiftPressed;
+      didChange = true;
+    }
+
+    if (!didChange) {
+      return;
+    }
+
+    notifyDataUpdated();
+  }
+
+  void registerPendingLoopHandlePress({
+    required int pointerId,
+    required TimelineLoopHandle handle,
+  }) {
+    final pendingLoopHandlePress = data.pendingLoopHandlePress;
+    if (pendingLoopHandlePress?.pointerId == pointerId &&
+        pendingLoopHandlePress?.handle == handle) {
+      return;
+    }
+
+    data.setPendingLoopHandlePress(pointerId: pointerId, handle: handle);
+    notifyDataUpdated();
+  }
+
   TimelineStateMachine._({
     required super.data,
     required super.idleState,
@@ -289,6 +376,14 @@ class TimelinePointerSessionState extends TimelineMachineState {
 
     activeButtons = interactionState.activePointerButtons;
     dragCurrentPosition = interactionState.activePointer?.clone();
+    interactionFamily = interactionState.activeInteractionFamily;
+
+    final pendingLoopHandlePress = interactionState.pendingLoopHandlePress;
+    pressedLoopHandle =
+        pendingLoopHandlePress != null &&
+            pendingLoopHandlePress.pointerId == nextActivePointerId
+        ? pendingLoopHandlePress.handle
+        : null;
   }
 
   @override

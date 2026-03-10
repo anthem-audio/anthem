@@ -29,6 +29,8 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import 'controller/timeline_controller.dart';
+import 'controller/state_machine/timeline_state_machine.dart'
+    show TimelineLoopHandle;
 import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
 import 'loop_indicator.dart';
@@ -68,8 +70,9 @@ class Timeline extends StatefulWidget {
 }
 
 class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
-  late Size _lastTimelineSize;
+  Size? _lastTimelineSize;
   TimelineController? _controller;
+  KeyboardModifiers? _keyboardModifiers;
   DateTime? _lastMouseDownTime;
 
   bool _playheadMoveActive = false;
@@ -84,6 +87,38 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
   bool _loopHandleMoveActive = false;
   int _loopHandleMoveTimeAtEventStart = 0;
+
+  void _handleKeyboardModifiersChanged() {
+    final keyboardModifiers = _keyboardModifiers;
+    final controller = _controller;
+    if (keyboardModifiers == null || controller == null) {
+      return;
+    }
+
+    controller.syncModifierState(
+      ctrlPressed: keyboardModifiers.ctrl,
+      altPressed: keyboardModifiers.alt,
+      shiftPressed: keyboardModifiers.shift,
+    );
+  }
+
+  void _syncRenderedViewMetrics() {
+    if (!mounted) {
+      return;
+    }
+
+    final controller = _controller;
+    final timelineSize = _lastTimelineSize;
+    if (controller == null || timelineSize == null) {
+      return;
+    }
+
+    controller.onViewSizeChanged(timelineSize);
+    controller.onRenderedTimeViewChanged(
+      timeViewStart: widget.timeViewStartAnimation.value,
+      timeViewEnd: widget.timeViewEndAnimation.value,
+    );
+  }
 
   TimelineController get _requiredController {
     final controller = _controller;
@@ -100,6 +135,12 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       arrangementID: widget.arrangementID,
       patternID: widget.patternID,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.timeViewAnimationController.addListener(_syncRenderedViewMetrics);
   }
 
   /// Recreates the controller if needed.
@@ -141,11 +182,29 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncControllerLifecycle();
+
+    _keyboardModifiers ??= Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    )..addListener(_handleKeyboardModifiersChanged);
+
+    _handleKeyboardModifiersChanged();
+    _syncRenderedViewMetrics();
   }
 
   @override
   void didUpdateWidget(covariant Timeline oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    if (!identical(
+      oldWidget.timeViewAnimationController,
+      widget.timeViewAnimationController,
+    )) {
+      oldWidget.timeViewAnimationController.removeListener(
+        _syncRenderedViewMetrics,
+      );
+      widget.timeViewAnimationController.addListener(_syncRenderedViewMetrics);
+    }
 
     final didTargetChange =
         oldWidget.arrangementID != widget.arrangementID ||
@@ -153,10 +212,15 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     if (didTargetChange) {
       _syncControllerLifecycle(forceRecreate: true);
     }
+
+    _handleKeyboardModifiersChanged();
+    _syncRenderedViewMetrics();
   }
 
-  void handlePointerDown(PointerEvent event) {
+  void handlePointerDown(PointerDownEvent event) {
     final controller = _requiredController;
+    controller.pointerDown(event);
+
     final sequenceId = controller.sequenceId;
     if (sequenceId == null) {
       // If there is no arrangement or pattern, we can't handle the pointer down
@@ -197,14 +261,14 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       final time = pixelsToTime(
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize.width,
+        viewPixelWidth: _lastTimelineSize!.width,
         pixelOffsetFromLeft: event.localPosition.dx,
       );
 
       controller.setPlaybackStartPosition(
         rawTime: time,
         ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize.width,
+        viewWidthInPixels: _lastTimelineSize!.width,
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
       );
@@ -223,14 +287,14 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       final time = pixelsToTime(
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize.width,
+        viewPixelWidth: _lastTimelineSize!.width,
         pixelOffsetFromLeft: event.localPosition.dx,
       );
 
       _loopCreateStart = controller.resolveTimelineTime(
         rawTime: time,
         ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize.width,
+        viewWidthInPixels: _lastTimelineSize!.width,
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
         round: true,
@@ -244,8 +308,10 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     }
   }
 
-  void handlePointerMove(PointerEvent event) {
+  void handlePointerMove(PointerMoveEvent event) {
     final controller = _requiredController;
+    controller.pointerMove(event);
+
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
       listen: false,
@@ -255,14 +321,14 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       final time = pixelsToTime(
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize.width,
+        viewPixelWidth: _lastTimelineSize!.width,
         pixelOffsetFromLeft: event.localPosition.dx,
       );
 
       controller.setPlaybackStartPosition(
         rawTime: time,
         ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize.width,
+        viewWidthInPixels: _lastTimelineSize!.width,
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
       );
@@ -277,14 +343,14 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       final time = pixelsToTime(
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize.width,
+        viewPixelWidth: _lastTimelineSize!.width,
         pixelOffsetFromLeft: event.localPosition.dx,
       );
 
       final targetTime = controller.resolveTimelineTime(
         rawTime: time,
         ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize.width,
+        viewWidthInPixels: _lastTimelineSize!.width,
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
         round: true,
@@ -310,7 +376,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       final time = pixelsToTime(
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
-        viewPixelWidth: _lastTimelineSize.width,
+        viewPixelWidth: _lastTimelineSize!.width,
         pixelOffsetFromLeft: event.localPosition.dx,
       );
 
@@ -318,7 +384,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       var loopEnd = controller.resolveTimelineTime(
         rawTime: time,
         ignoreSnap: keyboardModifiers.alt,
-        viewWidthInPixels: _lastTimelineSize.width,
+        viewWidthInPixels: _lastTimelineSize!.width,
         timeViewStart: widget.timeViewStartAnimation.value,
         timeViewEnd: widget.timeViewEndAnimation.value,
         round: true,
@@ -341,8 +407,15 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   }
 
   void handlePointerUp(PointerEvent event) {
+    final controller = _requiredController;
+    if (event is PointerCancelEvent) {
+      controller.pointerCancel(event);
+    } else {
+      controller.pointerUp(event);
+    }
+
     _playheadMoveActive = false;
-    _requiredController.clearPlayheadJumpDedupState();
+    controller.clearPlayheadJumpDedupState();
 
     _loopCreateActive = false;
     _loopCreateStart = null;
@@ -354,6 +427,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    widget.timeViewAnimationController.removeListener(_syncRenderedViewMetrics);
+    _keyboardModifiers?.removeListener(_handleKeyboardModifiersChanged);
     _controller?.dispose();
     super.dispose();
   }
@@ -372,6 +447,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         final timeView = context.watch<TimeRange>();
         final project = Provider.of<ProjectModel>(context);
         final controller = _requiredController;
+        _syncRenderedViewMetrics();
 
         void handleScroll(double delta, double mouseX) {
           zoomTimeView(
@@ -477,11 +553,19 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                       timelineSize: constraints.biggest,
                       loopStart: loopPoints?.start,
                       loopEnd: loopPoints?.end,
-                      onLoopStartPressed: () {
+                      onLoopStartPressed: (pointerId) {
                         _loopStartPressed = true;
+                        controller.registerPendingLoopHandlePress(
+                          pointerId: pointerId,
+                          handle: TimelineLoopHandle.start,
+                        );
                       },
-                      onLoopEndPressed: () {
+                      onLoopEndPressed: (pointerId) {
                         _loopEndPressed = true;
+                        controller.registerPendingLoopHandlePress(
+                          pointerId: pointerId,
+                          handle: TimelineLoopHandle.end,
+                        );
                       },
                     );
                   },
