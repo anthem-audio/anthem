@@ -779,55 +779,54 @@ void main() {
       },
     );
 
-    testWidgets(
-      'alt changes mid-drag re-resolve loop create without snap',
-      (tester) async {
-        final fixture = _TimelineTestFixture.create(
-          targetKind: _TimelineTargetKind.arrangement,
-        );
-        addTearDown(fixture.dispose);
-        await fixture.pump(tester);
+    testWidgets('alt changes mid-drag re-resolve loop create without snap', (
+      tester,
+    ) async {
+      final fixture = _TimelineTestFixture.create(
+        targetKind: _TimelineTargetKind.arrangement,
+      );
+      addTearDown(fixture.dispose);
+      await fixture.pump(tester);
 
-        await fixture.setModifiers(tester, ctrl: true);
-        const startTime = 355.8;
-        const endTime = 140.1;
-        final gesture = await fixture.createMouseGesture(tester);
-        await gesture.down(
-          fixture.globalPositionForLocal(
-            tester,
-            fixture.loopBarPositionForTime(startTime),
-          ),
-        );
-        await tester.pump();
-        await gesture.moveTo(
-          fixture.globalPositionForLocal(
-            tester,
-            fixture.loopBarPositionForTime(endTime),
-          ),
-        );
-        await tester.pump();
+      await fixture.setModifiers(tester, ctrl: true);
+      const startTime = 355.8;
+      const endTime = 140.1;
+      final gesture = await fixture.createMouseGesture(tester);
+      await gesture.down(
+        fixture.globalPositionForLocal(
+          tester,
+          fixture.loopBarPositionForTime(startTime),
+        ),
+      );
+      await tester.pump();
+      await gesture.moveTo(
+        fixture.globalPositionForLocal(
+          tester,
+          fixture.loopBarPositionForTime(endTime),
+        ),
+      );
+      await tester.pump();
 
-        expect(
-          fixture.loopPoints!.start,
-          equals(fixture.expectedLoopTargetTime(endTime, ignoreSnap: false)),
-        );
-        expect(
-          fixture.loopPoints!.end,
-          equals(fixture.expectedLoopTargetTime(startTime, ignoreSnap: false)),
-        );
+      expect(
+        fixture.loopPoints!.start,
+        equals(fixture.expectedLoopTargetTime(endTime, ignoreSnap: false)),
+      );
+      expect(
+        fixture.loopPoints!.end,
+        equals(fixture.expectedLoopTargetTime(startTime, ignoreSnap: false)),
+      );
 
-        await fixture.setModifiers(tester, alt: true);
+      await fixture.setModifiers(tester, alt: true);
 
-        expect(fixture.loopPoints!.start, equals(endTime.round()));
-        expect(
-          fixture.loopPoints!.end,
-          equals(fixture.expectedLoopTargetTime(startTime, ignoreSnap: false)),
-        );
+      expect(fixture.loopPoints!.start, equals(endTime.round()));
+      expect(
+        fixture.loopPoints!.end,
+        equals(fixture.expectedLoopTargetTime(startTime, ignoreSnap: false)),
+      );
 
-        await gesture.up();
-        await tester.pump();
-      },
-    );
+      await gesture.up();
+      await tester.pump();
+    });
 
     testWidgets(
       'pointer up after loop creation clears create state so a later handle drag works',
