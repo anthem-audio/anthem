@@ -116,12 +116,12 @@ Shorthands:
 
 Behavior matrix:
 
-| Annotation state | Project-file JSON | Engine JSON | C++ field/sync generation |
-| --- | --- | --- | --- |
-| none | included | included | included |
-| `@hideFromSerialization` | **excluded** | included | included |
-| `@hideFromCpp` | included | **excluded** | **excluded** |
-| `@hide` | **excluded** | **excluded** | **excluded** |
+| Annotation state | Project-file JSON | Engine JSON | C++ field/sync generation | Dart change listeners |
+| --- | --- | --- | --- | --- |
+| none | included | included | included | included |
+| `@hideFromSerialization` | **excluded** | included | included | included |
+| `@hideFromCpp` | included | **excluded** | **excluded** | included (`sendToEngine == false`) |
+| `@hide` | **excluded** | **excluded** | **excluded** | excluded |
 
 ### `@AnthemObservable`
 

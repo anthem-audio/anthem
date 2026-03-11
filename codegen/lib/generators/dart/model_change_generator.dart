@@ -36,9 +36,11 @@ String generateFilterBuilders({required ModelClassInfo context}) {
       continue;
     }
 
-    // If this isn't in the C++ model, then we're not generating change events
-    // for it
-    if (fieldInfo.hideAnnotation?.cpp == true) {
+    // Fully hidden fields stay out of the Dart change-listener surface. Fields
+    // marked only `@hideFromCpp` still participate in Dart-side listeners and
+    // are filtered out at the project root before IPC.
+    if (fieldInfo.hideAnnotation?.serialization == true &&
+        fieldInfo.hideAnnotation?.cpp == true) {
       continue;
     }
 

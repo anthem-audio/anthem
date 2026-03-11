@@ -326,6 +326,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     if (_fieldChangedListener != null) return;
 
     _fieldChangedListener = (change) {
+      if (!change.sendToEngine || engine.engineState == EngineState.stopped) {
+        return;
+      }
+
       String? serializeMapKey(dynamic key) {
         return switch (key) {
           null => null,
@@ -365,10 +369,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           serializedMapKey: serializeMapKey(access.key),
         );
       }).toList();
-
-      if (engine.engineState == EngineState.stopped) {
-        return;
-      }
 
       engine.modelSyncApi.updateModel(
         updateKind: switch (change.operation) {

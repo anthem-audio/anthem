@@ -86,6 +86,18 @@ class AnthemModelGenerator extends Generator {
       result.write('\n  // MobX atoms\n');
       result.write('\n');
       result.write(generateMobXAtoms(context: context));
+      if (context.annotation!.generateModelSync) {
+        final changeDecorators = _generateChangeDecorators(
+          context: context,
+          classHasModelSyncCode: context.annotation!.generateModelSync,
+        );
+
+        if (changeDecorators.isNotEmpty) {
+          result.write('\n  // Change decorators\n');
+          result.write('\n');
+          result.write(changeDecorators);
+        }
+      }
       result.write('\n  // Getters and setters\n');
       result.write('\n');
       result.write(
@@ -127,6 +139,40 @@ class AnthemModelGenerator extends Generator {
   }
 }
 
+String _generateChangeDecorators({
+  required ModelClassInfo context,
+  required bool classHasModelSyncCode,
+}) {
+  final result = StringBuffer();
+
+  for (final MapEntry(key: fieldName, value: fieldInfo)
+      in context.fields.entries) {
+    if (!_shouldGenerateDartChangeTracking(
+          classHasModelSyncCode: classHasModelSyncCode,
+          fieldInfo: fieldInfo,
+        ) ||
+        !_shouldSuppressEngineSync(fieldInfo)) {
+      continue;
+    }
+
+    result.write('''
+  /// Marks changes for `$fieldName` as Dart-only changes.
+  ///
+  /// This is used for `@hideFromCpp` fields. We still emit change events so
+  /// Dart listeners can observe the field, but the root model will not forward
+  /// those changes to the engine.
+  void _suppressEngineSyncFor${fieldInfo.fieldElement.displayName.pascalCase}(
+    MutableModelChange change,
+  ) {
+    change.suppressEngineSync();
+  }
+
+''');
+  }
+
+  return result.toString();
+}
+
 /// Generates getters and setters for model items.
 ///
 /// Note that this will not generate anything for fields in sealed classes.
@@ -138,18 +184,24 @@ String _generateGettersAndSetters({
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
-    final shouldGenerateModelSync =
-        classHasModelSyncCode && fieldInfo.hideAnnotation?.cpp != true;
+    final shouldGenerateDartChangeTracking = _shouldGenerateDartChangeTracking(
+      classHasModelSyncCode: classHasModelSyncCode,
+      fieldInfo: fieldInfo,
+    );
+    final fieldChangeDecorator = _getFieldChangeDecoratorReference(
+      fieldName: fieldName,
+      fieldInfo: fieldInfo,
+    );
 
     // Skip if this field doesn't need a getter/setter
     if (fieldInfo.isModelConstant ||
-        (!fieldInfo.isObservable && !shouldGenerateModelSync)) {
+        (!fieldInfo.isObservable && !shouldGenerateDartChangeTracking)) {
       continue;
     }
 
     // If model sync code is being generated, we need to validate that this
     // field is using the custom collection types.
-    if (shouldGenerateModelSync) {
+    if (shouldGenerateDartChangeTracking) {
       if (fieldInfo.typeInfo case ListModelType typeInfo) {
         if (typeInfo.collectionType != CollectionType.anthemObservable) {
           throw Exception(
@@ -207,7 +259,7 @@ String _generateGettersAndSetters({
 
     var setter = StringBuffer();
 
-    if (shouldGenerateModelSync) {
+    if (shouldGenerateDartChangeTracking) {
       setter.write('''
 ${fieldInfo.typeInfo.dartName}? \$oldValue;
 try {
@@ -225,9 +277,10 @@ if (\$oldValue is AnthemModelBase) {
 
     setter.write('super.$fieldName = \$value;\n');
 
-    if (shouldGenerateModelSync) {
+    if (shouldGenerateDartChangeTracking) {
       // If the field is a custom model type, we need to tell it about its
-      // parent.
+      // parent. We also pass along any field decorator so descendant changes
+      // can inherit the field's Dart-only sync behavior.
       if (fieldInfo.typeInfo is CustomModelType ||
           fieldInfo.typeInfo is UnknownModelType ||
           fieldInfo.typeInfo is ListModelType ||
@@ -242,6 +295,7 @@ if (isTopLevelModel || parent != null) {
     parent: this,
     fieldName: '$fieldName',
     fieldType: FieldType.raw,
+    parentFieldChangeDecorator: $fieldChangeDecorator,
   );
 }
 ''');
@@ -268,6 +322,7 @@ ${first ? '' : 'else '}if (\$value is ${subtype.dartName}) {
       parent: this,
       fieldName: '$fieldName',
       fieldType: FieldType.raw,
+      parentFieldChangeDecorator: $fieldChangeDecorator,
     );
   }
 ''');
@@ -303,6 +358,7 @@ notifyFieldChanged(
       fieldName: '$fieldName',
     ),
   ],
+  initialChangeDecorator: $fieldChangeDecorator,
 );
 ''');
     }
@@ -336,7 +392,18 @@ String _generateInitFunction({required ModelClassInfo context}) {
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
+    if (!_shouldGenerateDartChangeTracking(
+      classHasModelSyncCode: true,
+      fieldInfo: fieldInfo,
+    )) {
+      continue;
+    }
+
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
+    final fieldChangeDecorator = _getFieldChangeDecoratorReference(
+      fieldName: fieldName,
+      fieldInfo: fieldInfo,
+    );
 
     if (fieldInfo.typeInfo is ListModelType ||
         fieldInfo.typeInfo is MapModelType ||
@@ -350,6 +417,7 @@ String _generateInitFunction({required ModelClassInfo context}) {
     parent: this,
     fieldName: '$fieldName',
     fieldType: FieldType.raw,
+    parentFieldChangeDecorator: $fieldChangeDecorator,
   );
 ''');
     } else if (fieldInfo.typeInfo is UnionModelType) {
@@ -384,6 +452,7 @@ ${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
       parent: this,
       fieldName: '$fieldName',
       fieldType: FieldType.raw,
+      parentFieldChangeDecorator: $fieldChangeDecorator,
     );
   }
 ''');
@@ -403,4 +472,40 @@ if (!setterReceivedValidType) {
   result.write('}\n');
 
   return result.toString();
+}
+
+bool _shouldGenerateDartChangeTracking({
+  required bool classHasModelSyncCode,
+  required ModelFieldInfo fieldInfo,
+}) {
+  return classHasModelSyncCode && !_isFullyHidden(fieldInfo.hideAnnotation);
+}
+
+bool _shouldSuppressEngineSync(ModelFieldInfo fieldInfo) {
+  return fieldInfo.hideAnnotation?.cpp == true;
+}
+
+bool _isFullyHidden(Hide? hideAnnotation) {
+  return hideAnnotation?.serialization == true && hideAnnotation?.cpp == true;
+}
+
+String _getFieldChangeDecoratorReference({
+  required String fieldName,
+  required ModelFieldInfo fieldInfo,
+}) {
+  if (!_shouldSuppressEngineSync(fieldInfo)) {
+    return 'null';
+  }
+
+  return '_suppressEngineSyncFor${fieldName.pascalCase}';
+}
+
+extension on String {
+  String get pascalCase {
+    if (isEmpty) {
+      return this;
+    }
+
+    return '${this[0].toUpperCase()}${substring(1)}';
+  }
 }

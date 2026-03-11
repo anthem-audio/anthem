@@ -45,6 +45,10 @@ This is abstract in `AnthemModelBase` and implemented by generated code for mode
 
 Purpose: after a node is attached, ensure all children also have correct parent metadata.
 
+For `@hideFromCpp` fields, the attached child/collection also remembers a
+decorator that can mark descendant changes as Dart-only before any listener sees
+them.
+
 ### Root model special case
 
 `ProjectModel` is the only synced model with no parent. It must be initialized as top-level and explicitly attach children:
@@ -66,6 +70,8 @@ For synced fields, generated setters call `notifyFieldChanged(...)` with:
 
 1. a `FieldOperation` (`RawFieldUpdate`, `ListInsert`, `MapPut`, etc.)
 2. an initial accessor chain describing the local field access
+3. an optional field decorator for direct writes from annotated fields such as
+   `@hideFromCpp`
 
 Collection wrappers emit equivalent operations for list/map mutation events.
 
@@ -75,7 +81,8 @@ Collection wrappers emit equivalent operations for list/map mutation events.
 
 1. notifies listeners registered on the current node
 2. appends this node's parent accessor to the chain
-3. forwards to parent recursively
+3. handles any decorators for the parent field
+4. forwards to parent recursively
 
 Listeners receive accessors in root-to-leaf order, making it straightforward to match against higher-level fields first.
 
