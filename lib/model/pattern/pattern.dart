@@ -158,7 +158,7 @@ class PatternModel extends _PatternModel
 
       // Note attributes changed
       onChange((b) => b.notes.anyElement.anyField, (e) {
-        _recompileOnNoteFieldChanged(e.fieldAccessors, e.operation);
+        _recompileOnNoteFieldChanged(e);
       });
 
       // When notes change, we also need to update the clip notes render cache

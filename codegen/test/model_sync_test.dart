@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -74,10 +74,9 @@ void main() {
   group('Model change descriptions', () {
     final model = Model(id: 1, name: 'Test Model');
 
-    List<(Iterable<FieldAccessor> accessors, FieldOperation operation)>
-    changes = [];
-    model.addRawFieldChangedListener((accessors, operation) {
-      changes.add((accessors, operation));
+    List<ModelChangeEvent> changes = [];
+    model.addRawFieldChangedListener((change) {
+      changes.add(change);
     });
 
     setUp(() {
@@ -87,7 +86,8 @@ void main() {
     test('Non-nullable field change', () {
       model.id = 2;
       expect(changes, isNotEmpty);
-      final (accessors, operation) = changes[0];
+      final accessors = changes[0].fieldAccessors;
+      final operation = changes[0].operation;
 
       expect(accessors.length, 1);
       expect(accessors.first.fieldName, 'id');
@@ -103,7 +103,8 @@ void main() {
     test('Nullable field change', () {
       model.name = 'New Name';
       expect(changes, isNotEmpty);
-      final (accessors, operation) = changes[0];
+      final accessors = changes[0].fieldAccessors;
+      final operation = changes[0].operation;
 
       expect(accessors.length, 1);
       expect(accessors.first.fieldName, 'name');
@@ -119,7 +120,8 @@ void main() {
     test('Nullable field set to null', () {
       model.name = null;
       expect(changes, isNotEmpty);
-      final (accessors, operation) = changes[0];
+      final accessors = changes[0].fieldAccessors;
+      final operation = changes[0].operation;
 
       expect(accessors.length, 1);
       expect(accessors.first.fieldName, 'name');
@@ -135,7 +137,8 @@ void main() {
     test('Nested model set to initial value', () {
       model.subElement = ModelSubElement(id: 1, value: 'Sub Element');
       expect(changes, isNotEmpty);
-      final (accessors, operation) = changes[0];
+      final accessors = changes[0].fieldAccessors;
+      final operation = changes[0].operation;
 
       expect(accessors.length, 1);
       expect(accessors.first.fieldName, 'subElement');
@@ -157,7 +160,8 @@ void main() {
     test('Nested model field change', () {
       model.subElement?.value = 'Updated Value';
       expect(changes, isNotEmpty);
-      final (accessors, operation) = changes[0];
+      final accessors = changes[0].fieldAccessors;
+      final operation = changes[0].operation;
 
       expect(accessors.length, 2);
       expect(accessors.elementAt(0).fieldName, 'subElement');
@@ -179,15 +183,15 @@ void main() {
         subElement: ModelSubElement(id: 2, value: 'Initial'),
       );
 
-      List<(Iterable<FieldAccessor> accessors, FieldOperation operation)>
-      changes2 = [];
-      model2.addRawFieldChangedListener((accessors, operation) {
-        changes2.add((accessors, operation));
+      List<ModelChangeEvent> changes2 = [];
+      model2.addRawFieldChangedListener((change) {
+        changes2.add(change);
       });
 
       model2.subElement?.value = 'Changed';
       expect(changes2.length, 1);
-      final (accessors, operation) = changes2[0];
+      final accessors = changes2[0].fieldAccessors;
+      final operation = changes2[0].operation;
 
       expect(accessors.length, 2);
       expect(accessors.elementAt(0).fieldName, 'subElement');
@@ -209,7 +213,8 @@ void main() {
 
       model.listOfSubElements.add(subElement1);
       expect(changes, isNotEmpty);
-      var (accessors, operation) = changes[0];
+      var accessors = changes[0].fieldAccessors;
+      var operation = changes[0].operation;
 
       expect(accessors.length, 2);
       expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
@@ -227,7 +232,8 @@ void main() {
       changes.clear();
       model.listOfSubElements[0] = subElement2;
       expect(changes, isNotEmpty);
-      (accessors, operation) = changes.last;
+      accessors = changes.last.fieldAccessors;
+      operation = changes.last.operation;
 
       expect(accessors.length, 2);
       expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
@@ -252,7 +258,8 @@ void main() {
       changes.clear();
       model.listOfSubElements.insert(0, subElement3);
       expect(changes, isNotEmpty);
-      (accessors, operation) = changes.last;
+      accessors = changes.last.fieldAccessors;
+      operation = changes.last.operation;
 
       expect(accessors.length, 2);
       expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
@@ -274,7 +281,8 @@ void main() {
       changes.clear();
       model.listOfSubElements.removeAt(1);
       expect(changes, isNotEmpty);
-      (accessors, operation) = changes.last;
+      accessors = changes.last.fieldAccessors;
+      operation = changes.last.operation;
 
       expect(accessors.length, 2);
       expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
@@ -292,7 +300,8 @@ void main() {
       changes.clear();
       model.listOfSubElements[0].value = 'Updated Item 3';
       expect(changes, isNotEmpty);
-      (accessors, operation) = changes.last;
+      accessors = changes.last.fieldAccessors;
+      operation = changes.last.operation;
 
       expect(accessors.length, 3);
       expect(accessors.elementAt(0).fieldName, 'listOfSubElements');
@@ -314,7 +323,8 @@ void main() {
     test('Map of primitives', () {
       model.subElement?.mapOfPrimitives['one'] = 1;
       expect(changes, isNotEmpty);
-      var (accessors, operation) = changes[0];
+      var accessors = changes[0].fieldAccessors;
+      var operation = changes[0].operation;
 
       expect(accessors.length, 3);
       expect(accessors.elementAt(0).fieldName, 'subElement');
@@ -335,7 +345,8 @@ void main() {
       changes.clear();
       model.subElement?.mapOfPrimitives['one'] = 11;
       expect(changes, isNotEmpty);
-      (accessors, operation) = changes.last;
+      accessors = changes.last.fieldAccessors;
+      operation = changes.last.operation;
 
       expect(accessors.length, 3);
       expect(accessors.elementAt(0).fieldName, 'subElement');
@@ -356,7 +367,8 @@ void main() {
       changes.clear();
       model.subElement?.mapOfPrimitives['two'] = 2;
       expect(changes, isNotEmpty);
-      (accessors, operation) = changes.last;
+      accessors = changes.last.fieldAccessors;
+      operation = changes.last.operation;
 
       expect(accessors.length, 3);
       expect(accessors.elementAt(0).fieldName, 'subElement');
@@ -377,7 +389,8 @@ void main() {
       changes.clear();
       model.subElement?.mapOfPrimitives.remove('one');
       expect(changes, isNotEmpty);
-      (accessors, operation) = changes.last;
+      accessors = changes.last.fieldAccessors;
+      operation = changes.last.operation;
 
       expect(accessors.length, 3);
       expect(accessors.elementAt(0).fieldName, 'subElement');

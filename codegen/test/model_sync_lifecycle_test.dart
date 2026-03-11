@@ -89,10 +89,7 @@ abstract class _RootModel with Store, AnthemModelBase {
   _RootModel({required this.id, this.branch});
 }
 
-typedef CapturedChange = ({
-  List<FieldAccessor> accessors,
-  FieldOperation operation,
-});
+typedef CapturedChange = ModelChangeEvent;
 
 void main() {
   group('Model sync lifecycle', () {
@@ -103,11 +100,8 @@ void main() {
       root = RootModel(id: 1);
       changes = [];
 
-      root.addRawFieldChangedListener((accessors, operation) {
-        changes.add((
-          accessors: List<FieldAccessor>.from(accessors),
-          operation: operation,
-        ));
+      root.addRawFieldChangedListener((change) {
+        changes.add(change);
       });
     });
 
@@ -127,9 +121,9 @@ void main() {
 
       expect(changes, hasLength(1));
       final change = changes.single;
-      expect(change.accessors, hasLength(2));
-      expect(change.accessors[0].fieldName, 'branch');
-      expect(change.accessors[1].fieldName, 'child');
+      expect(change.fieldAccessors, hasLength(2));
+      expect(change.fieldAccessors[0].fieldName, 'branch');
+      expect(change.fieldAccessors[1].fieldName, 'child');
       expect(change.operation, isA<RawFieldUpdate>());
       final operation = change.operation as RawFieldUpdate;
       expect(operation.oldValue, same(oldLeaf));
@@ -148,10 +142,10 @@ void main() {
 
       expect(changes, hasLength(1));
       final change = changes.single;
-      expect(change.accessors, hasLength(2));
-      expect(change.accessors[0].fieldName, 'leaves');
-      expect(change.accessors[1].fieldType, FieldType.list);
-      expect(change.accessors[1].index, 0);
+      expect(change.fieldAccessors, hasLength(2));
+      expect(change.fieldAccessors[0].fieldName, 'leaves');
+      expect(change.fieldAccessors[1].fieldType, FieldType.list);
+      expect(change.fieldAccessors[1].index, 0);
       expect(change.operation, isA<ListRemove>());
       final operation = change.operation as ListRemove;
       expect(operation.removedValue, same(leaf));
@@ -196,11 +190,11 @@ void main() {
       expect(changes, hasLength(1));
 
       final change = changes.single;
-      expect(change.accessors, hasLength(3));
-      expect(change.accessors[0].fieldName, 'leaves');
-      expect(change.accessors[1].fieldType, FieldType.list);
-      expect(change.accessors[1].index, 1);
-      expect(change.accessors[2].fieldName, 'value');
+      expect(change.fieldAccessors, hasLength(3));
+      expect(change.fieldAccessors[0].fieldName, 'leaves');
+      expect(change.fieldAccessors[1].fieldType, FieldType.list);
+      expect(change.fieldAccessors[1].index, 1);
+      expect(change.fieldAccessors[2].fieldName, 'value');
     });
 
     test('List remove rebinds shifted indices for descendant updates', () {
@@ -222,11 +216,11 @@ void main() {
       expect(changes, hasLength(1));
 
       final change = changes.single;
-      expect(change.accessors, hasLength(3));
-      expect(change.accessors[0].fieldName, 'leaves');
-      expect(change.accessors[1].fieldType, FieldType.list);
-      expect(change.accessors[1].index, 0);
-      expect(change.accessors[2].fieldName, 'value');
+      expect(change.fieldAccessors, hasLength(3));
+      expect(change.fieldAccessors[0].fieldName, 'leaves');
+      expect(change.fieldAccessors[1].fieldType, FieldType.list);
+      expect(change.fieldAccessors[1].index, 0);
+      expect(change.fieldAccessors[2].fieldName, 'value');
     });
 
     test('Map remove detaches removed child', () {
@@ -241,10 +235,10 @@ void main() {
 
       expect(changes, hasLength(1));
       final change = changes.single;
-      expect(change.accessors, hasLength(2));
-      expect(change.accessors[0].fieldName, 'leafMap');
-      expect(change.accessors[1].fieldType, FieldType.map);
-      expect(change.accessors[1].key, 'key');
+      expect(change.fieldAccessors, hasLength(2));
+      expect(change.fieldAccessors[0].fieldName, 'leafMap');
+      expect(change.fieldAccessors[1].fieldType, FieldType.map);
+      expect(change.fieldAccessors[1].key, 'key');
       expect(change.operation, isA<MapRemove>());
       final operation = change.operation as MapRemove;
       expect(operation.removedValue, same(leaf));
@@ -299,11 +293,11 @@ void main() {
 
       expect(changes, hasLength(1));
       final change = changes.single;
-      expect(change.accessors, hasLength(3));
-      expect(change.accessors[0].fieldName, 'leafMap');
-      expect(change.accessors[1].fieldType, FieldType.map);
-      expect(change.accessors[1].key, 'reattached');
-      expect(change.accessors[2].fieldName, 'value');
+      expect(change.fieldAccessors, hasLength(3));
+      expect(change.fieldAccessors[0].fieldName, 'leafMap');
+      expect(change.fieldAccessors[1].fieldType, FieldType.map);
+      expect(change.fieldAccessors[1].key, 'reattached');
+      expect(change.fieldAccessors[2].fieldName, 'value');
     });
 
     test(
@@ -320,17 +314,14 @@ void main() {
         expect(child.parentFieldName, 'child');
 
         final localChanges = <CapturedChange>[];
-        localRoot.addRawFieldChangedListener((accessors, operation) {
-          localChanges.add((
-            accessors: List<FieldAccessor>.from(accessors),
-            operation: operation,
-          ));
+        localRoot.addRawFieldChangedListener((change) {
+          localChanges.add(change);
         });
 
         child.value = 'updated';
 
         expect(localChanges, hasLength(1));
-        expect(localChanges.single.accessors.map((a) => a.fieldName), [
+        expect(localChanges.single.fieldAccessors.map((a) => a.fieldName), [
           'branch',
           'child',
           'value',
@@ -359,17 +350,42 @@ void main() {
       expect(mapLeaf.parent, same(deserialized.leafMap));
 
       final localChanges = <CapturedChange>[];
-      deserialized.addRawFieldChangedListener((accessors, operation) {
-        localChanges.add((
-          accessors: List<FieldAccessor>.from(accessors),
-          operation: operation,
-        ));
+      deserialized.addRawFieldChangedListener((change) {
+        localChanges.add(change);
       });
 
       child.value = 'updated';
 
       expect(localChanges, hasLength(1));
-      expect(localChanges.single.accessors.map((a) => a.fieldName), [
+      expect(localChanges.single.fieldAccessors.map((a) => a.fieldName), [
+        'branch',
+        'child',
+        'value',
+      ]);
+    });
+
+    test('Raw listeners receive immutable snapshots while bubbling upward', () {
+      root.branch = BranchModel(id: 5, child: LeafModel(id: 10, value: 'leaf'));
+
+      final child = root.branch!.child!;
+      ModelChangeEvent? childChange;
+      ModelChangeEvent? rootChange;
+
+      child.addRawFieldChangedListener((change) {
+        childChange = change;
+      });
+
+      root.addRawFieldChangedListener((change) {
+        rootChange = change;
+      });
+
+      child.value = 'updated';
+
+      expect(childChange, isNotNull);
+      expect(rootChange, isNotNull);
+
+      expect(childChange!.fieldAccessors.map((a) => a.fieldName), ['value']);
+      expect(rootChange!.fieldAccessors.map((a) => a.fieldName), [
         'branch',
         'child',
         'value',

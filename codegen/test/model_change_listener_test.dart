@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -93,7 +93,7 @@ void main() {
   test('Listen for field changes', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
 
     model.onChange((b) => b.name, (e) {
       changes.add(e);
@@ -124,12 +124,12 @@ void main() {
   test('Listen for field combinations', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changesAllFields = [];
+    List<ModelChangeEvent> changesAllFields = [];
     model.onChange((b) => b.anyField, (e) {
       changesAllFields.add(e);
     });
 
-    List<ModelFilterEvent> changesSomeFields = [];
+    List<ModelChangeEvent> changesSomeFields = [];
     model.onChange((b) => b.multiple([(b) => b.name, (b) => b.id]), (e) {
       changesSomeFields.add(e);
     });
@@ -171,7 +171,7 @@ void main() {
   test('Filter by change type (list)', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange(
       (b) => b.listOfSubElements.anyElement.filterByChangeType([
         ModelFilterChangeType.fieldUpdate,
@@ -203,7 +203,7 @@ void main() {
       subElement: ModelSubElement(id: 1, value: 'value'),
     );
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange((b) => b.subElement.value, (e) {
       changes.add(e);
     });
@@ -225,7 +225,7 @@ void main() {
   test('Listen for changes in list elements', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange((b) => b.listOfSubElements.anyElement.value, (e) {
       changes.add(e);
     });
@@ -249,7 +249,7 @@ void main() {
     () {
       final model = Model(id: 0, name: 'name');
 
-      List<ModelFilterEvent> changes = [];
+      List<ModelChangeEvent> changes = [];
       model.onChange((b) => b.listOfSubElements.anyElement, (e) {
         changes.add(e);
       });
@@ -269,7 +269,7 @@ void main() {
   test('Listening to an item with descendants', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange((b) => b.listOfSubElements.anyElement.withDescendants, (e) {
       changes.add(e);
     });
@@ -292,7 +292,7 @@ void main() {
   test('Listen for nested list model field changes', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange(
       (b) => b.listOfListOfSubElements.anyElement.anyElement.value,
       (e) {
@@ -321,7 +321,7 @@ void main() {
   test('Listen for nested list primitive changes', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange(
       (b) => b
           .multiple([
@@ -362,7 +362,7 @@ void main() {
   test('Listen for map value changes', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange((b) => b.mapOfSubElements.anyValue.value, (e) {
       changes.add(e);
     });
@@ -383,7 +383,7 @@ void main() {
   test('Listen for nested map list model field changes', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange((b) => b.mapOfListOfSubElements.anyValue.anyElement.value, (
       e,
     ) {
@@ -411,7 +411,7 @@ void main() {
   test('Listen for list of map model field changes', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange((b) => b.listOfMapOfSubElements.anyElement.anyValue.value, (
       e,
     ) {
@@ -439,7 +439,7 @@ void main() {
   test('Filter by change type (map)', () {
     final model = Model(id: 0, name: 'name');
 
-    List<ModelFilterEvent> changes = [];
+    List<ModelChangeEvent> changes = [];
     model.onChange(
       (b) => b.mapOfListOfInts.anyValue.filterByChangeType([
         ModelFilterChangeType.mapPut,

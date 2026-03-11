@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -255,21 +255,17 @@ String generateOnChangeMethod({required ModelClassInfo context}) {
   return '''
     ModelFilterSubscription onChange(
       void Function(${className}ModelFilterBuilder b) build,
-      void Function(ModelFilterEvent) listener,
+      void Function(ModelChangeEvent) listener,
     ) {
       final context = ModelFilterBuilderContext();
       final builder = ${className}ModelFilterBuilder(context);
       build(builder);
       final filter = context.root;
 
-      void handler(List<FieldAccessor> fieldAccessors, FieldOperation operation) {
-        if (filter != null && filter.matches(fieldAccessors, operation)) {
-          listener(
-            ModelFilterEvent(
-              fieldAccessors: fieldAccessors,
-              operation: operation,
-            ),
-          );
+      void handler(ModelChangeEvent change) {
+        if (filter != null &&
+            filter.matches(change.fieldAccessors, change.operation)) {
+          listener(change);
         }
       }
 

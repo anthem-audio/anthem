@@ -271,6 +271,40 @@ class FieldAccessor {
   }
 }
 
+/// Describes a single model change at a specific path in the tree.
+class ModelChangeEvent {
+  final List<FieldAccessor> fieldAccessors;
+  final FieldOperation operation;
+
+  ModelChangeEvent({
+    required Iterable<FieldAccessor> fieldAccessors,
+    required this.operation,
+  }) : fieldAccessors = List<FieldAccessor>.unmodifiable(
+         fieldAccessors.toList(growable: false),
+       );
+}
+
+class _PropagatingModelChange {
+  final FieldOperation operation;
+  final List<FieldAccessor> _leafToRootAccessors;
+
+  _PropagatingModelChange._({
+    required this.operation,
+    required List<FieldAccessor> leafToRootAccessors,
+  }) : _leafToRootAccessors = leafToRootAccessors;
+
+  void appendParentAccessor(FieldAccessor accessor) {
+    _leafToRootAccessors.add(accessor);
+  }
+
+  ModelChangeEvent snapshot() {
+    return ModelChangeEvent(
+      fieldAccessors: _leafToRootAccessors.reversed,
+      operation: operation,
+    );
+  }
+}
+
 /// A subset of [ListChange] from MobX. Allows us to serialize changes before
 /// sending them here.
 class AnthemListChange<T> {
@@ -398,22 +432,31 @@ mixin AnthemModelBase {
   bool get blockDescendantObservations => observationBlockDepth > 0;
 
   /// Listeners that are notified when a field is changed.
-  final List<
-    void Function(List<FieldAccessor> accessors, FieldOperation operation)
-  >
-  _rawListeners = [];
+  final List<void Function(ModelChangeEvent change)> _rawListeners = [];
 
   /// Serializes the model to a JSON representation.
   dynamic toJson({bool forEngine = false, bool forProjectFile = true});
 
   void notifyFieldChanged({
     required FieldOperation operation,
-    List<FieldAccessor>? accessorChain,
+    required Iterable<FieldAccessor> accessorChain,
   }) {
-    final accessorChainNotNull = accessorChain ?? [];
+    _notifyFieldChanged(
+      propagatingChange: _PropagatingModelChange._(
+        operation: operation,
+        leafToRootAccessors: accessorChain.toList(),
+      ),
+    );
+  }
+
+  void _notifyFieldChanged({
+    required _PropagatingModelChange propagatingChange,
+  }) {
+    final currentChange = propagatingChange;
+    final listenerChange = currentChange.snapshot();
 
     for (final listener in _rawListeners) {
-      listener(accessorChainNotNull.reversed.toList(), operation);
+      listener(listenerChange);
     }
 
     // If the parent field is not set, then this model doesn't have a parent yet
@@ -423,7 +466,7 @@ mixin AnthemModelBase {
     }
 
     // Add the accessor for this item in the parent model
-    accessorChainNotNull.add(
+    currentChange.appendParentAccessor(
       FieldAccessor(
         fieldType: parentFieldType!,
         fieldName: parentFieldName,
@@ -434,10 +477,7 @@ mixin AnthemModelBase {
 
     // Propagate the change up the tree
     if (parent != null) {
-      parent!.notifyFieldChanged(
-        operation: operation,
-        accessorChain: accessorChainNotNull,
-      );
+      parent!._notifyFieldChanged(propagatingChange: currentChange);
     }
 
     // Notify _allChangesAtom that a change has occurred
@@ -446,16 +486,14 @@ mixin AnthemModelBase {
 
   /// Adds a listener that is notified when a field is changed.
   void addRawFieldChangedListener(
-    void Function(List<FieldAccessor> accessors, FieldOperation operation)
-    listener,
+    void Function(ModelChangeEvent change) listener,
   ) {
     _rawListeners.add(listener);
   }
 
   /// Removes a listener that is notified when a field is changed.
   void removeRawFieldChangedListener(
-    void Function(List<FieldAccessor> accessors, FieldOperation operation)
-    listener,
+    void Function(ModelChangeEvent change) listener,
   ) {
     _rawListeners.remove(listener);
   }

@@ -25,7 +25,7 @@ Each node tracks where it lives in its parent via:
 
 When a field is changed, the code-generated setter propagates a message up the tree to `parent`, containing this metadata. That parent then sends a message to its `parent`, appending its own metadata, and so on. The root node (`ProjectModel`) receives all these messages, which now carry a list of metadata objects (`FieldAccessor`) that collectively form a path from the root `ProjectModel` to the specific field in the leaf node that was changed.
 
-Note that this also applies to mutations to collections. All possible mutations (field changes, collection mutations) can be described by the `FieldOperation` that is also included with each change event.
+Note that this also applies to mutations to collections. All possible mutations (field changes, collection mutations) can be described by the `FieldOperation` carried inside each `ModelChangeEvent`.
 
 ## Attachment Lifecycle
 

@@ -225,7 +225,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   }
 
   @hide
-  void Function(Iterable<FieldAccessor>, FieldOperation)? _fieldChangedListener;
+  void Function(ModelChangeEvent)? _fieldChangedListener;
 
   @hide
   final String? _enginePathOverride;
@@ -325,7 +325,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void _attachModelChangeListener() {
     if (_fieldChangedListener != null) return;
 
-    _fieldChangedListener = (accesses, operation) {
+    _fieldChangedListener = (change) {
       String? serializeMapKey(dynamic key) {
         return switch (key) {
           null => null,
@@ -353,7 +353,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         };
       }
 
-      final convertedAccesses = accesses.map((access) {
+      final convertedAccesses = change.fieldAccessors.map((access) {
         return message_api.FieldAccess(
           fieldName: access.fieldName,
           fieldType: switch (access.fieldType) {
@@ -371,7 +371,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       }
 
       engine.modelSyncApi.updateModel(
-        updateKind: switch (operation) {
+        updateKind: switch (change.operation) {
           RawFieldUpdate() ||
           ListUpdate() ||
           MapPut() => message_api.FieldUpdateKind.set,
@@ -379,11 +379,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
         },
         fieldAccesses: convertedAccesses,
-        serializedValue: switch (operation) {
-          RawFieldUpdate() => serializeValue(operation.newValueSerialized),
-          ListInsert() => serializeValue(operation.valueSerialized),
-          ListUpdate() => serializeValue(operation.newValueSerialized),
-          MapPut() => serializeValue(operation.newValueSerialized),
+        serializedValue: switch (change.operation) {
+          RawFieldUpdate op => serializeValue(op.newValueSerialized),
+          ListInsert op => serializeValue(op.valueSerialized),
+          ListUpdate op => serializeValue(op.newValueSerialized),
+          MapPut op => serializeValue(op.newValueSerialized),
           _ => null,
         },
       );

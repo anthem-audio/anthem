@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -75,10 +75,10 @@ mixin _PatternCompilerMixin on _PatternModel {
     return null;
   }
 
-  void _recompileOnNoteFieldChanged(
-    Iterable<FieldAccessor> fieldAccessors,
-    FieldOperation operation,
-  ) {
+  void _recompileOnNoteFieldChanged(ModelChangeEvent change) {
+    final fieldAccessors = change.fieldAccessors;
+    final operation = change.operation;
+
     if (operation is! RawFieldUpdate) {
       return;
     }

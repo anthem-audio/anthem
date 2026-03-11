@@ -117,7 +117,7 @@ class ArrangementModel extends _ArrangementModel
           (b) => b.timeView.withDescendants,
         ]),
         (e) {
-          _recompileOnClipFieldChanged(e.fieldAccessors, e.operation);
+          _recompileOnClipFieldChanged(e);
         },
       );
 

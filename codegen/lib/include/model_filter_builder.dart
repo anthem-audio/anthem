@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -387,18 +387,12 @@ enum ModelFilterChangeType {
 /// This listener contains a filter to be applied to incoming changes
 class ModelFilterListener {
   ModelFilterTreeBaseNode filter;
-  void Function(ModelFilterEvent event) handler;
+  void Function(ModelChangeEvent event) handler;
 
   ModelFilterListener({required this.filter, required this.handler});
 }
 
-/// An event object that is passed into change handlers.
-class ModelFilterEvent {
-  List<FieldAccessor> fieldAccessors;
-  FieldOperation operation;
-
-  ModelFilterEvent({required this.fieldAccessors, required this.operation});
-}
+typedef ModelFilterEvent = ModelChangeEvent;
 
 class ModelFilterSubscription {
   final void Function() cancel;

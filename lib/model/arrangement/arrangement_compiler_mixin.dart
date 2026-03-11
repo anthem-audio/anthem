@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -70,10 +70,7 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
   /// Rebuilds only modified clips in the engine.
   ///
   /// This is meant to be attached to the clips field changed listener above.
-  void _recompileOnClipFieldChanged(
-    Iterable<FieldAccessor> fieldAccessors,
-    FieldOperation operation,
-  ) {
+  void _recompileOnClipFieldChanged(ModelChangeEvent change) {
     // If the engine is not running, then we don't need to worry about
     // sending this update. When the engine is started, it will recompile
     // all arrangements.
@@ -81,6 +78,8 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
       return;
     }
 
+    final fieldAccessors = change.fieldAccessors;
+    final operation = change.operation;
     final clipAccessor = fieldAccessors.elementAt(2);
 
     final isOffsetChange = clipAccessor.fieldName == 'offset';
