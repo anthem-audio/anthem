@@ -78,10 +78,10 @@ For each operation, both runtime values and serialized values are available wher
 
 ### Dart-only events
 
-Fields marked with `@hideFromCpp` still generate normal Dart change
-events so `onChange(...)` and raw listeners can observe them. Those events set
-`sendToEngine` to `false`, which tells the root `ProjectModel` listener to skip
-IPC for that change.
+Fields marked with `@hideFromCpp` or `@hideButAllowOnChange` still generate
+normal Dart change events so `onChange(...)` and raw listeners can observe
+them. Those events set `sendToEngine` to `false`, which tells the root
+`ProjectModel` listener to skip IPC for that change.
 
 ## Where Events Are Created
 
@@ -157,8 +157,9 @@ Common building blocks:
 
 `withDescendants` allows matching deeper changes below the currently selected node. Without it, a filter usually matches only the exact level.
 
-Fields marked `@hideFromCpp` remain available in this builder DSL. They are
-hidden only from C++ generation and engine sync, not from Dart listeners.
+Fields marked `@hideFromCpp` or `@hideButAllowOnChange` remain available in
+this builder DSL. They are hidden from engine sync, but not from Dart
+listeners.
 
 ### Change-type filtering
 

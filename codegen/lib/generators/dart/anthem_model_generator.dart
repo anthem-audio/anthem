@@ -478,15 +478,18 @@ bool _shouldGenerateDartChangeTracking({
   required bool classHasModelSyncCode,
   required ModelFieldInfo fieldInfo,
 }) {
-  return classHasModelSyncCode && !_isFullyHidden(fieldInfo.hideAnnotation);
+  return classHasModelSyncCode &&
+      !_isHiddenFromDartChangeTracking(fieldInfo.hideAnnotation);
 }
 
 bool _shouldSuppressEngineSync(ModelFieldInfo fieldInfo) {
   return fieldInfo.hideAnnotation?.cpp == true;
 }
 
-bool _isFullyHidden(Hide? hideAnnotation) {
-  return hideAnnotation?.serialization == true && hideAnnotation?.cpp == true;
+bool _isHiddenFromDartChangeTracking(Hide? hideAnnotation) {
+  return hideAnnotation?.serialization == true &&
+      hideAnnotation?.cpp == true &&
+      hideAnnotation?.allowOnChange != true;
 }
 
 String _getFieldChangeDecoratorReference({

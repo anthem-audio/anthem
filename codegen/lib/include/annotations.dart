@@ -174,8 +174,20 @@ class Hide {
   final bool serialization;
   final bool cpp;
 
-  const Hide({this.serialization = false, this.cpp = false});
-  const Hide.all() : this(serialization: true, cpp: true);
+  /// Whether the field should still participate in generated Dart
+  /// `onChange(...)` listeners and raw model change events.
+  ///
+  /// This does not affect JSON or C++ generation. It only controls whether the
+  /// field stays in Anthem's Dart change-tracking surface.
+  final bool allowOnChange;
+
+  const Hide({
+    this.serialization = false,
+    this.cpp = false,
+    this.allowOnChange = false,
+  });
+  const Hide.all({bool allowOnChange = false})
+    : this(serialization: true, cpp: true, allowOnChange: allowOnChange);
 }
 
 /// Shorthand for @Hide.all()
@@ -186,8 +198,13 @@ const hide = Hide.all();
 const hideFromSerialization = Hide(serialization: true);
 
 /// Shorthand for @Hide(cpp: true) - hides the field from C++ generation,
-/// but still serializes it and generates model sync code for it.
+/// but still serializes it and emits Dart model change events for it.
 const hideFromCpp = Hide(cpp: true);
+
+/// Shorthand for @Hide.all(allowOnChange: true) - hides the field from both
+/// serialization and C++ generation, but still emits Dart model change events
+/// and participates in generated `onChange(...)` listeners.
+const hideButAllowOnChange = Hide.all(allowOnChange: true);
 
 /// An annotation that marks a field as a MobX observable.
 ///

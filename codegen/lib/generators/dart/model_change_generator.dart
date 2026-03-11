@@ -36,11 +36,13 @@ String generateFilterBuilders({required ModelClassInfo context}) {
       continue;
     }
 
-    // Fully hidden fields stay out of the Dart change-listener surface. Fields
-    // marked only `@hideFromCpp` still participate in Dart-side listeners and
-    // are filtered out at the project root before IPC.
+    // Fields hidden from both serialization and C++ generation stay out of the
+    // Dart change-listener surface unless they explicitly opt into onChange.
+    // Fields marked only `@hideFromCpp` still participate in Dart-side
+    // listeners and are filtered out at the project root before IPC.
     if (fieldInfo.hideAnnotation?.serialization == true &&
-        fieldInfo.hideAnnotation?.cpp == true) {
+        fieldInfo.hideAnnotation?.cpp == true &&
+        fieldInfo.hideAnnotation?.allowOnChange != true) {
       continue;
     }
 

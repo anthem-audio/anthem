@@ -348,6 +348,8 @@ class ModelFieldInfo {
            serialization:
                hideAnnotation.getField('serialization')?.toBoolValue() ?? false,
            cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
+           allowOnChange:
+               hideAnnotation.getField('allowOnChange')?.toBoolValue() ?? false,
          );
        })(),
        isModelConstant = fieldElement.isStatic && fieldElement.isConst,
@@ -387,6 +389,8 @@ bool _skipAll(FieldElement field) {
     serialization:
         hideAnnotation.getField('serialization')?.toBoolValue() ?? false,
     cpp: hideAnnotation.getField('cpp')?.toBoolValue() ?? false,
+    allowOnChange:
+        hideAnnotation.getField('allowOnChange')?.toBoolValue() ?? false,
   );
 
   final observableAnnotation = const TypeChecker.typeNamed(
@@ -394,5 +398,8 @@ bool _skipAll(FieldElement field) {
     inPackage: 'anthem_codegen',
   ).firstAnnotationOf(field);
 
-  return observableAnnotation == null && hide.serialization && hide.cpp;
+  return observableAnnotation == null &&
+      hide.serialization &&
+      hide.cpp &&
+      !hide.allowOnChange;
 }

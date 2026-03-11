@@ -113,6 +113,12 @@ Shorthands:
 - `@hide` = `@Hide.all()`
 - `@hideFromSerialization` = `@Hide(serialization: true)`
 - `@hideFromCpp` = `@Hide(cpp: true)`
+- `@hideButAllowOnChange` = `@Hide.all(allowOnChange: true)`
+
+`allowOnChange` affects only Anthem's generated change-listener surface. It
+does not change JSON or C++ generation behavior. This is useful for
+runtime-only model fields that should participate in Dart `onChange(...)`
+listeners while remaining excluded from project files and engine sync.
 
 Behavior matrix:
 
@@ -121,6 +127,7 @@ Behavior matrix:
 | none | included | included | included | included |
 | `@hideFromSerialization` | **excluded** | included | included | included |
 | `@hideFromCpp` | included | **excluded** | **excluded** | included (`sendToEngine == false`) |
+| `@hideButAllowOnChange` | **excluded** | **excluded** | **excluded** | included (`sendToEngine == false`) |
 | `@hide` | **excluded** | **excluded** | **excluded** | excluded |
 
 ### `@AnthemObservable`

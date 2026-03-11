@@ -45,9 +45,9 @@ This is abstract in `AnthemModelBase` and implemented by generated code for mode
 
 Purpose: after a node is attached, ensure all children also have correct parent metadata.
 
-For `@hideFromCpp` fields, the attached child/collection also remembers a
-decorator that can mark descendant changes as Dart-only before any listener sees
-them.
+For `@hideFromCpp` and `@hideButAllowOnChange` fields, the attached
+child/collection also remembers a decorator that can mark descendant changes as
+Dart-only before any listener sees them.
 
 ### Root model special case
 
@@ -71,7 +71,7 @@ For synced fields, generated setters call `notifyFieldChanged(...)` with:
 1. a `FieldOperation` (`RawFieldUpdate`, `ListInsert`, `MapPut`, etc.)
 2. an initial accessor chain describing the local field access
 3. an optional field decorator for direct writes from annotated fields such as
-   `@hideFromCpp`
+   `@hideFromCpp` or `@hideButAllowOnChange`
 
 Collection wrappers emit equivalent operations for list/map mutation events.
 
