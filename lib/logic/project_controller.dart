@@ -52,28 +52,6 @@ class ProjectController {
     project.redo();
   }
 
-  Id addPattern([String? name]) {
-    if (name == null) {
-      final patterns = project.sequence.patterns.nonObservableInner;
-      var patternNumber = patterns.length;
-
-      final existingNames = patterns.values.map((pattern) => pattern.name);
-
-      do {
-        patternNumber++;
-        name = 'Pattern $patternNumber';
-      } while (existingNames.contains(name));
-    }
-
-    final patternModel = PatternModel.create(name: name);
-
-    project.execute(PatternAddRemoveCommand.add(pattern: patternModel));
-
-    project.sequence.setActivePattern(patternModel.id);
-
-    return patternModel.id;
-  }
-
   void addArrangement([String? name]) {
     if (name == null) {
       final arrangements = project.sequence.arrangements.nonObservableInner;
