@@ -15,7 +15,8 @@ Anthem is an open-source DAW. It is written in Dart and C++, using Flutter and J
 
 - Update the copyright year in headers when making changes.
 
-# Documentation
+# Directives
 
 - Do not read anything from `docs/design/` unless specifically asked to, as they are not relevant to day-to-day coding tasks.
 - Read files from `docs/architecture/` that seem relevant to your task.
+- Do not worry about project file migration when making structural changes to the project file. This application is still in development and there are no users.
