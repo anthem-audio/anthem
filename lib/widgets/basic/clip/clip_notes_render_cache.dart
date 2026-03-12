@@ -25,7 +25,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 
 void _drawNote({
   required Float32List vertices,
-  required NoteModel note,
+  required ResolvedPatternNote note,
   required int startIndex,
   required int lowestNote,
   required int highestNote,
@@ -83,7 +83,7 @@ class ClipNotesRenderCache {
   }
 
   void update() {
-    final notes = pattern.notes.nonObservableInner;
+    final notes = pattern.getResolvedNotes().toList(growable: false);
 
     rawVertices = Float32List(notes.length * 3 * 2 * 2);
 

@@ -256,9 +256,9 @@ class _PianoRollStateMachineTestFixture {
     );
   }
 
-  List<NoteModel> get notes => pattern.notes.toList(growable: false);
-  List<PianoRollTransientNote> get transientNotes =>
-      viewModel.transientNotes.values.toList(growable: false);
+  List<NoteModel> get notes => pattern.notes.values.toList(growable: false);
+  List<NoteModel> get transientNotes =>
+      pattern.previewNotes.values.toList(growable: false);
   List<_RecordedLiveEvent> get liveEvents =>
       recordingProcessingGraphApi?.liveEvents.toList(growable: false) ??
       const <_RecordedLiveEvent>[];
@@ -334,11 +334,15 @@ class _PianoRollStateMachineTestFixture {
   }
 
   NoteModel noteById(Id id) {
-    return pattern.notes.firstWhere((note) => note.id == id);
+    return pattern.notes[id]!;
   }
 
-  PianoRollTransientNote transientNoteById(Id id) {
-    return viewModel.transientNotes[id]!;
+  PatternNoteOverrideModel? noteOverrideById(Id id) {
+    return pattern.noteOverrides[id];
+  }
+
+  NoteModel transientNoteById(Id id) {
+    return pattern.getPreviewNoteById(id)!;
   }
 
   void selectNotes(Iterable<Id> noteIds) {
@@ -567,11 +571,15 @@ class _PianoRollStateMachineTestFixture {
   void expectNoActiveTransientState() {
     expect(viewModel.selectionBox, isNull);
     expect(viewModel.pressedNote, isNull);
-    expect(viewModel.pressedTransientNote, isNull);
-    expect(viewModel.hoveredTransientNote, isNull);
-    expect(viewModel.transientNotes, isEmpty);
-    expect(viewModel.noteOverrides, isEmpty);
-    expect(viewModel.selectedTransientNotes, isEmpty);
+    expect(viewModel.hoveredNote, isNull);
+    expect(pattern.previewNotes, isEmpty);
+    expect(pattern.noteOverrides, isEmpty);
+    expect(
+      viewModel.selectedNotes.where(
+        (noteId) => pattern.resolveNoteById(noteId) == null,
+      ),
+      isEmpty,
+    );
   }
 
   void dispose() {
@@ -643,7 +651,7 @@ void main() {
       fixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
 
       expect(fixture.transientNotes, hasLength(1));
-      expect(fixture.viewModel.pressedTransientNote, isNotNull);
+      expect(fixture.viewModel.pressedNote, isNotNull);
 
       fixture.controller.dispose();
 
@@ -1393,7 +1401,7 @@ void main() {
       fixture.pointerMove(key: 62.5, offset: 155);
 
       final movedNote = fixture.noteById(note.id);
-      final movedNoteOverride = fixture.viewModel.noteOverrides[note.id];
+      final movedNoteOverride = fixture.noteOverrideById(note.id);
       final expectedOffset = fixture.snappedTime(
         155,
         round: true,
@@ -1456,21 +1464,15 @@ void main() {
         round: true,
         startTime: 100,
       );
-      expect(
-        fixture.viewModel.noteOverrides[note.id]?.offset,
-        equals(snappedOffset),
-      );
+      expect(fixture.noteOverrideById(note.id)?.offset, equals(snappedOffset));
 
       fixture.modifierPressed(PianoRollModifierKey.alt);
 
-      expect(fixture.viewModel.noteOverrides[note.id]?.offset, equals(155));
+      expect(fixture.noteOverrideById(note.id)?.offset, equals(155));
 
       fixture.modifierReleased(PianoRollModifierKey.alt);
 
-      expect(
-        fixture.viewModel.noteOverrides[note.id]?.offset,
-        equals(snappedOffset),
-      );
+      expect(fixture.noteOverrideById(note.id)?.offset, equals(snappedOffset));
     });
 
     test('holding shift during drag locks pitch changes', () {
@@ -1498,7 +1500,7 @@ void main() {
       expect(fixture.noteById(note.id).key, equals(62));
     });
 
-    test('single-note shift drag duplicates and moves the original note', () {
+    test('single-note shift drag duplicates and moves the clone', () {
       final note = fixture.addNote(key: 60, offset: 100, length: 48);
 
       fixture.pointerDown(
@@ -1517,20 +1519,17 @@ void main() {
 
       final original = fixture.noteById(note.id);
       final duplicate = fixture.noteById(duplicateId);
+      expect(original.offset, equals(100));
+      expect(original.key, equals(60));
       expect(
-        original.offset,
+        duplicate.offset,
         equals(fixture.snappedTime(200, round: true, startTime: 100)),
       );
-      expect(original.key, equals(62));
-      expect(duplicate.offset, equals(100));
-      expect(duplicate.key, equals(60));
+      expect(duplicate.key, equals(62));
 
       fixture.project.undo();
       expect(fixture.noteById(note.id).offset, equals(100));
       expect(fixture.noteById(note.id).key, equals(60));
-      expect(fixture.notes.length, equals(2));
-
-      fixture.project.undo();
       expect(
         fixture.notes.map((note) => note.id).toList(),
         orderedEquals([note.id]),
@@ -1591,10 +1590,6 @@ void main() {
         expect(clonedIds, hasLength(2));
         expect(clonedIds.contains(noteA.id), isFalse);
         expect(clonedIds.contains(noteB.id), isFalse);
-        expect(
-          fixture.viewModel.selectedTransientNotes.toSet(),
-          equals(clonedIds),
-        );
 
         fixture.pointerMove(key: 61.5, offset: 200);
         fixture.pointerUp(key: 61.5, offset: 200);
@@ -1714,7 +1709,7 @@ void main() {
 
         expect(fixture.noteById(note.id).length, equals(96));
         expect(
-          fixture.viewModel.noteOverrides[note.id]?.length,
+          fixture.noteOverrideById(note.id)?.length,
           equals(expectedLength),
         );
         expect(fixture.viewModel.cursorNoteLength, equals(expectedLength));
@@ -1845,8 +1840,7 @@ void main() {
         expect(note.length, equals(48));
         expect(note.velocity, equals(0.25));
         expect(note.pan, equals(0.6));
-        expect(fixture.viewModel.pressedNote, isNull);
-        expect(fixture.viewModel.pressedTransientNote, equals(note.id));
+        expect(fixture.viewModel.pressedNote, equals(note.id));
 
         fixture.pointerUp(key: 60.9, offset: 145.2);
 
@@ -1903,7 +1897,7 @@ void main() {
         round: true,
         startTime: 100,
       );
-      final preview = fixture.viewModel.noteOverrides[note.id];
+      final preview = fixture.noteOverrideById(note.id);
 
       expect(fixture.noteById(note.id).offset, equals(100));
       expect(fixture.noteById(note.id).key, equals(60));
@@ -1933,7 +1927,7 @@ void main() {
       final snappedOriginal = fixture.snappedTime(196, round: true);
       final snappedEvent = fixture.snappedTime(250, round: true);
       final expectedLength = 96 + (snappedEvent - snappedOriginal);
-      final preview = fixture.viewModel.noteOverrides[note.id];
+      final preview = fixture.noteOverrideById(note.id);
 
       expect(fixture.noteById(note.id).length, equals(96));
       expect(preview, isNotNull);
@@ -1962,7 +1956,7 @@ void main() {
       expect(preview.key, equals(63));
       expect(preview.offset, equals(173));
       expect(preview.length, equals(48));
-      expect(fixture.viewModel.pressedTransientNote, equals(createdNoteId));
+      expect(fixture.viewModel.pressedNote, equals(createdNoteId));
 
       fixture.pointerUp(key: 63.5, offset: 173.8, alt: true);
 
@@ -1998,27 +1992,25 @@ void main() {
           round: true,
           startTime: 100,
         );
-        final movedOriginalPreview = fixture.viewModel.noteOverrides[note.id];
-        final stationaryDuplicatePreview = fixture.transientNoteById(
-          duplicateId,
-        );
+        final movedDuplicatePreview = fixture.transientNoteById(duplicateId);
 
         expect(fixture.noteById(note.id).offset, equals(100));
         expect(fixture.noteById(note.id).key, equals(60));
-        expect(movedOriginalPreview, isNotNull);
-        expect(movedOriginalPreview!.offset, equals(expectedOffset));
-        expect(movedOriginalPreview.key, equals(62));
-        expect(stationaryDuplicatePreview.offset, equals(100));
-        expect(stationaryDuplicatePreview.key, equals(60));
-        expect(fixture.viewModel.pressedNote, equals(note.id));
-        expect(fixture.viewModel.pressedTransientNote, isNull);
+        expect(fixture.pattern.noteOverrides, isEmpty);
+        expect(movedDuplicatePreview.offset, equals(expectedOffset));
+        expect(movedDuplicatePreview.key, equals(62));
+        expect(fixture.viewModel.pressedNote, equals(duplicateId));
+        expect(
+          fixture.viewModel.selectedNotes.nonObservableInner,
+          equals({duplicateId}),
+        );
 
         fixture.pointerUp(key: 62.5, offset: 200);
 
-        expect(fixture.noteById(note.id).offset, equals(expectedOffset));
-        expect(fixture.noteById(note.id).key, equals(62));
-        expect(fixture.noteById(duplicateId).offset, equals(100));
-        expect(fixture.noteById(duplicateId).key, equals(60));
+        expect(fixture.noteById(note.id).offset, equals(100));
+        expect(fixture.noteById(note.id).key, equals(60));
+        expect(fixture.noteById(duplicateId).offset, equals(expectedOffset));
+        expect(fixture.noteById(duplicateId).key, equals(62));
         fixture.expectNoActiveTransientState();
       },
     );
@@ -2058,11 +2050,7 @@ void main() {
         expect(fixture.noteById(noteA.id).key, equals(60));
         expect(fixture.noteById(noteB.id).offset, equals(180));
         expect(fixture.noteById(noteB.id).key, equals(64));
-        expect(fixture.viewModel.noteOverrides, isEmpty);
-        expect(
-          fixture.viewModel.selectedTransientNotes.toSet(),
-          equals(clonedIds),
-        );
+        expect(fixture.pattern.noteOverrides, isEmpty);
         expect(
           previewPositions,
           equals({

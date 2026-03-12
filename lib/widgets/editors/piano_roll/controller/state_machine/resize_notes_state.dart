@@ -203,7 +203,7 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     required Map<Id, PianoRollResizeNotePreview> preview,
   }) {
     _preview = preview;
-    viewModel.noteOverrides.clear();
+    parentState.activePattern.clearNoteOverrides();
 
     for (final entry in preview.entries) {
       final noteId = entry.key;
@@ -212,7 +212,8 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
         continue;
       }
 
-      viewModel.noteOverrides[noteId] = PianoRollNoteOverride(
+      parentState.activePattern.setNoteOverride(
+        noteId: noteId,
         length: previewNote.length,
       );
     }
@@ -231,7 +232,7 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
       throw ArgumentError("Resize event didn't provide a noteUnderCursor");
     }
 
-    viewModel.clearTransientPreviewState();
+    controller.clearPreviewState();
 
     final pattern = parentState.activePattern;
     final pressedNote = parentState.requireActivePatternNote(noteId);
@@ -246,10 +247,9 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     setCursorNoteParameters(pressedNote);
 
     final notesToResize = isSelectionResize
-        ? pattern.notes.where(
-            (note) =>
-                viewModel.selectedNotes.nonObservableInner.contains(note.id),
-          )
+        ? viewModel.selectedNotes.nonObservableInner
+              .map((noteId) => pattern.notes[noteId])
+              .nonNulls
         : <NoteModel>[pressedNote];
 
     _sessionData = _createResizeNotesSessionData(
@@ -339,7 +339,7 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     }
 
     viewModel.pressedNote = null;
-    viewModel.clearTransientPreviewState();
+    controller.clearPreviewState();
     _clearSession();
   }
 }

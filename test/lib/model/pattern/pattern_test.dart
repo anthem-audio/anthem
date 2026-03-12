@@ -90,7 +90,7 @@ void main() {
           offset: 60,
           pan: 0,
         );
-        pattern.notes.add(note);
+        pattern.notes[note.id] = note;
         project.sequence.patterns[pattern.id] = pattern;
 
         final trackA = getId();
@@ -199,7 +199,7 @@ void main() {
           offset: 60,
           pan: 0,
         );
-        pattern.notes.add(note);
+        pattern.notes[note.id] = note;
         project.sequence.patterns[pattern.id] = pattern;
 
         final clip = _createClipWithTimeView(
@@ -241,6 +241,127 @@ void main() {
         verifyNever(
           sequencerApi.compileArrangement(
             arrangement.id,
+            tracksToRebuild: anyNamed('tracksToRebuild'),
+            invalidationRanges: anyNamed('invalidationRanges'),
+          ),
+        );
+      },
+    );
+  });
+
+  group('Pattern note overrides', () {
+    test(
+      'update local note geometry and width without compiling the engine',
+      () async {
+        final sequencerApi = _MockSequencerApi();
+        final runningEngine = _RunningEngine(sequencerApi);
+        final project = ProjectModel.create()..engine = runningEngine;
+
+        final pattern = PatternModel.create(name: 'Pattern Preview');
+        final note = NoteModel(
+          key: 60,
+          velocity: 0.75,
+          length: 20,
+          offset: 60,
+          pan: 0,
+        );
+        pattern.notes[note.id] = note;
+        project.sequence.patterns[pattern.id] = pattern;
+
+        await _flushMicrotasks();
+        clearInteractions(sequencerApi);
+
+        final initialClipAutoWidth = pattern.clipAutoWidth;
+        final initialUpdateSignal = pattern.clipNotesUpdateSignal.value;
+
+        pattern.setNoteOverride(noteId: note.id, offset: 500, length: 200);
+
+        await _flushMicrotasks();
+
+        final resolvedNote = pattern.resolveNoteById(note.id);
+        expect(resolvedNote, isNotNull);
+        expect(resolvedNote!.offset, equals(500));
+        expect(resolvedNote.length, equals(200));
+        expect(resolvedNote.hasOverride, isTrue);
+
+        expect(pattern.clipAutoWidth, greaterThan(initialClipAutoWidth));
+        expect(
+          pattern.clipNotesUpdateSignal.value,
+          isNot(equals(initialUpdateSignal)),
+        );
+        expect(pattern.clipNotesRenderCache.rawVertices, isNotNull);
+        expect(pattern.clipNotesRenderCache.rawVertices![0], equals(500.0));
+        expect(pattern.clipNotesRenderCache.rawVertices![2], equals(700.0));
+
+        verifyNever(
+          sequencerApi.compilePattern(
+            pattern.id,
+            tracksToRebuild: anyNamed('tracksToRebuild'),
+            invalidationRanges: anyNamed('invalidationRanges'),
+          ),
+        );
+        verifyNever(
+          sequencerApi.compileArrangement(
+            project.sequence.activeArrangementID!,
+            tracksToRebuild: anyNamed('tracksToRebuild'),
+            invalidationRanges: anyNamed('invalidationRanges'),
+          ),
+        );
+      },
+    );
+
+    test(
+      'preview-only notes update local geometry and width without compiling the engine',
+      () async {
+        final sequencerApi = _MockSequencerApi();
+        final runningEngine = _RunningEngine(sequencerApi);
+        final project = ProjectModel.create()..engine = runningEngine;
+
+        final pattern = PatternModel.create(name: 'Pattern Preview');
+        project.sequence.patterns[pattern.id] = pattern;
+
+        await _flushMicrotasks();
+        clearInteractions(sequencerApi);
+
+        final initialClipAutoWidth = pattern.clipAutoWidth;
+        final initialUpdateSignal = pattern.clipNotesUpdateSignal.value;
+
+        final previewNote = NoteModel(
+          key: 64,
+          velocity: 0.5,
+          length: 240,
+          offset: 520,
+          pan: -0.25,
+        );
+        pattern.addPreviewNote(previewNote);
+
+        await _flushMicrotasks();
+
+        final resolvedNote = pattern.resolveNoteById(previewNote.id);
+        expect(resolvedNote, isNotNull);
+        expect(resolvedNote!.offset, equals(520));
+        expect(resolvedNote.length, equals(240));
+        expect(resolvedNote.isPreviewOnly, isTrue);
+
+        expect(pattern.clipAutoWidth, greaterThan(initialClipAutoWidth));
+        expect(
+          pattern.clipNotesUpdateSignal.value,
+          isNot(equals(initialUpdateSignal)),
+        );
+        expect(pattern.clipNotesRenderCache.rawVertices, isNotNull);
+        expect(pattern.clipNotesRenderCache.rawVertices![0], equals(520.0));
+        expect(pattern.clipNotesRenderCache.rawVertices![2], equals(760.0));
+
+        verifyNever(
+          sequencerApi.compilePattern(
+            pattern.id,
+            tracksToRebuild: anyNamed('tracksToRebuild'),
+            invalidationRanges: anyNamed('invalidationRanges'),
+          ),
+        );
+        verifyNever(
+          sequencerApi.compileArrangement(
+            project.sequence.activeArrangementID!,
             tracksToRebuild: anyNamed('tracksToRebuild'),
             invalidationRanges: anyNamed('invalidationRanges'),
           ),

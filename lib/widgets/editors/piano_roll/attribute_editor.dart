@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/color_shifter.dart';
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
@@ -313,60 +314,80 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
     }
 
     final notes = activePattern.notes;
+    final noteOverrides = activePattern.noteOverrides;
+    final previewNotes = activePattern.previewNotes;
 
-    for (final note in notes) {
-      double attribute;
+    notes.observeAllChanges();
+    noteOverrides.observeAllChanges();
+    previewNotes.observeAllChanges();
 
-      switch (selectedAttribute) {
-        case ActiveNoteAttribute.velocity:
-          attribute = note.velocity;
-          break;
-        case ActiveNoteAttribute.pan:
-          attribute = note.pan;
-          break;
-      }
+    // Redrawing the attribute editor on any note change is cheaper than
+    // observing every resolved note field individually while traversing the
+    // full note set.
+    blockObservation(
+      modelItems: [notes, noteOverrides, previewNotes],
+      block: () {
+        for (final note in activePattern.getResolvedNotes()) {
+          double attribute;
 
-      final startX = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: note.offset.toDouble(),
-      );
+          switch (selectedAttribute) {
+            case ActiveNoteAttribute.velocity:
+              attribute = note.velocity;
+              break;
+            case ActiveNoteAttribute.pan:
+              attribute = note.pan;
+              break;
+          }
 
-      final endX = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: note.offset.toDouble() + note.length.toDouble(),
-      );
+          final startX = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: note.offset.toDouble(),
+          );
 
-      if (endX < 0 || startX > size.width) continue;
+          final endX = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: note.offset.toDouble() + note.length.toDouble(),
+          );
 
-      final paint = viewModel.selectedNotes.contains(note.id)
-          ? selectedNotePaint
-          : notePaint;
-      final circleCenterPaint = viewModel.selectedNotes.contains(note.id)
-          ? selectedNoteCirclePaint
-          : noteCirclePaint;
+          if (endX < 0 || startX > size.width) continue;
 
-      double valueToPixels(num value) =>
-          ((1 - ((value - bottom) / (top - bottom))) * size.height)
-              .round()
-              .toDouble();
+          final isSelected = viewModel.selectedNotes.contains(note.id);
 
-      final barTop = valueToPixels(attribute);
-      final barBottom = valueToPixels(baseline);
+          final paint = isSelected ? selectedNotePaint : notePaint;
+          final circleCenterPaint = isSelected
+              ? selectedNoteCirclePaint
+              : noteCirclePaint;
 
-      canvas.drawRect(
-        Rect.fromPoints(Offset(startX, barTop), Offset(startX + 3, barBottom)),
-        paint,
-      );
+          double valueToPixels(num value) =>
+              ((1 - ((value - bottom) / (top - bottom))) * size.height)
+                  .round()
+                  .toDouble();
 
-      canvas.drawRect(Rect.fromLTWH(startX, barTop, endX - startX, 1), paint);
+          final barTop = valueToPixels(attribute);
+          final barBottom = valueToPixels(baseline);
 
-      final circlePos = Offset(startX + 1.5, barTop + 0.5);
-      canvas.drawCircle(circlePos, 3.5, paint);
-      canvas.drawCircle(circlePos, 2.5, circleCenterPaint);
-    }
+          canvas.drawRect(
+            Rect.fromPoints(
+              Offset(startX, barTop),
+              Offset(startX + 3, barBottom),
+            ),
+            paint,
+          );
+
+          canvas.drawRect(
+            Rect.fromLTWH(startX, barTop, endX - startX, 1),
+            paint,
+          );
+
+          final circlePos = Offset(startX + 1.5, barTop + 0.5);
+          canvas.drawCircle(circlePos, 3.5, paint);
+          canvas.drawCircle(circlePos, 2.5, circleCenterPaint);
+        }
+      },
+    );
   }
 }

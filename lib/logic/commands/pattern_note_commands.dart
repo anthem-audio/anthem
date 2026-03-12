@@ -24,21 +24,27 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 
 void _addNote(PatternModel pattern, NoteModel note) {
-  if (pattern.notes.any((existingNote) => existingNote.id == note.id)) {
+  if (pattern.notes.containsKey(note.id)) {
     throw StateError(
       'Note ${note.id} already exists in pattern ${pattern.id}.',
     );
   }
 
-  pattern.notes.add(note);
+  pattern.notes[note.id] = note;
 }
 
 void _removeNote(PatternModel pattern, Id noteID) {
-  pattern.notes.remove(_requireNote(pattern, noteID));
+  _requireNote(pattern, noteID);
+  pattern.notes.remove(noteID);
 }
 
 NoteModel _getNote(PatternModel pattern, Id noteID) {
-  return pattern.notes.firstWhere((element) => element.id == noteID);
+  final note = pattern.notes[noteID];
+  if (note == null) {
+    throw StateError('Note $noteID was not found in pattern ${pattern.id}.');
+  }
+
+  return note;
 }
 
 PatternModel _requirePattern(ProjectModel project, Id patternID) {
@@ -51,11 +57,7 @@ PatternModel _requirePattern(ProjectModel project, Id patternID) {
 }
 
 NoteModel _requireNote(PatternModel pattern, Id noteID) {
-  try {
-    return _getNote(pattern, noteID);
-  } on StateError {
-    throw StateError('Note $noteID was not found in pattern ${pattern.id}.');
-  }
+  return _getNote(pattern, noteID);
 }
 
 typedef _DeleteNoteSnapshot = ({

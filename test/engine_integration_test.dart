@@ -341,14 +341,14 @@ void main() {
       final pattern =
           state['sequence']!['patterns'][project.sequence.patterns.keys.first]
               as Map<String, dynamic>;
-      final notes = pattern['notes'] as List<dynamic>;
+      final notes = pattern['notes'] as Map<String, dynamic>;
       expect(
         notes.length,
         equals(1),
         reason: 'The pattern should contain 1 note.',
       );
 
-      final note = notes[0] as Map<String, dynamic>;
+      final note = notes.values.single as Map<String, dynamic>;
       expect(
         note['key'],
         equals(64),
@@ -381,7 +381,9 @@ void main() {
       final note = project
           .sequence
           .patterns[project.sequence.patterns.keys.first]!
-          .notes[0];
+          .notes
+          .values
+          .first;
 
       project.execute(
         SetNoteAttributeCommand(
@@ -409,14 +411,14 @@ void main() {
 
       final pattern =
           state['sequence']!['patterns'][patternId] as Map<String, dynamic>;
-      final notes = pattern['notes'] as List<dynamic>;
+      final notes = pattern['notes'] as Map<String, dynamic>;
       expect(
         notes.length,
         equals(1),
         reason: 'The pattern should contain 1 note.',
       );
 
-      final updatedNote = notes[0] as Map<String, dynamic>;
+      final updatedNote = notes.values.single as Map<String, dynamic>;
       expect(
         updatedNote['key'],
         equals(65),

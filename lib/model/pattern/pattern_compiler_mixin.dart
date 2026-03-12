@@ -65,10 +65,10 @@ mixin _PatternCompilerMixin on _PatternModel {
     return result;
   }
 
-  int? _getListIndex(Iterable<FieldAccessor> fieldAccessors) {
+  Id? _getMapKey(Iterable<FieldAccessor> fieldAccessors) {
     for (final accessor in fieldAccessors) {
-      if (accessor.index != null) {
-        return accessor.index;
+      if (accessor.key is Id) {
+        return accessor.key as Id;
       }
     }
 
@@ -93,12 +93,15 @@ mixin _PatternCompilerMixin on _PatternModel {
       return;
     }
 
-    final noteIndex = _getListIndex(fieldAccessors);
-    if (noteIndex == null || noteIndex < 0 || noteIndex >= notes.length) {
+    final noteId = _getMapKey(fieldAccessors);
+    if (noteId == null) {
       return;
     }
 
-    final note = notes[noteIndex];
+    final note = notes[noteId];
+    if (note == null) {
+      return;
+    }
 
     if (noteFieldName == 'offset') {
       final oldValue = operation.oldValueAs<int>();

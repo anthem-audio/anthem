@@ -134,7 +134,7 @@ class _PianoRollEventListenerTestFixture {
       controller.stateMachine.states[PianoRollCreateNoteState]!
           as PianoRollCreateNoteState;
 
-  List<NoteModel> get notes => pattern.notes.toList(growable: false);
+  List<NoteModel> get notes => pattern.notes.values.toList(growable: false);
 
   void dispose() {
     controller.dispose();
@@ -233,7 +233,7 @@ void main() {
         ),
       );
       expect(fixture.notes, isEmpty);
-      expect(fixture.viewModel.transientNotes, isEmpty);
+      expect(fixture.pattern.previewNotes, isEmpty);
     },
   );
 
@@ -267,7 +267,7 @@ void main() {
       expect(note.offset, equals(180));
       expect(note.key, equals(70));
       expect(fixture.controller.activeInteractionFamily, isNull);
-      expect(fixture.viewModel.transientNotes, isEmpty);
+      expect(fixture.pattern.previewNotes, isEmpty);
     },
   );
 }

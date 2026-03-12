@@ -22,6 +22,7 @@ import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:collection/collection.dart';
@@ -64,83 +65,6 @@ class PianoRollRenderedNoteRef {
   int get hashCode => Object.hash(id, isTransient);
 }
 
-class PianoRollTransientNote {
-  final Id id;
-  final int key;
-  final double velocity;
-  final int length;
-  final int offset;
-  final double pan;
-
-  const PianoRollTransientNote({
-    required this.id,
-    required this.key,
-    required this.velocity,
-    required this.length,
-    required this.offset,
-    required this.pan,
-  });
-
-  NoteModel toNoteModel() {
-    return NoteModel(
-      key: key,
-      velocity: velocity,
-      length: length,
-      offset: offset,
-      pan: pan,
-    )..id = id;
-  }
-}
-
-class PianoRollNoteOverride {
-  final int? key;
-  final double? velocity;
-  final int? length;
-  final int? offset;
-  final double? pan;
-
-  const PianoRollNoteOverride({
-    this.key,
-    this.velocity,
-    this.length,
-    this.offset,
-    this.pan,
-  });
-
-  bool get hasAnyValue =>
-      key != null ||
-      velocity != null ||
-      length != null ||
-      offset != null ||
-      pan != null;
-}
-
-class PianoRollResolvedNote {
-  final PianoRollRenderedNoteRef ref;
-  final int key;
-  final double velocity;
-  final int length;
-  final int offset;
-  final double pan;
-  final bool isSelected;
-  final bool isPressed;
-  final bool isHovered;
-  final bool hasOverride;
-
-  const PianoRollResolvedNote({
-    required this.ref,
-    required this.key,
-    required this.velocity,
-    required this.length,
-    required this.offset,
-    required this.pan,
-    required this.isSelected,
-    required this.isPressed,
-    required this.isHovered,
-    required this.hasOverride,
-  });
-}
-
 // ignore: library_private_types_in_public_api
 class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
 
@@ -174,6 +98,11 @@ abstract class _PianoRollViewModel with Store {
   Rectangle<double>? selectionBox;
 
   @observable
+  /// Selected note IDs across both committed notes and preview-only notes.
+  ///
+  /// Preview notes inherit their IDs when they are committed, so selection can
+  /// follow them across that boundary without a separate transient selection
+  /// structure.
   ObservableSet<Id> selectedNotes = ObservableSet();
 
   @observable
@@ -181,12 +110,6 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   Id? hoveredNote;
-
-  @observable
-  Id? pressedTransientNote;
-
-  @observable
-  Id? hoveredTransientNote;
 
   @observable
   ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
@@ -199,9 +122,6 @@ abstract class _PianoRollViewModel with Store {
 
   final visibleNotes = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
   final visibleResizeAreas = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
-  final transientNotes = ObservableMap<Id, PianoRollTransientNote>();
-  final noteOverrides = ObservableMap<Id, PianoRollNoteOverride>();
-  final selectedTransientNotes = ObservableSet<Id>();
 
   // These don't need to be observable, since they're just used during event
   // handling.
@@ -210,124 +130,82 @@ abstract class _PianoRollViewModel with Store {
   double cursorNotePan = 0;
 
   void clearTransientNoteState() {
-    transientNotes.clear();
-    selectedTransientNotes.clear();
-    pressedTransientNote = null;
-    hoveredTransientNote = null;
+    pressedNote = null;
+    hoveredNote = null;
   }
 
-  void clearNoteOverrides() {
-    noteOverrides.clear();
-  }
-
+  /// Clears transient interaction state that should never outlive a gesture.
+  ///
+  /// Selection cleanup for preview-only note IDs happens at the controller
+  /// layer, where the active pattern is available and we can tell which IDs
+  /// are about to disappear when preview notes are cleared.
   void clearTransientPreviewState() {
     clearTransientNoteState();
-    clearNoteOverrides();
   }
 
-  PianoRollResolvedNote resolveRenderedRealNote(NoteModel note) {
-    final override = noteOverrides[note.id];
-
-    return PianoRollResolvedNote(
-      ref: PianoRollRenderedNoteRef.real(note.id),
-      key: override?.key ?? note.key,
-      velocity: override?.velocity ?? note.velocity,
-      length: override?.length ?? note.length,
-      offset: override?.offset ?? note.offset,
-      pan: override?.pan ?? note.pan,
-      isSelected: selectedNotes.contains(note.id),
-      isPressed: pressedNote == note.id,
-      isHovered: hoveredNote == note.id,
-      hasOverride: override?.hasAnyValue ?? false,
-    );
+  PianoRollRenderedNoteRef renderedRefFor(ResolvedPatternNote note) {
+    return note.isPreviewOnly
+        ? PianoRollRenderedNoteRef.transient(note.id)
+        : PianoRollRenderedNoteRef.real(note.id);
   }
 
-  PianoRollResolvedNote resolveRenderedTransientNote(
-    PianoRollTransientNote note,
-  ) {
-    return PianoRollResolvedNote(
-      ref: PianoRollRenderedNoteRef.transient(note.id),
-      key: note.key,
-      velocity: note.velocity,
-      length: note.length,
-      offset: note.offset,
-      pan: note.pan,
-      isSelected: selectedTransientNotes.contains(note.id),
-      isPressed: pressedTransientNote == note.id,
-      isHovered: hoveredTransientNote == note.id,
-      hasOverride: false,
-    );
-  }
+  bool isNoteSelected(ResolvedPatternNote note) =>
+      selectedNotes.contains(note.id);
 
-  PianoRollResolvedNote? resolveRenderedNoteByRef({
-    required Iterable<NoteModel> realNotes,
+  bool isNotePressed(ResolvedPatternNote note) => pressedNote == note.id;
+
+  bool isNoteHovered(ResolvedPatternNote note) => hoveredNote == note.id;
+
+  ResolvedPatternNote? resolveRenderedNoteByRef({
+    required PatternModel pattern,
     required PianoRollRenderedNoteRef ref,
   }) {
-    if (ref.isTransient) {
-      final transientNote = transientNotes[ref.id];
-      if (transientNote == null) {
-        return null;
-      }
-
-      return resolveRenderedTransientNote(transientNote);
-    }
-
-    final note = realNotes.firstWhereOrNull(
-      (candidate) => candidate.id == ref.id,
-    );
+    final note = pattern.resolveNoteById(ref.id);
     if (note == null) {
       return null;
     }
 
-    return resolveRenderedRealNote(note);
-  }
-
-  PianoRollResolvedNote? resolvePressedRenderedNote(
-    Iterable<NoteModel> realNotes,
-  ) {
-    final transientNoteId = pressedTransientNote;
-    if (transientNoteId != null) {
-      final transientNote = transientNotes[transientNoteId];
-      if (transientNote != null) {
-        return resolveRenderedTransientNote(transientNote);
-      }
-    }
-
-    final realNoteId = pressedNote;
-    if (realNoteId == null) {
+    if (note.isPreviewOnly != ref.isTransient) {
       return null;
     }
 
-    final note = realNotes.firstWhereOrNull(
-      (candidate) => candidate.id == realNoteId,
-    );
+    return note;
+  }
+
+  ResolvedPatternNote? resolvePressedRenderedNote(PatternModel pattern) {
+    final pressedNoteId = pressedNote;
+    if (pressedNoteId == null) {
+      return null;
+    }
+
+    final note = pattern.resolveNoteById(pressedNoteId);
     if (note == null) {
       return null;
     }
 
-    return resolveRenderedRealNote(note);
+    return note;
   }
 
-  List<PianoRollResolvedNote> resolveRenderedNotes(
-    Iterable<NoteModel> realNotes,
-  ) {
-    final resolvedNotes = <PianoRollResolvedNote>[];
-    final overriddenNotes = <PianoRollResolvedNote>[];
+  List<ResolvedPatternNote> resolveRenderedNotes(PatternModel pattern) {
+    final resolvedNotes = <ResolvedPatternNote>[];
+    final overriddenNotes = <ResolvedPatternNote>[];
+    final previewOnlyNotes = <ResolvedPatternNote>[];
 
-    for (final note in realNotes) {
-      final resolvedNote = resolveRenderedRealNote(note);
-      if (resolvedNote.hasOverride) {
-        overriddenNotes.add(resolvedNote);
+    for (final note in pattern.getResolvedNotes()) {
+      if (note.isPreviewOnly) {
+        previewOnlyNotes.add(note);
+      } else if (note.hasOverride) {
+        overriddenNotes.add(note);
       } else {
-        resolvedNotes.add(resolvedNote);
+        resolvedNotes.add(note);
       }
     }
 
+    // Notes painted later appear above earlier notes and win hit tests. Preview
+    // notes should therefore sit on top, with overridden committed notes above
+    // plain committed notes.
     resolvedNotes.addAll(overriddenNotes);
-
-    for (final transientNote in transientNotes.values) {
-      resolvedNotes.add(resolveRenderedTransientNote(transientNote));
-    }
+    resolvedNotes.addAll(previewOnlyNotes);
 
     return resolvedNotes;
   }

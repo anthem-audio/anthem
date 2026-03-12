@@ -62,7 +62,7 @@ void main() {
       offset: offset,
       pan: pan,
     );
-    pattern.notes.add(note);
+    pattern.notes[note.id] = note;
     return note;
   }
 
@@ -86,7 +86,7 @@ void main() {
       final command = AddNoteCommand(patternID: pattern.id, note: note);
 
       command.execute(project);
-      expect(pattern.notes.single.id, equals(note.id));
+      expect(pattern.notes.values.single.id, equals(note.id));
 
       command.rollback(project);
       expect(pattern.notes, isEmpty);
@@ -126,7 +126,7 @@ void main() {
       expect(pattern.notes, isEmpty);
 
       command.rollback(project);
-      expect(pattern.notes.single.id, equals(note.id));
+      expect(pattern.notes.values.single.id, equals(note.id));
     });
 
     test('execute throws when pattern does not exist', () {
@@ -266,13 +266,13 @@ void main() {
 
       command.execute(project);
       expect(
-        pattern.notes.map((note) => note.id).toList(),
+        pattern.notes.values.map((note) => note.id).toList(),
         orderedEquals([noteB.id]),
       );
 
       command.rollback(project);
       expect(
-        pattern.notes.map((note) => note.id).toSet(),
+        pattern.notes.values.map((note) => note.id).toSet(),
         equals({noteA.id, noteB.id, noteC.id}),
       );
     });
@@ -298,7 +298,7 @@ void main() {
         command.execute(project);
         command.rollback(project);
 
-        final restoredNote = pattern.notes.single;
+        final restoredNote = pattern.notes.values.single;
         expect(restoredNote.id, equals(note.id));
         restoredNote.key = 72;
         restoredNote.offset = 192;
@@ -310,7 +310,7 @@ void main() {
         expect(pattern.notes, isEmpty);
 
         command.rollback(project);
-        final restoredAgain = pattern.notes.single;
+        final restoredAgain = pattern.notes.values.single;
         expect(restoredAgain.id, equals(note.id));
         expect(restoredAgain.key, equals(60));
         expect(restoredAgain.offset, equals(64));

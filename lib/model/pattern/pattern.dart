@@ -149,7 +149,7 @@ class PatternModel extends _PatternModel
       //   2. Tell the engine to re-compile all relevant sequences.
 
       // Notes added or removed
-      onChange((b) => b.notes.anyElement, (e) {
+      onChange((b) => b.notes.anyValue, (e) {
         _recompileOnNotesAddedOrRemoved(
           e.operation.oldValue as NoteModel?,
           e.operation.newValue as NoteModel?,
@@ -157,13 +157,30 @@ class PatternModel extends _PatternModel
       });
 
       // Note attributes changed
-      onChange((b) => b.notes.anyElement.anyField, (e) {
+      onChange((b) => b.notes.anyValue.anyField, (e) {
         _recompileOnNoteFieldChanged(e);
       });
 
       // When notes change, we also need to update the clip notes render cache
       // and the clip's default width.
       onChange((b) => b.notes.withDescendants, (e) {
+        scheduleClipNotesRenderCacheUpdate();
+        _clipAutoWidthUpdateAction.execute();
+      });
+
+      // Preview note overrides are Dart-only changes that should still refresh
+      // local rendering and width calculations throughout the UI.
+      onChange((b) => b.noteOverrides.withDescendants, (e) {
+        scheduleClipNotesRenderCacheUpdate();
+        _clipAutoWidthUpdateAction.execute();
+      });
+
+      // Preview-only notes use the same local refresh path as overrides.
+      //
+      // These notes are not committed to the main pattern note list yet, but
+      // they still need to appear everywhere that asks for the pattern's
+      // effective note content.
+      onChange((b) => b.previewNotes.withDescendants, (e) {
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
@@ -203,7 +220,25 @@ abstract class _PatternModel
   AnthemColor color = AnthemColor(hue: 0);
 
   @anthemObservable
-  AnthemObservableList<NoteModel> notes = AnthemObservableList();
+  AnthemObservableMap<Id, NoteModel> notes = AnthemObservableMap();
+
+  /// Live preview overrides for notes in this pattern.
+  ///
+  /// This is used for editor interactions that defer their real model write
+  /// until the end of the gesture.
+  ///
+  /// Use [resolveNote] below in favor of direct access where possible.
+  @anthemObservable
+  @hideButAllowOnChange
+  AnthemObservableMap<Id, PatternNoteOverrideModel> noteOverrides =
+      AnthemObservableMap();
+
+  /// Candidate notes that do not exist in [notes] yet, but are being added by
+  /// the user as part of an in-progress action, such as clicking and dragging
+  /// to add a note.
+  @anthemObservable
+  @hideButAllowOnChange
+  AnthemObservableMap<Id, NoteModel> previewNotes = AnthemObservableMap();
 
   @anthemObservable
   AutomationLaneModel automation = AutomationLaneModel();
@@ -224,6 +259,182 @@ abstract class _PatternModel
     timeSignatureChanges = AnthemObservableList();
   }
 
+  /// Returns the effective values for [note], including any active preview
+  /// override for that note ID.
+  ResolvedPatternNote resolveNote(
+    NoteModel note, {
+    bool isPreviewOnly = false,
+  }) {
+    final noteOverride = noteOverrides[note.id];
+
+    return ResolvedPatternNote(
+      id: note.id,
+      key: noteOverride?.key ?? note.key,
+      velocity: noteOverride?.velocity ?? note.velocity,
+      length: noteOverride?.length ?? note.length,
+      offset: noteOverride?.offset ?? note.offset,
+      pan: noteOverride?.pan ?? note.pan,
+      hasOverride: noteOverride?.hasAnyValue ?? false,
+      isPreviewOnly: isPreviewOnly,
+    );
+  }
+
+  /// Returns the effective values for the note with [noteId], or null if the
+  /// note does not exist in either preview or committed state.
+  ResolvedPatternNote? resolveNoteById(Id noteId) {
+    final note = notes[noteId];
+    if (note != null) {
+      return resolveNote(note);
+    }
+
+    final previewNote = previewNotes[noteId];
+    if (previewNote != null) {
+      return resolveNote(previewNote, isPreviewOnly: true);
+    }
+
+    return null;
+  }
+
+  /// Returns the preview-only note with [noteId], if it exists.
+  NoteModel? getPreviewNoteById(Id noteId) {
+    return previewNotes[noteId];
+  }
+
+  /// Iterates the effective note content for this pattern.
+  ///
+  /// Committed notes are yielded first in stored order, with preview overrides
+  /// applied. Preview-only notes are then appended after. This allows a
+  /// renderer to just draw in the order they are received.
+  Iterable<ResolvedPatternNote> getResolvedNotes() sync* {
+    for (final note in notes.values) {
+      yield resolveNote(note);
+    }
+
+    for (final note in previewNotes.values) {
+      yield resolveNote(note, isPreviewOnly: true);
+    }
+  }
+
+  /// Merges preview override values into the existing override for [noteId].
+  ///
+  /// Unspecified fields keep their current preview values. This allows
+  /// separate interactions to layer preview changes across different note
+  /// attributes without re-reading call-site state.
+  void setNoteOverride({
+    required Id noteId,
+    int? key,
+    double? velocity,
+    int? length,
+    int? offset,
+    double? pan,
+  }) {
+    final existingOverride = noteOverrides[noteId];
+
+    final noteOverride = PatternNoteOverrideModel(
+      key: key ?? existingOverride?.key,
+      velocity: velocity ?? existingOverride?.velocity,
+      length: length ?? existingOverride?.length,
+      offset: offset ?? existingOverride?.offset,
+      pan: pan ?? existingOverride?.pan,
+    );
+
+    if (!noteOverride.hasAnyValue) {
+      noteOverrides.remove(noteId);
+      return;
+    }
+
+    noteOverrides[noteId] = noteOverride;
+  }
+
+  /// Adds a preview-only note that is not yet committed to [notes].
+  void addPreviewNote(NoteModel note) {
+    previewNotes[note.id] = note;
+  }
+
+  /// Updates a preview-only note in place.
+  void updatePreviewNote({
+    required Id noteId,
+    int? key,
+    double? velocity,
+    int? length,
+    int? offset,
+    double? pan,
+  }) {
+    final previewNote = getPreviewNoteById(noteId);
+    if (previewNote == null) {
+      throw StateError('Preview note $noteId was not found.');
+    }
+
+    if (key != null) {
+      previewNote.key = key;
+    }
+
+    if (velocity != null) {
+      previewNote.velocity = velocity;
+    }
+
+    if (length != null) {
+      previewNote.length = length;
+    }
+
+    if (offset != null) {
+      previewNote.offset = offset;
+    }
+
+    if (pan != null) {
+      previewNote.pan = pan;
+    }
+  }
+
+  /// Updates the effective preview state for [noteId].
+  void setResolvedNotePreview({
+    required Id noteId,
+    int? key,
+    double? velocity,
+    int? length,
+    int? offset,
+    double? pan,
+  }) {
+    final previewNote = getPreviewNoteById(noteId);
+    if (previewNote != null) {
+      updatePreviewNote(
+        noteId: noteId,
+        key: key,
+        velocity: velocity,
+        length: length,
+        offset: offset,
+        pan: pan,
+      );
+      return;
+    }
+
+    setNoteOverride(
+      noteId: noteId,
+      key: key,
+      velocity: velocity,
+      length: length,
+      offset: offset,
+      pan: pan,
+    );
+  }
+
+  void clearNoteOverrides() {
+    noteOverrides.clear();
+  }
+
+  void clearPreviewNotes() {
+    previewNotes.clear();
+  }
+
+  void removePreviewNoteById(Id noteId) {
+    previewNotes.remove(noteId);
+  }
+
+  void clearNotePreviews() {
+    noteOverrides.clear();
+    previewNotes.clear();
+  }
+
   /// Gets the time position of the end of the last item in this pattern
   /// (note, audio clip, automation point), rounded upward to the nearest
   /// `barMultiple` bars.
@@ -240,9 +451,9 @@ abstract class _PatternModel
     // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
     assert(ticksPerBarDouble == ticksPerBar);
 
-    final lastNoteContent = notes.fold<int>(
+    final lastNoteContent = getResolvedNotes().fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, note) => max(previousValue, (note.offset + note.length)),
+      (previousValue, note) => max(previousValue, note.offset + note.length),
     );
 
     final lastAutomationContent = max(
@@ -263,10 +474,12 @@ abstract class _PatternModel
     // prevent detailed observation and just observe the whole thing.
 
     notes.observeAllChanges();
+    noteOverrides.observeAllChanges();
+    previewNotes.observeAllChanges();
     automation.observeAllChanges();
 
     return blockObservation(
-      modelItems: [notes, automation],
+      modelItems: [notes, noteOverrides, previewNotes, automation],
       block: () => getWidth(barMultiple: 4, minPaddingInBarMultiples: 4),
     );
   }

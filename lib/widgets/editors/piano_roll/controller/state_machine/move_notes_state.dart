@@ -85,34 +85,22 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
         event.signal is _PianoRollPointerDownSignal;
   }
 
-  NoteModel _snapshotFromTransientNote(PianoRollTransientNote note) {
-    return note.toNoteModel();
-  }
-
   void _applyPreview({
     required PianoRollMoveNotesSessionData sessionData,
     required Map<Id, PianoRollMoveNotePreview> preview,
   }) {
     _preview = preview;
-    viewModel.noteOverrides.clear();
+    parentState.activePattern.clearNoteOverrides();
 
     for (final entry in preview.entries) {
       final noteId = entry.key;
       final previewNote = entry.value;
 
       if (sessionData.movingTransientNoteIds.contains(noteId)) {
-        final transientNote = viewModel.transientNotes[noteId];
-        if (transientNote == null) {
-          continue;
-        }
-
-        viewModel.transientNotes[noteId] = PianoRollTransientNote(
-          id: transientNote.id,
+        parentState.activePattern.updatePreviewNote(
+          noteId: noteId,
           key: previewNote.key,
-          velocity: transientNote.velocity,
-          length: transientNote.length,
           offset: previewNote.offset,
-          pan: transientNote.pan,
         );
         continue;
       }
@@ -124,7 +112,8 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
         continue;
       }
 
-      viewModel.noteOverrides[noteId] = PianoRollNoteOverride(
+      parentState.activePattern.setResolvedNotePreview(
+        noteId: noteId,
         key: hasKeyOverride ? previewNote.key : null,
         offset: hasOffsetOverride ? previewNote.offset : null,
       );
@@ -142,10 +131,10 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
       );
     }
 
-    viewModel.clearTransientPreviewState();
+    controller.clearPreviewState();
 
     final pattern = parentState.activePattern;
-    final notes = pattern.notes.nonObservableInner;
+    final notes = pattern.notes.nonObservableInner.values;
     final selectedNotes = viewModel.selectedNotes.nonObservableInner;
     var pressedNote = parentState.requireActivePatternNote(noteId);
     var sessionPressedNote = pressedNote;
@@ -161,7 +150,6 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
 
         final newSelectedNotes = <Id>{};
         final transientNotesToMove = <NoteModel>[];
-        viewModel.selectedTransientNotes.clear();
 
         for (final note
             in notes
@@ -169,37 +157,31 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
                   return selectedNotes.contains(note.id);
                 })
                 .toList(growable: false)) {
-          final transientNote = PianoRollTransientNote(
-            id: getId(),
+          final previewNote = NoteModel(
             key: note.key,
             velocity: note.velocity,
             length: note.length,
             offset: note.offset,
             pan: note.pan,
           );
-          final transientSnapshot = _snapshotFromTransientNote(transientNote);
+          pattern.addPreviewNote(previewNote);
 
-          viewModel.transientNotes[transientNote.id] = transientNote;
-          newSelectedNotes.add(transientNote.id);
-          duplicatedNoteIds.add(transientNote.id);
-          movingTransientNoteIds.add(transientNote.id);
-          transientNotesToMove.add(transientSnapshot);
+          newSelectedNotes.add(previewNote.id);
+          duplicatedNoteIds.add(previewNote.id);
+          movingTransientNoteIds.add(previewNote.id);
+          transientNotesToMove.add(previewNote);
 
           if (note.id == noteId) {
-            sessionPressedNote = transientSnapshot;
-            viewModel.pressedTransientNote = transientNote.id;
-            viewModel.pressedNote = null;
+            sessionPressedNote = previewNote;
+            viewModel.pressedNote = previewNote.id;
           }
         }
 
         viewModel.selectedNotes = ObservableSet.of(newSelectedNotes);
-        viewModel.selectedTransientNotes.addAll(newSelectedNotes);
         notesToMove = transientNotesToMove;
       } else {
         viewModel.pressedNote = pressedNote.id;
-        viewModel.pressedTransientNote = null;
-        viewModel.selectedTransientNotes.clear();
-        notesToMove = pattern.notes
+        notesToMove = pattern.notes.values
             .where(
               (note) =>
                   viewModel.selectedNotes.nonObservableInner.contains(note.id),
@@ -208,27 +190,34 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
       }
     } else {
       viewModel.selectedNotes.clear();
-      viewModel.selectedTransientNotes.clear();
 
       if (interactionState.isShiftPressed) {
         didDuplicateOnPointerDown = true;
 
-        final transientNote = PianoRollTransientNote(
-          id: getId(),
+        // Shift-dragging a single unselected note now previews the duplicate
+        // itself as the moving note, matching the multi-note duplicate flow.
+        // The original note stays committed and stationary until the gesture
+        // ends, then the preview note is committed with the same ID.
+        final previewNote = NoteModel(
           key: pressedNote.key,
           velocity: pressedNote.velocity,
           length: pressedNote.length,
           offset: pressedNote.offset,
           pan: pressedNote.pan,
         );
-        viewModel.transientNotes[transientNote.id] = transientNote;
-        duplicatedNoteIds.add(transientNote.id);
+        pattern.addPreviewNote(previewNote);
+        duplicatedNoteIds.add(previewNote.id);
+        movingTransientNoteIds.add(previewNote.id);
+        sessionPressedNote = previewNote;
+        viewModel.selectedNotes = ObservableSet.of({previewNote.id});
+        viewModel.pressedNote = previewNote.id;
+        notesToMove = [previewNote];
+      } else {
+        viewModel.pressedNote = pressedNote.id;
+        notesToMove = [pressedNote];
       }
 
       setCursorNoteParameters(pressedNote);
-      viewModel.pressedNote = pressedNote.id;
-      viewModel.pressedTransientNote = null;
-      notesToMove = [pressedNote];
     }
 
     _sessionData = createMoveNotesSessionData(
@@ -316,35 +305,40 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
     final pattern = parentState.activePatternOrNull;
     if (sessionData != null && preview != null && pattern != null) {
       if (sessionData.movingTransientNoteIds.isNotEmpty) {
-        project.startUndoGroup();
+        final notesToCommit = <NoteModel>[];
         for (final noteId in sessionData.noteIds) {
-          final transientNote = viewModel.transientNotes[noteId];
-          if (transientNote == null) {
+          final previewNote = pattern.getPreviewNoteById(noteId);
+          if (previewNote == null) {
             continue;
           }
 
-          project.execute(
-            AddNoteCommand(
-              patternID: pattern.id,
-              note: transientNote.toNoteModel(),
-            ),
-          );
+          notesToCommit.add(NoteModel.fromNoteModel(previewNote));
+        }
+
+        for (final note in notesToCommit) {
+          pattern.removePreviewNoteById(note.id);
+        }
+
+        project.startUndoGroup();
+        for (final note in notesToCommit) {
+          project.execute(AddNoteCommand(patternID: pattern.id, note: note));
         }
         project.commitUndoGroup();
       } else {
         if (sessionData.didDuplicateOnPointerDown) {
+          final notesToCommit = <NoteModel>[];
           for (final noteId in sessionData.duplicatedNoteIds) {
-            final transientNote = viewModel.transientNotes[noteId];
-            if (transientNote == null) {
+            final previewNote = pattern.getPreviewNoteById(noteId);
+            if (previewNote == null) {
               continue;
             }
 
-            project.execute(
-              AddNoteCommand(
-                patternID: pattern.id,
-                note: transientNote.toNoteModel(),
-              ),
-            );
+            notesToCommit.add(NoteModel.fromNoteModel(previewNote));
+          }
+
+          for (final note in notesToCommit) {
+            pattern.removePreviewNoteById(note.id);
+            project.execute(AddNoteCommand(patternID: pattern.id, note: note));
           }
         }
 
@@ -357,7 +351,7 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
 
     controller.liveNotes.removeAll();
     viewModel.pressedNote = null;
-    viewModel.clearTransientPreviewState();
+    controller.clearPreviewState();
     _clearSession();
   }
 }

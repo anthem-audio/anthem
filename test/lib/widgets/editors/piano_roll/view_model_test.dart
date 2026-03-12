@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +32,31 @@ void main() {
     );
   }
 
+  PatternModel createPattern(Iterable<NoteModel> notes) {
+    final pattern = PatternModel.create(name: 'Pattern');
+    for (final note in notes) {
+      pattern.notes[note.id] = note;
+    }
+    return pattern;
+  }
+
+  NoteModel createPreviewNote({
+    required String id,
+    required int key,
+    required double velocity,
+    required int length,
+    required int offset,
+    required double pan,
+  }) {
+    return NoteModel(
+      key: key,
+      velocity: velocity,
+      length: length,
+      offset: offset,
+      pan: pan,
+    )..id = id;
+  }
+
   group('PianoRollViewModel note resolution', () {
     test('applies note overrides to real notes', () {
       final viewModel = createViewModel();
@@ -41,11 +67,13 @@ void main() {
         offset: 120,
         pan: 0.1,
       );
+      final pattern = createPattern([note]);
 
       viewModel.selectedNotes.add(note.id);
       viewModel.pressedNote = note.id;
       viewModel.hoveredNote = note.id;
-      viewModel.noteOverrides[note.id] = const PianoRollNoteOverride(
+      pattern.setNoteOverride(
+        noteId: note.id,
         key: 62,
         velocity: 0.5,
         length: 144,
@@ -53,18 +81,20 @@ void main() {
         pan: -0.25,
       );
 
-      final resolved = viewModel.resolveRenderedRealNote(note);
+      final resolved = pattern.resolveNote(note);
 
-      expect(resolved.ref, equals(PianoRollRenderedNoteRef.real(note.id)));
+      expect(
+        viewModel.renderedRefFor(resolved),
+        equals(PianoRollRenderedNoteRef.real(note.id)),
+      );
       expect(resolved.key, equals(62));
       expect(resolved.velocity, equals(0.5));
       expect(resolved.length, equals(144));
       expect(resolved.offset, equals(160));
       expect(resolved.pan, equals(-0.25));
-      expect(resolved.isSelected, isTrue);
-      expect(resolved.isPressed, isTrue);
-      expect(resolved.isHovered, isTrue);
-      expect(resolved.hasOverride, isTrue);
+      expect(viewModel.isNoteSelected(resolved), isTrue);
+      expect(viewModel.isNotePressed(resolved), isTrue);
+      expect(viewModel.isNoteHovered(resolved), isTrue);
     });
 
     test(
@@ -85,38 +115,34 @@ void main() {
           offset: 240,
           pan: 0,
         );
+        final pattern = createPattern([plainNote, overriddenNote]);
         const transientNoteId = 'transient-note';
 
-        viewModel.noteOverrides[overriddenNote.id] =
-            const PianoRollNoteOverride(offset: 300);
-        viewModel.transientNotes[transientNoteId] =
-            const PianoRollTransientNote(
-              id: transientNoteId,
-              key: 67,
-              velocity: 0.5,
-              length: 72,
-              offset: 360,
-              pan: -0.1,
-            );
-        viewModel.selectedTransientNotes.add(transientNoteId);
+        pattern.setNoteOverride(noteId: overriddenNote.id, offset: 300);
+        pattern.addPreviewNote(
+          createPreviewNote(
+            id: transientNoteId,
+            key: 67,
+            velocity: 0.5,
+            length: 72,
+            offset: 360,
+            pan: -0.1,
+          ),
+        );
+        viewModel.selectedNotes.add(transientNoteId);
 
-        final resolvedNotes = viewModel.resolveRenderedNotes([
-          plainNote,
-          overriddenNote,
-        ]);
+        final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
 
         expect(
-          resolvedNotes.map((note) => note.ref).toList(growable: false),
+          resolvedNotes.map(viewModel.renderedRefFor).toList(growable: false),
           equals([
             PianoRollRenderedNoteRef.real(plainNote.id),
             PianoRollRenderedNoteRef.real(overriddenNote.id),
             const PianoRollRenderedNoteRef.transient(transientNoteId),
           ]),
         );
-        expect(resolvedNotes[0].hasOverride, isFalse);
-        expect(resolvedNotes[1].hasOverride, isTrue);
-        expect(resolvedNotes[2].ref.realNoteId, isNull);
-        expect(resolvedNotes[2].isSelected, isTrue);
+        expect(viewModel.renderedRefFor(resolvedNotes[2]).realNoteId, isNull);
+        expect(viewModel.isNoteSelected(resolvedNotes[2]), isTrue);
       },
     );
 
@@ -129,102 +155,83 @@ void main() {
         offset: 120,
         pan: 0,
       );
+      final pattern = createPattern([realNote]);
       const transientNoteId = 'transient-note';
 
-      viewModel.transientNotes[transientNoteId] = const PianoRollTransientNote(
-        id: transientNoteId,
-        key: 67,
-        velocity: 0.5,
-        length: 72,
-        offset: 360,
-        pan: -0.1,
+      pattern.addPreviewNote(
+        createPreviewNote(
+          id: transientNoteId,
+          key: 67,
+          velocity: 0.5,
+          length: 72,
+          offset: 360,
+          pan: -0.1,
+        ),
       );
 
       final resolvedReal = viewModel.resolveRenderedNoteByRef(
-        realNotes: [realNote],
+        pattern: pattern,
         ref: PianoRollRenderedNoteRef.real(realNote.id),
       );
       final resolvedTransient = viewModel.resolveRenderedNoteByRef(
-        realNotes: [realNote],
+        pattern: pattern,
         ref: const PianoRollRenderedNoteRef.transient(transientNoteId),
       );
 
       expect(resolvedReal, isNotNull);
-      expect(resolvedReal!.ref.realNoteId, equals(realNote.id));
+      expect(
+        viewModel.renderedRefFor(resolvedReal!).realNoteId,
+        equals(realNote.id),
+      );
       expect(resolvedTransient, isNotNull);
-      expect(resolvedTransient!.ref.realNoteId, isNull);
+      expect(viewModel.renderedRefFor(resolvedTransient!).realNoteId, isNull);
       expect(resolvedTransient.key, equals(67));
     });
 
     test(
-      'resolvePressedRenderedNote prefers transient notes before real notes',
+      'resolvePressedRenderedNote resolves preview notes from the unified pressed ID',
       () {
         final viewModel = createViewModel();
-        final realNote = NoteModel(
-          key: 60,
-          velocity: 0.75,
-          length: 96,
-          offset: 120,
-          pan: 0,
-        );
+        final pattern = createPattern(const []);
         const transientNoteId = 'transient-note';
 
-        viewModel.pressedNote = realNote.id;
-        viewModel.transientNotes[transientNoteId] =
-            const PianoRollTransientNote(
-              id: transientNoteId,
-              key: 72,
-              velocity: 0.5,
-              length: 72,
-              offset: 360,
-              pan: -0.1,
-            );
-        viewModel.pressedTransientNote = transientNoteId;
+        pattern.addPreviewNote(
+          createPreviewNote(
+            id: transientNoteId,
+            key: 72,
+            velocity: 0.5,
+            length: 72,
+            offset: 360,
+            pan: -0.1,
+          ),
+        );
+        viewModel.pressedNote = transientNoteId;
 
-        final pressedNote = viewModel.resolvePressedRenderedNote([realNote]);
+        final pressedNote = viewModel.resolvePressedRenderedNote(pattern);
 
         expect(pressedNote, isNotNull);
         expect(
-          pressedNote!.ref,
+          viewModel.renderedRefFor(pressedNote!),
           const PianoRollRenderedNoteRef.transient(transientNoteId),
         );
         expect(pressedNote.key, equals(72));
       },
     );
 
-    test('clearTransientPreviewState clears transient notes and overrides', () {
+    test('clearTransientPreviewState clears transient interaction state', () {
       final viewModel = createViewModel();
-      final realNote = NoteModel(
-        key: 60,
-        velocity: 0.75,
-        length: 96,
-        offset: 120,
-        pan: 0,
-      );
-      const transientNoteId = 'transient-note';
+      const transientNoteId = 'preview-note';
+      const selectedNoteId = 'selected-note';
 
-      viewModel.noteOverrides[realNote.id] = const PianoRollNoteOverride(
-        offset: 180,
-      );
-      viewModel.transientNotes[transientNoteId] = const PianoRollTransientNote(
-        id: transientNoteId,
-        key: 67,
-        velocity: 0.5,
-        length: 72,
-        offset: 360,
-        pan: -0.1,
-      );
-      viewModel.selectedTransientNotes.add(transientNoteId);
-      viewModel.pressedTransientNote = transientNoteId;
-      viewModel.hoveredTransientNote = transientNoteId;
+      viewModel.selectedNotes.add(selectedNoteId);
+      viewModel.pressedNote = transientNoteId;
+      viewModel.hoveredNote = transientNoteId;
 
       viewModel.clearTransientPreviewState();
 
-      expect(viewModel.noteOverrides, isEmpty);
-      expect(viewModel.transientNotes, isEmpty);
-      expect(viewModel.selectedTransientNotes, isEmpty);
-      expect(viewModel.pressedTransientNote, isNull);
-      expect(viewModel.hoveredTransientNote, isNull);
+      expect(viewModel.selectedNotes, contains(selectedNoteId));
+      expect(viewModel.pressedNote, isNull);
+      expect(viewModel.hoveredNote, isNull);
     });
   });
 }

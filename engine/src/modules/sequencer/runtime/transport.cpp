@@ -416,7 +416,7 @@ void Transport::addStartEventsForPattern(
         }
       };
 
-  for (auto& note : *pattern.notes()) {
-    addStartEventForTrack(trackId, note);
+  for (auto& noteEntry : *pattern.notes()) {
+    addStartEventForTrack(trackId, noteEntry.second);
   }
 }

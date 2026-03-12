@@ -206,7 +206,8 @@ void AnthemSequenceCompiler::getPatternNoteEvents(
 
   auto pattern = patternIter->second;
 
-  for (auto& note : *pattern->notes()) {
+  for (auto& noteEntry : *pattern->notes()) {
+    auto note = noteEntry.second;
     auto rangeOptional = clampStartAndEndToRange(
       static_cast<double>(note->offset()),
       static_cast<double>(note->offset() + note->length()),

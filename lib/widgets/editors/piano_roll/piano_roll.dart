@@ -592,16 +592,9 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
             : MouseCursor.defer;
 
         final hoveredNoteRef = contentUnderCursor.note?.metadata;
-        final hoveredRealNote = hoveredNoteRef?.realNoteId;
-        final hoveredTransientNote =
-            hoveredNoteRef != null && hoveredNoteRef.isTransient
-            ? hoveredNoteRef.id
-            : null;
-        if (hoveredRealNote != viewModel.hoveredNote) {
-          viewModel.hoveredNote = hoveredRealNote;
-        }
-        if (hoveredTransientNote != viewModel.hoveredTransientNote) {
-          viewModel.hoveredTransientNote = hoveredTransientNote;
+        final hoveredNoteId = hoveredNoteRef?.id;
+        if (hoveredNoteId != viewModel.hoveredNote) {
+          viewModel.hoveredNote = hoveredNoteId;
         }
 
         if (cursor == newCursor) return;
@@ -612,7 +605,6 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
       },
       onExit: (e) {
         viewModel.hoveredNote = null;
-        viewModel.hoveredTransientNote = null;
       },
       child: widget.child,
     );

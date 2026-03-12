@@ -419,7 +419,14 @@ class PianoRollIdleState
   PatternModel get activePattern => controller.requireActivePattern();
 
   NoteModel requireActivePatternNote(Id noteId) {
-    return activePattern.notes.firstWhere((note) => note.id == noteId);
+    final note = activePattern.notes[noteId];
+    if (note == null) {
+      throw StateError(
+        'Note $noteId was not found in pattern ${activePattern.id}.',
+      );
+    }
+
+    return note;
   }
 }
 

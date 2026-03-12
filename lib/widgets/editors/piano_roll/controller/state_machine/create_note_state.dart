@@ -44,7 +44,7 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
         event.signal is _PianoRollPointerDownSignal;
   }
 
-  PianoRollTransientNote? _createTransientNoteFromPointerDown({
+  NoteModel? _createPreviewNoteFromPointerDown({
     required double key,
     required double offset,
   }) {
@@ -57,8 +57,7 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
         ? eventTime
         : snapTimeInActivePattern(rawTime: eventTime);
 
-    return PianoRollTransientNote(
-      id: getId(),
+    return NoteModel(
       key: key.floor(),
       velocity: viewModel.cursorNoteVelocity,
       length: viewModel.cursorNoteLength,
@@ -73,21 +72,19 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
   }) {
     _preview = preview;
 
-    final transientNote = viewModel.transientNotes[sessionData.createdNoteId];
+    final patternPreviewNote = parentState.activePattern.getPreviewNoteById(
+      sessionData.createdNoteId,
+    );
     final previewNote = preview[sessionData.createdNoteId];
-    if (transientNote == null || previewNote == null) {
+    if (patternPreviewNote == null || previewNote == null) {
       return;
     }
 
-    viewModel.transientNotes[sessionData.createdNoteId] =
-        PianoRollTransientNote(
-          id: transientNote.id,
-          key: previewNote.key,
-          velocity: transientNote.velocity,
-          length: transientNote.length,
-          offset: previewNote.offset,
-          pan: transientNote.pan,
-        );
+    parentState.activePattern.updatePreviewNote(
+      noteId: sessionData.createdNoteId,
+      key: previewNote.key,
+      offset: previewNote.offset,
+    );
 
     syncLivePreviewForMoveSession(
       sessionData: sessionData.moveSessionData,
@@ -101,29 +98,26 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
       return;
     }
 
-    viewModel.clearTransientPreviewState();
+    controller.clearPreviewState();
     viewModel.selectedNotes.clear();
 
-    final createdNote = _createTransientNoteFromPointerDown(
+    final createdNote = _createPreviewNoteFromPointerDown(
       key: dragStartContext.key,
       offset: dragStartContext.offset,
     );
     if (createdNote == null) {
       _sessionData = null;
       viewModel.pressedNote = null;
-      viewModel.pressedTransientNote = null;
       return;
     }
 
-    viewModel.transientNotes[createdNote.id] = createdNote;
-    viewModel.pressedNote = null;
-    viewModel.pressedTransientNote = createdNote.id;
+    parentState.activePattern.addPreviewNote(createdNote);
+    viewModel.pressedNote = createdNote.id;
 
-    final createdNoteSnapshot = createdNote.toNoteModel();
     final moveSessionData = createMoveNotesSessionData(
       pointerOffset: dragStartContext.offset,
-      noteUnderCursor: createdNoteSnapshot,
-      notesToMove: [createdNoteSnapshot],
+      noteUnderCursor: createdNote,
+      notesToMove: [createdNote],
       didDuplicateOnPointerDown: false,
       duplicatedNoteIds: const {},
       movingTransientNoteIds: {createdNote.id},
@@ -203,20 +197,19 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
     final sessionData = _sessionData;
     final pattern = parentState.activePatternOrNull;
     if (sessionData != null && pattern != null) {
-      final transientNote = viewModel.transientNotes[sessionData.createdNoteId];
-      if (transientNote != null) {
+      final previewNote = pattern.getPreviewNoteById(sessionData.createdNoteId);
+      if (previewNote != null) {
+        final committedNote = NoteModel.fromNoteModel(previewNote);
+        pattern.removePreviewNoteById(sessionData.createdNoteId);
         project.execute(
-          AddNoteCommand(
-            patternID: pattern.id,
-            note: transientNote.toNoteModel(),
-          ),
+          AddNoteCommand(patternID: pattern.id, note: committedNote),
         );
       }
     }
 
     controller.liveNotes.removeAll();
     viewModel.pressedNote = null;
-    viewModel.clearTransientPreviewState();
+    controller.clearPreviewState();
     _clearSession();
   }
 }

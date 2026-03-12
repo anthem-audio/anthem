@@ -84,7 +84,7 @@ class _PianoRollController {
     liveNotes.removeAll();
     viewModel.selectionBox = null;
     viewModel.pressedNote = null;
-    viewModel.clearTransientPreviewState();
+    clearPreviewState();
     stateMachine.dispose();
   }
 
@@ -149,6 +149,26 @@ class _PianoRollController {
     }
 
     return pattern;
+  }
+
+  /// Clears any in-progress editor preview state for the active pattern.
+  ///
+  /// Pattern-owned preview state is split between committed-note overrides and
+  /// preview-only notes that do not exist in the main pattern note list yet.
+  /// The view model still owns transient interaction metadata like pressed and
+  /// hovered IDs. All of that state must be cleared together whenever an
+  /// interaction ends or is canceled.
+  void clearPreviewState() {
+    final previewNoteIds = activePatternOrNull?.previewNotes.keys.toSet() ?? {};
+    activePatternOrNull?.clearNotePreviews();
+    viewModel.clearTransientPreviewState();
+
+    // Selected preview-only note IDs should only survive if those preview
+    // notes were committed as real notes first. If preview notes are being
+    // cleared outright, drop any now-dangling IDs from the selection.
+    if (previewNoteIds.isNotEmpty) {
+      viewModel.selectedNotes.removeAll(previewNoteIds);
+    }
   }
 
   List<DivisionChange> divisionChangesForPatternView({
@@ -225,9 +245,9 @@ class _PianoRollController {
 
     final command = DeleteNotesCommand(
       patternID: pattern.id,
-      notes: pattern.notes.where(
-        (note) => viewModel.selectedNotes.contains(note.id),
-      ),
+      notes: viewModel.selectedNotes
+          .map((noteId) => pattern.notes[noteId])
+          .nonNulls,
     );
 
     project.execute(command);
@@ -242,8 +262,6 @@ class _PianoRollController {
       return;
     }
 
-    viewModel.selectedNotes = ObservableSet.of(
-      pattern.notes.map((note) => note.id).toSet(),
-    );
+    viewModel.selectedNotes = ObservableSet.of(pattern.notes.keys.toSet());
   }
 }

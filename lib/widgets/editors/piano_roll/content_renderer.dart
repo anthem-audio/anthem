@@ -19,7 +19,7 @@
 
 import 'package:anthem/color_shifter.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
-import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
@@ -27,7 +27,6 @@ import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui' as ui;
@@ -109,30 +108,29 @@ class PianoRollPainter extends CustomPainterObserver {
     }
 
     final notes = pattern.notes;
+    final noteOverrides = pattern.noteOverrides;
+    final previewNotes = pattern.previewNotes;
 
     notes.observeAllChanges();
+    noteOverrides.observeAllChanges();
+    previewNotes.observeAllChanges();
 
     blockObservation(
-      modelItems: [notes],
+      modelItems: [notes, noteOverrides, previewNotes],
       block: () {
-        _drawNotes(canvas, size, notes);
+        _drawNotes(canvas, size, pattern);
       },
     );
   }
 
-  void _drawNotes(
-    Canvas canvas,
-    Size size,
-    AnthemObservableList<NoteModel> notes,
-  ) {
+  void _drawNotes(Canvas canvas, Size size, PatternModel pattern) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
-    final resolvedNotes = viewModel.resolveRenderedNotes(
-      notes.nonObservableInner,
-    );
+    final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
 
     for (final note in resolvedNotes) {
+      final noteRef = viewModel.renderedRefFor(note);
       final keyHeight = viewModel.keyHeight;
       final key = note.key;
       final x =
@@ -163,9 +161,9 @@ class PianoRollPainter extends CustomPainterObserver {
       if (x > size.width || x + width < 0) continue;
       if (y > size.height || y + height < 0) continue;
 
-      final isPressed = note.isPressed;
-      final isSelected = note.isSelected;
-      final isHovered = note.isHovered;
+      final isPressed = viewModel.isNotePressed(note);
+      final isSelected = viewModel.isNoteSelected(note);
+      final isHovered = viewModel.isNoteHovered(note);
 
       var color = colorShifter.noteBase;
       if (isHovered && !isPressed) {
@@ -266,7 +264,7 @@ class PianoRollPainter extends CustomPainterObserver {
         canvas.restore();
       }
 
-      viewModel.visibleNotes.add(rect: rect.outerRect, metadata: note.ref);
+      viewModel.visibleNotes.add(rect: rect.outerRect, metadata: noteRef);
 
       // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
       final endResizeHandleRect = Rect.fromLTRB(
@@ -282,7 +280,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
       viewModel.visibleResizeAreas.add(
         rect: endResizeHandleRect,
-        metadata: note.ref,
+        metadata: noteRef,
       );
     }
   }

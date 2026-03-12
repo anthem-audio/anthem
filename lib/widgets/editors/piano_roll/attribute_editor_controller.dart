@@ -22,6 +22,7 @@ import 'dart:ui';
 import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -66,7 +67,14 @@ class AttributeEditorController {
 
     if (pattern == null) return;
 
-    final notes = pattern.notes;
+    final notes = pattern.getResolvedNotes().toList(growable: false);
+    if (notes.isEmpty) {
+      return;
+    }
+
+    bool isNoteSelected(ResolvedPatternNote note) {
+      return viewModel.selectedNotes.contains(note.id);
+    }
 
     final hasSelectedNotes = viewModel.selectedNotes.isNotEmpty;
 
@@ -74,7 +82,7 @@ class AttributeEditorController {
     Time closestOffsetAfter = notes.first.offset;
 
     for (final note in notes) {
-      if (hasSelectedNotes && !viewModel.selectedNotes.contains(note.id)) {
+      if (hasSelectedNotes && !isNoteSelected(note)) {
         continue;
       }
 
@@ -125,11 +133,7 @@ class AttributeEditorController {
     }
 
     final affectedNotes =
-        (hasSelectedNotes
-                ? notes.where(
-                    (note) => viewModel.selectedNotes.contains(note.id),
-                  )
-                : notes)
+        (hasSelectedNotes ? notes.where((note) => isNoteSelected(note)) : notes)
             .where((note) => note.offset == targetOffset);
 
     late final int bottom;
@@ -154,13 +158,13 @@ class AttributeEditorController {
           oldValues[note.id] ??= note.velocity;
           newValues[note.id] = newValue;
           viewModel.cursorNoteVelocity = newValue;
-          note.velocity = newValue;
+          pattern.setResolvedNotePreview(noteId: note.id, velocity: newValue);
           break;
         case ActiveNoteAttribute.pan:
           oldValues[note.id] ??= note.pan;
           newValues[note.id] = newValue;
           viewModel.cursorNotePan = newValue;
-          note.pan = newValue;
+          pattern.setResolvedNotePreview(noteId: note.id, pan: newValue);
           break;
       }
     }
@@ -200,7 +204,8 @@ class AttributeEditorController {
 
     final journalPageCommand = JournalPageCommand(commands);
 
-    project.push(journalPageCommand);
+    project.push(journalPageCommand, execute: true);
+    pattern.clearNoteOverrides();
 
     oldValues.clear();
     newValues.clear();

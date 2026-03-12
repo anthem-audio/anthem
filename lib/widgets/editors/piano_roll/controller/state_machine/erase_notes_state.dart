@@ -85,26 +85,19 @@ class PianoRollEraseNotesState
     }
 
     final pattern = parentState.activePattern;
-    final notes = pattern.notes;
-
-    notes.removeWhere((note) {
-      final remove =
-          note.id == noteId &&
-          // Ignore events that come from the resize handle but aren't over
-          // the note.
-          note.offset + note.length > dragStartContext.offset;
-
-      if (remove) {
-        _sessionData!.notesDeleted.add(note);
-        viewModel.selectedNotes.remove(note.id);
-      }
-
-      return remove;
-    });
+    final note = pattern.notes[noteId];
+    if (note != null &&
+        // Ignore events that come from the resize handle but aren't over
+        // the note.
+        note.offset + note.length > dragStartContext.offset) {
+      pattern.notes.remove(noteId);
+      _sessionData!.notesDeleted.add(note);
+      viewModel.selectedNotes.remove(note.id);
+    }
 
     _sessionData!.notesToTemporarilyIgnore.addAll(
       _getNotesUnderCursor(
-        notes,
+        pattern.notes.values,
         dragStartContext.key,
         dragStartContext.offset,
       ),
@@ -118,7 +111,7 @@ class PianoRollEraseNotesState
       return;
     }
 
-    final notes = parentState.activePattern.notes;
+    final notes = parentState.activePattern.notes.values;
     final thisPoint = Point(dragCurrentContext.offset, dragCurrentContext.key);
 
     // We make a line between the previous event point and this point, and
@@ -155,7 +148,7 @@ class PianoRollEraseNotesState
         continue;
       }
 
-      notes.remove(note);
+      parentState.activePattern.notes.remove(note.id);
       sessionData.notesDeleted.add(note);
       viewModel.selectedNotes.remove(note.id);
     }
