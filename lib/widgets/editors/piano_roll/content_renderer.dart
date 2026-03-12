@@ -133,14 +133,19 @@ class PianoRollPainter extends CustomPainterObserver {
       final noteRef = viewModel.renderedRefFor(note);
       final keyHeight = viewModel.keyHeight;
       final key = note.key;
-      final x =
-          timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: note.offset.toDouble(),
-          ) +
-          1;
+      final startX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: note.offset.toDouble(),
+      );
+      final endX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: (note.offset + note.length).toDouble(),
+      );
+      final x = startX + 1;
       final y =
           keyValueToPixels(
             keyValue: key.toDouble() + 1,
@@ -148,18 +153,12 @@ class PianoRollPainter extends CustomPainterObserver {
             keyHeight: keyHeight,
           ) +
           1;
-      final width =
-          timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: (note.offset + note.length).toDouble(),
-          ) -
-          x;
+      final width = (endX - x).clamp(0.0, double.infinity);
       final height = keyHeight - 1;
 
-      if (x > size.width || x + width < 0) continue;
+      if (x > size.width || endX < 0) continue;
       if (y > size.height || y + height < 0) continue;
+      if (width <= 0 || height <= 0) continue;
 
       final isPressed = viewModel.isNotePressed(note);
       final isSelected = viewModel.isNoteSelected(note);
@@ -183,21 +182,18 @@ class PianoRollPainter extends CustomPainterObserver {
         }
       }
 
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, y, width, height),
-        const Radius.circular(1),
-      );
+      final noteRect = Rect.fromLTWH(x, y, width, height);
+      final rect = RRect.fromRectAndRadius(noteRect, const Radius.circular(1));
       // Borders are drawn along the edge of the shape, with half the border
       // inside and half outside. We want all of it to be inside, and this
       // rectangle accounts for this issue.
-      final borderRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1),
-        const Radius.circular(1),
-      );
-
       canvas.drawRRect(rect, Paint()..color = color);
 
-      if (isSelected) {
+      if (isSelected && width > 1 && height > 1) {
+        final borderRect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1),
+          const Radius.circular(1),
+        );
         canvas.drawRRect(
           borderRect,
           Paint()
@@ -207,13 +203,13 @@ class PianoRollPainter extends CustomPainterObserver {
         );
       }
 
-      if (keyHeight > 25) {
+      if (keyHeight > 25 && width > 2 && height > 2) {
+        final cachedLabel = noteLabelImageCache.get(key);
+        if (cachedLabel == null) continue;
+
         canvas.save();
         final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);
         canvas.clipRect(clipRect);
-
-        final cachedLabel = noteLabelImageCache.get(key);
-        if (cachedLabel == null) return;
 
         final textColor = white;
 
@@ -250,11 +246,12 @@ class PianoRollPainter extends CustomPainterObserver {
         final transparentColor = color.withAlpha(0);
 
         // Fade out gradient
+        final textFadeOutStop = (1 - (10 / width)).clamp(0.0, 1.0);
         final textFadeOutGradient = ui.Gradient.linear(
           Offset(x, textY),
           Offset(x + width - 3, textY),
           [transparentColor, transparentColor, color],
-          [0, 1 - (10 / width), 1],
+          [0, textFadeOutStop, 1],
         );
 
         final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
@@ -264,14 +261,14 @@ class PianoRollPainter extends CustomPainterObserver {
         canvas.restore();
       }
 
-      viewModel.visibleNotes.add(rect: rect.outerRect, metadata: noteRef);
+      viewModel.visibleNotes.add(rect: noteRect, metadata: noteRef);
 
       // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
       final endResizeHandleRect = Rect.fromLTRB(
         x +
             (width - (_noteResizeHandleWidth - _noteResizeHandleOvershoot))
                 // Ensures there's a bit of the note still showing
-                .clamp(_minimumClickableNoteArea, double.infinity)
+                .clamp(_minimumClickableNoteArea.toDouble(), double.infinity)
                 .clamp(0, width),
         y,
         x + width + _noteResizeHandleOvershoot,
