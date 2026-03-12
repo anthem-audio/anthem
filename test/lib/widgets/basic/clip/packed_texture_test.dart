@@ -40,6 +40,23 @@ void main() {
       expect(packedTexture.textureAtlas, isNull);
     });
 
+    test('clears the previous atlas when input becomes empty', () async {
+      final packedTexture = PackedTexture(maxWidth: _atlasWidth);
+      final red = await _makeSolidImage(width: 10, height: 6, color: _redColor);
+
+      final initialRects = packedTexture.drawImages([red]);
+
+      expect(initialRects, isNotEmpty);
+      expect(packedTexture.textureAtlas, isNotNull);
+
+      final clearedRects = packedTexture.drawImages(<ui.Image>[]);
+
+      expect(clearedRects, isEmpty);
+      expect(packedTexture.textureAtlas, isNull);
+
+      red.dispose();
+    });
+
     test('packs a single image at origin with expected atlas size', () async {
       final packedTexture = PackedTexture(maxWidth: _atlasWidth);
       final red = await _makeSolidImage(width: 10, height: 6, color: _redColor);

@@ -19,11 +19,9 @@
 
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/main.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
@@ -31,9 +29,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
-import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem_codegen/include.dart';
-import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
@@ -42,7 +38,6 @@ import 'note.dart';
 
 part 'pattern.g.dart';
 
-part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 part 'pattern_compiler_mixin.dart';
 
@@ -94,7 +89,6 @@ class PatternModel extends _PatternModel
     with
         _$PatternModel,
         _$PatternModelAnthemModelMixin,
-        _ClipTitleRenderCacheMixin,
         _ClipNotesRenderCacheMixin,
         _PatternCompilerMixin {
   /// Action to tell the engine to send new loop points to the audio thread.
@@ -135,7 +129,6 @@ class PatternModel extends _PatternModel
       });
 
       // Initialize render caches
-      updateClipTitleCache();
       updateClipNotesRenderCache();
 
       _clipAutoWidthUpdateAction.execute();
@@ -192,7 +185,7 @@ class PatternModel extends _PatternModel
       // When the pattern title is changed, we need to update the clip title
       // render cache.
       onChange((b) => b.name, (e) {
-        updateClipTitleCache();
+        invalidateClipTitleAtlasEntry();
       });
 
       // After updating loop points in the model, we inform the engine.
@@ -482,6 +475,12 @@ abstract class _PatternModel
       modelItems: [notes, noteOverrides, previewNotes, automation],
       block: () => getWidth(barMultiple: 4, minPaddingInBarMultiples: 4),
     );
+  }
+
+  @hide
+  void invalidateClipTitleAtlasEntry() {
+    final sequence = getFirstAncestorOfType<SequencerModel>();
+    sequence.invalidateClipTitleAtlasEntryForPattern(id);
   }
 
   /// The width that a clip will take on if it has no time view.

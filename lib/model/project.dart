@@ -488,6 +488,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   }
 
   void dispose() {
+    sequence.dispose();
     visualizationProvider.dispose();
     engine.dispose();
   }

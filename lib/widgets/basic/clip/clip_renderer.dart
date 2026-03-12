@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,6 +27,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
 
 import 'clip.dart';
+import 'clip_title_text.dart';
 
 // For automation rendering
 final _automationLineBuffer = LineBuffer();
@@ -37,7 +38,7 @@ final _automationTriCoordBuffer = CoordinateBuffer();
 const _smallSizeThreshold = 38;
 
 const _clipTitleHeight = 16;
-const _clipTitlePadding = 2;
+const _clipTitlePadding = clipTitlePadding;
 
 const _contentBaseColor = Color(0xFF777777);
 
@@ -208,13 +209,18 @@ void paintClipList({
     final sequence = project.sequence;
     final spriteSheet = sequence.patternTitleTexture;
     final textureAtlas = spriteSheet.textureAtlas;
+    final atlasRectsByPatternId = sequence.clipTitleAtlasRectsByPatternId;
 
-    if (textureAtlas != null) {
+    final isTextureAtlasDevicePixelRatioMatch =
+        textureAtlas != null &&
+        sequence.clipTitleTextureAtlasDevicePixelRatio == devicePixelRatio;
+
+    if (isTextureAtlasDevicePixelRatioMatch) {
       var clipEntriesWithAtlasRectCount = 0;
       var hasClipEntriesWithoutAtlasRect = false;
 
       for (final clipEntry in clipList) {
-        if (clipEntry.pattern.clipTitleAtlasRect != null) {
+        if (atlasRectsByPatternId[clipEntry.pattern.id] != null) {
           clipEntriesWithAtlasRectCount++;
         } else {
           hasClipEntriesWithoutAtlasRect = true;
@@ -227,7 +233,7 @@ void paintClipList({
         ClipRenderInfo nextClipEntryWithAtlasRect() {
           while (cursor < clipList.length) {
             final clipEntry = clipList[cursor++];
-            if (clipEntry.pattern.clipTitleAtlasRect != null) {
+            if (atlasRectsByPatternId[clipEntry.pattern.id] != null) {
               return clipEntry;
             }
           }
@@ -257,7 +263,7 @@ void paintClipList({
         cursor = 0;
         final rects = List.generate(clipEntriesWithAtlasRectCount, (i) {
           final clipEntry = nextClipEntryWithAtlasRect();
-          final rect = clipEntry.pattern.clipTitleAtlasRect!;
+          final rect = atlasRectsByPatternId[clipEntry.pattern.id]!;
           return Rect.fromLTWH(
             rect.left,
             rect.top,
@@ -287,7 +293,7 @@ void paintClipList({
       // rendering for that clip instead of crashing the entire paint pass.
       if (hasClipEntriesWithoutAtlasRect) {
         for (final clipEntry in clipList) {
-          if (clipEntry.pattern.clipTitleAtlasRect != null) continue;
+          if (atlasRectsByPatternId[clipEntry.pattern.id] != null) continue;
 
           _drawClipTitleDirect(
             canvas: canvas,
@@ -298,7 +304,8 @@ void paintClipList({
         }
       }
     } else {
-      // Fallback if the atlas hasn't been generated yet.
+      // Fallback if the atlas hasn't been generated yet, or if it was built
+      // for a different device pixel ratio.
       _drawClipTitlesDirect(
         canvas: canvas,
         canvasSize: canvasSize,
@@ -575,46 +582,25 @@ void drawPatternTitle({
     );
   }
 
-  final paragraphStyle = ParagraphStyle(textAlign: TextAlign.left, maxLines: 1);
-
-  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(color: textColor, fontSize: 11 * devicePixelRatio))
-    ..addText(pattern.name);
-
-  final paragraph = paragraphBuilder.build();
-  final constraints = ParagraphConstraints(
-    width: width - _clipTitlePadding * 2 + 2,
+  drawClipTitleText(
+    canvas: canvas,
+    title: pattern.name,
+    x: x,
+    y: y,
+    width: width,
+    devicePixelRatio: devicePixelRatio,
+    textColor: textColor,
   );
-  paragraph.layout(constraints);
-
-  canvas.drawParagraph(paragraph, Offset(x + _clipTitlePadding + 1, y));
 }
 
 (double, double) getClipTitleSize({
   required double devicePixelRatio,
   required PatternModel pattern,
 }) {
-  // We hardcode the height for now
-  const height = _clipTitleHeight;
-
-  // Width is based on the pattern name length
-  final paragraphStyle = ParagraphStyle(
-    textAlign: TextAlign.left,
-    ellipsis: '...',
-    maxLines: 1,
+  return getClipTitleTextSize(
+    devicePixelRatio: devicePixelRatio,
+    title: pattern.name,
   );
-
-  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(fontSize: 11 * devicePixelRatio))
-    ..addText(pattern.name);
-
-  final paragraph = paragraphBuilder.build();
-  final constraints = ParagraphConstraints(width: double.infinity);
-  paragraph.layout(constraints);
-
-  final width = paragraph.maxIntrinsicWidth / devicePixelRatio + 6;
-
-  return (width, height.toDouble());
 }
 
 void _paintClipNotes({

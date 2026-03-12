@@ -52,6 +52,8 @@ class PackedTexture {
 
   List<Rect> drawImages(List<Image> images) {
     if (images.isEmpty) {
+      textureAtlas?.dispose();
+      textureAtlas = null;
       return [];
     }
 
@@ -75,6 +77,7 @@ class PackedTexture {
     }
 
     final picture = pictureRecorder.endRecording();
+    textureAtlas?.dispose();
     textureAtlas = picture.toImageSync(
       atlasSize.width.ceil(),
       atlasSize.height.ceil(),

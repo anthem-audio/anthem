@@ -47,6 +47,7 @@ class _MainWindowState extends State<MainWindow> {
   AnthemMenuController menuController = AnthemMenuController();
 
   bool firstBuild = true;
+  double? lastDevicePixelRatio;
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _MainWindowState extends State<MainWindow> {
   @override
   Widget build(BuildContext context) {
     final viewModel = ServiceRegistry.mainWindowViewModel;
+    final store = AnthemStore.instance;
 
     if (firstBuild) {
       firstBuild = false;
@@ -130,11 +132,19 @@ class _MainWindowState extends State<MainWindow> {
       }
     }
 
-    if (!noteLabelImageCache.initialized) {
-      noteLabelImageCache.init(View.of(context).devicePixelRatio);
+    final devicePixelRatio = View.of(context).devicePixelRatio;
+
+    if (lastDevicePixelRatio != devicePixelRatio) {
+      lastDevicePixelRatio = devicePixelRatio;
+
+      for (final project in store.projects.values) {
+        project.sequence.scheduleClipTitleTextureAtlasUpdate();
+      }
     }
 
-    final store = AnthemStore.instance;
+    if (!noteLabelImageCache.initialized) {
+      noteLabelImageCache.init(devicePixelRatio);
+    }
 
     return Stack(
       fit: .expand,

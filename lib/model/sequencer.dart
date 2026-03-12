@@ -17,12 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui';
+
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/main.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
+import 'package:anthem/widgets/basic/clip/clip_title_text.dart';
 import 'package:anthem_codegen/include.dart';
+import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
 
 import 'arrangement/arrangement.dart';
@@ -56,8 +61,22 @@ class SequencerModel extends _SequencerModel
 
   void _init() {
     onModelFirstAttached(() {
-      _updateClipTitleTextureAtlas();
+      onChange(
+        (b) => b.patterns.anyValue.filterByChangeType([
+          ModelFilterChangeType.mapPut,
+          ModelFilterChangeType.mapRemove,
+        ]),
+        (e) {
+          scheduleClipTitleTextureAtlasUpdate();
+        },
+      );
+
+      scheduleClipTitleTextureAtlasUpdate();
     });
+  }
+
+  void dispose() {
+    disposeClipTitleTextureAtlasCache();
   }
 }
 

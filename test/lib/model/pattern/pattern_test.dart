@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui' as ui;
+
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
@@ -368,5 +370,26 @@ void main() {
         );
       },
     );
+  });
+
+  group('Pattern title atlas state', () {
+    test('clears the atlas rect when the pattern name changes', () async {
+      final project = ProjectModel.create();
+      final pattern = PatternModel.create(name: 'Pattern Title');
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      project.sequence.clipTitleAtlasRectsByPatternId[pattern.id] =
+          const ui.Rect.fromLTWH(10, 20, 30, 40);
+
+      pattern.name = 'Renamed Pattern Title';
+      await _flushMicrotasks();
+
+      expect(
+        project.sequence.clipTitleAtlasRectsByPatternId[pattern.id],
+        isNull,
+      );
+    });
   });
 }
