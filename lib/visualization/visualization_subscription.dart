@@ -21,6 +21,8 @@ part of 'visualization.dart';
 
 enum VisualizationSubscriptionType { latest, max, lastNValues }
 
+enum _VisualizationValueType { doubleValue, intValue, stringValue }
+
 /// Represents the configuration for a visualization subscription.
 class VisualizationSubscriptionConfig {
   final String id;
@@ -72,6 +74,7 @@ class VisualizationSubscription {
   double _valueDouble = 0;
   int _valueInt = 0;
   String? _valueString;
+  _VisualizationValueType? _valueType;
 
   DateTime? _overrideSetTime;
   Duration? _overrideDuration;
@@ -119,8 +122,12 @@ class VisualizationSubscription {
     return _overrideString ??
         _overrideInt?.toString() ??
         _overrideDouble?.toString() ??
-        _valueString ??
-        _valueInt.toString();
+        switch (_valueType) {
+          .stringValue => _valueString ?? '',
+          .doubleValue => _valueDouble.toString(),
+          .intValue => _valueInt.toString(),
+          null => _valueString ?? _valueInt.toString(),
+        };
   }
 
   /// Read the last N values for this visualization item.
@@ -172,7 +179,17 @@ class VisualizationSubscription {
       return [_overrideInt!.toString()];
     }
 
-    return _ringBufferString?.values ?? [_valueString ?? _valueInt.toString()];
+    return switch (_valueType) {
+      .stringValue => _ringBufferString?.values ?? [_valueString ?? ''],
+      .doubleValue =>
+        _ringBufferDouble?.values.map((value) => value.toString()) ??
+            [_valueDouble.toString()],
+      .intValue =>
+        _ringBufferInt?.values.map((value) => value.toString()) ??
+            [_valueInt.toString()],
+      null =>
+        _ringBufferString?.values ?? [_valueString ?? _valueInt.toString()],
+    };
   }
 
   /// Sets an override value for this subscription, with a duration.
@@ -246,6 +263,7 @@ class VisualizationSubscription {
       _shouldReset = false;
 
       if (value is double) {
+        _valueType = .doubleValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferDouble!.reset();
           _ringBufferDouble.add(value);
@@ -253,6 +271,7 @@ class VisualizationSubscription {
           _valueDouble = value;
         }
       } else if (value is int) {
+        _valueType = .intValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferInt!.reset();
           _ringBufferInt.add(value);
@@ -260,6 +279,7 @@ class VisualizationSubscription {
           _valueInt = value;
         }
       } else if (value is String) {
+        _valueType = .stringValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferString!.reset();
           _ringBufferString.add(value);
@@ -273,6 +293,7 @@ class VisualizationSubscription {
       }
     } else {
       if (value is double) {
+        _valueType = .doubleValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferDouble!.add(value);
         } else if (_config.type == VisualizationSubscriptionType.max) {
@@ -281,6 +302,7 @@ class VisualizationSubscription {
           _valueDouble = value;
         }
       } else if (value is int) {
+        _valueType = .intValue;
         assert(
           _config.type != VisualizationSubscriptionType.max,
           'Int values are not supported for max subscription type.',
@@ -292,6 +314,7 @@ class VisualizationSubscription {
           _valueInt = value;
         }
       } else if (value is String) {
+        _valueType = .stringValue;
         assert(
           _config.type != VisualizationSubscriptionType.max,
           'String values are not supported for max subscription type.',

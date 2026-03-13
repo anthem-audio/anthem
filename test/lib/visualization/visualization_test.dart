@@ -297,6 +297,46 @@ void main() {
     }
   });
 
+  test(
+    'String reads stringify numeric subscriptions using the active lane',
+    () {
+      final visualizationApiMock = MockVisualizationApi();
+
+      final engineMock = MockEngine();
+      when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+
+      final projectMock = MockProjectModel();
+      when(projectMock.engine).thenReturn(engineMock);
+
+      final visualizationProvider = VisualizationProvider(projectMock);
+
+      final latestDouble = visualizationProvider.subscribe(
+        const VisualizationSubscriptionConfig.latest('double_latest'),
+      );
+      final bufferedDouble = visualizationProvider.subscribe(
+        const VisualizationSubscriptionConfig.lastNValues('double_buffered', 3),
+      );
+      final latestInt = visualizationProvider.subscribe(
+        const VisualizationSubscriptionConfig.latest('int_latest'),
+      );
+
+      visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            VisualizationItem(id: 'double_latest', values: [1.5]),
+            VisualizationItem(id: 'double_buffered', values: [2.5, 3.5]),
+            VisualizationItem(id: 'int_latest', values: [7]),
+          ],
+        ),
+      );
+
+      expect(latestDouble.readValueString(), '1.5');
+      expect(bufferedDouble.readValuesString(), ['2.5', '3.5']);
+      expect(latestInt.readValueString(), '7');
+    },
+  );
+
   test('Visualization updates are correct', () async {
     final visualizationApiMock = MockVisualizationApi();
 
