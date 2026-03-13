@@ -17,19 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/menu/menu_positioning.dart';
 import 'package:anthem/widgets/basic/menu/menu_renderer.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
-
-var _nextContextMenuId = 0;
-
-Id _allocateContextMenuId() {
-  return _nextContextMenuId++;
-}
 
 /// Convenience function for opening a context menu.
 ///
@@ -37,32 +31,28 @@ Id _allocateContextMenuId() {
 /// [Menu] component, this method takes a window coordinate and opens the menu
 /// at that position.
 ///
-/// Returns an [Id] that can be used to close the menu if needed with
+/// Returns a [ScreenOverlayHandle] that can be used to close the menu if
+/// needed with
 /// [closeContextMenu].
-Id openContextMenu(Offset globalPosition, MenuDef menu) {
-  final menuId = _allocateContextMenuId();
+ScreenOverlayHandle openContextMenu(Offset globalPosition, MenuDef menu) {
   final anchorRect = Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0);
 
   final screenOverlayController = ServiceRegistry.screenOverlayController;
-  screenOverlayController.add(
-    menuId,
+  return screenOverlayController.show(
     ScreenOverlayEntry(
-      builder: (context, id) {
+      builder: (context) {
         return MenuPositioned(
           anchorRect: anchorRect,
-          child: MenuRenderer(menu: menu, id: id),
+          child: MenuRenderer(menu: menu),
         );
       },
     ),
   );
-
-  return menuId;
 }
 
-/// Closes the context menu with the given ID.
+/// Closes the context menu represented by the given handle.
 ///
 /// See [openContextMenu] for reference.
-void closeContextMenu(Id id) {
-  final screenOverlayController = ServiceRegistry.screenOverlayController;
-  screenOverlayController.remove(id);
+void closeContextMenu(ScreenOverlayHandle handle) {
+  handle.close();
 }

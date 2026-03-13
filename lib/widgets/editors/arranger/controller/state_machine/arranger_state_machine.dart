@@ -400,7 +400,7 @@ class ArrangerIdleState
   static const Duration _doubleClickThreshold = Duration(milliseconds: 500);
   static const double _maxClickTravelDistance = 8;
   static const double _maxDoubleClickDistance = 8;
-  static Id Function(Offset globalPosition, MenuDef menu) openContextMenuFn =
+  static void Function(Offset globalPosition, MenuDef menu) openContextMenuFn =
       openContextMenu;
 
   /// Convenience getter to fetch the base state machine object.

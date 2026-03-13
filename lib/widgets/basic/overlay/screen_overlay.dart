@@ -30,7 +30,7 @@ import 'package:provider/provider.dart';
 ///
 /// Example usage:
 /// ```dart
-/// Provider.of<ScreenOverlayController>().add(/* ... */);
+/// Provider.of<ScreenOverlayController>(context, listen: false).show(/* ... */);
 /// ```
 class ScreenOverlay extends StatefulObserverWidget {
   final Widget child;
@@ -69,12 +69,9 @@ class _ScreenOverlayState extends State<ScreenOverlay> {
                 )
               : null,
         ].nonNulls.toList() +
-        // state.entries is a Map<ID, ScreenOverlayEntry>
-        // state.entries.entries is a Iterable<MapEntry<String, ScreenOverlayEntry>>
+        // state.entries is a Map<Id, ScreenOverlayEntry>
         viewModel.entries.entries
-            .map<Widget>(
-              (mapEntry) => mapEntry.value.builder(context, mapEntry.key),
-            )
+            .map<Widget>((mapEntry) => mapEntry.value.builder(context))
             .toList();
 
     return MultiProvider(

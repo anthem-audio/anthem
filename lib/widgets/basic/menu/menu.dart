@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/menu/menu_positioning.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
@@ -26,12 +25,6 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'menu_renderer.dart';
-
-var _nextMenuOverlayId = 0;
-
-Id _allocateMenuOverlayId() {
-  return _nextMenuOverlayId++;
-}
 
 class Menu extends StatefulWidget {
   final AnthemMenuController menuController;
@@ -59,7 +52,7 @@ class Menu extends StatefulWidget {
 
 class _MenuState extends State<Menu> {
   int openMenuID = -1;
-  List<Id> openMenus = [];
+  List<ScreenOverlayHandle> openMenus = [];
 
   @override
   Widget build(BuildContext context) {
@@ -92,29 +85,26 @@ class _MenuState extends State<Menu> {
               widget.offset,
         );
     final anchorRect = Rect.fromLTWH(anchorPos.dx, anchorPos.dy, 0, 0);
-    final id = _allocateMenuOverlayId();
 
-    screenOverlayController.add(
-      id,
+    final handle = screenOverlayController.show(
       ScreenOverlayEntry(
-        builder: (context, id) {
+        builder: (context) {
           return MenuPositioned(
             anchorRect: anchorRect,
-            child: MenuRenderer(menu: widget.menuDef, id: id),
+            child: MenuRenderer(menu: widget.menuDef),
           );
         },
         onClose: widget.onClose,
       ),
     );
-    openMenus.add(id);
+    openMenus.add(handle);
   }
 
-  void closeMenu(ScreenOverlayController screenOverlayController) {
+  void closeMenu() {
     for (var menu in openMenus) {
-      screenOverlayController.remove(menu);
+      menu.close();
     }
-
-    widget.onClose?.call();
+    openMenus.clear();
   }
 }
 

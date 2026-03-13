@@ -208,7 +208,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _ArrangerStateMachineTestFixture fixture;
-  late Id Function(Offset globalPosition, MenuDef menu)
+  late void Function(Offset globalPosition, MenuDef menu)
   defaultOpenContextMenuFn;
 
   setUp(() {
@@ -507,7 +507,6 @@ void main() {
         openCount++;
         openedPosition = globalPosition;
         openedMenu = menu;
-        return 9001;
       };
 
       fixture.pointerDown(
@@ -540,7 +539,6 @@ void main() {
       var openCount = 0;
       ArrangerIdleState.openContextMenuFn = (_, _) {
         openCount++;
-        return 9001;
       };
 
       fixture.pointerDown(
@@ -564,7 +562,6 @@ void main() {
       var openCount = 0;
       ArrangerIdleState.openContextMenuFn = (_, _) {
         openCount++;
-        return 9001;
       };
 
       fixture.pointerDown(
@@ -589,7 +586,6 @@ void main() {
       var openCount = 0;
       ArrangerIdleState.openContextMenuFn = (_, _) {
         openCount++;
-        return 9001;
       };
 
       fixture.pointerDown(
@@ -648,7 +644,6 @@ void main() {
         MenuDef? openedMenu;
         ArrangerIdleState.openContextMenuFn = (_, menu) {
           openedMenu = menu;
-          return 9001;
         };
 
         fixture.pointerDown(
@@ -731,7 +726,6 @@ void main() {
         MenuDef? openedMenu;
         ArrangerIdleState.openContextMenuFn = (_, menu) {
           openedMenu = menu;
-          return 9001;
         };
 
         fixture.pointerDown(

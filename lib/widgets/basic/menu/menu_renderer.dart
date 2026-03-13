@@ -20,7 +20,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
@@ -49,12 +48,6 @@ class _Constants {
 
   static const Duration hoverOpenDuration = Duration(milliseconds: 500);
   static const Duration hoverCloseDuration = Duration(milliseconds: 500);
-}
-
-var _nextSubmenuOverlayId = 0;
-
-Id _allocateSubmenuOverlayId() {
-  return _nextSubmenuOverlayId++;
 }
 
 double _getMenuItemHeight(GenericMenuItem menuItem) {
@@ -241,9 +234,8 @@ _MenuLayoutMetrics _computeMenuLayoutMetrics({
 
 class MenuRenderer extends StatefulWidget {
   final MenuDef menu;
-  final Id id;
 
-  const MenuRenderer({super.key, required this.menu, required this.id});
+  const MenuRenderer({super.key, required this.menu});
 
   @override
   State<MenuRenderer> createState() => _MenuRendererState();
@@ -353,11 +345,11 @@ class _MenuItemRenderer extends StatefulWidget {
 class _MenuItemRendererState extends State<_MenuItemRenderer> {
   bool isHovered = false;
   bool get isSubmenuOpen {
-    return submenuKey != null;
+    return submenuHandle != null;
   }
 
   // If there's no open submenu, this is null
-  Id? submenuKey;
+  ScreenOverlayHandle? submenuHandle;
 
   // This will be defined if the user has hovered an item with a submenu but
   // the submenu hasn't opened yet
@@ -371,15 +363,11 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
   void didUpdateWidget(covariant _MenuItemRenderer oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final screenOverlayController = Provider.of<ScreenOverlayController>(
-      context,
-    );
-
     if (!oldWidget.isMouseInMenu &&
         widget.isMouseInMenu &&
         isSubmenuOpen &&
         !isHovered) {
-      startSubmenuCloseTimer(screenOverlayController);
+      startSubmenuCloseTimer();
     } else if (oldWidget.isMouseInMenu && !widget.isMouseInMenu) {
       cancelSubmenuCloseTimer();
     }
@@ -502,7 +490,7 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
             isHovered = false;
           });
           cancelHoverTimer();
-          startSubmenuCloseTimer(screenOverlayController);
+          startSubmenuCloseTimer();
         },
         child: GestureDetector(
           onTap: () {
@@ -572,18 +560,15 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
       size.height,
     );
 
-    submenuKey = _allocateSubmenuOverlayId();
-
-    screenOverlayController.add(
-      submenuKey!,
+    submenuHandle = screenOverlayController.show(
       ScreenOverlayEntry(
-        builder: (screenOverlayContext, id) {
+        builder: (screenOverlayContext) {
           return MenuPositioned(
             anchorRect: anchorRect,
             horizontalGap: _Constants.horizontalInnerPadding,
             verticalGap: -_Constants.verticalInnerPadding,
             alignTopToAnchor: true,
-            child: MenuRenderer(id: id, menu: item.submenu!),
+            child: MenuRenderer(menu: item.submenu!),
           );
         },
       ),
@@ -606,12 +591,12 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
     hoverTimer = null;
   }
 
-  void startSubmenuCloseTimer(ScreenOverlayController screenOverlayController) {
+  void startSubmenuCloseTimer() {
     submenuCloseTimer = Timer(_Constants.hoverCloseDuration, () {
-      if (submenuKey != null) {
-        screenOverlayController.remove(submenuKey!);
+      if (submenuHandle != null) {
+        submenuHandle!.close();
         setState(() {
-          submenuKey = null;
+          submenuHandle = null;
         });
       }
     });

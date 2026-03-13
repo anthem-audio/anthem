@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,16 +20,30 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 
+class ScreenOverlayHandle {
+  final ScreenOverlayController _controller;
+  final Id _id;
+
+  const ScreenOverlayHandle._(this._controller, this._id);
+
+  void close() {
+    _controller._removeById(_id);
+  }
+}
+
 class ScreenOverlayController {
   ScreenOverlayViewModel viewModel;
+  Id _nextOverlayId = 0;
 
   ScreenOverlayController({required this.viewModel});
 
-  void add(Id id, ScreenOverlayEntry entry) {
+  ScreenOverlayHandle show(ScreenOverlayEntry entry) {
+    final id = _nextOverlayId++;
     viewModel.entries[id] = entry;
+    return ScreenOverlayHandle._(this, id);
   }
 
-  void remove(Id id) {
+  void _removeById(Id id) {
     final entry = viewModel.entries.remove(id);
     entry?.onClose?.call();
   }

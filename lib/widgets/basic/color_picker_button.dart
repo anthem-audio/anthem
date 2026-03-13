@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/color_picker.dart';
@@ -26,12 +25,6 @@ import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
-
-var _nextColorPickerOverlayId = 0;
-
-Id _allocateColorPickerOverlayId() {
-  return _nextColorPickerOverlayId++;
-}
 
 /// Button that opens a color picker.
 class ColorPickerButton extends StatefulWidget {
@@ -61,17 +54,15 @@ class _ColorPickerButtonState extends State<ColorPickerButton> {
           final overlayPosition = contentRenderBox.localToGlobal(
             Offset(contentRenderBox.size.width, 0),
           );
-          final overlayId = _allocateColorPickerOverlayId();
 
           final screenOverlayController = Provider.of<ScreenOverlayController>(
             context,
             listen: false,
           );
 
-          screenOverlayController.add(
-            overlayId,
+          screenOverlayController.show(
             ScreenOverlayEntry(
-              builder: (context, id) {
+              builder: (context) {
                 return Positioned(
                   left: overlayPosition.dx,
                   top: overlayPosition.dy,
