@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -221,7 +221,8 @@ class MultiVisualizationBuilder extends StatefulWidget {
 }
 
 class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
-  late final List<VisualizationSubscription> _subscriptions;
+  List<VisualizationSubscription> _subscriptions = [];
+  final List<StreamSubscription<void>> _updateSubscriptions = [];
   List<double> _latestDoubleValues = [];
   List<int> _latestIntValues = [];
   List<String> _latestStringValues = [];
@@ -252,48 +253,76 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
 
     for (var i = 0; i < _subscriptions.length; i++) {
       final sub = _subscriptions[i];
-      sub.onUpdate.listen((_) {
-        if (widget.minimumUpdateInterval != null) {
-          final now = DateTime.now();
-          if (_lastUpdateTimes[i] != null &&
-              now.difference(_lastUpdateTimes[i]!) <
-                  widget.minimumUpdateInterval!) {
-            return;
+      _updateSubscriptions.add(
+        sub.onUpdate.listen((_) {
+          if (widget.minimumUpdateInterval != null) {
+            final now = DateTime.now();
+            if (_lastUpdateTimes[i] != null &&
+                now.difference(_lastUpdateTimes[i]!) <
+                    widget.minimumUpdateInterval!) {
+              return;
+            }
+            _lastUpdateTimes[i] = now;
           }
-          _lastUpdateTimes[i] = now;
-        }
 
-        if (widget.doubleBuilder != null) {
-          final newValue = sub.readValue();
+          if (widget.doubleBuilder != null) {
+            final newValue = sub.readValue();
 
-          if (newValue != _latestDoubleValues[i]) {
-            setState(() {
-              _latestDoubleValues[i] = newValue;
-            });
+            if (newValue != _latestDoubleValues[i]) {
+              setState(() {
+                _latestDoubleValues[i] = newValue;
+              });
+            }
           }
-        }
 
-        if (widget.intBuilder != null) {
-          final newValue = sub.readValueInt();
+          if (widget.intBuilder != null) {
+            final newValue = sub.readValueInt();
 
-          if (newValue != _latestIntValues[i]) {
-            setState(() {
-              _latestIntValues[i] = newValue;
-            });
+            if (newValue != _latestIntValues[i]) {
+              setState(() {
+                _latestIntValues[i] = newValue;
+              });
+            }
           }
-        }
 
-        if (widget.stringBuilder != null) {
-          final newValue = sub.readValueString();
+          if (widget.stringBuilder != null) {
+            final newValue = sub.readValueString();
 
-          if (newValue != _latestStringValues[i]) {
-            setState(() {
-              _latestStringValues[i] = newValue;
-            });
+            if (newValue != _latestStringValues[i]) {
+              setState(() {
+                _latestStringValues[i] = newValue;
+              });
+            }
           }
-        }
-      });
+        }),
+      );
     }
+  }
+
+  void _detachSubscriptions() {
+    for (final updateSubscription in _updateSubscriptions) {
+      updateSubscription.cancel();
+    }
+    _updateSubscriptions.clear();
+
+    for (final sub in _subscriptions) {
+      sub.dispose();
+    }
+    _subscriptions = [];
+  }
+
+  bool _didConfigsChange(MultiVisualizationBuilder oldWidget) {
+    if (oldWidget.configs.length != widget.configs.length) {
+      return true;
+    }
+
+    for (var i = 0; i < widget.configs.length; i++) {
+      if (oldWidget.configs[i] != widget.configs[i]) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   @override
@@ -307,20 +336,15 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
   void didUpdateWidget(MultiVisualizationBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.configs.length != widget.configs.length ||
-        !oldWidget.configs.every((config) => widget.configs.contains(config))) {
-      for (var sub in _subscriptions) {
-        sub.dispose();
-      }
+    if (_didConfigsChange(oldWidget)) {
+      _detachSubscriptions();
       _attachSubscriptions();
     }
   }
 
   @override
   void dispose() {
-    for (var sub in _subscriptions) {
-      sub.dispose();
-    }
+    _detachSubscriptions();
     super.dispose();
   }
 

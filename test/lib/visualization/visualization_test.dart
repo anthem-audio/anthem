@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,9 +23,12 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/visualization/visualization.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:provider/provider.dart';
 
 @GenerateNiceMocks([
   MockSpec<ProjectModel>(),
@@ -36,6 +39,57 @@ import 'visualization_test.mocks.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  ({
+    MockProjectModel project,
+    MockEngine engine,
+    VisualizationProvider visualizationProvider,
+  })
+  createProjectWithVisualizationProvider() {
+    final visualizationApiMock = MockVisualizationApi();
+
+    final engineMock = MockEngine();
+    when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+    when(engineMock.engineState).thenReturn(EngineState.running);
+    when(
+      engineMock.engineStateStream,
+    ).thenAnswer((_) => const Stream<EngineState>.empty());
+    when(engineMock.readyForMessages).thenAnswer((_) async {});
+
+    final projectMock = MockProjectModel();
+    when(projectMock.engine).thenReturn(engineMock);
+    when(projectMock.engineState).thenReturn(EngineState.running);
+
+    final visualizationProvider = VisualizationProvider(projectMock);
+    when(projectMock.visualizationProvider).thenReturn(visualizationProvider);
+
+    return (
+      project: projectMock,
+      engine: engineMock,
+      visualizationProvider: visualizationProvider,
+    );
+  }
+
+  Future<void> pumpMultiVisualizationBuilder(
+    WidgetTester tester, {
+    required ProjectModel project,
+    required List<VisualizationSubscriptionConfig> configs,
+  }) async {
+    await tester.pumpWidget(
+      Provider<ProjectModel>.value(
+        value: project,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: MultiVisualizationBuilder.int(
+            configs: configs,
+            builder: (context, values) {
+              return Text(values.join(','), textDirection: TextDirection.ltr);
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   test('Subscription object behavior', () {
     for (final value in VisualizationSubscriptionType.values) {
@@ -307,4 +361,108 @@ void main() {
 
     expect(await getNextSubscriptionChanges(), isEmpty);
   });
+
+  testWidgets(
+    'MultiVisualizationBuilder recreates subscriptions when the config count changes',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: [const VisualizationSubscriptionConfig.latest('a')],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            VisualizationItem(id: 'a', values: [1]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('1'), findsOneWidget);
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: const [
+          VisualizationSubscriptionConfig.latest('a'),
+          VisualizationSubscriptionConfig.latest('b'),
+        ],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            VisualizationItem(id: 'a', values: [2]),
+            VisualizationItem(id: 'b', values: [3]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('2,3'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      setup.visualizationProvider.dispose();
+    },
+  );
+
+  testWidgets(
+    'MultiVisualizationBuilder reorders subscriptions positionally when configs are reordered',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: const [
+          VisualizationSubscriptionConfig.latest('a'),
+          VisualizationSubscriptionConfig.latest('b'),
+        ],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            VisualizationItem(id: 'a', values: [1]),
+            VisualizationItem(id: 'b', values: [2]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('1,2'), findsOneWidget);
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: const [
+          VisualizationSubscriptionConfig.latest('b'),
+          VisualizationSubscriptionConfig.latest('a'),
+        ],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            VisualizationItem(id: 'a', values: [4]),
+            VisualizationItem(id: 'b', values: [3]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('3,4'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      setup.visualizationProvider.dispose();
+    },
+  );
 }
