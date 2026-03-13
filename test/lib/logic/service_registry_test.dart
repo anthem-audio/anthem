@@ -37,7 +37,7 @@ class _NonDisposableTestService {}
 void main() {
   test('project-scoped factory overrides are applied on initialization', () {
     final project = ProjectModel()
-      ..id = getId()
+      ..id = getProjectId()
       ..isHydrated = true;
     final projectViewModel = ProjectViewModel();
 
@@ -55,7 +55,7 @@ void main() {
 
   test('initializeProject rejects late project-scoped overrides', () {
     final project = ProjectModel()
-      ..id = getId()
+      ..id = getProjectId()
       ..isHydrated = true;
 
     ServiceRegistry.initializeProject(project);
@@ -75,7 +75,7 @@ void main() {
 
   test('removeProject disposes project services and removes the registry', () {
     final project = ProjectModel()
-      ..id = getId()
+      ..id = getProjectId()
       ..isHydrated = true;
     final registry = ServiceRegistry.initializeProject(project);
     final disposableService = _DisposableTestService();
@@ -92,6 +92,18 @@ void main() {
     expect(recreatedRegistry, isNot(same(registry)));
     expect(recreatedRegistry.get<_DisposableTestService>(), isNull);
     expect(recreatedRegistry.get<_NonDisposableTestService>(), isNull);
+
+    ServiceRegistry.removeProject(project.id);
+  });
+
+  test('registry reuses the project allocator instance by default', () {
+    final project = ProjectModel()
+      ..id = getProjectId()
+      ..isHydrated = true;
+
+    final registry = ServiceRegistry.initializeProject(project);
+
+    expect(registry.idAllocator, same(project.idAllocator));
 
     ServiceRegistry.removeProject(project.id);
   });

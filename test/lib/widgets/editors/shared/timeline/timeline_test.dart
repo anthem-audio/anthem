@@ -19,6 +19,7 @@
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -35,6 +36,10 @@ import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 
 enum _TimelineTargetKind { pattern, arrangement }
+
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
 
 class _RecordingSequencerApi implements SequencerApi {
   final List<double> jumpedTo = [];
@@ -137,7 +142,10 @@ class _TimelineTestFixture {
 
     final arrangement =
         project.sequence.arrangements[project.sequence.activeArrangementID]!;
-    final pattern = PatternModel.create(name: 'Pattern 1');
+    final pattern = PatternModel(
+      idAllocator: _testIdAllocator(),
+      name: 'Pattern 1',
+    );
     project.sequence.patterns[pattern.id] = pattern;
     project.sequence.setActivePattern(pattern.id);
 

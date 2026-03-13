@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -36,13 +37,17 @@ class MockProjectModel extends Mock implements ProjectModel {
   SequencerModel get sequence => _sequence;
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 void main() {
   late MockProjectModel project;
   late SequencerModel sequence;
   late AnthemObservableMap<Id, PatternModel> patterns;
 
   PatternModel createPattern(String name) {
-    return PatternModel.create(name: name);
+    return PatternModel(idAllocator: _testIdAllocator(), name: name);
   }
 
   setUp(() {

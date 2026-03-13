@@ -51,6 +51,12 @@ class _Constants {
   static const Duration hoverCloseDuration = Duration(milliseconds: 500);
 }
 
+var _nextSubmenuOverlayId = 0;
+
+Id _allocateSubmenuOverlayId() {
+  return 'submenu-overlay-${_nextSubmenuOverlayId++}';
+}
+
 double _getMenuItemHeight(GenericMenuItem menuItem) {
   return switch (menuItem) {
     AnthemMenuItem() => _Constants.menuItemHeight,
@@ -566,7 +572,7 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
       size.height,
     );
 
-    submenuKey = getId();
+    submenuKey = _allocateSubmenuOverlayId();
 
     screenOverlayController.add(
       submenuKey!,

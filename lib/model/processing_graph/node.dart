@@ -21,6 +21,7 @@ import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/debounced_action.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
@@ -56,6 +57,26 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? controlOutputPorts,
     super.isThirdPartyPlugin = false,
   }) : super(
+         audioInputPorts: audioInputPorts ?? AnthemObservableList(),
+         eventInputPorts: eventInputPorts ?? AnthemObservableList(),
+         controlInputPorts: controlInputPorts ?? AnthemObservableList(),
+         audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
+         eventOutputPorts: eventOutputPorts ?? AnthemObservableList(),
+         controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
+       );
+
+  NodeModel.create({
+    required ProjectEntityIdAllocator idAllocator,
+    super.processor,
+    AnthemObservableList<NodePortModel>? audioInputPorts,
+    AnthemObservableList<NodePortModel>? eventInputPorts,
+    AnthemObservableList<NodePortModel>? controlInputPorts,
+    AnthemObservableList<NodePortModel>? audioOutputPorts,
+    AnthemObservableList<NodePortModel>? eventOutputPorts,
+    AnthemObservableList<NodePortModel>? controlOutputPorts,
+    super.isThirdPartyPlugin = false,
+  }) : super(
+         id: idAllocator.allocateId(),
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
          eventInputPorts: eventInputPorts ?? AnthemObservableList(),
          controlInputPorts: controlInputPorts ?? AnthemObservableList(),

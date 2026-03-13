@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -136,7 +136,9 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           automationLane.points,
           newPointTime,
         );
+        final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
         final point = AutomationPointModel(
+          idAllocator: idAllocator,
           offset: newPointTime,
           value: 1 - (event.pos.dy / event.viewSize.height),
           tension: viewModel.lastInteractedTension ?? 0,

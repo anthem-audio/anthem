@@ -20,6 +20,7 @@
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/main.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
@@ -47,7 +48,7 @@ class SequencerModel extends _SequencerModel
         _ClipTitleAtlasMixin {
   SequencerModel.uninitialized() : super();
 
-  SequencerModel.create() : super.create() {
+  SequencerModel({required super.idAllocator}) : super.create() {
     _init();
   }
 
@@ -140,10 +141,11 @@ abstract class _SequencerModel
 
   _SequencerModel() : super();
 
-  _SequencerModel.create() : super() {
-    final arrangement = ArrangementModel.create(
+  _SequencerModel.create({required ProjectEntityIdAllocator idAllocator})
+    : super() {
+    final arrangement = ArrangementModel(
+      idAllocator: idAllocator,
       name: 'Arrangement 1',
-      id: getId(),
     );
     arrangements = .of({arrangement.id: arrangement});
     arrangementOrder = .of([arrangement.id]);

@@ -30,16 +30,27 @@ import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 
 part 'track.g.dart';
 
 @AnthemModel.syncedModel()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
-  TrackModel({required super.name, required super.color, required super.type});
+  TrackModel({
+    required ProjectEntityIdAllocator idAllocator,
+    required super.name,
+    required super.color,
+    required super.type,
+  }) : super(id: idAllocator.allocateId());
 
   TrackModel.uninitialized()
-    : super(name: '', color: AnthemColor.uninitialized(), type: .hybrid);
+    : super(
+        id: '',
+        name: '',
+        color: AnthemColor.uninitialized(),
+        type: .hybrid,
+      );
 
   factory TrackModel.fromJson(Map<String, dynamic> json) =>
       _$TrackModelAnthemModelMixin.fromJson(json);
@@ -153,27 +164,37 @@ abstract class _TrackModel
     ].nonNulls.toList();
   }
 
-  _TrackModel({required this.name, required this.color, required this.type})
-    : id = getId(),
-      gainNodeId = null,
-      balanceNodeId = null,
-      instrumentNodeId = null,
-      sequenceNoteProviderNodeId = null,
-      liveEventProviderNodeId = null,
-      super();
+  _TrackModel({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.type,
+  }) : gainNodeId = null,
+       balanceNodeId = null,
+       instrumentNodeId = null,
+       sequenceNoteProviderNodeId = null,
+       liveEventProviderNodeId = null,
+       super();
 
-  void createAndRegisterNodes(ProjectModel project) {
-    final gainNode = GainProcessorModel().createNode();
+  void createAndRegisterNodes(
+    ProjectModel project,
+    ProjectEntityIdAllocator idAllocator,
+  ) {
+    final gainNode = GainProcessorModel.create(
+      idAllocator: idAllocator,
+    ).createNode();
     gainNodeId = gainNode.id;
     project.processingGraph.addNode(gainNode);
 
-    final balanceNode = BalanceProcessorModel().createNode();
+    final balanceNode = BalanceProcessorModel.create(
+      idAllocator: idAllocator,
+    ).createNode();
     balanceNodeId = balanceNode.id;
     project.processingGraph.addNode(balanceNode);
 
     project.processingGraph.addConnection(
       NodeConnectionModel(
-        id: getId(),
+        idAllocator: idAllocator,
         sourceNodeId: gainNodeId!,
         sourcePortId: GainProcessorModel.audioOutputPortId,
         destinationNodeId: balanceNodeId!,
@@ -185,7 +206,7 @@ abstract class _TrackModel
     // routing behavior is implemented.
     project.processingGraph.addConnection(
       NodeConnectionModel(
-        id: getId(),
+        idAllocator: idAllocator,
         sourceNodeId: balanceNodeId!,
         sourcePortId: BalanceProcessorModel.audioOutputPortId,
         destinationNodeId: project.processingGraph.masterOutputNodeId,
@@ -197,14 +218,16 @@ abstract class _TrackModel
       ),
     );
 
-    final sequenceNoteProviderNode = SequenceNoteProviderProcessorModel(
+    final sequenceNoteProviderNode = SequenceNoteProviderProcessorModel.create(
+      idAllocator: idAllocator,
       trackId: id,
     ).createNode();
     sequenceNoteProviderNodeId = sequenceNoteProviderNode.id;
     project.processingGraph.addNode(sequenceNoteProviderNode);
 
-    final liveEventProviderNode = LiveEventProviderProcessorModel()
-        .createNode();
+    final liveEventProviderNode = LiveEventProviderProcessorModel.create(
+      idAllocator: idAllocator,
+    ).createNode();
     liveEventProviderNodeId = liveEventProviderNode.id;
     project.processingGraph.addNode(liveEventProviderNode);
   }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/processing_graph/processors/master_output.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -49,15 +50,19 @@ class RemovedNodesSnapshot {
 @AnthemModel.syncedModel()
 class ProcessingGraphModel extends _ProcessingGraphModel
     with _$ProcessingGraphModel, _$ProcessingGraphModelAnthemModelMixin {
+  ProcessingGraphModel() {
+    _init();
+  }
+
   ProcessingGraphModel.uninitialized();
 
-  ProcessingGraphModel() {
+  ProcessingGraphModel.create({required Id masterOutputNodeId}) {
     // Set up the master output node
     final masterOutputNode = MasterOutputProcessorModel(
-      nodeId: 'masterOutput',
+      nodeId: masterOutputNodeId,
     ).createNode();
     addNode(masterOutputNode);
-    masterOutputNodeId = masterOutputNode.id;
+    this.masterOutputNodeId = masterOutputNode.id;
 
     _init();
   }

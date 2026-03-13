@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
@@ -143,15 +144,20 @@ class ClipAddRemoveCommand extends ArrangementCommand {
 }
 
 class AddArrangementCommand extends Command {
-  final Id arrangementID = getId();
-  final String arrangementName;
+  late final ArrangementModel arrangement;
+  Id get arrangementID => arrangement.id;
   late final Id? _previousActiveArrangementID;
   late final Id? _previousActiveTransportSequenceID;
 
   AddArrangementCommand({
     required ProjectModel project,
-    required this.arrangementName,
+    required String arrangementName,
   }) {
+    final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+    arrangement = ArrangementModel(
+      idAllocator: idAllocator,
+      name: arrangementName,
+    );
     _previousActiveArrangementID = project.sequence.activeArrangementID;
     _previousActiveTransportSequenceID =
         project.sequence.activeTransportSequenceID;
@@ -159,11 +165,6 @@ class AddArrangementCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    final arrangement = ArrangementModel.create(
-      name: arrangementName,
-      id: arrangementID,
-    );
-
     project.sequence.arrangements[arrangementID] = arrangement;
     project.sequence.arrangementOrder.add(arrangementID);
   }

@@ -158,6 +158,7 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
                 })
                 .toList(growable: false)) {
           final previewNote = NoteModel(
+            idAllocator: controller.idAllocator,
             key: note.key,
             velocity: note.velocity,
             length: note.length,
@@ -199,6 +200,7 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
         // The original note stays committed and stationary until the gesture
         // ends, then the preview note is committed with the same ID.
         final previewNote = NoteModel(
+          idAllocator: controller.idAllocator,
           key: pressedNote.key,
           velocity: pressedNote.velocity,
           length: pressedNote.length,

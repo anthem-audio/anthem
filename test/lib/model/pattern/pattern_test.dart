@@ -21,6 +21,7 @@ import 'dart:ui' as ui;
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -52,6 +53,10 @@ Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 ClipModel _createClipWithTimeView({
   required Id id,
   required Id patternId,
@@ -60,8 +65,8 @@ ClipModel _createClipWithTimeView({
   required int start,
   required int end,
 }) {
-  return ClipModel.create(
-    id: id,
+  return ClipModel(
+    idAllocator: ProjectEntityIdAllocator.test(() => id),
     patternId: patternId,
     trackId: trackId,
     offset: offset,
@@ -84,8 +89,12 @@ void main() {
             .sequence
             .arrangements[project.sequence.activeArrangementID]!;
 
-        final pattern = PatternModel.create(name: 'Pattern A');
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Pattern A',
+        );
         final note = NoteModel(
+          idAllocator: _testIdAllocator(),
           key: 60,
           velocity: 0.9,
           length: 20,
@@ -193,8 +202,12 @@ void main() {
             .sequence
             .arrangements[project.sequence.activeArrangementID]!;
 
-        final pattern = PatternModel.create(name: 'Pattern B');
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Pattern B',
+        );
         final note = NoteModel(
+          idAllocator: _testIdAllocator(),
           key: 60,
           velocity: 0.9,
           length: 20,
@@ -259,8 +272,12 @@ void main() {
         final runningEngine = _RunningEngine(sequencerApi);
         final project = ProjectModel.create()..engine = runningEngine;
 
-        final pattern = PatternModel.create(name: 'Pattern Preview');
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Pattern Preview',
+        );
         final note = NoteModel(
+          idAllocator: _testIdAllocator(),
           key: 60,
           velocity: 0.75,
           length: 20,
@@ -319,7 +336,10 @@ void main() {
         final runningEngine = _RunningEngine(sequencerApi);
         final project = ProjectModel.create()..engine = runningEngine;
 
-        final pattern = PatternModel.create(name: 'Pattern Preview');
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Pattern Preview',
+        );
         project.sequence.patterns[pattern.id] = pattern;
 
         await _flushMicrotasks();
@@ -329,6 +349,7 @@ void main() {
         final initialUpdateSignal = pattern.clipNotesUpdateSignal.value;
 
         final previewNote = NoteModel(
+          idAllocator: _testIdAllocator(),
           key: 64,
           velocity: 0.5,
           length: 240,
@@ -375,7 +396,10 @@ void main() {
   group('Pattern title atlas state', () {
     test('clears the atlas rect when the pattern name changes', () async {
       final project = ProjectModel.create();
-      final pattern = PatternModel.create(name: 'Pattern Title');
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Pattern Title',
+      );
       project.sequence.patterns[pattern.id] = pattern;
 
       await _flushMicrotasks();

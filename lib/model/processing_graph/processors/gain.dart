@@ -19,7 +19,7 @@
 
 import 'dart:math';
 
-import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
@@ -48,7 +48,10 @@ part 'gain.g.dart';
 )
 class GainProcessorModel extends _GainProcessorModel
     with Processor, _$GainProcessorModel, _$GainProcessorModelAnthemModelMixin {
-  GainProcessorModel() : super(nodeId: 'gain-${getId()}');
+  GainProcessorModel({required super.nodeId});
+
+  GainProcessorModel.create({required ProjectEntityIdAllocator idAllocator})
+    : super(nodeId: idAllocator.allocateId());
 
   GainProcessorModel.uninitialized() : super(nodeId: '');
 

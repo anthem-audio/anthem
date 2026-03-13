@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
@@ -62,8 +63,12 @@ class _TrackIds {
 }
 
 TrackModel _makeTrack(Id id, String name, TrackType type) {
-  return TrackModel(name: name, color: AnthemColor.randomHue(), type: type)
-    ..id = id;
+  return TrackModel(
+    idAllocator: ProjectEntityIdAllocator.test(() => id),
+    name: name,
+    color: AnthemColor.randomHue(),
+    type: type,
+  );
 }
 
 class _ArrangerControllerTestFixture {
@@ -82,7 +87,9 @@ class _ArrangerControllerTestFixture {
   factory _ArrangerControllerTestFixture.create() {
     final project = ProjectModel();
     project.isHydrated = true;
-    project.sequence = SequencerModel.create();
+    project.sequence = SequencerModel(
+      idAllocator: ProjectEntityIdAllocator.test(getId),
+    );
 
     final tracks = <Id, TrackModel>{
       _TrackIds.a: _makeTrack(_TrackIds.a, 'A', TrackType.group),

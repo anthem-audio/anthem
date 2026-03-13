@@ -41,7 +41,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 class WindowHeader extends StatefulWidget {
-  final Id selectedTabId;
+  final ProjectId selectedTabId;
   final List<TabDef> tabs;
 
   const WindowHeader({
@@ -223,7 +223,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
 class _Tab extends StatefulWidget {
   final bool isSelected;
   final bool hasUnsavedChanges;
-  final Id id;
+  final ProjectId id;
   final String title;
 
   const _Tab({

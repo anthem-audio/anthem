@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -194,6 +195,7 @@ void main() {
     late ProjectController projectController;
     late ProcessingGraphModel processingGraph;
     late _MockEngine mockEngine;
+    late ProjectEntityIdAllocator idAllocator;
 
     late AnthemObservableMap<Id, TrackModel> tracks;
     late AnthemObservableList<Id> trackOrder;
@@ -211,7 +213,12 @@ void main() {
     late TrackModel masterTrack;
 
     TrackModel createTrack(String name, TrackType type) {
-      return TrackModel(name: name, color: AnthemColor.randomHue(), type: type);
+      return TrackModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: name,
+        color: AnthemColor.randomHue(),
+        type: type,
+      );
     }
 
     setUp(() {
@@ -225,7 +232,11 @@ void main() {
       when(project.tracks).thenReturn(tracks);
       when(project.trackOrder).thenReturn(trackOrder);
       when(project.sendTrackOrder).thenReturn(sendTrackOrder);
-      processingGraph = ProcessingGraphModel();
+      when(project.allocateId()).thenAnswer((_) => getId());
+      idAllocator = ProjectEntityIdAllocator(project);
+      processingGraph = ProcessingGraphModel.create(
+        masterOutputNodeId: getId(),
+      );
       when(project.processingGraph).thenReturn(processingGraph);
       mockEngine = _MockEngine(_FakeProcessingGraphApi());
       when(project.engine).thenReturn(mockEngine);
@@ -271,6 +282,7 @@ void main() {
       ServiceRegistry.initializeProject(
         project,
         overrides: ProjectServiceFactoryOverrides(
+          idAllocator: (_, _) => idAllocator,
           arrangerViewModel: (_, _) => arrangerViewModel,
         ),
       );
@@ -365,6 +377,7 @@ void main() {
     late SequencerModel sequence;
     late ProcessingGraphModel processingGraph;
     late _MockEngine mockEngine;
+    late ProjectEntityIdAllocator idAllocator;
 
     late AnthemObservableMap<Id, TrackModel> tracks;
     late AnthemObservableList<Id> trackOrder;
@@ -388,7 +401,12 @@ void main() {
     late ClipModel clipOnChildOrphan;
 
     TrackModel createTrack(String name, TrackType type) {
-      return TrackModel(name: name, color: AnthemColor.randomHue(), type: type);
+      return TrackModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: name,
+        color: AnthemColor.randomHue(),
+        type: type,
+      );
     }
 
     ClipModel createClip({
@@ -396,7 +414,8 @@ void main() {
       required Id trackId,
       required int offset,
     }) {
-      return ClipModel.create(
+      return ClipModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
         patternId: patternId,
         trackId: trackId,
         offset: offset,
@@ -407,7 +426,9 @@ void main() {
       project = MockProjectModel();
       when(project.id).thenReturn(projectId);
 
-      sequence = SequencerModel.create();
+      sequence = SequencerModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+      );
       when(project.sequence).thenReturn(sequence);
 
       tracks = AnthemObservableMap();
@@ -418,7 +439,11 @@ void main() {
       when(project.trackOrder).thenReturn(trackOrder);
       when(project.sendTrackOrder).thenReturn(sendTrackOrder);
 
-      processingGraph = ProcessingGraphModel();
+      when(project.allocateId()).thenAnswer((_) => getId());
+      idAllocator = ProjectEntityIdAllocator(project);
+      processingGraph = ProcessingGraphModel.create(
+        masterOutputNodeId: getId(),
+      );
       when(project.processingGraph).thenReturn(processingGraph);
 
       mockEngine = _MockEngine(_FakeProcessingGraphApi());
@@ -443,16 +468,25 @@ void main() {
       sendTrackOrder.add(masterTrack.id);
 
       arrangementA = sequence.arrangements[sequence.activeArrangementID]!;
-      arrangementB = ArrangementModel.create(
+      arrangementB = ArrangementModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
         name: 'Arrangement B',
-        id: getId(),
       );
       sequence.arrangements[arrangementB.id] = arrangementB;
       sequence.arrangementOrder.add(arrangementB.id);
 
-      orphanPatternA = PatternModel.create(name: 'Orphan A');
-      orphanPatternB = PatternModel.create(name: 'Orphan B');
-      sharedPattern = PatternModel.create(name: 'Shared');
+      orphanPatternA = PatternModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: 'Orphan A',
+      );
+      orphanPatternB = PatternModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: 'Orphan B',
+      );
+      sharedPattern = PatternModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: 'Shared',
+      );
 
       sequence.patterns[orphanPatternA.id] = orphanPatternA;
       sequence.patterns[orphanPatternB.id] = orphanPatternB;
@@ -499,6 +533,7 @@ void main() {
       ServiceRegistry.initializeProject(
         project,
         overrides: ProjectServiceFactoryOverrides(
+          idAllocator: (_, _) => idAllocator,
           arrangerViewModel: (_, _) => arrangerViewModel,
           projectController: (_, _) => projectController,
         ),

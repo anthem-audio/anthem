@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/clip.dart';
@@ -47,9 +48,17 @@ class _TrackIds {
   static const master = 'master';
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 TrackModel _makeTrack(Id id, String name, TrackType type) {
-  return TrackModel(name: name, color: AnthemColor.randomHue(), type: type)
-    ..id = id;
+  return TrackModel(
+    idAllocator: ProjectEntityIdAllocator.test(() => id),
+    name: name,
+    color: AnthemColor.randomHue(),
+    type: type,
+  );
 }
 
 class _ArrangerStateMachineTestFixture {
@@ -73,7 +82,7 @@ class _ArrangerStateMachineTestFixture {
   factory _ArrangerStateMachineTestFixture.create() {
     final project = ProjectModel();
     project.isHydrated = true;
-    project.sequence = SequencerModel.create();
+    project.sequence = SequencerModel(idAllocator: _testIdAllocator());
 
     project.tracks = AnthemObservableMap.of({
       _TrackIds.a: _makeTrack(_TrackIds.a, 'A', TrackType.instrument),
@@ -590,18 +599,26 @@ void main() {
         final arrangement =
             fixture.project.sequence.arrangements[arrangementId]!;
 
-        final firstPattern = PatternModel.create(name: 'First');
-        final secondPattern = PatternModel.create(name: 'Second');
+        final firstPattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'First',
+        );
+        final secondPattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Second',
+        );
         fixture.project.sequence.patterns[firstPattern.id] = firstPattern;
         fixture.project.sequence.patterns[secondPattern.id] = secondPattern;
 
-        final firstClip = ClipModel.create(
+        final firstClip = ClipModel(
+          idAllocator: _testIdAllocator(),
           patternId: firstPattern.id,
           trackId: _TrackIds.a,
           offset: 100,
           timeView: TimeViewModel(start: 0, end: 96),
         );
-        final secondClip = ClipModel.create(
+        final secondClip = ClipModel(
+          idAllocator: _testIdAllocator(),
           patternId: secondPattern.id,
           trackId: _TrackIds.b,
           offset: 220,
@@ -670,16 +687,21 @@ void main() {
         final arrangement =
             fixture.project.sequence.arrangements[arrangementId]!;
 
-        final sharedPattern = PatternModel.create(name: 'Shared');
+        final sharedPattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Shared',
+        );
         fixture.project.sequence.patterns[sharedPattern.id] = sharedPattern;
 
-        final firstClip = ClipModel.create(
+        final firstClip = ClipModel(
+          idAllocator: _testIdAllocator(),
           patternId: sharedPattern.id,
           trackId: _TrackIds.a,
           offset: 100,
           timeView: TimeViewModel(start: 0, end: 96),
         );
-        final secondClip = ClipModel.create(
+        final secondClip = ClipModel(
+          idAllocator: _testIdAllocator(),
           patternId: sharedPattern.id,
           trackId: _TrackIds.b,
           offset: 220,
@@ -896,10 +918,14 @@ void main() {
     });
 
     test('double click over clip opens piano roll and sets active pattern', () {
-      final pattern = PatternModel.create(name: 'Pattern 1');
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Pattern 1',
+      );
       fixture.project.sequence.patterns[pattern.id] = pattern;
 
-      final clip = ClipModel.create(
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(),
         patternId: pattern.id,
         trackId: _TrackIds.a,
         offset: 0,
@@ -1485,6 +1511,7 @@ void main() {
             fixture.project.sequence.arrangements[arrangementId]!;
         arrangement.timeSignatureChanges.add(
           TimeSignatureChangeModel(
+            idAllocator: _testIdAllocator(),
             offset: 384,
             timeSignature: TimeSignatureModel(3, 4),
           ),
@@ -1753,7 +1780,8 @@ void main() {
     }) {
       final arrangementId = fixture.project.sequence.activeArrangementID!;
       final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
-      final clip = ClipModel.create(
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(),
         patternId: getId(),
         trackId: trackId,
         offset: offset,
@@ -2051,7 +2079,10 @@ void main() {
 
   group('ArrangerClipResizeState', () {
     Id addPattern({int clipAutoWidth = 96}) {
-      final pattern = PatternModel.create(name: 'Pattern');
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Pattern',
+      );
       pattern.clipAutoWidth = clipAutoWidth;
       fixture.project.sequence.patterns[pattern.id] = pattern;
       return pattern.id;
@@ -2068,7 +2099,8 @@ void main() {
     }) {
       final arrangementId = fixture.project.sequence.activeArrangementID!;
       final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
-      final clip = ClipModel.create(
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(),
         patternId: addPattern(clipAutoWidth: fallbackPatternWidth),
         trackId: trackId,
         offset: offset,

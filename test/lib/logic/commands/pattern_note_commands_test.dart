@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -36,13 +37,17 @@ class MockProjectModel extends Mock implements ProjectModel {
   SequencerModel get sequence => _sequence;
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 void main() {
   late MockProjectModel project;
   late SequencerModel sequence;
   late AnthemObservableMap<Id, PatternModel> patterns;
 
   PatternModel addPatternToProject(String name) {
-    final pattern = PatternModel.create(name: name);
+    final pattern = PatternModel(idAllocator: _testIdAllocator(), name: name);
     patterns[pattern.id] = pattern;
     return pattern;
   }
@@ -56,6 +61,7 @@ void main() {
     double pan = 0,
   }) {
     final note = NoteModel(
+      idAllocator: _testIdAllocator(),
       key: key,
       velocity: velocity,
       length: length,
@@ -77,6 +83,7 @@ void main() {
     test('execute and rollback add and remove a note', () {
       final pattern = addPatternToProject('Pattern');
       final note = NoteModel(
+        idAllocator: _testIdAllocator(),
         key: 60,
         velocity: 0.75,
         length: 48,
@@ -96,6 +103,7 @@ void main() {
       final command = AddNoteCommand(
         patternID: getId(),
         note: NoteModel(
+          idAllocator: _testIdAllocator(),
           key: 60,
           velocity: 0.75,
           length: 48,
@@ -133,6 +141,7 @@ void main() {
       final command = DeleteNoteCommand(
         patternID: getId(),
         note: NoteModel(
+          idAllocator: _testIdAllocator(),
           key: 60,
           velocity: 0.75,
           length: 48,
@@ -149,6 +158,7 @@ void main() {
       final command = DeleteNoteCommand(
         patternID: pattern.id,
         note: NoteModel(
+          idAllocator: _testIdAllocator(),
           key: 60,
           velocity: 0.75,
           length: 48,

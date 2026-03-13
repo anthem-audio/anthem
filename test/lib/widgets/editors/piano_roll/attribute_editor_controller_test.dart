@@ -18,6 +18,8 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -40,6 +42,10 @@ class _StoppedEngine extends Mock implements Engine {
   Stream<EngineState> get engineStateStream => _engineStateStream;
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -52,12 +58,19 @@ void main() {
 
     setUp(() {
       project = ProjectModel.create()..engine = _StoppedEngine();
-      pattern = PatternModel.create(name: 'Pattern');
+      pattern = PatternModel(idAllocator: _testIdAllocator(), name: 'Pattern');
       project.sequence.patterns[pattern.id] = pattern;
       project.sequence.activePatternID = pattern.id;
       project.sequence.activeTrackID = null;
 
-      note = NoteModel(key: 60, velocity: 0.8, length: 96, offset: 120, pan: 0);
+      note = NoteModel(
+        idAllocator: _testIdAllocator(),
+        key: 60,
+        velocity: 0.8,
+        length: 96,
+        offset: 120,
+        pan: 0,
+      );
       pattern.notes[note.id] = note;
 
       viewModel = PianoRollViewModel(

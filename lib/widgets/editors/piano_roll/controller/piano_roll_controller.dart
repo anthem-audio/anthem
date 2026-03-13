@@ -19,6 +19,7 @@
 
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -91,6 +92,9 @@ class _PianoRollController {
   @visibleForTesting
   PianoRollInteractionFamily? get activeInteractionFamily =>
       stateMachine.data.activeInteractionFamily;
+
+  ProjectEntityIdAllocator get idAllocator =>
+      ServiceRegistry.forProject(project.id).idAllocator;
 
   void modifierPressed(PianoRollModifierKey modifier) {
     stateMachine.modifierPressed(modifier);
@@ -229,6 +233,7 @@ class _PianoRollController {
         timelineKind: TimelineKind.pattern,
         patternID: requireActivePattern().id,
         change: TimeSignatureChangeModel(
+          idAllocator: idAllocator,
           offset: snappedOffset,
           timeSignature: timeSignature,
         ),

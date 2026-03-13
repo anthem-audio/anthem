@@ -58,6 +58,7 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
         : snapTimeInActivePattern(rawTime: eventTime);
 
     return NoteModel(
+      idAllocator: controller.idAllocator,
       key: key.floor(),
       velocity: viewModel.cursorNoteVelocity,
       length: viewModel.cursorNoteLength,

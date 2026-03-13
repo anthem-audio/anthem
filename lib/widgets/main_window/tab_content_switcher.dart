@@ -28,7 +28,7 @@ import 'package:anthem/widgets/project/project.dart';
 /// active project based on it.
 class TabContentSwitcher extends StatelessWidget {
   final List<TabDef> tabs;
-  final Id selectedTabId;
+  final ProjectId selectedTabId;
 
   const TabContentSwitcher({
     super.key,

@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
@@ -39,7 +39,11 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
         Processor,
         _$ToneGeneratorProcessorModel,
         _$ToneGeneratorProcessorModelAnthemModelMixin {
-  ToneGeneratorProcessorModel() : super(nodeId: 'tone-generator-${getId()}');
+  ToneGeneratorProcessorModel({required super.nodeId});
+
+  ToneGeneratorProcessorModel.create({
+    required ProjectEntityIdAllocator idAllocator,
+  }) : super(nodeId: idAllocator.allocateId());
 
   ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 

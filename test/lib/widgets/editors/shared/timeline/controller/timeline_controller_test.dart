@@ -18,6 +18,8 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -80,6 +82,10 @@ class _TimelineTestEngine extends Mock implements Engine {
   Future<void> dispose() async {}
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 class _TimelineControllerTestFixture {
   static const viewSize = Size(800, 38);
   static const timeViewStart = 0.0;
@@ -108,7 +114,10 @@ class _TimelineControllerTestFixture {
         ? EngineState.running
         : EngineState.stopped;
 
-    final pattern = PatternModel.create(name: 'Pattern 1');
+    final pattern = PatternModel(
+      idAllocator: _testIdAllocator(),
+      name: 'Pattern 1',
+    );
     project.sequence.patterns[pattern.id] = pattern;
     project.sequence.setActivePattern(pattern.id);
 

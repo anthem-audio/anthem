@@ -21,9 +21,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,7 +33,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:anthem/engine_api/engine_connector_desktop.dart';
 
 var id = 0;
-int getId() => id++;
+String getId() => '${id++}';
 
 const skipEngineIntegrationTests = false;
 
@@ -188,6 +190,7 @@ void main() {
       project = ProjectModel.create(
         enginePath!.toFilePath(windows: Platform.isWindows),
       );
+      ServiceRegistry.initializeProject(project);
       await project.engine.start();
       while (project.engine.engineState != EngineState.running) {
         await project.engine.engineStateStream.first;
@@ -196,6 +199,7 @@ void main() {
 
     tearDownAll(() async {
       await project.engine.stop();
+      ServiceRegistry.removeProject(project.id);
     });
 
     test('Test initial state', () async {
@@ -230,7 +234,10 @@ void main() {
 
       for (var i = 0; i < patternCount; i++) {
         final command = PatternAddRemoveCommand.add(
-          pattern: PatternModel.create(name: 'Pattern $i'),
+          pattern: PatternModel(
+            idAllocator: ProjectEntityIdAllocator.test(getId),
+            name: 'Pattern $i',
+          ),
         );
         project.execute(command);
         expectedPatternNames.add('Pattern $i');
@@ -303,7 +310,9 @@ void main() {
     test('Add a track instrument node and some notes', () async {
       final instrumentTrackId = project.trackOrder.first;
       final instrumentTrack = project.tracks[instrumentTrackId]!;
-      final instrumentNode = ToneGeneratorProcessorModel().createNode();
+      final instrumentNode = ToneGeneratorProcessorModel(
+        nodeId: getId(),
+      ).createNode();
 
       project.execute(
         SetTrackInstrumentNodeCommand(
@@ -315,6 +324,7 @@ void main() {
       final command = AddNoteCommand(
         patternID: project.sequence.patterns.keys.first,
         note: NoteModel(
+          idAllocator: ProjectEntityIdAllocator.test(getId),
           key: 64,
           velocity: 127,
           length: 256,

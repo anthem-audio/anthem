@@ -20,6 +20,7 @@
 // ignore_for_file: unused_local_variable, avoid_print
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -70,11 +71,14 @@ void main() {
   late MockProjectModel project;
   late ProcessingGraphModel processingGraph;
   late _MockEngine mockEngine;
+  late ProjectEntityIdAllocator idAllocator;
 
   setUp(() {
     project = MockProjectModel();
     when(project.id).thenReturn(getId());
-    processingGraph = ProcessingGraphModel();
+    when(project.allocateId()).thenAnswer((_) => getId());
+    idAllocator = ProjectEntityIdAllocator(project);
+    processingGraph = ProcessingGraphModel.create(masterOutputNodeId: getId());
     when(project.processingGraph).thenReturn(processingGraph);
     mockEngine = _MockEngine(_FakeProcessingGraphApi());
     when(project.engine).thenReturn(mockEngine);
@@ -97,8 +101,12 @@ void main() {
 
       final trackId = getId();
 
-      track = TrackModel(name: oldName, color: color, type: .instrument)
-        ..id = trackId;
+      track = TrackModel(
+        idAllocator: ProjectEntityIdAllocator.test(() => trackId),
+        name: oldName,
+        color: color,
+        type: .instrument,
+      );
 
       tracks = AnthemObservableMap.of({trackId: track});
       trackOrder = AnthemObservableList.of([trackId]);
@@ -253,10 +261,11 @@ void main() {
       ) {
         final id = getId();
         final track = TrackModel(
+          idAllocator: ProjectEntityIdAllocator.test(() => id),
           name: name,
           color: MockAnthemColor(),
           type: type,
-        )..id = id;
+        );
 
         tracks[id] = track;
 
@@ -341,6 +350,7 @@ void main() {
       ServiceRegistry.initializeProject(
         project,
         overrides: ProjectServiceFactoryOverrides(
+          idAllocator: (_, _) => idAllocator,
           projectController: (_, _) => projectController,
           arrangerViewModel: (_, _) => mockArrangerViewModel,
         ),
@@ -740,8 +750,10 @@ void main() {
       test(
         'Set track instrument command adds and restores nodes on undo/redo',
         () {
-          trackC.createAndRegisterNodes(project);
-          final instrumentNode = ToneGeneratorProcessorModel().createNode();
+          trackC.createAndRegisterNodes(project, idAllocator);
+          final instrumentNode = ToneGeneratorProcessorModel(
+            nodeId: getId(),
+          ).createNode();
 
           final command = SetTrackInstrumentNodeCommand(
             track: trackC,
@@ -891,7 +903,7 @@ void main() {
       });
 
       test('Remove track undo restores captured nodes and connections', () {
-        trackC.createAndRegisterNodes(project);
+        trackC.createAndRegisterNodes(project, idAllocator);
         final gainNodeId = trackC.gainNodeId;
         final balanceNodeId = trackC.balanceNodeId;
         final gainToBalanceConnectionId = processingGraph.connections.values
@@ -926,17 +938,19 @@ void main() {
       test(
         'Remove track captures optional instrument, sequence, and live nodes',
         () {
-          trackC.createAndRegisterNodes(project);
+          trackC.createAndRegisterNodes(project, idAllocator);
           final sequenceProviderNodeId = trackC.sequenceNoteProviderNodeId!;
           final liveEventProviderNodeId = trackC.liveEventProviderNodeId!;
 
-          final instrumentNode = ToneGeneratorProcessorModel().createNode();
+          final instrumentNode = ToneGeneratorProcessorModel(
+            nodeId: getId(),
+          ).createNode();
 
           processingGraph.addNode(instrumentNode);
 
           processingGraph.addConnection(
             NodeConnectionModel(
-              id: getId(),
+              idAllocator: ProjectEntityIdAllocator.test(getId),
               sourceNodeId: instrumentNode.id,
               sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
               destinationNodeId: trackC.gainNodeId!,
@@ -945,7 +959,7 @@ void main() {
           );
           processingGraph.addConnection(
             NodeConnectionModel(
-              id: getId(),
+              idAllocator: ProjectEntityIdAllocator.test(getId),
               sourceNodeId: sequenceProviderNodeId,
               sourcePortId:
                   SequenceNoteProviderProcessorModel.eventOutputPortId,
@@ -955,7 +969,7 @@ void main() {
           );
           processingGraph.addConnection(
             NodeConnectionModel(
-              id: getId(),
+              idAllocator: ProjectEntityIdAllocator.test(getId),
               sourceNodeId: liveEventProviderNodeId,
               sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
               destinationNodeId: instrumentNode.id,

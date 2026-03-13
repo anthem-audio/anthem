@@ -27,6 +27,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+var _nextColorPickerOverlayId = 0;
+
+Id _allocateColorPickerOverlayId() {
+  return 'color-picker-overlay-${_nextColorPickerOverlayId++}';
+}
+
 /// Button that opens a color picker.
 class ColorPickerButton extends StatefulWidget {
   /// Function that must return the current color values for the color picker.
@@ -55,7 +61,7 @@ class _ColorPickerButtonState extends State<ColorPickerButton> {
           final overlayPosition = contentRenderBox.localToGlobal(
             Offset(contentRenderBox.size.width, 0),
           );
-          final overlayId = getId();
+          final overlayId = _allocateColorPickerOverlayId();
 
           final screenOverlayController = Provider.of<ScreenOverlayController>(
             context,

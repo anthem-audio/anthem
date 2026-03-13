@@ -24,6 +24,7 @@ import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/live_event_manager.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -51,6 +52,9 @@ class ProjectController {
   void redo() {
     project.redo();
   }
+
+  ProjectEntityIdAllocator get _idAllocator =>
+      ServiceRegistry.forProject(project.id).idAllocator;
 
   void addArrangement([String? name]) {
     if (name == null) {
@@ -160,7 +164,10 @@ class ProjectController {
 
     setTrackInstrumentNode(
       trackId: trackId,
-      node: VST3ProcessorModel(vst3Path: path!).createNode(),
+      node: VST3ProcessorModel.create(
+        idAllocator: _idAllocator,
+        vst3Path: path!,
+      ).createNode(),
     );
   }
 

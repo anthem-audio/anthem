@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
@@ -45,8 +46,8 @@ class _RunningEngine extends Mock implements Engine {
 }
 
 ClipModel _createClip({required Id id, required Id patternId, int offset = 0}) {
-  return ClipModel.create(
-    id: id,
+  return ClipModel(
+    idAllocator: ProjectEntityIdAllocator.test(() => id),
     patternId: patternId,
     trackId: getId(),
     offset: offset,
@@ -54,7 +55,10 @@ ClipModel _createClip({required Id id, required Id patternId, int offset = 0}) {
 }
 
 ArrangementModel _createArrangement() {
-  final arrangement = ArrangementModel.create(name: 'A', id: getId());
+  final arrangement = ArrangementModel(
+    idAllocator: ProjectEntityIdAllocator.test(getId),
+    name: 'A',
+  );
   arrangement.setParentPropertiesOnChildren();
   return arrangement;
 }
@@ -67,8 +71,8 @@ ClipModel _createClipWithTimeView({
   required int start,
   required int end,
 }) {
-  return ClipModel.create(
-    id: id,
+  return ClipModel(
+    idAllocator: ProjectEntityIdAllocator.test(() => id),
     patternId: patternId,
     trackId: trackId,
     offset: offset,
@@ -91,6 +95,8 @@ Future<void> _flushMicrotasks() async {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('ArrangementModel pattern clip reference cache', () {
     test('is not serialized', () {
       final arrangement = _createArrangement();

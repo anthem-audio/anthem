@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2026 Joshua Wade
+  Copyright (C) 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,25 +19,23 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
-import 'package:mobx/mobx.dart';
+import 'package:meta/meta.dart';
 
-part 'app.g.dart';
+class ProjectEntityIdAllocator {
+  final ProjectModel? project;
+  final Id Function()? _allocateIdOverride;
 
-// ignore: library_private_types_in_public_api
-class AppModel = _AppModel with _$AppModel;
+  ProjectEntityIdAllocator(this.project) : _allocateIdOverride = null;
 
-abstract class _AppModel with Store {
-  @observable
-  ObservableMap<ProjectId, ProjectModel> projects;
+  ProjectEntityIdAllocator.fromCallback(Id Function() allocateId)
+    : project = null,
+      _allocateIdOverride = allocateId;
 
-  @observable
-  ObservableList<ProjectId> projectOrder;
+  @visibleForTesting
+  ProjectEntityIdAllocator.test(Id Function() allocateId)
+    : this.fromCallback(allocateId);
 
-  @observable
-  ProjectId activeProjectId;
-
-  _AppModel()
-    : projects = ObservableMap.of({}),
-      projectOrder = ObservableList.of([]),
-      activeProjectId = '';
+  Id allocateId() {
+    return _allocateIdOverride?.call() ?? project!.allocateId();
+  }
 }

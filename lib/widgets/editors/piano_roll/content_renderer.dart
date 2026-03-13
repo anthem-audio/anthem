@@ -205,7 +205,9 @@ class PianoRollPainter extends CustomPainterObserver {
 
       if (keyHeight > 25 && width > 2 && height > 2) {
         final cachedLabel = noteLabelImageCache.get(key);
-        if (cachedLabel == null) continue;
+        if (cachedLabel == null) {
+          continue;
+        }
 
         canvas.save();
         final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);

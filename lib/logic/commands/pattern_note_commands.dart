@@ -60,25 +60,6 @@ NoteModel _requireNote(PatternModel pattern, Id noteID) {
   return _getNote(pattern, noteID);
 }
 
-typedef _DeleteNoteSnapshot = ({
-  Id id,
-  int key,
-  double velocity,
-  int length,
-  int offset,
-  double pan,
-});
-
-NoteModel _restoreDeletedNote(_DeleteNoteSnapshot snapshot) {
-  return NoteModel(
-    key: snapshot.key,
-    velocity: snapshot.velocity,
-    length: snapshot.length,
-    offset: snapshot.offset,
-    pan: snapshot.pan,
-  )..id = snapshot.id;
-}
-
 class AddNoteCommand extends Command {
   final Id _patternID;
   final NoteModel _note;
@@ -195,24 +176,13 @@ class ResizeNotesCommand extends Command {
 
 class DeleteNotesCommand extends Command {
   final Id _patternID;
-  final List<_DeleteNoteSnapshot> _notes;
+  final List<NoteModel> _notes;
 
   DeleteNotesCommand({
     required Id patternID,
     required Iterable<NoteModel> notes,
   }) : _patternID = patternID,
-       _notes = List.unmodifiable(
-         notes.map(
-           (note) => (
-             id: note.id,
-             key: note.key,
-             velocity: note.velocity,
-             length: note.length,
-             offset: note.offset,
-             pan: note.pan,
-           ),
-         ),
-       ),
+       _notes = List.unmodifiable(notes.map(NoteModel.fromNoteModel)),
        super();
 
   @override
@@ -229,7 +199,7 @@ class DeleteNotesCommand extends Command {
     final pattern = _requirePattern(project, _patternID);
 
     for (final note in _notes.reversed) {
-      _addNote(pattern, _restoreDeletedNote(note));
+      _addNote(pattern, NoteModel.fromNoteModel(note));
     }
   }
 }

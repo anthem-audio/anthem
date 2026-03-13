@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
@@ -38,8 +37,7 @@ class SimpleMidiGeneratorProcessorModel
         Processor,
         _$SimpleMidiGeneratorProcessorModel,
         _$SimpleMidiGeneratorProcessorModelAnthemModelMixin {
-  SimpleMidiGeneratorProcessorModel()
-    : super(nodeId: 'simple-midi-generator-${getId()}');
+  SimpleMidiGeneratorProcessorModel({required super.nodeId});
 
   SimpleMidiGeneratorProcessorModel.uninitialized() : super(nodeId: '');
 

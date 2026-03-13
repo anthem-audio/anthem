@@ -18,7 +18,9 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
@@ -28,29 +30,46 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 
 class MockProjectModel extends Mock implements ProjectModel {
-  MockProjectModel(this._sequence);
+  MockProjectModel(this._id, this._sequence);
 
+  final Id _id;
   final SequencerModel _sequence;
+  late final ProjectEntityIdAllocator _idAllocator =
+      ProjectEntityIdAllocator.test(allocateId);
+
+  @override
+  Id get id => _id;
 
   @override
   SequencerModel get sequence => _sequence;
+
+  @override
+  Id allocateId() => getId();
+
+  @override
+  ProjectEntityIdAllocator get idAllocator => _idAllocator;
 }
 
 void main() {
   late MockProjectModel project;
+  late Id projectId;
   late SequencerModel sequence;
   late AnthemObservableMap<Id, ArrangementModel> arrangements;
   late AnthemObservableList<Id> arrangementOrder;
 
   ArrangementModel addArrangementToProject(String name) {
-    final arrangement = ArrangementModel.create(name: name, id: getId());
+    final arrangement = ArrangementModel(
+      idAllocator: ProjectEntityIdAllocator.test(getId),
+      name: name,
+    );
     arrangements[arrangement.id] = arrangement;
     arrangementOrder.add(arrangement.id);
     return arrangement;
   }
 
   ClipModel createClip({int offset = 0, TimeViewModel? timeView}) {
-    return ClipModel.create(
+    return ClipModel(
+      idAllocator: ProjectEntityIdAllocator.test(getId),
       patternId: getId(),
       trackId: getId(),
       offset: offset,
@@ -65,7 +84,13 @@ void main() {
 
     sequence.arrangements = arrangements;
     sequence.arrangementOrder = arrangementOrder;
-    project = MockProjectModel(sequence);
+    projectId = getId();
+    project = MockProjectModel(projectId, sequence);
+    ServiceRegistry.initializeProject(project);
+  });
+
+  tearDown(() {
+    ServiceRegistry.removeProject(projectId);
   });
 
   group('ClipAddRemoveCommand', () {
@@ -259,12 +284,14 @@ void main() {
       final arrangement = addArrangementToProject('Arrangement 1');
       final firstTrack = getId();
       final secondTrack = getId();
-      final firstClip = ClipModel.create(
+      final firstClip = ClipModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
         patternId: getId(),
         trackId: firstTrack,
         offset: 64,
       );
-      final secondClip = ClipModel.create(
+      final secondClip = ClipModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
         patternId: getId(),
         trackId: secondTrack,
         offset: 80,

@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -37,6 +38,10 @@ class MockProjectModel extends Mock implements ProjectModel {
   SequencerModel get sequence => _sequence;
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 void main() {
   late MockProjectModel project;
   late SequencerModel sequence;
@@ -45,13 +50,16 @@ void main() {
   late AnthemObservableList<Id> arrangementOrder;
 
   PatternModel addPatternToProject(String name) {
-    final pattern = PatternModel.create(name: name);
+    final pattern = PatternModel(idAllocator: _testIdAllocator(), name: name);
     patterns[pattern.id] = pattern;
     return pattern;
   }
 
   ArrangementModel addArrangementToProject(String name) {
-    final arrangement = ArrangementModel.create(name: name, id: getId());
+    final arrangement = ArrangementModel(
+      idAllocator: _testIdAllocator(),
+      name: name,
+    );
     arrangements[arrangement.id] = arrangement;
     arrangementOrder.add(arrangement.id);
     return arrangement;
@@ -63,6 +71,7 @@ void main() {
     required int denominator,
   }) {
     return TimeSignatureChangeModel(
+      idAllocator: _testIdAllocator(),
       offset: offset,
       timeSignature: TimeSignatureModel(numerator, denominator),
     );

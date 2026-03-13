@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/project.dart';
@@ -45,6 +46,11 @@ abstract interface class DisposableService {
 
 typedef ProjectControllerFactory =
     ProjectController Function(ProjectModel project, ServiceRegistry registry);
+typedef IdAllocatorFactory =
+    ProjectEntityIdAllocator Function(
+      ProjectModel project,
+      ServiceRegistry registry,
+    );
 typedef ArrangerControllerFactory =
     ArrangerController Function(ProjectModel project, ServiceRegistry registry);
 typedef PianoRollControllerFactory =
@@ -70,6 +76,7 @@ typedef AutomationEditorViewModelFactory =
     );
 
 class ProjectServiceFactoryOverrides {
+  final IdAllocatorFactory? idAllocator;
   final ProjectControllerFactory? projectController;
   final ArrangerControllerFactory? arrangerController;
   final PianoRollControllerFactory? pianoRollController;
@@ -80,6 +87,7 @@ class ProjectServiceFactoryOverrides {
   final AutomationEditorViewModelFactory? automationEditorViewModel;
 
   const ProjectServiceFactoryOverrides({
+    this.idAllocator,
     this.projectController,
     this.arrangerController,
     this.pianoRollController,
@@ -91,6 +99,7 @@ class ProjectServiceFactoryOverrides {
   });
 
   bool get isEmpty =>
+      idAllocator == null &&
       projectController == null &&
       arrangerController == null &&
       pianoRollController == null &&
@@ -108,7 +117,8 @@ class ServiceRegistry {
   static final DialogController dialogController = DialogController();
   static late final ScreenOverlayController screenOverlayController;
 
-  static final Map<Id, ServiceRegistry> _serviceRegistriesByProjectId = {};
+  static final Map<ProjectId, ServiceRegistry> _serviceRegistriesByProjectId =
+      {};
 
   static ServiceRegistry initializeProject(
     ProjectModel project, {
@@ -132,10 +142,10 @@ class ServiceRegistry {
         ServiceRegistry._internal(project, overrides);
   }
 
-  static ServiceRegistry? maybeForProject(Id projectId) =>
+  static ServiceRegistry? maybeForProject(ProjectId projectId) =>
       _serviceRegistriesByProjectId[projectId];
 
-  static ServiceRegistry forProject(Id projectId) {
+  static ServiceRegistry forProject(ProjectId projectId) {
     final existingServiceRegistry = _serviceRegistriesByProjectId[projectId];
     if (existingServiceRegistry != null) {
       return existingServiceRegistry;
@@ -153,7 +163,7 @@ class ServiceRegistry {
 
   /// Disposes any project-scoped services that opted into cleanup, then
   /// removes the entire project registry object.
-  static void removeProject(Id projectId) {
+  static void removeProject(ProjectId projectId) {
     final serviceRegistry = _serviceRegistriesByProjectId[projectId];
     if (serviceRegistry == null) {
       return;
@@ -168,6 +178,11 @@ class ServiceRegistry {
         _overrides.projectController?.call(project, this) ??
         ProjectController(project, projectViewModel),
   );
+  ProjectEntityIdAllocator get idAllocator =>
+      _serviceFor<ProjectEntityIdAllocator>(
+        () =>
+            _overrides.idAllocator?.call(project, this) ?? project.idAllocator,
+      );
   ArrangerController get arrangerController => _serviceFor<ArrangerController>(
     () =>
         _overrides.arrangerController?.call(project, this) ??

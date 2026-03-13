@@ -25,6 +25,12 @@ import 'package:anthem/widgets/basic/menu/menu_renderer.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
 
+var _nextContextMenuId = 0;
+
+Id _allocateContextMenuId() {
+  return 'context-menu-${_nextContextMenuId++}';
+}
+
 /// Convenience function for opening a context menu.
 ///
 /// Instead of anchoring to a component's render area, as in the case of the
@@ -34,7 +40,7 @@ import 'package:flutter/widgets.dart';
 /// Returns an [Id] that can be used to close the menu if needed with
 /// [closeContextMenu].
 Id openContextMenu(Offset globalPosition, MenuDef menu) {
-  final menuId = getId();
+  final menuId = _allocateContextMenuId();
   final anchorRect = Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0);
 
   final screenOverlayController = ServiceRegistry.screenOverlayController;

@@ -57,7 +57,7 @@ class ArrangerContentUnderCursor {
 }
 
 abstract class _ArrangerViewModel with Store {
-  final String projectId;
+  final ProjectId projectId;
 
   @observable
   EditorTool tool = EditorTool.pencil;

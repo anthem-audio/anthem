@@ -23,6 +23,7 @@ import 'dart:math';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
@@ -107,6 +108,9 @@ abstract class _ArrangerController {
   void onHover(PointerHoverEvent e) {
     stateMachine.onHover(e);
   }
+
+  ProjectEntityIdAllocator get _idAllocator =>
+      ServiceRegistry.forProject(project.id).idAllocator;
 
   void onViewSizeChanged(Size viewSize) {
     stateMachine.onViewSizeChanged(viewSize);
@@ -298,10 +302,11 @@ abstract class _ArrangerController {
 
     final track = project.tracks[trackId]!;
 
-    final pattern = PatternModel.create(name: track.name)
+    final pattern = PatternModel(idAllocator: _idAllocator, name: track.name)
       ..color = track.color.clone();
 
-    final clip = ClipModel.create(
+    final clip = ClipModel(
+      idAllocator: _idAllocator,
       patternId: pattern.id,
       trackId: trackId,
       offset: offset.round(),
@@ -367,6 +372,7 @@ abstract class _ArrangerController {
         timelineKind: TimelineKind.arrangement,
         arrangementID: arrangementId,
         change: TimeSignatureChangeModel(
+          idAllocator: _idAllocator,
           offset: snappedOffset,
           timeSignature: timeSignature,
         ),

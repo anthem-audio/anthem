@@ -18,6 +18,8 @@
 */
 
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -28,6 +30,7 @@ TimeSignatureChangeModel _change({
   required int denominator,
 }) {
   return TimeSignatureChangeModel(
+    idAllocator: ProjectEntityIdAllocator.test(getId),
     offset: offset,
     timeSignature: TimeSignatureModel(numerator, denominator),
   );

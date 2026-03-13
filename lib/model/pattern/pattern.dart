@@ -22,6 +22,7 @@ import 'dart:math';
 
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
@@ -105,13 +106,16 @@ class PatternModel extends _PatternModel
   /// Constructs a blank and invalid pattern.
   ///
   /// Used for serialization and deserialization.
-  PatternModel() : super();
+  PatternModel.uninitialized() : super();
 
   /// Creates a [PatternModel].
   ///
   /// This is the primary entry point when creating a new pattern in the
-  /// software. Note that JSON serialization and
-  PatternModel.create({required super.name}) : super.create() {
+  /// software.
+  PatternModel({
+    required ProjectEntityIdAllocator idAllocator,
+    required super.name,
+  }) : super.create(id: idAllocator.allocateId()) {
     _init();
   }
 
@@ -204,7 +208,7 @@ class PatternModel extends _PatternModel
 
 abstract class _PatternModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  Id id = getId();
+  Id id;
 
   @anthemObservable
   String name = '';
@@ -244,10 +248,10 @@ abstract class _PatternModel
   @hideFromSerialization
   LoopPointsModel? loopPoints;
 
-  /// For deserialization. Use `PatternModel.create()` instead.
-  _PatternModel();
+  /// For deserialization. Use `PatternModel()` instead.
+  _PatternModel() : id = '';
 
-  _PatternModel.create({required this.name}) {
+  _PatternModel.create({required this.id, required this.name}) {
     color = AnthemColor.randomHue();
     timeSignatureChanges = AnthemObservableList();
   }

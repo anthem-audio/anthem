@@ -44,7 +44,7 @@ class MainWindowController {
   }
 
   // Returns the ID of the new tab
-  Future<Id> newProject() async {
+  Future<ProjectId> newProject() async {
     ProjectModel project = ProjectModel.create();
 
     _addProject(project);
@@ -53,7 +53,7 @@ class MainWindowController {
     return project.id;
   }
 
-  void switchTab(Id projectId) {
+  void switchTab(ProjectId projectId) {
     AnthemStore.instance.activeProjectId = projectId;
 
     // Only enable visualizations for the selected project tab
@@ -62,7 +62,7 @@ class MainWindowController {
     }
   }
 
-  void closeProjectWithoutSaving(Id projectId) {
+  void closeProjectWithoutSaving(ProjectId projectId) {
     final store = AnthemStore.instance;
     final project = store.projects[projectId];
 
@@ -87,7 +87,7 @@ class MainWindowController {
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled.
-  Future<Id?> loadProject() async {
+  Future<ProjectId?> loadProject() async {
     String? home;
     Map<String, String> envVars = kIsWeb ? {} : Platform.environment;
 
@@ -121,7 +121,9 @@ class MainWindowController {
       file = await File(path).readAsString();
     }
 
-    final project = ProjectModel.fromJson(json.decode(file));
+    final project = ProjectModel.fromJson(
+      json.decode(file) as Map<String, dynamic>,
+    );
     _addProject(project);
 
     project.filePath = path;
@@ -132,7 +134,7 @@ class MainWindowController {
   }
 
   Future<bool> saveProject(
-    Id projectId,
+    ProjectId projectId,
     bool alwaysUseFilePicker, {
     required DialogController dialogController,
   }) async {
@@ -238,7 +240,7 @@ class MainWindowController {
 
 @immutable
 class TabDef {
-  final Id id;
+  final ProjectId id;
   final String title;
 
   const TabDef({required this.id, required this.title});

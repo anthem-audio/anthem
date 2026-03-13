@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,9 +18,17 @@
 */
 
 import 'package:nanoid/nanoid.dart';
+import 'package:uuid/uuid.dart';
 
 typedef Id = String;
+typedef ProjectId = String;
+
+final _projectIdGenerator = Uuid();
 
 Id getId() {
   return nanoid(14);
+}
+
+ProjectId getProjectId() {
+  return _projectIdGenerator.v4();
 }

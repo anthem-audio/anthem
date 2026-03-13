@@ -21,6 +21,9 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
@@ -53,8 +56,13 @@ class _PianoRollEventListenerTestFixture {
   factory _PianoRollEventListenerTestFixture.create() {
     final project = ProjectModel()
       ..isHydrated = true
-      ..sequence = SequencerModel.create();
-    final pattern = PatternModel.create(name: 'Pattern 1');
+      ..sequence = SequencerModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+      );
+    final pattern = PatternModel(
+      idAllocator: ProjectEntityIdAllocator.test(getId),
+      name: 'Pattern 1',
+    );
     project.sequence.patterns[pattern.id] = pattern;
     project.sequence.setActivePattern(pattern.id);
 
@@ -67,6 +75,7 @@ class _PianoRollEventListenerTestFixture {
       project: project,
       viewModel: viewModel,
     );
+    ServiceRegistry.initializeProject(project);
 
     return _PianoRollEventListenerTestFixture._(
       project: project,
@@ -138,6 +147,7 @@ class _PianoRollEventListenerTestFixture {
 
   void dispose() {
     controller.dispose();
+    ServiceRegistry.removeProject(project.id);
   }
 }
 

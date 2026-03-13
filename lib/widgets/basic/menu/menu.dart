@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,6 +26,12 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'menu_renderer.dart';
+
+var _nextMenuOverlayId = 0;
+
+Id _allocateMenuOverlayId() {
+  return 'menu-overlay-${_nextMenuOverlayId++}';
+}
 
 class Menu extends StatefulWidget {
   final AnthemMenuController menuController;
@@ -86,7 +92,7 @@ class _MenuState extends State<Menu> {
               widget.offset,
         );
     final anchorRect = Rect.fromLTWH(anchorPos.dx, anchorPos.dy, 0, 0);
-    final id = getId();
+    final id = _allocateMenuOverlayId();
 
     screenOverlayController.add(
       id,

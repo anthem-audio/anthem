@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
@@ -24,6 +26,10 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  ProjectEntityIdAllocator testIdAllocator([Id Function()? allocateId]) {
+    return ProjectEntityIdAllocator.test(allocateId ?? getId);
+  }
+
   PianoRollViewModel createViewModel() {
     return PianoRollViewModel(
       keyHeight: 14,
@@ -33,7 +39,10 @@ void main() {
   }
 
   PatternModel createPattern(Iterable<NoteModel> notes) {
-    final pattern = PatternModel.create(name: 'Pattern');
+    final pattern = PatternModel(
+      idAllocator: testIdAllocator(),
+      name: 'Pattern',
+    );
     for (final note in notes) {
       pattern.notes[note.id] = note;
     }
@@ -49,18 +58,20 @@ void main() {
     required double pan,
   }) {
     return NoteModel(
+      idAllocator: testIdAllocator(() => id),
       key: key,
       velocity: velocity,
       length: length,
       offset: offset,
       pan: pan,
-    )..id = id;
+    );
   }
 
   group('PianoRollViewModel note resolution', () {
     test('applies note overrides to real notes', () {
       final viewModel = createViewModel();
       final note = NoteModel(
+        idAllocator: testIdAllocator(),
         key: 60,
         velocity: 0.75,
         length: 96,
@@ -102,6 +113,7 @@ void main() {
       () {
         final viewModel = createViewModel();
         final plainNote = NoteModel(
+          idAllocator: testIdAllocator(),
           key: 60,
           velocity: 0.75,
           length: 96,
@@ -109,6 +121,7 @@ void main() {
           pan: 0,
         );
         final overriddenNote = NoteModel(
+          idAllocator: testIdAllocator(),
           key: 64,
           velocity: 0.75,
           length: 96,
@@ -149,6 +162,7 @@ void main() {
     test('resolveRenderedNoteByRef returns real and transient notes', () {
       final viewModel = createViewModel();
       final realNote = NoteModel(
+        idAllocator: testIdAllocator(),
         key: 60,
         velocity: 0.75,
         length: 96,

@@ -22,6 +22,7 @@ import 'dart:async';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -56,6 +57,10 @@ class _StoppedEngine extends Mock implements Engine {
 
   @override
   Stream<EngineState> get engineStateStream => _engineStateStream;
+}
+
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
 }
 
 class _RecordedLiveEvent {
@@ -148,8 +153,12 @@ class _TrackIds {
 }
 
 TrackModel _makeTrack(Id id, String name, TrackType type) {
-  return TrackModel(name: name, color: AnthemColor.randomHue(), type: type)
-    ..id = id;
+  return TrackModel(
+    idAllocator: ProjectEntityIdAllocator.test(() => id),
+    name: name,
+    color: AnthemColor.randomHue(),
+    type: type,
+  );
 }
 
 class _PianoRollStateMachineTestFixture {
@@ -190,7 +199,7 @@ class _PianoRollStateMachineTestFixture {
         ? _RunningEngine(recordingProcessingGraphApi!)
         : null;
     project.engine = enableLiveEvents ? runningEngine! : _StoppedEngine();
-    project.sequence = SequencerModel.create();
+    project.sequence = SequencerModel(idAllocator: _testIdAllocator());
 
     project.tracks = AnthemObservableMap.of({
       _TrackIds.instrument: _makeTrack(
@@ -207,7 +216,10 @@ class _PianoRollStateMachineTestFixture {
           liveEventProviderNodeId;
     }
 
-    final pattern = PatternModel.create(name: 'Pattern 1');
+    final pattern = PatternModel(
+      idAllocator: _testIdAllocator(),
+      name: 'Pattern 1',
+    );
     project.sequence.patterns = AnthemObservableMap.of({pattern.id: pattern});
     project.sequence.setActivePattern(pattern.id);
     project.sequence.setActiveTrack(_TrackIds.instrument);
@@ -320,6 +332,7 @@ class _PianoRollStateMachineTestFixture {
     double pan = 0,
   }) {
     final note = NoteModel(
+      idAllocator: _testIdAllocator(),
       key: key,
       velocity: velocity,
       length: length,

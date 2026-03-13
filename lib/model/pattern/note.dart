@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -72,33 +73,33 @@ class ResolvedPatternNote {
 class NoteModel extends _NoteModel
     with _$NoteModel, _$NoteModelAnthemModelMixin {
   NoteModel({
+    required ProjectEntityIdAllocator idAllocator,
     required super.key,
     required super.velocity,
     required super.length,
     required super.offset,
     required super.pan,
-  });
+  }) : super(id: idAllocator.allocateId());
 
   NoteModel.uninitialized()
-    : super(key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
+    : super(id: '', key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
 
   NoteModel.fromNoteModel(NoteModel model)
     : super(
+        id: model.id,
         key: model.key,
         length: model.length,
         offset: model.offset,
         velocity: model.velocity,
         pan: model.pan,
-      ) {
-    id = model.id;
-  }
+      );
 
   factory NoteModel.fromJson(Map<String, dynamic> json) =>
       _$NoteModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _NoteModel with Store, AnthemModelBase, ProjectModelGetterMixin {
-  String id;
+  Id id;
 
   @anthemObservable
   int key;
@@ -116,12 +117,13 @@ abstract class _NoteModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   double pan;
 
   _NoteModel({
+    required this.id,
     required this.key,
     required this.velocity,
     required this.length,
     required this.offset,
     required this.pan,
-  }) : id = getId();
+  });
 }
 
 @AnthemModel(serializable: true, generateModelSync: true)

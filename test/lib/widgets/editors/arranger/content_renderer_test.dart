@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
@@ -31,10 +32,13 @@ ClipRenderInfo _makeClip({
   bool hasTimingOverride = false,
   String trackId = 'track-1',
 }) {
-  final pattern = PatternModel.create(name: id);
+  final pattern = PatternModel(
+    idAllocator: ProjectEntityIdAllocator.test(() => 'pattern-$id'),
+    name: id,
+  );
   final clip = ClipModel(
-    id: id,
-    patternId: 'pattern-$id',
+    idAllocator: ProjectEntityIdAllocator.test(() => id),
+    patternId: pattern.id,
     trackId: trackId,
     offset: offset,
     timeView: TimeViewModel(start: 0, end: width),

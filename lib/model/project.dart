@@ -25,6 +25,7 @@ import 'package:anthem/logic/commands/command_stack.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -46,9 +47,19 @@ enum ProjectLayoutKind { arrange, edit, mix }
 )
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
+  late final ProjectEntityIdAllocator idAllocator = ProjectEntityIdAllocator(
+    this,
+  );
+
   ProjectModel() : super();
 
   ProjectModel.create([super._enginePathOverride]) : super.create() {
+    final idAllocator = this.idAllocator;
+    sequence = SequencerModel(idAllocator: idAllocator);
+    processingGraph = ProcessingGraphModel.create(
+      masterOutputNodeId: idAllocator.allocateId(),
+    );
+    hydrate();
     _init();
 
     final Map<Id, TrackModel> initTracks = {};
@@ -57,19 +68,25 @@ class ProjectModel extends _ProjectModel
 
     for (var i = 1; i <= 1; i++) {
       final track = TrackModel(
+        idAllocator: idAllocator,
         name: 'Track $i',
         color: AnthemColor.randomHue(),
         type: .instrument,
       );
-      track.createAndRegisterNodes(this);
+      track.createAndRegisterNodes(this, idAllocator);
       initTracks[track.id] = track;
       initTrackOrder.add(track.id);
     }
 
     final masterTrack =
-        TrackModel(name: 'Master', color: AnthemColor.randomHue(), type: .audio)
+        TrackModel(
+            idAllocator: idAllocator,
+            name: 'Master',
+            color: AnthemColor.randomHue(),
+            type: .audio,
+          )
           ..isMasterTrack = true
-          ..createAndRegisterNodes(this);
+          ..createAndRegisterNodes(this, idAllocator);
     initTracks[masterTrack.id] = masterTrack;
     initSendTrackOrder.add(masterTrack.id);
 
@@ -141,9 +158,16 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @anthemObservable
   AnthemObservableList<Id> sendTrackOrder = AnthemObservableList();
 
-  /// The ID of the project.
-  @hideFromSerialization
-  Id id = getId();
+  @hideFromCpp
+  int idCounter = 0;
+
+  Id allocateId() {
+    return '${idCounter++}';
+  }
+
+  /// Globally unique ID for the project file.
+  @hideFromCpp
+  ProjectId id = getProjectId();
 
   /// The file path of the project.
   @anthemObservable
@@ -236,10 +260,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     isTopLevelModel = true;
 
     _commandStack = CommandStack(this as ProjectModel);
-    sequence = SequencerModel.create();
-    processingGraph = ProcessingGraphModel();
-
-    hydrate();
   }
 
   @hide

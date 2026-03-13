@@ -82,6 +82,8 @@ class TrackAddRemoveCommand extends Command {
     required ProjectModel project,
     required List<TrackDescriptorForCommand> tracks,
   }) : _isAdd = true {
+    final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+
     _tracks = tracks.map((track) {
       // Validate parent track if specified
       if (track.parentTrackId != null) {
@@ -105,6 +107,7 @@ class TrackAddRemoveCommand extends Command {
         isSendTrack: track.isSendTrack,
         parentTrackId: track.parentTrackId,
         trackModel: TrackModel(
+          idAllocator: idAllocator,
           name: track.isSendTrack
               ? 'Send Track ${project.sendTrackOrder.length}'
               : 'Track ${project.trackOrder.length + 1}',
@@ -280,6 +283,8 @@ class TrackAddRemoveCommand extends Command {
         _removedNodesSnapshot!,
       );
     } else if (_isAdd) {
+      final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+
       for (final trackDescriptor in _tracks) {
         final tracksToCheck = <TrackModel>[
           trackDescriptor.trackModel,
@@ -295,7 +300,7 @@ class TrackAddRemoveCommand extends Command {
           final hasAllTrackNodes = gainNodeId != null && balanceNodeId != null;
 
           if (hasNoTrackNodes) {
-            track.createAndRegisterNodes(project);
+            track.createAndRegisterNodes(project, idAllocator);
           } else if (hasSomeTrackNodes && !hasAllTrackNodes) {
             throw StateError(
               'TrackAddRemoveCommand._add(): Track ${track.id} has incomplete '
@@ -587,9 +592,10 @@ void _connectInstrumentAudioToTrackGain(
     return;
   }
 
+  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
   project.processingGraph.addConnection(
     NodeConnectionModel(
-      id: getId(),
+      idAllocator: idAllocator,
       sourceNodeId: instrumentNode.id,
       sourcePortId: instrumentNode.audioOutputPorts.first.id,
       destinationNodeId: gainNode.id,
@@ -608,9 +614,10 @@ void _connectSequenceProviderToInstrument(
     return;
   }
 
+  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
   project.processingGraph.addConnection(
     NodeConnectionModel(
-      id: getId(),
+      idAllocator: idAllocator,
       sourceNodeId: sequenceProviderNode.id,
       sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
       destinationNodeId: instrumentNode.id,
@@ -629,9 +636,10 @@ void _connectLiveEventProviderToInstrument(
     return;
   }
 
+  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
   project.processingGraph.addConnection(
     NodeConnectionModel(
-      id: getId(),
+      idAllocator: idAllocator,
       sourceNodeId: liveEventProviderNode.id,
       sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
       destinationNodeId: instrumentNode.id,
@@ -742,6 +750,7 @@ class TrackGroupUngroupCommand extends Command {
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final projectController = serviceRegistry.projectController;
+    final idAllocator = serviceRegistry.idAllocator;
 
     if (!projectController.canGroupTracks(trackIds)) {
       throw StateError(
@@ -879,6 +888,7 @@ class TrackGroupUngroupCommand extends Command {
     );
 
     _newGroupTrack = TrackModel(
+      idAllocator: idAllocator,
       name: 'New Group',
       color: AnthemColor.randomHue(),
       type: .group,

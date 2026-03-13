@@ -20,6 +20,8 @@
 import 'dart:ui';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -41,6 +43,10 @@ class _StoppedEngine extends Mock implements Engine {
   Stream<EngineState> get engineStateStream => _engineStateStream;
 }
 
+ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
+  return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -53,7 +59,7 @@ void main() {
       noteLabelImageCache = NoteLabelImageCache();
 
       project = ProjectModel.create()..engine = _StoppedEngine();
-      pattern = PatternModel.create(name: 'Pattern');
+      pattern = PatternModel(idAllocator: _testIdAllocator(), name: 'Pattern');
       project.sequence.patterns[pattern.id] = pattern;
       project.sequence.activePatternID = pattern.id;
 
@@ -88,6 +94,7 @@ void main() {
 
     test('skips subpixel notes without aborting later note rendering', () {
       final tinyLeadingNote = NoteModel(
+        idAllocator: _testIdAllocator(),
         key: 60,
         velocity: 0.8,
         length: 5,
@@ -95,6 +102,7 @@ void main() {
         pan: 0,
       );
       final visibleLaterNote = NoteModel(
+        idAllocator: _testIdAllocator(),
         key: 60,
         velocity: 0.8,
         length: 120,
@@ -130,6 +138,7 @@ void main() {
       viewModel.keyHeight = 32;
 
       final firstNote = NoteModel(
+        idAllocator: _testIdAllocator(),
         key: 60,
         velocity: 0.8,
         length: 120,
@@ -137,6 +146,7 @@ void main() {
         pan: 0,
       );
       final secondNote = NoteModel(
+        idAllocator: _testIdAllocator(),
         key: 62,
         velocity: 0.8,
         length: 120,

@@ -144,6 +144,8 @@ Widget _buildChild(
 
 Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
   final projectController = Provider.of<ProjectController>(context);
+  final project = Provider.of<ProjectModel>(context, listen: false);
+  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
   final addInstrumentMenuController = AnthemMenuController();
 
   final menuDef = MenuDef(
@@ -153,7 +155,9 @@ Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
         onSelected: () {
           projectController.setTrackInstrumentNode(
             trackId: trackId,
-            node: ToneGeneratorProcessorModel().createNode(),
+            node: ToneGeneratorProcessorModel.create(
+              idAllocator: idAllocator,
+            ).createNode(),
           );
         },
       ),
@@ -170,7 +174,7 @@ Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
         onSelected: () {
           projectController.setTrackInstrumentNode(
             trackId: trackId,
-            node: NodeModel(id: 'blank-instrument-${getId()}'),
+            node: NodeModel.create(idAllocator: idAllocator),
           );
         },
       ),

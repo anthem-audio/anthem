@@ -31,7 +31,6 @@ import 'package:pointer_lock/pointer_lock.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 import 'web_init_stub.dart' if (dart.library.js_interop) 'web_init.dart';
@@ -44,18 +43,7 @@ void main() async {
 
   addLicenses();
 
-  final store = AnthemStore.instance;
-
-  // Note: This code for creating a new project is duplicated in
-  // main_window_controller.dart
-
-  final projectModel = ProjectModel.create();
-
-  store.projects[projectModel.id] = projectModel;
-  store.projectOrder.add(projectModel.id);
-  store.activeProjectId = projectModel.id;
-  ServiceRegistry.initializeProject(projectModel);
-  unawaited(projectModel.engine.start());
+  await ServiceRegistry.mainWindowController.newProject();
 
   runApp(const App());
 

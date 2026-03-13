@@ -21,6 +21,7 @@ import 'dart:math';
 
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
@@ -41,12 +42,14 @@ class ArrangementModel extends _ArrangementModel
         _$ArrangementModel,
         _$ArrangementModelAnthemModelMixin,
         _ArrangementCompilerMixin {
-  ArrangementModel.uninitialized() : super(name: '', id: '');
-
-  ArrangementModel.create({required super.name, required super.id})
-    : super.create() {
+  ArrangementModel({
+    required ProjectEntityIdAllocator idAllocator,
+    required super.name,
+  }) : super.create(id: idAllocator.allocateId()) {
     _init();
   }
+
+  ArrangementModel.uninitialized() : super(name: '', id: '');
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) {
     final arrangement = _$ArrangementModelAnthemModelMixin.fromJson(json);

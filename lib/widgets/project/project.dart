@@ -42,7 +42,7 @@ import 'package:anthem/widgets/project/project_view_model.dart';
 import 'project_header.dart';
 
 class Project extends StatefulWidget {
-  final Id id;
+  final ProjectId id;
 
   const Project({super.key, required this.id});
 
