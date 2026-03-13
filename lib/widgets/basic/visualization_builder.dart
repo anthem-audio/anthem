@@ -80,9 +80,14 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
   StreamSubscription<void>? _updateSubscription;
   DateTime? _lastUpdateTime;
 
-  @override
-  void initState() {
-    super.initState();
+  void _resetLatestValues() {
+    _latestDoubleValue = null;
+    _latestIntValue = null;
+    _latestStringValue = null;
+    _lastUpdateTime = null;
+  }
+
+  void _attachSubscription() {
     _subscription = Provider.of<ProjectModel>(
       context,
       listen: false,
@@ -130,23 +135,32 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
     });
   }
 
+  void _detachSubscription() {
+    _updateSubscription?.cancel();
+    _updateSubscription = null;
+    _subscription.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _attachSubscription();
+  }
+
   @override
   void didUpdateWidget(VisualizationBuilder oldWidget) {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.config != widget.config) {
-      _subscription.dispose();
-      _subscription = Provider.of<ProjectModel>(
-        context,
-        listen: false,
-      ).visualizationProvider.subscribe(widget.config);
+      _detachSubscription();
+      _resetLatestValues();
+      _attachSubscription();
     }
   }
 
   @override
   void dispose() {
-    _subscription.dispose();
-    _updateSubscription?.cancel();
+    _detachSubscription();
     super.dispose();
   }
 

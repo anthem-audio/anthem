@@ -91,6 +91,30 @@ void main() {
     );
   }
 
+  Future<void> pumpVisualizationBuilder(
+    WidgetTester tester, {
+    required ProjectModel project,
+    required VisualizationSubscriptionConfig config,
+  }) async {
+    await tester.pumpWidget(
+      Provider<ProjectModel>.value(
+        value: project,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: VisualizationBuilder.int(
+            config: config,
+            builder: (context, value) {
+              return Text(
+                value?.toString() ?? 'null',
+                textDirection: TextDirection.ltr,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   test('Subscription object behavior', () {
     for (final value in VisualizationSubscriptionType.values) {
       final visualizationApiMock = MockVisualizationApi();
@@ -361,6 +385,55 @@ void main() {
 
     expect(await getNextSubscriptionChanges(), isEmpty);
   });
+
+  testWidgets(
+    'VisualizationBuilder keeps receiving updates after a config change',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+
+      await pumpVisualizationBuilder(
+        tester,
+        project: setup.project,
+        config: const VisualizationSubscriptionConfig.latest('a'),
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            VisualizationItem(id: 'a', values: [1]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('1'), findsOneWidget);
+
+      await pumpVisualizationBuilder(
+        tester,
+        project: setup.project,
+        config: const VisualizationSubscriptionConfig.latest('b'),
+      );
+
+      expect(find.text('null'), findsOneWidget);
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            VisualizationItem(id: 'a', values: [9]),
+            VisualizationItem(id: 'b', values: [2]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('2'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      setup.visualizationProvider.dispose();
+    },
+  );
 
   testWidgets(
     'MultiVisualizationBuilder recreates subscriptions when the config count changes',
