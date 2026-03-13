@@ -21,7 +21,7 @@
 
 #include "modules/core/anthem.h"
 
-Transport::Transport() : rt_playhead{0.0} {
+Transport::Transport() : rt_playhead{0.0}, rt_sampleCounter{0} {
   rt_config = new TransportConfig();
 
   // Initialize the transport with default values
@@ -80,6 +80,10 @@ void Transport::prepareToProcess() {
   auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
   sampleRate = currentDevice->getCurrentSampleRate();
+
+  // Reset the sample counter when the audio device starts so it remains a
+  // session-local audio-clock timebase.
+  rt_sampleCounter = 0;
 }
 
 void Transport::rt_prepareForProcessingBlock() {
@@ -159,6 +163,7 @@ void Transport::rt_prepareForProcessingBlock() {
 
 void Transport::rt_advancePlayhead(int numSamples) {
   rt_playhead = rt_getPlayheadAfterAdvance(numSamples);
+  rt_sampleCounter += static_cast<int64_t>(numSamples);
   rt_playheadJumpOrPauseOccurred = false;
 
   // Send the playhead jump event back to the main thread for deletion, if there

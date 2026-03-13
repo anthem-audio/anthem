@@ -124,6 +124,13 @@ public:
   // The playhead position
   double rt_playhead;
 
+  // Monotonic audio-clock sample counter.
+  //
+  // This advances for every processed sample regardless of playback, seek, or
+  // loop state. It is intended as a deterministic timestamp domain for
+  // real-time visualization and similar engine-side timing consumers.
+  int64_t rt_sampleCounter;
+
   // The current playhead jump event, if one is relevant for the current
   // processing block.
   PlayheadJumpEvent* rt_playheadJumpEvent;
