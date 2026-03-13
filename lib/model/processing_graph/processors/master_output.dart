@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -42,7 +43,7 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
         Processor,
         _$MasterOutputProcessorModel,
         _$MasterOutputProcessorModelAnthemModelMixin {
-  MasterOutputProcessorModel.uninitialized() : super(nodeId: '');
+  MasterOutputProcessorModel.uninitialized() : super(nodeId: -1);
 
   MasterOutputProcessorModel({required super.nodeId});
 
@@ -73,7 +74,7 @@ abstract class _MasterOutputProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int inputPortId = 0;
 
-  late String nodeId;
+  late Id nodeId;
 
   _MasterOutputProcessorModel({required this.nodeId});
 }

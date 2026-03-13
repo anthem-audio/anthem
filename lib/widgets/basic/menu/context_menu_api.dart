@@ -28,7 +28,7 @@ import 'package:flutter/widgets.dart';
 var _nextContextMenuId = 0;
 
 Id _allocateContextMenuId() {
-  return 'context-menu-${_nextContextMenuId++}';
+  return _nextContextMenuId++;
 }
 
 /// Convenience function for opening a context menu.

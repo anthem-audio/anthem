@@ -20,7 +20,7 @@
 part of 'pattern.dart';
 
 mixin _PatternCompilerMixin on _PatternModel {
-  static const String _noTrackEventListKey = 'NO_TRACK';
+  static const Id _noTrackEventListKey = -1;
   // 0x001F_FFFF_FFFF_FFFF is the max safe integer in JavaScript.
   static const int _unboundedClipEnd = 0x001F_FFFF_FFFF_FFFF;
 

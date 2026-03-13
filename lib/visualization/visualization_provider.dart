@@ -81,12 +81,13 @@ class VisualizationProvider {
             switch (value) {
               case String _:
                 subscription._addValue(value);
-              case double _:
               case int _:
-                subscription._addValue(value.toDouble());
+                subscription._addValue(value);
+              case double _:
+                subscription._addValue(value);
               default:
                 throw ArgumentError(
-                  'Unexpected value type: ${value.runtimeType} for item ${item.id}. Expected String or double.',
+                  'Unexpected value type: ${value.runtimeType} for item ${item.id}. Expected String, int, or double.',
                 );
             }
           }
@@ -179,6 +180,7 @@ class VisualizationProvider {
   void overrideValue({
     required String id,
     double? doubleValue,
+    int? intValue,
     String? stringValue,
     required Duration duration,
   }) {
@@ -187,6 +189,7 @@ class VisualizationProvider {
     for (final sub in subscriptions) {
       sub.setOverride(
         valueDouble: doubleValue,
+        valueInt: intValue,
         valueString: stringValue,
         duration: duration,
       );

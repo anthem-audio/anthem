@@ -282,7 +282,7 @@ class _Header extends StatelessWidget {
               builder: (context) {
                 return Dropdown(
                   hint: 'Change the active arrangement',
-                  selectedID: project.sequence.activeArrangementID,
+                  selectedID: project.sequence.activeArrangementID?.toString(),
                   horizontalExpand: false,
                   items: project.sequence.arrangementOrder.map<DropdownItem>((
                     id,
@@ -295,7 +295,9 @@ class _Header extends StatelessWidget {
                     );
                   }).toList(),
                   onChanged: (selectedID) {
-                    projectController.setActiveArrangement(selectedID);
+                    projectController.setActiveArrangement(
+                      selectedID == null ? null : int.parse(selectedID),
+                    );
                   },
                 );
               },

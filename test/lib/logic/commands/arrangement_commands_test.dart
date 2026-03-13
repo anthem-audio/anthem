@@ -32,13 +32,13 @@ import 'package:mockito/mockito.dart';
 class MockProjectModel extends Mock implements ProjectModel {
   MockProjectModel(this._id, this._sequence);
 
-  final Id _id;
+  final ProjectId _id;
   final SequencerModel _sequence;
   late final ProjectEntityIdAllocator _idAllocator =
       ProjectEntityIdAllocator.test(allocateId);
 
   @override
-  Id get id => _id;
+  ProjectId get id => _id;
 
   @override
   SequencerModel get sequence => _sequence;
@@ -52,7 +52,7 @@ class MockProjectModel extends Mock implements ProjectModel {
 
 void main() {
   late MockProjectModel project;
-  late Id projectId;
+  late ProjectId projectId;
   late SequencerModel sequence;
   late AnthemObservableMap<Id, ArrangementModel> arrangements;
   late AnthemObservableList<Id> arrangementOrder;
@@ -84,7 +84,7 @@ void main() {
 
     sequence.arrangements = arrangements;
     sequence.arrangementOrder = arrangementOrder;
-    projectId = getId();
+    projectId = getProjectId();
     project = MockProjectModel(projectId, sequence);
     ServiceRegistry.initializeProject(project);
   });

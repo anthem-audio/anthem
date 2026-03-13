@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
@@ -26,15 +27,15 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ClipRenderInfo _makeClip({
-  required String id,
+  required Id id,
   required int offset,
   required int width,
   bool hasTimingOverride = false,
-  String trackId = 'track-1',
+  Id trackId = 1,
 }) {
   final pattern = PatternModel(
-    idAllocator: ProjectEntityIdAllocator.test(() => 'pattern-$id'),
-    name: id,
+    idAllocator: ProjectEntityIdAllocator.test(() => id + 1000),
+    name: '$id',
   );
   final clip = ClipModel(
     idAllocator: ProjectEntityIdAllocator.test(() => id),
@@ -200,9 +201,9 @@ void main() {
 
   group('compareClipRenderInfoForLayering', () {
     test('orders timing overrides above non-overridden clips', () {
-      final nonOverridden = _makeClip(id: 'clip-a', offset: 200, width: 24);
+      final nonOverridden = _makeClip(id: 1, offset: 200, width: 24);
       final overridden = _makeClip(
-        id: 'clip-b',
+        id: 2,
         offset: 0,
         width: 24,
         hasTimingOverride: true,
@@ -219,24 +220,24 @@ void main() {
     });
 
     test('orders by offset when override state is equal', () {
-      final earlier = _makeClip(id: 'clip-a', offset: 10, width: 24);
-      final later = _makeClip(id: 'clip-b', offset: 40, width: 8);
+      final earlier = _makeClip(id: 1, offset: 10, width: 24);
+      final later = _makeClip(id: 2, offset: 40, width: 8);
 
       expect(compareClipRenderInfoForLayering(earlier, later), lessThan(0));
       expect(compareClipRenderInfoForLayering(later, earlier), greaterThan(0));
     });
 
     test('orders by width when offsets are equal', () {
-      final narrower = _makeClip(id: 'clip-a', offset: 10, width: 8);
-      final wider = _makeClip(id: 'clip-b', offset: 10, width: 24);
+      final narrower = _makeClip(id: 1, offset: 10, width: 8);
+      final wider = _makeClip(id: 2, offset: 10, width: 24);
 
       expect(compareClipRenderInfoForLayering(narrower, wider), lessThan(0));
       expect(compareClipRenderInfoForLayering(wider, narrower), greaterThan(0));
     });
 
     test('falls back to clip ID when offset and width are equal', () {
-      final clipA = _makeClip(id: 'clip-a', offset: 10, width: 24);
-      final clipB = _makeClip(id: 'clip-b', offset: 10, width: 24);
+      final clipA = _makeClip(id: 1, offset: 10, width: 24);
+      final clipB = _makeClip(id: 2, offset: 10, width: 24);
 
       expect(compareClipRenderInfoForLayering(clipA, clipB), lessThan(0));
       expect(compareClipRenderInfoForLayering(clipB, clipA), greaterThan(0));
@@ -245,9 +246,9 @@ void main() {
 
   group('buildClipLayersForPainting', () {
     test('places overridden overlapping clips in a later layer', () {
-      final nonOverridden = _makeClip(id: 'clip-a', offset: 10, width: 30);
+      final nonOverridden = _makeClip(id: 1, offset: 10, width: 30);
       final overridden = _makeClip(
-        id: 'clip-b',
+        id: 2,
         offset: 20,
         width: 30,
         hasTimingOverride: true,
@@ -256,72 +257,53 @@ void main() {
       final layers = buildClipLayersForPainting([overridden, nonOverridden]);
 
       expect(layers, hasLength(2));
-      expect(layers[0].map((clip) => clip.clipId), contains('clip-a'));
-      expect(layers[1].map((clip) => clip.clipId), contains('clip-b'));
+      expect(layers[0].map((clip) => clip.clipId), contains(1));
+      expect(layers[1].map((clip) => clip.clipId), contains(2));
     });
 
     test('keeps touching clips in the same layer', () {
-      final left = _makeClip(id: 'clip-a', offset: 10, width: 30);
-      final right = _makeClip(id: 'clip-b', offset: 40, width: 30);
+      final left = _makeClip(id: 1, offset: 10, width: 30);
+      final right = _makeClip(id: 2, offset: 40, width: 30);
 
       final layers = buildClipLayersForPainting([right, left]);
 
       expect(layers, hasLength(1));
-      expect(layers[0].map((clip) => clip.clipId).toList(), [
-        'clip-a',
-        'clip-b',
-      ]);
+      expect(layers[0].map((clip) => clip.clipId).toList(), [1, 2]);
     });
 
     test('allows overlapping clips on different tracks in the same layer', () {
-      final trackA = _makeClip(
-        id: 'clip-a',
-        trackId: 'track-1',
-        offset: 10,
-        width: 30,
-      );
-      final trackB = _makeClip(
-        id: 'clip-b',
-        trackId: 'track-2',
-        offset: 20,
-        width: 30,
-      );
+      final trackA = _makeClip(id: 1, trackId: 1, offset: 10, width: 30);
+      final trackB = _makeClip(id: 2, trackId: 2, offset: 20, width: 30);
 
       final layers = buildClipLayersForPainting([trackB, trackA]);
 
       expect(layers, hasLength(1));
-      expect(
-        layers[0].map((clip) => clip.clipId),
-        containsAll(['clip-a', 'clip-b']),
-      );
+      expect(layers[0].map((clip) => clip.clipId), containsAll([1, 2]));
     });
 
     test('sorts clips before layer assignment', () {
-      final early = _makeClip(id: 'clip-a', offset: 0, width: 20);
-      final middle = _makeClip(id: 'clip-b', offset: 10, width: 15);
-      final late = _makeClip(id: 'clip-c', offset: 20, width: 10);
+      final early = _makeClip(id: 1, offset: 0, width: 20);
+      final middle = _makeClip(id: 2, offset: 10, width: 15);
+      final late = _makeClip(id: 3, offset: 20, width: 10);
 
       final layers = buildClipLayersForPainting([late, middle, early]);
 
       expect(layers, hasLength(3));
-      expect(layers[0].single.clipId, 'clip-a');
-      expect(layers[1].single.clipId, 'clip-b');
-      expect(layers[2].single.clipId, 'clip-c');
+      expect(layers[0].single.clipId, 1);
+      expect(layers[1].single.clipId, 2);
+      expect(layers[2].single.clipId, 3);
     });
 
     test('returns clips to lower layers when overlap no longer exists', () {
-      final base = _makeClip(id: 'clip-a', offset: 0, width: 10);
-      final overlap = _makeClip(id: 'clip-b', offset: 5, width: 10);
-      final nonOverlap = _makeClip(id: 'clip-c', offset: 16, width: 6);
+      final base = _makeClip(id: 1, offset: 0, width: 10);
+      final overlap = _makeClip(id: 2, offset: 5, width: 10);
+      final nonOverlap = _makeClip(id: 3, offset: 16, width: 6);
 
       final layers = buildClipLayersForPainting([base, overlap, nonOverlap]);
 
       expect(layers, hasLength(2));
-      expect(layers[0].map((clip) => clip.clipId).toList(), [
-        'clip-a',
-        'clip-c',
-      ]);
-      expect(layers[1].map((clip) => clip.clipId).toList(), ['clip-b']);
+      expect(layers[0].map((clip) => clip.clipId).toList(), [1, 3]);
+      expect(layers[1].map((clip) => clip.clipId).toList(), [2]);
     });
   });
 }

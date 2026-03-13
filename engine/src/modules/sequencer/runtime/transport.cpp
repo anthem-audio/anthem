@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -41,14 +41,14 @@ void Transport::setIsPlaying(bool isPlaying) {
   sendConfigToAudioThread();
 }
 
-void Transport::setActiveSequenceId(std::optional<std::string>& sequenceId) {
+void Transport::setActiveSequenceId(std::optional<int64_t>& sequenceId) {
   config.activeSequenceId = sequenceId;
   updateLoopPoints(false);
   updatePlayheadJumpEventForStart(false);
   sendConfigToAudioThread();
 }
 
-void Transport::setActiveTrackId(std::optional<std::string>& trackId) {
+void Transport::setActiveTrackId(std::optional<int64_t>& trackId) {
   config.activeTrackId = trackId;
 
   bool shouldRebuildJumpEvents = false;
@@ -382,15 +382,15 @@ void Transport::sendConfigToAudioThread() {
 }
 
 void Transport::addStartEventsForPattern(
-  std::string patternId,
-  std::string trackId,
+  int64_t patternId,
+  int64_t trackId,
   double offset,
-  std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector
+  std::unordered_map<int64_t, std::vector<AnthemLiveEvent>>& collector
 ) {
   auto& pattern = *Anthem::getInstance().project->sequence()->patterns()->at(patternId);
 
   auto addStartEventForTrack =
-      [&](const std::string& targetTrackId, const std::shared_ptr<NoteModel>& note) {
+      [&](int64_t targetTrackId, const std::shared_ptr<NoteModel>& note) {
         auto noteOffset = note->offset();
         auto noteLength = note->length();
         // noteOffset < offset, because if noteOffset == offset then the note

@@ -42,7 +42,7 @@ class CompileSequenceRequest extends Request {
   /// The track IDs to rebuild.
   ///
   /// If unspecified, all tracks will be rebuilt.
-  List<String>? tracksToRebuild;
+  List<Id>? tracksToRebuild;
 
   /// If specified, these are the ranges of the sequence that are no longer
   /// valid.
@@ -64,12 +64,12 @@ class CompileSequenceRequest extends Request {
   /// The pattern ID to compile.
   ///
   /// Either this or [arrangementId] must be specified.
-  String? patternId;
+  Id? patternId;
 
   /// The arrangement ID to compile.
   ///
   /// Either this or [patternId] must be specified.
-  String? arrangementId;
+  Id? arrangementId;
 
   CompileSequenceRequest.uninitialized();
 
@@ -100,9 +100,9 @@ class CompileSequenceRequest extends Request {
 /// rebuilding every sequence.
 class RemoveTrackRequest extends Request {
   /// The track ID to remove.
-  String trackId;
+  Id trackId;
 
-  RemoveTrackRequest.uninitialized() : trackId = '';
+  RemoveTrackRequest.uninitialized() : trackId = -1;
 
   RemoveTrackRequest({required int id, required this.trackId}) {
     super.id = id;
@@ -126,9 +126,9 @@ class LoopPointsChangedRequest extends Request {
   /// The sequence ID for which the loop points have changed.
   ///
   /// This will be either a pattern ID or an arrangement ID.
-  String sequenceId;
+  Id sequenceId;
 
-  LoopPointsChangedRequest.uninitialized() : sequenceId = '';
+  LoopPointsChangedRequest.uninitialized() : sequenceId = -1;
 
   LoopPointsChangedRequest({required int id, required this.sequenceId}) {
     super.id = id;

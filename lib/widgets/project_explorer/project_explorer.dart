@@ -182,7 +182,7 @@ TreeViewItemModel getMarkersItem({
     children: timeSignatureChanges
         .map(
           (change) => TreeViewItemModel(
-            key: change.id,
+            key: change.id.toString(),
             label: change.timeSignature.toDisplayString(),
             onClick: () {
               onClick?.call(change.id);

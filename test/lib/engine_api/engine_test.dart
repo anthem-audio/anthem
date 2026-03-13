@@ -24,6 +24,7 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/project.dart';
@@ -133,7 +134,7 @@ void main() {
     late MockProjectModel project;
     late MockVisualizationProvider visualizationProvider;
     late MockProcessingGraphModel processingGraph;
-    late AnthemObservableMap<String, NodeModel> nodes;
+    late AnthemObservableMap<Id, NodeModel> nodes;
     late _TestEngineConnector connector;
     late Engine engine;
 
@@ -141,7 +142,7 @@ void main() {
       project = MockProjectModel();
       visualizationProvider = MockVisualizationProvider();
       processingGraph = MockProcessingGraphModel();
-      nodes = AnthemObservableMap<String, NodeModel>();
+      nodes = AnthemObservableMap<Id, NodeModel>();
 
       when(project.visualizationProvider).thenReturn(visualizationProvider);
       when(project.processingGraph).thenReturn(processingGraph);
@@ -314,14 +315,14 @@ void main() {
 
     test('plugin change events schedule a node state update', () async {
       final node = MockNodeModel();
-      nodes['node-1'] = node;
+      nodes[1] = node;
 
       await _startEngineThroughInit(engine, () => connector);
 
       connector.emitResponse(
         PluginChangedEvent(
           id: -1,
-          nodeId: 'node-1',
+          nodeId: 1,
           latencyChanged: false,
           parameterInfoChanged: false,
           programChanged: false,
@@ -331,7 +332,7 @@ void main() {
       connector.emitResponse(
         PluginParameterChangedEvent(
           id: -1,
-          nodeId: 'node-1',
+          nodeId: 1,
           parameterIndex: 0,
           newValue: 0.75,
         ),
@@ -344,11 +345,11 @@ void main() {
       final node = MockNodeModel();
       final pluginLoadedCompleter = Completer<void>();
       when(node.pluginLoadedCompleter).thenReturn(pluginLoadedCompleter);
-      nodes['node-1'] = node;
+      nodes[1] = node;
 
       await _startEngineThroughInit(engine, () => connector);
 
-      connector.emitResponse(PluginLoadedEvent(id: -1, nodeId: 'node-1'));
+      connector.emitResponse(PluginLoadedEvent(id: -1, nodeId: 1));
 
       await pluginLoadedCompleter.future;
 

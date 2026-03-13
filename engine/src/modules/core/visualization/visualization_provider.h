@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <cstdint>
 
 // This is an abstract interface for visualization data providers. It is used by the
 // VisualizationBroker to query data from various sources in the engine.
@@ -31,6 +32,11 @@ public:
 
   // Get the most recent numeric data for this provider, if any.
   virtual std::optional<std::vector<double>> getNumericData() {
+    return std::nullopt;
+  }
+
+  // Get the most recent integer data for this provider, if any.
+  virtual std::optional<std::vector<int64_t>> getIntegerData() {
     return std::nullopt;
   }
 

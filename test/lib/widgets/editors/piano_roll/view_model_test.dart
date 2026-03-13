@@ -50,7 +50,7 @@ void main() {
   }
 
   NoteModel createPreviewNote({
-    required String id,
+    required Id id,
     required int key,
     required double velocity,
     required int length,
@@ -129,7 +129,7 @@ void main() {
           pan: 0,
         );
         final pattern = createPattern([plainNote, overriddenNote]);
-        const transientNoteId = 'transient-note';
+        const transientNoteId = 1001;
 
         pattern.setNoteOverride(noteId: overriddenNote.id, offset: 300);
         pattern.addPreviewNote(
@@ -170,7 +170,7 @@ void main() {
         pan: 0,
       );
       final pattern = createPattern([realNote]);
-      const transientNoteId = 'transient-note';
+      const transientNoteId = 1001;
 
       pattern.addPreviewNote(
         createPreviewNote(
@@ -207,7 +207,7 @@ void main() {
       () {
         final viewModel = createViewModel();
         final pattern = createPattern(const []);
-        const transientNoteId = 'transient-note';
+        const transientNoteId = 1001;
 
         pattern.addPreviewNote(
           createPreviewNote(
@@ -234,8 +234,8 @@ void main() {
 
     test('clearTransientPreviewState clears transient interaction state', () {
       final viewModel = createViewModel();
-      const transientNoteId = 'preview-note';
-      const selectedNoteId = 'selected-note';
+      const transientNoteId = 1002;
+      const selectedNoteId = 1003;
 
       viewModel.selectedNotes.add(selectedNoteId);
       viewModel.pressedNote = transientNoteId;

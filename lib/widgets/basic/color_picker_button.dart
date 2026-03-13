@@ -30,7 +30,7 @@ import 'package:provider/provider.dart';
 var _nextColorPickerOverlayId = 0;
 
 Id _allocateColorPickerOverlayId() {
-  return 'color-picker-overlay-${_nextColorPickerOverlayId++}';
+  return _nextColorPickerOverlayId++;
 }
 
 /// Button that opens a color picker.

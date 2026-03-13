@@ -30,6 +30,7 @@ import 'package:provider/provider.dart';
 /// actually rebuild if the data item has changed.
 class VisualizationBuilder extends StatefulWidget {
   final Widget Function(BuildContext context, double? value)? doubleBuilder;
+  final Widget Function(BuildContext context, int? value)? intBuilder;
   final Widget Function(BuildContext context, String? value)? stringBuilder;
   final VisualizationSubscriptionConfig config;
   final Duration? minimumUpdateInterval;
@@ -42,6 +43,18 @@ class VisualizationBuilder extends StatefulWidget {
     required Widget Function(BuildContext context, double? value)? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = builder,
+       intBuilder = null,
+       stringBuilder = null;
+
+  /// Creates a builder that expects an int value from the given subscription
+  /// config.
+  const VisualizationBuilder.int({
+    super.key,
+    required this.config,
+    required Widget Function(BuildContext context, int? value)? builder,
+    this.minimumUpdateInterval,
+  }) : doubleBuilder = null,
+       intBuilder = builder,
        stringBuilder = null;
 
   /// Creates a builder that expects a string value from the given subscription
@@ -52,6 +65,7 @@ class VisualizationBuilder extends StatefulWidget {
     required Widget Function(BuildContext context, String? value)? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = null,
+       intBuilder = null,
        stringBuilder = builder;
 
   @override
@@ -59,8 +73,9 @@ class VisualizationBuilder extends StatefulWidget {
 }
 
 class _VisualizationBuilderState extends State<VisualizationBuilder> {
-  late final VisualizationSubscription _subscription;
+  late VisualizationSubscription _subscription;
   double? _latestDoubleValue;
+  int? _latestIntValue;
   String? _latestStringValue;
   StreamSubscription<void>? _updateSubscription;
   DateTime? _lastUpdateTime;
@@ -89,6 +104,16 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
         if (newValue != _latestDoubleValue) {
           setState(() {
             _latestDoubleValue = newValue;
+          });
+        }
+      }
+
+      if (widget.intBuilder != null) {
+        final newValue = _subscription.readValueInt();
+
+        if (newValue != _latestIntValue) {
+          setState(() {
+            _latestIntValue = newValue;
           });
         }
       }
@@ -135,6 +160,11 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
       return doubleWidget;
     }
 
+    final intWidget = widget.intBuilder?.call(context, _latestIntValue);
+    if (intWidget != null) {
+      return intWidget;
+    }
+
     final stringWidget = widget.stringBuilder?.call(
       context,
       _latestStringValue,
@@ -150,6 +180,7 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
 class MultiVisualizationBuilder extends StatefulWidget {
   final Widget Function(BuildContext context, List<double> values)?
   doubleBuilder;
+  final Widget Function(BuildContext context, List<int> values)? intBuilder;
   final Widget Function(BuildContext context, List<String> values)?
   stringBuilder;
   final List<VisualizationSubscriptionConfig> configs;
@@ -162,6 +193,16 @@ class MultiVisualizationBuilder extends StatefulWidget {
     builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = builder,
+       intBuilder = null,
+       stringBuilder = null;
+
+  const MultiVisualizationBuilder.int({
+    super.key,
+    required this.configs,
+    required Widget Function(BuildContext context, List<int> values)? builder,
+    this.minimumUpdateInterval,
+  }) : doubleBuilder = null,
+       intBuilder = builder,
        stringBuilder = null;
 
   const MultiVisualizationBuilder.string({
@@ -171,6 +212,7 @@ class MultiVisualizationBuilder extends StatefulWidget {
     builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = null,
+       intBuilder = null,
        stringBuilder = builder;
 
   @override
@@ -181,6 +223,7 @@ class MultiVisualizationBuilder extends StatefulWidget {
 class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
   late final List<VisualizationSubscription> _subscriptions;
   List<double> _latestDoubleValues = [];
+  List<int> _latestIntValues = [];
   List<String> _latestStringValues = [];
   List<DateTime?> _lastUpdateTimes = [];
 
@@ -195,6 +238,7 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
       '',
       growable: false,
     );
+    _latestIntValues = List.filled(widget.configs.length, 0, growable: false);
     _lastUpdateTimes = List.filled(widget.configs.length, null);
 
     _subscriptions = widget.configs
@@ -225,6 +269,16 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
           if (newValue != _latestDoubleValues[i]) {
             setState(() {
               _latestDoubleValues[i] = newValue;
+            });
+          }
+        }
+
+        if (widget.intBuilder != null) {
+          final newValue = sub.readValueInt();
+
+          if (newValue != _latestIntValues[i]) {
+            setState(() {
+              _latestIntValues[i] = newValue;
             });
           }
         }
@@ -278,6 +332,11 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
     );
     if (doubleWidget != null) {
       return doubleWidget;
+    }
+
+    final intWidget = widget.intBuilder?.call(context, _latestIntValues);
+    if (intWidget != null) {
+      return intWidget;
     }
 
     final stringWidget = widget.stringBuilder?.call(

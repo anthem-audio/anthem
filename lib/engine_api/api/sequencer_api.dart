@@ -40,12 +40,12 @@ class SequencerApi {
   /// specified, and vice versa.
   void compileArrangement(
     Id arrangementId, {
-    List<String>? tracksToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
     final request = CompileSequenceRequest.arrangement(
       id: _engine._getRequestId(),
-      arrangementId: arrangementId.toString(),
+      arrangementId: arrangementId,
       tracksToRebuild: tracksToRebuild,
       invalidationRanges: invalidationRanges,
     );
@@ -72,12 +72,12 @@ class SequencerApi {
   /// specified, and vice versa.
   void compilePattern(
     Id patternId, {
-    List<String>? tracksToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
     final request = CompileSequenceRequest.pattern(
       id: _engine._getRequestId(),
-      patternId: patternId.toString(),
+      patternId: patternId,
       tracksToRebuild: tracksToRebuild,
       invalidationRanges: invalidationRanges,
     );
@@ -98,7 +98,7 @@ class SequencerApi {
   /// model, we need a way to remove that track from all of the compiled
   /// sequences in the engine - otherwise, we would need to rebuild each
   /// sequence from scratch to remove that track.
-  void cleanUpTrack(String trackId) {
+  void cleanUpTrack(Id trackId) {
     final request = RemoveTrackRequest(
       id: _engine._getRequestId(),
       trackId: trackId,
@@ -122,7 +122,7 @@ class SequencerApi {
 
   /// Sends the new loop points to the audio thread for the given sequence ID,
   /// if the active sequence ID matches the given sequence ID.
-  void updateLoopPoints(String sequenceId) {
+  void updateLoopPoints(Id sequenceId) {
     final request = LoopPointsChangedRequest(
       id: _engine._getRequestId(),
       sequenceId: sequenceId,

@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
@@ -33,7 +34,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:anthem/engine_api/engine_connector_desktop.dart';
 
 var id = 0;
-String getId() => '${id++}';
+Id getId() => id++;
 
 const skipEngineIntegrationTests = false;
 
@@ -341,7 +342,7 @@ void main() {
 
       final trackMap = state['tracks'] as Map<String, dynamic>;
       final syncedInstrumentTrack =
-          trackMap[instrumentTrackId] as Map<String, dynamic>;
+          trackMap[instrumentTrackId.toString()] as Map<String, dynamic>;
       expect(
         syncedInstrumentTrack['instrumentNodeId'],
         equals(instrumentNode.id),
@@ -349,7 +350,8 @@ void main() {
       );
 
       final pattern =
-          state['sequence']!['patterns'][project.sequence.patterns.keys.first]
+          state['sequence']!['patterns'][project.sequence.patterns.keys.first
+                  .toString()]
               as Map<String, dynamic>;
       final notes = pattern['notes'] as Map<String, dynamic>;
       expect(
@@ -420,7 +422,8 @@ void main() {
               as Map<String, dynamic>;
 
       final pattern =
-          state['sequence']!['patterns'][patternId] as Map<String, dynamic>;
+          state['sequence']!['patterns'][patternId.toString()]
+              as Map<String, dynamic>;
       final notes = pattern['notes'] as Map<String, dynamic>;
       expect(
         notes.length,

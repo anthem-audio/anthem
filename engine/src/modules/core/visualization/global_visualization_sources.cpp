@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -58,56 +58,27 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(double new
   playheadPosition.store(newPlayheadPosition);
 }
 
-std::optional<std::vector<std::string>> PlayheadSequenceIdVisualizationProvider::getStringData() {
+std::optional<std::vector<int64_t>> PlayheadSequenceIdVisualizationProvider::getIntegerData() {
   auto result = playheadSequenceIdBuffer.read();
 
   if (!result.has_value()) {
     return std::nullopt;
   }
 
-  // Make a std::string from the array<unsigned char, 16>
-  std::string sequenceId;
-  sequenceId.reserve(16);
-  for (const auto& byte : result.value()) {
-   if (byte == 0) {
-     break; // Stop at the first null byte
-   }
-
-   sequenceId += static_cast<char>(byte);
-  }
-
   // If the sequence ID is the same as the last sent ID, return nothing
-  if (sequenceId == lastSentId) {
+  if (lastSentId.has_value() && result.value() == lastSentId.value()) {
     return std::nullopt;
   }
 
-  lastSentId = sequenceId;
+  lastSentId = result.value();
 
-  std::vector<std::string> resultList{ sequenceId };
+  std::vector<int64_t> resultList{ result.value() };
 
   return resultList;
 }
 
-void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(const std::string& newPlayheadSequenceId) {
-  // Convert the string to a char array and write it to the ring buffer
-  std::array<char, 16> sequenceIdArray = {};
-
-  const auto bytesToCopy = newPlayheadSequenceId.size();
-
-  if (bytesToCopy > sequenceIdArray.size()) {
-    jassertfalse; // This should never happen, though it could if the project file is corrupted
-    return;
-  }
-
-  std::copy_n(newPlayheadSequenceId.begin(),
-    bytesToCopy,
-    sequenceIdArray.begin());
-
-  // Write the sequence ID to the ring buffer
-  //
-  // This should be copying to heap memory that is already allocated, in which case this
-  // function is real-time safe.
-  playheadSequenceIdBuffer.add(sequenceIdArray);
+void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(int64_t newPlayheadSequenceId) {
+  playheadSequenceIdBuffer.add(newPlayheadSequenceId);
 }
 
 GlobalVisualizationSources::GlobalVisualizationSources() {

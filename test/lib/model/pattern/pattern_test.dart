@@ -153,12 +153,11 @@ void main() {
         patternCompileVerification.called(1);
 
         final patternCompileCaptured = patternCompileVerification.captured;
-        final patternTracksToRebuild =
-            patternCompileCaptured[0] as List<String>;
+        final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
         final patternInvalidationRanges =
             patternCompileCaptured[1] as List<InvalidationRange>;
 
-        expect(patternTracksToRebuild, equals(<String>['NO_TRACK']));
+        expect(patternTracksToRebuild, equals(<Id>[-1]));
         expect(patternInvalidationRanges, hasLength(1));
         expect(patternInvalidationRanges[0].start, equals(60));
         expect(patternInvalidationRanges[0].end, equals(80));
@@ -175,13 +174,13 @@ void main() {
         final arrangementCompileCaptured =
             arrangementCompileVerification.captured;
         final arrangementTracksToRebuild =
-            arrangementCompileCaptured[0] as List<String>;
+            arrangementCompileCaptured[0] as List<Id>;
         final arrangementInvalidationRanges =
             arrangementCompileCaptured[1] as List<InvalidationRange>;
 
         expect(
           arrangementTracksToRebuild.toSet(),
-          equals(<String>{trackA, trackB}),
+          equals(<Id>{trackA, trackB}),
         );
         expect(arrangementInvalidationRanges, hasLength(2));
         expect(arrangementInvalidationRanges[0].start, equals(160));
@@ -243,12 +242,11 @@ void main() {
         patternCompileVerification.called(1);
 
         final patternCompileCaptured = patternCompileVerification.captured;
-        final patternTracksToRebuild =
-            patternCompileCaptured[0] as List<String>;
+        final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
         final patternInvalidationRanges =
             patternCompileCaptured[1] as List<InvalidationRange>;
 
-        expect(patternTracksToRebuild, equals(<String>['NO_TRACK']));
+        expect(patternTracksToRebuild, equals(<Id>[-1]));
         expect(patternInvalidationRanges, hasLength(1));
         expect(patternInvalidationRanges[0].start, equals(60));
         expect(patternInvalidationRanges[0].end, equals(80));

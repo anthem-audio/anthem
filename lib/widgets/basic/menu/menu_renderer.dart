@@ -54,7 +54,7 @@ class _Constants {
 var _nextSubmenuOverlayId = 0;
 
 Id _allocateSubmenuOverlayId() {
-  return 'submenu-overlay-${_nextSubmenuOverlayId++}';
+  return _nextSubmenuOverlayId++;
 }
 
 double _getMenuItemHeight(GenericMenuItem menuItem) {

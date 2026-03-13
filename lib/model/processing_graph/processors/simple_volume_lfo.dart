@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
@@ -38,7 +39,7 @@ class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
         _$SimpleVolumeLfoProcessorModelAnthemModelMixin {
   SimpleVolumeLfoProcessorModel({required super.nodeId});
 
-  SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: '');
+  SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory SimpleVolumeLfoProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$SimpleVolumeLfoProcessorModelAnthemModelMixin.fromJson(json);
@@ -76,7 +77,7 @@ abstract class _SimpleVolumeLfoProcessorModel
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
 
-  String nodeId;
+  Id nodeId;
 
   _SimpleVolumeLfoProcessorModel({required this.nodeId});
 }

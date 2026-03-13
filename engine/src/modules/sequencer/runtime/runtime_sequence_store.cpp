@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,7 +36,7 @@ void SequenceEventList::cleanUpInstance(SequenceEventList& instance) {
 }
 
 SequenceEventListCollection::SequenceEventListCollection() {
-  tracks = new std::unordered_map<std::string, SequenceEventList>();
+  tracks = new std::unordered_map<EntityId, SequenceEventList>();
 }
 
 // This is essentially a destructor for SequenceEventListCollection. We just
@@ -171,7 +171,7 @@ AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
     mapUpdateQueue(),
     mapDeletionQueue()
 {
-  eventLists = new std::unordered_map<std::string, SequenceEventListCollection>();
+  eventLists = new SequenceIdToEventsMap();
   rt_eventLists = eventLists;
 
   pendingSequenceDeletions = std::unordered_map<AnthemRuntimeSequenceStore::SequenceIdToEventsMap*, SequenceEventListCollection>();
@@ -180,7 +180,7 @@ AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
     std::vector<
       std::tuple<
         std::optional<SequenceEventList>,
-        std::unordered_map<std::string, SequenceEventList>*
+        std::unordered_map<EntityId, SequenceEventList>*
       >
     >
   >();
@@ -247,8 +247,8 @@ void AnthemRuntimeSequenceStore::registerDeletionTimer() {
   clearDeletionQueueTimedCallback.startTimer(500);
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateSequence(const std::string& sequenceId, SequenceEventListCollection sequence) {
-  auto newMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
+void AnthemRuntimeSequenceStore::addOrUpdateSequence(EntityId sequenceId, SequenceEventListCollection sequence) {
+  auto newMap = new SequenceIdToEventsMap(*eventLists);
   auto it = newMap->find(sequenceId);
 
   if (it != newMap->end()) {
@@ -266,11 +266,11 @@ void AnthemRuntimeSequenceStore::addOrUpdateSequence(const std::string& sequence
   eventLists = newMap;
 }
 
-void AnthemRuntimeSequenceStore::removeSequence(const std::string& sequenceId) {
+void AnthemRuntimeSequenceStore::removeSequence(EntityId sequenceId) {
   auto it = eventLists->find(sequenceId);
 
   if (it != eventLists->end()) {
-    auto newMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
+    auto newMap = new SequenceIdToEventsMap(*eventLists);
     // If the sequence exists, we need to remove it and add it to the pending
     // deletions map.
     pendingSequenceDeletions.insert_or_assign(eventLists, it->second);
@@ -285,11 +285,11 @@ void AnthemRuntimeSequenceStore::removeSequence(const std::string& sequenceId) {
 }
 
 void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
-  const std::string& sequenceId,
-  const std::string& trackId,
+  EntityId sequenceId,
+  EntityId trackId,
   SequenceEventList track
 ) {
-  auto newSequenceMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
+  auto newSequenceMap = new SequenceIdToEventsMap(*eventLists);
   auto sequenceMapIt = newSequenceMap->find(sequenceId);
 
   // If the sequence doesn't exist, we need to add it.
@@ -306,13 +306,13 @@ void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
   auto& sequence = sequenceMapIt->second;
   auto trackIt = sequence.tracks->find(trackId);
 
-  auto* newTracksMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.tracks);
+  auto* newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
 
   {
     auto vec = std::vector<
       std::tuple<
         std::optional<SequenceEventList>,
-        std::unordered_map<std::string, SequenceEventList>*
+        std::unordered_map<EntityId, SequenceEventList>*
       >
     >();
 
@@ -339,7 +339,7 @@ void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
   eventLists = newSequenceMap;
 }
 
-void AnthemRuntimeSequenceStore::removeTrackFromSequence(const std::string& sequenceId, const std::string& trackId) {
+void AnthemRuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, EntityId trackId) {
   auto sequenceMapIt = eventLists->find(sequenceId);
   if (sequenceMapIt == eventLists->end()) {
     return;
@@ -350,16 +350,16 @@ void AnthemRuntimeSequenceStore::removeTrackFromSequence(const std::string& sequ
     return;
   }
 
-  auto newSequenceMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
+  auto newSequenceMap = new SequenceIdToEventsMap(*eventLists);
   auto& sequence = newSequenceMap->at(sequenceId);
 
-  auto newTracksMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.tracks);
+  auto newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
   
   {
     auto vec = std::vector<
       std::tuple<
         std::optional<SequenceEventList>,
-        std::unordered_map<std::string, SequenceEventList>*
+        std::unordered_map<EntityId, SequenceEventList>*
       >
     >();
 
@@ -382,13 +382,13 @@ void AnthemRuntimeSequenceStore::removeTrackFromSequence(const std::string& sequ
   eventLists = newSequenceMap;
 }
 
-void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(const std::string& trackId) {
-  auto newMap = new std::unordered_map<std::string, SequenceEventListCollection>(*eventLists);
+void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
+  auto newMap = new SequenceIdToEventsMap(*eventLists);
 
   auto cleanupVec = std::vector<
     std::tuple<
       std::optional<SequenceEventList>,
-      std::unordered_map<std::string, SequenceEventList>*
+      std::unordered_map<EntityId, SequenceEventList>*
     >
   >();
 
@@ -396,7 +396,7 @@ void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(const std::string& 
     auto trackIt = sequence.tracks->find(trackId);
 
     if (trackIt != sequence.tracks->end()) {
-      auto newTracksMap = new std::unordered_map<std::string, SequenceEventList>(*sequence.tracks);
+      auto newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
 
       cleanupVec.push_back(std::make_tuple(trackIt->second, sequence.tracks));
 

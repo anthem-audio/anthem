@@ -33,7 +33,7 @@ class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
   AutomationPointModel.uninitialized()
     : super(
-        id: '',
+        id: -1,
         offset: 0,
         value: 0,
         tension: 0,

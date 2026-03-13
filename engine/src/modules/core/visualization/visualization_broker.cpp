@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -59,6 +59,23 @@ void VisualizationBroker::timerCallback() {
           VisualizationItem{
             .id = subscription,
             .values = rfl::make_field<"List<double>">(dataSharedPtr)
+          }
+        );
+
+        visualizationItems->push_back(visualizationItem);
+
+        continue;
+      }
+
+      std::optional<std::vector<int64_t>> integerData = it->second->getIntegerData();
+
+      if (integerData.has_value() && !integerData.value().empty()) {
+        auto dataSharedPtr = std::make_shared<std::vector<int64_t>>(integerData.value());
+
+        auto visualizationItem = std::make_shared<VisualizationItem>(
+          VisualizationItem{
+            .id = subscription,
+            .values = rfl::make_field<"List<int>">(dataSharedPtr)
           }
         );
 

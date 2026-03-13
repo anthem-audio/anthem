@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -45,7 +46,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     required ProjectEntityIdAllocator idAllocator,
   }) : super(nodeId: idAllocator.allocateId());
 
-  ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');
+  ToneGeneratorProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory ToneGeneratorProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ToneGeneratorProcessorModelAnthemModelMixin.fromJson(json);
@@ -121,7 +122,7 @@ abstract class _ToneGeneratorProcessorModel
 
   static const int eventInputPortId = 3;
 
-  String nodeId;
+  Id nodeId;
 
   _ToneGeneratorProcessorModel({required this.nodeId});
 }

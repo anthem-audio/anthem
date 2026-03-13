@@ -75,7 +75,7 @@ void main() {
 
   setUp(() {
     project = MockProjectModel();
-    when(project.id).thenReturn(getId());
+    when(project.id).thenReturn(getProjectId());
     when(project.allocateId()).thenAnswer((_) => getId());
     idAllocator = ProjectEntityIdAllocator(project);
     processingGraph = ProcessingGraphModel.create(masterOutputNodeId: getId());
@@ -86,8 +86,8 @@ void main() {
 
   group('Set track properties', () {
     late TrackModel track;
-    late AnthemObservableMap<String, TrackModel> tracks;
-    late AnthemObservableList<String> trackOrder;
+    late AnthemObservableMap<Id, TrackModel> tracks;
+    late AnthemObservableList<Id> trackOrder;
 
     const oldName = 'My Track';
     const newName = 'My New Track Name';
@@ -168,9 +168,9 @@ void main() {
     // - P (instrument)
     // - Master (instrument)
 
-    late AnthemObservableMap<String, TrackModel> tracks;
-    late AnthemObservableList<String> trackOrder;
-    late AnthemObservableList<String> sendTrackOrder;
+    late AnthemObservableMap<Id, TrackModel> tracks;
+    late AnthemObservableList<Id> trackOrder;
+    late AnthemObservableList<Id> sendTrackOrder;
 
     late Id trackAId;
     late Id trackBId;
@@ -365,7 +365,7 @@ void main() {
             ServiceRegistry.forProject(project.id).arrangerViewModel
                 as MockArrangerViewModel;
 
-        final originalTrackOrder = List<String>.from(trackOrderToUse);
+        final originalTrackOrder = List<Id>.from(trackOrderToUse);
 
         final trackLen = trackOrderToUse.length;
         final id1Index = trackOrderToUse.indexOf(id1);

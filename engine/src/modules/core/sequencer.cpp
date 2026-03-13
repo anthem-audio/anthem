@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -53,11 +53,11 @@ void Sequencer::initialize(
     Anthem::getInstance().transport->setBeatsPerMinute(beatsPerMinute);
   });
 
-  addActiveTransportSequenceIDObserver([this](std::optional<std::string> value) {
+  addActiveTransportSequenceIDObserver([this](std::optional<int64_t> value) {
     Anthem::getInstance().transport->setActiveSequenceId(value);
   });
 
-  addActiveTrackIDObserver([this](std::optional<std::string> value) {
+  addActiveTrackIDObserver([this](std::optional<int64_t> value) {
     Anthem::getInstance().transport->setActiveTrackId(value);
   });
 

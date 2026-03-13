@@ -49,7 +49,7 @@ class ArrangementModel extends _ArrangementModel
     _init();
   }
 
-  ArrangementModel.uninitialized() : super(name: '', id: '');
+  ArrangementModel.uninitialized() : super(name: '', id: -1);
 
   factory ArrangementModel.fromJson(Map<String, dynamic> json) {
     final arrangement = _$ArrangementModelAnthemModelMixin.fromJson(json);

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,9 +19,12 @@
 
 #pragma once
 
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
@@ -30,8 +33,10 @@
 #include "modules/util/ring_buffer.h"
 
 namespace anthem_sequencer_track_ids {
-inline const std::string noTrack = "NO_TRACK";
+inline constexpr int64_t noTrack = -1;
 }
+
+using EntityId = int64_t;
 
 /*
   Anthem compiles each pattern and arrangement into a list of events for each
@@ -96,7 +101,7 @@ private:
 public:
   // Map of track ID to list of events for that track. If there is no entry
   // for a given track, it means that there are no events for that track.
-  std::unordered_map<std::string, SequenceEventList>* tracks;
+  std::unordered_map<EntityId, SequenceEventList>* tracks;
 
   SequenceEventListCollection();
 
@@ -162,7 +167,7 @@ friend class RuntimeSequenceStoreTest;
 private:
   JUCE_LEAK_DETECTOR(AnthemRuntimeSequenceStore)
 
-  typedef std::unordered_map<std::string, SequenceEventListCollection> SequenceIdToEventsMap;
+  typedef std::unordered_map<EntityId, SequenceEventListCollection> SequenceIdToEventsMap;
 
   // Map of sequence ID to a set of event lists for that sequence.
   SequenceIdToEventsMap* eventLists;
@@ -211,7 +216,7 @@ private:
         // in SequenceEventListCollection). When the audio thread releases the old
         // outer map (eventLists), we need to clean up the old inner map as well
         // (SequenceEventListCollection::tracks).
-        std::unordered_map<std::string, SequenceEventList>*
+        std::unordered_map<EntityId, SequenceEventList>*
       >
     >
   > pendingSequenceTrackDeletions;
@@ -248,10 +253,10 @@ public:
   // the current map, add the new sequence, and push the new map to the
   // mapUpdateQueue. If the sequence already exists, it will be replaced, and
   // the old sequence will be added to the pendingSequenceDeletions map.
-  void addOrUpdateSequence(const std::string& sequenceId, SequenceEventListCollection sequence);
+  void addOrUpdateSequence(EntityId sequenceId, SequenceEventListCollection sequence);
 
   // Removes a sequence from the event lists map.
-  void removeSequence(const std::string& sequenceId);
+  void removeSequence(EntityId sequenceId);
 
   // Adds or updates a track in a sequence in the event lists map.
   //
@@ -261,15 +266,15 @@ public:
   // exists, it will be replaced, and the old track will be added to the
   // pendingSequenceTrackDeletions map.
   void addOrUpdateTrackInSequence(
-    const std::string& sequenceId,
-    const std::string& trackId,
+    EntityId sequenceId,
+    EntityId trackId,
     SequenceEventList track);
 
   // Removes a track from a sequence in the event lists map.
-  void removeTrackFromSequence(const std::string& sequenceId, const std::string& trackId);
+  void removeTrackFromSequence(EntityId sequenceId, EntityId trackId);
 
   // Removes every instance of the given track from every sequence.
-  void removeTrackFromAllSequences(const std::string& trackId);
+  void removeTrackFromAllSequences(EntityId trackId);
 
   // Sends invalidation lists back to be deleted. Must be run at the end of each
   // processing block.

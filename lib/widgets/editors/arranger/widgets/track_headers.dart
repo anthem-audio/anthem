@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
@@ -40,7 +41,7 @@ import 'track_header.dart';
 
 class _TrackHeaderResizeHandle extends StatefulObserverWidget {
   final double resizeHandleHeight;
-  final String trackId;
+  final Id trackId;
   final double trackHeight;
   final bool isSendTrack;
 
@@ -395,7 +396,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 if (canMaybeRender) {
                   headers.add(
                     Positioned(
-                      key: Key(trackId),
+                      key: Key(trackId.toString()),
                       top: trackPosition,
                       left: 0,
                       right: 0,

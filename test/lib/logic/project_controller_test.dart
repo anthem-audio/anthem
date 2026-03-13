@@ -65,7 +65,7 @@ class _MockEngine extends Mock implements Engine {
 
 void main() {
   group('canGroupTracks()', () {
-    final projectId = getId();
+    final projectId = getProjectId();
     late MockProjectModel project;
 
     late AnthemObservableMap<Id, MockTrackModel> tracks;
@@ -189,7 +189,7 @@ void main() {
   });
 
   group('insertTrackAt()', () {
-    final projectId = getId();
+    final projectId = getProjectId();
 
     late MockProjectModel project;
     late ProjectController projectController;
@@ -370,7 +370,7 @@ void main() {
   });
 
   group('remove clip and track content', () {
-    final projectId = getId();
+    final projectId = getProjectId();
 
     late MockProjectModel project;
     late ProjectController projectController;

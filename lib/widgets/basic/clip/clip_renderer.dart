@@ -20,6 +20,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -44,8 +45,8 @@ const _contentBaseColor = Color(0xFF777777);
 
 class ClipRenderInfo {
   final PatternModel pattern;
-  final String clipId;
-  final String trackId;
+  final Id clipId;
+  final Id trackId;
   final bool hasTimingOverride;
   final int clipOffset;
   final int clipWidth;

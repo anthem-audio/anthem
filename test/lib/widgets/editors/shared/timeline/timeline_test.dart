@@ -43,22 +43,22 @@ ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
 
 class _RecordingSequencerApi implements SequencerApi {
   final List<double> jumpedTo = [];
-  final List<String> updatedLoopPointSequences = [];
+  final List<Id> updatedLoopPointSequences = [];
 
   @override
-  void cleanUpTrack(String trackId) {}
+  void cleanUpTrack(Id trackId) {}
 
   @override
   void compileArrangement(
     Id arrangementId, {
-    List<String>? tracksToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
 
   @override
   void compilePattern(
     Id patternId, {
-    List<String>? tracksToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
 
@@ -68,7 +68,7 @@ class _RecordingSequencerApi implements SequencerApi {
   }
 
   @override
-  void updateLoopPoints(String sequenceId) {
+  void updateLoopPoints(Id sequenceId) {
     updatedLoopPointSequences.add(sequenceId);
   }
 }
@@ -150,8 +150,8 @@ class _TimelineTestFixture {
     project.sequence.setActivePattern(pattern.id);
 
     project.sequence.activeTransportSequenceID = switch (targetKind) {
-      _TimelineTargetKind.pattern => arrangement.id,
-      _TimelineTargetKind.arrangement => pattern.id,
+      _TimelineTargetKind.pattern => pattern.id,
+      _TimelineTargetKind.arrangement => arrangement.id,
     };
     project.sequence.playbackStartPosition = 0;
 

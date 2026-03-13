@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -41,7 +41,7 @@ private:
 
 public:
   double newPlayheadPosition = 0.0;
-  std::unordered_map<std::string, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
+  std::unordered_map<int64_t, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
 };
 
 class TransportConfig {
@@ -49,7 +49,7 @@ private:
   JUCE_LEAK_DETECTOR(TransportConfig)
 
 public:
-  std::optional<std::string> activeSequenceId;
+  std::optional<int64_t> activeSequenceId;
 
   // If the active sequence is a bare pattern, the pattern's events are read
   // from the special "no track" event list in the sequence store. In that
@@ -58,7 +58,7 @@ public:
   // This is updated from the UI-selected track and is used by real-time code
   // (e.g. sequence note providers) as the source of truth when mapping
   // track-less pattern events to a concrete destination track.
-  std::optional<std::string> activeTrackId;
+  std::optional<int64_t> activeTrackId;
   int64_t ticksPerQuarter = 96;
   double beatsPerMinute = 120.0;
   bool isPlaying = false;
@@ -100,10 +100,10 @@ private:
   void timerCallback() override;
 
   void addStartEventsForPattern(
-    std::string patternId,
-    std::string trackId,
+    int64_t patternId,
+    int64_t trackId,
     double offset,
-    std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector
+    std::unordered_map<int64_t, std::vector<AnthemLiveEvent>>& collector
   );
 
   PlayheadJumpEvent createPlayheadJumpEvent(double playheadPosition);
@@ -143,8 +143,8 @@ public:
   Transport();
 
   void setIsPlaying(bool isPlaying);
-  void setActiveSequenceId(std::optional<std::string>& sequenceId);
-  void setActiveTrackId(std::optional<std::string>& trackId);
+  void setActiveSequenceId(std::optional<int64_t>& sequenceId);
+  void setActiveTrackId(std::optional<int64_t>& trackId);
   void setTicksPerQuarter(int64_t ticksPerQuarter);
   void setBeatsPerMinute(double beatsPerMinute);
 

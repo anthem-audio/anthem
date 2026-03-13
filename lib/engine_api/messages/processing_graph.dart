@@ -45,7 +45,7 @@ class CompileProcessingGraphResponse extends Response {
 }
 
 class PluginChangedEvent extends Response {
-  late String nodeId;
+  late Id nodeId;
 
   late bool latencyChanged;
   late bool parameterInfoChanged;
@@ -67,7 +67,7 @@ class PluginChangedEvent extends Response {
 }
 
 class PluginParameterChangedEvent extends Response {
-  late String nodeId;
+  late Id nodeId;
   late int parameterIndex;
   late double newValue;
 
@@ -84,7 +84,7 @@ class PluginParameterChangedEvent extends Response {
 }
 
 class GetPluginStateRequest extends Request {
-  late String nodeId;
+  late Id nodeId;
 
   GetPluginStateRequest.uninitialized();
 
@@ -109,7 +109,7 @@ class GetPluginStateResponse extends Response {
 }
 
 class SetPluginStateRequest extends Request {
-  late String nodeId;
+  late Id nodeId;
   late String state;
 
   SetPluginStateRequest.uninitialized();
@@ -128,7 +128,7 @@ class SetPluginStateRequest extends Request {
 ///
 /// This will only fire for nodes that load third-party plugins.
 class PluginLoadedEvent extends Response {
-  late String nodeId;
+  late Id nodeId;
 
   PluginLoadedEvent.uninitialized();
 
@@ -185,7 +185,7 @@ abstract class _LiveEventRequestNoteOffEvent {
 /// Sends a live event to the engine, which will be picked up by the given
 /// LiveEventProviderProcessor node.
 class SendLiveEventRequest extends Request {
-  late String liveEventProviderNodeId;
+  late Id liveEventProviderNodeId;
 
   @Union([LiveEventRequestNoteOnEvent, LiveEventRequestNoteOffEvent])
   late Object event;

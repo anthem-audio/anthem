@@ -232,13 +232,13 @@ class TrackPositionAndSize {
   ArrangerViewModel arrangerViewModel;
 
   var _cache = Float64List(0);
-  final _trackIdToIndex = <String, int>{};
-  final _trackIndexToId = <int, String>{};
+  final _trackIdToIndex = <Id, int>{};
+  final _trackIndexToId = <int, Id>{};
 
   TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
 
-  int trackIdToIndex(String trackId) => _trackIdToIndex[trackId]!;
-  String trackIndexToId(int index) => _trackIndexToId[index]!;
+  int trackIdToIndex(Id trackId) => _trackIdToIndex[trackId]!;
+  Id trackIndexToId(int index) => _trackIndexToId[index]!;
 
   double getTrackHeight(int trackIndex) => _cache[trackIndex * 2];
   double getTrackPosition(num fractionalTrackIndex) =>

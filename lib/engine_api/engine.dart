@@ -283,7 +283,7 @@ class Engine {
     visualizationApi = VisualizationApi(this);
   }
 
-  void _scheduleNodeStateUpdate(String nodeId) {
+  void _scheduleNodeStateUpdate(Id nodeId) {
     project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 

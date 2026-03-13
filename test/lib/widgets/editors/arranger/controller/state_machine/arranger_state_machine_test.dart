@@ -43,9 +43,21 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _TrackIds {
-  static const a = 'a';
-  static const b = 'b';
-  static const master = 'master';
+  static const a = 1;
+  static const b = 2;
+  static const master = 3;
+}
+
+class _ClipIds {
+  static const underCursor = 101;
+  static const underResizeHandle = 102;
+  static const selected = 103;
+  static const notSelected = 104;
+  static const someOtherSelected = 105;
+  static const a = 106;
+  static const b = 107;
+  static const c = 108;
+  static const d = 109;
 }
 
 ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
@@ -238,14 +250,14 @@ void main() {
 
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(110, 15, 40, 30),
-          metadata: 'clip-under-cursor',
+          metadata: _ClipIds.underCursor,
         );
 
         fixture.hover(const Offset(120, 20));
 
         expect(fixture.viewModel.mouseCursor, MouseCursor.defer);
         expect(fixture.viewModel.hoverIndicatorPosition, isNull);
-        expect(fixture.viewModel.hoveredClip, 'clip-under-cursor');
+        expect(fixture.viewModel.hoveredClip, _ClipIds.underCursor);
       },
     );
 
@@ -256,18 +268,18 @@ void main() {
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(110, 15, 40, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
       fixture.viewModel.visibleResizeAreas.add(
         rect: const Rect.fromLTWH(110, 15, 8, 30),
-        metadata: (id: 'clip-under-cursor', type: ResizeAreaType.start),
+        metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.start),
       );
 
       fixture.hover(const Offset(112, 20));
 
       expect(fixture.viewModel.mouseCursor, SystemMouseCursors.resizeLeftRight);
       expect(fixture.viewModel.hoverIndicatorPosition, isNull);
-      expect(fixture.viewModel.hoveredClip, 'clip-under-cursor');
+      expect(fixture.viewModel.hoveredClip, _ClipIds.underCursor);
     });
 
     test(
@@ -275,11 +287,11 @@ void main() {
       () {
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(110, 15, 20, 30),
-          metadata: (id: 'clip-under-cursor', type: ResizeAreaType.start),
+          metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.start),
         );
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(110, 15, 20, 30),
-          metadata: (id: 'clip-under-cursor', type: ResizeAreaType.end),
+          metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.end),
         );
 
         final content = fixture.viewModel.getContentUnderCursor(
@@ -296,15 +308,15 @@ void main() {
       () {
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(110, 15, 40, 30),
-          metadata: 'clip-under-cursor',
+          metadata: _ClipIds.underCursor,
         );
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(110, 15, 20, 30),
-          metadata: (id: 'other-clip', type: ResizeAreaType.end),
+          metadata: (id: _ClipIds.someOtherSelected, type: ResizeAreaType.end),
         );
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(110, 15, 20, 30),
-          metadata: (id: 'clip-under-cursor', type: ResizeAreaType.start),
+          metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.start),
         );
 
         final content = fixture.viewModel.getContentUnderCursor(
@@ -312,9 +324,9 @@ void main() {
         );
 
         expect(content.clip, isNotNull);
-        expect(content.clip!.metadata, 'clip-under-cursor');
+        expect(content.clip!.metadata, _ClipIds.underCursor);
         expect(content.resizeHandle, isNotNull);
-        expect(content.resizeHandle!.metadata.id, 'clip-under-cursor');
+        expect(content.resizeHandle!.metadata.id, _ClipIds.underCursor);
         expect(content.resizeHandle!.metadata.type, ResizeAreaType.start);
       },
     );
@@ -324,12 +336,12 @@ void main() {
       () {
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(110, 15, 40, 30),
-          metadata: 'clip-under-cursor',
+          metadata: _ClipIds.underCursor,
         );
 
         fixture.hover(const Offset(120, 20));
         expect(fixture.viewModel.hoverIndicatorPosition, isNull);
-        expect(fixture.viewModel.hoveredClip, 'clip-under-cursor');
+        expect(fixture.viewModel.hoveredClip, _ClipIds.underCursor);
 
         fixture.hover(const Offset(200, 20));
         expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
@@ -345,10 +357,10 @@ void main() {
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(110, 15, 40, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
       fixture.hover(const Offset(121, 20));
-      expect(fixture.viewModel.hoveredClip, 'clip-under-cursor');
+      expect(fixture.viewModel.hoveredClip, _ClipIds.underCursor);
 
       fixture.exit(const Offset(120, 20));
 
@@ -359,7 +371,7 @@ void main() {
     test('exit clears canvas cursor', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(110, 15, 40, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
 
       fixture.hover(const Offset(120, 20));
@@ -484,9 +496,9 @@ void main() {
     test('right-click over clip opens context menu and selects clip', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
-      fixture.viewModel.selectedClips.add('other-selected');
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
 
       var openCount = 0;
       Offset? openedPosition;
@@ -495,7 +507,7 @@ void main() {
         openCount++;
         openedPosition = globalPosition;
         openedMenu = menu;
-        return 'menu-id';
+        return 9001;
       };
 
       fixture.pointerDown(
@@ -509,7 +521,7 @@ void main() {
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
       expect(openCount, 1);
       expect(openedPosition, const Offset(260, 20));
-      expect(fixture.viewModel.selectedClips, {'clip-under-cursor'});
+      expect(fixture.viewModel.selectedClips, {_ClipIds.underCursor});
 
       final openedItems = openedMenu!.children.whereType<AnthemMenuItem>();
       expect(openedItems.first.text, 'Delete');
@@ -518,17 +530,17 @@ void main() {
     test('right-click over selected clip preserves existing selection', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
       fixture.viewModel.selectedClips.addAll({
-        'clip-under-cursor',
-        'other-selected',
+        _ClipIds.underCursor,
+        _ClipIds.someOtherSelected,
       });
 
       var openCount = 0;
       ArrangerIdleState.openContextMenuFn = (_, _) {
         openCount++;
-        return 'menu-id';
+        return 9001;
       };
 
       fixture.pointerDown(
@@ -541,18 +553,18 @@ void main() {
 
       expect(openCount, 1);
       expect(fixture.viewModel.selectedClips, {
-        'clip-under-cursor',
-        'other-selected',
+        _ClipIds.underCursor,
+        _ClipIds.someOtherSelected,
       });
     });
 
     test('right-click on empty space does not open clip context menu', () {
-      fixture.viewModel.selectedClips.add('selected-clip');
+      fixture.viewModel.selectedClips.add(_ClipIds.selected);
 
       var openCount = 0;
       ArrangerIdleState.openContextMenuFn = (_, _) {
         openCount++;
-        return 'menu-id';
+        return 9001;
       };
 
       fixture.pointerDown(
@@ -564,20 +576,20 @@ void main() {
       );
 
       expect(openCount, 0);
-      expect(fixture.viewModel.selectedClips, {'selected-clip'});
+      expect(fixture.viewModel.selectedClips, {_ClipIds.selected});
     });
 
     test('right-click on resize handle opens context menu for clip', () {
       fixture.viewModel.visibleResizeAreas.add(
         rect: const Rect.fromLTWH(240, 10, 16, 30),
-        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.end),
+        metadata: (id: _ClipIds.underResizeHandle, type: ResizeAreaType.end),
       );
-      fixture.viewModel.selectedClips.add('other-selected');
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
 
       var openCount = 0;
       ArrangerIdleState.openContextMenuFn = (_, _) {
         openCount++;
-        return 'menu-id';
+        return 9001;
       };
 
       fixture.pointerDown(
@@ -589,7 +601,7 @@ void main() {
       );
 
       expect(openCount, 1);
-      expect(fixture.viewModel.selectedClips, {'clip-under-resize-handle'});
+      expect(fixture.viewModel.selectedClips, {_ClipIds.underResizeHandle});
     });
 
     test(
@@ -636,7 +648,7 @@ void main() {
         MenuDef? openedMenu;
         ArrangerIdleState.openContextMenuFn = (_, menu) {
           openedMenu = menu;
-          return 'menu-id';
+          return 9001;
         };
 
         fixture.pointerDown(
@@ -719,7 +731,7 @@ void main() {
         MenuDef? openedMenu;
         ArrangerIdleState.openContextMenuFn = (_, menu) {
           openedMenu = menu;
-          return 'menu-id';
+          return 9001;
         };
 
         fixture.pointerDown(
@@ -856,7 +868,7 @@ void main() {
     });
 
     test('single click over empty space clears selected clips', () {
-      fixture.viewModel.selectedClips.addAll({'clip-a', 'clip-b'});
+      fixture.viewModel.selectedClips.addAll({_ClipIds.a, _ClipIds.b});
 
       fixture.pointerDown(
         const PointerDownEvent(
@@ -876,9 +888,9 @@ void main() {
     test('single click over non-selected clip selects clicked clip', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
-      fixture.viewModel.selectedClips.add('selected-clip');
+      fixture.viewModel.selectedClips.add(_ClipIds.selected);
 
       fixture.pointerDown(
         const PointerDownEvent(
@@ -892,15 +904,15 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-      expect(fixture.viewModel.selectedClips, {'clip-under-cursor'});
+      expect(fixture.viewModel.selectedClips, {_ClipIds.underCursor});
     });
 
     test('single click over resize handle selects associated clip', () {
       fixture.viewModel.visibleResizeAreas.add(
         rect: const Rect.fromLTWH(240, 10, 16, 30),
-        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.start),
+        metadata: (id: _ClipIds.underResizeHandle, type: ResizeAreaType.start),
       );
-      fixture.viewModel.selectedClips.add('selected-clip');
+      fixture.viewModel.selectedClips.add(_ClipIds.selected);
 
       fixture.pointerDown(
         const PointerDownEvent(
@@ -914,7 +926,7 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-      expect(fixture.viewModel.selectedClips, {'clip-under-resize-handle'});
+      expect(fixture.viewModel.selectedClips, {_ClipIds.underResizeHandle});
     });
 
     test('double click over clip opens piano roll and sets active pattern', () {
@@ -1013,9 +1025,9 @@ void main() {
       fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
-      fixture.viewModel.selectedClips.add('already-selected');
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
 
       fixture.pointerDown(
         const PointerDownEvent(
@@ -1030,8 +1042,8 @@ void main() {
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
       expect(fixture.viewModel.selectedClips, {
-        'already-selected',
-        'clip-under-cursor',
+        _ClipIds.someOtherSelected,
+        _ClipIds.underCursor,
       });
     });
 
@@ -1039,11 +1051,11 @@ void main() {
       fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
       fixture.viewModel.selectedClips.addAll({
-        'clip-under-cursor',
-        'other-selected',
+        _ClipIds.underCursor,
+        _ClipIds.someOtherSelected,
       });
 
       fixture.pointerDown(
@@ -1058,12 +1070,12 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-      expect(fixture.viewModel.selectedClips, {'other-selected'});
+      expect(fixture.viewModel.selectedClips, {_ClipIds.someOtherSelected});
     });
 
     test('ctrl-click on empty space clears selection', () {
       fixture.stateMachine.modifierPressed(ArrangerModifierKey.ctrl);
-      fixture.viewModel.selectedClips.addAll({'clip-a', 'clip-b'});
+      fixture.viewModel.selectedClips.addAll({_ClipIds.a, _ClipIds.b});
 
       fixture.pointerDown(
         const PointerDownEvent(
@@ -1087,11 +1099,11 @@ void main() {
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(240, 10, 16, 30),
           metadata: (
-            id: 'clip-under-resize-handle',
+            id: _ClipIds.underResizeHandle,
             type: ResizeAreaType.start,
           ),
         );
-        fixture.viewModel.selectedClips.add('other-selected');
+        fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
 
         fixture.pointerDown(
           const PointerDownEvent(
@@ -1105,8 +1117,8 @@ void main() {
         );
 
         expect(fixture.viewModel.selectedClips, {
-          'other-selected',
-          'clip-under-resize-handle',
+          _ClipIds.someOtherSelected,
+          _ClipIds.underResizeHandle,
         });
 
         fixture.pointerDown(
@@ -1121,7 +1133,7 @@ void main() {
         );
 
         expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-        expect(fixture.viewModel.selectedClips, {'other-selected'});
+        expect(fixture.viewModel.selectedClips, {_ClipIds.someOtherSelected});
       },
     );
   });
@@ -1150,7 +1162,7 @@ void main() {
     test('pointer down over clip sets pressed clip immediately', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(100, 10, 80, 40),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
 
       fixture.pointerDown(
@@ -1163,7 +1175,7 @@ void main() {
 
       expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
       expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
-      expect(fixture.viewModel.pressedClip, 'clip-under-cursor');
+      expect(fixture.viewModel.pressedClip, _ClipIds.underCursor);
     });
 
     test(
@@ -1172,7 +1184,7 @@ void main() {
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(96, 10, 14, 40),
           metadata: (
-            id: 'clip-under-resize-handle',
+            id: _ClipIds.underResizeHandle,
             type: ResizeAreaType.start,
           ),
         );
@@ -1187,7 +1199,7 @@ void main() {
 
         expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
         expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
-        expect(fixture.viewModel.pressedClip, 'clip-under-resize-handle');
+        expect(fixture.viewModel.pressedClip, _ClipIds.underResizeHandle);
       },
     );
 
@@ -1196,7 +1208,7 @@ void main() {
       () {
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(100, 10, 80, 40),
-          metadata: 'clip-under-cursor',
+          metadata: _ClipIds.underCursor,
         );
 
         fixture.pointerDown(
@@ -1206,7 +1218,7 @@ void main() {
             position: Offset(120, 20),
           ),
         );
-        expect(fixture.viewModel.pressedClip, 'clip-under-cursor');
+        expect(fixture.viewModel.pressedClip, _ClipIds.underCursor);
 
         fixture.pointerUp(
           const PointerUpEvent(pointer: 1, position: Offset(120, 20)),
@@ -1223,7 +1235,7 @@ void main() {
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(96, 10, 14, 40),
           metadata: (
-            id: 'clip-under-resize-handle',
+            id: _ClipIds.underResizeHandle,
             type: ResizeAreaType.start,
           ),
         );
@@ -1235,7 +1247,7 @@ void main() {
             position: Offset(100, 20),
           ),
         );
-        expect(fixture.viewModel.pressedClip, 'clip-under-resize-handle');
+        expect(fixture.viewModel.pressedClip, _ClipIds.underResizeHandle);
 
         fixture.pointerUp(
           const PointerUpEvent(pointer: 1, position: Offset(100, 20)),
@@ -1249,7 +1261,7 @@ void main() {
     test('pointer cancel clears pressed clip', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(100, 10, 80, 40),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
 
       fixture.pointerDown(
@@ -1259,7 +1271,7 @@ void main() {
           position: Offset(120, 20),
         ),
       );
-      expect(fixture.viewModel.pressedClip, 'clip-under-cursor');
+      expect(fixture.viewModel.pressedClip, _ClipIds.underCursor);
 
       fixture.pointerUp(
         const PointerCancelEvent(pointer: 1, position: Offset(120, 20)),
@@ -1273,7 +1285,7 @@ void main() {
       fixture.viewModel.tool = EditorTool.select;
       fixture.viewModel.visibleResizeAreas.add(
         rect: const Rect.fromLTWH(96, 10, 14, 40),
-        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.start),
+        metadata: (id: _ClipIds.underResizeHandle, type: ResizeAreaType.start),
       );
 
       fixture.pointerDown(
@@ -1293,7 +1305,7 @@ void main() {
       fixture.viewModel.tool = EditorTool.pencil;
       fixture.viewModel.visibleResizeAreas.add(
         rect: const Rect.fromLTWH(96, 10, 14, 40),
-        metadata: (id: 'clip-under-resize-handle', type: ResizeAreaType.start),
+        metadata: (id: _ClipIds.underResizeHandle, type: ResizeAreaType.start),
       );
 
       fixture.pointerDown(
@@ -1312,7 +1324,7 @@ void main() {
       fixture.viewModel.tool = EditorTool.select;
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(100, 10, 80, 40),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
 
       fixture.pointerDown(
@@ -1332,7 +1344,7 @@ void main() {
       fixture.viewModel.tool = EditorTool.pencil;
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(100, 10, 80, 40),
-        metadata: 'clip-under-cursor',
+        metadata: _ClipIds.underCursor,
       );
 
       fixture.pointerDown(
@@ -2501,7 +2513,7 @@ void main() {
       );
     }
 
-    void addVisibleClip({required String id, required Rect rect}) {
+    void addVisibleClip({required Id id, required Rect rect}) {
       fixture.viewModel.visibleClips.add(rect: rect, metadata: id);
     }
 
@@ -2679,7 +2691,7 @@ void main() {
       'starting drag over selected clip does not latch subtractive mode without shift',
       () {
         const downPos = Offset(100, 30);
-        const clipId = 'clip-selected';
+        const clipId = _ClipIds.selected;
 
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(90, 20, 40, 30),
@@ -2707,7 +2719,7 @@ void main() {
       'starting drag over selected clip latches subtractive selection mode with shift',
       () {
         const downPos = Offset(100, 30);
-        const clipId = 'clip-selected';
+        const clipId = _ClipIds.selected;
 
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(90, 20, 40, 30),
@@ -2733,13 +2745,13 @@ void main() {
       'starting drag over non-selected clip does not latch subtractive mode',
       () {
         const downPos = Offset(100, 30);
-        const clipId = 'clip-not-selected';
+        const clipId = _ClipIds.notSelected;
 
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(90, 20, 40, 30),
           metadata: clipId,
         );
-        fixture.viewModel.selectedClips.add('some-other-selected-clip');
+        fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
 
         enterSelectionBoxState(
           downPos: downPos,
@@ -2759,7 +2771,7 @@ void main() {
     );
 
     test('starting drag over empty space does not latch subtractive mode', () {
-      fixture.viewModel.selectedClips.add('selected-clip');
+      fixture.viewModel.selectedClips.add(_ClipIds.selected);
 
       enterSelectionBoxState(
         downPos: const Offset(100, 30),
@@ -2776,20 +2788,20 @@ void main() {
     test(
       'without shift selection box starts with an empty selection snapshot',
       () {
-        fixture.viewModel.selectedClips.addAll(['clip-a', 'clip-b']);
+        fixture.viewModel.selectedClips.addAll([_ClipIds.a, _ClipIds.b]);
 
         enterSelectionBoxState();
 
         expect(fixture.selectionBoxState.originalSelectedClipsAtEntry, isEmpty);
         expect(fixture.viewModel.selectedClips, isEmpty);
 
-        fixture.viewModel.selectedClips.add('clip-c');
+        fixture.viewModel.selectedClips.add(_ClipIds.c);
 
         expect(fixture.selectionBoxState.originalSelectedClipsAtEntry, isEmpty);
 
         expect(
           () => fixture.selectionBoxState.originalSelectedClipsAtEntry!.add(
-            'clip-d',
+            _ClipIds.d,
           ),
           throwsUnsupportedError,
         );
@@ -2799,27 +2811,27 @@ void main() {
     test(
       'with shift selection box snapshots existing selection and keeps it stable',
       () {
-        fixture.viewModel.selectedClips.addAll(['clip-a', 'clip-b']);
+        fixture.viewModel.selectedClips.addAll([_ClipIds.a, _ClipIds.b]);
 
         enterSelectionBoxState(useShiftModifier: true);
 
         expect(
           fixture.selectionBoxState.originalSelectedClipsAtEntry,
-          equals({'clip-a', 'clip-b'}),
+          equals({_ClipIds.a, _ClipIds.b}),
         );
 
         fixture.viewModel.selectedClips
-          ..remove('clip-a')
-          ..add('clip-c');
+          ..remove(_ClipIds.a)
+          ..add(_ClipIds.c);
 
         expect(
           fixture.selectionBoxState.originalSelectedClipsAtEntry,
-          equals({'clip-a', 'clip-b'}),
+          equals({_ClipIds.a, _ClipIds.b}),
         );
 
         expect(
           () => fixture.selectionBoxState.originalSelectedClipsAtEntry!.add(
-            'clip-d',
+            _ClipIds.d,
           ),
           throwsUnsupportedError,
         );
@@ -2829,8 +2841,11 @@ void main() {
     test(
       'without shift selection box clears existing selection and selects clips in box',
       () {
-        addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(40, 40, 20, 20));
-        fixture.viewModel.selectedClips.add('clip-a');
+        addVisibleClip(
+          id: _ClipIds.b,
+          rect: const Rect.fromLTWH(40, 40, 20, 20),
+        );
+        fixture.viewModel.selectedClips.add(_ClipIds.a);
 
         enterSelectionBoxState(
           downPos: const Offset(0, 0),
@@ -2841,13 +2856,13 @@ void main() {
           fixture.selectionBoxState.isSubtractiveSelectionLatched,
           isFalse,
         );
-        expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-b'}));
+        expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.b}));
       },
     );
 
     test('with shift additive mode selects clips under selection box', () {
-      addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(40, 40, 20, 20));
-      fixture.viewModel.selectedClips.add('clip-a');
+      addVisibleClip(id: _ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));
+      fixture.viewModel.selectedClips.add(_ClipIds.a);
 
       enterSelectionBoxState(
         downPos: const Offset(0, 0),
@@ -2858,15 +2873,18 @@ void main() {
       expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isFalse);
       expect(
         fixture.viewModel.selectedClips.toSet(),
-        equals({'clip-a', 'clip-b'}),
+        equals({_ClipIds.a, _ClipIds.b}),
       );
     });
 
     test(
       'without shift drag over selected clip is additive from an empty snapshot',
       () {
-        addVisibleClip(id: 'clip-a', rect: const Rect.fromLTWH(20, 20, 30, 30));
-        fixture.viewModel.selectedClips.addAll({'clip-a', 'clip-b'});
+        addVisibleClip(
+          id: _ClipIds.a,
+          rect: const Rect.fromLTWH(20, 20, 30, 30),
+        );
+        fixture.viewModel.selectedClips.addAll({_ClipIds.a, _ClipIds.b});
 
         enterSelectionBoxState(
           downPos: const Offset(25, 25),
@@ -2877,15 +2895,18 @@ void main() {
           fixture.selectionBoxState.isSubtractiveSelectionLatched,
           isFalse,
         );
-        expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-a'}));
+        expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.a}));
       },
     );
 
     test(
       'with shift subtractive mode deselects selected clips under selection box',
       () {
-        addVisibleClip(id: 'clip-a', rect: const Rect.fromLTWH(20, 20, 30, 30));
-        fixture.viewModel.selectedClips.addAll({'clip-a', 'clip-b'});
+        addVisibleClip(
+          id: _ClipIds.a,
+          rect: const Rect.fromLTWH(20, 20, 30, 30),
+        );
+        fixture.viewModel.selectedClips.addAll({_ClipIds.a, _ClipIds.b});
 
         enterSelectionBoxState(
           downPos: const Offset(25, 25),
@@ -2894,21 +2915,24 @@ void main() {
         );
 
         expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isTrue);
-        expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-b'}));
+        expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.b}));
       },
     );
 
     test(
       'without shift additive mode reverts to empty selection when box shrinks',
       () {
-        addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(40, 40, 20, 20));
-        fixture.viewModel.selectedClips.add('clip-a');
+        addVisibleClip(
+          id: _ClipIds.b,
+          rect: const Rect.fromLTWH(40, 40, 20, 20),
+        );
+        fixture.viewModel.selectedClips.add(_ClipIds.a);
 
         enterSelectionBoxState(
           downPos: const Offset(0, 0),
           movePos: const Offset(80, 80),
         );
-        expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-b'}));
+        expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.b}));
 
         fixture.pointerMove(
           const PointerMoveEvent(
@@ -2925,8 +2949,11 @@ void main() {
     test(
       'with shift additive mode reverts clip to original selection when box shrinks',
       () {
-        addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(40, 40, 20, 20));
-        fixture.viewModel.selectedClips.add('clip-a');
+        addVisibleClip(
+          id: _ClipIds.b,
+          rect: const Rect.fromLTWH(40, 40, 20, 20),
+        );
+        fixture.viewModel.selectedClips.add(_ClipIds.a);
 
         enterSelectionBoxState(
           downPos: const Offset(0, 0),
@@ -2935,7 +2962,7 @@ void main() {
         );
         expect(
           fixture.viewModel.selectedClips.toSet(),
-          equals({'clip-a', 'clip-b'}),
+          equals({_ClipIds.a, _ClipIds.b}),
         );
 
         fixture.pointerMove(
@@ -2946,16 +2973,22 @@ void main() {
           ),
         );
 
-        expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-a'}));
+        expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.a}));
       },
     );
 
     test(
       'with shift subtractive mode reverts clip to original selection when box shrinks',
       () {
-        addVisibleClip(id: 'clip-a', rect: const Rect.fromLTWH(20, 20, 20, 20));
-        addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(90, 20, 20, 20));
-        fixture.viewModel.selectedClips.addAll({'clip-a', 'clip-b'});
+        addVisibleClip(
+          id: _ClipIds.a,
+          rect: const Rect.fromLTWH(20, 20, 20, 20),
+        );
+        addVisibleClip(
+          id: _ClipIds.b,
+          rect: const Rect.fromLTWH(90, 20, 20, 20),
+        );
+        fixture.viewModel.selectedClips.addAll({_ClipIds.a, _ClipIds.b});
 
         enterSelectionBoxState(
           downPos: const Offset(25, 25),
@@ -2972,19 +3005,19 @@ void main() {
           ),
         );
 
-        expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-b'}));
+        expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.b}));
       },
     );
 
     test('without shift cancel restores selected clips to empty snapshot', () {
-      addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(40, 40, 20, 20));
-      fixture.viewModel.selectedClips.add('clip-a');
+      addVisibleClip(id: _ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));
+      fixture.viewModel.selectedClips.add(_ClipIds.a);
 
       enterSelectionBoxState(
         downPos: const Offset(0, 0),
         movePos: const Offset(80, 80),
       );
-      expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-b'}));
+      expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.b}));
 
       fixture.pressEscape();
 
@@ -2992,8 +3025,8 @@ void main() {
     });
 
     test('with shift cancel restores selected clips to selection snapshot', () {
-      addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(40, 40, 20, 20));
-      fixture.viewModel.selectedClips.add('clip-a');
+      addVisibleClip(id: _ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));
+      fixture.viewModel.selectedClips.add(_ClipIds.a);
 
       enterSelectionBoxState(
         downPos: const Offset(0, 0),
@@ -3002,33 +3035,33 @@ void main() {
       );
       expect(
         fixture.viewModel.selectedClips.toSet(),
-        equals({'clip-a', 'clip-b'}),
+        equals({_ClipIds.a, _ClipIds.b}),
       );
 
       fixture.pressEscape();
 
-      expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-a'}));
+      expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.a}));
     });
 
     test('pointer up keeps selection result from selection box', () {
-      addVisibleClip(id: 'clip-b', rect: const Rect.fromLTWH(40, 40, 20, 20));
+      addVisibleClip(id: _ClipIds.b, rect: const Rect.fromLTWH(40, 40, 20, 20));
 
       enterSelectionBoxState(
         downPos: const Offset(0, 0),
         movePos: const Offset(80, 80),
       );
-      expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-b'}));
+      expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.b}));
 
       fixture.pointerUp(
         const PointerUpEvent(pointer: 1, position: Offset(80, 80)),
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-      expect(fixture.viewModel.selectedClips.toSet(), equals({'clip-b'}));
+      expect(fixture.viewModel.selectedClips.toSet(), equals({_ClipIds.b}));
     });
 
     test('clears selection session data when selection box exits', () {
-      fixture.viewModel.selectedClips.add('clip-a');
+      fixture.viewModel.selectedClips.add(_ClipIds.a);
       enterSelectionBoxState();
 
       expect(fixture.selectionBoxState.originalSelectedClipsAtEntry, isEmpty);
@@ -3046,15 +3079,15 @@ void main() {
       () {
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(90, 20, 40, 30),
-          metadata: 'clip-a',
+          metadata: _ClipIds.a,
         );
-        fixture.viewModel.selectedClips.add('clip-a');
+        fixture.viewModel.selectedClips.add(_ClipIds.a);
         enterSelectionBoxState(useShiftModifier: true);
 
         expect(fixture.selectionBoxState.isSubtractiveSelectionLatched, isTrue);
         expect(
           fixture.selectionBoxState.originalSelectedClipsAtEntry,
-          equals({'clip-a'}),
+          equals({_ClipIds.a}),
         );
 
         fixture.pressEscape();

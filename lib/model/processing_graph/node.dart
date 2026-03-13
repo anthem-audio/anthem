@@ -21,6 +21,7 @@ import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/debounced_action.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
@@ -87,7 +88,7 @@ class NodeModel extends _NodeModel
 
   NodeModel.uninitialized()
     : super(
-        id: '',
+        id: -1,
         audioInputPorts: AnthemObservableList(),
         eventInputPorts: AnthemObservableList(),
         controlInputPorts: AnthemObservableList(),
@@ -134,7 +135,7 @@ class NodeModel extends _NodeModel
 }
 
 abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
-  String id;
+  Id id;
 
   AnthemObservableList<NodePortModel> audioInputPorts;
   AnthemObservableList<NodePortModel> eventInputPorts;

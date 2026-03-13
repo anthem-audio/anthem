@@ -818,7 +818,7 @@ class TrackGroupUngroupCommand extends Command {
 
       while (true) {
         int highestDepth = 0;
-        String? trackIdAtHighest;
+        Id? trackIdAtHighest;
 
         for (final MapEntry(key: trackId, value: (depth, _))
             in trackDepthMap.entries) {

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -93,16 +93,16 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
 
   auto& eventsForSequence = sequenceMap.at(*activeSequenceId);
 
-  const std::string* sourceTrackId = &trackId;
+  int64_t sourceTrackId = trackId;
   if (config->activeTrackId.has_value() && config->activeTrackId.value() == trackId) {
     auto noTrackEventListIter =
       eventsForSequence.tracks->find(anthem_sequencer_track_ids::noTrack);
     if (noTrackEventListIter != eventsForSequence.tracks->end()) {
-      sourceTrackId = &anthem_sequencer_track_ids::noTrack;
+      sourceTrackId = anthem_sequencer_track_ids::noTrack;
     }
   }
 
-  auto sourceTrackEventListIter = eventsForSequence.tracks->find(*sourceTrackId);
+  auto sourceTrackEventListIter = eventsForSequence.tracks->find(sourceTrackId);
   if (sourceTrackEventListIter == eventsForSequence.tracks->end()) {
     return;
   }

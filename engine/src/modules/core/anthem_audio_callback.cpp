@@ -135,9 +135,8 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   playheadPositionProvider->rt_updatePlayheadPosition(transport->rt_playhead);
 
   if (transport->rt_config->activeSequenceId.has_value()) {
-    // This is a pass-by-reference and the function reads out the byte data to a
-    // pre-allocated array, making it real-time safe.
-    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(transport->rt_config->activeSequenceId.value());
+    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(
+      transport->rt_config->activeSequenceId.value());
   }
 
   transport->rt_advancePlayhead(numSamples);

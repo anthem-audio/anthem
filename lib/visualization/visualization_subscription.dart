@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -66,14 +66,17 @@ class VisualizationSubscription {
   late final Ticker _ticker;
 
   final RingBuffer<double>? _ringBufferDouble;
+  final RingBuffer<int>? _ringBufferInt;
   final RingBuffer<String>? _ringBufferString;
 
   double _valueDouble = 0;
+  int _valueInt = 0;
   String? _valueString;
 
   DateTime? _overrideSetTime;
   Duration? _overrideDuration;
   double? _overrideDouble;
+  int? _overrideInt;
   String? _overrideString;
 
   bool _shouldReset = false;
@@ -98,22 +101,26 @@ class VisualizationSubscription {
   /// For all other subscription types, this will return the latest value.
   double readValue() {
     _shouldReset = true;
-    return _overrideDouble ?? _valueDouble;
+    return _overrideDouble ?? _overrideInt?.toDouble() ?? _valueDouble;
+  }
+
+  /// Read the latest value as an integer for this visualization item.
+  int readValueInt() {
+    _shouldReset = true;
+    return _overrideInt ?? _valueInt;
   }
 
   /// Read the latest value as a string for this visualization item.
   ///
-  /// For most visualization items, this will read out the current value as a
-  /// string. However, some items only have a string representation. For
-  /// example, the current transport position comes paired with another value
-  /// that says which sequence is currently playing. This item does not have
-  /// a numeric value, and is instead the ID of the sequence as a string.
+  /// This stringifies numeric values if this subscription is backed by an int
+  /// or double lane.
   String readValueString() {
     _shouldReset = true;
     return _overrideString ??
+        _overrideInt?.toString() ??
         _overrideDouble?.toString() ??
         _valueString ??
-        _valueDouble.toString();
+        _valueInt.toString();
   }
 
   /// Read the last N values for this visualization item.
@@ -127,7 +134,26 @@ class VisualizationSubscription {
       return [_overrideDouble!];
     }
 
+    if (_overrideInt != null) {
+      return [_overrideInt!.toDouble()];
+    }
+
     return _ringBufferDouble?.values ?? [_valueDouble];
+  }
+
+  /// Read the last N values as integers for this visualization item.
+  ///
+  /// If the configuration does not specify a subscription type with multiple
+  /// values, this will return the result of [readValueInt] as a single-item
+  /// list.
+  Iterable<int> readValuesInt() {
+    _shouldReset = true;
+
+    if (_overrideInt != null) {
+      return [_overrideInt!];
+    }
+
+    return _ringBufferInt?.values ?? [_valueInt];
   }
 
   /// Reads the last N values as strings for this visualization item.
@@ -142,8 +168,11 @@ class VisualizationSubscription {
       return [_overrideString!];
     }
 
-    return _ringBufferString?.values ??
-        [_valueString ?? _valueDouble.toString()];
+    if (_overrideInt != null) {
+      return [_overrideInt!.toString()];
+    }
+
+    return _ringBufferString?.values ?? [_valueString ?? _valueInt.toString()];
   }
 
   /// Sets an override value for this subscription, with a duration.
@@ -154,18 +183,20 @@ class VisualizationSubscription {
   /// is desired (e.g. when it would prevent a flicker in the UI).
   void setOverride({
     double? valueDouble,
+    int? valueInt,
     String? valueString,
     required Duration duration,
   }) {
-    if (valueDouble == null && valueString == null) {
+    if (valueDouble == null && valueInt == null && valueString == null) {
       throw ArgumentError(
-        'Either valueDouble or valueString must be provided.',
+        'Either valueDouble, valueInt, or valueString must be provided.',
       );
     }
 
     _overrideSetTime = DateTime.now();
     _overrideDuration = duration;
     _overrideDouble = valueDouble;
+    _overrideInt = valueInt;
     _overrideString = valueString;
 
     _isUpdateStale = true;
@@ -175,6 +206,9 @@ class VisualizationSubscription {
     : _ringBufferDouble =
           _config.type == VisualizationSubscriptionType.lastNValues
           ? RingBuffer<double>(_config.bufferSize!)
+          : null,
+      _ringBufferInt = _config.type == VisualizationSubscriptionType.lastNValues
+          ? RingBuffer<int>(_config.bufferSize!)
           : null,
       _ringBufferString =
           _config.type == VisualizationSubscriptionType.lastNValues
@@ -199,6 +233,7 @@ class VisualizationSubscription {
         _overrideSetTime = null;
         _overrideDuration = null;
         _overrideDouble = null;
+        _overrideInt = null;
         _overrideString = null;
         _isUpdateStale = true;
       }
@@ -206,31 +241,34 @@ class VisualizationSubscription {
   }
 
   /// Add a new value to the subscription.
-  void _addValue(Object /* String | double */ value) {
+  void _addValue(Object /* String | int | double */ value) {
     if (_shouldReset) {
       _shouldReset = false;
 
       if (value is double) {
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
-          _ringBufferDouble!;
-
-          _ringBufferDouble.reset();
+          _ringBufferDouble!.reset();
           _ringBufferDouble.add(value);
         } else {
           _valueDouble = value;
         }
+      } else if (value is int) {
+        if (_config.type == VisualizationSubscriptionType.lastNValues) {
+          _ringBufferInt!.reset();
+          _ringBufferInt.add(value);
+        } else {
+          _valueInt = value;
+        }
       } else if (value is String) {
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
-          _ringBufferString!;
-
-          _ringBufferString.reset();
+          _ringBufferString!.reset();
           _ringBufferString.add(value);
         } else {
           _valueString = value;
         }
       } else {
         throw ArgumentError(
-          'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String or double.',
+          'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String, int, or double.',
         );
       }
     } else {
@@ -241,6 +279,17 @@ class VisualizationSubscription {
           _valueDouble = max(_valueDouble, value);
         } else {
           _valueDouble = value;
+        }
+      } else if (value is int) {
+        assert(
+          _config.type != VisualizationSubscriptionType.max,
+          'Int values are not supported for max subscription type.',
+        );
+
+        if (_config.type == VisualizationSubscriptionType.lastNValues) {
+          _ringBufferInt!.add(value);
+        } else {
+          _valueInt = value;
         }
       } else if (value is String) {
         assert(
@@ -255,7 +304,7 @@ class VisualizationSubscription {
         }
       } else {
         throw ArgumentError(
-          'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String or double.',
+          'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String, int, or double.',
         );
       }
     }

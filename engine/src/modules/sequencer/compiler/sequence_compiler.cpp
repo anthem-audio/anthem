@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,7 +23,7 @@
 
 #include <algorithm>
 
-void AnthemSequenceCompiler::compilePattern(std::string patternId) {
+void AnthemSequenceCompiler::compilePattern(EntityId patternId) {
   auto& anthem = Anthem::getInstance();
 
   auto patternIter = anthem.project->sequence()->patterns()->find(patternId);
@@ -47,8 +47,8 @@ void AnthemSequenceCompiler::compilePattern(std::string patternId) {
 }
 
 void AnthemSequenceCompiler::compilePattern(
-  std::string patternId,
-  std::vector<std::string>& trackIdsToRebuild,
+  EntityId patternId,
+  std::vector<EntityId>& trackIdsToRebuild,
   std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   // When compiling a bare pattern, we put all events into a special "no track"
@@ -100,7 +100,7 @@ void AnthemSequenceCompiler::compilePattern(
   );
 }
 
-void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
+void AnthemSequenceCompiler::compileArrangement(EntityId arrangementId) {
   auto& anthem = Anthem::getInstance();
 
   auto arrangementIter = anthem.project->sequence()->arrangements()->find(arrangementId);
@@ -113,7 +113,7 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
   SequenceEventListCollection newSequence;
 
   // For every track, get the note events for that track.
-  for (std::string& trackId : *anthem.project->trackOrder()) {
+  for (EntityId& trackId : *anthem.project->trackOrder()) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
 
@@ -129,8 +129,8 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
 }
 
 void AnthemSequenceCompiler::compileArrangement(
-  std::string arrangementId,
-  std::vector<std::string>& trackIdsToRebuild,
+  EntityId arrangementId,
+  std::vector<EntityId>& trackIdsToRebuild,
   std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   auto& store = *Anthem::getInstance().sequenceStore;
@@ -147,15 +147,15 @@ void AnthemSequenceCompiler::compileArrangement(
   }
 }
 
-void AnthemSequenceCompiler::cleanUpTrack(std::string trackId) {
+void AnthemSequenceCompiler::cleanUpTrack(EntityId trackId) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
   store.removeTrackFromAllSequences(trackId);
 }
 
 void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
-  std::string trackId,
-  std::string arrangementId,
+  EntityId trackId,
+  EntityId arrangementId,
   std::vector<AnthemSequenceEvent>& events
 ) {
   auto& anthem = Anthem::getInstance();
@@ -192,7 +192,7 @@ void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
 }
 
 void AnthemSequenceCompiler::getPatternNoteEvents(
-  std::string patternId,
+  EntityId patternId,
   std::optional<std::tuple<double, double>> range,
   std::optional<double> offset,
   std::vector<AnthemSequenceEvent>& events

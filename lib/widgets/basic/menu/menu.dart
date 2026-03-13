@@ -30,7 +30,7 @@ import 'menu_renderer.dart';
 var _nextMenuOverlayId = 0;
 
 Id _allocateMenuOverlayId() {
-  return 'menu-overlay-${_nextMenuOverlayId++}';
+  return _nextMenuOverlayId++;
 }
 
 class Menu extends StatefulWidget {

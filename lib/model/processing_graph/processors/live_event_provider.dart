@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -43,7 +44,7 @@ class LiveEventProviderProcessorModel extends _LiveEventProviderProcessorModel
     required ProjectEntityIdAllocator idAllocator,
   }) : super(nodeId: idAllocator.allocateId());
 
-  LiveEventProviderProcessorModel.uninitialized() : super(nodeId: '');
+  LiveEventProviderProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory LiveEventProviderProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$LiveEventProviderProcessorModelAnthemModelMixin.fromJson(json);
@@ -71,7 +72,7 @@ abstract class _LiveEventProviderProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int eventOutputPortId = 0;
 
-  String nodeId;
+  Id nodeId;
 
   _LiveEventProviderProcessorModel({required this.nodeId});
 }

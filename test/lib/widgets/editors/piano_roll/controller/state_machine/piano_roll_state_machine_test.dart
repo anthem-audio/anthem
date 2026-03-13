@@ -98,19 +98,19 @@ class _RecordingProcessingGraphApi implements ProcessingGraphApi {
 
 class _NoopSequencerApi implements SequencerApi {
   @override
-  void cleanUpTrack(String trackId) {}
+  void cleanUpTrack(Id trackId) {}
 
   @override
   void compileArrangement(
     Id arrangementId, {
-    List<String>? tracksToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
 
   @override
   void compilePattern(
     Id patternId, {
-    List<String>? tracksToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
 
@@ -118,7 +118,7 @@ class _NoopSequencerApi implements SequencerApi {
   void jumpPlayheadTo(double offset) {}
 
   @override
-  void updateLoopPoints(String sequenceId) {}
+  void updateLoopPoints(Id sequenceId) {}
 }
 
 class _RunningEngine extends Mock implements Engine {
@@ -148,8 +148,8 @@ class _RunningEngine extends Mock implements Engine {
 }
 
 class _TrackIds {
-  static const instrument = 'instrument';
-  static const master = 'master';
+  static const instrument = 1;
+  static const master = 2;
 }
 
 TrackModel _makeTrack(Id id, String name, TrackType type) {
@@ -163,7 +163,7 @@ TrackModel _makeTrack(Id id, String name, TrackType type) {
 
 class _PianoRollStateMachineTestFixture {
   static const pianoRollSize = Size(960, 240);
-  static const liveEventProviderNodeId = 'live-event-provider';
+  static const liveEventProviderNodeId = 3;
 
   final ProjectModel project;
   final PianoRollViewModel viewModel;
@@ -1408,7 +1408,7 @@ void main() {
   group('move interactions', () {
     test('moves a single note with snapping and supports undo and redo', () {
       final note = fixture.addNote(key: 60, offset: 100, length: 48);
-      fixture.selectNotes(['other-selected-note']);
+      fixture.selectNotes([1004]);
 
       fixture.pointerDown(key: 60.5, offset: 100, noteUnderCursor: note.id);
       fixture.pointerMove(key: 62.5, offset: 155);

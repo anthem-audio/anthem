@@ -35,19 +35,19 @@ class _RecordingSequencerApi implements SequencerApi {
   final List<double> jumpedTo = [];
 
   @override
-  void cleanUpTrack(String trackId) {}
+  void cleanUpTrack(Id trackId) {}
 
   @override
   void compileArrangement(
-    String arrangementId, {
-    List<String>? tracksToRebuild,
+    Id arrangementId, {
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
 
   @override
   void compilePattern(
-    String patternId, {
-    List<String>? tracksToRebuild,
+    Id patternId, {
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
 
@@ -57,7 +57,7 @@ class _RecordingSequencerApi implements SequencerApi {
   }
 
   @override
-  void updateLoopPoints(String sequenceId) {}
+  void updateLoopPoints(Id sequenceId) {}
 }
 
 class _TimelineTestEngine extends Mock implements Engine {

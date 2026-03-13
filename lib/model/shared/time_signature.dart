@@ -59,14 +59,14 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
   }) : super(id: idAllocator.allocateId());
 
   TimeSignatureChangeModel.uninitialized()
-    : super(id: '', timeSignature: TimeSignatureModel(4, 4), offset: 0);
+    : super(id: -1, timeSignature: TimeSignatureModel(4, 4), offset: 0);
 
   factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureChangeModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _TimeSignatureChangeModel with Store, AnthemModelBase {
-  Id id = '';
+  Id id = -1;
 
   @anthemObservable
   TimeSignatureModel timeSignature;

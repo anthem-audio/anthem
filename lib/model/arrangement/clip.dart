@@ -30,7 +30,7 @@ part 'clip.g.dart';
 class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
   ClipModel.uninitialized()
-    : super(id: '', patternId: '', trackId: '', offset: 0);
+    : super(id: -1, patternId: -1, trackId: -1, offset: 0);
 
   ClipModel({
     required ProjectEntityIdAllocator idAllocator,

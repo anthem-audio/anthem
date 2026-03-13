@@ -82,7 +82,7 @@ class NoteModel extends _NoteModel
   }) : super(id: idAllocator.allocateId());
 
   NoteModel.uninitialized()
-    : super(id: '', key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
+    : super(id: -1, key: 0, velocity: 0, length: 0, offset: 0, pan: 0);
 
   NoteModel.fromNoteModel(NoteModel model)
     : super(

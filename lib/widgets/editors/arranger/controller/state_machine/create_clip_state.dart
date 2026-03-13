@@ -37,7 +37,7 @@ class ArrangerCreateClipState
   ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
   ArrangerController get controller => arrangerStateMachine.controller;
 
-  String? _targetTrackId;
+  Id? _targetTrackId;
   double? _defaultStartOffset;
   bool _didCrossActivationDistance = false;
 

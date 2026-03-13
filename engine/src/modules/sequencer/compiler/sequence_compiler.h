@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@
 
 #include "modules/sequencer/events/event.h"
 
-#include <string>
+#include <cstdint>
 #include <vector>
 #include <optional>
 
@@ -40,38 +40,40 @@
 class AnthemSequenceCompiler {
 friend class SequenceCompilerTest;
 public:
+  using EntityId = int64_t;
+
   // Compiles the given pattern, and adds or replaces its entry in the sequence
   // store.
-  static void compilePattern(std::string patternId);
+  static void compilePattern(EntityId patternId);
 
   // Compiles the given tracks for the given pattern, and replaces them in the
   // sequence store.
   static void compilePattern(
-    std::string patternId,
-    std::vector<std::string>& trackIdsToRebuild,
+    EntityId patternId,
+    std::vector<EntityId>& trackIdsToRebuild,
     std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Compiles the given arrangement, and adds or replaces its entry in the
   // sequence store.
-  static void compileArrangement(std::string arrangementId);
+  static void compileArrangement(EntityId arrangementId);
 
   // Compiles the given tracks for the given arrangement, and replaces them in
   // the sequence store.
   static void compileArrangement(
-    std::string arrangementId,
-    std::vector<std::string>& trackIdsToRebuild,
+    EntityId arrangementId,
+    std::vector<EntityId>& trackIdsToRebuild,
     std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Cleans up any sequences related to the given track ID.
-  static void cleanUpTrack(std::string trackId);
+  static void cleanUpTrack(EntityId trackId);
 
 private:
   // Gets the note events on a given track for the given arrangement.
   //
   // The events will be added to the given `events` vector.
   static void getTrackNoteEventsForArrangement(
-    std::string trackId,
-    std::string arrangementId,
+    EntityId trackId,
+    EntityId arrangementId,
     std::vector<AnthemSequenceEvent>& events
   );
 
@@ -91,7 +93,7 @@ private:
   // given track may have notes from many clips, so we call this method
   // multiple times and sort at the end.
   static void getPatternNoteEvents(
-    std::string patternId,
+    EntityId patternId,
     std::optional<std::tuple<double, double>> range,
     std::optional<double> offset,
     std::vector<AnthemSequenceEvent>& events

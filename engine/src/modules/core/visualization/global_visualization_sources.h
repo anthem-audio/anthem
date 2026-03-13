@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,6 +25,7 @@
 #include <juce_core/juce_core.h>
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -66,16 +67,16 @@ class PlayheadSequenceIdVisualizationProvider : public VisualizationDataProvider
 private:
   JUCE_LEAK_DETECTOR(PlayheadSequenceIdVisualizationProvider)
 
-  RingBuffer<std::array<char, 16>, 3> playheadSequenceIdBuffer;
-  std::string lastSentId;
+  RingBuffer<int64_t, 3> playheadSequenceIdBuffer;
+  std::optional<int64_t> lastSentId;
 
 public:
-  std::optional<std::vector<std::string>> getStringData() override;
+  std::optional<std::vector<int64_t>> getIntegerData() override;
 
-  void rt_updatePlayheadSequenceId(const std::string& newPlayheadSequenceId);
+  void rt_updatePlayheadSequenceId(int64_t newPlayheadSequenceId);
 
-  PlayheadSequenceIdVisualizationProvider() : playheadSequenceIdBuffer(RingBuffer<std::array<char, 16>, 3>()) {
-    lastSentId = "";
+  PlayheadSequenceIdVisualizationProvider() : playheadSequenceIdBuffer(RingBuffer<int64_t, 3>()) {
+    lastSentId = std::nullopt;
   };
 };
 

@@ -33,7 +33,7 @@ TimeSignatureChangeModel _createRuntimeGridTimeSignatureChange({
 }) {
   return TimeSignatureChangeModel(
     idAllocator: ProjectEntityIdAllocator.fromCallback(
-      () => 'grid-time-signature-${_runtimeGridTimeSignatureIdCounter++}',
+      () => _runtimeGridTimeSignatureIdCounter++,
     ),
     timeSignature: timeSignature,
     offset: offset,

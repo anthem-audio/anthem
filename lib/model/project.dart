@@ -162,7 +162,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   int idCounter = 0;
 
   Id allocateId() {
-    return '${idCounter++}';
+    return idCounter++;
   }
 
   /// Globally unique ID for the project file.

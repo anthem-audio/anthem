@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -42,7 +43,7 @@ class VST3ProcessorModel extends _VST3ProcessorModel
     required super.vst3Path,
   }) : super(nodeId: idAllocator.allocateId());
 
-  VST3ProcessorModel.uninitialized() : super(nodeId: '', vst3Path: '');
+  VST3ProcessorModel.uninitialized() : super(nodeId: -1, vst3Path: '');
 
   factory VST3ProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$VST3ProcessorModelAnthemModelMixin.fromJson(json);
@@ -81,7 +82,7 @@ abstract class _VST3ProcessorModel
   static const int eventInputPortId = 1;
 
   @anthemObservable
-  String nodeId;
+  Id nodeId;
 
   @anthemObservable
   String vst3Path;

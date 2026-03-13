@@ -203,7 +203,7 @@ class PatternModel extends _PatternModel
     });
   }
 
-  Iterable<String> get channelsWithContent => project.tracks.keys;
+  Iterable<Id> get channelsWithContent => project.tracks.keys;
 }
 
 abstract class _PatternModel
@@ -249,7 +249,7 @@ abstract class _PatternModel
   LoopPointsModel? loopPoints;
 
   /// For deserialization. Use `PatternModel()` instead.
-  _PatternModel() : id = '';
+  _PatternModel() : id = -1;
 
   _PatternModel.create({required this.id, required this.name}) {
     color = AnthemColor.randomHue();

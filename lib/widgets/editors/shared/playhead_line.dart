@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
@@ -31,7 +32,7 @@ class PlayheadLine extends StatelessObserverWidget {
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
   final bool isVisible;
-  final String? editorActiveSequenceId;
+  final Id? editorActiveSequenceId;
 
   const PlayheadLine({
     required this.timeViewAnimationController,
@@ -52,14 +53,14 @@ class PlayheadLine extends StatelessObserverWidget {
           .toDouble();
     }
 
-    String? activeSequenceIdOverride;
+    Id? activeSequenceIdOverride;
     if (project.engineState != EngineState.running) {
       activeSequenceIdOverride = project.sequence.activeTransportSequenceID;
     }
 
     return Builder(
       builder: (context) {
-        return VisualizationBuilder.string(
+        return VisualizationBuilder.int(
           config: VisualizationSubscriptionConfig.latest(
             'playhead_sequence_id',
           ),

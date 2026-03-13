@@ -97,8 +97,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes the given nodes from the graph while capturing all removed nodes
   /// and connections so they can be restored later.
-  RemovedNodesSnapshot removeNodesAndCapture(Iterable<String> nodeIds) {
-    final idsToRemove = <String>{};
+  RemovedNodesSnapshot removeNodesAndCapture(Iterable<Id> nodeIds) {
+    final idsToRemove = <Id>{};
     for (final nodeId in nodeIds) {
       if (nodes[nodeId] != null) {
         idsToRemove.add(nodeId);
@@ -177,7 +177,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes a node from the graph, and removes all connections to and from the
   /// node.
-  void removeNode(String nodeId) {
+  void removeNode(Id nodeId) {
     final node = nodes[nodeId];
 
     if (node == null) return;
@@ -207,7 +207,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     destinationNodePort.connections.add(connection.id);
   }
 
-  void removeConnection(String connectionId) {
+  void removeConnection(Id connectionId) {
     final connection = connections[connectionId]!;
     final sourceNode = nodes[connection.sourceNodeId]!;
     final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
@@ -235,7 +235,7 @@ abstract class _ProcessingGraphModel
   ///
   /// This should not be modified directly. Use [addNode] and [removeNode].
   @anthemObservable
-  AnthemObservableMap<String, NodeModel> nodes = AnthemObservableMap();
+  AnthemObservableMap<Id, NodeModel> nodes = AnthemObservableMap();
 
   /// A map of connections between nodes in the graph.
   ///
@@ -244,9 +244,9 @@ abstract class _ProcessingGraphModel
   /// This should not be modified directly. Use [addConnection] and
   /// [removeConnection].
   @anthemObservable
-  AnthemObservableMap<String, NodeConnectionModel> connections =
+  AnthemObservableMap<Id, NodeConnectionModel> connections =
       AnthemObservableMap();
 
   @anthemObservable
-  late String masterOutputNodeId;
+  late Id masterOutputNodeId;
 }

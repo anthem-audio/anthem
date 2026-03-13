@@ -51,15 +51,15 @@ class MockProjectController extends Mock implements ProjectController {
 }
 
 class _TrackIds {
-  static const a = 'a';
-  static const a1 = 'a1';
-  static const a2 = 'a2';
-  static const a2a = 'a2a';
-  static const b = 'b';
+  static const a = 1;
+  static const a1 = 2;
+  static const a2 = 3;
+  static const a2a = 4;
+  static const b = 5;
 
-  static const s = 's';
-  static const s1 = 's1';
-  static const master = 'master';
+  static const s = 6;
+  static const s1 = 7;
+  static const master = 8;
 }
 
 TrackModel _makeTrack(Id id, String name, TrackType type) {

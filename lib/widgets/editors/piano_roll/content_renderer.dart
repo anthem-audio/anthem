@@ -205,62 +205,60 @@ class PianoRollPainter extends CustomPainterObserver {
 
       if (keyHeight > 25 && width > 2 && height > 2) {
         final cachedLabel = noteLabelImageCache.get(key);
-        if (cachedLabel == null) {
-          continue;
+        if (cachedLabel != null) {
+          canvas.save();
+          final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);
+          canvas.clipRect(clipRect);
+
+          final textColor = white;
+
+          final textX = x + 5;
+          final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;
+
+          // canvas.drawImageRect(cachedLabel, Rect.fromLTWH(x, y, cachedLabel.width.toDouble(), cachedLabel.height.toDouble()), Paint());
+          canvas.drawAtlas(
+            cachedLabel,
+            [
+              RSTransform.fromComponents(
+                rotation: 0,
+                scale: 1 / devicePixelRatio,
+                anchorX: 0,
+                anchorY: 0,
+                translateX: textX,
+                translateY: textY,
+              ),
+            ],
+            [
+              Rect.fromLTWH(
+                0,
+                0,
+                noteLabelWidth * devicePixelRatio,
+                noteLabelHeight * devicePixelRatio,
+              ),
+            ],
+            [textColor],
+            BlendMode.dstIn,
+            null,
+            Paint(),
+          );
+
+          final transparentColor = color.withAlpha(0);
+
+          // Fade out gradient
+          final textFadeOutStop = (1 - (10 / width)).clamp(0.0, 1.0);
+          final textFadeOutGradient = ui.Gradient.linear(
+            Offset(x, textY),
+            Offset(x + width - 3, textY),
+            [transparentColor, transparentColor, color],
+            [0, textFadeOutStop, 1],
+          );
+
+          final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
+
+          canvas.drawRect(clipRect, textFadeOutPaint);
+
+          canvas.restore();
         }
-
-        canvas.save();
-        final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);
-        canvas.clipRect(clipRect);
-
-        final textColor = white;
-
-        final textX = x + 5;
-        final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;
-
-        // canvas.drawImageRect(cachedLabel, Rect.fromLTWH(x, y, cachedLabel.width.toDouble(), cachedLabel.height.toDouble()), Paint());
-        canvas.drawAtlas(
-          cachedLabel,
-          [
-            RSTransform.fromComponents(
-              rotation: 0,
-              scale: 1 / devicePixelRatio,
-              anchorX: 0,
-              anchorY: 0,
-              translateX: textX,
-              translateY: textY,
-            ),
-          ],
-          [
-            Rect.fromLTWH(
-              0,
-              0,
-              noteLabelWidth * devicePixelRatio,
-              noteLabelHeight * devicePixelRatio,
-            ),
-          ],
-          [textColor],
-          BlendMode.dstIn,
-          null,
-          Paint(),
-        );
-
-        final transparentColor = color.withAlpha(0);
-
-        // Fade out gradient
-        final textFadeOutStop = (1 - (10 / width)).clamp(0.0, 1.0);
-        final textFadeOutGradient = ui.Gradient.linear(
-          Offset(x, textY),
-          Offset(x + width - 3, textY),
-          [transparentColor, transparentColor, color],
-          [0, textFadeOutStop, 1],
-        );
-
-        final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
-
-        canvas.drawRect(clipRect, textFadeOutPaint);
-
-        canvas.restore();
       }
 
       viewModel.visibleNotes.add(rect: noteRect, metadata: noteRef);

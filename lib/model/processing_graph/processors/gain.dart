@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -53,7 +54,7 @@ class GainProcessorModel extends _GainProcessorModel
   GainProcessorModel.create({required ProjectEntityIdAllocator idAllocator})
     : super(nodeId: idAllocator.allocateId());
 
-  GainProcessorModel.uninitialized() : super(nodeId: '');
+  GainProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory GainProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$GainProcessorModelAnthemModelMixin.fromJson(json);
@@ -107,7 +108,7 @@ abstract class _GainProcessorModel
   static const int audioOutputPortId = 1;
   static const int gainPortId = 2;
 
-  String nodeId;
+  Id nodeId;
 
   _GainProcessorModel({required this.nodeId});
 }

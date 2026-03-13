@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -53,7 +54,7 @@ class BalanceProcessorModel extends _BalanceProcessorModel
   BalanceProcessorModel.create({required ProjectEntityIdAllocator idAllocator})
     : super(nodeId: idAllocator.allocateId());
 
-  BalanceProcessorModel.uninitialized() : super(nodeId: '');
+  BalanceProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory BalanceProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$BalanceProcessorModelAnthemModelMixin.fromJson(json);
@@ -103,7 +104,7 @@ class BalanceProcessorModel extends _BalanceProcessorModel
 
 abstract class _BalanceProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  String nodeId;
+  Id nodeId;
 
   _BalanceProcessorModel({required this.nodeId});
 

@@ -74,7 +74,7 @@ class VisualizationItem extends _VisualizationItem
 abstract class _VisualizationItem {
   String id;
 
-  @Union([List<double>, List<String>])
+  @Union([List<double>, List<int>, List<String>])
   Object values;
 
   _VisualizationItem({required this.id, required this.values});

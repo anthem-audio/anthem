@@ -393,7 +393,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                 ),
 
                 // Playhead positioner for the playback start position
-                VisualizationBuilder.string(
+                VisualizationBuilder.int(
                   config: VisualizationSubscriptionConfig.latest(
                     'playhead_sequence_id',
                   ),
@@ -434,7 +434,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                 ),
 
                 // Playhead positioner for the actual playhead
-                VisualizationBuilder.string(
+                VisualizationBuilder.int(
                   // This pulls the latest visualization value for the active
                   // sequence ID.
                   //

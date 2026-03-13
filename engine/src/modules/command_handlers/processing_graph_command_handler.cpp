@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,8 +19,16 @@
 
 #include "processing_graph_command_handler.h"
 
+#include <string>
+
 #include "modules/core/anthem.h"
 #include "modules/processors/live_event_provider.h"
+
+namespace {
+std::string toIdString(int64_t id) {
+  return std::to_string(id);
+}
+}
 
 std::optional<Response>
 handleProcessingGraphCommand(Request& request) {
@@ -79,14 +87,18 @@ handleProcessingGraphCommand(Request& request) {
     });
 
     if (node == nullptr) {
-      juce::Logger::writeToLog("Node " + getPluginStateRequest.nodeId + " not found in processing graph.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(getPluginStateRequest.nodeId) +
+        " not found in processing graph.");
       return errorResponse;
     }
 
     auto processor = node->getProcessor();
 
     if (!processor) {
-      juce::Logger::writeToLog("Node " + getPluginStateRequest.nodeId + " does not have a processor.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(getPluginStateRequest.nodeId) +
+        " does not have a processor.");
       return errorResponse;
     }
 
@@ -116,19 +128,25 @@ handleProcessingGraphCommand(Request& request) {
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
     if (node == nullptr) {
-      juce::Logger::writeToLog("Node " + setPluginStateRequest.nodeId + " not found in processing graph.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(setPluginStateRequest.nodeId) +
+        " not found in processing graph.");
       return std::nullopt;
     }
 
     auto processor = node->getProcessor();
 
     if (!processor) {
-      juce::Logger::writeToLog("Node " + setPluginStateRequest.nodeId + " does not have a processor.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(setPluginStateRequest.nodeId) +
+        " does not have a processor.");
       return std::nullopt;
     }
 
     if (setPluginStateRequest.state.empty()) {
-      juce::Logger::writeToLog("Received empty state for node " + setPluginStateRequest.nodeId);
+      juce::Logger::writeToLog(
+        "Received empty state for node " +
+        toIdString(setPluginStateRequest.nodeId));
       return std::nullopt;
     }
 
@@ -151,14 +169,18 @@ handleProcessingGraphCommand(Request& request) {
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
     if (node == nullptr) {
-      juce::Logger::writeToLog("Node " + sendLiveEventRequest.liveEventProviderNodeId + " not found in processing graph.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(sendLiveEventRequest.liveEventProviderNodeId) +
+        " not found in processing graph.");
       return std::nullopt;
     }
 
     auto processorOpt = node->getProcessor();
 
     if (!processorOpt) {
-      juce::Logger::writeToLog("Node " + sendLiveEventRequest.liveEventProviderNodeId + " does not have a processor.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(sendLiveEventRequest.liveEventProviderNodeId) +
+        " does not have a processor.");
       return std::nullopt;
     }
 

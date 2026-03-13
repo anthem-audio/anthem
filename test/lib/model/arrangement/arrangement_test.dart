@@ -116,9 +116,9 @@ void main() {
         'id': getId(),
         'name': 'Deserialized arrangement',
         'clips': {
-          clipA1.id: clipA1.toJson(),
-          clipA2.id: clipA2.toJson(),
-          clipB.id: clipB.toJson(),
+          clipA1.id.toString(): clipA1.toJson(),
+          clipA2.id.toString(): clipA2.toJson(),
+          clipB.id.toString(): clipB.toJson(),
         },
         'timeSignatureChanges': <Map<String, dynamic>>[],
       });
@@ -247,13 +247,10 @@ void main() {
         verification.called(1);
 
         final captured = verification.captured;
-        final tracksToRebuild = captured[0] as List<String>;
+        final tracksToRebuild = captured[0] as List<Id>;
         final invalidationRanges = captured[1] as List<InvalidationRange>;
 
-        expect(
-          tracksToRebuild.toSet(),
-          equals(<String>{oldTrackId, newTrackId}),
-        );
+        expect(tracksToRebuild.toSet(), equals(<Id>{oldTrackId, newTrackId}));
         expect(invalidationRanges, hasLength(1));
         expect(invalidationRanges[0].start, equals(96));
         expect(invalidationRanges[0].end, equals(144));
@@ -308,13 +305,10 @@ void main() {
         verification.called(1);
 
         final captured = verification.captured;
-        final tracksToRebuild = captured[0] as List<String>;
+        final tracksToRebuild = captured[0] as List<Id>;
         final invalidationRanges = captured[1] as List<InvalidationRange>;
 
-        expect(
-          tracksToRebuild.toSet(),
-          equals(<String>{oldTrackId, newTrackId}),
-        );
+        expect(tracksToRebuild.toSet(), equals(<Id>{oldTrackId, newTrackId}));
         expect(invalidationRanges, hasLength(1));
         expect(invalidationRanges[0].start, equals(100));
         expect(invalidationRanges[0].end, equals(196));

@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
@@ -50,7 +51,7 @@ import 'package:anthem_codegen/include.dart';
 /// need in the UI as well to be able to define a contract for what a processor
 /// should be able to provide. This interface is that contract.
 mixin Processor on AnthemModelBase, ProjectModelGetterMixin {
-  String get nodeId;
+  Id get nodeId;
 
   /// The node that this processor represents.
   ///

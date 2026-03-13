@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -54,7 +55,7 @@ class SequenceNoteProviderProcessorModel
   }) : super(nodeId: idAllocator.allocateId());
 
   SequenceNoteProviderProcessorModel.uninitialized()
-    : super(nodeId: '', trackId: '');
+    : super(nodeId: -1, trackId: -1);
 
   factory SequenceNoteProviderProcessorModel.fromJson(
     Map<String, dynamic> json,
@@ -90,10 +91,10 @@ abstract class _SequenceNoteProviderProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int eventOutputPortId = 0;
 
-  String nodeId;
+  Id nodeId;
 
   /// The ID of the track that this node is providing note events for.
-  String trackId;
+  Id trackId;
 
   _SequenceNoteProviderProcessorModel({
     required this.nodeId,

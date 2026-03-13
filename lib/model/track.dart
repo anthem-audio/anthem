@@ -46,7 +46,7 @@ class TrackModel extends _TrackModel
 
   TrackModel.uninitialized()
     : super(
-        id: '',
+        id: -1,
         name: '',
         color: AnthemColor.uninitialized(),
         type: .hybrid,

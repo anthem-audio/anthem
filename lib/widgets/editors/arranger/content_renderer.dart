@@ -19,6 +19,7 @@
 
 import 'dart:math';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
@@ -490,14 +491,15 @@ class _ClipLayerBuilder {
   /// collector that allows us to test whether a given range overlaps with any of
   /// the existing ranges. If it does, we know the clip overlaps with another
   /// clip in this layer, and we need to start a new layer.
-  final List<Map<String, InvalidationRangeCollector>> _invalidationCollectors =
-      [{}];
+  final List<Map<Id, InvalidationRangeCollector>> _invalidationCollectors = [
+    {},
+  ];
 
   /// Adds a clip to the appropriate layer, creating a new layer if necessary.
   ///
   /// Returns the layer index the clip was added to.
   int insertClip({
-    required String trackId,
+    required Id trackId,
     required int clipStart,
     required int clipEnd,
   }) {
