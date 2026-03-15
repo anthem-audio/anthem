@@ -686,6 +686,91 @@ void main() {
         expect(tracks[newGroupTrack.id], isNull);
       });
 
+      test(
+        'Grouping a single top-level regular track wraps it in a new group',
+        () {
+          final originalTrackOrder = List<Id>.from(trackOrder);
+          final mockArrangerViewModel =
+              ServiceRegistry.forProject(project.id).arrangerViewModel
+                  as MockArrangerViewModel;
+
+          final command = TrackGroupUngroupCommand.group(
+            project: project,
+            trackIds: [trackJId],
+          );
+
+          command.execute(project);
+
+          expect(trackOrder, hasLength(originalTrackOrder.length));
+          expect(trackOrder[0], equals(trackA.id));
+          expect(trackOrder[2], equals(trackK.id));
+
+          final newGroupTrack = tracks[trackOrder[1]];
+          expect(newGroupTrack, isNotNull);
+          newGroupTrack!;
+
+          expect(newGroupTrack.type, equals(TrackType.group));
+          expect(newGroupTrack.parentTrackId, isNull);
+          expect(newGroupTrack.childTracks, hasLength(1));
+          expect(newGroupTrack.childTracks[0], equals(trackJ.id));
+          expect(trackJ.parentTrackId, equals(newGroupTrack.id));
+
+          verify(mockArrangerViewModel.registerTrack(any)).called(1);
+          verifyNever(mockArrangerViewModel.unregisterTrack(any));
+
+          command.rollback(project);
+
+          expect(trackOrder, orderedEquals(originalTrackOrder));
+          expect(trackJ.parentTrackId, isNull);
+          expect(tracks[newGroupTrack.id], isNull);
+
+          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
+        },
+      );
+
+      test(
+        'Grouping a single top-level send track wraps it in a new group',
+        () {
+          final originalSendTrackOrder = List<Id>.from(sendTrackOrder);
+          final mockArrangerViewModel =
+              ServiceRegistry.forProject(project.id).arrangerViewModel
+                  as MockArrangerViewModel;
+
+          final command = TrackGroupUngroupCommand.group(
+            project: project,
+            trackIds: [trackOId],
+          );
+
+          command.execute(project);
+
+          expect(sendTrackOrder, hasLength(originalSendTrackOrder.length));
+          expect(sendTrackOrder[0], equals(trackL.id));
+          expect(sendTrackOrder[2], equals(trackP.id));
+          expect(sendTrackOrder[3], equals(masterTrack.id));
+
+          final newGroupTrack = tracks[sendTrackOrder[1]];
+          expect(newGroupTrack, isNotNull);
+          newGroupTrack!;
+
+          expect(newGroupTrack.type, equals(TrackType.group));
+          expect(newGroupTrack.parentTrackId, isNull);
+          expect(newGroupTrack.childTracks, hasLength(1));
+          expect(newGroupTrack.childTracks[0], equals(trackO.id));
+          expect(trackO.parentTrackId, equals(newGroupTrack.id));
+
+          verify(mockArrangerViewModel.registerTrack(any)).called(1);
+          verifyNever(mockArrangerViewModel.unregisterTrack(any));
+
+          command.rollback(project);
+
+          expect(sendTrackOrder, orderedEquals(originalSendTrackOrder));
+          expect(trackO.parentTrackId, isNull);
+          expect(tracks[newGroupTrack.id], isNull);
+
+          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
+        },
+      );
+
       test('Ungrouping send track L', () {
         final originalTrackOrderLength = trackOrder.length;
         final originalSendTrackOrderLength = sendTrackOrder.length;

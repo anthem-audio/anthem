@@ -126,7 +126,7 @@ class TrackHeader extends StatelessObserverWidget {
               ),
               onSelected: () {
                 projectController.groupTracks(
-                  viewModel.selectedTracks.nonObservableInner,
+                  viewModel.selectedTracks.nonObservableInner.toList(),
                 );
               },
             ),

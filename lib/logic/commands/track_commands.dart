@@ -689,7 +689,7 @@ class TrackGroupUngroupCommand extends Command {
   /// action is invoked.
   TrackGroupUngroupCommand.group({
     required ProjectModel project,
-    required Iterable<Id> trackIds,
+    required List<Id> trackIds,
   }) : _isGroup = true {
     // The logic here is non-trivial and represents intentional design
     // decisions, so I will spend some time to describe what's going on and why.
@@ -793,11 +793,14 @@ class TrackGroupUngroupCommand extends Command {
     /// will not be given, since it is not a parent of any of the items passed
     /// in [originTrackList.]
     (Id? commonAncestor, List<Id> childrenPassedThrough) getCommonAncestor(
-      Iterable<Id> originTrackList,
+      List<Id> originTrackList,
     ) {
       int getDepth(Id trackId) {
         var track = project.tracks[trackId]!;
-        var depth = 0;
+        // Top level tracks are at depth 1. For the purpose of the algorithm
+        // here, their "parent" - not a real track, null parentTrackId - is
+        // represented at a depth of 0.
+        var depth = 1;
         // The 100,000 here is a sanity check, to prevent infinite loop in the
         // case of a cycle. Cycles should not be possible unless we have a bug,
         // or a project file that was incorrectly modified by someone else.
@@ -810,9 +813,11 @@ class TrackGroupUngroupCommand extends Command {
 
       // This is a map of trackId to (depth, direct children passed through to
       // reach this track)
-      final trackDepthMap = Map.fromEntries(
-        originTrackList.map((id) => MapEntry(id, (getDepth(id), <Id>[]))),
-      );
+      final trackDepthMap = <Id?, (int, List<Id>)>{
+        ...Map.fromEntries(
+          originTrackList.map((id) => MapEntry(id, (getDepth(id), <Id>[]))),
+        ),
+      };
 
       int sanityCount = 0;
 
@@ -832,12 +837,13 @@ class TrackGroupUngroupCommand extends Command {
           break;
         }
 
-        final (oldDepth, _) = trackDepthMap.remove(trackIdAtHighest!)!;
-        final parentTrackId = project.tracks[trackIdAtHighest]!.parentTrackId!;
+        final currentTrackId = trackIdAtHighest!;
+        final (oldDepth, _) = trackDepthMap.remove(currentTrackId)!;
+        final parentTrackId = project.tracks[currentTrackId]!.parentTrackId;
         if (trackDepthMap[parentTrackId] == null) {
-          trackDepthMap[parentTrackId] = (oldDepth - 1, [trackIdAtHighest]);
+          trackDepthMap[parentTrackId] = (oldDepth - 1, [currentTrackId]);
         } else {
-          trackDepthMap[parentTrackId]!.$2.add(trackIdAtHighest);
+          trackDepthMap[parentTrackId]!.$2.add(currentTrackId);
         }
 
         if (trackDepthMap.length == 1) {
@@ -855,7 +861,7 @@ class TrackGroupUngroupCommand extends Command {
       }
 
       if (trackDepthMap.length != 1) {
-        return (null, trackDepthMap.keys.toList());
+        return (null, trackDepthMap.keys.whereType<Id>().toList());
       }
 
       final entryToReturn = trackDepthMap.entries.first;

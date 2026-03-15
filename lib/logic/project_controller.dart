@@ -524,7 +524,7 @@ class ProjectController {
     return true;
   }
 
-  void groupTracks(Iterable<Id> trackIds) {
+  void groupTracks(List<Id> trackIds) {
     project.execute(
       TrackGroupUngroupCommand.group(project: project, trackIds: trackIds),
     );
