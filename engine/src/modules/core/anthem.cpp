@@ -21,6 +21,23 @@
 
 #include "modules/processing_graph/compiler/anthem_graph_compiler.h"
 
+namespace {
+std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device) {
+  if (device == nullptr) {
+    return nullptr;
+  }
+
+  auto audioConfig = std::make_shared<EngineAudioConfig>();
+  audioConfig->sampleRate = device->getCurrentSampleRate();
+  audioConfig->blockSize = device->getCurrentBufferSizeSamples();
+  audioConfig->inputChannelCount =
+    device->getActiveInputChannels().countNumberOfSetBits();
+  audioConfig->outputChannelCount =
+    device->getActiveOutputChannels().countNumberOfSetBits();
+  return audioConfig;
+}
+} // namespace
+
 std::unique_ptr<Anthem> Anthem::instance = nullptr;
 
 Anthem::Anthem() {
@@ -69,12 +86,12 @@ void Anthem::shutdown() {
   }
 }
 
-void Anthem::startAudioCallback() {
+std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   if (isAudioCallbackRunning) {
     juce::Logger::writeToLog(
       "Tried to start audio callback when it was already running. This probably doesn't break anything, but it's definitely a bug."
     );
-    return;
+    return getCurrentAudioConfig();
   }
 
   juce::Logger::writeToLog("Creating audio callback...");
@@ -85,7 +102,7 @@ void Anthem::startAudioCallback() {
     juce::Logger::writeToLog(
       "Failed to create audio callback: " + juce::String(e.what())
     );
-    return;
+    return nullptr;
   }
 
   juce::Logger::writeToLog("Initializing audio device manager...");
@@ -117,7 +134,7 @@ void Anthem::startAudioCallback() {
     juce::Logger::writeToLog(
       "initialiseWithDefaultDevices() failed again: " + initError
     );
-    return;
+    return nullptr;
   }
 
   auto* device = this->audioDeviceManager.getCurrentAudioDevice();
@@ -125,7 +142,13 @@ void Anthem::startAudioCallback() {
     juce::Logger::writeToLog(
       "Audio device manager initialized, but no current audio device is available."
     );
-    return;
+    return nullptr;
+  }
+
+  auto audioConfig = buildAudioConfig(device);
+  if (audioConfig == nullptr) {
+    juce::Logger::writeToLog("Failed to build audio config for current device.");
+    return nullptr;
   }
 
   juce::Logger::writeToLog("Selected audio device: " + device->getName());
@@ -145,6 +168,12 @@ void Anthem::startAudioCallback() {
   juce::Logger::writeToLog("Audio callback registered with device manager.");
 
   isAudioCallbackRunning = true;
+
+  return audioConfig;
+}
+
+std::shared_ptr<EngineAudioConfig> Anthem::getCurrentAudioConfig() const {
+  return buildAudioConfig(audioDeviceManager.getCurrentAudioDevice());
 }
 
 void Anthem::compileProcessingGraph() {

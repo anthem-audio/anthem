@@ -104,8 +104,9 @@ Future<void> _flushMicrotasks() async {
 
 Future<void> _startEngineThroughInit(
   Engine engine,
-  _TestEngineConnector Function() getConnector,
-) async {
+  _TestEngineConnector Function() getConnector, {
+  required EngineAudioConfig audioConfig,
+}) async {
   final startFuture = engine.start();
   final connector = getConnector();
 
@@ -123,6 +124,16 @@ Future<void> _startEngineThroughInit(
   connector.emitResponse(
     ModelInitResponse(id: modelInitRequest.id, success: true),
   );
+  await _flushMicrotasks();
+
+  final startAudioRequest = connector.sentRequests[2] as StartAudioRequest;
+  connector.emitResponse(
+    StartAudioResponse(
+      id: startAudioRequest.id,
+      success: true,
+      audioConfig: audioConfig,
+    ),
+  );
 
   await startFuture;
 }
@@ -137,6 +148,7 @@ void main() {
     late AnthemObservableMap<Id, NodeModel> nodes;
     late _TestEngineConnector connector;
     late Engine engine;
+    late EngineAudioConfig startupAudioConfig;
 
     setUp(() {
       project = MockProjectModel();
@@ -147,6 +159,12 @@ void main() {
       when(project.visualizationProvider).thenReturn(visualizationProvider);
       when(project.processingGraph).thenReturn(processingGraph);
       when(processingGraph.nodes).thenReturn(nodes);
+      startupAudioConfig = EngineAudioConfig(
+        sampleRate: 48000,
+        blockSize: 256,
+        inputChannelCount: 2,
+        outputChannelCount: 2,
+      );
 
       EngineConnectorBase createConnector(
         int id, {
@@ -175,6 +193,13 @@ void main() {
     test(
       'start sends a ready check first, then flushes model init, then starts heartbeat',
       () async {
+        EngineAudioConfig? audioConfigWhenRunning;
+        engine.engineStateStream.listen((state) {
+          if (state == EngineState.running) {
+            audioConfigWhenRunning = engine.audioConfig;
+          }
+        });
+
         final startFuture = engine.start();
 
         connector.completeInit();
@@ -198,17 +223,51 @@ void main() {
           [EngineReadyCheckRequest, ModelInitRequest],
         );
         expect(engine.engineState, EngineState.starting);
+        expect(engine.audioConfig, isNull);
         expect(connector.startHeartbeatTimerCallCount, 0);
 
         final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
         connector.emitResponse(
           ModelInitResponse(id: modelInitRequest.id, success: true),
         );
+        await _flushMicrotasks();
+
+        expect(
+          connector.sentRequests.map((request) => request.runtimeType).toList(),
+          [EngineReadyCheckRequest, ModelInitRequest, StartAudioRequest],
+        );
+        expect(engine.audioConfig, isNull);
+
+        final startAudioRequest =
+            connector.sentRequests[2] as StartAudioRequest;
+        connector.emitResponse(
+          StartAudioResponse(
+            id: startAudioRequest.id,
+            success: true,
+            audioConfig: startupAudioConfig,
+          ),
+        );
 
         await startFuture;
+        await _flushMicrotasks();
 
         expect(engine.engineState, EngineState.running);
         expect(connector.startHeartbeatTimerCallCount, 1);
+        expect(engine.audioConfig?.sampleRate, startupAudioConfig.sampleRate);
+        expect(engine.audioConfig?.blockSize, startupAudioConfig.blockSize);
+        expect(
+          audioConfigWhenRunning?.sampleRate,
+          startupAudioConfig.sampleRate,
+        );
+        expect(audioConfigWhenRunning?.blockSize, startupAudioConfig.blockSize);
+        expect(
+          audioConfigWhenRunning?.inputChannelCount,
+          startupAudioConfig.inputChannelCount,
+        );
+        expect(
+          audioConfigWhenRunning?.outputChannelCount,
+          startupAudioConfig.outputChannelCount,
+        );
         verify(project.initializeEngine()).called(1);
       },
     );
@@ -247,6 +306,22 @@ void main() {
         connector.emitResponse(
           ModelInitResponse(id: modelInitRequest.id, success: true),
         );
+        await _flushMicrotasks();
+
+        expect(
+          connector.sentRequests.map((request) => request.runtimeType).toList(),
+          [EngineReadyCheckRequest, ModelInitRequest, StartAudioRequest],
+        );
+
+        final startAudioRequest =
+            connector.sentRequests[2] as StartAudioRequest;
+        connector.emitResponse(
+          StartAudioResponse(
+            id: startAudioRequest.id,
+            success: true,
+            audioConfig: startupAudioConfig,
+          ),
+        );
 
         await startFuture;
 
@@ -255,6 +330,7 @@ void main() {
           [
             EngineReadyCheckRequest,
             ModelInitRequest,
+            StartAudioRequest,
             SetVisualizationUpdateIntervalRequest,
             ModelUpdateRequest,
           ],
@@ -282,23 +358,81 @@ void main() {
     );
 
     test(
+      'audio startup failure stops the engine after model init succeeds',
+      () async {
+        final startFuture = engine.start();
+
+        connector.completeInit();
+        await _flushMicrotasks();
+
+        final readyCheckRequest =
+            connector.sentRequests.single as EngineReadyCheckRequest;
+        connector.emitResponse(
+          EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+        );
+        await _flushMicrotasks();
+
+        final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
+        connector.emitResponse(
+          ModelInitResponse(id: modelInitRequest.id, success: true),
+        );
+        await _flushMicrotasks();
+
+        final startAudioRequest =
+            connector.sentRequests[2] as StartAudioRequest;
+        connector.emitResponse(
+          StartAudioResponse(
+            id: startAudioRequest.id,
+            success: false,
+            error: 'No audio device available.',
+          ),
+        );
+
+        await startFuture;
+
+        expect(engine.engineState, EngineState.stopped);
+        expect(engine.audioConfig, isNull);
+        expect(connector.isDisposed, isTrue);
+        expect(connector.startHeartbeatTimerCallCount, 0);
+      },
+    );
+
+    test(
       'AudioReadyEvent updates audio state and completes audioReadyFuture',
       () async {
-        await _startEngineThroughInit(engine, () => connector);
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
 
         final audioReadyFuture = engine.audioReadyFuture;
-        connector.emitResponse(AudioReadyEvent(id: -1));
+        final restartedAudioConfig = EngineAudioConfig(
+          sampleRate: 44100,
+          blockSize: 512,
+          inputChannelCount: 0,
+          outputChannelCount: 2,
+        );
+        connector.emitResponse(
+          AudioReadyEvent(id: -1, audioConfig: restartedAudioConfig),
+        );
 
         await audioReadyFuture;
 
         expect(engine.isAudioReady, isTrue);
+        expect(engine.audioConfig?.sampleRate, restartedAudioConfig.sampleRate);
+        expect(engine.audioConfig?.blockSize, restartedAudioConfig.blockSize);
       },
     );
 
     test(
       'VisualizationUpdateEvent is forwarded to the project visualization provider',
       () async {
-        await _startEngineThroughInit(engine, () => connector);
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
 
         final update = VisualizationUpdateEvent(
           id: -1,
@@ -317,7 +451,11 @@ void main() {
       final node = MockNodeModel();
       nodes[1] = node;
 
-      await _startEngineThroughInit(engine, () => connector);
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
 
       connector.emitResponse(
         PluginChangedEvent(
@@ -347,13 +485,33 @@ void main() {
       when(node.pluginLoadedCompleter).thenReturn(pluginLoadedCompleter);
       nodes[1] = node;
 
-      await _startEngineThroughInit(engine, () => connector);
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
 
       connector.emitResponse(PluginLoadedEvent(id: -1, nodeId: 1));
 
       await pluginLoadedCompleter.future;
 
       expect(pluginLoadedCompleter.isCompleted, isTrue);
+    });
+
+    test('stopping the engine clears the engine audio config', () async {
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+
+      expect(engine.audioConfig, isNotNull);
+
+      connector.emitExit();
+      await _flushMicrotasks();
+
+      expect(engine.engineState, EngineState.stopped);
+      expect(engine.audioConfig, isNull);
     });
   });
 }

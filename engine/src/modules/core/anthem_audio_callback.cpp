@@ -173,9 +173,18 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
     juce::Logger::writeToLog(
       "audioDeviceAboutToStart(): transport prepared for device " + deviceName
     );
+
+    auto audioConfig = anthem.getCurrentAudioConfig();
+    if (audioConfig == nullptr) {
+      juce::Logger::writeToLog(
+        "audioDeviceAboutToStart(): Failed to build audio config for current device."
+      );
+      return;
+    }
     
     // This notifies the UI that the engine has started
     Response response = AudioReadyEvent {
+      .audioConfig = audioConfig,
       .responseBase = ResponseBase {
         .id = -1
       },

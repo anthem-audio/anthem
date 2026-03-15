@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -158,6 +158,7 @@ class Engine {
   final ListQueue<_QueuedStartupRequest> _startupQueue = ListQueue();
 
   bool _isAudioReady = false;
+  EngineAudioConfig? _audioConfig;
 
   /// Completer that completes when the audio thread is ready.
   Completer<void> _audioReadyCompleter = Completer<void>();
@@ -179,6 +180,14 @@ class Engine {
 
   /// Returns whether the engine's audio thread has finished starting.
   bool get isAudioReady => _isAudioReady;
+
+  /// The engine's current audio device configuration.
+  ///
+  /// Returns `null` whenever the current config is not valid, including while
+  /// the engine is stopped, while startup is still in progress, or after the
+  /// audio device has been torn down.
+  EngineAudioConfig? get audioConfig =>
+      _engineState == EngineState.running ? _audioConfig : null;
 
   /// Returns a [Future] that completes when the engine is ready to receive
   /// messages.
@@ -247,6 +256,7 @@ class Engine {
     if (state == EngineState.stopped) {
       _socketReady = false;
       _isAudioReady = false;
+      _audioConfig = null;
       _clearStartupQueue(
         StateError('Engine stopped before startup completed.'),
       );
@@ -292,7 +302,8 @@ class Engine {
       case VisualizationUpdateEvent e:
         project.visualizationProvider.processVisualizationUpdate(e);
         return;
-      case AudioReadyEvent _:
+      case AudioReadyEvent e:
+        _audioConfig = e.audioConfig;
         isAudioReady = true;
         return;
       case PluginChangedEvent e:
@@ -316,13 +327,6 @@ class Engine {
         return;
       default:
         break;
-    }
-
-    if (response is VisualizationUpdateEvent) {
-      project.visualizationProvider.processVisualizationUpdate(response);
-      return;
-    } else if (response is AudioReadyEvent) {
-      isAudioReady = true;
     }
 
     final pendingReply = _replyFunctions.remove(response.id);
@@ -370,6 +374,7 @@ class Engine {
       return;
     }
 
+    _audioConfig = null;
     _isAudioReady = false;
     if (_audioReadyCompleter.isCompleted) {
       _audioReadyCompleter = Completer<void>();
@@ -429,6 +434,25 @@ class Engine {
           'Engine model init failed: ${didInitializeProject.error ?? 'Unknown error.'}',
         );
       }
+
+      final audioStartReply =
+          await _request(
+                StartAudioRequest(id: _getRequestId()),
+                startupBehavior: StartupSendBehavior.bypassStartupQueue,
+              )
+              as StartAudioResponse;
+      if (!audioStartReply.success) {
+        throw StateError(
+          'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
+        );
+      }
+      if (audioStartReply.audioConfig == null) {
+        throw StateError(
+          'Engine audio startup failed: audio config was not provided.',
+        );
+      }
+
+      _audioConfig = audioStartReply.audioConfig;
 
       _autoFlushStartupQueue = true;
       _flushStartupQueue();

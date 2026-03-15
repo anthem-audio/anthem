@@ -21,7 +21,6 @@
 
 #include <memory>
 #include <iostream>
-
 #include <juce_audio_devices/juce_audio_devices.h>
 
 #ifndef __EMSCRIPTEN__
@@ -40,6 +39,7 @@
 #include "modules/util/id_generator.h"
 
 #include "project.h"
+#include "messages/messages.h"
 
 class Anthem {
 private:
@@ -124,7 +124,9 @@ public:
   void shutdown();
 
   // Sets up the audio callback
-  void startAudioCallback();
+  std::shared_ptr<EngineAudioConfig> startAudioCallback();
+
+  std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
 
   void compileProcessingGraph();
 };

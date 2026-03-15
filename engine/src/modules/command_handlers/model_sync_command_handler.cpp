@@ -63,13 +63,6 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
 
       juce::Logger::writeToLog("Loaded project model");
 
-      // We could probably move this action to a command, but for now we always
-      // want to start as soon as we have a valid project anyway, so this is
-      // probably fine.
-      juce::Logger::writeToLog("Starting audio callback after model init...");
-      anthem.startAudioCallback();
-      juce::Logger::writeToLog("startAudioCallback() returned.");
-
       return std::optional(ModelInitResponse {
         .success = true,
         .error = std::nullopt,

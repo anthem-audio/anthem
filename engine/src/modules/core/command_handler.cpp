@@ -133,6 +133,33 @@ void CommandHandler::processNextCommand() {
     );
   }
 
+  else if (rfl::holds_alternative<StartAudioRequest>(request.variant())) {
+    auto& requestAsStartAudio = rfl::get<StartAudioRequest>(request.variant());
+
+    juce::Logger::writeToLog("Starting audio callback after model init...");
+    auto audioConfig = Anthem::getInstance().startAudioCallback();
+    juce::Logger::writeToLog("startAudioCallback() returned.");
+
+    auto startAudioReply = StartAudioResponse{
+      .success = audioConfig != nullptr,
+      .error =
+        audioConfig != nullptr
+          ? std::nullopt
+          : std::optional<std::string>("Failed to initialize audio device."),
+      .audioConfig =
+        audioConfig != nullptr
+          ? std::optional(audioConfig)
+          : std::nullopt,
+      .responseBase = ResponseBase{
+        .id = requestAsStartAudio.requestBase.get().id
+      }
+    };
+
+    response = std::optional(
+      std::move(startAudioReply)
+    );
+  }
+
   // Forward request to handlers
 
   bool didOverwriteResponse = false;

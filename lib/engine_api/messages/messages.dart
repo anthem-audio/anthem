@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,6 +28,42 @@ part 'sequencer.dart';
 part 'visualization.dart';
 
 part 'messages.g.dart';
+
+@AnthemModel(serializable: true, generateCpp: true)
+class EngineAudioConfig extends _EngineAudioConfig
+    with _$EngineAudioConfigAnthemModelMixin {
+  EngineAudioConfig.uninitialized()
+    : super(
+        sampleRate: 0.0,
+        blockSize: 0,
+        inputChannelCount: 0,
+        outputChannelCount: 0,
+      );
+
+  EngineAudioConfig({
+    required super.sampleRate,
+    required super.blockSize,
+    required super.inputChannelCount,
+    required super.outputChannelCount,
+  });
+
+  factory EngineAudioConfig.fromJson(Map<String, dynamic> json) =>
+      _$EngineAudioConfigAnthemModelMixin.fromJson(json);
+}
+
+abstract class _EngineAudioConfig {
+  double sampleRate;
+  int blockSize;
+  int inputChannelCount;
+  int outputChannelCount;
+
+  _EngineAudioConfig({
+    required this.sampleRate,
+    required this.blockSize,
+    required this.inputChannelCount,
+    required this.outputChannelCount,
+  });
+}
 
 class Exit extends Request {
   Exit.uninitialized();
@@ -69,6 +105,14 @@ class EngineReadyCheckRequest extends Request {
   }
 }
 
+class StartAudioRequest extends Request {
+  StartAudioRequest.uninitialized();
+
+  StartAudioRequest({required int id}) {
+    super.id = id;
+  }
+}
+
 class EngineReadyCheckResponse extends Response {
   bool success = false;
   String? error;
@@ -84,12 +128,31 @@ class EngineReadyCheckResponse extends Response {
   }
 }
 
+class StartAudioResponse extends Response {
+  bool success = false;
+  String? error;
+  EngineAudioConfig? audioConfig;
+
+  StartAudioResponse.uninitialized();
+
+  StartAudioResponse({
+    required int id,
+    required this.success,
+    this.error,
+    this.audioConfig,
+  }) {
+    super.id = id;
+  }
+}
+
 /// Unsolicited response that is sent back one time, when the audio device has
 /// initialized.
 class AudioReadyEvent extends Response {
+  late EngineAudioConfig audioConfig;
+
   AudioReadyEvent.uninitialized();
 
-  AudioReadyEvent({required int id}) {
+  AudioReadyEvent({required int id, required this.audioConfig}) {
     super.id = id;
   }
 }
