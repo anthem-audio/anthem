@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,6 +29,7 @@ import 'package:source_gen/source_gen.dart';
 import '../util/enum_info.dart';
 import '../util/model_class_info.dart';
 import '../util/model_types.dart';
+import '../util/track_library_part_inputs.dart';
 import '../util/writer.dart';
 import 'get_cpp_type.dart';
 
@@ -46,13 +47,12 @@ class CppModelBuilder implements Builder {
 
     final inputId = buildStep.inputId;
     if (inputId.extension != '.dart') return;
+    if (!await buildStep.resolver.isLibrary(inputId)) return;
+
+    await trackLibraryPartInputs(buildStep);
 
     final LibraryElement library;
-    try {
-      library = await buildStep.resolver.libraryFor(inputId);
-    } catch (ex) {
-      return;
-    }
+    library = await buildStep.resolver.libraryFor(inputId);
 
     final libraryReader = LibraryReader(library);
 

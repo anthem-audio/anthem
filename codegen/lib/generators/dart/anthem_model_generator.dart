@@ -23,6 +23,7 @@ import 'package:anthem_codegen/generators/dart/model_change_generator.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
+import 'package:anthem_codegen/generators/util/track_library_part_inputs.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -55,6 +56,8 @@ class AnthemModelGenerator extends Generator {
   @override
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
     final result = StringBuffer();
+
+    await trackLibraryPartInputs(buildStep);
 
     // Looks for @AnthemModel on each class in the file, and generates the
     // appropriate code
