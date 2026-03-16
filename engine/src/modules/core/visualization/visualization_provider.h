@@ -24,24 +24,40 @@
 #include <string>
 #include <cstdint>
 
+template <typename T>
+struct TimestampedVisualizationData {
+  std::vector<int64_t> sampleTimestamps;
+  std::vector<T> values;
+};
+
+template <typename T>
+struct TimestampedVisualizationValue {
+  int64_t sampleTimestamp;
+  T value;
+};
+
+using NumericVisualizationData = TimestampedVisualizationData<double>;
+using IntegerVisualizationData = TimestampedVisualizationData<int64_t>;
+using StringVisualizationData = TimestampedVisualizationData<std::string>;
+
 // This is an abstract interface for visualization data providers. It is used by the
 // VisualizationBroker to query data from various sources in the engine.
 class VisualizationDataProvider {
 public:
   virtual ~VisualizationDataProvider() = default;
 
-  // Get the most recent numeric data for this provider, if any.
-  virtual std::optional<std::vector<double>> getNumericData() {
+  // Get timestamped numeric data for this provider, if any.
+  virtual std::optional<NumericVisualizationData> getNumericData() {
     return std::nullopt;
   }
 
-  // Get the most recent integer data for this provider, if any.
-  virtual std::optional<std::vector<int64_t>> getIntegerData() {
+  // Get timestamped integer data for this provider, if any.
+  virtual std::optional<IntegerVisualizationData> getIntegerData() {
     return std::nullopt;
   }
 
-  // Get the most recent string data for this provider, if any.
-  virtual std::optional<std::vector<std::string>> getStringData() {
+  // Get timestamped string data for this provider, if any.
+  virtual std::optional<StringVisualizationData> getStringData() {
     return std::nullopt;
   }
 };

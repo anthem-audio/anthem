@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -63,9 +63,32 @@ class SetVisualizationUpdateIntervalRequest extends Request {
 @AnthemModel(serializable: true, generateCpp: true)
 class VisualizationItem extends _VisualizationItem
     with _$VisualizationItemAnthemModelMixin {
-  VisualizationItem.uninitialized() : super(id: '', values: <double>[]);
+  VisualizationItem.uninitialized()
+    : super(id: '', values: <double>[], sampleTimestamps: <int>[]);
 
-  VisualizationItem({required super.id, required super.values});
+  VisualizationItem({
+    required super.id,
+    required super.values,
+    required List<int> sampleTimestamps,
+  }) : super(
+         sampleTimestamps: _validateSampleTimestamps(values, sampleTimestamps),
+       );
+
+  static List<int> _validateSampleTimestamps(
+    Object values,
+    List<int> sampleTimestamps,
+  ) {
+    final valueList = values as List;
+
+    if (sampleTimestamps.length != valueList.length) {
+      throw ArgumentError(
+        'sampleTimestamps must have the same length as values. '
+        'Got ${sampleTimestamps.length} timestamps for ${valueList.length} values.',
+      );
+    }
+
+    return sampleTimestamps;
+  }
 
   factory VisualizationItem.fromJson(Map<String, dynamic> json) =>
       _$VisualizationItemAnthemModelMixin.fromJson(json);
@@ -77,7 +100,17 @@ abstract class _VisualizationItem {
   @Union([List<double>, List<int>, List<String>])
   Object values;
 
-  _VisualizationItem({required this.id, required this.values});
+  /// Sample-domain timestamps for the values in this item.
+  ///
+  /// Each timestamp is in the engine's monotonic sample counter domain, and the
+  /// length must match the number of entries in [values].
+  List<int> sampleTimestamps;
+
+  _VisualizationItem({
+    required this.id,
+    required this.values,
+    required this.sampleTimestamps,
+  });
 }
 
 /// An unsolicited response that gives back visualization data.

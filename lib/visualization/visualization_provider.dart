@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -74,21 +74,26 @@ class VisualizationProvider {
       final subscriptions = _subscriptions[item.id];
 
       if (subscriptions != null) {
-        for (final subscription in subscriptions) {
-          final values = item.values as List;
+        final values = item.values as List;
+        final sampleTimestamps = item.sampleTimestamps;
 
-          for (final value in values) {
-            switch (value) {
-              case String _:
-                subscription._addValue(value);
-              case int _:
-                subscription._addValue(value);
-              case double _:
-                subscription._addValue(value);
-              default:
-                throw ArgumentError(
-                  'Unexpected value type: ${value.runtimeType} for item ${item.id}. Expected String, int, or double.',
-                );
+        if (values.length != sampleTimestamps.length) {
+          throw StateError(
+            'Visualization item ${item.id} has ${values.length} values but ${sampleTimestamps.length} sample timestamps.',
+          );
+        }
+
+        for (final subscription in subscriptions) {
+          for (var i = 0; i < values.length; i++) {
+            final value = values[i];
+            final sampleTimestamp = sampleTimestamps[i];
+
+            if (value is String || value is int || value is double) {
+              subscription._addValue(value, sampleTimestamp);
+            } else {
+              throw ArgumentError(
+                'Unexpected value type: ${value.runtimeType} for item ${item.id}. Expected String, int, or double.',
+              );
             }
           }
         }

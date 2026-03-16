@@ -437,7 +437,7 @@ void main() {
         final update = VisualizationUpdateEvent(
           id: -1,
           items: [
-            VisualizationItem(id: 'cpu', values: [0.5]),
+            VisualizationItem(id: 'cpu', values: [0.5], sampleTimestamps: [1]),
           ],
         );
 

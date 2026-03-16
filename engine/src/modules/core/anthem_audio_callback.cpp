@@ -80,6 +80,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
   // Set up the transport for this processing block
   transport->rt_prepareForProcessingBlock();
+  const auto blockStartSample = transport->rt_sampleCounter;
 
   // Tell the sequence store to pick up any sequence updates.
   anthem->sequenceStore->rt_processSequenceChanges(numSamples);
@@ -130,13 +131,21 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
   auto durationInSeconds = static_cast<double>(duration) / 1e6;
   auto cpuBurden = durationInSeconds * this->sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
-  cpuBurdenProvider->rt_updateCpuBurden(cpuBurden);
+  cpuBurdenProvider->rt_updateCpuBurden(
+    cpuBurden,
+    blockStartSample + static_cast<int64_t>(numSamples)
+  );
 
-  playheadPositionProvider->rt_updatePlayheadPosition(transport->rt_playhead);
+  playheadPositionProvider->rt_updatePlayheadPosition(
+    transport->rt_playhead,
+    blockStartSample
+  );
 
   if (transport->rt_config->activeSequenceId.has_value()) {
     playheadSequenceIdProvider->rt_updatePlayheadSequenceId(
-      transport->rt_config->activeSequenceId.value());
+      transport->rt_config->activeSequenceId.value(),
+      blockStartSample
+    );
   }
 
   transport->rt_advancePlayhead(numSamples);

@@ -70,6 +70,23 @@ void main() {
     );
   }
 
+  VisualizationItem testVisualizationItem({
+    required String id,
+    required Object values,
+    List<int>? sampleTimestamps,
+    int startSample = 1,
+  }) {
+    final valueList = values as List;
+
+    return VisualizationItem(
+      id: id,
+      values: values,
+      sampleTimestamps:
+          sampleTimestamps ??
+          List<int>.generate(valueList.length, (index) => startSample + index),
+    );
+  }
+
   Future<void> pumpMultiVisualizationBuilder(
     WidgetTester tester, {
     required ProjectModel project,
@@ -137,8 +154,8 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'unrelatedId', values: [double.nan]),
-                VisualizationItem(id: 'subscriptionId', values: [0.5]),
+                testVisualizationItem(id: 'unrelatedId', values: [double.nan]),
+                testVisualizationItem(id: 'subscriptionId', values: [0.5]),
               ],
             ),
           );
@@ -150,7 +167,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(
+                testVisualizationItem(
                   id: 'subscriptionId',
                   values: [123.0, 0.6, 0.7, 0.8],
                 ),
@@ -171,8 +188,8 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'unrelatedId', values: [double.nan]),
-                VisualizationItem(id: 'subscriptionId', values: [0.5]),
+                testVisualizationItem(id: 'unrelatedId', values: [double.nan]),
+                testVisualizationItem(id: 'subscriptionId', values: [0.5]),
               ],
             ),
           );
@@ -184,7 +201,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(
+                testVisualizationItem(
                   id: 'subscriptionId',
                   values: [123.0, 0.6, 0.7, 0.8],
                 ),
@@ -207,7 +224,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
+                testVisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
               ],
             ),
           );
@@ -216,7 +233,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(
+                testVisualizationItem(
                   id: 'subscriptionId',
                   values: [0.6, 0.7, 0.8],
                 ),
@@ -242,8 +259,8 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'unrelatedId', values: [double.nan]),
-                VisualizationItem(id: 'subscriptionId', values: [0.5]),
+                testVisualizationItem(id: 'unrelatedId', values: [double.nan]),
+                testVisualizationItem(id: 'subscriptionId', values: [0.5]),
               ],
             ),
           );
@@ -254,7 +271,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.6]),
+                testVisualizationItem(id: 'subscriptionId', values: [0.6]),
               ],
             ),
           );
@@ -265,7 +282,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.7, 0.8]),
+                testVisualizationItem(id: 'subscriptionId', values: [0.7, 0.8]),
               ],
             ),
           );
@@ -276,7 +293,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
+                testVisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
               ],
             ),
           );
@@ -285,7 +302,7 @@ void main() {
             VisualizationUpdateEvent(
               id: 0,
               items: [
-                VisualizationItem(id: 'subscriptionId', values: [1.1, 1.2]),
+                testVisualizationItem(id: 'subscriptionId', values: [1.1, 1.2]),
               ],
             ),
           );
@@ -297,8 +314,157 @@ void main() {
     }
   });
 
+  test('String reads only expose native string subscriptions', () {
+    final visualizationApiMock = MockVisualizationApi();
+
+    final engineMock = MockEngine();
+    when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+
+    final projectMock = MockProjectModel();
+    when(projectMock.engine).thenReturn(engineMock);
+
+    final visualizationProvider = VisualizationProvider(projectMock);
+
+    final latestString = visualizationProvider.subscribe(
+      const VisualizationSubscriptionConfig.latest('string_latest'),
+    );
+    final bufferedString = visualizationProvider.subscribe(
+      const VisualizationSubscriptionConfig.lastNValues('string_buffered', 3),
+    );
+    final latestDouble = visualizationProvider.subscribe(
+      const VisualizationSubscriptionConfig.latest('double_latest'),
+    );
+
+    visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'string_latest',
+            values: ['alpha'],
+            sampleTimestamps: [11],
+          ),
+          testVisualizationItem(
+            id: 'string_buffered',
+            values: ['beta', 'gamma'],
+            sampleTimestamps: [21, 31],
+          ),
+          testVisualizationItem(
+            id: 'double_latest',
+            values: [7.5],
+            sampleTimestamps: [41],
+          ),
+        ],
+      ),
+    );
+
+    expect(latestString.readValueString(), 'alpha');
+    expect(bufferedString.readValuesString(), ['beta', 'gamma']);
+    expect(
+      latestString.readTimedValueString(),
+      isA<TimedVisualizationValue<String>>()
+          .having((value) => value.value, 'value', 'alpha')
+          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 11),
+    );
+    expect(bufferedString.readTimedValuesString().toList(growable: false), [
+      isA<TimedVisualizationValue<String>>()
+          .having((value) => value.value, 'value', 'beta')
+          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 21),
+      isA<TimedVisualizationValue<String>>()
+          .having((value) => value.value, 'value', 'gamma')
+          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 31),
+    ]);
+
+    latestString.setOverride(
+      valueString: 'override',
+      duration: const Duration(seconds: 1),
+    );
+    expect(latestString.readValueString(), 'override');
+    expect(latestString.readTimedValueString(), isNull);
+
+    expect(() => latestDouble.readValueString(), throwsA(isA<StateError>()));
+    expect(
+      () => latestDouble.readValuesString().toList(growable: false),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      () => latestDouble.readTimedValueString(),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      () => latestDouble.readTimedValuesString().toList(growable: false),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('Timed reads expose engine sample timestamps', () {
+    final visualizationApiMock = MockVisualizationApi();
+
+    final engineMock = MockEngine();
+    when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+
+    final projectMock = MockProjectModel();
+    when(projectMock.engine).thenReturn(engineMock);
+
+    final visualizationProvider = VisualizationProvider(projectMock);
+
+    final latest = visualizationProvider.subscribe(
+      const VisualizationSubscriptionConfig.latest('latest'),
+    );
+    final max = visualizationProvider.subscribe(
+      const VisualizationSubscriptionConfig.max('max'),
+    );
+    final buffered = visualizationProvider.subscribe(
+      const VisualizationSubscriptionConfig.lastNValues('buffered', 3),
+    );
+
+    visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'latest',
+            values: [1.0, 2.0],
+            sampleTimestamps: [100, 120],
+          ),
+          testVisualizationItem(
+            id: 'max',
+            values: [0.5, 1.5, 1.0],
+            sampleTimestamps: [130, 150, 160],
+          ),
+          testVisualizationItem(
+            id: 'buffered',
+            values: [3.0, 4.0],
+            sampleTimestamps: [170, 190],
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      latest.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 2.0)
+          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 120),
+    );
+    expect(
+      max.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 1.5)
+          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 150),
+    );
+    expect(buffered.readTimedValues().toList(growable: false), [
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 3.0)
+          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 170),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 4.0)
+          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 190),
+    ]);
+  });
+
   test(
-    'String reads stringify numeric subscriptions using the active lane',
+    'Timed reads return nothing before engine data and while overrides are active',
     () {
       final visualizationApiMock = MockVisualizationApi();
 
@@ -310,30 +476,71 @@ void main() {
 
       final visualizationProvider = VisualizationProvider(projectMock);
 
-      final latestDouble = visualizationProvider.subscribe(
-        const VisualizationSubscriptionConfig.latest('double_latest'),
+      final latest = visualizationProvider.subscribe(
+        const VisualizationSubscriptionConfig.latest('latest'),
       );
-      final bufferedDouble = visualizationProvider.subscribe(
-        const VisualizationSubscriptionConfig.lastNValues('double_buffered', 3),
-      );
-      final latestInt = visualizationProvider.subscribe(
-        const VisualizationSubscriptionConfig.latest('int_latest'),
-      );
+
+      expect(latest.readTimedValue(), isNull);
+      expect(latest.readTimedValues(), isEmpty);
 
       visualizationProvider.processVisualizationUpdate(
         VisualizationUpdateEvent(
           id: 0,
           items: [
-            VisualizationItem(id: 'double_latest', values: [1.5]),
-            VisualizationItem(id: 'double_buffered', values: [2.5, 3.5]),
-            VisualizationItem(id: 'int_latest', values: [7]),
+            testVisualizationItem(
+              id: 'latest',
+              values: [4.0],
+              sampleTimestamps: [500],
+            ),
           ],
         ),
       );
 
-      expect(latestDouble.readValueString(), '1.5');
-      expect(bufferedDouble.readValuesString(), ['2.5', '3.5']);
-      expect(latestInt.readValueString(), '7');
+      expect(
+        latest.readTimedValue(),
+        isA<TimedVisualizationValue<double>>()
+            .having((value) => value.value, 'value', 4.0)
+            .having((value) => value.sampleTimestamp, 'sampleTimestamp', 500),
+      );
+
+      latest.setOverride(
+        valueDouble: 9.0,
+        duration: const Duration(seconds: 1),
+      );
+
+      expect(latest.readValue(), 9.0);
+      expect(latest.readTimedValue(), isNull);
+      expect(latest.readTimedValues(), isEmpty);
+    },
+  );
+
+  test(
+    'Visualization updates reject mismatched value and timestamp counts',
+    () {
+      final visualizationApiMock = MockVisualizationApi();
+
+      final engineMock = MockEngine();
+      when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+
+      final projectMock = MockProjectModel();
+      when(projectMock.engine).thenReturn(engineMock);
+
+      final visualizationProvider = VisualizationProvider(projectMock);
+      visualizationProvider.subscribe(
+        const VisualizationSubscriptionConfig.latest('subscriptionId'),
+      );
+
+      final malformedItem = VisualizationItem.uninitialized()
+        ..id = 'subscriptionId'
+        ..values = [1.0, 2.0]
+        ..sampleTimestamps = [10];
+
+      expect(
+        () => visualizationProvider.processVisualizationUpdate(
+          VisualizationUpdateEvent(id: 0, items: [malformedItem]),
+        ),
+        throwsA(isA<StateError>()),
+      );
     },
   );
 
@@ -441,7 +648,7 @@ void main() {
         VisualizationUpdateEvent(
           id: 0,
           items: [
-            VisualizationItem(id: 'a', values: [1]),
+            testVisualizationItem(id: 'a', values: [1]),
           ],
         ),
       );
@@ -461,8 +668,8 @@ void main() {
         VisualizationUpdateEvent(
           id: 0,
           items: [
-            VisualizationItem(id: 'a', values: [9]),
-            VisualizationItem(id: 'b', values: [2]),
+            testVisualizationItem(id: 'a', values: [9]),
+            testVisualizationItem(id: 'b', values: [2]),
           ],
         ),
       );
@@ -490,7 +697,7 @@ void main() {
         VisualizationUpdateEvent(
           id: 0,
           items: [
-            VisualizationItem(id: 'a', values: [1]),
+            testVisualizationItem(id: 'a', values: [1]),
           ],
         ),
       );
@@ -511,8 +718,8 @@ void main() {
         VisualizationUpdateEvent(
           id: 0,
           items: [
-            VisualizationItem(id: 'a', values: [2]),
-            VisualizationItem(id: 'b', values: [3]),
+            testVisualizationItem(id: 'a', values: [2]),
+            testVisualizationItem(id: 'b', values: [3]),
           ],
         ),
       );
@@ -543,8 +750,8 @@ void main() {
         VisualizationUpdateEvent(
           id: 0,
           items: [
-            VisualizationItem(id: 'a', values: [1]),
-            VisualizationItem(id: 'b', values: [2]),
+            testVisualizationItem(id: 'a', values: [1]),
+            testVisualizationItem(id: 'b', values: [2]),
           ],
         ),
       );
@@ -565,8 +772,8 @@ void main() {
         VisualizationUpdateEvent(
           id: 0,
           items: [
-            VisualizationItem(id: 'a', values: [4]),
-            VisualizationItem(id: 'b', values: [3]),
+            testVisualizationItem(id: 'a', values: [4]),
+            testVisualizationItem(id: 'b', values: [3]),
           ],
         ),
       );

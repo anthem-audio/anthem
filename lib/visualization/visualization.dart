@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,3 +36,15 @@ import 'ring_buffer.dart';
 
 part 'visualization_provider.dart';
 part 'visualization_subscription.dart';
+
+/// A visualization value paired with the engine sample timestamp where it was
+/// produced.
+class TimedVisualizationValue<T> {
+  final T value;
+  final int sampleTimestamp;
+
+  const TimedVisualizationValue({
+    required this.value,
+    required this.sampleTimestamp,
+  });
+}

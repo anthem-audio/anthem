@@ -70,10 +70,12 @@ class VisualizationSubscription {
   final RingBuffer<double>? _ringBufferDouble;
   final RingBuffer<int>? _ringBufferInt;
   final RingBuffer<String>? _ringBufferString;
+  final RingBuffer<int>? _ringBufferSampleTimestamp;
 
   double _valueDouble = 0;
   int _valueInt = 0;
   String? _valueString;
+  int? _sampleTimestamp;
   _VisualizationValueType? _valueType;
 
   DateTime? _overrideSetTime;
@@ -95,6 +97,134 @@ class VisualizationSubscription {
   /// This happens at most once per frame.
   Stream<void> get onUpdate => _updateController.stream;
 
+  bool get _hasActiveOverride =>
+      _overrideDouble != null ||
+      _overrideInt != null ||
+      _overrideString != null;
+
+  List<TimedVisualizationValue<T>> _pairValuesWithTimestamps<T>(
+    Iterable<T> values,
+  ) {
+    final valueList = values.toList(growable: false);
+    final timestampList =
+        _ringBufferSampleTimestamp?.values.toList(growable: false) ??
+        (_sampleTimestamp == null ? <int>[] : <int>[_sampleTimestamp!]);
+
+    if (timestampList.isEmpty) {
+      return <TimedVisualizationValue<T>>[];
+    }
+
+    if (timestampList.length != valueList.length) {
+      throw StateError(
+        'Visualization value/timestamp length mismatch for ${_config.id}: '
+        '${valueList.length} values vs ${timestampList.length} timestamps.',
+      );
+    }
+
+    return List.generate(valueList.length, (index) {
+      return TimedVisualizationValue<T>(
+        value: valueList[index],
+        sampleTimestamp: timestampList[index],
+      );
+    }, growable: false);
+  }
+
+  TimedVisualizationValue<T>? _lastTimedValueOrNull<T>(
+    Iterable<TimedVisualizationValue<T>> values,
+  ) {
+    TimedVisualizationValue<T>? result;
+
+    for (final value in values) {
+      result = value;
+    }
+
+    return result;
+  }
+
+  /// Read the latest engine-backed value for this visualization item, with its
+  /// sample timestamp.
+  ///
+  /// Returns `null` if no engine-backed value has been received yet, or if a
+  /// UI override is currently active.
+  TimedVisualizationValue<double>? readTimedValue() {
+    return _lastTimedValueOrNull(readTimedValues());
+  }
+
+  /// Read the latest engine-backed value as an integer for this visualization
+  /// item, with its sample timestamp.
+  ///
+  /// Returns `null` if no engine-backed value has been received yet, or if a
+  /// UI override is currently active.
+  TimedVisualizationValue<int>? readTimedValueInt() {
+    return _lastTimedValueOrNull(readTimedValuesInt());
+  }
+
+  void _assertStringValueType() {
+    if (_valueType == .doubleValue || _valueType == .intValue) {
+      throw StateError(
+        'Visualization item ${_config.id} does not contain string values.',
+      );
+    }
+  }
+
+  /// Read the latest engine-backed string value for this visualization item,
+  /// with its sample timestamp.
+  ///
+  /// Returns `null` if no engine-backed value has been received yet, or if a
+  /// UI override is currently active.
+  TimedVisualizationValue<String>? readTimedValueString() {
+    return _lastTimedValueOrNull(readTimedValuesString());
+  }
+
+  /// Read the last N engine-backed values for this visualization item, with
+  /// their sample timestamps.
+  ///
+  /// If the configuration does not specify a subscription type with multiple
+  /// values, this will return either an empty iterable or a single-item
+  /// iterable.
+  Iterable<TimedVisualizationValue<double>> readTimedValues() {
+    _shouldReset = true;
+
+    if (_hasActiveOverride) {
+      return const [];
+    }
+
+    return _pairValuesWithTimestamps<double>(
+      _ringBufferDouble?.values ?? [_valueDouble],
+    );
+  }
+
+  /// Read the last N engine-backed values as integers for this visualization
+  /// item, with their sample timestamps.
+  Iterable<TimedVisualizationValue<int>> readTimedValuesInt() {
+    _shouldReset = true;
+
+    if (_hasActiveOverride) {
+      return const [];
+    }
+
+    return _pairValuesWithTimestamps<int>(
+      _ringBufferInt?.values ?? [_valueInt],
+    );
+  }
+
+  /// Read the last N engine-backed string values for this visualization item,
+  /// with their sample timestamps.
+  Iterable<TimedVisualizationValue<String>> readTimedValuesString() {
+    _shouldReset = true;
+
+    if (_hasActiveOverride) {
+      return const [];
+    }
+
+    _assertStringValueType();
+
+    return _pairValuesWithTimestamps<String>(
+      _ringBufferString?.values ??
+          (_valueString == null ? const <String>[] : [_valueString!]),
+    );
+  }
+
   /// Read the latest value for this visualization item.
   ///
   /// For the "max" subscription type, this will return the maximum value since
@@ -115,19 +245,15 @@ class VisualizationSubscription {
 
   /// Read the latest value as a string for this visualization item.
   ///
-  /// This stringifies numeric values if this subscription is backed by an int
-  /// or double lane.
+  /// This only reads native string values.
   String readValueString() {
     _shouldReset = true;
-    return _overrideString ??
-        _overrideInt?.toString() ??
-        _overrideDouble?.toString() ??
-        switch (_valueType) {
-          .stringValue => _valueString ?? '',
-          .doubleValue => _valueDouble.toString(),
-          .intValue => _valueInt.toString(),
-          null => _valueString ?? _valueInt.toString(),
-        };
+    if (_overrideString != null) {
+      return _overrideString!;
+    }
+
+    _assertStringValueType();
+    return _valueString ?? '';
   }
 
   /// Read the last N values for this visualization item.
@@ -175,21 +301,8 @@ class VisualizationSubscription {
       return [_overrideString!];
     }
 
-    if (_overrideInt != null) {
-      return [_overrideInt!.toString()];
-    }
-
-    return switch (_valueType) {
-      .stringValue => _ringBufferString?.values ?? [_valueString ?? ''],
-      .doubleValue =>
-        _ringBufferDouble?.values.map((value) => value.toString()) ??
-            [_valueDouble.toString()],
-      .intValue =>
-        _ringBufferInt?.values.map((value) => value.toString()) ??
-            [_valueInt.toString()],
-      null =>
-        _ringBufferString?.values ?? [_valueString ?? _valueInt.toString()],
-    };
+    _assertStringValueType();
+    return _ringBufferString?.values ?? [_valueString ?? ''];
   }
 
   /// Sets an override value for this subscription, with a duration.
@@ -230,6 +343,10 @@ class VisualizationSubscription {
       _ringBufferString =
           _config.type == VisualizationSubscriptionType.lastNValues
           ? RingBuffer<String>(_config.bufferSize!)
+          : null,
+      _ringBufferSampleTimestamp =
+          _config.type == VisualizationSubscriptionType.lastNValues
+          ? RingBuffer<int>(_config.bufferSize!)
           : null {
     _ticker = Ticker(_onTick);
     if (_parent._project.engineState == EngineState.running) {
@@ -258,7 +375,10 @@ class VisualizationSubscription {
   }
 
   /// Add a new value to the subscription.
-  void _addValue(Object /* String | int | double */ value) {
+  void _addValue(
+    Object /* String | int | double */ value,
+    int sampleTimestamp,
+  ) {
     if (_shouldReset) {
       _shouldReset = false;
 
@@ -266,25 +386,34 @@ class VisualizationSubscription {
         _valueType = .doubleValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferDouble!.reset();
+          _ringBufferSampleTimestamp!.reset();
           _ringBufferDouble.add(value);
+          _ringBufferSampleTimestamp.add(sampleTimestamp);
         } else {
           _valueDouble = value;
+          _sampleTimestamp = sampleTimestamp;
         }
       } else if (value is int) {
         _valueType = .intValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferInt!.reset();
+          _ringBufferSampleTimestamp!.reset();
           _ringBufferInt.add(value);
+          _ringBufferSampleTimestamp.add(sampleTimestamp);
         } else {
           _valueInt = value;
+          _sampleTimestamp = sampleTimestamp;
         }
       } else if (value is String) {
         _valueType = .stringValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferString!.reset();
+          _ringBufferSampleTimestamp!.reset();
           _ringBufferString.add(value);
+          _ringBufferSampleTimestamp.add(sampleTimestamp);
         } else {
           _valueString = value;
+          _sampleTimestamp = sampleTimestamp;
         }
       } else {
         throw ArgumentError(
@@ -296,10 +425,15 @@ class VisualizationSubscription {
         _valueType = .doubleValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferDouble!.add(value);
+          _ringBufferSampleTimestamp!.add(sampleTimestamp);
         } else if (_config.type == VisualizationSubscriptionType.max) {
-          _valueDouble = max(_valueDouble, value);
+          if (value > _valueDouble) {
+            _valueDouble = value;
+            _sampleTimestamp = sampleTimestamp;
+          }
         } else {
           _valueDouble = value;
+          _sampleTimestamp = sampleTimestamp;
         }
       } else if (value is int) {
         _valueType = .intValue;
@@ -310,8 +444,10 @@ class VisualizationSubscription {
 
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferInt!.add(value);
+          _ringBufferSampleTimestamp!.add(sampleTimestamp);
         } else {
           _valueInt = value;
+          _sampleTimestamp = sampleTimestamp;
         }
       } else if (value is String) {
         _valueType = .stringValue;
@@ -322,8 +458,10 @@ class VisualizationSubscription {
 
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferString!.add(value);
+          _ringBufferSampleTimestamp!.add(sampleTimestamp);
         } else {
           _valueString = value;
+          _sampleTimestamp = sampleTimestamp;
         }
       } else {
         throw ArgumentError(

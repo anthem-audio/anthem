@@ -24,7 +24,7 @@
 
 #include <juce_core/juce_core.h>
 
-#include <atomic>
+#include <optional>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -38,46 +38,49 @@ class CpuVisualizationProvider : public VisualizationDataProvider {
 private:
   JUCE_LEAK_DETECTOR(CpuVisualizationProvider)
 
-  std::atomic<double> cpuBurden;
-  std::atomic<bool> overwriteNextUpdate;
+  RingBuffer<TimestampedVisualizationValue<double>, 2048> cpuBurdenBuffer;
 
 public:
-  std::optional<std::vector<double>> getNumericData() override;
+  std::optional<NumericVisualizationData> getNumericData() override;
 
-  void rt_updateCpuBurden(double newCpuBurden);
+  void rt_updateCpuBurden(double newCpuBurden, int64_t sampleTimestamp);
 
-  CpuVisualizationProvider() : cpuBurden(0.0), overwriteNextUpdate(false) {}
+  CpuVisualizationProvider()
+    : cpuBurdenBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 };
 
 class PlayheadPositionVisualizationProvider : public VisualizationDataProvider {
 private:
   JUCE_LEAK_DETECTOR(PlayheadPositionVisualizationProvider)
 
-  std::atomic<double> playheadPosition;
+  RingBuffer<TimestampedVisualizationValue<double>, 2048> playheadPositionBuffer;
 
 public:
-  std::optional<std::vector<double>> getNumericData() override;
+  std::optional<NumericVisualizationData> getNumericData() override;
 
-  void rt_updatePlayheadPosition(double newPlayheadPosition);
+  void rt_updatePlayheadPosition(double newPlayheadPosition, int64_t sampleTimestamp);
 
-  PlayheadPositionVisualizationProvider() : playheadPosition(0.0) {}
+  PlayheadPositionVisualizationProvider()
+    : playheadPositionBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 };
 
 class PlayheadSequenceIdVisualizationProvider : public VisualizationDataProvider {
 private:
   JUCE_LEAK_DETECTOR(PlayheadSequenceIdVisualizationProvider)
 
-  RingBuffer<int64_t, 3> playheadSequenceIdBuffer;
-  std::optional<int64_t> lastSentId;
+  RingBuffer<TimestampedVisualizationValue<int64_t>, 64> playheadSequenceIdBuffer;
+  std::optional<int64_t> lastQueuedId;
 
 public:
-  std::optional<std::vector<int64_t>> getIntegerData() override;
+  std::optional<IntegerVisualizationData> getIntegerData() override;
 
-  void rt_updatePlayheadSequenceId(int64_t newPlayheadSequenceId);
+  void rt_updatePlayheadSequenceId(
+    int64_t newPlayheadSequenceId,
+    int64_t sampleTimestamp
+  );
 
-  PlayheadSequenceIdVisualizationProvider() : playheadSequenceIdBuffer(RingBuffer<int64_t, 3>()) {
-    lastSentId = std::nullopt;
-  };
+  PlayheadSequenceIdVisualizationProvider()
+    : playheadSequenceIdBuffer(RingBuffer<TimestampedVisualizationValue<int64_t>, 64>()) {}
 };
 
 class GlobalVisualizationSources {

@@ -19,66 +19,82 @@
 
 #include "global_visualization_sources.h"
 
-std::optional<std::vector<double>> CpuVisualizationProvider::getNumericData() {
-  auto result = cpuBurden.load();
+namespace {
+template <typename T, std::size_t Size>
+std::optional<TimestampedVisualizationData<T>> drainVisualizationBuffer(
+  RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer
+) {
+  TimestampedVisualizationData<T> data;
 
-  overwriteNextUpdate.store(true);
-
-  std::vector resultList { result };
-
-  return resultList;
-}
-
-// Every time we read, we want the max value since the last time we read. When
-// writing below, if overwriteNextUpdate is true, we will overwrite the value
-// regardless of the value. Otherwise, we will only overwrite the value if the
-// new value is greater than the current value.
-void CpuVisualizationProvider::rt_updateCpuBurden(double newCpuBurden) {
-  if (overwriteNextUpdate.load()) {
-    overwriteNextUpdate.store(false);
-    cpuBurden.store(newCpuBurden);
-    return;
-  } else {
-    auto currentCpuBurden = cpuBurden.load();
-    if (newCpuBurden > currentCpuBurden) {
-      cpuBurden.store(newCpuBurden);
+  while (true) {
+    auto item = buffer.read();
+    if (!item.has_value()) {
+      break;
     }
+
+    data.sampleTimestamps.push_back(item.value().sampleTimestamp);
+    data.values.push_back(item.value().value);
   }
-}
 
-std::optional<std::vector<double>> PlayheadPositionVisualizationProvider::getNumericData() {
-  auto result = playheadPosition.load();
-  
-  std::vector<double> resultList{ result };
-
-  return resultList;
-}
-
-void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(double newPlayheadPosition) {
-  playheadPosition.store(newPlayheadPosition);
-}
-
-std::optional<std::vector<int64_t>> PlayheadSequenceIdVisualizationProvider::getIntegerData() {
-  auto result = playheadSequenceIdBuffer.read();
-
-  if (!result.has_value()) {
+  if (data.values.empty()) {
     return std::nullopt;
   }
 
-  // If the sequence ID is the same as the last sent ID, return nothing
-  if (lastSentId.has_value() && result.value() == lastSentId.value()) {
-    return std::nullopt;
-  }
+  return data;
+}
+} // namespace
 
-  lastSentId = result.value();
-
-  std::vector<int64_t> resultList{ result.value() };
-
-  return resultList;
+std::optional<NumericVisualizationData> CpuVisualizationProvider::getNumericData() {
+  return drainVisualizationBuffer(cpuBurdenBuffer);
 }
 
-void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(int64_t newPlayheadSequenceId) {
-  playheadSequenceIdBuffer.add(newPlayheadSequenceId);
+void CpuVisualizationProvider::rt_updateCpuBurden(
+  double newCpuBurden,
+  int64_t sampleTimestamp
+) {
+  cpuBurdenBuffer.add(
+    TimestampedVisualizationValue<double>{
+      .sampleTimestamp = sampleTimestamp,
+      .value = newCpuBurden,
+    }
+  );
+}
+
+std::optional<NumericVisualizationData> PlayheadPositionVisualizationProvider::getNumericData() {
+  return drainVisualizationBuffer(playheadPositionBuffer);
+}
+
+void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
+  double newPlayheadPosition,
+  int64_t sampleTimestamp
+) {
+  playheadPositionBuffer.add(
+    TimestampedVisualizationValue<double>{
+      .sampleTimestamp = sampleTimestamp,
+      .value = newPlayheadPosition,
+    }
+  );
+}
+
+std::optional<IntegerVisualizationData> PlayheadSequenceIdVisualizationProvider::getIntegerData() {
+  return drainVisualizationBuffer(playheadSequenceIdBuffer);
+}
+
+void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(
+  int64_t newPlayheadSequenceId,
+  int64_t sampleTimestamp
+) {
+  if (lastQueuedId.has_value() && lastQueuedId.value() == newPlayheadSequenceId) {
+    return;
+  }
+
+  lastQueuedId = newPlayheadSequenceId;
+  playheadSequenceIdBuffer.add(
+    TimestampedVisualizationValue<int64_t>{
+      .sampleTimestamp = sampleTimestamp,
+      .value = newPlayheadSequenceId,
+    }
+  );
 }
 
 GlobalVisualizationSources::GlobalVisualizationSources() {
