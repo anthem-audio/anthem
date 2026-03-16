@@ -20,10 +20,10 @@
 import 'dart:async';
 
 import 'package:anthem_codegen/generators/dart/model_change_generator.dart';
+import 'package:anthem_codegen/generators/util/codegen_dependency_tracker.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
-import 'package:anthem_codegen/generators/util/track_library_part_inputs.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -55,90 +55,95 @@ class AnthemModelGenerator extends Generator {
 
   @override
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
-    final result = StringBuffer();
+    return CodegenDependencyTracker.run(buildStep, (dependencyTracker) async {
+      final result = StringBuffer();
 
-    await trackLibraryPartInputs(buildStep);
-
-    // Looks for @AnthemModel on each class in the file, and generates the
-    // appropriate code
-    for (final libraryClass in library.classes) {
-      final annotationFromAnalyzer = const TypeChecker.typeNamed(
-        AnthemModel,
-        inPackage: 'anthem_codegen',
-      ).firstAnnotationOf(libraryClass);
-
-      // If there is no annotation on this class, don't do anything
-      if (annotationFromAnalyzer == null) continue;
-
-      // Read properties from @AnthemModel() annotation
-
-      final context = ModelClassInfo(library, libraryClass);
-
-      result.write(
-        'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
+      dependencyTracker.trackLibraryAsset(
+        buildStep.inputId,
+        includeDirectImports: true,
+        includeDirectExports: true,
       );
 
-      if (context.annotation!.serializable) {
-        result.write('\n  // JSON serialization\n');
-        result.write('\n');
-        result.write(generateJsonSerializationCode(context: context));
-        result.write('\n  // JSON deserialization\n');
-        result.write('\n');
-        result.write(generateJsonDeserializationCode(context: context));
-      }
-      result.write('\n  // MobX atoms\n');
-      result.write('\n');
-      result.write(generateMobXAtoms(context: context));
-      if (context.annotation!.generateModelSync) {
-        final changeDecorators = _generateChangeDecorators(
-          context: context,
-          classHasModelSyncCode: context.annotation!.generateModelSync,
+      // Looks for @AnthemModel on each class in the file, and generates the
+      // appropriate code
+      for (final libraryClass in library.classes) {
+        final annotationFromAnalyzer = const TypeChecker.typeNamed(
+          AnthemModel,
+          inPackage: 'anthem_codegen',
+        ).firstAnnotationOf(libraryClass);
+
+        // If there is no annotation on this class, don't do anything
+        if (annotationFromAnalyzer == null) continue;
+
+        // Read properties from @AnthemModel() annotation
+
+        final context = ModelClassInfo(library, libraryClass);
+
+        result.write(
+          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
         );
 
-        if (changeDecorators.isNotEmpty) {
-          result.write('\n  // Change decorators\n');
+        if (context.annotation!.serializable) {
+          result.write('\n  // JSON serialization\n');
           result.write('\n');
-          result.write(changeDecorators);
+          result.write(generateJsonSerializationCode(context: context));
+          result.write('\n  // JSON deserialization\n');
+          result.write('\n');
+          result.write(generateJsonDeserializationCode(context: context));
+        }
+        result.write('\n  // MobX atoms\n');
+        result.write('\n');
+        result.write(generateMobXAtoms(context: context));
+        if (context.annotation!.generateModelSync) {
+          final changeDecorators = _generateChangeDecorators(
+            context: context,
+            classHasModelSyncCode: context.annotation!.generateModelSync,
+          );
+
+          if (changeDecorators.isNotEmpty) {
+            result.write('\n  // Change decorators\n');
+            result.write('\n');
+            result.write(changeDecorators);
+          }
+        }
+        result.write('\n  // Getters and setters\n');
+        result.write('\n');
+        result.write(
+          _generateGettersAndSetters(
+            context: context,
+            classHasModelSyncCode: context.annotation!.generateModelSync,
+          ),
+        );
+        if (context.annotation!.generateModelSync) {
+          result.write('\n  // Init function\n');
+          result.write('\n');
+          result.write(_generateInitFunction(context: context));
+
+          result.write('\n  // onChange method\n');
+          result.write(generateOnChangeMethod(context: context));
+        }
+        result.write('}\n');
+
+        if (context.annotation!.generateModelSync) {
+          result.write('\n');
+          result.write(generateFilterBuilders(context: context));
         }
       }
-      result.write('\n  // Getters and setters\n');
-      result.write('\n');
-      result.write(
-        _generateGettersAndSetters(
-          context: context,
-          classHasModelSyncCode: context.annotation!.generateModelSync,
-        ),
-      );
-      if (context.annotation!.generateModelSync) {
-        result.write('\n  // Init function\n');
-        result.write('\n');
-        result.write(_generateInitFunction(context: context));
 
-        result.write('\n  // onChange method\n');
-        result.write(generateOnChangeMethod(context: context));
+      // The cache for parsed classes persists across files, so we need to clear
+      // it for each file.
+      cleanModelClassInfoCache();
+
+      if (result.isEmpty) {
+        return '';
       }
 
-      result.write('}\n');
+      const ignores =
+          '// ignore_for_file: duplicate_ignore, unnecessary_overrides, '
+          'non_constant_identifier_names, unnecessary_cast\n';
 
-      if (context.annotation!.generateModelSync) {
-        result.write('\n');
-        result.write(generateFilterBuilders(context: context));
-      }
-    }
-
-    // The cache for parsed classes persists across files, so we need to clear
-    // it for each file.
-    cleanModelClassInfoCache();
-
-    if (result.isEmpty) {
-      return '';
-    }
-
-    const ignores =
-        '// ignore_for_file: duplicate_ignore, unnecessary_overrides, '
-        'non_constant_identifier_names, unnecessary_cast\n';
-
-    return ignores + result.toString();
+      return ignores + result.toString();
+    });
   }
 }
 

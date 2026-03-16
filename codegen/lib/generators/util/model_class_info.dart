@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 import 'package:analyzer/dart/element/element.dart';
 import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/generators/util/codegen_dependency_tracker.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
@@ -148,6 +149,8 @@ class _MyModel {
   }
 
   ModelClassInfo._create(this.libraryReader, this.annotatedClass) {
+    CodegenDependencyTracker.current?.trackElement(annotatedClass);
+
     final annotationElement = const TypeChecker.typeNamed(
       AnthemModel,
       inPackage: 'anthem_codegen',
@@ -200,6 +203,8 @@ class _MyModel {
     _baseClass = libraryAndImportedClasses
         .where((e) => e.name == '_${annotatedClass.name}')
         .firstOrNull;
+
+    CodegenDependencyTracker.current?.trackElement(_baseClass);
 
     // The code below just doesn't work. I think it's because the mixin isn't
     // defined, so while it exists from a lexing standpoint, the analyzer
@@ -273,6 +278,8 @@ class SealedSubclassInfo {
   String get name => subclass.name!;
 
   SealedSubclassInfo(this.subclass, ModelClassInfo baseClassInfo) {
+    CodegenDependencyTracker.current?.trackElement(subclass);
+
     for (final field in subclass.fields) {
       // If the field doesn't have a setter, it's not something we can
       // deserialize, so we won't include it. This can happen if the field is
@@ -372,7 +379,9 @@ class ModelFieldInfo {
          }
 
          return null;
-       })();
+       })() {
+    CodegenDependencyTracker.current?.trackElement(fieldElement);
+  }
 }
 
 /// Returns true if the field should be skipped during code generation, based on
