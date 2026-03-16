@@ -355,7 +355,7 @@ class ProjectController {
   /// int giving the current depth.
   ///
   /// Does not skip collapsed group tracks.
-  Iterable<(Id trackId, bool isSendTrack, int currentDepth)>
+  Iterable<(Id trackId, bool isSendTrack, int trackDepth)>
   getTracksIterable() sync* {
     final topLevelTracks = project.trackOrder
         .map((t) => (t, false))

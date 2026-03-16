@@ -21,6 +21,7 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/panel_border.dart';
+import 'package:anthem/widgets/editors/mixer/mixer.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -78,7 +79,7 @@ class _ProjectState extends State<Project> {
                   const automationEditor = AutomationEditor();
                   const channelRack = ChannelRack();
                   const pianoRoll = PianoRoll();
-                  const mixer = Text('Mixer');
+                  const mixer = Mixer();
 
                   final selectedEditorIndex =
                       switch (viewModel.selectedEditor) {
