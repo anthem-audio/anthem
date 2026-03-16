@@ -21,6 +21,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
@@ -269,7 +270,9 @@ class TrackPositionAndSize {
   void invalidate(double editorHeight) {
     final trackCount = projectModel.tracks.length;
 
-    final allTracksIterable = getTracksIterable(projectModel);
+    final serviceRegistry = ServiceRegistry.forProject(projectModel.id);
+    final projectController = serviceRegistry.projectController;
+    final allTracksIterable = projectController.getTracksIterable();
 
     if (_cache.length != trackCount * 2) {
       _cache = Float64List(trackCount * 2);
@@ -317,33 +320,5 @@ class TrackPositionAndSize {
 
     arrangerViewModel.scrollAreaHeight =
         positionPointer + arrangerViewModel.verticalScrollPosition - 1;
-  }
-}
-
-/// Generates an iterable which gives each track in visual order.
-///
-/// Returns the ID, a boolean saying whether the track is a group track, and an
-/// int giving the current depth.
-///
-/// Does not skip collapsed group tracks.
-Iterable<(Id, bool, int)> getTracksIterable(ProjectModel project) sync* {
-  final topLevelTracks = project.trackOrder
-      .map((t) => (t, false))
-      .followedBy(project.sendTrackOrder.map((t) => (t, true)));
-
-  Iterable<(Id, bool, int)> yieldChildren(
-    Id trackId,
-    bool isSendTrack,
-    int currentDepth,
-  ) sync* {
-    yield (trackId, isSendTrack, currentDepth);
-    final track = project.tracks[trackId]!;
-    for (final childTrackId in track.childTracks) {
-      yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
-    }
-  }
-
-  for (final topLevelTrack in topLevelTracks) {
-    yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2, 0);
   }
 }

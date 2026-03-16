@@ -349,6 +349,35 @@ class ProjectController {
     return false;
   }
 
+  /// Generates an iterable which gives each track in visual order.
+  ///
+  /// Returns the ID, a boolean saying whether the track is a send track, and an
+  /// int giving the current depth.
+  ///
+  /// Does not skip collapsed group tracks.
+  Iterable<(Id trackId, bool isSendTrack, int currentDepth)>
+  getTracksIterable() sync* {
+    final topLevelTracks = project.trackOrder
+        .map((t) => (t, false))
+        .followedBy(project.sendTrackOrder.map((t) => (t, true)));
+
+    Iterable<(Id, bool, int)> yieldChildren(
+      Id trackId,
+      bool isSendTrack,
+      int currentDepth,
+    ) sync* {
+      yield (trackId, isSendTrack, currentDepth);
+      final track = project.tracks[trackId]!;
+      for (final childTrackId in track.childTracks) {
+        yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+      }
+    }
+
+    for (final topLevelTrack in topLevelTracks) {
+      yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2, 0);
+    }
+  }
+
   Iterable<_ClipRemoveTarget> _collectClipDeleteTargetsForTracks(
     Iterable<Id> trackIds,
   ) sync* {

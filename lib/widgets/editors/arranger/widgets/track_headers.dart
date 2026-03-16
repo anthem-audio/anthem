@@ -323,9 +323,12 @@ class _TrackHeadersState extends State<TrackHeaders> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<ArrangerViewModel>(context);
-    final controller = Provider.of<ArrangerController>(context);
     final project = Provider.of<ProjectModel>(context);
+
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final viewModel = serviceRegistry.arrangerViewModel;
+    final controller = serviceRegistry.arrangerController;
+    final projectController = serviceRegistry.projectController;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -344,7 +347,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
             final _ = viewModel.baseTrackHeight;
 
             for (final (trackIndex, (trackId, isSendTrack, trackDepth))
-                in getTracksIterable(project).indexed) {
+                in projectController.getTracksIterable().indexed) {
               // For MobX, since we're pulling the real values from a cache
               final _ = viewModel.trackHeightModifiers[trackId];
 

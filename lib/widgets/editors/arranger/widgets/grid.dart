@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
@@ -25,18 +26,14 @@ import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
-import '../view_model.dart';
-
 class ArrangerBackgroundPainter extends CustomPainterObserver {
   final double verticalScrollPosition;
   final double timeViewStart;
   final double timeViewEnd;
-  final ArrangerViewModel viewModel;
   final ArrangementModel? activeArrangement;
   final ProjectModel project;
 
   ArrangerBackgroundPainter({
-    required this.viewModel,
     required this.activeArrangement,
     required this.project,
     required this.verticalScrollPosition,
@@ -52,8 +49,12 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     // Horizontal lines
 
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final viewModel = serviceRegistry.arrangerViewModel;
+    final projectController = serviceRegistry.projectController;
+
     var i = 0;
-    for (final (_, isSendTrack, _) in getTracksIterable(project)) {
+    for (final (_, isSendTrack, _) in projectController.getTracksIterable()) {
       final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
         i,
       );
@@ -89,8 +90,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(covariant ArrangerBackgroundPainter oldDelegate) {
-    return oldDelegate.viewModel != viewModel ||
-        oldDelegate.activeArrangement != activeArrangement ||
+    return oldDelegate.activeArrangement != activeArrangement ||
         oldDelegate.project != project ||
         super.shouldRepaint(oldDelegate);
   }

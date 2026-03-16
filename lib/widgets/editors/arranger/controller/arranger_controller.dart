@@ -241,14 +241,17 @@ abstract class _ArrangerController {
     }
 
     final project = _project;
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final projectController = serviceRegistry.projectController;
 
     if (project.sequence.activeArrangementID == null) {
       return;
     }
 
-    final currentTrackList = getTracksIterable(
-      project,
-    ).map((track) => track.$1).toList(growable: false);
+    final currentTrackList = projectController
+        .getTracksIterable()
+        .map((track) => track.$1)
+        .toList(growable: false);
 
     if (viewModel.lastShiftClickRange != null) {
       for (final id in viewModel.lastShiftClickRange!.selected) {

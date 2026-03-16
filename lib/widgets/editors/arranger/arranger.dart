@@ -698,7 +698,6 @@ class _ArrangerCanvas extends StatelessWidget {
                   builder: (context, child) {
                     return CustomPaintObserver(
                       painterBuilder: () => ArrangerBackgroundPainter(
-                        viewModel: viewModel,
                         activeArrangement: project
                             .sequence
                             .arrangements[project.sequence.activeArrangementID],
