@@ -327,6 +327,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   ),
                 ),
                 Observer(
+                  warnWhenNoObservables: false,
                   builder: (context) {
                     final timelineLabels = controller
                         .timeSignatureChanges()
@@ -348,6 +349,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                       animation: widget.timeViewAnimationController,
                       builder: (context, child) {
                         return Observer(
+                          warnWhenNoObservables: false,
                           builder: (context) {
                             return CustomMultiChildLayout(
                               delegate: TimeSignatureLabelLayoutDelegate(
@@ -366,6 +368,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   },
                 ),
                 Observer(
+                  warnWhenNoObservables: false,
                   builder: (context) {
                     final loopPoints = controller.loopPoints();
                     return LoopIndicator(
