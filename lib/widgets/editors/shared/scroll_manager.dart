@@ -145,6 +145,8 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
 
   late final _ScrollAxisController _horizontalAxisController;
   late final _ScrollAxisController _verticalAxisController;
+  late final _AnchoredScrollAxisController _horizontalZoomController;
+  late final _AnchoredScrollAxisController _verticalZoomController;
   final PanZoomAxisCoordinator _panZoomAxisCoordinator =
       PanZoomAxisCoordinator();
 
@@ -181,6 +183,18 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       isEnabled: () => widget.onVerticalScrollChange != null,
       applyDelta: (delta) => widget.onVerticalScrollChange?.call(delta) ?? 0,
     );
+
+    _horizontalZoomController = _AnchoredScrollAxisController(
+      vsync: this,
+      isEnabled: () => _supportsHorizontalZoom,
+      applyAnchoredDelta: _applyHorizontalZoomDelta,
+    );
+
+    _verticalZoomController = _AnchoredScrollAxisController(
+      vsync: this,
+      isEnabled: () => widget.onVerticalZoom != null,
+      applyAnchoredDelta: _applyVerticalZoomDelta,
+    );
   }
 
   @override
@@ -188,6 +202,8 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     _panZoomGestureResetTimer?.cancel();
     _horizontalAxisController.dispose();
     _verticalAxisController.dispose();
+    _horizontalZoomController.dispose();
+    _verticalZoomController.dispose();
     super.dispose();
   }
 
@@ -220,15 +236,32 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     return appliedTicks / ticksPerPixel;
   }
 
-  void _handleHorizontalZoom(double pointerX, double delta) {
+  double _applyHorizontalZoomDelta(double pointerX, double delta) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
+    final timeView = _timeView;
+    final originalWidth = timeView.width;
+    if (contentRenderBox.size.width <= 0 || originalWidth <= 0) {
+      return 0;
+    }
 
     zoomTimeView(
-      timeView: _timeView,
+      timeView: timeView,
       delta: delta,
       mouseX: pointerX,
       editorWidth: contentRenderBox.size.width,
     );
+
+    final appliedWidth = timeView.width;
+    if (appliedWidth <= 0) {
+      return 0;
+    }
+
+    return (math.log(appliedWidth) - math.log(originalWidth)) / 0.0025;
+  }
+
+  double _applyVerticalZoomDelta(double pointerY, double delta) {
+    widget.onVerticalZoom?.call(pointerY, delta);
+    return delta;
   }
 
   void _handleMiddlePointerDown(Offset pointerPos) {
@@ -260,9 +293,11 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     widget.onVerticalPanMove?.call(pointerPos.dy);
   }
 
-  void _stopAllAxisActivity({required bool clearSamples}) {
+  void _stopAllInputActivity({required bool clearSamples}) {
     _horizontalAxisController.stop(clearSamples: clearSamples);
     _verticalAxisController.stop(clearSamples: clearSamples);
+    _horizontalZoomController.stop(clearSamples: clearSamples);
+    _verticalZoomController.stop(clearSamples: clearSamples);
   }
 
   void _beginPanZoomGesture() {
@@ -289,6 +324,8 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     if (startFling) {
       _horizontalAxisController.startFling();
       _verticalAxisController.startFling();
+      _horizontalZoomController.startFling();
+      _verticalZoomController.startFling();
     }
 
     _isPanZoomGestureActive = false;
@@ -296,15 +333,18 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
   }
 
   void _handleScroll(PointerScrollEvent event) {
+    final contentRenderBox = context.findRenderObject() as RenderBox;
+    final pointerPos = contentRenderBox.globalToLocal(event.position);
+
     if (_usesTimelineZoomOnlyInput) {
       _endPanZoomGesture();
-      _stopAllAxisActivity(clearSamples: true);
-
-      final contentRenderBox = context.findRenderObject() as RenderBox;
-      final pointerPos = contentRenderBox.globalToLocal(event.position);
-      _handleHorizontalZoom(
-        pointerPos.dx,
-        event.scrollDelta.dy * _timelineWheelZoomMultiplier,
+      _horizontalAxisController.stop(clearSamples: true);
+      _verticalAxisController.stop(clearSamples: true);
+      _verticalZoomController.stop(clearSamples: true);
+      _horizontalZoomController.applyUserDelta(
+        pointerCoordinate: pointerPos.dx,
+        delta: event.scrollDelta.dy * _timelineWheelZoomMultiplier,
+        timeStamp: event.timeStamp,
       );
       return;
     }
@@ -316,35 +356,49 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     }
 
     final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pointerPos = contentRenderBox.globalToLocal(event.position);
 
     if (modifiers.ctrl) {
       _endPanZoomGesture();
-      _stopAllAxisActivity(clearSamples: true);
+      _horizontalAxisController.stop(clearSamples: true);
+      _verticalAxisController.stop(clearSamples: true);
+      _verticalZoomController.stop(clearSamples: true);
 
       if (_supportsHorizontalZoom) {
-        _handleHorizontalZoom(pointerPos.dx, delta);
+        _horizontalZoomController.applyUserDelta(
+          pointerCoordinate: pointerPos.dx,
+          delta: delta,
+          timeStamp: event.timeStamp,
+        );
       }
       return;
     }
 
     if (modifiers.alt) {
       _endPanZoomGesture();
-      _stopAllAxisActivity(clearSamples: true);
+      _horizontalAxisController.stop(clearSamples: true);
+      _verticalAxisController.stop(clearSamples: true);
+      _horizontalZoomController.stop(clearSamples: true);
 
-      widget.onVerticalZoom?.call(pointerPos.dy, -delta * 0.005);
+      _verticalZoomController.applyUserDelta(
+        pointerCoordinate: pointerPos.dy,
+        delta: -delta * 0.005,
+        timeStamp: event.timeStamp,
+      );
       return;
     }
 
     if (modifiers.shift) {
       _endPanZoomGesture();
+      _horizontalZoomController.stop(clearSamples: true);
+      _verticalZoomController.stop(clearSamples: true);
       _verticalAxisController.stop(clearSamples: true);
       _horizontalAxisController.applyUserDelta(delta, event.timeStamp);
       return;
     }
 
     _endPanZoomGesture();
+    _horizontalZoomController.stop(clearSamples: true);
+    _verticalZoomController.stop(clearSamples: true);
     _horizontalAxisController.stop(clearSamples: true);
     _verticalAxisController.applyUserDelta(delta, event.timeStamp);
   }
@@ -361,7 +415,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
 
     if ((panZoomEvent?.scale ?? 1) != 1) {
       _endPanZoomGesture();
-      _stopAllAxisActivity(clearSamples: true);
+      _stopAllInputActivity(clearSamples: true);
       return;
     }
 
@@ -370,32 +424,46 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     final pointerPos = contentRenderBox.globalToLocal(event.position);
 
     if (_usesTimelineZoomOnlyInput) {
-      _endPanZoomGesture();
-      _stopAllAxisActivity(clearSamples: true);
-      _handleHorizontalZoom(
-        pointerPos.dx,
-        -dy * _timelineTrackpadZoomMultiplier,
+      _horizontalAxisController.stop(clearSamples: true);
+      _verticalAxisController.stop(clearSamples: true);
+      _verticalZoomController.stop(clearSamples: true);
+      _horizontalZoomController.applyUserDelta(
+        pointerCoordinate: pointerPos.dx,
+        delta: -dy * _timelineTrackpadZoomMultiplier,
+        timeStamp: event.timeStamp,
       );
       return;
     }
 
     if (modifiers.ctrl) {
-      _endPanZoomGesture();
-      _stopAllAxisActivity(clearSamples: true);
+      _horizontalAxisController.stop(clearSamples: true);
+      _verticalAxisController.stop(clearSamples: true);
+      _verticalZoomController.stop(clearSamples: true);
 
       if (_supportsHorizontalZoom) {
-        _handleHorizontalZoom(pointerPos.dx, -dy * 0.8);
+        _horizontalZoomController.applyUserDelta(
+          pointerCoordinate: pointerPos.dx,
+          delta: -dy * 0.8,
+          timeStamp: event.timeStamp,
+        );
       }
       return;
     }
 
     if (modifiers.alt) {
-      _endPanZoomGesture();
-      _stopAllAxisActivity(clearSamples: true);
-
-      widget.onVerticalZoom?.call(pointerPos.dy, -dy * 0.01);
+      _horizontalAxisController.stop(clearSamples: true);
+      _verticalAxisController.stop(clearSamples: true);
+      _horizontalZoomController.stop(clearSamples: true);
+      _verticalZoomController.applyUserDelta(
+        pointerCoordinate: pointerPos.dy,
+        delta: -dy * 0.01,
+        timeStamp: event.timeStamp,
+      );
       return;
     }
+
+    _horizontalZoomController.stop(clearSamples: true);
+    _verticalZoomController.stop(clearSamples: true);
 
     final filteredDelta = switch ((
       _supportsHorizontalScroll,
@@ -439,7 +507,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       },
       onPointerDown: (event) {
         _endPanZoomGesture();
-        _stopAllAxisActivity(clearSamples: true);
+        _stopAllInputActivity(clearSamples: true);
 
         if (_supportsMiddleMousePan &&
             event.buttons & kMiddleMouseButton == kMiddleMouseButton) {
@@ -462,6 +530,49 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
 }
 
 enum _EditorScrollManagerMode { editor, timeline, verticalOnly }
+
+/// Wraps a scroll axis controller for interactions whose deltas depend on the
+/// latest pointer coordinate, such as zooming around the current cursor.
+class _AnchoredScrollAxisController {
+  final double Function(double pointerCoordinate, double delta)
+  applyAnchoredDelta;
+
+  late final _ScrollAxisController _axisController;
+  double _pointerCoordinate = 0;
+
+  _AnchoredScrollAxisController({
+    required TickerProvider vsync,
+    required this.applyAnchoredDelta,
+    bool Function()? isEnabled,
+  }) {
+    _axisController = _ScrollAxisController(
+      vsync: vsync,
+      isEnabled: isEnabled,
+      applyDelta: (delta) => applyAnchoredDelta(_pointerCoordinate, delta),
+    );
+  }
+
+  void dispose() {
+    _axisController.dispose();
+  }
+
+  void applyUserDelta({
+    required double pointerCoordinate,
+    required double delta,
+    required Duration timeStamp,
+  }) {
+    _pointerCoordinate = pointerCoordinate;
+    _axisController.applyUserDelta(delta, timeStamp);
+  }
+
+  void startFling() {
+    _axisController.startFling();
+  }
+
+  void stop({required bool clearSamples}) {
+    _axisController.stop(clearSamples: clearSamples);
+  }
+}
 
 /// Manages scrolling behavior for a single logical axis.
 ///

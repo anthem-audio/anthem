@@ -65,9 +65,58 @@ class _VerticalEditorScrollManagerTestFixture {
     WidgetTester tester, {
     required Offset position,
     required Offset scrollDelta,
+    Duration timeStamp = Duration.zero,
   }) async {
     tester.binding.handlePointerEvent(
       PointerScrollEvent(
+        timeStamp: timeStamp,
+        position: position,
+        scrollDelta: scrollDelta,
+        kind: PointerDeviceKind.mouse,
+      ),
+    );
+    await tester.pump();
+  }
+}
+
+class _EditorScrollManagerTestFixture {
+  static const childKey = Key('editor-scroll-manager-child');
+
+  final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
+  final TimeRange timeView = TimeRange(0, 1000);
+
+  Future<void> pump(WidgetTester tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<KeyboardModifiers>.value(
+        value: keyboardModifiers,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: EditorScrollManager.editor(
+              timeView: timeView,
+              child: const ColoredBox(
+                color: Color(0xFFFFFFFF),
+                child: SizedBox(key: childKey, width: 200, height: 120),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Offset center(WidgetTester tester) => tester.getCenter(find.byKey(childKey));
+
+  Future<void> sendScroll(
+    WidgetTester tester, {
+    required Offset position,
+    required Offset scrollDelta,
+    Duration timeStamp = Duration.zero,
+  }) async {
+    tester.binding.handlePointerEvent(
+      PointerScrollEvent(
+        timeStamp: timeStamp,
         position: position,
         scrollDelta: scrollDelta,
         kind: PointerDeviceKind.mouse,
@@ -110,9 +159,11 @@ class _TimelineScrollManagerTestFixture {
     WidgetTester tester, {
     required Offset position,
     required Offset scrollDelta,
+    Duration timeStamp = Duration.zero,
   }) async {
     tester.binding.handlePointerEvent(
       PointerScrollEvent(
+        timeStamp: timeStamp,
         position: position,
         scrollDelta: scrollDelta,
         kind: PointerDeviceKind.mouse,
@@ -277,6 +328,81 @@ void main() {
       );
 
       expect(fixture.timeView.width, greaterThan(initialWidth));
+    });
+
+    testWidgets('continues zooming after wheel input stops', (tester) async {
+      await fixture.pump(tester);
+
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 24),
+        timeStamp: const Duration(milliseconds: 0),
+      );
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 24),
+        timeStamp: const Duration(milliseconds: 16),
+      );
+
+      final widthAfterInput = fixture.timeView.width;
+
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.pump(const Duration(milliseconds: 120));
+
+      expect(fixture.timeView.width, greaterThan(widthAfterInput));
+    });
+  });
+
+  group('EditorScrollManager.editor', () {
+    late _EditorScrollManagerTestFixture fixture;
+
+    setUp(() {
+      fixture = _EditorScrollManagerTestFixture();
+    });
+
+    testWidgets('routes ctrl plus wheel input to horizontal zoom', (
+      tester,
+    ) async {
+      await fixture.pump(tester);
+      fixture.keyboardModifiers.setCtrl(true);
+      final initialWidth = fixture.timeView.width;
+
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 24),
+      );
+
+      expect(fixture.timeView.width, greaterThan(initialWidth));
+    });
+
+    testWidgets('continues ctrl zooming after wheel input stops', (
+      tester,
+    ) async {
+      await fixture.pump(tester);
+      fixture.keyboardModifiers.setCtrl(true);
+
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 24),
+        timeStamp: const Duration(milliseconds: 0),
+      );
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 24),
+        timeStamp: const Duration(milliseconds: 16),
+      );
+
+      final widthAfterInput = fixture.timeView.width;
+
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.pump(const Duration(milliseconds: 120));
+
+      expect(fixture.timeView.width, greaterThan(widthAfterInput));
     });
   });
 }
