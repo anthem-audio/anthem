@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,6 +22,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+import 'helpers.dart';
 import 'view_model.dart';
 import 'controller/arranger_controller.dart';
 
@@ -58,10 +59,28 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
           builder: (context) {
             final viewModel = Provider.of<ArrangerViewModel>(context);
 
-            return EditorScrollManager(
+            return EditorScrollManager.timeline(
               timeView: viewModel.timeView,
-              onVerticalScrollChange: (pixelDelta) {
-                viewModel.applyVerticalScrollDelta(pixelDelta);
+              onVerticalScrollChange: (delta) {
+                final previousVerticalScrollPosition =
+                    viewModel.verticalScrollPosition;
+
+                viewModel.applyVerticalScrollDelta(delta);
+
+                final appliedVerticalScrollDelta =
+                    viewModel.verticalScrollPosition -
+                    previousVerticalScrollPosition;
+                final deltaScale =
+                    0.01 *
+                    viewModel.baseTrackHeight.clamp(
+                      minTrackHeight,
+                      maxTrackHeight,
+                    );
+                if (deltaScale == 0) {
+                  return 0;
+                }
+
+                return appliedVerticalScrollDelta / deltaScale;
               },
               onVerticalPanStart: (y) {
                 _panYStart = y;

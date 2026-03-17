@@ -81,7 +81,7 @@ class AutomationEditorEventListener extends StatelessWidget {
             onPointerCancel: (e) {
               controller.pointerUp();
             },
-            child: EditorScrollManager(
+            child: EditorScrollManager.timeline(
               timeView: viewModel.timeView,
               child: child,
             ),

@@ -181,19 +181,28 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       builder: (context, boxConstraints) {
         return Observer(
           builder: (context) {
-            return EditorScrollManager(
+            return EditorScrollManager.timeline(
               timeView: viewModel.timeView,
-              onVerticalScrollChange: (pixelDelta) {
+              onVerticalScrollChange: (delta) {
                 final keysPerPixel = 1 / viewModel.keyHeight;
-
-                final scrollAmountInKeys = -pixelDelta * 0.5 * keysPerPixel;
-
-                viewModel.keyValueAtTop = clampDouble(
-                  viewModel.keyValueAtTop + scrollAmountInKeys,
+                final scrollAmountInKeys = -delta * 0.5 * keysPerPixel;
+                final previousKeyValueAtTop = viewModel.keyValueAtTop;
+                final nextKeyValueAtTop = clampDouble(
+                  previousKeyValueAtTop + scrollAmountInKeys,
                   minKeyValue +
                       (boxConstraints.maxHeight / viewModel.keyHeight),
                   maxKeyValue,
                 );
+
+                viewModel.keyValueAtTop = nextKeyValueAtTop;
+
+                final appliedScrollAmountInKeys =
+                    nextKeyValueAtTop - previousKeyValueAtTop;
+                if (keysPerPixel == 0) {
+                  return 0;
+                }
+
+                return -appliedScrollAmountInKeys / (0.5 * keysPerPixel);
               },
               onVerticalPanStart: (y) {
                 _panPointerYStart = y;
