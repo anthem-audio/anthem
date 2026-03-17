@@ -23,7 +23,6 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -31,8 +30,8 @@ import 'package:provider/provider.dart';
 import 'controller/timeline_controller.dart';
 import 'controller/state_machine/timeline_state_machine.dart'
     show TimelineLoopHandle;
-import '../helpers/time_helpers.dart';
 import '../helpers/types.dart';
+import '../scroll_manager.dart';
 import 'loop_indicator.dart';
 import 'playhead_handle.dart';
 import 'timeline_labels.dart';
@@ -272,231 +271,219 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
         final controller = _requiredController;
         _syncRenderedViewMetrics();
 
-        void handleScroll(double delta, double mouseX) {
-          zoomTimeView(
-            timeView: timeView,
-            delta: delta,
-            mouseX: mouseX,
-            editorWidth: constraints.maxWidth,
-          );
-        }
-
-        return Listener(
-          onPointerPanZoomUpdate: (event) {
-            handleScroll(-event.panDelta.dy * 0.7, event.localPosition.dx);
-          },
-          onPointerSignal: (event) {
-            if (event is PointerScrollEvent) {
-              handleScroll(event.scrollDelta.dy * 1.5, event.localPosition.dx);
-            }
-          },
-          onPointerDown: handlePointerDown,
-          onPointerMove: handlePointerMove,
-          onPointerUp: handlePointerUp,
-          onPointerCancel: handlePointerUp,
-          child: ClipRect(
-            child: Stack(
-              fit: StackFit.expand,
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  color: const Color(0xFF3B3B3B),
-                  child: ClipRect(
-                    child: AnimatedBuilder(
-                      animation: widget.timeViewAnimationController,
-                      builder: (context, child) {
-                        return Observer(
-                          builder: (context) {
-                            return CustomPaint(
-                              painter: TimelinePainter(
-                                timeViewStart:
-                                    widget.timeViewStartAnimation.value,
-                                timeViewEnd: widget.timeViewEndAnimation.value,
-                                ticksPerQuarter:
-                                    project.sequence.ticksPerQuarter,
-                                defaultTimeSignature:
-                                    project.sequence.defaultTimeSignature,
-                                timeSignatureChanges: controller
-                                    .timeSignatureChanges(),
-                              ),
-                            );
-                          },
-                        );
-                      },
+        return EditorScrollManager.timeline(
+          timeView: timeView,
+          child: Listener(
+            onPointerDown: handlePointerDown,
+            onPointerMove: handlePointerMove,
+            onPointerUp: handlePointerUp,
+            onPointerCancel: handlePointerUp,
+            child: ClipRect(
+              child: Stack(
+                fit: StackFit.expand,
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    color: const Color(0xFF3B3B3B),
+                    child: ClipRect(
+                      child: AnimatedBuilder(
+                        animation: widget.timeViewAnimationController,
+                        builder: (context, child) {
+                          return Observer(
+                            builder: (context) {
+                              return CustomPaint(
+                                painter: TimelinePainter(
+                                  timeViewStart:
+                                      widget.timeViewStartAnimation.value,
+                                  timeViewEnd:
+                                      widget.timeViewEndAnimation.value,
+                                  ticksPerQuarter:
+                                      project.sequence.ticksPerQuarter,
+                                  defaultTimeSignature:
+                                      project.sequence.defaultTimeSignature,
+                                  timeSignatureChanges: controller
+                                      .timeSignatureChanges(),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-                Observer(
-                  warnWhenNoObservables: false,
-                  builder: (context) {
-                    final timelineLabels = controller
-                        .timeSignatureChanges()
-                        .map<Widget>(
-                          (change) => LayoutId(
-                            id: change.offset,
-                            child: TimelineLabel(
-                              text: change.timeSignature.toDisplayString(),
-                              id: change.id,
-                              offset: change.offset,
-                              timelineWidth: constraints.maxWidth,
-                              stableBuildContext: context,
-                            ),
-                          ),
-                        )
-                        .toList();
-
-                    return AnimatedBuilder(
-                      animation: widget.timeViewAnimationController,
-                      builder: (context, child) {
-                        return Observer(
-                          warnWhenNoObservables: false,
-                          builder: (context) {
-                            return CustomMultiChildLayout(
-                              delegate: TimeSignatureLabelLayoutDelegate(
-                                timeSignatureChanges: controller
-                                    .timeSignatureChanges(),
-                                timeViewStart:
-                                    widget.timeViewStartAnimation.value,
-                                timeViewEnd: widget.timeViewEndAnimation.value,
+                  Observer(
+                    warnWhenNoObservables: false,
+                    builder: (context) {
+                      final timelineLabels = controller
+                          .timeSignatureChanges()
+                          .map<Widget>(
+                            (change) => LayoutId(
+                              id: change.offset,
+                              child: TimelineLabel(
+                                text: change.timeSignature.toDisplayString(),
+                                id: change.id,
+                                offset: change.offset,
+                                timelineWidth: constraints.maxWidth,
+                                stableBuildContext: context,
                               ),
-                              children: timelineLabels,
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-                Observer(
-                  warnWhenNoObservables: false,
-                  builder: (context) {
-                    final loopPoints = controller.loopPoints();
-                    return LoopIndicator(
-                      timeViewAnimationController:
-                          widget.timeViewAnimationController,
-                      timeViewStartAnimation: widget.timeViewStartAnimation,
-                      timeViewEndAnimation: widget.timeViewEndAnimation,
-                      timelineSize: constraints.biggest,
-                      loopStart: loopPoints?.start,
-                      loopEnd: loopPoints?.end,
-                      onLoopStartPressed: (pointerId) {
-                        _markNextPointerDownAsLoopHandlePress(
-                          pointerId: pointerId,
-                          handle: TimelineLoopHandle.start,
-                        );
-                      },
-                      onLoopEndPressed: (pointerId) {
-                        _markNextPointerDownAsLoopHandlePress(
-                          pointerId: pointerId,
-                          handle: TimelineLoopHandle.end,
-                        );
-                      },
-                    );
-                  },
-                ),
+                            ),
+                          )
+                          .toList();
 
-                // Playhead positioner for the playback start position
-                VisualizationBuilder.int(
-                  config: VisualizationSubscriptionConfig.latest(
-                    'playhead_sequence_id',
+                      return AnimatedBuilder(
+                        animation: widget.timeViewAnimationController,
+                        builder: (context, child) {
+                          return Observer(
+                            warnWhenNoObservables: false,
+                            builder: (context) {
+                              return CustomMultiChildLayout(
+                                delegate: TimeSignatureLabelLayoutDelegate(
+                                  timeSignatureChanges: controller
+                                      .timeSignatureChanges(),
+                                  timeViewStart:
+                                      widget.timeViewStartAnimation.value,
+                                  timeViewEnd:
+                                      widget.timeViewEndAnimation.value,
+                                ),
+                                children: timelineLabels,
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
                   ),
-                  builder: (context, activeSequenceIdFromEngine) {
-                    return Observer(
-                      builder: (context) {
-                        final activeSequenceIdOverride =
-                            project.engineState != EngineState.running
-                            ? project.sequence.activeTransportSequenceID
-                            : null;
-
-                        final activeSequenceId =
-                            activeSequenceIdOverride ??
-                            activeSequenceIdFromEngine;
-
-                        return Visibility(
-                          visible:
-                              activeSequenceId != null &&
-                              (widget.patternID == activeSequenceId ||
-                                  widget.arrangementID == activeSequenceId),
-                          child: PlayheadPositioner(
-                            isStartMarker: true,
-                            playheadTimeOverride: project
-                                .sequence
-                                .playbackStartPosition
-                                .toDouble(),
-                            timeViewAnimationController:
-                                widget.timeViewAnimationController,
-                            timeViewStartAnimation:
-                                widget.timeViewStartAnimation,
-                            timeViewEndAnimation: widget.timeViewEndAnimation,
-                            timelineSize: constraints.biggest,
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-
-                // Playhead positioner for the actual playhead
-                VisualizationBuilder.int(
-                  // This pulls the latest visualization value for the active
-                  // sequence ID.
-                  //
-                  // The engine tells us what sequence it is currently playing.
-                  // We could pull this from the local data model, but we need
-                  // to pull it from the engine. This is because updates take
-                  // some time to propagate to the engine and come back, and so
-                  // if we pull one value from the data model (active sequence
-                  // ID) and one from the engine (playhead position), we can get
-                  // a desync between the two which is noticeable.
-                  //
-                  // By pulling the active sequence ID from the engine, we
-                  // ensure that the playhead position value is always linked to
-                  // whatever sequence is active in the engine, and we don't get
-                  // a desync.
-                  //
-                  // Note that the round-trip delay here may be quick enough,
-                  // but the worst-case will be around one audio block which may
-                  // last even a few frames, depending on the current audio
-                  // configuration.
-                  config: VisualizationSubscriptionConfig.latest(
-                    'playhead_sequence_id',
+                  Observer(
+                    warnWhenNoObservables: false,
+                    builder: (context) {
+                      final loopPoints = controller.loopPoints();
+                      return LoopIndicator(
+                        timeViewAnimationController:
+                            widget.timeViewAnimationController,
+                        timeViewStartAnimation: widget.timeViewStartAnimation,
+                        timeViewEndAnimation: widget.timeViewEndAnimation,
+                        timelineSize: constraints.biggest,
+                        loopStart: loopPoints?.start,
+                        loopEnd: loopPoints?.end,
+                        onLoopStartPressed: (pointerId) {
+                          _markNextPointerDownAsLoopHandlePress(
+                            pointerId: pointerId,
+                            handle: TimelineLoopHandle.start,
+                          );
+                        },
+                        onLoopEndPressed: (pointerId) {
+                          _markNextPointerDownAsLoopHandlePress(
+                            pointerId: pointerId,
+                            handle: TimelineLoopHandle.end,
+                          );
+                        },
+                      );
+                    },
                   ),
-                  builder: (context, activeSequenceIdFromEngine) {
-                    return Observer(
-                      builder: (context) {
-                        final activeSequenceIdOverride =
-                            project.engineState != EngineState.running
-                            ? project.sequence.activeTransportSequenceID
-                            : null;
 
-                        final activeSequenceId =
-                            activeSequenceIdOverride ??
-                            activeSequenceIdFromEngine;
+                  // Playhead positioner for the playback start position
+                  VisualizationBuilder.int(
+                    config: VisualizationSubscriptionConfig.latest(
+                      'playhead_sequence_id',
+                    ),
+                    builder: (context, activeSequenceIdFromEngine) {
+                      return Observer(
+                        builder: (context) {
+                          final activeSequenceIdOverride =
+                              project.engineState != EngineState.running
+                              ? project.sequence.activeTransportSequenceID
+                              : null;
 
-                        return Visibility(
-                          visible:
-                              activeSequenceId != null &&
-                              (widget.patternID == activeSequenceId ||
-                                  widget.arrangementID == activeSequenceId),
-                          child: PlayheadPositioner(
-                            playheadTimeOverride:
-                                project.engineState == EngineState.running
-                                ? null
-                                : project.sequence.playbackStartPosition
-                                      .toDouble(),
-                            timeViewAnimationController:
-                                widget.timeViewAnimationController,
-                            timeViewStartAnimation:
-                                widget.timeViewStartAnimation,
-                            timeViewEndAnimation: widget.timeViewEndAnimation,
-                            timelineSize: constraints.biggest,
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ],
+                          final activeSequenceId =
+                              activeSequenceIdOverride ??
+                              activeSequenceIdFromEngine;
+
+                          return Visibility(
+                            visible:
+                                activeSequenceId != null &&
+                                (widget.patternID == activeSequenceId ||
+                                    widget.arrangementID == activeSequenceId),
+                            child: PlayheadPositioner(
+                              isStartMarker: true,
+                              playheadTimeOverride: project
+                                  .sequence
+                                  .playbackStartPosition
+                                  .toDouble(),
+                              timeViewAnimationController:
+                                  widget.timeViewAnimationController,
+                              timeViewStartAnimation:
+                                  widget.timeViewStartAnimation,
+                              timeViewEndAnimation: widget.timeViewEndAnimation,
+                              timelineSize: constraints.biggest,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+
+                  // Playhead positioner for the actual playhead
+                  VisualizationBuilder.int(
+                    // This pulls the latest visualization value for the active
+                    // sequence ID.
+                    //
+                    // The engine tells us what sequence it is currently playing.
+                    // We could pull this from the local data model, but we need
+                    // to pull it from the engine. This is because updates take
+                    // some time to propagate to the engine and come back, and so
+                    // if we pull one value from the data model (active sequence
+                    // ID) and one from the engine (playhead position), we can get
+                    // a desync between the two which is noticeable.
+                    //
+                    // By pulling the active sequence ID from the engine, we
+                    // ensure that the playhead position value is always linked to
+                    // whatever sequence is active in the engine, and we don't get
+                    // a desync.
+                    //
+                    // Note that the round-trip delay here may be quick enough,
+                    // but the worst-case will be around one audio block which may
+                    // last even a few frames, depending on the current audio
+                    // configuration.
+                    config: VisualizationSubscriptionConfig.latest(
+                      'playhead_sequence_id',
+                    ),
+                    builder: (context, activeSequenceIdFromEngine) {
+                      return Observer(
+                        builder: (context) {
+                          final activeSequenceIdOverride =
+                              project.engineState != EngineState.running
+                              ? project.sequence.activeTransportSequenceID
+                              : null;
+
+                          final activeSequenceId =
+                              activeSequenceIdOverride ??
+                              activeSequenceIdFromEngine;
+
+                          return Visibility(
+                            visible:
+                                activeSequenceId != null &&
+                                (widget.patternID == activeSequenceId ||
+                                    widget.arrangementID == activeSequenceId),
+                            child: PlayheadPositioner(
+                              playheadTimeOverride:
+                                  project.engineState == EngineState.running
+                                  ? null
+                                  : project.sequence.playbackStartPosition
+                                        .toDouble(),
+                              timeViewAnimationController:
+                                  widget.timeViewAnimationController,
+                              timeViewStartAnimation:
+                                  widget.timeViewStartAnimation,
+                              timeViewEndAnimation: widget.timeViewEndAnimation,
+                              timelineSize: constraints.biggest,
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         );

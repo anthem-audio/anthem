@@ -40,6 +40,13 @@ const _trackpadVerticalDeltaMultiplier = 1.0;
 // gesture state after a short period of inactivity.
 const _panZoomGestureIdleResetDelay = Duration(milliseconds: 96);
 
+// Scales wheel input for the timeline strip's zoom-only interaction model.
+const _timelineWheelZoomMultiplier = 1.5;
+
+// Scales trackpad vertical pan deltas for the timeline strip's zoom-only
+// interaction model.
+const _timelineTrackpadZoomMultiplier = 0.7;
+
 /// Abstracts scroll and zoom events for editors.
 ///
 /// This widget is meant to be rendered around an editor canvas. It intercepts
@@ -58,6 +65,7 @@ const _panZoomGestureIdleResetDelay = Duration(milliseconds: 96);
 class EditorScrollManager extends StatefulWidget {
   final Widget? child;
   final TimeRange? timeView;
+  final _EditorScrollManagerMode _mode;
 
   /// Applies a vertical scroll delta and returns the amount that was actually
   /// consumed after any clamping.
@@ -72,7 +80,7 @@ class EditorScrollManager extends StatefulWidget {
   ///
   /// Horizontal motion and zoom are mapped onto [timeView], while vertical
   /// movement is delegated to the supplied callbacks.
-  const EditorScrollManager.timeline({
+  const EditorScrollManager.editor({
     super.key,
     this.child,
     required TimeRange this.timeView,
@@ -80,7 +88,23 @@ class EditorScrollManager extends StatefulWidget {
     this.onVerticalPanStart,
     this.onVerticalPanMove,
     this.onVerticalZoom,
-  });
+  }) : _mode = _EditorScrollManagerMode.editor;
+
+  /// Creates a scroll surface for timeline strips that zoom horizontally in
+  /// response to wheel and trackpad input.
+  ///
+  /// Unlike editor canvases, the timeline does not treat wheel input as
+  /// vertical scrolling. Instead, vertical pointer deltas zoom [timeView]
+  /// around the current pointer position.
+  const EditorScrollManager.timeline({
+    super.key,
+    this.child,
+    required TimeRange this.timeView,
+  }) : onVerticalScrollChange = null,
+       onVerticalPanStart = null,
+       onVerticalPanMove = null,
+       onVerticalZoom = null,
+       _mode = _EditorScrollManagerMode.timeline;
 
   /// Creates a scroll surface for regions that should only respond to vertical
   /// scrolling and vertical zoom gestures.
@@ -95,7 +119,8 @@ class EditorScrollManager extends StatefulWidget {
     this.onVerticalZoom,
   }) : timeView = null,
        onVerticalPanStart = null,
-       onVerticalPanMove = null;
+       onVerticalPanMove = null,
+       _mode = _EditorScrollManagerMode.verticalOnly;
 
   @override
   State<EditorScrollManager> createState() => _EditorScrollManagerState();
@@ -107,7 +132,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     final timeView = widget.timeView;
     if (timeView == null) {
       throw StateError(
-        'EditorScrollManager.timeline must provide a TimeRange.',
+        'EditorScrollManager.editor and EditorScrollManager.timeline must provide a TimeRange.',
       );
     }
 
@@ -126,7 +151,16 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
   Timer? _panZoomGestureResetTimer;
   bool _isPanZoomGestureActive = false;
 
-  bool get _hasHorizontalInputHandler => widget.timeView != null;
+  bool get _supportsHorizontalScroll =>
+      widget._mode == _EditorScrollManagerMode.editor;
+
+  bool get _supportsHorizontalZoom => widget.timeView != null;
+
+  bool get _supportsMiddleMousePan =>
+      widget._mode == _EditorScrollManagerMode.editor;
+
+  bool get _usesTimelineZoomOnlyInput =>
+      widget._mode == _EditorScrollManagerMode.timeline;
 
   bool get _hasVerticalInputHandler =>
       widget.onVerticalScrollChange != null || widget.onVerticalZoom != null;
@@ -137,9 +171,9 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
 
     _horizontalAxisController = _ScrollAxisController(
       vsync: this,
-      isEnabled: () => _hasHorizontalInputHandler,
+      isEnabled: () => _supportsHorizontalScroll,
       applyDelta: (delta) =>
-          _hasHorizontalInputHandler ? _applyHorizontalScrollDelta(delta) : 0,
+          _supportsHorizontalScroll ? _applyHorizontalScrollDelta(delta) : 0,
     );
 
     _verticalAxisController = _ScrollAxisController(
@@ -262,6 +296,19 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
   }
 
   void _handleScroll(PointerScrollEvent event) {
+    if (_usesTimelineZoomOnlyInput) {
+      _endPanZoomGesture();
+      _stopAllAxisActivity(clearSamples: true);
+
+      final contentRenderBox = context.findRenderObject() as RenderBox;
+      final pointerPos = contentRenderBox.globalToLocal(event.position);
+      _handleHorizontalZoom(
+        pointerPos.dx,
+        event.scrollDelta.dy * _timelineWheelZoomMultiplier,
+      );
+      return;
+    }
+
     var delta = event.scrollDelta.dy;
 
     if (event.kind == PointerDeviceKind.mouse) {
@@ -276,7 +323,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       _endPanZoomGesture();
       _stopAllAxisActivity(clearSamples: true);
 
-      if (_hasHorizontalInputHandler) {
+      if (_supportsHorizontalZoom) {
         _handleHorizontalZoom(pointerPos.dx, delta);
       }
       return;
@@ -322,11 +369,21 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pointerPos = contentRenderBox.globalToLocal(event.position);
 
+    if (_usesTimelineZoomOnlyInput) {
+      _endPanZoomGesture();
+      _stopAllAxisActivity(clearSamples: true);
+      _handleHorizontalZoom(
+        pointerPos.dx,
+        -dy * _timelineTrackpadZoomMultiplier,
+      );
+      return;
+    }
+
     if (modifiers.ctrl) {
       _endPanZoomGesture();
       _stopAllAxisActivity(clearSamples: true);
 
-      if (_hasHorizontalInputHandler) {
+      if (_supportsHorizontalZoom) {
         _handleHorizontalZoom(pointerPos.dx, -dy * 0.8);
       }
       return;
@@ -341,7 +398,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     }
 
     final filteredDelta = switch ((
-      _hasHorizontalInputHandler,
+      _supportsHorizontalScroll,
       _hasVerticalInputHandler,
     )) {
       (true, true) => _panZoomAxisCoordinator.filter(
@@ -384,7 +441,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
         _endPanZoomGesture();
         _stopAllAxisActivity(clearSamples: true);
 
-        if (_hasHorizontalInputHandler &&
+        if (_supportsMiddleMousePan &&
             event.buttons & kMiddleMouseButton == kMiddleMouseButton) {
           final contentRenderBox = context.findRenderObject() as RenderBox;
           final pointerPos = contentRenderBox.globalToLocal(event.position);
@@ -392,7 +449,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
         }
       },
       onPointerMove: (event) {
-        if (_hasHorizontalInputHandler &&
+        if (_supportsMiddleMousePan &&
             event.buttons & kMiddleMouseButton == kMiddleMouseButton) {
           final contentRenderBox = context.findRenderObject() as RenderBox;
           final pointerPos = contentRenderBox.globalToLocal(event.position);
@@ -403,6 +460,8 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     );
   }
 }
+
+enum _EditorScrollManagerMode { editor, timeline, verticalOnly }
 
 /// Manages scrolling behavior for a single logical axis.
 ///

@@ -59,7 +59,7 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
           builder: (context) {
             final viewModel = Provider.of<ArrangerViewModel>(context);
 
-            return EditorScrollManager.timeline(
+            return EditorScrollManager.editor(
               timeView: viewModel.timeView,
               onVerticalScrollChange: (delta) {
                 final previousVerticalScrollPosition =

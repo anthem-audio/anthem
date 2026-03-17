@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
+import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -47,6 +48,51 @@ class _VerticalEditorScrollManagerTestFixture {
               onVerticalZoom: (pointerY, delta) {
                 zoomEvent = (pointerY, delta);
               },
+              child: const ColoredBox(
+                color: Color(0xFFFFFFFF),
+                child: SizedBox(key: childKey, width: 200, height: 120),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Offset center(WidgetTester tester) => tester.getCenter(find.byKey(childKey));
+
+  Future<void> sendScroll(
+    WidgetTester tester, {
+    required Offset position,
+    required Offset scrollDelta,
+  }) async {
+    tester.binding.handlePointerEvent(
+      PointerScrollEvent(
+        position: position,
+        scrollDelta: scrollDelta,
+        kind: PointerDeviceKind.mouse,
+      ),
+    );
+    await tester.pump();
+  }
+}
+
+class _TimelineScrollManagerTestFixture {
+  static const childKey = Key('timeline-scroll-manager-child');
+
+  final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
+  final TimeRange timeView = TimeRange(0, 1000);
+
+  Future<void> pump(WidgetTester tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<KeyboardModifiers>.value(
+        value: keyboardModifiers,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: EditorScrollManager.timeline(
+              timeView: timeView,
               child: const ColoredBox(
                 color: Color(0xFFFFFFFF),
                 child: SizedBox(key: childKey, width: 200, height: 120),
@@ -159,7 +205,7 @@ void main() {
     });
   });
 
-  group('VerticalEditorScrollManager', () {
+  group('EditorScrollManager.verticalOnly', () {
     late _VerticalEditorScrollManagerTestFixture fixture;
 
     setUp(() {
@@ -210,6 +256,27 @@ void main() {
       expect(fixture.scrollDelta, equals(0));
       expect(fixture.zoomEvent, isNotNull);
       expect(fixture.zoomEvent!.$2, closeTo(-0.12, 0.000001));
+    });
+  });
+
+  group('EditorScrollManager.timeline', () {
+    late _TimelineScrollManagerTestFixture fixture;
+
+    setUp(() {
+      fixture = _TimelineScrollManagerTestFixture();
+    });
+
+    testWidgets('routes wheel input to horizontal zoom', (tester) async {
+      await fixture.pump(tester);
+      final initialWidth = fixture.timeView.width;
+
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 24),
+      );
+
+      expect(fixture.timeView.width, greaterThan(initialWidth));
     });
   });
 }
