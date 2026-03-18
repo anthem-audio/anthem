@@ -386,7 +386,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     config: VisualizationSubscriptionConfig.latest(
                       'playhead_sequence_id',
                     ),
-                    builder: (context, activeSequenceIdFromEngine) {
+                    builder: (context, activeSequenceIdFromEngine, engineTime) {
                       return Observer(
                         builder: (context) {
                           final activeSequenceIdOverride =
@@ -447,7 +447,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     config: VisualizationSubscriptionConfig.latest(
                       'playhead_sequence_id',
                     ),
-                    builder: (context, activeSequenceIdFromEngine) {
+                    builder: (context, activeSequenceIdFromEngine, engineTime) {
                       return Observer(
                         builder: (context) {
                           final activeSequenceIdOverride =

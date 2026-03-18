@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -209,7 +209,7 @@ class _RightGroup extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         VisualizationBuilder.double(
-          builder: (context, cpuValue) {
+          builder: (context, cpuValue, engineTime) {
             return Observer(
               builder: (context) {
                 var value = cpuValue ?? 0;

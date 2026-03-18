@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -64,7 +64,7 @@ class PlayheadLine extends StatelessObserverWidget {
           config: VisualizationSubscriptionConfig.latest(
             'playhead_sequence_id',
           ),
-          builder: (context, activeSequenceId) {
+          builder: (context, activeSequenceId, engineTime) {
             return Visibility(
               visible:
                   (activeSequenceIdOverride ?? activeSequenceId) ==
@@ -73,7 +73,7 @@ class PlayheadLine extends StatelessObserverWidget {
                 config: VisualizationSubscriptionConfig.latest(
                   'playhead_position',
                 ),
-                builder: (context, transportPosition) {
+                builder: (context, transportPosition, engineTime) {
                   return AnimatedBuilder(
                     animation: timeViewAnimationController,
                     builder: (context, child) {

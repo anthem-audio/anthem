@@ -24,14 +24,39 @@ import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+typedef DoubleVisualizationBuilder =
+    Widget Function(BuildContext context, double? value, Duration? engineTime);
+typedef IntVisualizationBuilder =
+    Widget Function(BuildContext context, int? value, Duration? engineTime);
+typedef StringVisualizationBuilder =
+    Widget Function(BuildContext context, String? value, Duration? engineTime);
+typedef MultiDoubleVisualizationBuilder =
+    Widget Function(
+      BuildContext context,
+      List<double> values,
+      List<Duration?> engineTimes,
+    );
+typedef MultiIntVisualizationBuilder =
+    Widget Function(
+      BuildContext context,
+      List<int> values,
+      List<Duration?> engineTimes,
+    );
+typedef MultiStringVisualizationBuilder =
+    Widget Function(
+      BuildContext context,
+      List<String> values,
+      List<Duration?> engineTimes,
+    );
+
 /// Builder that rebuilds when the given visualization data item changes.
 ///
 /// This builder will attempt to rebuild on every frame, but will only
-/// actually rebuild if the data item has changed.
+/// actually rebuild if the data item value or engine time has changed.
 class VisualizationBuilder extends StatefulWidget {
-  final Widget Function(BuildContext context, double? value)? doubleBuilder;
-  final Widget Function(BuildContext context, int? value)? intBuilder;
-  final Widget Function(BuildContext context, String? value)? stringBuilder;
+  final DoubleVisualizationBuilder? doubleBuilder;
+  final IntVisualizationBuilder? intBuilder;
+  final StringVisualizationBuilder? stringBuilder;
   final VisualizationSubscriptionConfig config;
   final Duration? minimumUpdateInterval;
 
@@ -40,7 +65,7 @@ class VisualizationBuilder extends StatefulWidget {
   const VisualizationBuilder.double({
     super.key,
     required this.config,
-    required Widget Function(BuildContext context, double? value)? builder,
+    required DoubleVisualizationBuilder? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = builder,
        intBuilder = null,
@@ -51,7 +76,7 @@ class VisualizationBuilder extends StatefulWidget {
   const VisualizationBuilder.int({
     super.key,
     required this.config,
-    required Widget Function(BuildContext context, int? value)? builder,
+    required IntVisualizationBuilder? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = null,
        intBuilder = builder,
@@ -62,7 +87,7 @@ class VisualizationBuilder extends StatefulWidget {
   const VisualizationBuilder.string({
     super.key,
     required this.config,
-    required Widget Function(BuildContext context, String? value)? builder,
+    required StringVisualizationBuilder? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = null,
        intBuilder = null,
@@ -77,6 +102,7 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
   double? _latestDoubleValue;
   int? _latestIntValue;
   String? _latestStringValue;
+  Duration? _latestEngineTime;
   StreamSubscription<void>? _updateSubscription;
   DateTime? _lastUpdateTime;
 
@@ -84,7 +110,47 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
     _latestDoubleValue = null;
     _latestIntValue = null;
     _latestStringValue = null;
+    _latestEngineTime = null;
     _lastUpdateTime = null;
+  }
+
+  void _updateDoubleValue() {
+    final timedValue = _subscription.readTimedValue();
+    final newValue = timedValue?.value ?? _subscription.readValue();
+    final newEngineTime = timedValue?.engineTime;
+
+    if (newValue != _latestDoubleValue || newEngineTime != _latestEngineTime) {
+      setState(() {
+        _latestDoubleValue = newValue;
+        _latestEngineTime = newEngineTime;
+      });
+    }
+  }
+
+  void _updateIntValue() {
+    final timedValue = _subscription.readTimedValueInt();
+    final newValue = timedValue?.value ?? _subscription.readValueInt();
+    final newEngineTime = timedValue?.engineTime;
+
+    if (newValue != _latestIntValue || newEngineTime != _latestEngineTime) {
+      setState(() {
+        _latestIntValue = newValue;
+        _latestEngineTime = newEngineTime;
+      });
+    }
+  }
+
+  void _updateStringValue() {
+    final timedValue = _subscription.readTimedValueString();
+    final newValue = timedValue?.value ?? _subscription.readValueString();
+    final newEngineTime = timedValue?.engineTime;
+
+    if (newValue != _latestStringValue || newEngineTime != _latestEngineTime) {
+      setState(() {
+        _latestStringValue = newValue;
+        _latestEngineTime = newEngineTime;
+      });
+    }
   }
 
   void _attachSubscription() {
@@ -104,33 +170,15 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
       }
 
       if (widget.doubleBuilder != null) {
-        final newValue = _subscription.readValue();
-
-        if (newValue != _latestDoubleValue) {
-          setState(() {
-            _latestDoubleValue = newValue;
-          });
-        }
+        _updateDoubleValue();
       }
 
       if (widget.intBuilder != null) {
-        final newValue = _subscription.readValueInt();
-
-        if (newValue != _latestIntValue) {
-          setState(() {
-            _latestIntValue = newValue;
-          });
-        }
+        _updateIntValue();
       }
 
       if (widget.stringBuilder != null) {
-        final newValue = _subscription.readValueString();
-
-        if (newValue != _latestStringValue) {
-          setState(() {
-            _latestStringValue = newValue;
-          });
-        }
+        _updateStringValue();
       }
     });
   }
@@ -169,12 +217,17 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
     final doubleWidget = widget.doubleBuilder?.call(
       context,
       _latestDoubleValue,
+      _latestEngineTime,
     );
     if (doubleWidget != null) {
       return doubleWidget;
     }
 
-    final intWidget = widget.intBuilder?.call(context, _latestIntValue);
+    final intWidget = widget.intBuilder?.call(
+      context,
+      _latestIntValue,
+      _latestEngineTime,
+    );
     if (intWidget != null) {
       return intWidget;
     }
@@ -182,6 +235,7 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
     final stringWidget = widget.stringBuilder?.call(
       context,
       _latestStringValue,
+      _latestEngineTime,
     );
     return stringWidget!;
   }
@@ -190,21 +244,19 @@ class _VisualizationBuilderState extends State<VisualizationBuilder> {
 /// Builder that rebuilds when the given visualization data items change.
 ///
 /// This builder will attempt to rebuild on every frame, but will only
-/// actually rebuild if at least one of the data items have changed.
+/// actually rebuild if at least one of the data item values or engine times
+/// have changed.
 class MultiVisualizationBuilder extends StatefulWidget {
-  final Widget Function(BuildContext context, List<double> values)?
-  doubleBuilder;
-  final Widget Function(BuildContext context, List<int> values)? intBuilder;
-  final Widget Function(BuildContext context, List<String> values)?
-  stringBuilder;
+  final MultiDoubleVisualizationBuilder? doubleBuilder;
+  final MultiIntVisualizationBuilder? intBuilder;
+  final MultiStringVisualizationBuilder? stringBuilder;
   final List<VisualizationSubscriptionConfig> configs;
   final Duration? minimumUpdateInterval;
 
   const MultiVisualizationBuilder.double({
     super.key,
     required this.configs,
-    required Widget Function(BuildContext context, List<double> values)?
-    builder,
+    required MultiDoubleVisualizationBuilder? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = builder,
        intBuilder = null,
@@ -213,7 +265,7 @@ class MultiVisualizationBuilder extends StatefulWidget {
   const MultiVisualizationBuilder.int({
     super.key,
     required this.configs,
-    required Widget Function(BuildContext context, List<int> values)? builder,
+    required MultiIntVisualizationBuilder? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = null,
        intBuilder = builder,
@@ -222,8 +274,7 @@ class MultiVisualizationBuilder extends StatefulWidget {
   const MultiVisualizationBuilder.string({
     super.key,
     required this.configs,
-    required Widget Function(BuildContext context, List<String> values)?
-    builder,
+    required MultiStringVisualizationBuilder? builder,
     this.minimumUpdateInterval,
   }) : doubleBuilder = null,
        intBuilder = null,
@@ -240,6 +291,7 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
   List<double> _latestDoubleValues = [];
   List<int> _latestIntValues = [];
   List<String> _latestStringValues = [];
+  List<Duration?> _latestEngineTimes = [];
   List<DateTime?> _lastUpdateTimes = [];
 
   void _attachSubscriptions() {
@@ -254,6 +306,11 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
       growable: false,
     );
     _latestIntValues = List.filled(widget.configs.length, 0, growable: false);
+    _latestEngineTimes = List.filled(
+      widget.configs.length,
+      null,
+      growable: false,
+    );
     _lastUpdateTimes = List.filled(widget.configs.length, null);
 
     _subscriptions = widget.configs
@@ -280,31 +337,43 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
           }
 
           if (widget.doubleBuilder != null) {
-            final newValue = sub.readValue();
+            final timedValue = sub.readTimedValue();
+            final newValue = timedValue?.value ?? sub.readValue();
+            final newEngineTime = timedValue?.engineTime;
 
-            if (newValue != _latestDoubleValues[i]) {
+            if (newValue != _latestDoubleValues[i] ||
+                newEngineTime != _latestEngineTimes[i]) {
               setState(() {
                 _latestDoubleValues[i] = newValue;
+                _latestEngineTimes[i] = newEngineTime;
               });
             }
           }
 
           if (widget.intBuilder != null) {
-            final newValue = sub.readValueInt();
+            final timedValue = sub.readTimedValueInt();
+            final newValue = timedValue?.value ?? sub.readValueInt();
+            final newEngineTime = timedValue?.engineTime;
 
-            if (newValue != _latestIntValues[i]) {
+            if (newValue != _latestIntValues[i] ||
+                newEngineTime != _latestEngineTimes[i]) {
               setState(() {
                 _latestIntValues[i] = newValue;
+                _latestEngineTimes[i] = newEngineTime;
               });
             }
           }
 
           if (widget.stringBuilder != null) {
-            final newValue = sub.readValueString();
+            final timedValue = sub.readTimedValueString();
+            final newValue = timedValue?.value ?? sub.readValueString();
+            final newEngineTime = timedValue?.engineTime;
 
-            if (newValue != _latestStringValues[i]) {
+            if (newValue != _latestStringValues[i] ||
+                newEngineTime != _latestEngineTimes[i]) {
               setState(() {
                 _latestStringValues[i] = newValue;
+                _latestEngineTimes[i] = newEngineTime;
               });
             }
           }
@@ -367,12 +436,17 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
     final doubleWidget = widget.doubleBuilder?.call(
       context,
       _latestDoubleValues,
+      _latestEngineTimes,
     );
     if (doubleWidget != null) {
       return doubleWidget;
     }
 
-    final intWidget = widget.intBuilder?.call(context, _latestIntValues);
+    final intWidget = widget.intBuilder?.call(
+      context,
+      _latestIntValues,
+      _latestEngineTimes,
+    );
     if (intWidget != null) {
       return intWidget;
     }
@@ -380,6 +454,7 @@ class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
     final stringWidget = widget.stringBuilder?.call(
       context,
       _latestStringValues,
+      _latestEngineTimes,
     );
     return stringWidget!;
   }
