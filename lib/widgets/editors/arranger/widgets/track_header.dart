@@ -28,8 +28,11 @@ import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:anthem/widgets/basic/controls/slider.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -299,6 +302,11 @@ class _TrackContent extends StatelessWidget {
                       decoration: BoxDecoration(
                         border: Border.all(color: AnthemTheme.panel.border),
                         borderRadius: .circular(2),
+                        color: AnthemTheme.control.background,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(1),
+                        child: _TrackDbMeter(track: track),
                       ),
                     ),
                   ],
@@ -306,6 +314,49 @@ class _TrackContent extends StatelessWidget {
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class _TrackDbMeter extends StatelessWidget {
+  final TrackModel track;
+
+  const _TrackDbMeter({required this.track});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiVisualizationBuilder.double(
+      configs: track.dbMeterVisualizationIds
+          .map(VisualizationSubscriptionConfig.max)
+          .toList(growable: false),
+      builder: (context, values, engineTimes) {
+        final hasStereoValues = values.length >= 2;
+        final hasFullTimestampSet =
+            engineTimes.length >= 2 &&
+            engineTimes[0] != null &&
+            engineTimes[1] != null;
+
+        if (!hasStereoValues || !hasFullTimestampSet) {
+          return const Meter(
+            db: (left: -180.0, right: -180.0),
+            timestamp: Duration.zero,
+          );
+        }
+
+        final leftTime = engineTimes[0]!;
+        final rightTime = engineTimes[1]!;
+
+        return Meter(
+          db: (left: values[0], right: values[1]),
+          gradientStops: [
+            (color: AnthemTheme.primary.main, db: -180),
+            (color: AnthemTheme.primary.main, db: 0),
+            (db: 0.0, color: AnthemTheme.meter.clipping),
+            (db: 12.0, color: AnthemTheme.meter.clipping),
+          ],
+          timestamp: leftTime.compareTo(rightTime) >= 0 ? leftTime : rightTime,
         );
       },
     );

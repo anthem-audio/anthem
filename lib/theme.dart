@@ -31,6 +31,7 @@ class AnthemTheme {
   static _Panel panel = _Panel();
   static _Primary primary = _Primary(colorShifter);
   static _Control control = _Control();
+  static _Meter meter = _Meter();
   static _Text text = _Text();
   static _Grid grid = _Grid();
   static _Overlay overlay = _Overlay();
@@ -82,6 +83,12 @@ class _Control {
   Color border = const Color(0xFF323232);
 
   Color background = const Color(0xFF3D3D3D);
+}
+
+class _Meter {
+  Color low = Color(0xFF38D078);
+  Color high = Color(0xFFE3D54F);
+  Color clipping = Color(0xFFE85E47);
 }
 
 class _Overlay {

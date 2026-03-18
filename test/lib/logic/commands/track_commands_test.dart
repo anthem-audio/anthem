@@ -27,6 +27,8 @@ import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/balance.dart';
+import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
@@ -944,6 +946,7 @@ void main() {
         final newTrack = tracks[newTrackId]!;
         final gainNodeId = newTrack.gainNodeId;
         final balanceNodeId = newTrack.balanceNodeId;
+        final dbMeterNodeId = newTrack.dbMeterNodeId;
         final sequenceNodeId = newTrack.sequenceNoteProviderNodeId;
         final liveEventNodeId = newTrack.liveEventProviderNodeId;
         final gainToBalanceConnectionId = processingGraph.connections.values
@@ -953,13 +956,29 @@ void main() {
                   connection.destinationNodeId == balanceNodeId,
             )
             .id;
+        final balanceToDbMeterConnectionId = processingGraph.connections.values
+            .firstWhere(
+              (connection) =>
+                  connection.sourceNodeId == balanceNodeId &&
+                  connection.destinationNodeId == dbMeterNodeId &&
+                  connection.sourcePortId ==
+                      BalanceProcessorModel.audioOutputPortId &&
+                  connection.destinationPortId ==
+                      DbMeterProcessorModel.audioInputPortId,
+            )
+            .id;
 
         expect(processingGraph.nodes[gainNodeId], isNotNull);
         expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(processingGraph.nodes[sequenceNodeId], isNotNull);
         expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         expect(
           processingGraph.connections[gainToBalanceConnectionId],
+          isNotNull,
+        );
+        expect(
+          processingGraph.connections[balanceToDbMeterConnectionId],
           isNotNull,
         );
 
@@ -967,22 +986,33 @@ void main() {
 
         expect(processingGraph.nodes[gainNodeId], isNull);
         expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.nodes[dbMeterNodeId], isNull);
         expect(processingGraph.nodes[sequenceNodeId], isNull);
         expect(processingGraph.nodes[liveEventNodeId], isNull);
         expect(processingGraph.connections[gainToBalanceConnectionId], isNull);
+        expect(
+          processingGraph.connections[balanceToDbMeterConnectionId],
+          isNull,
+        );
 
         command.execute(project);
 
         expect(newTrack.gainNodeId, equals(gainNodeId));
         expect(newTrack.balanceNodeId, equals(balanceNodeId));
+        expect(newTrack.dbMeterNodeId, equals(dbMeterNodeId));
         expect(newTrack.sequenceNoteProviderNodeId, equals(sequenceNodeId));
         expect(newTrack.liveEventProviderNodeId, equals(liveEventNodeId));
         expect(processingGraph.nodes[gainNodeId], isNotNull);
         expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(processingGraph.nodes[sequenceNodeId], isNotNull);
         expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         expect(
           processingGraph.connections[gainToBalanceConnectionId],
+          isNotNull,
+        );
+        expect(
+          processingGraph.connections[balanceToDbMeterConnectionId],
           isNotNull,
         );
       });
@@ -991,11 +1021,23 @@ void main() {
         trackC.createAndRegisterNodes(project, idAllocator);
         final gainNodeId = trackC.gainNodeId;
         final balanceNodeId = trackC.balanceNodeId;
+        final dbMeterNodeId = trackC.dbMeterNodeId;
         final gainToBalanceConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
                   connection.sourceNodeId == gainNodeId &&
                   connection.destinationNodeId == balanceNodeId,
+            )
+            .id;
+        final balanceToDbMeterConnectionId = processingGraph.connections.values
+            .firstWhere(
+              (connection) =>
+                  connection.sourceNodeId == balanceNodeId &&
+                  connection.destinationNodeId == dbMeterNodeId &&
+                  connection.sourcePortId ==
+                      BalanceProcessorModel.audioOutputPortId &&
+                  connection.destinationPortId ==
+                      DbMeterProcessorModel.audioInputPortId,
             )
             .id;
 
@@ -1008,14 +1050,24 @@ void main() {
 
         expect(processingGraph.nodes[gainNodeId], isNull);
         expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.nodes[dbMeterNodeId], isNull);
         expect(processingGraph.connections[gainToBalanceConnectionId], isNull);
+        expect(
+          processingGraph.connections[balanceToDbMeterConnectionId],
+          isNull,
+        );
 
         command.rollback(project);
 
         expect(processingGraph.nodes[gainNodeId], isNotNull);
         expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(
           processingGraph.connections[gainToBalanceConnectionId],
+          isNotNull,
+        );
+        expect(
+          processingGraph.connections[balanceToDbMeterConnectionId],
           isNotNull,
         );
       });
@@ -1073,6 +1125,7 @@ void main() {
 
           expect(processingGraph.nodes[trackC.gainNodeId], isNull);
           expect(processingGraph.nodes[trackC.balanceNodeId], isNull);
+          expect(processingGraph.nodes[trackC.dbMeterNodeId], isNull);
           expect(processingGraph.nodes[instrumentNode.id], isNull);
           expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
           expect(processingGraph.nodes[liveEventProviderNodeId], isNull);
@@ -1081,6 +1134,7 @@ void main() {
 
           expect(processingGraph.nodes[trackC.gainNodeId], isNotNull);
           expect(processingGraph.nodes[trackC.balanceNodeId], isNotNull);
+          expect(processingGraph.nodes[trackC.dbMeterNodeId], isNotNull);
           expect(processingGraph.nodes[instrumentNode.id], isNotNull);
           expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);
           expect(processingGraph.nodes[liveEventProviderNodeId], isNotNull);

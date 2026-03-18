@@ -294,17 +294,27 @@ class TrackAddRemoveCommand extends Command {
         for (final track in tracksToCheck) {
           final gainNodeId = _tryGetTrackGainNodeId(track);
           final balanceNodeId = _tryGetTrackBalanceNodeId(track);
+          final dbMeterNodeId = _tryGetTrackDbMeterNodeId(track);
 
-          final hasNoTrackNodes = gainNodeId == null && balanceNodeId == null;
-          final hasSomeTrackNodes = gainNodeId != null || balanceNodeId != null;
-          final hasAllTrackNodes = gainNodeId != null && balanceNodeId != null;
+          final requiredTrackNodeIds = [
+            gainNodeId,
+            balanceNodeId,
+            dbMeterNodeId,
+          ];
+          final presentRequiredTrackNodeCount = requiredTrackNodeIds
+              .whereType<Id>()
+              .length;
+          final hasNoTrackNodes = presentRequiredTrackNodeCount == 0;
+          final hasAllTrackNodes =
+              presentRequiredTrackNodeCount == requiredTrackNodeIds.length;
 
           if (hasNoTrackNodes) {
             track.createAndRegisterNodes(project, idAllocator);
-          } else if (hasSomeTrackNodes && !hasAllTrackNodes) {
+          } else if (!hasAllTrackNodes) {
             throw StateError(
               'TrackAddRemoveCommand._add(): Track ${track.id} has incomplete '
-              'node state. Both gainNodeId and balanceNodeId are required.',
+              'node state. gainNodeId, balanceNodeId, and dbMeterNodeId are '
+              'required.',
             );
           }
         }
@@ -401,6 +411,10 @@ Id? _tryGetTrackGainNodeId(TrackModel track) {
 
 Id? _tryGetTrackBalanceNodeId(TrackModel track) {
   return track.balanceNodeId;
+}
+
+Id? _tryGetTrackDbMeterNodeId(TrackModel track) {
+  return track.dbMeterNodeId;
 }
 
 Set<Id> _collectTrackNodeIdsForDescriptors(

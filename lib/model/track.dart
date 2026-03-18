@@ -20,6 +20,7 @@
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
+import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
@@ -122,6 +123,11 @@ abstract class _TrackModel
 
   NodeModel? get balanceNode => project.processingGraph.nodes[balanceNodeId];
 
+  @anthemObservable
+  Id? dbMeterNodeId;
+
+  NodeModel? get dbMeterNode => project.processingGraph.nodes[dbMeterNodeId];
+
   /// Optional instrument node assigned to this track.
   @anthemObservable
   Id? instrumentNodeId;
@@ -158,10 +164,18 @@ abstract class _TrackModel
     return [
       gainNodeId,
       balanceNodeId,
+      dbMeterNodeId,
       instrumentNodeId,
       sequenceNoteProviderNodeId,
       liveEventProviderNodeId,
     ].nonNulls.toList();
+  }
+
+  /// Visualization IDs used for this track's stereo dB meter.
+  List<String> get dbMeterVisualizationIds => buildDbMeterVisualizationIds(id);
+
+  static List<String> buildDbMeterVisualizationIds(Id trackId) {
+    return ['db-meter-$trackId-left', 'db-meter-$trackId-right'];
   }
 
   _TrackModel({
@@ -171,6 +185,7 @@ abstract class _TrackModel
     required this.type,
   }) : gainNodeId = null,
        balanceNodeId = null,
+       dbMeterNodeId = null,
        instrumentNodeId = null,
        sequenceNoteProviderNodeId = null,
        liveEventProviderNodeId = null,
@@ -192,6 +207,14 @@ abstract class _TrackModel
     balanceNodeId = balanceNode.id;
     project.processingGraph.addNode(balanceNode);
 
+    final dbMeterNode = DbMeterProcessorModel.create(
+      idAllocator: idAllocator,
+      publishEverySamples: 1024,
+      visualizationIds: dbMeterVisualizationIds,
+    ).createNode();
+    dbMeterNodeId = dbMeterNode.id;
+    project.processingGraph.addNode(dbMeterNode);
+
     project.processingGraph.addConnection(
       NodeConnectionModel(
         idAllocator: idAllocator,
@@ -199,6 +222,16 @@ abstract class _TrackModel
         sourcePortId: GainProcessorModel.audioOutputPortId,
         destinationNodeId: balanceNodeId!,
         destinationPortId: BalanceProcessorModel.audioInputPortId,
+      ),
+    );
+
+    project.processingGraph.addConnection(
+      NodeConnectionModel(
+        idAllocator: idAllocator,
+        sourceNodeId: balanceNodeId!,
+        sourcePortId: BalanceProcessorModel.audioOutputPortId,
+        destinationNodeId: dbMeterNodeId!,
+        destinationPortId: DbMeterProcessorModel.audioInputPortId,
       ),
     );
 

@@ -20,6 +20,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:anthem/theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -34,17 +35,10 @@ const defaultMeterDbToPosition = <(double db, double normalizedPosition)>[
   (12.0, 1.0),
 ];
 
-const defaultMeterGradientStops = <MeterGradientStop>[
-  (db: -180.0, color: Color(0xFF38D078)),
-  (db: 0.0, color: Color(0xFFE3D54F)),
-  (db: 0.0, color: Color(0xFFE85E47)),
-  (db: 12.0, color: Color(0xFFE85E47)),
-];
-
 class Meter extends StatefulWidget {
   final StereoMeterValues db;
   final Duration timestamp;
-  final List<MeterGradientStop> gradientStops;
+  final List<MeterGradientStop>? gradientStops;
   final List<(double db, double normalizedPosition)> dbToPosition;
   final Duration peakHoldDuration;
   final double peakFallRateNormalizedPerSecond;
@@ -54,7 +48,7 @@ class Meter extends StatefulWidget {
     super.key,
     required this.db,
     required this.timestamp,
-    this.gradientStops = defaultMeterGradientStops,
+    this.gradientStops,
     this.dbToPosition = defaultMeterDbToPosition,
     this.peakHoldDuration = const Duration(milliseconds: 750),
     this.peakFallRateNormalizedPerSecond = 0.8,
@@ -161,6 +155,13 @@ class _MeterState extends State<Meter> {
     right: Duration.zero,
   );
 
+  final List<MeterGradientStop> _defaultGradientStops = <MeterGradientStop>[
+    (db: -180.0, color: AnthemTheme.meter.low),
+    (db: 0.0, color: AnthemTheme.meter.high),
+    (db: 0.0, color: AnthemTheme.meter.clipping),
+    (db: 12.0, color: AnthemTheme.meter.clipping),
+  ];
+
   _ResolvedMeterValues _resolveMeterValues() {
     final currentNormalizedHeights = (
       left: Meter.dbToNormalizedHeight(widget.db.left, widget.dbToPosition),
@@ -259,7 +260,7 @@ class _MeterState extends State<Meter> {
   Widget build(BuildContext context) {
     final meterValues = _resolveMeterValues();
     final gradient = Meter.resolveGradient(
-      gradientStops: widget.gradientStops,
+      gradientStops: widget.gradientStops ?? _defaultGradientStops,
       dbToPosition: widget.dbToPosition,
     );
 
