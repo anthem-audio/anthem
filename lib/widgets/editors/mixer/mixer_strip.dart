@@ -18,9 +18,15 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/controls/slider.dart';
+import 'package:anthem/widgets/basic/meter.dart';
+import 'package:anthem/widgets/basic/meter_scale.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -71,6 +77,7 @@ class _MixerStripState extends State<MixerStrip> {
               ? .new(color: AnthemTheme.panel.border, width: borderWidth)
               : .none,
         ),
+        color: AnthemTheme.panel.accent,
       ),
       child: Column(
         children: [
@@ -80,6 +87,7 @@ class _MixerStripState extends State<MixerStrip> {
             hasStartBorder: widget.hasStartBorder,
           ),
           _spacer(),
+          // This provides a left-hand-side border if necessary
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -95,6 +103,8 @@ class _MixerStripState extends State<MixerStrip> {
               child: Column(
                 children: [
                   Expanded(child: SizedBox()),
+                  _spacer(),
+                  _MeterSection(track: track),
                   _spacer(),
                   Container(
                     height: _groupHeaderAddonHeight,
@@ -184,6 +194,106 @@ class _Header extends StatelessObserverWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MeterSection extends StatelessObserverWidget {
+  final TrackModel track;
+
+  const _MeterSection({required this.track});
+
+  @override
+  Widget build(BuildContext context) {
+    final gainPort = track.gainNode?.getPortById(GainProcessorModel.gainPortId);
+
+    return Padding(
+      padding: .all(4),
+      child: Column(
+        children: [
+          Container(
+            height: 20,
+            decoration: BoxDecoration(
+              border: Border.all(color: AnthemTheme.panel.border, width: 1),
+              color: AnthemTheme.panel.backgroundDark,
+              borderRadius: .vertical(top: .circular(4)),
+            ),
+          ),
+          SizedBox(height: 1),
+          Container(
+            height: 154,
+            decoration: BoxDecoration(
+              border: Border.all(color: AnthemTheme.panel.border, width: 1),
+              color: AnthemTheme.panel.backgroundDark,
+              borderRadius: .vertical(bottom: .circular(4)),
+            ),
+            padding: .all(3),
+            child: Row(
+              crossAxisAlignment: .stretch,
+              spacing: 2.0,
+              children: [
+                Expanded(child: MeterScale()),
+                SizedBox(width: 11, child: _TrackDbMeter(track: track)),
+                Slider(
+                  value: gainPort?.parameterValue ?? 0.75,
+                  width: 26,
+                  axis: .vertical,
+                  noBackground: true,
+                  min: 0,
+                  max: 1,
+                  stickyPoints: [0.75],
+                  hint: (value) =>
+                      'Track gain: ${gainParameterValueToString(value)}',
+                  onValueChanged: (value) {
+                    if (gainPort == null) {
+                      return;
+                    }
+
+                    gainPort.parameterValue = value;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackDbMeter extends StatelessWidget {
+  final TrackModel track;
+
+  const _TrackDbMeter({required this.track});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiVisualizationBuilder.double(
+      configs: track.dbMeterVisualizationIds
+          .map(VisualizationSubscriptionConfig.max)
+          .toList(growable: false),
+      builder: (context, values, engineTimes) {
+        final hasStereoValues = values.length >= 2;
+        final hasFullTimestampSet =
+            engineTimes.length >= 2 &&
+            engineTimes[0] != null &&
+            engineTimes[1] != null;
+
+        if (!hasStereoValues || !hasFullTimestampSet) {
+          return const Meter(
+            db: (left: -180.0, right: -180.0),
+            timestamp: Duration.zero,
+          );
+        }
+
+        final leftTime = engineTimes[0]!;
+        final rightTime = engineTimes[1]!;
+
+        return Meter(
+          db: (left: values[0], right: values[1]),
+          timestamp: leftTime.compareTo(rightTime) >= 0 ? leftTime : rightTime,
+        );
+      },
     );
   }
 }

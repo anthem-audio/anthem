@@ -28,6 +28,8 @@ const _testGradientStops = <MeterGradientStop>[
   (db: 12.0, color: Color(0xFFFF0000)),
 ];
 
+const _backgroundTrackColor = Color(0xFF101010);
+
 Widget _buildMeterHarness({
   required StereoMeterValues db,
   required Duration timestamp,
@@ -202,12 +204,14 @@ void main() {
         peak: (left: 0.3, right: 0.5),
         gradientColors: resolved.colors,
         gradientStopPositions: resolved.stops,
+        backgroundTrackColor: _backgroundTrackColor,
       );
       final newPainter = MeterPainter(
         value: (left: 0.2, right: 0.4),
         peak: (left: 0.3, right: 0.5),
         gradientColors: resolved.colors,
         gradientStopPositions: resolved.stops,
+        backgroundTrackColor: _backgroundTrackColor,
       );
 
       expect(newPainter.shouldRepaint(oldPainter), isFalse);
@@ -223,12 +227,14 @@ void main() {
         peak: (left: 0.3, right: 0.5),
         gradientColors: resolved.colors,
         gradientStopPositions: resolved.stops,
+        backgroundTrackColor: _backgroundTrackColor,
       );
       final newPainter = MeterPainter(
         value: (left: 0.2, right: 0.4),
         peak: (left: 0.31, right: 0.5),
         gradientColors: resolved.colors,
         gradientStopPositions: resolved.stops,
+        backgroundTrackColor: _backgroundTrackColor,
       );
 
       expect(newPainter.shouldRepaint(oldPainter), isTrue);

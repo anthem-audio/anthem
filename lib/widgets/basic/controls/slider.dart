@@ -35,6 +35,7 @@ class Slider extends StatefulWidget {
   final SliderAxis axis;
   final SliderType type;
   final double borderRadius;
+  final bool noBackground;
 
   final double value;
   final double min;
@@ -54,6 +55,7 @@ class Slider extends StatefulWidget {
     this.axis = SliderAxis.horizontal,
     this.type = SliderType.normal,
     this.borderRadius = 1,
+    this.noBackground = false,
     required this.value,
     this.onValueChanged,
     this.max = 1,
@@ -234,6 +236,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
                   handleThickness: handleSizeHelper.animation.value,
                   handlePressAmount: pressColorHelper.animation.value,
                   borderRadius: widget.borderRadius,
+                  noBackground: widget.noBackground,
                 ),
               );
             },
@@ -258,6 +261,7 @@ class _SliderPainter extends CustomPainter {
   final double handleThickness;
   final double handlePressAmount;
   final double borderRadius;
+  final bool noBackground;
 
   const _SliderPainter({
     required this.value,
@@ -266,6 +270,7 @@ class _SliderPainter extends CustomPainter {
     required this.handleThickness,
     required this.handlePressAmount,
     required this.borderRadius,
+    required this.noBackground,
   });
 
   @override
@@ -275,6 +280,14 @@ class _SliderPainter extends CustomPainter {
     }
 
     final clampedValue = value.clamp(0.0, 1.0).toDouble();
+
+    final handlePaint = Paint()
+      ..color = Color.lerp(
+        AnthemTheme.control.active,
+        AnthemTheme.control.activePressed,
+        handlePressAmount.clamp(0.0, 1.0),
+      )!
+      ..style = PaintingStyle.fill;
 
     final trackBackgroundPaint = Paint()
       ..color = AnthemTheme.control.background
@@ -286,16 +299,13 @@ class _SliderPainter extends CustomPainter {
     final activeFillPaint = Paint()
       ..color = AnthemTheme.control.activeBackground
       ..style = PaintingStyle.fill;
-    final handlePaint = Paint()
-      ..color = Color.lerp(
-        AnthemTheme.control.active,
-        AnthemTheme.control.activePressed,
-        handlePressAmount.clamp(0.0, 1.0),
-      )!
-      ..style = PaintingStyle.fill;
 
-    final borderRect = Rect.fromLTWH(0.5, 0.5, size.width - 1, size.height - 1);
-    final innerRect = Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
+    final borderRect = noBackground
+        ? Rect.fromLTWH(0, 0, size.width, size.height)
+        : Rect.fromLTWH(0.5, 0.5, size.width - 1, size.height - 1);
+    final innerRect = noBackground
+        ? Rect.fromLTWH(0, 0, size.width, size.height)
+        : Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
     final trackRadius = Radius.circular(borderRadius);
     final innerContentRadius = Radius.circular(
       max(0, max(borderRadius - 1, 1)),
@@ -307,9 +317,17 @@ class _SliderPainter extends CustomPainter {
     );
 
     final handleCenter = switch (axis) {
+      SliderAxis.horizontal when noBackground => Offset(
+        innerRect.left + innerRect.width * clampedValue,
+        innerRect.center.dy,
+      ),
       SliderAxis.horizontal => Offset(
         borderRect.left + 1 + (borderRect.width - 2) * clampedValue,
         borderRect.center.dy,
+      ),
+      SliderAxis.vertical when noBackground => Offset(
+        innerRect.center.dx,
+        innerRect.bottom - innerRect.height * clampedValue,
       ),
       SliderAxis.vertical => Offset(
         borderRect.center.dx,
@@ -318,9 +336,12 @@ class _SliderPainter extends CustomPainter {
     };
 
     canvas.save();
-    canvas.clipRRect(innerContentClipRRect);
-
-    canvas.drawRect(innerRect, trackBackgroundPaint);
+    if (noBackground) {
+      canvas.clipRect(innerRect);
+    } else {
+      canvas.clipRRect(innerContentClipRRect);
+      canvas.drawRect(innerRect, trackBackgroundPaint);
+    }
 
     if (axis == SliderAxis.horizontal) {
       if (type == SliderType.normal) {
@@ -396,7 +417,7 @@ class _SliderPainter extends CustomPainter {
       SliderAxis.horizontal => Rect.fromCenter(
         center: handleCenter,
         width: handleThickness,
-        height: innerRect.height - 0.5,
+        height: noBackground ? innerRect.height : innerRect.height - 0.5,
       ),
       SliderAxis.vertical => Rect.fromCenter(
         center: handleCenter,
@@ -407,7 +428,9 @@ class _SliderPainter extends CustomPainter {
     canvas.drawRect(handleRect, handlePaint);
     canvas.restore();
 
-    canvas.drawRRect(borderRRect, trackBorderPaint);
+    if (!noBackground) {
+      canvas.drawRRect(borderRRect, trackBorderPaint);
+    }
   }
 
   @override
@@ -417,7 +440,8 @@ class _SliderPainter extends CustomPainter {
         oldDelegate.type != type ||
         oldDelegate.handleThickness != handleThickness ||
         oldDelegate.handlePressAmount != handlePressAmount ||
-        oldDelegate.borderRadius != borderRadius;
+        oldDelegate.borderRadius != borderRadius ||
+        oldDelegate.noBackground != noBackground;
   }
 }
 

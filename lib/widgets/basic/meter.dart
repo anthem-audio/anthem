@@ -40,6 +40,7 @@ class Meter extends StatefulWidget {
   final Duration timestamp;
   final List<MeterGradientStop>? gradientStops;
   final List<(double db, double normalizedPosition)> dbToPosition;
+  final bool noBackground;
   final Duration peakHoldDuration;
   final double peakFallRateNormalizedPerSecond;
   final double peakLineThickness;
@@ -50,6 +51,7 @@ class Meter extends StatefulWidget {
     required this.timestamp,
     this.gradientStops,
     this.dbToPosition = defaultMeterDbToPosition,
+    this.noBackground = false,
     this.peakHoldDuration = const Duration(milliseconds: 750),
     this.peakFallRateNormalizedPerSecond = 0.8,
     this.peakLineThickness = 1.0,
@@ -270,6 +272,8 @@ class _MeterState extends State<Meter> {
         peak: meterValues.peakNormalized,
         gradientColors: gradient.colors,
         gradientStopPositions: gradient.stops,
+        backgroundTrackColor: AnthemTheme.panel.accent,
+        noBackground: widget.noBackground,
         peakLineThickness: widget.peakLineThickness,
       ),
       child: const SizedBox.expand(),
@@ -286,6 +290,8 @@ class MeterPainter extends CustomPainter {
 
   final List<Color> gradientColors;
   final List<double> gradientStopPositions;
+  final Color backgroundTrackColor;
+  final bool noBackground;
   final double peakLineThickness;
 
   const MeterPainter({
@@ -293,6 +299,8 @@ class MeterPainter extends CustomPainter {
     required this.peak,
     required this.gradientColors,
     required this.gradientStopPositions,
+    required this.backgroundTrackColor,
+    this.noBackground = false,
     this.peakLineThickness = 1.0,
   });
 
@@ -326,6 +334,10 @@ class MeterPainter extends CustomPainter {
     double valueNormalized,
     double peakNormalized,
   ) {
+    if (!noBackground) {
+      canvas.drawRect(channelRect, Paint()..color = backgroundTrackColor);
+    }
+
     final shaderPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.bottomCenter,
@@ -385,6 +397,8 @@ class MeterPainter extends CustomPainter {
         oldDelegate.peak != peak ||
         !listEquals(oldDelegate.gradientColors, gradientColors) ||
         !listEquals(oldDelegate.gradientStopPositions, gradientStopPositions) ||
+        oldDelegate.backgroundTrackColor != backgroundTrackColor ||
+        oldDelegate.noBackground != noBackground ||
         oldDelegate.peakLineThickness != peakLineThickness;
   }
 

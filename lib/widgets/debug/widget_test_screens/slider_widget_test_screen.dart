@@ -32,6 +32,7 @@ class SliderWidgetTestScreen extends StatefulWidget {
 class _SliderWidgetTestScreenState extends State<SliderWidgetTestScreen> {
   final List<double> verticalValues = [0.0, 0.28, 0.45, 0.62, 1.0];
   final List<double> horizontalValues = [0.0, 0.33, 0.58, 0.8, 1.0];
+  final List<double> backgroundlessValues = [0.15, 0.5, 0.85];
   double panValue = 0.0;
 
   String _formatPercent(double value) => '${(value * 100).toStringAsFixed(1)}%';
@@ -137,6 +138,72 @@ class _SliderWidgetTestScreenState extends State<SliderWidgetTestScreen> {
             ],
           ),
         ),
+        Text(
+          'Backgroundless sliders',
+          style: TextStyle(color: AnthemTheme.text.accent, fontSize: 12),
+        ),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AnthemTheme.panel.backgroundDark,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AnthemTheme.panel.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 12,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 12,
+                children: [
+                  for (int i = 0; i < backgroundlessValues.length; i++)
+                    SizedBox(
+                      width: 18,
+                      height: 106,
+                      child: Slider(
+                        width: 18,
+                        height: 106,
+                        axis: SliderAxis.vertical,
+                        value: backgroundlessValues[i],
+                        min: 0,
+                        max: 1,
+                        noBackground: true,
+                        hoverHintOverride: _formatPercent,
+                        hint: _formatPercent,
+                        onValueChanged: (value) {
+                          setState(() {
+                            backgroundlessValues[i] = value.clamp(0, 1);
+                          });
+                        },
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(
+                width: 150,
+                height: 16,
+                child: Slider(
+                  width: 150,
+                  height: 16,
+                  axis: SliderAxis.horizontal,
+                  value: backgroundlessValues[1],
+                  min: 0,
+                  max: 1,
+                  noBackground: true,
+                  hoverHintOverride: _formatPercent,
+                  hint: _formatPercent,
+                  onValueChanged: (value) {
+                    setState(() {
+                      backgroundlessValues[1] = value.clamp(0, 1);
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
         SizedBox(
           width: 150,
           height: 30,
@@ -150,6 +217,9 @@ class _SliderWidgetTestScreenState extends State<SliderWidgetTestScreen> {
                 horizontalValues
                   ..clear()
                   ..addAll([0.0, 0.33, 0.58, 0.8, 1.0]);
+                backgroundlessValues
+                  ..clear()
+                  ..addAll([0.15, 0.5, 0.85]);
                 panValue = 0.0;
               });
             },

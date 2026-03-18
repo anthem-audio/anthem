@@ -349,6 +349,7 @@ class _TrackDbMeter extends StatelessWidget {
         final rightTime = engineTimes[1]!;
 
         return Meter(
+          noBackground: true,
           db: (left: values[0], right: values[1]),
           gradientStops: [
             (color: AnthemTheme.primary.main, db: -180),
