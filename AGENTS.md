@@ -14,6 +14,7 @@ Anthem is an open-source DAW. It is written in Dart and C++, using Flutter and J
 # Development best practices
 
 - Update the copyright year in headers when making changes.
+- In C++, when writing real-time-safe code, use `rt_` to prefix all fields and methods that are only valid when accessed on the audio thread. For example, `rt_myMethod()` and `rt_myField()`, not `rtMyMethod()` or `rtMyField`.
 
 # Directives
 
