@@ -37,14 +37,14 @@ import 'ring_buffer.dart';
 part 'visualization_provider.dart';
 part 'visualization_subscription.dart';
 
-/// A visualization value paired with the engine sample timestamp where it was
+/// A visualization value paired with the wall-clock engine time where it was
 /// produced.
 class TimedVisualizationValue<T> {
   final T value;
-  final int sampleTimestamp;
+  final Duration engineTime;
 
   const TimedVisualizationValue({
     required this.value,
-    required this.sampleTimestamp,
+    required this.engineTime,
   });
 }

@@ -70,12 +70,12 @@ class VisualizationSubscription {
   final RingBuffer<double>? _ringBufferDouble;
   final RingBuffer<int>? _ringBufferInt;
   final RingBuffer<String>? _ringBufferString;
-  final RingBuffer<int>? _ringBufferSampleTimestamp;
+  final RingBuffer<Duration>? _ringBufferEngineTime;
 
   double _valueDouble = 0;
   int _valueInt = 0;
   String? _valueString;
-  int? _sampleTimestamp;
+  Duration? _engineTime;
   _VisualizationValueType? _valueType;
 
   DateTime? _overrideSetTime;
@@ -102,29 +102,42 @@ class VisualizationSubscription {
       _overrideInt != null ||
       _overrideString != null;
 
+  Duration _sampleTimestampToEngineTime(int sampleTimestamp) {
+    final sampleRate = _parent._project.engine.audioConfig?.sampleRate;
+    if (sampleRate == null || sampleRate <= 0) {
+      throw StateError(
+        'Cannot convert visualization sample timestamp to engine time for ${_config.id} because the engine audio config is unavailable.',
+      );
+    }
+
+    final microseconds =
+        (sampleTimestamp * Duration.microsecondsPerSecond / sampleRate).round();
+    return Duration(microseconds: microseconds);
+  }
+
   List<TimedVisualizationValue<T>> _pairValuesWithTimestamps<T>(
     Iterable<T> values,
   ) {
     final valueList = values.toList(growable: false);
-    final timestampList =
-        _ringBufferSampleTimestamp?.values.toList(growable: false) ??
-        (_sampleTimestamp == null ? <int>[] : <int>[_sampleTimestamp!]);
+    final engineTimeList =
+        _ringBufferEngineTime?.values.toList(growable: false) ??
+        (_engineTime == null ? <Duration>[] : <Duration>[_engineTime!]);
 
-    if (timestampList.isEmpty) {
+    if (engineTimeList.isEmpty) {
       return <TimedVisualizationValue<T>>[];
     }
 
-    if (timestampList.length != valueList.length) {
+    if (engineTimeList.length != valueList.length) {
       throw StateError(
-        'Visualization value/timestamp length mismatch for ${_config.id}: '
-        '${valueList.length} values vs ${timestampList.length} timestamps.',
+        'Visualization value/time length mismatch for ${_config.id}: '
+        '${valueList.length} values vs ${engineTimeList.length} times.',
       );
     }
 
     return List.generate(valueList.length, (index) {
       return TimedVisualizationValue<T>(
         value: valueList[index],
-        sampleTimestamp: timestampList[index],
+        engineTime: engineTimeList[index],
       );
     }, growable: false);
   }
@@ -142,7 +155,7 @@ class VisualizationSubscription {
   }
 
   /// Read the latest engine-backed value for this visualization item, with its
-  /// sample timestamp.
+  /// engine time.
   ///
   /// Returns `null` if no engine-backed value has been received yet, or if a
   /// UI override is currently active.
@@ -151,7 +164,7 @@ class VisualizationSubscription {
   }
 
   /// Read the latest engine-backed value as an integer for this visualization
-  /// item, with its sample timestamp.
+  /// item, with its engine time.
   ///
   /// Returns `null` if no engine-backed value has been received yet, or if a
   /// UI override is currently active.
@@ -168,7 +181,7 @@ class VisualizationSubscription {
   }
 
   /// Read the latest engine-backed string value for this visualization item,
-  /// with its sample timestamp.
+  /// with its engine time.
   ///
   /// Returns `null` if no engine-backed value has been received yet, or if a
   /// UI override is currently active.
@@ -177,7 +190,7 @@ class VisualizationSubscription {
   }
 
   /// Read the last N engine-backed values for this visualization item, with
-  /// their sample timestamps.
+  /// their engine times.
   ///
   /// If the configuration does not specify a subscription type with multiple
   /// values, this will return either an empty iterable or a single-item
@@ -195,7 +208,7 @@ class VisualizationSubscription {
   }
 
   /// Read the last N engine-backed values as integers for this visualization
-  /// item, with their sample timestamps.
+  /// item, with their engine times.
   Iterable<TimedVisualizationValue<int>> readTimedValuesInt() {
     _shouldReset = true;
 
@@ -209,7 +222,7 @@ class VisualizationSubscription {
   }
 
   /// Read the last N engine-backed string values for this visualization item,
-  /// with their sample timestamps.
+  /// with their engine times.
   Iterable<TimedVisualizationValue<String>> readTimedValuesString() {
     _shouldReset = true;
 
@@ -344,9 +357,9 @@ class VisualizationSubscription {
           _config.type == VisualizationSubscriptionType.lastNValues
           ? RingBuffer<String>(_config.bufferSize!)
           : null,
-      _ringBufferSampleTimestamp =
+      _ringBufferEngineTime =
           _config.type == VisualizationSubscriptionType.lastNValues
-          ? RingBuffer<int>(_config.bufferSize!)
+          ? RingBuffer<Duration>(_config.bufferSize!)
           : null {
     _ticker = Ticker(_onTick);
     if (_parent._project.engineState == EngineState.running) {
@@ -379,6 +392,8 @@ class VisualizationSubscription {
     Object /* String | int | double */ value,
     int sampleTimestamp,
   ) {
+    final engineTime = _sampleTimestampToEngineTime(sampleTimestamp);
+
     if (_shouldReset) {
       _shouldReset = false;
 
@@ -386,34 +401,34 @@ class VisualizationSubscription {
         _valueType = .doubleValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferDouble!.reset();
-          _ringBufferSampleTimestamp!.reset();
+          _ringBufferEngineTime!.reset();
           _ringBufferDouble.add(value);
-          _ringBufferSampleTimestamp.add(sampleTimestamp);
+          _ringBufferEngineTime.add(engineTime);
         } else {
           _valueDouble = value;
-          _sampleTimestamp = sampleTimestamp;
+          _engineTime = engineTime;
         }
       } else if (value is int) {
         _valueType = .intValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferInt!.reset();
-          _ringBufferSampleTimestamp!.reset();
+          _ringBufferEngineTime!.reset();
           _ringBufferInt.add(value);
-          _ringBufferSampleTimestamp.add(sampleTimestamp);
+          _ringBufferEngineTime.add(engineTime);
         } else {
           _valueInt = value;
-          _sampleTimestamp = sampleTimestamp;
+          _engineTime = engineTime;
         }
       } else if (value is String) {
         _valueType = .stringValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferString!.reset();
-          _ringBufferSampleTimestamp!.reset();
+          _ringBufferEngineTime!.reset();
           _ringBufferString.add(value);
-          _ringBufferSampleTimestamp.add(sampleTimestamp);
+          _ringBufferEngineTime.add(engineTime);
         } else {
           _valueString = value;
-          _sampleTimestamp = sampleTimestamp;
+          _engineTime = engineTime;
         }
       } else {
         throw ArgumentError(
@@ -425,15 +440,15 @@ class VisualizationSubscription {
         _valueType = .doubleValue;
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferDouble!.add(value);
-          _ringBufferSampleTimestamp!.add(sampleTimestamp);
+          _ringBufferEngineTime!.add(engineTime);
         } else if (_config.type == VisualizationSubscriptionType.max) {
           if (value > _valueDouble) {
             _valueDouble = value;
-            _sampleTimestamp = sampleTimestamp;
+            _engineTime = engineTime;
           }
         } else {
           _valueDouble = value;
-          _sampleTimestamp = sampleTimestamp;
+          _engineTime = engineTime;
         }
       } else if (value is int) {
         _valueType = .intValue;
@@ -444,10 +459,10 @@ class VisualizationSubscription {
 
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferInt!.add(value);
-          _ringBufferSampleTimestamp!.add(sampleTimestamp);
+          _ringBufferEngineTime!.add(engineTime);
         } else {
           _valueInt = value;
-          _sampleTimestamp = sampleTimestamp;
+          _engineTime = engineTime;
         }
       } else if (value is String) {
         _valueType = .stringValue;
@@ -458,10 +473,10 @@ class VisualizationSubscription {
 
         if (_config.type == VisualizationSubscriptionType.lastNValues) {
           _ringBufferString!.add(value);
-          _ringBufferSampleTimestamp!.add(sampleTimestamp);
+          _ringBufferEngineTime!.add(engineTime);
         } else {
           _valueString = value;
-          _sampleTimestamp = sampleTimestamp;
+          _engineTime = engineTime;
         }
       } else {
         throw ArgumentError(
