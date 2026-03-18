@@ -25,7 +25,7 @@ const _testGradientStops = <MeterGradientStop>[
   (db: -72.0, color: Color(0xFF00FF00)),
   (db: 0.0, color: Color(0xFFFFFF00)),
   (db: 0.0, color: Color(0xFFFF0000)),
-  (db: 6.0, color: Color(0xFFFF0000)),
+  (db: 12.0, color: Color(0xFFFF0000)),
 ];
 
 Widget _buildMeterHarness({
@@ -79,7 +79,11 @@ void main() {
 
     test('returns the full height above the maximum db point', () {
       expect(
-        Meter.dbToPixelHeight(6, 120, const [(-60, 0.0), (-12, 0.7), (0, 1.0)]),
+        Meter.dbToPixelHeight(18, 120, const [
+          (-60, 0.0),
+          (-12, 0.7),
+          (0, 1.0),
+        ]),
         120.0,
       );
     });
@@ -132,8 +136,8 @@ void main() {
       expect(resolved.colors, hasLength(4));
       expect(resolved.stops, hasLength(4));
       expect(resolved.stops[0], closeTo(0.05, 0.000001));
-      expect(resolved.stops[1], closeTo(0.85, 0.000001));
-      expect(resolved.stops[2], closeTo(0.85, 0.000001));
+      expect(resolved.stops[1], closeTo(0.76, 0.000001));
+      expect(resolved.stops[2], closeTo(0.76, 0.000001));
       expect(resolved.stops[3], closeTo(1.0, 0.000001));
     });
   });

@@ -28,18 +28,17 @@ typedef MeterGradientStop = ({double db, Color color});
 
 const defaultMeterDbToPosition = <(double db, double normalizedPosition)>[
   (-180.0, 0.0),
-  (-72.0, 0.05),
-  (-48.0, 0.165),
-  (-36.0, 0.33),
-  (0.0, 0.85),
-  (6.0, 1.0),
+  (-72.0, 0.03),
+  (-48.0, 0.12),
+  (-36.0, 0.22),
+  (12.0, 1.0),
 ];
 
 const defaultMeterGradientStops = <MeterGradientStop>[
   (db: -180.0, color: Color(0xFF38D078)),
   (db: 0.0, color: Color(0xFFE3D54F)),
   (db: 0.0, color: Color(0xFFE85E47)),
-  (db: 6.0, color: Color(0xFFE85E47)),
+  (db: 12.0, color: Color(0xFFE85E47)),
 ];
 
 class Meter extends StatefulWidget {
@@ -62,7 +61,6 @@ class Meter extends StatefulWidget {
     this.peakLineThickness = 1.0,
   });
 
-  @visibleForTesting
   static ({List<Color> colors, List<double> stops}) resolveGradient({
     required List<MeterGradientStop> gradientStops,
     required List<(double db, double normalizedPosition)> dbToPosition,
@@ -83,7 +81,6 @@ class Meter extends StatefulWidget {
     );
   }
 
-  @visibleForTesting
   static double decayPeakNormalizedHeight({
     required double currentNormalizedHeight,
     required double previousPeakNormalizedHeight,
@@ -108,7 +105,6 @@ class Meter extends StatefulWidget {
     );
   }
 
-  @visibleForTesting
   static double dbToNormalizedHeight(
     double db,
     List<(double db, double normalizedPosition)> dbToPosition,
@@ -116,7 +112,6 @@ class Meter extends StatefulWidget {
     return Meter.dbToPixelHeight(db, 1.0, dbToPosition);
   }
 
-  @visibleForTesting
   static double dbToPixelHeight(
     double db,
     double totalMeterHeight,
