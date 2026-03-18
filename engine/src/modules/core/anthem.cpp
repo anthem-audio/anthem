@@ -20,6 +20,7 @@
 #include "modules/core/anthem.h"
 
 #include "modules/processing_graph/compiler/anthem_graph_compiler.h"
+#include "modules/processors/db_meter.h"
 
 namespace {
 std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device) {

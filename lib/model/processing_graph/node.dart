@@ -25,6 +25,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
+import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
@@ -243,6 +244,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   @Union([
     BalanceProcessorModel,
+    DbMeterProcessorModel,
     GainProcessorModel,
     LiveEventProviderProcessorModel,
     MasterOutputProcessorModel,

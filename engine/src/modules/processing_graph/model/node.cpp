@@ -19,6 +19,7 @@
 
 #include "node.h"
 #include "generated/lib/model/model.h"
+#include "modules/processors/db_meter.h"
 
 std::optional<std::shared_ptr<NodePort>> Node::getPortById(int64_t id) {
   for (auto& port : *this->audioInputPorts()) {

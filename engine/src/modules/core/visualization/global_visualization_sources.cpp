@@ -19,33 +19,8 @@
 
 #include "global_visualization_sources.h"
 
-namespace {
-template <typename T, std::size_t Size>
-std::optional<TimestampedVisualizationData<T>> drainVisualizationBuffer(
-  RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer
-) {
-  TimestampedVisualizationData<T> data;
-
-  while (true) {
-    auto item = buffer.read();
-    if (!item.has_value()) {
-      break;
-    }
-
-    data.sampleTimestamps.push_back(item.value().sampleTimestamp);
-    data.values.push_back(item.value().value);
-  }
-
-  if (data.values.empty()) {
-    return std::nullopt;
-  }
-
-  return data;
-}
-} // namespace
-
 std::optional<NumericVisualizationData> CpuVisualizationProvider::getNumericData() {
-  return drainVisualizationBuffer(cpuBurdenBuffer);
+  return drainTimestampedVisualizationBuffer(cpuBurdenBuffer);
 }
 
 void CpuVisualizationProvider::rt_updateCpuBurden(
@@ -61,7 +36,7 @@ void CpuVisualizationProvider::rt_updateCpuBurden(
 }
 
 std::optional<NumericVisualizationData> PlayheadPositionVisualizationProvider::getNumericData() {
-  return drainVisualizationBuffer(playheadPositionBuffer);
+  return drainTimestampedVisualizationBuffer(playheadPositionBuffer);
 }
 
 void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
@@ -77,7 +52,7 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
 }
 
 std::optional<IntegerVisualizationData> PlayheadSequenceIdVisualizationProvider::getIntegerData() {
-  return drainVisualizationBuffer(playheadSequenceIdBuffer);
+  return drainTimestampedVisualizationBuffer(playheadSequenceIdBuffer);
 }
 
 void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(

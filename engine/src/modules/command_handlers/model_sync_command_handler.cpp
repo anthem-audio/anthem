@@ -21,6 +21,7 @@
 
 // I have absolutely no idea why this import is required, but reflect-cpp won't
 // compile the deserialization call without it.
+#include "modules/processors/db_meter.h"
 #include "modules/processors/tone_generator.h"
 
 #include <string>

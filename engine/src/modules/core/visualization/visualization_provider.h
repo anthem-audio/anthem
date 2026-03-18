@@ -24,6 +24,8 @@
 #include <string>
 #include <cstdint>
 
+#include "modules/util/ring_buffer.h"
+
 template <typename T>
 struct TimestampedVisualizationData {
   std::vector<int64_t> sampleTimestamps;
@@ -39,6 +41,29 @@ struct TimestampedVisualizationValue {
 using NumericVisualizationData = TimestampedVisualizationData<double>;
 using IntegerVisualizationData = TimestampedVisualizationData<int64_t>;
 using StringVisualizationData = TimestampedVisualizationData<std::string>;
+
+template <typename T, std::size_t Size>
+std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuffer(
+  RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer
+) {
+  TimestampedVisualizationData<T> data;
+
+  while (true) {
+    auto item = buffer.read();
+    if (!item.has_value()) {
+      break;
+    }
+
+    data.sampleTimestamps.push_back(item->sampleTimestamp);
+    data.values.push_back(item->value);
+  }
+
+  if (data.values.empty()) {
+    return std::nullopt;
+  }
+
+  return data;
+}
 
 // This is an abstract interface for visualization data providers. It is used by the
 // VisualizationBroker to query data from various sources in the engine.
