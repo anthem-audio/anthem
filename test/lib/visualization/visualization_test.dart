@@ -40,6 +40,22 @@ import 'visualization_test.mocks.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  EngineAudioConfig testAudioConfig() {
+    return EngineAudioConfig(
+      sampleRate: 48000,
+      blockSize: 512,
+      inputChannelCount: 2,
+      outputChannelCount: 2,
+    );
+  }
+
+  Duration engineTimeForSampleTimestamp(int sampleTimestamp) {
+    return Duration(
+      microseconds: (sampleTimestamp * Duration.microsecondsPerSecond / 48000)
+          .round(),
+    );
+  }
+
   ({
     MockProjectModel project,
     MockEngine engine,
@@ -50,6 +66,7 @@ void main() {
 
     final engineMock = MockEngine();
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+    when(engineMock.audioConfig).thenReturn(testAudioConfig());
     when(engineMock.engineState).thenReturn(EngineState.running);
     when(
       engineMock.engineStateStream,
@@ -99,7 +116,7 @@ void main() {
           textDirection: TextDirection.ltr,
           child: MultiVisualizationBuilder.int(
             configs: configs,
-            builder: (context, values) {
+            builder: (context, values, engineTimes) {
               return Text(values.join(','), textDirection: TextDirection.ltr);
             },
           ),
@@ -120,7 +137,7 @@ void main() {
           textDirection: TextDirection.ltr,
           child: VisualizationBuilder.int(
             config: config,
-            builder: (context, value) {
+            builder: (context, value, engineTime) {
               return Text(
                 value?.toString() ?? 'null',
                 textDirection: TextDirection.ltr,
@@ -138,6 +155,7 @@ void main() {
 
       final engineMock = MockEngine();
       when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+      when(engineMock.audioConfig).thenReturn(testAudioConfig());
 
       final projectMock = MockProjectModel();
       when(projectMock.engine).thenReturn(engineMock);
@@ -319,6 +337,7 @@ void main() {
 
     final engineMock = MockEngine();
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+    when(engineMock.audioConfig).thenReturn(testAudioConfig());
 
     final projectMock = MockProjectModel();
     when(projectMock.engine).thenReturn(engineMock);
@@ -364,15 +383,27 @@ void main() {
       latestString.readTimedValueString(),
       isA<TimedVisualizationValue<String>>()
           .having((value) => value.value, 'value', 'alpha')
-          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 11),
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(11),
+          ),
     );
     expect(bufferedString.readTimedValuesString().toList(growable: false), [
       isA<TimedVisualizationValue<String>>()
           .having((value) => value.value, 'value', 'beta')
-          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 21),
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(21),
+          ),
       isA<TimedVisualizationValue<String>>()
           .having((value) => value.value, 'value', 'gamma')
-          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 31),
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(31),
+          ),
     ]);
 
     latestString.setOverride(
@@ -402,6 +433,7 @@ void main() {
 
     final engineMock = MockEngine();
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+    when(engineMock.audioConfig).thenReturn(testAudioConfig());
 
     final projectMock = MockProjectModel();
     when(projectMock.engine).thenReturn(engineMock);
@@ -445,21 +477,37 @@ void main() {
       latest.readTimedValue(),
       isA<TimedVisualizationValue<double>>()
           .having((value) => value.value, 'value', 2.0)
-          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 120),
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(120),
+          ),
     );
     expect(
       max.readTimedValue(),
       isA<TimedVisualizationValue<double>>()
           .having((value) => value.value, 'value', 1.5)
-          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 150),
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(150),
+          ),
     );
     expect(buffered.readTimedValues().toList(growable: false), [
       isA<TimedVisualizationValue<double>>()
           .having((value) => value.value, 'value', 3.0)
-          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 170),
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(170),
+          ),
       isA<TimedVisualizationValue<double>>()
           .having((value) => value.value, 'value', 4.0)
-          .having((value) => value.sampleTimestamp, 'sampleTimestamp', 190),
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(190),
+          ),
     ]);
   });
 
@@ -470,6 +518,7 @@ void main() {
 
       final engineMock = MockEngine();
       when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+      when(engineMock.audioConfig).thenReturn(testAudioConfig());
 
       final projectMock = MockProjectModel();
       when(projectMock.engine).thenReturn(engineMock);
@@ -500,7 +549,11 @@ void main() {
         latest.readTimedValue(),
         isA<TimedVisualizationValue<double>>()
             .having((value) => value.value, 'value', 4.0)
-            .having((value) => value.sampleTimestamp, 'sampleTimestamp', 500),
+            .having(
+              (value) => value.engineTime,
+              'engineTime',
+              engineTimeForSampleTimestamp(500),
+            ),
       );
 
       latest.setOverride(
@@ -521,6 +574,7 @@ void main() {
 
       final engineMock = MockEngine();
       when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+      when(engineMock.audioConfig).thenReturn(testAudioConfig());
 
       final projectMock = MockProjectModel();
       when(projectMock.engine).thenReturn(engineMock);
@@ -549,6 +603,7 @@ void main() {
 
     final engineMock = MockEngine();
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+    when(engineMock.audioConfig).thenReturn(testAudioConfig());
 
     final projectMock = MockProjectModel();
     when(projectMock.engine).thenReturn(engineMock);

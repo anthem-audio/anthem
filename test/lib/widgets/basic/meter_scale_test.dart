@@ -24,7 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('MeterScale.formatLabel', () {
     test('formats negative infinity as infinity symbol', () {
-      expect(MeterScale.formatLabel(double.negativeInfinity), '\u221e');
+      expect(MeterScale.formatLabel(double.negativeInfinity), '-\u221e');
     });
 
     test('formats whole db values without decimals', () {

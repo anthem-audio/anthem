@@ -35,6 +35,15 @@ import 'package:mockito/mockito.dart';
 
 class MockProjectController extends Mock implements ProjectController {
   @override
+  Iterable<(Id trackId, bool isSendTrack, int trackDepth)> getTracksIterable() {
+    return super.noSuchMethod(
+          Invocation.method(#getTracksIterable, []),
+          returnValue: const <(Id, bool, int)>[],
+        )
+        as Iterable<(Id, bool, int)>;
+  }
+
+  @override
   ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds}) deleteClips({
     required Id arrangementId,
     required Iterable<Id> clipIds,
@@ -69,6 +78,31 @@ TrackModel _makeTrack(Id id, String name, TrackType type) {
     color: AnthemColor.randomHue(),
     type: type,
   );
+}
+
+Iterable<(Id trackId, bool isSendTrack, int trackDepth)> _getTracksIterable(
+  ProjectModel project,
+) sync* {
+  final topLevelTracks = project.trackOrder
+      .map((trackId) => (trackId, false))
+      .followedBy(project.sendTrackOrder.map((trackId) => (trackId, true)));
+
+  Iterable<(Id, bool, int)> yieldChildren(
+    Id trackId,
+    bool isSendTrack,
+    int currentDepth,
+  ) sync* {
+    yield (trackId, isSendTrack, currentDepth);
+
+    final track = project.tracks[trackId]!;
+    for (final childTrackId in track.childTracks) {
+      yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+    }
+  }
+
+  for (final topLevelTrack in topLevelTracks) {
+    yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2, 0);
+  }
 }
 
 class _ArrangerControllerTestFixture {
@@ -136,6 +170,9 @@ class _ArrangerControllerTestFixture {
       project: project,
     );
     final mockProjectController = MockProjectController();
+    when(
+      mockProjectController.getTracksIterable(),
+    ).thenAnswer((_) => _getTracksIterable(project));
     ServiceRegistry.initializeProject(
       project,
       overrides: ProjectServiceFactoryOverrides(

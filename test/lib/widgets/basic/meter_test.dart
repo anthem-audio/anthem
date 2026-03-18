@@ -111,7 +111,7 @@ void main() {
     test('dbToNormalizedHeight uses the configured mapping', () {
       expect(
         Meter.dbToNormalizedHeight(-48, defaultMeterDbToPosition),
-        closeTo(0.165, 0.000001),
+        closeTo(0.12, 0.000001),
       );
     });
 
@@ -135,9 +135,9 @@ void main() {
 
       expect(resolved.colors, hasLength(4));
       expect(resolved.stops, hasLength(4));
-      expect(resolved.stops[0], closeTo(0.05, 0.000001));
-      expect(resolved.stops[1], closeTo(0.76, 0.000001));
-      expect(resolved.stops[2], closeTo(0.76, 0.000001));
+      expect(resolved.stops[0], closeTo(0.03, 0.000001));
+      expect(resolved.stops[1], closeTo(0.805, 0.000001));
+      expect(resolved.stops[2], closeTo(0.805, 0.000001));
       expect(resolved.stops[3], closeTo(1.0, 0.000001));
     });
   });
@@ -154,10 +154,10 @@ void main() {
       );
 
       var painter = _readPainter(tester);
-      expect(painter.value.left, closeTo(0.165, 0.000001));
-      expect(painter.value.right, closeTo(0.33, 0.000001));
-      expect(painter.peak.left, closeTo(0.165, 0.000001));
-      expect(painter.peak.right, closeTo(0.33, 0.000001));
+      expect(painter.value.left, closeTo(0.12, 0.000001));
+      expect(painter.value.right, closeTo(0.22, 0.000001));
+      expect(painter.peak.left, closeTo(0.12, 0.000001));
+      expect(painter.peak.right, closeTo(0.22, 0.000001));
 
       await tester.pumpWidget(
         _buildMeterHarness(
@@ -169,10 +169,10 @@ void main() {
       );
 
       painter = _readPainter(tester);
-      expect(painter.value.left, closeTo(0.05, 0.000001));
-      expect(painter.value.right, closeTo(0.05, 0.000001));
-      expect(painter.peak.left, closeTo(0.165, 0.000001));
-      expect(painter.peak.right, closeTo(0.33, 0.000001));
+      expect(painter.value.left, closeTo(0.03, 0.000001));
+      expect(painter.value.right, closeTo(0.03, 0.000001));
+      expect(painter.peak.left, closeTo(0.12, 0.000001));
+      expect(painter.peak.right, closeTo(0.22, 0.000001));
 
       await tester.pumpWidget(
         _buildMeterHarness(
@@ -184,10 +184,10 @@ void main() {
       );
 
       painter = _readPainter(tester);
-      expect(painter.value.left, closeTo(0.05, 0.000001));
-      expect(painter.value.right, closeTo(0.05, 0.000001));
-      expect(painter.peak.left, closeTo(0.115, 0.000001));
-      expect(painter.peak.right, closeTo(0.28, 0.000001));
+      expect(painter.value.left, closeTo(0.03, 0.000001));
+      expect(painter.value.right, closeTo(0.03, 0.000001));
+      expect(painter.peak.left, closeTo(0.07, 0.000001));
+      expect(painter.peak.right, closeTo(0.17, 0.000001));
     });
   });
 
