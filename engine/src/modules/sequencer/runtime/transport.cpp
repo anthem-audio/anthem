@@ -176,7 +176,7 @@ void Transport::rt_advancePlayhead(int numSamples) {
   rt_playheadJumpEventForStart = nullptr;
 }
 
-double Transport::rt_getPlayheadAdvanceAmount(int numSamples) {
+double Transport::rt_getPlayheadAdvanceAmount(int numSamples) const {
   if (!rt_config->isPlaying) {
     return 0.0;
   }
@@ -188,7 +188,7 @@ double Transport::rt_getPlayheadAdvanceAmount(int numSamples) {
   return static_cast<double>(numSamples * ticksPerSample);
 }
 
-double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
+double Transport::rt_getPlayheadAfterAdvance(int numSamples) const {
   if (rt_config->isPlaying) {
     auto ticks = rt_getPlayheadAdvanceAmount(numSamples);
 
@@ -216,7 +216,7 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) {
       }
     }
 
-    rt_playhead = timePointer;
+    return timePointer;
   }
 
   return rt_playhead;

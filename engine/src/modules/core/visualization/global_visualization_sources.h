@@ -34,16 +34,28 @@
 
 #include "modules/util/ring_buffer.h"
 
+class Transport;
+
 class CpuVisualizationProvider : public VisualizationDataProvider {
 private:
   JUCE_LEAK_DETECTOR(CpuVisualizationProvider)
 
   RingBuffer<TimestampedVisualizationValue<double>, 2048> cpuBurdenBuffer;
+  double rt_sampleRate = 0.0;
+  int64_t rt_samplesPerWindow = 0;
+  int64_t rt_nextWindowEndSample = 0;
+  double rt_windowMaxCpuBurden = 0.0;
+  bool rt_hasWindowCpuBurden = false;
 
 public:
   std::optional<NumericVisualizationData> getNumericData() override;
 
-  void rt_updateCpuBurden(double newCpuBurden, int64_t sampleTimestamp);
+  void rt_updateCpuBurden(
+    double newCpuBurden,
+    int64_t blockStartSample,
+    int numSamples,
+    double sampleRate
+  );
 
   CpuVisualizationProvider()
     : cpuBurdenBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
@@ -54,11 +66,19 @@ private:
   JUCE_LEAK_DETECTOR(PlayheadPositionVisualizationProvider)
 
   RingBuffer<TimestampedVisualizationValue<double>, 2048> playheadPositionBuffer;
+  double rt_sampleRate = 0.0;
+  int64_t rt_samplesPerUpdate = 0;
+  int64_t rt_nextSampleTimestamp = 0;
 
 public:
   std::optional<NumericVisualizationData> getNumericData() override;
 
-  void rt_updatePlayheadPosition(double newPlayheadPosition, int64_t sampleTimestamp);
+  void rt_updatePlayheadPosition(
+    const Transport& transport,
+    int64_t blockStartSample,
+    int numSamples,
+    double sampleRate
+  );
 
   PlayheadPositionVisualizationProvider()
     : playheadPositionBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}

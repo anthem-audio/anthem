@@ -133,12 +133,16 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   auto cpuBurden = durationInSeconds * this->sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
   cpuBurdenProvider->rt_updateCpuBurden(
     cpuBurden,
-    blockStartSample + static_cast<int64_t>(numSamples)
+    blockStartSample,
+    numSamples,
+    this->sampleRate
   );
 
   playheadPositionProvider->rt_updatePlayheadPosition(
-    transport->rt_playhead,
-    blockStartSample
+    *transport,
+    blockStartSample,
+    numSamples,
+    this->sampleRate
   );
 
   if (transport->rt_config->activeSequenceId.has_value()) {

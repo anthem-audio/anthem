@@ -181,7 +181,7 @@ public:
 
   // Gets the exact number of ticks that the playhead would advance by, given
   // the current buffer size in samples.
-  double rt_getPlayheadAdvanceAmount(int samples);
+  double rt_getPlayheadAdvanceAmount(int samples) const;
 
   // Advances the playhead by the given number of samples.
   //
@@ -191,5 +191,5 @@ public:
 
   // Returns the value that the playhead would have after advancing it by the
   // given number of samples.
-  double rt_getPlayheadAfterAdvance(int samples);
+  double rt_getPlayheadAfterAdvance(int samples) const;
 };
