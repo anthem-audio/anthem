@@ -28,6 +28,8 @@ import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
 import 'package:flutter/scheduler.dart';
 
 class EngineEmscriptenInterface {
+  static const _introBytesToSkip = 16;
+
   final String exportName;
   late final JSObject appInstance;
 
@@ -39,6 +41,9 @@ class EngineEmscriptenInterface {
   void Function(Uint8List bytes)? onMessageReceived;
 
   late final Ticker _readTicker;
+  late final Timer _readFallbackTimer;
+  final Completer<void> _introMessageReceivedCompleter = Completer<void>();
+  bool _hasReceivedTickerTick = false;
 
   EngineEmscriptenInterface(this.exportName, {this.onMessageReceived});
 
@@ -253,6 +258,7 @@ class EngineEmscriptenInterface {
     );
 
     _setUpReadTicker();
+    await _introMessageReceivedCompleter.future;
   }
 
   void sendMessage(Uint8List bytes) {
@@ -363,7 +369,20 @@ class EngineEmscriptenInterface {
 
   /// Uses a [Ticker] to read from the read buffer on each frame.
   void _setUpReadTicker() {
+    // Startup handshake messages can arrive before Flutter renders its first
+    // frame. The frame ticker keeps visualization reads aligned with rendering,
+    // and the timer makes sure control-plane traffic is still drained during
+    // startup or any other period where frames are not being produced yet.
     _readTicker = Ticker((elapsed) {
+      if (!_hasReceivedTickerTick) {
+        _hasReceivedTickerTick = true;
+        _readFallbackTimer.cancel();
+      }
+
+      _tryRead();
+    });
+
+    _readFallbackTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
       _tryRead();
     });
 
@@ -386,9 +405,8 @@ class EngineEmscriptenInterface {
     // Note that the actual bytes skipped is 16 - the 8-byte ID itself is
     // prefixed by a header that indicates the size of the message (as with all
     // incoming messages), so we need to skip that too.
-    const introBytesToSkip = 16;
-    if (_introBytesSkipped < introBytesToSkip) {
-      final toSkip = (introBytesToSkip - _introBytesSkipped).clamp(0, size);
+    if (_introBytesSkipped < _introBytesToSkip) {
+      final toSkip = (_introBytesToSkip - _introBytesSkipped).clamp(0, size);
       for (var i = 0; i < toSkip; i++) {
         final byte = readBuffer.tryDequeue();
         if (byte == null) {
@@ -396,6 +414,15 @@ class EngineEmscriptenInterface {
         }
         _introBytesSkipped++;
         size--;
+      }
+
+      if (_introBytesSkipped >= _introBytesToSkip &&
+          !_introMessageReceivedCompleter.isCompleted) {
+        _introMessageReceivedCompleter.complete();
+      }
+
+      if (size == 0) {
+        return;
       }
     }
 
