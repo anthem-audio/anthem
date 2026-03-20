@@ -30,15 +30,13 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
     show VisualizationUpdateEvent;
 import 'package:anthem/model/project.dart';
+import 'package:anthem/visualization/src/visualization_transport_stats.dart';
 import 'package:flutter/scheduler.dart';
-
-import 'ring_buffer.dart';
 
 part 'visualization_provider.dart';
 part 'visualization_subscription.dart';
 
-/// A visualization value paired with the wall-clock engine time where it was
-/// produced.
+/// A visualization value paired with the engine time it represents.
 class TimedVisualizationValue<T> {
   final T value;
   final Duration engineTime;

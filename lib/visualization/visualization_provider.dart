@@ -24,12 +24,20 @@ part of 'visualization.dart';
 class VisualizationProvider {
   final ProjectModel _project;
   late final StreamSubscription<EngineState> _engineStateChangeSub;
+  final Duration Function() _wallClockNow;
+  final VisualizationTransportStats _transportStats;
 
   final Map<String, List<VisualizationSubscription>> _subscriptions = {};
 
   bool _enabled = true;
 
-  VisualizationProvider(this._project) {
+  VisualizationProvider(
+    this._project, {
+    Duration Function()? wallClockNowForTest,
+  }) : _wallClockNow = wallClockNowForTest ?? _defaultWallClockNow,
+       _transportStats = VisualizationTransportStats(
+         wallClockNowForTest ?? _defaultWallClockNow,
+       ) {
     if (_project.engine.engineState == EngineState.running) {
       _sendUpdateIntervalToEngine();
     }
@@ -56,6 +64,10 @@ class VisualizationProvider {
     });
   }
 
+  static Duration _defaultWallClockNow() {
+    return Duration(microseconds: DateTime.now().microsecondsSinceEpoch);
+  }
+
   void _sendUpdateIntervalToEngine() {
     // For the refresh rate, we get the maximum refresh rate of all displays.
     final refreshRate = PlatformDispatcher.instance.displays.isNotEmpty
@@ -69,7 +81,39 @@ class VisualizationProvider {
     );
   }
 
+  Duration? _sampleTimestampToEngineTime(int sampleTimestamp) {
+    final sampleRate = _project.engine.audioConfig?.sampleRate;
+    if (sampleRate == null || sampleRate <= 0) {
+      return null;
+    }
+
+    final microseconds =
+        (sampleTimestamp * Duration.microsecondsPerSecond / sampleRate).round();
+    return Duration(microseconds: microseconds);
+  }
+
+  Duration? _latestVisibleEventEngineTime(VisualizationUpdateEvent update) {
+    int? latestSampleTimestamp;
+
+    for (final item in update.items) {
+      for (final sampleTimestamp in item.sampleTimestamps) {
+        if (latestSampleTimestamp == null ||
+            sampleTimestamp > latestSampleTimestamp) {
+          latestSampleTimestamp = sampleTimestamp;
+        }
+      }
+    }
+
+    if (latestSampleTimestamp == null) {
+      return null;
+    }
+
+    return _sampleTimestampToEngineTime(latestSampleTimestamp);
+  }
+
   void processVisualizationUpdate(VisualizationUpdateEvent update) {
+    _transportStats.recordArrival(_latestVisibleEventEngineTime(update));
+
     for (final item in update.items) {
       final subscriptions = _subscriptions[item.id];
 

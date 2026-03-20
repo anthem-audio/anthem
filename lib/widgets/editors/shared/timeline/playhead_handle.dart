@@ -125,7 +125,10 @@ class PlayheadPositioner extends StatelessWidget {
         }
 
         return VisualizationBuilder.double(
-          config: VisualizationSubscriptionConfig.latest('playhead_position'),
+          config: VisualizationSubscriptionConfig.latest(
+            'playhead_position',
+            bufferMode: VisualizationBufferMode.adaptive,
+          ),
           builder: (context, playheadPosition, engineTime) {
             return buildPlayheadAtPosition(playheadPosition);
           },

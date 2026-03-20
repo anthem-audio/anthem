@@ -72,6 +72,7 @@ class PlayheadLine extends StatelessObserverWidget {
               child: VisualizationBuilder.double(
                 config: VisualizationSubscriptionConfig.latest(
                   'playhead_position',
+                  bufferMode: VisualizationBufferMode.adaptive,
                 ),
                 builder: (context, transportPosition, engineTime) {
                   return AnimatedBuilder(

@@ -329,7 +329,12 @@ class _TrackDbMeter extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiVisualizationBuilder.double(
       configs: track.dbMeterVisualizationIds
-          .map(VisualizationSubscriptionConfig.max)
+          .map(
+            (id) => VisualizationSubscriptionConfig.max(
+              id,
+              bufferMode: VisualizationBufferMode.adaptive,
+            ),
+          )
           .toList(growable: false),
       builder: (context, values, engineTimes) {
         final hasStereoValues = values.length >= 2;
