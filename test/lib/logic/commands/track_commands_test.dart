@@ -346,11 +346,14 @@ void main() {
       final trackController = TrackController(project);
       ServiceRegistry.initializeProject(
         project,
-        overrides: ProjectServiceFactoryOverrides(
-          idAllocator: (_, _) => idAllocator,
-          trackController: (_, _) => trackController,
-          arrangerViewModel: (_, _) => mockArrangerViewModel,
-        ),
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(idAllocatorService, (_, _) => idAllocator),
+          overrideService(trackControllerService, (_, _) => trackController),
+          overrideService(
+            arrangerViewModelService,
+            (_, _) => mockArrangerViewModel,
+          ),
+        ]),
       );
     });
 

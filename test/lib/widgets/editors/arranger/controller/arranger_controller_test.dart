@@ -191,10 +191,13 @@ class _ArrangerControllerTestFixture {
     ).thenAnswer((_) => _getTracksIterable(project));
     ServiceRegistry.initializeProject(
       project,
-      overrides: ProjectServiceFactoryOverrides(
-        projectController: (_, _) => mockProjectController,
-        trackController: (_, _) => mockTrackController,
-      ),
+      overrides: ProjectServiceFactoryOverrides([
+        overrideService(
+          projectControllerService,
+          (_, _) => mockProjectController,
+        ),
+        overrideService(trackControllerService, (_, _) => mockTrackController),
+      ]),
     );
 
     return _ArrangerControllerTestFixture._(

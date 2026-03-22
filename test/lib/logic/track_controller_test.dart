@@ -321,10 +321,13 @@ void main() {
       );
       ServiceRegistry.initializeProject(
         project,
-        overrides: ProjectServiceFactoryOverrides(
-          idAllocator: (_, _) => idAllocator,
-          arrangerViewModel: (_, _) => arrangerViewModel,
-        ),
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(idAllocatorService, (_, _) => idAllocator),
+          overrideService(
+            arrangerViewModelService,
+            (_, _) => arrangerViewModel,
+          ),
+        ]),
       );
 
       when(project.execute(any)).thenAnswer((invocation) {
@@ -572,11 +575,14 @@ void main() {
 
       ServiceRegistry.initializeProject(
         project,
-        overrides: ProjectServiceFactoryOverrides(
-          idAllocator: (_, _) => idAllocator,
-          arrangerViewModel: (_, _) => arrangerViewModel,
-          trackController: (_, _) => trackController,
-        ),
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(idAllocatorService, (_, _) => idAllocator),
+          overrideService(
+            arrangerViewModelService,
+            (_, _) => arrangerViewModel,
+          ),
+          overrideService(trackControllerService, (_, _) => trackController),
+        ]),
       );
     });
 

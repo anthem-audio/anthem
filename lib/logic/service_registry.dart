@@ -45,75 +45,121 @@ abstract interface class DisposableService {
   void dispose();
 }
 
-typedef ProjectControllerFactory =
-    ProjectController Function(ProjectModel project, ServiceRegistry registry);
-typedef TrackControllerFactory =
-    TrackController Function(ProjectModel project, ServiceRegistry registry);
-typedef IdAllocatorFactory =
-    ProjectEntityIdAllocator Function(
-      ProjectModel project,
-      ServiceRegistry registry,
-    );
-typedef ArrangerControllerFactory =
-    ArrangerController Function(ProjectModel project, ServiceRegistry registry);
-typedef PianoRollControllerFactory =
-    PianoRollController Function(
-      ProjectModel project,
-      ServiceRegistry registry,
-    );
-typedef AutomationEditorControllerFactory =
-    AutomationEditorController Function(
-      ProjectModel project,
-      ServiceRegistry registry,
-    );
-typedef ProjectViewModelFactory =
-    ProjectViewModel Function(ProjectModel project, ServiceRegistry registry);
-typedef ArrangerViewModelFactory =
-    ArrangerViewModel Function(ProjectModel project, ServiceRegistry registry);
-typedef PianoRollViewModelFactory =
-    PianoRollViewModel Function(ProjectModel project, ServiceRegistry registry);
-typedef AutomationEditorViewModelFactory =
-    AutomationEditorViewModel Function(
-      ProjectModel project,
-      ServiceRegistry registry,
+typedef ServiceFactory<T extends Object> =
+    T Function(ProjectModel project, ServiceRegistry registry);
+
+class ServiceDef<T extends Object> {
+  final ServiceFactory<T> create;
+  final int disposePriority;
+
+  const ServiceDef({required this.create, this.disposePriority = 0});
+}
+
+class ProjectServiceOverride<T extends Object> {
+  final ServiceDef<T> service;
+  final ServiceFactory<T> factory;
+
+  const ProjectServiceOverride(this.service, this.factory);
+}
+
+ProjectServiceOverride<T> overrideService<T extends Object>(
+  ServiceDef<T> service,
+  ServiceFactory<T> factory,
+) => ProjectServiceOverride(service, factory);
+
+final idAllocatorService = ServiceDef<ProjectEntityIdAllocator>(
+  create: (project, _) => project.idAllocator,
+);
+
+final projectViewModelService = ServiceDef<ProjectViewModel>(
+  create: (_, _) => ProjectViewModel(),
+);
+
+final projectControllerService = ServiceDef<ProjectController>(
+  create: (project, registry) =>
+      ProjectController(project, registry.use(projectViewModelService)),
+  disposePriority: 100,
+);
+
+final trackControllerService = ServiceDef<TrackController>(
+  create: (project, _) => TrackController(project),
+  disposePriority: 100,
+);
+
+final arrangerViewModelService = ServiceDef<ArrangerViewModel>(
+  create: (project, _) => ArrangerViewModel(
+    project: project,
+    baseTrackHeight: 53,
+    timeView: TimeRange(0, 3072),
+  ),
+);
+
+final arrangerControllerService = ServiceDef<ArrangerController>(
+  create: (project, registry) => ArrangerController(
+    viewModel: registry.use(arrangerViewModelService),
+    project: project,
+  ),
+  disposePriority: 100,
+);
+
+final pianoRollViewModelService = ServiceDef<PianoRollViewModel>(
+  create: (_, _) => PianoRollViewModel(
+    keyHeight: 14.0,
+    keyValueAtTop: 63.95,
+    timeView: TimeRange(0, 3072),
+  ),
+);
+
+final pianoRollControllerService = ServiceDef<PianoRollController>(
+  create: (project, registry) => PianoRollController(
+    project: project,
+    viewModel: registry.use(pianoRollViewModelService),
+  ),
+  disposePriority: 100,
+);
+
+final automationEditorViewModelService = ServiceDef<AutomationEditorViewModel>(
+  create: (_, _) => AutomationEditorViewModel(timeView: TimeRange(0, 3072)),
+);
+
+final automationEditorControllerService =
+    ServiceDef<AutomationEditorController>(
+      create: (project, registry) => AutomationEditorController(
+        viewModel: registry.use(automationEditorViewModelService),
+        project: project,
+      ),
+      disposePriority: 100,
     );
 
 class ProjectServiceFactoryOverrides {
-  final IdAllocatorFactory? idAllocator;
-  final ProjectControllerFactory? projectController;
-  final TrackControllerFactory? trackController;
-  final ArrangerControllerFactory? arrangerController;
-  final PianoRollControllerFactory? pianoRollController;
-  final AutomationEditorControllerFactory? automationEditorController;
-  final ProjectViewModelFactory? projectViewModel;
-  final ArrangerViewModelFactory? arrangerViewModel;
-  final PianoRollViewModelFactory? pianoRollViewModel;
-  final AutomationEditorViewModelFactory? automationEditorViewModel;
+  static const empty = ProjectServiceFactoryOverrides._(<Object, Object>{});
 
-  const ProjectServiceFactoryOverrides({
-    this.idAllocator,
-    this.projectController,
-    this.trackController,
-    this.arrangerController,
-    this.pianoRollController,
-    this.automationEditorController,
-    this.projectViewModel,
-    this.arrangerViewModel,
-    this.pianoRollViewModel,
-    this.automationEditorViewModel,
-  });
+  final Map<Object, Object> _factories;
 
-  bool get isEmpty =>
-      idAllocator == null &&
-      projectController == null &&
-      trackController == null &&
-      arrangerController == null &&
-      pianoRollController == null &&
-      automationEditorController == null &&
-      projectViewModel == null &&
-      arrangerViewModel == null &&
-      pianoRollViewModel == null &&
-      automationEditorViewModel == null;
+  factory ProjectServiceFactoryOverrides([
+    Iterable<ProjectServiceOverride<dynamic>> overrides = const [],
+  ]) {
+    final factories = <Object, Object>{};
+
+    for (final override in overrides) {
+      factories[override.service] = override.factory;
+    }
+
+    return ProjectServiceFactoryOverrides._(Map.unmodifiable(factories));
+  }
+
+  const ProjectServiceFactoryOverrides._(this._factories);
+
+  bool get isEmpty => _factories.isEmpty;
+
+  ServiceFactory<T>? factoryFor<T extends Object>(ServiceDef<T> service) {
+    final factory = _factories[service];
+    if (factory == null) {
+      return null;
+    }
+
+    return factory as ServiceFactory<T>;
+  }
 }
 
 class ServiceRegistry {
@@ -129,7 +175,7 @@ class ServiceRegistry {
   static ServiceRegistry initializeProject(
     ProjectModel project, {
     ProjectServiceFactoryOverrides overrides =
-        const ProjectServiceFactoryOverrides(),
+        ProjectServiceFactoryOverrides.empty,
   }) {
     final existingServiceRegistry = _serviceRegistriesByProjectId[project.id];
     if (existingServiceRegistry != null) {
@@ -179,123 +225,69 @@ class ServiceRegistry {
     _serviceRegistriesByProjectId.remove(projectId);
   }
 
-  ProjectController get projectController => _serviceFor<ProjectController>(
-    () =>
-        _overrides.projectController?.call(project, this) ??
-        ProjectController(project, projectViewModel),
-  );
-  TrackController get trackController => _serviceFor<TrackController>(
-    () =>
-        _overrides.trackController?.call(project, this) ??
-        TrackController(project),
-  );
-  ProjectEntityIdAllocator get idAllocator =>
-      _serviceFor<ProjectEntityIdAllocator>(
-        () =>
-            _overrides.idAllocator?.call(project, this) ?? project.idAllocator,
-      );
-  ArrangerController get arrangerController => _serviceFor<ArrangerController>(
-    () =>
-        _overrides.arrangerController?.call(project, this) ??
-        ArrangerController(viewModel: arrangerViewModel, project: project),
-  );
+  ProjectController get projectController => use(projectControllerService);
+  TrackController get trackController => use(trackControllerService);
+  ProjectEntityIdAllocator get idAllocator => use(idAllocatorService);
+  ArrangerController get arrangerController => use(arrangerControllerService);
   PianoRollController get pianoRollController =>
-      _serviceFor<PianoRollController>(
-        () =>
-            _overrides.pianoRollController?.call(project, this) ??
-            PianoRollController(
-              project: project,
-              viewModel: pianoRollViewModel,
-            ),
-      );
+      use(pianoRollControllerService);
   AutomationEditorController get automationEditorController =>
-      _serviceFor<AutomationEditorController>(
-        () =>
-            _overrides.automationEditorController?.call(project, this) ??
-            AutomationEditorController(
-              viewModel: automationEditorViewModel,
-              project: project,
-            ),
-      );
+      use(automationEditorControllerService);
 
-  ProjectViewModel get projectViewModel => _serviceFor<ProjectViewModel>(
-    () =>
-        _overrides.projectViewModel?.call(project, this) ?? ProjectViewModel(),
-  );
-  ArrangerViewModel get arrangerViewModel => _serviceFor<ArrangerViewModel>(
-    () =>
-        _overrides.arrangerViewModel?.call(project, this) ??
-        ArrangerViewModel(
-          project: project,
-          baseTrackHeight: 53,
-          timeView: TimeRange(0, 3072),
-        ),
-  );
-  PianoRollViewModel get pianoRollViewModel => _serviceFor<PianoRollViewModel>(
-    () =>
-        _overrides.pianoRollViewModel?.call(project, this) ??
-        PianoRollViewModel(
-          keyHeight: 14.0,
-          keyValueAtTop: 63.95,
-          timeView: TimeRange(0, 3072),
-        ),
-  );
+  ProjectViewModel get projectViewModel => use(projectViewModelService);
+  ArrangerViewModel get arrangerViewModel => use(arrangerViewModelService);
+  PianoRollViewModel get pianoRollViewModel => use(pianoRollViewModelService);
   AutomationEditorViewModel get automationEditorViewModel =>
-      _serviceFor<AutomationEditorViewModel>(
-        () =>
-            _overrides.automationEditorViewModel?.call(project, this) ??
-            AutomationEditorViewModel(timeView: TimeRange(0, 3072)),
-      );
+      use(automationEditorViewModelService);
 
   final ProjectModel project;
   final ProjectServiceFactoryOverrides _overrides;
 
   ServiceRegistry._internal(this.project, this._overrides);
 
-  final Map<(Type, String?), dynamic> _services = {};
+  final Map<(Type, Object?), _RegisteredService> _services = {};
+  int _nextServiceRegistrationOrder = 0;
 
   void _dispose() {
     final disposedServices = <Object>[];
+    final services = _services.values.toList(growable: false)
+      ..sort((a, b) {
+        final priorityComparison = b.disposePriority.compareTo(
+          a.disposePriority,
+        );
+        if (priorityComparison != 0) {
+          return priorityComparison;
+        }
 
-    void disposeRegisteredService<T>([String? key]) {
-      final service = get<T>(key);
-      if (service is DisposableService) {
-        service.dispose();
-        disposedServices.add(service);
-      }
-    }
+        return b.registrationOrder.compareTo(a.registrationOrder);
+      });
 
-    // Dispose controllers before clearing any dependent view models.
-    disposeRegisteredService<AutomationEditorController>();
-    disposeRegisteredService<PianoRollController>();
-    disposeRegisteredService<ArrangerController>();
-    disposeRegisteredService<TrackController>();
-    disposeRegisteredService<ProjectController>();
-
-    final services = _services.values.toList(growable: false);
-
-    for (final service in services) {
+    for (final entry in services) {
+      final service = entry.instance;
       if (service is DisposableService &&
           !disposedServices.any((disposed) => identical(disposed, service))) {
         service.dispose();
+        disposedServices.add(service);
       }
     }
 
     _services.clear();
   }
 
-  T _serviceFor<T>(T Function() create, [String? key]) {
+  T use<T extends Object>(ServiceDef<T> service, [Object? key]) {
     final existingService = get<T>(key);
     if (existingService != null) {
       return existingService;
     }
 
-    final createdService = create();
-    _register<T>(createdService, key);
+    final createdService =
+        _overrides.factoryFor(service)?.call(project, this) ??
+        service.create(project, this);
+    _register<T>(createdService, key, service.disposePriority);
     return createdService;
   }
 
-  void register<T>(T controller, [String? key]) {
+  void register<T>(T controller, [Object? key]) {
     if (T == dynamic) {
       throw Exception('Cannot register controller of type dynamic');
     }
@@ -303,27 +295,43 @@ class ServiceRegistry {
     _register<T>(controller, key);
   }
 
-  void _register<T>(T controller, [String? key]) {
-    _services[(T, key)] = controller;
+  void _register<T>(T controller, [Object? key, int disposePriority = 0]) {
+    _services[(T, key)] = _RegisteredService(
+      instance: controller as Object,
+      disposePriority: disposePriority,
+      registrationOrder: _nextServiceRegistrationOrder++,
+    );
   }
 
-  T? get<T>([String? key]) {
+  T? get<T>([Object? key]) {
     if (T == dynamic) {
       throw Exception('Cannot get controller of type dynamic');
     }
 
-    final controller = _services[(T, key)];
+    final controller = _services[(T, key)]?.instance;
     if (controller is T) {
       return controller;
     }
     return null;
   }
 
-  void unregister<T>([String? key]) {
+  void unregister<T>([Object? key]) {
     if (T == dynamic) {
       throw Exception('Cannot unregister controller of type dynamic');
     }
 
     _services.remove((T, key));
   }
+}
+
+class _RegisteredService {
+  final Object instance;
+  final int disposePriority;
+  final int registrationOrder;
+
+  const _RegisteredService({
+    required this.instance,
+    required this.disposePriority,
+    required this.registrationOrder,
+  });
 }

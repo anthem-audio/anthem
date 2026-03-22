@@ -43,9 +43,9 @@ void main() {
 
     final registry = ServiceRegistry.initializeProject(
       project,
-      overrides: ProjectServiceFactoryOverrides(
-        projectViewModel: (_, _) => projectViewModel,
-      ),
+      overrides: ProjectServiceFactoryOverrides([
+        overrideService(projectViewModelService, (_, _) => projectViewModel),
+      ]),
     );
 
     expect(registry.projectViewModel, same(projectViewModel));
@@ -63,9 +63,12 @@ void main() {
     expect(
       () => ServiceRegistry.initializeProject(
         project,
-        overrides: ProjectServiceFactoryOverrides(
-          projectViewModel: (_, _) => ProjectViewModel(),
-        ),
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(
+            projectViewModelService,
+            (_, _) => ProjectViewModel(),
+          ),
+        ]),
       ),
       throwsStateError,
     );
