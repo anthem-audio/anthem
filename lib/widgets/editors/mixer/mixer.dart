@@ -57,9 +57,9 @@ class _MixerState extends State<Mixer> {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final serviceRegistry = ServiceRegistry.forProject(project.id);
-    final projectController = serviceRegistry.projectController;
+    final trackController = serviceRegistry.trackController;
 
-    final tracks = projectController.getTracksIterable().toList();
+    final tracks = trackController.getTracksIterable().toList();
 
     final firstSendTrackIndex = () {
       for (var i = 0; i < tracks.length; i++) {

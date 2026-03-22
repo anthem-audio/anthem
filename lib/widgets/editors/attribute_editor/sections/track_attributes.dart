@@ -42,7 +42,7 @@ class _TrackAttributesState extends State<TrackAttributes> {
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final arrangerViewModel = serviceRegistry.arrangerViewModel;
-    final projectController = serviceRegistry.projectController;
+    final trackController = serviceRegistry.trackController;
 
     if (arrangerViewModel.selectedTracks.isEmpty) {
       return SizedBox();
@@ -61,7 +61,7 @@ class _TrackAttributesState extends State<TrackAttributes> {
     void setTrackName(String newName) {
       project.startUndoGroup();
       for (final id in selectedTrackIds) {
-        projectController.setTrackName(id, newName);
+        trackController.setTrackName(id, newName);
       }
       project.commitUndoGroup();
     }
@@ -73,7 +73,7 @@ class _TrackAttributesState extends State<TrackAttributes> {
     void setTrackColor(double hue, AnthemColorPaletteKind palette) {
       project.startUndoGroup();
       for (final id in selectedTrackIds) {
-        projectController.setTrackColor(id, hue, palette);
+        trackController.setTrackColor(id, hue, palette);
       }
       project.commitUndoGroup();
     }

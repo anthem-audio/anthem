@@ -47,7 +47,7 @@ class TrackHeader extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final projectServices = ServiceRegistry.forProject(project.id);
-    final projectController = projectServices.projectController;
+    final trackController = projectServices.trackController;
     final track = project.tracks[trackId]!;
 
     final projectServiceRegistry = ServiceRegistry.forProject(project.id);
@@ -95,7 +95,7 @@ class TrackHeader extends StatelessObserverWidget {
                   ? 'Add a track at the end of this group'
                   : 'Insert a track below this track',
               onSelected: () {
-                projectController.insertTrackAt(track.id);
+                trackController.insertTrackAt(track.id);
               },
             ),
             if (viewModel.selectedTracks.length == 1)
@@ -104,7 +104,7 @@ class TrackHeader extends StatelessObserverWidget {
                 hint: 'Delete this track',
                 disabled: track.isMasterTrack,
                 onSelected: () {
-                  projectController.removeTrack(track.id);
+                  trackController.removeTrack(track.id);
                 },
               ),
             if (viewModel.selectedTracks.length > 1)
@@ -115,7 +115,7 @@ class TrackHeader extends StatelessObserverWidget {
                   (t) => project.tracks[t]?.isMasterTrack ?? false,
                 ),
                 onSelected: () {
-                  projectController.removeTracks(
+                  trackController.removeTracks(
                     viewModel.selectedTracks.nonObservableInner,
                   );
                 },
@@ -124,11 +124,11 @@ class TrackHeader extends StatelessObserverWidget {
               text: 'Group',
               hint:
                   'Add the selected track${viewModel.selectedTracks.length == 1 ? 's' : ''} to a new track group',
-              disabled: !projectController.canGroupTracks(
+              disabled: !trackController.canGroupTracks(
                 viewModel.selectedTracks.nonObservableInner,
               ),
               onSelected: () {
-                projectController.groupTracks(
+                trackController.groupTracks(
                   viewModel.selectedTracks.nonObservableInner.toList(),
                 );
               },

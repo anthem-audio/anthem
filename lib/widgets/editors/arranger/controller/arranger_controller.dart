@@ -177,7 +177,10 @@ abstract class _ArrangerController {
     final projectController = ServiceRegistry.forProject(
       project.id,
     ).projectController;
-    projectController.setActiveTrack(clip.trackId);
+    final trackController = ServiceRegistry.forProject(
+      project.id,
+    ).trackController;
+    trackController.setActiveTrack(clip.trackId);
     projectController.openPatternInPianoRoll(clip.patternId);
   }
 
@@ -187,11 +190,11 @@ abstract class _ArrangerController {
       return;
     }
 
-    final projectController = ServiceRegistry.forProject(
+    final trackController = ServiceRegistry.forProject(
       project.id,
-    ).projectController;
+    ).trackController;
 
-    final deletionResult = projectController.deleteClips(
+    final deletionResult = trackController.deleteClips(
       arrangementId: arrangementId,
       clipIds: clipIds,
     );
@@ -242,13 +245,13 @@ abstract class _ArrangerController {
 
     final project = _project;
     final serviceRegistry = ServiceRegistry.forProject(project.id);
-    final projectController = serviceRegistry.projectController;
+    final trackController = serviceRegistry.trackController;
 
     if (project.sequence.activeArrangementID == null) {
       return;
     }
 
-    final currentTrackList = projectController
+    final currentTrackList = trackController
         .getTracksIterable()
         .map((track) => track.$1)
         .toList(growable: false);
@@ -331,7 +334,10 @@ abstract class _ArrangerController {
     final projectController = ServiceRegistry.forProject(
       project.id,
     ).projectController;
-    projectController.setActiveTrack(trackId);
+    final trackController = ServiceRegistry.forProject(
+      project.id,
+    ).trackController;
+    trackController.setActiveTrack(trackId);
     projectController.openPatternInPianoRoll(pattern.id);
   }
 

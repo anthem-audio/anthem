@@ -23,8 +23,8 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
@@ -37,7 +37,6 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobx/mobx.dart' show ObservableSet;
@@ -47,7 +46,6 @@ import 'package:mockito/mockito.dart';
 @GenerateNiceMocks([
   MockSpec<ProjectModel>(),
   MockSpec<AnthemColor>(),
-  MockSpec<ProjectViewModel>(),
   MockSpec<ArrangerViewModel>(),
 ])
 import 'track_commands_test.mocks.dart';
@@ -345,15 +343,12 @@ void main() {
 
       final mockArrangerViewModel = MockArrangerViewModel();
       when(mockArrangerViewModel.selectedTracks).thenReturn(ObservableSet());
-      final projectController = ProjectController(
-        project,
-        MockProjectViewModel(),
-      );
+      final trackController = TrackController(project);
       ServiceRegistry.initializeProject(
         project,
         overrides: ProjectServiceFactoryOverrides(
           idAllocator: (_, _) => idAllocator,
-          projectController: (_, _) => projectController,
+          trackController: (_, _) => trackController,
           arrangerViewModel: (_, _) => mockArrangerViewModel,
         ),
       );

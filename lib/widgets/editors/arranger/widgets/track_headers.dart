@@ -243,7 +243,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
     final controller = serviceRegistry.arrangerController;
-    final projectController = serviceRegistry.projectController;
+    final trackController = serviceRegistry.trackController;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -262,7 +262,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
             final _ = viewModel.baseTrackHeight;
 
             for (final (trackIndex, (trackId, isSendTrack, trackDepth))
-                in projectController.getTracksIterable().indexed) {
+                in trackController.getTracksIterable().indexed) {
               // For MobX, since we're pulling the real values from a cache
               final _ = viewModel.trackHeightModifiers[trackId];
 
@@ -402,7 +402,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                           onSelected: () {
                             final controller = ServiceRegistry.forProject(
                               project.id,
-                            ).projectController;
+                            ).trackController;
                             controller.addTrack();
                           },
                         ),
@@ -411,7 +411,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                           onSelected: () {
                             final controller = ServiceRegistry.forProject(
                               project.id,
-                            ).projectController;
+                            ).trackController;
                             controller.addSendTrack();
                           },
                         ),

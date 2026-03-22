@@ -51,10 +51,10 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
-    final projectController = serviceRegistry.projectController;
+    final trackController = serviceRegistry.trackController;
 
     var i = 0;
-    for (final (_, isSendTrack, _) in projectController.getTracksIterable()) {
+    for (final (_, isSendTrack, _) in trackController.getTracksIterable()) {
       final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
         i,
       );

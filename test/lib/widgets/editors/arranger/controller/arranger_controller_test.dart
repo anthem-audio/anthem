@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -34,6 +35,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 
 class MockProjectController extends Mock implements ProjectController {
+  @override
+  void openPatternInPianoRoll(Id patternID) {
+    super.noSuchMethod(Invocation.method(#openPatternInPianoRoll, [patternID]));
+  }
+}
+
+class MockTrackController extends Mock implements TrackController {
   @override
   Iterable<(Id trackId, bool isSendTrack, int trackDepth)> getTracksIterable() {
     return super.noSuchMethod(
@@ -56,6 +64,11 @@ class MockProjectController extends Mock implements ProjectController {
           returnValue: (deletedClipIds: <Id>{}, deletedPatternIds: <Id>{}),
         )
         as ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds});
+  }
+
+  @override
+  void setActiveTrack(Id? id) {
+    super.noSuchMethod(Invocation.method(#setActiveTrack, [id]));
   }
 }
 
@@ -110,12 +123,14 @@ class _ArrangerControllerTestFixture {
   final ArrangerViewModel viewModel;
   final ArrangerController controller;
   final MockProjectController mockProjectController;
+  final MockTrackController mockTrackController;
 
   _ArrangerControllerTestFixture._({
     required this.project,
     required this.viewModel,
     required this.controller,
     required this.mockProjectController,
+    required this.mockTrackController,
   });
 
   factory _ArrangerControllerTestFixture.create() {
@@ -170,13 +185,15 @@ class _ArrangerControllerTestFixture {
       project: project,
     );
     final mockProjectController = MockProjectController();
+    final mockTrackController = MockTrackController();
     when(
-      mockProjectController.getTracksIterable(),
+      mockTrackController.getTracksIterable(),
     ).thenAnswer((_) => _getTracksIterable(project));
     ServiceRegistry.initializeProject(
       project,
       overrides: ProjectServiceFactoryOverrides(
         projectController: (_, _) => mockProjectController,
+        trackController: (_, _) => mockTrackController,
       ),
     );
 
@@ -185,6 +202,7 @@ class _ArrangerControllerTestFixture {
       viewModel: viewModel,
       controller: controller,
       mockProjectController: mockProjectController,
+      mockTrackController: mockTrackController,
     );
   }
 
@@ -238,7 +256,7 @@ void main() {
 
     expect(createdPatternIds, hasLength(1));
     expect(createdClipIds, hasLength(1));
-    verify(fixture.mockProjectController.setActiveTrack(trackId)).called(1);
+    verify(fixture.mockTrackController.setActiveTrack(trackId)).called(1);
     verify(
       fixture.mockProjectController.openPatternInPianoRoll(
         createdPatternIds.single,
@@ -396,7 +414,7 @@ void main() {
       fixture.viewModel.selectedClips.addAll([selectedClipA, selectedClipB]);
 
       when(
-        fixture.mockProjectController.deleteClips(
+        fixture.mockTrackController.deleteClips(
           arrangementId: arrangementId,
           clipIds: clipIdsToDelete,
         ),
@@ -408,7 +426,7 @@ void main() {
       fixture.controller.deleteClips(clipIdsToDelete);
 
       verify(
-        fixture.mockProjectController.deleteClips(
+        fixture.mockTrackController.deleteClips(
           arrangementId: arrangementId,
           clipIds: clipIdsToDelete,
         ),

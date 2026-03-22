@@ -171,8 +171,8 @@ class TrackAddRemoveCommand extends Command {
       }
 
       final serviceRegistry = ServiceRegistry.forProject(project.id);
-      final projectController = serviceRegistry.projectController;
-      final isSendTrack = projectController.isSendTrack(trackId);
+      final trackController = serviceRegistry.trackController;
+      final isSendTrack = trackController.isSendTrack(trackId);
 
       final parentId = trackModel.parentTrackId;
 
@@ -763,10 +763,10 @@ class TrackGroupUngroupCommand extends Command {
     // that is predictable.
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
-    final projectController = serviceRegistry.projectController;
+    final trackController = serviceRegistry.trackController;
     final idAllocator = serviceRegistry.idAllocator;
 
-    if (!projectController.canGroupTracks(trackIds)) {
+    if (!trackController.canGroupTracks(trackIds)) {
       throw StateError(
         'TrackGroupUngroupCommand.group(): Invalid track list for grouping. '
         'canGroupTracks(trackIds) returned false.',
@@ -779,7 +779,7 @@ class TrackGroupUngroupCommand extends Command {
       );
     }
 
-    _isForSendTrack = projectController.isSendTrack(trackIds.first);
+    _isForSendTrack = trackController.isSendTrack(trackIds.first);
 
     /// Gets the nearest common ancestor of all tracks, if there is any.
     ///
@@ -940,9 +940,9 @@ class TrackGroupUngroupCommand extends Command {
     }
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
-    final projectController = serviceRegistry.projectController;
+    final trackController = serviceRegistry.trackController;
 
-    _isForSendTrack = projectController.isSendTrack(groupTrack);
+    _isForSendTrack = trackController.isSendTrack(groupTrack);
     _newGroupTrack = track;
     _parentTrack = track.parentTrackId;
 

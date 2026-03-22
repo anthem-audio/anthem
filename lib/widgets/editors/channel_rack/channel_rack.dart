@@ -19,7 +19,6 @@
 
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
@@ -143,9 +142,10 @@ Widget _buildChild(
 }
 
 Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
-  final projectController = Provider.of<ProjectController>(context);
   final project = Provider.of<ProjectModel>(context, listen: false);
-  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+  final serviceRegistry = ServiceRegistry.forProject(project.id);
+  final trackController = serviceRegistry.trackController;
+  final idAllocator = serviceRegistry.idAllocator;
   final addInstrumentMenuController = AnthemMenuController();
 
   final menuDef = MenuDef(
@@ -153,7 +153,7 @@ Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
       AnthemMenuItem(
         text: 'Tone Generator',
         onSelected: () {
-          projectController.setTrackInstrumentNode(
+          trackController.setTrackInstrumentNode(
             trackId: trackId,
             node: ToneGeneratorProcessorModel.create(
               idAllocator: idAllocator,
@@ -166,13 +166,13 @@ Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
         AnthemMenuItem(
           text: 'VST3...',
           onSelected: () {
-            projectController.setTrackVst3InstrumentNode(trackId);
+            trackController.setTrackVst3InstrumentNode(trackId);
           },
         ),
       AnthemMenuItem(
         text: 'Blank',
         onSelected: () {
-          projectController.setTrackInstrumentNode(
+          trackController.setTrackInstrumentNode(
             trackId: trackId,
             node: NodeModel.create(idAllocator: idAllocator),
           );

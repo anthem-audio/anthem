@@ -17,577 +17,133 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
-import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/model/arrangement/arrangement.dart';
-import 'package:anthem/model/arrangement/clip.dart';
-import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem/model/processing_graph/processing_graph.dart';
-import 'package:anthem/model/project.dart';
-import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/model/track.dart';
-import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-
-@GenerateNiceMocks([
-  MockSpec<ProjectModel>(),
-  MockSpec<TrackModel>(),
-  MockSpec<ProjectViewModel>(),
-])
-import 'project_controller_test.mocks.dart';
-
-class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
-  @override
-  Future<void> compile() async {}
-}
-
-class _MockEngine extends Mock implements Engine {
-  final ProcessingGraphApi _processingGraphApi;
-
-  _MockEngine(this._processingGraphApi);
-
-  @override
-  bool get isRunning => false;
-
-  @override
-  ProcessingGraphApi get processingGraphApi => _processingGraphApi;
-}
 
 void main() {
-  group('canGroupTracks()', () {
-    final projectId = getProjectId();
-    late MockProjectModel project;
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    late AnthemObservableMap<Id, MockTrackModel> tracks;
-    late AnthemObservableList<Id> trackOrder;
-    late AnthemObservableList<Id> sendTrackOrder;
+  late ProjectModel project;
+  late ProjectViewModel viewModel;
+  late ProjectController controller;
 
-    late MockTrackModel trackA;
-    late MockTrackModel trackB;
-    late MockTrackModel trackC;
-    late MockTrackModel trackL;
-    late MockTrackModel trackM;
-    late MockTrackModel masterTrack;
+  setUp(() {
+    project = ProjectModel.create();
+    viewModel = ProjectViewModel();
+    controller = ProjectController(project, viewModel);
+    ServiceRegistry.initializeProject(project);
+  });
 
-    setUp(() {
-      project = MockProjectModel();
+  tearDown(() {
+    ServiceRegistry.removeProject(project.id);
+    project.dispose();
+  });
 
-      when(project.id).thenReturn(projectId);
+  group('addArrangement()', () {
+    test('adds a uniquely named arrangement and activates it', () {
+      final originalArrangementIds = project.sequence.arrangementOrder.toList();
 
-      tracks = AnthemObservableMap();
-      trackOrder = AnthemObservableList();
-      sendTrackOrder = AnthemObservableList();
+      controller.addArrangement();
 
-      when(project.tracks).thenReturn(tracks);
-      when(project.trackOrder).thenReturn(trackOrder);
-      when(project.sendTrackOrder).thenReturn(sendTrackOrder);
+      expect(project.sequence.arrangementOrder, hasLength(2));
 
-      // Regular tracks: A (group) -> B, C
-      final trackAId = getId();
-      final trackBId = getId();
-      final trackCId = getId();
+      final newArrangementId = project.sequence.arrangementOrder.last;
+      final newArrangement = project.sequence.arrangements[newArrangementId];
 
-      trackA = MockTrackModel();
-      trackB = MockTrackModel();
-      trackC = MockTrackModel();
-
-      when(trackA.id).thenReturn(trackAId);
-      when(trackB.id).thenReturn(trackBId);
-      when(trackC.id).thenReturn(trackCId);
-
-      when(trackA.type).thenReturn(TrackType.group);
-      when(trackB.type).thenReturn(TrackType.instrument);
-      when(trackC.type).thenReturn(TrackType.instrument);
-
-      when(
-        trackA.childTracks,
-      ).thenReturn(AnthemObservableList.of([trackBId, trackCId]));
-      when(trackB.childTracks).thenReturn(AnthemObservableList());
-      when(trackC.childTracks).thenReturn(AnthemObservableList());
-
-      when(trackA.parentTrackId).thenReturn(null);
-      when(trackB.parentTrackId).thenReturn(trackAId);
-      when(trackC.parentTrackId).thenReturn(trackAId);
-      when(trackA.isMasterTrack).thenReturn(false);
-      when(trackB.isMasterTrack).thenReturn(false);
-      when(trackC.isMasterTrack).thenReturn(false);
-
-      tracks[trackAId] = trackA;
-      tracks[trackBId] = trackB;
-      tracks[trackCId] = trackC;
-      trackOrder.addAll([trackAId]);
-
-      // Send tracks: L (group) -> M, plus Master
-      final trackLId = getId();
-      final trackMId = getId();
-      final masterTrackId = getId();
-
-      trackL = MockTrackModel();
-      trackM = MockTrackModel();
-      masterTrack = MockTrackModel();
-
-      when(trackL.id).thenReturn(trackLId);
-      when(trackM.id).thenReturn(trackMId);
-      when(masterTrack.id).thenReturn(masterTrackId);
-
-      when(trackL.type).thenReturn(TrackType.group);
-      when(trackM.type).thenReturn(TrackType.instrument);
-      when(masterTrack.type).thenReturn(TrackType.instrument);
-
-      when(trackL.childTracks).thenReturn(AnthemObservableList.of([trackMId]));
-      when(trackM.childTracks).thenReturn(AnthemObservableList());
-      when(masterTrack.childTracks).thenReturn(AnthemObservableList());
-
-      when(trackL.parentTrackId).thenReturn(null);
-      when(trackM.parentTrackId).thenReturn(trackLId);
-      when(masterTrack.parentTrackId).thenReturn(null);
-      when(trackL.isMasterTrack).thenReturn(false);
-      when(trackM.isMasterTrack).thenReturn(false);
-      when(masterTrack.isMasterTrack).thenReturn(true);
-
-      tracks[trackLId] = trackL;
-      tracks[trackMId] = trackM;
-      tracks[masterTrackId] = masterTrack;
-      sendTrackOrder.addAll([trackLId, masterTrackId]);
+      expect(newArrangementId, isNot(originalArrangementIds.single));
+      expect(newArrangement, isNotNull);
+      expect(newArrangement!.name, equals('Arrangement 2'));
+      expect(project.sequence.activeArrangementID, equals(newArrangementId));
+      expect(
+        project.sequence.activeTransportSequenceID,
+        equals(newArrangementId),
+      );
     });
 
-    test('Main test', () {
-      final projectController = ProjectController(
-        project,
-        MockProjectViewModel(),
-      );
+    test('uses provided arrangement name', () {
+      controller.addArrangement('Verse');
 
-      expect(projectController.canGroupTracks([]), isFalse);
-
-      expect(projectController.canGroupTracks([trackA.id, trackB.id]), isTrue);
-      expect(projectController.canGroupTracks([trackB.id, trackC.id]), isTrue);
+      final arrangementId = project.sequence.arrangementOrder.last;
       expect(
-        projectController.canGroupTracks([trackA.id, trackB.id, trackC.id]),
-        isTrue,
+        project.sequence.arrangements[arrangementId]!.name,
+        equals('Verse'),
       );
-
-      expect(projectController.canGroupTracks([trackA.id, trackL.id]), isFalse);
-      expect(projectController.canGroupTracks([trackB.id, trackM.id]), isFalse);
-
-      expect(projectController.canGroupTracks([trackL.id, trackM.id]), isTrue);
-      expect(
-        projectController.canGroupTracks([trackL.id, masterTrack.id]),
-        isFalse,
-      );
-      expect(projectController.canGroupTracks([masterTrack.id]), isFalse);
     });
   });
 
-  group('insertTrackAt()', () {
-    final projectId = getProjectId();
+  group('editor and transport selection', () {
+    test(
+      'setActiveArrangement updates active arrangement and transport id',
+      () {
+        controller.addArrangement('Verse');
+        final arrangementId = project.sequence.arrangementOrder.last;
 
-    late MockProjectModel project;
-    late ProjectController projectController;
-    late ProcessingGraphModel processingGraph;
-    late _MockEngine mockEngine;
-    late ProjectEntityIdAllocator idAllocator;
+        controller.setActiveArrangement(arrangementId);
 
-    late AnthemObservableMap<Id, TrackModel> tracks;
-    late AnthemObservableList<Id> trackOrder;
-    late AnthemObservableList<Id> sendTrackOrder;
+        expect(project.sequence.activeArrangementID, equals(arrangementId));
+        expect(
+          project.sequence.activeTransportSequenceID,
+          equals(arrangementId),
+        );
+      },
+    );
 
-    late TrackModel regularGroup;
-    late TrackModel regularChildA;
-    late TrackModel regularChildB;
-    late TrackModel regularTopA;
-    late TrackModel regularTopB;
-
-    late TrackModel sendGroup;
-    late TrackModel sendChild;
-    late TrackModel sendTop;
-    late TrackModel masterTrack;
-
-    TrackModel createTrack(String name, TrackType type) {
-      return TrackModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: name,
-        color: AnthemColor.randomHue(),
-        type: type,
+    test('setActivePattern updates active pattern and transport id', () {
+      final pattern = PatternModel(
+        idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
+        name: 'Lead',
       );
-    }
+      project.sequence.patterns[pattern.id] = pattern;
 
-    setUp(() {
-      project = MockProjectModel();
-      when(project.id).thenReturn(projectId);
+      controller.setActivePattern(pattern.id);
 
-      tracks = AnthemObservableMap();
-      trackOrder = AnthemObservableList();
-      sendTrackOrder = AnthemObservableList();
-
-      when(project.tracks).thenReturn(tracks);
-      when(project.trackOrder).thenReturn(trackOrder);
-      when(project.sendTrackOrder).thenReturn(sendTrackOrder);
-      when(project.allocateId()).thenAnswer((_) => getId());
-      idAllocator = ProjectEntityIdAllocator(project);
-      processingGraph = ProcessingGraphModel.create(
-        masterOutputNodeId: getId(),
-      );
-      when(project.processingGraph).thenReturn(processingGraph);
-      mockEngine = _MockEngine(_FakeProcessingGraphApi());
-      when(project.engine).thenReturn(mockEngine);
-
-      regularGroup = createTrack('Regular Group', .group);
-      regularChildA = createTrack('Regular Child A', .instrument);
-      regularChildB = createTrack('Regular Child B', .instrument);
-      regularTopA = createTrack('Regular Top A', .instrument);
-      regularTopB = createTrack('Regular Top B', .instrument);
-
-      sendGroup = createTrack('Send Group', .group);
-      sendChild = createTrack('Send Child', .instrument);
-      sendTop = createTrack('Send Top', .instrument);
-      masterTrack = createTrack('Master', .instrument);
-
-      tracks.addAll({
-        regularGroup.id: regularGroup,
-        regularChildA.id: regularChildA,
-        regularChildB.id: regularChildB,
-        regularTopA.id: regularTopA,
-        regularTopB.id: regularTopB,
-        sendGroup.id: sendGroup,
-        sendChild.id: sendChild,
-        sendTop.id: sendTop,
-        masterTrack.id: masterTrack,
-      });
-
-      regularGroup.childTracks.addAll([regularChildA.id, regularChildB.id]);
-      regularChildA.parentTrackId = regularGroup.id;
-      regularChildB.parentTrackId = regularGroup.id;
-
-      sendGroup.childTracks.add(sendChild.id);
-      sendChild.parentTrackId = sendGroup.id;
-
-      trackOrder.addAll([regularGroup.id, regularTopA.id, regularTopB.id]);
-      sendTrackOrder.addAll([sendGroup.id, sendTop.id, masterTrack.id]);
-
-      final arrangerViewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 40,
-        timeView: TimeRange(0, 4),
-      );
-      ServiceRegistry.initializeProject(
-        project,
-        overrides: ProjectServiceFactoryOverrides(
-          idAllocator: (_, _) => idAllocator,
-          arrangerViewModel: (_, _) => arrangerViewModel,
-        ),
-      );
-
-      when(project.execute(any)).thenAnswer((invocation) {
-        final command = invocation.positionalArguments[0] as Command;
-        command.execute(project);
-      });
-
-      projectController = ProjectController(project, MockProjectViewModel());
+      expect(project.sequence.activePatternID, equals(pattern.id));
+      expect(project.sequence.activeTransportSequenceID, equals(pattern.id));
     });
 
-    tearDown(() {
-      ServiceRegistry.removeProject(projectId);
+    test('setActiveEditor maps editor selection to panel selection', () {
+      controller.setActiveEditor(editor: EditorKind.detail);
+      expect(viewModel.selectedEditor, equals(EditorKind.detail));
+      expect(viewModel.activePanel, equals(PanelKind.pianoRoll));
+
+      controller.setActiveEditor(editor: EditorKind.automation);
+      expect(viewModel.activePanel, equals(PanelKind.automationEditor));
+
+      controller.setActiveEditor(editor: EditorKind.channelRack);
+      expect(viewModel.activePanel, equals(PanelKind.channelRack));
+
+      controller.setActiveEditor(editor: EditorKind.mixer);
+      expect(viewModel.activePanel, equals(PanelKind.mixer));
     });
 
-    test('group anchor inserts at end of group', () {
-      final oldChildren = List<Id>.from(regularGroup.childTracks);
+    test('openPatternInPianoRoll switches editor and activates pattern', () {
+      final pattern = PatternModel(
+        idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
+        name: 'Bass',
+      );
+      project.sequence.patterns[pattern.id] = pattern;
 
-      projectController.insertTrackAt(regularGroup.id);
+      controller.openPatternInPianoRoll(pattern.id);
 
-      expect(regularGroup.childTracks.length, equals(oldChildren.length + 1));
-      expect(regularGroup.childTracks.take(oldChildren.length), oldChildren);
-
-      final newTrackId = regularGroup.childTracks.last;
-      final newTrack = tracks[newTrackId];
-      expect(newTrack, isNotNull);
-      expect(newTrack!.parentTrackId, equals(regularGroup.id));
-      expect(newTrack.type, equals(TrackType.instrument));
+      expect(viewModel.selectedEditor, equals(EditorKind.detail));
+      expect(viewModel.activePanel, equals(PanelKind.pianoRoll));
+      expect(project.sequence.activePatternID, equals(pattern.id));
     });
 
-    test('regular child anchor inserts below within parent group', () {
-      final oldChildren = List<Id>.from(regularGroup.childTracks);
-      final anchorIndex = oldChildren.indexOf(regularChildA.id);
+    test('openPatternInPianoRoll is a no-op for a missing pattern', () {
+      viewModel.selectedEditor = EditorKind.mixer;
+      viewModel.activePanel = PanelKind.mixer;
+      project.sequence.activePatternID = null;
 
-      projectController.insertTrackAt(regularChildA.id);
+      controller.openPatternInPianoRoll(-1);
 
-      expect(regularGroup.childTracks.length, equals(oldChildren.length + 1));
-
-      final newTrackId = regularGroup.childTracks[anchorIndex + 1];
-      final newTrack = tracks[newTrackId];
-      expect(newTrack, isNotNull);
-      expect(newTrack!.parentTrackId, equals(regularGroup.id));
-
-      expect(regularGroup.childTracks[anchorIndex], equals(regularChildA.id));
-      expect(
-        regularGroup.childTracks[anchorIndex + 2],
-        equals(regularChildB.id),
-      );
-    });
-
-    test('top-level regular anchor inserts below in trackOrder', () {
-      final oldTrackOrder = List<Id>.from(trackOrder);
-      final anchorIndex = oldTrackOrder.indexOf(regularTopA.id);
-
-      projectController.insertTrackAt(regularTopA.id);
-
-      expect(trackOrder.length, equals(oldTrackOrder.length + 1));
-
-      final newTrackId = trackOrder[anchorIndex + 1];
-      final newTrack = tracks[newTrackId];
-      expect(newTrack, isNotNull);
-      expect(newTrack!.parentTrackId, isNull);
-
-      expect(trackOrder[anchorIndex], equals(regularTopA.id));
-      expect(trackOrder[anchorIndex + 2], equals(regularTopB.id));
-    });
-
-    test('top-level send anchor inserts below in sendTrackOrder', () {
-      final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
-      final anchorIndex = oldSendTrackOrder.indexOf(sendTop.id);
-
-      projectController.insertTrackAt(sendTop.id);
-
-      expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 1));
-
-      final newTrackId = sendTrackOrder[anchorIndex + 1];
-      final newTrack = tracks[newTrackId];
-      expect(newTrack, isNotNull);
-      expect(newTrack!.parentTrackId, isNull);
-
-      expect(sendTrackOrder[anchorIndex], equals(sendTop.id));
-      expect(sendTrackOrder[anchorIndex + 2], equals(masterTrack.id));
-    });
-  });
-
-  group('remove clip and track content', () {
-    final projectId = getProjectId();
-
-    late MockProjectModel project;
-    late ProjectController projectController;
-    late SequencerModel sequence;
-    late ProcessingGraphModel processingGraph;
-    late _MockEngine mockEngine;
-    late ProjectEntityIdAllocator idAllocator;
-
-    late AnthemObservableMap<Id, TrackModel> tracks;
-    late AnthemObservableList<Id> trackOrder;
-    late AnthemObservableList<Id> sendTrackOrder;
-
-    late TrackModel groupTrack;
-    late TrackModel childTrack;
-    late TrackModel otherTrack;
-    late TrackModel masterTrack;
-
-    late ArrangementModel arrangementA;
-    late ArrangementModel arrangementB;
-
-    late PatternModel orphanPatternA;
-    late PatternModel orphanPatternB;
-    late PatternModel sharedPattern;
-
-    late ClipModel clipOnGroupOrphan;
-    late ClipModel clipOnGroupShared;
-    late ClipModel clipOnOtherShared;
-    late ClipModel clipOnChildOrphan;
-
-    TrackModel createTrack(String name, TrackType type) {
-      return TrackModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: name,
-        color: AnthemColor.randomHue(),
-        type: type,
-      );
-    }
-
-    ClipModel createClip({
-      required Id patternId,
-      required Id trackId,
-      required int offset,
-    }) {
-      return ClipModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        patternId: patternId,
-        trackId: trackId,
-        offset: offset,
-      );
-    }
-
-    setUp(() {
-      project = MockProjectModel();
-      when(project.id).thenReturn(projectId);
-
-      sequence = SequencerModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-      );
-      when(project.sequence).thenReturn(sequence);
-
-      tracks = AnthemObservableMap();
-      trackOrder = AnthemObservableList();
-      sendTrackOrder = AnthemObservableList();
-
-      when(project.tracks).thenReturn(tracks);
-      when(project.trackOrder).thenReturn(trackOrder);
-      when(project.sendTrackOrder).thenReturn(sendTrackOrder);
-
-      when(project.allocateId()).thenAnswer((_) => getId());
-      idAllocator = ProjectEntityIdAllocator(project);
-      processingGraph = ProcessingGraphModel.create(
-        masterOutputNodeId: getId(),
-      );
-      when(project.processingGraph).thenReturn(processingGraph);
-
-      mockEngine = _MockEngine(_FakeProcessingGraphApi());
-      when(project.engine).thenReturn(mockEngine);
-
-      groupTrack = createTrack('Group', .group);
-      childTrack = createTrack('Child', .instrument);
-      otherTrack = createTrack('Other', .instrument);
-      masterTrack = createTrack('Master', .instrument)..isMasterTrack = true;
-
-      groupTrack.childTracks.add(childTrack.id);
-      childTrack.parentTrackId = groupTrack.id;
-
-      tracks.addAll({
-        groupTrack.id: groupTrack,
-        childTrack.id: childTrack,
-        otherTrack.id: otherTrack,
-        masterTrack.id: masterTrack,
-      });
-
-      trackOrder.addAll([groupTrack.id, otherTrack.id]);
-      sendTrackOrder.add(masterTrack.id);
-
-      arrangementA = sequence.arrangements[sequence.activeArrangementID]!;
-      arrangementB = ArrangementModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: 'Arrangement B',
-      );
-      sequence.arrangements[arrangementB.id] = arrangementB;
-      sequence.arrangementOrder.add(arrangementB.id);
-
-      orphanPatternA = PatternModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: 'Orphan A',
-      );
-      orphanPatternB = PatternModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: 'Orphan B',
-      );
-      sharedPattern = PatternModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: 'Shared',
-      );
-
-      sequence.patterns[orphanPatternA.id] = orphanPatternA;
-      sequence.patterns[orphanPatternB.id] = orphanPatternB;
-      sequence.patterns[sharedPattern.id] = sharedPattern;
-
-      clipOnGroupOrphan = createClip(
-        patternId: orphanPatternA.id,
-        trackId: groupTrack.id,
-        offset: 0,
-      );
-      clipOnGroupShared = createClip(
-        patternId: sharedPattern.id,
-        trackId: groupTrack.id,
-        offset: 16,
-      );
-      clipOnOtherShared = createClip(
-        patternId: sharedPattern.id,
-        trackId: otherTrack.id,
-        offset: 32,
-      );
-      clipOnChildOrphan = createClip(
-        patternId: orphanPatternB.id,
-        trackId: childTrack.id,
-        offset: 48,
-      );
-
-      arrangementA.clips[clipOnGroupOrphan.id] = clipOnGroupOrphan;
-      arrangementA.clips[clipOnGroupShared.id] = clipOnGroupShared;
-      arrangementA.clips[clipOnOtherShared.id] = clipOnOtherShared;
-      arrangementB.clips[clipOnChildOrphan.id] = clipOnChildOrphan;
-
-      when(project.execute(any)).thenAnswer((invocation) {
-        final command = invocation.positionalArguments[0] as Command;
-        command.execute(project);
-      });
-
-      final arrangerViewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 40,
-        timeView: TimeRange(0, 4),
-      );
-
-      projectController = ProjectController(project, MockProjectViewModel());
-      ServiceRegistry.initializeProject(
-        project,
-        overrides: ProjectServiceFactoryOverrides(
-          idAllocator: (_, _) => idAllocator,
-          arrangerViewModel: (_, _) => arrangerViewModel,
-          projectController: (_, _) => projectController,
-        ),
-      );
-    });
-
-    tearDown(() {
-      ServiceRegistry.removeProject(projectId);
-    });
-
-    test('deleteClips removes target clips and orphan patterns', () {
-      final result = projectController.deleteClips(
-        arrangementId: arrangementA.id,
-        clipIds: [clipOnGroupOrphan.id, clipOnGroupShared.id, getId()],
-      );
-
-      expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
-      expect(arrangementA.clips[clipOnGroupShared.id], isNull);
-      expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
-      expect(arrangementB.clips[clipOnChildOrphan.id], isNotNull);
-
-      expect(result.deletedClipIds, {
-        clipOnGroupOrphan.id,
-        clipOnGroupShared.id,
-      });
-      expect(result.deletedPatternIds, {orphanPatternA.id});
-
-      expect(sequence.patterns[orphanPatternA.id], isNull);
-      expect(sequence.patterns[sharedPattern.id], isNotNull);
-      expect(sequence.patterns[orphanPatternB.id], isNotNull);
-
-      verify(project.startUndoGroup()).called(1);
-      verify(project.commitUndoGroup()).called(1);
-    });
-
-    test('removeTracks removes clips on those tracks and descendants', () {
-      projectController.removeTracks([groupTrack.id]);
-
-      expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
-      expect(arrangementA.clips[clipOnGroupShared.id], isNull);
-      expect(arrangementB.clips[clipOnChildOrphan.id], isNull);
-      expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
-
-      expect(sequence.patterns[orphanPatternA.id], isNull);
-      expect(sequence.patterns[orphanPatternB.id], isNull);
-      expect(sequence.patterns[sharedPattern.id], isNotNull);
-
-      expect(tracks[groupTrack.id], isNull);
-      expect(tracks[childTrack.id], isNull);
-      expect(tracks[otherTrack.id], isNotNull);
-      expect(tracks[masterTrack.id], isNotNull);
-
-      verify(project.startUndoGroup()).called(1);
-      verify(project.commitUndoGroup()).called(1);
+      expect(viewModel.selectedEditor, equals(EditorKind.mixer));
+      expect(viewModel.activePanel, equals(PanelKind.mixer));
+      expect(project.sequence.activePatternID, isNull);
     });
   });
 }

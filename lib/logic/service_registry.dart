@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -46,6 +47,8 @@ abstract interface class DisposableService {
 
 typedef ProjectControllerFactory =
     ProjectController Function(ProjectModel project, ServiceRegistry registry);
+typedef TrackControllerFactory =
+    TrackController Function(ProjectModel project, ServiceRegistry registry);
 typedef IdAllocatorFactory =
     ProjectEntityIdAllocator Function(
       ProjectModel project,
@@ -78,6 +81,7 @@ typedef AutomationEditorViewModelFactory =
 class ProjectServiceFactoryOverrides {
   final IdAllocatorFactory? idAllocator;
   final ProjectControllerFactory? projectController;
+  final TrackControllerFactory? trackController;
   final ArrangerControllerFactory? arrangerController;
   final PianoRollControllerFactory? pianoRollController;
   final AutomationEditorControllerFactory? automationEditorController;
@@ -89,6 +93,7 @@ class ProjectServiceFactoryOverrides {
   const ProjectServiceFactoryOverrides({
     this.idAllocator,
     this.projectController,
+    this.trackController,
     this.arrangerController,
     this.pianoRollController,
     this.automationEditorController,
@@ -101,6 +106,7 @@ class ProjectServiceFactoryOverrides {
   bool get isEmpty =>
       idAllocator == null &&
       projectController == null &&
+      trackController == null &&
       arrangerController == null &&
       pianoRollController == null &&
       automationEditorController == null &&
@@ -177,6 +183,11 @@ class ServiceRegistry {
     () =>
         _overrides.projectController?.call(project, this) ??
         ProjectController(project, projectViewModel),
+  );
+  TrackController get trackController => _serviceFor<TrackController>(
+    () =>
+        _overrides.trackController?.call(project, this) ??
+        TrackController(project),
   );
   ProjectEntityIdAllocator get idAllocator =>
       _serviceFor<ProjectEntityIdAllocator>(
@@ -258,6 +269,7 @@ class ServiceRegistry {
     disposeRegisteredService<AutomationEditorController>();
     disposeRegisteredService<PianoRollController>();
     disposeRegisteredService<ArrangerController>();
+    disposeRegisteredService<TrackController>();
     disposeRegisteredService<ProjectController>();
 
     final services = _services.values.toList(growable: false);

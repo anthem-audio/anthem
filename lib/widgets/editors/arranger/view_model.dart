@@ -271,8 +271,8 @@ class TrackPositionAndSize {
     final trackCount = projectModel.tracks.length;
 
     final serviceRegistry = ServiceRegistry.forProject(projectModel.id);
-    final projectController = serviceRegistry.projectController;
-    final allTracksIterable = projectController.getTracksIterable();
+    final trackController = serviceRegistry.trackController;
+    final allTracksIterable = trackController.getTracksIterable();
 
     if (_cache.length != trackCount * 2) {
       _cache = Float64List(trackCount * 2);
