@@ -38,12 +38,14 @@ import 'package:provider/provider.dart';
 import 'visualization_test.mocks.dart';
 
 class RecordingVisualizationApi extends Fake implements VisualizationApi {
-  final List<List<String>> subscriptionCalls = [];
+  final List<List<VisualizationSubscriptionSpec>> subscriptionCalls = [];
   final List<double> updateIntervalCalls = [];
 
   @override
-  void setSubscriptions(List<String> subscriptions) {
-    subscriptionCalls.add(List<String>.unmodifiable(subscriptions));
+  void setSubscriptions(List<VisualizationSubscriptionSpec> subscriptions) {
+    subscriptionCalls.add(
+      List<VisualizationSubscriptionSpec>.unmodifiable(subscriptions),
+    );
   }
 
   @override
@@ -108,14 +110,32 @@ void main() {
     );
   }
 
+  VisualizationValueType inferVisualizationValueType(List<Object> values) {
+    if (values.every((value) => value is double)) {
+      return VisualizationValueType.doubleValue;
+    }
+    if (values.every((value) => value is int)) {
+      return VisualizationValueType.intValue;
+    }
+    if (values.every((value) => value is String)) {
+      return VisualizationValueType.stringValue;
+    }
+
+    throw ArgumentError(
+      'Could not infer a visualization value type for ${values.map((value) => value.runtimeType).toList()}.',
+    );
+  }
+
   VisualizationItem testVisualizationItem({
     required String id,
     required List<Object> values,
+    VisualizationValueType? valueType,
     List<int>? sampleTimestamps,
     int startSample = 1,
   }) {
     return VisualizationItem(
       id: id,
+      valueType: valueType ?? inferVisualizationValueType(values),
       values: values,
       sampleTimestamps:
           sampleTimestamps ??
@@ -126,7 +146,7 @@ void main() {
   Future<void> pumpMultiVisualizationBuilder(
     WidgetTester tester, {
     required ProjectModel project,
-    required List<VisualizationSubscriptionConfig> configs,
+    required List<VisualizationSubscriptionConfig<int>> configs,
   }) async {
     await tester.pumpWidget(
       Provider<ProjectModel>.value(
@@ -147,7 +167,7 @@ void main() {
   Future<void> pumpVisualizationBuilder(
     WidgetTester tester, {
     required ProjectModel project,
-    required VisualizationSubscriptionConfig config,
+    required VisualizationSubscriptionConfig<int> config,
   }) async {
     await tester.pumpWidget(
       Provider<ProjectModel>.value(
@@ -172,10 +192,10 @@ void main() {
     final setup = createProjectWithVisualizationProvider();
 
     final latest = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.latest('latest'),
+      VisualizationSubscriptionConfig.latestDouble('latest'),
     );
     final max = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.max('max'),
+      VisualizationSubscriptionConfig.max('max'),
     );
 
     setup.visualizationProvider.processVisualizationUpdate(
@@ -219,19 +239,15 @@ void main() {
     setup.visualizationProvider.dispose();
   });
 
-  test('String reads only expose native string subscriptions', () {
+  test('String subscriptions expose typed reads and overrides', () {
     var wallClock = Duration.zero;
     final setup = createProjectWithVisualizationProvider(
       wallClockNowForTest: () => wallClock,
     );
 
     final latestString = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.latest('string_latest'),
+      VisualizationSubscriptionConfig.latestString('string_latest'),
     );
-    final latestDouble = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.latest('double_latest'),
-    );
-
     setup.visualizationProvider.processVisualizationUpdate(
       VisualizationUpdateEvent(
         id: 0,
@@ -250,9 +266,9 @@ void main() {
       ),
     );
 
-    expect(latestString.readValueString(), 'alpha');
+    expect(latestString.readValue(), 'alpha');
     expect(
-      latestString.readTimedValueString(),
+      latestString.readTimedValue(),
       isA<TimedVisualizationValue<String>>()
           .having((value) => value.value, 'value', 'alpha')
           .having(
@@ -263,13 +279,13 @@ void main() {
     );
 
     latestString.setOverride(
-      valueString: 'override',
+      value: 'override',
       duration: const Duration(seconds: 1),
     );
-    expect(latestString.readValueString(), 'override');
+    expect(latestString.readValue(), 'override');
     wallClock = const Duration(milliseconds: 5);
     expect(
-      latestString.readTimedValueString(),
+      latestString.readTimedValue(),
       isA<TimedVisualizationValue<String>>()
           .having((value) => value.value, 'value', 'override')
           .having(
@@ -279,12 +295,6 @@ void main() {
           ),
     );
 
-    expect(() => latestDouble.readValueString(), throwsA(isA<StateError>()));
-    expect(
-      () => latestDouble.readTimedValueString(),
-      throwsA(isA<StateError>()),
-    );
-
     setup.visualizationProvider.dispose();
   });
 
@@ -292,10 +302,10 @@ void main() {
     final setup = createProjectWithVisualizationProvider();
 
     final latest = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.latest('latest'),
+      VisualizationSubscriptionConfig.latestDouble('latest'),
     );
     final max = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.max('max'),
+      VisualizationSubscriptionConfig.max('max'),
     );
 
     setup.visualizationProvider.processVisualizationUpdate(
@@ -347,13 +357,13 @@ void main() {
     );
 
     final initialOverride = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.latest('initial_override'),
+      VisualizationSubscriptionConfig.latestDouble('initial_override'),
     );
 
     expect(initialOverride.readTimedValue(), isNull);
 
     initialOverride.setOverride(
-      valueDouble: 1.0,
+      value: 1.0,
       duration: const Duration(seconds: 1),
     );
     expect(
@@ -376,7 +386,7 @@ void main() {
     );
 
     final latest = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.latest('latest'),
+      VisualizationSubscriptionConfig.latestDouble('latest'),
     );
 
     setup.visualizationProvider.processVisualizationUpdate(
@@ -405,7 +415,7 @@ void main() {
           ),
     );
 
-    latest.setOverride(valueDouble: 9.0, duration: const Duration(seconds: 1));
+    latest.setOverride(value: 9.0, duration: const Duration(seconds: 1));
 
     expect(latest.readValue(), 9.0);
     wallClock = const Duration(milliseconds: 35);
@@ -429,17 +439,62 @@ void main() {
     () {
       final setup = createProjectWithVisualizationProvider();
       setup.visualizationProvider.subscribe(
-        const VisualizationSubscriptionConfig.latest('subscriptionId'),
+        VisualizationSubscriptionConfig.latestDouble('subscriptionId'),
       );
 
       final malformedItem = VisualizationItem.uninitialized()
         ..id = 'subscriptionId'
+        ..valueType = VisualizationValueType.doubleValue
         ..values = [1.0, 2.0]
         ..sampleTimestamps = [10];
 
       expect(
         () => setup.visualizationProvider.processVisualizationUpdate(
           VisualizationUpdateEvent(id: 0, items: [malformedItem]),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      setup.visualizationProvider.dispose();
+    },
+  );
+
+  test('Visualization updates reject mismatched declared value types', () {
+    final setup = createProjectWithVisualizationProvider();
+    setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('subscriptionId'),
+    );
+
+    expect(
+      () => setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'subscriptionId',
+              valueType: VisualizationValueType.doubleValue,
+              values: [1.0],
+            ),
+          ],
+        ),
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    setup.visualizationProvider.dispose();
+  });
+
+  test(
+    'Visualization subscriptions reject conflicting declared value types',
+    () {
+      final setup = createProjectWithVisualizationProvider();
+      setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestDouble('subscriptionId'),
+      );
+
+      expect(
+        () => setup.visualizationProvider.subscribe(
+          VisualizationSubscriptionConfig.latestInt('subscriptionId'),
         ),
         throwsA(isA<StateError>()),
       );
@@ -464,7 +519,8 @@ void main() {
       );
     }
 
-    Future<List<String>> getNextSubscriptionChanges() async {
+    Future<List<VisualizationSubscriptionSpec>>
+    getNextSubscriptionChanges() async {
       final previousCallCount =
           recordingVisualizationApi.subscriptionCalls.length;
 
@@ -479,28 +535,35 @@ void main() {
     }
 
     final subscription1 = setup.visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId1'),
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId1'),
     );
     final subscription2 = setup.visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId2'),
+      VisualizationSubscriptionConfig.latestInt('subscriptionId2'),
     );
 
+    final initialSubscriptions = await getNextSubscriptionChanges();
     expect(
-      await getNextSubscriptionChanges(),
+      initialSubscriptions.map((spec) => spec.id),
       containsAll(['subscriptionId1', 'subscriptionId2']),
+    );
+    expect(
+      initialSubscriptions
+          .firstWhere((spec) => spec.id == 'subscriptionId2')
+          .valueType,
+      VisualizationValueType.intValue,
     );
 
     final subscription3 = setup.visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId3'),
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId3'),
     );
 
     expect(
-      await getNextSubscriptionChanges(),
+      (await getNextSubscriptionChanges()).map((spec) => spec.id),
       containsAll(['subscriptionId1', 'subscriptionId2', 'subscriptionId3']),
     );
 
     final subscriptionDuplicate = setup.visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId3'),
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId3'),
     );
 
     await assertNoSubscriptionChanges();
@@ -512,7 +575,7 @@ void main() {
     subscription3.dispose();
 
     expect(
-      await getNextSubscriptionChanges(),
+      (await getNextSubscriptionChanges()).map((spec) => spec.id),
       containsAll(['subscriptionId1', 'subscriptionId2']),
     );
 
@@ -532,7 +595,7 @@ void main() {
     );
 
     final subscription = setup.visualizationProvider.subscribe(
-      const VisualizationSubscriptionConfig.latest(
+      VisualizationSubscriptionConfig.latestDouble(
         'playhead_position',
         bufferMode: VisualizationBufferMode.adaptive,
       ),
@@ -617,7 +680,7 @@ void main() {
       );
 
       final subscription = setup.visualizationProvider.subscribe(
-        const VisualizationSubscriptionConfig.max(
+        VisualizationSubscriptionConfig.max(
           'meter',
           bufferMode: VisualizationBufferMode.adaptive,
         ),
@@ -706,7 +769,7 @@ void main() {
       await pumpVisualizationBuilder(
         tester,
         project: setup.project,
-        config: const VisualizationSubscriptionConfig.latest('a'),
+        config: VisualizationSubscriptionConfig.latestInt('a'),
       );
 
       setup.visualizationProvider.processVisualizationUpdate(
@@ -724,7 +787,7 @@ void main() {
       await pumpVisualizationBuilder(
         tester,
         project: setup.project,
-        config: const VisualizationSubscriptionConfig.latest('b'),
+        config: VisualizationSubscriptionConfig.latestInt('b'),
       );
 
       expect(find.text('null'), findsOneWidget);
@@ -756,7 +819,7 @@ void main() {
       await pumpMultiVisualizationBuilder(
         tester,
         project: setup.project,
-        configs: [const VisualizationSubscriptionConfig.latest('a')],
+        configs: [VisualizationSubscriptionConfig.latestInt('a')],
       );
 
       setup.visualizationProvider.processVisualizationUpdate(
@@ -774,9 +837,9 @@ void main() {
       await pumpMultiVisualizationBuilder(
         tester,
         project: setup.project,
-        configs: const [
-          VisualizationSubscriptionConfig.latest('a'),
-          VisualizationSubscriptionConfig.latest('b'),
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('a'),
+          VisualizationSubscriptionConfig.latestInt('b'),
         ],
       );
 
@@ -807,9 +870,9 @@ void main() {
       await pumpMultiVisualizationBuilder(
         tester,
         project: setup.project,
-        configs: const [
-          VisualizationSubscriptionConfig.latest('a'),
-          VisualizationSubscriptionConfig.latest('b'),
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('a'),
+          VisualizationSubscriptionConfig.latestInt('b'),
         ],
       );
 
@@ -829,9 +892,9 @@ void main() {
       await pumpMultiVisualizationBuilder(
         tester,
         project: setup.project,
-        configs: const [
-          VisualizationSubscriptionConfig.latest('b'),
-          VisualizationSubscriptionConfig.latest('a'),
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('b'),
+          VisualizationSubscriptionConfig.latestInt('a'),
         ],
       );
 

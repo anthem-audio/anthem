@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,7 +30,7 @@ class VisualizationApi {
   static const String cpuKey = 'cpu';
 
   /// Sets the visualization streams that the engine should publish.
-  void setSubscriptions(List<String> subscriptions) {
+  void setSubscriptions(List<VisualizationSubscriptionSpec> subscriptions) {
     final request = SetVisualizationSubscriptionsRequest(
       id: _engine._getRequestId(),
       subscriptions: subscriptions,

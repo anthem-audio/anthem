@@ -27,7 +27,7 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 std::optional<NumericVisualizationData>
-DbMeterVisualizationProvider::getNumericData() {
+DbMeterVisualizationProvider::getTypedData() {
   return drainTimestampedVisualizationBuffer(valueBuffer);
 }
 

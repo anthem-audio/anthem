@@ -437,7 +437,12 @@ void main() {
         final update = VisualizationUpdateEvent(
           id: -1,
           items: [
-            VisualizationItem(id: 'cpu', values: [0.5], sampleTimestamps: [1]),
+            VisualizationItem(
+              id: 'cpu',
+              valueType: VisualizationValueType.doubleValue,
+              values: [0.5],
+              sampleTimestamps: [1],
+            ),
           ],
         );
 

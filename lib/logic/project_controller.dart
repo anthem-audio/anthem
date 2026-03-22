@@ -614,7 +614,7 @@ class ProjectController {
     if (id != null) {
       project.visualizationProvider.overrideValue(
         id: 'playhead_sequence_id',
-        intValue: id,
+        value: id,
         duration: const Duration(milliseconds: 500),
       );
     }

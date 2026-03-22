@@ -61,7 +61,7 @@ class PlayheadLine extends StatelessObserverWidget {
     return Builder(
       builder: (context) {
         return VisualizationBuilder.int(
-          config: VisualizationSubscriptionConfig.latest(
+          config: VisualizationSubscriptionConfig.latestInt(
             'playhead_sequence_id',
           ),
           builder: (context, activeSequenceId, engineTime) {
@@ -70,7 +70,7 @@ class PlayheadLine extends StatelessObserverWidget {
                   (activeSequenceIdOverride ?? activeSequenceId) ==
                   editorActiveSequenceId,
               child: VisualizationBuilder.double(
-                config: VisualizationSubscriptionConfig.latest(
+                config: VisualizationSubscriptionConfig.latestDouble(
                   'playhead_position',
                   bufferMode: VisualizationBufferMode.adaptive,
                 ),

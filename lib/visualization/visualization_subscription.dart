@@ -23,76 +23,135 @@ enum VisualizationSubscriptionType { latest, max }
 
 enum VisualizationBufferMode { none, adaptive }
 
-enum _VisualizationValueType { doubleValue, intValue, stringValue }
-
 // Adaptive subscriptions render from a delayed engine-time cursor rather than
 // directly from the newest packet. This lets the UI smooth over irregular
 // delivery timing while staying in the same time domain as the engine.
 enum _VisualizationBufferState { passThrough, buffering, steady, stalled }
 
 /// Represents the configuration for a visualization subscription.
-class VisualizationSubscriptionConfig {
+class VisualizationSubscriptionConfig<T> {
   final String id;
   final VisualizationSubscriptionType type;
   final VisualizationBufferMode bufferMode;
+  final VisualizationType<T> visualizationType;
 
-  /// Subscribe to the most recent value for this visualization item.
-  const VisualizationSubscriptionConfig.latest(
-    this.id, {
-    this.bufferMode = VisualizationBufferMode.none,
-  }) : type = VisualizationSubscriptionType.latest;
+  const VisualizationSubscriptionConfig._({
+    required this.id,
+    required this.type,
+    required this.bufferMode,
+    required this.visualizationType,
+  });
+
+  /// Subscribe to the most recent double value for this visualization item.
+  static VisualizationSubscriptionConfig<double> latestDouble(
+    String id, {
+    VisualizationBufferMode bufferMode = VisualizationBufferMode.none,
+  }) {
+    return VisualizationSubscriptionConfig<double>._(
+      id: id,
+      type: VisualizationSubscriptionType.latest,
+      bufferMode: bufferMode,
+      visualizationType: doubleVisualizationType,
+    );
+  }
+
+  /// Subscribe to the most recent integer value for this visualization item.
+  static VisualizationSubscriptionConfig<int> latestInt(
+    String id, {
+    VisualizationBufferMode bufferMode = VisualizationBufferMode.none,
+  }) {
+    return VisualizationSubscriptionConfig<int>._(
+      id: id,
+      type: VisualizationSubscriptionType.latest,
+      bufferMode: bufferMode,
+      visualizationType: intVisualizationType,
+    );
+  }
+
+  /// Subscribe to the most recent string value for this visualization item.
+  static VisualizationSubscriptionConfig<String> latestString(
+    String id, {
+    VisualizationBufferMode bufferMode = VisualizationBufferMode.none,
+  }) {
+    return VisualizationSubscriptionConfig<String>._(
+      id: id,
+      type: VisualizationSubscriptionType.latest,
+      bufferMode: bufferMode,
+      visualizationType: stringVisualizationType,
+    );
+  }
 
   /// Subscribe to the maximum value for this visualization item since the last
   /// read or rendered frame.
-  const VisualizationSubscriptionConfig.max(
-    this.id, {
-    this.bufferMode = VisualizationBufferMode.none,
-  }) : type = VisualizationSubscriptionType.max;
+  static VisualizationSubscriptionConfig<double> max(
+    String id, {
+    VisualizationBufferMode bufferMode = VisualizationBufferMode.none,
+  }) {
+    return VisualizationSubscriptionConfig<double>._(
+      id: id,
+      type: VisualizationSubscriptionType.max,
+      bufferMode: bufferMode,
+      visualizationType: doubleVisualizationType,
+    );
+  }
+
+  VisualizationValueType get valueType => visualizationType.wireType;
+
+  VisualizationSubscriptionSpec toSubscriptionSpec() {
+    return VisualizationSubscriptionSpec(id: id, valueType: valueType);
+  }
 
   @override
   operator ==(Object other) {
     if (identical(this, other)) return true;
-    if (other is! VisualizationSubscriptionConfig) return false;
+    if (other is! VisualizationSubscriptionConfig<T>) return false;
     return id == other.id &&
         type == other.type &&
-        bufferMode == other.bufferMode;
+        bufferMode == other.bufferMode &&
+        valueType == other.valueType;
   }
 
   @override
-  int get hashCode => Object.hash(id, type, bufferMode);
+  int get hashCode => Object.hash(id, type, bufferMode, valueType);
+}
+
+abstract class _VisualizationSubscriptionBase {
+  String get id;
+  VisualizationValueType get valueType;
+  Stream<void> get onUpdate;
+
+  VisualizationSubscriptionSpec toSubscriptionSpec();
+  void _addValueFromEngine(Object value, int sampleTimestamp);
+  void _setOverrideValue(Object value, Duration duration);
+  void _engineStarted();
+  void _engineStopped();
+  void dispose();
 }
 
 /// Represents a subscription to a visualization item.
 ///
-/// This class is used to represent a specific data value from the engine. The
-/// typical case for this is for a widget (typically a VisualizationBuilder) to
-/// read this every frame (or at least regularly) and update the UI with the
-/// latest value.
-class VisualizationSubscription {
+/// This class is used to represent a specific typed data stream from the
+/// engine. Widgets typically read this every frame, or when signalled by
+/// [onUpdate], to render the latest engine-backed value.
+abstract class VisualizationSubscription<T>
+    implements _VisualizationSubscriptionBase {
   static const _maxBufferedDuration = Duration(seconds: 3);
   static const _maxBufferedSamples = 2048;
 
   final VisualizationProvider _parent;
-  final VisualizationSubscriptionConfig _config;
+  final VisualizationSubscriptionConfig<T> _config;
   late final Ticker _ticker;
-  final _VisualizationSampleBuffer? _sampleBuffer;
+  final _VisualizationSampleBuffer<T>? _sampleBuffer;
 
-  double _sourceValueDouble = 0;
-  int _sourceValueInt = 0;
-  String? _sourceValueString;
+  T? _sourceValue;
   Duration? _sourceEngineTime;
 
-  double _valueDouble = 0;
-  int _valueInt = 0;
-  String? _valueString;
+  T? _value;
   Duration? _engineTime;
-  _VisualizationValueType? _valueType;
 
+  T? _overrideValue;
   Duration? _overrideSetTime;
   Duration? _overrideDuration;
-  double? _overrideDouble;
-  int? _overrideInt;
-  String? _overrideString;
 
   bool _shouldReset = false;
 
@@ -112,23 +171,41 @@ class VisualizationSubscription {
     sync: true,
   );
 
-  /// The stream that will be triggered when the value for this subscription
-  /// changes.
-  ///
-  /// This happens at most once per frame.
+  @override
+  String get id => _config.id;
+
+  @override
+  VisualizationValueType get valueType => _config.valueType;
+
+  @override
   Stream<void> get onUpdate => _updateController.stream;
 
   bool get _hasAdaptiveBuffering =>
       _config.bufferMode == VisualizationBufferMode.adaptive;
 
-  bool get _hasActiveOverride =>
-      _overrideDouble != null ||
-      _overrideInt != null ||
-      _overrideString != null;
+  bool get _hasActiveOverride => _overrideValue != null;
 
-  // Sample timestamps arrive from the engine in sample-space. Convert them to
-  // durations once so all buffering and rendering logic can stay in engine
-  // time.
+  VisualizationSubscription(this._config, this._parent)
+    : _sampleBuffer = _config.bufferMode == VisualizationBufferMode.adaptive
+          ? _VisualizationSampleBuffer<T>(
+              maxBufferedDuration: _maxBufferedDuration,
+              maxSampleCount: _maxBufferedSamples,
+            )
+          : null,
+      _bufferState = _config.bufferMode == VisualizationBufferMode.adaptive
+          ? _VisualizationBufferState.buffering
+          : _VisualizationBufferState.passThrough {
+    _ticker = Ticker(_onTick);
+    if (_parent._project.engineState == EngineState.running) {
+      _ticker.start();
+    }
+  }
+
+  @override
+  VisualizationSubscriptionSpec toSubscriptionSpec() {
+    return _config.toSubscriptionSpec();
+  }
+
   Duration _sampleTimestampToEngineTime(int sampleTimestamp) {
     final sampleRate = _parent._project.engine.audioConfig?.sampleRate;
     if (sampleRate == null || sampleRate <= 0) {
@@ -140,14 +217,6 @@ class VisualizationSubscription {
     final microseconds =
         (sampleTimestamp * Duration.microsecondsPerSecond / sampleRate).round();
     return Duration(microseconds: microseconds);
-  }
-
-  void _assertStringValueType() {
-    if (_valueType == .doubleValue || _valueType == .intValue) {
-      throw StateError(
-        'Visualization item ${_config.id} does not contain string values.',
-      );
-    }
   }
 
   void _markConsumedEngineTime(Duration engineTime) {
@@ -180,85 +249,42 @@ class VisualizationSubscription {
     return anchorEngineTime + _clampToZero(elapsed);
   }
 
-  TimedVisualizationValue<T>? _timedValueOrNull<T>({
-    T? overrideValue,
-    required T Function() readRenderedValue,
-    required T Function() readSourceValue,
-  }) {
-    if (_hasActiveOverride) {
-      if (overrideValue == null) {
-        return null;
-      }
-
-      final engineTime = _overrideEngineTime();
-      _markConsumedEngineTime(engineTime);
-      return TimedVisualizationValue<T>(
-        value: overrideValue,
-        engineTime: engineTime,
-      );
-    }
-
-    if (_engineTime != null) {
-      _markConsumedEngineTime(_engineTime!);
-      return TimedVisualizationValue<T>(
-        value: readRenderedValue(),
-        engineTime: _engineTime!,
-      );
-    }
-
-    if (_sourceEngineTime != null) {
-      _markConsumedEngineTime(_sourceEngineTime!);
-      return TimedVisualizationValue<T>(
-        value: readSourceValue(),
-        engineTime: _sourceEngineTime!,
-      );
-    }
-
-    return null;
-  }
-
   /// Read the latest engine-backed value for this visualization item, with its
   /// engine time.
   ///
   /// Returns `null` if no engine-backed value has been received yet and there
   /// is no active UI override.
-  TimedVisualizationValue<double>? readTimedValue() {
+  TimedVisualizationValue<T>? readTimedValue() {
     _shouldReset = true;
-    return _timedValueOrNull<double>(
-      overrideValue: _overrideDouble ?? _overrideInt?.toDouble(),
-      readRenderedValue: () => _valueDouble,
-      readSourceValue: () => _sourceValueDouble,
-    );
-  }
 
-  /// Read the latest engine-backed value as an integer for this visualization
-  /// item, with its engine time.
-  ///
-  /// Returns `null` if no engine-backed value has been received yet and there
-  /// is no active UI override.
-  TimedVisualizationValue<int>? readTimedValueInt() {
-    _shouldReset = true;
-    return _timedValueOrNull<int>(
-      overrideValue: _overrideInt,
-      readRenderedValue: () => _valueInt,
-      readSourceValue: () => _sourceValueInt,
-    );
-  }
+    if (_hasActiveOverride) {
+      final value = _overrideValue;
+      if (value == null) {
+        return null;
+      }
 
-  /// Read the latest engine-backed string value for this visualization item,
-  /// with its engine time.
-  ///
-  /// Returns `null` if no engine-backed value has been received yet and there
-  /// is no active UI override.
-  TimedVisualizationValue<String>? readTimedValueString() {
-    _shouldReset = true;
-    _assertStringValueType();
+      final engineTime = _overrideEngineTime();
+      _markConsumedEngineTime(engineTime);
+      return TimedVisualizationValue<T>(value: value, engineTime: engineTime);
+    }
 
-    return _timedValueOrNull<String>(
-      overrideValue: _overrideString,
-      readRenderedValue: () => _valueString ?? '',
-      readSourceValue: () => _sourceValueString ?? '',
-    );
+    if (_engineTime != null && _value != null) {
+      _markConsumedEngineTime(_engineTime!);
+      return TimedVisualizationValue<T>(
+        value: _value as T,
+        engineTime: _engineTime!,
+      );
+    }
+
+    if (_sourceEngineTime != null && _sourceValue != null) {
+      _markConsumedEngineTime(_sourceEngineTime!);
+      return TimedVisualizationValue<T>(
+        value: _sourceValue as T,
+        engineTime: _sourceEngineTime!,
+      );
+    }
+
+    return null;
   }
 
   /// Read the latest value for this visualization item.
@@ -269,70 +295,23 @@ class VisualizationSubscription {
   /// read.
   ///
   /// For buffered subscriptions, this returns the current rendered value.
-  double readValue() {
+  T readValue() {
     _shouldReset = true;
 
-    if (_overrideDouble != null) {
-      return _overrideDouble!;
+    if (_overrideValue != null) {
+      return _overrideValue as T;
     }
 
-    if (_overrideInt != null) {
-      return _overrideInt!.toDouble();
-    }
-
-    if (_engineTime != null) {
+    if (_engineTime != null && _value != null) {
       _markConsumedEngineTime(_engineTime!);
-      return _valueDouble;
+      return _value as T;
     }
 
     if (_sourceEngineTime != null) {
       _markConsumedEngineTime(_sourceEngineTime!);
     }
 
-    return _sourceValueDouble;
-  }
-
-  /// Read the latest value as an integer for this visualization item.
-  int readValueInt() {
-    _shouldReset = true;
-
-    if (_overrideInt != null) {
-      return _overrideInt!;
-    }
-
-    if (_engineTime != null) {
-      _markConsumedEngineTime(_engineTime!);
-      return _valueInt;
-    }
-
-    if (_sourceEngineTime != null) {
-      _markConsumedEngineTime(_sourceEngineTime!);
-    }
-
-    return _sourceValueInt;
-  }
-
-  /// Read the latest value as a string for this visualization item.
-  ///
-  /// This only reads native string values.
-  String readValueString() {
-    _shouldReset = true;
-    if (_overrideString != null) {
-      return _overrideString!;
-    }
-
-    _assertStringValueType();
-
-    if (_engineTime != null) {
-      _markConsumedEngineTime(_engineTime!);
-      return _valueString ?? '';
-    }
-
-    if (_sourceEngineTime != null) {
-      _markConsumedEngineTime(_sourceEngineTime!);
-    }
-
-    return _sourceValueString ?? '';
+    return _sourceValue ?? _config.visualizationType.defaultValue;
   }
 
   /// Sets an override value for this subscription, with a duration.
@@ -341,41 +320,19 @@ class VisualizationSubscription {
   /// the engine until the duration has elapsed. This is for values that are
   /// expected to change to a specific known value, and where an immediate
   /// update is desired (e.g. when it would prevent a flicker in the UI).
-  void setOverride({
-    double? valueDouble,
-    int? valueInt,
-    String? valueString,
-    required Duration duration,
-  }) {
-    if (valueDouble == null && valueInt == null && valueString == null) {
-      throw ArgumentError(
-        'Either valueDouble, valueInt, or valueString must be provided.',
-      );
-    }
-
+  void setOverride({required T value, required Duration duration}) {
     _overrideSetTime = _parent._wallClockNow();
     _overrideDuration = duration;
-    _overrideDouble = valueDouble;
-    _overrideInt = valueInt;
-    _overrideString = valueString;
-
+    _overrideValue = value;
     _isUpdateStale = true;
   }
 
-  VisualizationSubscription(this._config, this._parent)
-    : _sampleBuffer = _config.bufferMode == VisualizationBufferMode.adaptive
-          ? _VisualizationSampleBuffer(
-              maxBufferedDuration: _maxBufferedDuration,
-              maxSampleCount: _maxBufferedSamples,
-            )
-          : null,
-      _bufferState = _config.bufferMode == VisualizationBufferMode.adaptive
-          ? _VisualizationBufferState.buffering
-          : _VisualizationBufferState.passThrough {
-    _ticker = Ticker(_onTick);
-    if (_parent._project.engineState == EngineState.running) {
-      _ticker.start();
-    }
+  @override
+  void _setOverrideValue(Object value, Duration duration) {
+    setOverride(
+      value: _config.visualizationType.cast(value),
+      duration: duration,
+    );
   }
 
   Duration _recommendedDelay() => _parent._transportStats.recommendedDelay;
@@ -390,51 +347,18 @@ class VisualizationSubscription {
 
   Duration _minDuration(Duration a, Duration b) => a <= b ? a : b;
 
-  void _setSourceValue(Object value, Duration engineTime) {
-    if (value is double) {
-      _valueType = .doubleValue;
-      _sourceValueDouble = value;
-    } else if (value is int) {
-      _valueType = .intValue;
-      _sourceValueInt = value;
-    } else if (value is String) {
-      _valueType = .stringValue;
-      _sourceValueString = value;
-    } else {
-      throw ArgumentError(
-        'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String, int, or double.',
-      );
-    }
-
+  void _setSourceValue(T value, Duration engineTime) {
+    _sourceValue = value;
     _sourceEngineTime = engineTime;
   }
 
-  bool _setRenderedValue(Object value, Duration engineTime) {
+  bool _setRenderedValue(T value, Duration engineTime) {
     var didChange = engineTime != _engineTime;
     _engineTime = engineTime;
 
-    if (value is double) {
-      _valueType = .doubleValue;
-      if (_valueDouble != value) {
-        _valueDouble = value;
-        didChange = true;
-      }
-    } else if (value is int) {
-      _valueType = .intValue;
-      if (_valueInt != value) {
-        _valueInt = value;
-        didChange = true;
-      }
-    } else if (value is String) {
-      _valueType = .stringValue;
-      if (_valueString != value) {
-        _valueString = value;
-        didChange = true;
-      }
-    } else {
-      throw ArgumentError(
-        'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String, int, or double.',
-      );
+    if (_value != value) {
+      _value = value;
+      didChange = true;
     }
 
     return didChange;
@@ -447,6 +371,7 @@ class VisualizationSubscription {
     _lastArrivalWallTime = null;
     _lastConsumedRenderTimeForMax = null;
     _engineTime = null;
+    _value = null;
     _lastTickElapsed = null;
   }
 
@@ -466,14 +391,7 @@ class VisualizationSubscription {
       return;
     }
 
-    if (_config.type == VisualizationSubscriptionType.latest) {
-      _renderLatestValue(renderTime);
-    } else {
-      final latestSample = _sampleBuffer.latestAtOrBefore(renderTime);
-      if (latestSample != null) {
-        _setRenderedValue(latestSample.value, renderTime);
-      }
-    }
+    _renderBufferedValue(renderTime);
   }
 
   // Advances the buffered render cursor using wall-clock frame time while
@@ -590,15 +508,9 @@ class VisualizationSubscription {
       return false;
     }
 
-    return switch (_config.type) {
-      VisualizationSubscriptionType.latest => _renderLatestValue(renderTime),
-      VisualizationSubscriptionType.max => _renderMaxValue(renderTime),
-    };
+    return _renderBufferedValue(renderTime);
   }
 
-  // `latest` subscriptions use sample-and-hold against the delayed cursor.
-  // Arrival jitter is handled by buffering; values themselves are not
-  // interpolated between engine samples.
   bool _renderLatestValue(Duration renderTime) {
     final latestBefore = _sampleBuffer?.latestAtOrBefore(renderTime);
     final earliestAfter = _sampleBuffer?.earliestAfter(renderTime);
@@ -608,65 +520,6 @@ class VisualizationSubscription {
     }
 
     return _setRenderedValue(anchor.value, renderTime);
-  }
-
-  // `max` subscriptions preserve peak-style behavior by aggregating over the
-  // raw samples that became visible since the previous rendered frame.
-  bool _renderMaxValue(Duration renderTime) {
-    final previousConsumedTime = _lastConsumedRenderTimeForMax;
-    _lastConsumedRenderTimeForMax = renderTime;
-
-    final samples = _sampleBuffer?.between(
-      afterExclusive: previousConsumedTime,
-      upToInclusive: renderTime,
-    );
-
-    if (samples == null || samples.isEmpty) {
-      if (_engineTime == null) {
-        final latestSample = _sampleBuffer?.latestAtOrBefore(renderTime);
-        if (latestSample != null) {
-          return _setRenderedValue(latestSample.value, renderTime);
-        }
-      }
-
-      if (_engineTime != null &&
-          _valueType == _VisualizationValueType.doubleValue) {
-        return _setRenderedValue(_valueDouble, renderTime);
-      }
-
-      return false;
-    }
-
-    if (_valueType != null &&
-        _valueType != _VisualizationValueType.doubleValue &&
-        _valueType != _VisualizationValueType.intValue &&
-        _valueType != _VisualizationValueType.stringValue) {
-      throw StateError(
-        'Unexpected visualization value type for ${_config.id}.',
-      );
-    }
-
-    final firstValue = samples.first.value;
-    if (firstValue is! double) {
-      throw StateError(
-        'Visualization item ${_config.id} uses max buffering but does not contain double values.',
-      );
-    }
-
-    var maxValue = firstValue;
-    for (final sample in samples.skip(1)) {
-      final value = sample.value;
-      if (value is! double) {
-        throw StateError(
-          'Visualization item ${_config.id} uses max buffering but does not contain double values.',
-        );
-      }
-      if (value > maxValue) {
-        maxValue = value;
-      }
-    }
-
-    return _setRenderedValue(maxValue, renderTime);
   }
 
   bool _expireOverrideIfNeeded() {
@@ -681,9 +534,7 @@ class VisualizationSubscription {
 
     _overrideSetTime = null;
     _overrideDuration = null;
-    _overrideDouble = null;
-    _overrideInt = null;
-    _overrideString = null;
+    _overrideValue = null;
 
     if (_hasAdaptiveBuffering) {
       _resumeAdaptiveStateAfterOverride();
@@ -710,7 +561,7 @@ class VisualizationSubscription {
     }
   }
 
-  void _addUnbufferedValue(Object value, Duration engineTime) {
+  void _addUnbufferedValue(T value, Duration engineTime) {
     if ((_sourceEngineTime != null && engineTime < _sourceEngineTime!) ||
         (_engineTime != null && engineTime < _engineTime!)) {
       _clearConsumedEngineTimeAnchor();
@@ -725,47 +576,11 @@ class VisualizationSubscription {
       return;
     }
 
-    if (value is double) {
-      _valueType = .doubleValue;
-      if (_config.type == VisualizationSubscriptionType.max) {
-        if (_engineTime == null || value > _valueDouble) {
-          _valueDouble = value;
-          _engineTime = engineTime;
-        }
-      } else {
-        _valueDouble = value;
-        _engineTime = engineTime;
-      }
-    } else if (value is int) {
-      _valueType = .intValue;
-      if (_config.type == VisualizationSubscriptionType.max) {
-        throw StateError(
-          'Int values are not supported for max subscription type.',
-        );
-      }
-
-      _valueInt = value;
-      _engineTime = engineTime;
-    } else if (value is String) {
-      _valueType = .stringValue;
-      if (_config.type == VisualizationSubscriptionType.max) {
-        throw StateError(
-          'String values are not supported for max subscription type.',
-        );
-      }
-
-      _valueString = value;
-      _engineTime = engineTime;
-    } else {
-      throw ArgumentError(
-        'Unexpected value type: ${value.runtimeType} for item ${_config.id}. Expected String, int, or double.',
-      );
-    }
-
+    _applyIncomingUnbufferedValue(value, engineTime);
     _isUpdateStale = true;
   }
 
-  void _addBufferedValue(Object value, Duration engineTime) {
+  void _addBufferedValue(T value, Duration engineTime) {
     _setSourceValue(value, engineTime);
 
     final newestEngineTime = _sampleBuffer?.newestEngineTime;
@@ -788,20 +603,22 @@ class VisualizationSubscription {
     _bufferState = state;
   }
 
-  /// Add a new value to the subscription.
-  void _addValue(
-    Object /* String | int | double */ value,
-    int sampleTimestamp,
-  ) {
+  @override
+  void _addValueFromEngine(Object value, int sampleTimestamp) {
     final engineTime = _sampleTimestampToEngineTime(sampleTimestamp);
+    final typedValue = _config.visualizationType.cast(value);
 
     if (_hasAdaptiveBuffering) {
-      _addBufferedValue(value, engineTime);
+      _addBufferedValue(typedValue, engineTime);
     } else {
-      _addUnbufferedValue(value, engineTime);
+      _addUnbufferedValue(typedValue, engineTime);
     }
   }
 
+  void _applyIncomingUnbufferedValue(T value, Duration engineTime);
+  bool _renderBufferedValue(Duration renderTime);
+
+  @override
   void _engineStarted() {
     _lastTickElapsed = null;
 
@@ -812,6 +629,7 @@ class VisualizationSubscription {
     _ticker.start();
   }
 
+  @override
   void _engineStopped() {
     _lastTickElapsed = null;
 
@@ -822,6 +640,7 @@ class VisualizationSubscription {
     _ticker.stop();
   }
 
+  @override
   void dispose() {
     _parent._unsubscribe(this);
     _ticker.dispose();
@@ -829,8 +648,70 @@ class VisualizationSubscription {
   }
 }
 
-class _BufferedVisualizationSample {
-  final Object value;
+class _LatestVisualizationSubscription<T> extends VisualizationSubscription<T> {
+  _LatestVisualizationSubscription(super.config, super.parent);
+
+  @override
+  void _applyIncomingUnbufferedValue(T value, Duration engineTime) {
+    _setRenderedValue(value, engineTime);
+  }
+
+  @override
+  bool _renderBufferedValue(Duration renderTime) {
+    return _renderLatestValue(renderTime);
+  }
+}
+
+class _MaxVisualizationSubscription extends VisualizationSubscription<double> {
+  _MaxVisualizationSubscription(super.config, super.parent);
+
+  @override
+  void _applyIncomingUnbufferedValue(double value, Duration engineTime) {
+    if (_engineTime == null ||
+        value > (_value ?? _config.visualizationType.defaultValue)) {
+      _value = value;
+      _engineTime = engineTime;
+    }
+  }
+
+  @override
+  bool _renderBufferedValue(Duration renderTime) {
+    final previousConsumedTime = _lastConsumedRenderTimeForMax;
+    _lastConsumedRenderTimeForMax = renderTime;
+
+    final samples = _sampleBuffer?.between(
+      afterExclusive: previousConsumedTime,
+      upToInclusive: renderTime,
+    );
+
+    if (samples == null || samples.isEmpty) {
+      if (_engineTime == null) {
+        final latestSample = _sampleBuffer?.latestAtOrBefore(renderTime);
+        if (latestSample != null) {
+          return _setRenderedValue(latestSample.value, renderTime);
+        }
+      }
+
+      if (_engineTime != null && _value != null) {
+        return _setRenderedValue(_value!, renderTime);
+      }
+
+      return false;
+    }
+
+    var maxValue = samples.first.value;
+    for (final sample in samples.skip(1)) {
+      if (sample.value > maxValue) {
+        maxValue = sample.value;
+      }
+    }
+
+    return _setRenderedValue(maxValue, renderTime);
+  }
+}
+
+class _BufferedVisualizationSample<T> {
+  final T value;
   final Duration engineTime;
 
   const _BufferedVisualizationSample({
@@ -839,10 +720,10 @@ class _BufferedVisualizationSample {
   });
 }
 
-class _VisualizationSampleBuffer {
+class _VisualizationSampleBuffer<T> {
   final Duration maxBufferedDuration;
   final int maxSampleCount;
-  final List<_BufferedVisualizationSample> _samples = [];
+  final List<_BufferedVisualizationSample<T>> _samples = [];
 
   _VisualizationSampleBuffer({
     required this.maxBufferedDuration,
@@ -867,9 +748,9 @@ class _VisualizationSampleBuffer {
     return newest - oldest;
   }
 
-  void add(Object value, Duration engineTime) {
+  void add(T value, Duration engineTime) {
     _samples.add(
-      _BufferedVisualizationSample(value: value, engineTime: engineTime),
+      _BufferedVisualizationSample<T>(value: value, engineTime: engineTime),
     );
     _trim();
   }
@@ -895,7 +776,7 @@ class _VisualizationSampleBuffer {
     return engineTime;
   }
 
-  _BufferedVisualizationSample? latestAtOrBefore(Duration engineTime) {
+  _BufferedVisualizationSample<T>? latestAtOrBefore(Duration engineTime) {
     for (var i = _samples.length - 1; i >= 0; i--) {
       final sample = _samples[i];
       if (sample.engineTime <= engineTime) {
@@ -906,7 +787,7 @@ class _VisualizationSampleBuffer {
     return null;
   }
 
-  _BufferedVisualizationSample? earliestAfter(Duration engineTime) {
+  _BufferedVisualizationSample<T>? earliestAfter(Duration engineTime) {
     for (final sample in _samples) {
       if (sample.engineTime > engineTime) {
         return sample;
@@ -916,7 +797,7 @@ class _VisualizationSampleBuffer {
     return null;
   }
 
-  List<_BufferedVisualizationSample> between({
+  List<_BufferedVisualizationSample<T>> between({
     Duration? afterExclusive,
     required Duration upToInclusive,
   }) {

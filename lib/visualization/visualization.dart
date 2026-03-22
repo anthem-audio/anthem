@@ -28,7 +28,10 @@ import 'dart:ui';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
-    show VisualizationUpdateEvent;
+    show
+        VisualizationSubscriptionSpec,
+        VisualizationUpdateEvent,
+        VisualizationValueType;
 import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/src/visualization_transport_stats.dart';
 import 'package:flutter/scheduler.dart';
@@ -46,3 +49,68 @@ class TimedVisualizationValue<T> {
     required this.engineTime,
   });
 }
+
+/// Closed type token that bridges a Dart payload type to the visualization wire
+/// type shared with the engine.
+abstract class VisualizationType<T> {
+  final VisualizationValueType wireType;
+  final T defaultValue;
+
+  const VisualizationType({required this.wireType, required this.defaultValue});
+
+  T cast(Object value);
+}
+
+class _DoubleVisualizationType extends VisualizationType<double> {
+  const _DoubleVisualizationType()
+    : super(wireType: VisualizationValueType.doubleValue, defaultValue: 0.0);
+
+  @override
+  double cast(Object value) {
+    if (value is! double) {
+      throw ArgumentError(
+        'Unexpected visualization value type: ${value.runtimeType}. Expected double.',
+      );
+    }
+
+    return value;
+  }
+}
+
+class _IntVisualizationType extends VisualizationType<int> {
+  const _IntVisualizationType()
+    : super(wireType: VisualizationValueType.intValue, defaultValue: 0);
+
+  @override
+  int cast(Object value) {
+    if (value is! int) {
+      throw ArgumentError(
+        'Unexpected visualization value type: ${value.runtimeType}. Expected int.',
+      );
+    }
+
+    return value;
+  }
+}
+
+class _StringVisualizationType extends VisualizationType<String> {
+  const _StringVisualizationType()
+    : super(wireType: VisualizationValueType.stringValue, defaultValue: '');
+
+  @override
+  String cast(Object value) {
+    if (value is! String) {
+      throw ArgumentError(
+        'Unexpected visualization value type: ${value.runtimeType}. Expected String.',
+      );
+    }
+
+    return value;
+  }
+}
+
+const VisualizationType<double> doubleVisualizationType =
+    _DoubleVisualizationType();
+const VisualizationType<int> intVisualizationType = _IntVisualizationType();
+const VisualizationType<String> stringVisualizationType =
+    _StringVisualizationType();

@@ -36,7 +36,8 @@
 
 class Transport;
 
-class CpuVisualizationProvider : public VisualizationDataProvider {
+class CpuVisualizationProvider
+  : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
 private:
   JUCE_LEAK_DETECTOR(CpuVisualizationProvider)
 
@@ -48,7 +49,7 @@ private:
   bool rt_hasWindowCpuBurden = false;
 
 public:
-  std::optional<NumericVisualizationData> getNumericData() override;
+  std::optional<NumericVisualizationData> getTypedData() override;
 
   void rt_updateCpuBurden(
     double newCpuBurden,
@@ -61,7 +62,8 @@ public:
     : cpuBurdenBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 };
 
-class PlayheadPositionVisualizationProvider : public VisualizationDataProvider {
+class PlayheadPositionVisualizationProvider
+  : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
 private:
   JUCE_LEAK_DETECTOR(PlayheadPositionVisualizationProvider)
 
@@ -71,7 +73,7 @@ private:
   int64_t rt_nextSampleTimestamp = 0;
 
 public:
-  std::optional<NumericVisualizationData> getNumericData() override;
+  std::optional<NumericVisualizationData> getTypedData() override;
 
   void rt_updatePlayheadPosition(
     const Transport& transport,
@@ -84,7 +86,8 @@ public:
     : playheadPositionBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 };
 
-class PlayheadSequenceIdVisualizationProvider : public VisualizationDataProvider {
+class PlayheadSequenceIdVisualizationProvider
+  : public TypedVisualizationDataProvider<int64_t, VisualizationValueType::intValue> {
 private:
   JUCE_LEAK_DETECTOR(PlayheadSequenceIdVisualizationProvider)
 
@@ -92,7 +95,7 @@ private:
   std::optional<int64_t> lastQueuedId;
 
 public:
-  std::optional<IntegerVisualizationData> getIntegerData() override;
+  std::optional<IntegerVisualizationData> getTypedData() override;
 
   void rt_updatePlayheadSequenceId(
     int64_t newPlayheadSequenceId,

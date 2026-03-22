@@ -23,7 +23,9 @@
 #include <optional>
 #include <string>
 #include <cstdint>
+#include <variant>
 
+#include "messages/messages.h"
 #include "modules/util/ring_buffer.h"
 
 template <typename T>
@@ -41,6 +43,11 @@ struct TimestampedVisualizationValue {
 using NumericVisualizationData = TimestampedVisualizationData<double>;
 using IntegerVisualizationData = TimestampedVisualizationData<int64_t>;
 using StringVisualizationData = TimestampedVisualizationData<std::string>;
+using VisualizationDataPayload = std::variant<
+  NumericVisualizationData,
+  IntegerVisualizationData,
+  StringVisualizationData
+>;
 
 template <typename T, std::size_t Size>
 std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuffer(
@@ -65,24 +72,36 @@ std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuff
   return data;
 }
 
-// This is an abstract interface for visualization data providers. It is used by the
-// VisualizationBroker to query data from various sources in the engine.
+// This non-templated base class is required for runtime polymorphism. The
+// VisualizationBroker stores heterogeneous providers (double, int, string,
+// etc.) in a single container keyed by ID, so it needs one common interface
+// that is not templated on the payload type.
 class VisualizationDataProvider {
 public:
   virtual ~VisualizationDataProvider() = default;
 
-  // Get timestamped numeric data for this provider, if any.
-  virtual std::optional<NumericVisualizationData> getNumericData() {
-    return std::nullopt;
+  virtual VisualizationValueType getValueType() const = 0;
+  virtual std::optional<VisualizationDataPayload> getData() = 0;
+};
+
+// This templated helper exists only to reduce per-provider boilerplate. Notice
+// that getValueType() is overridden and just returns the type from the
+// template, which prevents the actual providers from having to do this.
+template <typename T, VisualizationValueType Type>
+class TypedVisualizationDataProvider : public VisualizationDataProvider {
+public:
+  VisualizationValueType getValueType() const override {
+    return Type;
   }
 
-  // Get timestamped integer data for this provider, if any.
-  virtual std::optional<IntegerVisualizationData> getIntegerData() {
-    return std::nullopt;
+  std::optional<VisualizationDataPayload> getData() override {
+    auto data = this->getTypedData();
+    if (!data.has_value()) {
+      return std::nullopt;
+    }
+
+    return VisualizationDataPayload(std::move(data.value()));
   }
 
-  // Get timestamped string data for this provider, if any.
-  virtual std::optional<StringVisualizationData> getStringData() {
-    return std::nullopt;
-  }
+  virtual std::optional<TimestampedVisualizationData<T>> getTypedData() = 0;
 };

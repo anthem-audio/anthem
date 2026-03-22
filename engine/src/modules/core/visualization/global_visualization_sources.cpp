@@ -52,7 +52,7 @@ int64_t alignSampleTimestampToBlock(
 }
 }
 
-std::optional<NumericVisualizationData> CpuVisualizationProvider::getNumericData() {
+std::optional<NumericVisualizationData> CpuVisualizationProvider::getTypedData() {
   return drainTimestampedVisualizationBuffer(cpuBurdenBuffer);
 }
 
@@ -96,7 +96,7 @@ void CpuVisualizationProvider::rt_updateCpuBurden(
   }
 }
 
-std::optional<NumericVisualizationData> PlayheadPositionVisualizationProvider::getNumericData() {
+std::optional<NumericVisualizationData> PlayheadPositionVisualizationProvider::getTypedData() {
   return drainTimestampedVisualizationBuffer(playheadPositionBuffer);
 }
 
@@ -183,7 +183,7 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
   }
 }
 
-std::optional<IntegerVisualizationData> PlayheadSequenceIdVisualizationProvider::getIntegerData() {
+std::optional<IntegerVisualizationData> PlayheadSequenceIdVisualizationProvider::getTypedData() {
   return drainTimestampedVisualizationBuffer(playheadSequenceIdBuffer);
 }
 

@@ -383,7 +383,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
                   // Playhead positioner for the playback start position
                   VisualizationBuilder.int(
-                    config: VisualizationSubscriptionConfig.latest(
+                    config: VisualizationSubscriptionConfig.latestInt(
                       'playhead_sequence_id',
                     ),
                     builder: (context, activeSequenceIdFromEngine, engineTime) {
@@ -444,7 +444,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     // but the worst-case will be around one audio block which may
                     // last even a few frames, depending on the current audio
                     // configuration.
-                    config: VisualizationSubscriptionConfig.latest(
+                    config: VisualizationSubscriptionConfig.latestInt(
                       'playhead_sequence_id',
                     ),
                     builder: (context, activeSequenceIdFromEngine, engineTime) {

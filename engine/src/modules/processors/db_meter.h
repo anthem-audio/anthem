@@ -32,7 +32,8 @@
 
 #include "bw_math.h"
 
-class DbMeterVisualizationProvider : public VisualizationDataProvider {
+class DbMeterVisualizationProvider
+  : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
 private:
   JUCE_LEAK_DETECTOR(DbMeterVisualizationProvider)
 
@@ -42,7 +43,7 @@ public:
   DbMeterVisualizationProvider()
     : valueBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 
-  std::optional<NumericVisualizationData> getNumericData() override;
+  std::optional<NumericVisualizationData> getTypedData() override;
 
   void rt_pushValue(double value, int64_t sampleTimestamp);
 };

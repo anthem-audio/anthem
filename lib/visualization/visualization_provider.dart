@@ -27,7 +27,7 @@ class VisualizationProvider {
   final Duration Function() _wallClockNow;
   final VisualizationTransportStats _transportStats;
 
-  final Map<String, List<VisualizationSubscription>> _subscriptions = {};
+  final Map<String, List<_VisualizationSubscriptionBase>> _subscriptions = {};
 
   bool _enabled = true;
 
@@ -128,27 +128,45 @@ class VisualizationProvider {
         }
 
         for (final subscription in subscriptions) {
-          for (var i = 0; i < values.length; i++) {
-            final value = values[i];
-            final sampleTimestamp = sampleTimestamps[i];
+          if (subscription.valueType != item.valueType) {
+            throw StateError(
+              'Visualization item ${item.id} declared value type ${item.valueType}, but subscription expects ${subscription.valueType}.',
+            );
+          }
 
-            if (value is String || value is int || value is double) {
-              subscription._addValue(value, sampleTimestamp);
-            } else {
-              throw ArgumentError(
-                'Unexpected value type: ${value.runtimeType} for item ${item.id}. Expected String, int, or double.',
-              );
-            }
+          for (var i = 0; i < values.length; i++) {
+            subscription._addValueFromEngine(values[i], sampleTimestamps[i]);
           }
         }
       }
     }
   }
 
-  VisualizationSubscription subscribe(VisualizationSubscriptionConfig config) {
-    final subscription = VisualizationSubscription(config, this);
+  VisualizationSubscription<T> subscribe<T>(
+    VisualizationSubscriptionConfig<T> config,
+  ) {
+    final existingSubscriptions = _subscriptions[config.id];
+    if (existingSubscriptions != null &&
+        existingSubscriptions.any(
+          (subscription) => subscription.valueType != config.valueType,
+        )) {
+      throw StateError(
+        'Visualization item ${config.id} already has subscriptions with a different declared value type.',
+      );
+    }
 
-    if (_subscriptions[config.id] == null) {
+    final subscription = switch (config.type) {
+      VisualizationSubscriptionType.latest =>
+        _LatestVisualizationSubscription<T>(config, this),
+      VisualizationSubscriptionType.max =>
+        _MaxVisualizationSubscription(
+              config as VisualizationSubscriptionConfig<double>,
+              this,
+            )
+            as VisualizationSubscription<T>,
+    };
+
+    if (existingSubscriptions == null) {
       _subscriptions[config.id] = [];
       _scheduleSubscriptionListUpdate();
     }
@@ -158,14 +176,14 @@ class VisualizationProvider {
     return subscription;
   }
 
-  void _unsubscribe(VisualizationSubscription subscription) {
-    final subscriptions = _subscriptions[subscription._config.id];
+  void _unsubscribe(_VisualizationSubscriptionBase subscription) {
+    final subscriptions = _subscriptions[subscription.id];
 
     if (subscriptions != null) {
       subscriptions.remove(subscription);
 
       if (subscriptions.isEmpty) {
-        _subscriptions.remove(subscription._config.id);
+        _subscriptions.remove(subscription.id);
 
         _scheduleSubscriptionListUpdate();
       }
@@ -208,7 +226,11 @@ class VisualizationProvider {
       }
 
       _project.engine.visualizationApi.setSubscriptions(
-        _enabled ? _subscriptions.keys.toList() : [],
+        _enabled
+            ? _subscriptions.entries
+                  .map((entry) => entry.value.first.toSubscriptionSpec())
+                  .toList(growable: false)
+            : [],
       );
       _isSubscriptionListUpdatePending = false;
     });
@@ -226,22 +248,15 @@ class VisualizationProvider {
   /// This method can be used to override a visualization value with the
   /// expected update value before the engine can send the update, which can
   /// prevent this desync.
-  void overrideValue({
+  void overrideValue<T>({
     required String id,
-    double? doubleValue,
-    int? intValue,
-    String? stringValue,
+    required T value,
     required Duration duration,
   }) {
     final subscriptions =
-        _subscriptions[id] ?? Iterable<VisualizationSubscription>.empty();
+        _subscriptions[id] ?? Iterable<_VisualizationSubscriptionBase>.empty();
     for (final sub in subscriptions) {
-      sub.setOverride(
-        valueDouble: doubleValue,
-        valueInt: intValue,
-        valueString: stringValue,
-        duration: duration,
-      );
+      sub._setOverrideValue(value as Object, duration);
     }
   }
 
