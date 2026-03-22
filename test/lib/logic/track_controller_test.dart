@@ -27,6 +27,8 @@ import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -34,9 +36,11 @@ import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 
-import 'project_controller_test.mocks.dart';
+@GenerateNiceMocks([MockSpec<ProjectModel>(), MockSpec<TrackModel>()])
+import 'track_controller_test.mocks.dart';
 
 class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
   @override
@@ -56,6 +60,53 @@ class _MockEngine extends Mock implements Engine {
 }
 
 void main() {
+  group('getTrackFxChainAudioInput()', () {
+    final projectId = getProjectId();
+
+    late MockProjectModel project;
+    late TrackController trackController;
+    late ProcessingGraphModel processingGraph;
+    late _MockEngine mockEngine;
+    late ProjectEntityIdAllocator idAllocator;
+    late TrackModel track;
+
+    setUp(() {
+      project = MockProjectModel();
+      when(project.id).thenReturn(projectId);
+      when(project.allocateId()).thenAnswer((_) => getId());
+
+      idAllocator = ProjectEntityIdAllocator(project);
+      processingGraph = ProcessingGraphModel.create(
+        masterOutputNodeId: getId(),
+      );
+      when(project.processingGraph).thenReturn(processingGraph);
+
+      mockEngine = _MockEngine(_FakeProcessingGraphApi());
+      when(project.engine).thenReturn(mockEngine);
+
+      track = TrackModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: 'Track',
+        color: AnthemColor.randomHue(),
+        type: .instrument,
+      );
+      track.createAndRegisterNodes(project, idAllocator);
+
+      when(
+        project.tracks,
+      ).thenReturn(AnthemObservableMap.of({track.id: track}));
+
+      trackController = TrackController(project);
+    });
+
+    test('returns the gain node audio input pair', () {
+      final result = trackController.getTrackFxChainAudioInput(track.id);
+
+      expect(result.nodeId, equals(track.gainNodeId));
+      expect(result.portId, equals(GainProcessorModel.audioInputPortId));
+    });
+  });
+
   group('canGroupTracks()', () {
     final projectId = getProjectId();
     late MockProjectModel project;

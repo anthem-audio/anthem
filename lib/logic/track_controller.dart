@@ -26,6 +26,7 @@ import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
+import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -43,6 +44,79 @@ class TrackController {
 
   ProjectEntityIdAllocator get _idAllocator =>
       ServiceRegistry.forProject(project.id).idAllocator;
+
+  /// Builds the mix fragment for a track without adding it to the graph.
+  ///
+  /// This contains the gain, balance, and dB meter nodes, along with the
+  /// temporary direct route to master output used by tracks today.
+  ProcessingGraphFragment buildTrackMixFragment(TrackModel track) {
+    final gainNode = GainProcessorModel.create(
+      idAllocator: _idAllocator,
+    ).createNode();
+    track.gainNodeId = gainNode.id;
+
+    final balanceNode = BalanceProcessorModel.create(
+      idAllocator: _idAllocator,
+    ).createNode();
+    track.balanceNodeId = balanceNode.id;
+
+    final dbMeterNode = DbMeterProcessorModel.create(
+      idAllocator: _idAllocator,
+      publishEverySamples: 1024,
+      visualizationIds: track.dbMeterVisualizationIds,
+    ).createNode();
+    track.dbMeterNodeId = dbMeterNode.id;
+
+    return ProcessingGraphFragment(
+      nodes: [gainNode, balanceNode, dbMeterNode],
+      connections: [
+        NodeConnectionModel(
+          idAllocator: _idAllocator,
+          sourceNodeId: gainNode.id,
+          sourcePortId: GainProcessorModel.audioOutputPortId,
+          destinationNodeId: balanceNode.id,
+          destinationPortId: BalanceProcessorModel.audioInputPortId,
+        ),
+        NodeConnectionModel(
+          idAllocator: _idAllocator,
+          sourceNodeId: balanceNode.id,
+          sourcePortId: BalanceProcessorModel.audioOutputPortId,
+          destinationNodeId: dbMeterNode.id,
+          destinationPortId: DbMeterProcessorModel.audioInputPortId,
+        ),
+        NodeConnectionModel(
+          idAllocator: _idAllocator,
+          sourceNodeId: balanceNode.id,
+          sourcePortId: BalanceProcessorModel.audioOutputPortId,
+          destinationNodeId: project.processingGraph.masterOutputNodeId,
+          destinationPortId: project.processingGraph
+              .getMasterOutputNode()
+              .audioInputPorts
+              .first
+              .id,
+        ),
+      ],
+    );
+  }
+
+  /// Returns the processing graph destination for audio entering this track's
+  /// FX chain.
+  ///
+  /// This is the same node/port pair that instrument audio is routed into.
+  ({Id nodeId, int portId}) getTrackFxChainAudioInput(Id trackId) {
+    final track = project.tracks[trackId]!;
+
+    final gainNodeId = track.gainNodeId;
+    final gainNode = project.processingGraph.nodes[gainNodeId];
+    if (gainNode == null) {
+      throw StateError(
+        'TrackController.getTrackFxChainAudioInput(): Gain node $gainNodeId '
+        'not found for track $trackId.',
+      );
+    }
+
+    return (nodeId: gainNode.id, portId: GainProcessorModel.audioInputPortId);
+  }
 
   void setTrackInstrumentNode({required Id trackId, required NodeModel node}) {
     final track = project.tracks[trackId];

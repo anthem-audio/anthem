@@ -404,6 +404,64 @@ void main() {
         verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
       }
 
+      void expectTrackHasMixRouting(TrackModel track) {
+        expect(track.gainNodeId, isNotNull);
+        expect(track.balanceNodeId, isNotNull);
+        expect(track.dbMeterNodeId, isNotNull);
+
+        final gainNodeId = track.gainNodeId!;
+        final balanceNodeId = track.balanceNodeId!;
+        final dbMeterNodeId = track.dbMeterNodeId!;
+        final masterInputPortId = processingGraph
+            .getMasterOutputNode()
+            .audioInputPorts
+            .first
+            .id;
+
+        expect(processingGraph.nodes[gainNodeId], isNotNull);
+        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
+
+        expect(
+          processingGraph.connections.values.where(
+            (connection) =>
+                connection.sourceNodeId == gainNodeId &&
+                connection.sourcePortId ==
+                    GainProcessorModel.audioOutputPortId &&
+                connection.destinationNodeId == balanceNodeId &&
+                connection.destinationPortId ==
+                    BalanceProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+
+        expect(
+          processingGraph.connections.values.where(
+            (connection) =>
+                connection.sourceNodeId == balanceNodeId &&
+                connection.sourcePortId ==
+                    BalanceProcessorModel.audioOutputPortId &&
+                connection.destinationNodeId == dbMeterNodeId &&
+                connection.destinationPortId ==
+                    DbMeterProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+
+        expect(
+          processingGraph.connections.values.where(
+            (connection) =>
+                connection.sourceNodeId == balanceNodeId &&
+                connection.sourcePortId ==
+                    BalanceProcessorModel.audioOutputPortId &&
+                connection.destinationNodeId ==
+                    processingGraph.masterOutputNodeId &&
+                connection.destinationPortId == masterInputPortId,
+          ),
+          hasLength(1),
+        );
+      }
+
       test('Basic track grouping test, regular tracks', () {
         runBasicGroupTest(false, trackJId, trackKId);
       });
@@ -411,6 +469,83 @@ void main() {
       test('Basic track grouping test, send tracks', () {
         runBasicGroupTest(true, trackOId, trackPId);
       });
+
+      test('Grouping adds mix nodes and restores them on undo/redo', () {
+        final command = TrackGroupUngroupCommand.group(
+          project: project,
+          trackIds: [trackJId, trackKId],
+        );
+
+        command.execute(project);
+
+        final newGroupTrack = tracks[trackOrder[1]];
+        expect(newGroupTrack, isNotNull);
+        newGroupTrack!;
+
+        expectTrackHasMixRouting(newGroupTrack);
+        expect(newGroupTrack.sequenceNoteProviderNodeId, isNull);
+        expect(newGroupTrack.liveEventProviderNodeId, isNull);
+
+        final gainNodeId = newGroupTrack.gainNodeId!;
+        final balanceNodeId = newGroupTrack.balanceNodeId!;
+        final dbMeterNodeId = newGroupTrack.dbMeterNodeId!;
+
+        command.rollback(project);
+
+        expect(tracks[newGroupTrack.id], isNull);
+        expect(processingGraph.nodes[gainNodeId], isNull);
+        expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.nodes[dbMeterNodeId], isNull);
+
+        command.execute(project);
+
+        final restoredGroupTrack = tracks[trackOrder[1]];
+        expect(restoredGroupTrack, isNotNull);
+        restoredGroupTrack!;
+
+        expect(restoredGroupTrack.gainNodeId, equals(gainNodeId));
+        expect(restoredGroupTrack.balanceNodeId, equals(balanceNodeId));
+        expect(restoredGroupTrack.dbMeterNodeId, equals(dbMeterNodeId));
+        expectTrackHasMixRouting(restoredGroupTrack);
+      });
+
+      test(
+        'Ungroup removes existing group mix nodes and undo restores them',
+        () {
+          final trackController = ServiceRegistry.forProject(
+            project.id,
+          ).trackController;
+          final trackMixFragment = trackController.buildTrackMixFragment(
+            trackL,
+          );
+          processingGraph.restoreGraphFragment(trackMixFragment);
+          expectTrackHasMixRouting(trackL);
+
+          final gainNodeId = trackL.gainNodeId!;
+          final balanceNodeId = trackL.balanceNodeId!;
+          final dbMeterNodeId = trackL.dbMeterNodeId!;
+
+          final command = TrackGroupUngroupCommand.ungroup(
+            project: project,
+            groupTrack: trackLId,
+          );
+
+          command.execute(project);
+
+          expect(tracks[trackLId], isNull);
+          expect(processingGraph.nodes[gainNodeId], isNull);
+          expect(processingGraph.nodes[balanceNodeId], isNull);
+          expect(processingGraph.nodes[dbMeterNodeId], isNull);
+
+          command.rollback(project);
+
+          expect(tracks[trackLId], isNotNull);
+          expect(trackL.gainNodeId, equals(gainNodeId));
+          expect(trackL.balanceNodeId, equals(balanceNodeId));
+          expect(trackL.dbMeterNodeId, equals(dbMeterNodeId));
+          expectTrackHasMixRouting(trackL);
+        },
+      );
 
       test(
         "Can't group tracks where some are send tracks and some are regular tracks",

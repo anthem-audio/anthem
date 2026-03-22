@@ -76,7 +76,7 @@ class TrackAddRemoveCommand extends Command {
   final bool _isAdd;
 
   late final List<_InternalTrackAddRemoveDescriptor> _tracks;
-  RemovedNodesSnapshot? _removedNodesSnapshot;
+  ProcessingGraphFragment? _removedNodesFragment;
 
   TrackAddRemoveCommand.add({
     required ProjectModel project,
@@ -278,10 +278,8 @@ class TrackAddRemoveCommand extends Command {
       ).arrangerViewModel.registerTrack(track.id);
     }
 
-    if (_removedNodesSnapshot != null && !_removedNodesSnapshot!.isEmpty) {
-      project.processingGraph.restoreRemovedNodesSnapshot(
-        _removedNodesSnapshot!,
-      );
+    if (_removedNodesFragment != null && !_removedNodesFragment!.isEmpty) {
+      project.processingGraph.restoreGraphFragment(_removedNodesFragment!);
     } else if (_isAdd) {
       final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
 
@@ -390,9 +388,9 @@ class TrackAddRemoveCommand extends Command {
 
     final nodeIdsToRemove = _collectTrackNodeIdsForDescriptors(_tracks);
     if (nodeIdsToRemove.isNotEmpty) {
-      final removedNodesSnapshot = project.processingGraph
+      final removedNodesFragment = project.processingGraph
           .removeNodesAndCapture(nodeIdsToRemove);
-      _removedNodesSnapshot ??= removedNodesSnapshot;
+      _removedNodesFragment ??= removedNodesFragment;
     }
 
     if (project.engine.isRunning) {
@@ -442,8 +440,8 @@ class SetTrackInstrumentNodeCommand extends Command {
 
   final Id? _previousInstrumentNodeId;
 
-  RemovedNodesSnapshot? _removedAddedInstrumentSnapshot;
-  RemovedNodesSnapshot? _removedPreviousInstrumentSnapshot;
+  ProcessingGraphFragment? _removedAddedInstrumentFragment;
+  ProcessingGraphFragment? _removedPreviousInstrumentFragment;
 
   SetTrackInstrumentNodeCommand({
     required TrackModel track,
@@ -469,14 +467,14 @@ class SetTrackInstrumentNodeCommand extends Command {
       track,
     );
 
-    final hasRestorableInstrumentSnapshot =
-        _removedAddedInstrumentSnapshot != null &&
-        !_removedAddedInstrumentSnapshot!.isEmpty;
+    final hasRestorableInstrumentFragment =
+        _removedAddedInstrumentFragment != null &&
+        !_removedAddedInstrumentFragment!.isEmpty;
 
-    if (hasRestorableInstrumentSnapshot) {
+    if (hasRestorableInstrumentFragment) {
       _removeCurrentInstrumentNode(project, track, captureForRollback: false);
-      project.processingGraph.restoreRemovedNodesSnapshot(
-        _removedAddedInstrumentSnapshot!,
+      project.processingGraph.restoreGraphFragment(
+        _removedAddedInstrumentFragment!,
       );
     } else {
       _removeCurrentInstrumentNode(project, track, captureForRollback: true);
@@ -511,15 +509,15 @@ class SetTrackInstrumentNodeCommand extends Command {
     }
 
     if (track.instrumentNodeId == instrumentNode.id) {
-      final removedNodesSnapshot = project.processingGraph
+      final removedNodesFragment = project.processingGraph
           .removeNodesAndCapture([instrumentNode.id]);
-      _removedAddedInstrumentSnapshot ??= removedNodesSnapshot;
+      _removedAddedInstrumentFragment ??= removedNodesFragment;
     }
 
-    if (_removedPreviousInstrumentSnapshot != null &&
-        !_removedPreviousInstrumentSnapshot!.isEmpty) {
-      project.processingGraph.restoreRemovedNodesSnapshot(
-        _removedPreviousInstrumentSnapshot!,
+    if (_removedPreviousInstrumentFragment != null &&
+        !_removedPreviousInstrumentFragment!.isEmpty) {
+      project.processingGraph.restoreGraphFragment(
+        _removedPreviousInstrumentFragment!,
       );
     }
 
@@ -539,12 +537,12 @@ class SetTrackInstrumentNodeCommand extends Command {
       return;
     }
 
-    final removedNodesSnapshot = project.processingGraph.removeNodesAndCapture([
+    final removedNodesFragment = project.processingGraph.removeNodesAndCapture([
       currentInstrumentNodeId,
     ]);
 
     if (captureForRollback) {
-      _removedPreviousInstrumentSnapshot ??= removedNodesSnapshot;
+      _removedPreviousInstrumentFragment ??= removedNodesFragment;
     }
 
     track.instrumentNodeId = null;
@@ -695,6 +693,10 @@ class TrackGroupUngroupCommand extends Command {
   /// The second field in the tuple is the original index of this track, so the
   /// operation can be reversed correctly.
   late final List<(Id, int)> _childrenToAddToGroup;
+
+  /// The nodes in the processing graph associated with the new or removed group
+  /// track.
+  late final ProcessingGraphFragment _groupTrackGraphFragment;
 
   /// Creates a command to group the incoming track IDs.
   ///
@@ -913,6 +915,9 @@ class TrackGroupUngroupCommand extends Command {
       color: AnthemColor.randomHue(),
       type: .group,
     );
+    _groupTrackGraphFragment = trackController.buildTrackMixFragment(
+      _newGroupTrack,
+    );
     _parentTrack = newGroupParent;
     _childrenToAddToGroup = tracksToAddToNewGroup
         .map((t) => (t, tracksToAddToNewGroupIndices[t]!))
@@ -944,6 +949,9 @@ class TrackGroupUngroupCommand extends Command {
 
     _isForSendTrack = trackController.isSendTrack(groupTrack);
     _newGroupTrack = track;
+    _groupTrackGraphFragment = project.processingGraph.captureNodes(
+      _newGroupTrack.getOwnedNodeIds(),
+    );
     _parentTrack = track.parentTrackId;
 
     final parentTrackList = _parentTrack != null
@@ -999,11 +1007,15 @@ class TrackGroupUngroupCommand extends Command {
 
     parentTrackList.insert(_indexInParent, _newGroupTrack.id);
 
+    project.processingGraph.restoreGraphFragment(_groupTrackGraphFragment);
+
     updateTrackParents(project, project.tracks[_parentTrack]);
 
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.registerTrack(_newGroupTrack.id);
+
+    project.engine.processingGraphApi.compile();
   }
 
   void _ungroup(ProjectModel project) {
@@ -1012,6 +1024,10 @@ class TrackGroupUngroupCommand extends Command {
         : _isForSendTrack
         ? project.sendTrackOrder
         : project.trackOrder;
+
+    project.processingGraph.removeNodesAndCapture(
+      _groupTrackGraphFragment.nodes.map((node) => node.id),
+    );
 
     project.tracks.remove(_newGroupTrack.id);
     parentTrackList.remove(_newGroupTrack.id);
@@ -1027,6 +1043,8 @@ class TrackGroupUngroupCommand extends Command {
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.unregisterTrack(_newGroupTrack.id);
+
+    project.engine.processingGraphApi.compile();
   }
 }
 

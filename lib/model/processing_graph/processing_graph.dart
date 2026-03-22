@@ -28,21 +28,24 @@ import 'node_connection.dart';
 
 part 'processing_graph.g.dart';
 
-/// Captures the result of removing one or more processing graph nodes.
+/// A reusable fragment of processing graph state.
 ///
-/// This is primarily used by undo/redo commands (for example track add/remove)
-/// so the exact removed nodes and any connections touching those nodes can be
-/// restored on redo/undo without recomputing graph state. This also allows us
-/// to keep the objects around in case they have transient plugin state (e.g.
-/// third-party plugin state) that would be destroyed if the objects were
-/// recreated.
-class RemovedNodesSnapshot {
+/// This is used by undo/redo commands and by logic that needs to prepare a set
+/// of nodes and connections before adding them to the graph. Keeping the
+/// original model objects around also preserves transient state such as
+/// third-party plugin state.
+class ProcessingGraphFragment {
   final List<NodeModel> nodes;
   final List<NodeConnectionModel> connections;
 
-  const RemovedNodesSnapshot({required this.nodes, required this.connections});
+  const ProcessingGraphFragment({
+    required this.nodes,
+    required this.connections,
+  });
 
-  const RemovedNodesSnapshot.empty() : nodes = const [], connections = const [];
+  const ProcessingGraphFragment.empty()
+    : nodes = const [],
+      connections = const [];
 
   bool get isEmpty => nodes.isEmpty && connections.isEmpty;
 }
@@ -95,56 +98,67 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     nodes[node.id] = node;
   }
 
-  /// Removes the given nodes from the graph while capturing all removed nodes
-  /// and connections so they can be restored later.
-  RemovedNodesSnapshot removeNodesAndCapture(Iterable<Id> nodeIds) {
-    final idsToRemove = <Id>{};
+  /// Captures the given nodes and any touching connections without mutating the
+  /// graph.
+  ProcessingGraphFragment captureNodes(Iterable<Id> nodeIds) {
+    final capturedNodeIds = <Id>{};
     for (final nodeId in nodeIds) {
       if (nodes[nodeId] != null) {
-        idsToRemove.add(nodeId);
+        capturedNodeIds.add(nodeId);
       }
     }
 
-    if (idsToRemove.isEmpty) {
-      return const RemovedNodesSnapshot.empty();
+    if (capturedNodeIds.isEmpty) {
+      return const ProcessingGraphFragment.empty();
     }
 
-    final removedConnections = <NodeConnectionModel>[];
+    final capturedConnections = <NodeConnectionModel>[];
     for (final connection in connections.values) {
-      final isTouchingRemovedNode =
-          idsToRemove.contains(connection.sourceNodeId) ||
-          idsToRemove.contains(connection.destinationNodeId);
+      final isTouchingCapturedNode =
+          capturedNodeIds.contains(connection.sourceNodeId) ||
+          capturedNodeIds.contains(connection.destinationNodeId);
 
-      if (isTouchingRemovedNode) {
-        removedConnections.add(connection);
+      if (isTouchingCapturedNode) {
+        capturedConnections.add(connection);
       }
     }
 
-    final removedNodes = <NodeModel>[];
-    for (final nodeId in idsToRemove) {
+    final capturedNodes = <NodeModel>[];
+    for (final nodeId in capturedNodeIds) {
       final node = nodes[nodeId];
       if (node != null) {
-        removedNodes.add(node);
+        capturedNodes.add(node);
       }
     }
 
-    for (final connection in removedConnections) {
-      removeConnection(connection.id);
-    }
-
-    for (final node in removedNodes) {
-      nodes.remove(node.id);
-    }
-
-    return RemovedNodesSnapshot(
-      nodes: removedNodes,
-      connections: removedConnections,
+    return ProcessingGraphFragment(
+      nodes: capturedNodes,
+      connections: capturedConnections,
     );
   }
 
-  /// Restores a snapshot that was captured by [removeNodesAndCapture].
-  void restoreRemovedNodesSnapshot(RemovedNodesSnapshot snapshot) {
-    for (final node in snapshot.nodes) {
+  /// Removes the given nodes from the graph while capturing all removed nodes
+  /// and connections so they can be restored later.
+  ProcessingGraphFragment removeNodesAndCapture(Iterable<Id> nodeIds) {
+    final fragment = captureNodes(nodeIds);
+    if (fragment.isEmpty) {
+      return const ProcessingGraphFragment.empty();
+    }
+
+    for (final connection in fragment.connections) {
+      removeConnection(connection.id);
+    }
+
+    for (final node in fragment.nodes) {
+      nodes.remove(node.id);
+    }
+
+    return fragment;
+  }
+
+  /// Restores a fragment into the graph.
+  void restoreGraphFragment(ProcessingGraphFragment fragment) {
+    for (final node in fragment.nodes) {
       if (nodes[node.id] != null) {
         continue;
       }
@@ -152,7 +166,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
       addNode(node);
     }
 
-    for (final connection in snapshot.connections) {
+    for (final connection in fragment.connections) {
       if (connections[connection.id] != null) {
         continue;
       }
