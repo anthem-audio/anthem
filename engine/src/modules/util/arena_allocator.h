@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -101,7 +101,7 @@ public:
 
   // Returns the number of arenas that have been allocated. This should be 1 in
   // normal circumstances.
-  unsigned int getArenaCount();
+  size_t getArenaCount();
 };
 
 template<typename T>
@@ -282,6 +282,6 @@ void ArenaBufferAllocator<T>::coalesce() {
 }
 
 template<typename T>
-unsigned int ArenaBufferAllocator<T>::getArenaCount() {
+size_t ArenaBufferAllocator<T>::getArenaCount() {
   return this->arenas.size();
 }
