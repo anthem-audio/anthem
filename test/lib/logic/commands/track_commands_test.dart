@@ -355,6 +355,18 @@ void main() {
           ),
         ]),
       );
+
+      for (final track in tracks.values) {
+        if (track.type == TrackType.group) {
+          processingGraph.restoreGraphFragment(
+            trackController.buildTrackMixFragment(track),
+          );
+        } else {
+          track.createAndRegisterNodes(project, idAllocator);
+        }
+      }
+
+      trackController.rerouteTracks(tracks.keys);
     });
 
     group('Group/ungroup', () {
@@ -415,11 +427,19 @@ void main() {
         final gainNodeId = track.gainNodeId!;
         final balanceNodeId = track.balanceNodeId!;
         final dbMeterNodeId = track.dbMeterNodeId!;
-        final masterInputPortId = processingGraph
-            .getMasterOutputNode()
-            .audioInputPorts
-            .first
-            .id;
+        final expectedDestination = track.parentTrackId != null
+            ? (
+                nodeId: tracks[track.parentTrackId]!.gainNodeId!,
+                portId: GainProcessorModel.audioInputPortId,
+              )
+            : (
+                nodeId: processingGraph.masterOutputNodeId,
+                portId: processingGraph
+                    .getMasterOutputNode()
+                    .audioInputPorts
+                    .first
+                    .id,
+              );
 
         expect(processingGraph.nodes[gainNodeId], isNotNull);
         expect(processingGraph.nodes[balanceNodeId], isNotNull);
@@ -457,9 +477,8 @@ void main() {
                 connection.sourceNodeId == balanceNodeId &&
                 connection.sourcePortId ==
                     BalanceProcessorModel.audioOutputPortId &&
-                connection.destinationNodeId ==
-                    processingGraph.masterOutputNodeId &&
-                connection.destinationPortId == masterInputPortId,
+                connection.destinationNodeId == expectedDestination.nodeId &&
+                connection.destinationPortId == expectedDestination.portId,
           ),
           hasLength(1),
         );
@@ -515,13 +534,6 @@ void main() {
       test(
         'Ungroup removes existing group mix nodes and undo restores them',
         () {
-          final trackController = ServiceRegistry.forProject(
-            project.id,
-          ).trackController;
-          final trackMixFragment = trackController.buildTrackMixFragment(
-            trackL,
-          );
-          processingGraph.restoreGraphFragment(trackMixFragment);
           expectTrackHasMixRouting(trackL);
 
           final gainNodeId = trackL.gainNodeId!;
@@ -970,7 +982,6 @@ void main() {
       test(
         'Set track instrument command adds and restores nodes on undo/redo',
         () {
-          trackC.createAndRegisterNodes(project, idAllocator);
           final instrumentNode = ToneGeneratorProcessorModel(
             nodeId: getId(),
           ).createNode();
@@ -1151,7 +1162,6 @@ void main() {
       });
 
       test('Remove track undo restores captured nodes and connections', () {
-        trackC.createAndRegisterNodes(project, idAllocator);
         final gainNodeId = trackC.gainNodeId;
         final balanceNodeId = trackC.balanceNodeId;
         final dbMeterNodeId = trackC.dbMeterNodeId;
@@ -1208,7 +1218,6 @@ void main() {
       test(
         'Remove track captures optional instrument, sequence, and live nodes',
         () {
-          trackC.createAndRegisterNodes(project, idAllocator);
           final sequenceProviderNodeId = trackC.sequenceNoteProviderNodeId!;
           final liveEventProviderNodeId = trackC.liveEventProviderNodeId!;
 

@@ -27,6 +27,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/sequencer.dart';
+import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/visualization/visualization.dart';
@@ -93,6 +94,24 @@ class ProjectModel extends _ProjectModel
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);
     sendTrackOrder = AnthemObservableList.of(initSendTrackOrder);
+
+    final masterOutputPortId = processingGraph
+        .getMasterOutputNode()
+        .audioInputPorts
+        .first
+        .id;
+    for (final trackId in initTrackOrder.followedBy(initSendTrackOrder)) {
+      final track = initTracks[trackId]!;
+      processingGraph.addConnection(
+        NodeConnectionModel(
+          idAllocator: idAllocator,
+          sourceNodeId: track.audioOutputNodeId,
+          sourcePortId: track.audioOutputPortId,
+          destinationNodeId: processingGraph.masterOutputNodeId,
+          destinationPortId: masterOutputPortId,
+        ),
+      );
+    }
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {

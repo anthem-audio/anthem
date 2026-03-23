@@ -224,6 +224,10 @@ class TrackAddRemoveCommand extends Command {
   }
 
   void _add(ProjectModel project) {
+    final trackController = ServiceRegistry.forProject(
+      project.id,
+    ).trackController;
+
     for (final trackDescriptor in _tracks) {
       final _InternalTrackAddRemoveDescriptor(
         index: index,
@@ -319,6 +323,8 @@ class TrackAddRemoveCommand extends Command {
       }
     }
 
+    trackController.rerouteTracks(_collectTrackIdsForDescriptors(_tracks));
+
     final arrangerViewModel = ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel;
@@ -331,7 +337,17 @@ class TrackAddRemoveCommand extends Command {
   }
 
   void _remove(ProjectModel project) {
+    final trackController = ServiceRegistry.forProject(
+      project.id,
+    ).trackController;
     final removedTrackIds = <Id>{};
+    final routedTrackIdsToRemove = _collectTrackIdsForDescriptors(_tracks);
+
+    for (final trackId in routedTrackIdsToRemove) {
+      if (project.tracks[trackId] != null) {
+        trackController.disconnectTrackMainRouting(trackId);
+      }
+    }
 
     for (final trackDescriptor in _tracks.reversed) {
       final _InternalTrackAddRemoveDescriptor(
@@ -432,6 +448,19 @@ Set<Id> _collectTrackNodeIdsForDescriptors(
   }
 
   return nodeIds;
+}
+
+Set<Id> _collectTrackIdsForDescriptors(
+  Iterable<_InternalTrackAddRemoveDescriptor> descriptors,
+) {
+  final trackIds = <Id>{};
+
+  for (final descriptor in descriptors) {
+    trackIds.add(descriptor.trackModel.id);
+    trackIds.addAll(descriptor.descendantTrackModels.map((track) => track.id));
+  }
+
+  return trackIds;
 }
 
 class SetTrackInstrumentNodeCommand extends Command {
@@ -989,6 +1018,9 @@ class TrackGroupUngroupCommand extends Command {
   }
 
   void _group(ProjectModel project) {
+    final trackController = ServiceRegistry.forProject(
+      project.id,
+    ).trackController;
     final parentTrackList = _parentTrack != null
         ? project.tracks[_parentTrack]!.childTracks
         : _isForSendTrack
@@ -996,6 +1028,7 @@ class TrackGroupUngroupCommand extends Command {
         : project.trackOrder;
 
     for (final (trackId, _) in _childrenToAddToGroup) {
+      trackController.disconnectTrackMainRouting(trackId);
       parentTrackList.remove(trackId);
     }
 
@@ -1011,6 +1044,11 @@ class TrackGroupUngroupCommand extends Command {
 
     updateTrackParents(project, project.tracks[_parentTrack]);
 
+    trackController.rerouteTracks([
+      ..._childrenToAddToGroup.map((child) => child.$1),
+      _newGroupTrack.id,
+    ]);
+
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.registerTrack(_newGroupTrack.id);
@@ -1019,11 +1057,19 @@ class TrackGroupUngroupCommand extends Command {
   }
 
   void _ungroup(ProjectModel project) {
+    final trackController = ServiceRegistry.forProject(
+      project.id,
+    ).trackController;
     final parentTrackList = _parentTrack != null
         ? project.tracks[_parentTrack]!.childTracks
         : _isForSendTrack
         ? project.sendTrackOrder
         : project.trackOrder;
+
+    for (final (trackId, _) in _childrenToAddToGroup) {
+      trackController.disconnectTrackMainRouting(trackId);
+    }
+    trackController.disconnectTrackMainRouting(_newGroupTrack.id);
 
     project.processingGraph.removeNodesAndCapture(
       _groupTrackGraphFragment.nodes.map((node) => node.id),
@@ -1039,6 +1085,10 @@ class TrackGroupUngroupCommand extends Command {
     }
 
     updateTrackParents(project, project.tracks[_parentTrack]);
+
+    trackController.rerouteTracks(
+      _childrenToAddToGroup.map((child) => child.$1),
+    );
 
     ServiceRegistry.forProject(
       project.id,

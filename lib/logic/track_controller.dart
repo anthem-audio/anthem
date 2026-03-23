@@ -43,12 +43,15 @@ class TrackController {
   TrackController(this.project);
 
   ProjectEntityIdAllocator get _idAllocator =>
-      ServiceRegistry.forProject(project.id).idAllocator;
+      ServiceRegistry.maybeForProject(project.id)?.idAllocator ??
+      project.idAllocator;
 
   /// Builds the mix fragment for a track without adding it to the graph.
   ///
-  /// This contains the gain, balance, and dB meter nodes, along with the
-  /// temporary direct route to master output used by tracks today.
+  /// This contains the gain, balance, and dB meter nodes.
+  ///
+  /// Parent/master routing is derived from hierarchy and should be added
+  /// separately after the track is placed in its final location.
   ProcessingGraphFragment buildTrackMixFragment(TrackModel track) {
     final gainNode = GainProcessorModel.create(
       idAllocator: _idAllocator,
@@ -84,17 +87,6 @@ class TrackController {
           destinationNodeId: dbMeterNode.id,
           destinationPortId: DbMeterProcessorModel.audioInputPortId,
         ),
-        NodeConnectionModel(
-          idAllocator: _idAllocator,
-          sourceNodeId: balanceNode.id,
-          sourcePortId: BalanceProcessorModel.audioOutputPortId,
-          destinationNodeId: project.processingGraph.masterOutputNodeId,
-          destinationPortId: project.processingGraph
-              .getMasterOutputNode()
-              .audioInputPorts
-              .first
-              .id,
-        ),
       ],
     );
   }
@@ -116,6 +108,125 @@ class TrackController {
     }
 
     return (nodeId: gainNode.id, portId: GainProcessorModel.audioInputPortId);
+  }
+
+  /// Returns the current destination for this track's main audio output.
+  ///
+  /// This routing is derived from the track hierarchy:
+  /// - child tracks route to their parent's FX-chain input
+  /// - top-level tracks route to the master output node
+  ///
+  /// This is intentionally separate from [buildTrackMixFragment], because the
+  /// destination can change when tracks are grouped, ungrouped, inserted, or
+  /// otherwise moved in the hierarchy.
+  ({Id nodeId, int portId}) getTrackMainRoutingDestination(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track == null) {
+      throw StateError(
+        'TrackController.getTrackMainRoutingDestination(): Track $trackId not '
+        'found.',
+      );
+    }
+
+    final parentTrackId = track.parentTrackId;
+    if (parentTrackId != null) {
+      return getTrackFxChainAudioInput(parentTrackId);
+    }
+
+    return (
+      nodeId: project.processingGraph.masterOutputNodeId,
+      portId: project.processingGraph
+          .getMasterOutputNode()
+          .audioInputPorts
+          .first
+          .id,
+    );
+  }
+
+  /// Removes the hierarchy-derived "main output" routing for [trackId].
+  ///
+  /// This only removes connections that originate from the track's primary
+  /// audio output, while preserving the internal tap into the track's dB meter.
+  ///
+  /// We use this before topology changes so that later rerouting can rebuild
+  /// the correct parent/master connection from current hierarchy state instead
+  /// of leaving stale routes in place.
+  void disconnectTrackMainRouting(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track == null) {
+      throw StateError(
+        'TrackController.disconnectTrackMainRouting(): Track $trackId not '
+        'found.',
+      );
+    }
+
+    final connectionsToRemove = project.processingGraph.connections.values
+        .where(
+          (connection) =>
+              connection.sourceNodeId == track.audioOutputNodeId &&
+              connection.sourcePortId == track.audioOutputPortId &&
+              !_isTrackDbMeterConnection(track, connection),
+        )
+        .map((connection) => connection.id)
+        .toList(growable: false);
+
+    for (final connectionId in connectionsToRemove) {
+      project.processingGraph.removeConnection(connectionId);
+    }
+  }
+
+  /// Adds the hierarchy-derived "main output" routing for [trackId].
+  ///
+  /// The destination is resolved at call time via
+  /// [getTrackMainRoutingDestination], so this should be called after the track
+  /// has been moved into its final parent/top-level position.
+  void routeTrackToCurrentDestination(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track == null) {
+      throw StateError(
+        'TrackController.routeTrackToCurrentDestination(): Track $trackId not '
+        'found.',
+      );
+    }
+
+    final destination = getTrackMainRoutingDestination(trackId);
+    project.processingGraph.addConnection(
+      NodeConnectionModel(
+        idAllocator: _idAllocator,
+        sourceNodeId: track.audioOutputNodeId,
+        sourcePortId: track.audioOutputPortId,
+        destinationNodeId: destination.nodeId,
+        destinationPortId: destination.portId,
+      ),
+    );
+  }
+
+  /// Rebuilds hierarchy-derived routing for the given tracks.
+  ///
+  /// This performs a disconnect phase followed by a reconnect phase so that
+  /// affected tracks do not keep stale parent/master routes after structural
+  /// edits such as add/remove/group/ungroup.
+  void rerouteTracks(Iterable<Id> trackIds) {
+    final existingTrackIds = trackIds
+        .where(project.tracks.containsKey)
+        .toSet()
+        .toList(growable: false);
+
+    for (final trackId in existingTrackIds) {
+      disconnectTrackMainRouting(trackId);
+    }
+
+    for (final trackId in existingTrackIds) {
+      routeTrackToCurrentDestination(trackId);
+    }
+  }
+
+  bool _isTrackDbMeterConnection(
+    TrackModel track,
+    NodeConnectionModel connection,
+  ) {
+    return connection.destinationNodeId == track.dbMeterNodeId &&
+        connection.destinationPortId == DbMeterProcessorModel.audioInputPortId;
   }
 
   void setTrackInstrumentNode({required Id trackId, required NodeModel node}) {

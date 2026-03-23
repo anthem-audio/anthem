@@ -330,12 +330,24 @@ void main() {
         ]),
       );
 
+      trackController = ServiceRegistry.forProject(project.id).trackController;
+
+      for (final track in tracks.values) {
+        if (track.type == TrackType.group) {
+          processingGraph.restoreGraphFragment(
+            trackController.buildTrackMixFragment(track),
+          );
+        } else {
+          track.createAndRegisterNodes(project, idAllocator);
+        }
+      }
+
+      trackController.rerouteTracks(tracks.keys);
+
       when(project.execute(any)).thenAnswer((invocation) {
         final command = invocation.positionalArguments[0] as Command;
         command.execute(project);
       });
-
-      trackController = TrackController(project);
     });
 
     tearDown(() {
@@ -584,6 +596,18 @@ void main() {
           overrideService(trackControllerService, (_, _) => trackController),
         ]),
       );
+
+      for (final track in tracks.values) {
+        if (track.type == TrackType.group) {
+          processingGraph.restoreGraphFragment(
+            trackController.buildTrackMixFragment(track),
+          );
+        } else {
+          track.createAndRegisterNodes(project, idAllocator);
+        }
+      }
+
+      trackController.rerouteTracks(tracks.keys);
     });
 
     tearDown(() {

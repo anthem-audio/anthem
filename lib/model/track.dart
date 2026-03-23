@@ -235,22 +235,6 @@ abstract class _TrackModel
       ),
     );
 
-    // Temporary: route all tracks directly to master output until final track
-    // routing behavior is implemented.
-    project.processingGraph.addConnection(
-      NodeConnectionModel(
-        idAllocator: idAllocator,
-        sourceNodeId: balanceNodeId!,
-        sourcePortId: BalanceProcessorModel.audioOutputPortId,
-        destinationNodeId: project.processingGraph.masterOutputNodeId,
-        destinationPortId: project.processingGraph
-            .getMasterOutputNode()
-            .audioInputPorts
-            .first
-            .id,
-      ),
-    );
-
     final sequenceNoteProviderNode = SequenceNoteProviderProcessorModel.create(
       idAllocator: idAllocator,
       trackId: id,
