@@ -203,13 +203,15 @@ void VST3Processor::tryInitializePlugin() {
 
   auto sampleRate = device->getCurrentSampleRate();
   auto bufferSize = device->getCurrentBufferSizeSamples();
+  auto hostBufferChannels =
+    device->getActiveOutputChannels().countNumberOfSetBits();
   auto weakSelf = self;
 
   audioPluginFormatManager.createPluginInstanceAsync(
     pluginDescription,
     sampleRate,
     bufferSize,
-    [weakSelf, sampleRate, bufferSize](std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& error) mutable {
+    [weakSelf, sampleRate, bufferSize, hostBufferChannels](std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& error) mutable {
       auto selfShared = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
 
       if (selfShared == nullptr) {
@@ -232,7 +234,27 @@ void VST3Processor::tryInitializePlugin() {
         return;
       }
 
-      auto enabledAllBuses = instance->enableAllBuses();
+      // Anthem currently exposes a single audio output on VST3 nodes, so
+      // auxiliary buses must stay disabled until the graph can represent them.
+      instance->disableNonMainBuses();
+
+      const auto requiredProcessChannels = juce::jmax(
+        instance->getTotalNumInputChannels(),
+        instance->getTotalNumOutputChannels()
+      );
+
+      if (requiredProcessChannels > hostBufferChannels) {
+        writeVST3Log(
+          *selfShared,
+          "Plugin requires " +
+            juce::String(requiredProcessChannels) +
+            " process channel(s), but Anthem currently allocates " +
+            juce::String(hostBufferChannels) +
+            " channel(s) per plugin buffer. Refusing to load to avoid a host buffer overrun."
+        );
+        return;
+      }
+
       writeVST3Log(
         *selfShared,
         "Plugin instance created. Name: " +
@@ -241,8 +263,6 @@ void VST3Processor::tryInitializePlugin() {
           juce::String(instance->acceptsMidi() ? "true" : "false") +
           ", producesMidi=" +
           juce::String(instance->producesMidi() ? "true" : "false") +
-          ", enabledAllBuses=" +
-          juce::String(enabledAllBuses ? "true" : "false") +
           ", inputChannels=" +
           juce::String(instance->getTotalNumInputChannels()) +
           ", outputChannels=" +
