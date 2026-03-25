@@ -26,22 +26,54 @@
 #include "modules/core/anthem.h"
 #include "generated/lib/model/model.h"
 
+#if JUCE_WINDOWS
+// JUCE exposes the helper for matching the current thread's DPI-awareness
+// context to a native host window in a Windows-only native header.
+#include <juce_gui_basics/native/juce_ScopedThreadDPIAwarenessSetter_windows.h>
+#endif
+
 namespace {
 void writeVST3Log(VST3Processor& processor, const juce::String& message) {
   juce::Logger::writeToLog(
     "[VST3:" + juce::String(processor.nodeId()) + "] " + message
   );
 }
+
 } // namespace
 
 VST3Processor::VST3Processor(const VST3ProcessorModelImpl& _impl)
-      : AnthemProcessor("VST3"), VST3ProcessorModelBase(_impl) {
-  // Nothing to do here
-}
+      : AnthemProcessor("VST3"), VST3ProcessorModelBase(_impl) {}
 
 VST3Processor::~VST3Processor() {
-  // Nothing to do here
+  detachPluginListener();
   hidePluginGUI();
+}
+
+void VST3Processor::detachPluginListener() {
+  if (pluginInstance == nullptr) {
+    return;
+  }
+
+  pluginInstance->removeListener(this);
+}
+
+void VST3Processor::rebindEditorWindowCloseCallback() {
+  if (editorWindow == nullptr) {
+    return;
+  }
+
+  auto weakSelf = self;
+  editorWindow->setCloseCallback(
+    [weakSelf]() {
+      auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+      if (processor == nullptr) {
+        return;
+      }
+
+      processor->hidePluginGUI();
+    }
+  );
 }
 
 // We expect that a valid device is available when this method is called
@@ -171,15 +203,22 @@ void VST3Processor::tryInitializePlugin() {
 
   auto sampleRate = device->getCurrentSampleRate();
   auto bufferSize = device->getCurrentBufferSizeSamples();
+  auto weakSelf = self;
 
   audioPluginFormatManager.createPluginInstanceAsync(
     pluginDescription,
     sampleRate,
     bufferSize,
-    [this, sampleRate, bufferSize](std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& error) {
+    [weakSelf, sampleRate, bufferSize](std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& error) mutable {
+      auto selfShared = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+      if (selfShared == nullptr) {
+        return;
+      }
+
       if (error.isNotEmpty()) {
         writeVST3Log(
-          *this,
+          *selfShared,
           "Failed to create plugin instance: " + error
         );
         return;
@@ -187,20 +226,17 @@ void VST3Processor::tryInitializePlugin() {
 
       if (instance == nullptr) {
         writeVST3Log(
-          *this,
+          *selfShared,
           "Plugin creation callback returned a null instance without an error message."
         );
         return;
       }
 
       auto enabledAllBuses = instance->enableAllBuses();
-      hasEditor = instance->hasEditor();
       writeVST3Log(
-        *this,
+        *selfShared,
         "Plugin instance created. Name: " +
           instance->getName() +
-          ", hasEditor=" +
-          juce::String(hasEditor ? "true" : "false") +
           ", acceptsMidi=" +
           juce::String(instance->acceptsMidi() ? "true" : "false") +
           ", producesMidi=" +
@@ -215,19 +251,19 @@ void VST3Processor::tryInitializePlugin() {
 
       instance->prepareToPlay(sampleRate, bufferSize);
       writeVST3Log(
-        *this,
+        *selfShared,
         "prepareToPlay() completed."
       );
 
-      pluginInstance = std::move(instance);
-      pluginInstance->addListener(this);
+      selfShared->pluginInstance = std::move(instance);
+      selfShared->pluginInstance->addListener(selfShared.get());
       writeVST3Log(
-        *this,
+        *selfShared,
         "Plugin listener attached. Sending PluginLoadedEvent to UI."
       );
 
       Response event = PluginLoadedEvent {
-        .nodeId = this->nodeId(),
+        .nodeId = selfShared->nodeId(),
         .responseBase = ResponseBase {
           .id = -1,
         }
@@ -236,7 +272,17 @@ void VST3Processor::tryInitializePlugin() {
       auto eventString = rfl::json::write(event);
       Anthem::getInstance().comms.send(eventString);
 
-      showPluginGUI();
+      // The plugin instance is created asynchronously. Open the editor on the message thread
+      // and only if the processor still exists by the time we get there.
+      juce::MessageManager::callAsync([weakSelf]() {
+        auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+        if (processor == nullptr) {
+          return;
+        }
+
+        processor->showPluginGUI();
+      });
     }
   );
 }
@@ -250,14 +296,6 @@ void VST3Processor::showPluginGUI() {
     return;
   }
 
-  if (!hasEditor) {
-    writeVST3Log(
-      *this,
-      "Plugin does not expose an editor. No plugin window will be shown."
-    );
-    return;
-  }
-
   if (editorWindow != nullptr) {
     // Window already exists, just bring it to front
     writeVST3Log(*this, "Plugin editor window already exists. Bringing it to front.");
@@ -265,39 +303,103 @@ void VST3Processor::showPluginGUI() {
     return;
   }
 
-  // Create the plugin editor
-  pluginEditor = std::unique_ptr<juce::AudioProcessorEditor>(
+  // Create the host window first so the editor can inherit its actual host-window
+  // environment during first-time setup.
+  //
+  // On Windows, Anthem reaches this code from MessageManager::callAsync() after
+  // asynchronous plugin creation. That means createEditorIfNeeded() runs from JUCE's
+  // hidden message window rather than from a real plugin-host HWND message handler.
+  // Some VST3 editors query DPI during createEditorIfNeeded(), and JUCE's Windows
+  // host code expects that work to happen with the thread DPI context matched to the
+  // actual host window. AudioPluginHost normally gets this naturally because plugin
+  // windows are opened from real UI interaction.
+  auto pendingEditorWindow = std::make_unique<PluginEditorWindow>(
+    pluginDescription.name + " - " + pluginDescription.manufacturerName,
+    std::function<void()>{}
+  );
+
+  auto* hostPeer = pendingEditorWindow->getPeer();
+
+  if (hostPeer == nullptr) {
+    pendingEditorWindow->addToDesktop();
+    hostPeer = pendingEditorWindow->getPeer();
+  }
+
+#if JUCE_WINDOWS
+  // This is intentionally Windows-only. Windows has a per-thread DPI-awareness
+  // context, and JUCE provides a helper to temporarily match that context to the
+  // host HWND we just created. Other platforms don't expose an equivalent JUCE
+  // helper here, and they don't use the same thread-DPI model that causes this
+  // first-open mismatch on Windows.
+  std::unique_ptr<juce::ScopedThreadDPIAwarenessSetter> scopedThreadDpiAwarenessSetter;
+
+  if (hostPeer != nullptr) {
+    scopedThreadDpiAwarenessSetter = std::make_unique<juce::ScopedThreadDPIAwarenessSetter>(
+      hostPeer->getNativeHandle()
+    );
+  }
+  else {
+    writeVST3Log(
+      *this,
+      "Plugin editor host window has no native peer yet. Falling back to the current thread DPI context."
+    );
+  }
+#endif
+
+  auto pluginEditor = std::unique_ptr<juce::AudioProcessorEditor>(
     pluginInstance->createEditorIfNeeded()
   );
   
   if (!pluginEditor) {
     writeVST3Log(
       *this,
-      "Plugin reported hasEditor() but createEditorIfNeeded() returned null."
+      "createEditorIfNeeded() returned null. No plugin window will be shown."
     );
     return;
   }
 
-  auto editorWidth = pluginEditor->getWidth();
-  auto editorHeight = pluginEditor->getHeight();
+  auto editorIsResizable = pluginEditor->isResizable();
 
-  // Create a window to host the editor with close callback
-  editorWindow = std::make_unique<PluginEditorWindow>(
-    pluginDescription.name + " - " + pluginDescription.manufacturerName,
-    [this]() { hidePluginGUI(); }
-  );
+  // Adopt the pre-created host window and finish attaching the editor while the
+  // thread DPI context matches that host HWND.
+  editorWindow = std::move(pendingEditorWindow);
+  rebindEditorWindowCloseCallback();
 
   editorWindow->setContentOwned(pluginEditor.release(), true);
-  editorWindow->setResizable(false, false);
-  editorWindow->setUsingNativeTitleBar(true);
-  editorWindow->setSize(editorWidth, editorHeight);
-  
-  // Center the window on screen
-  editorWindow->centreWithSize(editorWindow->getWidth(), editorWindow->getHeight());
+  editorWindow->setResizable(editorIsResizable, false);
+
+  auto initialBounds = editorWindow->getBounds();
+
+  if (
+    auto* activeWindow = juce::TopLevelWindow::getActiveTopLevelWindow();
+    activeWindow != nullptr &&
+    activeWindow != editorWindow.get() &&
+    !activeWindow->getScreenBounds().isEmpty()
+  ) {
+    initialBounds = initialBounds.withCentre(activeWindow->getScreenBounds().getCentre());
+  }
+  else if (
+    auto* primaryDisplay = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+    primaryDisplay != nullptr
+  ) {
+    initialBounds = initialBounds.withCentre(primaryDisplay->userArea.getCentre());
+  }
+  else {
+    initialBounds.setPosition(50, 50);
+  }
+
+  // Route the initial placement through the window constrainer instead of using
+  // centreWithSize(). Some plugins restore a large remembered editor size, and
+  // raw centering can place the native title bar off-screen before the user has
+  // a chance to move the window.
+  initialBounds = editorWindow->getBestEffortOnscreenBounds(initialBounds);
+
+  editorWindow->setBoundsConstrained(initialBounds);
   editorWindow->setVisible(true);
+
   writeVST3Log(
     *this,
-    "Plugin editor window opened at " +
+      "Plugin editor window opened at " +
       juce::String(editorWindow->getWidth()) +
       "x" +
       juce::String(editorWindow->getHeight()) +
@@ -308,16 +410,24 @@ void VST3Processor::showPluginGUI() {
 void VST3Processor::hidePluginGUI() {
   if (editorWindow) {
     writeVST3Log(*this, "Closing plugin editor window.");
+    editorWindow->clearContentComponent();
     editorWindow->setVisible(false);
     editorWindow.reset();
   }
-  pluginEditor.reset();
 }
 
 void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* /*processor*/, int parameterIndex, float newValue) {
-  juce::MessageManager::callAsync([this, parameterIndex, newValue]() {
+  auto weakSelf = self;
+
+  juce::MessageManager::callAsync([weakSelf, parameterIndex, newValue]() {
+    auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+    if (processor == nullptr) {
+      return;
+    }
+
     Response event = PluginParameterChangedEvent {
-      .nodeId = this->nodeId(),
+      .nodeId = processor->nodeId(),
       .parameterIndex = parameterIndex,
       .newValue = newValue,
       .responseBase = ResponseBase {
@@ -331,9 +441,17 @@ void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* /*proce
 }
 
 void VST3Processor::audioProcessorChanged(juce::AudioProcessor* /*processor*/, const juce::AudioProcessor::ChangeDetails& details) {
-  juce::MessageManager::callAsync([this, details]() {
+  auto weakSelf = self;
+
+  juce::MessageManager::callAsync([weakSelf, details]() {
+    auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+    if (processor == nullptr) {
+      return;
+    }
+
     Response event = PluginChangedEvent {
-      .nodeId = this->nodeId(),
+      .nodeId = processor->nodeId(),
       .latencyChanged = details.latencyChanged,
       .parameterInfoChanged = details.parameterInfoChanged,
       .programChanged = details.programChanged,
