@@ -20,14 +20,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,6 +40,19 @@ var id = 0;
 Id getId() => id++;
 
 const skipEngineIntegrationTests = false;
+
+Future<T> _sendRequestAndWaitForReply<T extends Response>({
+  required EngineConnector engineConnector,
+  required Request request,
+  required Stream<Response> replyStream,
+}) async {
+  final replyFuture = replyStream.firstWhere((reply) => reply.id == request.id);
+
+  final encoder = JsonUtf8Encoder();
+  engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+
+  return (await replyFuture) as T;
+}
 
 void main() {
   var path = Platform.script;
@@ -180,6 +196,83 @@ void main() {
         reason: 'The engine should exit when disposed.',
       );
     });
+  }, skip: skipEngineIntegrationTests);
+
+  group('Gain parameter mapping tests', () {
+    test(
+      'samples the engine gain curve without sending a project model',
+      timeout: Timeout(Duration(seconds: 120)),
+      () async {
+        final exitStreamController = StreamController<void>.broadcast();
+        final replyStreamController = StreamController<Response>.broadcast();
+
+        final engineConnector = EngineConnector(
+          12345678 + 2,
+          enginePathOverride: enginePath!.toFilePath(
+            windows: Platform.isWindows,
+          ),
+          kDebugMode: true,
+          onReply: replyStreamController.add,
+          onExit: () => exitStreamController.add(null),
+        );
+
+        expect(
+          await engineConnector.onInit,
+          isTrue,
+          reason: 'The engine connector should initialize successfully.',
+        );
+
+        const parameterSamples = <double>[
+          0.0,
+          0.01,
+          0.01001,
+          0.02,
+          0.25,
+          0.5,
+          0.75,
+          gainParameterZeroDbNormalized,
+          1.0,
+        ];
+        final sampleRequest = TestSampleGainCurveRequest(
+          id: engineConnector.getRequestId(),
+          parameterValues: parameterSamples,
+        );
+
+        final sampleResponse =
+            await _sendRequestAndWaitForReply<TestSampleGainCurveResponse>(
+              engineConnector: engineConnector,
+              request: sampleRequest,
+              replyStream: replyStreamController.stream,
+            );
+
+        expect(sampleResponse.dbValues, hasLength(parameterSamples.length));
+        expect(
+          sampleResponse.isNegativeInfinity,
+          hasLength(parameterSamples.length),
+        );
+
+        for (var i = 0; i < parameterSamples.length; i++) {
+          final expectedDb = gainParameterValueToDb(parameterSamples[i]);
+          if (expectedDb.isInfinite && expectedDb.isNegative) {
+            expect(sampleResponse.isNegativeInfinity[i], isTrue);
+          } else {
+            expect(sampleResponse.isNegativeInfinity[i], isFalse);
+            expect(sampleResponse.dbValues[i], closeTo(expectedDb, 0.0003));
+          }
+        }
+
+        await _sendRequestAndWaitForReply<ExitReply>(
+          engineConnector: engineConnector,
+          request: Exit(id: engineConnector.getRequestId()),
+          replyStream: replyStreamController.stream,
+        );
+
+        await exitStreamController.stream.first.timeout(Duration(seconds: 5));
+
+        await replyStreamController.close();
+        await exitStreamController.close();
+      },
+    );
   }, skip: skipEngineIntegrationTests);
 
   group('Model sync tests', () {

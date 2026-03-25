@@ -19,6 +19,7 @@
 
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/meter_scale.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -29,7 +30,7 @@ void main() {
 
     test('formats whole db values without decimals', () {
       expect(MeterScale.formatLabel(-24), '-24');
-      expect(MeterScale.formatLabel(12), '12');
+      expect(MeterScale.formatLabel(12), '+12');
     });
   });
 
@@ -39,7 +40,7 @@ void main() {
         MeterScale.positionForDb(
           db: 12,
           height: 100,
-          dbToPosition: defaultMeterDbToPosition,
+          dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
         ),
         closeTo(0.0, 0.000001),
       );
@@ -50,9 +51,20 @@ void main() {
         MeterScale.positionForDb(
           db: double.negativeInfinity,
           height: 100,
-          dbToPosition: defaultMeterDbToPosition,
+          dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
         ),
         closeTo(100.0, 0.000001),
+      );
+    });
+
+    test('maps 0 dB to the shared gain curve position', () {
+      expect(
+        MeterScale.positionForDb(
+          db: 0.0,
+          height: 100,
+          dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
+        ),
+        closeTo(100.0 * (1.0 - gainParameterZeroDbNormalized), 0.000001),
       );
     });
   });

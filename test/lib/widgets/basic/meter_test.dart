@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/meter.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -29,6 +30,18 @@ const _testGradientStops = <MeterGradientStop>[
 ];
 
 const _backgroundTrackColor = Color(0xFF101010);
+
+double _testDbToNormalizedPosition(double db) {
+  if (db <= -60.0) {
+    return 0.0;
+  }
+
+  if (db >= 0.0) {
+    return 1.0;
+  }
+
+  return (db + 60.0) / 60.0;
+}
 
 Widget _buildMeterHarness({
   required StereoMeterValues db,
@@ -61,60 +74,35 @@ MeterPainter _readPainter(WidgetTester tester) {
 
 void main() {
   group('dbToPixelHeight', () {
-    test('throws when dbToPosition is empty', () {
-      expect(
-        () => Meter.dbToPixelHeight(0, 100, const []),
-        throwsA(isA<StateError>()),
-      );
+    test('returns zero below the minimum point', () {
+      expect(Meter.dbToPixelHeight(-72, 120, _testDbToNormalizedPosition), 0.0);
     });
 
-    test('returns zero below the minimum db point', () {
+    test('returns the full height above the maximum point', () {
       expect(
-        Meter.dbToPixelHeight(-72, 120, const [
-          (-60, 0.0),
-          (-12, 0.7),
-          (0, 1.0),
-        ]),
-        0.0,
-      );
-    });
-
-    test('returns the full height above the maximum db point', () {
-      expect(
-        Meter.dbToPixelHeight(18, 120, const [
-          (-60, 0.0),
-          (-12, 0.7),
-          (0, 1.0),
-        ]),
+        Meter.dbToPixelHeight(18, 120, _testDbToNormalizedPosition),
         120.0,
       );
     });
 
-    test('interpolates within the matching segment', () {
+    test('uses the provided conversion function', () {
       expect(
-        Meter.dbToPixelHeight(-6, 120, const [
-          (-60, 0.0),
-          (-12, 0.6),
-          (0, 1.0),
-        ]),
-        closeTo(96.0, 0.000001),
-      );
-    });
-
-    test('supports interpolation with a two-point mapping', () {
-      expect(
-        Meter.dbToPixelHeight(-30, 100, const [(-60, 0.0), (0, 1.0)]),
-        closeTo(50.0, 0.000001),
+        Meter.dbToPixelHeight(-6, 120, _testDbToNormalizedPosition),
+        closeTo(108.0, 0.000001),
       );
     });
   });
 
   group('meter helpers', () {
-    test('dbToNormalizedHeight uses the configured mapping', () {
+    test('dbToNormalizedHeight uses the shared gain mapping by default', () {
       expect(
-        Meter.dbToNormalizedHeight(-48, defaultMeterDbToPosition),
-        closeTo(0.12, 0.000001),
+        Meter.dbToNormalizedHeight(-48, defaultMeterDbToNormalizedPosition),
+        closeTo(gainDbToParameterValue(-48), 0.000001),
       );
+    });
+
+    test('default meter mapping treats -600 dB wire values as silence', () {
+      expect(defaultMeterDbToNormalizedPosition(-600.0), 0.0);
     });
 
     test('decayMeterPeakNormalizedHeight falls and clamps to current', () {
@@ -132,14 +120,20 @@ void main() {
     test('resolveMeterGradient converts db stops using the meter mapping', () {
       final resolved = Meter.resolveGradient(
         gradientStops: _testGradientStops,
-        dbToPosition: defaultMeterDbToPosition,
+        dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
       );
 
       expect(resolved.colors, hasLength(4));
       expect(resolved.stops, hasLength(4));
-      expect(resolved.stops[0], closeTo(0.03, 0.000001));
-      expect(resolved.stops[1], closeTo(0.805, 0.000001));
-      expect(resolved.stops[2], closeTo(0.805, 0.000001));
+      expect(resolved.stops[0], closeTo(gainDbToParameterValue(-72), 0.000001));
+      expect(
+        resolved.stops[1],
+        closeTo(gainParameterZeroDbNormalized, 0.000001),
+      );
+      expect(
+        resolved.stops[2],
+        closeTo(gainParameterZeroDbNormalized, 0.000001),
+      );
       expect(resolved.stops[3], closeTo(1.0, 0.000001));
     });
   });
@@ -156,10 +150,19 @@ void main() {
       );
 
       var painter = _readPainter(tester);
-      expect(painter.value.left, closeTo(0.12, 0.000001));
-      expect(painter.value.right, closeTo(0.22, 0.000001));
-      expect(painter.peak.left, closeTo(0.12, 0.000001));
-      expect(painter.peak.right, closeTo(0.22, 0.000001));
+      expect(
+        painter.value.left,
+        closeTo(gainDbToParameterValue(-48), 0.000001),
+      );
+      expect(
+        painter.value.right,
+        closeTo(gainParameterCurveSectionCeilingNormalized, 0.000001),
+      );
+      expect(painter.peak.left, closeTo(gainDbToParameterValue(-48), 0.000001));
+      expect(
+        painter.peak.right,
+        closeTo(gainParameterCurveSectionCeilingNormalized, 0.000001),
+      );
 
       await tester.pumpWidget(
         _buildMeterHarness(
@@ -171,10 +174,19 @@ void main() {
       );
 
       painter = _readPainter(tester);
-      expect(painter.value.left, closeTo(0.03, 0.000001));
-      expect(painter.value.right, closeTo(0.03, 0.000001));
-      expect(painter.peak.left, closeTo(0.12, 0.000001));
-      expect(painter.peak.right, closeTo(0.22, 0.000001));
+      expect(
+        painter.value.left,
+        closeTo(gainDbToParameterValue(-72), 0.000001),
+      );
+      expect(
+        painter.value.right,
+        closeTo(gainDbToParameterValue(-72), 0.000001),
+      );
+      expect(painter.peak.left, closeTo(gainDbToParameterValue(-48), 0.000001));
+      expect(
+        painter.peak.right,
+        closeTo(gainParameterCurveSectionCeilingNormalized, 0.000001),
+      );
 
       await tester.pumpWidget(
         _buildMeterHarness(
@@ -186,10 +198,22 @@ void main() {
       );
 
       painter = _readPainter(tester);
-      expect(painter.value.left, closeTo(0.03, 0.000001));
-      expect(painter.value.right, closeTo(0.03, 0.000001));
-      expect(painter.peak.left, closeTo(0.07, 0.000001));
-      expect(painter.peak.right, closeTo(0.17, 0.000001));
+      expect(
+        painter.value.left,
+        closeTo(gainDbToParameterValue(-72), 0.000001),
+      );
+      expect(
+        painter.value.right,
+        closeTo(gainDbToParameterValue(-72), 0.000001),
+      );
+      expect(
+        painter.peak.left,
+        closeTo(gainDbToParameterValue(-48) - 0.05, 0.000001),
+      );
+      expect(
+        painter.peak.right,
+        closeTo(gainParameterCurveSectionCeilingNormalized - 0.05, 0.000001),
+      );
     });
   });
 
@@ -197,7 +221,7 @@ void main() {
     test('returns false when painter inputs are unchanged', () {
       final resolved = Meter.resolveGradient(
         gradientStops: _testGradientStops,
-        dbToPosition: defaultMeterDbToPosition,
+        dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
       );
       final oldPainter = MeterPainter(
         value: (left: 0.2, right: 0.4),
@@ -220,7 +244,7 @@ void main() {
     test('returns true when peak values change', () {
       final resolved = Meter.resolveGradient(
         gradientStops: _testGradientStops,
-        dbToPosition: defaultMeterDbToPosition,
+        dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
       );
       final oldPainter = MeterPainter(
         value: (left: 0.2, right: 0.4),

@@ -27,6 +27,7 @@
 #include "modules/command_handlers/model_sync_command_handler.h"
 #include "modules/command_handlers/processing_graph_command_handler.h"
 #include "modules/command_handlers/sequencer_command_handler.h"
+#include "modules/command_handlers/test_command_handler.h"
 #include "modules/command_handlers/visualization_command_handler.h"
 
 void HeartbeatThread::run() {
@@ -194,6 +195,14 @@ void CommandHandler::processNextCommand() {
       didOverwriteResponse = true;
     }
     response = std::move(handleVisualizationCommandResponse);
+  }
+
+  auto handleTestCommandResponse = handleTestCommand(request);
+  if (handleTestCommandResponse.has_value()) {
+    if (response.has_value()) {
+      didOverwriteResponse = true;
+    }
+    response = std::move(handleTestCommandResponse);
   }
 
   // Warn if multiple handlers gave back a reply. This would indicate that a

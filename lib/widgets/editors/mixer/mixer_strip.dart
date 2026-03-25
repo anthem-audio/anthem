@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
@@ -235,13 +236,14 @@ class _MeterSection extends StatelessObserverWidget {
                 Expanded(child: MeterScale()),
                 SizedBox(width: 11, child: _TrackDbMeter(track: track)),
                 Slider(
-                  value: gainPort?.parameterValue ?? 0.75,
+                  value:
+                      gainPort?.parameterValue ?? gainParameterZeroDbNormalized,
                   width: 26,
                   axis: .vertical,
                   noBackground: true,
                   min: 0,
                   max: 1,
-                  stickyPoints: [0.75],
+                  stickyPoints: [gainParameterZeroDbNormalized],
                   hint: (value) =>
                       'Track gain: ${gainParameterValueToString(value)}',
                   onValueChanged: (value) {
@@ -286,7 +288,7 @@ class _TrackDbMeter extends StatelessWidget {
 
         if (!hasStereoValues || !hasFullTimestampSet) {
           return const Meter(
-            db: (left: -180.0, right: -180.0),
+            db: (left: double.negativeInfinity, right: double.negativeInfinity),
             timestamp: Duration.zero,
           );
         }

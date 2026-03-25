@@ -20,26 +20,30 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/theme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 typedef StereoMeterValues = ({double left, double right});
 typedef MeterGradientStop = ({double db, Color color});
+typedef MeterDbToNormalizedPosition = double Function(double db);
 
-const defaultMeterDbToPosition = <(double db, double normalizedPosition)>[
-  (-180.0, 0.0),
-  (-72.0, 0.03),
-  (-48.0, 0.12),
-  (-36.0, 0.22),
-  (12.0, 1.0),
-];
+double defaultMeterDbToNormalizedPosition(double db) {
+  // Visualization updates travel over JSON, which cannot represent -inf. The
+  // engine therefore encodes silent meter values as -600 dB on the wire.
+  if (db <= -600.0) {
+    return 0.0;
+  }
+
+  return gainDbToParameterValue(db);
+}
 
 class Meter extends StatefulWidget {
   final StereoMeterValues db;
   final Duration timestamp;
   final List<MeterGradientStop>? gradientStops;
-  final List<(double db, double normalizedPosition)> dbToPosition;
+  final MeterDbToNormalizedPosition dbToNormalizedPosition;
   final bool noBackground;
   final Duration peakHoldDuration;
   final double peakFallRateNormalizedPerSecond;
@@ -50,7 +54,7 @@ class Meter extends StatefulWidget {
     required this.db,
     required this.timestamp,
     this.gradientStops,
-    this.dbToPosition = defaultMeterDbToPosition,
+    this.dbToNormalizedPosition = defaultMeterDbToNormalizedPosition,
     this.noBackground = false,
     this.peakHoldDuration = const Duration(milliseconds: 750),
     this.peakFallRateNormalizedPerSecond = 0.8,
@@ -59,7 +63,7 @@ class Meter extends StatefulWidget {
 
   static ({List<Color> colors, List<double> stops}) resolveGradient({
     required List<MeterGradientStop> gradientStops,
-    required List<(double db, double normalizedPosition)> dbToPosition,
+    required MeterDbToNormalizedPosition dbToNormalizedPosition,
   }) {
     if (gradientStops.length < 2) {
       throw StateError(
@@ -71,7 +75,7 @@ class Meter extends StatefulWidget {
       colors: List<Color>.unmodifiable(gradientStops.map((stop) => stop.color)),
       stops: List<double>.unmodifiable(
         gradientStops.map((stop) {
-          return Meter.dbToNormalizedHeight(stop.db, dbToPosition);
+          return Meter.dbToNormalizedHeight(stop.db, dbToNormalizedPosition);
         }),
       ),
     );
@@ -103,45 +107,17 @@ class Meter extends StatefulWidget {
 
   static double dbToNormalizedHeight(
     double db,
-    List<(double db, double normalizedPosition)> dbToPosition,
+    MeterDbToNormalizedPosition dbToNormalizedPosition,
   ) {
-    return Meter.dbToPixelHeight(db, 1.0, dbToPosition);
+    return Meter.dbToPixelHeight(db, 1.0, dbToNormalizedPosition);
   }
 
   static double dbToPixelHeight(
     double db,
     double totalMeterHeight,
-    List<(double db, double normalizedPosition)> dbToPosition,
+    MeterDbToNormalizedPosition dbToNormalizedPosition,
   ) {
-    if (dbToPosition.isEmpty) {
-      throw StateError(
-        'Meter - dbToPixelHeight: dbToPosition must not be empty.',
-      );
-    }
-
-    if (dbToPosition.length == 1) {
-      throw StateError(
-        'Meter - dbToPixelHeight: dbToPosition must contain at least two points.',
-      );
-    }
-
-    if (db < dbToPosition.first.$1) return 0.0;
-    if (db > dbToPosition.last.$1) return totalMeterHeight;
-
-    for (var i = 0; i < dbToPosition.length - 1; i++) {
-      final (startDb, startPosition) = dbToPosition[i];
-      final (endDb, endPosition) = dbToPosition[i + 1];
-      if (db > endDb) continue;
-
-      return lerpDouble(
-            startPosition,
-            endPosition,
-            (db - startDb) / (endDb - startDb),
-          )! *
-          totalMeterHeight;
-    }
-
-    throw StateError('Meter - dbToPixelHeight: invalid dbToPosition list.');
+    return clampDouble(dbToNormalizedPosition(db), 0.0, 1.0) * totalMeterHeight;
   }
 
   @override
@@ -158,7 +134,7 @@ class _MeterState extends State<Meter> {
   );
 
   final List<MeterGradientStop> _defaultGradientStops = <MeterGradientStop>[
-    (db: -180.0, color: AnthemTheme.meter.low),
+    (db: double.negativeInfinity, color: AnthemTheme.meter.low),
     (db: 0.0, color: AnthemTheme.meter.high),
     (db: 0.0, color: AnthemTheme.meter.clipping),
     (db: 12.0, color: AnthemTheme.meter.clipping),
@@ -166,8 +142,14 @@ class _MeterState extends State<Meter> {
 
   _ResolvedMeterValues _resolveMeterValues() {
     final currentNormalizedHeights = (
-      left: Meter.dbToNormalizedHeight(widget.db.left, widget.dbToPosition),
-      right: Meter.dbToNormalizedHeight(widget.db.right, widget.dbToPosition),
+      left: Meter.dbToNormalizedHeight(
+        widget.db.left,
+        widget.dbToNormalizedPosition,
+      ),
+      right: Meter.dbToNormalizedHeight(
+        widget.db.right,
+        widget.dbToNormalizedPosition,
+      ),
     );
 
     if (_lastTimestamp == null ||
@@ -263,7 +245,7 @@ class _MeterState extends State<Meter> {
     final meterValues = _resolveMeterValues();
     final gradient = Meter.resolveGradient(
       gradientStops: widget.gradientStops ?? _defaultGradientStops,
-      dbToPosition: widget.dbToPosition,
+      dbToNormalizedPosition: widget.dbToNormalizedPosition,
     );
 
     return CustomPaint(

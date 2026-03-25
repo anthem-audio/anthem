@@ -19,6 +19,7 @@
 
 import 'dart:ui';
 
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:flutter/foundation.dart';
@@ -52,7 +53,7 @@ const defaultMeterScaleLabelValues = <double>[
 ];
 
 class MeterScale extends StatelessWidget {
-  final List<(double db, double normalizedPosition)> dbToPosition;
+  final MeterDbToNormalizedPosition dbToNormalizedPosition;
   final List<double> tickValues;
   final List<double> labelValues;
   final double tickWidth;
@@ -60,7 +61,7 @@ class MeterScale extends StatelessWidget {
 
   const MeterScale({
     super.key,
-    this.dbToPosition = defaultMeterDbToPosition,
+    this.dbToNormalizedPosition = defaultMeterDbToNormalizedPosition,
     this.tickValues = defaultMeterScaleTickValues,
     this.labelValues = defaultMeterScaleLabelValues,
     this.tickWidth = 3.0,
@@ -69,24 +70,16 @@ class MeterScale extends StatelessWidget {
 
   @visibleForTesting
   static String formatLabel(double db) {
-    if (db.isInfinite && db.isNegative) {
-      return '-\u221e';
-    }
-
-    if (db == db.roundToDouble()) {
-      return db.toInt().toString();
-    }
-
-    return db.toStringAsFixed(1);
+    return formatDb(db);
   }
 
   @visibleForTesting
   static double positionForDb({
     required double db,
     required double height,
-    required List<(double db, double normalizedPosition)> dbToPosition,
+    required MeterDbToNormalizedPosition dbToNormalizedPosition,
   }) {
-    final normalized = Meter.dbToNormalizedHeight(db, dbToPosition);
+    final normalized = Meter.dbToNormalizedHeight(db, dbToNormalizedPosition);
     return height - (height * normalized);
   }
 
@@ -94,7 +87,7 @@ class MeterScale extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: MeterScalePainter(
-        dbToPosition: dbToPosition,
+        dbToNormalizedPosition: dbToNormalizedPosition,
         tickValues: tickValues,
         labelValues: labelValues,
         tickWidth: tickWidth,
@@ -106,14 +99,14 @@ class MeterScale extends StatelessWidget {
 }
 
 class MeterScalePainter extends CustomPainter {
-  final List<(double db, double normalizedPosition)> dbToPosition;
+  final MeterDbToNormalizedPosition dbToNormalizedPosition;
   final List<double> tickValues;
   final List<double> labelValues;
   final double tickWidth;
   final double labelGap;
 
   const MeterScalePainter({
-    required this.dbToPosition,
+    required this.dbToNormalizedPosition,
     required this.tickValues,
     required this.labelValues,
     this.tickWidth = 3.0,
@@ -139,7 +132,7 @@ class MeterScalePainter extends CustomPainter {
       final y = MeterScale.positionForDb(
         db: db,
         height: size.height,
-        dbToPosition: dbToPosition,
+        dbToNormalizedPosition: dbToNormalizedPosition,
       );
       final top = clampDouble(y - 0.5, 0.0, size.height - 1.0);
 
@@ -163,7 +156,7 @@ class MeterScalePainter extends CustomPainter {
       final y = MeterScale.positionForDb(
         db: db,
         height: size.height,
-        dbToPosition: dbToPosition,
+        dbToNormalizedPosition: dbToNormalizedPosition,
       );
       final top = clampDouble(
         y - (textPainter.height / 2),
@@ -178,7 +171,7 @@ class MeterScalePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(MeterScalePainter oldDelegate) {
-    return !listEquals(oldDelegate.dbToPosition, dbToPosition) ||
+    return oldDelegate.dbToNormalizedPosition != dbToNormalizedPosition ||
         !listEquals(oldDelegate.tickValues, tickValues) ||
         !listEquals(oldDelegate.labelValues, labelValues) ||
         oldDelegate.tickWidth != tickWidth ||

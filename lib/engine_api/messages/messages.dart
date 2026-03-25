@@ -145,6 +145,31 @@ class StartAudioResponse extends Response {
   }
 }
 
+class TestSampleGainCurveRequest extends Request {
+  late List<double> parameterValues;
+
+  TestSampleGainCurveRequest.uninitialized();
+
+  TestSampleGainCurveRequest({required int id, required this.parameterValues}) {
+    super.id = id;
+  }
+}
+
+class TestSampleGainCurveResponse extends Response {
+  late List<double> dbValues;
+  late List<bool> isNegativeInfinity;
+
+  TestSampleGainCurveResponse.uninitialized();
+
+  TestSampleGainCurveResponse({
+    required int id,
+    required this.dbValues,
+    required this.isNegativeInfinity,
+  }) {
+    super.id = id;
+  }
+}
+
 /// Unsolicited response that is sent back one time, when the audio device has
 /// initialized.
 class AudioReadyEvent extends Response {

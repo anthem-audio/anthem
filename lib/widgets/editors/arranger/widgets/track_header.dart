@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
@@ -237,12 +238,12 @@ class _TrackContent extends StatelessWidget {
                                         GainProcessorModel.gainPortId,
                                       )
                                       .parameterValue ??
-                                  0.75,
+                                  gainParameterZeroDbNormalized,
                               min: 0,
                               max: 1,
                               height: 20,
                               borderRadius: 4,
-                              stickyPoints: [0.75],
+                              stickyPoints: [gainParameterZeroDbNormalized],
                               hint: (v) =>
                                   'Track gain: ${gainParameterValueToString(v)}',
                               onValueChanged: (value) {
@@ -345,7 +346,7 @@ class _TrackDbMeter extends StatelessWidget {
 
         if (!hasStereoValues || !hasFullTimestampSet) {
           return const Meter(
-            db: (left: -180.0, right: -180.0),
+            db: (left: double.negativeInfinity, right: double.negativeInfinity),
             timestamp: Duration.zero,
           );
         }
@@ -357,7 +358,7 @@ class _TrackDbMeter extends StatelessWidget {
           noBackground: true,
           db: (left: values[0], right: values[1]),
           gradientStops: [
-            (color: AnthemTheme.primary.main, db: -180),
+            (color: AnthemTheme.primary.main, db: double.negativeInfinity),
             (color: AnthemTheme.primary.main, db: 0),
             (db: 0.0, color: AnthemTheme.meter.clipping),
             (db: 12.0, color: AnthemTheme.meter.clipping),

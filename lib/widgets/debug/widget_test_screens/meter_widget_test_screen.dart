@@ -20,6 +20,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
@@ -52,21 +53,21 @@ class _MeterWidgetTestScreenState extends State<MeterWidgetTestScreen>
   double _manualRightDb = -9.0;
 
   static const _animatedGradientStops = <MeterGradientStop>[
-    (db: -180.0, color: Color(0xFF38D078)),
+    (db: double.negativeInfinity, color: Color(0xFF38D078)),
     (db: 0.0, color: Color(0xFFE3D54F)),
     (db: 0.0, color: Color(0xFFE85E47)),
     (db: 12.0, color: Color(0xFFE85E47)),
   ];
 
   static const _coolGradientStops = <MeterGradientStop>[
-    (db: -180.0, color: Color(0xFF4AB8FF)),
+    (db: double.negativeInfinity, color: Color(0xFF4AB8FF)),
     (db: 0.0, color: Color(0xFF55E39F)),
     (db: 0.0, color: Color(0xFF3ED18C)),
     (db: 12.0, color: Color(0xFF3ED18C)),
   ];
 
   static const _hotGradientStops = <MeterGradientStop>[
-    (db: -180.0, color: Color(0xFF74F06A)),
+    (db: double.negativeInfinity, color: Color(0xFF74F06A)),
     (db: 0.0, color: Color(0xFFE8C24F)),
     (db: 0.0, color: Color(0xFFE04A3A)),
     (db: 12.0, color: Color(0xFFE04A3A)),
@@ -150,7 +151,7 @@ class _MeterWidgetTestScreenState extends State<MeterWidgetTestScreen>
   }
 
   double _normalizedToDb(double value) {
-    return lerpDouble(-72.0, 9.0, value)!;
+    return gainParameterValueToDb(value);
   }
 
   Widget _buildPanel({required Widget child}) {
