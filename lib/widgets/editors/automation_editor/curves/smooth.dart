@@ -19,13 +19,15 @@
 
 import 'dart:math' as math;
 
+import 'package:anthem/helpers/fast_atan2.dart';
 import 'package:anthem/helpers/bw_fast_math.dart';
 
 double linearCenterTransitionRate = 0.27;
 double linearCenterWidth = 1.6;
 
 double _g(double x) {
-  return math.atan(x * linearCenterTransitionRate * math.pi) / math.pi + 0.5;
+  return fastAtan2(x * linearCenterTransitionRate * math.pi, 1.0) / math.pi +
+      0.5;
 }
 
 double _getLinearCenterInterpolation(double tension) {

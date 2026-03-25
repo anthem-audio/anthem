@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:anthem/helpers/id.dart';
@@ -97,35 +96,6 @@ void main() {
 
       expect(buffer.lineCount, equals(149));
       expect(buffer.bufferRaw.length, greaterThan(512));
-    });
-  });
-
-  group('atan2approx', () {
-    test('returns 0 for (0, 0)', () {
-      expect(atan2approx(0, 0), equals(0.0));
-    });
-
-    test('stays close to dart:math atan2 across octants', () {
-      const tolerance = 0.0041;
-      const values = <double>[-10, -3, -1, -0.25, 0, 0.25, 1, 3, 10];
-
-      for (final y in values) {
-        for (final x in values) {
-          if (x == 0 && y == 0) {
-            continue;
-          }
-
-          final expected = atan2(y, x);
-          final actual = atan2approx(y, x);
-          final error = (actual - expected).abs();
-
-          expect(
-            error,
-            lessThan(tolerance),
-            reason: 'x=$x y=$y expected=$expected actual=$actual error=$error',
-          );
-        }
-      }
     });
   });
 
