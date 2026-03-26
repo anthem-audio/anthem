@@ -482,10 +482,20 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     _verticalAxisController.applyUserDelta(filteredDelta.dy, event.timeStamp);
   }
 
+  void _handleScrollInertiaCancel() {
+    _endPanZoomGesture();
+    _stopAllInputActivity(clearSamples: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Listener(
       onPointerSignal: (event) {
+        if (event is PointerScrollInertiaCancelEvent) {
+          _handleScrollInertiaCancel();
+          return;
+        }
+
         // Special case for web. See https://github.com/flutter/flutter/issues/174251
         if (kIsWeb) {
           if (event is PointerScrollEvent) {

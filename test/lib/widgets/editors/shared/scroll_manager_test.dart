@@ -128,6 +128,8 @@ class _EditorScrollManagerTestFixture {
 
 class _TimelineScrollManagerTestFixture {
   static const childKey = Key('timeline-scroll-manager-child');
+  static const _trackpadDevice = 1;
+  static const _trackpadPointer = 1;
 
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
   final TimeRange timeView = TimeRange(0, 1000);
@@ -167,6 +169,74 @@ class _TimelineScrollManagerTestFixture {
         position: position,
         scrollDelta: scrollDelta,
         kind: PointerDeviceKind.mouse,
+      ),
+    );
+    await tester.pump();
+  }
+
+  Future<void> sendPanZoomStart(
+    WidgetTester tester, {
+    required Offset position,
+    Duration timeStamp = Duration.zero,
+  }) async {
+    tester.binding.handlePointerEvent(
+      PointerPanZoomStartEvent(
+        timeStamp: timeStamp,
+        device: _trackpadDevice,
+        pointer: _trackpadPointer,
+        position: position,
+      ),
+    );
+    await tester.pump();
+  }
+
+  Future<void> sendPanZoomUpdate(
+    WidgetTester tester, {
+    required Offset position,
+    required Offset pan,
+    required Offset panDelta,
+    Duration timeStamp = Duration.zero,
+  }) async {
+    tester.binding.handlePointerEvent(
+      PointerPanZoomUpdateEvent(
+        timeStamp: timeStamp,
+        device: _trackpadDevice,
+        pointer: _trackpadPointer,
+        position: position,
+        pan: pan,
+        panDelta: panDelta,
+      ),
+    );
+    await tester.pump();
+  }
+
+  Future<void> sendPanZoomEnd(
+    WidgetTester tester, {
+    required Offset position,
+    Duration timeStamp = Duration.zero,
+  }) async {
+    tester.binding.handlePointerEvent(
+      PointerPanZoomEndEvent(
+        timeStamp: timeStamp,
+        device: _trackpadDevice,
+        pointer: _trackpadPointer,
+        position: position,
+      ),
+    );
+    await tester.pump();
+  }
+
+  Future<void> sendScrollInertiaCancel(
+    WidgetTester tester, {
+    required Offset position,
+    Duration timeStamp = Duration.zero,
+  }) async {
+    tester.binding.handlePointerEvent(
+      PointerScrollInertiaCancelEvent(
+        timeStamp: timeStamp,
+        position: position,
+        kind: PointerDeviceKind.trackpad,
+        device: _trackpadDevice,
       ),
     );
     await tester.pump();
@@ -352,6 +422,55 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
 
       expect(fixture.timeView.width, greaterThan(widthAfterInput));
+    });
+
+    testWidgets('stops trackpad momentum when inertia is canceled', (
+      tester,
+    ) async {
+      await fixture.pump(tester);
+      final center = fixture.center(tester);
+
+      await fixture.sendPanZoomStart(
+        tester,
+        position: center,
+        timeStamp: const Duration(milliseconds: 0),
+      );
+      await fixture.sendPanZoomUpdate(
+        tester,
+        position: center,
+        pan: const Offset(0, -24),
+        panDelta: const Offset(0, -24),
+        timeStamp: const Duration(milliseconds: 16),
+      );
+      await fixture.sendPanZoomUpdate(
+        tester,
+        position: center,
+        pan: const Offset(0, -48),
+        panDelta: const Offset(0, -24),
+        timeStamp: const Duration(milliseconds: 32),
+      );
+      await fixture.sendPanZoomEnd(
+        tester,
+        position: center,
+        timeStamp: const Duration(milliseconds: 48),
+      );
+
+      final widthAfterInput = fixture.timeView.width;
+
+      await tester.pump(const Duration(milliseconds: 120));
+      final widthDuringMomentum = fixture.timeView.width;
+
+      expect(widthDuringMomentum, greaterThan(widthAfterInput));
+
+      await fixture.sendScrollInertiaCancel(
+        tester,
+        position: center,
+        timeStamp: const Duration(milliseconds: 168),
+      );
+
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(fixture.timeView.width, closeTo(widthDuringMomentum, 0.000001));
     });
   });
 
