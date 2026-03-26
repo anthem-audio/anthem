@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
 import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/widgets.dart';
@@ -116,89 +114,50 @@ class _VisualizationBuilder<T> extends StatefulWidget {
 }
 
 class _VisualizationBuilderState<T> extends State<_VisualizationBuilder<T>> {
-  late VisualizationSubscription<T> _subscription;
-  T? _latestValue;
-  Duration? _latestEngineTime;
-  StreamSubscription<void>? _updateSubscription;
-  DateTime? _lastUpdateTime;
-
-  void _resetLatestValues() {
-    _latestValue = null;
-    _latestEngineTime = null;
-    _lastUpdateTime = null;
-  }
-
-  bool _shouldSkipUpdate() {
-    if (widget.minimumUpdateInterval == null) {
-      return false;
-    }
-
-    final now = DateTime.now();
-    if (_lastUpdateTime != null &&
-        now.difference(_lastUpdateTime!) < widget.minimumUpdateInterval!) {
-      return true;
-    }
-
-    _lastUpdateTime = now;
-    return false;
-  }
-
-  void _attachSubscription() {
-    _subscription = Provider.of<ProjectModel>(
-      context,
-      listen: false,
-    ).visualizationProvider.subscribe(widget.config);
-
-    _updateSubscription = _subscription.onUpdate.listen((_) {
-      if (_shouldSkipUpdate()) {
-        return;
-      }
-
-      final timedValue = _subscription.readTimedValue();
-      final newValue = timedValue?.value ?? _subscription.readValue();
-      final newEngineTime = timedValue?.engineTime;
-
-      if (newValue != _latestValue || newEngineTime != _latestEngineTime) {
-        setState(() {
-          _latestValue = newValue;
-          _latestEngineTime = newEngineTime;
-        });
-      }
-    });
-  }
-
-  void _detachSubscription() {
-    _updateSubscription?.cancel();
-    _updateSubscription = null;
-    _subscription.dispose();
-  }
+  late final VisualizationSubscriptionController<T> _controller;
 
   @override
   void initState() {
     super.initState();
-    _attachSubscription();
+
+    _controller = VisualizationSubscriptionController<T>(
+      visualizationProvider: Provider.of<ProjectModel>(
+        context,
+        listen: false,
+      ).visualizationProvider,
+      config: widget.config,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
   void didUpdateWidget(covariant _VisualizationBuilder<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.config != widget.config) {
-      _detachSubscription();
-      _resetLatestValues();
-      _attachSubscription();
-    }
+    _controller.update(
+      config: widget.config,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
   void dispose() {
-    _detachSubscription();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(context, _latestValue, _latestEngineTime);
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return widget.builder(
+          context,
+          _controller.value,
+          _controller.engineTime,
+        );
+      },
+    );
   }
 }
 
@@ -273,124 +232,49 @@ class _MultiVisualizationBuilder<T> extends StatefulWidget {
 
 class _MultiVisualizationBuilderState<T>
     extends State<_MultiVisualizationBuilder<T>> {
-  List<VisualizationSubscription<T>> _subscriptions = [];
-  final List<StreamSubscription<void>> _updateSubscriptions = [];
-  List<T> _latestValues = [];
-  List<Duration?> _latestEngineTimes = [];
-  List<DateTime?> _lastUpdateTimes = [];
-
-  bool _shouldSkipUpdate(int index) {
-    if (widget.minimumUpdateInterval == null) {
-      return false;
-    }
-
-    final now = DateTime.now();
-    if (_lastUpdateTimes[index] != null &&
-        now.difference(_lastUpdateTimes[index]!) <
-            widget.minimumUpdateInterval!) {
-      return true;
-    }
-
-    _lastUpdateTimes[index] = now;
-    return false;
-  }
-
-  void _attachSubscriptions() {
-    _latestValues = List<T>.generate(
-      widget.configs.length,
-      (index) => widget.configs[index].visualizationType.defaultValue,
-      growable: false,
-    );
-    _latestEngineTimes = List.filled(
-      widget.configs.length,
-      null,
-      growable: false,
-    );
-    _lastUpdateTimes = List.filled(widget.configs.length, null);
-
-    _subscriptions = widget.configs
-        .map(
-          (config) => Provider.of<ProjectModel>(
-            context,
-            listen: false,
-          ).visualizationProvider.subscribe(config),
-        )
-        .toList(growable: false);
-
-    for (var i = 0; i < _subscriptions.length; i++) {
-      final sub = _subscriptions[i];
-      _updateSubscriptions.add(
-        sub.onUpdate.listen((_) {
-          if (_shouldSkipUpdate(i)) {
-            return;
-          }
-
-          final timedValue = sub.readTimedValue();
-          final newValue = timedValue?.value ?? sub.readValue();
-          final newEngineTime = timedValue?.engineTime;
-
-          if (newValue != _latestValues[i] ||
-              newEngineTime != _latestEngineTimes[i]) {
-            setState(() {
-              _latestValues[i] = newValue;
-              _latestEngineTimes[i] = newEngineTime;
-            });
-          }
-        }),
-      );
-    }
-  }
-
-  void _detachSubscriptions() {
-    for (final updateSubscription in _updateSubscriptions) {
-      updateSubscription.cancel();
-    }
-    _updateSubscriptions.clear();
-
-    for (final sub in _subscriptions) {
-      sub.dispose();
-    }
-    _subscriptions = [];
-  }
-
-  bool _didConfigsChange(covariant _MultiVisualizationBuilder<T> oldWidget) {
-    if (oldWidget.configs.length != widget.configs.length) {
-      return true;
-    }
-
-    for (var i = 0; i < widget.configs.length; i++) {
-      if (oldWidget.configs[i] != widget.configs[i]) {
-        return true;
-      }
-    }
-
-    return false;
-  }
+  late final MultiVisualizationSubscriptionController<T> _controller;
 
   @override
   void initState() {
     super.initState();
-    _attachSubscriptions();
+
+    _controller = MultiVisualizationSubscriptionController<T>(
+      visualizationProvider: Provider.of<ProjectModel>(
+        context,
+        listen: false,
+      ).visualizationProvider,
+      configs: widget.configs,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
   void didUpdateWidget(covariant _MultiVisualizationBuilder<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (_didConfigsChange(oldWidget)) {
-      _detachSubscriptions();
-      _attachSubscriptions();
-    }
+    _controller.update(
+      configs: widget.configs,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
   void dispose() {
-    _detachSubscriptions();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(context, _latestValues, _latestEngineTimes);
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return widget.builder(
+          context,
+          _controller.values,
+          _controller.engineTimes,
+        );
+      },
+    );
   }
 }

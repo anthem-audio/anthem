@@ -29,8 +29,6 @@ const _testGradientStops = <MeterGradientStop>[
   (db: 12.0, color: Color(0xFFFF0000)),
 ];
 
-const _backgroundTrackColor = Color(0xFF101010);
-
 double _testDbToNormalizedPosition(double db) {
   if (db <= -60.0) {
     return 0.0;
@@ -41,35 +39,6 @@ double _testDbToNormalizedPosition(double db) {
   }
 
   return (db + 60.0) / 60.0;
-}
-
-Widget _buildMeterHarness({
-  required StereoMeterValues db,
-  required Duration timestamp,
-  Duration peakHoldDuration = const Duration(milliseconds: 500),
-  double peakFallRateNormalizedPerSecond = 0.96,
-}) {
-  return Directionality(
-    textDirection: TextDirection.ltr,
-    child: Center(
-      child: SizedBox(
-        width: 21,
-        height: 100,
-        child: Meter(
-          db: db,
-          timestamp: timestamp,
-          gradientStops: _testGradientStops,
-          peakHoldDuration: peakHoldDuration,
-          peakFallRateNormalizedPerSecond: peakFallRateNormalizedPerSecond,
-        ),
-      ),
-    ),
-  );
-}
-
-MeterPainter _readPainter(WidgetTester tester) {
-  return tester.widget<CustomPaint>(find.byType(CustomPaint)).painter!
-      as MeterPainter;
 }
 
 void main() {
@@ -138,130 +107,79 @@ void main() {
     });
   });
 
-  group('Meter', () {
-    testWidgets('holds peaks before decaying them from timestamps', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _buildMeterHarness(
-          db: (left: -48.0, right: -36.0),
-          timestamp: Duration.zero,
-        ),
+  group('MeterValueTracker', () {
+    test('holds peaks before decaying them from timestamps', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
+        peakHoldDuration: const Duration(milliseconds: 500),
+        peakFallRateNormalizedPerSecond: 0.1,
       );
 
-      var painter = _readPainter(tester);
+      var snapshot = tracker.resolve(
+        db: (left: -48.0, right: -36.0),
+        timestamp: Duration.zero,
+      );
+
       expect(
-        painter.value.left,
+        snapshot.currentNormalized.left,
         closeTo(gainDbToParameterValue(-48), 0.000001),
       );
       expect(
-        painter.value.right,
+        snapshot.currentNormalized.right,
         closeTo(gainParameterCurveSectionCeilingNormalized, 0.000001),
       );
-      expect(painter.peak.left, closeTo(gainDbToParameterValue(-48), 0.000001));
       expect(
-        painter.peak.right,
-        closeTo(gainParameterCurveSectionCeilingNormalized, 0.000001),
-      );
-
-      await tester.pumpWidget(
-        _buildMeterHarness(
-          db: (left: -72.0, right: -72.0),
-          timestamp: const Duration(milliseconds: 300),
-          peakHoldDuration: const Duration(milliseconds: 500),
-          peakFallRateNormalizedPerSecond: 0.1,
-        ),
-      );
-
-      painter = _readPainter(tester);
-      expect(
-        painter.value.left,
-        closeTo(gainDbToParameterValue(-72), 0.000001),
+        snapshot.peakNormalized.left,
+        closeTo(gainDbToParameterValue(-48), 0.000001),
       );
       expect(
-        painter.value.right,
-        closeTo(gainDbToParameterValue(-72), 0.000001),
-      );
-      expect(painter.peak.left, closeTo(gainDbToParameterValue(-48), 0.000001));
-      expect(
-        painter.peak.right,
+        snapshot.peakNormalized.right,
         closeTo(gainParameterCurveSectionCeilingNormalized, 0.000001),
       );
 
-      await tester.pumpWidget(
-        _buildMeterHarness(
-          db: (left: -72.0, right: -72.0),
-          timestamp: const Duration(seconds: 1),
-          peakHoldDuration: const Duration(milliseconds: 500),
-          peakFallRateNormalizedPerSecond: 0.1,
-        ),
+      snapshot = tracker.resolve(
+        db: (left: -72.0, right: -72.0),
+        timestamp: const Duration(milliseconds: 300),
       );
 
-      painter = _readPainter(tester);
       expect(
-        painter.value.left,
+        snapshot.currentNormalized.left,
         closeTo(gainDbToParameterValue(-72), 0.000001),
       );
       expect(
-        painter.value.right,
+        snapshot.currentNormalized.right,
         closeTo(gainDbToParameterValue(-72), 0.000001),
       );
       expect(
-        painter.peak.left,
+        snapshot.peakNormalized.left,
+        closeTo(gainDbToParameterValue(-48), 0.000001),
+      );
+      expect(
+        snapshot.peakNormalized.right,
+        closeTo(gainParameterCurveSectionCeilingNormalized, 0.000001),
+      );
+
+      snapshot = tracker.resolve(
+        db: (left: -72.0, right: -72.0),
+        timestamp: const Duration(seconds: 1),
+      );
+
+      expect(
+        snapshot.currentNormalized.left,
+        closeTo(gainDbToParameterValue(-72), 0.000001),
+      );
+      expect(
+        snapshot.currentNormalized.right,
+        closeTo(gainDbToParameterValue(-72), 0.000001),
+      );
+      expect(
+        snapshot.peakNormalized.left,
         closeTo(gainDbToParameterValue(-48) - 0.05, 0.000001),
       );
       expect(
-        painter.peak.right,
+        snapshot.peakNormalized.right,
         closeTo(gainParameterCurveSectionCeilingNormalized - 0.05, 0.000001),
       );
-    });
-  });
-
-  group('MeterPainter.shouldRepaint', () {
-    test('returns false when painter inputs are unchanged', () {
-      final resolved = Meter.resolveGradient(
-        gradientStops: _testGradientStops,
-        dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
-      );
-      final oldPainter = MeterPainter(
-        value: (left: 0.2, right: 0.4),
-        peak: (left: 0.3, right: 0.5),
-        gradientColors: resolved.colors,
-        gradientStopPositions: resolved.stops,
-        backgroundTrackColor: _backgroundTrackColor,
-      );
-      final newPainter = MeterPainter(
-        value: (left: 0.2, right: 0.4),
-        peak: (left: 0.3, right: 0.5),
-        gradientColors: resolved.colors,
-        gradientStopPositions: resolved.stops,
-        backgroundTrackColor: _backgroundTrackColor,
-      );
-
-      expect(newPainter.shouldRepaint(oldPainter), isFalse);
-    });
-
-    test('returns true when peak values change', () {
-      final resolved = Meter.resolveGradient(
-        gradientStops: _testGradientStops,
-        dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
-      );
-      final oldPainter = MeterPainter(
-        value: (left: 0.2, right: 0.4),
-        peak: (left: 0.3, right: 0.5),
-        gradientColors: resolved.colors,
-        gradientStopPositions: resolved.stops,
-        backgroundTrackColor: _backgroundTrackColor,
-      );
-      final newPainter = MeterPainter(
-        value: (left: 0.2, right: 0.4),
-        peak: (left: 0.31, right: 0.5),
-        gradientColors: resolved.colors,
-        gradientStopPositions: resolved.stops,
-        backgroundTrackColor: _backgroundTrackColor,
-      );
-
-      expect(newPainter.shouldRepaint(oldPainter), isTrue);
     });
   });
 }

@@ -23,21 +23,19 @@ part of 'visualization.dart';
 /// them.
 class VisualizationProvider {
   final ProjectModel _project;
+  final VisualizationClock clock;
   late final StreamSubscription<EngineState> _engineStateChangeSub;
-  final Duration Function() _wallClockNow;
   final VisualizationTransportStats _transportStats;
 
   final Map<String, List<_VisualizationSubscriptionBase>> _subscriptions = {};
 
   bool _enabled = true;
 
-  VisualizationProvider(
-    this._project, {
-    Duration Function()? wallClockNowForTest,
-  }) : _wallClockNow = wallClockNowForTest ?? _defaultWallClockNow,
-       _transportStats = VisualizationTransportStats(
-         wallClockNowForTest ?? _defaultWallClockNow,
-       ) {
+  VisualizationProvider(this._project, {VisualizationClock? clock})
+    : clock = clock ?? VisualizationClock.system,
+      _transportStats = VisualizationTransportStats(
+        (clock ?? VisualizationClock.system).now,
+      ) {
     if (_project.engine.engineState == EngineState.running) {
       _sendUpdateIntervalToEngine();
     }
@@ -62,10 +60,6 @@ class VisualizationProvider {
         }
       }
     });
-  }
-
-  static Duration _defaultWallClockNow() {
-    return Duration(microseconds: DateTime.now().microsecondsSinceEpoch);
   }
 
   void _sendUpdateIntervalToEngine() {

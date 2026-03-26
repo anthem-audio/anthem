@@ -36,8 +36,26 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/src/visualization_transport_stats.dart';
 import 'package:flutter/scheduler.dart';
 
+export 'visualization_controller.dart';
+
 part 'visualization_provider.dart';
 part 'visualization_subscription.dart';
+
+/// Shared wall-clock source used by visualization timing logic.
+///
+/// The same instance should be used anywhere visualization timing needs to
+/// stay coherent, such as providers, subscriptions, and controllers.
+class VisualizationClock {
+  final Duration Function() _now;
+
+  VisualizationClock(Duration Function() now) : _now = now;
+
+  static final system = VisualizationClock(
+    () => Duration(microseconds: DateTime.now().microsecondsSinceEpoch),
+  );
+
+  Duration now() => _now();
+}
 
 /// A visualization value paired with the engine time it represents.
 class TimedVisualizationValue<T> {

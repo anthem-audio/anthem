@@ -26,7 +26,6 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/controls/slider.dart';
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/meter_scale.dart';
-import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
@@ -270,37 +269,24 @@ class _TrackDbMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiVisualizationBuilder.double(
-      configs: track.dbMeterVisualizationIds
-          .map(
-            (id) => VisualizationSubscriptionConfig.max(
-              id,
-              bufferMode: VisualizationBufferMode.adaptive,
-            ),
-          )
-          .toList(growable: false),
-      builder: (context, values, engineTimes) {
-        final hasStereoValues = values.length >= 2;
-        final hasFullTimestampSet =
-            engineTimes.length >= 2 &&
-            engineTimes[0] != null &&
-            engineTimes[1] != null;
+    final visualizationIds = track.dbMeterVisualizationIds.toList(
+      growable: false,
+    );
+    if (visualizationIds.length < 2) {
+      return const SizedBox.expand();
+    }
 
-        if (!hasStereoValues || !hasFullTimestampSet) {
-          return const Meter(
-            db: (left: double.negativeInfinity, right: double.negativeInfinity),
-            timestamp: Duration.zero,
-          );
-        }
-
-        final leftTime = engineTimes[0]!;
-        final rightTime = engineTimes[1]!;
-
-        return Meter(
-          db: (left: values[0], right: values[1]),
-          timestamp: leftTime.compareTo(rightTime) >= 0 ? leftTime : rightTime,
-        );
-      },
+    return Meter(
+      configs: (
+        left: VisualizationSubscriptionConfig.max(
+          visualizationIds[0],
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+        right: VisualizationSubscriptionConfig.max(
+          visualizationIds[1],
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+      ),
     );
   }
 }

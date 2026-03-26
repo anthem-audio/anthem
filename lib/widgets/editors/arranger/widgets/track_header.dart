@@ -32,7 +32,6 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -328,44 +327,31 @@ class _TrackDbMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiVisualizationBuilder.double(
-      configs: track.dbMeterVisualizationIds
-          .map(
-            (id) => VisualizationSubscriptionConfig.max(
-              id,
-              bufferMode: VisualizationBufferMode.adaptive,
-            ),
-          )
-          .toList(growable: false),
-      builder: (context, values, engineTimes) {
-        final hasStereoValues = values.length >= 2;
-        final hasFullTimestampSet =
-            engineTimes.length >= 2 &&
-            engineTimes[0] != null &&
-            engineTimes[1] != null;
+    final visualizationIds = track.dbMeterVisualizationIds.toList(
+      growable: false,
+    );
+    if (visualizationIds.length < 2) {
+      return const SizedBox.expand();
+    }
 
-        if (!hasStereoValues || !hasFullTimestampSet) {
-          return const Meter(
-            db: (left: double.negativeInfinity, right: double.negativeInfinity),
-            timestamp: Duration.zero,
-          );
-        }
-
-        final leftTime = engineTimes[0]!;
-        final rightTime = engineTimes[1]!;
-
-        return Meter(
-          noBackground: true,
-          db: (left: values[0], right: values[1]),
-          gradientStops: [
-            (color: AnthemTheme.primary.main, db: double.negativeInfinity),
-            (color: AnthemTheme.primary.main, db: 0),
-            (db: 0.0, color: AnthemTheme.meter.clipping),
-            (db: 12.0, color: AnthemTheme.meter.clipping),
-          ],
-          timestamp: leftTime.compareTo(rightTime) >= 0 ? leftTime : rightTime,
-        );
-      },
+    return Meter(
+      configs: (
+        left: VisualizationSubscriptionConfig.max(
+          visualizationIds[0],
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+        right: VisualizationSubscriptionConfig.max(
+          visualizationIds[1],
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+      ),
+      noBackground: true,
+      gradientStops: [
+        (color: AnthemTheme.primary.main, db: double.negativeInfinity),
+        (color: AnthemTheme.primary.main, db: 0),
+        (db: 0.0, color: AnthemTheme.meter.clipping),
+        (db: 12.0, color: AnthemTheme.meter.clipping),
+      ],
     );
   }
 }

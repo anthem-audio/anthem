@@ -99,7 +99,9 @@ void main() {
 
     final visualizationProvider = VisualizationProvider(
       projectMock,
-      wallClockNowForTest: wallClockNowForTest,
+      clock: wallClockNowForTest == null
+          ? null
+          : VisualizationClock(wallClockNowForTest),
     );
     when(projectMock.visualizationProvider).thenReturn(visualizationProvider);
 
@@ -187,6 +189,157 @@ void main() {
       ),
     );
   }
+
+  testWidgets(
+    'VisualizationSubscriptionController caches values and resets on config changes',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+      final controller = VisualizationSubscriptionController<int>(
+        visualizationProvider: setup.visualizationProvider,
+        config: VisualizationSubscriptionConfig.latestInt('a'),
+      );
+      var notificationCount = 0;
+
+      controller.addListener(() {
+        notificationCount++;
+      });
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [3],
+              sampleTimestamps: [240],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.value, 3);
+      expect(controller.engineTime, engineTimeForSampleTimestamp(240));
+      expect(notificationCount, 1);
+
+      controller.update(config: VisualizationSubscriptionConfig.latestInt('b'));
+
+      expect(controller.value, isNull);
+      expect(controller.engineTime, isNull);
+      expect(notificationCount, 2);
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [9],
+              sampleTimestamps: [480],
+            ),
+            testVisualizationItem(
+              id: 'b',
+              values: [4],
+              sampleTimestamps: [720],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.value, 4);
+      expect(controller.engineTime, engineTimeForSampleTimestamp(720));
+      expect(notificationCount, 3);
+
+      controller.dispose();
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'MultiVisualizationSubscriptionController reorders cached values positionally',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+      final controller = MultiVisualizationSubscriptionController<int>(
+        visualizationProvider: setup.visualizationProvider,
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('a'),
+          VisualizationSubscriptionConfig.latestInt('b'),
+        ],
+      );
+      var notificationCount = 0;
+
+      controller.addListener(() {
+        notificationCount++;
+      });
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [1],
+              sampleTimestamps: [120],
+            ),
+            testVisualizationItem(
+              id: 'b',
+              values: [2],
+              sampleTimestamps: [240],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.values, [1, 2]);
+      expect(controller.engineTimes, [
+        engineTimeForSampleTimestamp(120),
+        engineTimeForSampleTimestamp(240),
+      ]);
+      expect(notificationCount, 2);
+
+      controller.update(
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('b'),
+          VisualizationSubscriptionConfig.latestInt('a'),
+        ],
+      );
+
+      expect(controller.values, [0, 0]);
+      expect(controller.engineTimes, [null, null]);
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [4],
+              sampleTimestamps: [360],
+            ),
+            testVisualizationItem(
+              id: 'b',
+              values: [3],
+              sampleTimestamps: [300],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.values, [3, 4]);
+      expect(controller.engineTimes, [
+        engineTimeForSampleTimestamp(300),
+        engineTimeForSampleTimestamp(360),
+      ]);
+
+      controller.dispose();
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
 
   test('Unbuffered latest and max subscriptions behave correctly', () {
     final setup = createProjectWithVisualizationProvider();

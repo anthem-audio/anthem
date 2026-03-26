@@ -185,7 +185,7 @@ class _MeterWidgetTestScreenState extends State<MeterWidgetTestScreen>
           SizedBox(
             width: _meterWidth,
             height: 132,
-            child: Meter(
+            child: _PreviewMeter(
               db: db,
               timestamp: _engineTime,
               gradientStops: gradientStops,
@@ -222,7 +222,7 @@ class _MeterWidgetTestScreenState extends State<MeterWidgetTestScreen>
                   SizedBox(
                     width: _meterWidth,
                     height: 164,
-                    child: Meter(
+                    child: _PreviewMeter(
                       db: (left: _manualLeftDb, right: _manualRightDb),
                       timestamp: _engineTime,
                       gradientStops: _animatedGradientStops,
@@ -387,7 +387,7 @@ class _MeterWidgetTestScreenState extends State<MeterWidgetTestScreen>
                           SizedBox(
                             width: _meterWidth,
                             height: 164,
-                            child: Meter(
+                            child: _PreviewMeter(
                               db: animatedDb,
                               timestamp: _engineTime,
                               gradientStops: _animatedGradientStops,
@@ -527,6 +527,72 @@ class _MeterWidgetTestScreenState extends State<MeterWidgetTestScreen>
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PreviewMeter extends StatefulWidget {
+  final StereoMeterValues db;
+  final Duration timestamp;
+  final List<MeterGradientStop>? gradientStops;
+  final double peakFallRateNormalizedPerSecond;
+
+  const _PreviewMeter({
+    required this.db,
+    required this.timestamp,
+    this.gradientStops,
+    this.peakFallRateNormalizedPerSecond = 0.8,
+  });
+
+  @override
+  State<_PreviewMeter> createState() => _PreviewMeterState();
+}
+
+class _PreviewMeterState extends State<_PreviewMeter> {
+  late final MeterValueTracker _valueTracker;
+
+  @override
+  void initState() {
+    super.initState();
+    _valueTracker = MeterValueTracker(
+      dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
+      peakHoldDuration: const Duration(milliseconds: 750),
+      peakFallRateNormalizedPerSecond: widget.peakFallRateNormalizedPerSecond,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _PreviewMeter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _valueTracker.updateConfig(
+      dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
+      peakHoldDuration: const Duration(milliseconds: 750),
+      peakFallRateNormalizedPerSecond: widget.peakFallRateNormalizedPerSecond,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = _valueTracker.resolve(
+      db: widget.db,
+      timestamp: widget.timestamp,
+    );
+    final gradient = Meter.resolveGradient(
+      gradientStops:
+          widget.gradientStops ??
+          _MeterWidgetTestScreenState._animatedGradientStops,
+      dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
+    );
+
+    return CustomPaint(
+      painter: MeterPainter(
+        snapshot: snapshot,
+        gradientColors: gradient.colors,
+        gradientStopPositions: gradient.stops,
+        backgroundTrackColor: AnthemTheme.panel.accent,
+        peakLineThickness: 1.0,
+      ),
+      child: const SizedBox.expand(),
     );
   }
 }

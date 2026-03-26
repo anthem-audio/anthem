@@ -21,13 +21,27 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
 
 typedef StereoMeterValues = ({double left, double right});
+typedef StereoMeterConfigs = ({
+  VisualizationSubscriptionConfig<double> left,
+  VisualizationSubscriptionConfig<double> right,
+});
 typedef MeterGradientStop = ({double db, Color color});
 typedef MeterDbToNormalizedPosition = double Function(double db);
+
+final List<MeterGradientStop> _defaultMeterGradientStops = <MeterGradientStop>[
+  (db: double.negativeInfinity, color: AnthemTheme.meter.low),
+  (db: 0.0, color: AnthemTheme.meter.high),
+  (db: 0.0, color: AnthemTheme.meter.clipping),
+  (db: 12.0, color: AnthemTheme.meter.clipping),
+];
 
 double defaultMeterDbToNormalizedPosition(double db) {
   // Visualization updates travel over JSON, which cannot represent -inf. The
@@ -39,9 +53,44 @@ double defaultMeterDbToNormalizedPosition(double db) {
   return gainDbToParameterValue(db);
 }
 
+/// Painter-ready meter state derived from the latest stereo visualization
+/// values and peak-hold tracking.
+class MeterSnapshot {
+  /// The normalized fill height for each stereo channel.
+  final StereoMeterValues currentNormalized;
+
+  /// The normalized peak indicator height for each stereo channel.
+  final StereoMeterValues peakNormalized;
+
+  const MeterSnapshot({
+    required this.currentNormalized,
+    required this.peakNormalized,
+  });
+
+  /// A silent snapshot used before the meter has received any visualization
+  /// data.
+  static final empty = MeterSnapshot(
+    currentNormalized: (left: 0.0, right: 0.0),
+    peakNormalized: (left: 0.0, right: 0.0),
+  );
+
+  @override
+  operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+
+    return other is MeterSnapshot &&
+        other.currentNormalized == currentNormalized &&
+        other.peakNormalized == peakNormalized;
+  }
+
+  @override
+  int get hashCode => Object.hash(currentNormalized, peakNormalized);
+}
+
 class Meter extends StatefulWidget {
-  final StereoMeterValues db;
-  final Duration timestamp;
+  final StereoMeterConfigs configs;
   final List<MeterGradientStop>? gradientStops;
   final MeterDbToNormalizedPosition dbToNormalizedPosition;
   final bool noBackground;
@@ -51,8 +100,7 @@ class Meter extends StatefulWidget {
 
   const Meter({
     super.key,
-    required this.db,
-    required this.timestamp,
+    required this.configs,
     this.gradientStops,
     this.dbToNormalizedPosition = defaultMeterDbToNormalizedPosition,
     this.noBackground = false,
@@ -125,133 +173,52 @@ class Meter extends StatefulWidget {
 }
 
 class _MeterState extends State<Meter> {
-  Duration? _lastTimestamp;
-  StereoMeterValues? _lastDb;
-  StereoMeterValues _peakNormalizedHeights = (left: 0.0, right: 0.0);
-  ({Duration left, Duration right}) _peakTimestamps = (
-    left: Duration.zero,
-    right: Duration.zero,
-  );
+  late final _MeterController _controller;
 
-  final List<MeterGradientStop> _defaultGradientStops = <MeterGradientStop>[
-    (db: double.negativeInfinity, color: AnthemTheme.meter.low),
-    (db: 0.0, color: AnthemTheme.meter.high),
-    (db: 0.0, color: AnthemTheme.meter.clipping),
-    (db: 12.0, color: AnthemTheme.meter.clipping),
-  ];
+  @override
+  void initState() {
+    super.initState();
 
-  _ResolvedMeterValues _resolveMeterValues() {
-    final currentNormalizedHeights = (
-      left: Meter.dbToNormalizedHeight(
-        widget.db.left,
-        widget.dbToNormalizedPosition,
-      ),
-      right: Meter.dbToNormalizedHeight(
-        widget.db.right,
-        widget.dbToNormalizedPosition,
-      ),
-    );
-
-    if (_lastTimestamp == null ||
-        _lastDb == null ||
-        widget.timestamp < _lastTimestamp!) {
-      _peakNormalizedHeights = currentNormalizedHeights;
-      _peakTimestamps = (left: widget.timestamp, right: widget.timestamp);
-    } else if (_lastTimestamp != widget.timestamp || _lastDb != widget.db) {
-      final leftPeakState = _resolvePeakChannelState(
-        currentNormalizedHeight: currentNormalizedHeights.left,
-        previousPeakNormalizedHeight: _peakNormalizedHeights.left,
-        previousPeakTimestamp: _peakTimestamps.left,
-        previousTimestamp: _lastTimestamp!,
-        currentTimestamp: widget.timestamp,
-      );
-      final rightPeakState = _resolvePeakChannelState(
-        currentNormalizedHeight: currentNormalizedHeights.right,
-        previousPeakNormalizedHeight: _peakNormalizedHeights.right,
-        previousPeakTimestamp: _peakTimestamps.right,
-        previousTimestamp: _lastTimestamp!,
-        currentTimestamp: widget.timestamp,
-      );
-
-      _peakNormalizedHeights = (
-        left: leftPeakState.normalizedHeight,
-        right: rightPeakState.normalizedHeight,
-      );
-      _peakTimestamps = (
-        left: leftPeakState.peakTimestamp,
-        right: rightPeakState.peakTimestamp,
-      );
-    } else {
-      _peakNormalizedHeights = (
-        left: math.max(
-          _peakNormalizedHeights.left,
-          currentNormalizedHeights.left,
-        ),
-        right: math.max(
-          _peakNormalizedHeights.right,
-          currentNormalizedHeights.right,
-        ),
-      );
-    }
-
-    _lastTimestamp = widget.timestamp;
-    _lastDb = widget.db;
-
-    return _ResolvedMeterValues(
-      currentNormalized: currentNormalizedHeights,
-      peakNormalized: _peakNormalizedHeights,
-    );
-  }
-
-  _PeakChannelState _resolvePeakChannelState({
-    required double currentNormalizedHeight,
-    required double previousPeakNormalizedHeight,
-    required Duration previousPeakTimestamp,
-    required Duration previousTimestamp,
-    required Duration currentTimestamp,
-  }) {
-    if (currentNormalizedHeight > previousPeakNormalizedHeight) {
-      return _PeakChannelState(
-        normalizedHeight: currentNormalizedHeight,
-        peakTimestamp: currentTimestamp,
-      );
-    }
-
-    final holdEndTimestamp = previousPeakTimestamp + widget.peakHoldDuration;
-    if (currentTimestamp <= holdEndTimestamp) {
-      return _PeakChannelState(
-        normalizedHeight: previousPeakNormalizedHeight,
-        peakTimestamp: previousPeakTimestamp,
-      );
-    }
-
-    final fallStartTimestamp = previousTimestamp > holdEndTimestamp
-        ? previousTimestamp
-        : holdEndTimestamp;
-
-    return _PeakChannelState(
-      normalizedHeight: Meter.decayPeakNormalizedHeight(
-        currentNormalizedHeight: currentNormalizedHeight,
-        previousPeakNormalizedHeight: previousPeakNormalizedHeight,
-        elapsed: currentTimestamp - fallStartTimestamp,
-        fallRateNormalizedPerSecond: widget.peakFallRateNormalizedPerSecond,
-      ),
-      peakTimestamp: previousPeakTimestamp,
+    _controller = _MeterController(
+      visualizationProvider: Provider.of<ProjectModel>(
+        context,
+        listen: false,
+      ).visualizationProvider,
+      configs: widget.configs,
+      dbToNormalizedPosition: widget.dbToNormalizedPosition,
+      peakHoldDuration: widget.peakHoldDuration,
+      peakFallRateNormalizedPerSecond: widget.peakFallRateNormalizedPerSecond,
     );
   }
 
   @override
+  void didUpdateWidget(covariant Meter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    _controller.update(
+      configs: widget.configs,
+      dbToNormalizedPosition: widget.dbToNormalizedPosition,
+      peakHoldDuration: widget.peakHoldDuration,
+      peakFallRateNormalizedPerSecond: widget.peakFallRateNormalizedPerSecond,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final meterValues = _resolveMeterValues();
     final gradient = Meter.resolveGradient(
-      gradientStops: widget.gradientStops ?? _defaultGradientStops,
+      gradientStops: widget.gradientStops ?? _defaultMeterGradientStops,
       dbToNormalizedPosition: widget.dbToNormalizedPosition,
     );
 
     return CustomPaint(
-      painter: MeterPainter(
-        value: meterValues.currentNormalized,
-        peak: meterValues.peakNormalized,
+      painter: MeterPainter.fromListenable(
+        snapshotListenable: _controller,
         gradientColors: gradient.colors,
         gradientStopPositions: gradient.stops,
         backgroundTrackColor: AnthemTheme.panel.accent,
@@ -264,11 +231,8 @@ class _MeterState extends State<Meter> {
 }
 
 class MeterPainter extends CustomPainter {
-  /// The current normalized value for each channel.
-  final StereoMeterValues value;
-
-  /// The normalized peak value for each channel.
-  final StereoMeterValues peak;
+  final MeterSnapshot? _snapshot;
+  final ValueListenable<MeterSnapshot>? _snapshotListenable;
 
   final List<Color> gradientColors;
   final List<double> gradientStopPositions;
@@ -276,18 +240,31 @@ class MeterPainter extends CustomPainter {
   final bool noBackground;
   final double peakLineThickness;
 
-  const MeterPainter({
-    required this.value,
-    required this.peak,
+  MeterPainter({
+    required MeterSnapshot snapshot,
     required this.gradientColors,
     required this.gradientStopPositions,
     required this.backgroundTrackColor,
     this.noBackground = false,
     this.peakLineThickness = 1.0,
-  });
+  }) : _snapshot = snapshot,
+       _snapshotListenable = null;
+
+  MeterPainter.fromListenable({
+    required ValueListenable<MeterSnapshot> snapshotListenable,
+    required this.gradientColors,
+    required this.gradientStopPositions,
+    required this.backgroundTrackColor,
+    this.noBackground = false,
+    this.peakLineThickness = 1.0,
+  }) : _snapshot = null,
+       _snapshotListenable = snapshotListenable,
+       super(repaint: snapshotListenable);
 
   @override
   void paint(Canvas canvas, Size size) {
+    final snapshot = _snapshotListenable?.value ?? _snapshot!;
+
     if (size.width <= 0 || size.height <= 0) {
       return;
     }
@@ -306,8 +283,18 @@ class MeterPainter extends CustomPainter {
       size.height,
     );
 
-    _paintChannel(canvas, leftRect, value.left, peak.left);
-    _paintChannel(canvas, rightRect, value.right, peak.right);
+    _paintChannel(
+      canvas,
+      leftRect,
+      snapshot.currentNormalized.left,
+      snapshot.peakNormalized.left,
+    );
+    _paintChannel(
+      canvas,
+      rightRect,
+      snapshot.currentNormalized.right,
+      snapshot.peakNormalized.right,
+    );
   }
 
   void _paintChannel(
@@ -375,8 +362,8 @@ class MeterPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(MeterPainter oldDelegate) {
-    return oldDelegate.value != value ||
-        oldDelegate.peak != peak ||
+    return oldDelegate._snapshot != _snapshot ||
+        oldDelegate._snapshotListenable != _snapshotListenable ||
         !listEquals(oldDelegate.gradientColors, gradientColors) ||
         !listEquals(oldDelegate.gradientStopPositions, gradientStopPositions) ||
         oldDelegate.backgroundTrackColor != backgroundTrackColor ||
@@ -388,14 +375,257 @@ class MeterPainter extends CustomPainter {
   bool shouldRebuildSemantics(MeterPainter oldDelegate) => false;
 }
 
-class _ResolvedMeterValues {
-  final StereoMeterValues currentNormalized;
-  final StereoMeterValues peakNormalized;
+class MeterValueTracker {
+  MeterDbToNormalizedPosition _dbToNormalizedPosition;
+  Duration _peakHoldDuration;
+  double _peakFallRateNormalizedPerSecond;
 
-  const _ResolvedMeterValues({
-    required this.currentNormalized,
-    required this.peakNormalized,
-  });
+  Duration? _lastTimestamp;
+  StereoMeterValues? _lastDb;
+  StereoMeterValues _peakNormalizedHeights = (left: 0.0, right: 0.0);
+  ({Duration left, Duration right}) _peakTimestamps = (
+    left: Duration.zero,
+    right: Duration.zero,
+  );
+
+  MeterValueTracker({
+    required MeterDbToNormalizedPosition dbToNormalizedPosition,
+    required Duration peakHoldDuration,
+    required double peakFallRateNormalizedPerSecond,
+  }) : _dbToNormalizedPosition = dbToNormalizedPosition,
+       _peakHoldDuration = peakHoldDuration,
+       _peakFallRateNormalizedPerSecond = peakFallRateNormalizedPerSecond;
+
+  void updateConfig({
+    required MeterDbToNormalizedPosition dbToNormalizedPosition,
+    required Duration peakHoldDuration,
+    required double peakFallRateNormalizedPerSecond,
+  }) {
+    _dbToNormalizedPosition = dbToNormalizedPosition;
+    _peakHoldDuration = peakHoldDuration;
+    _peakFallRateNormalizedPerSecond = peakFallRateNormalizedPerSecond;
+  }
+
+  MeterSnapshot resolve({
+    required StereoMeterValues db,
+    required Duration timestamp,
+  }) {
+    final currentNormalizedHeights = (
+      left: Meter.dbToNormalizedHeight(db.left, _dbToNormalizedPosition),
+      right: Meter.dbToNormalizedHeight(db.right, _dbToNormalizedPosition),
+    );
+
+    if (_lastTimestamp == null ||
+        _lastDb == null ||
+        timestamp < _lastTimestamp!) {
+      _peakNormalizedHeights = currentNormalizedHeights;
+      _peakTimestamps = (left: timestamp, right: timestamp);
+    } else if (_lastTimestamp != timestamp || _lastDb != db) {
+      final leftPeakState = _resolvePeakChannelState(
+        currentNormalizedHeight: currentNormalizedHeights.left,
+        previousPeakNormalizedHeight: _peakNormalizedHeights.left,
+        previousPeakTimestamp: _peakTimestamps.left,
+        previousTimestamp: _lastTimestamp!,
+        currentTimestamp: timestamp,
+      );
+      final rightPeakState = _resolvePeakChannelState(
+        currentNormalizedHeight: currentNormalizedHeights.right,
+        previousPeakNormalizedHeight: _peakNormalizedHeights.right,
+        previousPeakTimestamp: _peakTimestamps.right,
+        previousTimestamp: _lastTimestamp!,
+        currentTimestamp: timestamp,
+      );
+
+      _peakNormalizedHeights = (
+        left: leftPeakState.normalizedHeight,
+        right: rightPeakState.normalizedHeight,
+      );
+      _peakTimestamps = (
+        left: leftPeakState.peakTimestamp,
+        right: rightPeakState.peakTimestamp,
+      );
+    } else {
+      _peakNormalizedHeights = (
+        left: math.max(
+          _peakNormalizedHeights.left,
+          currentNormalizedHeights.left,
+        ),
+        right: math.max(
+          _peakNormalizedHeights.right,
+          currentNormalizedHeights.right,
+        ),
+      );
+    }
+
+    _lastTimestamp = timestamp;
+    _lastDb = db;
+
+    return MeterSnapshot(
+      currentNormalized: currentNormalizedHeights,
+      peakNormalized: _peakNormalizedHeights,
+    );
+  }
+
+  _PeakChannelState _resolvePeakChannelState({
+    required double currentNormalizedHeight,
+    required double previousPeakNormalizedHeight,
+    required Duration previousPeakTimestamp,
+    required Duration previousTimestamp,
+    required Duration currentTimestamp,
+  }) {
+    if (currentNormalizedHeight > previousPeakNormalizedHeight) {
+      return _PeakChannelState(
+        normalizedHeight: currentNormalizedHeight,
+        peakTimestamp: currentTimestamp,
+      );
+    }
+
+    final holdEndTimestamp = previousPeakTimestamp + _peakHoldDuration;
+    if (currentTimestamp <= holdEndTimestamp) {
+      return _PeakChannelState(
+        normalizedHeight: previousPeakNormalizedHeight,
+        peakTimestamp: previousPeakTimestamp,
+      );
+    }
+
+    final fallStartTimestamp = previousTimestamp > holdEndTimestamp
+        ? previousTimestamp
+        : holdEndTimestamp;
+
+    return _PeakChannelState(
+      normalizedHeight: Meter.decayPeakNormalizedHeight(
+        currentNormalizedHeight: currentNormalizedHeight,
+        previousPeakNormalizedHeight: previousPeakNormalizedHeight,
+        elapsed: currentTimestamp - fallStartTimestamp,
+        fallRateNormalizedPerSecond: _peakFallRateNormalizedPerSecond,
+      ),
+      peakTimestamp: previousPeakTimestamp,
+    );
+  }
+}
+
+class _MeterController extends ChangeNotifier
+    implements ValueListenable<MeterSnapshot> {
+  final MultiVisualizationSubscriptionController<double>
+  _visualizationController;
+  final MeterValueTracker _valueTracker;
+
+  MeterSnapshot _snapshot = MeterSnapshot.empty;
+
+  _MeterController({
+    required VisualizationProvider visualizationProvider,
+    required StereoMeterConfigs configs,
+    required MeterDbToNormalizedPosition dbToNormalizedPosition,
+    required Duration peakHoldDuration,
+    required double peakFallRateNormalizedPerSecond,
+  }) : _visualizationController =
+           MultiVisualizationSubscriptionController<double>(
+             visualizationProvider: visualizationProvider,
+             configs: _configsToList(configs),
+           ),
+       _valueTracker = MeterValueTracker(
+         dbToNormalizedPosition: dbToNormalizedPosition,
+         peakHoldDuration: peakHoldDuration,
+         peakFallRateNormalizedPerSecond: peakFallRateNormalizedPerSecond,
+       ) {
+    _visualizationController.addListener(_handleVisualizationControllerChanged);
+    _syncSnapshot(notify: false);
+  }
+
+  @override
+  MeterSnapshot get value => _snapshot;
+
+  void update({
+    required StereoMeterConfigs configs,
+    required MeterDbToNormalizedPosition dbToNormalizedPosition,
+    required Duration peakHoldDuration,
+    required double peakFallRateNormalizedPerSecond,
+  }) {
+    final previousSnapshot = _snapshot;
+
+    _valueTracker.updateConfig(
+      dbToNormalizedPosition: dbToNormalizedPosition,
+      peakHoldDuration: peakHoldDuration,
+      peakFallRateNormalizedPerSecond: peakFallRateNormalizedPerSecond,
+    );
+
+    _visualizationController.removeListener(
+      _handleVisualizationControllerChanged,
+    );
+    _visualizationController.update(configs: _configsToList(configs));
+    _visualizationController.addListener(_handleVisualizationControllerChanged);
+
+    _syncSnapshot(notify: false);
+
+    if (_snapshot != previousSnapshot) {
+      notifyListeners();
+    }
+  }
+
+  void _handleVisualizationControllerChanged() {
+    _syncSnapshot();
+  }
+
+  static List<VisualizationSubscriptionConfig<double>> _configsToList(
+    StereoMeterConfigs configs,
+  ) {
+    return <VisualizationSubscriptionConfig<double>>[
+      configs.left,
+      configs.right,
+    ];
+  }
+
+  ({StereoMeterValues db, Duration timestamp}) _resolveMeterInput() {
+    final values = _visualizationController.values;
+    final engineTimes = _visualizationController.engineTimes;
+    final hasStereoValues = values.length >= 2;
+    final hasFullTimestampSet =
+        engineTimes.length >= 2 &&
+        engineTimes[0] != null &&
+        engineTimes[1] != null;
+
+    if (!hasStereoValues || !hasFullTimestampSet) {
+      return (
+        db: (left: double.negativeInfinity, right: double.negativeInfinity),
+        timestamp: Duration.zero,
+      );
+    }
+
+    final leftTime = engineTimes[0]!;
+    final rightTime = engineTimes[1]!;
+
+    return (
+      db: (left: values[0], right: values[1]),
+      timestamp: leftTime.compareTo(rightTime) >= 0 ? leftTime : rightTime,
+    );
+  }
+
+  void _syncSnapshot({bool notify = true}) {
+    final input = _resolveMeterInput();
+    final nextSnapshot = _valueTracker.resolve(
+      db: input.db,
+      timestamp: input.timestamp,
+    );
+
+    if (nextSnapshot == _snapshot) {
+      return;
+    }
+
+    _snapshot = nextSnapshot;
+
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _visualizationController.removeListener(
+      _handleVisualizationControllerChanged,
+    );
+    _visualizationController.dispose();
+    super.dispose();
+  }
 }
 
 class _PeakChannelState {

@@ -221,7 +221,7 @@ abstract class VisualizationSubscription<T>
 
   void _markConsumedEngineTime(Duration engineTime) {
     _lastConsumedEngineTime = engineTime;
-    _lastConsumedWallTime = _parent._wallClockNow();
+    _lastConsumedWallTime = _parent.clock.now();
   }
 
   void _clearConsumedEngineTimeAnchor() {
@@ -245,7 +245,7 @@ abstract class VisualizationSubscription<T>
       return anchorEngineTime;
     }
 
-    final elapsed = _parent._wallClockNow() - anchorWallTime;
+    final elapsed = _parent.clock.now() - anchorWallTime;
     return anchorEngineTime + _clampToZero(elapsed);
   }
 
@@ -321,7 +321,7 @@ abstract class VisualizationSubscription<T>
   /// expected to change to a specific known value, and where an immediate
   /// update is desired (e.g. when it would prevent a flicker in the UI).
   void setOverride({required T value, required Duration duration}) {
-    _overrideSetTime = _parent._wallClockNow();
+    _overrideSetTime = _parent.clock.now();
     _overrideDuration = duration;
     _overrideValue = value;
     _isUpdateStale = true;
@@ -450,7 +450,7 @@ abstract class VisualizationSubscription<T>
 
     final timeSinceArrival = _lastArrivalWallTime == null
         ? Duration.zero
-        : _parent._wallClockNow() - _lastArrivalWallTime!;
+        : _parent.clock.now() - _lastArrivalWallTime!;
     final hasTimedOut = timeSinceArrival >= _stallTimeout();
 
     if (_bufferState == _VisualizationBufferState.buffering) {
@@ -527,7 +527,7 @@ abstract class VisualizationSubscription<T>
       return false;
     }
 
-    final elapsed = _parent._wallClockNow() - _overrideSetTime!;
+    final elapsed = _parent.clock.now() - _overrideSetTime!;
     if (elapsed < _overrideDuration!) {
       return false;
     }
@@ -590,7 +590,7 @@ abstract class VisualizationSubscription<T>
     }
 
     _sampleBuffer?.add(value, engineTime);
-    _lastArrivalWallTime = _parent._wallClockNow();
+    _lastArrivalWallTime = _parent.clock.now();
 
     if (_bufferState == _VisualizationBufferState.stalled) {
       _setBufferState(_VisualizationBufferState.buffering);
