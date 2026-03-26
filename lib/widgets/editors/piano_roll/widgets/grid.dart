@@ -56,8 +56,8 @@ class PianoRollGrid extends StatelessWidget {
           return AnimatedBuilder(
             animation: timeViewAnimationController,
             builder: (context, child) {
-              return CustomPaintObserver(
-                painterBuilder: () => PianoRollBackgroundPainter(
+              return CustomPaint(
+                painter: PianoRollBackgroundPainter(
                   project: project,
                   viewModel: viewModel,
                   keyValueAtTop: keyValueAtTopAnimation.value,
@@ -80,7 +80,7 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
     required this.keyValueAtTop,
     required this.timeViewStart,
     required this.timeViewEnd,
-  });
+  }) : super(debugName: 'PianoRollBackgroundPainter');
 
   final ProjectModel project;
   final PianoRollViewModel viewModel;
@@ -181,7 +181,6 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
         viewModel != oldDelegate.viewModel ||
         keyValueAtTop != oldDelegate.keyValueAtTop ||
         timeViewStart != oldDelegate.timeViewStart ||
-        timeViewEnd != oldDelegate.timeViewEnd ||
-        super.shouldRepaint(oldDelegate);
+        timeViewEnd != oldDelegate.timeViewEnd;
   }
 }

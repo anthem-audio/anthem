@@ -60,8 +60,8 @@ class PianoRollContentRenderer extends StatelessWidget {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    return CustomPaintObserver(
-      painterBuilder: () => PianoRollPainter(
+    return CustomPaint(
+      painter: PianoRollPainter(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
         keyValueAtTop: keyValueAtTop,
@@ -91,7 +91,7 @@ class PianoRollPainter extends CustomPainterObserver {
     required this.project,
     required this.devicePixelRatio,
     required this.shouldGreyOut,
-  });
+  }) : super(debugName: 'PianoRollPainter');
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -289,6 +289,6 @@ class PianoRollPainter extends CustomPainterObserver {
       keyValueAtTop != oldDelegate.keyValueAtTop ||
       viewModel != oldDelegate.viewModel ||
       project != oldDelegate.project ||
-      shouldGreyOut != oldDelegate.shouldGreyOut ||
-      super.shouldRepaint(oldDelegate);
+      devicePixelRatio != oldDelegate.devicePixelRatio ||
+      shouldGreyOut != oldDelegate.shouldGreyOut;
 }

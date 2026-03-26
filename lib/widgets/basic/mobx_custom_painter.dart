@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,131 +17,125 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
+// ignore: implementation_imports
+import 'package:mobx/src/core.dart' show ReactionImpl;
 
-/// A wrapper for [CustomPaint] that interfacees with [CustomPainterObserver].
-class CustomPaintObserver extends StatefulWidget {
-  final CustomPainterObserver Function()? painterBuilder;
-  final CustomPainterObserver Function()? foregroundPainterBuilder;
-  final Size size;
-  final bool isComplex;
-  final bool willChange;
-  final Widget? child;
-
-  const CustomPaintObserver({
-    super.key,
-    this.painterBuilder,
-    this.foregroundPainterBuilder,
-    this.size = Size.zero,
-    this.isComplex = false,
-    this.willChange = false,
-    this.child,
-  });
-
-  @override
-  State<CustomPaintObserver> createState() => _CustomPaintObserverState();
-}
-
-class _CustomPaintObserverState extends State<CustomPaintObserver> {
-  _SharedState? painterSharedState;
-  _SharedState? foregroundPainterSharedState;
-
-  @override
-  void initState() {
-    super.initState();
-
-    if (widget.painterBuilder != null) {
-      painterSharedState = _SharedState(invalidatePainter);
-    }
-
-    if (widget.foregroundPainterBuilder != null) {
-      foregroundPainterSharedState = _SharedState(invalidateForegroundPainter);
-    }
-  }
-
-  @override
-  void dispose() {
-    painterSharedState?.cleanup?.call();
-    foregroundPainterSharedState?.cleanup?.call();
-    super.dispose();
-  }
-
-  void invalidatePainter() {
-    setState(() {
-      painterSharedState!.isDirty = true;
-    });
-  }
-
-  void invalidateForegroundPainter() {
-    setState(() {
-      foregroundPainterSharedState!.isDirty = true;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    CustomPainterObserver? foregroundPainter;
-
-    if (widget.foregroundPainterBuilder != null) {
-      foregroundPainter = widget.foregroundPainterBuilder!.call();
-      foregroundPainter._sharedState = foregroundPainterSharedState;
-    }
-
-    CustomPainterObserver? painter;
-
-    if (widget.painterBuilder != null) {
-      painter = widget.painterBuilder!.call();
-      painter._sharedState = painterSharedState;
-    }
-
-    return CustomPaint(
-      foregroundPainter: foregroundPainter,
-      painter: painter,
-      size: widget.size,
-      isComplex: widget.isComplex,
-      willChange: widget.willChange,
-      child: widget.child,
-    );
-  }
-}
-
-/// A [CustomPainter] that will re-render when any observables accessed by
-/// [observablePaint] are changed. Must be used with [CustomPaintObserver].
+/// A [CustomPainter] that repaints when observables accessed by
+/// [observablePaint] change.
 abstract class CustomPainterObserver extends CustomPainter {
-  _SharedState? _sharedState;
+  CustomPainterObserver({String? debugName})
+    : _tracker = _MobxPaintTracker(name: debugName ?? 'CustomPainterObserver');
+
+  final _MobxPaintTracker _tracker;
 
   void observablePaint(Canvas canvas, Size size);
 
-  // Should not be overridden.
+  @override
+  void addListener(VoidCallback listener) {
+    _tracker.addListener(listener);
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    _tracker.removeListener(listener);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    // Very awful. A ReactionImpl didn't work so here we are.
-    _sharedState!.first = true;
-    _sharedState!.cleanup = autorun((a) {
-      if (!_sharedState!.first) {
-        _sharedState!.invalidate();
-        _sharedState!.cleanup!.call();
-        return;
-      }
-      _sharedState!.first = false;
+    _tracker.track(() {
       observablePaint(canvas, size);
     });
-    _sharedState!.isDirty = false;
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return _sharedState!.isDirty;
+    return false;
   }
 }
 
-class _SharedState {
-  _SharedState(this.invalidate);
+class _MobxPaintTracker extends ChangeNotifier {
+  _MobxPaintTracker({required this.name});
 
-  Function invalidate;
-  bool first = true;
-  ReactionDisposer? cleanup;
+  final String name;
+  ReactionImpl? _reaction;
+  int _listenerCount = 0;
+  bool _isScheduled = false;
 
-  var isDirty = false;
+  void track(VoidCallback paint) {
+    if (_listenerCount == 0) {
+      paint();
+      return;
+    }
+
+    (_reaction ??= ReactionImpl(
+      mainContext,
+      _invalidate,
+      name: name,
+      onError: _onError,
+    )).track(paint);
+  }
+
+  @override
+  void addListener(VoidCallback listener) {
+    _listenerCount++;
+    super.addListener(listener);
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    if (_listenerCount > 0) {
+      _listenerCount--;
+    }
+
+    super.removeListener(listener);
+
+    if (_listenerCount == 0) {
+      _reaction?.dispose();
+      _reaction = null;
+      _isScheduled = false;
+    }
+  }
+
+  void _invalidate() {
+    _notifyListenersImmediatelyOrDelayed();
+  }
+
+  void _notifyListenersImmediatelyOrDelayed() async {
+    if (_isScheduled || _listenerCount == 0) {
+      return;
+    }
+
+    _isScheduled = true;
+
+    final scheduler = SchedulerBinding.instance;
+    final shouldWait =
+        scheduler.schedulerPhase != SchedulerPhase.idle &&
+        scheduler.schedulerPhase != SchedulerPhase.postFrameCallbacks;
+
+    if (shouldWait) {
+      await scheduler.endOfFrame;
+    }
+
+    _isScheduled = false;
+
+    if (_listenerCount == 0) {
+      return;
+    }
+
+    notifyListeners();
+  }
+
+  void _onError(Object error, Reaction reaction) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        library: 'anthem',
+        exception: error,
+        stack: error is Error ? error.stackTrace : null,
+        context: ErrorDescription('From reaction of $name.'),
+      ),
+    );
+  }
 }

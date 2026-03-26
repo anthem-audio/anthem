@@ -213,8 +213,8 @@ class _AttributeRenderArea extends StatelessWidget {
               animation: timeViewAnimationController,
               builder: (context, child) {
                 return ClipRect(
-                  child: CustomPaintObserver(
-                    painterBuilder: () => _PianoRollAttributePainter(
+                  child: CustomPaint(
+                    painter: _PianoRollAttributePainter(
                       viewModel: viewModel,
                       project: project,
                       timeViewStart: timeViewStartAnimation.value,
@@ -242,7 +242,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
     required this.project,
     required this.timeViewStart,
     required this.timeViewEnd,
-  });
+  }) : super(debugName: '_PianoRollAttributePainter');
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -389,5 +389,13 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
         }
       },
     );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PianoRollAttributePainter oldDelegate) {
+    return viewModel != oldDelegate.viewModel ||
+        project != oldDelegate.project ||
+        timeViewStart != oldDelegate.timeViewStart ||
+        timeViewEnd != oldDelegate.timeViewEnd;
   }
 }

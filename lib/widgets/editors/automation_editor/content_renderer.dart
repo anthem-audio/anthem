@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -73,8 +73,8 @@ class _AutomationEditorContentRendererState
       }
     });
 
-    return CustomPaintObserver(
-      painterBuilder: () => AutomationEditorPainter(
+    return CustomPaint(
+      painter: AutomationEditorPainter(
         timeViewStart: widget.timeViewStart,
         timeViewEnd: widget.timeViewEnd,
         ticksPerQuarter: project.sequence.ticksPerQuarter,
@@ -110,7 +110,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
     required this.devicePixelRatio,
     required this.visiblePoints,
     required this.viewModel,
-  });
+  }) : super(debugName: 'AutomationEditorPainter');
 
   ui.Image? imageCache;
 
@@ -299,8 +299,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       pattern != oldDelegate.pattern ||
       devicePixelRatio != oldDelegate.devicePixelRatio ||
       visiblePoints != oldDelegate.visiblePoints ||
-      viewModel != oldDelegate.viewModel ||
-      super.shouldRepaint(oldDelegate);
+      viewModel != oldDelegate.viewModel;
 }
 
 double getRadiusMultiplier({

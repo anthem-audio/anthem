@@ -163,8 +163,8 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 
     if (arrangement == null) return const SizedBox();
 
-    return CustomPaintObserver(
-      painterBuilder: () => ArrangerContentPainter(
+    return CustomPaint(
+      painter: ArrangerContentPainter(
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
         verticalScrollPosition: verticalScrollPosition,
@@ -195,7 +195,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
     required this.arrangement,
     required this.viewModel,
     required this.devicePixelRatio,
-  });
+  }) : super(debugName: 'ArrangerContentPainter');
 
   @override
   bool shouldRepaint(ArrangerContentPainter oldDelegate) {
@@ -205,8 +205,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
         project != oldDelegate.project ||
         arrangement != oldDelegate.arrangement ||
         viewModel != oldDelegate.viewModel ||
-        devicePixelRatio != oldDelegate.devicePixelRatio ||
-        super.shouldRepaint(oldDelegate);
+        devicePixelRatio != oldDelegate.devicePixelRatio;
   }
 
   @override

@@ -29,7 +29,6 @@ import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
@@ -696,8 +695,8 @@ class _ArrangerCanvas extends StatelessWidget {
                 return AnimatedBuilder(
                   animation: timeViewAnimationController,
                   builder: (context, child) {
-                    return CustomPaintObserver(
-                      painterBuilder: () => ArrangerBackgroundPainter(
+                    return CustomPaint(
+                      painter: ArrangerBackgroundPainter(
                         activeArrangement: project
                             .sequence
                             .arrangements[project.sequence.activeArrangementID],

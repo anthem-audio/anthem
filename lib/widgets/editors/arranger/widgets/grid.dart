@@ -39,7 +39,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     required this.verticalScrollPosition,
     required this.timeViewStart,
     required this.timeViewEnd,
-  });
+  }) : super(debugName: 'ArrangerBackgroundPainter');
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -92,6 +92,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
   bool shouldRepaint(covariant ArrangerBackgroundPainter oldDelegate) {
     return oldDelegate.activeArrangement != activeArrangement ||
         oldDelegate.project != project ||
-        super.shouldRepaint(oldDelegate);
+        oldDelegate.timeViewStart != timeViewStart ||
+        oldDelegate.timeViewEnd != timeViewEnd;
   }
 }
