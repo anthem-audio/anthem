@@ -29,6 +29,7 @@ import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 
@@ -76,10 +77,15 @@ void main() {
       required double keyValueAtTop,
       Size size = const Size(100, 160),
     }) {
+      final timeViewStartAnimation = AlwaysStoppedAnimation(timeViewStart);
+      final timeViewEndAnimation = AlwaysStoppedAnimation(timeViewEnd);
+      final keyValueAtTopAnimation = AlwaysStoppedAnimation(keyValueAtTop);
+
       final painter = PianoRollPainter(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        keyValueAtTop: keyValueAtTop,
+        repaint: ValueNotifier(null),
+        timeViewStartAnimation: timeViewStartAnimation,
+        timeViewEndAnimation: timeViewEndAnimation,
+        keyValueAtTopAnimation: keyValueAtTopAnimation,
         viewModel: viewModel,
         project: project,
         devicePixelRatio: 1,

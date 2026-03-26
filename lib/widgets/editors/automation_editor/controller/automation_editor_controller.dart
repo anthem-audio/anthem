@@ -118,11 +118,14 @@ class _AutomationEditorController {
 
       // Remove any points in the animation list that aren't in the current
       // automation lane.
-      for (final animationKey in viewModel.pointAnimationTracker.values.keys) {
+      for (final animationKey
+          in viewModel.pointAnimationTracker.values.keys.toList()) {
         if (!visitedPointIds.contains(animationKey.id)) {
           viewModel.pointAnimationTracker.values.remove(animationKey);
         }
       }
+
+      viewModel.pointAnimationTracker.markNeedsRepaint();
     });
   }
 

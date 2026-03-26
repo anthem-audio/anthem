@@ -353,21 +353,15 @@ class _PianoRollContentState extends State<_PianoRollContent>
           keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
         );
 
-        final notes = AnimatedBuilder(
-          animation: timeViewAnimationHelper!.animationController,
-          builder: (context, child) {
-            return AnimatedBuilder(
-              animation: keyValueAtTopAnimationHelper!.animationController,
-              builder: (context, child) {
-                return PianoRollContentRenderer(
-                  timeViewStart: timeViewStartAnimItem.animation.value,
-                  timeViewEnd: timeViewEndAnimItem.animation.value,
-                  keyValueAtTop: keyValueAtTopAnimItem.animation.value,
-                  shouldGreyOut: shouldGreyOut,
-                );
-              },
-            );
-          },
+        final notes = PianoRollContentRenderer(
+          timeViewAnimationController:
+              timeViewAnimationHelper!.animationController,
+          keyValueAtTopAnimationController:
+              keyValueAtTopAnimationHelper!.animationController,
+          timeViewStartAnimation: timeViewStartAnimItem.animation,
+          timeViewEndAnimation: timeViewEndAnimItem.animation,
+          keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
+          shouldGreyOut: shouldGreyOut,
         );
 
         final selectionBox = Observer(

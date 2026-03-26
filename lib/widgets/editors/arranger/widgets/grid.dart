@@ -27,19 +27,23 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
 class ArrangerBackgroundPainter extends CustomPainterObserver {
-  final double verticalScrollPosition;
-  final double timeViewStart;
-  final double timeViewEnd;
+  final Animation<double> verticalScrollPositionAnimation;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
   final ArrangementModel? activeArrangement;
   final ProjectModel project;
 
   ArrangerBackgroundPainter({
+    required Listenable repaint,
     required this.activeArrangement,
     required this.project,
-    required this.verticalScrollPosition,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  }) : super(debugName: 'ArrangerBackgroundPainter');
+    required this.verticalScrollPositionAnimation,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+  }) : super(debugName: 'ArrangerBackgroundPainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -52,6 +56,10 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
     final trackController = serviceRegistry.trackController;
+    final renderedVerticalScrollPosition =
+        verticalScrollPositionAnimation.value;
+    final verticalScrollDelta =
+        viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
 
     var i = 0;
     for (final (_, isSendTrack, _) in trackController.getTracksIterable()) {
@@ -60,7 +68,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       );
       final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(i);
 
-      var drawPosition = trackPosition;
+      var drawPosition = trackPosition + verticalScrollDelta;
       if (!isSendTrack) {
         drawPosition += trackHeight;
       }
@@ -92,7 +100,9 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
   bool shouldRepaint(covariant ArrangerBackgroundPainter oldDelegate) {
     return oldDelegate.activeArrangement != activeArrangement ||
         oldDelegate.project != project ||
-        oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd;
+        oldDelegate.verticalScrollPositionAnimation !=
+            verticalScrollPositionAnimation ||
+        oldDelegate.timeViewStartAnimation != timeViewStartAnimation ||
+        oldDelegate.timeViewEndAnimation != timeViewEndAnimation;
   }
 }

@@ -209,20 +209,16 @@ class _AttributeRenderArea extends StatelessWidget {
             onPointerCancel: (e) {
               controller.pointerUp(createEditorPointerEvent(e));
             },
-            child: AnimatedBuilder(
-              animation: timeViewAnimationController,
-              builder: (context, child) {
-                return ClipRect(
-                  child: CustomPaint(
-                    painter: _PianoRollAttributePainter(
-                      viewModel: viewModel,
-                      project: project,
-                      timeViewStart: timeViewStartAnimation.value,
-                      timeViewEnd: timeViewEndAnimation.value,
-                    ),
-                  ),
-                );
-              },
+            child: ClipRect(
+              child: CustomPaint(
+                painter: _PianoRollAttributePainter(
+                  repaint: timeViewAnimationController,
+                  viewModel: viewModel,
+                  project: project,
+                  timeViewStartAnimation: timeViewStartAnimation,
+                  timeViewEndAnimation: timeViewEndAnimation,
+                ),
+              ),
             ),
           ),
         );
@@ -234,15 +230,19 @@ class _AttributeRenderArea extends StatelessWidget {
 class _PianoRollAttributePainter extends CustomPainterObserver {
   PianoRollViewModel viewModel;
   ProjectModel project;
-  double timeViewStart;
-  double timeViewEnd;
+  Animation<double> timeViewStartAnimation;
+  Animation<double> timeViewEndAnimation;
 
   _PianoRollAttributePainter({
+    required Listenable repaint,
     required this.viewModel,
     required this.project,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  }) : super(debugName: '_PianoRollAttributePainter');
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+  }) : super(debugName: '_PianoRollAttributePainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -395,7 +395,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
   bool shouldRepaint(covariant _PianoRollAttributePainter oldDelegate) {
     return viewModel != oldDelegate.viewModel ||
         project != oldDelegate.project ||
-        timeViewStart != oldDelegate.timeViewStart ||
-        timeViewEnd != oldDelegate.timeViewEnd;
+        timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+        timeViewEndAnimation != oldDelegate.timeViewEndAnimation;
   }
 }

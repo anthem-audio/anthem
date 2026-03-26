@@ -682,6 +682,10 @@ class _ArrangerCanvas extends StatelessWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ArrangerViewModel>(context);
+    final renderedViewRepaint = Listenable.merge([
+      timeViewAnimationController,
+      verticalScrollPositionAnimationController,
+    ]);
 
     return Container(
       clipBehavior: Clip.hardEdge,
@@ -689,49 +693,31 @@ class _ArrangerCanvas extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final grid = Positioned.fill(
-            child: AnimatedBuilder(
-              animation: verticalScrollPositionAnimationController,
-              builder: (context, child) {
-                return AnimatedBuilder(
-                  animation: timeViewAnimationController,
-                  builder: (context, child) {
-                    return CustomPaint(
-                      painter: ArrangerBackgroundPainter(
-                        activeArrangement: project
-                            .sequence
-                            .arrangements[project.sequence.activeArrangementID],
-                        project: project,
-                        verticalScrollPosition:
-                            verticalScrollPositionAnimation.value,
-                        timeViewStart: timeViewStartAnimation.value,
-                        timeViewEnd: timeViewEndAnimation.value,
-                      ),
-                    );
-                  },
-                );
-              },
+            child: CustomPaint(
+              painter: ArrangerBackgroundPainter(
+                repaint: renderedViewRepaint,
+                activeArrangement: project
+                    .sequence
+                    .arrangements[project.sequence.activeArrangementID],
+                project: project,
+                verticalScrollPositionAnimation:
+                    verticalScrollPositionAnimation,
+                timeViewStartAnimation: timeViewStartAnimation,
+                timeViewEndAnimation: timeViewEndAnimation,
+              ),
             ),
           );
 
           final clipsContainer = Observer(
             builder: (context) {
               Widget clips() {
-                return AnimatedBuilder(
-                  animation: verticalScrollPositionAnimationController,
-                  builder: (context, child) {
-                    return AnimatedBuilder(
-                      animation: timeViewAnimationController,
-                      builder: (context, child) {
-                        return ArrangerContentRenderer(
-                          timeViewStart: timeViewStartAnimation.value,
-                          timeViewEnd: timeViewEndAnimation.value,
-                          verticalScrollPosition:
-                              verticalScrollPositionAnimation.value,
-                          viewModel: viewModel,
-                        );
-                      },
-                    );
-                  },
+                return ArrangerContentRenderer(
+                  repaint: renderedViewRepaint,
+                  timeViewStartAnimation: timeViewStartAnimation,
+                  timeViewEndAnimation: timeViewEndAnimation,
+                  verticalScrollPositionAnimation:
+                      verticalScrollPositionAnimation,
+                  viewModel: viewModel,
                 );
               }
 

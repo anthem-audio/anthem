@@ -286,26 +286,20 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                   Container(
                     color: const Color(0xFF3B3B3B),
                     child: ClipRect(
-                      child: AnimatedBuilder(
-                        animation: widget.timeViewAnimationController,
-                        builder: (context, child) {
-                          return Observer(
-                            builder: (context) {
-                              return CustomPaint(
-                                painter: TimelinePainter(
-                                  timeViewStart:
-                                      widget.timeViewStartAnimation.value,
-                                  timeViewEnd:
-                                      widget.timeViewEndAnimation.value,
-                                  ticksPerQuarter:
-                                      project.sequence.ticksPerQuarter,
-                                  defaultTimeSignature:
-                                      project.sequence.defaultTimeSignature,
-                                  timeSignatureChanges: controller
-                                      .timeSignatureChanges(),
-                                ),
-                              );
-                            },
+                      child: Observer(
+                        builder: (context) {
+                          return CustomPaint(
+                            painter: TimelinePainter(
+                              repaint: widget.timeViewAnimationController,
+                              timeViewStartAnimation:
+                                  widget.timeViewStartAnimation,
+                              timeViewEndAnimation: widget.timeViewEndAnimation,
+                              ticksPerQuarter: project.sequence.ticksPerQuarter,
+                              defaultTimeSignature:
+                                  project.sequence.defaultTimeSignature,
+                              timeSignatureChanges: controller
+                                  .timeSignatureChanges(),
+                            ),
                           );
                         },
                       ),

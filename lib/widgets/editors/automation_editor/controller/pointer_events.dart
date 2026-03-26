@@ -432,6 +432,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     for (final value in viewModel.pointAnimationTracker.values.values) {
       value.target = 1;
     }
+    viewModel.pointAnimationTracker.markNeedsRepaint();
     viewModel.hoveredPointAnnotation = null;
   }
 }

@@ -42,16 +42,20 @@ const _noteResizeHandleOvershoot = 2.0;
 const _minimumClickableNoteArea = 30;
 
 class PianoRollContentRenderer extends StatelessWidget {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double keyValueAtTop;
+  final AnimationController timeViewAnimationController;
+  final AnimationController keyValueAtTopAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> keyValueAtTopAnimation;
   final bool shouldGreyOut;
 
   const PianoRollContentRenderer({
     super.key,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.keyValueAtTop,
+    required this.timeViewAnimationController,
+    required this.keyValueAtTopAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.keyValueAtTopAnimation,
     required this.shouldGreyOut,
   });
 
@@ -62,9 +66,13 @@ class PianoRollContentRenderer extends StatelessWidget {
 
     return CustomPaint(
       painter: PianoRollPainter(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        keyValueAtTop: keyValueAtTop,
+        repaint: Listenable.merge([
+          timeViewAnimationController,
+          keyValueAtTopAnimationController,
+        ]),
+        timeViewStartAnimation: timeViewStartAnimation,
+        timeViewEndAnimation: timeViewEndAnimation,
+        keyValueAtTopAnimation: keyValueAtTopAnimation,
         project: project,
         viewModel: viewModel,
         devicePixelRatio: View.of(context).devicePixelRatio,
@@ -75,23 +83,28 @@ class PianoRollContentRenderer extends StatelessWidget {
 }
 
 class PianoRollPainter extends CustomPainterObserver {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double keyValueAtTop;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> keyValueAtTopAnimation;
   final PianoRollViewModel viewModel;
   final ProjectModel project;
   final double devicePixelRatio;
   final bool shouldGreyOut;
 
   PianoRollPainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.keyValueAtTop,
+    required Listenable repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.keyValueAtTopAnimation,
     required this.viewModel,
     required this.project,
     required this.devicePixelRatio,
     required this.shouldGreyOut,
-  }) : super(debugName: 'PianoRollPainter');
+  }) : super(debugName: 'PianoRollPainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
+  double get keyValueAtTop => keyValueAtTopAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -284,9 +297,9 @@ class PianoRollPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(PianoRollPainter oldDelegate) =>
-      timeViewStart != oldDelegate.timeViewStart ||
-      timeViewEnd != oldDelegate.timeViewEnd ||
-      keyValueAtTop != oldDelegate.keyValueAtTop ||
+      timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+      timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+      keyValueAtTopAnimation != oldDelegate.keyValueAtTopAnimation ||
       viewModel != oldDelegate.viewModel ||
       project != oldDelegate.project ||
       devicePixelRatio != oldDelegate.devicePixelRatio ||

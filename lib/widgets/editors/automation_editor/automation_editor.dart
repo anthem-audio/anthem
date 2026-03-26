@@ -32,7 +32,6 @@ import 'package:anthem/widgets/util/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
-import 'package:mobx/mobx.dart' as mobx;
 
 import '../shared/timeline/timeline.dart';
 
@@ -102,8 +101,6 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
     with TickerProviderStateMixin {
   LazyFollowAnimationHelper? timeViewAnimationHelper;
 
-  mobx.ReactionDisposer? animationTweenUpdaterDisposer;
-
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
@@ -129,14 +126,6 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
 
     final [timeViewStartAnimItem, timeViewEndAnimItem] =
         timeViewAnimationHelper!.items;
-
-    // Updates the animations whenever the vertical scroll position changes.
-    animationTweenUpdaterDisposer ??= mobx.autorun((p0) {
-      viewModel.timeView.start;
-      viewModel.timeView.end;
-
-      setState(() {});
-    });
 
     final activePatternID = project.sequence.activePatternID;
     final pattern = project.sequence.patterns[activePatternID];
@@ -172,16 +161,12 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
                     builder: (context) {
                       final content = Container(
                         color: AnthemTheme.grid.backgroundLight,
-                        child: AnimatedBuilder(
-                          animation:
+                        child: AutomationEditorContentRenderer(
+                          timeViewAnimationController:
                               timeViewAnimationHelper!.animationController,
-                          builder: (context, child) {
-                            return AutomationEditorContentRenderer(
-                              timeViewStart:
-                                  timeViewStartAnimItem.animation.value,
-                              timeViewEnd: timeViewEndAnimItem.animation.value,
-                            );
-                          },
+                          timeViewStartAnimation:
+                              timeViewStartAnimItem.animation,
+                          timeViewEndAnimation: timeViewEndAnimItem.animation,
                         ),
                       );
 
@@ -239,7 +224,6 @@ class _AutomationEditorContentState extends State<_AutomationEditorContent>
   @override
   void dispose() {
     timeViewAnimationHelper?.dispose();
-    animationTweenUpdaterDisposer?.call();
     super.dispose();
   }
 }

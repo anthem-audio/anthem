@@ -19,27 +19,31 @@
 
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
-import 'package:mobx/mobx.dart';
+import 'package:mobx/mobx.dart' hide Listenable;
 // ignore: implementation_imports
 import 'package:mobx/src/core.dart' show ReactionImpl;
 
 /// A [CustomPainter] that repaints when observables accessed by
 /// [observablePaint] change.
 abstract class CustomPainterObserver extends CustomPainter {
-  CustomPainterObserver({String? debugName})
-    : _tracker = _MobxPaintTracker(name: debugName ?? 'CustomPainterObserver');
+  CustomPainterObserver({String? debugName, Listenable? repaint})
+    : _tracker = _MobxPaintTracker(name: debugName ?? 'CustomPainterObserver'),
+      _repaint = repaint;
 
   final _MobxPaintTracker _tracker;
+  final Listenable? _repaint;
 
   void observablePaint(Canvas canvas, Size size);
 
   @override
   void addListener(VoidCallback listener) {
     _tracker.addListener(listener);
+    _repaint?.addListener(listener);
   }
 
   @override
   void removeListener(VoidCallback listener) {
+    _repaint?.removeListener(listener);
     _tracker.removeListener(listener);
   }
 

@@ -50,24 +50,18 @@ class PianoRollGrid extends StatelessWidget {
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return ClipRect(
-      child: AnimatedBuilder(
-        animation: keyValueAtTopAnimationController,
-        builder: (context, child) {
-          return AnimatedBuilder(
-            animation: timeViewAnimationController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: PianoRollBackgroundPainter(
-                  project: project,
-                  viewModel: viewModel,
-                  keyValueAtTop: keyValueAtTopAnimation.value,
-                  timeViewStart: timeViewStartAnimation.value,
-                  timeViewEnd: timeViewEndAnimation.value,
-                ),
-              );
-            },
-          );
-        },
+      child: CustomPaint(
+        painter: PianoRollBackgroundPainter(
+          repaint: Listenable.merge([
+            timeViewAnimationController,
+            keyValueAtTopAnimationController,
+          ]),
+          project: project,
+          viewModel: viewModel,
+          keyValueAtTopAnimation: keyValueAtTopAnimation,
+          timeViewStartAnimation: timeViewStartAnimation,
+          timeViewEndAnimation: timeViewEndAnimation,
+        ),
       ),
     );
   }
@@ -75,18 +69,23 @@ class PianoRollGrid extends StatelessWidget {
 
 class PianoRollBackgroundPainter extends CustomPainterObserver {
   PianoRollBackgroundPainter({
+    required Listenable repaint,
     required this.project,
     required this.viewModel,
-    required this.keyValueAtTop,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  }) : super(debugName: 'PianoRollBackgroundPainter');
+    required this.keyValueAtTopAnimation,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+  }) : super(debugName: 'PianoRollBackgroundPainter', repaint: repaint);
 
   final ProjectModel project;
   final PianoRollViewModel viewModel;
-  final double keyValueAtTop;
-  final double timeViewStart;
-  final double timeViewEnd;
+  final Animation<double> keyValueAtTopAnimation;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+
+  double get keyValueAtTop => keyValueAtTopAnimation.value;
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -179,8 +178,8 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
   bool shouldRepaint(covariant PianoRollBackgroundPainter oldDelegate) {
     return project != oldDelegate.project ||
         viewModel != oldDelegate.viewModel ||
-        keyValueAtTop != oldDelegate.keyValueAtTop ||
-        timeViewStart != oldDelegate.timeViewStart ||
-        timeViewEnd != oldDelegate.timeViewEnd;
+        keyValueAtTopAnimation != oldDelegate.keyValueAtTopAnimation ||
+        timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+        timeViewEndAnimation != oldDelegate.timeViewEndAnimation;
   }
 }

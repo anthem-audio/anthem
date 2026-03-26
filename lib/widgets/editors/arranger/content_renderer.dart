@@ -142,16 +142,18 @@ List<List<ClipRenderInfo>> buildClipLayersForPainting(
 }
 
 class ArrangerContentRenderer extends StatelessObserverWidget {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double verticalScrollPosition;
+  final Listenable repaint;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> verticalScrollPositionAnimation;
   final ArrangerViewModel viewModel;
 
   const ArrangerContentRenderer({
     super.key,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.verticalScrollPosition,
+    required this.repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.verticalScrollPositionAnimation,
     required this.viewModel,
   });
 
@@ -165,9 +167,10 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 
     return CustomPaint(
       painter: ArrangerContentPainter(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        verticalScrollPosition: verticalScrollPosition,
+        repaint: repaint,
+        timeViewStartAnimation: timeViewStartAnimation,
+        timeViewEndAnimation: timeViewEndAnimation,
+        verticalScrollPositionAnimation: verticalScrollPositionAnimation,
         project: project,
         arrangement: arrangement,
         viewModel: viewModel,
@@ -179,29 +182,43 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 }
 
 class ArrangerContentPainter extends CustomPainterObserver {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double verticalScrollPosition;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> verticalScrollPositionAnimation;
   final ProjectModel project;
   final ArrangementModel arrangement;
   final ArrangerViewModel viewModel;
   final double devicePixelRatio;
 
   ArrangerContentPainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.verticalScrollPosition,
+    required Listenable repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.verticalScrollPositionAnimation,
     required this.project,
     required this.arrangement,
     required this.viewModel,
     required this.devicePixelRatio,
-  }) : super(debugName: 'ArrangerContentPainter');
+  }) : super(debugName: 'ArrangerContentPainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
+  double get renderedVerticalScrollPosition =>
+      verticalScrollPositionAnimation.value;
+  double get _verticalScrollDelta =>
+      viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
+
+  double _getTrackPosition(num trackIndex) {
+    return viewModel.trackPositionCalculator.getTrackPosition(trackIndex) +
+        _verticalScrollDelta;
+  }
 
   @override
   bool shouldRepaint(ArrangerContentPainter oldDelegate) {
-    return timeViewStart != oldDelegate.timeViewStart ||
-        timeViewEnd != oldDelegate.timeViewEnd ||
-        verticalScrollPosition != oldDelegate.verticalScrollPosition ||
+    return timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+        timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+        verticalScrollPositionAnimation !=
+            oldDelegate.verticalScrollPositionAnimation ||
         project != oldDelegate.project ||
         arrangement != oldDelegate.arrangement ||
         viewModel != oldDelegate.viewModel ||
@@ -252,9 +269,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
       final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
         trackId,
       );
-      final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
-        trackIndex,
-      );
+      final trackPos = _getTrackPosition(trackIndex);
       final trackHeight =
           viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
       final contentTop = trackPos;
@@ -292,9 +307,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
     final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
       trackId,
     );
-    final trackPos = viewModel.trackPositionCalculator.getTrackPosition(
-      trackIndex,
-    );
+    final trackPos = _getTrackPosition(trackIndex);
     final trackHeight =
         viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
     final contentTop = trackPos;
@@ -382,7 +395,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
           if (x > size.width || x + width < 0) return null;
 
           final y =
-              viewModel.trackPositionCalculator.getTrackPosition(
+              _getTrackPosition(
                 viewModel.trackPositionCalculator.trackIdToIndex(trackId),
               ) -
               1;

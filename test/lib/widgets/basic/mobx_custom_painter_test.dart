@@ -66,6 +66,46 @@ void main() {
       expect(childBuildCount, 1);
     },
   );
+
+  testWidgets(
+    'external repaint listenable repaints without rebuilding child subtree',
+    (tester) async {
+      final repaintSignal = ValueNotifier(0);
+      var paintCount = 0;
+      var childBuildCount = 0;
+
+      await tester.pumpWidget(
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: CustomPaint(
+            painter: _ExternalRepaintPainter(
+              repaintSignal: repaintSignal,
+              onPaint: () {
+                paintCount++;
+              },
+            ),
+            child: _BuildCounter(
+              onBuild: () {
+                childBuildCount++;
+              },
+            ),
+          ),
+        ),
+      );
+
+      final initialPaintCount = paintCount;
+
+      expect(initialPaintCount, greaterThan(0));
+      expect(childBuildCount, 1);
+
+      repaintSignal.value++;
+      await tester.pump();
+
+      expect(paintCount, greaterThan(initialPaintCount));
+      expect(childBuildCount, 1);
+    },
+  );
 }
 
 class _TestPainter extends CustomPainterObserver {
@@ -83,6 +123,27 @@ class _TestPainter extends CustomPainterObserver {
       Rect.fromLTWH(0, 0, size.width, size.height),
       Paint()
         ..color = observedValue.value == 0
+            ? const Color(0xFF000000)
+            : const Color(0xFFFFFFFF),
+    );
+  }
+}
+
+class _ExternalRepaintPainter extends CustomPainterObserver {
+  _ExternalRepaintPainter({required this.repaintSignal, required this.onPaint})
+    : super(debugName: '_ExternalRepaintPainter', repaint: repaintSignal);
+
+  final ValueNotifier<int> repaintSignal;
+  final VoidCallback onPaint;
+
+  @override
+  void observablePaint(Canvas canvas, Size size) {
+    onPaint();
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()
+        ..color = repaintSignal.value.isEven
             ? const Color(0xFF000000)
             : const Color(0xFFFFFFFF),
     );
