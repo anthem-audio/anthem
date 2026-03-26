@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,8 +20,9 @@
 #include "anthem_process_context.h"
 
 #include "modules/core/anthem.h"
+#include "modules/core/constants.h"
 
-AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemLiveEvent>* eventAllocator) : graphNode(graphNode) {
+AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode) : graphNode(graphNode) {
   auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
 
   auto bufferSize = currentDevice->getCurrentBufferSizeSamples();
@@ -46,11 +47,17 @@ AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode, Are
   }
 
   for (auto& port : *graphNode->eventInputPorts()) {
-    inputEventBuffers[port->id()] = std::move(std::make_unique<AnthemEventBuffer>(eventAllocator, 1024));
+    // TODO: Seed initial capacities from persisted per-port runtime hints once
+    // graph recompilation can preserve processing state across compiles.
+    inputEventBuffers[port->id()] =
+      std::make_unique<AnthemEventBuffer>(DEFAULT_EVENT_BUFFER_SIZE);
   }
 
   for (auto& port : *graphNode->eventOutputPorts()) {
-    outputEventBuffers[port->id()] = std::move(std::make_unique<AnthemEventBuffer>(eventAllocator, 1024));
+    // TODO: Seed initial capacities from persisted per-port runtime hints once
+    // graph recompilation can preserve processing state across compiles.
+    outputEventBuffers[port->id()] =
+      std::make_unique<AnthemEventBuffer>(DEFAULT_EVENT_BUFFER_SIZE);
   }
 
   for (auto& port : *graphNode->controlInputPorts()) {
@@ -75,15 +82,6 @@ void AnthemProcessContext::cleanup() {
   // Delete the atomic floats
   for (auto& [id, value] : parameterValues) {
     delete value;
-  }
-
-  // Cleanup the event buffers
-  for (auto& [id, buffer] : inputEventBuffers) {
-    buffer->cleanup();
-  }
-
-  for (auto& [id, buffer] : outputEventBuffers) {
-    buffer->cleanup();
   }
 }
 

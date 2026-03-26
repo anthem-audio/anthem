@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -59,31 +59,11 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     << "\033[0m"
     << std::endl;
 
-  size_t totalEventPorts = 0;
-
-  // Get the total number of event ports in the graph.
-  for (auto& nodePair : *processingGraphModel->nodes()) {
-    auto& node = nodePair.second;
-    totalEventPorts += node->eventInputPorts()->size();
-    totalEventPorts += node->eventOutputPorts()->size();
-  }
-
-  // Create a buffer allocator for events, and allocate double the size of the
-  // buffer for each port. This is because if any port buffer overflows, it will
-  // reallocate, so we need some free space.
-  //
-  // This is probably way too much free space, but I won't try to tweak it
-  // unless it becomes a problem.
-  result->eventAllocator = 
-    std::make_unique<ArenaBufferAllocator<AnthemLiveEvent>>(
-      totalEventPorts * DEFAULT_EVENT_BUFFER_SIZE * sizeof(AnthemLiveEvent) * 2
-    );
-
   // Create contexts for each node
   for (auto& pair : *processingGraphModel->nodes()) {
     auto& node = pair.second;
 
-    auto context = new AnthemProcessContext(node, result->eventAllocator.get());
+    auto context = new AnthemProcessContext(node);
     result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
     result->graphNodes.push_back(node);

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -40,11 +40,8 @@
 
 #include <memory>
 
-#include "modules/core/constants.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
-#include "modules/sequencer/events/event.h"
-#include "modules/util/arena_allocator.h"
 #include "generated/lib/model/model.h"
 
 #include "anthem_graph_compilation_result.h"

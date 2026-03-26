@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -54,7 +54,7 @@ private:
 
   std::weak_ptr<Node> graphNode;
 public:
-  AnthemProcessContext(std::shared_ptr<Node>& graphNode, ArenaBufferAllocator<AnthemLiveEvent>* eventAllocator);
+  AnthemProcessContext(std::shared_ptr<Node>& graphNode);
 
   // Clean up the context. This must be called before the context is deallocated.
   void cleanup();
