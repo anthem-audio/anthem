@@ -68,7 +68,8 @@ abstract class _NodePortModel
 
   AnthemObservableList<Id> connections;
 
-  /// The value of the parameter, if this port is a control input port.
+  /// The normalized value of the parameter, if this port is a control input
+  /// port.
   @anthemObservable
   double? parameterValue;
 

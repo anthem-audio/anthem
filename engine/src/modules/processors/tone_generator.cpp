@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,6 +25,11 @@
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
 #include "modules/core/anthem.h"
+
+namespace {
+constexpr float kMinFrequencyHz = 1.0f;
+constexpr float kMaxFrequencyHz = 22500.0f;
+}
 
 ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModelImpl& _impl)
       : AnthemProcessor("ToneGenerator"), ToneGeneratorProcessorModelBase(_impl) {
@@ -68,8 +73,14 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
 
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {
-    auto frequency = frequencyControlBuffer.getReadPointer(0)[sample];
+    auto normalizedFrequency = frequencyControlBuffer.getReadPointer(0)[sample];
     auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
+    jassert(normalizedFrequency >= 0.0f && normalizedFrequency <= 1.0f);
+    jassert(amplitude >= 0.0f && amplitude <= 1.0f);
+
+    auto frequency =
+      normalizedFrequency * (kMaxFrequencyHz - kMinFrequencyHz) +
+      kMinFrequencyHz;
 
     if (hasNoteOverride) {
       frequency = 440.0f * std::pow(2.0f, (noteOverride - 69) / 12.0f);

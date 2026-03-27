@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,8 @@
 #include "node_port.h"
 
 #include "generated/lib/model/model.h"
+
+#include <juce_core/juce_core.h>
 
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
@@ -53,6 +55,8 @@ void NodePort::initialize(
 }
 
 bool NodePort::trySendParameterValueToAudioThread(double value) {
+  jassert(value >= 0.0 && value <= 1.0);
+
   std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
 
   if (!collectionParent) {

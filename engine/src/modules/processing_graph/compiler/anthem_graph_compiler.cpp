@@ -265,18 +265,12 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
             );
             break;
           case NodePortDataType::control:
-            auto& portParameterConfig = sourcePort->config()->parameterConfig().value();
-            auto minParameterValue = (float) portParameterConfig->minimumValue();
-            auto maxParameterValue = (float) portParameterConfig->maximumValue();
-
             actions->push_back(
               std::make_unique<CopyControlBufferAction>(
                 edge->sourceNodeContext,
                 sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort->id(),
-                minParameterValue,
-                maxParameterValue
+                destinationPort->id()
               )
             );
             break;

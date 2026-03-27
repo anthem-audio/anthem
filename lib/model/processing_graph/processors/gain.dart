@@ -87,8 +87,6 @@ class GainProcessorModel extends _GainProcessorModel
             parameterConfig: ParameterConfigModel(
               id: gainPortId,
               defaultValue: gainParameterZeroDbNormalized,
-              minimumValue: 0.0,
-              maximumValue: 1.0,
               smoothingDurationSeconds: 0.01,
             ),
           ),

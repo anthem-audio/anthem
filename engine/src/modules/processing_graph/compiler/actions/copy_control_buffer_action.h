@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,8 +30,8 @@
 // This action copies the data from a given control output to a given control
 // input.
 //
-// The output value is expected to be normalized from 0 to 1. When copying, the
-// value is scaled to the range defined by the associated parameter value.
+// Control values are transported as normalized values in the range [0, 1].
+// This action does not interpret their meaning.
 class CopyControlBufferAction : public AnthemGraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(CopyControlBufferAction)
@@ -42,22 +42,15 @@ public:
   AnthemProcessContext* destination;
   int64_t destinationPortId;
 
-  float minParameterValue;
-  float maxParameterValue;
-
   CopyControlBufferAction(
     AnthemProcessContext* source,
     int64_t sourcePortId,
     AnthemProcessContext* destination,
-    int64_t destinationPortId,
-    float minParameterValue,
-    float maxParameterValue
+    int64_t destinationPortId
   ) : source(source),
       sourcePortId(sourcePortId),
       destination(destination),
-      destinationPortId(destinationPortId),
-      minParameterValue(minParameterValue),
-      maxParameterValue(maxParameterValue) {}
+      destinationPortId(destinationPortId) {}
 
   void execute(int numSamples) override;
 

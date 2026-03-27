@@ -34,8 +34,9 @@ part 'balance.g.dart';
 ///
 /// Takes a single audio input and output, and a control input for balance.
 ///
-/// The control input expects a [-1.0, 1.0] value, where -1.0 is full left,
-/// 0.0 is center, 1.0 is full right.
+/// The control input expects a normalized [0.0, 1.0] value. The processor maps
+/// that to a pan value where 0.0 is full left, 0.5 is center, and 1.0 is full
+/// right.
 ///
 /// This processor is implemented in the engine at:
 /// - `engine/src/modules/processors/balance.h`
@@ -86,9 +87,7 @@ class BalanceProcessorModel extends _BalanceProcessorModel
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: balancePortId,
-              defaultValue: 0.0,
-              minimumValue: -1.0,
-              maximumValue: 1.0,
+              defaultValue: BalanceProcessorModel.panToParameterValue(0.0),
               smoothingDurationSeconds: 0.01,
             ),
           ),
@@ -100,6 +99,26 @@ class BalanceProcessorModel extends _BalanceProcessorModel
   static int get audioInputPortId => _BalanceProcessorModel.audioInputPortId;
   static int get audioOutputPortId => _BalanceProcessorModel.audioOutputPortId;
   static int get balancePortId => _BalanceProcessorModel.balancePortId;
+
+  static double parameterValueToPan(double parameterValue) {
+    assert(parameterValue >= 0.0 && parameterValue <= 1.0);
+    return parameterValue * 2.0 - 1.0;
+  }
+
+  static double panToParameterValue(double pan) {
+    assert(pan >= -1.0 && pan <= 1.0);
+    return (pan + 1.0) * 0.5;
+  }
+
+  static String parameterValueToString(double parameterValue) {
+    final pan = parameterValueToPan(parameterValue);
+
+    if (pan.abs() < 0.000001) {
+      return 'Center';
+    }
+
+    return '${(pan * 100).abs().toStringAsFixed(0)}%${pan < 0 ? ' L' : ' R'}';
+  }
 }
 
 abstract class _BalanceProcessorModel

@@ -259,22 +259,24 @@ class _TrackContent extends StatelessWidget {
                             ),
                           if (height >= heightThreshold2)
                             Slider(
-                              value:
-                                  track.balanceNode
-                                      ?.getPortById(
-                                        BalanceProcessorModel.balancePortId,
-                                      )
-                                      .parameterValue ??
-                                  0,
+                              value: BalanceProcessorModel.parameterValueToPan(
+                                track.balanceNode
+                                        ?.getPortById(
+                                          BalanceProcessorModel.balancePortId,
+                                        )
+                                        .parameterValue ??
+                                    BalanceProcessorModel.panToParameterValue(
+                                      0,
+                                    ),
+                              ),
                               min: -1,
                               max: 1,
                               height: 20,
                               borderRadius: 4,
                               type: .pan,
                               stickyPoints: [0],
-                              hint: (v) => v == 0
-                                  ? 'Track balance: Center'
-                                  : 'Track balance: ${(v * 100).abs().toStringAsFixed(0)}%${v < 0 ? ' L' : ' R'}',
+                              hint: (v) =>
+                                  'Track balance: ${BalanceProcessorModel.parameterValueToString(BalanceProcessorModel.panToParameterValue(v))}',
                               onValueChanged: (value) {
                                 final node = track.balanceNode;
                                 if (node == null) return;
@@ -284,7 +286,9 @@ class _TrackContent extends StatelessWidget {
                                           BalanceProcessorModel.balancePortId,
                                         )
                                         .parameterValue =
-                                    value;
+                                    BalanceProcessorModel.panToParameterValue(
+                                      value,
+                                    );
                               },
                             ),
                         ],

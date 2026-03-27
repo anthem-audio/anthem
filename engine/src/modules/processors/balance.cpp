@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,10 +37,12 @@ void BalanceProcessor::process(AnthemProcessContext& context, int numSamples) {
   auto& balanceControlBuffer = context.getInputControlBuffer(BalanceProcessorModelBase::balancePortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
-    auto paramValue = balanceControlBuffer.getReadPointer(0)[sample];
+    auto normalizedValue = balanceControlBuffer.getReadPointer(0)[sample];
+    jassert(normalizedValue >= 0.0f && normalizedValue <= 1.0f);
+    auto pan = normalizedValue * 2.0f - 1.0f;
 
-    auto gainR = bw_minf(1.0f - paramValue, 1.0f);
-    auto gainL = bw_minf(1.0f + paramValue, 1.0f);
+    auto gainR = juce::jmin(1.0f - pan, 1.0f);
+    auto gainL = juce::jmin(1.0f + pan, 1.0f);
 
     float gains[2] = {gainR, gainL};
 

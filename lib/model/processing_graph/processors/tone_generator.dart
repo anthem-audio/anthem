@@ -31,6 +31,11 @@ import 'package:mobx/mobx.dart';
 part 'tone_generator.g.dart';
 
 /// A processor that generates a tone.
+///
+/// Parameter values are stored normalized. The frequency parameter is
+/// interpreted as a linear mapping to [minFrequencyHz, maxFrequencyHz], and
+/// amplitude is interpreted directly as a
+/// normalized amplitude.
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'ToneGeneratorProcessor',
   cppBehaviorClassIncludePath: 'modules/processors/tone_generator.h',
@@ -71,9 +76,8 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.frequencyPortId,
-              defaultValue: 440,
-              minimumValue: 1,
-              maximumValue: 22500,
+              defaultValue:
+                  ToneGeneratorProcessorModel.frequencyToParameterValue(440),
               smoothingDurationSeconds: 0.5,
             ),
           ),
@@ -86,8 +90,6 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.amplitudePortId,
               defaultValue: 0.75,
-              minimumValue: 0,
-              maximumValue: 1,
               smoothingDurationSeconds: 0.5,
             ),
           ),
@@ -111,6 +113,21 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       _ToneGeneratorProcessorModel.amplitudePortId;
   static int get eventInputPortId =>
       _ToneGeneratorProcessorModel.eventInputPortId;
+
+  static const double minFrequencyHz = 1.0;
+  static const double maxFrequencyHz = 22500.0;
+
+  static double parameterValueToFrequency(double parameterValue) {
+    assert(parameterValue >= 0.0 && parameterValue <= 1.0);
+
+    return parameterValue * (maxFrequencyHz - minFrequencyHz) + minFrequencyHz;
+  }
+
+  static double frequencyToParameterValue(double frequency) {
+    assert(frequency >= minFrequencyHz && frequency <= maxFrequencyHz);
+
+    return (frequency - minFrequencyHz) / (maxFrequencyHz - minFrequencyHz);
+  }
 }
 
 abstract class _ToneGeneratorProcessorModel

@@ -26,6 +26,7 @@ void WriteParametersToControlInputsAction::execute(int numSamples) {
   for (auto& [id, valueAtomic] : parameterValues) {
     auto& smoother = parameterSmoothers[id];
     auto value = valueAtomic->load();
+    jassert(value >= 0.0f && value <= 1.0f);
 
     if (smoother->getTargetValue() != value) {
       smoother->setTargetValue(value);
@@ -34,6 +35,7 @@ void WriteParametersToControlInputsAction::execute(int numSamples) {
     for (int j = 0; j < numSamples; j++) {
       smoother->process(1.0f / sampleRate);
       auto currentValue = smoother->getCurrentValue();
+      jassert(currentValue >= 0.0f && currentValue <= 1.0f);
       processContext->getInputControlBuffer(id).setSample(0, j, currentValue);
     }
   }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,8 +21,6 @@
 
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
-
-#include "bw_math.h"
 
 // A balance processor.
 class BalanceProcessor : public AnthemProcessor, public BalanceProcessorModelBase {
