@@ -17,12 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 typedef BwIntFrac = ({double integerPart, double fractionalPart});
 
-const int _bwInt64Min = -9223372036854775808;
-const int _bwInt64Max = 9223372036854775807;
+const int _bwInt64Min = -(1 << 63);
+const int _bwInt64Max = (1 << 63) - 1;
 
 const int _bwDoubleExponentBias = 1023;
 const int _bwDoubleMantissaBits = 52;
@@ -33,6 +34,10 @@ const double _bwDoubleMinNormal = 2.2250738585072014e-308;
 const double _bwInvTwoPi = 0.15915494309189535;
 const double _bwLn2 = 0.6931471805599453;
 const double _bwLog10Of2 = 0.3010299956639812;
+
+// dart2js cannot safely support the 64-bit typed-data accessors used by the
+// bit-level fast path below, so JS web builds use exact math fallbacks.
+const bool _bwUseJsFallback = bool.fromEnvironment('dart.tool.dart2js');
 
 bool _isSigned64(int value) => value >= _bwInt64Min && value <= _bwInt64Max;
 
@@ -174,6 +179,10 @@ double bwLog2(double x) {
   assert(x.isFinite);
   assert(x >= _bwDoubleMinNormal);
 
+  if (_bwUseJsFallback) {
+    return math.log(x) * math.log2e;
+  }
+
   final bits = _doubleToBits(x);
   final exponent = (bits >> _bwDoubleMantissaBits) & 0x7ff;
   final normalized = _bitsToDouble(
@@ -198,6 +207,10 @@ double bwLog10(double x) => _bwLog10Of2 * bwLog2(x);
 double bwPow2(double x) {
   assert(!x.isNaN);
   assert(x <= 1023.9999999999999);
+
+  if (_bwUseJsFallback) {
+    return math.exp(x * math.ln2);
+  }
 
   if (x < -1022.0) {
     return 0.0;
