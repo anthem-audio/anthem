@@ -56,12 +56,6 @@ Control values function in a very similar way to audio, in that they are represe
 
 2. Control values are not summed additively. If a control input port has multiple connections, the most recent connection takes priority.
 
-3. Control value signals can be "null", represented by NaN. "Null" values will take on the following real values, in descending priority:
-
-   1. Less recently added connections with non-null values
-   2. The most recent non-null value sent to the port
-   3. The parameter's static value
-
 ### Parameters
 
 In Anthem, all control inputs on nodes also function as parameters. Parameters augment control input ports by allowing the port to be given a constant numerical value to use instead of control input.

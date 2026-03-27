@@ -30,12 +30,9 @@ void CopyControlBufferAction::execute(int numSamples) {
   for (int channel = 0; channel < sourceBuffer.getNumChannels(); ++channel) {
     for (int sample = 0; sample < numSamples; ++sample) {
       float sourceSample = sourceBuffer.getSample(channel, sample);
-
-      // Overwrite the destination, unless the source is NaN
-      if (!std::isnan(sourceSample)) {
-        jassert(sourceSample >= 0.0f && sourceSample <= 1.0f);
-        destinationBuffer.setSample(channel, sample, sourceSample);
-      }
+      jassert(!std::isnan(sourceSample));
+      jassert(sourceSample >= 0.0f && sourceSample <= 1.0f);
+      destinationBuffer.setSample(channel, sample, sourceSample);
     }
   }
 }
