@@ -369,7 +369,7 @@ class Engine {
   }
 
   /// Starts the engine process, and attaches to it.
-  Future<void> start() async {
+  Future<void> start({bool initializeAudio = true}) async {
     if (_engineState != EngineState.stopped) {
       return;
     }
@@ -435,24 +435,26 @@ class Engine {
         );
       }
 
-      final audioStartReply =
-          await _request(
-                StartAudioRequest(id: _getRequestId()),
-                startupBehavior: StartupSendBehavior.bypassStartupQueue,
-              )
-              as StartAudioResponse;
-      if (!audioStartReply.success) {
-        throw StateError(
-          'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
-        );
-      }
-      if (audioStartReply.audioConfig == null) {
-        throw StateError(
-          'Engine audio startup failed: audio config was not provided.',
-        );
-      }
+      if (initializeAudio) {
+        final audioStartReply =
+            await _request(
+                  StartAudioRequest(id: _getRequestId()),
+                  startupBehavior: StartupSendBehavior.bypassStartupQueue,
+                )
+                as StartAudioResponse;
+        if (!audioStartReply.success) {
+          throw StateError(
+            'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
+          );
+        }
+        if (audioStartReply.audioConfig == null) {
+          throw StateError(
+            'Engine audio startup failed: audio config was not provided.',
+          );
+        }
 
-      _audioConfig = audioStartReply.audioConfig;
+        _audioConfig = audioStartReply.audioConfig;
+      }
 
       _autoFlushStartupQueue = true;
       _flushStartupQueue();

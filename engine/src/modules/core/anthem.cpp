@@ -81,10 +81,7 @@ void Anthem::initialize() {
 }
 
 void Anthem::shutdown() {
-  if (isAudioCallbackRunning) {
-    audioDeviceManager.removeAudioCallback(audioCallback.get());
-    audioDeviceManager.closeAudioDevice();
-  }
+  stopAudioCallback();
 }
 
 std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
@@ -164,6 +161,9 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
     juce::String(device->getActiveOutputChannels().countNumberOfSetBits())
   );
 
+  transport->prepareToProcess();
+  juce::Logger::writeToLog("Transport prepared before audio callback registration.");
+
   // Set up the audio callback
   this->audioDeviceManager.addAudioCallback(this->audioCallback.get());
   juce::Logger::writeToLog("Audio callback registered with device manager.");
@@ -171,6 +171,16 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   isAudioCallbackRunning = true;
 
   return audioConfig;
+}
+
+void Anthem::stopAudioCallback() {
+  if (isAudioCallbackRunning) {
+    audioDeviceManager.removeAudioCallback(audioCallback.get());
+    audioDeviceManager.closeAudioDevice();
+    isAudioCallbackRunning = false;
+  }
+
+  audioCallback.reset();
 }
 
 std::shared_ptr<EngineAudioConfig> Anthem::getCurrentAudioConfig() const {

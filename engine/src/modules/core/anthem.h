@@ -125,6 +125,11 @@ public:
 
   // Sets up the audio callback
   std::shared_ptr<EngineAudioConfig> startAudioCallback();
+  void stopAudioCallback();
+
+  bool isAudioThreadRunning() const {
+    return isAudioCallbackRunning;
+  }
 
   std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
 

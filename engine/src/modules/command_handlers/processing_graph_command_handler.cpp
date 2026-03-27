@@ -39,11 +39,34 @@ handleProcessingGraphCommand(Request& request) {
 
     juce::Logger::writeToLog("Compiling from UI request...");
 
-    // Test for the audio device to exist. We need to be able to query a valid
-    // audio device to get buffer size and sample rate
+    if (!anthem.isAudioThreadRunning()) {
+      juce::Logger::writeToLog(
+        "Skipping processing graph compile because the audio thread is not running."
+      );
+
+      return std::optional(CompileProcessingGraphResponse {
+        .success = true,
+        .error = std::nullopt,
+        .responseBase = ResponseBase {
+          .id = compileProcessingGraphRequest.requestBase.get().id
+        }
+      });
+    }
+
+    // We need a valid device in order to query the sample rate and block size
+    // used by the compiled graph.
     if (anthem.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
-      jassertfalse;
-      juce::JUCEApplicationBase::quit();
+      juce::Logger::writeToLog(
+        "Cannot compile processing graph because no audio device is active."
+      );
+
+      return std::optional(CompileProcessingGraphResponse {
+        .success = false,
+        .error = std::string("No audio device is active."),
+        .responseBase = ResponseBase {
+          .id = compileProcessingGraphRequest.requestBase.get().id
+        }
+      });
     }
 
     try {

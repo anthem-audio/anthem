@@ -285,10 +285,13 @@ void main() {
         enginePath!.toFilePath(windows: Platform.isWindows),
       );
       ServiceRegistry.initializeProject(project);
-      await project.engine.start();
-      while (project.engine.engineState != EngineState.running) {
-        await project.engine.engineStateStream.first;
-      }
+      await project.engine.start(initializeAudio: false);
+      expect(
+        project.engine.engineState,
+        EngineState.running,
+        reason:
+            'Model sync tests require the engine IPC and model sync layers to start successfully.',
+      );
     });
 
     tearDownAll(() async {

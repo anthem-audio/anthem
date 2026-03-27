@@ -272,6 +272,67 @@ void main() {
       },
     );
 
+    test('startup can skip audio init and graph compile', () async {
+      final startFuture = engine.start(initializeAudio: false);
+
+      connector.completeInit();
+      await _flushMicrotasks();
+
+      final readyCheckRequest =
+          connector.sentRequests.single as EngineReadyCheckRequest;
+      connector.emitResponse(
+        EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+      );
+
+      await _flushMicrotasks();
+
+      expect(
+        connector.sentRequests.map((request) => request.runtimeType).toList(),
+        [EngineReadyCheckRequest, ModelInitRequest],
+      );
+
+      final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
+      connector.emitResponse(
+        ModelInitResponse(id: modelInitRequest.id, success: true),
+      );
+
+      await startFuture;
+      await _flushMicrotasks();
+
+      expect(engine.engineState, EngineState.running);
+      expect(engine.audioConfig, isNull);
+      expect(connector.startHeartbeatTimerCallCount, 1);
+
+      final compileFuture = engine.processingGraphApi.compile();
+      await _flushMicrotasks();
+
+      expect(
+        connector.sentRequests.map((request) => request.runtimeType).toList(),
+        [
+          EngineReadyCheckRequest,
+          ModelInitRequest,
+          CompileProcessingGraphRequest,
+        ],
+      );
+
+      final compileRequest =
+          connector.sentRequests[2] as CompileProcessingGraphRequest;
+      connector.emitResponse(
+        CompileProcessingGraphResponse(id: compileRequest.id, success: true),
+      );
+
+      await compileFuture;
+      expect(
+        connector.sentRequests.map((request) => request.runtimeType).toList(),
+        [
+          EngineReadyCheckRequest,
+          ModelInitRequest,
+          CompileProcessingGraphRequest,
+        ],
+      );
+      verify(project.initializeEngine()).called(1);
+    });
+
     test(
       'startup-safe requests queue during startup and flush in order',
       () async {
