@@ -107,6 +107,101 @@ void main() {
     });
   });
 
+  group('getTrackMainRoutingDestination()', () {
+    final projectId = getProjectId();
+
+    late MockProjectModel project;
+    late TrackController trackController;
+    late ProcessingGraphModel processingGraph;
+    late _MockEngine mockEngine;
+    late ProjectEntityIdAllocator idAllocator;
+    late TrackModel groupTrack;
+    late TrackModel childTrack;
+    late TrackModel topLevelTrack;
+    late TrackModel masterTrack;
+
+    TrackModel createTrack(String name, TrackType type) {
+      return TrackModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: name,
+        color: AnthemColor.randomHue(),
+        type: type,
+      );
+    }
+
+    setUp(() {
+      project = MockProjectModel();
+      when(project.id).thenReturn(projectId);
+      when(project.allocateId()).thenAnswer((_) => getId());
+
+      idAllocator = ProjectEntityIdAllocator(project);
+      processingGraph = ProcessingGraphModel.create(
+        masterOutputNodeId: getId(),
+      );
+      when(project.processingGraph).thenReturn(processingGraph);
+
+      mockEngine = _MockEngine(_FakeProcessingGraphApi());
+      when(project.engine).thenReturn(mockEngine);
+
+      groupTrack = createTrack('Group', .group);
+      childTrack = createTrack('Child', .instrument);
+      topLevelTrack = createTrack('Top Level', .instrument);
+      masterTrack = createTrack('Master', .audio)..isMasterTrack = true;
+
+      groupTrack.createAndRegisterNodes(project, idAllocator);
+      childTrack.createAndRegisterNodes(project, idAllocator);
+      topLevelTrack.createAndRegisterNodes(project, idAllocator);
+      masterTrack.createAndRegisterNodes(project, idAllocator);
+
+      groupTrack.childTracks.add(childTrack.id);
+      childTrack.parentTrackId = groupTrack.id;
+
+      when(project.tracks).thenReturn(
+        AnthemObservableMap.of({
+          groupTrack.id: groupTrack,
+          childTrack.id: childTrack,
+          topLevelTrack.id: topLevelTrack,
+          masterTrack.id: masterTrack,
+        }),
+      );
+
+      trackController = TrackController(project);
+    });
+
+    test('child tracks route to their parent FX-chain input', () {
+      final result = trackController.getTrackMainRoutingDestination(
+        childTrack.id,
+      );
+
+      expect(result.nodeId, equals(groupTrack.gainNodeId));
+      expect(result.portId, equals(GainProcessorModel.audioInputPortId));
+    });
+
+    test(
+      'top-level non-master tracks route to the master track FX-chain input',
+      () {
+        final result = trackController.getTrackMainRoutingDestination(
+          topLevelTrack.id,
+        );
+
+        expect(result.nodeId, equals(masterTrack.gainNodeId));
+        expect(result.portId, equals(GainProcessorModel.audioInputPortId));
+      },
+    );
+
+    test('the master track routes to the hardware output node', () {
+      final result = trackController.getTrackMainRoutingDestination(
+        masterTrack.id,
+      );
+
+      expect(result.nodeId, equals(processingGraph.masterOutputNodeId));
+      expect(
+        result.portId,
+        equals(processingGraph.getMasterOutputNode().audioInputPorts.first.id),
+      );
+    });
+  });
+
   group('canGroupTracks()', () {
     final projectId = getProjectId();
     late MockProjectModel project;
@@ -290,7 +385,7 @@ void main() {
       sendGroup = createTrack('Send Group', .group);
       sendChild = createTrack('Send Child', .instrument);
       sendTop = createTrack('Send Top', .instrument);
-      masterTrack = createTrack('Master', .instrument);
+      masterTrack = createTrack('Master', .audio)..isMasterTrack = true;
 
       tracks.addAll({
         regularGroup.id: regularGroup,

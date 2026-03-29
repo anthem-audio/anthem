@@ -114,7 +114,8 @@ class TrackController {
   ///
   /// This routing is derived from the track hierarchy:
   /// - child tracks route to their parent's FX-chain input
-  /// - top-level tracks route to the master output node
+  /// - top-level non-master tracks route to the master track's FX-chain input
+  /// - the master track routes to the master output node
   ///
   /// This is intentionally separate from [buildTrackMixFragment], because the
   /// destination can change when tracks are grouped, ungrouped, inserted, or
@@ -133,6 +134,10 @@ class TrackController {
       return getTrackFxChainAudioInput(parentTrackId);
     }
 
+    if (!track.isMasterTrack) {
+      return getTrackFxChainAudioInput(getMasterTrack().id);
+    }
+
     return (
       nodeId: project.processingGraph.masterOutputNodeId,
       portId: project.processingGraph
@@ -141,6 +146,28 @@ class TrackController {
           .first
           .id,
     );
+  }
+
+  TrackModel getMasterTrack() {
+    final masterTracks = project.tracks.values
+        .where((track) => track.isMasterTrack)
+        .toList(growable: false);
+
+    if (masterTracks.isEmpty) {
+      throw StateError(
+        'TrackController.getMasterTrack(): No master track exists in the '
+        'project.',
+      );
+    }
+
+    if (masterTracks.length > 1) {
+      throw StateError(
+        'TrackController.getMasterTrack(): Multiple master tracks exist in '
+        'the project.',
+      );
+    }
+
+    return masterTracks.single;
   }
 
   /// Removes the hierarchy-derived "main output" routing for [trackId].

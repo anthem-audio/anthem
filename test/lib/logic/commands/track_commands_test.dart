@@ -432,13 +432,18 @@ void main() {
                 nodeId: tracks[track.parentTrackId]!.gainNodeId!,
                 portId: GainProcessorModel.audioInputPortId,
               )
-            : (
+            : track.isMasterTrack
+            ? (
                 nodeId: processingGraph.masterOutputNodeId,
                 portId: processingGraph
                     .getMasterOutputNode()
                     .audioInputPorts
                     .first
                     .id,
+              )
+            : (
+                nodeId: masterTrack.gainNodeId!,
+                portId: GainProcessorModel.audioInputPortId,
               );
 
         expect(processingGraph.nodes[gainNodeId], isNotNull);
