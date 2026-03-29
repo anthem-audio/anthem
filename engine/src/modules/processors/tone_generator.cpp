@@ -65,8 +65,8 @@ void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSampl
 
       // We're deliberately ignoring the live timing information here for
       // simplicity. This would not be correct for a real device - we should be
-      // reading liveEvent.time, which represents the time since the start of
-      // the processing block.
+      // reading liveEvent.sampleOffset, which represents the sample offset
+      // from the start of the processing block.
 
     }
   }

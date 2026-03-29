@@ -29,6 +29,7 @@
 
 #include "modules/util/ring_buffer.h"
 #include "modules/sequencer/events/event.h"
+#include "modules/sequencer/runtime/sequencer_timing.h"
 
 // Represents the playhead jumping to a new location for the current sequence.
 //
@@ -182,6 +183,10 @@ public:
   // Gets the exact number of ticks that the playhead would advance by, given
   // the current buffer size in samples.
   double rt_getPlayheadAdvanceAmount(int samples) const;
+
+  // Returns a snapshot of the timing parameters currently used by the real-time
+  // transport code.
+  sequencer_timing::TimingParams rt_getTimingParams() const;
 
   // Advances the playhead by the given number of samples.
   //

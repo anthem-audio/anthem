@@ -109,19 +109,19 @@ void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
         liveEvent.event.noteOn.channel + 1, liveEvent.event.noteOn.pitch, static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f))
       );
 
-      rt_eventBufferForPlugin.addEvent(noteOn, static_cast<int>(std::round(liveEvent.time)));
+      rt_eventBufferForPlugin.addEvent(noteOn, static_cast<int>(std::round(liveEvent.sampleOffset)));
     }
     else if (liveEvent.event.type == AnthemEventType::NoteOff) {
       auto noteOff = juce::MidiMessage::noteOff(
         liveEvent.event.noteOff.channel + 1, liveEvent.event.noteOff.pitch, static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f))
       );
 
-      rt_eventBufferForPlugin.addEvent(noteOff, static_cast<int>(std::round(liveEvent.time)));
+      rt_eventBufferForPlugin.addEvent(noteOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
     }
     else if (liveEvent.event.type == AnthemEventType::AllVoicesOff) {
       for (int channel = 1; channel <= 16; channel++) {
         auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
-        rt_eventBufferForPlugin.addEvent(allVoicesOff, static_cast<int>(std::round(liveEvent.time)));
+        rt_eventBufferForPlugin.addEvent(allVoicesOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
       }
     }
   }

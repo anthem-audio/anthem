@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,7 +36,11 @@ class SequenceNoteProviderProcessor : public AnthemProcessor, public SequenceNot
 private:
   uint64_t rt_nextIndexToRead;
 
-  void addEventsForJump(std::unique_ptr<AnthemEventBuffer>& targetBuffer, PlayheadJumpEvent& event);
+  void rt_addEventsForJump(
+    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+    const PlayheadJumpEvent& event,
+    double sampleTimeOffset = 0.0
+  );
 public:
   SequenceNoteProviderProcessor(const SequenceNoteProviderProcessorModelImpl& _impl);
   ~SequenceNoteProviderProcessor() override;

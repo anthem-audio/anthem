@@ -34,14 +34,39 @@ SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
   // Nothing to do here
 }
 
-void SequenceNoteProviderProcessor::addEventsForJump(std::unique_ptr<AnthemEventBuffer>& targetBuffer, PlayheadJumpEvent& event) {
+void SequenceNoteProviderProcessor::rt_addEventsForJump(
+  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+  const PlayheadJumpEvent& event,
+  double sampleTimeOffset
+) {
   auto& trackId = this->trackId();
 
   auto& eventsForJump = event.eventsToPlayAtJump;
   if (eventsForJump.find(trackId) != eventsForJump.end()) {
     auto& events = eventsForJump.at(trackId);
     for (auto& jumpEvent : events) {
-      targetBuffer->addEvent(jumpEvent);
+      // When we perform a jump from a loop, we are most likely jumping in the
+      // middle of a block. For example, take this example of blocks and a loop
+      // point:
+      //
+      // ```
+      // |    BLOCK 1    |    BLOCK 2    |    BLOCK 3   |
+      //                       | <-- LOOP POINT
+      // ```
+      //
+      // When we add events for the loop jump, we are adding it for block 2,
+      // since that is the block that the jump occurs in. However, we can't add
+      // live events with an offset of zero, because then they would play at the
+      // start of the block. Instead, we need to add an offset equal to the
+      // difference in samples between the block start and the loop point.
+      //
+      // Note that we copy the event here and add the offset. The difference
+      // between loop point and block start is likely to be different each time
+      // it occurs, so we have to calculate a new offset each time.
+      auto liveEvent = jumpEvent;
+      liveEvent.sampleOffset += sampleTimeOffset;
+
+      targetBuffer->addEvent(liveEvent);
     }
   }
 }
@@ -64,14 +89,14 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   // downstream device.
   if (transport->rt_playheadJumpOrPauseOccurred) {
     AnthemLiveEvent liveEvent {};
-    liveEvent.time = 0;
+    liveEvent.sampleOffset = 0;
     liveEvent.event.type = AnthemEventType::AllVoicesOff;
 
     outputEventBuffer->addEvent(liveEvent);
   }
 
   if (transport->rt_playheadJumpEvent != nullptr) {
-    addEventsForJump(outputEventBuffer, *transport->rt_playheadJumpEvent);
+    rt_addEventsForJump(outputEventBuffer, *transport->rt_playheadJumpEvent);
   }
 
   if (!config->isPlaying) {
@@ -110,18 +135,23 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
   auto& channelEvents = sourceTrackEventListIter->second;
 
   double playheadPos = transport->rt_playhead;
+  auto timingParams = transport->rt_getTimingParams();
 
   // If there are invalidation ranges and the playhead is within one of the
   // ranges, we need to send a note stop event
   if (channelEvents.invalidationOccurred) {
     // Send a note off event for all notes in this channel
     AnthemLiveEvent liveEvent{};
-    liveEvent.time = 0;
+    liveEvent.sampleOffset = 0;
     liveEvent.event.type = AnthemEventType::AllVoicesOff;
     outputEventBuffer->addEvent(liveEvent);
   }
 
-  double ticks = transport->rt_getPlayheadAdvanceAmount(numSamples);
+  double ticks = sequencer_timing::sampleCountToTickDelta(
+    static_cast<double>(numSamples),
+    timingParams
+  );
+  double sampleTimeOffset = 0.0;
 
   double incrementRemaining = ticks;
   double loopStart = config->loopStart;
@@ -155,10 +185,19 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
       incrementAmount = 0;
     }
 
+    double sampleAdvance = sequencer_timing::tickDeltaToSampleOffset(
+      incrementAmount,
+      timingParams
+    );
+
     for (auto& event : *channelEvents.events) {
       if (event.offset >= start && event.offset < end) {
         AnthemLiveEvent liveEvent{};
-        liveEvent.time = event.offset - start;
+        liveEvent.sampleOffset = sampleTimeOffset +
+          sequencer_timing::tickDeltaToSampleOffset(
+            event.offset - start,
+            timingParams
+          );
         liveEvent.event = event.event;
 
         outputEventBuffer->addEvent(liveEvent);
@@ -172,15 +211,21 @@ void SequenceNoteProviderProcessor::process(AnthemProcessContext& context, int n
     if (didJump) {
       // Stop all sound
       AnthemLiveEvent liveEvent{};
-      liveEvent.time = 0;
+      liveEvent.sampleOffset = sampleTimeOffset + sampleAdvance;
       liveEvent.event.type = AnthemEventType::AllVoicesOff;
 
       outputEventBuffer->addEvent(liveEvent);
 
       // Then play the events for loop start
       if (config->playheadJumpEventForLoop.has_value()) {
-        addEventsForJump(outputEventBuffer, config->playheadJumpEventForLoop.value());
+        rt_addEventsForJump(
+          outputEventBuffer,
+          config->playheadJumpEventForLoop.value(),
+          liveEvent.sampleOffset
+        );
       }
     }
+
+    sampleTimeOffset += sampleAdvance;
   }
 }

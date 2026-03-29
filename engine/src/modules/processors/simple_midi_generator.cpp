@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -52,7 +52,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
     currentNoteDuration = 0;
     eventOutBuffer->addEvent(
       AnthemLiveEvent {
-        .time = 0.0,
+        .sampleOffset = 0.0,
         .event = AnthemEvent(
           AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
         )
@@ -75,7 +75,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
 
     if (currentNoteDuration >= durationSamples) {
       AnthemLiveEvent noteOffEvent = AnthemLiveEvent {
-        .time = 0.0,
+        .sampleOffset = 0.0,
         .event = AnthemEvent(
           AnthemNoteOffEvent(currentNote, 0, 0.0f, currentNoteId)
         )
@@ -93,7 +93,7 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
       }
 
       AnthemLiveEvent noteOnEvent = AnthemLiveEvent {
-        .time = 0.0,
+        .sampleOffset = 0.0,
         .event = AnthemEvent(
           AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
         )

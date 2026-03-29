@@ -34,11 +34,11 @@ public:
       AnthemEventBuffer buffer(1);
 
       AnthemLiveEvent first{};
-      first.time = 1.0;
+      first.sampleOffset = 1.0;
       first.event.type = AnthemEventType::NoteOn;
 
       AnthemLiveEvent second{};
-      second.time = 2.0;
+      second.sampleOffset = 2.0;
       second.event.type = AnthemEventType::NoteOff;
 
       expect(buffer.addEvent(first), "First event should be added.");
@@ -47,8 +47,8 @@ public:
       expectEquals(static_cast<int>(buffer.getNumEvents()), 2, "Buffer should contain both events.");
       expectEquals(static_cast<int>(buffer.getSize()), 2, "Buffer capacity should double.");
       expectEquals(static_cast<int>(buffer.getTimesGrown()), 1, "Buffer should have grown once.");
-      expectEquals(buffer.getEvent(0).time, first.time, "First event should be preserved.");
-      expectEquals(buffer.getEvent(1).time, second.time, "Second event should be written.");
+      expectEquals(buffer.getEvent(0).sampleOffset, first.sampleOffset, "First event should be preserved.");
+      expectEquals(buffer.getEvent(1).sampleOffset, second.sampleOffset, "Second event should be written.");
     }
 
     {
@@ -57,7 +57,7 @@ public:
       AnthemEventBuffer buffer(1);
 
       AnthemLiveEvent event{};
-      event.time = 0.0;
+      event.sampleOffset = 0.0;
       event.event.type = AnthemEventType::NoteOn;
 
       expect(buffer.addEvent(event), "First event should be added.");
@@ -79,7 +79,7 @@ public:
       AnthemEventBuffer buffer(MAX_EVENT_BUFFER_SIZE);
 
       AnthemLiveEvent event{};
-      event.time = 0.0;
+      event.sampleOffset = 0.0;
       event.event.type = AnthemEventType::NoteOn;
 
       for (int i = 0; i < MAX_EVENT_BUFFER_SIZE; i++) {

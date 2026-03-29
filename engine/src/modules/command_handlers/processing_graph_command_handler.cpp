@@ -217,7 +217,7 @@ handleProcessingGraphCommand(Request& request) {
         if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOnEvent", std::shared_ptr<LiveEventRequestNoteOnEvent>>>) {
           auto& eventFromRequest = field.value();
           AnthemLiveEvent liveEvent = AnthemLiveEvent {
-            .time = 0.0, // Handle as soon as possible
+            .sampleOffset = 0.0, // Handle as soon as possible
             .event = AnthemEvent(AnthemNoteOnEvent())
           };
           liveEvent.event.noteOn.pitch = eventFromRequest->pitch;
@@ -228,7 +228,7 @@ handleProcessingGraphCommand(Request& request) {
         } else if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOffEvent", std::shared_ptr<LiveEventRequestNoteOffEvent>>>) {
           auto& eventFromRequest = field.value();
           AnthemLiveEvent liveEvent = AnthemLiveEvent {
-            .time = 0.0, // Handle as soon as possible
+            .sampleOffset = 0.0, // Handle as soon as possible
             .event = AnthemEvent(AnthemNoteOffEvent())
           };
 

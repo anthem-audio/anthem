@@ -180,43 +180,30 @@ double Transport::rt_getPlayheadAdvanceAmount(int numSamples) const {
   if (!rt_config->isPlaying) {
     return 0.0;
   }
-  auto ticksPerQuarter = rt_config->ticksPerQuarter;
-  auto beatsPerMinute = rt_config->beatsPerMinute;
-  auto ticksPerMinute = ticksPerQuarter * beatsPerMinute;
-  auto ticksPerSecond = ticksPerMinute / 60.0;
-  auto ticksPerSample = ticksPerSecond / sampleRate;
-  return static_cast<double>(numSamples * ticksPerSample);
+
+  return sequencer_timing::sampleCountToTickDelta(
+    static_cast<double>(numSamples),
+    rt_getTimingParams()
+  );
+}
+
+sequencer_timing::TimingParams Transport::rt_getTimingParams() const {
+  return sequencer_timing::TimingParams{
+    .ticksPerQuarter = rt_config->ticksPerQuarter,
+    .beatsPerMinute = rt_config->beatsPerMinute,
+    .sampleRate = sampleRate,
+  };
 }
 
 double Transport::rt_getPlayheadAfterAdvance(int numSamples) const {
   if (rt_config->isPlaying) {
     auto ticks = rt_getPlayheadAdvanceAmount(numSamples);
-
-    // Because we're using floating point math, the math operations here must
-    // precisely mirror those in the event provider nodes. If not, then we might
-    // drop or double-count events.
-    double timePointer = rt_playhead;
-    double incrementRemaining = ticks;
-    double loopStart = rt_config->loopStart;
-    double loopEnd = rt_config->loopEnd; // This will be infinite if no loop is set
-
-    while (incrementRemaining > 0.0) {
-      double incrementAmount = incrementRemaining;
-
-      if (timePointer + incrementAmount >= loopEnd) {
-        // If the increment would take us past the loop end, we need to
-        // calculate how much of the increment we can actually apply.
-        incrementAmount = loopEnd - timePointer;
-        incrementRemaining -= incrementAmount;
-        timePointer = loopStart;
-      }
-      else {
-        timePointer += incrementAmount;
-        incrementRemaining = 0.0;
-      }
-    }
-
-    return timePointer;
+    return sequencer_timing::advancePlayheadByTickDelta(
+      rt_playhead,
+      ticks,
+      rt_config->loopStart,
+      rt_config->loopEnd
+    );
   }
 
   return rt_playhead;
@@ -302,9 +289,12 @@ void Transport::setPlayheadStart(double playheadStart) {
 }
 
 void Transport::jumpTo(double playheadPosition) {
-  if (config.hasLoop && playheadPosition >= config.loopEnd) {
-    double mod = std::fmod(playheadPosition - config.loopStart, config.loopEnd - config.loopStart);
-    playheadPosition = config.loopStart + mod;
+  if (config.hasLoop) {
+    playheadPosition = sequencer_timing::wrapPlayheadToLoop(
+      playheadPosition,
+      config.loopStart,
+      config.loopEnd
+    );
   }
 
   auto event = createPlayheadJumpEvent(playheadPosition);
@@ -407,7 +397,7 @@ void Transport::addStartEventsForPattern(
 
           auto& events = collector[targetTrackId];
           events.push_back(AnthemLiveEvent{
-            .time = 0,
+            .sampleOffset = 0,
             .event = AnthemEvent(
               AnthemNoteOnEvent(
                 static_cast<int16_t>(note->key()),
