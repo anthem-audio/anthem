@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,7 +29,7 @@ LiveEventProviderProcessor::~LiveEventProviderProcessor() {
   // Nothing to do here
 }
 
-void LiveEventProviderProcessor::addLiveEventsToBuffer(std::unique_ptr<AnthemEventBuffer>& targetBuffer) {
+void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(std::unique_ptr<AnthemEventBuffer>& targetBuffer) {
   while (true) {
     auto eventOpt = liveEventBuffer->read();
     if (!eventOpt.has_value()) {
@@ -52,5 +52,5 @@ void LiveEventProviderProcessor::process(AnthemProcessContext& context, int /*nu
     LiveEventProviderProcessorModelBase::eventOutputPortId
   );
 
-  addLiveEventsToBuffer(outputEventBuffer);
+  rt_addLiveEventsToBuffer(outputEventBuffer);
 }

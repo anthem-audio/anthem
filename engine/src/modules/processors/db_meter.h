@@ -58,7 +58,7 @@ private:
 
   void syncVisualizationProviders();
   void unregisterVisualizationProviders();
-  void publishCurrentWindow(int channelCount, int64_t sampleTimestamp);
+  void rt_publishCurrentWindow(int channelCount, int64_t sampleTimestamp);
 
   static double peakLinearToDb(float peakLinear) {
     if (peakLinear <= 0.0f) {

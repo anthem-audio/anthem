@@ -129,7 +129,7 @@ void DbMeterProcessor::process(AnthemProcessContext& context, int numSamples) {
     rt_samplesSinceLastPublish++;
 
     if (rt_samplesSinceLastPublish >= publishEverySamples) {
-      publishCurrentWindow(
+      rt_publishCurrentWindow(
         channelCount,
         blockStartSample + static_cast<int64_t>(sampleIndex) + 1
       );
@@ -168,7 +168,7 @@ void DbMeterProcessor::unregisterVisualizationProviders() {
   channelProviders.clear();
 }
 
-void DbMeterProcessor::publishCurrentWindow(
+void DbMeterProcessor::rt_publishCurrentWindow(
   int channelCount,
   int64_t sampleTimestamp
 ) {

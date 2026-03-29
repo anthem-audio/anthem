@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -31,7 +31,7 @@ class LiveEventProviderProcessor : public AnthemProcessor, public LiveEventProvi
 private:
   std::unique_ptr<RingBuffer<AnthemLiveEvent, 4096>> liveEventBuffer;
 
-  void addLiveEventsToBuffer(std::unique_ptr<AnthemEventBuffer>& targetBuffer);
+  void rt_addLiveEventsToBuffer(std::unique_ptr<AnthemEventBuffer>& targetBuffer);
 public:
   LiveEventProviderProcessor(const LiveEventProviderProcessorModelImpl& _impl);
   ~LiveEventProviderProcessor() override;
