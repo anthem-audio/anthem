@@ -293,6 +293,14 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     widget.onVerticalPanMove?.call(pointerPos.dy);
   }
 
+  bool _shouldTrackVelocityForScrollSignal(PointerScrollEvent event) {
+    // Physical mouse wheels should stop with the final detent, while trackpad
+    // scrolling may legitimately continue with momentum. On web, trackpad
+    // scrolling currently also arrives as PointerScrollEvent, so we key off the
+    // resolved device kind rather than the event type alone.
+    return event.kind != PointerDeviceKind.mouse;
+  }
+
   void _stopAllInputActivity({required bool clearSamples}) {
     _horizontalAxisController.stop(clearSamples: clearSamples);
     _verticalAxisController.stop(clearSamples: clearSamples);
@@ -335,6 +343,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
   void _handleScroll(PointerScrollEvent event) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final pointerPos = contentRenderBox.globalToLocal(event.position);
+    final shouldTrackVelocity = _shouldTrackVelocityForScrollSignal(event);
 
     if (_usesTimelineZoomOnlyInput) {
       _endPanZoomGesture();
@@ -345,6 +354,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
         pointerCoordinate: pointerPos.dx,
         delta: event.scrollDelta.dy * _timelineWheelZoomMultiplier,
         timeStamp: event.timeStamp,
+        trackVelocity: shouldTrackVelocity,
       );
       return;
     }
@@ -368,6 +378,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
           pointerCoordinate: pointerPos.dx,
           delta: delta,
           timeStamp: event.timeStamp,
+          trackVelocity: shouldTrackVelocity,
         );
       }
       return;
@@ -383,6 +394,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
         pointerCoordinate: pointerPos.dy,
         delta: -delta * 0.005,
         timeStamp: event.timeStamp,
+        trackVelocity: shouldTrackVelocity,
       );
       return;
     }
@@ -392,7 +404,11 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       _horizontalZoomController.stop(clearSamples: true);
       _verticalZoomController.stop(clearSamples: true);
       _verticalAxisController.stop(clearSamples: true);
-      _horizontalAxisController.applyUserDelta(delta, event.timeStamp);
+      _horizontalAxisController.applyUserDelta(
+        delta,
+        event.timeStamp,
+        trackVelocity: shouldTrackVelocity,
+      );
       return;
     }
 
@@ -400,7 +416,11 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     _horizontalZoomController.stop(clearSamples: true);
     _verticalZoomController.stop(clearSamples: true);
     _horizontalAxisController.stop(clearSamples: true);
-    _verticalAxisController.applyUserDelta(delta, event.timeStamp);
+    _verticalAxisController.applyUserDelta(
+      delta,
+      event.timeStamp,
+      trackVelocity: shouldTrackVelocity,
+    );
   }
 
   void _handlePanZoomUpdate(PointerEvent event) {
@@ -409,6 +429,10 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
 
     final panZoomEvent = event is PointerPanZoomUpdateEvent ? event : null;
     final scrollEvent = event is PointerScrollEvent ? event : null;
+    final shouldTrackVelocity =
+        panZoomEvent != null ||
+        (scrollEvent != null &&
+            _shouldTrackVelocityForScrollSignal(scrollEvent));
 
     final dx = panZoomEvent?.localPanDelta.dx ?? -scrollEvent!.scrollDelta.dx;
     final dy = panZoomEvent?.localPanDelta.dy ?? -scrollEvent!.scrollDelta.dy;
@@ -431,6 +455,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
         pointerCoordinate: pointerPos.dx,
         delta: -dy * _timelineTrackpadZoomMultiplier,
         timeStamp: event.timeStamp,
+        trackVelocity: shouldTrackVelocity,
       );
       return;
     }
@@ -445,6 +470,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
           pointerCoordinate: pointerPos.dx,
           delta: -dy * 0.8,
           timeStamp: event.timeStamp,
+          trackVelocity: shouldTrackVelocity,
         );
       }
       return;
@@ -458,6 +484,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
         pointerCoordinate: pointerPos.dy,
         delta: -dy * 0.01,
         timeStamp: event.timeStamp,
+        trackVelocity: shouldTrackVelocity,
       );
       return;
     }
@@ -478,8 +505,16 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       (false, false) => (dx: 0.0, dy: 0.0),
     };
 
-    _horizontalAxisController.applyUserDelta(filteredDelta.dx, event.timeStamp);
-    _verticalAxisController.applyUserDelta(filteredDelta.dy, event.timeStamp);
+    _horizontalAxisController.applyUserDelta(
+      filteredDelta.dx,
+      event.timeStamp,
+      trackVelocity: shouldTrackVelocity,
+    );
+    _verticalAxisController.applyUserDelta(
+      filteredDelta.dy,
+      event.timeStamp,
+      trackVelocity: shouldTrackVelocity,
+    );
   }
 
   void _handleScrollInertiaCancel() {
@@ -570,9 +605,14 @@ class _AnchoredScrollAxisController {
     required double pointerCoordinate,
     required double delta,
     required Duration timeStamp,
+    bool trackVelocity = true,
   }) {
     _pointerCoordinate = pointerCoordinate;
-    _axisController.applyUserDelta(delta, timeStamp);
+    _axisController.applyUserDelta(
+      delta,
+      timeStamp,
+      trackVelocity: trackVelocity,
+    );
   }
 
   void startFling() {
@@ -636,15 +676,23 @@ class _ScrollAxisController {
     _controller.dispose();
   }
 
-  void applyUserDelta(double delta, Duration timeStamp) {
+  void applyUserDelta(
+    double delta,
+    Duration timeStamp, {
+    bool trackVelocity = true,
+  }) {
     if (!_isActive || delta.abs() <= _controllerValueEpsilon) {
       return;
     }
 
-    stop(clearSamples: false);
-    _recordScrollDelta(delta: delta, timeStamp: timeStamp);
+    stop(clearSamples: !trackVelocity);
+    if (trackVelocity) {
+      _recordScrollDelta(delta: delta, timeStamp: timeStamp);
+    }
     _controller.value += delta;
-    _scheduleFling();
+    if (trackVelocity) {
+      _scheduleFling();
+    }
   }
 
   void startFling() {

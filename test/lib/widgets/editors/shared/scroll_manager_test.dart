@@ -400,7 +400,7 @@ void main() {
       expect(fixture.timeView.width, greaterThan(initialWidth));
     });
 
-    testWidgets('continues zooming after wheel input stops', (tester) async {
+    testWidgets('stops zooming when wheel input stops', (tester) async {
       await fixture.pump(tester);
 
       await fixture.sendScroll(
@@ -421,7 +421,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
       await tester.pump(const Duration(milliseconds: 120));
 
-      expect(fixture.timeView.width, greaterThan(widthAfterInput));
+      expect(fixture.timeView.width, closeTo(widthAfterInput, 0.000001));
     });
 
     testWidgets('stops trackpad momentum when inertia is canceled', (
@@ -497,9 +497,7 @@ void main() {
       expect(fixture.timeView.width, greaterThan(initialWidth));
     });
 
-    testWidgets('continues ctrl zooming after wheel input stops', (
-      tester,
-    ) async {
+    testWidgets('stops ctrl zooming when wheel input stops', (tester) async {
       await fixture.pump(tester);
       fixture.keyboardModifiers.setCtrl(true);
 
@@ -521,7 +519,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
       await tester.pump(const Duration(milliseconds: 120));
 
-      expect(fixture.timeView.width, greaterThan(widthAfterInput));
+      expect(fixture.timeView.width, closeTo(widthAfterInput, 0.000001));
     });
   });
 }
