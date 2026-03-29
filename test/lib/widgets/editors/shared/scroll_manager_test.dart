@@ -20,6 +20,7 @@
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -344,7 +345,7 @@ void main() {
         scrollDelta: const Offset(0, 24),
       );
 
-      expect(fixture.scrollDelta, equals(24));
+      expect(fixture.scrollDelta, equals(kIsWeb ? 48 : 24));
       expect(fixture.zoomEvent, isNull);
     });
 

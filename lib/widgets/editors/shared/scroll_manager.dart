@@ -40,6 +40,10 @@ const _trackpadVerticalDeltaMultiplier = 1.0;
 // gesture state after a short period of inactivity.
 const _panZoomGestureIdleResetDelay = Duration(milliseconds: 96);
 
+// Flutter web currently routes both wheel and trackpad scroll deltas through
+// pan/zoom handling, so this speeds up both until those inputs are separated.
+const _webPanZoomScrollDeltaMultiplier = 2.0;
+
 // Scales wheel input for the timeline strip's zoom-only interaction model.
 const _timelineWheelZoomMultiplier = 1.5;
 
@@ -492,16 +496,23 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     _horizontalZoomController.stop(clearSamples: true);
     _verticalZoomController.stop(clearSamples: true);
 
+    final scrollDeltaMultiplier = kIsWeb
+        ? _webPanZoomScrollDeltaMultiplier
+        : 1.0;
+
     final filteredDelta = switch ((
       _supportsHorizontalScroll,
       _hasVerticalInputHandler,
     )) {
       (true, true) => _panZoomAxisCoordinator.filter(
-        dx: -dx,
-        dy: -dy * _trackpadVerticalDeltaMultiplier,
+        dx: -dx * scrollDeltaMultiplier,
+        dy: -dy * _trackpadVerticalDeltaMultiplier * scrollDeltaMultiplier,
       ),
-      (true, false) => (dx: -dx, dy: 0.0),
-      (false, true) => (dx: 0.0, dy: -dy * _trackpadVerticalDeltaMultiplier),
+      (true, false) => (dx: -dx * scrollDeltaMultiplier, dy: 0.0),
+      (false, true) => (
+        dx: 0.0,
+        dy: -dy * _trackpadVerticalDeltaMultiplier * scrollDeltaMultiplier,
+      ),
       (false, false) => (dx: 0.0, dy: 0.0),
     };
 
