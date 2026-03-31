@@ -48,14 +48,35 @@ void forEachPlayableTrackEventList(
   }
 }
 
-ActiveNotesForTrack collectActiveNotesForTrack(
+bool shouldApplySequenceEventToActiveNoteSnapshot(
+  const AnthemSequenceEvent& sequenceEvent,
+  double position
+) {
+  if (sequenceEvent.offset < position) {
+    return true;
+  }
+
+  if (sequenceEvent.offset > position) {
+    return false;
+  }
+
+  // Events at the jump position are treated as ordered micro-steps:
+  // boundary note-offs have already happened, boundary note-ons have not.
+  //
+  // We intentionally use the enum sort order here instead of `!= NoteOn`.
+  // `NoteOff` is defined to sort before `NoteOn`, so only events ordered before
+  // `NoteOn` should affect the "active at position" snapshot.
+  return sequenceEvent.event.type < AnthemEventType::NoteOn;
+}
+
+ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
   const std::vector<AnthemSequenceEvent>& events,
   double position
 ) {
   auto activeNotes = ActiveNotesForTrack();
 
   for (const auto& sequenceEvent : events) {
-    if (sequenceEvent.offset >= position) {
+    if (!shouldApplySequenceEventToActiveNoteSnapshot(sequenceEvent, position)) {
       break;
     }
 
@@ -73,7 +94,7 @@ ActiveNotesForTrack collectActiveNotesForTrack(
   return activeNotes;
 }
 
-TrackToActiveNotesMap collectActiveNotesForSequence(
+TrackToActiveNotesMap collectNotesActiveAtPositionForSequence(
   const SequenceEventListCollection& sequence,
   std::optional<int64_t> activeTrackId,
   double position
@@ -84,7 +105,7 @@ TrackToActiveNotesMap collectActiveNotesForSequence(
     sequence,
     activeTrackId,
     [&](int64_t destinationTrackId, const std::vector<AnthemSequenceEvent>& events) {
-      auto activeNotes = collectActiveNotesForTrack(events, position);
+      auto activeNotes = collectNotesActiveAtPositionForTrack(events, position);
       if (!activeNotes.empty()) {
         collector.insert_or_assign(destinationTrackId, std::move(activeNotes));
       }
@@ -109,6 +130,26 @@ void appendStartEvents(
   }
 }
 } // namespace
+
+PlayheadJumpEvent buildPlayheadJumpEvent(
+  const SequenceEventListCollection& sequence,
+  std::optional<int64_t> activeTrackId,
+  double playheadPosition
+) {
+  auto event = PlayheadJumpEvent();
+  event.newPlayheadPosition = playheadPosition;
+
+  appendStartEvents(
+    collectNotesActiveAtPositionForSequence(
+      sequence,
+      activeTrackId,
+      playheadPosition
+    ),
+    event.eventsToPlayAtJump
+  );
+
+  return event;
+}
 
 Transport::Transport() : rt_playhead{0.0}, rt_sampleCounter{0} {
   rt_config = new TransportConfig();
@@ -296,16 +337,11 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
     return event;
   }
 
-  appendStartEvents(
-    collectActiveNotesForSequence(
-      *compiledSequence,
-      config.activeTrackId,
-      playheadPosition
-    ),
-    event.eventsToPlayAtJump
+  return buildPlayheadJumpEvent(
+    *compiledSequence,
+    config.activeTrackId,
+    playheadPosition
   );
-
-  return event;
 }
 
 void Transport::updatePlayheadJumpEventForStart(bool send) {

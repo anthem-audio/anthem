@@ -27,6 +27,7 @@
 
 #include "juce_events/juce_events.h"
 
+#include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/util/ring_buffer.h"
 #include "modules/sequencer/events/event.h"
 #include "modules/sequencer/runtime/sequencer_timing.h"
@@ -49,6 +50,14 @@ public:
   double newPlayheadPosition = 0.0;
   std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>> eventsToPlayAtJump;
 };
+
+// Builds the untimed note-on payload that sequence providers should emit when
+// the playhead jumps to `playheadPosition`.
+PlayheadJumpEvent buildPlayheadJumpEvent(
+  const SequenceEventListCollection& sequence,
+  std::optional<int64_t> activeTrackId,
+  double playheadPosition
+);
 
 class TransportConfig {
 private:

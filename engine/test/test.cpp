@@ -26,6 +26,7 @@
 #include "modules/sequencer/events/event_test.h"
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"
 #include "modules/sequencer/runtime/sequencer_timing_test.h"
+#include "modules/sequencer/runtime/transport_test.h"
 #include "modules/processing_graph/processor/anthem_event_buffer_test.h"
 
 int main(int /* argc */, char** /* argv */) {
