@@ -21,8 +21,13 @@
 
 #include "modules/core/anthem.h"
 #include "modules/core/constants.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
 
-AnthemProcessContext::AnthemProcessContext(std::shared_ptr<Node>& graphNode) : graphNode(graphNode) {
+AnthemProcessContext::AnthemProcessContext(
+  std::shared_ptr<Node>& graphNode,
+  GraphRuntimeServices& rtServices
+) : graphNode(graphNode),
+    rt_services(&rtServices) {
   auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
 
   auto bufferSize = currentDevice->getCurrentBufferSizeSamples();
@@ -168,4 +173,13 @@ std::unique_ptr<AnthemEventBuffer>& AnthemProcessContext::getInputEventBuffer(in
 
 std::unique_ptr<AnthemEventBuffer>& AnthemProcessContext::getOutputEventBuffer(int64_t id) {
   return outputEventBuffers[id];
+}
+
+AnthemLiveNoteId AnthemProcessContext::rt_allocateLiveNoteId() {
+  jassert(rt_services != nullptr);
+  if (rt_services == nullptr) {
+    return anthemInvalidLiveNoteId;
+  }
+
+  return rt_services->rt_allocateLiveNoteId();
 }

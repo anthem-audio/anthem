@@ -79,7 +79,7 @@ class NoteModel extends _NoteModel
     required super.length,
     required super.offset,
     required super.pan,
-  }) : super(id: idAllocator.allocateId());
+  }) : super(id: idAllocator.allocateSequenceNoteId());
 
   NoteModel.uninitialized()
     : super(id: -1, key: 0, velocity: 0, length: 0, offset: 0, pan: 0);

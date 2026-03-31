@@ -54,9 +54,11 @@
 #include "actions/write_parameters_to_control_inputs_action.h"
 #include "actions/copy_events_action.h"
 
+class GraphRuntimeServices;
+
 // This class is used to compile a processing graph into a set of processing
 // instructions that can be executed in a real-time context.
 class AnthemGraphCompiler {
 public:
-  static AnthemGraphCompilationResult* compile();
+  static AnthemGraphCompilationResult* compile(GraphRuntimeServices& rtServices);
 };

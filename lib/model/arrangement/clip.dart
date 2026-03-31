@@ -38,7 +38,7 @@ class ClipModel extends _ClipModel
     required super.patternId,
     required super.trackId,
     required super.offset,
-  }) : super(id: idAllocator.allocateId());
+  }) : super(id: idAllocator.allocateSequenceClipId());
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
       _$ClipModelAnthemModelMixin.fromJson(json);

@@ -232,6 +232,13 @@ public:
   // Must be run at the start of each processing block.
   void rt_processSequenceChanges(int bufferSize);
 
+  // Gets a compiled sequence view on the main thread.
+  //
+  // This returns the current main-thread snapshot of the compiled event lists.
+  // Callers must not hold onto the returned pointer across unrelated sequence
+  // store updates.
+  const SequenceEventListCollection* getSequenceEventList(EntityId sequenceId) const;
+
   // Gets the event lists map.
   //
   // Before returning the map, we check the mapUpdateQueue and while it is not

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,10 +23,13 @@ import 'package:anthem/model/project.dart';
 
 /// Manages live note events for tracks.
 ///
-/// This class is responsible for sending live event messages to the engine
-/// for a track's live event provider node.
+/// Each live note request gets a stable source note ID so the engine can
+/// translate it into a runtime-emitted note ID without relying on pitch-only
+/// matching.
 class LiveEventManager {
   final ProjectModel project;
+  final Map<Id, Map<int, List<int>>> _activeNoteIdsByTrackAndPitch = {};
+  int _nextSourceNoteId = 0;
 
   LiveEventManager(this.project);
 
@@ -35,32 +38,138 @@ class LiveEventManager {
     return track?.liveEventProviderNodeId;
   }
 
-  void noteOn({
+  int _allocateSourceNoteId() {
+    final noteId = _nextSourceNoteId;
+    _nextSourceNoteId++;
+    return noteId;
+  }
+
+  void _rememberActiveNote({
+    required Id trackId,
+    required int pitch,
+    required int noteId,
+  }) {
+    final notesByPitch =
+        _activeNoteIdsByTrackAndPitch.putIfAbsent(trackId, () => {});
+    final activeNoteIds = notesByPitch.putIfAbsent(pitch, () => []);
+    activeNoteIds.add(noteId);
+  }
+
+  void _forgetActiveNote({
+    required Id trackId,
+    required int pitch,
+    required int noteId,
+  }) {
+    final notesByPitch = _activeNoteIdsByTrackAndPitch[trackId];
+    final activeNoteIds = notesByPitch?[pitch];
+    if (activeNoteIds == null) {
+      return;
+    }
+
+    activeNoteIds.remove(noteId);
+    if (activeNoteIds.isEmpty) {
+      notesByPitch?.remove(pitch);
+    }
+    if (notesByPitch != null && notesByPitch.isEmpty) {
+      _activeNoteIdsByTrackAndPitch.remove(trackId);
+    }
+  }
+
+  int? _takeMostRecentActiveNoteId({required Id trackId, required int pitch}) {
+    final notesByPitch = _activeNoteIdsByTrackAndPitch[trackId];
+    final activeNoteIds = notesByPitch?[pitch];
+    if (activeNoteIds == null || activeNoteIds.isEmpty) {
+      return null;
+    }
+
+    final noteId = activeNoteIds.removeLast();
+    if (activeNoteIds.isEmpty) {
+      notesByPitch?.remove(pitch);
+    }
+    if (notesByPitch != null && notesByPitch.isEmpty) {
+      _activeNoteIdsByTrackAndPitch.remove(trackId);
+    }
+
+    return noteId;
+  }
+
+  int noteOn({
     required Id trackId,
     required int pitch,
     required double velocity,
     required double pan,
+    int channel = 0,
   }) {
-    if (!project.engine.isRunning) return;
+    final noteId = _allocateSourceNoteId();
+
+    if (!project.engine.isRunning) {
+      return noteId;
+    }
 
     final liveEventProviderNodeId = _getLiveEventProviderNodeId(trackId);
-    if (liveEventProviderNodeId == null) return;
+    if (liveEventProviderNodeId == null) {
+      return noteId;
+    }
 
     project.engine.processingGraphApi.sendLiveEvent(
       liveEventProviderNodeId,
-      LiveEventRequestNoteOnEvent(pitch: pitch, velocity: velocity, pan: pan),
+      LiveEventRequestNoteOnEvent(
+        noteId: noteId,
+        pitch: pitch,
+        channel: channel,
+        velocity: velocity,
+        pan: pan,
+      ),
+    );
+
+    _rememberActiveNote(trackId: trackId, pitch: pitch, noteId: noteId);
+    return noteId;
+  }
+
+  void noteOff({
+    required Id trackId,
+    required int pitch,
+    int channel = 0,
+  }) {
+    final noteId = _takeMostRecentActiveNoteId(trackId: trackId, pitch: pitch);
+    if (noteId == null) {
+      return;
+    }
+
+    noteOffById(
+      trackId: trackId,
+      noteId: noteId,
+      pitch: pitch,
+      channel: channel,
     );
   }
 
-  void noteOff({required Id trackId, required int pitch}) {
-    if (!project.engine.isRunning) return;
+  void noteOffById({
+    required Id trackId,
+    required int noteId,
+    required int pitch,
+    int channel = 0,
+  }) {
+    if (!project.engine.isRunning) {
+      _forgetActiveNote(trackId: trackId, pitch: pitch, noteId: noteId);
+      return;
+    }
 
     final liveEventProviderNodeId = _getLiveEventProviderNodeId(trackId);
-    if (liveEventProviderNodeId == null) return;
+    if (liveEventProviderNodeId == null) {
+      _forgetActiveNote(trackId: trackId, pitch: pitch, noteId: noteId);
+      return;
+    }
 
     project.engine.processingGraphApi.sendLiveEvent(
       liveEventProviderNodeId,
-      LiveEventRequestNoteOffEvent(pitch: pitch),
+      LiveEventRequestNoteOffEvent(
+        noteId: noteId,
+        pitch: pitch,
+        channel: channel,
+      ),
     );
+
+    _forgetActiveNote(trackId: trackId, pitch: pitch, noteId: noteId);
   }
 }

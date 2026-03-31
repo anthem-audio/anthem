@@ -20,6 +20,7 @@
 #pragma once
 
 #include "note_events.h"
+#include "note_instance_id.h"
 
 // The event type. This determines ordering for events that occur at the same
 // time - e.g. NoteOff must come before NoteOn.
@@ -37,6 +38,7 @@ enum AnthemEventType {
 // - AnthemSequenceEvent: absolute sequence position, expressed in ticks.
 // - AnthemLiveEvent: block-relative position, expressed as a sample offset from
 //   the start of the current processing block.
+//
 struct AnthemEvent {
   AnthemEventType type;
   
@@ -55,6 +57,9 @@ struct AnthemEvent {
 struct AnthemSequenceEvent {
   // The time of the event, relative to the start of the sequence.
   double offset;
+
+  // The deterministic source note ID for this event.
+  AnthemSourceNoteId sourceId = anthemInvalidSourceNoteId;
 
   // The event itself.
   AnthemEvent event;
@@ -85,6 +90,15 @@ struct AnthemLiveEvent {
   // fractional and may be negative in edge cases where an event needs to
   // describe something that logically occurred just before the block started.
   double sampleOffset;
+
+  // The runtime live note ID for this event.
+  //
+  // This should come from the generator in live_note_id_generator.h.
+  //
+  // This is assigned by note-producing processors and is the identity that
+  // downstream processors should use to track active notes. Non-note events
+  // should leave this as `anthemInvalidLiveNoteId`.
+  AnthemLiveNoteId liveId = anthemInvalidLiveNoteId;
 
   // The event itself.
   AnthemEvent event;

@@ -94,6 +94,7 @@ private:
   // multiple times and sort at the end.
   static void getPatternNoteEvents(
     EntityId patternId,
+    std::optional<EntityId> clipId,
     std::optional<std::tuple<double, double>> range,
     std::optional<double> offset,
     std::vector<AnthemSequenceEvent>& events

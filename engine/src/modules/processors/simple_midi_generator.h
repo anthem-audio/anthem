@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@
 
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/sequencer/events/note_events.h"
 
 class SimpleMidiGeneratorProcessor : public AnthemProcessor, public SimpleMidiGeneratorProcessorModelBase {
 private:
@@ -30,7 +31,7 @@ private:
   bool noteOn;
 
   int16_t currentNote;
-  int32_t currentNoteId;
+  AnthemLiveNoteId currentNoteId;
   size_t currentNoteDuration;
 public:
   SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl);

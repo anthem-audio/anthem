@@ -84,6 +84,14 @@ class SequencerModel extends _SequencerModel
 abstract class _SequencerModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   @anthemObservable
+  @hideFromCpp
+  int nextNoteId = 0;
+
+  @anthemObservable
+  @hideFromCpp
+  int nextClipId = 0;
+
+  @anthemObservable
   int ticksPerQuarter = 96;
 
   /// The project BPM, stored as a fixed point number with 2 decimal places.
@@ -151,6 +159,14 @@ abstract class _SequencerModel
     arrangementOrder = .of([arrangement.id]);
     activeArrangementID = arrangement.id;
     activeTransportSequenceID = arrangement.id;
+  }
+
+  Id allocateNoteId() {
+    return nextNoteId++;
+  }
+
+  Id allocateClipId() {
+    return nextClipId++;
   }
 
   void setActivePattern(Id? patternID) {

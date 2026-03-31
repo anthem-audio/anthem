@@ -33,16 +33,21 @@
 
 // Represents the playhead jumping to a new location for the current sequence.
 //
-// There is a map included that contains the events that should be played at the
-// new playhead position. For example, if we jump into the middle of a note, we
-// want to start playing that note.
+// The maps included here contain untimed sequencer note-on events that
+// sequence providers should translate into emitted live note IDs on the audio
+// thread.
+struct PlayheadJumpSequenceEvent {
+  AnthemSourceNoteId sequenceNoteId = anthemInvalidSourceNoteId;
+  AnthemEvent event;
+};
+
 class PlayheadJumpEvent {
 private:
   JUCE_LEAK_DETECTOR(PlayheadJumpEvent)
 
 public:
   double newPlayheadPosition = 0.0;
-  std::unordered_map<int64_t, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
+  std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>> eventsToPlayAtJump;
 };
 
 class TransportConfig {
@@ -100,13 +105,6 @@ private:
 
   void timerCallback() override;
 
-  void addStartEventsForPattern(
-    int64_t patternId,
-    int64_t trackId,
-    double offset,
-    std::unordered_map<int64_t, std::vector<AnthemLiveEvent>>& collector
-  );
-
   PlayheadJumpEvent createPlayheadJumpEvent(double playheadPosition);
 
   void updateLoopPoints(bool send);
@@ -148,6 +146,10 @@ public:
   // reset after.
   bool rt_playheadJumpOrPauseOccurred = false;
 
+  // This is set for blocks where sequencer-owned notes should be stopped
+  // before any jump-start notes are emitted.
+  bool rt_shouldStopSequenceNotes = false;
+
   Transport();
 
   void setIsPlaying(bool isPlaying);
@@ -168,7 +170,8 @@ public:
   void jumpTo(double playheadPosition);
 
   // Pulls loop points from the active sequence and sends the relevant loop
-  // information to the audio thread, including events to play on loop jump.
+  // information to the audio thread, including any loop-start events needed at
+  // the loop boundary.
   void updateLoopPoints() {
     updateLoopPoints(true);
   }

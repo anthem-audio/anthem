@@ -34,7 +34,13 @@ void AnthemSequenceCompiler::compilePattern(EntityId patternId) {
   SequenceEventListCollection newSequence;
   SequenceEventList noTrackEvents;
 
-  getPatternNoteEvents(patternId, std::nullopt, std::nullopt, *noTrackEvents.events);
+  getPatternNoteEvents(
+    patternId,
+    std::nullopt,
+    std::nullopt,
+    std::nullopt,
+    *noTrackEvents.events
+  );
   sortEventList(*noTrackEvents.events);
 
   newSequence.tracks->insert_or_assign(
@@ -89,7 +95,13 @@ void AnthemSequenceCompiler::compilePattern(
       new std::vector<std::tuple<double, double>>(invalidationRanges);
   }
 
-  getPatternNoteEvents(patternId, std::nullopt, std::nullopt, *noTrackEvents.events);
+  getPatternNoteEvents(
+    patternId,
+    std::nullopt,
+    std::nullopt,
+    std::nullopt,
+    *noTrackEvents.events
+  );
   sortEventList(*noTrackEvents.events);
 
   auto& store = *anthem.sequenceStore;
@@ -177,6 +189,7 @@ void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
 
     getPatternNoteEvents(
       clip->patternId(),
+      clip->id(),
       clip->timeView().has_value()
           ? std::make_optional(
               std::make_tuple(
@@ -193,6 +206,7 @@ void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
 
 void AnthemSequenceCompiler::getPatternNoteEvents(
   EntityId patternId,
+  std::optional<EntityId> clipId,
   std::optional<std::tuple<double, double>> range,
   std::optional<double> offset,
   std::vector<AnthemSequenceEvent>& events
@@ -208,6 +222,12 @@ void AnthemSequenceCompiler::getPatternNoteEvents(
 
   for (auto& noteEntry : *pattern->notes()) {
     auto note = noteEntry.second;
+    auto noteInstanceId = clipId.has_value()
+      ? anthem_note_instance_ids::fromArrangementClipNoteId(
+          clipId.value(),
+          note->id()
+        )
+      : anthem_note_instance_ids::fromPatternNoteId(note->id());
     auto rangeOptional = clampStartAndEndToRange(
       static_cast<double>(note->offset()),
       static_cast<double>(note->offset() + note->length()),
@@ -233,25 +253,25 @@ void AnthemSequenceCompiler::getPatternNoteEvents(
 
     events.push_back(AnthemSequenceEvent {
       .offset = startWithOffset,
+      .sourceId = noteInstanceId,
       .event = AnthemEvent(
         AnthemNoteOnEvent(
           static_cast<int16_t>(note->key()),
           static_cast<int16_t>(0),
           static_cast<float>(note->velocity()),
-          0.f,
-          static_cast<int32_t>(-1)
+          0.f
         )
       )
     });
 
     events.push_back(AnthemSequenceEvent {
       .offset = endWithOffset,
+      .sourceId = noteInstanceId,
       .event = AnthemEvent(
         AnthemNoteOffEvent(
           static_cast<int16_t>(note->key()),
           static_cast<int16_t>(0),
-          0.f,
-          static_cast<int32_t>(-1)
+          0.f
         )
       )
     });

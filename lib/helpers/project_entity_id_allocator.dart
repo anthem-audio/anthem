@@ -38,4 +38,12 @@ class ProjectEntityIdAllocator {
   Id allocateId() {
     return _allocateIdOverride?.call() ?? project!.allocateId();
   }
+
+  Id allocateSequenceNoteId() {
+    return _allocateIdOverride?.call() ?? project!.sequence.allocateNoteId();
+  }
+
+  Id allocateSequenceClipId() {
+    return _allocateIdOverride?.call() ?? project!.sequence.allocateClipId();
+  }
 }

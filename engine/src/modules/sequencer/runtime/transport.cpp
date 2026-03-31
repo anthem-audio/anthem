@@ -19,20 +19,106 @@
 
 #include "transport.h"
 
+#include <unordered_map>
+
 #include "modules/core/anthem.h"
+
+namespace {
+using TrackToJumpEventsMap =
+  std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>>;
+using ActiveNotesForTrack = std::unordered_map<AnthemSourceNoteId, AnthemNoteOnEvent>;
+using TrackToActiveNotesMap = std::unordered_map<int64_t, ActiveNotesForTrack>;
+
+template <typename Callback>
+void forEachPlayableTrackEventList(
+  const SequenceEventListCollection& sequence,
+  std::optional<int64_t> activeTrackId,
+  Callback&& callback
+) {
+  auto noTrackIter = sequence.tracks->find(anthem_sequencer_track_ids::noTrack);
+  if (noTrackIter != sequence.tracks->end()) {
+    if (activeTrackId.has_value()) {
+      callback(activeTrackId.value(), *noTrackIter->second.events);
+    }
+    return;
+  }
+
+  for (auto& [trackId, eventList] : *sequence.tracks) {
+    callback(trackId, *eventList.events);
+  }
+}
+
+ActiveNotesForTrack collectActiveNotesForTrack(
+  const std::vector<AnthemSequenceEvent>& events,
+  double position
+) {
+  auto activeNotes = ActiveNotesForTrack();
+
+  for (const auto& sequenceEvent : events) {
+    if (sequenceEvent.offset >= position) {
+      break;
+    }
+
+    if (sequenceEvent.event.type == AnthemEventType::NoteOn) {
+      activeNotes.insert_or_assign(
+        sequenceEvent.sourceId,
+        sequenceEvent.event.noteOn
+      );
+    }
+    else if (sequenceEvent.event.type == AnthemEventType::NoteOff) {
+      activeNotes.erase(sequenceEvent.sourceId);
+    }
+  }
+
+  return activeNotes;
+}
+
+TrackToActiveNotesMap collectActiveNotesForSequence(
+  const SequenceEventListCollection& sequence,
+  std::optional<int64_t> activeTrackId,
+  double position
+) {
+  auto collector = TrackToActiveNotesMap();
+
+  forEachPlayableTrackEventList(
+    sequence,
+    activeTrackId,
+    [&](int64_t destinationTrackId, const std::vector<AnthemSequenceEvent>& events) {
+      auto activeNotes = collectActiveNotesForTrack(events, position);
+      if (!activeNotes.empty()) {
+        collector.insert_or_assign(destinationTrackId, std::move(activeNotes));
+      }
+    }
+  );
+
+  return collector;
+}
+
+void appendStartEvents(
+  const TrackToActiveNotesMap& activeNotesByTrack,
+  TrackToJumpEventsMap& collector
+) {
+  for (const auto& [trackId, activeNotes] : activeNotesByTrack) {
+    auto& events = collector[trackId];
+    for (const auto& [sourceId, noteOn] : activeNotes) {
+      events.push_back(PlayheadJumpSequenceEvent{
+        .sequenceNoteId = sourceId,
+        .event = AnthemEvent(noteOn),
+      });
+    }
+  }
+}
+} // namespace
 
 Transport::Transport() : rt_playhead{0.0}, rt_sampleCounter{0} {
   rt_config = new TransportConfig();
 
-  // Initialize the transport with default values
   sendConfigToAudioThread();
 
   rt_playheadJumpEvent = nullptr;
   rt_playheadJumpEventForSeek = nullptr;
   rt_playheadJumpEventForStart = nullptr;
 
-  // Start the cleanup loop, which will clean up memory sent back from the audio
-  // thread
   this->startTimer(100);
 }
 
@@ -81,22 +167,21 @@ void Transport::prepareToProcess() {
   jassert(currentDevice != nullptr);
   sampleRate = currentDevice->getCurrentSampleRate();
 
-  // Reset the sample counter when the audio device starts so it remains a
-  // session-local audio-clock timebase.
   rt_sampleCounter = 0;
 }
 
 void Transport::rt_prepareForProcessingBlock() {
-  // Get the current transport state
+  rt_shouldStopSequenceNotes = false;
+
   auto newConfigOpt = configBuffer.read();
 
-  // If there are multiple new configs, we want the most recent one
   while (true) {
     auto newerConfigOpt = configBuffer.read();
     if (newerConfigOpt.has_value()) {
       configDeleteBuffer.add(newConfigOpt.value());
       newConfigOpt = newerConfigOpt;
-    } else {
+    }
+    else {
       break;
     }
   }
@@ -104,29 +189,20 @@ void Transport::rt_prepareForProcessingBlock() {
   if (newConfigOpt.has_value()) {
     auto* newConfig = newConfigOpt.value();
 
-    // Check if the transport state has changed
-
-    // Check for stop
     if (!newConfig->isPlaying && rt_config->isPlaying) {
       rt_playhead = newConfig->playheadStart;
-
-      // Provides a signal that instruments need to stop playing any active voices
       rt_playheadJumpOrPauseOccurred = true;
+      rt_shouldStopSequenceNotes = true;
     }
 
-    // Check for play
     if (newConfig->isPlaying && !rt_config->isPlaying) {
-      // We should set the pointer that allows consumers to read any events we
-      // want to post on start
       rt_playheadJumpEventForStart = &newConfig->playheadJumpEventForStart;
     }
-   
-    // Update the real-time transport state
+
     configDeleteBuffer.add(rt_config);
     rt_config = newConfig;
   }
 
-  // Check if there are any playhead jump events to process
   while (auto event = playheadJumpEventBuffer.read()) {
     if (rt_playheadJumpEventForSeek != nullptr) {
       playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
@@ -137,26 +213,21 @@ void Transport::rt_prepareForProcessingBlock() {
   if (rt_playheadJumpEventForSeek != nullptr) {
     rt_playhead = rt_playheadJumpEventForSeek->newPlayheadPosition;
     rt_playheadJumpOrPauseOccurred = true;
+    rt_shouldStopSequenceNotes = true;
   }
 
-  // If we're not playing, then we do not want downstream consumers to pick up
-  // any sequencer events that this object might have contained
   if (!rt_config->isPlaying) {
     playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
     rt_playheadJumpEventForSeek = nullptr;
   }
 
-  // Set the public-facing playhead jump event pointer
   if (rt_playheadJumpEventForSeek != nullptr) {
     rt_playheadJumpEvent = rt_playheadJumpEventForSeek;
   }
   else if (rt_playheadJumpEventForStart != nullptr) {
-    // If there is no seek event, but there is a start event, then we use that
-    // as the playhead jump event
     rt_playheadJumpEvent = rt_playheadJumpEventForStart;
   }
   else {
-    // Otherwise, we have no playhead jump event for this processing block
     rt_playheadJumpEvent = nullptr;
   }
 }
@@ -165,9 +236,8 @@ void Transport::rt_advancePlayhead(int numSamples) {
   rt_playhead = rt_getPlayheadAfterAdvance(numSamples);
   rt_sampleCounter += static_cast<int64_t>(numSamples);
   rt_playheadJumpOrPauseOccurred = false;
+  rt_shouldStopSequenceNotes = false;
 
-  // Send the playhead jump event back to the main thread for deletion, if there
-  // is one
   if (rt_playheadJumpEventForSeek != nullptr) {
     playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
     rt_playheadJumpEventForSeek = nullptr;
@@ -211,59 +281,29 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) const {
 
 PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
   auto event = PlayheadJumpEvent();
-
   event.newPlayheadPosition = playheadPosition;
 
-  if (config.activeSequenceId.has_value()) {
-    auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
-    if (patterns.find(config.activeSequenceId.value()) != patterns.end()) {
-      if (config.activeTrackId.has_value()) {
-        addStartEventsForPattern(
-          config.activeSequenceId.value(),
-          config.activeTrackId.value(),
-          playheadPosition,
-          event.eventsToPlayAtJump
-        );
-      }
-    }
-
-    auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
-    if (arrangements.find(config.activeSequenceId.value()) != arrangements.end()) {
-      auto& arrangement = *arrangements.at(config.activeSequenceId.value());
-
-      for (auto& clipPair : *arrangement.clips()) {
-        auto& clip = *clipPair.second;
-        auto clipOffset = clip.offset();
-        if (playheadPosition < clipOffset) {
-          continue;
-        }
-
-        auto& clipTimeView = clip.timeView();
-        if (clipTimeView.has_value()) {
-          auto start = clipTimeView.value()->start();
-          auto end = clipTimeView.value()->end();
-          if (playheadPosition >= clipOffset + (end - start)) {
-            continue;
-          }
-
-          addStartEventsForPattern(
-            clip.patternId(),
-            clip.trackId(),
-            playheadPosition - clipOffset + start,
-            event.eventsToPlayAtJump
-          );
-        }
-        else {
-          addStartEventsForPattern(
-            clip.patternId(),
-            clip.trackId(),
-            playheadPosition - clipOffset,
-            event.eventsToPlayAtJump
-          );
-        }
-      }
-    }
+  if (!config.activeSequenceId.has_value()) {
+    return event;
   }
+
+  auto* compiledSequence =
+    Anthem::getInstance().sequenceStore->getSequenceEventList(
+      config.activeSequenceId.value()
+    );
+
+  if (compiledSequence == nullptr) {
+    return event;
+  }
+
+  appendStartEvents(
+    collectActiveNotesForSequence(
+      *compiledSequence,
+      config.activeTrackId,
+      playheadPosition
+    ),
+    event.eventsToPlayAtJump
+  );
 
   return event;
 }
@@ -311,8 +351,6 @@ void Transport::clearLoopPoints() {
   config.hasLoop = false;
   config.loopStart = 0.0;
   config.loopEnd = std::numeric_limits<double>::infinity();
-
-  // The audio thread will release this into the delete buffer when it picks up the new config
   config.playheadJumpEventForLoop = std::nullopt;
 }
 
@@ -353,19 +391,18 @@ void Transport::updateLoopPoints(bool send) {
   config.hasLoop = true;
   config.loopStart = static_cast<double>(loopPoints->start());
   config.loopEnd = static_cast<double>(loopPoints->end());
-  config.playheadJumpEventForLoop = createPlayheadJumpEvent(static_cast<double>(config.loopStart));
+  config.playheadJumpEventForLoop = createPlayheadJumpEvent(
+    static_cast<double>(config.loopStart)
+  );
 
   sendConfigToAudioThread();
 }
 
 void Transport::timerCallback() {
-  // Clean up any playhead jump events that have been sent back from the audio
-  // thread for deletion
   while (auto event = playheadJumpEventDeleteBuffer.read()) {
     delete event.value();
   }
 
-  // Same, but for configs
   while (auto pendingConfig = configDeleteBuffer.read()) {
     delete pendingConfig.value();
   }
@@ -374,44 +411,4 @@ void Transport::timerCallback() {
 void Transport::sendConfigToAudioThread() {
   TransportConfig* configCopy = new TransportConfig(config);
   configBuffer.add(configCopy);
-}
-
-void Transport::addStartEventsForPattern(
-  int64_t patternId,
-  int64_t trackId,
-  double offset,
-  std::unordered_map<int64_t, std::vector<AnthemLiveEvent>>& collector
-) {
-  auto& pattern = *Anthem::getInstance().project->sequence()->patterns()->at(patternId);
-
-  auto addStartEventForTrack =
-      [&](int64_t targetTrackId, const std::shared_ptr<NoteModel>& note) {
-        auto noteOffset = note->offset();
-        auto noteLength = note->length();
-        // noteOffset < offset, because if noteOffset == offset then the note
-        // will be picked up by the sequencer
-        if (noteOffset < offset && noteOffset + noteLength > offset) {
-          if (collector.find(targetTrackId) == collector.end()) {
-            collector[targetTrackId] = std::vector<AnthemLiveEvent>();
-          }
-
-          auto& events = collector[targetTrackId];
-          events.push_back(AnthemLiveEvent{
-            .sampleOffset = 0,
-            .event = AnthemEvent(
-              AnthemNoteOnEvent(
-                static_cast<int16_t>(note->key()),
-                static_cast<int16_t>(0),
-                static_cast<float>(note->velocity()),
-                0.f,
-                static_cast<int32_t>(-1)
-              )
-            )
-          });
-        }
-      };
-
-  for (auto& noteEntry : *pattern.notes()) {
-    addStartEventForTrack(trackId, noteEntry.second);
-  }
 }

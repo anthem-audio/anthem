@@ -162,6 +162,7 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   );
 
   transport->prepareToProcess();
+  graphProcessor->resetRtServices();
   juce::Logger::writeToLog("Transport prepared before audio callback registration.");
 
   // Set up the audio callback
@@ -188,7 +189,7 @@ std::shared_ptr<EngineAudioConfig> Anthem::getCurrentAudioConfig() const {
 }
 
 void Anthem::compileProcessingGraph() {
-  auto result = AnthemGraphCompiler::compile();
+  auto result = AnthemGraphCompiler::compile(graphProcessor->getRtServices());
 
   // std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
 

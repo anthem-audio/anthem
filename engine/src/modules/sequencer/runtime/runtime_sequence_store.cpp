@@ -158,6 +158,17 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   }
 }
 
+const SequenceEventListCollection* AnthemRuntimeSequenceStore::getSequenceEventList(
+  EntityId sequenceId
+) const {
+  auto it = eventLists->find(sequenceId);
+  if (it == eventLists->end()) {
+    return nullptr;
+  }
+
+  return &it->second;
+}
+
 AnthemRuntimeSequenceStore::SequenceIdToEventsMap& AnthemRuntimeSequenceStore::rt_getEventLists() {
   return *rt_eventLists;
 }

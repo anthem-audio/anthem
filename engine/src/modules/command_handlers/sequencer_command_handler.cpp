@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -51,9 +51,9 @@ std::optional<Response> handleSequencerCommand(Request& request) {
       }
 
       if (Anthem::getInstance().transport->config.activeSequenceId == compileSequenceRequest.patternId.value()) {
-        // Update the events that play when the playhead starts, since they
-        // may have changed
-        Anthem::getInstance().transport->updatePlayheadJumpEventForStart(true);
+        auto& transport = *Anthem::getInstance().transport;
+        transport.updateLoopPoints();
+        transport.updatePlayheadJumpEventForStart(true);
       }
     }
     else if (compileSequenceRequest.arrangementId.has_value()) {
@@ -80,9 +80,9 @@ std::optional<Response> handleSequencerCommand(Request& request) {
       }
 
       if (Anthem::getInstance().transport->config.activeSequenceId == compileSequenceRequest.arrangementId.value()) {
-        // Update the events that play when the playhead starts, since they
-        // may have changed
-        Anthem::getInstance().transport->updatePlayheadJumpEventForStart(true);
+        auto& transport = *Anthem::getInstance().transport;
+        transport.updateLoopPoints();
+        transport.updatePlayheadJumpEventForStart(true);
       }
     }
   }

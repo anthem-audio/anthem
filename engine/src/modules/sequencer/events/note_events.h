@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -35,15 +35,21 @@ struct AnthemNoteOnEvent {
   // The detune of the note on event. This is in cents.
   float detune;
 
-  // Optional. The id of the note on event. This is used to match note on and
-  // note off events.
-  int32_t id;
+  AnthemNoteOnEvent(
+    int16_t pitch,
+    int16_t channel,
+    float velocity,
+    float detune
+  ) : pitch(pitch),
+      channel(channel),
+      velocity(velocity),
+      detune(detune) {}
 
-  // Constructor
-  AnthemNoteOnEvent(int16_t pitch, int16_t channel, float velocity, float detune, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), detune(detune), id(id) {}
-
-  // Default constructor
-  AnthemNoteOnEvent() : pitch(0), channel(0), velocity(0.0f), detune(0.0f), id(0) {}
+  AnthemNoteOnEvent()
+    : pitch(0),
+      channel(0),
+      velocity(0.0f),
+      detune(0.0f) {}
 };
 
 // Event type for note off events.
@@ -57,18 +63,20 @@ struct AnthemNoteOffEvent {
   // The velocity of the note off event, in the range [0, 1].
   float velocity;
 
-  // Optional. The id of the note off event. This is used to match note on and
-  // note off events.
-  int32_t id;
+  AnthemNoteOffEvent(
+    int16_t pitch,
+    int16_t channel,
+    float velocity
+  ) : pitch(pitch),
+      channel(channel),
+      velocity(velocity) {}
 
-  // Constructor
-  AnthemNoteOffEvent(int16_t pitch, int16_t channel, float velocity, int32_t id) : pitch(pitch), channel(channel), velocity(velocity), id(id) {}
-
-  // Default constructor
-  AnthemNoteOffEvent() : pitch(0), channel(0), velocity(0.0f), id(0) {}
+  AnthemNoteOffEvent()
+    : pitch(0),
+      channel(0),
+      velocity(0.0f) {}
 };
 
 struct AnthemAllVoicesOffEvent {
-  // Default constructor
   AnthemAllVoicesOffEvent() {}
 };

@@ -216,25 +216,32 @@ handleProcessingGraphCommand(Request& request) {
         using EventType = std::decay_t<decltype(field)>;
         if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOnEvent", std::shared_ptr<LiveEventRequestNoteOnEvent>>>) {
           auto& eventFromRequest = field.value();
-          AnthemLiveEvent liveEvent = AnthemLiveEvent {
+          AnthemLiveInputEvent liveInputEvent = AnthemLiveInputEvent {
             .sampleOffset = 0.0, // Handle as soon as possible
-            .event = AnthemEvent(AnthemNoteOnEvent())
+            .inputId = eventFromRequest->noteId,
+            .event = AnthemEvent(AnthemNoteOnEvent(
+              eventFromRequest->pitch,
+              eventFromRequest->channel,
+              eventFromRequest->velocity,
+              0.0f
+            ))
           };
-          liveEvent.event.noteOn.pitch = eventFromRequest->pitch;
-          liveEvent.event.noteOn.velocity = eventFromRequest->velocity;
           // liveEvent.event.noteOn.pan = eventFromRequest.pan;
 
-          liveEventProvider->addLiveEvent(std::move(liveEvent));
+          liveEventProvider->addLiveInputEvent(std::move(liveInputEvent));
         } else if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOffEvent", std::shared_ptr<LiveEventRequestNoteOffEvent>>>) {
           auto& eventFromRequest = field.value();
-          AnthemLiveEvent liveEvent = AnthemLiveEvent {
+          AnthemLiveInputEvent liveInputEvent = AnthemLiveInputEvent {
             .sampleOffset = 0.0, // Handle as soon as possible
-            .event = AnthemEvent(AnthemNoteOffEvent())
+            .inputId = eventFromRequest->noteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(
+              eventFromRequest->pitch,
+              eventFromRequest->channel,
+              0.0f
+            ))
           };
 
-          liveEvent.event.noteOff.pitch = eventFromRequest->pitch;
-
-          liveEventProvider->addLiveEvent(liveEvent);
+          liveEventProvider->addLiveInputEvent(liveInputEvent);
         } else {
           jassertfalse; // unhandled event
         }

@@ -33,6 +33,8 @@
 #include "modules/util/linear_parameter_smoother.h"
 #include "modules/processing_graph/model/node.h"
 
+class GraphRuntimeServices;
+
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
 // the inputs and outputs of the node associated with that processor.
@@ -53,8 +55,12 @@ private:
   std::unordered_map<int64_t, std::unique_ptr<LinearParameterSmoother>> parameterSmoothers;
 
   std::weak_ptr<Node> graphNode;
+  GraphRuntimeServices* rt_services = nullptr;
 public:
-  AnthemProcessContext(std::shared_ptr<Node>& graphNode);
+  AnthemProcessContext(
+    std::shared_ptr<Node>& graphNode,
+    GraphRuntimeServices& rtServices
+  );
 
   // Clean up the context. This must be called before the context is deallocated.
   void cleanup();
@@ -107,4 +113,6 @@ public:
   std::unordered_map<int64_t, std::unique_ptr<LinearParameterSmoother>>& getParameterSmoothers() {
     return parameterSmoothers;
   }
+
+  AnthemLiveNoteId rt_allocateLiveNoteId();
 };

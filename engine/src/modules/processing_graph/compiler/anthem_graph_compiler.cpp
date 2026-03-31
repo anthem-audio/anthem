@@ -20,6 +20,7 @@
 #include "anthem_graph_compiler.h"
 
 #include "modules/core/anthem.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
 
 #include "generated/lib/model/model.h"
 
@@ -28,7 +29,9 @@
 // See the header file for an overview of the graph processing algorithm. Each
 // step in the algorithm is annotated here.
 
-AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
+AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
+  GraphRuntimeServices& rtServices
+) {
   auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
 
@@ -63,7 +66,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
   for (auto& pair : *processingGraphModel->nodes()) {
     auto& node = pair.second;
 
-    auto context = new AnthemProcessContext(node);
+    auto context = new AnthemProcessContext(node, rtServices);
     result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
     result->graphNodes.push_back(node);
