@@ -21,6 +21,7 @@
 
 #include "console_logger.h"
 
+#include "modules/core/sequencer_test.h"
 #include "modules/processors/gain_parameter_mapping_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/events/event_test.h"

@@ -33,6 +33,7 @@ void Sequencer::initialize(
   transport.setActiveSequenceId(this->activeTransportSequenceID());
   transport.setActiveTrackId(this->activeTrackID());
   transport.setIsPlaying(this->isPlaying());
+  transport.setPlayheadStart(static_cast<double>(this->playbackStartPosition()));
 
   transport.jumpTo(static_cast<double>(this->playbackStartPosition()));
 
