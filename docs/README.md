@@ -7,6 +7,10 @@
   - [Processing Graph](./architecture/processing_graph.md)
   - [Sequencer](./architecture/sequencer.md)
   - [State Synchronization](./architecture/state_synchronization.md)
+- Codegen
+  - [Codegen Docs](./codegen/README.md)
+  - [Codegen Overview](./codegen/overview.md)
+  - [Codegen Analyzer Plugin](./codegen/analyzer_plugin.md)
 - Design
   - [Composable Sequences](./design/composable_sequences.md)
 - [Setup on Linux](./setup_linux.md)
@@ -85,18 +89,11 @@ The following is an overview of the the folder structure in the Anthem repositor
       - **`processors`**: Contains internal plugins for Anthem.
       - **`utils`**: Utilities used by other modules.
 - **`lib`**: Contains the UI for Anthem.
-  - **`commands`**: Anthem uses the command pattern for undo/redo. This folder contains code for actions that can be performed in the UI.
-  - **`controller`**: Meant as "controller" in the MVC sense. Contains classes for logic that are used by commands.
   - **`engine_api`**: Contains an API for interacting with the engine. This API abstracts the low-level communication details and provides a set of `async` functions to the rest of the UI.
   - **`helpers`**: Contains miscellaneous helper functions used by multiple other places in the UI, such as an ID generator.
-  - **`model`**: Contains the MobX model used by the rest of the UI. This model also describes the project file structure, and can be serialized to JSON to store and load Anthem project files.
+  - **`logic`**: Contains "business logic" for the UI - primarily core functionality to mutate the project model based on user actions.
+  - **`model`**: Contains the MobX model used by the rest of the UI. This model also describes the project file structure, and can be serialized to JSON to store and load Anthem project files. This also serves as the source for the codegen to generate C++ models.
   - **`widgets`**: Contains the Flutter widgets that make up the UI.
-    - **`basic`**: Contains widgets that are used across the UI, such as `Button`, `Dropdown`, `Scrollbar`, etc.
-    - **`editors`**: Contains editors, such as the piano roll and arranger.
-    - **`main_window`**: Contains the code that composes the Anthem UI. This code renders the header bar with tabs for each project, as well as the currently open project.
-    - **`project`**: Contains code that composes a view of an Anthem project. This includes rendering the editors and sidebars.
-    - **`project_details`**: Contains code for rendering the project details sidebar, with details for various items such as arrangements and patterns.
-    - **`project_explorer`**: Contains code for rendering the project explorer sidebar, with a tree view for navigating the project.
 - **`linux`**: Contains Flutter platform code for Linux.
 - **`macos`**: Contains Flutter platform code for macOS.
 - **`scripts`**: Contains scripts for developing, such as build scripts.

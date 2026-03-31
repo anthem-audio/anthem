@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,13 +19,19 @@
 
 #include "anthem_graph_processor.h"
 
-AnthemGraphProcessor::AnthemGraphProcessor() : clearDeletionQueueTimedCallback(juce::TimedCallback([this]() {
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
+
+AnthemGraphProcessor::AnthemGraphProcessor()
+    : rt_services(std::make_unique<GraphRuntimeServices>()),
+      clearDeletionQueueTimedCallback(juce::TimedCallback([this]() {
         this->clearDeletionQueueFromMainThread();
       })) {
   // Set up a JUCE timer to clear the deletion queue every 1s
   this->clearDeletionQueueTimedCallback.startTimer(2000);
   this->processingSteps = nullptr;
 }
+
+AnthemGraphProcessor::~AnthemGraphProcessor() = default;
 
 void AnthemGraphProcessor::setProcessingStepsFromMainThread(AnthemGraphCompilationResult* compilationResult) {
   this->processingStepsQueue.add(compilationResult);
@@ -77,5 +83,17 @@ void AnthemGraphProcessor::process(int numSamples) {
     for (auto& action : *group) {
       action->execute(numSamples);
     }
+  }
+}
+
+GraphRuntimeServices& AnthemGraphProcessor::getRtServices() {
+  jassert(rt_services != nullptr);
+  return *rt_services;
+}
+
+void AnthemGraphProcessor::resetRtServices() {
+  jassert(rt_services != nullptr);
+  if (rt_services != nullptr) {
+    rt_services->rt_reset();
   }
 }

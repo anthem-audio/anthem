@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,8 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:collection/collection.dart';
@@ -41,6 +43,26 @@ enum ActiveNoteAttribute {
   final int bottom;
   final int baseline;
   final int top;
+}
+
+class PianoRollRenderedNoteRef {
+  final Id id;
+  final bool isTransient;
+
+  const PianoRollRenderedNoteRef.real(this.id) : isTransient = false;
+  const PianoRollRenderedNoteRef.transient(this.id) : isTransient = true;
+
+  Id? get realNoteId => isTransient ? null : id;
+
+  @override
+  bool operator ==(Object other) {
+    return other is PianoRollRenderedNoteRef &&
+        other.id == id &&
+        other.isTransient == isTransient;
+  }
+
+  @override
+  int get hashCode => Object.hash(id, isTransient);
 }
 
 // ignore: library_private_types_in_public_api
@@ -76,6 +98,11 @@ abstract class _PianoRollViewModel with Store {
   Rectangle<double>? selectionBox;
 
   @observable
+  /// Selected note IDs across both committed notes and preview-only notes.
+  ///
+  /// Preview notes inherit their IDs when they are committed, so selection can
+  /// follow them across that boundary without a separate transient selection
+  /// structure.
   ObservableSet<Id> selectedNotes = ObservableSet();
 
   @observable
@@ -93,8 +120,8 @@ abstract class _PianoRollViewModel with Store {
   @observable
   bool noteAttributeEditorOpen = true;
 
-  final visibleNotes = CanvasAnnotationSet<({Id id})>();
-  final visibleResizeAreas = CanvasAnnotationSet<({Id id})>();
+  final visibleNotes = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
+  final visibleResizeAreas = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
 
   // These don't need to be observable, since they're just used during event
   // handling.
@@ -102,10 +129,91 @@ abstract class _PianoRollViewModel with Store {
   double cursorNoteVelocity = 0.75;
   double cursorNotePan = 0;
 
+  void clearTransientNoteState() {
+    pressedNote = null;
+    hoveredNote = null;
+  }
+
+  /// Clears transient interaction state that should never outlive a gesture.
+  ///
+  /// Selection cleanup for preview-only note IDs happens at the controller
+  /// layer, where the active pattern is available and we can tell which IDs
+  /// are about to disappear when preview notes are cleared.
+  void clearTransientPreviewState() {
+    clearTransientNoteState();
+  }
+
+  PianoRollRenderedNoteRef renderedRefFor(ResolvedPatternNote note) {
+    return note.isPreviewOnly
+        ? PianoRollRenderedNoteRef.transient(note.id)
+        : PianoRollRenderedNoteRef.real(note.id);
+  }
+
+  bool isNoteSelected(ResolvedPatternNote note) =>
+      selectedNotes.contains(note.id);
+
+  bool isNotePressed(ResolvedPatternNote note) => pressedNote == note.id;
+
+  bool isNoteHovered(ResolvedPatternNote note) => hoveredNote == note.id;
+
+  ResolvedPatternNote? resolveRenderedNoteByRef({
+    required PatternModel pattern,
+    required PianoRollRenderedNoteRef ref,
+  }) {
+    final note = pattern.resolveNoteById(ref.id);
+    if (note == null) {
+      return null;
+    }
+
+    if (note.isPreviewOnly != ref.isTransient) {
+      return null;
+    }
+
+    return note;
+  }
+
+  ResolvedPatternNote? resolvePressedRenderedNote(PatternModel pattern) {
+    final pressedNoteId = pressedNote;
+    if (pressedNoteId == null) {
+      return null;
+    }
+
+    final note = pattern.resolveNoteById(pressedNoteId);
+    if (note == null) {
+      return null;
+    }
+
+    return note;
+  }
+
+  List<ResolvedPatternNote> resolveRenderedNotes(PatternModel pattern) {
+    final resolvedNotes = <ResolvedPatternNote>[];
+    final overriddenNotes = <ResolvedPatternNote>[];
+    final previewOnlyNotes = <ResolvedPatternNote>[];
+
+    for (final note in pattern.getResolvedNotes()) {
+      if (note.isPreviewOnly) {
+        previewOnlyNotes.add(note);
+      } else if (note.hasOverride) {
+        overriddenNotes.add(note);
+      } else {
+        resolvedNotes.add(note);
+      }
+    }
+
+    // Notes painted later appear above earlier notes and win hit tests. Preview
+    // notes should therefore sit on top, with overridden committed notes above
+    // plain committed notes.
+    resolvedNotes.addAll(overriddenNotes);
+    resolvedNotes.addAll(previewOnlyNotes);
+
+    return resolvedNotes;
+  }
+
   /// Calculates the note and resize handle under the cursor, if there is one.
   ({
-    CanvasAnnotation<({Id id})>? note,
-    CanvasAnnotation<({Id id})>? resizeHandle,
+    CanvasAnnotation<PianoRollRenderedNoteRef>? note,
+    CanvasAnnotation<PianoRollRenderedNoteRef>? resizeHandle,
   })
   getContentUnderCursor(Offset pos) {
     final noteUnderCursor = visibleNotes.hitTest(pos);
@@ -119,7 +227,7 @@ abstract class _PianoRollViewModel with Store {
         .firstWhereOrNull(
           (element) =>
               noteUnderCursor == null ||
-              element.metadata.id == noteUnderCursor.metadata.id,
+              element.metadata == noteUnderCursor.metadata,
         );
     return (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor);
   }

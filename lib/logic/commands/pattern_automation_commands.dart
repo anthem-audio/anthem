@@ -19,94 +19,67 @@
 
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/automation_lane.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
 
 class AddAutomationPointCommand extends Command {
   Id patternID;
-  Id automationGeneratorID;
   AutomationPointModel point;
   int index;
-  bool createAutomationLane;
 
   AddAutomationPointCommand({
     required this.patternID,
-    required this.automationGeneratorID,
     required this.point,
     required this.index,
-    this.createAutomationLane = false,
   });
 
   @override
   void execute(ProjectModel project) {
-    final automationLanes =
-        project.sequence.patterns[patternID]!.automationLanes;
-
-    if (createAutomationLane) {
-      automationLanes[automationGeneratorID] = AutomationLaneModel();
-    }
-
-    automationLanes[automationGeneratorID]!.points.insert(index, point);
+    project.sequence.patterns[patternID]!.automation.points.insert(
+      index,
+      point,
+    );
   }
 
   @override
   void rollback(ProjectModel project) {
-    final automationLanes =
-        project.sequence.patterns[patternID]!.automationLanes;
-
-    automationLanes[automationGeneratorID]!.points.removeAt(index);
-
-    if (createAutomationLane) {
-      automationLanes.remove(automationGeneratorID);
-    }
+    project.sequence.patterns[patternID]!.automation.points.removeAt(index);
   }
 }
 
 class DeleteAutomationPointCommand extends Command {
   Id patternID;
-  Id automationGeneratorID;
   AutomationPointModel point;
   int index;
 
   DeleteAutomationPointCommand({
     required this.patternID,
-    required this.automationGeneratorID,
     required this.point,
     required this.index,
   });
 
   @override
   void execute(ProjectModel project) {
-    project
-        .sequence
-        .patterns[patternID]!
-        .automationLanes[automationGeneratorID]!
-        .points
-        .removeAt(index);
+    project.sequence.patterns[patternID]!.automation.points.removeAt(index);
   }
 
   @override
   void rollback(ProjectModel project) {
-    project
-        .sequence
-        .patterns[patternID]!
-        .automationLanes[automationGeneratorID]!
-        .points
-        .insert(index, point);
+    project.sequence.patterns[patternID]!.automation.points.insert(
+      index,
+      point,
+    );
   }
 }
 
 class SetAutomationPointValueCommand extends Command {
   Id patternID;
-  Id automationGeneratorID;
   int pointIndex;
   double oldValue;
   double newValue;
 
   SetAutomationPointValueCommand({
     required this.patternID,
-    required this.automationGeneratorID,
     required this.pointIndex,
     required this.oldValue,
     required this.newValue,
@@ -114,37 +87,25 @@ class SetAutomationPointValueCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project
-            .sequence
-            .patterns[patternID]!
-            .automationLanes[automationGeneratorID]!
-            .points[pointIndex]
-            .value =
+    project.sequence.patterns[patternID]!.automation.points[pointIndex].value =
         newValue;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project
-            .sequence
-            .patterns[patternID]!
-            .automationLanes[automationGeneratorID]!
-            .points[pointIndex]
-            .value =
+    project.sequence.patterns[patternID]!.automation.points[pointIndex].value =
         oldValue;
   }
 }
 
 class SetAutomationPointOffsetCommand extends Command {
   Id patternID;
-  Id automationGeneratorID;
   int pointIndex;
   int oldOffset;
   int newOffset;
 
   SetAutomationPointOffsetCommand({
     required this.patternID,
-    required this.automationGeneratorID,
     required this.pointIndex,
     required this.oldOffset,
     required this.newOffset,
@@ -152,37 +113,25 @@ class SetAutomationPointOffsetCommand extends Command {
 
   @override
   void execute(ProjectModel project) {
-    project
-            .sequence
-            .patterns[patternID]!
-            .automationLanes[automationGeneratorID]!
-            .points[pointIndex]
-            .offset =
+    project.sequence.patterns[patternID]!.automation.points[pointIndex].offset =
         newOffset;
   }
 
   @override
   void rollback(ProjectModel project) {
-    project
-            .sequence
-            .patterns[patternID]!
-            .automationLanes[automationGeneratorID]!
-            .points[pointIndex]
-            .offset =
+    project.sequence.patterns[patternID]!.automation.points[pointIndex].offset =
         oldOffset;
   }
 }
 
 class SetAutomationPointTensionCommand extends Command {
   Id patternID;
-  Id automationGeneratorID;
   int pointIndex;
   double oldTension;
   double newTension;
 
   SetAutomationPointTensionCommand({
     required this.patternID,
-    required this.automationGeneratorID,
     required this.pointIndex,
     required this.oldTension,
     required this.newTension,
@@ -193,7 +142,7 @@ class SetAutomationPointTensionCommand extends Command {
     project
             .sequence
             .patterns[patternID]!
-            .automationLanes[automationGeneratorID]!
+            .automation
             .points[pointIndex]
             .tension =
         newTension;
@@ -204,7 +153,7 @@ class SetAutomationPointTensionCommand extends Command {
     project
             .sequence
             .patterns[patternID]!
-            .automationLanes[automationGeneratorID]!
+            .automation
             .points[pointIndex]
             .tension =
         oldTension;

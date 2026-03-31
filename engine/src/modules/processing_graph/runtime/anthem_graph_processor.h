@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,6 +27,8 @@
 #include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
 #include "modules/util/ring_buffer.h"
 
+class GraphRuntimeServices;
+
 // This class is used to handle the audio thread concerns of the processing
 // graph. It owns a read-only instance of AnthemGraphTopology as well as a
 // compiled set of processing instructions, and it is responsible for executing
@@ -40,10 +42,13 @@ private:
   JUCE_LEAK_DETECTOR(AnthemGraphProcessor)
 
   AnthemGraphCompilationResult* processingSteps;
+  std::unique_ptr<GraphRuntimeServices> rt_services;
   RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsQueue;
   RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsDeletionQueue;
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
+  ~AnthemGraphProcessor();
+
   // Processes a single block of audio in the graph. This will also process and
   // propagate event and control data.
   void process(int numSamples);
@@ -57,6 +62,9 @@ public:
   // the main thread. The audio thread should not deallocate memory, so old compilation
   // results are added to a deletion queue and then cleared from the main thread.
   void clearDeletionQueueFromMainThread();
+
+  GraphRuntimeServices& getRtServices();
+  void resetRtServices();
 
   AnthemGraphProcessor();
 };

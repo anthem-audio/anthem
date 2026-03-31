@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,13 +25,17 @@ import 'package:anthem/logic/commands/command_stack.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/sequence.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/model/sequencer.dart';
+import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
 
-import 'generator.dart';
 import 'processing_graph/processing_graph.dart';
 import 'shared/hydratable.dart';
 
@@ -45,10 +49,77 @@ enum ProjectLayoutKind { arrange, edit, mix }
 )
 class ProjectModel extends _ProjectModel
     with _$ProjectModel, _$ProjectModelAnthemModelMixin {
+  late final ProjectEntityIdAllocator idAllocator = ProjectEntityIdAllocator(
+    this,
+  );
+
   ProjectModel() : super();
 
   ProjectModel.create([super._enginePathOverride]) : super.create() {
+    final idAllocator = this.idAllocator;
+    sequence = SequencerModel(idAllocator: idAllocator);
+    processingGraph = ProcessingGraphModel.create(
+      masterOutputNodeId: idAllocator.allocateId(),
+    );
+    hydrate();
     _init();
+
+    final Map<Id, TrackModel> initTracks = {};
+    final List<Id> initTrackOrder = [];
+    final List<Id> initSendTrackOrder = [];
+
+    for (var i = 1; i <= 1; i++) {
+      final track = TrackModel(
+        idAllocator: idAllocator,
+        name: 'Track $i',
+        color: AnthemColor.randomHue(),
+        type: .instrument,
+      );
+      track.createAndRegisterNodes(this, idAllocator);
+      initTracks[track.id] = track;
+      initTrackOrder.add(track.id);
+    }
+
+    final masterTrack =
+        TrackModel(
+            idAllocator: idAllocator,
+            name: 'Master',
+            color: AnthemColor.randomHue(),
+            type: .audio,
+          )
+          ..isMasterTrack = true
+          ..createAndRegisterNodes(this, idAllocator);
+    initTracks[masterTrack.id] = masterTrack;
+    initSendTrackOrder.add(masterTrack.id);
+
+    tracks = AnthemObservableMap.of(initTracks);
+    trackOrder = AnthemObservableList.of(initTrackOrder);
+    sendTrackOrder = AnthemObservableList.of(initSendTrackOrder);
+
+    final masterOutputPortId = processingGraph
+        .getMasterOutputNode()
+        .audioInputPorts
+        .first
+        .id;
+    for (final trackId in initTrackOrder.followedBy(initSendTrackOrder)) {
+      final track = initTracks[trackId]!;
+      final destinationNodeId = track.isMasterTrack
+          ? processingGraph.masterOutputNodeId
+          : masterTrack.gainNodeId!;
+      final destinationPortId = track.isMasterTrack
+          ? masterOutputPortId
+          : GainProcessorModel.audioInputPortId;
+
+      processingGraph.addConnection(
+        NodeConnectionModel(
+          idAllocator: idAllocator,
+          sourceNodeId: track.audioOutputNodeId,
+          sourcePortId: track.audioOutputPortId,
+          destinationNodeId: destinationNodeId,
+          destinationPortId: destinationPortId,
+        ),
+      );
+    }
   }
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) {
@@ -67,19 +138,23 @@ class ProjectModel extends _ProjectModel
     // is the top level, we need to call it ourselves.
     setParentPropertiesOnChildren();
 
-    // We need to notify the engine when a generator is removed so it can clean
-    // up any compiled sequences for this channel.
+    // We need to notify the engine when a track is removed so it can clean up
+    // any compiled sequences for this channel.
     onChange(
-      // This filter matches against removals from the generators map
-      (b) => b.generators.anyValue.filterByChangeType([
+      // This filter matches against removals from the tracks map.
+      (b) => b.tracks.anyValue.filterByChangeType([
         ModelFilterChangeType.mapRemove,
       ]),
       (e) {
+        if (!engine.isRunning) {
+          return;
+        }
+
         // Field accessors are:
-        // 0: the generators field
+        // 0: the tracks field
         // 1: accessing a value in the map by key
-        final generatorId = e.fieldAccessors[1].key as Id;
-        engine.sequencerApi.cleanUpChannel(generatorId);
+        final trackId = e.fieldAccessors[1].key as Id;
+        engine.sequencerApi.cleanUpTrack(trackId);
       },
     );
   }
@@ -88,7 +163,7 @@ class ProjectModel extends _ProjectModel
 abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Represents information about the sequenced content in the project, such as
   /// arrangements and patterns, and their content.
-  late SequenceModel sequence;
+  late SequencerModel sequence;
 
   /// Represents the processing graph for the project. This is used to route
   /// audio, control and notes between processors, and to eventually route the
@@ -101,29 +176,25 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hideFromSerialization
   int? masterOutputNodeId;
 
-  /// Map of generators in the project.
   @anthemObservable
-  AnthemObservableMap<Id, GeneratorModel> generators = AnthemObservableMap();
+  AnthemObservableMap<Id, TrackModel> tracks = AnthemObservableMap();
 
-  /// List of generator IDs in the project (to preserve order).
   @anthemObservable
-  AnthemObservableList<Id> generatorOrder = AnthemObservableList();
+  AnthemObservableList<Id> trackOrder = AnthemObservableList();
 
-  /// ID of the active instrument, used to determine which instrument is shown
-  /// in the channel rack, which is used for piano roll, etc.
   @anthemObservable
-  @hideFromSerialization
-  Id? activeInstrumentID;
+  AnthemObservableList<Id> sendTrackOrder = AnthemObservableList();
 
-  /// ID of the active automation generator, used to determine which automation
-  /// generator is being written to using the automation editor.
-  @anthemObservable
-  @hideFromSerialization
-  Id? activeAutomationGeneratorID;
+  @hideFromCpp
+  int idCounter = 0;
 
-  /// The ID of the project.
-  @hideFromSerialization
-  Id id = getId();
+  Id allocateId() {
+    return idCounter++;
+  }
+
+  /// Globally unique ID for the project file.
+  @hideFromCpp
+  ProjectId id = getProjectId();
 
   /// The file path of the project.
   @anthemObservable
@@ -146,36 +217,15 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hideFromSerialization
   bool isDirty = false;
 
-  // Detail view state
-
   @anthemObservable
   @hide
-  DetailViewKind? _selectedDetailView;
-
-  /// `selectedDetailView` controls which detail item (in the left panel) is
-  /// active. Detail views contain attributes about various items in the
-  /// project, such as patterns, arrangements, notes, etc.
-  DetailViewKind? getSelectedDetailView() => _selectedDetailView;
-
-  /// Sets the selected detail view. See getSelectedDetailView() for more info.
-  void setSelectedDetailView(DetailViewKind? detailView) {
-    _selectedDetailView = detailView;
-    if (detailView != null) isDetailViewOpen = true;
-  }
-
-  @anthemObservable
-  @hide
-  bool isDetailViewOpen = false;
+  bool isDetailViewOpen = true;
 
   @anthemObservable
   @hide
   bool isProjectExplorerOpen = false;
 
   // Visual layout flags
-
-  @anthemObservable
-  @hide
-  bool isPatternEditorVisible = true;
 
   @anthemObservable
   @hide
@@ -191,10 +241,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   late final CommandStack _commandStack;
 
   @hide
-  List<Command> _journalPageAccumulator = [];
+  List<Command> _undoGroupAccumulator = [];
 
   @hide
-  bool _journalPageActive = false;
+  bool _undoGroupActive = false;
 
   // Engine
 
@@ -226,7 +276,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   }
 
   @hide
-  void Function(Iterable<FieldAccessor>, FieldOperation)? _fieldChangedListener;
+  void Function(ModelChangeEvent)? _fieldChangedListener;
 
   @hide
   final String? _enginePathOverride;
@@ -237,10 +287,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     isTopLevelModel = true;
 
     _commandStack = CommandStack(this as ProjectModel);
-    sequence = SequenceModel.create();
-    processingGraph = ProcessingGraphModel();
-
-    hydrate();
   }
 
   @hide
@@ -256,10 +302,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
 
-      // Send model state change messages to the engine
       if (state == EngineState.running) {
-        _initializeEngine();
-        _attachModelChangeListener();
+        _finishEngineStartup();
       }
 
       if (state == EngineState.stopped) {
@@ -277,17 +321,17 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       }
     });
 
-    engine.start();
-
     visualizationProvider = VisualizationProvider(this as ProjectModel);
 
     isHydrated = true;
   }
 
-  /// Initializes the engine. This is called when the engine is started.
-  void _initializeEngine() {
-    // Any time the engine starts, we send the entire current model state to the engine
-    engine.modelSyncApi.initModel(
+  /// Initializes the engine model while the engine is still in the startup
+  /// phase.
+  Future<message_api.ModelInitResponse> initializeEngine() {
+    _attachModelChangeListener();
+
+    return engine.modelSyncApi.initModel(
       jsonEncode(
         (this as _$ProjectModelAnthemModelMixin).toJson(
           forEngine: true,
@@ -295,10 +339,13 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         ),
       ),
     );
-    // We won't wait for the engine to acknowledge this before saying that
-    // we're synced, since any subsequent messages will be processed after
-    // the engine has finished processing the init request.
-    _modelSyncCompleter.complete();
+  }
+
+  /// Finishes startup work after the engine has acknowledged the initial model.
+  void _finishEngineStartup() {
+    if (!_modelSyncCompleter.isCompleted) {
+      _modelSyncCompleter.complete();
+    }
 
     // The engine will receive the processing graph when we sync the model,
     // but it still needs to be compiled by the engine for use on the audio
@@ -325,7 +372,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void _attachModelChangeListener() {
     if (_fieldChangedListener != null) return;
 
-    _fieldChangedListener = (accesses, operation) {
+    _fieldChangedListener = (change) {
+      if (!change.sendToEngine || engine.engineState == EngineState.stopped) {
+        return;
+      }
+
       String? serializeMapKey(dynamic key) {
         return switch (key) {
           null => null,
@@ -353,7 +404,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         };
       }
 
-      final convertedAccesses = accesses.map((access) {
+      final convertedAccesses = change.fieldAccessors.map((access) {
         return message_api.FieldAccess(
           fieldName: access.fieldName,
           fieldType: switch (access.fieldType) {
@@ -367,7 +418,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       }).toList();
 
       engine.modelSyncApi.updateModel(
-        updateKind: switch (operation) {
+        updateKind: switch (change.operation) {
           RawFieldUpdate() ||
           ListUpdate() ||
           MapPut() => message_api.FieldUpdateKind.set,
@@ -375,11 +426,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
           ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
         },
         fieldAccesses: convertedAccesses,
-        serializedValue: switch (operation) {
-          RawFieldUpdate() => serializeValue(operation.newValueSerialized),
-          ListInsert() => serializeValue(operation.valueSerialized),
-          ListUpdate() => serializeValue(operation.newValueSerialized),
-          MapPut() => serializeValue(operation.newValueSerialized),
+        serializedValue: switch (change.operation) {
+          RawFieldUpdate op => serializeValue(op.newValueSerialized),
+          ListInsert op => serializeValue(op.valueSerialized),
+          ListUpdate op => serializeValue(op.newValueSerialized),
+          MapPut op => serializeValue(op.newValueSerialized),
           _ => null,
         },
       );
@@ -396,10 +447,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void execute(Command command, {bool push = true}) {
     command.execute(this as ProjectModel);
 
-    if (_journalPageActive) {
-      _journalPageAccumulator.add(command);
-    } else {
-      _commandStack.push(command);
+    if (push) {
+      if (_undoGroupActive) {
+        _undoGroupAccumulator.add(command);
+      } else {
+        _commandStack.push(command);
+      }
     }
 
     // If we receive an action that can be undone, then we will consider the
@@ -414,8 +467,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       command.execute(this as ProjectModel);
     }
 
-    if (_journalPageActive) {
-      _journalPageAccumulator.add(command);
+    if (_undoGroupActive) {
+      _undoGroupAccumulator.add(command);
     } else {
       _commandStack.push(command);
     }
@@ -425,8 +478,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     isDirty = true;
   }
 
-  void _assertJournalInactive() {
-    if (_journalPageActive) {
+  void _assertUndoGroupInactive() {
+    if (_undoGroupActive) {
       throw AssertionError("Journal page was active but shouldn't have been.");
     }
   }
@@ -434,7 +487,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Undoes the last command in the undo/redo queue.
   void undo() {
     if (!_commandStack.canUndo) return;
-    _assertJournalInactive();
+    _assertUndoGroupInactive();
     _commandStack.undo();
     isDirty = true;
   }
@@ -442,25 +495,35 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Redoes the next command in the undo/redo queue.
   void redo() {
     if (!_commandStack.canRedo) return;
-    _assertJournalInactive();
+    _assertUndoGroupInactive();
     _commandStack.redo();
     isDirty = true;
   }
 
-  void startJournalPage() {
-    _journalPageActive = true;
+  /// Starts an undo group.
+  ///
+  /// Once this is called, any commands that are submitted via [execute] or
+  /// [push] will be grouped into a single undo/redo action.
+  ///
+  /// After the desired actions have been added to the group, [commitUndoGroup]
+  /// can be called to finalize the composite undo/redo action.
+  void startUndoGroup() {
+    _undoGroupActive = true;
   }
 
-  void commitJournalPage() {
-    if (!_journalPageActive) return;
-    if (_journalPageAccumulator.isEmpty) {
-      _journalPageActive = false;
+  /// Commits an undo group.
+  ///
+  /// See [startUndoGroup] for details.
+  void commitUndoGroup() {
+    if (!_undoGroupActive) return;
+    if (_undoGroupAccumulator.isEmpty) {
+      _undoGroupActive = false;
       return;
     }
 
-    final accumulator = _journalPageAccumulator;
-    _journalPageAccumulator = [];
-    _journalPageActive = false;
+    final accumulator = _undoGroupAccumulator;
+    _undoGroupAccumulator = [];
+    _undoGroupActive = false;
 
     if (accumulator.length == 1) {
       _commandStack.push(accumulator.first);
@@ -472,31 +535,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   }
 
   void dispose() {
+    sequence.dispose();
     visualizationProvider.dispose();
     engine.dispose();
   }
-}
-
-/// Used to describe which detail view is active in the project sidebar, if any
-abstract class DetailViewKind {}
-
-class PatternDetailViewKind extends DetailViewKind {
-  Id patternID;
-  PatternDetailViewKind(this.patternID);
-}
-
-class ArrangementDetailViewKind extends DetailViewKind {
-  Id arrangementID;
-  ArrangementDetailViewKind(this.arrangementID);
-}
-
-class TimeSignatureChangeDetailViewKind extends DetailViewKind {
-  Id? arrangementID;
-  Id? patternID;
-  Id changeID;
-  TimeSignatureChangeDetailViewKind({
-    this.arrangementID,
-    this.patternID,
-    required this.changeID,
-  });
 }

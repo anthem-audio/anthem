@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/color_shifter.dart';
+import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
@@ -208,20 +209,16 @@ class _AttributeRenderArea extends StatelessWidget {
             onPointerCancel: (e) {
               controller.pointerUp(createEditorPointerEvent(e));
             },
-            child: AnimatedBuilder(
-              animation: timeViewAnimationController,
-              builder: (context, child) {
-                return ClipRect(
-                  child: CustomPaintObserver(
-                    painterBuilder: () => _PianoRollAttributePainter(
-                      viewModel: viewModel,
-                      project: project,
-                      timeViewStart: timeViewStartAnimation.value,
-                      timeViewEnd: timeViewEndAnimation.value,
-                    ),
-                  ),
-                );
-              },
+            child: ClipRect(
+              child: CustomPaint(
+                painter: _PianoRollAttributePainter(
+                  repaint: timeViewAnimationController,
+                  viewModel: viewModel,
+                  project: project,
+                  timeViewStartAnimation: timeViewStartAnimation,
+                  timeViewEndAnimation: timeViewEndAnimation,
+                ),
+              ),
             ),
           ),
         );
@@ -233,21 +230,25 @@ class _AttributeRenderArea extends StatelessWidget {
 class _PianoRollAttributePainter extends CustomPainterObserver {
   PianoRollViewModel viewModel;
   ProjectModel project;
-  double timeViewStart;
-  double timeViewEnd;
+  Animation<double> timeViewStartAnimation;
+  Animation<double> timeViewEndAnimation;
 
   _PianoRollAttributePainter({
+    required Listenable repaint,
     required this.viewModel,
     required this.project,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  });
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+  }) : super(debugName: '_PianoRollAttributePainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
     final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
-    final colorShifter = AnthemColorShifter(166);
+    final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
 
     final selectedNoteColor = colorShifter.noteHovered;
     final noteColor = colorShifter.noteBase;
@@ -304,63 +305,97 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
       canvas.drawRect(rect, minorLinePaint);
     }
 
-    final notes = activePattern?.notes[project.activeInstrumentID];
-
-    if (notes == null) return;
-
-    for (final note in notes) {
-      double attribute;
-
-      switch (selectedAttribute) {
-        case ActiveNoteAttribute.velocity:
-          attribute = note.velocity;
-          break;
-        case ActiveNoteAttribute.pan:
-          attribute = note.pan;
-          break;
-      }
-
-      final startX = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: note.offset.toDouble(),
-      );
-
-      final endX = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: note.offset.toDouble() + note.length.toDouble(),
-      );
-
-      if (endX < 0 || startX > size.width) continue;
-
-      final paint = viewModel.selectedNotes.contains(note.id)
-          ? selectedNotePaint
-          : notePaint;
-      final circleCenterPaint = viewModel.selectedNotes.contains(note.id)
-          ? selectedNoteCirclePaint
-          : noteCirclePaint;
-
-      double valueToPixels(num value) =>
-          ((1 - ((value - bottom) / (top - bottom))) * size.height)
-              .round()
-              .toDouble();
-
-      final barTop = valueToPixels(attribute);
-      final barBottom = valueToPixels(baseline);
-
+    if (activePattern == null) {
       canvas.drawRect(
-        Rect.fromPoints(Offset(startX, barTop), Offset(startX + 3, barBottom)),
-        paint,
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = const Color(0x88404040),
       );
-
-      canvas.drawRect(Rect.fromLTWH(startX, barTop, endX - startX, 1), paint);
-
-      final circlePos = Offset(startX + 1.5, barTop + 0.5);
-      canvas.drawCircle(circlePos, 3.5, paint);
-      canvas.drawCircle(circlePos, 2.5, circleCenterPaint);
+      return;
     }
+
+    final notes = activePattern.notes;
+    final noteOverrides = activePattern.noteOverrides;
+    final previewNotes = activePattern.previewNotes;
+
+    notes.observeAllChanges();
+    noteOverrides.observeAllChanges();
+    previewNotes.observeAllChanges();
+
+    // Redrawing the attribute editor on any note change is cheaper than
+    // observing every resolved note field individually while traversing the
+    // full note set.
+    blockObservation(
+      modelItems: [notes, noteOverrides, previewNotes],
+      block: () {
+        for (final note in activePattern.getResolvedNotes()) {
+          double attribute;
+
+          switch (selectedAttribute) {
+            case ActiveNoteAttribute.velocity:
+              attribute = note.velocity;
+              break;
+            case ActiveNoteAttribute.pan:
+              attribute = note.pan;
+              break;
+          }
+
+          final startX = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: note.offset.toDouble(),
+          );
+
+          final endX = timeToPixels(
+            timeViewStart: timeViewStart,
+            timeViewEnd: timeViewEnd,
+            viewPixelWidth: size.width,
+            time: note.offset.toDouble() + note.length.toDouble(),
+          );
+
+          if (endX < 0 || startX > size.width) continue;
+
+          final isSelected = viewModel.selectedNotes.contains(note.id);
+
+          final paint = isSelected ? selectedNotePaint : notePaint;
+          final circleCenterPaint = isSelected
+              ? selectedNoteCirclePaint
+              : noteCirclePaint;
+
+          double valueToPixels(num value) =>
+              ((1 - ((value - bottom) / (top - bottom))) * size.height)
+                  .round()
+                  .toDouble();
+
+          final barTop = valueToPixels(attribute);
+          final barBottom = valueToPixels(baseline);
+
+          canvas.drawRect(
+            Rect.fromPoints(
+              Offset(startX, barTop),
+              Offset(startX + 3, barBottom),
+            ),
+            paint,
+          );
+
+          canvas.drawRect(
+            Rect.fromLTWH(startX, barTop, endX - startX, 1),
+            paint,
+          );
+
+          final circlePos = Offset(startX + 1.5, barTop + 0.5);
+          canvas.drawCircle(circlePos, 3.5, paint);
+          canvas.drawCircle(circlePos, 2.5, circleCenterPaint);
+        }
+      },
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PianoRollAttributePainter oldDelegate) {
+    return viewModel != oldDelegate.viewModel ||
+        project != oldDelegate.project ||
+        timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+        timeViewEndAnimation != oldDelegate.timeViewEndAnimation;
   }
 }

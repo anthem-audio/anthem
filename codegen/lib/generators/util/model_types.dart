@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/generators/util/codegen_dependency_tracker.dart';
 import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
@@ -195,11 +196,15 @@ class UnionModelType extends ModelType {
   final bool canBeMapKey = false;
 
   @override
-  String get dartName => 'Object';
+  final String dartName;
 
   final List<ModelType> subTypes;
 
-  UnionModelType(this.subTypes, {required super.isNullable});
+  UnionModelType(
+    this.subTypes, {
+    required this.dartName,
+    required super.isNullable,
+  });
 }
 
 /// Represents a type that may or may not be valid, but cannot be parsed for
@@ -227,6 +232,8 @@ ModelType getModelType(
   final element = type.element;
   if (element == null) return UnknownModelType.error();
 
+  CodegenDependencyTracker.current?.trackElement(element);
+
   final isNullable = type.nullabilitySuffix == NullabilitySuffix.question;
 
   return switch (element.name) {
@@ -243,6 +250,51 @@ ModelType getModelType(
               Union,
               inPackage: 'anthem_codegen',
             ).firstAnnotationOf(field);
+
+      if (unionAnnotation != null && field != null) {
+        final unionTypes = unionAnnotation
+            .getField('types')
+            ?.toListValue()
+            ?.map((e) => e.toTypeValue())
+            .whereType<DartType>()
+            .toList();
+
+        if (unionTypes == null || unionTypes.isEmpty) {
+          throw Exception(
+            'Union annotation must have a non-empty list of valid types. The field ${field.name} on ${annotatedClass.name} has an invalid @Union annotation.',
+          );
+        }
+
+        final typeSystem = annotatedClass.library.typeSystem;
+
+        final invalidTypes = unionTypes
+            .where((unionType) => !typeSystem.isSubtypeOf(unionType, type))
+            .toList();
+
+        if (invalidTypes.isNotEmpty) {
+          throw Exception(
+            'Union field ${field.name} on ${annotatedClass.name} has declared type ${type.getDisplayString()}, but the following union types are not assignable: ${invalidTypes.map((invalidType) => invalidType.getDisplayString()).join(', ')}.',
+          );
+        }
+
+        final subTypeModelTypes = unionTypes
+            .map((e) => getModelType(e, annotatedClass))
+            .toList();
+
+        var unionDartTypeName = type.getDisplayString();
+        if (isNullable && unionDartTypeName.endsWith('?')) {
+          unionDartTypeName = unionDartTypeName.substring(
+            0,
+            unionDartTypeName.length - 1,
+          );
+        }
+
+        return UnionModelType(
+          subTypeModelTypes,
+          dartName: unionDartTypeName,
+          isNullable: isNullable,
+        );
+      }
 
       // Check if this is a list
       if (element is ClassElement &&
@@ -297,27 +349,6 @@ ModelType getModelType(
             _ => CollectionType.raw,
           },
           isNullable: isNullable,
-        );
-      }
-      // Check for Object with @Union() annotation
-      else if (element is ClassElement && element.name == 'Object') {
-        final types = unionAnnotation
-            ?.getField('types')
-            ?.toListValue()
-            ?.map((e) => e.toTypeValue())
-            .whereType<DartType>()
-            .toList();
-
-        final subTypeModelTypes = types
-            ?.map((e) => getModelType(e, annotatedClass))
-            .toList();
-
-        if (subTypeModelTypes != null) {
-          return UnionModelType(subTypeModelTypes, isNullable: isNullable);
-        }
-      } else if (unionAnnotation != null && field != null) {
-        throw Exception(
-          'Union annotation must be used on Object type, but was used on ${element.name}. The type ${element.name} is used in a field on ${annotatedClass.name}.',
         );
       }
       // Check for custom type

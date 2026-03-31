@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2024 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -52,20 +53,20 @@ class TimeSignatureChangeModel extends _TimeSignatureChangeModel
         _$TimeSignatureChangeModel,
         _$TimeSignatureChangeModelAnthemModelMixin {
   TimeSignatureChangeModel({
-    super.id,
+    required ProjectEntityIdAllocator idAllocator,
     required super.timeSignature,
     required super.offset,
-  });
+  }) : super(id: idAllocator.allocateId());
 
   TimeSignatureChangeModel.uninitialized()
-    : super(id: '', timeSignature: TimeSignatureModel(4, 4), offset: 0);
+    : super(id: -1, timeSignature: TimeSignatureModel(4, 4), offset: 0);
 
   factory TimeSignatureChangeModel.fromJson(Map<String, dynamic> json) =>
       _$TimeSignatureChangeModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _TimeSignatureChangeModel with Store, AnthemModelBase {
-  Id id = '';
+  Id id = -1;
 
   @anthemObservable
   TimeSignatureModel timeSignature;
@@ -74,10 +75,8 @@ abstract class _TimeSignatureChangeModel with Store, AnthemModelBase {
   int offset;
 
   _TimeSignatureChangeModel({
-    Id? id,
+    required this.id,
     required this.timeSignature,
     required this.offset,
-  }) : super() {
-    this.id = id ?? getId();
-  }
+  }) : super();
 }

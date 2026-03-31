@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,11 +28,107 @@ import 'dart:ui';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
-    show VisualizationUpdateEvent;
+    show
+        VisualizationSubscriptionSpec,
+        VisualizationUpdateEvent,
+        VisualizationValueType;
 import 'package:anthem/model/project.dart';
+import 'package:anthem/visualization/src/visualization_transport_stats.dart';
 import 'package:flutter/scheduler.dart';
 
-import 'ring_buffer.dart';
+export 'visualization_controller.dart';
 
 part 'visualization_provider.dart';
 part 'visualization_subscription.dart';
+
+/// Shared wall-clock source used by visualization timing logic.
+///
+/// The same instance should be used anywhere visualization timing needs to
+/// stay coherent, such as providers, subscriptions, and controllers.
+class VisualizationClock {
+  final Duration Function() _now;
+
+  VisualizationClock(Duration Function() now) : _now = now;
+
+  static final system = VisualizationClock(
+    () => Duration(microseconds: DateTime.now().microsecondsSinceEpoch),
+  );
+
+  Duration now() => _now();
+}
+
+/// A visualization value paired with the engine time it represents.
+class TimedVisualizationValue<T> {
+  final T value;
+  final Duration engineTime;
+
+  const TimedVisualizationValue({
+    required this.value,
+    required this.engineTime,
+  });
+}
+
+/// Closed type token that bridges a Dart payload type to the visualization wire
+/// type shared with the engine.
+abstract class VisualizationType<T> {
+  final VisualizationValueType wireType;
+  final T defaultValue;
+
+  const VisualizationType({required this.wireType, required this.defaultValue});
+
+  T cast(Object value);
+}
+
+class _DoubleVisualizationType extends VisualizationType<double> {
+  const _DoubleVisualizationType()
+    : super(wireType: VisualizationValueType.doubleValue, defaultValue: 0.0);
+
+  @override
+  double cast(Object value) {
+    if (value is! double) {
+      throw ArgumentError(
+        'Unexpected visualization value type: ${value.runtimeType}. Expected double.',
+      );
+    }
+
+    return value;
+  }
+}
+
+class _IntVisualizationType extends VisualizationType<int> {
+  const _IntVisualizationType()
+    : super(wireType: VisualizationValueType.intValue, defaultValue: 0);
+
+  @override
+  int cast(Object value) {
+    if (value is! int) {
+      throw ArgumentError(
+        'Unexpected visualization value type: ${value.runtimeType}. Expected int.',
+      );
+    }
+
+    return value;
+  }
+}
+
+class _StringVisualizationType extends VisualizationType<String> {
+  const _StringVisualizationType()
+    : super(wireType: VisualizationValueType.stringValue, defaultValue: '');
+
+  @override
+  String cast(Object value) {
+    if (value is! String) {
+      throw ArgumentError(
+        'Unexpected visualization value type: ${value.runtimeType}. Expected String.',
+      );
+    }
+
+    return value;
+  }
+}
+
+const VisualizationType<double> doubleVisualizationType =
+    _DoubleVisualizationType();
+const VisualizationType<int> intVisualizationType = _IntVisualizationType();
+const VisualizationType<String> stringVisualizationType =
+    _StringVisualizationType();

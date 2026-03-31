@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 // ignore_for_file: non_constant_identifier_names
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem_codegen/include.dart';
 
 part 'model_sync.dart';
@@ -27,6 +28,42 @@ part 'sequencer.dart';
 part 'visualization.dart';
 
 part 'messages.g.dart';
+
+@AnthemModel(serializable: true, generateCpp: true)
+class EngineAudioConfig extends _EngineAudioConfig
+    with _$EngineAudioConfigAnthemModelMixin {
+  EngineAudioConfig.uninitialized()
+    : super(
+        sampleRate: 0.0,
+        blockSize: 0,
+        inputChannelCount: 0,
+        outputChannelCount: 0,
+      );
+
+  EngineAudioConfig({
+    required super.sampleRate,
+    required super.blockSize,
+    required super.inputChannelCount,
+    required super.outputChannelCount,
+  });
+
+  factory EngineAudioConfig.fromJson(Map<String, dynamic> json) =>
+      _$EngineAudioConfigAnthemModelMixin.fromJson(json);
+}
+
+abstract class _EngineAudioConfig {
+  double sampleRate;
+  int blockSize;
+  int inputChannelCount;
+  int outputChannelCount;
+
+  _EngineAudioConfig({
+    required this.sampleRate,
+    required this.blockSize,
+    required this.inputChannelCount,
+    required this.outputChannelCount,
+  });
+}
 
 class Exit extends Request {
   Exit.uninitialized();
@@ -60,12 +97,87 @@ class HeartbeatReply extends Response {
   }
 }
 
+class EngineReadyCheckRequest extends Request {
+  EngineReadyCheckRequest.uninitialized();
+
+  EngineReadyCheckRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+class StartAudioRequest extends Request {
+  StartAudioRequest.uninitialized();
+
+  StartAudioRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+class EngineReadyCheckResponse extends Response {
+  bool success = false;
+  String? error;
+
+  EngineReadyCheckResponse.uninitialized();
+
+  EngineReadyCheckResponse({
+    required int id,
+    required this.success,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
+class StartAudioResponse extends Response {
+  bool success = false;
+  String? error;
+  EngineAudioConfig? audioConfig;
+
+  StartAudioResponse.uninitialized();
+
+  StartAudioResponse({
+    required int id,
+    required this.success,
+    this.error,
+    this.audioConfig,
+  }) {
+    super.id = id;
+  }
+}
+
+class TestSampleGainCurveRequest extends Request {
+  late List<double> parameterValues;
+
+  TestSampleGainCurveRequest.uninitialized();
+
+  TestSampleGainCurveRequest({required int id, required this.parameterValues}) {
+    super.id = id;
+  }
+}
+
+class TestSampleGainCurveResponse extends Response {
+  late List<double> dbValues;
+  late List<bool> isNegativeInfinity;
+
+  TestSampleGainCurveResponse.uninitialized();
+
+  TestSampleGainCurveResponse({
+    required int id,
+    required this.dbValues,
+    required this.isNegativeInfinity,
+  }) {
+    super.id = id;
+  }
+}
+
 /// Unsolicited response that is sent back one time, when the audio device has
 /// initialized.
 class AudioReadyEvent extends Response {
+  late EngineAudioConfig audioConfig;
+
   AudioReadyEvent.uninitialized();
 
-  AudioReadyEvent({required int id}) {
+  AudioReadyEvent({required int id, required this.audioConfig}) {
     super.id = id;
   }
 }

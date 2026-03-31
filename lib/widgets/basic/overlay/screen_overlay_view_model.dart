@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,7 +37,7 @@ abstract class _ScreenOverlayViewModel with Store {
 /// This is positioned within a [Stack] that fills the window, so the widget can
 /// use [Positioned] to place itself anywhere on the window.
 class ScreenOverlayEntry {
-  final Widget Function(BuildContext, Id) builder;
+  final Widget Function(BuildContext) builder;
   final void Function()? onClose;
 
   const ScreenOverlayEntry({required this.builder, this.onClose});

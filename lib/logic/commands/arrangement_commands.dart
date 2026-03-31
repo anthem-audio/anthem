@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
@@ -30,47 +31,151 @@ abstract class ArrangementCommand extends Command {
   ArrangementCommand(this.arrangementID);
 }
 
-/// Add a clip to an arrangement
-class AddClipCommand extends ArrangementCommand {
-  final ClipModel clip;
+void _addClipToArrangement({
+  required ProjectModel project,
+  required Id arrangementId,
+  required ClipModel clip,
+}) {
+  project.sequence.arrangements[arrangementId]!.clips[clip.id] = clip;
+}
 
-  AddClipCommand({required Id arrangementID, required this.clip})
-    : super(arrangementID);
+void _removeClipFromArrangement({
+  required ProjectModel project,
+  required Id arrangementId,
+  required Id clipId,
+}) {
+  project.sequence.arrangements[arrangementId]!.clips.remove(clipId);
+}
+
+class ClipAddRemoveCommand extends ArrangementCommand {
+  final bool _isAdd;
+
+  late final ClipModel clip;
+
+  ClipAddRemoveCommand.add({required Id arrangementID, required this.clip})
+    : _isAdd = true,
+      super(arrangementID);
+
+  ClipAddRemoveCommand.remove({
+    required ProjectModel project,
+    required Id arrangementID,
+    required Id clipId,
+  }) : _isAdd = false,
+       super(arrangementID) {
+    final arrangement = project.sequence.arrangements[arrangementID];
+    if (arrangement == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.remove(): Arrangement $arrangementID not found.',
+      );
+    }
+
+    final foundClip = arrangement.clips[clipId];
+    if (foundClip == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.remove(): Clip $clipId not found in arrangement '
+        '$arrangementID.',
+      );
+    }
+
+    clip = foundClip;
+  }
 
   @override
   void execute(ProjectModel project) {
-    project.sequence.arrangements[arrangementID]!.clips[clip.id] = clip;
+    if (_isAdd) {
+      _add(project);
+    } else {
+      _remove(project);
+    }
   }
 
   @override
   void rollback(ProjectModel project) {
-    project.sequence.arrangements[arrangementID]!.clips.remove(clip.id);
+    if (_isAdd) {
+      _remove(project);
+    } else {
+      _add(project);
+    }
+  }
+
+  void _add(ProjectModel project) {
+    final arrangement = project.sequence.arrangements[arrangementID];
+    if (arrangement == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.add(): Arrangement $arrangementID not found.',
+      );
+    }
+
+    if (arrangement.clips[clip.id] != null) {
+      throw StateError(
+        'Tried to add a clip that already exists. This indicates bad usage of '
+        'ClipAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    _addClipToArrangement(
+      project: project,
+      arrangementId: arrangementID,
+      clip: clip,
+    );
+  }
+
+  void _remove(ProjectModel project) {
+    final arrangement = project.sequence.arrangements[arrangementID];
+    if (arrangement == null) {
+      throw StateError(
+        'ClipAddRemoveCommand.remove(): Arrangement $arrangementID not found.',
+      );
+    }
+
+    if (arrangement.clips[clip.id] == null) {
+      throw StateError(
+        'Tried to remove a clip that does not exist. This indicates bad usage '
+        'of ClipAddRemoveCommand, or bad project state.',
+      );
+    }
+
+    _removeClipFromArrangement(
+      project: project,
+      arrangementId: arrangementID,
+      clipId: clip.id,
+    );
   }
 }
 
 class AddArrangementCommand extends Command {
-  final Id arrangementID = getId();
-  final String arrangementName;
+  late final ArrangementModel arrangement;
+  Id get arrangementID => arrangement.id;
+  late final Id? _previousActiveArrangementID;
+  late final Id? _previousActiveTransportSequenceID;
 
   AddArrangementCommand({
     required ProjectModel project,
-    required this.arrangementName,
-  });
+    required String arrangementName,
+  }) {
+    final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+    arrangement = ArrangementModel(
+      idAllocator: idAllocator,
+      name: arrangementName,
+    );
+    _previousActiveArrangementID = project.sequence.activeArrangementID;
+    _previousActiveTransportSequenceID =
+        project.sequence.activeTransportSequenceID;
+  }
 
   @override
   void execute(ProjectModel project) {
-    final arrangement = ArrangementModel.create(
-      name: arrangementName,
-      id: arrangementID,
-    );
-
     project.sequence.arrangements[arrangementID] = arrangement;
     project.sequence.arrangementOrder.add(arrangementID);
   }
 
   @override
   void rollback(ProjectModel project) {
+    project.sequence.arrangements.remove(arrangementID);
     project.sequence.arrangementOrder.removeLast();
+    project.sequence.setActiveArrangement(_previousActiveArrangementID);
+    project.sequence.activeTransportSequenceID =
+        _previousActiveTransportSequenceID;
   }
 }
 
@@ -120,91 +225,92 @@ class SetArrangementNameCommand extends ArrangementCommand {
   }
 }
 
-class MoveClipCommand extends ArrangementCommand {
-  final Id clipID;
-  final int oldOffset;
-  final int newOffset;
-  final Id oldTrack;
-  final Id newTrack;
+class MoveClipsCommand extends ArrangementCommand {
+  final List<({Id clipID, int oldOffset, int newOffset})> clipMoves;
 
-  MoveClipCommand({
+  MoveClipsCommand({
     required Id arrangementID,
-    required this.clipID,
-    required this.oldOffset,
-    required this.newOffset,
-    required this.oldTrack,
-    required this.newTrack,
-  }) : super(arrangementID);
+    required List<({Id clipID, int oldOffset, int newOffset})> clipMoves,
+  }) : clipMoves = List.unmodifiable(clipMoves),
+       super(arrangementID);
 
   @override
   void execute(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = newOffset;
-    clip.trackId = newTrack;
+    for (final clipMove in clipMoves) {
+      final clip = arrangement.clips[clipMove.clipID]!;
+      clip.offset = clipMove.newOffset;
+    }
   }
 
   @override
   void rollback(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = oldOffset;
-    clip.trackId = oldTrack;
+    for (final clipMove in clipMoves.reversed) {
+      final clip = arrangement.clips[clipMove.clipID]!;
+      clip.offset = clipMove.oldOffset;
+    }
   }
 }
 
-class DeleteClipCommand extends ArrangementCommand {
-  final ClipModel clip;
+class ResizeClipsCommand extends ArrangementCommand {
+  final List<
+    ({
+      Id clipID,
+      int oldOffset,
+      TimeViewModel? oldTimeView,
+      int newOffset,
+      TimeViewModel newTimeView,
+    })
+  >
+  clipResizes;
 
-  DeleteClipCommand({required Id arrangementID, required this.clip})
-    : super(arrangementID);
-
-  @override
-  void execute(ProjectModel project) {
-    final arrangement = project.sequence.arrangements[arrangementID]!;
-    arrangement.clips.remove(clip.id);
-  }
-
-  @override
-  void rollback(ProjectModel project) {
-    final arrangement = project.sequence.arrangements[arrangementID]!;
-    arrangement.clips[clip.id] = clip;
-  }
-}
-
-class ResizeClipCommand extends ArrangementCommand {
-  final Id clipID;
-  final int oldOffset;
-  final TimeViewModel? oldTimeView;
-  final int newOffset;
-  final TimeViewModel? newTimeView;
-
-  ResizeClipCommand({
+  ResizeClipsCommand({
     required Id arrangementID,
-    required this.clipID,
-    required this.oldOffset,
-    required this.oldTimeView,
-    required this.newOffset,
-    required this.newTimeView,
-  }) : super(arrangementID);
+    required List<
+      ({
+        Id clipID,
+        int oldOffset,
+        TimeViewModel? oldTimeView,
+        int newOffset,
+        TimeViewModel newTimeView,
+      })
+    >
+    clipResizes,
+  }) : clipResizes = List.unmodifiable(
+         clipResizes.map(
+           (clipResize) => (
+             clipID: clipResize.clipID,
+             oldOffset: clipResize.oldOffset,
+             oldTimeView: clipResize.oldTimeView?.clone(),
+             newOffset: clipResize.newOffset,
+             newTimeView: clipResize.newTimeView.clone(),
+           ),
+         ),
+       ),
+       super(arrangementID);
 
   @override
   void execute(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = newOffset;
-    clip.timeView = newTimeView;
+    for (final clipResize in clipResizes) {
+      final clip = arrangement.clips[clipResize.clipID]!;
+      clip.offset = clipResize.newOffset;
+      clip.timeView = clipResize.newTimeView.clone();
+    }
   }
 
   @override
   void rollback(ProjectModel project) {
     final arrangement = project.sequence.arrangements[arrangementID]!;
-    final clip = arrangement.clips[clipID]!;
 
-    clip.offset = oldOffset;
-    clip.timeView = oldTimeView;
+    for (final clipResize in clipResizes.reversed) {
+      final clip = arrangement.clips[clipResize.clipID]!;
+      clip.offset = clipResize.oldOffset;
+      clip.timeView = clipResize.oldTimeView?.clone();
+    }
   }
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,10 +18,12 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -32,8 +34,9 @@ part 'balance.g.dart';
 ///
 /// Takes a single audio input and output, and a control input for balance.
 ///
-/// The control input expects a [-1.0, 1.0] value, where -1.0 is full left,
-/// 0.0 is center, 1.0 is full right.
+/// The control input expects a normalized [0.0, 1.0] value. The processor maps
+/// that to a pan value where 0.0 is full left, 0.5 is center, and 1.0 is full
+/// right.
 ///
 /// This processor is implemented in the engine at:
 /// - `engine/src/modules/processors/balance.h`
@@ -43,46 +46,48 @@ part 'balance.g.dart';
   cppBehaviorClassIncludePath: 'modules/processors/balance.h',
 )
 class BalanceProcessorModel extends _BalanceProcessorModel
-    with _$BalanceProcessorModel, _$BalanceProcessorModelAnthemModelMixin {
+    with
+        Processor,
+        _$BalanceProcessorModel,
+        _$BalanceProcessorModelAnthemModelMixin {
   BalanceProcessorModel({required super.nodeId});
 
-  BalanceProcessorModel.uninitialized() : super(nodeId: '');
+  BalanceProcessorModel.create({required ProjectEntityIdAllocator idAllocator})
+    : super(nodeId: idAllocator.allocateId());
+
+  BalanceProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory BalanceProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$BalanceProcessorModelAnthemModelMixin.fromJson(json);
 
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
-
-  static NodeModel createNode() {
-    final id = 'balance-${getId()}';
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: BalanceProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this..nodeId = nodeId,
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioInputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       controlInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: balancePortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: balancePortId,
-              defaultValue: 0.0,
-              minimumValue: -1.0,
-              maximumValue: 1.0,
+              defaultValue: BalanceProcessorModel.panToParameterValue(0.0),
               smoothingDurationSeconds: 0.01,
             ),
           ),
@@ -94,11 +99,31 @@ class BalanceProcessorModel extends _BalanceProcessorModel
   static int get audioInputPortId => _BalanceProcessorModel.audioInputPortId;
   static int get audioOutputPortId => _BalanceProcessorModel.audioOutputPortId;
   static int get balancePortId => _BalanceProcessorModel.balancePortId;
+
+  static double parameterValueToPan(double parameterValue) {
+    assert(parameterValue >= 0.0 && parameterValue <= 1.0);
+    return parameterValue * 2.0 - 1.0;
+  }
+
+  static double panToParameterValue(double pan) {
+    assert(pan >= -1.0 && pan <= 1.0);
+    return (pan + 1.0) * 0.5;
+  }
+
+  static String parameterValueToString(double parameterValue) {
+    final pan = parameterValueToPan(parameterValue);
+
+    if (pan.abs() < 0.000001) {
+      return 'Center';
+    }
+
+    return '${(pan * 100).abs().toStringAsFixed(0)}%${pan < 0 ? ' L' : ' R'}';
+  }
 }
 
 abstract class _BalanceProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  String nodeId;
+  Id nodeId;
 
   _BalanceProcessorModel({required this.nodeId});
 

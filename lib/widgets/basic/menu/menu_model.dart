@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,6 +32,7 @@ sealed class GenericMenuItem {}
 
 class AnthemMenuItem extends GenericMenuItem {
   final String text;
+  final String? shortcutLabel;
   MenuDef? submenu;
   VoidCallback? onSelected;
   String? hint;
@@ -39,6 +40,7 @@ class AnthemMenuItem extends GenericMenuItem {
 
   AnthemMenuItem({
     this.text = '',
+    this.shortcutLabel,
     this.submenu,
     this.onSelected,
     this.hint,

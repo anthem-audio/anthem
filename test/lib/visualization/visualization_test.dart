@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,9 +23,12 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/visualization/visualization.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:provider/provider.dart';
 
 @GenerateNiceMocks([
   MockSpec<ProjectModel>(),
@@ -34,259 +37,686 @@ import 'package:mockito/mockito.dart';
 ])
 import 'visualization_test.mocks.dart';
 
+class RecordingVisualizationApi extends Fake implements VisualizationApi {
+  final List<List<VisualizationSubscriptionSpec>> subscriptionCalls = [];
+  final List<double> updateIntervalCalls = [];
+
+  @override
+  void setSubscriptions(List<VisualizationSubscriptionSpec> subscriptions) {
+    subscriptionCalls.add(
+      List<VisualizationSubscriptionSpec>.unmodifiable(subscriptions),
+    );
+  }
+
+  @override
+  void setUpdateInterval(double intervalMilliseconds) {
+    updateIntervalCalls.add(intervalMilliseconds);
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('Subscription object behavior', () {
-    for (final value in VisualizationSubscriptionType.values) {
-      final visualizationApiMock = MockVisualizationApi();
+  EngineAudioConfig testAudioConfig() {
+    return EngineAudioConfig(
+      sampleRate: 48000,
+      blockSize: 512,
+      inputChannelCount: 2,
+      outputChannelCount: 2,
+    );
+  }
 
-      final engineMock = MockEngine();
-      when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+  Duration engineTimeForSampleTimestamp(int sampleTimestamp) {
+    return Duration(
+      microseconds: (sampleTimestamp * Duration.microsecondsPerSecond / 48000)
+          .round(),
+    );
+  }
 
-      final projectMock = MockProjectModel();
-      when(projectMock.engine).thenReturn(engineMock);
-
-      final visualizationProvider = VisualizationProvider(projectMock);
-
-      switch (value) {
-        case VisualizationSubscriptionType.latest:
-          final subscription = visualizationProvider.subscribe(
-            VisualizationSubscriptionConfig.latest('subscriptionId'),
-          );
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'unrelatedId', values: [double.nan]),
-                VisualizationItem(id: 'subscriptionId', values: [0.5]),
-              ],
-            ),
-          );
-
-          expect(subscription.readValue(), 0.5);
-          expect(subscription.readValues(), [0.5]);
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(
-                  id: 'subscriptionId',
-                  values: [123, 0.6, 0.7, 0.8],
-                ),
-              ],
-            ),
-          );
-
-          expect(subscription.readValue(), 0.8);
-          expect(subscription.readValues(), [0.8]);
-
-          break;
-        case VisualizationSubscriptionType.max:
-          final subscription = visualizationProvider.subscribe(
-            VisualizationSubscriptionConfig.max('subscriptionId'),
-          );
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'unrelatedId', values: [double.nan]),
-                VisualizationItem(id: 'subscriptionId', values: [0.5]),
-              ],
-            ),
-          );
-
-          expect(subscription.readValue(), 0.5);
-          expect(subscription.readValues(), [0.5]);
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(
-                  id: 'subscriptionId',
-                  values: [123, 0.6, 0.7, 0.8],
-                ),
-              ],
-            ),
-          );
-
-          expect(subscription.readValue(), 123);
-          expect(subscription.readValues(), [123]);
-
-          // If we read the value again, it should be the same as the last read
-
-          expect(subscription.readValue(), 123);
-          expect(subscription.readValues(), [123]);
-
-          // If there are two updates before we read the value again, it should
-          // be the maximum across the two updates
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
-              ],
-            ),
-          );
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(
-                  id: 'subscriptionId',
-                  values: [0.6, 0.7, 0.8],
-                ),
-              ],
-            ),
-          );
-
-          expect(subscription.readValue(), 1.0);
-          expect(subscription.readValues(), [1.0]);
-
-          // If we read the value again, it should be the same as the last read
-
-          expect(subscription.readValue(), 1.0);
-          expect(subscription.readValues(), [1.0]);
-
-          break;
-        case VisualizationSubscriptionType.lastNValues:
-          final subscription = visualizationProvider.subscribe(
-            VisualizationSubscriptionConfig.lastNValues('subscriptionId', 3),
-          );
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'unrelatedId', values: [double.nan]),
-                VisualizationItem(id: 'subscriptionId', values: [0.5]),
-              ],
-            ),
-          );
-
-          expect(subscription.readValues(), [0.5]);
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.6]),
-              ],
-            ),
-          );
-
-          expect(subscription.readValues(), [0.6]);
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.7, 0.8]),
-              ],
-            ),
-          );
-
-          expect(subscription.readValues(), [0.7, 0.8]);
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'subscriptionId', values: [0.9, 1.0]),
-              ],
-            ),
-          );
-
-          visualizationProvider.processVisualizationUpdate(
-            VisualizationUpdateEvent(
-              id: 0,
-              items: [
-                VisualizationItem(id: 'subscriptionId', values: [1.1, 1.2]),
-              ],
-            ),
-          );
-
-          expect(subscription.readValues(), [1.0, 1.1, 1.2]);
-
-          break;
-      }
-    }
-  });
-
-  test('Visualization updates are correct', () async {
-    final visualizationApiMock = MockVisualizationApi();
+  ({
+    MockProjectModel project,
+    MockEngine engine,
+    VisualizationProvider visualizationProvider,
+  })
+  createProjectWithVisualizationProvider({
+    Duration Function()? wallClockNowForTest,
+    VisualizationApi? visualizationApi,
+  }) {
+    final visualizationApiMock = visualizationApi ?? MockVisualizationApi();
 
     final engineMock = MockEngine();
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
+    when(engineMock.audioConfig).thenReturn(testAudioConfig());
+    when(engineMock.engineState).thenReturn(EngineState.running);
+    when(
+      engineMock.engineStateStream,
+    ).thenAnswer((_) => const Stream<EngineState>.empty());
+    when(engineMock.readyForMessages).thenAnswer((_) async {});
 
     final projectMock = MockProjectModel();
     when(projectMock.engine).thenReturn(engineMock);
+    when(projectMock.engineState).thenReturn(EngineState.running);
 
-    final visualizationProvider = VisualizationProvider(projectMock);
+    final visualizationProvider = VisualizationProvider(
+      projectMock,
+      clock: wallClockNowForTest == null
+          ? null
+          : VisualizationClock(wallClockNowForTest),
+    );
+    when(projectMock.visualizationProvider).thenReturn(visualizationProvider);
 
-    StreamController<List<String>> setSubscriptionsController =
-        StreamController<List<String>>.broadcast();
+    return (
+      project: projectMock,
+      engine: engineMock,
+      visualizationProvider: visualizationProvider,
+    );
+  }
+
+  VisualizationValueType inferVisualizationValueType(List<Object> values) {
+    if (values.every((value) => value is double)) {
+      return VisualizationValueType.doubleValue;
+    }
+    if (values.every((value) => value is int)) {
+      return VisualizationValueType.intValue;
+    }
+    if (values.every((value) => value is String)) {
+      return VisualizationValueType.stringValue;
+    }
+
+    throw ArgumentError(
+      'Could not infer a visualization value type for ${values.map((value) => value.runtimeType).toList()}.',
+    );
+  }
+
+  VisualizationItem testVisualizationItem({
+    required String id,
+    required List<Object> values,
+    VisualizationValueType? valueType,
+    List<int>? sampleTimestamps,
+    int startSample = 1,
+  }) {
+    return VisualizationItem(
+      id: id,
+      valueType: valueType ?? inferVisualizationValueType(values),
+      values: values,
+      sampleTimestamps:
+          sampleTimestamps ??
+          List<int>.generate(values.length, (index) => startSample + index),
+    );
+  }
+
+  Future<void> pumpMultiVisualizationBuilder(
+    WidgetTester tester, {
+    required ProjectModel project,
+    required List<VisualizationSubscriptionConfig<int>> configs,
+  }) async {
+    await tester.pumpWidget(
+      Provider<ProjectModel>.value(
+        value: project,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: MultiVisualizationBuilder.int(
+            configs: configs,
+            builder: (context, values, engineTimes) {
+              return Text(values.join(','), textDirection: TextDirection.ltr);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> pumpVisualizationBuilder(
+    WidgetTester tester, {
+    required ProjectModel project,
+    required VisualizationSubscriptionConfig<int> config,
+  }) async {
+    await tester.pumpWidget(
+      Provider<ProjectModel>.value(
+        value: project,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: VisualizationBuilder.int(
+            config: config,
+            builder: (context, value, engineTime) {
+              return Text(
+                value?.toString() ?? 'null',
+                textDirection: TextDirection.ltr,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  testWidgets(
+    'VisualizationSubscriptionController caches values and resets on config changes',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+      final controller = VisualizationSubscriptionController<int>(
+        visualizationProvider: setup.visualizationProvider,
+        config: VisualizationSubscriptionConfig.latestInt('a'),
+      );
+      var notificationCount = 0;
+
+      controller.addListener(() {
+        notificationCount++;
+      });
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [3],
+              sampleTimestamps: [240],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.value, 3);
+      expect(controller.engineTime, engineTimeForSampleTimestamp(240));
+      expect(notificationCount, 1);
+
+      controller.update(config: VisualizationSubscriptionConfig.latestInt('b'));
+
+      expect(controller.value, isNull);
+      expect(controller.engineTime, isNull);
+      expect(notificationCount, 2);
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [9],
+              sampleTimestamps: [480],
+            ),
+            testVisualizationItem(
+              id: 'b',
+              values: [4],
+              sampleTimestamps: [720],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.value, 4);
+      expect(controller.engineTime, engineTimeForSampleTimestamp(720));
+      expect(notificationCount, 3);
+
+      controller.dispose();
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'MultiVisualizationSubscriptionController reorders cached values positionally',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+      final controller = MultiVisualizationSubscriptionController<int>(
+        visualizationProvider: setup.visualizationProvider,
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('a'),
+          VisualizationSubscriptionConfig.latestInt('b'),
+        ],
+      );
+      var notificationCount = 0;
+
+      controller.addListener(() {
+        notificationCount++;
+      });
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [1],
+              sampleTimestamps: [120],
+            ),
+            testVisualizationItem(
+              id: 'b',
+              values: [2],
+              sampleTimestamps: [240],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.values, [1, 2]);
+      expect(controller.engineTimes, [
+        engineTimeForSampleTimestamp(120),
+        engineTimeForSampleTimestamp(240),
+      ]);
+      expect(notificationCount, 2);
+
+      controller.update(
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('b'),
+          VisualizationSubscriptionConfig.latestInt('a'),
+        ],
+      );
+
+      expect(controller.values, [0, 0]);
+      expect(controller.engineTimes, [null, null]);
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'a',
+              values: [4],
+              sampleTimestamps: [360],
+            ),
+            testVisualizationItem(
+              id: 'b',
+              values: [3],
+              sampleTimestamps: [300],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(controller.values, [3, 4]);
+      expect(controller.engineTimes, [
+        engineTimeForSampleTimestamp(300),
+        engineTimeForSampleTimestamp(360),
+      ]);
+
+      controller.dispose();
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  test('Unbuffered latest and max subscriptions behave correctly', () {
+    final setup = createProjectWithVisualizationProvider();
+
+    final latest = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('latest'),
+    );
+    final max = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.max('max'),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(id: 'latest', values: [0.5]),
+          testVisualizationItem(id: 'max', values: [0.5]),
+        ],
+      ),
+    );
+
+    expect(latest.readValue(), 0.5);
+    expect(max.readValue(), 0.5);
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(id: 'latest', values: [0.6, 0.7, 0.8]),
+          testVisualizationItem(id: 'max', values: [0.6, 1.2, 0.8]),
+        ],
+      ),
+    );
+
+    expect(latest.readValue(), 0.8);
+    expect(max.readValue(), 1.2);
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(id: 'max', values: [0.7, 0.9]),
+        ],
+      ),
+    );
+
+    expect(max.readValue(), 0.9);
+    expect(max.readValue(), 0.9);
+
+    setup.visualizationProvider.dispose();
+  });
+
+  test('String subscriptions expose typed reads and overrides', () {
+    var wallClock = Duration.zero;
+    final setup = createProjectWithVisualizationProvider(
+      wallClockNowForTest: () => wallClock,
+    );
+
+    final latestString = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestString('string_latest'),
+    );
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'string_latest',
+            values: ['alpha'],
+            sampleTimestamps: [11],
+          ),
+          testVisualizationItem(
+            id: 'double_latest',
+            values: [7.5],
+            sampleTimestamps: [41],
+          ),
+        ],
+      ),
+    );
+
+    expect(latestString.readValue(), 'alpha');
+    expect(
+      latestString.readTimedValue(),
+      isA<TimedVisualizationValue<String>>()
+          .having((value) => value.value, 'value', 'alpha')
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(11),
+          ),
+    );
+
+    latestString.setOverride(
+      value: 'override',
+      duration: const Duration(seconds: 1),
+    );
+    expect(latestString.readValue(), 'override');
+    wallClock = const Duration(milliseconds: 5);
+    expect(
+      latestString.readTimedValue(),
+      isA<TimedVisualizationValue<String>>()
+          .having((value) => value.value, 'value', 'override')
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(11) + const Duration(milliseconds: 5),
+          ),
+    );
+
+    setup.visualizationProvider.dispose();
+  });
+
+  test('Timed reads expose engine sample timestamps for unbuffered values', () {
+    final setup = createProjectWithVisualizationProvider();
+
+    final latest = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('latest'),
+    );
+    final max = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.max('max'),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'latest',
+            values: [1.0, 2.0],
+            sampleTimestamps: [100, 120],
+          ),
+          testVisualizationItem(
+            id: 'max',
+            values: [0.5, 1.5, 1.0],
+            sampleTimestamps: [130, 150, 160],
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      latest.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 2.0)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(120),
+          ),
+    );
+    expect(
+      max.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 1.5)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(150),
+          ),
+    );
+
+    setup.visualizationProvider.dispose();
+  });
+
+  test('Timed overrides use an extrapolated engine-time anchor', () {
+    var wallClock = Duration.zero;
+    final setup = createProjectWithVisualizationProvider(
+      wallClockNowForTest: () => wallClock,
+    );
+
+    final initialOverride = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('initial_override'),
+    );
+
+    expect(initialOverride.readTimedValue(), isNull);
+
+    initialOverride.setOverride(
+      value: 1.0,
+      duration: const Duration(seconds: 1),
+    );
+    expect(
+      initialOverride.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 1.0)
+          .having((value) => value.engineTime, 'engineTime', Duration.zero),
+    );
+
+    wallClock = const Duration(milliseconds: 10);
+    expect(
+      initialOverride.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 1.0)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            const Duration(milliseconds: 10),
+          ),
+    );
+
+    final latest = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('latest'),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'latest',
+            values: [4.0],
+            sampleTimestamps: [500],
+          ),
+        ],
+      ),
+    );
+
+    wallClock = const Duration(milliseconds: 20);
+
+    expect(
+      latest.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 4.0)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(500),
+          ),
+    );
+
+    latest.setOverride(value: 9.0, duration: const Duration(seconds: 1));
+
+    expect(latest.readValue(), 9.0);
+    wallClock = const Duration(milliseconds: 35);
+    expect(
+      latest.readTimedValue(),
+      isA<TimedVisualizationValue<double>>()
+          .having((value) => value.value, 'value', 9.0)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(500) +
+                const Duration(milliseconds: 15),
+          ),
+    );
+
+    setup.visualizationProvider.dispose();
+  });
+
+  test(
+    'Visualization updates reject mismatched value and timestamp counts',
+    () {
+      final setup = createProjectWithVisualizationProvider();
+      setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestDouble('subscriptionId'),
+      );
+
+      final malformedItem = VisualizationItem.uninitialized()
+        ..id = 'subscriptionId'
+        ..valueType = VisualizationValueType.doubleValue
+        ..values = [1.0, 2.0]
+        ..sampleTimestamps = [10];
+
+      expect(
+        () => setup.visualizationProvider.processVisualizationUpdate(
+          VisualizationUpdateEvent(id: 0, items: [malformedItem]),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      setup.visualizationProvider.dispose();
+    },
+  );
+
+  test('Visualization updates reject mismatched declared value types', () {
+    final setup = createProjectWithVisualizationProvider();
+    setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('subscriptionId'),
+    );
+
+    expect(
+      () => setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'subscriptionId',
+              valueType: VisualizationValueType.doubleValue,
+              values: [1.0],
+            ),
+          ],
+        ),
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    setup.visualizationProvider.dispose();
+  });
+
+  test(
+    'Visualization subscriptions reject conflicting declared value types',
+    () {
+      final setup = createProjectWithVisualizationProvider();
+      setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestDouble('subscriptionId'),
+      );
+
+      expect(
+        () => setup.visualizationProvider.subscribe(
+          VisualizationSubscriptionConfig.latestInt('subscriptionId'),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      setup.visualizationProvider.dispose();
+    },
+  );
+
+  test('Visualization updates are correct', () async {
+    final recordingVisualizationApi = RecordingVisualizationApi();
+    final setup = createProjectWithVisualizationProvider(
+      visualizationApi: recordingVisualizationApi,
+    );
 
     Future<void> assertNoSubscriptionChanges() async {
-      bool timeout = false;
-
-      await setSubscriptionsController.stream.first.timeout(
-        const Duration(milliseconds: 500),
-        onTimeout: () {
-          timeout = true;
-          return [];
-        },
+      final previousCallCount =
+          recordingVisualizationApi.subscriptionCalls.length;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        recordingVisualizationApi.subscriptionCalls,
+        hasLength(previousCallCount),
       );
+    }
 
-      if (!timeout) {
-        fail('Expected no subscription changes, but got some.');
+    Future<List<VisualizationSubscriptionSpec>>
+    getNextSubscriptionChanges() async {
+      final previousCallCount =
+          recordingVisualizationApi.subscriptionCalls.length;
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      if (recordingVisualizationApi.subscriptionCalls.length ==
+          previousCallCount) {
+        fail('Expected subscription changes, but got none.');
       }
+
+      return recordingVisualizationApi.subscriptionCalls.last;
     }
 
-    Future<List<String>> getNextSubscriptionChanges() async {
-      final keys = await setSubscriptionsController.stream.first.timeout(
-        const Duration(milliseconds: 500),
-        onTimeout: () {
-          fail('Expected subscription changes, but got none.');
-        },
-      );
-      return keys;
-    }
-
-    when(visualizationApiMock.setSubscriptions(any)).thenAnswer((invocation) {
-      final keys = invocation.positionalArguments[0] as List<String>;
-      setSubscriptionsController.add(keys);
-    });
-
-    final subscription1 = visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId1'),
+    final subscription1 = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId1'),
     );
-    final subscription2 = visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId2'),
+    final subscription2 = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('subscriptionId2'),
     );
 
+    final initialSubscriptions = await getNextSubscriptionChanges();
     expect(
-      await getNextSubscriptionChanges(),
+      initialSubscriptions.map((spec) => spec.id),
       containsAll(['subscriptionId1', 'subscriptionId2']),
     );
+    expect(
+      initialSubscriptions
+          .firstWhere((spec) => spec.id == 'subscriptionId2')
+          .valueType,
+      VisualizationValueType.intValue,
+    );
 
-    final subscription3 = visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId3'),
+    final subscription3 = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId3'),
     );
 
     expect(
-      await getNextSubscriptionChanges(),
+      (await getNextSubscriptionChanges()).map((spec) => spec.id),
       containsAll(['subscriptionId1', 'subscriptionId2', 'subscriptionId3']),
     );
 
-    final subscriptionDuplicate = visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latest('subscriptionId3'),
+    final subscriptionDuplicate = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId3'),
     );
 
     await assertNoSubscriptionChanges();
@@ -298,7 +728,7 @@ void main() {
     subscription3.dispose();
 
     expect(
-      await getNextSubscriptionChanges(),
+      (await getNextSubscriptionChanges()).map((spec) => spec.id),
       containsAll(['subscriptionId1', 'subscriptionId2']),
     );
 
@@ -306,5 +736,337 @@ void main() {
     subscription2.dispose();
 
     expect(await getNextSubscriptionChanges(), isEmpty);
+    setup.visualizationProvider.dispose();
   });
+
+  testWidgets('Adaptive latest subscriptions render a delayed held timeline', (
+    tester,
+  ) async {
+    var wallClock = Duration.zero;
+    final setup = createProjectWithVisualizationProvider(
+      wallClockNowForTest: () => wallClock,
+    );
+
+    final subscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble(
+        'playhead_position',
+        bufferMode: VisualizationBufferMode.adaptive,
+      ),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'playhead_position',
+            values: [0.0],
+            sampleTimestamps: [0],
+          ),
+        ],
+      ),
+    );
+
+    wallClock = const Duration(milliseconds: 16);
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'playhead_position',
+            values: [1.0],
+            sampleTimestamps: [768],
+          ),
+        ],
+      ),
+    );
+
+    wallClock = const Duration(milliseconds: 56);
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'playhead_position',
+            values: [2.0],
+            sampleTimestamps: [1536],
+          ),
+        ],
+      ),
+    );
+
+    wallClock = const Duration(milliseconds: 72);
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'playhead_position',
+            values: [3.0],
+            sampleTimestamps: [2304],
+          ),
+        ],
+      ),
+    );
+
+    await tester.pump(const Duration(milliseconds: 16));
+
+    final timedValue = subscription.readTimedValue();
+    expect(timedValue, isNotNull);
+    expect(
+      timedValue!.engineTime,
+      greaterThan(engineTimeForSampleTimestamp(1536)),
+    );
+    expect(timedValue.engineTime, lessThan(engineTimeForSampleTimestamp(2304)));
+    expect(timedValue.value, 2.0);
+
+    setup.visualizationProvider.dispose();
+    await tester.pump();
+  });
+
+  testWidgets(
+    'Adaptive max subscriptions render delayed maxima instead of newest packets',
+    (tester) async {
+      var wallClock = Duration.zero;
+      final setup = createProjectWithVisualizationProvider(
+        wallClockNowForTest: () => wallClock,
+      );
+
+      final subscription = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.max(
+          'meter',
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'meter',
+              values: [1.0],
+              sampleTimestamps: [0],
+            ),
+          ],
+        ),
+      );
+
+      wallClock = const Duration(milliseconds: 16);
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'meter',
+              values: [3.0],
+              sampleTimestamps: [768],
+            ),
+          ],
+        ),
+      );
+
+      wallClock = const Duration(milliseconds: 56);
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'meter',
+              values: [2.0],
+              sampleTimestamps: [1536],
+            ),
+          ],
+        ),
+      );
+
+      wallClock = const Duration(milliseconds: 72);
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'meter',
+              values: [4.0],
+              sampleTimestamps: [2304],
+            ),
+          ],
+        ),
+      );
+
+      await tester.pump(const Duration(milliseconds: 16));
+
+      final timedValue = subscription.readTimedValue();
+      expect(timedValue, isNotNull);
+      expect(
+        timedValue!.engineTime,
+        greaterThan(engineTimeForSampleTimestamp(1536)),
+      );
+      expect(
+        timedValue.engineTime,
+        lessThan(engineTimeForSampleTimestamp(2304)),
+      );
+      expect(timedValue.value, 3.0);
+      expect(subscription.readValue(), 3.0);
+
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'VisualizationBuilder keeps receiving updates after a config change',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+
+      await pumpVisualizationBuilder(
+        tester,
+        project: setup.project,
+        config: VisualizationSubscriptionConfig.latestInt('a'),
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'a', values: [1]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('1'), findsOneWidget);
+
+      await pumpVisualizationBuilder(
+        tester,
+        project: setup.project,
+        config: VisualizationSubscriptionConfig.latestInt('b'),
+      );
+
+      expect(find.text('null'), findsOneWidget);
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'a', values: [9]),
+            testVisualizationItem(id: 'b', values: [2]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('2'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'MultiVisualizationBuilder recreates subscriptions when the config count changes',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: [VisualizationSubscriptionConfig.latestInt('a')],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'a', values: [1]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('1'), findsOneWidget);
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('a'),
+          VisualizationSubscriptionConfig.latestInt('b'),
+        ],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'a', values: [2]),
+            testVisualizationItem(id: 'b', values: [3]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('2,3'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'MultiVisualizationBuilder reorders subscriptions positionally when configs are reordered',
+    (tester) async {
+      final setup = createProjectWithVisualizationProvider();
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('a'),
+          VisualizationSubscriptionConfig.latestInt('b'),
+        ],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'a', values: [1]),
+            testVisualizationItem(id: 'b', values: [2]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('1,2'), findsOneWidget);
+
+      await pumpMultiVisualizationBuilder(
+        tester,
+        project: setup.project,
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('b'),
+          VisualizationSubscriptionConfig.latestInt('a'),
+        ],
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'a', values: [4]),
+            testVisualizationItem(id: 'b', values: [3]),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(find.text('3,4'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
 }

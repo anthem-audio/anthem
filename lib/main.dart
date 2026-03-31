@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,10 +20,8 @@
 import 'dart:async';
 
 import 'package:anthem/licenses.dart';
-import 'package:anthem/logic/controller_registry.dart';
-import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/raw_key_event_singleton.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem_codegen/include/model_base_mixin.dart';
@@ -33,7 +31,6 @@ import 'package:pointer_lock/pointer_lock.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
-import 'model/project.dart';
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 import 'web_init_stub.dart' if (dart.library.js_interop) 'web_init.dart';
@@ -46,16 +43,7 @@ void main() async {
 
   addLicenses();
 
-  final store = AnthemStore.instance;
-
-  // Note: This code for creating a new project is duplicated in
-  // main_window_controller.dart
-
-  final projectModel = ProjectModel.create();
-
-  store.projects[projectModel.id] = projectModel;
-  store.projectOrder.add(projectModel.id);
-  store.activeProjectId = projectModel.id;
+  await ServiceRegistry.mainWindowController.newProject();
 
   runApp(const App());
 
@@ -77,7 +65,6 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> with WindowListener {
   bool isMaximized = false;
-  DialogController dialogController = DialogController();
 
   Future<void> _initWindow() async {
     await windowManager.setPreventClose(true);
@@ -89,8 +76,6 @@ class _AppState extends State<App> with WindowListener {
   @override
   void initState() {
     super.initState();
-
-    ControllerRegistry.instance.dialogController = dialogController;
 
     if (!kIsWeb) {
       windowManager.addListener(this);
@@ -135,16 +120,18 @@ class _AppState extends State<App> with WindowListener {
 
     for (final project in [...projects].reversed) {
       if (!project.isDirty) {
-        ControllerRegistry.instance.mainWindowController!
-            .closeProjectWithoutSaving(project.id);
+        ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
+          project.id,
+        );
         continue;
       }
 
-      ControllerRegistry.instance.mainWindowController!.switchTab(project.id);
+      ServiceRegistry.mainWindowController.switchTab(project.id);
 
-      final projectController = ControllerRegistry.instance
-          .getController<ProjectController>(project.id);
-      final didClose = await projectController?.close();
+      final projectController = ServiceRegistry.forProject(
+        project.id,
+      ).projectController;
+      final didClose = await projectController.close();
 
       if (didClose != true) {
         return false;
@@ -185,8 +172,8 @@ class _AppState extends State<App> with WindowListener {
     final contentStack = Stack(
       fit: StackFit.expand,
       children: [
-        Container(color: AnthemTheme.panel.border),
-        MainWindow(key: mainWindowKey, dialogController: dialogController),
+        Container(color: const Color(0xFF2F2F2F)),
+        MainWindow(key: mainWindowKey),
 
         // Uncomment for performance overlay
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,270 +23,176 @@
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
 class RuntimeSequenceStoreTest : public juce::UnitTest {
+  static constexpr EntityId sequence1Id = 1;
+  static constexpr EntityId sequence2Id = 2;
+  static constexpr EntityId sequence3Id = 3;
+  static constexpr EntityId track1Id = 11;
+  static constexpr EntityId track2Id = 12;
+
+  void applyPendingRtUpdates(AnthemRuntimeSequenceStore* store) {
+    auto nextMap = store->mapUpdateQueue.read();
+
+    while (nextMap.has_value()) {
+      auto* newMap = nextMap.value();
+      auto* oldMap = store->rt_eventLists;
+
+      store->rt_eventLists = newMap;
+      store->mapDeletionQueue.add(oldMap);
+
+      nextMap = store->mapUpdateQueue.read();
+    }
+  }
+
+  void expectNoPendingDeletions(AnthemRuntimeSequenceStore* store) {
+    expect(store->pendingSequenceDeletions.empty(), "No pending sequence deletions");
+    expect(store->pendingSequenceTrackDeletions.empty(), "No pending track deletions");
+  }
+
 public:
   RuntimeSequenceStoreTest() : juce::UnitTest("RuntimeSequenceStoreTest", "Anthem") {}
 
   void runTest() override {
-    {
-      beginTest("Create and delete runtime sequence store with no allocation");
-      auto store = new AnthemRuntimeSequenceStore();
-      delete store;
-    }
+    testCreateAndReadEmptyStore();
+    testAddAndRemoveSequences();
+    testAddAndRemoveTracks();
+    testRemoveTrackFromAllSequences();
+  }
 
-    {
-      beginTest("Test getting event lists");
-      auto store = new AnthemRuntimeSequenceStore();
-      auto& eventLists = store->rt_getEventLists();
-      expect(eventLists.size() == 0, "Event lists are empty");
-      delete store;
-    }
+  void testCreateAndReadEmptyStore() {
+    beginTest("Create store and read empty event list map");
 
-    {
-      beginTest("Check memory integrity of a simple sequence");
+    auto* store = new AnthemRuntimeSequenceStore();
+    auto& eventLists = store->rt_getEventLists();
 
-      auto store = new AnthemRuntimeSequenceStore();
-      auto sequence = SequenceEventListCollection();
+    expect(eventLists.size() == 0, "Event lists are empty");
+    expect(store->mapDeletionQueue.read().has_value() == false, "Deletion queue is empty");
 
-      auto eventList1 = SequenceEventList();
-      eventList1.events->push_back(
-      AnthemSequenceEvent {
-        .time = AnthemSequenceTime {
-          .ticks = 0,
-          .fraction = 0.
-        },
-        .event = AnthemEvent(
-          AnthemNoteOnEvent()
-        )
-      });
+    delete store;
+  }
 
-      sequence.channels->insert_or_assign("channel1", eventList1);
+  void testAddAndRemoveSequences() {
+    beginTest("Add and remove sequences");
 
-      store->addOrUpdateSequence("sequence1", sequence);
+    auto* store = new AnthemRuntimeSequenceStore();
 
-      // At this point, the audio thread should be holding the old event list.
+    store->addOrUpdateSequence(sequence1Id, SequenceEventListCollection());
+    store->addOrUpdateSequence(sequence2Id, SequenceEventListCollection());
 
-      expect(store->rt_eventLists != store->eventLists, "The event lists have been updated, but the audio thread has not picked up the new value");
+    // Simulate the audio thread consuming map updates.
+    applyPendingRtUpdates(store);
 
-      // We will simulate the audio thread calls synchronously here
-      auto& eventLists = store->rt_getEventLists();
+    auto& eventLists = store->rt_getEventLists();
+    expect(eventLists.size() == 2, "There are two sequences after add");
+    expect(eventLists.find(sequence1Id) != eventLists.end(), "sequence1 exists");
+    expect(eventLists.find(sequence2Id) != eventLists.end(), "sequence2 exists");
 
-      expect(eventLists.size() == 1, "Event lists has one sequence");
+    // Cleanup for old maps returned by the simulated audio thread.
+    store->processDeletionQueues();
+    expectNoPendingDeletions(store);
 
-      auto sequenceIt = eventLists.find("sequence1");
-      expect(sequenceIt != eventLists.end(), "Sequence1 exists");
+    store->removeSequence(sequence1Id);
+    applyPendingRtUpdates(store);
 
-      auto& sequenceObj = sequenceIt->second;
-      expect(sequenceObj.channels->size() == 1, "Sequence1 has one channel");
+    auto& eventListsAfterRemove = store->rt_getEventLists();
+    expect(eventListsAfterRemove.size() == 1, "There is one sequence after remove");
+    expect(eventListsAfterRemove.find(sequence1Id) == eventListsAfterRemove.end(), "sequence1 removed");
+    expect(eventListsAfterRemove.find(sequence2Id) != eventListsAfterRemove.end(), "sequence2 still exists");
 
-      auto channelIt = sequenceObj.channels->find("channel1");
-      expect(channelIt != sequenceObj.channels->end(), "Channel1 exists");
+    store->processDeletionQueues();
+    expectNoPendingDeletions(store);
 
-      auto& channelObj = channelIt->second;
-      expect(channelObj.events->size() == 1, "Channel1 has one event");
+    delete store;
+  }
 
-      auto& event = channelObj.events->at(0);
-      expect(event.event.type == AnthemEventType::NoteOn, "Event is a NoteOn event");
+  void testAddAndRemoveTracks() {
+    beginTest("Add, replace, and remove tracks in a sequence");
 
-      // There is nothing to clean up in this case, so we will abuse the friend
-      // relationship between the test and the store to manually check that the
-      // old event list was sent back by the rt_getEventLists call.
+    auto* store = new AnthemRuntimeSequenceStore();
 
-      auto pointerToCleanUp = store->mapDeletionQueue.read();
-      expect(pointerToCleanUp.has_value(), "The audio thread has released the old event list");
-      expect(pointerToCleanUp.value() != store->eventLists, "This is the old event list and not the new one");
-      delete pointerToCleanUp.value();
+    store->addOrUpdateSequence(sequence1Id, SequenceEventListCollection());
+    applyPendingRtUpdates(store);
+    store->processDeletionQueues();
 
-      expect(store->mapDeletionQueue.read().has_value() == false, "There is only one item in the deletion queue");
-    }
+    SequenceEventList track1;
+    track1.events->push_back(AnthemSequenceEvent {
+      .offset = 0.0,
+      .event = AnthemEvent(AnthemNoteOnEvent())
+    });
 
-    {
-      beginTest("Test adding and removing sequences");
+    store->addOrUpdateTrackInSequence(sequence1Id, track1Id, track1);
+    store->addOrUpdateTrackInSequence(sequence1Id, track2Id, SequenceEventList());
+    applyPendingRtUpdates(store);
 
-      auto store = new AnthemRuntimeSequenceStore();
+    auto& eventLists = store->rt_getEventLists();
+    expect(eventLists.at(sequence1Id).tracks->size() == 2, "Two tracks were added");
+    expect(eventLists.at(sequence1Id).tracks->find(track1Id) != eventLists.at(sequence1Id).tracks->end(), "track1 exists");
+    expect(eventLists.at(sequence1Id).tracks->find(track2Id) != eventLists.at(sequence1Id).tracks->end(), "track2 exists");
 
-      store->addOrUpdateSequence("sequence1", SequenceEventListCollection());
-      store->addOrUpdateSequence("sequence2", SequenceEventListCollection());
-      store->addOrUpdateSequence("sequence3", SequenceEventListCollection());
+    store->processDeletionQueues();
+    expectNoPendingDeletions(store);
 
-      auto& eventLists = store->rt_getEventLists();
+    // Replace track2
+    SequenceEventList replacement;
+    replacement.events->push_back(AnthemSequenceEvent {
+      .offset = 1.0,
+      .event = AnthemEvent(AnthemNoteOffEvent())
+    });
 
-      expect(eventLists.size() == 3, "There are three sequences");
+    store->addOrUpdateTrackInSequence(sequence1Id, track2Id, replacement);
+    applyPendingRtUpdates(store);
 
-      // Check that the audio thread sent back the old event list maps
-      auto pointerToCleanUp = store->mapDeletionQueue.read();
-      expect(pointerToCleanUp.has_value(), "The audio thread has released the old event list (1)");
-      delete pointerToCleanUp.value();
+    auto& eventListsAfterReplace = store->rt_getEventLists();
+    expect(eventListsAfterReplace.at(sequence1Id).tracks->size() == 2, "Track count stays at two after replace");
+    expect(eventListsAfterReplace.at(sequence1Id).tracks->at(track2Id).events->size() == 1, "Replaced track has one event");
 
-      pointerToCleanUp = store->mapDeletionQueue.read();
-      expect(pointerToCleanUp.has_value(), "The audio thread has released the old event list (2)");
-      delete pointerToCleanUp.value();
+    store->processDeletionQueues();
+    expectNoPendingDeletions(store);
 
-      pointerToCleanUp = store->mapDeletionQueue.read();
-      expect(pointerToCleanUp.has_value(), "The audio thread has released the old event list (3)");
-      delete pointerToCleanUp.value();
+    // Remove track1
+    store->removeTrackFromSequence(sequence1Id, track1Id);
+    applyPendingRtUpdates(store);
 
-      expect(store->mapDeletionQueue.read().has_value() == false, "There are only three items in the deletion queue");
+    auto& eventListsAfterRemove = store->rt_getEventLists();
+    expect(eventListsAfterRemove.at(sequence1Id).tracks->size() == 1, "One track remains after remove");
+    expect(eventListsAfterRemove.at(sequence1Id).tracks->find(track1Id) == eventListsAfterRemove.at(sequence1Id).tracks->end(), "track1 removed");
 
-      // Since we didn't replace anything, there is no data to delete
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
-      
-      // Remove sequence1
-      store->removeSequence("sequence1");
+    store->processDeletionQueues();
+    expectNoPendingDeletions(store);
 
-      auto& eventLists2 = store->rt_getEventLists();
-      expect(eventLists2.size() == 2, "There are two sequences");
+    delete store;
+  }
 
-      expect(store->pendingSequenceDeletions.size() == 1, "There is one pending sequence deletion");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
+  void testRemoveTrackFromAllSequences() {
+    beginTest("Remove one track from all sequences");
 
-      store->processMapDeletionQueue();
+    auto* store = new AnthemRuntimeSequenceStore();
 
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
+    store->addOrUpdateTrackInSequence(sequence1Id, track1Id, SequenceEventList());
+    store->addOrUpdateTrackInSequence(sequence2Id, track1Id, SequenceEventList());
+    store->addOrUpdateTrackInSequence(sequence3Id, track1Id, SequenceEventList());
+    store->addOrUpdateTrackInSequence(sequence3Id, track2Id, SequenceEventList());
 
-      // Replace sequence2
-      store->addOrUpdateSequence("sequence2", SequenceEventListCollection());
+    applyPendingRtUpdates(store);
 
-      auto& eventLists3 = store->rt_getEventLists();
-      expect(eventLists3.size() == 2, "There are two sequences");
+    auto& initialEventLists = store->rt_getEventLists();
+    expect(initialEventLists.size() == 3, "Three sequences exist");
 
-      expect(store->pendingSequenceDeletions.size() == 1, "There is one pending sequence deletion");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
+    store->processDeletionQueues();
+    expectNoPendingDeletions(store);
 
-      store->processMapDeletionQueue();
+    store->removeTrackFromAllSequences(track1Id);
+    applyPendingRtUpdates(store);
 
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
+    auto& eventLists = store->rt_getEventLists();
+    expect(eventLists.at(sequence1Id).tracks->find(track1Id) == eventLists.at(sequence1Id).tracks->end(), "track1 removed from sequence1");
+    expect(eventLists.at(sequence2Id).tracks->find(track1Id) == eventLists.at(sequence2Id).tracks->end(), "track1 removed from sequence2");
+    expect(eventLists.at(sequence3Id).tracks->find(track1Id) == eventLists.at(sequence3Id).tracks->end(), "track1 removed from sequence3");
+    expect(eventLists.at(sequence3Id).tracks->find(track2Id) != eventLists.at(sequence3Id).tracks->end(), "track2 preserved in sequence3");
 
-      delete store;
-    }
+    store->processDeletionQueues();
+    expectNoPendingDeletions(store);
 
-    {
-      beginTest("Test adding and removing channel data for a sequence");
-
-      auto store = new AnthemRuntimeSequenceStore();
-
-      store->addOrUpdateSequence("sequence1", SequenceEventListCollection());
-
-      store->addOrUpdateChannelInSequence("sequence1", "channel1", SequenceEventList());
-      store->addOrUpdateChannelInSequence("sequence1", "channel2", SequenceEventList());
-      store->addOrUpdateChannelInSequence("sequence1", "channel3", SequenceEventList());
-
-      auto& eventLists = store->rt_getEventLists();
-
-      expect(eventLists.size() == 1, "There is one sequence");
-      expect(eventLists.at("sequence1").channels->size() == 3, "There are three channels");
-
-      // We didn't replace anything, but we do clone the inner channels map, so
-      // there will be three items to clean up in pendingSequenceChannelDeletions.
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 3, "There are three pending channel deletions");
-
-      store->processMapDeletionQueue();
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
-
-      // Remove channel1
-
-      store->removeChannelFromSequence("sequence1", "channel1");
-
-      auto& eventLists2 = store->rt_getEventLists();
-      expect(eventLists2.size() == 1, "There is one sequence");
-      expect(eventLists2.at("sequence1").channels->size() == 2, "There are two channels");
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 1, "There is one pending channel deletion");
-
-      auto& vec = store->pendingSequenceChannelDeletions.begin()->second;
-      expect(vec.size() == 1, "There is one channel to clean up");
-      expect(std::get<0>(vec.at(0)).has_value() == true, "The channel event list to clean up is not empty, since we removed a channel");
-      expect(std::get<1>(vec.at(0)) != nullptr, "The channel map to clean up is not null, since we always clone it");
-
-      store->processMapDeletionQueue();
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
-
-      // Replace channel2
-
-      store->addOrUpdateChannelInSequence("sequence1", "channel2", SequenceEventList());
-
-      auto& eventLists3 = store->rt_getEventLists();
-      expect(eventLists3.size() == 1, "There is one sequence");
-      expect(eventLists3.at("sequence1").channels->size() == 2, "There are two channels");
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 1, "There is one pending channel deletion");
-
-      auto& vec2 = store->pendingSequenceChannelDeletions.begin()->second;
-      expect(vec2.size() == 1, "There is one channel to clean up");
-      // The event list is empty, but it's still a vector that must be deallocated. We don't fill the event lists in this test.
-      expect(std::get<0>(vec2.at(0)).has_value() == true, "The channel event list to clean up is not empty, since we replaced a channel");
-      expect(std::get<1>(vec2.at(0)) != nullptr, "The channel map to clean up is not null, since we always clone it");
-
-      store->processMapDeletionQueue();
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
-
-      delete store;
-    }
-
-    {
-      beginTest("Test removing a channel from all sequences");
-
-      auto store = new AnthemRuntimeSequenceStore();
-
-      store->addOrUpdateChannelInSequence("sequence1", "channel1", SequenceEventList());
-      store->addOrUpdateChannelInSequence("sequence2", "channel1", SequenceEventList());
-      store->addOrUpdateChannelInSequence("sequence3", "channel1", SequenceEventList());
-
-      auto& eventLists = store->rt_getEventLists();
-
-      expect(eventLists.size() == 3, "There are three sequences");
-      expect(eventLists.at("sequence1").channels->size() == 1, "Sequence1 has one channel");
-      expect(eventLists.at("sequence2").channels->size() == 1, "Sequence2 has one channel");
-      expect(eventLists.at("sequence3").channels->size() == 1, "Sequence3 has one channel");
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 3, "There are three pending channel deletions");
-
-      store->processMapDeletionQueue();
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
-
-      store->removeChannelFromAllSequences("channel1");
-
-      auto& eventLists2 = store->rt_getEventLists();
-
-      expect(eventLists2.size() == 3, "There are three sequences");
-      expect(eventLists2.at("sequence1").channels->size() == 0, "Sequence1 has no channels");
-      expect(eventLists2.at("sequence2").channels->size() == 0, "Sequence2 has no channels");
-      expect(eventLists2.at("sequence3").channels->size() == 0, "Sequence3 has no channels");
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 1, "There is one pending channel deletion");
-
-      auto& vec = store->pendingSequenceChannelDeletions.begin()->second;
-      expect(vec.size() == 3, "There are three channels to clean up");
-
-      expect(std::get<0>(vec.at(0)).has_value() == true, "The first channel event list to clean up is not empty, since we removed a channel");
-      expect(std::get<1>(vec.at(0)) != nullptr, "The first channel map to clean up is not null, since we always clone it");
-      expect(std::get<0>(vec.at(1)).has_value() == true, "The second channel event list to clean up is not empty, since we removed a channel");
-      expect(std::get<1>(vec.at(1)) != nullptr, "The second channel map to clean up is not null, since we always clone it");
-      expect(std::get<0>(vec.at(2)).has_value() == true, "The third channel event list to clean up is not empty, since we removed a channel");
-      expect(std::get<1>(vec.at(2)) != nullptr, "The third channel map to clean up is not null, since we always clone it");
-
-      store->processMapDeletionQueue();
-
-      expect(store->pendingSequenceDeletions.size() == 0, "There are no pending sequence deletions");
-      expect(store->pendingSequenceChannelDeletions.size() == 0, "There are no pending channel deletions");
-
-      delete store;      
-    }
+    delete store;
   }
 };
 

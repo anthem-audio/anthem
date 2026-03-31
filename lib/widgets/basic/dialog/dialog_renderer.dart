@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -41,9 +42,8 @@ class _DialogState {
 
 class DialogRenderer extends StatefulWidget {
   final Widget? child;
-  final DialogController controller;
 
-  const DialogRenderer({super.key, required this.controller, this.child});
+  const DialogRenderer({super.key, this.child});
 
   @override
   State<DialogRenderer> createState() => _DialogRendererState();
@@ -69,12 +69,12 @@ class _DialogRendererState extends State<DialogRenderer>
   @override
   void initState() {
     super.initState();
-    widget.controller.initialize(this);
+    ServiceRegistry.dialogController.initialize(this);
   }
 
   @override
   void dispose() {
-    widget.controller.dispose();
+    ServiceRegistry.dialogController.dispose();
     super.dispose();
   }
 
@@ -113,12 +113,15 @@ class _DialogRendererState extends State<DialogRenderer>
 
     if (currentDialogContent != null) {
       blocker = Positioned.fill(
-        child: GestureDetector(
-          onTap: () {
-            closeDialog();
-            onDismiss?.call();
-          },
-          child: Container(color: const Color(0x88000000)),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () {
+              closeDialog();
+              onDismiss?.call();
+            },
+            child: Container(color: const Color(0x33000000)),
+          ),
         ),
       );
       dialog = Positioned.fill(
@@ -128,6 +131,12 @@ class _DialogRendererState extends State<DialogRenderer>
               color: AnthemTheme.overlay.background,
               border: Border.all(color: AnthemTheme.overlay.border),
               borderRadius: BorderRadius.circular(4),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF000000).withValues(alpha: 0.25),
+                  blurRadius: 14,
+                ),
+              ],
             ),
             child: Padding(
               padding: const EdgeInsets.all(12),
@@ -233,7 +242,7 @@ class _DialogRendererState extends State<DialogRenderer>
     }
 
     return Provider.value(
-      value: widget.controller,
+      value: ServiceRegistry.dialogController,
       child: Stack(children: [?widget.child, ?blocker, ?dialog]),
     );
   }

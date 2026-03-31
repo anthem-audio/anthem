@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,47 +20,222 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/measure_text.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
-import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/menu/menu_positioning.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import 'menu_model.dart';
 
 class _Constants {
+  static const double menuBorderWidth = 1.0;
   static const double submenuArrowWidth = 8.0;
-  static const double padding = 8.0;
+  static const double submenuIndicatorWidth = submenuArrowWidth * 0.75;
+  static const double outerPadding = 3.0;
+  static const double horizontalInnerPadding = 8.0;
+  static const double verticalInnerPadding = 4.0;
+  static const double titleToShortcutGap = 14.0;
+  static const double trailingSectionGap = horizontalInnerPadding;
+  static const double widthSafetyPadding = 1.0;
   static const double fontSize = 11.0;
+  static const double separatorPadding = 7.0;
   static const double separatorHeight = 13.0;
-  static const double menuItemHeight = 25.0;
+  static const double menuItemHeight = 24.0;
 
   static const Duration hoverOpenDuration = Duration(milliseconds: 500);
   static const Duration hoverCloseDuration = Duration(milliseconds: 500);
 }
 
-double getMenuItemHeight(GenericMenuItem menuItem) {
-  if (menuItem is AnthemMenuItem) return _Constants.menuItemHeight;
-  if (menuItem is Separator) return _Constants.separatorHeight;
-  return 0;
+double _getMenuItemHeight(GenericMenuItem menuItem) {
+  return switch (menuItem) {
+    AnthemMenuItem() => _Constants.menuItemHeight,
+    Separator() => _Constants.separatorHeight,
+  };
+}
+
+String? _normalizeShortcutLabel(String? shortcutLabel) {
+  final normalized = shortcutLabel?.trim();
+  if (normalized == null || normalized.isEmpty) return null;
+  return normalized;
+}
+
+double _measureMenuTextWidth(BuildContext context, String text) {
+  if (text.isEmpty) return 0;
+
+  final textStyle = DefaultTextStyle.of(
+    context,
+  ).style.merge(const TextStyle(fontSize: _Constants.fontSize));
+
+  return measureText(
+    text: text,
+    textStyle: textStyle,
+    context: context,
+  ).width.ceilToDouble();
+}
+
+class _MenuLayoutMetrics {
+  final double menuWidth;
+  final double titleColumnWidth;
+  final double shortcutColumnWidth;
+  final double submenuIndicatorColumnWidth;
+  final bool hasShortcutColumn;
+  final bool hasSubmenuColumn;
+  final double titleToShortcutGap;
+  final double trailingSectionGap;
+
+  const _MenuLayoutMetrics({
+    required this.menuWidth,
+    required this.titleColumnWidth,
+    required this.shortcutColumnWidth,
+    required this.submenuIndicatorColumnWidth,
+    required this.hasShortcutColumn,
+    required this.hasSubmenuColumn,
+    required this.titleToShortcutGap,
+    required this.trailingSectionGap,
+  });
+}
+
+_MenuLayoutMetrics _computeMenuLayoutMetrics({
+  required BuildContext context,
+  required List<GenericMenuItem> children,
+  required BoxConstraints constraints,
+}) {
+  final menuItems = children.whereType<AnthemMenuItem>().toList();
+
+  var maxTitleWidth = 0.0;
+  var maxShortcutWidth = 0.0;
+  var hasShortcutColumn = false;
+  var hasSubmenuColumn = false;
+
+  for (final menuItem in menuItems) {
+    maxTitleWidth = max(
+      maxTitleWidth,
+      _measureMenuTextWidth(context, menuItem.text),
+    );
+
+    final shortcutLabel = _normalizeShortcutLabel(menuItem.shortcutLabel);
+    if (shortcutLabel != null) {
+      hasShortcutColumn = true;
+      maxShortcutWidth = max(
+        maxShortcutWidth,
+        _measureMenuTextWidth(context, shortcutLabel),
+      );
+    }
+
+    if (menuItem.submenu != null) {
+      hasSubmenuColumn = true;
+    }
+  }
+
+  final horizontalFrameWidth =
+      (_Constants.menuBorderWidth +
+          _Constants.outerPadding +
+          _Constants.horizontalInnerPadding) *
+      2;
+  var titleToShortcutGap = hasShortcutColumn
+      ? _Constants.titleToShortcutGap
+      : 0.0;
+  var trailingSectionGap = hasSubmenuColumn
+      ? _Constants.trailingSectionGap
+      : 0.0;
+  var submenuIndicatorWidth = hasSubmenuColumn
+      ? _Constants.submenuIndicatorWidth
+      : 0.0;
+
+  final maxMenuWidth = constraints.maxWidth.isFinite
+      ? constraints.maxWidth
+      : double.infinity;
+
+  final preferredTextWidth =
+      maxTitleWidth + (hasShortcutColumn ? maxShortcutWidth : 0);
+  final preferredContentWidth =
+      preferredTextWidth +
+      titleToShortcutGap +
+      trailingSectionGap +
+      submenuIndicatorWidth;
+  final preferredMenuWidth =
+      preferredContentWidth +
+      horizontalFrameWidth +
+      _Constants.widthSafetyPadding;
+  final resolvedMenuWidth = min(preferredMenuWidth, maxMenuWidth);
+  final maxContentWidth = max(0.0, resolvedMenuWidth - horizontalFrameWidth);
+
+  final fixedContentWidth =
+      titleToShortcutGap + trailingSectionGap + submenuIndicatorWidth;
+
+  if (fixedContentWidth > maxContentWidth) {
+    var overflow = fixedContentWidth - maxContentWidth;
+
+    final shortcutGapReduction = min(titleToShortcutGap, overflow);
+    titleToShortcutGap -= shortcutGapReduction;
+    overflow -= shortcutGapReduction;
+
+    final trailingGapReduction = min(trailingSectionGap, overflow);
+    trailingSectionGap -= trailingGapReduction;
+    overflow -= trailingGapReduction;
+
+    final submenuReduction = min(submenuIndicatorWidth, overflow);
+    submenuIndicatorWidth -= submenuReduction;
+  }
+
+  final availableTextWidth = max(
+    0.0,
+    maxContentWidth -
+        titleToShortcutGap -
+        trailingSectionGap -
+        submenuIndicatorWidth,
+  );
+
+  var resolvedTitleWidth = maxTitleWidth;
+  var resolvedShortcutWidth = hasShortcutColumn ? maxShortcutWidth : 0.0;
+
+  if (hasShortcutColumn) {
+    final textOverflow = max(
+      0.0,
+      maxTitleWidth + maxShortcutWidth - availableTextWidth,
+    );
+    final titleReduction = min(textOverflow, maxTitleWidth);
+
+    resolvedTitleWidth -= titleReduction;
+    resolvedShortcutWidth = max(
+      0.0,
+      maxShortcutWidth - (textOverflow - titleReduction),
+    );
+  } else {
+    resolvedTitleWidth = min(maxTitleWidth, availableTextWidth);
+  }
+
+  final resolvedContentWidth =
+      resolvedTitleWidth +
+      resolvedShortcutWidth +
+      titleToShortcutGap +
+      trailingSectionGap +
+      submenuIndicatorWidth;
+  final finalMenuWidth = min(
+    maxMenuWidth,
+    resolvedContentWidth + horizontalFrameWidth,
+  );
+
+  return _MenuLayoutMetrics(
+    menuWidth: finalMenuWidth,
+    titleColumnWidth: resolvedTitleWidth,
+    shortcutColumnWidth: resolvedShortcutWidth,
+    submenuIndicatorColumnWidth: submenuIndicatorWidth,
+    hasShortcutColumn: hasShortcutColumn,
+    hasSubmenuColumn: hasSubmenuColumn,
+    titleToShortcutGap: titleToShortcutGap,
+    trailingSectionGap: trailingSectionGap,
+  );
 }
 
 class MenuRenderer extends StatefulWidget {
   final MenuDef menu;
-  final Id id;
-  final ProjectController projectController;
 
-  const MenuRenderer({
-    super.key,
-    required this.menu,
-    required this.id,
-    required this.projectController,
-  });
+  const MenuRenderer({super.key, required this.menu});
 
   @override
   State<MenuRenderer> createState() => _MenuRendererState();
@@ -73,122 +248,108 @@ class _MenuRendererState extends State<MenuRenderer> {
 
   @override
   Widget build(BuildContext context) {
-    final hasSubmenu = widget.menu.children
-        .whereType<AnthemMenuItem>()
-        .fold<bool>(
-          false,
-          (previousValue, element) => previousValue || element.submenu != null,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layoutMetrics = _computeMenuLayoutMetrics(
+          context: context,
+          children: widget.menu.children,
+          constraints: constraints,
         );
 
-    final widest = widget.menu.children
-        .whereType<AnthemMenuItem>()
-        .map((child) {
-          final labelWidth = measureText(
-            text: child.text,
-            textStyle: const TextStyle(fontSize: _Constants.fontSize),
-            context: context,
-          ).width;
-          var submenuArrowWidth = hasSubmenu
-              ? _Constants.padding +
-                    _Constants.submenuArrowWidth +
-                    (child.submenu != null ? 50 : 0)
-              : 0;
-          // The extra 4 pixels here is due to the border from the hover effect,
-          // plus something else that I'm not sure about. We need 2px for the hover
-          // effect border... I suppose the other 5px are for good luck. Anything
-          // less than 7 extra pixels means it will sometimes overflow.
-          return (labelWidth + submenuArrowWidth + 7);
-        })
-        .fold<double>(0, (value, element) => max(value, element));
-
-    final height = widget.menu.children.fold<double>(
-      0,
-      (value, element) => value + getMenuItemHeight(element),
-    );
-
-    return MouseRegion(
-      onEnter: (event) {
-        setState(() {
-          isMouseInside = true;
-        });
-      },
-      onExit: (event) {
-        setState(() {
-          isMouseInside = false;
-        });
-        if (hintId != null) {
-          HintStore.instance.removeHint(hintId!);
-          hintId = null;
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: AnthemTheme.panel.background,
-          border: Border.all(color: AnthemTheme.panel.border),
-          borderRadius: const BorderRadius.all(Radius.circular(4)),
-        ),
-        width: widest + (_Constants.padding + 1) * 4,
-        height: height + (_Constants.padding + 1) * 2,
-        child: Padding(
-          padding: const EdgeInsets.all(_Constants.padding),
-          child: Column(
-            children: widget.menu.children
-                .map(
-                  (child) => MenuItemRenderer(
-                    menuItem: child,
-                    isMouseInMenu: isMouseInside,
-                    projectController: widget.projectController,
-                    updateHintId: (id) {
-                      if (hintId != null) {
-                        HintStore.instance.removeHint(hintId!);
-                      }
-                      hintId = id;
-                    },
-                    removeHint: () {
-                      if (hintId != null) {
-                        HintStore.instance.removeHint(hintId!);
-                        hintId = null;
-                      }
-                    },
-                  ),
-                )
-                .toList(),
+        return MouseRegion(
+          onEnter: (event) {
+            setState(() {
+              isMouseInside = true;
+            });
+          },
+          onExit: (event) {
+            setState(() {
+              isMouseInside = false;
+            });
+            if (hintId != null) {
+              HintStore.instance.removeHint(hintId!);
+              hintId = null;
+            }
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: AnthemTheme.overlay.background,
+              border: Border.all(
+                color: AnthemTheme.overlay.border,
+                width: _Constants.menuBorderWidth,
+              ),
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF000000).withValues(alpha: 0.25),
+                  blurRadius: 14,
+                ),
+              ],
+            ),
+            width: layoutMetrics.menuWidth,
+            child: Padding(
+              padding: const EdgeInsets.all(_Constants.outerPadding),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: widget.menu.children
+                    .map(
+                      (child) => _MenuItemRenderer(
+                        menuItem: child,
+                        layoutMetrics: layoutMetrics,
+                        isMouseInMenu: isMouseInside,
+                        updateHintId: (id) {
+                          if (hintId != null) {
+                            HintStore.instance.removeHint(hintId!);
+                          }
+                          hintId = id;
+                        },
+                        removeHint: () {
+                          if (hintId != null) {
+                            HintStore.instance.removeHint(hintId!);
+                            hintId = null;
+                          }
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class MenuItemRenderer extends StatefulWidget {
+class _MenuItemRenderer extends StatefulWidget {
   final GenericMenuItem menuItem;
+  final _MenuLayoutMetrics layoutMetrics;
   final bool isMouseInMenu;
-  final ProjectController projectController;
 
   final void Function(int) updateHintId;
   final void Function() removeHint;
 
-  const MenuItemRenderer({
-    super.key,
+  const _MenuItemRenderer({
     required this.menuItem,
+    required this.layoutMetrics,
     required this.isMouseInMenu,
-    required this.projectController,
     required this.updateHintId,
     required this.removeHint,
   });
 
   @override
-  State<MenuItemRenderer> createState() => _MenuItemRendererState();
+  State<_MenuItemRenderer> createState() => _MenuItemRendererState();
 }
 
-class _MenuItemRendererState extends State<MenuItemRenderer> {
+class _MenuItemRendererState extends State<_MenuItemRenderer> {
   bool isHovered = false;
   bool get isSubmenuOpen {
-    return submenuKey != null;
+    return submenuHandle != null;
   }
 
   // If there's no open submenu, this is null
-  Id? submenuKey;
+  ScreenOverlayHandle? submenuHandle;
 
   // This will be defined if the user has hovered an item with a submenu but
   // the submenu hasn't opened yet
@@ -199,18 +360,14 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   Timer? submenuCloseTimer;
 
   @override
-  void didUpdateWidget(MenuItemRenderer oldWidget) {
+  void didUpdateWidget(covariant _MenuItemRenderer oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    final screenOverlayController = Provider.of<ScreenOverlayController>(
-      context,
-    );
 
     if (!oldWidget.isMouseInMenu &&
         widget.isMouseInMenu &&
         isSubmenuOpen &&
         !isHovered) {
-      startSubmenuCloseTimer(screenOverlayController);
+      startSubmenuCloseTimer();
     } else if (oldWidget.isMouseInMenu && !widget.isMouseInMenu) {
       cancelSubmenuCloseTimer();
     }
@@ -222,7 +379,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
       context,
     );
 
-    final height = getMenuItemHeight(widget.menuItem);
+    final height = _getMenuItemHeight(widget.menuItem);
 
     if (widget.menuItem is AnthemMenuItem) {
       final item = widget.menuItem as AnthemMenuItem;
@@ -235,30 +392,73 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           : item.disabled
           ? AnthemTheme.text.disabled
           : AnthemTheme.text.main;
+      final shortcutLabel = _normalizeShortcutLabel(item.shortcutLabel) ?? '';
+      final shortcutColor = showHoverState
+          ? AnthemTheme.primary.main
+          : AnthemTheme.text.disabled;
 
-      final rowChildren = [
-        Text(
-          item.text,
-          style: TextStyle(color: textColor, fontSize: _Constants.fontSize),
+      final rowChildren = <Widget>[
+        SizedBox(
+          width: widget.layoutMetrics.titleColumnWidth,
+          child: Text(
+            item.text,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: textColor, fontSize: _Constants.fontSize),
+          ),
         ),
-        const Expanded(child: SizedBox()),
       ];
 
-      if (item.submenu != null) {
-        rowChildren.add(const SizedBox(width: _Constants.padding));
+      if (widget.layoutMetrics.hasShortcutColumn) {
+        rowChildren.add(
+          SizedBox(width: widget.layoutMetrics.titleToShortcutGap),
+        );
         rowChildren.add(
           SizedBox(
-            width: _Constants.submenuArrowWidth,
-            child: Transform.rotate(
-              angle: -pi / 2,
-              alignment: Alignment.center,
-              child: SvgIcon(icon: Icons.arrowDown, color: textColor),
+            width: widget.layoutMetrics.shortcutColumnWidth,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                shortcutLabel,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: shortcutColor,
+                  fontSize: _Constants.fontSize,
+                ),
+              ),
             ),
           ),
         );
       }
 
+      if (widget.layoutMetrics.hasSubmenuColumn) {
+        rowChildren.add(
+          SizedBox(width: widget.layoutMetrics.trailingSectionGap),
+        );
+        rowChildren.add(
+          SizedBox(
+            width: widget.layoutMetrics.submenuIndicatorColumnWidth,
+            child: item.submenu == null
+                ? const SizedBox()
+                : Center(
+                    child: ClipPath(
+                      clipper: _TriangleClipper(),
+                      child: Container(
+                        width: _Constants.submenuIndicatorWidth,
+                        height: _Constants.submenuArrowWidth,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+          ),
+        );
+      }
+
       return MouseRegion(
+        cursor: item.disabled ? MouseCursor.defer : SystemMouseCursors.click,
         onEnter: (e) {
           if (item.disabled) return;
 
@@ -290,7 +490,7 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
             isHovered = false;
           });
           cancelHoverTimer();
-          startSubmenuCloseTimer(screenOverlayController);
+          startSubmenuCloseTimer();
         },
         child: GestureDetector(
           onTap: () {
@@ -310,17 +510,12 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
           },
           child: Container(
             decoration: BoxDecoration(
-              color: showHoverState ? AnthemTheme.primary.subtle : null,
-              // This adds 2px to the width of the menu
-              border: showHoverState
-                  ? Border.all(color: AnthemTheme.primary.subtleBorder)
-                  : Border.all(color: const Color(0x00000000)),
-              borderRadius: BorderRadius.circular(4),
+              color: showHoverState ? AnthemTheme.overlay.menuItemHover : null,
             ),
             height: height,
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: _Constants.padding,
+                horizontal: _Constants.horizontalInnerPadding,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.max,
@@ -338,10 +533,10 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
         height: height,
         child: Padding(
           padding: EdgeInsets.symmetric(
-            horizontal: _Constants.padding,
+            horizontal: _Constants.separatorPadding,
             vertical: (_Constants.separatorHeight / 2).floor().toDouble(),
           ),
-          child: Container(color: AnthemTheme.control.border),
+          child: Container(color: AnthemTheme.overlay.border),
         ),
       );
     }
@@ -355,28 +550,25 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
   }) {
     if (isSubmenuOpen) return;
 
-    final position = (context.findRenderObject() as RenderBox).localToGlobal(
-      const Offset(0, 0),
+    final renderBox = context.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
+    final anchorRect = Rect.fromLTWH(
+      position.dx,
+      position.dy,
+      size.width,
+      size.height,
     );
-    final size = context.size!;
 
-    submenuKey = getId();
-
-    screenOverlayController.add(
-      submenuKey!,
+    submenuHandle = screenOverlayController.show(
       ScreenOverlayEntry(
-        builder: (screenOverlayContext, id) {
-          return Positioned(
-            left: position.dx + size.width + _Constants.padding,
-            top:
-                position.dy -
-                _Constants.padding -
-                1, // -1 to account for menu border
-            child: MenuRenderer(
-              id: id,
-              menu: item.submenu!,
-              projectController: widget.projectController,
-            ),
+        builder: (screenOverlayContext) {
+          return MenuPositioned(
+            anchorRect: anchorRect,
+            horizontalGap: _Constants.horizontalInnerPadding,
+            verticalGap: -_Constants.verticalInnerPadding,
+            alignTopToAnchor: true,
+            child: MenuRenderer(menu: item.submenu!),
           );
         },
       ),
@@ -399,12 +591,12 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     hoverTimer = null;
   }
 
-  void startSubmenuCloseTimer(ScreenOverlayController screenOverlayController) {
+  void startSubmenuCloseTimer() {
     submenuCloseTimer = Timer(_Constants.hoverCloseDuration, () {
-      if (submenuKey != null) {
-        screenOverlayController.remove(submenuKey!);
+      if (submenuHandle != null) {
+        submenuHandle!.close();
         setState(() {
-          submenuKey = null;
+          submenuHandle = null;
         });
       }
     });
@@ -414,4 +606,19 @@ class _MenuItemRendererState extends State<MenuItemRenderer> {
     submenuCloseTimer?.cancel();
     submenuCloseTimer = null;
   }
+}
+
+class _TriangleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width, size.height / 2);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }

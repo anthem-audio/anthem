@@ -34,8 +34,6 @@ class ProcessingGraphApi {
   /// model. When ready, this method can be called to compile an updated set of
   /// processing instructions and push them to the audio thread.
   Future<void> compile() async {
-    await _engine.audioReadyCompleter.future;
-
     final id = _engine._getRequestId();
 
     final request = CompileProcessingGraphRequest(id: id);
@@ -50,6 +48,7 @@ class ProcessingGraphApi {
     }
   }
 
+  /// Pushes a serialized plugin state blob into the engine for the given node.
   void setPluginState(Id nodeId, String state) async {
     final id = _engine._getRequestId();
 
@@ -58,6 +57,7 @@ class ProcessingGraphApi {
     _engine._requestNoReply(request);
   }
 
+  /// Reads the current serialized plugin state blob from the engine.
   Future<String> getPluginState(Id nodeId) async {
     final id = _engine._getRequestId();
 
@@ -81,6 +81,10 @@ class ProcessingGraphApi {
           event is LiveEventRequestNoteOffEvent,
       'sendLiveEvent() requires a valid live event type.',
     );
+
+    if (!_engine.isRunning) {
+      return;
+    }
 
     final id = _engine._getRequestId();
 

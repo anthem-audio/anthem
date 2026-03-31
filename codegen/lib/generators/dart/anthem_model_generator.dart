@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 import 'dart:async';
 
 import 'package:anthem_codegen/generators/dart/model_change_generator.dart';
+import 'package:anthem_codegen/generators/util/codegen_dependency_tracker.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
@@ -54,76 +55,130 @@ class AnthemModelGenerator extends Generator {
 
   @override
   Future<String> generate(LibraryReader library, BuildStep buildStep) async {
-    final result = StringBuffer();
+    return CodegenDependencyTracker.run(buildStep, (dependencyTracker) async {
+      final result = StringBuffer();
 
-    // Looks for @AnthemModel on each class in the file, and generates the
-    // appropriate code
-    for (final libraryClass in library.classes) {
-      final annotationFromAnalyzer = const TypeChecker.typeNamed(
-        AnthemModel,
-        inPackage: 'anthem_codegen',
-      ).firstAnnotationOf(libraryClass);
-
-      // If there is no annotation on this class, don't do anything
-      if (annotationFromAnalyzer == null) continue;
-
-      // Read properties from @AnthemModel() annotation
-
-      final context = ModelClassInfo(library, libraryClass);
-
-      result.write(
-        'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
+      dependencyTracker.trackLibraryAsset(
+        buildStep.inputId,
+        includeDirectImports: true,
+        includeDirectExports: true,
       );
 
-      if (context.annotation!.serializable) {
-        result.write('\n  // JSON serialization\n');
+      // Looks for @AnthemModel on each class in the file, and generates the
+      // appropriate code
+      for (final libraryClass in library.classes) {
+        final annotationFromAnalyzer = const TypeChecker.typeNamed(
+          AnthemModel,
+          inPackage: 'anthem_codegen',
+        ).firstAnnotationOf(libraryClass);
+
+        // If there is no annotation on this class, don't do anything
+        if (annotationFromAnalyzer == null) continue;
+
+        // Read properties from @AnthemModel() annotation
+
+        final context = ModelClassInfo(library, libraryClass);
+
+        result.write(
+          'mixin _\$${libraryClass.name}AnthemModelMixin on ${context.baseClass.name}${context.annotation!.generateModelSync ? ', AnthemModelBase' : ''} {\n',
+        );
+
+        if (context.annotation!.serializable) {
+          result.write('\n  // JSON serialization\n');
+          result.write('\n');
+          result.write(generateJsonSerializationCode(context: context));
+          result.write('\n  // JSON deserialization\n');
+          result.write('\n');
+          result.write(generateJsonDeserializationCode(context: context));
+        }
+        result.write('\n  // MobX atoms\n');
         result.write('\n');
-        result.write(generateJsonSerializationCode(context: context));
-        result.write('\n  // JSON deserialization\n');
+        result.write(generateMobXAtoms(context: context));
+        if (context.annotation!.generateModelSync) {
+          final changeDecorators = _generateChangeDecorators(
+            context: context,
+            classHasModelSyncCode: context.annotation!.generateModelSync,
+          );
+
+          if (changeDecorators.isNotEmpty) {
+            result.write('\n  // Change decorators\n');
+            result.write('\n');
+            result.write(changeDecorators);
+          }
+        }
+        result.write('\n  // Getters and setters\n');
         result.write('\n');
-        result.write(generateJsonDeserializationCode(context: context));
+        result.write(
+          _generateGettersAndSetters(
+            context: context,
+            classHasModelSyncCode: context.annotation!.generateModelSync,
+          ),
+        );
+        if (context.annotation!.generateModelSync) {
+          result.write('\n  // Init function\n');
+          result.write('\n');
+          result.write(_generateInitFunction(context: context));
+
+          result.write('\n  // onChange method\n');
+          result.write(generateOnChangeMethod(context: context));
+        }
+        result.write('}\n');
+
+        if (context.annotation!.generateModelSync) {
+          result.write('\n');
+          result.write(generateFilterBuilders(context: context));
+        }
       }
-      result.write('\n  // MobX atoms\n');
-      result.write('\n');
-      result.write(generateMobXAtoms(context: context));
-      result.write('\n  // Getters and setters\n');
-      result.write('\n');
-      result.write(
-        _generateGettersAndSetters(
-          context: context,
-          classHasModelSyncCode: context.annotation!.generateModelSync,
-        ),
-      );
-      if (context.annotation!.generateModelSync) {
-        result.write('\n  // Init function\n');
-        result.write('\n');
-        result.write(_generateInitFunction(context: context));
 
-        result.write('\n  // onChange method\n');
-        result.write(generateOnChangeMethod(context: context));
+      // The cache for parsed classes persists across files, so we need to clear
+      // it for each file.
+      cleanModelClassInfoCache();
+
+      if (result.isEmpty) {
+        return '';
       }
 
-      result.write('}\n');
+      const ignores =
+          '// ignore_for_file: duplicate_ignore, unnecessary_overrides, '
+          'non_constant_identifier_names, unnecessary_cast\n';
 
-      if (context.annotation!.generateModelSync) {
-        result.write('\n');
-        result.write(generateFilterBuilders(context: context));
-      }
-    }
-
-    // The cache for parsed classes persists across files, so we need to clear
-    // it for each file.
-    cleanModelClassInfoCache();
-
-    if (result.isEmpty) {
-      return '';
-    }
-
-    const ignores =
-        '// ignore_for_file: duplicate_ignore, unnecessary_overrides, non_constant_identifier_names\n';
-
-    return ignores + result.toString();
+      return ignores + result.toString();
+    });
   }
+}
+
+String _generateChangeDecorators({
+  required ModelClassInfo context,
+  required bool classHasModelSyncCode,
+}) {
+  final result = StringBuffer();
+
+  for (final MapEntry(key: fieldName, value: fieldInfo)
+      in context.fields.entries) {
+    if (!_shouldGenerateDartChangeTracking(
+          classHasModelSyncCode: classHasModelSyncCode,
+          fieldInfo: fieldInfo,
+        ) ||
+        !_shouldSuppressEngineSync(fieldInfo)) {
+      continue;
+    }
+
+    result.write('''
+  /// Marks changes for `$fieldName` as Dart-only changes.
+  ///
+  /// This is used for `@hideFromCpp` fields. We still emit change events so
+  /// Dart listeners can observe the field, but the root model will not forward
+  /// those changes to the engine.
+  void _suppressEngineSyncFor${fieldInfo.fieldElement.displayName.pascalCase}(
+    MutableModelChange change,
+  ) {
+    change.suppressEngineSync();
+  }
+
+''');
+  }
+
+  return result.toString();
 }
 
 /// Generates getters and setters for model items.
@@ -137,18 +192,24 @@ String _generateGettersAndSetters({
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
-    final shouldGenerateModelSync =
-        classHasModelSyncCode && fieldInfo.hideAnnotation?.cpp != true;
+    final shouldGenerateDartChangeTracking = _shouldGenerateDartChangeTracking(
+      classHasModelSyncCode: classHasModelSyncCode,
+      fieldInfo: fieldInfo,
+    );
+    final fieldChangeDecorator = _getFieldChangeDecoratorReference(
+      fieldName: fieldName,
+      fieldInfo: fieldInfo,
+    );
 
     // Skip if this field doesn't need a getter/setter
     if (fieldInfo.isModelConstant ||
-        (!fieldInfo.isObservable && !shouldGenerateModelSync)) {
+        (!fieldInfo.isObservable && !shouldGenerateDartChangeTracking)) {
       continue;
     }
 
     // If model sync code is being generated, we need to validate that this
     // field is using the custom collection types.
-    if (shouldGenerateModelSync) {
+    if (shouldGenerateDartChangeTracking) {
       if (fieldInfo.typeInfo case ListModelType typeInfo) {
         if (typeInfo.collectionType != CollectionType.anthemObservable) {
           throw Exception(
@@ -206,7 +267,7 @@ String _generateGettersAndSetters({
 
     var setter = StringBuffer();
 
-    if (shouldGenerateModelSync) {
+    if (shouldGenerateDartChangeTracking) {
       setter.write('''
 ${fieldInfo.typeInfo.dartName}? \$oldValue;
 try {
@@ -215,14 +276,19 @@ try {
 catch (_) {
   \$oldValue = null;
 }
+
+if (\$oldValue is AnthemModelBase) {
+  (\$oldValue as AnthemModelBase).detach();
+}
 ''');
     }
 
     setter.write('super.$fieldName = \$value;\n');
 
-    if (shouldGenerateModelSync) {
+    if (shouldGenerateDartChangeTracking) {
       // If the field is a custom model type, we need to tell it about its
-      // parent.
+      // parent. We also pass along any field decorator so descendant changes
+      // can inherit the field's Dart-only sync behavior.
       if (fieldInfo.typeInfo is CustomModelType ||
           fieldInfo.typeInfo is UnknownModelType ||
           fieldInfo.typeInfo is ListModelType ||
@@ -237,6 +303,7 @@ if (isTopLevelModel || parent != null) {
     parent: this,
     fieldName: '$fieldName',
     fieldType: FieldType.raw,
+    parentFieldChangeDecorator: $fieldChangeDecorator,
   );
 }
 ''');
@@ -263,6 +330,7 @@ ${first ? '' : 'else '}if (\$value is ${subtype.dartName}) {
       parent: this,
       fieldName: '$fieldName',
       fieldType: FieldType.raw,
+      parentFieldChangeDecorator: $fieldChangeDecorator,
     );
   }
 ''');
@@ -298,6 +366,7 @@ notifyFieldChanged(
       fieldName: '$fieldName',
     ),
   ],
+  initialChangeDecorator: $fieldChangeDecorator,
 );
 ''');
     }
@@ -331,7 +400,18 @@ String _generateInitFunction({required ModelClassInfo context}) {
 
   for (final MapEntry(key: fieldName, value: fieldInfo)
       in context.fields.entries) {
+    if (!_shouldGenerateDartChangeTracking(
+      classHasModelSyncCode: true,
+      fieldInfo: fieldInfo,
+    )) {
+      continue;
+    }
+
     final typeQ = fieldInfo.typeInfo.isNullable ? '?' : '';
+    final fieldChangeDecorator = _getFieldChangeDecoratorReference(
+      fieldName: fieldName,
+      fieldInfo: fieldInfo,
+    );
 
     if (fieldInfo.typeInfo is ListModelType ||
         fieldInfo.typeInfo is MapModelType ||
@@ -345,6 +425,7 @@ String _generateInitFunction({required ModelClassInfo context}) {
     parent: this,
     fieldName: '$fieldName',
     fieldType: FieldType.raw,
+    parentFieldChangeDecorator: $fieldChangeDecorator,
   );
 ''');
     } else if (fieldInfo.typeInfo is UnionModelType) {
@@ -379,6 +460,7 @@ ${first ? '' : 'else '}if (super.$fieldName is ${subtype.dartName}) {
       parent: this,
       fieldName: '$fieldName',
       fieldType: FieldType.raw,
+      parentFieldChangeDecorator: $fieldChangeDecorator,
     );
   }
 ''');
@@ -398,4 +480,43 @@ if (!setterReceivedValidType) {
   result.write('}\n');
 
   return result.toString();
+}
+
+bool _shouldGenerateDartChangeTracking({
+  required bool classHasModelSyncCode,
+  required ModelFieldInfo fieldInfo,
+}) {
+  return classHasModelSyncCode &&
+      !_isHiddenFromDartChangeTracking(fieldInfo.hideAnnotation);
+}
+
+bool _shouldSuppressEngineSync(ModelFieldInfo fieldInfo) {
+  return fieldInfo.hideAnnotation?.cpp == true;
+}
+
+bool _isHiddenFromDartChangeTracking(Hide? hideAnnotation) {
+  return hideAnnotation?.serialization == true &&
+      hideAnnotation?.cpp == true &&
+      hideAnnotation?.allowOnChange != true;
+}
+
+String _getFieldChangeDecoratorReference({
+  required String fieldName,
+  required ModelFieldInfo fieldInfo,
+}) {
+  if (!_shouldSuppressEngineSync(fieldInfo)) {
+    return 'null';
+  }
+
+  return '_suppressEngineSyncFor${fieldName.pascalCase}';
+}
+
+extension on String {
+  String get pascalCase {
+    if (isEmpty) {
+      return this;
+    }
+
+    return '${this[0].toUpperCase()}${substring(1)}';
+  }
 }

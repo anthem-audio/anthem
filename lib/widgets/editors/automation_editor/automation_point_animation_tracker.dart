@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,8 @@ import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 
 const automationPointHoveredSizeMultiplier = 1.6;
 const automationPointPressedSizeMultiplier = 1.3;
@@ -91,16 +93,20 @@ class AutomationPointAnimationValue {
 /// animate these in the automation editor, but also in clips, so we need a
 /// generic way to track this animation state that can be tied to either the
 /// automation editor or the arranger.
-class AutomationPointAnimationTracker {
+class AutomationPointAnimationTracker extends ChangeNotifier {
   final values =
       <({Id id, HandleKind handleKind}), AutomationPointAnimationValue>{};
+  bool _isRepaintScheduled = false;
 
   /// Adds a value to be tracked.
   void addValue({
     required Id id,
     required HandleKind handleKind,
     required AutomationPointAnimationValue value,
-  }) => values[(id: id, handleKind: handleKind)] = value;
+  }) {
+    values[(id: id, handleKind: handleKind)] = value;
+    markNeedsRepaint();
+  }
 
   /// Updates the values for all points that are currently animating.
   void update() {
@@ -111,6 +117,10 @@ class AutomationPointAnimationTracker {
     }
 
     values.removeWhere((key, value) => value.isAtRest);
+
+    if (isActive) {
+      markNeedsRepaint();
+    }
   }
 
   /// This value is true if there are values that are currently animating, and
@@ -121,5 +131,24 @@ class AutomationPointAnimationTracker {
           false,
           (previousValue, element) => previousValue || !element.isStopped,
         );
+  }
+
+  void markNeedsRepaint() {
+    if (_isRepaintScheduled || !hasListeners) {
+      return;
+    }
+
+    _isRepaintScheduled = true;
+
+    final scheduler = SchedulerBinding.instance;
+    scheduler.scheduleFrameCallback((_) {
+      _isRepaintScheduled = false;
+      if (!hasListeners) {
+        return;
+      }
+
+      notifyListeners();
+    });
+    scheduler.ensureVisualUpdate();
   }
 }

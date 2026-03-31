@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,9 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
+import 'package:anthem/widgets/basic/panel_border.dart';
+import 'package:anthem/widgets/editors/mixer/mixer.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -30,20 +32,18 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger.dart';
+import 'package:anthem/widgets/editors/attribute_editor/attribute_editor.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/editors/channel_rack/channel_rack.dart';
-import 'package:anthem/widgets/editors/pattern_editor/pattern_editor.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/project_details/project_details.dart';
 import 'package:anthem/widgets/project_explorer/project_explorer.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
 import 'project_header.dart';
 
 class Project extends StatefulWidget {
-  final Id id;
+  final ProjectId id;
 
   const Project({super.key, required this.id});
 
@@ -52,114 +52,99 @@ class Project extends StatefulWidget {
 }
 
 class _ProjectState extends State<Project> {
-  late ProjectController _controller;
-  late ProjectViewModel _viewModel;
-
-  bool _initialized = false;
-
-  /// Initializes the controller and view model, if not already done.
-  ///
-  /// This is done on render, because on initState the project model doesn't
-  /// exist yet.
-  void _initIfNeeded() {
-    if (_initialized) return;
-    _initialized = true;
-
-    final projectModel = AnthemStore.instance.projects[widget.id]!;
-
-    _viewModel = ProjectViewModel();
-    _controller = ProjectController(projectModel, _viewModel);
-
-    ControllerRegistry.instance.registerController(widget.id, _controller);
-  }
-
   @override
   Widget build(BuildContext context) {
-    _initIfNeeded();
-
     final projectModel = AnthemStore.instance.projects[widget.id]!;
+    final serviceRegistry = ServiceRegistry.forProject(widget.id);
+    final controller = serviceRegistry.projectController;
+    final viewModel = serviceRegistry.projectViewModel;
 
     return MultiProvider(
       providers: [
         Provider.value(value: projectModel),
-        Provider.value(value: _controller),
-        Provider.value(value: _viewModel),
+        Provider.value(value: controller),
+        Provider.value(value: viewModel),
       ],
       child: ShortcutConsumer(
         id: 'project',
         global: true,
-        shortcutHandler: _controller.onShortcut,
+        shortcutHandler: controller.onShortcut,
         child: Column(
           children: [
             const RepaintBoundary(child: ProjectHeader()),
-            const SizedBox(height: 3),
+            Container(height: 1, color: AnthemTheme.panel.border),
             Expanded(
               child: Observer(
                 builder: (context) {
                   const automationEditor = AutomationEditor();
                   const channelRack = ChannelRack();
                   const pianoRoll = PianoRoll();
-                  const mixer = Text('Mixer');
+                  const mixer = Mixer();
 
                   final selectedEditorIndex =
-                      switch (_viewModel.selectedEditor) {
+                      switch (viewModel.selectedEditor) {
                         EditorKind.automation => 0,
                         EditorKind.channelRack => 1,
                         EditorKind.detail => 2,
                         EditorKind.mixer => 3,
-                        null => -1,
+                        null => null,
                       };
 
-                  final selectedEditor = IndexedStack(
-                    index: selectedEditorIndex,
-                    children: [automationEditor, channelRack, pianoRoll, mixer],
-                  );
+                  final selectedEditor = selectedEditorIndex == null
+                      ? const SizedBox.shrink()
+                      : PanelBorder(
+                          panelKind: switch (viewModel.selectedEditor) {
+                            .automation => .automationEditor,
+                            .channelRack => .channelRack,
+                            .detail => .pianoRoll,
+                            .mixer => .mixer,
+                            null => null,
+                          },
+                          child: IndexedStack(
+                            index: selectedEditorIndex,
+                            children: [
+                              automationEditor,
+                              channelRack,
+                              pianoRoll,
+                              mixer,
+                            ],
+                          ),
+                        );
 
                   return Panel(
                     hidden: !projectModel.isDetailViewOpen,
-                    orientation: PanelOrientation.left,
-                    sizeBehavior: PanelSizeBehavior.pixels,
+                    orientation: .left,
+                    sizeBehavior: .pixels,
                     panelStartSize: 200,
                     panelMinSize: 200,
                     // Left side-panel content
-                    panelContent: RepaintBoundary(
-                      child: ProjectDetails(
-                        selectedProjectDetails: projectModel
-                            .getSelectedDetailView(),
-                      ),
+                    panelContent: const RepaintBoundary(
+                      child: PanelBorder(child: AttributeEditor()),
                     ),
 
                     child: Panel(
                       hidden: !projectModel.isProjectExplorerOpen,
-                      orientation: PanelOrientation.right,
-                      sizeBehavior: PanelSizeBehavior.pixels,
+                      orientation: .right,
+                      sizeBehavior: .pixels,
                       panelStartSize: 200,
                       // Right side-panel content
-                      panelContent: const ProjectExplorer(),
+                      panelContent: const PanelBorder(child: ProjectExplorer()),
 
                       child: Panel(
-                        orientation: PanelOrientation.bottom,
+                        orientation: .bottom,
                         panelMinSize: 200,
                         contentMinSize: 150,
-                        hidden: _viewModel.selectedEditor == null,
+                        hidden: viewModel.selectedEditor == null,
                         // Bottom panel content (selected editor)
                         panelContent: RepaintBoundary(child: selectedEditor),
                         child: _PanelOverlay(
-                          builder: _viewModel.topPanelOverlayContentBuilder,
-                          close: () => _viewModel.clearTopPanelOverlay(),
-                          child: Panel(
-                            hidden: !projectModel.isPatternEditorVisible,
-                            orientation: PanelOrientation.left,
-                            panelStartSize: 500,
-                            panelMinSize: 500,
-                            contentMinSize: 500,
-                            sizeBehavior: PanelSizeBehavior.pixels,
-                            // Pattern editor
-                            panelContent: const RepaintBoundary(
-                              child: PatternEditor(),
+                          builder: viewModel.topPanelOverlayContentBuilder,
+                          close: () => viewModel.clearTopPanelOverlay(),
+                          child: const RepaintBoundary(
+                            child: PanelBorder(
+                              panelKind: .arranger,
+                              child: Arranger(),
                             ),
-                            // Arranger
-                            child: const RepaintBoundary(child: Arranger()),
                           ),
                         ),
                       ),
@@ -168,7 +153,7 @@ class _ProjectState extends State<Project> {
                 },
               ),
             ),
-            const SizedBox(height: 3),
+            Container(color: AnthemTheme.panel.border, height: 1),
             const RepaintBoundary(child: ProjectFooter()),
           ],
         ),
@@ -197,7 +182,7 @@ class _PanelOverlay extends StatelessWidget {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3),
+                borderRadius: BorderRadius.circular(4),
                 color: AnthemTheme.panel.main,
               ),
             ),

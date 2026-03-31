@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -55,38 +55,22 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
       );
     }
 
-    String? patternIdFromOldClip;
     if (oldClip != null) {
-      patternIdFromOldClip = oldClip.patternId;
-      final pattern = project.sequence.patterns[oldClip.patternId];
-      if (pattern != null) {
-        for (final channelId in pattern.channelsWithContent) {
-          _channelsToCompile.add(channelId);
-          _invalidationRangeCollector.addRange(range.$1, range.$2);
-        }
-      }
+      _tracksToCompile.add(oldClip.trackId);
     }
 
-    if (newClip != null && patternIdFromOldClip != newClip.patternId) {
-      final pattern = project.sequence.patterns[newClip.patternId];
-      if (pattern != null) {
-        for (final channelId in pattern.channelsWithContent) {
-          _channelsToCompile.add(channelId);
-          _invalidationRangeCollector.addRange(range.$1, range.$2);
-        }
-      }
+    if (newClip != null) {
+      _tracksToCompile.add(newClip.trackId);
     }
 
-    _scheduleChannelsToCompile();
+    _invalidationRangeCollector.addRange(range.$1, range.$2);
+    _scheduleTracksToCompile();
   }
 
   /// Rebuilds only modified clips in the engine.
   ///
   /// This is meant to be attached to the clips field changed listener above.
-  void _recompileOnClipFieldChanged(
-    Iterable<FieldAccessor> fieldAccessors,
-    FieldOperation operation,
-  ) {
+  void _recompileOnClipFieldChanged(ModelChangeEvent change) {
     // If the engine is not running, then we don't need to worry about
     // sending this update. When the engine is started, it will recompile
     // all arrangements.
@@ -94,107 +78,97 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
       return;
     }
 
+    final fieldAccessors = change.fieldAccessors;
+    final operation = change.operation;
     final clipAccessor = fieldAccessors.elementAt(2);
 
-    // We need to mark the clip for rebuilding if anything changed,
-    // besides trackId since that just tells it which row to render on.
-    if (clipAccessor.fieldName != 'trackId') {
-      final isOffsetChange = clipAccessor.fieldName == 'offset';
-      final isTimeViewChange = clipAccessor.fieldName == 'timeView';
+    final isOffsetChange = clipAccessor.fieldName == 'offset';
+    final isTimeViewChange = clipAccessor.fieldName == 'timeView';
+    final isTrackChange = clipAccessor.fieldName == 'trackId';
 
-      final clipId = fieldAccessors.elementAt(1).key as Id;
-      final clip = clips[clipId];
-      if (clip != null) {
-        final pattern = project.sequence.patterns[clip.patternId];
-        if (pattern != null) {
-          for (final channelId in pattern.channelsWithContent) {
-            _channelsToCompile.add(channelId);
+    final clipId = fieldAccessors.elementAt(1).key as Id;
+    final clip = clips[clipId];
+    if (clip != null) {
+      _tracksToCompile.add(clip.trackId);
 
-            final newWidth = clip.getWidthFromProject(project);
+      if (isTrackChange) {
+        _tracksToCompile.add((operation as RawFieldUpdate).oldValueAs<Id>());
+      }
+
+      final newWidth = clip.getWidthFromProject(project);
+
+      _invalidationRangeCollector.addRange(clip.offset, clip.offset + newWidth);
+
+      if (isOffsetChange) {
+        operation as RawFieldUpdate;
+        _invalidationRangeCollector.addRange(
+          operation.oldValueAs<int>(),
+          operation.oldValueAs<int>() + newWidth,
+        );
+      }
+
+      // There are three possible ways timeView can change:
+      // 1. It was null and now it has a value.
+      // 2. It was not null and is now null.
+      // 3. Either its start or end property has changed.
+      if (isTimeViewChange) {
+        final isReplacement = fieldAccessors.length == 3;
+
+        if (isReplacement) {
+          operation as RawFieldUpdate;
+          TimeViewModel? oldTimeView = operation.oldValueAs<TimeViewModel?>();
+          TimeViewModel? newTimeView = operation.newValueAs<TimeViewModel?>();
+
+          if (oldTimeView != null) {
+            _invalidationRangeCollector.addRange(
+              clip.offset,
+              clip.offset + oldTimeView.end - oldTimeView.start,
+            );
+          }
+
+          if (newTimeView != null) {
+            _invalidationRangeCollector.addRange(
+              clip.offset,
+              clip.offset + newTimeView.end - newTimeView.start,
+            );
+          }
+        } else {
+          final timeViewAccessor = fieldAccessors.elementAt(3);
+
+          if (timeViewAccessor.fieldName == 'start') {
+            final oldStart = (operation as RawFieldUpdate).oldValueAs<int>();
+            final newStart = operation.newValueAs<int>();
 
             _invalidationRangeCollector.addRange(
               clip.offset,
-              clip.offset + newWidth,
+              clip.offset + (clip.timeView!.end - min(oldStart, newStart)),
             );
+          } else if (timeViewAccessor.fieldName == 'end') {
+            final oldEnd = (operation as RawFieldUpdate).oldValueAs<int>();
+            final newEnd = operation.newValueAs<int>();
 
-            if (isOffsetChange) {
-              operation as RawFieldUpdate;
-              _invalidationRangeCollector.addRange(
-                operation.oldValueAs<int>(),
-                operation.oldValueAs<int>() + newWidth,
-              );
-            }
+            final start = clip.timeView!.start;
 
-            // There are three possible ways timeView can change:
-            // 1. It was null and now it has a value.
-            // 2. It was not null and is now null.
-            // 3. Either its start or end property has changed.
-            if (isTimeViewChange) {
-              final isReplacement = fieldAccessors.length == 3;
+            final oldLength = oldEnd - start;
+            final newLength = newEnd - start;
 
-              if (isReplacement) {
-                operation as RawFieldUpdate;
-                TimeViewModel? oldTimeView = operation
-                    .oldValueAs<TimeViewModel?>();
-                TimeViewModel? newTimeView = operation
-                    .newValueAs<TimeViewModel?>();
-
-                if (oldTimeView != null) {
-                  _invalidationRangeCollector.addRange(
-                    clip.offset,
-                    clip.offset + oldTimeView.end - oldTimeView.start,
-                  );
-                }
-
-                if (newTimeView != null) {
-                  _invalidationRangeCollector.addRange(
-                    clip.offset,
-                    clip.offset + newTimeView.end - newTimeView.start,
-                  );
-                }
-              } else {
-                final timeViewAccessor = fieldAccessors.elementAt(3);
-
-                if (timeViewAccessor.fieldName == 'start') {
-                  final oldStart = (operation as RawFieldUpdate)
-                      .oldValueAs<int>();
-                  final newStart = operation.newValueAs<int>();
-
-                  _invalidationRangeCollector.addRange(
-                    clip.offset,
-                    clip.offset +
-                        (clip.timeView!.end - min(oldStart, newStart)),
-                  );
-                } else if (timeViewAccessor.fieldName == 'end') {
-                  final oldEnd = (operation as RawFieldUpdate)
-                      .oldValueAs<int>();
-                  final newEnd = operation.newValueAs<int>();
-
-                  final start = clip.timeView!.start;
-
-                  final oldLength = oldEnd - start;
-                  final newLength = newEnd - start;
-
-                  _invalidationRangeCollector.addRange(
-                    clip.offset + min(oldLength, newLength),
-                    clip.offset + max(oldLength, newLength),
-                  );
-                }
-              }
-            }
+            _invalidationRangeCollector.addRange(
+              clip.offset + min(oldLength, newLength),
+              clip.offset + max(oldLength, newLength),
+            );
           }
         }
       }
     }
 
-    _scheduleChannelsToCompile();
+    _scheduleTracksToCompile();
   }
 
-  final Set<Id> _channelsToCompile = {};
+  final Set<Id> _tracksToCompile = {};
   final InvalidationRangeCollector _invalidationRangeCollector =
       InvalidationRangeCollector();
   bool _isScheduled = false;
-  void _scheduleChannelsToCompile() {
+  void _scheduleTracksToCompile() {
     if (_isScheduled) {
       return;
     }
@@ -204,24 +178,24 @@ mixin _ArrangementCompilerMixin on _ArrangementModel {
     Future.microtask(() {
       _isScheduled = false;
 
-      if (_channelsToCompile.isEmpty) {
+      if (_tracksToCompile.isEmpty) {
         _invalidationRangeCollector.reset();
         return;
       }
 
       // If the engine is not running, we won't try to send anything.
       if (!project.engine.isRunning) {
-        _channelsToCompile.clear();
+        _tracksToCompile.clear();
         return;
       }
 
       project.engine.sequencerApi.compileArrangement(
         id,
-        channelsToRebuild: _channelsToCompile.toList(),
+        tracksToRebuild: _tracksToCompile.toList(),
         invalidationRanges: _invalidationRangeCollector.getRanges(),
       );
 
-      _channelsToCompile.clear();
+      _tracksToCompile.clear();
       _invalidationRangeCollector.reset();
     });
   }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,36 +21,136 @@
 
 LiveEventProviderProcessor::LiveEventProviderProcessor(
   const LiveEventProviderProcessorModelImpl& _impl
-) : AnthemProcessor("LiveEventProvider"), LiveEventProviderProcessorModelBase(_impl) {
-  liveEventBuffer = std::make_unique<RingBuffer<AnthemLiveEvent, 4096>>();
+) : AnthemProcessor("LiveEventProvider"),
+    LiveEventProviderProcessorModelBase(_impl) {
+  liveInputEventBuffer = std::make_unique<RingBuffer<AnthemLiveInputEvent, 4096>>();
 }
 
 LiveEventProviderProcessor::~LiveEventProviderProcessor() {
   // Nothing to do here
 }
 
-void LiveEventProviderProcessor::addLiveEventsToBuffer(std::unique_ptr<AnthemEventBuffer>& targetBuffer) {
+void LiveEventProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
+  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+  const TrackedNote& trackedNote,
+  double sampleOffset
+) {
+  targetBuffer->addEvent(AnthemLiveEvent{
+    .sampleOffset = sampleOffset,
+    .liveId = trackedNote.liveId,
+    .event = AnthemEvent(AnthemNoteOffEvent(
+      trackedNote.pitch,
+      trackedNote.channel,
+      0.0f
+    )),
+  });
+}
+
+void LiveEventProviderProcessor::rt_handleLiveNoteOn(
+  AnthemProcessContext& context,
+  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+  AnthemLiveInputNoteId inputId,
+  const AnthemNoteOnEvent& noteOnEvent,
+  double sampleOffset
+) {
+  auto liveId = context.rt_allocateLiveNoteId();
+  auto didTrackNote = rt_activeLiveNotes.rt_add(
+    inputId,
+    liveId,
+    noteOnEvent.pitch,
+    noteOnEvent.channel
+  );
+
+  targetBuffer->addEvent(AnthemLiveEvent{
+    .sampleOffset = sampleOffset,
+    .liveId = didTrackNote ? liveId : anthemInvalidLiveNoteId,
+    .event = AnthemEvent(AnthemNoteOnEvent(
+      noteOnEvent.pitch,
+      noteOnEvent.channel,
+      noteOnEvent.velocity,
+      noteOnEvent.detune
+    )),
+  });
+}
+
+void LiveEventProviderProcessor::rt_handleLiveNoteOff(
+  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+  AnthemLiveInputNoteId inputId,
+  const AnthemNoteOffEvent& noteOffEvent,
+  double sampleOffset
+) {
+  auto trackedNote = rt_activeLiveNotes.rt_takeByInputId(inputId);
+  if (trackedNote.has_value()) {
+    rt_emitLiveNoteOffFromTrackedNote(
+      targetBuffer,
+      trackedNote.value(),
+      sampleOffset
+    );
+    return;
+  }
+
+  targetBuffer->addEvent(AnthemLiveEvent{
+    .sampleOffset = sampleOffset,
+    .liveId = anthemInvalidLiveNoteId,
+    .event = AnthemEvent(AnthemNoteOffEvent(
+      noteOffEvent.pitch,
+      noteOffEvent.channel,
+      noteOffEvent.velocity
+    )),
+  });
+}
+
+void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
+  AnthemProcessContext& context,
+  std::unique_ptr<AnthemEventBuffer>& targetBuffer
+) {
   while (true) {
-    auto eventOpt = liveEventBuffer->read();
+    auto eventOpt = liveInputEventBuffer->read();
     if (!eventOpt.has_value()) {
       return;
     }
 
     auto event = eventOpt.value();
-    targetBuffer->addEvent(std::move(event));
+    if (event.event.type == AnthemEventType::NoteOn) {
+      rt_handleLiveNoteOn(
+        context,
+        targetBuffer,
+        event.inputId,
+        event.event.noteOn,
+        event.sampleOffset
+      );
+    }
+    else if (event.event.type == AnthemEventType::NoteOff) {
+      rt_handleLiveNoteOff(
+        targetBuffer,
+        event.inputId,
+        event.event.noteOff,
+        event.sampleOffset
+      );
+    }
+    else {
+      targetBuffer->addEvent(AnthemLiveEvent{
+        .sampleOffset = event.sampleOffset,
+        .liveId = anthemInvalidLiveNoteId,
+        .event = event.event,
+      });
+    }
   }
 }
 
-void LiveEventProviderProcessor::addLiveEvent(AnthemLiveEvent event) {
-  liveEventBuffer->add(std::move(event));
+void LiveEventProviderProcessor::addLiveInputEvent(AnthemLiveInputEvent event) {
+  liveInputEventBuffer->add(std::move(event));
 }
 
 void LiveEventProviderProcessor::prepareToProcess() {}
 
-void LiveEventProviderProcessor::process(AnthemProcessContext& context, int numSamples) {
+void LiveEventProviderProcessor::process(
+  AnthemProcessContext& context,
+  int /*numSamples*/
+) {
   auto& outputEventBuffer = context.getOutputEventBuffer(
     LiveEventProviderProcessorModelBase::eventOutputPortId
   );
 
-  addLiveEventsToBuffer(outputEventBuffer);
+  rt_addLiveEventsToBuffer(context, outputEventBuffer);
 }

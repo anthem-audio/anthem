@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -289,6 +289,8 @@ String _generateUnionGetter({
   required String fieldName,
   required String getter,
 }) {
+  final castType = '${type.dartName}${type.isNullable ? '?' : ''}';
+
   return '''
 (() {
   final keys = $getter${type.isNullable ? '?' : ''}.keys;
@@ -307,6 +309,6 @@ String _generateUnionGetter({
     default:
       throw Exception('Unknown union type');
   }
-})()
+})() as $castType
 ''';
 }

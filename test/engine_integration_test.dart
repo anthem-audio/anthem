@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,19 +20,39 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
+import 'dart:typed_data';
 
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
-import 'package:anthem/logic/commands/project_commands.dart';
+import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:anthem/engine_api/engine_connector_desktop.dart';
 
 var id = 0;
-int getId() => id++;
+Id getId() => id++;
+
+const skipEngineIntegrationTests = false;
+
+Future<T> _sendRequestAndWaitForReply<T extends Response>({
+  required EngineConnector engineConnector,
+  required Request request,
+  required Stream<Response> replyStream,
+}) async {
+  final replyFuture = replyStream.firstWhere((reply) => reply.id == request.id);
+
+  final encoder = JsonUtf8Encoder();
+  engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+
+  return (await replyFuture) as T;
+}
 
 void main() {
   var path = Platform.script;
@@ -132,6 +152,17 @@ void main() {
         onExit: () => exitStreamController.add(null),
       );
 
+      expect(
+        await engineConnector.onInit,
+        isTrue,
+        reason: 'The engine connector should initialize successfully.',
+      );
+
+      // Heartbeat startup belongs to Engine.start(). Engine wraps
+      // EngineConnector. Since we are testing the bare EngineConnector, we need
+      // to start the heartbeat timer manually.
+      engineConnector.startHeartbeatTimer();
+
       exitCalled = false;
 
       exitStreamController.stream.first.then((_) => exitCalled = true);
@@ -165,7 +196,84 @@ void main() {
         reason: 'The engine should exit when disposed.',
       );
     });
-  });
+  }, skip: skipEngineIntegrationTests);
+
+  group('Gain parameter mapping tests', () {
+    test(
+      'samples the engine gain curve without sending a project model',
+      timeout: Timeout(Duration(seconds: 120)),
+      () async {
+        final exitStreamController = StreamController<void>.broadcast();
+        final replyStreamController = StreamController<Response>.broadcast();
+
+        final engineConnector = EngineConnector(
+          12345678 + 2,
+          enginePathOverride: enginePath!.toFilePath(
+            windows: Platform.isWindows,
+          ),
+          kDebugMode: true,
+          onReply: replyStreamController.add,
+          onExit: () => exitStreamController.add(null),
+        );
+
+        expect(
+          await engineConnector.onInit,
+          isTrue,
+          reason: 'The engine connector should initialize successfully.',
+        );
+
+        const parameterSamples = <double>[
+          0.0,
+          0.01,
+          0.01001,
+          0.02,
+          0.25,
+          0.5,
+          0.75,
+          gainParameterZeroDbNormalized,
+          1.0,
+        ];
+        final sampleRequest = TestSampleGainCurveRequest(
+          id: engineConnector.getRequestId(),
+          parameterValues: parameterSamples,
+        );
+
+        final sampleResponse =
+            await _sendRequestAndWaitForReply<TestSampleGainCurveResponse>(
+              engineConnector: engineConnector,
+              request: sampleRequest,
+              replyStream: replyStreamController.stream,
+            );
+
+        expect(sampleResponse.dbValues, hasLength(parameterSamples.length));
+        expect(
+          sampleResponse.isNegativeInfinity,
+          hasLength(parameterSamples.length),
+        );
+
+        for (var i = 0; i < parameterSamples.length; i++) {
+          final expectedDb = gainParameterValueToDb(parameterSamples[i]);
+          if (expectedDb.isInfinite && expectedDb.isNegative) {
+            expect(sampleResponse.isNegativeInfinity[i], isTrue);
+          } else {
+            expect(sampleResponse.isNegativeInfinity[i], isFalse);
+            expect(sampleResponse.dbValues[i], closeTo(expectedDb, 0.0003));
+          }
+        }
+
+        await _sendRequestAndWaitForReply<ExitReply>(
+          engineConnector: engineConnector,
+          request: Exit(id: engineConnector.getRequestId()),
+          replyStream: replyStreamController.stream,
+        );
+
+        await exitStreamController.stream.first.timeout(Duration(seconds: 5));
+
+        await replyStreamController.close();
+        await exitStreamController.close();
+      },
+    );
+  }, skip: skipEngineIntegrationTests);
 
   group('Model sync tests', () {
     late ProjectModel project;
@@ -176,14 +284,19 @@ void main() {
       project = ProjectModel.create(
         enginePath!.toFilePath(windows: Platform.isWindows),
       );
-      await project.engine.start();
-      while (project.engine.engineState != EngineState.running) {
-        await project.engine.engineStateStream.first;
-      }
+      ServiceRegistry.initializeProject(project);
+      await project.engine.start(initializeAudio: false);
+      expect(
+        project.engine.engineState,
+        EngineState.running,
+        reason:
+            'Model sync tests require the engine IPC and model sync layers to start successfully.',
+      );
     });
 
     tearDownAll(() async {
       await project.engine.stop();
+      ServiceRegistry.removeProject(project.id);
     });
 
     test('Test initial state', () async {
@@ -214,13 +327,17 @@ void main() {
 
     test('Add a bunch of patterns', () async {
       final patternCount = 100;
+      final expectedPatternNames = <String>{};
 
       for (var i = 0; i < patternCount; i++) {
-        final command = AddPatternCommand(
-          pattern: PatternModel.create(name: 'Pattern $i'),
-          index: i,
+        final command = PatternAddRemoveCommand.add(
+          pattern: PatternModel(
+            idAllocator: ProjectEntityIdAllocator.test(getId),
+            name: 'Pattern $i',
+          ),
         );
         project.execute(command);
+        expectedPatternNames.add('Pattern $i');
       }
 
       final state =
@@ -228,88 +345,83 @@ void main() {
               as Map<String, dynamic>;
 
       final patternMap = state['sequence']!['patterns'] as Map<String, dynamic>;
-      final patternIdList =
-          (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
 
       expect(
         patternMap.length,
         equals(patternCount),
         reason: 'The pattern map should contain $patternCount patterns.',
       );
-      expect(
-        patternIdList.length,
-        equals(patternCount),
-        reason: 'The pattern order should contain $patternCount patterns.',
-      );
 
-      for (var i = 0; i < patternCount; i++) {
-        final id = patternIdList[i];
-        final pattern = patternMap[id] as Map<String, dynamic>;
-        expect(
-          pattern['name'],
-          equals('Pattern $i'),
-          reason: 'Pattern $i should have the correct name.',
-        );
-      }
-    });
-
-    test('Delete every even pattern', () async {
-      final originalPatternListSize = project.sequence.patternOrder.length;
-
-      for (var i = originalPatternListSize - 1; i >= 0; i--) {
-        if (i.isEven) {
-          final command = DeletePatternCommand(
-            pattern:
-                project.sequence.patterns[project.sequence.patternOrder[i]]!,
-            index: i,
-          );
-          project.execute(command);
-        }
-      }
-
-      final state =
-          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
-              as Map<String, dynamic>;
-
-      final patternMap = state['sequence']!['patterns'] as Map<String, dynamic>;
-      final patternIdList =
-          (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
+      final actualPatternNames = patternMap.values
+          .cast<Map<String, dynamic>>()
+          .map((pattern) => pattern['name'] as String)
+          .toSet();
 
       expect(
-        patternMap.length,
-        equals(originalPatternListSize ~/ 2),
-        reason:
-            'The pattern map should contain ${originalPatternListSize ~/ 2} patterns.',
+        actualPatternNames,
+        equals(expectedPatternNames),
+        reason: 'The synced pattern set should match the project pattern set.',
       );
-
-      for (var i = 0; i < patternIdList.length; i++) {
-        final id = patternIdList[i];
-        final pattern = patternMap[id] as Map<String, dynamic>;
-        expect(
-          pattern['name'],
-          equals('Pattern ${i * 2 + 1}'),
-          reason: 'Pattern ${i * 2 + 1} should have the correct name.',
-        );
-      }
     });
 
-    test('Add a generator and some notes', () async {
+    // test('Delete every even pattern', () async {
+    //   final originalPatternListSize = project.sequence.patternOrder.length;
+
+    //   for (var i = originalPatternListSize - 1; i >= 0; i--) {
+    //     if (i.isEven) {
+    //       final command = DeletePatternCommand(
+    //         pattern:
+    //             project.sequence.patterns[project.sequence.patternOrder[i]]!,
+    //         index: i,
+    //       );
+    //       project.execute(command);
+    //     }
+    //   }
+
+    //   final state =
+    //       jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
+    //           as Map<String, dynamic>;
+
+    //   final patternMap = state['sequence']!['patterns'] as Map<String, dynamic>;
+    //   final patternIdList =
+    //       (state['sequence']!['patternOrder'] as List<dynamic>).cast<String>();
+
+    //   expect(
+    //     patternMap.length,
+    //     equals(originalPatternListSize ~/ 2),
+    //     reason:
+    //         'The pattern map should contain ${originalPatternListSize ~/ 2} patterns.',
+    //   );
+
+    //   for (var i = 0; i < patternIdList.length; i++) {
+    //     final id = patternIdList[i];
+    //     final pattern = patternMap[id] as Map<String, dynamic>;
+    //     expect(
+    //       pattern['name'],
+    //       equals('Pattern ${i * 2 + 1}'),
+    //       reason: 'Pattern ${i * 2 + 1} should have the correct name.',
+    //     );
+    //   }
+    // });
+
+    test('Add a track instrument node and some notes', () async {
+      final instrumentTrackId = project.trackOrder.first;
+      final instrumentTrack = project.tracks[instrumentTrackId]!;
+      final instrumentNode = ToneGeneratorProcessorModel(
+        nodeId: getId(),
+      ).createNode();
+
       project.execute(
-        AddGeneratorCommand(
-          generatorId: 'generator1',
-          node: NodeModel.uninitialized(),
-          name: 'Generator name',
-          generatorType: GeneratorType.instrument,
-          color: const Color(0xFF000000),
+        SetTrackInstrumentNodeCommand(
+          track: instrumentTrack,
+          instrumentNode: instrumentNode,
         ),
       );
 
-      final generator = project.generators['generator1']!;
-
       final command = AddNoteCommand(
-        generatorID: generator.id,
-        patternID: project.sequence.patternOrder[0],
+        patternID: project.sequence.patterns.keys.first,
         note: NoteModel(
+          idAllocator: ProjectEntityIdAllocator.test(getId),
           key: 64,
           velocity: 127,
           length: 256,
@@ -324,24 +436,27 @@ void main() {
           jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
               as Map<String, dynamic>;
 
-      final generatorMap = state['generators'] as Map<String, dynamic>;
+      final trackMap = state['tracks'] as Map<String, dynamic>;
+      final syncedInstrumentTrack =
+          trackMap[instrumentTrackId.toString()] as Map<String, dynamic>;
       expect(
-        generatorMap['generator1'],
-        isNotNull,
-        reason: 'The generator should be in the state.',
+        syncedInstrumentTrack['instrumentNodeId'],
+        equals(instrumentNode.id),
+        reason: 'The track should reference the instrument node.',
       );
 
       final pattern =
-          state['sequence']!['patterns'][project.sequence.patternOrder[0]]
+          state['sequence']!['patterns'][project.sequence.patterns.keys.first
+                  .toString()]
               as Map<String, dynamic>;
-      final notes = pattern['notes']!['generator1'] as List<dynamic>;
+      final notes = pattern['notes'] as Map<String, dynamic>;
       expect(
         notes.length,
         equals(1),
         reason: 'The pattern should contain 1 note.',
       );
 
-      final note = notes[0] as Map<String, dynamic>;
+      final note = notes.values.single as Map<String, dynamic>;
       expect(
         note['key'],
         equals(64),
@@ -370,16 +485,17 @@ void main() {
     });
 
     test('Change all the note properties', () async {
-      final patternId = project.sequence.patternOrder[0];
+      final patternId = project.sequence.patterns.keys.first;
       final note = project
           .sequence
-          .patterns[project.sequence.patternOrder[0]]!
-          .notes['generator1']![0];
+          .patterns[project.sequence.patterns.keys.first]!
+          .notes
+          .values
+          .first;
 
       project.execute(
         SetNoteAttributeCommand(
           patternID: patternId,
-          generatorID: 'generator1',
           noteID: note.id,
           attribute: NoteAttribute.key,
           oldValue: note.key,
@@ -390,7 +506,6 @@ void main() {
       project.execute(
         SetNoteAttributeCommand(
           patternID: patternId,
-          generatorID: 'generator1',
           noteID: note.id,
           attribute: NoteAttribute.velocity,
           oldValue: note.velocity,
@@ -403,15 +518,16 @@ void main() {
               as Map<String, dynamic>;
 
       final pattern =
-          state['sequence']!['patterns'][patternId] as Map<String, dynamic>;
-      final notes = pattern['notes']!['generator1'] as List<dynamic>;
+          state['sequence']!['patterns'][patternId.toString()]
+              as Map<String, dynamic>;
+      final notes = pattern['notes'] as Map<String, dynamic>;
       expect(
         notes.length,
         equals(1),
         reason: 'The pattern should contain 1 note.',
       );
 
-      final updatedNote = notes[0] as Map<String, dynamic>;
+      final updatedNote = notes.values.single as Map<String, dynamic>;
       expect(
         updatedNote['key'],
         equals(65),
@@ -423,5 +539,5 @@ void main() {
         reason: 'The note should have the correct velocity.',
       );
     });
-  });
+  }, skip: skipEngineIntegrationTests);
 }

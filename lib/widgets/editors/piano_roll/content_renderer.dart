@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,7 @@
 
 import 'package:anthem/color_shifter.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
-import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
@@ -27,7 +27,6 @@ import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui' as ui;
@@ -43,15 +42,21 @@ const _noteResizeHandleOvershoot = 2.0;
 const _minimumClickableNoteArea = 30;
 
 class PianoRollContentRenderer extends StatelessWidget {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double keyValueAtTop;
+  final AnimationController timeViewAnimationController;
+  final AnimationController keyValueAtTopAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> keyValueAtTopAnimation;
+  final bool shouldGreyOut;
 
   const PianoRollContentRenderer({
     super.key,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.keyValueAtTop,
+    required this.timeViewAnimationController,
+    required this.keyValueAtTopAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.keyValueAtTopAnimation,
+    required this.shouldGreyOut,
   });
 
   @override
@@ -59,35 +64,47 @@ class PianoRollContentRenderer extends StatelessWidget {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    return CustomPaintObserver(
-      painterBuilder: () => PianoRollPainter(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        keyValueAtTop: keyValueAtTop,
+    return CustomPaint(
+      painter: PianoRollPainter(
+        repaint: Listenable.merge([
+          timeViewAnimationController,
+          keyValueAtTopAnimationController,
+        ]),
+        timeViewStartAnimation: timeViewStartAnimation,
+        timeViewEndAnimation: timeViewEndAnimation,
+        keyValueAtTopAnimation: keyValueAtTopAnimation,
         project: project,
         viewModel: viewModel,
         devicePixelRatio: View.of(context).devicePixelRatio,
+        shouldGreyOut: shouldGreyOut,
       ),
     );
   }
 }
 
 class PianoRollPainter extends CustomPainterObserver {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double keyValueAtTop;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> keyValueAtTopAnimation;
   final PianoRollViewModel viewModel;
   final ProjectModel project;
   final double devicePixelRatio;
+  final bool shouldGreyOut;
 
   PianoRollPainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.keyValueAtTop,
+    required Listenable repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.keyValueAtTopAnimation,
     required this.viewModel,
     required this.project,
     required this.devicePixelRatio,
-  });
+    required this.shouldGreyOut,
+  }) : super(debugName: 'PianoRollPainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
+  double get keyValueAtTop => keyValueAtTopAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -95,41 +112,53 @@ class PianoRollPainter extends CustomPainterObserver {
     viewModel.visibleResizeAreas.clear();
 
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
-    if (pattern == null) return;
+    if (shouldGreyOut || pattern == null) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint()..color = const Color(0x88404040),
+      );
+      return;
+    }
 
-    final notes = pattern.notes[project.activeInstrumentID];
-    if (notes == null) return;
+    final notes = pattern.notes;
+    final noteOverrides = pattern.noteOverrides;
+    final previewNotes = pattern.previewNotes;
 
     notes.observeAllChanges();
+    noteOverrides.observeAllChanges();
+    previewNotes.observeAllChanges();
 
     blockObservation(
-      modelItems: [notes],
+      modelItems: [notes, noteOverrides, previewNotes],
       block: () {
-        _drawNotes(canvas, size, notes);
+        _drawNotes(canvas, size, pattern);
       },
     );
   }
 
-  void _drawNotes(
-    Canvas canvas,
-    Size size,
-    AnthemObservableList<NoteModel> notes,
-  ) {
+  void _drawNotes(Canvas canvas, Size size, PatternModel pattern) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
-    final colorShifter = AnthemColorShifter(166);
+    final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
+    final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
 
-    for (final note in notes) {
+    for (final note in resolvedNotes) {
+      final noteRef = viewModel.renderedRefFor(note);
       final keyHeight = viewModel.keyHeight;
       final key = note.key;
-      final x =
-          timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: note.offset.toDouble(),
-          ) +
-          1;
+      final startX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: note.offset.toDouble(),
+      );
+      final endX = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: (note.offset + note.length).toDouble(),
+      );
+      final x = startX + 1;
       final y =
           keyValueToPixels(
             keyValue: key.toDouble() + 1,
@@ -137,22 +166,16 @@ class PianoRollPainter extends CustomPainterObserver {
             keyHeight: keyHeight,
           ) +
           1;
-      final width =
-          timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: (note.offset + note.length).toDouble(),
-          ) -
-          x;
+      final width = (endX - x).clamp(0.0, double.infinity);
       final height = keyHeight - 1;
 
-      if (x > size.width || x + width < 0) continue;
+      if (x > size.width || endX < 0) continue;
       if (y > size.height || y + height < 0) continue;
+      if (width <= 0 || height <= 0) continue;
 
-      final isPressed = viewModel.pressedNote == note.id;
-      final isSelected = viewModel.selectedNotes.contains(note.id);
-      final isHovered = viewModel.hoveredNote == note.id;
+      final isPressed = viewModel.isNotePressed(note);
+      final isSelected = viewModel.isNoteSelected(note);
+      final isHovered = viewModel.isNoteHovered(note);
 
       var color = colorShifter.noteBase;
       if (isHovered && !isPressed) {
@@ -172,21 +195,18 @@ class PianoRollPainter extends CustomPainterObserver {
         }
       }
 
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, y, width, height),
-        const Radius.circular(1),
-      );
+      final noteRect = Rect.fromLTWH(x, y, width, height);
+      final rect = RRect.fromRectAndRadius(noteRect, const Radius.circular(1));
       // Borders are drawn along the edge of the shape, with half the border
       // inside and half outside. We want all of it to be inside, and this
       // rectangle accounts for this issue.
-      final borderRect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1),
-        const Radius.circular(1),
-      );
-
       canvas.drawRRect(rect, Paint()..color = color);
 
-      if (isSelected) {
+      if (isSelected && width > 1 && height > 1) {
+        final borderRect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1),
+          const Radius.circular(1),
+        );
         canvas.drawRRect(
           borderRect,
           Paint()
@@ -196,71 +216,72 @@ class PianoRollPainter extends CustomPainterObserver {
         );
       }
 
-      if (keyHeight > 25) {
-        canvas.save();
-        final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);
-        canvas.clipRect(clipRect);
-
+      if (keyHeight > 25 && width > 2 && height > 2) {
         final cachedLabel = noteLabelImageCache.get(key);
-        if (cachedLabel == null) return;
+        if (cachedLabel != null) {
+          canvas.save();
+          final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);
+          canvas.clipRect(clipRect);
 
-        final textColor = white;
+          final textColor = white;
 
-        final textX = x + 5;
-        final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;
+          final textX = x + 5;
+          final textY = y + (keyHeight - noteLabelHeight) * 0.5 - 1;
 
-        // canvas.drawImageRect(cachedLabel, Rect.fromLTWH(x, y, cachedLabel.width.toDouble(), cachedLabel.height.toDouble()), Paint());
-        canvas.drawAtlas(
-          cachedLabel,
-          [
-            RSTransform.fromComponents(
-              rotation: 0,
-              scale: 1 / devicePixelRatio,
-              anchorX: 0,
-              anchorY: 0,
-              translateX: textX,
-              translateY: textY,
-            ),
-          ],
-          [
-            Rect.fromLTWH(
-              0,
-              0,
-              noteLabelWidth * devicePixelRatio,
-              noteLabelHeight * devicePixelRatio,
-            ),
-          ],
-          [textColor],
-          BlendMode.dstIn,
-          null,
-          Paint(),
-        );
+          // canvas.drawImageRect(cachedLabel, Rect.fromLTWH(x, y, cachedLabel.width.toDouble(), cachedLabel.height.toDouble()), Paint());
+          canvas.drawAtlas(
+            cachedLabel,
+            [
+              RSTransform.fromComponents(
+                rotation: 0,
+                scale: 1 / devicePixelRatio,
+                anchorX: 0,
+                anchorY: 0,
+                translateX: textX,
+                translateY: textY,
+              ),
+            ],
+            [
+              Rect.fromLTWH(
+                0,
+                0,
+                noteLabelWidth * devicePixelRatio,
+                noteLabelHeight * devicePixelRatio,
+              ),
+            ],
+            [textColor],
+            BlendMode.dstIn,
+            null,
+            Paint(),
+          );
 
-        final transparentColor = color.withAlpha(0);
+          final transparentColor = color.withAlpha(0);
 
-        // Fade out gradient
-        final textFadeOutGradient = ui.Gradient.linear(
-          Offset(x, textY),
-          Offset(x + width - 3, textY),
-          [transparentColor, transparentColor, color],
-          [0, 1 - (10 / width), 1],
-        );
+          // Fade out gradient
+          final textFadeOutStop = (1 - (10 / width)).clamp(0.0, 1.0);
+          final textFadeOutGradient = ui.Gradient.linear(
+            Offset(x, textY),
+            Offset(x + width - 3, textY),
+            [transparentColor, transparentColor, color],
+            [0, textFadeOutStop, 1],
+          );
 
-        final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
+          final textFadeOutPaint = Paint()..shader = textFadeOutGradient;
 
-        canvas.drawRect(clipRect, textFadeOutPaint);
+          canvas.drawRect(clipRect, textFadeOutPaint);
 
-        canvas.restore();
+          canvas.restore();
+        }
       }
 
-      viewModel.visibleNotes.add(rect: rect.outerRect, metadata: (id: note.id));
+      viewModel.visibleNotes.add(rect: noteRect, metadata: noteRef);
 
       // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
       final endResizeHandleRect = Rect.fromLTRB(
         x +
             (width - (_noteResizeHandleWidth - _noteResizeHandleOvershoot))
                 // Ensures there's a bit of the note still showing
-                .clamp(_minimumClickableNoteArea, double.infinity)
+                .clamp(_minimumClickableNoteArea.toDouble(), double.infinity)
                 .clamp(0, width),
         y,
         x + width + _noteResizeHandleOvershoot,
@@ -269,17 +290,18 @@ class PianoRollPainter extends CustomPainterObserver {
 
       viewModel.visibleResizeAreas.add(
         rect: endResizeHandleRect,
-        metadata: (id: note.id),
+        metadata: noteRef,
       );
     }
   }
 
   @override
   bool shouldRepaint(PianoRollPainter oldDelegate) =>
-      timeViewStart != oldDelegate.timeViewStart ||
-      timeViewEnd != oldDelegate.timeViewEnd ||
-      keyValueAtTop != oldDelegate.keyValueAtTop ||
+      timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+      timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+      keyValueAtTopAnimation != oldDelegate.keyValueAtTopAnimation ||
       viewModel != oldDelegate.viewModel ||
       project != oldDelegate.project ||
-      super.shouldRepaint(oldDelegate);
+      devicePixelRatio != oldDelegate.devicePixelRatio ||
+      shouldGreyOut != oldDelegate.shouldGreyOut;
 }

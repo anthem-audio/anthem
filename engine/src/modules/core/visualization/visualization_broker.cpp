@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,67 +23,122 @@
 
 #include "modules/core/anthem.h"
 
+#include <type_traits>
+#include <utility>
+
+namespace {
+template <typename T>
+using RemoveCvRef = std::remove_cv_t<std::remove_reference_t<T>>;
+}
+
 VisualizationBroker::VisualizationBroker() {
   this->updateIntervalMs = 15.0;
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
 }
 
 void VisualizationBroker::setSubscriptions(
-  const std::vector<std::string>& subscriptions
+  const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions
 ) {
-  this->subscriptions = subscriptions;
+  this->subscriptions = newSubscriptions;
 }
 
 void VisualizationBroker::setUpdateInterval(
-  double updateIntervalMs
+  double newUpdateIntervalMs
 ) {
-  this->updateIntervalMs = updateIntervalMs;
+  this->updateIntervalMs = newUpdateIntervalMs;
 
   this->stopTimer();
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
 }
 
 void VisualizationBroker::timerCallback() {
+  if (this->subscriptions.empty()) {
+    return;
+  }
+
   auto visualizationItems = std::make_shared<std::vector<std::shared_ptr<VisualizationItem>>>();
 
   // Iterate over all subscriptions and query the data providers for updates
   for (const auto& subscription : this->subscriptions) {
-    auto it = this->dataProviders.find(subscription);
+    auto it = this->dataProviders.find(subscription->id);
     if (it != this->dataProviders.end()) {
-      std::optional<std::vector<double>> numericData = it->second->getNumericData();
-
-      if (numericData.has_value() && !numericData.value().empty()) {
-        auto dataSharedPtr = std::make_shared<std::vector<double>>(numericData.value());
-
-        auto visualizationItem = std::make_shared<VisualizationItem>(
-          VisualizationItem{
-            .id = subscription,
-            .values = rfl::make_field<"List<double>">(dataSharedPtr)
-          }
-        );
-
-        visualizationItems->push_back(visualizationItem);
-
+      const auto providerValueType = it->second->getValueType();
+      if (providerValueType != subscription->valueType) {
+        jassertfalse;
         continue;
       }
 
-      std::optional<std::vector<std::string>> stringData = it->second->getStringData();
-
-      if (stringData.has_value() && !stringData.value().empty()) {
-        auto dataSharedPtr = std::make_shared<std::vector<std::string>>(stringData.value());
-
-        auto visualizationItem = std::make_shared<VisualizationItem>(
-          VisualizationItem{
-            .id = subscription,
-            .values = rfl::make_field<"List<String>">(dataSharedPtr)
-          }
-        );
-
-        visualizationItems->push_back(visualizationItem);
-
+      auto data = it->second->getData();
+      if (!data.has_value()) {
         continue;
       }
+
+      std::visit(
+        [&](auto&& batchValue) {
+          using Batch = RemoveCvRef<decltype(batchValue)>;
+
+          auto batch = std::move(batchValue);
+          if (batch.values.empty()) {
+            return;
+          }
+
+          if (batch.sampleTimestamps.size() != batch.values.size()) {
+            jassertfalse;
+            return;
+          }
+
+          auto sampleTimestampsSharedPtr = std::make_shared<std::vector<int64_t>>(
+            std::move(batch.sampleTimestamps)
+          );
+
+          if constexpr (std::is_same_v<Batch, NumericVisualizationData>) {
+            auto dataSharedPtr = std::make_shared<std::vector<double>>(std::move(batch.values));
+
+            visualizationItems->push_back(
+              std::make_shared<VisualizationItem>(
+                VisualizationItem {
+                  .id = subscription->id,
+                  .valueType = VisualizationValueType::doubleValue,
+                  .values = rfl::make_field<"List<double>">(dataSharedPtr),
+                  .sampleTimestamps = sampleTimestampsSharedPtr,
+                }
+              )
+            );
+          } else if constexpr (std::is_same_v<Batch, IntegerVisualizationData>) {
+            auto dataSharedPtr = std::make_shared<std::vector<int64_t>>(std::move(batch.values));
+
+            visualizationItems->push_back(
+              std::make_shared<VisualizationItem>(
+                VisualizationItem {
+                  .id = subscription->id,
+                  .valueType = VisualizationValueType::intValue,
+                  .values = rfl::make_field<"List<int>">(dataSharedPtr),
+                  .sampleTimestamps = sampleTimestampsSharedPtr,
+                }
+              )
+            );
+          } else if constexpr (std::is_same_v<Batch, StringVisualizationData>) {
+            auto dataSharedPtr = std::make_shared<std::vector<std::string>>(std::move(batch.values));
+
+            visualizationItems->push_back(
+              std::make_shared<VisualizationItem>(
+                VisualizationItem {
+                  .id = subscription->id,
+                  .valueType = VisualizationValueType::stringValue,
+                  .values = rfl::make_field<"List<String>">(dataSharedPtr),
+                  .sampleTimestamps = sampleTimestampsSharedPtr,
+                }
+              )
+            );
+          }
+        },
+        std::move(data.value())
+      );
     }
+  }
+
+  if (visualizationItems->empty()) {
+    return;
   }
 
   // Create a VisualizationUpdateEvent message and send it to the UI

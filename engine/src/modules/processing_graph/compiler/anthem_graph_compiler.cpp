@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 #include "anthem_graph_compiler.h"
 
 #include "modules/core/anthem.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
 
 #include "generated/lib/model/model.h"
 
@@ -28,7 +29,9 @@
 // See the header file for an overview of the graph processing algorithm. Each
 // step in the algorithm is annotated here.
 
-AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
+AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
+  GraphRuntimeServices& rtServices
+) {
   auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
 
@@ -59,31 +62,11 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
     << "\033[0m"
     << std::endl;
 
-  size_t totalEventPorts = 0;
-
-  // Get the total number of event ports in the graph.
-  for (auto& nodePair : *processingGraphModel->nodes()) {
-    auto& node = nodePair.second;
-    totalEventPorts += node->eventInputPorts()->size();
-    totalEventPorts += node->eventOutputPorts()->size();
-  }
-
-  // Create a buffer allocator for events, and allocate double the size of the
-  // buffer for each port. This is because if any port buffer overflows, it will
-  // reallocate, so we need some free space.
-  //
-  // This is probably way too much free space, but I won't try to tweak it
-  // unless it becomes a problem.
-  result->eventAllocator = 
-    std::make_unique<ArenaBufferAllocator<AnthemLiveEvent>>(
-      totalEventPorts * DEFAULT_EVENT_BUFFER_SIZE * sizeof(AnthemLiveEvent) * 2
-    );
-
   // Create contexts for each node
   for (auto& pair : *processingGraphModel->nodes()) {
     auto& node = pair.second;
 
-    auto context = new AnthemProcessContext(node, result->eventAllocator.get());
+    auto context = new AnthemProcessContext(node, rtServices);
     result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
 
     result->graphNodes.push_back(node);
@@ -154,7 +137,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
 
   for (auto& node : nodesToProcess) {
     actions->push_back(
-      std::make_unique<WriteParametersToControlInputsAction>(node->context, sampleRate)
+      std::make_unique<WriteParametersToControlInputsAction>(node->context, static_cast<float>(sampleRate))
     );
   }
 
@@ -285,18 +268,12 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile() {
             );
             break;
           case NodePortDataType::control:
-            auto& portParameterConfig = sourcePort->config()->parameterConfig().value();
-            auto minParameterValue = (float) portParameterConfig->minimumValue();
-            auto maxParameterValue = (float) portParameterConfig->maximumValue();
-
             actions->push_back(
               std::make_unique<CopyControlBufferAction>(
                 edge->sourceNodeContext,
                 sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort->id(),
-                minParameterValue,
-                maxParameterValue
+                destinationPort->id()
               )
             );
             break;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,13 +20,12 @@
 import 'dart:typed_data';
 import 'dart:ui';
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 
 void _drawNote({
   required Float32List vertices,
-  required NoteModel note,
+  required ResolvedPatternNote note,
   required int startIndex,
   required int lowestNote,
   required int highestNote,
@@ -72,7 +71,6 @@ void _drawNote({
 /// pixel coordinates when rendering.
 class ClipNotesRenderCache {
   final PatternModel pattern;
-  final Id generatorID;
 
   Float32List? rawVertices;
   Vertices? renderedVertices;
@@ -80,12 +78,12 @@ class ClipNotesRenderCache {
   var lowestNote = 64;
   var highestNote = 64;
 
-  ClipNotesRenderCache({required this.pattern, required this.generatorID}) {
+  ClipNotesRenderCache({required this.pattern}) {
     update();
   }
 
   void update() {
-    final notes = pattern.notes[generatorID]?.nonObservableInner ?? [];
+    final notes = pattern.getResolvedNotes().toList(growable: false);
 
     rawVertices = Float32List(notes.length * 3 * 2 * 2);
 

@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -44,7 +45,7 @@ class NodePortModel extends _NodePortModel
   NodePortModel.uninitialized()
     : super(
         id: -1,
-        nodeId: '',
+        nodeId: -1,
         config: NodePortConfigModel.uninitialized(),
         connections: AnthemObservableList(),
       );
@@ -61,13 +62,14 @@ abstract class _NodePortModel
   // control input port.
   int id;
 
-  String nodeId;
+  Id nodeId;
 
   NodePortConfigModel config;
 
-  AnthemObservableList<String> connections;
+  AnthemObservableList<Id> connections;
 
-  /// The value of the parameter, if this port is a control input port.
+  /// The normalized value of the parameter, if this port is a control input
+  /// port.
   @anthemObservable
   double? parameterValue;
 

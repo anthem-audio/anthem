@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,10 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
+
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
@@ -36,21 +40,120 @@ const _clipResizeHandleWidth = 12.0;
 /// How far over the clip the resize handle extends, in pixels.
 const _clipResizeHandleOvershoot = 2.0;
 
-/// There will be at least this much clickable area on a clip. Resize handles
-/// will shrink to make room for this if necessary.
-const _minimumClickableClipArea = 30;
+/// Computes resize handle rectangles for a clip while guaranteeing that each
+/// clip has a center drag area free of resize handles.
+@visibleForTesting
+({Rect start, Rect end}) computeResizeHandleRects({
+  required double clipX,
+  required double clipY,
+  required double clipWidth,
+  required double clipHeight,
+}) {
+  final clipBodyWidth = (clipWidth - 1).clamp(1.0, double.infinity);
+  final clipBodyLeft = clipX;
+  final clipBodyRight = clipBodyLeft + clipBodyWidth;
+  const defaultInsideOverlap =
+      _clipResizeHandleWidth - _clipResizeHandleOvershoot;
+
+  // Always preserve a center drag area
+  final minDragArea = min(15.0, clipBodyWidth);
+  final maxTotalHandleOverlapInside = (clipBodyWidth - minDragArea).clamp(
+    0.0,
+    double.infinity,
+  );
+  final insideOverlapPerHandle = (maxTotalHandleOverlapInside / 2).clamp(
+    0.0,
+    defaultInsideOverlap,
+  );
+
+  final startRight = clipBodyLeft + insideOverlapPerHandle;
+  final startLeft = startRight - _clipResizeHandleWidth;
+  final startRect = Rect.fromLTRB(
+    startLeft,
+    clipY,
+    startRight,
+    clipY + clipHeight - 1,
+  );
+
+  final endLeft = clipBodyRight - insideOverlapPerHandle;
+  final endRight = endLeft + _clipResizeHandleWidth;
+  final endRect = Rect.fromLTRB(
+    endLeft,
+    clipY,
+    endRight,
+    clipY + clipHeight - 1,
+  );
+
+  return (start: startRect, end: endRect);
+}
+
+/// Compares clips by render order.
+///
+/// Lower values are painted first (visually underneath later clips).
+int compareClipRenderInfoForLayering(ClipRenderInfo a, ClipRenderInfo b) {
+  // Clips with active timing overrides should render on top of non-overridden
+  // clips while dragging/resizing.
+  final overrideCompare = switch ((a.hasTimingOverride, b.hasTimingOverride)) {
+    (false, true) => -1,
+    (true, false) => 1,
+    _ => 0,
+  };
+  if (overrideCompare != 0) {
+    return overrideCompare;
+  }
+
+  final offsetCompare = a.clipOffset.compareTo(b.clipOffset);
+  if (offsetCompare != 0) {
+    return offsetCompare;
+  }
+
+  final widthCompare = a.clipWidth.compareTo(b.clipWidth);
+  if (widthCompare != 0) {
+    return widthCompare;
+  }
+
+  return a.clipId.compareTo(b.clipId);
+}
+
+/// Sorts clips and groups them into overlap-safe render layers.
+List<List<ClipRenderInfo>> buildClipLayersForPainting(
+  Iterable<ClipRenderInfo> clips,
+) {
+  final sortedClips = clips.toList()..sort(compareClipRenderInfoForLayering);
+
+  final clipLayers = <List<ClipRenderInfo>>[];
+  final layerBuilder = _ClipLayerBuilder();
+
+  for (final clipInfo in sortedClips) {
+    final layerIndex = layerBuilder.insertClip(
+      trackId: clipInfo.trackId,
+      clipStart: clipInfo.clipOffset,
+      clipEnd: clipInfo.clipOffset + clipInfo.clipWidth,
+    );
+
+    while (clipLayers.length <= layerIndex) {
+      clipLayers.add([]);
+    }
+
+    clipLayers[layerIndex].add(clipInfo);
+  }
+
+  return clipLayers;
+}
 
 class ArrangerContentRenderer extends StatelessObserverWidget {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double verticalScrollPosition;
+  final Listenable repaint;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> verticalScrollPositionAnimation;
   final ArrangerViewModel viewModel;
 
   const ArrangerContentRenderer({
     super.key,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.verticalScrollPosition,
+    required this.repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.verticalScrollPositionAnimation,
     required this.viewModel,
   });
 
@@ -62,11 +165,12 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 
     if (arrangement == null) return const SizedBox();
 
-    return CustomPaintObserver(
-      painterBuilder: () => ArrangerContentPainter(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        verticalScrollPosition: verticalScrollPosition,
+    return CustomPaint(
+      painter: ArrangerContentPainter(
+        repaint: repaint,
+        timeViewStartAnimation: timeViewStartAnimation,
+        timeViewEndAnimation: timeViewEndAnimation,
+        verticalScrollPositionAnimation: verticalScrollPositionAnimation,
         project: project,
         arrangement: arrangement,
         viewModel: viewModel,
@@ -78,44 +182,149 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 }
 
 class ArrangerContentPainter extends CustomPainterObserver {
-  final double timeViewStart;
-  final double timeViewEnd;
-  final double verticalScrollPosition;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+  final Animation<double> verticalScrollPositionAnimation;
   final ProjectModel project;
   final ArrangementModel arrangement;
   final ArrangerViewModel viewModel;
   final double devicePixelRatio;
 
   ArrangerContentPainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
-    required this.verticalScrollPosition,
+    required Listenable repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+    required this.verticalScrollPositionAnimation,
     required this.project,
     required this.arrangement,
     required this.viewModel,
     required this.devicePixelRatio,
-  });
+  }) : super(debugName: 'ArrangerContentPainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
+  double get renderedVerticalScrollPosition =>
+      verticalScrollPositionAnimation.value;
+  double get _verticalScrollDelta =>
+      viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
+
+  double _getTrackPosition(num trackIndex) {
+    return viewModel.trackPositionCalculator.getTrackPosition(trackIndex) +
+        _verticalScrollDelta;
+  }
 
   @override
   bool shouldRepaint(ArrangerContentPainter oldDelegate) {
-    return timeViewStart != oldDelegate.timeViewStart ||
-        timeViewEnd != oldDelegate.timeViewEnd ||
-        verticalScrollPosition != oldDelegate.verticalScrollPosition ||
+    return timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+        timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+        verticalScrollPositionAnimation !=
+            oldDelegate.verticalScrollPositionAnimation ||
         project != oldDelegate.project ||
         arrangement != oldDelegate.arrangement ||
         viewModel != oldDelegate.viewModel ||
-        devicePixelRatio != oldDelegate.devicePixelRatio ||
-        super.shouldRepaint(oldDelegate);
+        devicePixelRatio != oldDelegate.devicePixelRatio;
   }
 
   @override
   void observablePaint(Canvas canvas, Size size) {
-    arrangement.clips.observeAllChanges();
+    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
+    // This draws all the clips
+    arrangement.clips.observeAllChanges();
     blockObservation(
       modelItems: [arrangement.clips],
       block: () => _paintClips(canvas, size),
     );
+
+    _drawClipCreateHint(canvas, size);
+
+    _drawCursor(canvas, size);
+  }
+
+  void _drawClipCreateHint(Canvas canvas, Size size) {
+    if (viewModel.clipCreateHint == null) {
+      return;
+    }
+
+    final (:trackId, :startOffset, :endOffset, :color) =
+        viewModel.clipCreateHint!;
+
+    final startX = timeToPixels(
+      time: startOffset,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+    );
+    final endX = timeToPixels(
+      time: endOffset,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+    );
+
+    final left = (startX < endX ? startX : endX) + 1;
+    final width = (endX - startX).abs() - 1;
+
+    if (width > 0) {
+      final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
+        trackId,
+      );
+      final trackPos = _getTrackPosition(trackIndex);
+      final trackHeight =
+          viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+      final contentTop = trackPos;
+
+      final rect = Rect.fromLTWH(left, contentTop, width, trackHeight);
+
+      canvas.drawRect(rect, Paint()..color = color);
+
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, .circular(1)),
+        Paint()
+          ..style = .stroke
+          ..color = color.withAlpha(255)
+          ..strokeWidth = 1,
+      );
+    }
+  }
+
+  void _drawCursor(Canvas canvas, Size size) {
+    if (viewModel.hoverIndicatorPosition == null) {
+      return;
+    }
+
+    if (viewModel.clipCreateHint != null) {
+      final (:trackId, :startOffset, :endOffset, :color) =
+          viewModel.clipCreateHint!;
+
+      if (startOffset != endOffset) {
+        return;
+      }
+    }
+
+    final (offset, trackId) = viewModel.hoverIndicatorPosition!;
+
+    final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
+      trackId,
+    );
+    final trackPos = _getTrackPosition(trackIndex);
+    final trackHeight =
+        viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+    final contentTop = trackPos;
+
+    final rect = Rect.fromLTWH(
+      timeToPixels(
+        time: offset,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+      ),
+      contentTop,
+      1.0,
+      trackHeight,
+    );
+
+    canvas.drawRect(rect, Paint()..color = AnthemTheme.editors.playheadLine);
   }
 
   /// Paints the clips onto the arranger canvas.
@@ -144,78 +353,81 @@ class ArrangerContentPainter extends CustomPainterObserver {
     // Note that if we ever disallow overlapping clips in the arranger, then we
     // could simplify this logic.
 
-    canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
+    final allClips = arrangement.clips.values
+        .map<ClipRenderInfo?>((clip) {
+          final trackId = clip.trackId;
 
-    final allClips = arrangement.clips.keys.map<ClipRenderInfo?>((clipId) {
-      final clip = arrangement.clips[clipId]!;
-      final pattern = project.sequence.patterns[clip.patternId]!;
+          final pattern = project.sequence.patterns[clip.patternId]!;
 
-      final x = timeToPixels(
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        viewPixelWidth: size.width,
-        time: clip.offset.toDouble(),
-      );
-      final width =
-          timeToPixels(
+          final baseClipTimeViewStart = clip.timeView?.start ?? 0;
+          final baseClipTimeViewEnd = baseClipTimeViewStart + clip.width;
+
+          // These are overrides for user interaction. When dragging to move or
+          // resize a clip or group of clips, the clip timing overrides will be
+          // set. This allows us to move the clips around in just the view
+          // layer, and only mutate the actual project model once we have
+          // "committed" the change.
+          final clipTimingOverride = viewModel.clipTimingOverrides[clip.id];
+
+          final clipOffset = clipTimingOverride?.offset ?? clip.offset;
+          final clipTimeViewStart =
+              clipTimingOverride?.timeViewStart ?? baseClipTimeViewStart;
+          final clipTimeViewEnd =
+              clipTimingOverride?.timeViewEnd ?? baseClipTimeViewEnd;
+          final clipWidth = clipTimeViewEnd - clipTimeViewStart;
+
+          final x = timeToPixels(
             timeViewStart: timeViewStart,
             timeViewEnd: timeViewEnd,
             viewPixelWidth: size.width,
-            time: clip.offset.toDouble() + clip.width,
-          ) -
-          x +
-          1;
+            time: clipOffset.toDouble(),
+          );
+          final width =
+              timeToPixels(
+                timeViewStart: timeViewStart,
+                timeViewEnd: timeViewEnd,
+                viewPixelWidth: size.width,
+                time: clipOffset.toDouble() + clipWidth,
+              ) -
+              x +
+              1;
 
-      if (x > size.width || x + width < 0) return null;
+          if (x > size.width || x + width < 0) return null;
 
-      final y =
-          trackIndexToPos(
-            trackIndex: project.sequence.trackOrder
-                .indexWhere((trackID) => trackID == clip.trackId)
-                .toDouble(),
-            baseTrackHeight: viewModel.baseTrackHeight,
-            trackOrder: project.sequence.trackOrder,
-            trackHeightModifiers: viewModel.trackHeightModifiers,
-            scrollPosition: verticalScrollPosition,
-          ) -
-          1;
-      final trackHeight =
-          getTrackHeight(
-            viewModel.baseTrackHeight,
-            viewModel.trackHeightModifiers[clip.trackId]!,
-          ) +
-          1;
+          final y =
+              _getTrackPosition(
+                viewModel.trackPositionCalculator.trackIdToIndex(trackId),
+              ) -
+              1;
+          final trackHeight =
+              calculateTrackHeight(
+                viewModel.baseTrackHeight,
+                viewModel.trackHeightModifiers[trackId]!,
+              ) +
+              1;
 
-      if (y > size.height || y + trackHeight < 0) return null;
+          if (y > size.height || y + trackHeight < 0) return null;
 
-      return (
-        pattern: pattern,
-        clip: clip,
-        x: x,
-        y: y,
-        width: width,
-        height: trackHeight,
-        selected: viewModel.selectedClips.contains(clip.id),
-        pressed: viewModel.pressedClip == clip.id,
-      );
-    }).nonNulls;
+          return ClipRenderInfo(
+            pattern: pattern,
+            clip: clip,
+            hasTimingOverride: clipTimingOverride != null,
+            clipOffset: clipOffset,
+            clipTimeViewStart: clipTimeViewStart,
+            clipTimeViewEnd: clipTimeViewEnd,
+            x: x,
+            y: y,
+            width: width,
+            height: trackHeight,
+            selected: viewModel.selectedClips.contains(clip.id),
+            pressed: viewModel.pressedClip == clip.id,
+            hovered: viewModel.hoveredClip == clip.id,
+          );
+        })
+        .nonNulls
+        .toList();
 
-    List<List<ClipRenderInfo>> clipLayers = [];
-    final layerBuilder = _ClipLayerBuilder();
-
-    for (final clipInfo in allClips) {
-      final layerIndex = layerBuilder.insertClip(
-        trackId: clipInfo.clip.trackId,
-        clipStart: clipInfo.clip.offset,
-        clipEnd: clipInfo.clip.offset + clipInfo.clip.width,
-      );
-
-      while (clipLayers.length <= layerIndex) {
-        clipLayers.add([]);
-      }
-
-      clipLayers[layerIndex].add(clipInfo);
-    }
+    final clipLayers = buildClipLayersForPainting(allClips);
 
     for (final clipList in clipLayers) {
       paintClipList(
@@ -233,44 +445,29 @@ class ArrangerContentPainter extends CustomPainterObserver {
         final y = clipEntry.y;
         final width = clipEntry.width;
         final trackHeight = clipEntry.height;
-        final clip = clipEntry.clip;
 
         viewModel.visibleClips.add(
           rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
-          metadata: (id: clip.id),
+          metadata: clipEntry.clipId,
         );
 
-        final startResizeHandleRect = Rect.fromLTWH(
-          x - _clipResizeHandleOvershoot,
-          y,
-          _clipResizeHandleWidth
-              // Ensures there's a bit of the clip still showing
-              -
-              (_minimumClickableClipArea - width).clamp(
-                0,
-                (_clipResizeHandleWidth - _clipResizeHandleOvershoot),
-              ),
-          trackHeight - 1,
+        final (
+          start: startResizeHandleRect,
+          end: endResizeHandleRect,
+        ) = computeResizeHandleRects(
+          clipX: x,
+          clipY: y,
+          clipWidth: width,
+          clipHeight: trackHeight,
         );
         viewModel.visibleResizeAreas.add(
           rect: startResizeHandleRect,
-          metadata: (id: clip.id, type: ResizeAreaType.start),
+          metadata: (id: clipEntry.clipId, type: ResizeAreaType.start),
         );
 
-        // Notice this is fromLTRB. We generally use fromLTWH elsewhere.
-        final endResizeHandleRect = Rect.fromLTRB(
-          x +
-              (width - (_clipResizeHandleWidth - _clipResizeHandleOvershoot))
-                  // Ensures there's a bit of the clip still showing
-                  .clamp(_minimumClickableClipArea, double.infinity)
-                  .clamp(0, width),
-          y,
-          x + width + _clipResizeHandleOvershoot,
-          y + trackHeight - 1,
-        );
         viewModel.visibleResizeAreas.add(
           rect: endResizeHandleRect,
-          metadata: (id: clip.id, type: ResizeAreaType.end),
+          metadata: (id: clipEntry.clipId, type: ResizeAreaType.end),
         );
       }
     }
@@ -306,14 +503,15 @@ class _ClipLayerBuilder {
   /// collector that allows us to test whether a given range overlaps with any of
   /// the existing ranges. If it does, we know the clip overlaps with another
   /// clip in this layer, and we need to start a new layer.
-  final List<Map<String, InvalidationRangeCollector>> _invalidationCollectors =
-      [{}];
+  final List<Map<Id, InvalidationRangeCollector>> _invalidationCollectors = [
+    {},
+  ];
 
   /// Adds a clip to the appropriate layer, creating a new layer if necessary.
   ///
   /// Returns the layer index the clip was added to.
   int insertClip({
-    required String trackId,
+    required Id trackId,
     required int clipStart,
     required int clipEnd,
   }) {

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,7 +27,7 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 		auto& compileSequenceRequest = rfl::get<CompileSequenceRequest>(request.variant());
 
     if (compileSequenceRequest.patternId.has_value()) {
-      if (compileSequenceRequest.channelsToRebuild.has_value()) {
+      if (compileSequenceRequest.tracksToRebuild.has_value()) {
         auto invalidationRanges = std::vector<std::tuple<double, double>>();
 
         if (compileSequenceRequest.invalidationRanges.has_value()) {
@@ -38,10 +38,10 @@ std::optional<Response> handleSequencerCommand(Request& request) {
           }
         }
 
-				// Compile only the specified channels for the given pattern
+				// Compile only the specified tracks for the given pattern.
 				AnthemSequenceCompiler::compilePattern(
 					compileSequenceRequest.patternId.value(),
-					*compileSequenceRequest.channelsToRebuild.value(),
+					*compileSequenceRequest.tracksToRebuild.value(),
           invalidationRanges
 				);
 			}
@@ -51,13 +51,13 @@ std::optional<Response> handleSequencerCommand(Request& request) {
       }
 
       if (Anthem::getInstance().transport->config.activeSequenceId == compileSequenceRequest.patternId.value()) {
-        // Update the events that play when the playhead starts, since they
-        // may have changed
-        Anthem::getInstance().transport->updatePlayheadJumpEventForStart(true);
+        auto& transport = *Anthem::getInstance().transport;
+        transport.updateLoopPoints();
+        transport.updatePlayheadJumpEventForStart(true);
       }
     }
     else if (compileSequenceRequest.arrangementId.has_value()) {
-      if (compileSequenceRequest.channelsToRebuild.has_value()) {
+      if (compileSequenceRequest.tracksToRebuild.has_value()) {
         auto invalidationRanges = std::vector<std::tuple<double, double>>();
 
         if (compileSequenceRequest.invalidationRanges.has_value()) {
@@ -67,10 +67,10 @@ std::optional<Response> handleSequencerCommand(Request& request) {
           }
         }
 
-        // Compile only the specified channels for the given arrangement
+        // Compile only the specified tracks for the given arrangement.
         AnthemSequenceCompiler::compileArrangement(
           compileSequenceRequest.arrangementId.value(),
-          *compileSequenceRequest.channelsToRebuild.value(),
+          *compileSequenceRequest.tracksToRebuild.value(),
           invalidationRanges
         );
       }
@@ -80,16 +80,16 @@ std::optional<Response> handleSequencerCommand(Request& request) {
       }
 
       if (Anthem::getInstance().transport->config.activeSequenceId == compileSequenceRequest.arrangementId.value()) {
-        // Update the events that play when the playhead starts, since they
-        // may have changed
-        Anthem::getInstance().transport->updatePlayheadJumpEventForStart(true);
+        auto& transport = *Anthem::getInstance().transport;
+        transport.updateLoopPoints();
+        transport.updatePlayheadJumpEventForStart(true);
       }
     }
   }
-  else if (rfl::holds_alternative<RemoveChannelRequest>(request.variant())) {
-    auto& removeChannelRequest = rfl::get<RemoveChannelRequest>(request.variant());
+  else if (rfl::holds_alternative<RemoveTrackRequest>(request.variant())) {
+    auto& removeTrackRequest = rfl::get<RemoveTrackRequest>(request.variant());
 
-		AnthemSequenceCompiler::cleanUpChannel(removeChannelRequest.channelId);
+		AnthemSequenceCompiler::cleanUpTrack(removeTrackRequest.trackId);
   }
   else if (rfl::holds_alternative<PlayheadJumpRequest>(request.variant())) {
     auto& playheadJumpRequest = rfl::get<PlayheadJumpRequest>(request.variant());

@@ -18,9 +18,11 @@
 */
 
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
+import 'package:anthem/widgets/basic/button_tabs.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
-import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
@@ -36,20 +38,23 @@ class ProjectFooter extends StatelessWidget {
     final projectModel = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ProjectViewModel>(context);
 
-    return SizedBox(
-      height: 32,
+    return Container(
+      color: AnthemTheme.panel.backgroundLight,
+      height: 40,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.max,
+          spacing: 8,
           children: [
             Observer(
               builder: (context) {
                 return Button(
                   icon: Icons.browserPanel,
-                  variant: ButtonVariant.label,
                   toggleState: projectModel.isDetailViewOpen,
+                  width: 28,
+                  contentPadding: const EdgeInsets.all(4),
                   onPress: () {
                     projectModel.isDetailViewOpen =
                         !projectModel.isDetailViewOpen;
@@ -57,125 +62,94 @@ class ProjectFooter extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(width: 6),
-            _Separator(),
-            Button(
-              variant: ButtonVariant.label,
-              text: 'ARRANGE',
-              toggleState: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 8),
+
+            TextButtonTabs(
+              tabs: [
+                (label: 'Arrange', onSelect: () {}),
+                (label: 'Edit', onSelect: () {}),
+                (label: 'Mix', onSelect: () {}),
+              ],
+              selectedIndex: 0,
             ),
-            Button(
-              variant: ButtonVariant.label,
-              text: 'EDIT',
-              contentPadding: EdgeInsets.symmetric(horizontal: 8),
-            ),
-            Button(
-              variant: ButtonVariant.label,
-              text: 'MIX',
-              contentPadding: EdgeInsets.symmetric(horizontal: 8),
-            ),
-            _Separator(),
-            const SizedBox(width: 6),
-            Observer(
-              builder: (context) {
-                return Button(
-                  variant: ButtonVariant.label,
-                  icon: Icons.patternEditor,
-                  toggleState: projectModel.isPatternEditorVisible,
-                  onPress: () => projectModel.isPatternEditorVisible =
-                      !projectModel.isPatternEditorVisible,
-                  hint: projectModel.isPatternEditorVisible
-                      ? [HintSection('click', 'Hide pattern editor')]
-                      : [HintSection('click', 'Show pattern editor')],
-                );
-              },
-            ),
-            const SizedBox(width: 6),
-            _Separator(),
-            const SizedBox(width: 6),
 
             Observer(
               builder: (context) {
-                return Button(
-                  variant: ButtonVariant.label,
-                  icon: Icons.detailEditor,
-                  toggleState: viewModel.selectedEditor == EditorKind.detail,
-                  onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.detail) {
-                      viewModel.selectedEditor = null;
-                    } else {
-                      viewModel.selectedEditor = EditorKind.detail;
-                    }
-                  },
+                const contentPadding = EdgeInsets.symmetric(vertical: 4);
+
+                return ButtonGroup(
+                  children: [
+                    Button(
+                      icon: Icons.detailEditor,
+                      toggleState: viewModel.selectedEditor == .detail,
+                      width: 26,
+                      contentPadding: contentPadding,
+                      onPress: () {
+                        if (viewModel.selectedEditor == .detail) {
+                          viewModel.selectedEditor = null;
+                        } else {
+                          viewModel.selectedEditor = .detail;
+                          viewModel.activePanel = .pianoRoll;
+                        }
+                      },
+                    ),
+                    Button(
+                      icon: Icons.automationEditor,
+                      toggleState: viewModel.selectedEditor == .automation,
+                      width: 26,
+                      contentPadding: contentPadding,
+                      onPress: () {
+                        if (viewModel.selectedEditor == .automation) {
+                          viewModel.selectedEditor = null;
+                        } else {
+                          viewModel.selectedEditor = .automation;
+                          viewModel.activePanel = .automationEditor;
+                        }
+                      },
+                    ),
+                    Button(
+                      icon: Icons.channelRack,
+                      toggleState: viewModel.selectedEditor == .channelRack,
+                      width: 26,
+                      contentPadding: contentPadding,
+                      onPress: () {
+                        if (viewModel.selectedEditor == .channelRack) {
+                          viewModel.selectedEditor = null;
+                        } else {
+                          viewModel.selectedEditor = .channelRack;
+                          viewModel.activePanel = .channelRack;
+                        }
+                      },
+                    ),
+                    Button(
+                      icon: Icons.mixer,
+                      toggleState: viewModel.selectedEditor == .mixer,
+                      width: 26,
+                      contentPadding: contentPadding,
+                      onPress: () {
+                        if (viewModel.selectedEditor == .mixer) {
+                          viewModel.selectedEditor = null;
+                        } else {
+                          viewModel.selectedEditor = .mixer;
+                          viewModel.activePanel = .mixer;
+                        }
+                      },
+                    ),
+                  ],
                 );
               },
             ),
-            const SizedBox(width: 6),
-            Observer(
-              builder: (context) {
-                return Button(
-                  variant: ButtonVariant.label,
-                  icon: Icons.automationEditor,
-                  toggleState:
-                      viewModel.selectedEditor == EditorKind.automation,
-                  onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.automation) {
-                      viewModel.selectedEditor = null;
-                    } else {
-                      viewModel.selectedEditor = EditorKind.automation;
-                    }
-                  },
-                );
-              },
-            ),
-            const SizedBox(width: 6),
-            Observer(
-              builder: (context) {
-                return Button(
-                  variant: ButtonVariant.label,
-                  icon: Icons.channelRack,
-                  toggleState:
-                      viewModel.selectedEditor == EditorKind.channelRack,
-                  onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.channelRack) {
-                      viewModel.selectedEditor = null;
-                    } else {
-                      viewModel.selectedEditor = EditorKind.channelRack;
-                    }
-                  },
-                );
-              },
-            ),
-            const SizedBox(width: 6),
-            Observer(
-              builder: (context) {
-                return Button(
-                  variant: ButtonVariant.label,
-                  icon: Icons.mixer,
-                  toggleState: viewModel.selectedEditor == EditorKind.mixer,
-                  onPress: () {
-                    if (viewModel.selectedEditor == EditorKind.mixer) {
-                      viewModel.selectedEditor = null;
-                    } else {
-                      viewModel.selectedEditor = EditorKind.mixer;
-                    }
-                  },
-                );
-              },
-            ),
-            const SizedBox(width: 6),
-            _Separator(),
-            const SizedBox(width: 6),
+
             HintDisplay(),
 
             const Expanded(child: SizedBox()),
+
             Observer(
               builder: (context) {
                 return Button(
                   icon: Icons.browserPanel,
-                  variant: ButtonVariant.label,
                   toggleState: projectModel.isProjectExplorerOpen,
+                  width: 28,
+                  contentPadding: const EdgeInsets.all(4),
                   onPress: () {
                     projectModel.isProjectExplorerOpen =
                         !projectModel.isProjectExplorerOpen;
@@ -186,16 +160,6 @@ class ProjectFooter extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Separator extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Container(color: const Color(0xFF5E5E5E), width: 2, height: 24),
     );
   }
 }

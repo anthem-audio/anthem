@@ -26,8 +26,8 @@ class SequencerApi {
 
   /// Tells the engine to compile the given arrangement.
   ///
-  /// If [channelsToRebuild] is specified, only the given channels will be
-  /// rebuilt. Otherwise, all channels will be rebuilt.
+  /// If [tracksToRebuild] is specified, only the given tracks will be
+  /// rebuilt. Otherwise, all tracks will be rebuilt.
   ///
   /// If [invalidationRanges] is specified, these are the ranges of the sequence
   /// that are no longer "valid". Valid in this context means that the data within
@@ -36,27 +36,30 @@ class SequencerApi {
   /// within one of these ranges, the instrument is not guaranteed to receive a
   /// matching note off event.
   ///
-  /// If [invalidationRanges] is specified, [channelsToRebuild] must also be
+  /// If [invalidationRanges] is specified, [tracksToRebuild] must also be
   /// specified, and vice versa.
   void compileArrangement(
     Id arrangementId, {
-    List<String>? channelsToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
     final request = CompileSequenceRequest.arrangement(
       id: _engine._getRequestId(),
-      arrangementId: arrangementId.toString(),
-      channelsToRebuild: channelsToRebuild,
+      arrangementId: arrangementId,
+      tracksToRebuild: tracksToRebuild,
       invalidationRanges: invalidationRanges,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
   /// Tells the engine to compile the given pattern.
   ///
-  /// If [channelsToRebuild] is specified, only the given channels will be
-  /// rebuilt. Otherwise, all channels will be rebuilt.
+  /// If [tracksToRebuild] is specified, only the given tracks will be
+  /// rebuilt. Otherwise, all tracks will be rebuilt.
   ///
   /// If [invalidationRanges] is specified, these are the ranges of the sequence
   /// that are no longer "valid". Valid in this context means that the data within
@@ -65,40 +68,46 @@ class SequencerApi {
   /// within one of these ranges, the instrument is not guaranteed to receive a
   /// matching note off event.
   ///
-  /// If [invalidationRanges] is specified, [channelsToRebuild] must also be
+  /// If [invalidationRanges] is specified, [tracksToRebuild] must also be
   /// specified, and vice versa.
   void compilePattern(
     Id patternId, {
-    List<String>? channelsToRebuild,
+    List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
     final request = CompileSequenceRequest.pattern(
       id: _engine._getRequestId(),
-      patternId: patternId.toString(),
-      channelsToRebuild: channelsToRebuild,
+      patternId: patternId,
+      tracksToRebuild: tracksToRebuild,
       invalidationRanges: invalidationRanges,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
-  /// Cleans up the given channel from the sequencer.
+  /// Cleans up the given track from the sequencer.
   ///
-  /// This method allows us to remove a channel from the sequencer without
+  /// This method allows us to remove a track from the sequencer without
   /// needing to rebuild all of the sequences.
   ///
   /// Normally when we update sequences, we update only one or maybe a few
-  /// channels at a time. However, when a channel is removed from the project
-  /// model, we need a way to remove that channel from all of the compiled
+  /// tracks at a time. However, when a track is removed from the project
+  /// model, we need a way to remove that track from all of the compiled
   /// sequences in the engine - otherwise, we would need to rebuild each
-  /// sequence from scratch to remove that channel.
-  void cleanUpChannel(String channelId) {
-    final request = RemoveChannelRequest(
+  /// sequence from scratch to remove that track.
+  void cleanUpTrack(Id trackId) {
+    final request = RemoveTrackRequest(
       id: _engine._getRequestId(),
-      channelId: channelId,
+      trackId: trackId,
     );
 
-    _engine._requestNoReply(request);
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    );
   }
 
   /// Jumps the playhead to the given timestamp.
@@ -113,7 +122,7 @@ class SequencerApi {
 
   /// Sends the new loop points to the audio thread for the given sequence ID,
   /// if the active sequence ID matches the given sequence ID.
-  void updateLoopPoints(String sequenceId) {
+  void updateLoopPoints(Id sequenceId) {
     final request = LoopPointsChangedRequest(
       id: _engine._getRequestId(),
       sequenceId: sequenceId,

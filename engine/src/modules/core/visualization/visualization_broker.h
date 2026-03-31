@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -61,7 +61,7 @@ private:
   VisualizationBroker& operator=(VisualizationBroker&&) = delete;
 
   std::unordered_map<std::string, std::shared_ptr<VisualizationDataProvider>> dataProviders;
-  std::vector<std::string> subscriptions;
+  std::vector<std::shared_ptr<VisualizationSubscriptionSpec>> subscriptions;
 
   // The interval at which the visualization broker updates the UI, in
   // milliseconds
@@ -78,7 +78,9 @@ public:
     return instance;
   }
 
-  void setSubscriptions(const std::vector<std::string>& newSubscriptions);
+  void setSubscriptions(
+    const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions
+  );
   void setUpdateInterval(double updateIntervalMs);
   void registerDataProvider(const std::string& name, std::shared_ptr<VisualizationDataProvider> provider) {
     dataProviders[name] = provider;

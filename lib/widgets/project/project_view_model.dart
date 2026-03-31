@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,17 +24,22 @@ part 'project_view_model.g.dart';
 
 enum EditorKind { detail, automation, channelRack, mixer }
 
+enum PanelKind { pianoRoll, automationEditor, channelRack, mixer, arranger }
+
 // ignore: library_private_types_in_public_api
 class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;
 
 abstract class _ProjectViewModel with Store {
   @observable
-  EditorKind? selectedEditor = EditorKind.detail;
+  EditorKind? selectedEditor;
 
   // As of writing, MobX generates invalid codegen for the valid type here, which is:
   // Widget Function(BuildContext context)?
   @observable
   dynamic topPanelOverlayContentBuilder;
+
+  @observable
+  PanelKind? activePanel;
 
   void setTopPanelOverlay(Widget Function(BuildContext context)? overlay) {
     topPanelOverlayContentBuilder = overlay;

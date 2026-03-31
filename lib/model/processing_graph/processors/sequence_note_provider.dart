@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,9 +18,11 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -39,34 +41,34 @@ part 'sequence_note_provider.g.dart';
 class SequenceNoteProviderProcessorModel
     extends _SequenceNoteProviderProcessorModel
     with
+        Processor,
         _$SequenceNoteProviderProcessorModel,
         _$SequenceNoteProviderProcessorModelAnthemModelMixin {
   SequenceNoteProviderProcessorModel({
     required super.nodeId,
-    required super.channelId,
+    required super.trackId,
   });
 
+  SequenceNoteProviderProcessorModel.create({
+    required ProjectEntityIdAllocator idAllocator,
+    required super.trackId,
+  }) : super(nodeId: idAllocator.allocateId());
+
   SequenceNoteProviderProcessorModel.uninitialized()
-    : super(nodeId: '', channelId: '');
+    : super(nodeId: -1, trackId: -1);
 
   factory SequenceNoteProviderProcessorModel.fromJson(
     Map<String, dynamic> json,
   ) => _$SequenceNoteProviderProcessorModelAnthemModelMixin.fromJson(json);
 
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
-
-  static NodeModel createNode(String channelId) {
-    final id = 'sequence-note-provider-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: SequenceNoteProviderProcessorModel(
-        nodeId: id,
-        channelId: channelId,
-      ),
+      id: nodeId,
+      processor: this,
       eventOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
@@ -76,19 +78,26 @@ class SequenceNoteProviderProcessorModel
 
   static int get eventOutputPortId =>
       _SequenceNoteProviderProcessorModel.eventOutputPortId;
+
+  /// Reserved sequence event-list key used for events that are not associated
+  /// with a specific track in the source sequence.
+  ///
+  /// Note that this constant is duplicated in the engine. Search for "NO_TRACK"
+  /// in the repo to find it.
+  static const String noTrackEventListKey = 'NO_TRACK';
 }
 
 abstract class _SequenceNoteProviderProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int eventOutputPortId = 0;
 
-  String nodeId;
+  Id nodeId;
 
-  /// The ID of the channel that this node is providing note events for.
-  String channelId;
+  /// The ID of the track that this node is providing note events for.
+  Id trackId;
 
   _SequenceNoteProviderProcessorModel({
     required this.nodeId,
-    required this.channelId,
+    required this.trackId,
   });
 }

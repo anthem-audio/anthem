@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,32 +17,43 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
-
-import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
-import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/editors/piano_roll/events.dart';
+import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_live_notes.dart';
+import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 part 'shortcuts.dart';
-part 'pointer_events.dart';
+
+const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
+
+enum PianoRollInteractionFamily {
+  selectionBox,
+  erase,
+  moveNotes,
+  resizeNotes,
+  createNote,
+}
+
+enum PianoRollModifierKey { ctrl, alt, shift }
+
+typedef PianoRollMoveNotePreview = ({int key, Time offset});
+typedef PianoRollResizeNotePreview = ({Time length});
 
 class PianoRollController extends _PianoRollController
-    with _PianoRollShortcutsMixin, _PianoRollPointerEventsMixin {
+    with _PianoRollShortcutsMixin
+    implements DisposableService {
   @override
   PianoRollController({required super.project, required super.viewModel}) {
     // Register shortcuts for this editor
@@ -53,38 +64,149 @@ class PianoRollController extends _PianoRollController
 class _PianoRollController {
   final ProjectModel project;
   final PianoRollViewModel viewModel;
+  final PianoRollLiveNotes liveNotes;
+  late final PianoRollStateMachine stateMachine = PianoRollStateMachine.create(
+    project: project,
+    viewModel: viewModel,
+    controller: this as PianoRollController,
+  );
+  bool _isDisposed = false;
 
-  _PianoRollController({required this.project, required this.viewModel});
+  _PianoRollController({required this.project, required this.viewModel})
+    : liveNotes = PianoRollLiveNotes(project);
 
-  NoteModel _addNote({
-    required int key,
-    required double velocity,
-    required int length,
-    required int offset,
-    required double pan,
-  }) {
-    if (project.sequence.activePatternID == null ||
-        project.activeInstrumentID == null) {
-      throw Exception('Active pattern and/or active generator are not set');
+  void dispose() {
+    if (_isDisposed) {
+      return;
     }
 
-    final note = NoteModel(
-      key: key,
-      velocity: velocity,
-      length: length,
-      offset: offset,
-      pan: pan,
-    );
+    _isDisposed = true;
+    stateMachine.data.clearInteractionSession();
+    liveNotes.removeAll();
+    viewModel.selectionBox = null;
+    viewModel.pressedNote = null;
+    clearPreviewState();
+    stateMachine.dispose();
+  }
 
-    project.execute(
-      AddNoteCommand(
-        patternID: project.sequence.activePatternID!,
-        generatorID: project.activeInstrumentID!,
-        note: note,
+  @visibleForTesting
+  PianoRollInteractionFamily? get activeInteractionFamily =>
+      stateMachine.data.activeInteractionFamily;
+
+  ProjectEntityIdAllocator get idAllocator =>
+      ServiceRegistry.forProject(project.id).idAllocator;
+
+  void modifierPressed(PianoRollModifierKey modifier) {
+    stateMachine.modifierPressed(modifier);
+  }
+
+  void modifierReleased(PianoRollModifierKey modifier) {
+    stateMachine.modifierReleased(modifier);
+  }
+
+  void pointerDown(PointerDownEvent event) {
+    stateMachine.onPointerDown(event);
+  }
+
+  void pointerMove(PointerMoveEvent event) {
+    stateMachine.onPointerMove(event);
+  }
+
+  void pointerUp(PointerEvent event) {
+    stateMachine.onPointerUp(event);
+  }
+
+  void onRenderedViewMetricsChanged({
+    required Size viewSize,
+    required double timeViewStart,
+    required double timeViewEnd,
+    required double keyHeight,
+    required double keyValueAtTop,
+  }) {
+    stateMachine.onRenderedViewTransformChanged(
+      viewSize: viewSize,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      keyHeight: keyHeight,
+      keyValueAtTop: keyValueAtTop,
+    );
+  }
+
+  PatternModel? get activePatternOrNull {
+    final patternId = project.sequence.activePatternID;
+    if (patternId == null) {
+      return null;
+    }
+
+    return project.sequence.patterns[patternId];
+  }
+
+  PatternModel requireActivePattern() {
+    final patternId = project.sequence.activePatternID;
+    if (patternId == null) {
+      throw StateError('Active pattern is not set');
+    }
+
+    final pattern = project.sequence.patterns[patternId];
+    if (pattern == null) {
+      throw StateError('Active pattern $patternId was not found');
+    }
+
+    return pattern;
+  }
+
+  /// Clears any in-progress editor preview state for the active pattern.
+  ///
+  /// Pattern-owned preview state is split between committed-note overrides and
+  /// preview-only notes that do not exist in the main pattern note list yet.
+  /// The view model still owns transient interaction metadata like pressed and
+  /// hovered IDs. All of that state must be cleared together whenever an
+  /// interaction ends or is canceled.
+  void clearPreviewState() {
+    final previewNoteIds = activePatternOrNull?.previewNotes.keys.toSet() ?? {};
+    activePatternOrNull?.clearNotePreviews();
+    viewModel.clearTransientPreviewState();
+
+    // Selected preview-only note IDs should only survive if those preview
+    // notes were committed as real notes first. If preview notes are being
+    // cleared outright, drop any now-dangling IDs from the selection.
+    if (previewNoteIds.isNotEmpty) {
+      viewModel.selectedNotes.removeAll(previewNoteIds);
+    }
+  }
+
+  List<DivisionChange> divisionChangesForPatternView({
+    required double viewWidthInPixels,
+  }) {
+    final pattern = requireActivePattern();
+
+    return getDivisionChanges(
+      viewWidthInPixels: viewWidthInPixels,
+      snap: AutoSnap(),
+      defaultTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: pattern.timeSignatureChanges,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      timeViewStart: viewModel.timeView.start,
+      timeViewEnd: viewModel.timeView.end,
+    );
+  }
+
+  int snapTimeInActivePattern({
+    required int rawTime,
+    required double viewWidthInPixels,
+    bool ceil = false,
+    bool round = false,
+    int startTime = 0,
+  }) {
+    return getSnappedTime(
+      rawTime: rawTime,
+      divisionChanges: divisionChangesForPatternView(
+        viewWidthInPixels: viewWidthInPixels,
       ),
+      ceil: ceil,
+      round: round,
+      startTime: startTime,
     );
-
-    return note;
   }
 
   /// Adds a time signature change to the pattern.
@@ -99,22 +221,9 @@ class _PianoRollController {
     var snappedOffset = offset;
 
     if (snap) {
-      final pattern =
-          project.sequence.patterns[project.sequence.activePatternID]!;
-
-      final divisionChanges = getDivisionChanges(
-        viewWidthInPixels: pianoRollWidth,
-        snap: AutoSnap(),
-        defaultTimeSignature: project.sequence.defaultTimeSignature,
-        timeSignatureChanges: pattern.timeSignatureChanges,
-        ticksPerQuarter: project.sequence.ticksPerQuarter,
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-      );
-
-      snappedOffset = getSnappedTime(
+      snappedOffset = snapTimeInActivePattern(
         rawTime: offset.floor(),
-        divisionChanges: divisionChanges,
+        viewWidthInPixels: pianoRollWidth,
         ceil: true,
       );
     }
@@ -122,8 +231,9 @@ class _PianoRollController {
     project.execute(
       AddTimeSignatureChangeCommand(
         timelineKind: TimelineKind.pattern,
-        patternID: project.sequence.activePatternID!,
+        patternID: requireActivePattern().id,
         change: TimeSignatureChangeModel(
+          idAllocator: idAllocator,
           offset: snappedOffset,
           timeSignature: timeSignature,
         ),
@@ -131,37 +241,19 @@ class _PianoRollController {
     );
   }
 
-  /// Records the parameters of this note so the next placed note has the same
-  /// parameters.
-  void setCursorNoteParameters(NoteModel note) {
-    viewModel.cursorNoteLength = note.length;
-    viewModel.cursorNoteVelocity = note.velocity;
-    viewModel.cursorNotePan = note.pan;
-  }
-
   /// Deletes notes in the selectedNotes set from the view model.
   void deleteSelected() {
-    if (viewModel.selectedNotes.isEmpty ||
-        project.sequence.activePatternID == null ||
-        project.activeInstrumentID == null) {
+    final pattern = activePatternOrNull;
+    if (viewModel.selectedNotes.isEmpty || pattern == null) {
       return;
     }
 
-    final commands = project
-        .sequence
-        .patterns[project.sequence.activePatternID]!
-        .notes[project.activeInstrumentID]!
-        .where((note) => viewModel.selectedNotes.contains(note.id))
-        .map((note) {
-          return DeleteNoteCommand(
-            patternID: project.sequence.activePatternID!,
-            generatorID: project.activeInstrumentID!,
-            note: note,
-          );
-        })
-        .toList();
-
-    final command = JournalPageCommand(commands);
+    final command = DeleteNotesCommand(
+      patternID: pattern.id,
+      notes: viewModel.selectedNotes
+          .map((noteId) => pattern.notes[noteId])
+          .nonNulls,
+    );
 
     project.execute(command);
 
@@ -170,32 +262,11 @@ class _PianoRollController {
 
   /// Adds all notes to the selection set in the view model.
   void selectAll() {
-    if (project.sequence.activePatternID == null ||
-        project.activeInstrumentID == null) {
+    final pattern = activePatternOrNull;
+    if (pattern == null) {
       return;
     }
 
-    viewModel.selectedNotes = ObservableSet.of(
-      project
-          .sequence
-          .patterns[project.sequence.activePatternID]!
-          .notes[project.activeInstrumentID]!
-          .map((note) => note.id)
-          .toSet(),
-    );
-  }
-
-  List<NoteModel> _getNotesUnderCursor(
-    List<NoteModel> notes,
-    double key,
-    double offset,
-  ) {
-    final keyFloor = key.floor();
-
-    return notes.where((note) {
-      return offset >= note.offset &&
-          offset < note.offset + note.length &&
-          keyFloor == note.key;
-    }).toList();
+    viewModel.selectedNotes = ObservableSet.of(pattern.notes.keys.toSet());
   }
 }

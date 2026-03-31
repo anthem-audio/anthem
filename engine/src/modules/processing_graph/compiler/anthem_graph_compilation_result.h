@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,7 +27,6 @@
 
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 #include "modules/processing_graph/compiler/anthem_process_context.h"
-#include "modules/sequencer/events/event.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
@@ -86,20 +85,6 @@ public:
       Node
     >
   > graphNodes;
-
-  // This is the allocator for the event buffer. This allocator maintains a huge
-  // buffer of memory that can be used to reallocate node event buffers if they
-  // become saturated, without having to allocate from the OS. This allows the
-  // audio processing code to support effectively unlimited numbers of events
-  // without any real-time safety concerns, except in extreme edge cases.
-  //
-  // This buffer is owned here, and is handed out to the event buffers that need
-  // it. When this class is deallocated, the buffer is deallocated.
-  std::unique_ptr<
-    ArenaBufferAllocator<
-      AnthemLiveEvent
-    >
-  > eventAllocator;
 
   void debugPrint() {
     juce::Logger::writeToLog("AnthemGraphCompilationResult");

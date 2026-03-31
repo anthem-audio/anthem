@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,25 +22,48 @@ import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
 
 const squareSize = 15.0;
-const squareMargin = 1.0;
 const padding = 4.0;
 
-class ColorPicker extends StatefulWidget {
-  final void Function(AnthemColor)? onChange;
+class ColorPicker extends StatelessWidget {
+  final double hue;
+  final AnthemColorPaletteKind palette;
+  final void Function(AnthemColorPickerEvent event)? onChange;
 
-  const ColorPicker({super.key, this.onChange});
+  const ColorPicker({
+    super.key,
+    required this.hue,
+    required this.palette,
+    this.onChange,
+  });
 
-  @override
-  State<ColorPicker> createState() => _ColorPickerState();
-}
-
-class _ColorPickerState extends State<ColorPicker> {
   @override
   Widget build(BuildContext context) {
-    const hueArrayLength = 10;
-    final hues =
-        [0.0] + List.generate(hueArrayLength, (i) => i * 360 / hueArrayLength);
-    final saturations = [0.0] + List.filled(hueArrayLength, 1);
+    const squareMargin = 1.0;
+    const colorCellSize = 18.0;
+
+    final hues = colorPickerHues;
+
+    Widget buildColorCell(double hue, AnthemColorPaletteKind palette) {
+      void onPointerUp(PointerEvent e) {
+        final event = AnthemColorPickerEvent(hue: hue, palette: palette);
+
+        onChange?.call(event);
+      }
+
+      return Listener(
+        onPointerUp: onPointerUp,
+        onPointerCancel: onPointerUp,
+        child: Container(
+          margin: const EdgeInsets.all(squareMargin),
+          decoration: BoxDecoration(
+            color: getColor(hue, palette),
+            border: Border.all(color: AnthemTheme.panel.border),
+          ),
+          width: colorCellSize,
+          height: colorCellSize,
+        ),
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -49,51 +72,38 @@ class _ColorPickerState extends State<ColorPicker> {
         borderRadius: BorderRadius.circular(4),
       ),
       padding: const EdgeInsets.all(padding),
-      height: squareSize * 3 + squareMargin * 6 + padding * 2,
-      child: Row(
-        children: List.generate(hues.length, (colorIndex) {
-          final hue = hues[colorIndex];
-          final saturation = saturations[colorIndex] * 0.53;
-
-          return Expanded(
-            child: Column(
-              children: List.generate(3, (lightnessIndex) {
-                var lightnessModifier = 0.9 + (lightnessIndex - 1) * 0.5;
-                if (lightnessIndex == 0) lightnessModifier += 0.2;
-
-                final saturationModifier =
-                    saturations[colorIndex] + (lightnessIndex - 1) * 0.5 - 0.2;
-
-                void onPointerUp(PointerEvent e) {
-                  widget.onChange?.call(
-                    AnthemColor(
-                      hue: hue,
-                      saturationModifier: saturationModifier,
-                      lightnessModifier: lightnessModifier,
-                    ),
-                  );
-                }
-
-                return Expanded(
-                  child: Listener(
-                    onPointerUp: onPointerUp,
-                    onPointerCancel: onPointerUp,
-                    child: Container(
-                      margin: const EdgeInsets.all(squareMargin),
-                      color: HSLColor.fromAHSL(
-                        1,
-                        hue,
-                        (saturation * saturationModifier).clamp(0, 1),
-                        (0.5 * lightnessModifier).clamp(0, 1),
-                      ).toColor(),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          );
-        }),
+      child: Column(
+        mainAxisSize: .min,
+        crossAxisAlignment: .start,
+        children: [
+          Row(
+            mainAxisSize: .min,
+            children: Iterable.generate(hues.length, (colorIndex) {
+              final hue = hues[colorIndex];
+              return buildColorCell(hue, palette);
+            }).followedBy([buildColorCell(0, .grayscale)]).toList(),
+          ),
+          Row(
+            mainAxisSize: .min,
+            children:
+                <AnthemColorPaletteKind>[
+                  .dark,
+                  .desaturated,
+                  .normal,
+                  .bright,
+                ].map((value) {
+                  return buildColorCell(hue, value);
+                }).toList(),
+          ),
+        ],
       ),
     );
   }
+}
+
+class AnthemColorPickerEvent {
+  final double hue;
+  final AnthemColorPaletteKind palette;
+
+  AnthemColorPickerEvent({required this.hue, required this.palette});
 }

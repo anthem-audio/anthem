@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,11 +20,26 @@
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:flutter/widgets.dart';
 
+/// On hover, displays the given [hint] in the hint panel.
 class Hint extends StatefulWidget {
   final Widget? child;
+
+  /// The hint to be displayed.
+  ///
+  /// Each hint is a pair, consisting of action (e.g. "click") and hint text
+  /// (e.g. "adds a new track"). See [HintSection] for more.
   final List<HintSection> hint;
 
-  const Hint({super.key, this.child, this.hint = const []});
+  /// Controls whether the hint should stay active as long as the mouse was
+  /// pressed on the [Hint] widget and has not yet been released.
+  final bool overrideWhilePressed;
+
+  const Hint({
+    super.key,
+    this.child,
+    this.hint = const [],
+    this.overrideWhilePressed = false,
+  });
 
   @override
   State<Hint> createState() => _HintState();
@@ -32,6 +47,7 @@ class Hint extends StatefulWidget {
 
 class _HintState extends State<Hint> {
   int? hintId;
+  int? overrideHintId;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +68,28 @@ class _HintState extends State<Hint> {
           hintId = null;
         }
       },
-      child: widget.child,
+      child: () {
+        if (!widget.overrideWhilePressed) {
+          return widget.child;
+        }
+
+        return Listener(
+          onPointerDown: (e) {
+            if (overrideHintId != null) {
+              HintStore.instance.removeHint(overrideHintId!);
+            }
+
+            overrideHintId = HintStore.instance.addHint(widget.hint, true);
+          },
+          onPointerUp: (e) {
+            if (overrideHintId == null) return;
+
+            HintStore.instance.removeHint(overrideHintId!);
+            overrideHintId = null;
+          },
+          child: widget.child,
+        );
+      }(),
     );
   }
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,6 +27,7 @@
 #include "modules/command_handlers/model_sync_command_handler.h"
 #include "modules/command_handlers/processing_graph_command_handler.h"
 #include "modules/command_handlers/sequencer_command_handler.h"
+#include "modules/command_handlers/test_command_handler.h"
 #include "modules/command_handlers/visualization_command_handler.h"
 
 void HeartbeatThread::run() {
@@ -72,8 +73,7 @@ void CommandHandler::processNextCommand() {
 
   // Convert the command bytes to a string
   std::string commandStr(static_cast<const char*>(command.getData()), command.getSize());
-
-  // std::cout << "Received command: " << commandStr << std::endl;
+  // juce::Logger::writeToLog("Received command: " + juce::String(commandStr));
 
   auto requestWrapped = rfl::json::read<Request>(commandStr);
 
@@ -118,6 +118,49 @@ void CommandHandler::processNextCommand() {
     );
   }
 
+  else if (rfl::holds_alternative<EngineReadyCheckRequest>(request.variant())) {
+    auto& requestAsReadyCheck = rfl::get<EngineReadyCheckRequest>(request.variant());
+
+    auto readyCheckReply = EngineReadyCheckResponse{
+      .success = true,
+      .error = std::nullopt,
+      .responseBase = ResponseBase {
+        .id = requestAsReadyCheck.requestBase.get().id
+      }
+    };
+
+    response = std::optional(
+      std::move(readyCheckReply)
+    );
+  }
+
+  else if (rfl::holds_alternative<StartAudioRequest>(request.variant())) {
+    auto& requestAsStartAudio = rfl::get<StartAudioRequest>(request.variant());
+
+    juce::Logger::writeToLog("Starting audio callback after model init...");
+    auto audioConfig = Anthem::getInstance().startAudioCallback();
+    juce::Logger::writeToLog("startAudioCallback() returned.");
+
+    auto startAudioReply = StartAudioResponse{
+      .success = audioConfig != nullptr,
+      .error =
+        audioConfig != nullptr
+          ? std::nullopt
+          : std::optional<std::string>("Failed to initialize audio device."),
+      .audioConfig =
+        audioConfig != nullptr
+          ? std::optional(audioConfig)
+          : std::nullopt,
+      .responseBase = ResponseBase{
+        .id = requestAsStartAudio.requestBase.get().id
+      }
+    };
+
+    response = std::optional(
+      std::move(startAudioReply)
+    );
+  }
+
   // Forward request to handlers
 
   bool didOverwriteResponse = false;
@@ -152,6 +195,14 @@ void CommandHandler::processNextCommand() {
       didOverwriteResponse = true;
     }
     response = std::move(handleVisualizationCommandResponse);
+  }
+
+  auto handleTestCommandResponse = handleTestCommand(request);
+  if (handleTestCommandResponse.has_value()) {
+    if (response.has_value()) {
+      didOverwriteResponse = true;
+    }
+    response = std::move(handleTestCommandResponse);
   }
 
   // Warn if multiple handlers gave back a reply. This would indicate that a

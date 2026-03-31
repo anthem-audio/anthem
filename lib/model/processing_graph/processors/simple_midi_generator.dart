@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -34,27 +35,25 @@ part 'simple_midi_generator.g.dart';
 class SimpleMidiGeneratorProcessorModel
     extends _SimpleMidiGeneratorProcessorModel
     with
+        Processor,
         _$SimpleMidiGeneratorProcessorModel,
         _$SimpleMidiGeneratorProcessorModelAnthemModelMixin {
   SimpleMidiGeneratorProcessorModel({required super.nodeId});
 
-  SimpleMidiGeneratorProcessorModel.uninitialized() : super(nodeId: '');
+  SimpleMidiGeneratorProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory SimpleMidiGeneratorProcessorModel.fromJson(
     Map<String, dynamic> json,
   ) => _$SimpleMidiGeneratorProcessorModelAnthemModelMixin.fromJson(json);
 
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
-
-  static NodeModel createNode() {
-    final id = 'simple-midi-generator-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: SimpleMidiGeneratorProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this,
       eventOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
@@ -70,7 +69,7 @@ abstract class _SimpleMidiGeneratorProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const eventOutputPortId = 0;
 
-  String nodeId;
+  Id nodeId;
 
   _SimpleMidiGeneratorProcessorModel({required this.nodeId});
 }

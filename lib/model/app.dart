@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,13 +28,13 @@ class AppModel = _AppModel with _$AppModel;
 
 abstract class _AppModel with Store {
   @observable
-  ObservableMap<Id, ProjectModel> projects;
+  ObservableMap<ProjectId, ProjectModel> projects;
 
   @observable
-  ObservableList<Id> projectOrder;
+  ObservableList<ProjectId> projectOrder;
 
   @observable
-  Id activeProjectId;
+  ProjectId activeProjectId;
 
   _AppModel()
     : projects = ObservableMap.of({}),

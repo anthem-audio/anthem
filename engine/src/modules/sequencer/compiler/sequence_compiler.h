@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@
 
 #include "modules/sequencer/events/event.h"
 
-#include <string>
+#include <cstdint>
 #include <vector>
 #include <optional>
 
@@ -40,42 +40,44 @@
 class AnthemSequenceCompiler {
 friend class SequenceCompilerTest;
 public:
+  using EntityId = int64_t;
+
   // Compiles the given pattern, and adds or replaces its entry in the sequence
   // store.
-  static void compilePattern(std::string patternId);
+  static void compilePattern(EntityId patternId);
 
-  // Compiles the given channels for the given pattern, and replaces them in the
+  // Compiles the given tracks for the given pattern, and replaces them in the
   // sequence store.
   static void compilePattern(
-    std::string patternId,
-    std::vector<std::string>& channelIdsToRebuild,
+    EntityId patternId,
+    std::vector<EntityId>& trackIdsToRebuild,
     std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Compiles the given arrangement, and adds or replaces its entry in the
   // sequence store.
-  static void compileArrangement(std::string arrangementId);
+  static void compileArrangement(EntityId arrangementId);
 
-  // Compiles the given channels for the given arrangement, and replaces them in
+  // Compiles the given tracks for the given arrangement, and replaces them in
   // the sequence store.
   static void compileArrangement(
-    std::string arrangementId,
-    std::vector<std::string>& channelIdsToRebuild,
+    EntityId arrangementId,
+    std::vector<EntityId>& trackIdsToRebuild,
     std::vector<std::tuple<double, double>>& invalidationRanges);
 
-  // Cleans up any sequences related to the given channel ID.
-  static void cleanUpChannel(std::string channelId);
+  // Cleans up any sequences related to the given track ID.
+  static void cleanUpTrack(EntityId trackId);
 
 private:
-  // Gets the note events on a given channel for the given arrangement.
+  // Gets the note events on a given track for the given arrangement.
   //
   // The events will be added to the given `events` vector.
-  static void getChannelNoteEventsForArrangement(
-    std::string channelId,
-    std::string arrangementId,
+  static void getTrackNoteEventsForArrangement(
+    EntityId trackId,
+    EntityId arrangementId,
     std::vector<AnthemSequenceEvent>& events
   );
 
-  // Gets the note events on a given channel for the given pattern.
+  // Gets the note events for the given pattern.
   //
   // The events will be added to the given `events` vector.
   //
@@ -88,11 +90,11 @@ private:
   // offset will be nullopt.
   //
   // The events will not be sorted. In the case of compiling an arrangement, a
-  // given channel may have notes from many clips, so we call this method
+  // given track may have notes from many clips, so we call this method
   // multiple times and sort at the end.
-  static void getChannelNoteEventsForPattern(
-    std::string channelId,
-    std::string patternId,
+  static void getPatternNoteEvents(
+    EntityId patternId,
+    std::optional<EntityId> clipId,
     std::optional<std::tuple<double, double>> range,
     std::optional<double> offset,
     std::vector<AnthemSequenceEvent>& events

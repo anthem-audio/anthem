@@ -280,8 +280,11 @@ public:
   KeyEqual key_eq() const { return data.key_eq(); }
 
   // Additional methods
-  void initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) override {
-    AnthemModelBase::initialize(self, parent);
+  void initialize(
+    std::shared_ptr<AnthemModelBase> selfModel,
+    std::shared_ptr<AnthemModelBase> parentModel
+  ) override {
+    AnthemModelBase::initialize(selfModel, parentModel);
 
     // Initialize all existing items in the map, if this map is holding Anthem
     // models

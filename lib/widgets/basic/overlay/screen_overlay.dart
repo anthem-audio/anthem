@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,35 +17,44 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-/// A `Stack` that is always rendered above the rest of the app.
-/// `ScreenOverlayCubit` provides an API that should be accessible from
-/// anywhere within Anthem, as long as it lives beneath the `ScreenOverlay`.
+/// A [Stack] that is always rendered above the rest of the app.
+/// [ScreenOverlayController] provides an API that should be accessible from
+/// anywhere within Anthem, as long as it lives beneath the [ScreenOverlay].
 ///
 /// Example usage:
 /// ```dart
-/// Provider.of<ScreenOverlayCubit>().add(/* ... */);
+/// Provider.of<ScreenOverlayController>(context, listen: false).show(/* ... */);
 /// ```
-class ScreenOverlay extends StatelessObserverWidget {
+class ScreenOverlay extends StatefulObserverWidget {
   final Widget child;
 
+  const ScreenOverlay({super.key, required this.child});
+
+  @override
+  State<ScreenOverlay> createState() => _ScreenOverlayState();
+}
+
+class _ScreenOverlayState extends State<ScreenOverlay> {
   final ScreenOverlayViewModel viewModel = ScreenOverlayViewModel();
   late final ScreenOverlayController controller;
 
-  ScreenOverlay({super.key, required this.child}) {
+  _ScreenOverlayState() {
     controller = ScreenOverlayController(viewModel: viewModel);
+    ServiceRegistry.screenOverlayController = controller;
   }
 
   @override
   Widget build(BuildContext context) {
     final stackChildren =
         <Widget?>[
-          Positioned.fill(child: child),
+          Positioned.fill(child: widget.child),
           viewModel.entries.isNotEmpty
               ? Positioned.fill(
                   child: Listener(
@@ -60,20 +69,17 @@ class ScreenOverlay extends StatelessObserverWidget {
                 )
               : null,
         ].nonNulls.toList() +
-        // state.entries is a Map<ID, ScreenOverlayEntry>
-        // state.entries.entries is a Iterable<MapEntry<String, ScreenOverlayEntry>>
+        // state.entries is a Map<Id, ScreenOverlayEntry>
         viewModel.entries.entries
-            .map<Widget>(
-              (mapEntry) => mapEntry.value.builder(context, mapEntry.key),
-            )
+            .map<Widget>((mapEntry) => mapEntry.value.builder(context))
             .toList();
 
-    return Provider.value(
-      value: viewModel,
-      child: Provider.value(
-        value: controller,
-        child: Stack(children: stackChildren),
-      ),
+    return MultiProvider(
+      providers: [
+        Provider.value(value: viewModel),
+        Provider.value(value: controller),
+      ],
+      child: Stack(children: stackChildren),
     );
   }
 }

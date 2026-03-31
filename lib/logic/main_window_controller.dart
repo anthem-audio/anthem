@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
@@ -40,22 +40,20 @@ class MainWindowController {
     store.projects[project.id] = project;
     store.projectOrder.add(project.id);
     store.activeProjectId = project.id;
+    ServiceRegistry.initializeProject(project);
   }
 
   // Returns the ID of the new tab
-  Future<Id> newProject() async {
+  Future<ProjectId> newProject() async {
     ProjectModel project = ProjectModel.create();
 
-    await project.engine.engineStateStream.firstWhere(
-      (element) => element == EngineState.running,
-    );
-
     _addProject(project);
+    await project.engine.start();
 
     return project.id;
   }
 
-  void switchTab(Id projectId) {
+  void switchTab(ProjectId projectId) {
     AnthemStore.instance.activeProjectId = projectId;
 
     // Only enable visualizations for the selected project tab
@@ -64,11 +62,18 @@ class MainWindowController {
     }
   }
 
-  void closeProjectWithoutSaving(Id projectId) {
+  void closeProjectWithoutSaving(ProjectId projectId) {
     final store = AnthemStore.instance;
+    final project = store.projects[projectId];
+
+    if (project == null) {
+      return;
+    }
+
+    ServiceRegistry.removeProject(projectId);
 
     // Clean up project resources
-    store.projects[projectId]!.dispose();
+    project.dispose();
 
     // Remove project from model
     store.projects.remove(projectId);
@@ -82,7 +87,7 @@ class MainWindowController {
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled.
-  Future<Id?> loadProject() async {
+  Future<ProjectId?> loadProject() async {
     String? home;
     Map<String, String> envVars = kIsWeb ? {} : Platform.environment;
 
@@ -116,17 +121,20 @@ class MainWindowController {
       file = await File(path).readAsString();
     }
 
-    final project = ProjectModel.fromJson(json.decode(file));
+    final project = ProjectModel.fromJson(
+      json.decode(file) as Map<String, dynamic>,
+    );
     _addProject(project);
 
     project.filePath = path;
     project.isDirty = false;
 
+    await project.engine.start();
     return project.id;
   }
 
   Future<bool> saveProject(
-    Id projectId,
+    ProjectId projectId,
     bool alwaysUseFilePicker, {
     required DialogController dialogController,
   }) async {
@@ -220,11 +228,19 @@ class MainWindowController {
       return true;
     }
   }
+
+  void setCursorOverride(MouseCursor cursor) {
+    ServiceRegistry.mainWindowViewModel.globalCursor = cursor;
+  }
+
+  void clearCursorOverride() {
+    ServiceRegistry.mainWindowViewModel.globalCursor = MouseCursor.defer;
+  }
 }
 
 @immutable
 class TabDef {
-  final Id id;
+  final ProjectId id;
   final String title;
 
   const TabDef({required this.id, required this.title});

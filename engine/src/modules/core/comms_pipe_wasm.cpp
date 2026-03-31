@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -46,13 +46,22 @@ int AnthemPipeWasm::read(void* destBuffer, int maxBytesToRead, bool shouldBlock)
 }
 
 int AnthemPipeWasm::write(const void* sourceBuffer, int numBytesToWrite) {
+  int bytesWritten = 0;
+
   for (int i = 0; i < numBytesToWrite; i++) {
     if (!writeBuffer.tryEnqueue(((const uint8_t*)sourceBuffer)[i])) {
-      return i; // Return number of bytes successfully written
+      break;
     }
+
+    bytesWritten++;
   }
 
-  return numBytesToWrite;
+  if (bytesWritten > 0) {
+    writeBuffer.incrementTicket();
+    writeBuffer.notifyTicketChange();
+  }
+
+  return bytesWritten;
 }
 
 bool AnthemPipeWasm::isConnected() const {

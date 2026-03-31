@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -43,7 +43,6 @@ class _PointMoveActionData {
   Offset startPointerOffset;
   List<({int index, Time startTime})> pointsToMoveInTime;
   int? insertedPointIndex;
-  bool didCreateAutomationLane;
 
   _PointMoveActionData({
     required this.pointIndex,
@@ -52,7 +51,6 @@ class _PointMoveActionData {
     required this.startPointerOffset,
     required this.pointsToMoveInTime,
     required this.insertedPointIndex,
-    required this.didCreateAutomationLane,
   });
 }
 
@@ -93,21 +91,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
     if (pattern == null) return;
 
-    if (project.activeAutomationGeneratorID == null) return;
-
-    var didCreateAutomationLane = false;
-
-    if (event.buttons & kSecondaryButton > 0 &&
-        pattern.automationLanes[project.activeAutomationGeneratorID] == null) {
-      pattern.automationLanes[project.activeAutomationGeneratorID!] =
-          AutomationLaneModel();
-      didCreateAutomationLane = true;
-    }
-
-    final automationLane =
-        pattern.automationLanes[project.activeAutomationGeneratorID];
-
-    if (automationLane == null) return;
+    final automationLane = pattern.automation;
 
     final annotations = viewModel.visiblePoints.hitTestAll(event.pos);
 
@@ -149,10 +133,12 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         }
 
         insertedPointIndex = _findIndexForNewPoint(
-          automationLane,
+          automationLane.points,
           newPointTime,
         );
+        final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
         final point = AutomationPointModel(
+          idAllocator: idAllocator,
           offset: newPointTime,
           value: 1 - (event.pos.dy / event.viewSize.height),
           tension: viewModel.lastInteractedTension ?? 0,
@@ -182,7 +168,6 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
               project.execute(
                 DeleteAutomationPointCommand(
                   patternID: project.sequence.activePatternID!,
-                  automationGeneratorID: project.activeAutomationGeneratorID!,
                   point: automationLane.points[pressed!.metadata.pointIndex],
                   index: pressed.metadata.pointIndex,
                 ),
@@ -219,7 +204,6 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           },
         ),
         insertedPointIndex: insertedPointIndex,
-        didCreateAutomationLane: didCreateAutomationLane,
       );
 
       viewModel.lastInteractedTension = point.tension;
@@ -228,7 +212,6 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
         project.execute(
           SetAutomationPointTensionCommand(
             patternID: project.sequence.activePatternID!,
-            automationGeneratorID: project.activeAutomationGeneratorID!,
             pointIndex: pressed.metadata.pointIndex,
             oldTension: point.tension,
             newTension: 0,
@@ -263,9 +246,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
   void pointerMove(AutomationEditorPointerMoveEvent event) {
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
     if (pattern == null) return;
-    final automationLane =
-        pattern.automationLanes[project.activeAutomationGeneratorID];
-    if (automationLane == null) return;
+    final automationLane = pattern.automation;
 
     if (_eventHandlingState == EventHandlingState.movingPoint) {
       final deltaFromStart =
@@ -354,27 +335,23 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
   void pointerUp() {
     if (project.sequence.activePatternID == null) return;
-    if (project.activeAutomationGeneratorID == null) return;
 
     switch (_eventHandlingState) {
       case EventHandlingState.movingPoint:
         final point = project
             .sequence
             .patterns[project.sequence.activePatternID]!
-            .automationLanes[project.activeAutomationGeneratorID]!
+            .automation
             .points[_pointMoveActionData!.pointIndex];
 
-        project.startJournalPage();
+        project.startUndoGroup();
 
         if (_pointMoveActionData!.insertedPointIndex != null) {
           project.push(
             AddAutomationPointCommand(
               patternID: project.sequence.activePatternID!,
-              automationGeneratorID: project.activeAutomationGeneratorID!,
               point: point,
               index: _pointMoveActionData!.insertedPointIndex!,
-              createAutomationLane:
-                  _pointMoveActionData!.didCreateAutomationLane,
             ),
           );
         }
@@ -383,7 +360,6 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           project.push(
             SetAutomationPointValueCommand(
               patternID: project.sequence.activePatternID!,
-              automationGeneratorID: project.activeAutomationGeneratorID!,
               pointIndex: _pointMoveActionData!.pointIndex,
               oldValue: _pointMoveActionData!.startValue,
               newValue: point.value,
@@ -399,7 +375,6 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
             project.push(
               SetAutomationPointOffsetCommand(
                 patternID: project.sequence.activePatternID!,
-                automationGeneratorID: project.activeAutomationGeneratorID!,
                 pointIndex: _pointMoveActionData!.pointIndex + i,
                 oldOffset: pointToMove.startTime,
                 newOffset: pointToMove.startTime + delta,
@@ -409,24 +384,23 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
           }
         }
 
-        project.commitJournalPage();
+        project.commitUndoGroup();
 
         break;
       case EventHandlingState.changingTension:
         final point = project
             .sequence
             .patterns[project.sequence.activePatternID]!
-            .automationLanes[project.activeAutomationGeneratorID]!
+            .automation
             .points[_tensionChangeActionData!.pointIndex];
 
-        project.startJournalPage();
+        project.startUndoGroup();
 
         final tension = point.tension;
 
         project.push(
           SetAutomationPointTensionCommand(
             patternID: project.sequence.activePatternID!,
-            automationGeneratorID: project.activeAutomationGeneratorID!,
             pointIndex: _tensionChangeActionData!.pointIndex,
             oldTension: _tensionChangeActionData!.startTension,
             newTension: tension,
@@ -435,7 +409,7 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
 
         viewModel.lastInteractedTension = tension;
 
-        project.commitJournalPage();
+        project.commitUndoGroup();
 
         break;
       case EventHandlingState.idle:
@@ -458,15 +432,14 @@ mixin _AutomationEditorPointerEventsMixin on _AutomationEditorController {
     for (final value in viewModel.pointAnimationTracker.values.values) {
       value.target = 1;
     }
+    viewModel.pointAnimationTracker.markNeedsRepaint();
     viewModel.hoveredPointAnnotation = null;
   }
 }
 
 /// Finds the correct index to insert a point at, given the time value for that
 /// point.
-int _findIndexForNewPoint(AutomationLaneModel automationLane, int time) {
-  final points = automationLane.points;
-
+int _findIndexForNewPoint(List<AutomationPointModel> points, int time) {
   for (var i = 0; i < points.length; i++) {
     final point = points[i];
     if (point.offset > time) {

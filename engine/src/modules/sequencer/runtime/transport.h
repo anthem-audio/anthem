@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,29 +27,53 @@
 
 #include "juce_events/juce_events.h"
 
+#include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/util/ring_buffer.h"
 #include "modules/sequencer/events/event.h"
+#include "modules/sequencer/runtime/sequencer_timing.h"
 
 // Represents the playhead jumping to a new location for the current sequence.
 //
-// There is a map included that contains the events that should be played at the
-// new playhead position. For example, if we jump into the middle of a note, we
-// want to start playing that note.
+// The maps included here contain untimed sequencer note-on events that
+// sequence providers should translate into emitted live note IDs on the audio
+// thread.
+struct PlayheadJumpSequenceEvent {
+  AnthemSourceNoteId sequenceNoteId = anthemInvalidSourceNoteId;
+  AnthemEvent event;
+};
+
 class PlayheadJumpEvent {
 private:
   JUCE_LEAK_DETECTOR(PlayheadJumpEvent)
 
 public:
   double newPlayheadPosition = 0.0;
-  std::unordered_map<std::string, std::vector<AnthemLiveEvent>> eventsToPlayAtJump;
+  std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>> eventsToPlayAtJump;
 };
+
+// Builds the untimed note-on payload that sequence providers should emit when
+// the playhead jumps to `playheadPosition`.
+PlayheadJumpEvent buildPlayheadJumpEvent(
+  const SequenceEventListCollection& sequence,
+  std::optional<int64_t> activeTrackId,
+  double playheadPosition
+);
 
 class TransportConfig {
 private:
   JUCE_LEAK_DETECTOR(TransportConfig)
 
 public:
-  std::optional<std::string> activeSequenceId;
+  std::optional<int64_t> activeSequenceId;
+
+  // If the active sequence is a bare pattern, the pattern's events are read
+  // from the special "no track" event list in the sequence store. In that
+  // case, this field determines where those events should be routed.
+  //
+  // This is updated from the UI-selected track and is used by real-time code
+  // (e.g. sequence note providers) as the source of truth when mapping
+  // track-less pattern events to a concrete destination track.
+  std::optional<int64_t> activeTrackId;
   int64_t ticksPerQuarter = 96;
   double beatsPerMinute = 120.0;
   bool isPlaying = false;
@@ -90,9 +114,6 @@ private:
 
   void timerCallback() override;
 
-  void addStartEventsForPattern(
-    std::string patternId, double offset, std::unordered_map<std::string, std::vector<AnthemLiveEvent>>& collector);
-
   PlayheadJumpEvent createPlayheadJumpEvent(double playheadPosition);
 
   void updateLoopPoints(bool send);
@@ -111,6 +132,13 @@ public:
   // The playhead position
   double rt_playhead;
 
+  // Monotonic audio-clock sample counter.
+  //
+  // This advances for every processed sample regardless of playback, seek, or
+  // loop state. It is intended as a deterministic timestamp domain for
+  // real-time visualization and similar engine-side timing consumers.
+  int64_t rt_sampleCounter;
+
   // The current playhead jump event, if one is relevant for the current
   // processing block.
   PlayheadJumpEvent* rt_playheadJumpEvent;
@@ -127,10 +155,15 @@ public:
   // reset after.
   bool rt_playheadJumpOrPauseOccurred = false;
 
+  // This is set for blocks where sequencer-owned notes should be stopped
+  // before any jump-start notes are emitted.
+  bool rt_shouldStopSequenceNotes = false;
+
   Transport();
 
   void setIsPlaying(bool isPlaying);
-  void setActiveSequenceId(std::optional<std::string>& sequenceId);
+  void setActiveSequenceId(std::optional<int64_t>& sequenceId);
+  void setActiveTrackId(std::optional<int64_t>& trackId);
   void setTicksPerQuarter(int64_t ticksPerQuarter);
   void setBeatsPerMinute(double beatsPerMinute);
 
@@ -146,7 +179,8 @@ public:
   void jumpTo(double playheadPosition);
 
   // Pulls loop points from the active sequence and sends the relevant loop
-  // information to the audio thread, including events to play on loop jump.
+  // information to the audio thread, including any loop-start events needed at
+  // the loop boundary.
   void updateLoopPoints() {
     updateLoopPoints(true);
   }
@@ -160,7 +194,11 @@ public:
 
   // Gets the exact number of ticks that the playhead would advance by, given
   // the current buffer size in samples.
-  double rt_getPlayheadAdvanceAmount(int samples);
+  double rt_getPlayheadAdvanceAmount(int samples) const;
+
+  // Returns a snapshot of the timing parameters currently used by the real-time
+  // transport code.
+  sequencer_timing::TimingParams rt_getTimingParams() const;
 
   // Advances the playhead by the given number of samples.
   //
@@ -170,5 +208,5 @@ public:
 
   // Returns the value that the playhead would have after advancing it by the
   // given number of samples.
-  double rt_getPlayheadAfterAdvance(int samples);
+  double rt_getPlayheadAfterAdvance(int samples) const;
 };

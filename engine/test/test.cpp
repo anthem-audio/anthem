@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,13 +21,16 @@
 
 #include "console_logger.h"
 
+#include "modules/core/sequencer_test.h"
+#include "modules/processors/gain_parameter_mapping_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/events/event_test.h"
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"
-#include "modules/sequencer/time_test.h"
-#include "modules/util/arena_allocator_test.h"
+#include "modules/sequencer/runtime/sequencer_timing_test.h"
+#include "modules/sequencer/runtime/transport_test.h"
+#include "modules/processing_graph/processor/anthem_event_buffer_test.h"
 
-int main(int argc, char** argv) {
+int main(int /* argc */, char** /* argv */) {
   juce::Logger::setCurrentLogger(new ConsoleLogger());
 
   juce::UnitTestRunner runner;

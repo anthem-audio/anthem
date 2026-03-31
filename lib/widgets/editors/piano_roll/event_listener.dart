@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,6 @@ import 'dart:math';
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/editors/piano_roll/events.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -29,65 +28,125 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-import '../shared/helpers/time_helpers.dart';
 import '../shared/scroll_manager.dart';
 import 'controller/piano_roll_controller.dart';
-import 'helpers.dart';
 
 class PianoRollEventListener extends StatefulWidget {
   final Widget child;
+  final Size viewSize;
+  final double renderedTimeViewStart;
+  final double renderedTimeViewEnd;
+  final double renderedKeyHeight;
+  final double renderedKeyValueAtTop;
 
-  const PianoRollEventListener({super.key, required this.child});
+  const PianoRollEventListener({
+    super.key,
+    required this.child,
+    required this.viewSize,
+    required this.renderedTimeViewStart,
+    required this.renderedTimeViewEnd,
+    required this.renderedKeyHeight,
+    required this.renderedKeyValueAtTop,
+  });
 
   @override
   State<PianoRollEventListener> createState() => _PianoRollEventListenerState();
 }
 
 class _PianoRollEventListenerState extends State<PianoRollEventListener> {
+  KeyboardModifiers? _keyboardModifiers;
+  PianoRollController? _controller;
+  bool _ctrlPressed = false;
+  bool _altPressed = false;
+  bool _shiftPressed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final nextKeyboardModifiers = Provider.of<KeyboardModifiers>(
+      context,
+      listen: false,
+    );
+    if (!identical(_keyboardModifiers, nextKeyboardModifiers)) {
+      _keyboardModifiers?.removeListener(_handleKeyboardModifiersChanged);
+      _keyboardModifiers = nextKeyboardModifiers
+        ..addListener(_handleKeyboardModifiersChanged);
+    }
+
+    final nextController = Provider.of<PianoRollController>(
+      context,
+      listen: false,
+    );
+    final didControllerChange = !identical(_controller, nextController);
+    _controller = nextController;
+
+    if (didControllerChange) {
+      _ctrlPressed = false;
+      _altPressed = false;
+      _shiftPressed = false;
+    }
+
+    _handleKeyboardModifiersChanged();
+  }
+
+  @override
+  void dispose() {
+    _keyboardModifiers?.removeListener(_handleKeyboardModifiersChanged);
+    super.dispose();
+  }
+
+  void _syncModifier({
+    required PianoRollModifierKey modifier,
+    required bool isPressed,
+    required bool wasPressed,
+  }) {
+    final controller = _controller;
+    if (controller == null || isPressed == wasPressed) {
+      return;
+    }
+
+    if (isPressed) {
+      controller.modifierPressed(modifier);
+    } else {
+      controller.modifierReleased(modifier);
+    }
+  }
+
+  void _handleKeyboardModifiersChanged() {
+    final keyboardModifiers = _keyboardModifiers;
+    if (keyboardModifiers == null) {
+      return;
+    }
+
+    _syncModifier(
+      modifier: PianoRollModifierKey.ctrl,
+      isPressed: keyboardModifiers.ctrl,
+      wasPressed: _ctrlPressed,
+    );
+    _syncModifier(
+      modifier: PianoRollModifierKey.alt,
+      isPressed: keyboardModifiers.alt,
+      wasPressed: _altPressed,
+    );
+    _syncModifier(
+      modifier: PianoRollModifierKey.shift,
+      isPressed: keyboardModifiers.shift,
+      wasPressed: _shiftPressed,
+    );
+
+    _ctrlPressed = keyboardModifiers.ctrl;
+    _altPressed = keyboardModifiers.alt;
+    _shiftPressed = keyboardModifiers.shift;
+  }
+
   void handlePointerDown(BuildContext context, PointerDownEvent e) {
     if (e.buttons & kMiddleMouseButton == kMiddleMouseButton) {
       return;
     }
 
-    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pointerPos = contentRenderBox.globalToLocal(e.position);
-
     final controller = Provider.of<PianoRollController>(context, listen: false);
-
-    final (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor) =
-        viewModel.getContentUnderCursor(e.localPosition);
-
-    final note = pixelsToKeyValue(
-      keyHeight: viewModel.keyHeight,
-      keyValueAtTop: viewModel.keyValueAtTop,
-      pixelOffsetFromTop: pointerPos.dy,
-    );
-
-    final time = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
-      viewPixelWidth: context.size?.width ?? 1,
-      pixelOffsetFromLeft: pointerPos.dx,
-    );
-
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
-    final event = PianoRollPointerDownEvent(
-      key: note,
-      offset: time,
-      pointerEvent: e,
-      pianoRollSize: contentRenderBox.size,
-      noteUnderCursor:
-          noteUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
-      keyboardModifiers: keyboardModifiers,
-      isResize: resizeHandleUnderCursor != null,
-    );
-
-    controller.pointerDown(event);
+    controller.pointerDown(e);
   }
 
   void handlePointerMove(BuildContext context, PointerMoveEvent e) {
@@ -95,65 +154,13 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       return;
     }
 
-    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pointerPos = contentRenderBox.globalToLocal(e.position);
-
     final controller = Provider.of<PianoRollController>(context, listen: false);
-
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
-    final event = PianoRollPointerMoveEvent(
-      key: pixelsToKeyValue(
-        keyHeight: viewModel.keyHeight,
-        keyValueAtTop: viewModel.keyValueAtTop,
-        pixelOffsetFromTop: pointerPos.dy,
-      ),
-      offset: pixelsToTime(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-        viewPixelWidth: context.size?.width ?? 1,
-        pixelOffsetFromLeft: pointerPos.dx,
-      ),
-      pointerEvent: e,
-      pianoRollSize: contentRenderBox.size,
-      keyboardModifiers: keyboardModifiers,
-    );
-
-    controller.pointerMove(event);
+    controller.pointerMove(e);
   }
 
   void handlePointerUp(BuildContext context, PointerEvent e) {
-    final viewModel = Provider.of<PianoRollViewModel>(context, listen: false);
     final controller = Provider.of<PianoRollController>(context, listen: false);
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-    final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pointerPos = contentRenderBox.globalToLocal(e.position);
-
-    final event = PianoRollPointerUpEvent(
-      key: pixelsToKeyValue(
-        keyHeight: viewModel.keyHeight,
-        keyValueAtTop: viewModel.keyValueAtTop,
-        pixelOffsetFromTop: pointerPos.dy,
-      ),
-      offset: pixelsToTime(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
-        viewPixelWidth: context.size?.width ?? 1,
-        pixelOffsetFromLeft: pointerPos.dx,
-      ),
-      pointerEvent: e,
-      pianoRollSize: contentRenderBox.size,
-      keyboardModifiers: keyboardModifiers,
-    );
-
-    controller.pointerUp(event);
+    controller.pointerUp(e);
   }
 
   var _panPointerYStart = double.nan;
@@ -162,23 +169,40 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
+    final controller = Provider.of<PianoRollController>(context);
+    controller.onRenderedViewMetricsChanged(
+      viewSize: widget.viewSize,
+      timeViewStart: widget.renderedTimeViewStart,
+      timeViewEnd: widget.renderedTimeViewEnd,
+      keyHeight: widget.renderedKeyHeight,
+      keyValueAtTop: widget.renderedKeyValueAtTop,
+    );
     return LayoutBuilder(
       builder: (context, boxConstraints) {
         return Observer(
           builder: (context) {
-            return EditorScrollManager(
+            return EditorScrollManager.editor(
               timeView: viewModel.timeView,
-              onVerticalScrollChange: (pixelDelta) {
+              onVerticalScrollChange: (delta) {
                 final keysPerPixel = 1 / viewModel.keyHeight;
-
-                final scrollAmountInKeys = -pixelDelta * 0.5 * keysPerPixel;
-
-                viewModel.keyValueAtTop = clampDouble(
-                  viewModel.keyValueAtTop + scrollAmountInKeys,
+                final scrollAmountInKeys = -delta * 0.5 * keysPerPixel;
+                final previousKeyValueAtTop = viewModel.keyValueAtTop;
+                final nextKeyValueAtTop = clampDouble(
+                  previousKeyValueAtTop + scrollAmountInKeys,
                   minKeyValue +
                       (boxConstraints.maxHeight / viewModel.keyHeight),
                   maxKeyValue,
                 );
+
+                viewModel.keyValueAtTop = nextKeyValueAtTop;
+
+                final appliedScrollAmountInKeys =
+                    nextKeyValueAtTop - previousKeyValueAtTop;
+                if (keysPerPixel == 0) {
+                  return 0;
+                }
+
+                return -appliedScrollAmountInKeys / (0.5 * keysPerPixel);
               },
               onVerticalPanStart: (y) {
                 _panPointerYStart = y;
@@ -189,11 +213,13 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
                 final deltaKeySincePanInit = (deltaY / viewModel.keyHeight);
 
                 viewModel.keyValueAtTop =
-                    (_panKeyAtTopStart + deltaKeySincePanInit).clamp(
-                      minKeyValue +
-                          (boxConstraints.maxHeight / viewModel.keyHeight),
-                      maxKeyValue,
-                    );
+                    (_panKeyAtTopStart + deltaKeySincePanInit)
+                        .clamp(
+                          minKeyValue +
+                              (boxConstraints.maxHeight / viewModel.keyHeight),
+                          maxKeyValue,
+                        )
+                        .toDouble();
               },
               onVerticalZoom: (pointerY, delta) {
                 final viewHeight = boxConstraints.maxHeight;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,9 +18,11 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -33,35 +35,35 @@ part 'vst3_processor.g.dart';
   skipOnWasm: true,
 )
 class VST3ProcessorModel extends _VST3ProcessorModel
-    with _$VST3ProcessorModel, _$VST3ProcessorModelAnthemModelMixin {
+    with Processor, _$VST3ProcessorModel, _$VST3ProcessorModelAnthemModelMixin {
   VST3ProcessorModel({required super.nodeId, required super.vst3Path});
 
-  VST3ProcessorModel.uninitialized() : super(nodeId: '', vst3Path: '');
+  VST3ProcessorModel.create({
+    required ProjectEntityIdAllocator idAllocator,
+    required super.vst3Path,
+  }) : super(nodeId: idAllocator.allocateId());
+
+  VST3ProcessorModel.uninitialized() : super(nodeId: -1, vst3Path: '');
 
   factory VST3ProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$VST3ProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
-
-  /// Creates a node for this processor.
-  static NodeModel createNode(String vst3Path) {
-    final id = 'vst3-processor-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
       isThirdPartyPlugin: true,
-      id: id,
-      processor: VST3ProcessorModel(nodeId: id, vst3Path: vst3Path),
+      id: nodeId,
+      processor: this,
       eventInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventInputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
       ]),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: audioOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
@@ -80,7 +82,7 @@ abstract class _VST3ProcessorModel
   static const int eventInputPortId = 1;
 
   @anthemObservable
-  String nodeId;
+  Id nodeId;
 
   @anthemObservable
   String vst3Path;

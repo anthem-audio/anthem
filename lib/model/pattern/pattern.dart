@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,22 +19,18 @@
 
 import 'dart:async';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/main.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
-import 'package:anthem/model/generator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
-import 'package:anthem/model/sequence.dart';
+import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
-import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
 import 'package:anthem_codegen/include.dart';
-import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
@@ -43,16 +39,57 @@ import 'note.dart';
 
 part 'pattern.g.dart';
 
-part 'package:anthem/widgets/basic/clip/clip_title_render_cache_mixin.dart';
 part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
 part 'pattern_compiler_mixin.dart';
 
+/// The primary container for events.
+///
+/// From a user-facing perspective, events in the arranger live inside clips.
+/// But from an implementation perspective, clips are always just windows into
+/// something else. This model, which we call a "pattern", is that "something
+/// else". The pattern is the container that actually holds events for clips.
+/// When you double-click on a clip with notes, for example, the piano roll
+/// opens with a view directly into the pattern.
+///
+/// The purpose for this separation is two-fold:
+///
+/// First, clips provide the offset of this content in the viewer, and indicate
+/// which track the content lives on. They also provide start and end points for
+/// the content, allowing non-destructive resizing of the clip (e.g. chopping
+/// audio as a use-case) without affecting the underlying content. This makes
+/// clips an arranger-first concept. Patterns are the underlying content, and
+/// are modified by editors that (mostly) do not care where or how that
+/// container is instanced in the arranger.
+///
+/// Second, patterns and clips may be one-to-many. For each pattern, multiple
+/// clips may exist in the arrangement. This allows for a number of powerful
+/// use-cases, including:
+/// - Content that loops can exist as multiple clips of a pattern with that
+///   content, so that editing the pattern affects all instances of the clip
+/// - The same notes can be placed on multiple tracks, where again, editing the
+///   base content affects both clips
+/// - Audio content can be sequenced in a pattern, and then instanced on
+///   multiple tracks
+///
+/// Patterns can contain any of the following:
+/// - Note events
+/// - Audio events
+/// - Automation events
+/// - References to other clips
+/// - For patterns on group tracks, references to clips on specific tracks
+///
+/// Note that free clips can technically contain any content as far as the
+/// engine is concerned, but we only use this feature for enabling the audio
+/// detail editor's functionality. This is important because UI render
+/// optimization is a challenge, so we don't make an attempt to render for cases
+/// we do not support. As an example, for a clip that points to a given pattern,
+/// we only render notes that are in the notes list below, not notes that are in
+/// the free clips list.
 @AnthemModel.syncedModel()
 class PatternModel extends _PatternModel
     with
         _$PatternModel,
         _$PatternModelAnthemModelMixin,
-        _ClipTitleRenderCacheMixin,
         _ClipNotesRenderCacheMixin,
         _PatternCompilerMixin {
   /// Action to tell the engine to send new loop points to the audio thread.
@@ -66,20 +103,20 @@ class PatternModel extends _PatternModel
     project.engine.sequencerApi.updateLoopPoints(id);
   });
 
-  PatternModel() : super();
+  /// Constructs a blank and invalid pattern.
+  ///
+  /// Used for serialization and deserialization.
+  PatternModel.uninitialized() : super();
 
-  PatternModel.create({required super.name}) : super.create() {
+  /// Creates a [PatternModel].
+  ///
+  /// This is the primary entry point when creating a new pattern in the
+  /// software.
+  PatternModel({
+    required ProjectEntityIdAllocator idAllocator,
+    required super.name,
+  }) : super.create(id: idAllocator.allocateId()) {
     _init();
-
-    onModelFirstAttached(() {
-      // I had a todo comment to remove this, but I have no idea why, so I'm
-      // leaving this comment instead. ¯\_(ツ)_/¯
-      for (final generator in project.generators.values.where(
-        (generator) => generator.generatorType == GeneratorType.automation,
-      )) {
-        automationLanes[generator.id] = AutomationLaneModel();
-      }
-    });
   }
 
   factory PatternModel.fromJson(Map<String, dynamic> json) {
@@ -96,32 +133,29 @@ class PatternModel extends _PatternModel
       });
 
       // Initialize render caches
-      updateClipTitleCache();
       updateClipNotesRenderCache();
 
       _clipAutoWidthUpdateAction.execute();
 
       // Make sure the engine knows about this sequence when it is created, in
       // case it is created from project load or undo/redo
-      _channelsToCompile.addAll(channelsWithContent);
-      _schedulePatternCompile(false);
+      _compileInEngine();
 
       // When notes are changed in the pattern, we need to:
       //   1. Update the clip notes render cache.
       //   2. Tell the engine to re-compile all relevant sequences.
 
       // Notes added or removed
-      onChange((b) => b.notes.anyValue.anyElement, (e) {
+      onChange((b) => b.notes.anyValue, (e) {
         _recompileOnNotesAddedOrRemoved(
-          e.fieldAccessors[1].key as String,
           e.operation.oldValue as NoteModel?,
           e.operation.newValue as NoteModel?,
         );
       });
 
       // Note attributes changed
-      onChange((b) => b.notes.anyValue.anyElement.anyField, (e) {
-        _recompileOnNoteFieldChanged(e.fieldAccessors, e.operation);
+      onChange((b) => b.notes.anyValue.anyField, (e) {
+        _recompileOnNoteFieldChanged(e);
       });
 
       // When notes change, we also need to update the clip notes render cache
@@ -131,14 +165,31 @@ class PatternModel extends _PatternModel
         _clipAutoWidthUpdateAction.execute();
       });
 
-      onChange((b) => b.automationLanes.withDescendants, (e) {
+      // Preview note overrides are Dart-only changes that should still refresh
+      // local rendering and width calculations throughout the UI.
+      onChange((b) => b.noteOverrides.withDescendants, (e) {
+        scheduleClipNotesRenderCacheUpdate();
+        _clipAutoWidthUpdateAction.execute();
+      });
+
+      // Preview-only notes use the same local refresh path as overrides.
+      //
+      // These notes are not committed to the main pattern note list yet, but
+      // they still need to appear everywhere that asks for the pattern's
+      // effective note content.
+      onChange((b) => b.previewNotes.withDescendants, (e) {
+        scheduleClipNotesRenderCacheUpdate();
+        _clipAutoWidthUpdateAction.execute();
+      });
+
+      onChange((b) => b.automation.withDescendants, (e) {
         _clipAutoWidthUpdateAction.execute();
       });
 
       // When the pattern title is changed, we need to update the clip title
       // render cache.
       onChange((b) => b.name, (e) {
-        updateClipTitleCache();
+        invalidateClipTitleAtlasEntry();
       });
 
       // After updating loop points in the model, we inform the engine.
@@ -152,13 +203,12 @@ class PatternModel extends _PatternModel
     });
   }
 
-  Iterable<String> get channelsWithContent =>
-      notes.keys.followedBy(automationLanes.keys);
+  Iterable<Id> get channelsWithContent => project.tracks.keys;
 }
 
 abstract class _PatternModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  Id id = getId();
+  Id id;
 
   @anthemObservable
   String name = '';
@@ -166,15 +216,29 @@ abstract class _PatternModel
   @anthemObservable
   AnthemColor color = AnthemColor(hue: 0);
 
-  /// The ID here is channel ID `Map<ChannelID, List<NoteModel>>`
   @anthemObservable
-  AnthemObservableMap<Id, AnthemObservableList<NoteModel>> notes =
+  AnthemObservableMap<Id, NoteModel> notes = AnthemObservableMap();
+
+  /// Live preview overrides for notes in this pattern.
+  ///
+  /// This is used for editor interactions that defer their real model write
+  /// until the end of the gesture.
+  ///
+  /// Use [resolveNote] below in favor of direct access where possible.
+  @anthemObservable
+  @hideButAllowOnChange
+  AnthemObservableMap<Id, PatternNoteOverrideModel> noteOverrides =
       AnthemObservableMap();
 
-  /// The ID here is channel ID
+  /// Candidate notes that do not exist in [notes] yet, but are being added by
+  /// the user as part of an in-progress action, such as clicking and dragging
+  /// to add a note.
   @anthemObservable
-  AnthemObservableMap<Id, AutomationLaneModel> automationLanes =
-      AnthemObservableMap();
+  @hideButAllowOnChange
+  AnthemObservableMap<Id, NoteModel> previewNotes = AnthemObservableMap();
+
+  @anthemObservable
+  AutomationLaneModel automation = AutomationLaneModel();
 
   @anthemObservable
   AnthemObservableList<TimeSignatureChangeModel> timeSignatureChanges =
@@ -184,12 +248,188 @@ abstract class _PatternModel
   @hideFromSerialization
   LoopPointsModel? loopPoints;
 
-  /// For deserialization. Use `PatternModel.create()` instead.
-  _PatternModel();
+  /// For deserialization. Use `PatternModel()` instead.
+  _PatternModel() : id = -1;
 
-  _PatternModel.create({required this.name}) {
-    color = AnthemColor(hue: 0, lightnessModifier: 2, saturationModifier: 0);
+  _PatternModel.create({required this.id, required this.name}) {
+    color = AnthemColor.randomHue();
     timeSignatureChanges = AnthemObservableList();
+  }
+
+  /// Returns the effective values for [note], including any active preview
+  /// override for that note ID.
+  ResolvedPatternNote resolveNote(
+    NoteModel note, {
+    bool isPreviewOnly = false,
+  }) {
+    final noteOverride = noteOverrides[note.id];
+
+    return ResolvedPatternNote(
+      id: note.id,
+      key: noteOverride?.key ?? note.key,
+      velocity: noteOverride?.velocity ?? note.velocity,
+      length: noteOverride?.length ?? note.length,
+      offset: noteOverride?.offset ?? note.offset,
+      pan: noteOverride?.pan ?? note.pan,
+      hasOverride: noteOverride?.hasAnyValue ?? false,
+      isPreviewOnly: isPreviewOnly,
+    );
+  }
+
+  /// Returns the effective values for the note with [noteId], or null if the
+  /// note does not exist in either preview or committed state.
+  ResolvedPatternNote? resolveNoteById(Id noteId) {
+    final note = notes[noteId];
+    if (note != null) {
+      return resolveNote(note);
+    }
+
+    final previewNote = previewNotes[noteId];
+    if (previewNote != null) {
+      return resolveNote(previewNote, isPreviewOnly: true);
+    }
+
+    return null;
+  }
+
+  /// Returns the preview-only note with [noteId], if it exists.
+  NoteModel? getPreviewNoteById(Id noteId) {
+    return previewNotes[noteId];
+  }
+
+  /// Iterates the effective note content for this pattern.
+  ///
+  /// Committed notes are yielded first in stored order, with preview overrides
+  /// applied. Preview-only notes are then appended after. This allows a
+  /// renderer to just draw in the order they are received.
+  Iterable<ResolvedPatternNote> getResolvedNotes() sync* {
+    for (final note in notes.values) {
+      yield resolveNote(note);
+    }
+
+    for (final note in previewNotes.values) {
+      yield resolveNote(note, isPreviewOnly: true);
+    }
+  }
+
+  /// Merges preview override values into the existing override for [noteId].
+  ///
+  /// Unspecified fields keep their current preview values. This allows
+  /// separate interactions to layer preview changes across different note
+  /// attributes without re-reading call-site state.
+  void setNoteOverride({
+    required Id noteId,
+    int? key,
+    double? velocity,
+    int? length,
+    int? offset,
+    double? pan,
+  }) {
+    final existingOverride = noteOverrides[noteId];
+
+    final noteOverride = PatternNoteOverrideModel(
+      key: key ?? existingOverride?.key,
+      velocity: velocity ?? existingOverride?.velocity,
+      length: length ?? existingOverride?.length,
+      offset: offset ?? existingOverride?.offset,
+      pan: pan ?? existingOverride?.pan,
+    );
+
+    if (!noteOverride.hasAnyValue) {
+      noteOverrides.remove(noteId);
+      return;
+    }
+
+    noteOverrides[noteId] = noteOverride;
+  }
+
+  /// Adds a preview-only note that is not yet committed to [notes].
+  void addPreviewNote(NoteModel note) {
+    previewNotes[note.id] = note;
+  }
+
+  /// Updates a preview-only note in place.
+  void updatePreviewNote({
+    required Id noteId,
+    int? key,
+    double? velocity,
+    int? length,
+    int? offset,
+    double? pan,
+  }) {
+    final previewNote = getPreviewNoteById(noteId);
+    if (previewNote == null) {
+      throw StateError('Preview note $noteId was not found.');
+    }
+
+    if (key != null) {
+      previewNote.key = key;
+    }
+
+    if (velocity != null) {
+      previewNote.velocity = velocity;
+    }
+
+    if (length != null) {
+      previewNote.length = length;
+    }
+
+    if (offset != null) {
+      previewNote.offset = offset;
+    }
+
+    if (pan != null) {
+      previewNote.pan = pan;
+    }
+  }
+
+  /// Updates the effective preview state for [noteId].
+  void setResolvedNotePreview({
+    required Id noteId,
+    int? key,
+    double? velocity,
+    int? length,
+    int? offset,
+    double? pan,
+  }) {
+    final previewNote = getPreviewNoteById(noteId);
+    if (previewNote != null) {
+      updatePreviewNote(
+        noteId: noteId,
+        key: key,
+        velocity: velocity,
+        length: length,
+        offset: offset,
+        pan: pan,
+      );
+      return;
+    }
+
+    setNoteOverride(
+      noteId: noteId,
+      key: key,
+      velocity: velocity,
+      length: length,
+      offset: offset,
+      pan: pan,
+    );
+  }
+
+  void clearNoteOverrides() {
+    noteOverrides.clear();
+  }
+
+  void clearPreviewNotes() {
+    previewNotes.clear();
+  }
+
+  void removePreviewNoteById(Id noteId) {
+    previewNotes.remove(noteId);
+  }
+
+  void clearNotePreviews() {
+    noteOverrides.clear();
+    previewNotes.clear();
   }
 
   /// Gets the time position of the end of the last item in this pattern
@@ -208,18 +448,14 @@ abstract class _PatternModel
     // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
     assert(ticksPerBarDouble == ticksPerBar);
 
-    final lastNoteContent = notes.values
-        .expand((e) => e)
-        .fold<int>(
-          ticksPerBar * barMultiple * minPaddingInBarMultiples,
-          (previousValue, note) =>
-              max(previousValue, (note.offset + note.length)),
-        );
-
-    final lastAutomationContent = automationLanes.values.fold<int>(
+    final lastNoteContent = getResolvedNotes().fold<int>(
       ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, automationLane) =>
-          max(previousValue, automationLane.points.lastOrNull?.offset ?? 0),
+      (previousValue, note) => max(previousValue, note.offset + note.length),
+    );
+
+    final lastAutomationContent = max(
+      ticksPerBar * barMultiple * minPaddingInBarMultiples,
+      automation.points.lastOrNull?.offset ?? 0,
     );
 
     final lastContent = max(lastNoteContent, lastAutomationContent);
@@ -235,12 +471,20 @@ abstract class _PatternModel
     // prevent detailed observation and just observe the whole thing.
 
     notes.observeAllChanges();
-    automationLanes.observeAllChanges();
+    noteOverrides.observeAllChanges();
+    previewNotes.observeAllChanges();
+    automation.observeAllChanges();
 
     return blockObservation(
-      modelItems: [notes, automationLanes],
+      modelItems: [notes, noteOverrides, previewNotes, automation],
       block: () => getWidth(barMultiple: 4, minPaddingInBarMultiples: 4),
     );
+  }
+
+  @hide
+  void invalidateClipTitleAtlasEntry() {
+    final sequence = getFirstAncestorOfType<SequencerModel>();
+    sequence.invalidateClipTitleAtlasEntryForPattern(id);
   }
 
   /// The width that a clip will take on if it has no time view.

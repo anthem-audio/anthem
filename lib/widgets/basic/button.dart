@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,9 @@
 import 'dart:math';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:vector_math/vector_math_64.dart';
+import 'package:provider/provider.dart';
 
 import 'package:flutter/widgets.dart';
 
@@ -28,20 +30,20 @@ import 'icon.dart';
 
 enum ButtonVariant { main, label, ghost }
 
-class _ButtonColors {
+class ButtonThemeColors {
   final Color idle;
   final Color hover;
   final Color press;
   final Color toggleActive;
 
-  const _ButtonColors({
+  const ButtonThemeColors({
     required this.idle,
     required this.hover,
     required this.press,
     required this.toggleActive,
   });
 
-  const _ButtonColors.all(Color color)
+  const ButtonThemeColors.all(Color color)
     : this(idle: color, hover: color, press: color, toggleActive: color);
 
   Color getColor(bool hovered, bool pressed, bool toggled) {
@@ -52,68 +54,40 @@ class _ButtonColors {
   }
 }
 
-class _ButtonGradientColors {
-  final (Color, Color) idle;
-  final (Color, Color) hover;
-  final (Color, Color) press;
-  final (Color, Color) active;
+class ButtonTheme {
+  final ButtonThemeColors background;
+  final ButtonThemeColors border;
+  final ButtonThemeColors content;
 
-  const _ButtonGradientColors({
-    required this.idle,
-    required this.hover,
-    required this.press,
-    required this.active,
-  });
-
-  _ButtonGradientColors.all((Color, Color) colors)
-    : idle = colors,
-      hover = colors,
-      press = colors,
-      active = colors;
-
-  (Color, Color) getColor(bool hovered, bool pressed, bool toggled) {
-    if (toggled) return active;
-    if (pressed) return press;
-    if (hovered) return hover;
-    return idle;
-  }
-}
-
-class _ButtonTheme {
-  final _ButtonGradientColors background;
-  final _ButtonColors border;
-  final _ButtonColors content;
-
-  const _ButtonTheme({
+  const ButtonTheme({
     required this.background,
     required this.border,
     required this.content,
   });
 }
 
-final _textColors = _ButtonColors(
+final _textColors = ButtonThemeColors(
   idle: Color(0xFFCFCFCF),
   hover: Color(0xFFEFEFEF),
   press: Color(0xFFAFAFAF),
   toggleActive: AnthemTheme.primary.main,
 );
 
-final _mainTheme = _ButtonTheme(
-  background: const _ButtonGradientColors(
-    idle: (Color(0xFF5F5F5F), Color(0xFF585858)),
-    hover: (Color(0xFF686868), Color(0xFF585858)),
-    press: (Color(0xFF4E4E4E), Color(0xFF585858)),
-    active: (Color(0xFF4E4E4E), Color(0xFF585858)),
+@visibleForTesting
+final buttonMainTheme = ButtonTheme(
+  background: const ButtonThemeColors(
+    idle: Color(0xFF5E5E5E),
+    hover: Color(0xFF686868),
+    press: Color(0xFF4E4E4E),
+    toggleActive: Color(0xFF3B3B3B),
   ),
-  border: const _ButtonColors.all(Color(0xFF2F2F2F)),
+  border: const ButtonThemeColors.all(Color(0xFF2F2F2F)),
   content: _textColors,
 );
-final _labelTheme = _ButtonTheme(
-  background: _ButtonGradientColors.all(const (
-    Color(0x00000000),
-    Color(0x00000000),
-  )),
-  border: _ButtonColors(
+@visibleForTesting
+final buttonLabelTheme = ButtonTheme(
+  background: ButtonThemeColors.all(const Color(0x00000000)),
+  border: ButtonThemeColors(
     idle: const Color(0x00000000),
     hover: const Color(0xFF2F2F2F),
     press: const Color(0xFF2F2F2F),
@@ -121,16 +95,29 @@ final _labelTheme = _ButtonTheme(
   ),
   content: _textColors,
 );
-final _ghostTheme = _ButtonTheme(
-  background: const _ButtonGradientColors(
-    idle: (Color(0x00000000), Color(0x00000000)),
-    hover: (Color(0xFF464646), Color(0xFF464646)),
-    press: (Color(0xFF464646), Color(0xFF464646)),
-    active: (Color(0xFF464646), Color(0xFF464646)),
+@visibleForTesting
+final buttonGhostTheme = ButtonTheme(
+  background: const ButtonThemeColors(
+    idle: Color(0x00000000),
+    hover: Color(0xFF464646),
+    press: Color(0xFF464646),
+    toggleActive: Color(0xFF464646),
   ),
-  border: _ButtonColors.all(const Color(0xFF2F2F2F)),
+  border: ButtonThemeColors.all(const Color(0xFF2F2F2F)),
   content: _textColors,
 );
+
+@visibleForTesting
+ButtonTheme getButtonTheme(ButtonVariant variant) {
+  switch (variant) {
+    case ButtonVariant.main:
+      return buttonMainTheme;
+    case ButtonVariant.label:
+      return buttonLabelTheme;
+    case ButtonVariant.ghost:
+      return buttonGhostTheme;
+  }
+}
 
 class Button extends StatefulWidget {
   final ButtonVariant? variant;
@@ -147,17 +134,21 @@ class Button extends StatefulWidget {
   final EdgeInsets contentPadding;
 
   final bool? showMenuIndicator;
-  final (Color, Color)? backgroundGradient;
-  final (Color, Color)? backgroundHoverGradient;
-  final (Color, Color)? backgroundPressGradient;
-  final (Color, Color)? backgroundToggleActiveGradient;
+  final Color? background;
+  final Color? backgroundHover;
+  final Color? backgroundPress;
+  final Color? backgroundToggleActive;
   final bool? hideBorder;
   final BorderRadius? borderRadius;
 
-  final Function? onPress;
+  final void Function()? onPress;
+  final void Function()? onRightClick;
   final bool? toggleState;
+  final bool consumePress;
 
   final List<HintSection>? hint;
+  @visibleForTesting
+  final HintStore? hintStoreOverride;
 
   const Button({
     super.key,
@@ -170,15 +161,18 @@ class Button extends StatefulWidget {
     this.expand,
     this.contentPadding = const EdgeInsets.only(left: 3, right: 3),
     this.showMenuIndicator,
-    this.backgroundGradient,
-    this.backgroundHoverGradient,
-    this.backgroundPressGradient,
-    this.backgroundToggleActiveGradient,
+    this.background,
+    this.backgroundHover,
+    this.backgroundPress,
+    this.backgroundToggleActive,
     this.hideBorder,
     this.borderRadius,
     this.onPress,
+    this.onRightClick,
     this.toggleState,
+    this.consumePress = false,
     this.hint,
+    this.hintStoreOverride,
   });
 
   @override
@@ -191,18 +185,29 @@ class _ButtonState extends State<Button> {
 
   int? hintId;
 
+  HintStore get _hintStore => widget.hintStoreOverride ?? HintStore.instance;
+
   _ButtonState();
+
+  @override
+  void dispose() {
+    if (hintId != null) {
+      _hintStore.removeHint(hintId!);
+    }
+
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(Button oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (hovered && oldWidget.hint != widget.hint) {
       if (hintId != null) {
-        HintStore.instance.removeHint(hintId!);
+        _hintStore.removeHint(hintId!);
       }
 
       if (widget.hint != null) {
-        hintId = HintStore.instance.addHint(widget.hint!);
+        hintId = _hintStore.addHint(widget.hint!);
       } else {
         hintId = null;
       }
@@ -211,47 +216,28 @@ class _ButtonState extends State<Button> {
 
   @override
   Widget build(BuildContext context) {
-    _ButtonTheme theme;
-
+    final groupStyle = context.watch<ButtonGroupChildStyle?>();
     final variant = widget.variant ?? ButtonVariant.main;
-
-    switch (variant) {
-      case ButtonVariant.main:
-        theme = _mainTheme;
-        break;
-      case ButtonVariant.label:
-        theme = _labelTheme;
-        break;
-      case ButtonVariant.ghost:
-        theme = _ghostTheme;
-        break;
-    }
+    final theme = getButtonTheme(variant);
 
     final toggled = (widget.toggleState ?? false);
 
-    var backgroundGradient = theme.background.getColor(
-      hovered,
-      pressed,
-      toggled,
-    );
+    var background = theme.background.getColor(hovered, pressed, toggled);
 
-    if (!hovered && !pressed && !toggled && widget.backgroundGradient != null) {
-      backgroundGradient = widget.backgroundGradient!;
+    if (!hovered && !pressed && !toggled && widget.background != null) {
+      background = widget.background!;
     }
 
-    if (hovered &&
-        !pressed &&
-        !toggled &&
-        widget.backgroundHoverGradient != null) {
-      backgroundGradient = widget.backgroundHoverGradient!;
+    if (hovered && !pressed && !toggled && widget.backgroundHover != null) {
+      background = widget.backgroundHover!;
     }
 
-    if (pressed && !toggled && widget.backgroundPressGradient != null) {
-      backgroundGradient = widget.backgroundPressGradient!;
+    if (pressed && !toggled && widget.backgroundPress != null) {
+      background = widget.backgroundPress!;
     }
 
-    if (toggled && widget.backgroundToggleActiveGradient != null) {
-      backgroundGradient = widget.backgroundToggleActiveGradient!;
+    if (toggled && widget.backgroundToggleActive != null) {
+      background = widget.backgroundToggleActive!;
     }
 
     final contentColor = theme.content.getColor(hovered, pressed, toggled);
@@ -297,6 +283,12 @@ class _ButtonState extends State<Button> {
       );
     }
 
+    final effectiveHideBorder = widget.hideBorder ?? groupStyle?.hideBorder;
+    final effectiveBorderRadius =
+        widget.borderRadius ??
+        groupStyle?.borderRadius ??
+        BorderRadius.circular(4);
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (e) {
@@ -305,7 +297,7 @@ class _ButtonState extends State<Button> {
           hovered = true;
         });
         if (widget.hint != null) {
-          hintId = HintStore.instance.addHint(widget.hint!);
+          hintId = _hintStore.addHint(widget.hint!);
         }
       },
       onExit: (e) {
@@ -314,60 +306,60 @@ class _ButtonState extends State<Button> {
           hovered = false;
         });
         if (widget.hint != null && hintId != null) {
-          HintStore.instance.removeHint(hintId!);
+          _hintStore.removeHint(hintId!);
         }
       },
-      child: Listener(
-        onPointerDown: _onPointerDown,
-        onPointerUp: _onPointerUp,
-        onPointerCancel: (e) => _onPointerUp(e, true),
-        child: Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(3),
-            border: widget.hideBorder == true
-                ? null
-                : Border.all(
-                    color: theme.border.getColor(hovered, pressed, toggled),
-                  ),
-            gradient: LinearGradient(
-              colors: [backgroundGradient.$1, backgroundGradient.$2],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+      child: GestureDetector(
+        behavior: widget.consumePress ? .opaque : null,
+        onTap: widget.onPress ?? (widget.consumePress ? () {} : null),
+        onSecondaryTapUp: (widget.onRightClick != null || widget.consumePress)
+            ? (e) {
+                widget.onRightClick?.call();
+              }
+            : null,
+        child: Listener(
+          onPointerDown: (e) {
+            if (!mounted) return;
+            setState(() {
+              pressed = true;
+            });
+          },
+          onPointerUp: (e) {
+            if (!mounted) return;
+            setState(() {
+              pressed = false;
+            });
+          },
+          onPointerCancel: (e) {
+            if (!mounted) return;
+            setState(() {
+              pressed = false;
+            });
+          },
+          child: Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              borderRadius: effectiveBorderRadius,
+              border: effectiveHideBorder == true
+                  ? null
+                  : Border.all(
+                      color: theme.border.getColor(hovered, pressed, toggled),
+                    ),
+              color: background,
             ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(1),
-            child: Stack(
-              fit: widget.expand != null
-                  ? StackFit.expand
-                  : StackFit.passthrough,
-              children: stackChildren,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(1),
+              child: Stack(
+                fit: widget.expand != null
+                    ? StackFit.expand
+                    : StackFit.passthrough,
+                children: stackChildren,
+              ),
             ),
           ),
         ),
       ),
     );
-  }
-
-  void _onPointerDown(PointerEvent e) {
-    if (!mounted) return;
-
-    setState(() {
-      pressed = true;
-    });
-  }
-
-  void _onPointerUp(PointerEvent e, [bool cancelled = false]) {
-    if (!mounted) return;
-
-    setState(() {
-      pressed = false;
-    });
-
-    if (hovered && !cancelled) {
-      widget.onPress?.call();
-    }
   }
 }

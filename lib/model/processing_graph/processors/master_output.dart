@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,9 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -37,20 +40,22 @@ part 'master_output.g.dart';
 )
 class MasterOutputProcessorModel extends _MasterOutputProcessorModel
     with
+        Processor,
         _$MasterOutputProcessorModel,
         _$MasterOutputProcessorModelAnthemModelMixin {
-  MasterOutputProcessorModel.uninitialized() : super(nodeId: '');
+  MasterOutputProcessorModel.uninitialized() : super(nodeId: -1);
 
   MasterOutputProcessorModel({required super.nodeId});
+
+  MasterOutputProcessorModel.create({
+    required ProjectEntityIdAllocator idAllocator,
+  }) : super(nodeId: idAllocator.allocateId());
 
   factory MasterOutputProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$MasterOutputProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
-
-  /// Creates a node for this processor.
-  static NodeModel createNode(String nodeId) {
+  @override
+  NodeModel createNode() {
     return NodeModel(
       id: nodeId,
       processor: MasterOutputProcessorModel(nodeId: nodeId),
@@ -69,7 +74,7 @@ abstract class _MasterOutputProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int inputPortId = 0;
 
-  late String nodeId;
+  late Id nodeId;
 
   _MasterOutputProcessorModel({required this.nodeId});
 }

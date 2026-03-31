@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -28,19 +28,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
-import 'package:provider/provider.dart';
 
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/main_window/tab_content_switcher.dart';
 import 'package:anthem/widgets/main_window/window_header.dart';
 import 'package:url_launcher/url_launcher.dart';
-// import 'package:web/web.dart';
 
 class MainWindow extends StatefulWidget {
-  final DialogController dialogController;
-
-  const MainWindow({super.key, required this.dialogController});
+  const MainWindow({super.key});
 
   @override
   State<MainWindow> createState() => _MainWindowState();
@@ -49,18 +45,20 @@ class MainWindow extends StatefulWidget {
 class _MainWindowState extends State<MainWindow> {
   bool isTestMenuOpen = false;
   AnthemMenuController menuController = AnthemMenuController();
-  MainWindowController controller = MainWindowController();
 
   bool firstBuild = true;
+  double? lastDevicePixelRatio;
 
   @override
   void initState() {
     super.initState();
-    ControllerRegistry.instance.mainWindowController = controller;
   }
 
   @override
   Widget build(BuildContext context) {
+    final viewModel = ServiceRegistry.mainWindowViewModel;
+    final store = AnthemStore.instance;
+
     if (firstBuild) {
       firstBuild = false;
 
@@ -74,7 +72,7 @@ class _MainWindowState extends State<MainWindow> {
       // a user gesture.
       if (kIsWeb) {
         Future(() {
-          widget.dialogController.showTextDialog(
+          ServiceRegistry.dialogController.showTextDialog(
             title: 'Welcome',
             textSpan: TextSpan(
               style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
@@ -134,52 +132,75 @@ class _MainWindowState extends State<MainWindow> {
       }
     }
 
-    if (!noteLabelImageCache.initialized) {
-      noteLabelImageCache.init(View.of(context).devicePixelRatio);
+    final devicePixelRatio = View.of(context).devicePixelRatio;
+
+    if (lastDevicePixelRatio != devicePixelRatio) {
+      lastDevicePixelRatio = devicePixelRatio;
+
+      for (final project in store.projects.values) {
+        project.sequence.scheduleClipTitleTextureAtlasUpdate();
+      }
     }
 
-    final store = AnthemStore.instance;
+    if (!noteLabelImageCache.initialized) {
+      noteLabelImageCache.init(devicePixelRatio);
+    }
 
-    return Provider.value(
-      value: controller,
-      child: DialogRenderer(
-        controller: widget.dialogController,
-        child: ScreenOverlay(
-          child: Container(
-            color: AnthemTheme.panel.border,
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: Observer(
-                builder: (context) {
-                  final tabs = store.projectOrder.map<TabDef>((projectId) {
-                    return TabDef(
-                      id: projectId,
-                      title: store.projects[projectId]?.name ?? '',
+    return Stack(
+      fit: .expand,
+      children: [
+        DialogRenderer(
+          child: ScreenOverlay(
+            child: Container(
+              color: AnthemTheme.panel.border,
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: Observer(
+                  builder: (context) {
+                    final tabs = store.projectOrder.map<TabDef>((projectId) {
+                      return TabDef(
+                        id: projectId,
+                        title: store.projects[projectId]?.name ?? '',
+                      );
+                    }).toList();
+
+                    return Column(
+                      children: [
+                        RepaintBoundary(
+                          child: WindowHeader(
+                            selectedTabId: store.activeProjectId,
+                            tabs: tabs,
+                          ),
+                        ),
+                        Expanded(
+                          child: TabContentSwitcher(
+                            tabs: tabs,
+                            selectedTabId: store.activeProjectId,
+                          ),
+                        ),
+                      ],
                     );
-                  }).toList();
-
-                  return Column(
-                    children: [
-                      RepaintBoundary(
-                        child: WindowHeader(
-                          selectedTabId: store.activeProjectId,
-                          tabs: tabs,
-                        ),
-                      ),
-                      Expanded(
-                        child: TabContentSwitcher(
-                          tabs: tabs,
-                          selectedTabId: store.activeProjectId,
-                        ),
-                      ),
-                    ],
-                  );
-                },
+                  },
+                ),
               ),
             ),
           ),
         ),
-      ),
+
+        // Sets an override for the mouse cursor, which should be used when
+        // the mouse is pressed down during click-and-drag operations.
+        //
+        // See setCursorOverride() and clearCursorOverride() from
+        // MainWindowController for examples on how to use this.
+        Observer(
+          builder: (context) {
+            return MouseRegion(
+              cursor: viewModel.globalCursor,
+              hitTestBehavior: .translucent,
+            );
+          },
+        ),
+      ],
     );
   }
 }

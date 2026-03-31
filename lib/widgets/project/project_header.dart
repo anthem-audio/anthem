@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,32 +17,22 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:convert';
-
 import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/license_text.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/button_group.dart';
 import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
-import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
-import 'package:anthem/widgets/basic/menu/menu.dart';
-import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
-import 'package:anthem/widgets/debug/widget_test_area.dart';
-import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
-import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide Icons;
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../basic/icon.dart';
 
@@ -52,13 +42,10 @@ class ProjectHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 32,
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
-        color: AnthemTheme.panel.accent,
-      ),
+      height: 38,
+      color: AnthemTheme.panel.accent,
       child: Padding(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(7),
         child: Row(
           children: [
             Expanded(flex: 1, child: _LeftGroup()),
@@ -81,8 +68,6 @@ class _LeftGroup extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ProjectMenu(),
-        const SizedBox(width: 4),
         Button(
           icon: Icons.undo,
           width: 24,
@@ -131,51 +116,42 @@ class _PlayStopButtonGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: AnthemTheme.control.border),
-      ),
-      child: Row(
-        children: [
-          Button(
-            hideBorder: true,
-            icon: Icons.play,
-            height: 24,
-            width: 24,
-            contentPadding: EdgeInsets.all(3),
-            hint: [HintSection('click', 'Play')],
-            onPress: () {
-              final projectModel = Provider.of<ProjectModel>(
-                context,
-                listen: false,
-              );
+    return ButtonGroup(
+      children: [
+        Button(
+          icon: Icons.play,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+          hint: [HintSection('click', 'Play')],
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
 
-              if (projectModel.engineState != EngineState.running) {
-                return;
-              }
+            if (projectModel.engineState != EngineState.running) {
+              return;
+            }
 
-              projectModel.sequence.isPlaying = true;
-            },
-          ),
-          Container(width: 1, color: AnthemTheme.control.border),
-          Button(
-            hideBorder: true,
-            icon: Icons.stop,
-            height: 24,
-            width: 24,
-            contentPadding: EdgeInsets.all(3),
-            hint: [HintSection('click', 'Stop')],
-            onPress: () {
-              final projectModel = Provider.of<ProjectModel>(
-                context,
-                listen: false,
-              );
-              projectModel.sequence.isPlaying = false;
-            },
-          ),
-        ],
-      ),
+            projectModel.sequence.isPlaying = true;
+          },
+        ),
+        Button(
+          icon: Icons.stop,
+          height: 24,
+          width: 24,
+          contentPadding: EdgeInsets.all(3),
+          hint: [HintSection('click', 'Stop')],
+          onPress: () {
+            final projectModel = Provider.of<ProjectModel>(
+              context,
+              listen: false,
+            );
+            projectModel.sequence.isPlaying = false;
+          },
+        ),
+      ],
     );
   }
 }
@@ -233,7 +209,7 @@ class _RightGroup extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         VisualizationBuilder.double(
-          builder: (context, cpuValue) {
+          builder: (context, cpuValue, engineTime) {
             return Observer(
               builder: (context) {
                 var value = cpuValue ?? 0;
@@ -262,186 +238,6 @@ class _RightGroup extends StatelessWidget {
           minimumUpdateInterval: const Duration(milliseconds: 1000),
         ),
       ],
-    );
-  }
-}
-
-class _ProjectMenu extends StatelessWidget {
-  const _ProjectMenu();
-
-  @override
-  Widget build(BuildContext context) {
-    final menuController = AnthemMenuController();
-    final mainWindowController = context.read<MainWindowController>();
-
-    final project = Provider.of<ProjectModel>(context);
-
-    final dialogController = Provider.of<DialogController>(
-      context,
-      listen: false,
-    );
-
-    return Menu(
-      menuController: menuController,
-      menuDef: MenuDef(
-        children: [
-          AnthemMenuItem(
-            text: 'New project',
-            hint: 'Create a new project',
-            onSelected: () async {
-              final projectId = await mainWindowController.newProject();
-              mainWindowController.switchTab(projectId);
-            },
-          ),
-          AnthemMenuItem(
-            text: 'Load project...',
-            hint: 'Load a project',
-            onSelected: () {
-              mainWindowController.loadProject().then((projectId) {
-                if (projectId != null) {
-                  mainWindowController.switchTab(projectId);
-                }
-              });
-            },
-          ),
-          Separator(),
-          if (!kIsWeb)
-            AnthemMenuItem(
-              text: 'Save',
-              hint: 'Save the active project',
-              onSelected: () {
-                mainWindowController.saveProject(
-                  project.id,
-                  false,
-                  dialogController: dialogController,
-                );
-              },
-            ),
-          AnthemMenuItem(
-            text: kIsWeb ? 'Download project...' : 'Save as...',
-            hint: 'Save the active project to a new location',
-            onSelected: () {
-              mainWindowController.saveProject(
-                project.id,
-                true,
-                dialogController: dialogController,
-              );
-            },
-          ),
-          Separator(),
-          AnthemMenuItem(
-            text: 'About...',
-            onSelected: () {
-              final dialogController = Provider.of<DialogController>(
-                context,
-                listen: false,
-              );
-              dialogController.showTextDialog(
-                text: [
-                  'Version: Pre-alpha\n\n',
-                  'Code copyright (C) 2021 - 2025 Joshua Wade\n',
-                  'UI design and icons copyright (C) 2021 - 2025 Budislav Stepanov',
-                ].join(''),
-                title: 'About Anthem',
-                buttons: [
-                  DialogButton(
-                    text: 'Source code',
-                    shouldCloseDialog: false,
-                    onPress: () {
-                      launchUrl(
-                        Uri.parse('https://github.com/anthem-audio/anthem'),
-                      );
-                    },
-                  ),
-                  DialogButton(
-                    text: 'License',
-                    shouldCloseDialog: false,
-                    onPress: () {
-                      dialogController.showTextDialog(
-                        title: 'License',
-                        text: agpl,
-                        buttons: [DialogButton.ok()],
-                      );
-                    },
-                  ),
-                  DialogButton(
-                    text: 'Additional license info',
-                    shouldCloseDialog: false,
-                    onPress: () {
-                      showLicensePage(
-                        context: context,
-                        applicationName: 'Anthem',
-                        applicationVersion: 'Pre-alpha',
-                      );
-                    },
-                  ),
-                  DialogButton.ok(),
-                ],
-              );
-            },
-          ),
-          if (kDebugMode) Separator(),
-          if (kDebugMode)
-            AnthemMenuItem(
-              text: 'Debug',
-              submenu: MenuDef(
-                children: [
-                  AnthemMenuItem(
-                    text: 'Print project JSON (UI)',
-                    hint: 'Print the project JSON as reported by the UI',
-                    onSelected: () async {
-                      // ignore: avoid_print
-                      print(
-                        jsonEncode(
-                          AnthemStore
-                              .instance
-                              .projects[AnthemStore.instance.activeProjectId]!
-                              .toJson(),
-                        ),
-                      );
-                    },
-                  ),
-                  AnthemMenuItem(
-                    text: 'Print project JSON (engine)',
-                    hint: 'Print the project JSON as reported by the engine',
-                    onSelected: () async {
-                      // ignore: avoid_print
-                      print(
-                        await AnthemStore
-                            .instance
-                            .projects[AnthemStore.instance.activeProjectId]!
-                            .engine
-                            .modelSyncApi
-                            .debugGetEngineJson(),
-                      );
-                    },
-                  ),
-                  Separator(),
-                  AnthemMenuItem(
-                    text: 'Open widget test area',
-                    onSelected: () {
-                      final projectViewModel = Provider.of<ProjectViewModel>(
-                        context,
-                        listen: false,
-                      );
-
-                      projectViewModel.topPanelOverlayContentBuilder =
-                          (context) => const WidgetTestArea();
-                    },
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-      child: Button(
-        icon: Icons.hamburger,
-        width: 24,
-        onPress: () {
-          menuController.open();
-        },
-        hint: [HintSection('click', 'File...')],
-      ),
     );
   }
 }

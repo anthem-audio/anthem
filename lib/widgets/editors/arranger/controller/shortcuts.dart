@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,17 +22,42 @@ part of 'arranger_controller.dart';
 mixin _ArrangerShortcutsMixin on _ArrangerController {
   ShortcutBehaviors shortcutManager = ShortcutBehaviors();
 
+  bool onRawKeyEvent(KeyEvent event) {
+    if (!_isArrangerPanelActive()) {
+      return false;
+    }
+
+    if (event is KeyDownEvent && event.logicalKey == .escape) {
+      stateMachine.cancelInteraction(trigger: .escapeKey);
+      return false;
+    }
+
+    final modifier = _getModifierKey(event.logicalKey);
+    if (modifier == null) {
+      return false;
+    }
+
+    if (event is KeyDownEvent) {
+      stateMachine.modifierPressed(modifier);
+    } else if (event is KeyUpEvent) {
+      stateMachine.modifierReleased(modifier);
+    }
+
+    // Let other raw handlers and shortcuts continue to process this event.
+    return false;
+  }
+
   void registerShortcuts() {
     // Delete
     shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), () {
-      deleteSelected();
+      deleteSelectedClips();
     });
 
     // Ctrl + A
     shortcutManager.register(
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA),
       () {
-        selectAll();
+        selectAllClips();
       },
     );
 
@@ -64,5 +89,35 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
 
   void onShortcut(LogicalKeySet shortcut) {
     shortcutManager.handleShortcut(shortcut);
+  }
+
+  bool _isArrangerPanelActive() {
+    final projectViewModel = ServiceRegistry.forProject(
+      viewModel.projectId,
+    ).projectViewModel;
+
+    return projectViewModel.activePanel == PanelKind.arranger;
+  }
+
+  ArrangerModifierKey? _getModifierKey(LogicalKeyboardKey key) {
+    if (key == LogicalKeyboardKey.control ||
+        key == LogicalKeyboardKey.controlLeft ||
+        key == LogicalKeyboardKey.controlRight) {
+      return ArrangerModifierKey.ctrl;
+    }
+
+    if (key == LogicalKeyboardKey.alt ||
+        key == LogicalKeyboardKey.altLeft ||
+        key == LogicalKeyboardKey.altRight) {
+      return ArrangerModifierKey.alt;
+    }
+
+    if (key == LogicalKeyboardKey.shift ||
+        key == LogicalKeyboardKey.shiftLeft ||
+        key == LogicalKeyboardKey.shiftRight) {
+      return ArrangerModifierKey.shift;
+    }
+
+    return null;
   }
 }

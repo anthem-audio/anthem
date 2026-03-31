@@ -98,16 +98,17 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     final keyDown = e is KeyDownEvent;
     final keyUp = e is KeyUpEvent;
     final keyRepeat = e is KeyRepeatEvent;
+    final key = e.logicalKey;
 
-    final ctrl =
-        e.logicalKey.keyLabel == 'Control Left' ||
-        e.logicalKey.keyLabel == 'Control Right';
-    final alt =
-        e.logicalKey.keyLabel == 'Alt Left' ||
-        e.logicalKey.keyLabel == 'Alt Right';
-    final shift =
-        e.logicalKey.keyLabel == 'Shift Left' ||
-        e.logicalKey.keyLabel == 'Shift Right';
+    final ctrl = _isCtrlKey(key);
+    final alt = _isAltKey(key);
+    final shift = _isShiftKey(key);
+    final isModifier = ctrl || alt || shift;
+    final isEditableTextFocused = _isEditableTextFocused();
+    // Let text inputs own non-modifier keys while still allowing modifier
+    // press/release events to reach editor state machines.
+    final shouldDispatchRaw = !isEditableTextFocused || isModifier;
+    final shouldDispatchShortcuts = !isEditableTextFocused;
 
     final keyboardModifiers = Provider.of<KeyboardModifiers>(
       context,
@@ -121,10 +122,47 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     if (shift && keyDown) keyboardModifiers.setShift(true);
     if (shift && keyUp) keyboardModifiers.setShift(false);
 
-    if (keyDown || keyRepeat) controller.handleKeyDown(e);
-    if (keyUp) controller.handleKeyUp(e);
+    if (keyDown || keyRepeat) {
+      controller.handleKeyDown(
+        e,
+        dispatchRaw: shouldDispatchRaw,
+        dispatchShortcuts: shouldDispatchShortcuts,
+      );
+    }
+    if (keyUp) controller.handleKeyUp(e, dispatchRaw: shouldDispatchRaw);
 
     return false;
+  }
+
+  bool _isCtrlKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.control ||
+        key == LogicalKeyboardKey.controlLeft ||
+        key == LogicalKeyboardKey.controlRight;
+  }
+
+  bool _isAltKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.alt ||
+        key == LogicalKeyboardKey.altLeft ||
+        key == LogicalKeyboardKey.altRight;
+  }
+
+  bool _isShiftKey(LogicalKeyboardKey key) {
+    return key == LogicalKeyboardKey.shift ||
+        key == LogicalKeyboardKey.shiftLeft ||
+        key == LogicalKeyboardKey.shiftRight;
+  }
+
+  bool _isEditableTextFocused() {
+    final focusedContext = FocusManager.instance.primaryFocus?.context;
+    if (focusedContext == null) {
+      return false;
+    }
+
+    if (focusedContext.widget is EditableText) {
+      return true;
+    }
+
+    return focusedContext.findAncestorWidgetOfExactType<EditableText>() != null;
   }
 
   @override

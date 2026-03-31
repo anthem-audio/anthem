@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,108 +19,190 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdlib>
 #include <stdexcept>
 
 #include <juce_core/juce_core.h>
 
-#include "modules/util/arena_allocator.h"
+#include "modules/core/constants.h"
 #include "modules/sequencer/events/event.h"
 
 class AnthemEventBuffer {
 private:
   JUCE_LEAK_DETECTOR(AnthemEventBuffer)
 
-  // Allocator for this buffer. This allocator maintains a huge buffer of memory
-  // that can be used to reallocate our buffer if it gets too big, without
-  // having to allocate from the OS, which allows this class to be real-time
-  // safe.
-  //
-  // This allocator is owned by the graph compilation result, and so should be
-  // deallocated there.
-  ArenaBufferAllocator<AnthemLiveEvent>* allocator;
+  struct alignas(AnthemLiveEvent) StorageBlock {
+    StorageBlock* previous;
+    size_t capacity;
+  };
 
-  // Deallocation pointer for the buffer. This is used to deallocate the buffer
-  // when the buffer is no longer needed.
-  void* deallocatePtr;
+  static_assert(
+    sizeof(StorageBlock) % alignof(AnthemLiveEvent) == 0,
+    "StorageBlock must leave the event payload aligned."
+  );
 
-  // The buffer of events.
+  StorageBlock* activeBlock;
+
+  // The active contiguous event storage.
   AnthemLiveEvent* buffer;
 
-  // The size of the buffer.
-  size_t size;
+  // The capacity of the active buffer.
+  size_t capacity;
 
-  // The number of events in the buffer.
+  // The number of events in the active buffer.
   size_t numEvents;
 
-public:
-  // Constructor
-  AnthemEventBuffer(ArenaBufferAllocator<AnthemLiveEvent>* allocator, size_t size) : allocator(allocator), size(size), numEvents(0), deallocatePtr(nullptr) {
-    auto result = allocator->allocate(size);
+  // Sticky lifetime diagnostics for this compiled graph result.
+  size_t highWaterMark;
+  size_t timesGrown;
 
-    if (!result.success) {
+  // Per-block overflow diagnostics.
+  bool overflowedThisBlock;
+  size_t droppedEventsThisBlock;
+
+  static StorageBlock* allocateBlock(size_t requestedCapacity) {
+    auto clampedCapacity = requestedCapacity == 0 ? static_cast<size_t>(1) : requestedCapacity;
+    auto bytes = sizeof(StorageBlock) + sizeof(AnthemLiveEvent) * clampedCapacity;
+    auto* raw = static_cast<std::byte*>(std::malloc(bytes));
+
+    if (raw == nullptr) {
+      return nullptr;
+    }
+
+    auto* block = reinterpret_cast<StorageBlock*>(raw);
+    block->previous = nullptr;
+    block->capacity = clampedCapacity;
+
+    return block;
+  }
+
+  static AnthemLiveEvent* getBlockBuffer(StorageBlock* block) {
+    return reinterpret_cast<AnthemLiveEvent*>(
+      reinterpret_cast<std::byte*>(block) + sizeof(StorageBlock)
+    );
+  }
+
+  static void destroyBlocks(StorageBlock* block) {
+    while (block != nullptr) {
+      auto* previous = block->previous;
+      std::free(block);
+      block = previous;
+    }
+  }
+
+  bool grow() {
+    if (capacity >= static_cast<size_t>(MAX_EVENT_BUFFER_SIZE)) {
+      return false;
+    }
+
+    size_t newCapacity = capacity * 2;
+    if (newCapacity <= capacity) {
+      newCapacity = static_cast<size_t>(MAX_EVENT_BUFFER_SIZE);
+    }
+
+    if (newCapacity > static_cast<size_t>(MAX_EVENT_BUFFER_SIZE)) {
+      newCapacity = static_cast<size_t>(MAX_EVENT_BUFFER_SIZE);
+    }
+
+    auto* newBlock = allocateBlock(newCapacity);
+    if (newBlock == nullptr) {
+      return false;
+    }
+
+    auto* newBuffer = getBlockBuffer(newBlock);
+    for (size_t i = 0; i < numEvents; i++) {
+      newBuffer[i] = buffer[i];
+    }
+
+    newBlock->previous = activeBlock;
+    activeBlock = newBlock;
+    buffer = newBuffer;
+    capacity = newBlock->capacity;
+    timesGrown++;
+
+    return true;
+  }
+public:
+  explicit AnthemEventBuffer(size_t initialCapacity)
+    : activeBlock(nullptr),
+      buffer(nullptr),
+      capacity(0),
+      numEvents(0),
+      highWaterMark(0),
+      timesGrown(0),
+      overflowedThisBlock(false),
+      droppedEventsThisBlock(0) {
+    auto requestedCapacity = initialCapacity;
+    if (requestedCapacity == 0) {
+      requestedCapacity = 1;
+    }
+
+    if (requestedCapacity > static_cast<size_t>(MAX_EVENT_BUFFER_SIZE)) {
+      requestedCapacity = static_cast<size_t>(MAX_EVENT_BUFFER_SIZE);
+    }
+
+    activeBlock = allocateBlock(requestedCapacity);
+    if (activeBlock == nullptr) {
       throw std::runtime_error("Failed to allocate buffer for event buffer.");
     }
 
-    buffer = result.memoryStart;
-    deallocatePtr = result.deallocatePtr;
+    buffer = getBlockBuffer(activeBlock);
+    capacity = activeBlock->capacity;
   }
 
-  // Clean up the buffer. This must be called before AnthemEventBuffer is
-  // deallocated.
-  void cleanup() {
-    allocator->deallocate(deallocatePtr);
+  ~AnthemEventBuffer() {
+    destroyBlocks(activeBlock);
   }
 
-  // Reallocation function. This function will reallocate the buffer to a new
-  // size. This function will copy the old buffer into the new buffer.
-  void reallocate(size_t newSize) {
-    auto result = allocator->allocate(newSize);
-
-    if (!result.success) {
-      throw std::runtime_error("Failed to reallocate buffer for event buffer.");
-    }
-
-    // Copy the old buffer into the new buffer.
-    for (size_t i = 0; i < numEvents; i++) {
-      result.memoryStart[i] = buffer[i];
-    }
-
-    // Deallocate the old buffer.
-    allocator->deallocate(deallocatePtr);
-
-    // Set the new buffer.
-    buffer = result.memoryStart;
-    deallocatePtr = result.deallocatePtr;
-    size = newSize;
-  }
-
-  // Adds an event to the buffer.
-  void addEvent(AnthemLiveEvent event) {
-    if (numEvents >= size) {
-      reallocate(size * 2);
+  bool addEvent(AnthemLiveEvent event) {
+    if (numEvents >= capacity && !grow()) {
+      overflowedThisBlock = true;
+      droppedEventsThisBlock++;
+      return false;
     }
 
     buffer[numEvents] = event;
     numEvents++;
+
+    if (numEvents > highWaterMark) {
+      highWaterMark = numEvents;
+    }
+
+    return true;
   }
 
-  // Clears the buffer.
   void clear() {
     numEvents = 0;
+    overflowedThisBlock = false;
+    droppedEventsThisBlock = 0;
   }
 
-  // Returns the event at the given index.
   AnthemLiveEvent& getEvent(size_t index) {
     return buffer[index];
   }
 
-  // Returns the number of events in the buffer.
-  size_t getNumEvents() {
+  size_t getNumEvents() const {
     return numEvents;
   }
 
-  // Returns the size of the buffer.
-  size_t getSize() {
-    return size;
+  size_t getSize() const {
+    return capacity;
+  }
+
+  bool didOverflowThisBlock() const {
+    return overflowedThisBlock;
+  }
+
+  size_t getDroppedEventsThisBlock() const {
+    return droppedEventsThisBlock;
+  }
+
+  size_t getHighWaterMark() const {
+    return highWaterMark;
+  }
+
+  size_t getTimesGrown() const {
+    return timesGrown;
   }
 };

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -33,25 +34,21 @@ part 'simple_volume_lfo.g.dart';
 )
 class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
     with
+        Processor,
         _$SimpleVolumeLfoProcessorModel,
         _$SimpleVolumeLfoProcessorModelAnthemModelMixin {
   SimpleVolumeLfoProcessorModel({required super.nodeId});
 
-  SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: '');
+  SimpleVolumeLfoProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory SimpleVolumeLfoProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$SimpleVolumeLfoProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
-
-  /// Creates a node for this processor.
-  static NodeModel createNode() {
-    final nodeId = 'simple-volume-lfo-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
       id: nodeId,
-      processor: SimpleVolumeLfoProcessorModel(nodeId: nodeId),
+      processor: this,
       audioInputPorts: AnthemObservableList.of([
         NodePortModel(
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
@@ -80,7 +77,7 @@ abstract class _SimpleVolumeLfoProcessorModel
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
 
-  String nodeId;
+  Id nodeId;
 
   _SimpleVolumeLfoProcessorModel({required this.nodeId});
 }

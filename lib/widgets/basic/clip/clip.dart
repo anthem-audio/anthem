@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/color_shifter.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
@@ -70,8 +69,8 @@ class Clip extends StatelessWidget {
     final patternModel =
         projectModel.sequence.patterns[clipModel?.patternId ?? patternId!]!;
 
-    return CustomPaintObserver(
-      painterBuilder: () => ClipPainter(
+    return CustomPaint(
+      painter: ClipPainter(
         devicePixelRatio: View.of(context).devicePixelRatio,
         pattern: patternModel,
         hideBorder: hideBorder,
@@ -91,7 +90,7 @@ class ClipPainter extends CustomPainterObserver {
     required this.pattern,
     this.clip,
     this.hideBorder = false,
-  });
+  }) : super(debugName: 'ClipPainter');
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -117,28 +116,25 @@ class ClipPainter extends CustomPainterObserver {
       devicePixelRatio != oldDelegate.devicePixelRatio ||
       pattern != oldDelegate.pattern ||
       clip != oldDelegate.clip ||
-      super.shouldRepaint(oldDelegate);
+      hideBorder != oldDelegate.hideBorder;
 }
-
-final _selectedColorShifter = AnthemColorShifter(
-  166,
-  lightnessModifier: 1.2,
-  saturationModifier: 1.0,
-);
 
 Color getBaseColor({
   required AnthemColor color,
   required bool selected,
   required bool pressed,
+  bool hovered = false,
 }) {
-  final shifter = selected ? _selectedColorShifter : color.colorShifter;
-  final okColor = shifter.clipBase;
+  final shifter = color.colorShifter;
+  var okColor = shifter.clipBase;
 
   if (pressed) {
-    return okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0).toColor();
+    okColor = okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0);
+  } else if (hovered) {
+    okColor = okColor.lighter(0.15);
   }
 
-  return okColor.toColor();
+  return okColor.darker(selected ? 0.23 : 0).toColor();
 }
 
 Color getContentColor({
@@ -146,12 +142,19 @@ Color getContentColor({
   required bool selected,
   required bool pressed,
 }) {
-  final shifter = selected ? _selectedColorShifter : color.colorShifter;
-  final okColor = shifter.clipText;
+  final shifter = color.colorShifter;
+  var okColor = shifter.clipText;
 
   if (pressed) {
-    return okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0).toColor();
+    okColor = okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0);
   }
 
-  return okColor.toColor();
+  return okColor.darker(selected ? 0.1 : 0).toColor();
+}
+
+Color getSelectedBorderColor({required AnthemColor color}) {
+  final shifter = color.colorShifter;
+  var okColor = shifter.clipText;
+
+  return okColor.lighter(0.1).toColor();
 }

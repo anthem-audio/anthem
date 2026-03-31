@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -27,6 +28,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
 
 import 'clip.dart';
+import 'clip_title_text.dart';
 
 // For automation rendering
 final _automationLineBuffer = LineBuffer();
@@ -37,18 +39,48 @@ final _automationTriCoordBuffer = CoordinateBuffer();
 const _smallSizeThreshold = 38;
 
 const _clipTitleHeight = 16;
-const _clipTitlePadding = 2;
+const _clipTitlePadding = clipTitlePadding;
 
-typedef ClipRenderInfo = ({
-  PatternModel pattern,
-  ClipModel clip,
-  double x,
-  double y,
-  double width,
-  double height,
-  bool selected,
-  bool pressed,
-});
+const _contentBaseColor = Color(0xFF777777);
+
+class ClipRenderInfo {
+  final PatternModel pattern;
+  final Id clipId;
+  final Id trackId;
+  final bool hasTimingOverride;
+  final int clipOffset;
+  final int clipWidth;
+  final double clipTimeViewStart;
+  final double clipTimeViewEnd;
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+  final bool selected;
+  final bool pressed;
+  final bool hovered;
+
+  ClipRenderInfo({
+    required this.pattern,
+    required ClipModel clip,
+    required this.hasTimingOverride,
+    required this.clipOffset,
+    required int clipTimeViewStart,
+    required int clipTimeViewEnd,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    required this.selected,
+    required this.pressed,
+    required this.hovered,
+  }) : assert(clipTimeViewEnd > clipTimeViewStart),
+       clipId = clip.id,
+       trackId = clip.trackId,
+       clipWidth = clipTimeViewEnd - clipTimeViewStart,
+       clipTimeViewStart = clipTimeViewStart.toDouble(),
+       clipTimeViewEnd = clipTimeViewEnd.toDouble();
+}
 
 void paintClipList({
   required ProjectModel project,
@@ -70,33 +102,35 @@ void paintClipList({
       height: clipEntry.height,
       selected: clipEntry.selected,
       pressed: clipEntry.pressed,
+      hovered: clipEntry.hovered,
       hideBorder: hideBorder,
     );
   }
 
   // Begin blend mode layer
   canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
+  try {
+    // The buffers are global for allocation efficiency, so clear before and
+    // after use to avoid stale draw data if rendering throws midway through.
+    _automationTriCoordBuffer.clear();
+    _automationLineBuffer.clear();
+    _automationLineJoinBuffer.clear();
 
-  for (final clipEntry in clipList) {
-    final pattern = clipEntry.pattern;
-    final clip = clipEntry.clip;
+    for (final clipEntry in clipList) {
+      final pattern = clipEntry.pattern;
 
-    final clipTimeViewStart = clip.timeView?.start.toDouble() ?? 0;
-    final clipTimeViewEnd =
-        clip.timeView?.end.toDouble() ?? pattern.getWidth().toDouble();
+      final y = clipEntry.y;
+      final height = clipEntry.height;
 
-    final y = clipEntry.y;
-    final height = clipEntry.height;
+      if (height <= _smallSizeThreshold) continue;
 
-    if (height <= _smallSizeThreshold) continue;
-
-    for (final lane in pattern.automationLanes.values) {
+      final lane = pattern.automation;
       renderAutomationCurve(
         canvas: canvas,
         canvasSize: canvasSize,
         xDrawPositionTime: (
-          clip.offset.toDouble(),
-          (clip.offset + clip.width).toDouble(),
+          clipEntry.clipOffset.toDouble(),
+          (clipEntry.clipOffset + clipEntry.clipWidth).toDouble(),
         ),
         yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
         points: lane.points,
@@ -110,10 +144,10 @@ void paintClipList({
         // render-clip the draw call around the entire DAW clip (due to
         // performance concerns), we have to get the automation to draw within
         // the DAW clip boundaries without any render clipping.
-        clipStart: clipTimeViewStart,
-        clipEnd: clipTimeViewEnd,
-        clipOffset: clip.offset.toDouble(),
-        color: const Color(0xFF777777),
+        clipStart: clipEntry.clipTimeViewStart,
+        clipEnd: clipEntry.clipTimeViewEnd,
+        clipOffset: clipEntry.clipOffset.toDouble(),
+        color: _contentBaseColor,
 
         lineBuffer: _automationLineBuffer,
         lineJoinBuffer: _automationLineJoinBuffer,
@@ -125,155 +159,182 @@ void paintClipList({
       // This avoids connecting lines between clips.
       _automationLineBuffer.disconnectNext();
     }
-  }
 
-  final automationShadedPaint = Paint()
-    ..color = const Color(0x19FFFFFF)
-    ..style = PaintingStyle.fill;
+    final automationShadedPaint = Paint()
+      ..color = const Color(0x19FFFFFF)
+      ..style = PaintingStyle.fill;
 
-  final linePaint = getLinePaint(
-    chosenColor: const Color(0xFF777777),
-    strokeWidth: 2.0,
-  );
-
-  final lineJoinCirclePaint = getLineJoinPaint(
-    chosenColor: const Color(0xFF777777),
-    strokeWidth: 2.0,
-  );
-
-  final notePaint = Paint()..color = const Color(0xFF777777);
-
-  // This aliases on Skia, but we draw a line along the main boundary that would
-  // alias, so it works out well on Skia platforms (as of writing, this is
-  // Windows, Linux, and web). Also this is extremely fast.
-  canvas.drawVertices(
-    Vertices.raw(VertexMode.triangles, _automationTriCoordBuffer.buffer),
-    BlendMode.srcOver,
-    automationShadedPaint,
-  );
-
-  canvas.drawRawPoints(
-    PointMode.lines,
-    _automationLineBuffer.buffer,
-    linePaint,
-  );
-
-  canvas.drawRawPoints(
-    PointMode.points,
-    _automationLineJoinBuffer.buffer,
-    lineJoinCirclePaint,
-  );
-
-  _automationTriCoordBuffer.clear();
-  _automationLineBuffer.clear();
-  _automationLineJoinBuffer.clear();
-
-  // Title
-
-  // Make sure we're observing necessary MobX observables
-  for (var entry in clipList) {
-    entry.pattern.name;
-    entry.pattern.clipNotesUpdateSignal.value;
-  }
-
-  const textHeight = 15.0;
-
-  final sequence = project.sequence;
-  final spriteSheet = sequence.patternTitleTexture;
-
-  if (spriteSheet.textureAtlas != null) {
-    canvas.drawAtlas(
-      spriteSheet.textureAtlas!,
-      List.generate(clipList.length, (i) {
-        final clipEntry = clipList[i];
-        return RSTransform.fromComponents(
-          rotation: 0,
-          scale: 1 / devicePixelRatio,
-          anchorX: 0,
-          anchorY: 0,
-          translateX: clipEntry.x,
-          translateY:
-              clipEntry.y +
-              (clipEntry.height > _smallSizeThreshold
-                  ? 0
-                  : (clipEntry.height / 2) - (textHeight / 2)),
-        );
-      }, growable: false),
-      List.generate(clipList.length, (i) {
-        final pattern = clipList[i].pattern;
-        return Rect.fromLTWH(
-          pattern.clipTitleAtlasRect!.left,
-          pattern.clipTitleAtlasRect!.top,
-          min(
-            pattern.clipTitleAtlasRect!.width,
-            (clipList[i].width - _clipTitlePadding * 2) * devicePixelRatio,
-          ),
-          pattern.clipTitleAtlasRect!.height,
-        );
-      }, growable: false),
-      List.generate(clipList.length, (i) {
-        return const Color(0xFF777777);
-      }, growable: false),
-      BlendMode.dstIn,
-      null,
-      Paint(),
+    final linePaint = getLinePaint(
+      chosenColor: _contentBaseColor,
+      strokeWidth: 2.0,
     );
-  } else {
-    // Fallback if the image hasn't been generated yet
-    for (final clipEntry in clipList) {
-      final pattern = clipEntry.pattern;
-      final y = clipEntry.y;
-      final height = clipEntry.height;
 
-      final textY = height > _smallSizeThreshold
-          ? y
-          : y + (height / 2) - (textHeight / 2);
-      final rect = Rect.fromLTWH(
-        clipEntry.x,
-        textY,
-        clipEntry.width,
-        textHeight,
-      );
+    final lineJoinCirclePaint = getLineJoinPaint(
+      chosenColor: _contentBaseColor,
+      strokeWidth: 2.0,
+    );
 
-      final x = clipEntry.x;
-      final width = clipEntry.width;
-      final selected = clipEntry.selected;
-      final pressed = clipEntry.pressed;
-      drawPatternTitle(
+    final notePaint = Paint()..color = _contentBaseColor;
+
+    // This aliases on Skia, but we draw a line along the main boundary that
+    // would alias, so it works out well on Skia platforms (as of writing,
+    // this is Windows, Linux, and web). Also this is extremely fast.
+    canvas.drawVertices(
+      Vertices.raw(VertexMode.triangles, _automationTriCoordBuffer.buffer),
+      BlendMode.srcOver,
+      automationShadedPaint,
+    );
+
+    canvas.drawRawPoints(
+      PointMode.lines,
+      _automationLineBuffer.buffer,
+      linePaint,
+    );
+
+    canvas.drawRawPoints(
+      PointMode.points,
+      _automationLineJoinBuffer.buffer,
+      lineJoinCirclePaint,
+    );
+
+    // Title
+
+    // Make sure we're observing necessary MobX observables
+    for (var entry in clipList) {
+      entry.pattern.name;
+      entry.pattern.clipNotesUpdateSignal.value;
+    }
+
+    const textHeight = 15.0;
+
+    final sequence = project.sequence;
+    final spriteSheet = sequence.patternTitleTexture;
+    final textureAtlas = spriteSheet.textureAtlas;
+    final atlasRectsByPatternId = sequence.clipTitleAtlasRectsByPatternId;
+
+    final isTextureAtlasDevicePixelRatioMatch =
+        textureAtlas != null &&
+        sequence.clipTitleTextureAtlasDevicePixelRatio == devicePixelRatio;
+
+    if (isTextureAtlasDevicePixelRatioMatch) {
+      var clipEntriesWithAtlasRectCount = 0;
+      var hasClipEntriesWithoutAtlasRect = false;
+
+      for (final clipEntry in clipList) {
+        if (atlasRectsByPatternId[clipEntry.pattern.id] != null) {
+          clipEntriesWithAtlasRectCount++;
+        } else {
+          hasClipEntriesWithoutAtlasRect = true;
+        }
+      }
+
+      if (clipEntriesWithAtlasRectCount > 0) {
+        var cursor = 0;
+
+        ClipRenderInfo nextClipEntryWithAtlasRect() {
+          while (cursor < clipList.length) {
+            final clipEntry = clipList[cursor++];
+            if (atlasRectsByPatternId[clipEntry.pattern.id] != null) {
+              return clipEntry;
+            }
+          }
+
+          throw StateError(
+            'Expected clip entry with atlas rect while generating drawAtlas '
+            'inputs.',
+          );
+        }
+
+        final transforms = List.generate(clipEntriesWithAtlasRectCount, (i) {
+          final clipEntry = nextClipEntryWithAtlasRect();
+          return RSTransform.fromComponents(
+            rotation: 0,
+            scale: 1 / devicePixelRatio,
+            anchorX: 0,
+            anchorY: 0,
+            translateX: clipEntry.x,
+            translateY:
+                clipEntry.y +
+                (clipEntry.height > _smallSizeThreshold
+                    ? 0
+                    : (clipEntry.height / 2) - (textHeight / 2)),
+          );
+        }, growable: false);
+
+        cursor = 0;
+        final rects = List.generate(clipEntriesWithAtlasRectCount, (i) {
+          final clipEntry = nextClipEntryWithAtlasRect();
+          final rect = atlasRectsByPatternId[clipEntry.pattern.id]!;
+          return Rect.fromLTWH(
+            rect.left,
+            rect.top,
+            min(
+              rect.width,
+              (clipEntry.width - _clipTitlePadding * 2) * devicePixelRatio,
+            ),
+            rect.height,
+          );
+        }, growable: false);
+
+        canvas.drawAtlas(
+          textureAtlas,
+          transforms,
+          rects,
+          List.generate(clipEntriesWithAtlasRectCount, (i) {
+            return _contentBaseColor;
+          }, growable: false),
+          BlendMode.dstIn,
+          null,
+          Paint(),
+        );
+      }
+
+      // A new pattern can exist in the arrangement before its title has been
+      // packed into the shared atlas. In that case, fall back to direct title
+      // rendering for that clip instead of crashing the entire paint pass.
+      if (hasClipEntriesWithoutAtlasRect) {
+        for (final clipEntry in clipList) {
+          if (atlasRectsByPatternId[clipEntry.pattern.id] != null) continue;
+
+          _drawClipTitleDirect(
+            canvas: canvas,
+            canvasSize: canvasSize,
+            clipEntry: clipEntry,
+            textHeight: textHeight,
+          );
+        }
+      }
+    } else {
+      // Fallback if the atlas hasn't been generated yet, or if it was built
+      // for a different device pixel ratio.
+      _drawClipTitlesDirect(
         canvas: canvas,
-        size: canvasSize,
-        clipRect: rect,
-        pattern: pattern,
-        x: x,
-        y: textY,
-        width: width,
-        height: height,
-        selected: selected,
-        pressed: pressed,
-        // We don't need to manually handle device pixel ratio here since we're
-        // drawing directly to the canvas, which already accounts for it.
-        devicePixelRatio: 1,
+        canvasSize: canvasSize,
+        clipList: clipList,
+        textHeight: textHeight,
       );
     }
+
+    // Notes
+    for (final clipEntry in clipList) {
+      _paintClipNotes(
+        canvas: canvas,
+        notePaint: notePaint,
+        pattern: clipEntry.pattern,
+        clipContentWidth: clipEntry.clipWidth.toDouble(),
+        clipTimeViewStart: clipEntry.clipTimeViewStart,
+        x: clipEntry.x,
+        y: clipEntry.y,
+        width: clipEntry.width,
+        height: clipEntry.height,
+      );
+    }
+  } finally {
+    _automationTriCoordBuffer.clear();
+    _automationLineBuffer.clear();
+    _automationLineJoinBuffer.clear();
+    canvas.restore();
   }
-
-  // Notes
-
-  for (final clipEntry in clipList) {
-    _paintClipNotes(
-      canvas: canvas,
-      notePaint: notePaint,
-      pattern: clipEntry.pattern,
-      clip: clipEntry.clip,
-      x: clipEntry.x,
-      y: clipEntry.y,
-      width: clipEntry.width,
-      height: clipEntry.height,
-    );
-  }
-
-  // End blend mode layer
-  canvas.restore();
 
   if (!hideBorder) {
     for (final clipEntry in clipList) {
@@ -301,6 +362,7 @@ void paintClip({
   required double height,
   required bool selected,
   required bool pressed,
+  bool hovered = false,
   required double devicePixelRatio,
   required double timeViewStart,
   required double timeViewEnd,
@@ -315,64 +377,121 @@ void paintClip({
     height: height,
     selected: selected,
     pressed: pressed,
+    hovered: hovered,
     hideBorder: hideBorder,
   );
 
   canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
+  try {
+    // Title
 
-  // Title
-
-  drawPatternTitle(
-    canvas: canvas,
-    size: canvasSize,
-    clipRect: Rect.fromLTWH(x, y, width, height),
-    pattern: pattern,
-    x: x,
-    y: y,
-    width: width,
-    height: height,
-    selected: selected,
-    pressed: pressed,
-    devicePixelRatio: 1,
-    overrideTextColor: const Color(0xFF777777),
-  );
-
-  // Automation
-
-  for (final lane in pattern.automationLanes.values) {
-    if (height <= _smallSizeThreshold) continue;
-
-    renderAutomationCurve(
+    drawPatternTitle(
       canvas: canvas,
-      canvasSize: canvasSize,
-      xDrawPositionTime: clip != null
-          ? (clip.offset.toDouble(), (clip.offset + clip.width).toDouble())
-          : (0.0, 0.0),
-      yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
-      points: lane.points,
-      strokeWidth: 2.0,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      color: const Color(0xFF777777),
-    );
-  }
-
-  // Notes
-
-  if (height > _smallSizeThreshold) {
-    _paintClipNotes(
-      canvas: canvas,
-      notePaint: Paint()..color = const Color(0xFF777777),
+      size: canvasSize,
+      clipRect: Rect.fromLTWH(x, y, width, height),
       pattern: pattern,
-      clip: clip,
       x: x,
       y: y,
       width: width,
       height: height,
+      selected: selected,
+      pressed: pressed,
+      devicePixelRatio: 1,
+      overrideTextColor: _contentBaseColor,
+    );
+
+    // Automation
+
+    if (height > _smallSizeThreshold) {
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: canvasSize,
+        xDrawPositionTime: clip != null
+            ? (clip.offset.toDouble(), (clip.offset + clip.width).toDouble())
+            : (0.0, 0.0),
+        yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
+        points: pattern.automation.points,
+        strokeWidth: 2.0,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        color: _contentBaseColor,
+      );
+    }
+
+    // Notes
+
+    if (height > _smallSizeThreshold) {
+      _paintClipNotes(
+        canvas: canvas,
+        notePaint: Paint()..color = _contentBaseColor,
+        pattern: pattern,
+        clipContentWidth:
+            clip?.width.toDouble() ?? pattern.getWidth().toDouble(),
+        clipTimeViewStart: clip?.timeView?.start.toDouble() ?? 0.0,
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+      );
+    }
+  } finally {
+    canvas.restore();
+  }
+}
+
+void _drawClipTitlesDirect({
+  required Canvas canvas,
+  required Size canvasSize,
+  required List<ClipRenderInfo> clipList,
+  required double textHeight,
+}) {
+  for (final clipEntry in clipList) {
+    _drawClipTitleDirect(
+      canvas: canvas,
+      canvasSize: canvasSize,
+      clipEntry: clipEntry,
+      textHeight: textHeight,
     );
   }
+}
 
-  canvas.restore();
+void _drawClipTitleDirect({
+  required Canvas canvas,
+  required Size canvasSize,
+  required ClipRenderInfo clipEntry,
+  required double textHeight,
+}) {
+  final pattern = clipEntry.pattern;
+  final y = clipEntry.y;
+  final height = clipEntry.height;
+
+  final textY = height > _smallSizeThreshold
+      ? y
+      : y + (height / 2) - (textHeight / 2);
+  final rect = Rect.fromLTWH(clipEntry.x, textY, clipEntry.width, textHeight);
+
+  final x = clipEntry.x;
+  final width = clipEntry.width;
+  final selected = clipEntry.selected;
+  final pressed = clipEntry.pressed;
+  drawPatternTitle(
+    canvas: canvas,
+    size: canvasSize,
+    clipRect: rect,
+    pattern: pattern,
+    x: x,
+    y: textY,
+    width: width,
+    height: height,
+    selected: selected,
+    pressed: pressed,
+    // We don't need to manually handle device pixel ratio here since we're
+    // drawing directly to the canvas, which already accounts for it.
+    devicePixelRatio: 1,
+    // Match the atlas render path tint to avoid visible color shifts while
+    // a title is waiting to be packed into the shared atlas.
+    overrideTextColor: _contentBaseColor,
+  );
 }
 
 void _paintContainer({
@@ -384,12 +503,14 @@ void _paintContainer({
   required double height,
   required bool selected,
   required bool pressed,
+  required bool hovered,
   bool hideBorder = false,
 }) {
   final baseColor = getBaseColor(
     color: pattern.color,
     selected: selected,
     pressed: pressed,
+    hovered: hovered,
   );
 
   final rectPaint = Paint()..color = baseColor;
@@ -402,6 +523,19 @@ void _paintContainer({
   );
 
   canvas.drawRect(rect, rectPaint);
+
+  if (selected) {
+    final strokeColor = getSelectedBorderColor(color: pattern.color);
+
+    final selectedRectPaint = Paint()
+      ..color = strokeColor
+      ..style = .stroke;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(1), .circular(1)),
+      selectedRectPaint,
+    );
+  }
 }
 
 void _paintContainerBorder({
@@ -449,53 +583,33 @@ void drawPatternTitle({
     );
   }
 
-  final paragraphStyle = ParagraphStyle(textAlign: TextAlign.left, maxLines: 1);
-
-  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(color: textColor, fontSize: 11 * devicePixelRatio))
-    ..addText(pattern.name);
-
-  final paragraph = paragraphBuilder.build();
-  final constraints = ParagraphConstraints(
-    width: width - _clipTitlePadding * 2 + 2,
+  drawClipTitleText(
+    canvas: canvas,
+    title: pattern.name,
+    x: x,
+    y: y,
+    width: width,
+    devicePixelRatio: devicePixelRatio,
+    textColor: textColor,
   );
-  paragraph.layout(constraints);
-
-  canvas.drawParagraph(paragraph, Offset(x + _clipTitlePadding + 1, y));
 }
 
 (double, double) getClipTitleSize({
   required double devicePixelRatio,
   required PatternModel pattern,
 }) {
-  // We hardcode the height for now
-  const height = _clipTitleHeight;
-
-  // Width is based on the pattern name length
-  final paragraphStyle = ParagraphStyle(
-    textAlign: TextAlign.left,
-    ellipsis: '...',
-    maxLines: 1,
+  return getClipTitleTextSize(
+    devicePixelRatio: devicePixelRatio,
+    title: pattern.name,
   );
-
-  final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(fontSize: 11 * devicePixelRatio))
-    ..addText(pattern.name);
-
-  final paragraph = paragraphBuilder.build();
-  final constraints = ParagraphConstraints(width: double.infinity);
-  paragraph.layout(constraints);
-
-  final width = paragraph.maxIntrinsicWidth / devicePixelRatio + 6;
-
-  return (width, height.toDouble());
 }
 
 void _paintClipNotes({
   required Canvas canvas,
   required Paint notePaint,
   required PatternModel pattern,
-  ClipModel? clip,
+  required double clipContentWidth,
+  required double clipTimeViewStart,
   required double x,
   required double y,
   required double width,
@@ -503,45 +617,40 @@ void _paintClipNotes({
 }) {
   if (height <= _smallSizeThreshold) return;
 
-  for (final clipNotesEntry in pattern.clipNotesRenderCache.values) {
-    if (clipNotesEntry.renderedVertices == null) continue;
+  final clipNotesEntry = pattern.clipNotesRenderCache;
+  if (clipNotesEntry.renderedVertices == null) return;
 
-    canvas.save();
+  canvas.save();
 
-    canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
+  canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
 
-    final innerHeight = height - 2;
+  final innerHeight = height - 2;
 
-    final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
-    final notePadding =
-        (innerHeight - _clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+  final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
+  final notePadding =
+      (innerHeight - _clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
 
-    // The vertices for the notes are in a coordinate system based on notes,
-    // where X is time and Y is normalized. The transformations below
-    // translate this to the correct position and scale it to convert it into
-    // pixel coordinates.
+  // The vertices for the notes are in a coordinate system based on notes,
+  // where X is time and Y is normalized. The transformations below
+  // translate this to the correct position and scale it to convert it into
+  // pixel coordinates.
 
-    final clipScaleFactor =
-        (width - 1) / (clip?.width.toDouble() ?? pattern.getWidth().toDouble());
+  final clipScaleFactor = (width - 1) / clipContentWidth;
 
-    canvas.translate(
-      -(clip?.timeView?.start.toDouble() ?? 0.0) * clipScaleFactor,
-      0,
-    );
-    canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
-    canvas.scale(
-      clipScaleFactor,
-      innerHeight - _clipTitleHeight - notePadding * 2,
-    );
+  canvas.translate(-clipTimeViewStart * clipScaleFactor, 0);
+  canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
+  canvas.scale(
+    clipScaleFactor,
+    innerHeight - _clipTitleHeight - notePadding * 2,
+  );
 
-    // The clip may not start at the beginning, which we account for here.
+  // The clip may not start at the beginning, which we account for here.
 
-    canvas.drawVertices(
-      clipNotesEntry.renderedVertices!,
-      BlendMode.srcOver,
-      notePaint,
-    );
+  canvas.drawVertices(
+    clipNotesEntry.renderedVertices!,
+    BlendMode.srcOver,
+    notePaint,
+  );
 
-    canvas.restore();
-  }
+  canvas.restore();
 }

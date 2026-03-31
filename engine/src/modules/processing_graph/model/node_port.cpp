@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,10 +21,15 @@
 
 #include "generated/lib/model/model.h"
 
+#include <juce_core/juce_core.h>
+
 #include "modules/processing_graph/compiler/anthem_process_context.h"
 
-void NodePort::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr<AnthemModelBase> parent) {
-  NodePortModelBase::initialize(self, parent);
+void NodePort::initialize(
+  std::shared_ptr<AnthemModelBase> selfModel,
+  std::shared_ptr<AnthemModelBase> parentModel
+) {
+  NodePortModelBase::initialize(selfModel, parentModel);
 
   if (this->config()->parameterConfig().has_value()) {
     this->addParameterValueObserver([this](std::optional<double> value) {
@@ -50,6 +55,8 @@ void NodePort::initialize(std::shared_ptr<AnthemModelBase> self, std::shared_ptr
 }
 
 bool NodePort::trySendParameterValueToAudioThread(double value) {
+  jassert(value >= 0.0 && value <= 1.0);
+
   std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
 
   if (!collectionParent) {
@@ -72,7 +79,7 @@ bool NodePort::trySendParameterValueToAudioThread(double value) {
     return false;
   }
 
-  node->runtimeContext.value()->setParameterValue(this->id(), value);
+  node->runtimeContext.value()->setParameterValue(this->id(), static_cast<float>(value));
 
   return true;
 }

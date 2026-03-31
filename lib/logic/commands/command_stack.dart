@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,11 +22,11 @@ import 'package:anthem/model/project.dart';
 import 'command.dart';
 
 class CommandStack {
-  ProjectModel project;
-  List<Command> commands = [];
+  final ProjectModel _project;
+  final List<Command> commands = [];
   int commandPointer = 0;
 
-  CommandStack(this.project);
+  CommandStack(this._project);
 
   void push(Command command) {
     commands.removeRange(commandPointer, commands.length);
@@ -36,7 +36,7 @@ class CommandStack {
 
   void executeAndPush(Command command) {
     push(command);
-    command.execute(project);
+    command.execute(_project);
   }
 
   bool get canUndo => commandPointer - 1 >= 0;
@@ -44,14 +44,14 @@ class CommandStack {
   void undo() {
     if (!canUndo) return;
     commandPointer--;
-    commands[commandPointer].rollback(project);
+    commands[commandPointer].rollback(_project);
   }
 
-  bool get canRedo => commandPointer + 1 < commands.length;
+  bool get canRedo => commandPointer < commands.length;
 
   void redo() {
     if (!canRedo) return;
+    commands[commandPointer].execute(_project);
     commandPointer++;
-    commands[commandPointer - 1].execute(project);
   }
 }

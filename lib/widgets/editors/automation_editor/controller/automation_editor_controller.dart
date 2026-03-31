@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@ import 'dart:ui';
 
 import 'package:anthem/logic/commands/pattern_automation_commands.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/automation_lane.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -38,7 +38,8 @@ import '../events.dart';
 part 'pointer_events.dart';
 
 class AutomationEditorController extends _AutomationEditorController
-    with _AutomationEditorPointerEventsMixin {
+    with _AutomationEditorPointerEventsMixin
+    implements DisposableService {
   AutomationEditorController({
     required super.viewModel,
     required super.project,
@@ -49,6 +50,7 @@ class _AutomationEditorController {
   AutomationEditorViewModel viewModel;
   ProjectModel project;
   late ReactionDisposer pointAnimationAutorunDisposer;
+  bool _isDisposed = false;
 
   _AutomationEditorController({
     required this.viewModel,
@@ -61,9 +63,7 @@ class _AutomationEditorController {
           project.sequence.patterns[project.sequence.activePatternID];
       if (pattern == null) return;
 
-      final automationLane =
-          pattern.automationLanes[project.activeAutomationGeneratorID];
-      if (automationLane == null) return;
+      final automationLane = pattern.automation;
 
       // These will not be watched if there aren't any points, so we'll access
       // them here.
@@ -118,15 +118,23 @@ class _AutomationEditorController {
 
       // Remove any points in the animation list that aren't in the current
       // automation lane.
-      for (final animationKey in viewModel.pointAnimationTracker.values.keys) {
+      for (final animationKey
+          in viewModel.pointAnimationTracker.values.keys.toList()) {
         if (!visitedPointIds.contains(animationKey.id)) {
           viewModel.pointAnimationTracker.values.remove(animationKey);
         }
       }
+
+      viewModel.pointAnimationTracker.markNeedsRepaint();
     });
   }
 
   void dispose() {
+    if (_isDisposed) {
+      return;
+    }
+
+    _isDisposed = true;
     pointAnimationAutorunDisposer();
   }
 }

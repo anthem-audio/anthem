@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,9 +36,13 @@ String generateFilterBuilders({required ModelClassInfo context}) {
       continue;
     }
 
-    // If this isn't in the C++ model, then we're not generating change events
-    // for it
-    if (fieldInfo.hideAnnotation?.cpp == true) {
+    // Fields hidden from both serialization and C++ generation stay out of the
+    // Dart change-listener surface unless they explicitly opt into onChange.
+    // Fields marked only `@hideFromCpp` still participate in Dart-side
+    // listeners and are filtered out at the project root before IPC.
+    if (fieldInfo.hideAnnotation?.serialization == true &&
+        fieldInfo.hideAnnotation?.cpp == true &&
+        fieldInfo.hideAnnotation?.allowOnChange != true) {
       continue;
     }
 
@@ -255,21 +259,17 @@ String generateOnChangeMethod({required ModelClassInfo context}) {
   return '''
     ModelFilterSubscription onChange(
       void Function(${className}ModelFilterBuilder b) build,
-      void Function(ModelFilterEvent) listener,
+      void Function(ModelChangeEvent) listener,
     ) {
       final context = ModelFilterBuilderContext();
       final builder = ${className}ModelFilterBuilder(context);
       build(builder);
       final filter = context.root;
 
-      void handler(List<FieldAccessor> fieldAccessors, FieldOperation operation) {
-        if (filter != null && filter.matches(fieldAccessors, operation)) {
-          listener(
-            ModelFilterEvent(
-              fieldAccessors: fieldAccessors,
-              operation: operation,
-            ),
-          );
+      void handler(ModelChangeEvent change) {
+        if (filter != null &&
+            filter.matches(change.fieldAccessors, change.operation)) {
+          listener(change);
         }
       }
 

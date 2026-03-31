@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,9 +20,13 @@
 part of 'package:anthem/model/pattern/pattern.dart';
 
 mixin _ClipNotesRenderCacheMixin on _PatternModel {
-  // When generators can be removed, removing a generator should clear the
-  // associated item in this map.
-  final clipNotesRenderCache = <Id, ClipNotesRenderCache>{};
+  /// Cache of note vertices for this pattern.
+  ///
+  /// Patterns now store notes in a flat list, so we only need one cache per
+  /// pattern.
+  late final ClipNotesRenderCache clipNotesRenderCache = ClipNotesRenderCache(
+    pattern: this as PatternModel,
+  );
 
   /// This is crude, but it allows us to signal changes in the
   /// ClipNotesRenderCache without needing to tangle MobX with that object.
@@ -31,14 +35,7 @@ mixin _ClipNotesRenderCacheMixin on _PatternModel {
   late final Action incrementClipUpdateSignal;
 
   void updateClipNotesRenderCache() {
-    clipNotesRenderCache.clear();
-    for (final generatorID in project.generatorOrder) {
-      clipNotesRenderCache[generatorID] ??= ClipNotesRenderCache(
-        pattern: this as PatternModel,
-        generatorID: generatorID,
-      );
-      clipNotesRenderCache[generatorID]!.update();
-    }
+    clipNotesRenderCache.update();
     incrementClipUpdateSignal();
   }
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -60,10 +60,7 @@ class Icons {
   );
   static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
   static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
-  static IconDef mute = const IconDef('assets/icons_old/power.svg');
-  static IconDef patternEditor = const IconDef(
-    'assets/icons_old/bottom_bar/pattern_editor.svg',
-  );
+  static IconDef mute = const IconDef('assets/icons/arranger/mute.svg');
   static IconDef patternPickerAudio = const IconDef(
     'assets/icons/arranger/clip/audio.svg',
   );
@@ -89,8 +86,12 @@ class Icons {
     'assets/icons/small/restore_down.svg',
   );
   static IconDef save = const IconDef('assets/icons_old/edit/save.svg');
+  static IconDef solo = const IconDef('assets/icons/arranger/solo.svg');
   static IconDef stop = const IconDef('assets/icons/main_toolbar/stop.svg');
   static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
+  static IconDef arrowDownThin = const IconDef(
+    'assets/icons/small/arrow_down.svg',
+  );
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _ToolIcons tools = _ToolIcons();
   static _MainToolbarIcons mainToolbar = _MainToolbarIcons();

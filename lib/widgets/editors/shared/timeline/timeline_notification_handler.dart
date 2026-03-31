@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2023 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notifications.dart';
@@ -29,6 +30,7 @@ import 'package:provider/provider.dart';
 class TimelineNotificationHandler extends StatefulWidget {
   final TimelineKind timelineKind;
   final Id? patternID;
+  final Id? arrangementID;
   final Widget child;
 
   const TimelineNotificationHandler({
@@ -36,6 +38,7 @@ class TimelineNotificationHandler extends StatefulWidget {
     required this.child,
     required this.timelineKind,
     this.patternID,
+    this.arrangementID,
   });
 
   @override
@@ -49,6 +52,21 @@ class _TimelineNotificationHandlerState
   Time snapOffset = 0;
   bool hasMoved = false;
 
+  List<TimeSignatureChangeModel> _getTimeSignatureChanges(
+    ProjectModel project,
+  ) {
+    return switch (widget.timelineKind) {
+      TimelineKind.pattern =>
+        project.sequence.patterns[widget.patternID]?.timeSignatureChanges ?? [],
+      TimelineKind.arrangement =>
+        project
+                .sequence
+                .arrangements[widget.arrangementID]
+                ?.timeSignatureChanges ??
+            [],
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
@@ -58,16 +76,13 @@ class _TimelineNotificationHandlerState
       onNotification: (notification) {
         if (notification is TimelineLabelPointerNotification) {
           final timeView = Provider.of<TimeRange>(context, listen: false);
-          final pattern = project
-              .sequence
-              .patterns
-              .nonObservableInner[project.sequence.activePatternID];
+          final timeSignatureChanges = _getTimeSignatureChanges(project);
 
           final divisionChanges = getDivisionChanges(
             viewWidthInPixels: notification.viewWidthInPixels,
             snap: AutoSnap(),
             defaultTimeSignature: project.sequence.defaultTimeSignature,
-            timeSignatureChanges: pattern?.timeSignatureChanges ?? [],
+            timeSignatureChanges: timeSignatureChanges,
             ticksPerQuarter: project.sequence.ticksPerQuarter,
             timeViewStart: timeView.start,
             timeViewEnd: timeView.end,
@@ -90,8 +105,9 @@ class _TimelineNotificationHandlerState
             project.execute(
               MoveTimeSignatureChangeCommand(
                 project: project,
-                timelineKind: TimelineKind.pattern,
+                timelineKind: widget.timelineKind,
                 patternID: widget.patternID,
+                arrangementID: widget.arrangementID,
                 changeID: notification.labelID,
                 newOffset: snappedPos + snapOffset,
               ),
@@ -101,8 +117,9 @@ class _TimelineNotificationHandlerState
             project.execute(
               MoveTimeSignatureChangeCommand(
                 project: project,
-                timelineKind: TimelineKind.pattern,
+                timelineKind: widget.timelineKind,
                 patternID: widget.patternID,
+                arrangementID: widget.arrangementID,
                 changeID: notification.labelID,
                 oldOffset: startTime.floor(),
                 newOffset: snappedPos + snapOffset,

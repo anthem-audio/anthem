@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,39 +18,25 @@
 */
 
 import 'dart:async';
-import 'dart:io';
 
-import 'package:anthem/logic/commands/arrangement_commands.dart';
-import 'package:anthem/logic/commands/pattern_commands.dart';
-import 'package:anthem/logic/commands/project_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/logic/controller_registry.dart';
-import 'package:anthem/model/generator.dart';
-import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/live_event_manager.dart';
+import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 class ProjectController {
   ProjectModel project;
   ProjectViewModel viewModel;
+  late final LiveEventManager liveEventManager = LiveEventManager(project);
 
   ProjectController(this.project, this.viewModel);
-
-  void journalStartEntry() {
-    project.startJournalPage();
-  }
-
-  void journalCommitEntry() {
-    project.commitJournalPage();
-  }
 
   void undo() {
     project.undo();
@@ -58,44 +44,6 @@ class ProjectController {
 
   void redo() {
     project.redo();
-  }
-
-  void setActiveDetailView(bool isVisible, [DetailViewKind? detailView]) {
-    if (detailView != null) {
-      project.setSelectedDetailView(detailView);
-    }
-    project.isDetailViewOpen = isVisible;
-  }
-
-  void setActiveGeneratorID(Id id) {
-    project.activeInstrumentID = id;
-  }
-
-  Id addPattern([String? name]) {
-    if (name == null) {
-      final patterns = project.sequence.patterns.nonObservableInner;
-      var patternNumber = patterns.length;
-
-      final existingNames = patterns.values.map((pattern) => pattern.name);
-
-      do {
-        patternNumber++;
-        name = 'Pattern $patternNumber';
-      } while (existingNames.contains(name));
-    }
-
-    final patternModel = PatternModel.create(name: name);
-
-    project.execute(
-      AddPatternCommand(
-        pattern: patternModel,
-        index: project.sequence.patternOrder.length,
-      ),
-    );
-
-    project.sequence.setActivePattern(patternModel.id);
-
-    return patternModel.id;
   }
 
   void addArrangement([String? name]) {
@@ -119,6 +67,7 @@ class ProjectController {
     project.execute(command);
 
     project.sequence.setActiveArrangement(command.arrangementID);
+    project.sequence.activeTransportSequenceID = command.arrangementID;
   }
 
   void onShortcut(LogicalKeySet shortcut) {
@@ -153,86 +102,20 @@ class ProjectController {
     }
   }
 
-  void addGenerator({
-    required NodeModel node,
-    required String name,
-    required GeneratorType generatorType,
-    required Color color,
-  }) {
-    final id = getId();
-
-    project.execute(
-      AddGeneratorCommand(
-        generatorId: id,
-        node: node,
-        name: name,
-        generatorType: generatorType,
-        color: color,
-      ),
-    );
-
-    if (generatorType == GeneratorType.instrument) {
-      project.activeInstrumentID = id;
-    } else if (generatorType == GeneratorType.automation) {
-      project.activeAutomationGeneratorID = id;
-    }
-  }
-
-  void addVst3Generator(DialogController dialogController) async {
-    String initialDirectory;
-
-    if (Platform.isWindows) {
-      initialDirectory = 'C:\\Program Files\\Common Files\\VST3';
-    } else if (Platform.isMacOS) {
-      initialDirectory = '/Library/Audio/Plug-Ins/VST3';
-    } else if (Platform.isLinux) {
-      initialDirectory = Platform.environment['HOME'] ?? '/';
-    } else {
-      throw UnsupportedError(
-        'Unsupported platform: ${Platform.operatingSystem}',
-      );
-    }
-
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Choose a plugin (VST3)',
-      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
-      initialDirectory: initialDirectory,
-      type: Platform.isMacOS ? FileType.custom : FileType.any,
-    );
-
-    final path = result?.files[0].path;
-
-    if (path?.toLowerCase().endsWith('.vst3') != true) {
-      dialogController.showTextDialog(
-        title: 'Error',
-        text:
-            'The selected plugin could not be loaded. It may '
-            'not be a valid VST3 plugin, or it may be incompatible.',
-        buttons: [DialogButton.ok()],
-      );
-      return;
-    }
-
-    addGenerator(
-      name: 'VST Plugin',
-      generatorType: GeneratorType.instrument,
-      color: getColor(),
-      node: VST3ProcessorModel.createNode(path!),
-    );
-  }
-
-  void removeGenerator(Id generatorID) {
-    project.execute(
-      RemoveGeneratorCommand(
-        project: project,
-        generator: project.generators[generatorID]!,
-      ),
-    );
-  }
-
   void setActiveArrangement(Id? id) {
     project.sequence.setActiveArrangement(id);
     _updateTransportSequenceID(id);
+  }
+
+  void setActiveEditor({required EditorKind editor}) {
+    viewModel.selectedEditor = editor;
+
+    viewModel.activePanel = switch (editor) {
+      .detail => .pianoRoll,
+      .automation => .automationEditor,
+      .channelRack => .channelRack,
+      .mixer => .mixer,
+    };
   }
 
   void setActivePattern(Id? id) {
@@ -240,12 +123,21 @@ class ProjectController {
     _updateTransportSequenceID(id);
   }
 
+  void openPatternInPianoRoll(Id patternID) {
+    if (!project.sequence.patterns.containsKey(patternID)) {
+      return;
+    }
+
+    setActiveEditor(editor: EditorKind.detail);
+    project.sequence.setActivePattern(patternID);
+  }
+
   void _updateTransportSequenceID(Id? id) {
     project.sequence.activeTransportSequenceID = id;
     if (id != null) {
       project.visualizationProvider.overrideValue(
         id: 'playhead_sequence_id',
-        stringValue: id,
+        value: id,
         duration: const Duration(milliseconds: 500),
       );
     }
@@ -255,9 +147,8 @@ class ProjectController {
   ///
   /// Returns true if the project was closed, false if the close was cancelled.
   Future<bool> close() {
-    final dialogController = ControllerRegistry.instance.dialogController!;
-    final mainWindowController =
-        ControllerRegistry.instance.mainWindowController!;
+    final dialogController = ServiceRegistry.dialogController;
+    final mainWindowController = ServiceRegistry.mainWindowController;
 
     final completer = Completer<bool>();
 
@@ -302,12 +193,4 @@ class ProjectController {
 
     return completer.future;
   }
-}
-
-var nextHue = 0.0;
-
-Color getColor() {
-  final color = HSLColor.fromAHSL(1, nextHue, 0.33, 0.5).toColor();
-  nextHue = (nextHue + 330) % 360;
-  return color;
 }

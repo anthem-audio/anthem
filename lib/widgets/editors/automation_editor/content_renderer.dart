@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,47 +36,34 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class AutomationEditorContentRenderer extends StatefulObserverWidget {
-  final double timeViewStart;
-  final double timeViewEnd;
+class AutomationEditorContentRenderer extends StatelessWidget {
+  final AnimationController timeViewAnimationController;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
 
   const AutomationEditorContentRenderer({
     super.key,
-    required this.timeViewStart,
-    required this.timeViewEnd,
+    required this.timeViewAnimationController,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
   });
 
-  @override
-  State<AutomationEditorContentRenderer> createState() =>
-      _AutomationEditorContentRendererState();
-}
-
-class _AutomationEditorContentRendererState
-    extends State<AutomationEditorContentRenderer> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final pattern = project.sequence.patterns[project.sequence.activePatternID];
     final viewModel = Provider.of<AutomationEditorViewModel>(context);
 
-    // Rebuild when these two change
-    viewModel.hoveredPointAnnotation;
-    viewModel.pressedPointAnnotation;
-
-    // Ensure animation continues if it's still going
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (viewModel.pointAnimationTracker.isActive) {
-        setState(() {});
-      }
-    });
-
-    return CustomPaintObserver(
-      painterBuilder: () => AutomationEditorPainter(
-        timeViewStart: widget.timeViewStart,
-        timeViewEnd: widget.timeViewEnd,
+    return CustomPaint(
+      painter: AutomationEditorPainter(
+        repaint: Listenable.merge([
+          timeViewAnimationController,
+          viewModel.pointAnimationTracker,
+        ]),
+        timeViewStartAnimation: timeViewStartAnimation,
+        timeViewEndAnimation: timeViewEndAnimation,
         ticksPerQuarter: project.sequence.ticksPerQuarter,
         project: project,
         pattern: pattern,
@@ -92,8 +79,8 @@ class _AutomationEditorContentRendererState
 const pointAnnotationMargin = 8;
 
 class AutomationEditorPainter extends CustomPainterObserver {
-  final double timeViewStart;
-  final double timeViewEnd;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
   final int ticksPerQuarter;
   final ProjectModel project;
   final PatternModel? pattern;
@@ -102,15 +89,19 @@ class AutomationEditorPainter extends CustomPainterObserver {
   final AutomationEditorViewModel viewModel;
 
   AutomationEditorPainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
+    required Listenable repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
     required this.ticksPerQuarter,
     required this.project,
     this.pattern,
     required this.devicePixelRatio,
     required this.visiblePoints,
     required this.viewModel,
-  });
+  }) : super(debugName: 'AutomationEditorPainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   ui.Image? imageCache;
 
@@ -140,8 +131,7 @@ class AutomationEditorPainter extends CustomPainterObserver {
       timeViewEnd: timeViewEnd,
     );
 
-    final points =
-        pattern?.automationLanes[project.activeAutomationGeneratorID]?.points;
+    final points = pattern?.automation.points;
 
     if (points != null) {
       points.observeAllChanges();
@@ -292,16 +282,14 @@ class AutomationEditorPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(AutomationEditorPainter oldDelegate) =>
-      viewModel.pointAnimationTracker.isActive ||
-      timeViewStart != oldDelegate.timeViewStart ||
-      timeViewEnd != oldDelegate.timeViewEnd ||
+      timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+      timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
       ticksPerQuarter != oldDelegate.ticksPerQuarter ||
       project != oldDelegate.project ||
       pattern != oldDelegate.pattern ||
       devicePixelRatio != oldDelegate.devicePixelRatio ||
       visiblePoints != oldDelegate.visiblePoints ||
-      viewModel != oldDelegate.viewModel ||
-      super.shouldRepaint(oldDelegate);
+      viewModel != oldDelegate.viewModel;
 }
 
 double getRadiusMultiplier({

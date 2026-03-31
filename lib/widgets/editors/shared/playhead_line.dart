@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,8 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/widgets.dart';
@@ -30,7 +32,7 @@ class PlayheadLine extends StatelessObserverWidget {
   final Animation<double> timeViewStartAnimation;
   final Animation<double> timeViewEndAnimation;
   final bool isVisible;
-  final String? editorActiveSequenceId;
+  final Id? editorActiveSequenceId;
 
   const PlayheadLine({
     required this.timeViewAnimationController,
@@ -51,46 +53,40 @@ class PlayheadLine extends StatelessObserverWidget {
           .toDouble();
     }
 
-    String? activeSequenceIdOverride;
+    Id? activeSequenceIdOverride;
     if (project.engineState != EngineState.running) {
       activeSequenceIdOverride = project.sequence.activeTransportSequenceID;
     }
 
     return Builder(
       builder: (context) {
-        return VisualizationBuilder.string(
-          config: VisualizationSubscriptionConfig.latest(
+        return VisualizationBuilder.int(
+          config: VisualizationSubscriptionConfig.latestInt(
             'playhead_sequence_id',
           ),
-          builder: (context, activeSequenceId) {
+          builder: (context, activeSequenceId, engineTime) {
             return Visibility(
               visible:
                   (activeSequenceIdOverride ?? activeSequenceId) ==
                   editorActiveSequenceId,
               child: VisualizationBuilder.double(
-                config: VisualizationSubscriptionConfig.latest(
+                config: VisualizationSubscriptionConfig.latestDouble(
                   'playhead_position',
+                  bufferMode: VisualizationBufferMode.adaptive,
                 ),
-                builder: (context, transportPosition) {
-                  return AnimatedBuilder(
-                    animation: timeViewAnimationController,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        painter: _PlayheadPainter(
-                          timeViewStart: timeViewStartAnimation.value,
-                          timeViewEnd: timeViewEndAnimation.value,
-                          transportPosition:
-                              transportPositionOverride ??
-                              transportPosition ??
-                              0,
-                          isVisible:
-                              (transportPositionOverride ??
-                                      transportPosition) !=
-                                  null &&
-                              isVisible,
-                        ),
-                      );
-                    },
+                builder: (context, transportPosition, engineTime) {
+                  return CustomPaint(
+                    painter: _PlayheadPainter(
+                      repaint: timeViewAnimationController,
+                      timeViewStartAnimation: timeViewStartAnimation,
+                      timeViewEndAnimation: timeViewEndAnimation,
+                      transportPosition:
+                          transportPositionOverride ?? transportPosition ?? 0,
+                      isVisible:
+                          (transportPositionOverride ?? transportPosition) !=
+                              null &&
+                          isVisible,
+                    ),
                   );
                 },
               ),
@@ -105,17 +101,21 @@ class PlayheadLine extends StatelessObserverWidget {
 /// Draws the current position of the transport as a vertical bar, to be
 /// overlayed on an editor canvas.
 class _PlayheadPainter extends CustomPainter {
-  final double timeViewStart;
-  final double timeViewEnd;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
   final double transportPosition;
   final bool isVisible;
 
   _PlayheadPainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
+    required Listenable repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
     required this.transportPosition,
     required this.isVisible,
-  });
+  }) : super(repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -124,7 +124,7 @@ class _PlayheadPainter extends CustomPainter {
     }
 
     final paint = Paint()
-      ..color = const Color(0xFFD9D9D9)
+      ..color = AnthemTheme.editors.playheadLine
       ..style = PaintingStyle.fill;
 
     final lineX =
@@ -144,8 +144,8 @@ class _PlayheadPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     if (oldDelegate is _PlayheadPainter) {
-      return timeViewStart != oldDelegate.timeViewStart ||
-          timeViewEnd != oldDelegate.timeViewEnd ||
+      return timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+          timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
           transportPosition != oldDelegate.transportPosition ||
           isVisible != oldDelegate.isVisible;
     }

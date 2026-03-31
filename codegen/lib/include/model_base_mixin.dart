@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -271,6 +271,82 @@ class FieldAccessor {
   }
 }
 
+/// Model change decorators allow generated code to attach field-specific
+/// metadata to a change.
+///
+/// Specific instances of these are defined in generated code.
+typedef ModelChangeDecorator = void Function(MutableModelChange change);
+
+/// Mutable change descriptor used internally while a change is bubbling up the
+/// model tree.
+///
+/// Listeners never receive this object directly. Instead, each node creates an
+/// immutable [ModelChangeEvent] snapshot before notifying its listeners. The
+/// mutable form exists so generated code can attach small pieces of metadata,
+/// such as whether the change should be forwarded to the engine, while the
+/// runtime continues to own the accessor-chain mutation.
+class MutableModelChange {
+  final FieldOperation operation;
+  final List<FieldAccessor> _leafToRootAccessors;
+  bool _sendToEngine;
+
+  MutableModelChange._({
+    required this.operation,
+    required List<FieldAccessor> leafToRootAccessors,
+    bool sendToEngine = true,
+  }) : _leafToRootAccessors = leafToRootAccessors,
+       _sendToEngine = sendToEngine;
+
+  /// Whether the root model should forward this change to the engine.
+  ///
+  /// This defaults to `true`. This can be used to disable engine sync while
+  /// still allowing Dart-side listeners to observe the change.
+  ///
+  /// This can be mutated by codegen for a given field using a
+  /// [ModelChangeDecorator].
+  bool get sendToEngine => _sendToEngine;
+
+  /// Prevents this change from being forwarded to the engine.
+  void suppressEngineSync() {
+    _sendToEngine = false;
+  }
+
+  void _appendParentAccessor(FieldAccessor accessor) {
+    _leafToRootAccessors.add(accessor);
+  }
+
+  ModelChangeEvent _snapshot() {
+    return ModelChangeEvent(
+      fieldAccessors: _leafToRootAccessors.reversed,
+      operation: operation,
+      sendToEngine: sendToEngine,
+    );
+  }
+}
+
+/// Describes a single model change at a specific path in the tree.
+class ModelChangeEvent {
+  /// Describes the path from the root model to the changed value.
+  final List<FieldAccessor> fieldAccessors;
+
+  /// The mutation that occurred at [fieldAccessors].
+  final FieldOperation operation;
+
+  /// Whether the root model should forward this change to the engine.
+  ///
+  /// This is `false` for Dart-only change notifications, such as events that
+  /// originate from `@hideFromCpp` fields.
+  final bool sendToEngine;
+
+  ModelChangeEvent({
+    required Iterable<FieldAccessor> fieldAccessors,
+    required this.operation,
+    this.sendToEngine = true,
+  }) : fieldAccessors = List<FieldAccessor>.unmodifiable(
+         fieldAccessors.toList(growable: false),
+       );
+}
+
 /// A subset of [ListChange] from MobX. Allows us to serialize changes before
 /// sending them here.
 class AnthemListChange<T> {
@@ -398,22 +474,66 @@ mixin AnthemModelBase {
   bool get blockDescendantObservations => observationBlockDepth > 0;
 
   /// Listeners that are notified when a field is changed.
-  final List<
-    void Function(List<FieldAccessor> accessors, FieldOperation operation)
-  >
-  _rawListeners = [];
+  final List<void Function(ModelChangeEvent change)> _rawListeners = [];
+
+  /// Decorates changes that pass through this node's parent-field boundary.
+  ///
+  /// This is set when a node is attached to a parent field. For example, if a
+  /// model field is marked `@hideFromCpp`, the child node attached to that
+  /// field receives a decorator that suppresses engine sync for all descendant
+  /// changes that cross that field boundary.
+  ModelChangeDecorator? _parentFieldChangeDecorator;
 
   /// Serializes the model to a JSON representation.
   dynamic toJson({bool forEngine = false, bool forProjectFile = true});
 
   void notifyFieldChanged({
     required FieldOperation operation,
-    List<FieldAccessor>? accessorChain,
+    required Iterable<FieldAccessor> accessorChain,
+    ModelChangeDecorator? initialChangeDecorator,
   }) {
-    final accessorChainNotNull = accessorChain ?? [];
+    final propagatingChange = MutableModelChange._(
+      operation: operation,
+      leafToRootAccessors: accessorChain.toList(),
+    );
+
+    _applyChangeDecorators(
+      propagatingChange: propagatingChange,
+      initialChangeDecorator: initialChangeDecorator,
+    );
+
+    _notifyFieldChanged(propagatingChange: propagatingChange);
+  }
+
+  /// Applies all decorators that should affect a newly emitted change.
+  ///
+  /// There are two sources of decorators:
+  ///
+  /// 1. [initialChangeDecorator] is for the field being written right now. This
+  ///    is needed for direct writes like `model.someField = ...`, where the
+  ///    decorator belongs to the field on the current node and therefore is not
+  ///    stored anywhere in the ancestor chain yet.
+  /// 2. [_parentFieldChangeDecorator] values from this node upward describe
+  ///    annotated fields that exist above the emitting node.
+  void _applyChangeDecorators({
+    required MutableModelChange propagatingChange,
+    ModelChangeDecorator? initialChangeDecorator,
+  }) {
+    initialChangeDecorator?.call(propagatingChange);
+
+    AnthemModelBase? currentModel = this;
+    while (currentModel != null) {
+      currentModel._parentFieldChangeDecorator?.call(propagatingChange);
+      currentModel = currentModel.parent;
+    }
+  }
+
+  void _notifyFieldChanged({required MutableModelChange propagatingChange}) {
+    final currentChange = propagatingChange;
+    final listenerChange = currentChange._snapshot();
 
     for (final listener in _rawListeners) {
-      listener(accessorChainNotNull.reversed.toList(), operation);
+      listener(listenerChange);
     }
 
     // If the parent field is not set, then this model doesn't have a parent yet
@@ -423,7 +543,7 @@ mixin AnthemModelBase {
     }
 
     // Add the accessor for this item in the parent model
-    accessorChainNotNull.add(
+    currentChange._appendParentAccessor(
       FieldAccessor(
         fieldType: parentFieldType!,
         fieldName: parentFieldName,
@@ -434,10 +554,7 @@ mixin AnthemModelBase {
 
     // Propagate the change up the tree
     if (parent != null) {
-      parent!.notifyFieldChanged(
-        operation: operation,
-        accessorChain: accessorChainNotNull,
-      );
+      parent!._notifyFieldChanged(propagatingChange: currentChange);
     }
 
     // Notify _allChangesAtom that a change has occurred
@@ -446,34 +563,41 @@ mixin AnthemModelBase {
 
   /// Adds a listener that is notified when a field is changed.
   void addRawFieldChangedListener(
-    void Function(List<FieldAccessor> accessors, FieldOperation operation)
-    listener,
+    void Function(ModelChangeEvent change) listener,
   ) {
     _rawListeners.add(listener);
   }
 
   /// Removes a listener that is notified when a field is changed.
   void removeRawFieldChangedListener(
-    void Function(List<FieldAccessor> accessors, FieldOperation operation)
-    listener,
+    void Function(ModelChangeEvent change) listener,
   ) {
     _rawListeners.remove(listener);
   }
 
   /// Sets properties that describe the position of this model on its parent
   /// model.
+  ///
+  /// This should not be called manually, except in once in [ProjectModel],
+  /// since that is always the root model. All other necessary calls will be
+  /// handled automatically by generated code.
+  ///
+  /// [parentFieldChangeDecorator] allows the parent field to annotate changes
+  /// that originate from this node or its descendants.
   void setParentProperties({
     required AnthemModelBase parent,
     required FieldType fieldType,
     int? index,
     dynamic key,
     String? fieldName,
+    ModelChangeDecorator? parentFieldChangeDecorator,
   }) {
     this.parent = parent;
     parentFieldType = fieldType;
     parentListIndex = index;
     parentMapKey = key;
     parentFieldName = fieldName;
+    _parentFieldChangeDecorator = parentFieldChangeDecorator;
 
     // setParentProperties() will only be called when the model is added to a
     // parent model or collection. Models really shouldn't be moved around, so
@@ -505,7 +629,7 @@ mixin AnthemModelBase {
       model = model.parent;
     }
 
-    throw Exception('Could not find ancestor model of type $T');
+    throw StateError('Could not find ancestor model of type $T');
   }
 
   final List<void Function()> _onFirstAttachActions = [];
@@ -513,10 +637,30 @@ mixin AnthemModelBase {
   /// Schedules work to be done when this model is first attached to the tree.
   void onModelFirstAttached(void Function() onModelAttached) {
     if (parent != null) {
-      throw Exception('Model is already attached');
+      throw StateError('Model is already attached');
     }
 
     _onFirstAttachActions.add(onModelAttached);
+  }
+
+  /// Detaches this model from its parent, so that model change messages are no
+  /// longer forwarded up the tree.
+  ///
+  /// As an example, when a model object is removed from a list, the object
+  /// itself does not have any way of knowing, since model change messages only
+  /// flow upward. If fields on that model object are then changed, they will
+  /// generate change messages and forward those messages to the object
+  /// referenced by the [parent] field, which has not been updated to reflect
+  /// the fact that this model is no longer attached to its parent.
+  ///
+  /// This won't break anything on the Dart side, but this will generate bad
+  /// messages and send them to the engine. This will either corrupt the engine
+  /// model, or crash the engine. So, when an object is removed from the model
+  /// tree but still needs to be kept around, this method must be called,
+  /// otherwise any mutations to the detached object will be dangerous.
+  void detach() {
+    parent = null;
+    _parentFieldChangeDecorator = null;
   }
 }
 

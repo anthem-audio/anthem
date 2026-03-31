@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,14 +18,17 @@
 */
 
 import 'dart:math';
-import 'dart:ui';
+import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:collection/collection.dart';
+import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
 
 part 'view_model.g.dart';
@@ -35,7 +38,28 @@ class ArrangerViewModel = _ArrangerViewModel with _$ArrangerViewModel;
 
 enum ResizeAreaType { start, end }
 
+class ClipTimingOverride {
+  final int offset;
+  final int timeViewStart;
+  final int timeViewEnd;
+
+  const ClipTimingOverride({
+    required this.offset,
+    required this.timeViewStart,
+    required this.timeViewEnd,
+  }) : assert(timeViewEnd > timeViewStart);
+}
+
+class ArrangerContentUnderCursor {
+  final CanvasAnnotation<Id>? clip;
+  final CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle;
+
+  const ArrangerContentUnderCursor({this.clip, this.resizeHandle});
+}
+
 abstract class _ArrangerViewModel with Store {
+  final ProjectId projectId;
+
   @observable
   EditorTool tool = EditorTool.pencil;
 
@@ -62,49 +86,239 @@ abstract class _ArrangerViewModel with Store {
   @observable
   TimeViewModel? cursorTimeRange;
 
+  /// Selection box in raw view-space coordinates relative to the top-left of
+  /// the arranger canvas.
   @observable
   Rectangle<double>? selectionBox;
 
   @observable
+  ObservableSet<Id> selectedTracks = ObservableSet();
+
+  Id? lastToggledTrack;
+
+  ({List<Id> selected, List<Id> notSelected})? lastShiftClickRange;
+
+  @observable
   ObservableSet<Id> selectedClips = ObservableSet();
 
+  final ObservableMap<Id, ClipTimingOverride> clipTimingOverrides =
+      ObservableMap();
+
+  /// The clip that is currently being pressed, if any.
   @observable
   Id? pressedClip;
 
-  final visibleClips = CanvasAnnotationSet<({Id id})>();
+  /// The clip currently under the mouse cursor, if any.
+  @observable
+  Id? hoveredClip;
+
+  /// The position of the cursor that shows when you hover over a track.
+  @observable
+  (double offset, Id trackId)? hoverIndicatorPosition;
+
+  /// The current mouse cursor for the arranger canvas.
+  @observable
+  MouseCursor mouseCursor = MouseCursor.defer;
+
+  /// The box that shows to indicate where a new clip will be created while
+  /// creating a clip.
+  @observable
+  ({Id trackId, double startOffset, double endOffset, Color color})?
+  clipCreateHint;
+
+  /// Calculates and caches the size and position of tracks in the current view.
+  late final TrackPositionAndSize trackPositionCalculator;
+
+  final visibleClips = CanvasAnnotationSet<Id>();
   final visibleResizeAreas =
       CanvasAnnotationSet<({Id id, ResizeAreaType type})>();
 
   _ArrangerViewModel({
+    required ProjectModel project,
     required this.baseTrackHeight,
-    required this.trackHeightModifiers,
     required this.timeView,
-  });
+  }) : projectId = project.id,
+       trackHeightModifiers = ObservableMap.of(
+         project.tracks.nonObservableInner.map(
+           (key, value) => MapEntry(key, 1),
+         ),
+       ) {
+    trackPositionCalculator = TrackPositionAndSize(
+      project,
+      this as ArrangerViewModel,
+    );
+  }
 
-  // Total height of the entire scrollable region
-  @computed
-  double get scrollAreaHeight =>
-      getScrollAreaHeight(baseTrackHeight, trackHeightModifiers);
+  /// Total height of the entire scrollable region
+  @observable
+  double scrollAreaHeight = 0.0;
+
+  /// The current height of the editor canvas, which should be calculated during
+  /// layout.
+  ///
+  /// Careful not to accidentally use this while calculating the editor height.
+  @observable
+  double editorHeight = 0.0;
+
+  /// The current gap between regular tracks and send tracks, NOT including the
+  /// add track button.
+  ///
+  /// This will be zero if there is any vertical scroll available in the
+  /// arranger.
+  @observable
+  double regularToSendGapHeight = 0.0;
+
+  double get maxVerticalScrollPosition =>
+      (scrollAreaHeight - editorHeight).clamp(0, double.infinity);
+
+  void applyVerticalScrollDelta(double pixelDelta) {
+    verticalScrollPosition =
+        (verticalScrollPosition +
+                pixelDelta *
+                    0.01 *
+                    baseTrackHeight.clamp(minTrackHeight, maxTrackHeight))
+            .clamp(0.0, maxVerticalScrollPosition);
+  }
 
   /// Calculates the clip and resize handle under the cursor, if there is one.
-  ({
-    CanvasAnnotation<({Id id})>? clip,
-    CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle,
-  })
-  getContentUnderCursor(Offset pos) {
+  ArrangerContentUnderCursor getContentUnderCursor(Offset pos) {
     final clipUnderCursor = visibleClips.hitTest(pos);
-    final resizeHandleUnderCursor = visibleResizeAreas
+    final resizeHandleCandidates = visibleResizeAreas
         .hitTestAll(pos)
         // We only report a resize handle if the cursor is also over the
         // associated clip, or if the cursor is over no clip. This makes the
         // behavior for clip resizing a bit more predictable, as it then doesn't
         // depend on the Z-ordering of clips for clips that are right next to
         // each other.
-        .firstWhereOrNull(
+        .where(
           (element) =>
               clipUnderCursor == null ||
-              element.metadata.id == clipUnderCursor.metadata.id,
+              element.metadata.id == clipUnderCursor.metadata,
         );
-    return (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor);
+    final resizeHandleUnderCursor =
+        resizeHandleCandidates.firstWhereOrNull(
+          (element) => element.metadata.type == ResizeAreaType.end,
+        ) ??
+        resizeHandleCandidates.firstOrNull;
+    return ArrangerContentUnderCursor(
+      clip: clipUnderCursor,
+      resizeHandle: resizeHandleUnderCursor,
+    );
+  }
+
+  void registerTrack(Id trackId) {
+    trackHeightModifiers[trackId] = 1;
+  }
+
+  void unregisterTrack(Id trackId) {
+    trackHeightModifiers.remove(trackId);
+  }
+}
+
+/// Calculates and caches the size and position of tracks in the current view.
+///
+/// The position of each track is dependent on the height of each track above it
+/// plus the vertical scroll position, and the height of the scrollable area
+/// depends on the height of all tracks.
+///
+/// The arranger uses this to calculate which track headers are on screen and
+/// where they are, and to determine how to render the scrollbar. The clip
+/// renderer uses this to determine the y position and size of each clip.
+///
+/// The values are cached in a typed array to improve memory locality and reduce
+/// allocation and GC pressure.
+@visibleForTesting
+class TrackPositionAndSize {
+  ProjectModel projectModel;
+  ArrangerViewModel arrangerViewModel;
+
+  var _cache = Float64List(0);
+  final _trackIdToIndex = <Id, int>{};
+  final _trackIndexToId = <int, Id>{};
+
+  TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
+
+  int trackIdToIndex(Id trackId) => _trackIdToIndex[trackId]!;
+  Id trackIndexToId(int index) => _trackIndexToId[index]!;
+
+  double getTrackHeight(int trackIndex) => _cache[trackIndex * 2];
+  double getTrackPosition(num fractionalTrackIndex) =>
+      _cache[fractionalTrackIndex.floor() * 2 + 1] +
+      getTrackHeight(fractionalTrackIndex.floor()) *
+          fractionalTrackIndex.remainder(1.0);
+
+  /// Gets the track index plus a [0 - 1) offset from the top of the track,
+  /// given a y-offset from the top of the screen.
+  double getTrackIndexFromPosition(double yPosition) {
+    for (int i = 0; i < _cache.length ~/ 2; i++) {
+      final trackPosition = _cache[i * 2 + 1];
+      final trackHeight = _cache[i * 2];
+
+      if (yPosition >= trackPosition &&
+          yPosition <= trackPosition + trackHeight) {
+        return i.toDouble() + (yPosition - trackPosition) / trackHeight;
+      }
+    }
+
+    return double.infinity;
+  }
+
+  /// To be called on build in a LayoutBuilder, as soon as we can know the
+  /// height of the editor and before any further build or render work is done.
+  ///
+  /// This is meant to be used with a MobX observer.
+  void invalidate(double editorHeight) {
+    final trackCount = projectModel.tracks.length;
+
+    final serviceRegistry = ServiceRegistry.forProject(projectModel.id);
+    final trackController = serviceRegistry.trackController;
+    final allTracksIterable = trackController.getTracksIterable();
+
+    if (_cache.length != trackCount * 2) {
+      _cache = Float64List(trackCount * 2);
+      _trackIdToIndex.clear();
+      _trackIndexToId.clear();
+    }
+
+    var totalTrackHeight = 0.0;
+    const addButtonAreaHeight = 33.0;
+
+    for (final (i, (trackId, _, _)) in allTracksIterable.indexed) {
+      final heightIndex = i * 2;
+      final trackHeight = calculateTrackHeight(
+        arrangerViewModel.baseTrackHeight,
+        arrangerViewModel.trackHeightModifiers[trackId]!,
+      );
+      _cache[heightIndex] = trackHeight;
+      _trackIdToIndex[trackId] = i;
+      _trackIndexToId[i] = trackId;
+      totalTrackHeight += trackHeight;
+    }
+
+    final trackGap = max(
+      0.0,
+      editorHeight - (totalTrackHeight + addButtonAreaHeight) + 1,
+    );
+
+    arrangerViewModel.regularToSendGapHeight = trackGap;
+
+    var lastWasSendTrack = false;
+    var positionPointer = -arrangerViewModel.verticalScrollPosition;
+
+    for (final (i, (_, isSendTrack, _)) in allTracksIterable.indexed) {
+      final heightIndex = i * 2;
+      final positionIndex = heightIndex + 1;
+
+      if (isSendTrack && !lastWasSendTrack) {
+        lastWasSendTrack = true;
+        positionPointer += trackGap + addButtonAreaHeight;
+      }
+
+      _cache[positionIndex] = positionPointer;
+      positionPointer += _cache[heightIndex];
+    }
+
+    arrangerViewModel.scrollAreaHeight =
+        positionPointer + arrangerViewModel.verticalScrollPosition - 1;
   }
 }

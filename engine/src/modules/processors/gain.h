@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,8 +21,7 @@
 
 #include "generated/lib/model/model.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
-
-#include "bw_math.h"
+#include "modules/processors/gain_parameter_mapping.h"
 
 // Applies gain to the input audio signal.
 class GainProcessor : public AnthemProcessor, public GainProcessorModelBase {
@@ -31,19 +30,7 @@ private:
   //
   // In the header to allow inlining.
   float paramValueToGainLinear(float paramValue) {
-    const float linearFloor = 0.2f;
-    const float dbFloor = -20.0f;
-
-    // Below linearFloor, map linearly from 0 to -40dB
-    if (paramValue <= linearFloor) {
-      float floorDb = bw_dB2linf(dbFloor);
-      return (paramValue / linearFloor) * floorDb;
-    }
-
-    // Above linearFloor, map exponentially from -40dB to 0dB
-    float scaledValue = (paramValue - linearFloor) / (1.0f - linearFloor); // Scale to [0, 1]
-    float gainDB = scaledValue * -dbFloor + dbFloor;         // Map to [-40, 0] dB
-    return bw_dB2linf(gainDB);
+    return gainParameterValueToLinear(paramValue);
   }
 public:
   GainProcessor(const GainProcessorModelImpl& _impl);

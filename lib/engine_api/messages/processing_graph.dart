@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,7 +45,7 @@ class CompileProcessingGraphResponse extends Response {
 }
 
 class PluginChangedEvent extends Response {
-  late String nodeId;
+  late Id nodeId;
 
   late bool latencyChanged;
   late bool parameterInfoChanged;
@@ -67,7 +67,7 @@ class PluginChangedEvent extends Response {
 }
 
 class PluginParameterChangedEvent extends Response {
-  late String nodeId;
+  late Id nodeId;
   late int parameterIndex;
   late double newValue;
 
@@ -84,7 +84,7 @@ class PluginParameterChangedEvent extends Response {
 }
 
 class GetPluginStateRequest extends Request {
-  late String nodeId;
+  late Id nodeId;
 
   GetPluginStateRequest.uninitialized();
 
@@ -109,7 +109,7 @@ class GetPluginStateResponse extends Response {
 }
 
 class SetPluginStateRequest extends Request {
-  late String nodeId;
+  late Id nodeId;
   late String state;
 
   SetPluginStateRequest.uninitialized();
@@ -128,7 +128,7 @@ class SetPluginStateRequest extends Request {
 ///
 /// This will only fire for nodes that load third-party plugins.
 class PluginLoadedEvent extends Response {
-  late String nodeId;
+  late Id nodeId;
 
   PluginLoadedEvent.uninitialized();
 
@@ -141,10 +141,12 @@ class PluginLoadedEvent extends Response {
 class LiveEventRequestNoteOnEvent extends _LiveEventRequestNoteOnEvent
     with _$LiveEventRequestNoteOnEventAnthemModelMixin {
   LiveEventRequestNoteOnEvent.uninitialized()
-    : super(pitch: 0, velocity: 0.0, pan: 0.0);
+    : super(noteId: 0, pitch: 0, channel: 0, velocity: 0.0, pan: 0.0);
 
   LiveEventRequestNoteOnEvent({
+    required super.noteId,
     required super.pitch,
+    required super.channel,
     required super.velocity,
     required super.pan,
   });
@@ -154,12 +156,16 @@ class LiveEventRequestNoteOnEvent extends _LiveEventRequestNoteOnEvent
 }
 
 abstract class _LiveEventRequestNoteOnEvent {
+  int noteId;
   int pitch;
+  int channel;
   double velocity;
   double pan;
 
   _LiveEventRequestNoteOnEvent({
+    required this.noteId,
     required this.pitch,
+    required this.channel,
     required this.velocity,
     required this.pan,
   });
@@ -168,24 +174,35 @@ abstract class _LiveEventRequestNoteOnEvent {
 @AnthemModel(serializable: true, generateCpp: true)
 class LiveEventRequestNoteOffEvent extends _LiveEventRequestNoteOffEvent
     with _$LiveEventRequestNoteOffEventAnthemModelMixin {
-  LiveEventRequestNoteOffEvent.uninitialized() : super(pitch: 0);
+  LiveEventRequestNoteOffEvent.uninitialized()
+    : super(noteId: 0, pitch: 0, channel: 0);
 
-  LiveEventRequestNoteOffEvent({required super.pitch});
+  LiveEventRequestNoteOffEvent({
+    required super.noteId,
+    required super.pitch,
+    required super.channel,
+  });
 
   factory LiveEventRequestNoteOffEvent.fromJson(Map<String, dynamic> json) =>
       _$LiveEventRequestNoteOffEventAnthemModelMixin.fromJson(json);
 }
 
 abstract class _LiveEventRequestNoteOffEvent {
+  int noteId;
   int pitch;
+  int channel;
 
-  _LiveEventRequestNoteOffEvent({required this.pitch});
+  _LiveEventRequestNoteOffEvent({
+    required this.noteId,
+    required this.pitch,
+    required this.channel,
+  });
 }
 
 /// Sends a live event to the engine, which will be picked up by the given
 /// LiveEventProviderProcessor node.
 class SendLiveEventRequest extends Request {
-  late String liveEventProviderNodeId;
+  late Id liveEventProviderNodeId;
 
   @Union([LiveEventRequestNoteOnEvent, LiveEventRequestNoteOffEvent])
   late Object event;

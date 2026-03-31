@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -31,19 +33,19 @@ part 'node_connection.g.dart';
 class NodeConnectionModel extends _NodeConnectionModel
     with _$NodeConnectionModel, _$NodeConnectionModelAnthemModelMixin {
   NodeConnectionModel({
-    required super.id,
+    required ProjectEntityIdAllocator idAllocator,
     required super.sourceNodeId,
     required super.sourcePortId,
     required super.destinationNodeId,
     required super.destinationPortId,
-  });
+  }) : super(id: idAllocator.allocateId());
 
   NodeConnectionModel.uninitialized()
     : super(
-        id: '',
-        sourceNodeId: '',
+        id: -1,
+        sourceNodeId: -1,
         sourcePortId: 0,
-        destinationNodeId: '',
+        destinationNodeId: -1,
         destinationPortId: 0,
       );
 
@@ -53,12 +55,12 @@ class NodeConnectionModel extends _NodeConnectionModel
 
 abstract class _NodeConnectionModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  String id;
+  Id id;
 
-  String sourceNodeId;
+  Id sourceNodeId;
   int sourcePortId;
 
-  String destinationNodeId;
+  Id destinationNodeId;
   int destinationPortId;
 
   _NodeConnectionModel({

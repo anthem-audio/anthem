@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/logic/commands/timeline_commands.dart';
-import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -78,29 +78,17 @@ class PianoRoll extends StatefulWidget {
 }
 
 class _PianoRollState extends State<PianoRoll> {
-  PianoRollController? controller;
-  PianoRollViewModel? viewModel;
-
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-
-    viewModel ??= PianoRollViewModel(
-      keyHeight: 14.0,
-      // Hack: cuts off the top horizontal line. Otherwise the default view looks off
-      keyValueAtTop: 63.95,
-      timeView: TimeRange(0, 3072),
-    );
-
-    if (controller == null) {
-      controller = PianoRollController(project: project, viewModel: viewModel!);
-      ControllerRegistry.instance.registerController(project.id, controller!);
-    }
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final controller = serviceRegistry.pianoRollController;
+    final viewModel = serviceRegistry.pianoRollViewModel;
 
     return Provider.value(
-      value: controller!,
+      value: controller,
       child: Provider.value(
-        value: viewModel!,
+        value: viewModel,
         child: PianoRollTimeViewProvider(
           child: Container(
             color: AnthemTheme.panel.background,
@@ -248,6 +236,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
     timeViewAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,
@@ -264,10 +253,12 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     final [timeViewStartAnimItem, timeViewEndAnimItem] =
         timeViewAnimationHelper!.items;
+    final shouldGreyOut = project.sequence.activePatternID == null;
 
     keyValueAtTopAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,
@@ -337,6 +328,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
               return PianoControl(
                 keyValueAtTop: keyValueAtTopAnimItem.animation.value,
                 keyHeight: viewModel.keyHeight,
+                shouldGreyOut: shouldGreyOut,
                 setKeyValueAtTop: (value) {
                   viewModel.keyValueAtTop = value;
                 },
@@ -361,20 +353,15 @@ class _PianoRollContentState extends State<_PianoRollContent>
           keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
         );
 
-        final notes = AnimatedBuilder(
-          animation: timeViewAnimationHelper!.animationController,
-          builder: (context, child) {
-            return AnimatedBuilder(
-              animation: timeViewAnimationHelper!.animationController,
-              builder: (context, child) {
-                return PianoRollContentRenderer(
-                  timeViewStart: timeViewStartAnimItem.animation.value,
-                  timeViewEnd: timeViewEndAnimItem.animation.value,
-                  keyValueAtTop: keyValueAtTopAnimItem.animation.value,
-                );
-              },
-            );
-          },
+        final notes = PianoRollContentRenderer(
+          timeViewAnimationController:
+              timeViewAnimationHelper!.animationController,
+          keyValueAtTopAnimationController:
+              keyValueAtTopAnimationHelper!.animationController,
+          timeViewStartAnimation: timeViewStartAnimItem.animation,
+          timeViewEndAnimation: timeViewEndAnimItem.animation,
+          keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
+          shouldGreyOut: shouldGreyOut,
         );
 
         final selectionBox = Observer(
@@ -450,15 +437,34 @@ class _PianoRollContentState extends State<_PianoRollContent>
           ),
         );
 
-        return PianoRollEventListener(
-          child: _PianoRollCanvasCursor(
-            child: ClipRect(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [grid, notes, selectionBox, playhead],
-              ),
+        final eventListenerChild = _PianoRollCanvasCursor(
+          child: ClipRect(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [grid, notes, selectionBox, playhead],
             ),
           ),
+        );
+
+        return AnimatedBuilder(
+          animation: timeViewAnimationHelper!.animationController,
+          child: eventListenerChild,
+          builder: (context, child) {
+            return AnimatedBuilder(
+              animation: keyValueAtTopAnimationHelper!.animationController,
+              child: child,
+              builder: (context, child) {
+                return PianoRollEventListener(
+                  viewSize: constraints.biggest,
+                  renderedTimeViewStart: timeViewStartAnimItem.animation.value,
+                  renderedTimeViewEnd: timeViewEndAnimItem.animation.value,
+                  renderedKeyHeight: viewModel.keyHeight,
+                  renderedKeyValueAtTop: keyValueAtTopAnimItem.animation.value,
+                  child: child!,
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -530,7 +536,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Container(
-                    height: 38,
+                    height: 40,
                     decoration: BoxDecoration(
                       border: Border(
                         top: BorderSide(color: AnthemTheme.panel.border),
@@ -579,9 +585,10 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
             ? SystemMouseCursors.move
             : MouseCursor.defer;
 
-        final note = contentUnderCursor.note?.metadata.id;
-        if (note != viewModel.hoveredNote) {
-          viewModel.hoveredNote = note;
+        final hoveredNoteRef = contentUnderCursor.note?.metadata;
+        final hoveredNoteId = hoveredNoteRef?.id;
+        if (hoveredNoteId != viewModel.hoveredNote) {
+          viewModel.hoveredNote = hoveredNoteId;
         }
 
         if (cursor == newCursor) return;

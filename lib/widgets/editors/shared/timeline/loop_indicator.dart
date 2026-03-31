@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,7 @@
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
 
-import 'timeline.dart';
+import 'timeline_constants.dart';
 
 class LoopIndicator extends StatelessWidget {
   final AnimationController timeViewAnimationController;
@@ -30,8 +30,8 @@ class LoopIndicator extends StatelessWidget {
   final int? loopStart;
   final int? loopEnd;
 
-  final void Function() onLoopStartPressed;
-  final void Function() onLoopEndPressed;
+  final void Function(int pointerId) onLoopStartPressed;
+  final void Function(int pointerId) onLoopEndPressed;
 
   const LoopIndicator({
     required this.timeViewAnimationController,
@@ -98,7 +98,7 @@ class LoopIndicator extends StatelessWidget {
                       width: handleInteractSize,
                       child: Listener(
                         onPointerDown: (event) {
-                          onLoopStartPressed();
+                          onLoopStartPressed(event.pointer);
                         },
                         child: MouseRegion(
                           cursor: SystemMouseCursors.resizeLeftRight,
@@ -123,7 +123,7 @@ class LoopIndicator extends StatelessWidget {
                       width: handleInteractSize,
                       child: Listener(
                         onPointerDown: (event) {
-                          onLoopEndPressed();
+                          onLoopEndPressed(event.pointer);
                         },
                         child: MouseRegion(
                           cursor: SystemMouseCursors.resizeLeftRight,

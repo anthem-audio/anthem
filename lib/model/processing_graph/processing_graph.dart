@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/processing_graph/processors/master_output.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -27,18 +28,44 @@ import 'node_connection.dart';
 
 part 'processing_graph.g.dart';
 
+/// A reusable fragment of processing graph state.
+///
+/// This is used by undo/redo commands and by logic that needs to prepare a set
+/// of nodes and connections before adding them to the graph. Keeping the
+/// original model objects around also preserves transient state such as
+/// third-party plugin state.
+class ProcessingGraphFragment {
+  final List<NodeModel> nodes;
+  final List<NodeConnectionModel> connections;
+
+  const ProcessingGraphFragment({
+    required this.nodes,
+    required this.connections,
+  });
+
+  const ProcessingGraphFragment.empty()
+    : nodes = const [],
+      connections = const [];
+
+  bool get isEmpty => nodes.isEmpty && connections.isEmpty;
+}
+
 @AnthemModel.syncedModel()
 class ProcessingGraphModel extends _ProcessingGraphModel
     with _$ProcessingGraphModel, _$ProcessingGraphModelAnthemModelMixin {
+  ProcessingGraphModel() {
+    _init();
+  }
+
   ProcessingGraphModel.uninitialized();
 
-  ProcessingGraphModel() {
+  ProcessingGraphModel.create({required Id masterOutputNodeId}) {
     // Set up the master output node
-    final masterOutputNode = MasterOutputProcessorModel.createNode(
-      'masterOutput',
-    );
+    final masterOutputNode = MasterOutputProcessorModel(
+      nodeId: masterOutputNodeId,
+    ).createNode();
     addNode(masterOutputNode);
-    masterOutputNodeId = masterOutputNode.id;
+    this.masterOutputNodeId = masterOutputNode.id;
 
     _init();
   }
@@ -71,9 +98,100 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     nodes[node.id] = node;
   }
 
+  /// Captures the given nodes and any touching connections without mutating the
+  /// graph.
+  ProcessingGraphFragment captureNodes(Iterable<Id> nodeIds) {
+    final capturedNodeIds = <Id>{};
+    for (final nodeId in nodeIds) {
+      if (nodes[nodeId] != null) {
+        capturedNodeIds.add(nodeId);
+      }
+    }
+
+    if (capturedNodeIds.isEmpty) {
+      return const ProcessingGraphFragment.empty();
+    }
+
+    final capturedConnections = <NodeConnectionModel>[];
+    for (final connection in connections.values) {
+      final isTouchingCapturedNode =
+          capturedNodeIds.contains(connection.sourceNodeId) ||
+          capturedNodeIds.contains(connection.destinationNodeId);
+
+      if (isTouchingCapturedNode) {
+        capturedConnections.add(connection);
+      }
+    }
+
+    final capturedNodes = <NodeModel>[];
+    for (final nodeId in capturedNodeIds) {
+      final node = nodes[nodeId];
+      if (node != null) {
+        capturedNodes.add(node);
+      }
+    }
+
+    return ProcessingGraphFragment(
+      nodes: capturedNodes,
+      connections: capturedConnections,
+    );
+  }
+
+  /// Removes the given nodes from the graph while capturing all removed nodes
+  /// and connections so they can be restored later.
+  ProcessingGraphFragment removeNodesAndCapture(Iterable<Id> nodeIds) {
+    final fragment = captureNodes(nodeIds);
+    if (fragment.isEmpty) {
+      return const ProcessingGraphFragment.empty();
+    }
+
+    for (final connection in fragment.connections) {
+      removeConnection(connection.id);
+    }
+
+    for (final node in fragment.nodes) {
+      nodes.remove(node.id);
+    }
+
+    return fragment;
+  }
+
+  /// Restores a fragment into the graph.
+  void restoreGraphFragment(ProcessingGraphFragment fragment) {
+    for (final node in fragment.nodes) {
+      if (nodes[node.id] != null) {
+        continue;
+      }
+
+      addNode(node);
+    }
+
+    for (final connection in fragment.connections) {
+      if (connections[connection.id] != null) {
+        continue;
+      }
+
+      if (nodes[connection.sourceNodeId] == null) {
+        throw StateError(
+          'Could not restore connection ${connection.id}: source node '
+          '${connection.sourceNodeId} not found.',
+        );
+      }
+
+      if (nodes[connection.destinationNodeId] == null) {
+        throw StateError(
+          'Could not restore connection ${connection.id}: destination node '
+          '${connection.destinationNodeId} not found.',
+        );
+      }
+
+      addConnection(connection);
+    }
+  }
+
   /// Removes a node from the graph, and removes all connections to and from the
   /// node.
-  void removeNode(String nodeId) {
+  void removeNode(Id nodeId) {
     final node = nodes[nodeId];
 
     if (node == null) return;
@@ -103,7 +221,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     destinationNodePort.connections.add(connection.id);
   }
 
-  void removeConnection(String connectionId) {
+  void removeConnection(Id connectionId) {
     final connection = connections[connectionId]!;
     final sourceNode = nodes[connection.sourceNodeId]!;
     final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
@@ -131,7 +249,7 @@ abstract class _ProcessingGraphModel
   ///
   /// This should not be modified directly. Use [addNode] and [removeNode].
   @anthemObservable
-  AnthemObservableMap<String, NodeModel> nodes = AnthemObservableMap();
+  AnthemObservableMap<Id, NodeModel> nodes = AnthemObservableMap();
 
   /// A map of connections between nodes in the graph.
   ///
@@ -140,9 +258,9 @@ abstract class _ProcessingGraphModel
   /// This should not be modified directly. Use [addConnection] and
   /// [removeConnection].
   @anthemObservable
-  AnthemObservableMap<String, NodeConnectionModel> connections =
+  AnthemObservableMap<Id, NodeConnectionModel> connections =
       AnthemObservableMap();
 
   @anthemObservable
-  late String masterOutputNodeId;
+  late Id masterOutputNodeId;
 }

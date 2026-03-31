@@ -39,10 +39,10 @@ abstract class _InvalidationRange {
 
 /// A request to compile either a pattern or an arrangement.
 class CompileSequenceRequest extends Request {
-  /// The channel IDs to rebuild.
+  /// The track IDs to rebuild.
   ///
-  /// If unspecified, all channels will be rebuilt.
-  List<String>? channelsToRebuild;
+  /// If unspecified, all tracks will be rebuilt.
+  List<Id>? tracksToRebuild;
 
   /// If specified, these are the ranges of the sequence that are no longer
   /// valid.
@@ -56,20 +56,20 @@ class CompileSequenceRequest extends Request {
   /// The audio thread in the engine is expected to honor these ranges. If the
   /// playhead is within one of these ranges when the audio thread picks up the
   /// updated sequence data, it should send "release all notes" events (or
-  /// equivalent) to all channels that were rebuilt.
+  /// equivalent) to all tracks that were rebuilt.
   ///
-  /// This should not be defined unless [channelsToRebuild] is also defined.
+  /// This should not be defined unless [tracksToRebuild] is also defined.
   List<InvalidationRange>? invalidationRanges;
 
   /// The pattern ID to compile.
   ///
   /// Either this or [arrangementId] must be specified.
-  String? patternId;
+  Id? patternId;
 
   /// The arrangement ID to compile.
   ///
   /// Either this or [patternId] must be specified.
-  String? arrangementId;
+  Id? arrangementId;
 
   CompileSequenceRequest.uninitialized();
 
@@ -77,7 +77,7 @@ class CompileSequenceRequest extends Request {
   CompileSequenceRequest.pattern({
     required int id,
     required this.patternId,
-    this.channelsToRebuild,
+    this.tracksToRebuild,
     this.invalidationRanges,
   }) {
     super.id = id;
@@ -87,24 +87,24 @@ class CompileSequenceRequest extends Request {
   CompileSequenceRequest.arrangement({
     required int id,
     required this.arrangementId,
-    this.channelsToRebuild,
+    this.tracksToRebuild,
     this.invalidationRanges,
   }) {
     super.id = id;
   }
 }
 
-/// A request to clean up the given channel from the sequencer.
+/// A request to clean up the given track from the sequencer.
 ///
 /// This allows us to release memory from the compiled sequence data without
 /// rebuilding every sequence.
-class RemoveChannelRequest extends Request {
-  /// The channel ID to remove.
-  String channelId;
+class RemoveTrackRequest extends Request {
+  /// The track ID to remove.
+  Id trackId;
 
-  RemoveChannelRequest.uninitialized() : channelId = '';
+  RemoveTrackRequest.uninitialized() : trackId = -1;
 
-  RemoveChannelRequest({required int id, required this.channelId}) {
+  RemoveTrackRequest({required int id, required this.trackId}) {
     super.id = id;
   }
 }
@@ -126,9 +126,9 @@ class LoopPointsChangedRequest extends Request {
   /// The sequence ID for which the loop points have changed.
   ///
   /// This will be either a pattern ID or an arrangement ID.
-  String sequenceId;
+  Id sequenceId;
 
-  LoopPointsChangedRequest.uninitialized() : sequenceId = '';
+  LoopPointsChangedRequest.uninitialized() : sequenceId = -1;
 
   LoopPointsChangedRequest({required int id, required this.sequenceId}) {
     super.id = id;

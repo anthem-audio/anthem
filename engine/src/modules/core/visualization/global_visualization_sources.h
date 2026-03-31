@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,7 +24,8 @@
 
 #include <juce_core/juce_core.h>
 
-#include <atomic>
+#include <optional>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -33,50 +34,76 @@
 
 #include "modules/util/ring_buffer.h"
 
-class CpuVisualizationProvider : public VisualizationDataProvider {
+class Transport;
+
+class CpuVisualizationProvider
+  : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
 private:
   JUCE_LEAK_DETECTOR(CpuVisualizationProvider)
 
-  std::atomic<double> cpuBurden;
-  std::atomic<bool> overwriteNextUpdate;
+  RingBuffer<TimestampedVisualizationValue<double>, 2048> cpuBurdenBuffer;
+  double rt_sampleRate = 0.0;
+  int64_t rt_samplesPerWindow = 0;
+  int64_t rt_nextWindowEndSample = 0;
+  double rt_windowMaxCpuBurden = 0.0;
+  bool rt_hasWindowCpuBurden = false;
 
 public:
-  std::optional<std::vector<double>> getNumericData() override;
+  std::optional<NumericVisualizationData> getTypedData() override;
 
-  void rt_updateCpuBurden(double newCpuBurden);
+  void rt_updateCpuBurden(
+    double newCpuBurden,
+    int64_t blockStartSample,
+    int numSamples,
+    double sampleRate
+  );
 
-  CpuVisualizationProvider() : cpuBurden(0.0), overwriteNextUpdate(false) {}
+  CpuVisualizationProvider()
+    : cpuBurdenBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 };
 
-class PlayheadPositionVisualizationProvider : public VisualizationDataProvider {
+class PlayheadPositionVisualizationProvider
+  : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
 private:
   JUCE_LEAK_DETECTOR(PlayheadPositionVisualizationProvider)
 
-  std::atomic<double> playheadPosition;
+  RingBuffer<TimestampedVisualizationValue<double>, 2048> playheadPositionBuffer;
+  double rt_sampleRate = 0.0;
+  int64_t rt_samplesPerUpdate = 0;
+  int64_t rt_nextSampleTimestamp = 0;
 
 public:
-  std::optional<std::vector<double>> getNumericData() override;
+  std::optional<NumericVisualizationData> getTypedData() override;
 
-  void rt_updatePlayheadPosition(double newPlayheadPosition);
+  void rt_updatePlayheadPosition(
+    const Transport& transport,
+    int64_t blockStartSample,
+    int numSamples,
+    double sampleRate
+  );
 
-  PlayheadPositionVisualizationProvider() : playheadPosition(0.0) {}
+  PlayheadPositionVisualizationProvider()
+    : playheadPositionBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 };
 
-class PlayheadSequenceIdVisualizationProvider : public VisualizationDataProvider {
+class PlayheadSequenceIdVisualizationProvider
+  : public TypedVisualizationDataProvider<int64_t, VisualizationValueType::intValue> {
 private:
   JUCE_LEAK_DETECTOR(PlayheadSequenceIdVisualizationProvider)
 
-  RingBuffer<std::array<char, 16>, 3> playheadSequenceIdBuffer;
-  std::string lastSentId;
+  RingBuffer<TimestampedVisualizationValue<int64_t>, 64> playheadSequenceIdBuffer;
+  std::optional<int64_t> lastQueuedId;
 
 public:
-  std::optional<std::vector<std::string>> getStringData() override;
+  std::optional<IntegerVisualizationData> getTypedData() override;
 
-  void rt_updatePlayheadSequenceId(const std::string& newPlayheadSequenceId);
+  void rt_updatePlayheadSequenceId(
+    int64_t newPlayheadSequenceId,
+    int64_t sampleTimestamp
+  );
 
-  PlayheadSequenceIdVisualizationProvider() : playheadSequenceIdBuffer(RingBuffer<std::array<char, 16>, 3>()) {
-    lastSentId = "";
-  };
+  PlayheadSequenceIdVisualizationProvider()
+    : playheadSequenceIdBuffer(RingBuffer<TimestampedVisualizationValue<int64_t>, 64>()) {}
 };
 
 class GlobalVisualizationSources {

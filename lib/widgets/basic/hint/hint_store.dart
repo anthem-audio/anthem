@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -25,10 +25,16 @@ int _getId() {
   return _idGen;
 }
 
+/// An individual hint, consisting of [action] and [text], of which there may be
+/// multiple in the hint panel.
 class HintSection {
+  /// The user action, e.g. "click".
   final String action;
+
+  /// The body of the hint, e.g. "Adds a new track".
   final String text;
 
+  /// Creates a [HintSection].
   HintSection(this.action, this.text);
 }
 
@@ -48,15 +54,21 @@ class HintStore {
   /// removed.
   final List<(int, List<HintSection>)> _hints = [];
 
-  int addHint(List<HintSection> sections) {
+  /// This is a list of hint IDs that will override any other hints that are
+  /// present.
+  final List<int> _importantHints = [];
+
+  int addHint(List<HintSection> sections, [bool override = false]) {
     final id = _getId();
     _hints.add((id, sections));
     _hintStreamController.add(getActiveHint());
+    if (override) _importantHints.add(id);
     return id;
   }
 
   void removeHint(int id) {
     _hints.removeWhere((element) => element.$1 == id);
+    _importantHints.remove(id);
     _hintStreamController.add(getActiveHint());
   }
 
@@ -70,6 +82,12 @@ class HintStore {
 
   List<HintSection>? getActiveHint() {
     if (_hints.isEmpty) return null;
+
+    // If there are any important hints, return the most recent
+    if (_importantHints.isNotEmpty) {
+      return _hints.firstWhere((h) => h.$1 == _importantHints.last).$2;
+    }
+
     // Return the most recent hint
     return _hints.last.$2;
   }

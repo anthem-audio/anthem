@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,9 +18,11 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -33,23 +35,28 @@ part 'live_event_provider.g.dart';
 )
 class LiveEventProviderProcessorModel extends _LiveEventProviderProcessorModel
     with
+        Processor,
         _$LiveEventProviderProcessorModel,
         _$LiveEventProviderProcessorModelAnthemModelMixin {
   LiveEventProviderProcessorModel({required super.nodeId});
 
-  LiveEventProviderProcessorModel.uninitialized() : super(nodeId: '');
+  LiveEventProviderProcessorModel.create({
+    required ProjectEntityIdAllocator idAllocator,
+  }) : super(nodeId: idAllocator.allocateId());
+
+  LiveEventProviderProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory LiveEventProviderProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$LiveEventProviderProcessorModelAnthemModelMixin.fromJson(json);
 
-  static NodeModel createNode(String channelId) {
-    final id = 'live-event-provider-${getId()}';
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: LiveEventProviderProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this,
       eventOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: eventOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
@@ -65,7 +72,7 @@ abstract class _LiveEventProviderProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   static const int eventOutputPortId = 0;
 
-  String nodeId;
+  Id nodeId;
 
   _LiveEventProviderProcessorModel({required this.nodeId});
 }

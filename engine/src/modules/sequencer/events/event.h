@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 #pragma once
 
 #include "note_events.h"
+#include "note_instance_id.h"
 
 // The event type. This determines ordering for events that occur at the same
 // time - e.g. NoteOff must come before NoteOn.
@@ -32,13 +33,12 @@ enum AnthemEventType {
 // An event that can occur in Anthem.
 //
 // This should always be absent of absolute time information, though it may
-// contain durations. The time information is provided in two different
+// contain durations. Time positioning is added in two different wrapper
 // contexts:
-// - AnthemSequenceEvent: In the context of a sequence, the time is the absolute
-//   time of the event in ticks, along with a fractional component.
-// - AnthemLiveEvent: In the context of the processing graph, the time is the
-//   time in samples since the start of the processing block; note that this
-//   value can be negative.
+// - AnthemSequenceEvent: absolute sequence position, expressed in ticks.
+// - AnthemLiveEvent: block-relative position, expressed as a sample offset from
+//   the start of the current processing block.
+//
 struct AnthemEvent {
   AnthemEventType type;
   
@@ -57,6 +57,9 @@ struct AnthemEvent {
 struct AnthemSequenceEvent {
   // The time of the event, relative to the start of the sequence.
   double offset;
+
+  // The deterministic source note ID for this event.
+  AnthemSourceNoteId sourceId = anthemInvalidSourceNoteId;
 
   // The event itself.
   AnthemEvent event;
@@ -79,8 +82,23 @@ struct AnthemSequenceEvent {
 };
 
 struct AnthemLiveEvent {
-  // The time of the event, relative to the start of the processing block.
-  double time;
+  // Offset, in samples, from the start of the current processing block.
+  //
+  // `0.0` means "at block start". Positive values schedule the event later in
+  // the block. This is the time domain used by processing-graph consumers, so
+  // this must never contain sequencer ticks or seconds. The value may be
+  // fractional and may be negative in edge cases where an event needs to
+  // describe something that logically occurred just before the block started.
+  double sampleOffset;
+
+  // The runtime live note ID for this event.
+  //
+  // This should come from the generator in live_note_id_generator.h.
+  //
+  // This is assigned by note-producing processors and is the identity that
+  // downstream processors should use to track active notes. Non-note events
+  // should leave this as `anthemInvalidLiveNoteId`.
+  AnthemLiveNoteId liveId = anthemInvalidLiveNoteId;
 
   // The event itself.
   AnthemEvent event;

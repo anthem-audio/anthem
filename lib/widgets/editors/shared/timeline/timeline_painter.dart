@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,23 +22,27 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
+import 'package:anthem/widgets/editors/shared/timeline/timeline_constants.dart';
 import 'package:flutter/widgets.dart';
 
 class TimelinePainter extends CustomPainter {
   TimelinePainter({
-    required this.timeViewStart,
-    required this.timeViewEnd,
+    required Listenable repaint,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
     required this.ticksPerQuarter,
     required this.defaultTimeSignature,
     required this.timeSignatureChanges,
-  });
+  }) : super(repaint: repaint);
 
-  final double timeViewStart;
-  final double timeViewEnd;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
   final int ticksPerQuarter;
   final TimeSignatureModel defaultTimeSignature;
   final List<TimeSignatureChangeModel> timeSignatureChanges;
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -190,8 +194,8 @@ class TimelinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(TimelinePainter oldDelegate) {
-    return oldDelegate.timeViewStart != timeViewStart ||
-        oldDelegate.timeViewEnd != timeViewEnd ||
+    return oldDelegate.timeViewStartAnimation != timeViewStartAnimation ||
+        oldDelegate.timeViewEndAnimation != timeViewEndAnimation ||
         oldDelegate.ticksPerQuarter != ticksPerQuarter ||
         oldDelegate.defaultTimeSignature != defaultTimeSignature ||
         oldDelegate.timeSignatureChanges != timeSignatureChanges;

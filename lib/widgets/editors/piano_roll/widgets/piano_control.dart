@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:flutter/rendering.dart';
@@ -43,11 +44,13 @@ class PianoControl extends StatefulWidget {
     super.key,
     required this.keyValueAtTop,
     required this.keyHeight,
+    required this.shouldGreyOut,
     required this.setKeyValueAtTop,
   });
 
   final double keyValueAtTop;
   final double keyHeight;
+  final bool shouldGreyOut;
   final ValueSetter<double> setKeyValueAtTop;
 
   @override
@@ -69,9 +72,8 @@ class _PianoControlState extends State<PianoControl> {
     }
 
     final project = Provider.of<ProjectModel>(context, listen: false);
-    final activeInstrumentId = project.activeInstrumentID;
-
-    if (activeInstrumentId == null) {
+    final activeTrackId = project.sequence.activeTrackID;
+    if (activeTrackId == null) {
       return;
     }
 
@@ -79,18 +81,15 @@ class _PianoControlState extends State<PianoControl> {
 
     activeKey = key;
 
-    project.generators[activeInstrumentId]?.liveEventManager.noteOn(
-      pitch: key,
-      velocity: 80,
-      pan: 0,
-    );
+    ServiceRegistry.forProject(project.id).projectController.liveEventManager
+        .noteOn(trackId: activeTrackId, pitch: key, velocity: 80, pan: 0);
   }
 
   void clearActiveKey() {
     final project = Provider.of<ProjectModel>(context, listen: false);
-    final activeInstrumentId = project.activeInstrumentID;
+    final activeTrackId = project.sequence.activeTrackID;
 
-    if (activeInstrumentId == null) {
+    if (activeTrackId == null) {
       return;
     }
 
@@ -98,9 +97,8 @@ class _PianoControlState extends State<PianoControl> {
       return;
     }
 
-    project.generators[activeInstrumentId]?.liveEventManager.noteOff(
-      pitch: activeKey!,
-    );
+    ServiceRegistry.forProject(project.id).projectController.liveEventManager
+        .noteOff(trackId: activeTrackId, pitch: activeKey!);
 
     activeKey = null;
   }
@@ -176,7 +174,11 @@ class _PianoControlState extends State<PianoControl> {
           Widget child;
 
           if (keyType == KeyType.white) {
-            child = _WhiteKey(keyHeight: widget.keyHeight, keyNumber: note);
+            child = _WhiteKey(
+              keyHeight: widget.keyHeight,
+              keyNumber: note,
+              shouldGreyOut: widget.shouldGreyOut,
+            );
           } else {
             child = _BlackKey(keyHeight: widget.keyHeight, keyNumber: note);
           }
@@ -276,10 +278,15 @@ class KeyLayoutDelegate extends MultiChildLayoutDelegate {
 const notchWidth = 22.0;
 
 class _WhiteKey extends StatelessWidget {
-  const _WhiteKey({required this.keyNumber, required this.keyHeight});
+  const _WhiteKey({
+    required this.keyNumber,
+    required this.keyHeight,
+    required this.shouldGreyOut,
+  });
 
   final int keyNumber;
   final double keyHeight;
+  final bool shouldGreyOut;
 
   @override
   Widget build(BuildContext context) {
@@ -290,7 +297,8 @@ class _WhiteKey extends StatelessWidget {
         ? keyHeight * 2
         : keyHeight * 1.5;
 
-    final double opacity = keyNumber < minKeyValue || keyNumber > maxKeyValue
+    final double opacity =
+        keyNumber < minKeyValue || keyNumber > maxKeyValue || shouldGreyOut
         ? 0.7
         : 1;
 

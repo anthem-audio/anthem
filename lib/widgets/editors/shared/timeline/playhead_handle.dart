@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -125,8 +125,11 @@ class PlayheadPositioner extends StatelessWidget {
         }
 
         return VisualizationBuilder.double(
-          config: VisualizationSubscriptionConfig.latest('playhead_position'),
-          builder: (context, playheadPosition) {
+          config: VisualizationSubscriptionConfig.latestDouble(
+            'playhead_position',
+            bufferMode: VisualizationBufferMode.adaptive,
+          ),
+          builder: (context, playheadPosition, engineTime) {
             return buildPlayheadAtPosition(playheadPosition);
           },
         );

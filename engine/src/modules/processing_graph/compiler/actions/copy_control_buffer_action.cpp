@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,15 +30,9 @@ void CopyControlBufferAction::execute(int numSamples) {
   for (int channel = 0; channel < sourceBuffer.getNumChannels(); ++channel) {
     for (int sample = 0; sample < numSamples; ++sample) {
       float sourceSample = sourceBuffer.getSample(channel, sample);
-
-      // Overwrite the destination, unless the source is NaN
-      if (!std::isnan(sourceSample)) {
-        // Scale the incoming value based on the min/max values defined by the
-        // parameter definition
-        auto scaledSample = sourceSample * (maxParameterValue - minParameterValue) + minParameterValue;
-
-        destinationBuffer.setSample(channel, sample, scaledSample);
-      }
+      jassert(!std::isnan(sourceSample));
+      jassert(sourceSample >= 0.0f && sourceSample <= 1.0f);
+      destinationBuffer.setSample(channel, sample, sourceSample);
     }
   }
 }

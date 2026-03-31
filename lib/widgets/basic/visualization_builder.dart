@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,273 +17,264 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
 import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+typedef DoubleVisualizationValue = double;
+typedef IntVisualizationValue = int;
+typedef StringVisualizationValue = String;
+
+typedef VisualizationBuilderCallback<T> =
+    Widget Function(BuildContext context, T? value, Duration? engineTime);
+typedef MultiVisualizationBuilderCallback<T> =
+    Widget Function(
+      BuildContext context,
+      List<T> values,
+      List<Duration?> engineTimes,
+    );
+
+typedef DoubleVisualizationBuilder =
+    VisualizationBuilderCallback<DoubleVisualizationValue>;
+typedef IntVisualizationBuilder =
+    VisualizationBuilderCallback<IntVisualizationValue>;
+typedef StringVisualizationBuilder =
+    VisualizationBuilderCallback<StringVisualizationValue>;
+typedef MultiDoubleVisualizationBuilder =
+    MultiVisualizationBuilderCallback<DoubleVisualizationValue>;
+typedef MultiIntVisualizationBuilder =
+    MultiVisualizationBuilderCallback<IntVisualizationValue>;
+typedef MultiStringVisualizationBuilder =
+    MultiVisualizationBuilderCallback<StringVisualizationValue>;
+
 /// Builder that rebuilds when the given visualization data item changes.
 ///
 /// This builder will attempt to rebuild on every frame, but will only
-/// actually rebuild if the data item has changed.
-class VisualizationBuilder extends StatefulWidget {
-  final Widget Function(BuildContext context, double? value)? doubleBuilder;
-  final Widget Function(BuildContext context, String? value)? stringBuilder;
-  final VisualizationSubscriptionConfig config;
-  final Duration? minimumUpdateInterval;
+/// actually rebuild if the data item value or engine time has changed.
+abstract final class VisualizationBuilder {
+  static Widget double({
+    Key? key,
+    required VisualizationSubscriptionConfig<DoubleVisualizationValue> config,
+    required DoubleVisualizationBuilder builder,
+    Duration? minimumUpdateInterval,
+  }) {
+    return _VisualizationBuilder<DoubleVisualizationValue>(
+      key: key,
+      config: config,
+      builder: builder,
+      minimumUpdateInterval: minimumUpdateInterval,
+    );
+  }
 
-  /// Creates a builder that expects a double value from the given subscription
-  /// config.
-  const VisualizationBuilder.double({
-    super.key,
-    required this.config,
-    required Widget Function(BuildContext context, double? value)? builder,
-    this.minimumUpdateInterval,
-  }) : doubleBuilder = builder,
-       stringBuilder = null;
+  static Widget int({
+    Key? key,
+    required VisualizationSubscriptionConfig<IntVisualizationValue> config,
+    required IntVisualizationBuilder builder,
+    Duration? minimumUpdateInterval,
+  }) {
+    return _VisualizationBuilder<IntVisualizationValue>(
+      key: key,
+      config: config,
+      builder: builder,
+      minimumUpdateInterval: minimumUpdateInterval,
+    );
+  }
 
-  /// Creates a builder that expects a string value from the given subscription
-  /// config.
-  const VisualizationBuilder.string({
-    super.key,
-    required this.config,
-    required Widget Function(BuildContext context, String? value)? builder,
-    this.minimumUpdateInterval,
-  }) : doubleBuilder = null,
-       stringBuilder = builder;
-
-  @override
-  State<VisualizationBuilder> createState() => _VisualizationBuilderState();
+  static Widget string({
+    Key? key,
+    required VisualizationSubscriptionConfig<StringVisualizationValue> config,
+    required StringVisualizationBuilder builder,
+    Duration? minimumUpdateInterval,
+  }) {
+    return _VisualizationBuilder<StringVisualizationValue>(
+      key: key,
+      config: config,
+      builder: builder,
+      minimumUpdateInterval: minimumUpdateInterval,
+    );
+  }
 }
 
-class _VisualizationBuilderState extends State<VisualizationBuilder> {
-  late final VisualizationSubscription _subscription;
-  double? _latestDoubleValue;
-  String? _latestStringValue;
-  StreamSubscription<void>? _updateSubscription;
-  DateTime? _lastUpdateTime;
+class _VisualizationBuilder<T> extends StatefulWidget {
+  final VisualizationSubscriptionConfig<T> config;
+  final VisualizationBuilderCallback<T> builder;
+  final Duration? minimumUpdateInterval;
+
+  const _VisualizationBuilder({
+    super.key,
+    required this.config,
+    required this.builder,
+    this.minimumUpdateInterval,
+  });
+
+  @override
+  State<_VisualizationBuilder<T>> createState() =>
+      _VisualizationBuilderState<T>();
+}
+
+class _VisualizationBuilderState<T> extends State<_VisualizationBuilder<T>> {
+  late final VisualizationSubscriptionController<T> _controller;
 
   @override
   void initState() {
     super.initState();
-    _subscription = Provider.of<ProjectModel>(
-      context,
-      listen: false,
-    ).visualizationProvider.subscribe(widget.config);
 
-    _updateSubscription = _subscription.onUpdate.listen((_) {
-      if (widget.minimumUpdateInterval != null) {
-        final now = DateTime.now();
-        if (_lastUpdateTime != null &&
-            now.difference(_lastUpdateTime!) < widget.minimumUpdateInterval!) {
-          return;
-        }
-        _lastUpdateTime = now;
-      }
-
-      if (widget.doubleBuilder != null) {
-        final newValue = _subscription.readValue();
-
-        if (newValue != _latestDoubleValue) {
-          setState(() {
-            _latestDoubleValue = newValue;
-          });
-        }
-      }
-
-      if (widget.stringBuilder != null) {
-        final newValue = _subscription.readValueString();
-
-        if (newValue != _latestStringValue) {
-          setState(() {
-            _latestStringValue = newValue;
-          });
-        }
-      }
-    });
+    _controller = VisualizationSubscriptionController<T>(
+      visualizationProvider: Provider.of<ProjectModel>(
+        context,
+        listen: false,
+      ).visualizationProvider,
+      config: widget.config,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
-  void didUpdateWidget(VisualizationBuilder oldWidget) {
+  void didUpdateWidget(covariant _VisualizationBuilder<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.config != widget.config) {
-      _subscription.dispose();
-      _subscription = Provider.of<ProjectModel>(
-        context,
-        listen: false,
-      ).visualizationProvider.subscribe(widget.config);
-    }
+    _controller.update(
+      config: widget.config,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
   void dispose() {
-    _subscription.dispose();
-    _updateSubscription?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final doubleWidget = widget.doubleBuilder?.call(
-      context,
-      _latestDoubleValue,
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return widget.builder(
+          context,
+          _controller.value,
+          _controller.engineTime,
+        );
+      },
     );
-    if (doubleWidget != null) {
-      return doubleWidget;
-    }
-
-    final stringWidget = widget.stringBuilder?.call(
-      context,
-      _latestStringValue,
-    );
-    return stringWidget!;
   }
 }
 
 /// Builder that rebuilds when the given visualization data items change.
 ///
 /// This builder will attempt to rebuild on every frame, but will only
-/// actually rebuild if at least one of the data items have changed.
-class MultiVisualizationBuilder extends StatefulWidget {
-  final Widget Function(BuildContext context, List<double> values)?
-  doubleBuilder;
-  final Widget Function(BuildContext context, List<String> values)?
-  stringBuilder;
-  final List<VisualizationSubscriptionConfig> configs;
-  final Duration? minimumUpdateInterval;
+/// actually rebuild if at least one of the data item values or engine times
+/// have changed.
+abstract final class MultiVisualizationBuilder {
+  static Widget double({
+    Key? key,
+    required List<VisualizationSubscriptionConfig<DoubleVisualizationValue>>
+    configs,
+    required MultiDoubleVisualizationBuilder builder,
+    Duration? minimumUpdateInterval,
+  }) {
+    return _MultiVisualizationBuilder<DoubleVisualizationValue>(
+      key: key,
+      configs: configs,
+      builder: builder,
+      minimumUpdateInterval: minimumUpdateInterval,
+    );
+  }
 
-  const MultiVisualizationBuilder.double({
-    super.key,
-    required this.configs,
-    required Widget Function(BuildContext context, List<double> values)?
-    builder,
-    this.minimumUpdateInterval,
-  }) : doubleBuilder = builder,
-       stringBuilder = null;
+  static Widget int({
+    Key? key,
+    required List<VisualizationSubscriptionConfig<IntVisualizationValue>>
+    configs,
+    required MultiIntVisualizationBuilder builder,
+    Duration? minimumUpdateInterval,
+  }) {
+    return _MultiVisualizationBuilder<IntVisualizationValue>(
+      key: key,
+      configs: configs,
+      builder: builder,
+      minimumUpdateInterval: minimumUpdateInterval,
+    );
+  }
 
-  const MultiVisualizationBuilder.string({
-    super.key,
-    required this.configs,
-    required Widget Function(BuildContext context, List<String> values)?
-    builder,
-    this.minimumUpdateInterval,
-  }) : doubleBuilder = null,
-       stringBuilder = builder;
-
-  @override
-  State<MultiVisualizationBuilder> createState() =>
-      _MultiVisualizationBuilderState();
+  static Widget string({
+    Key? key,
+    required List<VisualizationSubscriptionConfig<StringVisualizationValue>>
+    configs,
+    required MultiStringVisualizationBuilder builder,
+    Duration? minimumUpdateInterval,
+  }) {
+    return _MultiVisualizationBuilder<StringVisualizationValue>(
+      key: key,
+      configs: configs,
+      builder: builder,
+      minimumUpdateInterval: minimumUpdateInterval,
+    );
+  }
 }
 
-class _MultiVisualizationBuilderState extends State<MultiVisualizationBuilder> {
-  late final List<VisualizationSubscription> _subscriptions;
-  List<double> _latestDoubleValues = [];
-  List<String> _latestStringValues = [];
-  List<DateTime?> _lastUpdateTimes = [];
+class _MultiVisualizationBuilder<T> extends StatefulWidget {
+  final List<VisualizationSubscriptionConfig<T>> configs;
+  final MultiVisualizationBuilderCallback<T> builder;
+  final Duration? minimumUpdateInterval;
 
-  void _attachSubscriptions() {
-    _latestDoubleValues = List.filled(
-      widget.configs.length,
-      0.0,
-      growable: false,
-    );
-    _latestStringValues = List.filled(
-      widget.configs.length,
-      '',
-      growable: false,
-    );
-    _lastUpdateTimes = List.filled(widget.configs.length, null);
+  const _MultiVisualizationBuilder({
+    super.key,
+    required this.configs,
+    required this.builder,
+    this.minimumUpdateInterval,
+  });
 
-    _subscriptions = widget.configs
-        .map(
-          (config) => Provider.of<ProjectModel>(
-            context,
-            listen: false,
-          ).visualizationProvider.subscribe(config),
-        )
-        .toList();
+  @override
+  State<_MultiVisualizationBuilder<T>> createState() =>
+      _MultiVisualizationBuilderState<T>();
+}
 
-    for (var i = 0; i < _subscriptions.length; i++) {
-      final sub = _subscriptions[i];
-      sub.onUpdate.listen((_) {
-        if (widget.minimumUpdateInterval != null) {
-          final now = DateTime.now();
-          if (_lastUpdateTimes[i] != null &&
-              now.difference(_lastUpdateTimes[i]!) <
-                  widget.minimumUpdateInterval!) {
-            return;
-          }
-          _lastUpdateTimes[i] = now;
-        }
-
-        if (widget.doubleBuilder != null) {
-          final newValue = sub.readValue();
-
-          if (newValue != _latestDoubleValues[i]) {
-            setState(() {
-              _latestDoubleValues[i] = newValue;
-            });
-          }
-        }
-
-        if (widget.stringBuilder != null) {
-          final newValue = sub.readValueString();
-
-          if (newValue != _latestStringValues[i]) {
-            setState(() {
-              _latestStringValues[i] = newValue;
-            });
-          }
-        }
-      });
-    }
-  }
+class _MultiVisualizationBuilderState<T>
+    extends State<_MultiVisualizationBuilder<T>> {
+  late final MultiVisualizationSubscriptionController<T> _controller;
 
   @override
   void initState() {
     super.initState();
 
-    _attachSubscriptions();
+    _controller = MultiVisualizationSubscriptionController<T>(
+      visualizationProvider: Provider.of<ProjectModel>(
+        context,
+        listen: false,
+      ).visualizationProvider,
+      configs: widget.configs,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
-  void didUpdateWidget(MultiVisualizationBuilder oldWidget) {
+  void didUpdateWidget(covariant _MultiVisualizationBuilder<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.configs.length != widget.configs.length ||
-        !oldWidget.configs.every((config) => widget.configs.contains(config))) {
-      for (var sub in _subscriptions) {
-        sub.dispose();
-      }
-      _attachSubscriptions();
-    }
+    _controller.update(
+      configs: widget.configs,
+      minimumUpdateInterval: widget.minimumUpdateInterval,
+    );
   }
 
   @override
   void dispose() {
-    for (var sub in _subscriptions) {
-      sub.dispose();
-    }
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final doubleWidget = widget.doubleBuilder?.call(
-      context,
-      _latestDoubleValues,
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, child) {
+        return widget.builder(
+          context,
+          _controller.values,
+          _controller.engineTimes,
+        );
+      },
     );
-    if (doubleWidget != null) {
-      return doubleWidget;
-    }
-
-    final stringWidget = widget.stringBuilder?.call(
-      context,
-      _latestStringValues,
-    );
-    return stringWidget!;
   }
 }

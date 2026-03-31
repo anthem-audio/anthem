@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,7 @@
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/memory_block.dart';
@@ -27,6 +28,8 @@ import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
 import 'package:flutter/scheduler.dart';
 
 class EngineEmscriptenInterface {
+  static const _introBytesToSkip = 16;
+
   final String exportName;
   late final JSObject appInstance;
 
@@ -38,6 +41,9 @@ class EngineEmscriptenInterface {
   void Function(Uint8List bytes)? onMessageReceived;
 
   late final Ticker _readTicker;
+  late final Timer _readFallbackTimer;
+  final Completer<void> _introMessageReceivedCompleter = Completer<void>();
+  bool _hasReceivedTickerTick = false;
 
   EngineEmscriptenInterface(this.exportName, {this.onMessageReceived});
 
@@ -252,50 +258,94 @@ class EngineEmscriptenInterface {
     );
 
     _setUpReadTicker();
+    await _introMessageReceivedCompleter.future;
   }
 
   void sendMessage(Uint8List bytes) {
     outgoingMessages.add(MemoryBlock.fromTypedList(bytes));
-    if (!_isSendActive) {
-      _sendPendingMessages();
-    }
+    _scheduleSendPendingMessages();
   }
 
   bool _isSendActive = false;
-  int _backoffDurationUs = 0;
-  void _sendPendingMessages() {
-    _isSendActive = true;
+  bool _isSendScheduled = false;
 
-    while (outgoingMessages.isNotEmpty) {
-      final message = outgoingMessages.first;
-      final messageData = message.buffer;
+  static const _maxBytesPerSendPass = 4096;
+  static const _fullBufferRetryDelay = Duration(milliseconds: 1);
 
-      for (var i = 0; i < messageData.length; i++) {
-        final success = writeBuffer.tryEnqueue(messageData[i]);
-        if (!success) {
-          // We need to remove the data we already sent from this message
-          message.removeRange(0, i);
+  void _scheduleSendPendingMessages([Duration delay = Duration.zero]) {
+    if (_isSendScheduled) return;
 
-          _backoffDurationUs += 100;
-          Timer(
-            Duration(microseconds: _backoffDurationUs),
-            () => _sendPendingMessages(),
-          );
+    _isSendScheduled = true;
+    Timer(delay, () {
+      _isSendScheduled = false;
+      _sendPendingMessages();
+    });
+  }
 
-          return;
-        }
-      }
-
-      outgoingMessages.removeAt(0);
-    }
-
+  void _notifyWriteBufferChanged() {
     final heapI32 = writeBuffer.getHeapI32();
     final heapU32 = writeBuffer.getHeapU32();
     writeBuffer.incrementTicket(heapU32);
     writeBuffer.notifyTicketChange(heapI32);
+  }
 
-    _backoffDurationUs = 0;
-    _isSendActive = false;
+  void _sendPendingMessages() {
+    if (_isSendActive) return;
+
+    _isSendActive = true;
+    var didWriteBytes = false;
+    var bytesRemainingInPass = _maxBytesPerSendPass;
+
+    try {
+      while (outgoingMessages.isNotEmpty && bytesRemainingInPass > 0) {
+        final message = outgoingMessages.first;
+        final messageData = message.buffer;
+        final bytesToAttempt = min(messageData.length, bytesRemainingInPass);
+
+        var bytesWrittenFromMessage = 0;
+        while (bytesWrittenFromMessage < bytesToAttempt) {
+          final success = writeBuffer.tryEnqueue(
+            messageData[bytesWrittenFromMessage],
+          );
+          if (!success) {
+            if (bytesWrittenFromMessage > 0) {
+              message.removeRange(0, bytesWrittenFromMessage);
+              didWriteBytes = true;
+            }
+
+            if (didWriteBytes) {
+              _notifyWriteBufferChanged();
+            }
+
+            _scheduleSendPendingMessages(_fullBufferRetryDelay);
+            return;
+          }
+
+          bytesWrittenFromMessage++;
+        }
+
+        if (bytesWrittenFromMessage == messageData.length) {
+          outgoingMessages.removeAt(0);
+        } else if (bytesWrittenFromMessage > 0) {
+          message.removeRange(0, bytesWrittenFromMessage);
+        }
+
+        if (bytesWrittenFromMessage > 0) {
+          didWriteBytes = true;
+          bytesRemainingInPass -= bytesWrittenFromMessage;
+        }
+      }
+
+      if (didWriteBytes) {
+        _notifyWriteBufferChanged();
+      }
+
+      if (outgoingMessages.isNotEmpty) {
+        _scheduleSendPendingMessages();
+      }
+    } finally {
+      _isSendActive = false;
+    }
   }
 
   /// Starts a loop that asynchronously reads from the read buffer whenever
@@ -319,7 +369,20 @@ class EngineEmscriptenInterface {
 
   /// Uses a [Ticker] to read from the read buffer on each frame.
   void _setUpReadTicker() {
+    // Startup handshake messages can arrive before Flutter renders its first
+    // frame. The frame ticker keeps visualization reads aligned with rendering,
+    // and the timer makes sure control-plane traffic is still drained during
+    // startup or any other period where frames are not being produced yet.
     _readTicker = Ticker((elapsed) {
+      if (!_hasReceivedTickerTick) {
+        _hasReceivedTickerTick = true;
+        _readFallbackTimer.cancel();
+      }
+
+      _tryRead();
+    });
+
+    _readFallbackTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
       _tryRead();
     });
 
@@ -342,9 +405,8 @@ class EngineEmscriptenInterface {
     // Note that the actual bytes skipped is 16 - the 8-byte ID itself is
     // prefixed by a header that indicates the size of the message (as with all
     // incoming messages), so we need to skip that too.
-    const introBytesToSkip = 16;
-    if (_introBytesSkipped < introBytesToSkip) {
-      final toSkip = (introBytesToSkip - _introBytesSkipped).clamp(0, size);
+    if (_introBytesSkipped < _introBytesToSkip) {
+      final toSkip = (_introBytesToSkip - _introBytesSkipped).clamp(0, size);
       for (var i = 0; i < toSkip; i++) {
         final byte = readBuffer.tryDequeue();
         if (byte == null) {
@@ -353,15 +415,26 @@ class EngineEmscriptenInterface {
         _introBytesSkipped++;
         size--;
       }
+
+      if (_introBytesSkipped >= _introBytesToSkip &&
+          !_introMessageReceivedCompleter.isCompleted) {
+        _introMessageReceivedCompleter.complete();
+      }
+
+      if (size == 0) {
+        return;
+      }
     }
 
     final builder = BytesBuilder(copy: false);
     var messageBytes = Uint8List(size);
-    while (size > 0) {
+    var stop = false;
+    while (size > 0 && !stop) {
       for (var i = 0; i < size; i++) {
         final byte = readBuffer.tryDequeue();
         if (byte == null) {
           // This should never happen, since we checked the size above.
+          stop = true;
           break;
         }
         messageBytes[i] = byte;

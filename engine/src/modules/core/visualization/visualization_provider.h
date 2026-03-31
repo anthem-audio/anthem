@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,20 +22,86 @@
 #include <vector>
 #include <optional>
 #include <string>
+#include <cstdint>
+#include <variant>
 
-// This is an abstract interface for visualization data providers. It is used by the
-// VisualizationBroker to query data from various sources in the engine.
+#include "messages/messages.h"
+#include "modules/util/ring_buffer.h"
+
+template <typename T>
+struct TimestampedVisualizationData {
+  std::vector<int64_t> sampleTimestamps;
+  std::vector<T> values;
+};
+
+template <typename T>
+struct TimestampedVisualizationValue {
+  int64_t sampleTimestamp;
+  T value;
+};
+
+using NumericVisualizationData = TimestampedVisualizationData<double>;
+using IntegerVisualizationData = TimestampedVisualizationData<int64_t>;
+using StringVisualizationData = TimestampedVisualizationData<std::string>;
+using VisualizationDataPayload = std::variant<
+  NumericVisualizationData,
+  IntegerVisualizationData,
+  StringVisualizationData
+>;
+
+template <typename T, std::size_t Size>
+std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuffer(
+  RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer
+) {
+  TimestampedVisualizationData<T> data;
+
+  while (true) {
+    auto item = buffer.read();
+    if (!item.has_value()) {
+      break;
+    }
+
+    data.sampleTimestamps.push_back(item->sampleTimestamp);
+    data.values.push_back(item->value);
+  }
+
+  if (data.values.empty()) {
+    return std::nullopt;
+  }
+
+  return data;
+}
+
+// This non-templated base class is required for runtime polymorphism. The
+// VisualizationBroker stores heterogeneous providers (double, int, string,
+// etc.) in a single container keyed by ID, so it needs one common interface
+// that is not templated on the payload type.
 class VisualizationDataProvider {
 public:
   virtual ~VisualizationDataProvider() = default;
 
-  // Get the most recent numeric data for this provider, if any.
-  virtual std::optional<std::vector<double>> getNumericData() {
-    return std::nullopt;
+  virtual VisualizationValueType getValueType() const = 0;
+  virtual std::optional<VisualizationDataPayload> getData() = 0;
+};
+
+// This templated helper exists only to reduce per-provider boilerplate. Notice
+// that getValueType() is overridden and just returns the type from the
+// template, which prevents the actual providers from having to do this.
+template <typename T, VisualizationValueType Type>
+class TypedVisualizationDataProvider : public VisualizationDataProvider {
+public:
+  VisualizationValueType getValueType() const override {
+    return Type;
   }
 
-  // Get the most recent string data for this provider, if any.
-  virtual std::optional<std::vector<std::string>> getStringData() {
-    return std::nullopt;
+  std::optional<VisualizationDataPayload> getData() override {
+    auto data = this->getTypedData();
+    if (!data.has_value()) {
+      return std::nullopt;
+    }
+
+    return VisualizationDataPayload(std::move(data.value()));
   }
+
+  virtual std::optional<TimestampedVisualizationData<T>> getTypedData() = 0;
 };

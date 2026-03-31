@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,16 +19,36 @@
 
 part of 'messages.dart';
 
+@AnthemEnum()
+enum VisualizationValueType { doubleValue, intValue, stringValue }
+
+@AnthemModel(serializable: true, generateCpp: true)
+class VisualizationSubscriptionSpec extends _VisualizationSubscriptionSpec
+    with _$VisualizationSubscriptionSpecAnthemModelMixin {
+  VisualizationSubscriptionSpec.uninitialized()
+    : super(id: '', valueType: VisualizationValueType.doubleValue);
+
+  VisualizationSubscriptionSpec({required super.id, required super.valueType});
+
+  factory VisualizationSubscriptionSpec.fromJson(Map<String, dynamic> json) =>
+      _$VisualizationSubscriptionSpecAnthemModelMixin.fromJson(json);
+}
+
+abstract class _VisualizationSubscriptionSpec {
+  String id;
+  VisualizationValueType valueType;
+
+  _VisualizationSubscriptionSpec({required this.id, required this.valueType});
+}
+
 /// Provides the engine with the visualization items that it is currently
 /// interested in.
 class SetVisualizationSubscriptionsRequest extends Request {
-  /// The list of visualization items that the engine is interested in.
-  ///
-  /// This is a list of strings that are the IDs of the visualization items. The
-  /// engine will only send updates for these items.
+  /// The list of visualization items that the engine is interested in, along
+  /// with the value types the UI expects each item to publish.
   ///
   /// This replaces any existing subscriptions.
-  List<String> subscriptions;
+  List<VisualizationSubscriptionSpec> subscriptions;
 
   SetVisualizationSubscriptionsRequest.uninitialized() : subscriptions = [];
 
@@ -63,9 +83,20 @@ class SetVisualizationUpdateIntervalRequest extends Request {
 @AnthemModel(serializable: true, generateCpp: true)
 class VisualizationItem extends _VisualizationItem
     with _$VisualizationItemAnthemModelMixin {
-  VisualizationItem.uninitialized() : super(id: '', values: <double>[]);
+  VisualizationItem.uninitialized()
+    : super(
+        id: '',
+        valueType: VisualizationValueType.doubleValue,
+        values: <double>[],
+        sampleTimestamps: <int>[],
+      );
 
-  VisualizationItem({required super.id, required super.values});
+  VisualizationItem({
+    required super.id,
+    required super.valueType,
+    required super.values,
+    required super.sampleTimestamps,
+  });
 
   factory VisualizationItem.fromJson(Map<String, dynamic> json) =>
       _$VisualizationItemAnthemModelMixin.fromJson(json);
@@ -73,11 +104,23 @@ class VisualizationItem extends _VisualizationItem
 
 abstract class _VisualizationItem {
   String id;
+  VisualizationValueType valueType;
 
-  @Union([List<double>, List<String>])
+  @Union([List<double>, List<int>, List<String>])
   Object values;
 
-  _VisualizationItem({required this.id, required this.values});
+  /// Sample-domain timestamps for the values in this item.
+  ///
+  /// Each timestamp is in the engine's monotonic sample counter domain, and the
+  /// length must match the number of entries in [values].
+  List<int> sampleTimestamps;
+
+  _VisualizationItem({
+    required this.id,
+    required this.valueType,
+    required this.values,
+    required this.sampleTimestamps,
+  });
 }
 
 /// An unsolicited response that gives back visualization data.

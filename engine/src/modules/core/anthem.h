@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,8 +21,11 @@
 
 #include <memory>
 #include <iostream>
-
 #include <juce_audio_devices/juce_audio_devices.h>
+
+#ifndef __EMSCRIPTEN__
+#include <juce_audio_processors/juce_audio_processors.h>
+#endif // #ifndef __EMSCRIPTEN__
 
 #include "comms.h"
 
@@ -36,6 +39,7 @@
 #include "modules/util/id_generator.h"
 
 #include "project.h"
+#include "messages/messages.h"
 
 class Anthem {
 private:
@@ -72,6 +76,7 @@ public:
 
   // The transport contains information about:
   // - The sequence being played
+  // - The track currently selected for direct pattern playback
   // - The playhead position
   // - The project tempo
   // - The current playhead reset point and loop points
@@ -119,7 +124,14 @@ public:
   void shutdown();
 
   // Sets up the audio callback
-  void startAudioCallback();
+  std::shared_ptr<EngineAudioConfig> startAudioCallback();
+  void stopAudioCallback();
+
+  bool isAudioThreadRunning() const {
+    return isAudioCallbackRunning;
+  }
+
+  std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
 
   void compileProcessingGraph();
 };

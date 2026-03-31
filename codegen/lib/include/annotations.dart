@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -174,8 +174,20 @@ class Hide {
   final bool serialization;
   final bool cpp;
 
-  const Hide({this.serialization = false, this.cpp = false});
-  const Hide.all() : this(serialization: true, cpp: true);
+  /// Whether the field should still participate in generated Dart
+  /// `onChange(...)` listeners and raw model change events.
+  ///
+  /// This does not affect JSON or C++ generation. It only controls whether the
+  /// field stays in Anthem's Dart change-tracking surface.
+  final bool allowOnChange;
+
+  const Hide({
+    this.serialization = false,
+    this.cpp = false,
+    this.allowOnChange = false,
+  });
+  const Hide.all({bool allowOnChange = false})
+    : this(serialization: true, cpp: true, allowOnChange: allowOnChange);
 }
 
 /// Shorthand for @Hide.all()
@@ -186,8 +198,13 @@ const hide = Hide.all();
 const hideFromSerialization = Hide(serialization: true);
 
 /// Shorthand for @Hide(cpp: true) - hides the field from C++ generation,
-/// but still serializes it and generates model sync code for it.
+/// but still serializes it and emits Dart model change events for it.
 const hideFromCpp = Hide(cpp: true);
+
+/// Shorthand for @Hide.all(allowOnChange: true) - hides the field from both
+/// serialization and C++ generation, but still emits Dart model change events
+/// and participates in generated `onChange(...)` listeners.
+const hideButAllowOnChange = Hide.all(allowOnChange: true);
 
 /// An annotation that marks a field as a MobX observable.
 ///
@@ -215,6 +232,11 @@ class AnthemEnum {
 /// serialization and deserialization of dynamic fields, and as such allows for
 /// a crude form of polymorphism in the model.
 ///
+/// The type of the field annotated by this annotation may be Object, or it may
+/// be an interface type that is shared by all members of the union. This
+/// interface type will not be used on the C++ side, and is only used to provide
+/// type safety on the Dart side.
+///
 /// Note that we support sealed classes for serialization and use it for IPC,
 /// but not for model sync due to the complexity. So, this is the primary way to
 /// do polymorphism in the model.
@@ -222,8 +244,11 @@ class AnthemEnum {
 /// Unions are defined like so:
 /// ```dart
 /// @Union([FirstType, SecondType])
-/// Object unionField;
+/// MyInterface unionField;
 /// ```
+///
+/// The declared field type should be a supertype of all types listed in
+/// `@Union([...])`.
 class Union {
   final List<Type> types;
 

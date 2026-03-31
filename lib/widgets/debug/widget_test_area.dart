@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,60 +17,226 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/basic/controls/digit_control.dart';
-import 'package:anthem/widgets/basic/text_box.dart';
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/hint/hint_display.dart';
+import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/slider_widget_test_screen.dart';
 import 'package:flutter/widgets.dart';
 
+enum WidgetTestScreenId {
+  button(
+    key: 'widget-test-screen-button',
+    title: 'Button',
+    description: 'Tests for lib/widgets/basic/button.dart',
+  ),
+  meter(
+    key: 'widget-test-screen-meter',
+    title: 'Meter',
+    description: 'Tests for lib/widgets/basic/meter.dart',
+  ),
+  knob(
+    key: 'widget-test-screen-knob',
+    title: 'Knob',
+    description: 'Tests for lib/widgets/basic/controls/knob.dart',
+  ),
+  slider(
+    key: 'widget-test-screen-slider',
+    title: 'Slider',
+    description: 'Tests for lib/widgets/basic/controls/slider.dart',
+  );
+
+  final String key;
+  final String title;
+  final String description;
+
+  const WidgetTestScreenId({
+    required this.key,
+    required this.title,
+    required this.description,
+  });
+}
+
 class WidgetTestArea extends StatefulWidget {
-  const WidgetTestArea({super.key});
+  final WidgetTestScreenId initialScreen;
+
+  const WidgetTestArea({
+    super.key,
+    this.initialScreen = WidgetTestScreenId.button,
+  });
 
   @override
   State<WidgetTestArea> createState() => _WidgetTestAreaState();
 }
 
 class _WidgetTestAreaState extends State<WidgetTestArea> {
-  double digitControlValue = 128;
+  late WidgetTestScreenId selectedScreen;
+
+  @override
+  void initState() {
+    selectedScreen = widget.initialScreen;
+    super.initState();
+  }
+
+  List<TreeViewItemModel> _getNavigationItems() {
+    String labelForScreen(WidgetTestScreenId screen) {
+      if (selectedScreen == screen) {
+        return '${screen.title} (active)';
+      }
+
+      return screen.title;
+    }
+
+    return [
+      TreeViewItemModel(
+        key: 'widget-test-category-basic',
+        label: 'Basic',
+        children: [
+          TreeViewItemModel(
+            key: WidgetTestScreenId.button.key,
+            label: labelForScreen(WidgetTestScreenId.button),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.button;
+              });
+            },
+          ),
+          TreeViewItemModel(
+            key: WidgetTestScreenId.meter.key,
+            label: labelForScreen(WidgetTestScreenId.meter),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.meter;
+              });
+            },
+          ),
+          TreeViewItemModel(
+            key: 'widget-test-category-basic-controls',
+            label: 'Controls',
+            children: [
+              TreeViewItemModel(
+                key: WidgetTestScreenId.knob.key,
+                label: labelForScreen(WidgetTestScreenId.knob),
+                onClick: () {
+                  setState(() {
+                    selectedScreen = WidgetTestScreenId.knob;
+                  });
+                },
+              ),
+              TreeViewItemModel(
+                key: WidgetTestScreenId.slider.key,
+                label: labelForScreen(WidgetTestScreenId.slider),
+                onClick: () {
+                  setState(() {
+                    selectedScreen = WidgetTestScreenId.slider;
+                  });
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    ];
+  }
+
+  Widget _getScreenWidget() {
+    return switch (selectedScreen) {
+      WidgetTestScreenId.button => const ButtonWidgetTestScreen(),
+      WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
+      WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
+      WidgetTestScreenId.slider => const SliderWidgetTestScreen(),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return Container(
+      color: const Color(0xFF444444),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        spacing: 3,
         children: [
-          DigitControl(
-            size: DigitDisplaySize.large,
-            value: digitControlValue,
-            minCharacterCount: 6,
-            onChanged: (v) => setState(() => digitControlValue = v),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 270,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AnthemTheme.panel.backgroundDark,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AnthemTheme.panel.border),
+                      ),
+                      child: TreeView(items: _getNavigationItems()),
+                    ),
+                  ),
+                ),
+                Container(width: 1, color: AnthemTheme.panel.border),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: 12,
+                      children: [
+                        Text(
+                          selectedScreen.title,
+                          style: TextStyle(
+                            color: AnthemTheme.text.accent,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          selectedScreen.description,
+                          style: TextStyle(
+                            color: AnthemTheme.text.main,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Container(
+                          height: 1,
+                          color: AnthemTheme.panel.border.withValues(
+                            alpha: 0.65,
+                          ),
+                        ),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: _getScreenWidget(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          DigitControl(
-            width: 80,
-            size: DigitDisplaySize.large,
-            value: digitControlValue,
-            onChanged: (v) => setState(() => digitControlValue = v),
+          Container(
+            height: 30,
+            decoration: BoxDecoration(
+              color: AnthemTheme.panel.backgroundDark,
+              border: Border(top: BorderSide(color: AnthemTheme.panel.border)),
+            ),
+            child: const HintDisplay(),
           ),
-          DigitControl(
-            width: 80,
-            value: digitControlValue,
-            onChanged: (v) => setState(() => digitControlValue = v),
-          ),
-          DigitControl(
-            width: 80,
-            value: digitControlValue,
-            decimalPlaces: 3,
-            onChanged: (v) => setState(() => digitControlValue = v),
-          ),
-          DigitControl(
-            width: 80,
-            value: digitControlValue,
-            decimalPlaces: 0,
-            onChanged: (v) => setState(() => digitControlValue = v),
-          ),
-          TextBox(width: 100, height: 26),
         ],
       ),
     );
   }
+}
+
+WidgetTestScreenId? tryParseWidgetTestScreenId(String value) {
+  final normalized = value.trim().toLowerCase();
+
+  for (final screen in WidgetTestScreenId.values) {
+    if (screen.name == normalized) {
+      return screen;
+    }
+  }
+
+  return null;
 }

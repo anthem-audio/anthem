@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,11 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/menu/menu_positioning.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
-import 'package:anthem/logic/project_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -33,6 +32,7 @@ class Menu extends StatefulWidget {
   final Widget? child;
   late final MenuAlignment menuAlignment;
   final void Function()? onClose;
+  final Offset offset;
 
   Menu({
     super.key,
@@ -41,6 +41,7 @@ class Menu extends StatefulWidget {
     required this.menuDef,
     MenuAlignment? alignment,
     this.onClose,
+    this.offset = Offset.zero,
   }) {
     menuAlignment = alignment ?? MenuAlignment.bottomLeft;
   }
@@ -51,7 +52,7 @@ class Menu extends StatefulWidget {
 
 class _MenuState extends State<Menu> {
   int openMenuID = -1;
-  List<Id> openMenus = [];
+  List<ScreenOverlayHandle> openMenus = [];
 
   @override
   Widget build(BuildContext context) {
@@ -68,52 +69,42 @@ class _MenuState extends State<Menu> {
     Offset? incomingPos,
   ) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
-    final pos =
+    final anchorPos =
         incomingPos ??
         contentRenderBox.localToGlobal(
           Offset(
-            widget.menuAlignment == MenuAlignment.topLeft ||
-                    widget.menuAlignment == MenuAlignment.bottomLeft
-                ? 0
-                : contentRenderBox.size.width,
-            widget.menuAlignment == MenuAlignment.topLeft ||
-                    widget.menuAlignment == MenuAlignment.topRight
-                ? 0
-                : contentRenderBox.size.height,
-          ),
+                widget.menuAlignment == MenuAlignment.topLeft ||
+                        widget.menuAlignment == MenuAlignment.bottomLeft
+                    ? 0
+                    : contentRenderBox.size.width,
+                widget.menuAlignment == MenuAlignment.topLeft ||
+                        widget.menuAlignment == MenuAlignment.topRight
+                    ? 0
+                    : contentRenderBox.size.height,
+              ) +
+              widget.offset,
         );
-    final id = getId();
-    final projectController = Provider.of<ProjectController>(
-      context,
-      listen: false,
-    );
+    final anchorRect = Rect.fromLTWH(anchorPos.dx, anchorPos.dy, 0, 0);
 
-    screenOverlayController.add(
-      id,
+    final handle = screenOverlayController.show(
       ScreenOverlayEntry(
-        builder: (context, id) {
-          return Positioned(
-            left: pos.dx,
-            top: pos.dy,
-            child: MenuRenderer(
-              menu: widget.menuDef,
-              id: id,
-              projectController: projectController,
-            ),
+        builder: (context) {
+          return MenuPositioned(
+            anchorRect: anchorRect,
+            child: MenuRenderer(menu: widget.menuDef),
           );
         },
         onClose: widget.onClose,
       ),
     );
-    openMenus.add(id);
+    openMenus.add(handle);
   }
 
-  void closeMenu(ScreenOverlayController screenOverlayController) {
+  void closeMenu() {
     for (var menu in openMenus) {
-      screenOverlayController.remove(menu);
+      menu.close();
     }
-
-    widget.onClose?.call();
+    openMenus.clear();
   }
 }
 

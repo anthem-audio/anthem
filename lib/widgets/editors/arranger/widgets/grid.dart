@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
@@ -25,25 +26,24 @@ import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 
-import '../view_model.dart';
-import '../helpers.dart';
-
 class ArrangerBackgroundPainter extends CustomPainterObserver {
-  final double verticalScrollPosition;
-  final double timeViewStart;
-  final double timeViewEnd;
-  final ArrangerViewModel viewModel;
+  final Animation<double> verticalScrollPositionAnimation;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
   final ArrangementModel? activeArrangement;
   final ProjectModel project;
 
   ArrangerBackgroundPainter({
-    required this.viewModel,
+    required Listenable repaint,
     required this.activeArrangement,
     required this.project,
-    required this.verticalScrollPosition,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  });
+    required this.verticalScrollPositionAnimation,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+  }) : super(debugName: 'ArrangerBackgroundPainter', repaint: repaint);
+
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -53,25 +53,33 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     // Horizontal lines
 
-    var verticalPositionPointer = -verticalScrollPosition - 1;
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final viewModel = serviceRegistry.arrangerViewModel;
+    final trackController = serviceRegistry.trackController;
+    final renderedVerticalScrollPosition =
+        verticalScrollPositionAnimation.value;
+    final verticalScrollDelta =
+        viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
 
-    final baseTrackHeight = viewModel.baseTrackHeight;
-
-    for (final trackID in project.sequence.trackOrder) {
-      final trackHeight = getTrackHeight(
-        baseTrackHeight,
-        viewModel.trackHeightModifiers[trackID]!,
+    var i = 0;
+    for (final (_, isSendTrack, _) in trackController.getTracksIterable()) {
+      final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
+        i,
       );
+      final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(i);
 
-      verticalPositionPointer += trackHeight;
-
-      if (verticalPositionPointer < 0) continue;
-      if (verticalPositionPointer > size.height) break;
+      var drawPosition = trackPosition + verticalScrollDelta;
+      if (!isSendTrack) {
+        drawPosition += trackHeight;
+      }
+      drawPosition--;
 
       canvas.drawRect(
-        Rect.fromLTWH(0, verticalPositionPointer, size.width, 1),
+        Rect.fromLTWH(0, drawPosition, size.width, 1),
         majorLinePaint,
       );
+
+      i++;
     }
 
     // Vertical lines
@@ -81,7 +89,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       size: size,
       snap: AutoSnap(),
       baseTimeSignature: project.sequence.defaultTimeSignature,
-      timeSignatureChanges: [],
+      timeSignatureChanges: activeArrangement?.timeSignatureChanges ?? [],
       ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
@@ -90,9 +98,11 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(covariant ArrangerBackgroundPainter oldDelegate) {
-    return oldDelegate.viewModel != viewModel ||
-        oldDelegate.activeArrangement != activeArrangement ||
+    return oldDelegate.activeArrangement != activeArrangement ||
         oldDelegate.project != project ||
-        super.shouldRepaint(oldDelegate);
+        oldDelegate.verticalScrollPositionAnimation !=
+            verticalScrollPositionAnimation ||
+        oldDelegate.timeViewStartAnimation != timeViewStartAnimation ||
+        oldDelegate.timeViewEndAnimation != timeViewEndAnimation;
   }
 }

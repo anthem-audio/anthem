@@ -56,8 +56,8 @@ public:
   virtual void process(AnthemProcessContext& context, int numSamples) = 0;
 
   // Gets the state of the processor
-  virtual void getState(juce::MemoryBlock& target) {}
+  virtual void getState(juce::MemoryBlock& /*target*/) {}
 
   // Loads the state of the processor from a value exported by getState()
-  virtual void setState(const juce::MemoryBlock& state) {}
+  virtual void setState(const juce::MemoryBlock& /*state*/) {}
 };

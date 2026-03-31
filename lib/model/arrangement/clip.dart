@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
@@ -29,43 +30,15 @@ part 'clip.g.dart';
 class ClipModel extends _ClipModel
     with _$ClipModel, _$ClipModelAnthemModelMixin {
   ClipModel.uninitialized()
-    : super.create(
-        id: getId(),
-        patternId: getId(),
-        trackId: getId(),
-        offset: 0,
-      );
+    : super(id: -1, patternId: -1, trackId: -1, offset: 0);
 
   ClipModel({
-    required super.id,
+    required ProjectEntityIdAllocator idAllocator,
     super.timeView,
     required super.patternId,
     required super.trackId,
     required super.offset,
-  });
-
-  ClipModel.create({
-    Id? id,
-    super.timeView,
-    required super.patternId,
-    required super.trackId,
-    required super.offset,
-  }) : super.create(id: id ?? getId());
-
-  factory ClipModel.fromClipModel(ClipModel other) {
-    return ClipModel.create(
-      id: getId(),
-      patternId: other.patternId,
-      trackId: other.trackId,
-      offset: other.offset,
-      timeView: other.timeView != null
-          ? TimeViewModel(
-              start: other.timeView!.start,
-              end: other.timeView!.end,
-            )
-          : null,
-    );
-  }
+  }) : super(id: idAllocator.allocateSequenceClipId());
 
   factory ClipModel.fromJson(Map<String, dynamic> json) =>
       _$ClipModelAnthemModelMixin.fromJson(json);
@@ -74,8 +47,14 @@ class ClipModel extends _ClipModel
 abstract class _ClipModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   Id id;
 
+  /// The range of the underlying pattern that is actually shown in this clip.
+  ///
+  /// The clip will start at [timeView.start] relative to the pattern start.
+  ///
+  /// If this is null, then the clip size will snap to the pattern's size, and
+  /// start at the start of the pattern.
   @anthemObservable
-  TimeViewModel? timeView; // If null, we snap to content
+  TimeViewModel? timeView;
 
   @anthemObservable
   Id patternId;
@@ -86,16 +65,8 @@ abstract class _ClipModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   @anthemObservable
   int offset;
 
-  /// Used for deserialization. Use ClipModel.create() instead.
+  /// Used for deserialization. Use ClipModel() instead.
   _ClipModel({
-    required this.id,
-    this.timeView,
-    required this.patternId,
-    required this.trackId,
-    required this.offset,
-  }) : super();
-
-  _ClipModel.create({
     required this.id,
     this.timeView,
     required this.patternId,

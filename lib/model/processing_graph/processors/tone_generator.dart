@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,10 +18,12 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -29,63 +31,65 @@ import 'package:mobx/mobx.dart';
 part 'tone_generator.g.dart';
 
 /// A processor that generates a tone.
+///
+/// Parameter values are stored normalized. The frequency parameter is
+/// interpreted as a linear mapping to [minFrequencyHz, maxFrequencyHz], and
+/// amplitude is interpreted directly as a
+/// normalized amplitude.
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'ToneGeneratorProcessor',
   cppBehaviorClassIncludePath: 'modules/processors/tone_generator.h',
 )
 class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     with
+        Processor,
         _$ToneGeneratorProcessorModel,
         _$ToneGeneratorProcessorModelAnthemModelMixin {
   ToneGeneratorProcessorModel({required super.nodeId});
 
-  ToneGeneratorProcessorModel.uninitialized() : super(nodeId: '');
+  ToneGeneratorProcessorModel.create({
+    required ProjectEntityIdAllocator idAllocator,
+  }) : super(nodeId: idAllocator.allocateId());
+
+  ToneGeneratorProcessorModel.uninitialized() : super(nodeId: -1);
 
   factory ToneGeneratorProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$ToneGeneratorProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// The node that this processor represents.
-  NodeModel get node => (project.processingGraph.nodes[nodeId])!;
-
-  /// Creates a node for this processor.
-  static NodeModel createNode() {
-    final id = 'tone-generator-${getId()}';
-
+  @override
+  NodeModel createNode() {
     return NodeModel(
-      id: id,
-      processor: ToneGeneratorProcessorModel(nodeId: id),
+      id: nodeId,
+      processor: this,
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.audioOutputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.audio),
         ),
       ]),
       controlInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.frequencyPortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.frequencyPortId,
-              defaultValue: 440,
-              minimumValue: 1,
-              maximumValue: 22500,
+              defaultValue:
+                  ToneGeneratorProcessorModel.frequencyToParameterValue(440),
               smoothingDurationSeconds: 0.5,
             ),
           ),
         ),
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.amplitudePortId,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.amplitudePortId,
               defaultValue: 0.75,
-              minimumValue: 0,
-              maximumValue: 1,
               smoothingDurationSeconds: 0.5,
             ),
           ),
@@ -93,7 +97,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       ]),
       eventInputPorts: AnthemObservableList.of([
         NodePortModel(
-          nodeId: id,
+          nodeId: nodeId,
           id: _ToneGeneratorProcessorModel.eventInputPortId,
           config: NodePortConfigModel(dataType: NodePortDataType.event),
         ),
@@ -109,6 +113,21 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       _ToneGeneratorProcessorModel.amplitudePortId;
   static int get eventInputPortId =>
       _ToneGeneratorProcessorModel.eventInputPortId;
+
+  static const double minFrequencyHz = 1.0;
+  static const double maxFrequencyHz = 22500.0;
+
+  static double parameterValueToFrequency(double parameterValue) {
+    assert(parameterValue >= 0.0 && parameterValue <= 1.0);
+
+    return parameterValue * (maxFrequencyHz - minFrequencyHz) + minFrequencyHz;
+  }
+
+  static double frequencyToParameterValue(double frequency) {
+    assert(frequency >= minFrequencyHz && frequency <= maxFrequencyHz);
+
+    return (frequency - minFrequencyHz) / (maxFrequencyHz - minFrequencyHz);
+  }
 }
 
 abstract class _ToneGeneratorProcessorModel
@@ -120,7 +139,7 @@ abstract class _ToneGeneratorProcessorModel
 
   static const int eventInputPortId = 3;
 
-  String nodeId;
+  Id nodeId;
 
   _ToneGeneratorProcessorModel({required this.nodeId});
 }

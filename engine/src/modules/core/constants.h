@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -22,12 +22,18 @@
 // The default size for an event buffer, in number of events.
 //
 // This is the size of each event buffer when it is first allocated. If the
-// buffer is filled during processing, it will be reallocated to a larger size.
-// This is done via an arena allocator. The space in the arena is allocated
-// ahead of time, which allows for dynamic reallocation on the audio thread
-// without real-time safety issues.
+// buffer is filled during processing, it may grow up to
+// MAX_EVENT_BUFFER_SIZE. Event buffers own their own storage, so each port can
+// adapt independently without requiring graph-wide memory budgeting.
 //
 // For context, event buffers are used whenever a node in the processing graph
 // needs to send events to another node, or when a node needs to receive events
 // from either the sequencer or another node.
 const int DEFAULT_EVENT_BUFFER_SIZE = 1024;
+
+// The maximum size for an event buffer, in number of events.
+//
+// This acts as a hard safety cap for pathological graphs or runaway event
+// generation. Once a buffer reaches this size, new events for that buffer are
+// dropped for the remainder of the current block.
+const int MAX_EVENT_BUFFER_SIZE = 32768;

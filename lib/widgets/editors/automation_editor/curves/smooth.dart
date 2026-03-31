@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,13 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:math';
+import 'dart:math' as math;
+
+import 'package:anthem/helpers/fast_atan2.dart';
+import 'package:anthem/helpers/bw_fast_math.dart';
 
 double linearCenterTransitionRate = 0.27;
 double linearCenterWidth = 1.6;
 
 double _g(double x) {
-  return atan(x * linearCenterTransitionRate * pi) / pi + 0.5;
+  return fastAtan2(x * linearCenterTransitionRate * math.pi, 1.0) / math.pi +
+      0.5;
 }
 
 double _getLinearCenterInterpolation(double tension) {
@@ -36,24 +40,32 @@ double _getLinearCenterInterpolation(double tension) {
 /// Returns values similar to the input near 0, and grows as tension moves away
 /// from 0.
 double _getRawTension(double tension) {
-  double linearCenterInterpolation = _getLinearCenterInterpolation(tension);
+  final linearCenterInterpolation = _getLinearCenterInterpolation(tension);
 
-  var powVal = 0.0;
-  if (tension >= 0) {
-    powVal = pow(tension / 2, 2.2).toDouble();
+  var powValue = 0.0;
+  if (tension > 0) {
+    powValue = _powPositive(tension / 2, 2.2);
   } else if (tension < 0) {
-    powVal = -pow(-tension / 2, 2.2).toDouble();
+    powValue = -_powPositive(-tension / 2, 2.2);
   }
 
-  return powVal * linearCenterInterpolation +
+  return powValue * linearCenterInterpolation +
       0.7 * tension * (1 - linearCenterInterpolation);
+}
+
+double _powPositive(double base, double exponent) {
+  if (base == 0.0) {
+    return 0.0;
+  }
+
+  return bwExp(exponent * bwLog(base));
 }
 
 double evaluateSmooth(double normalizedX, double tension) {
   final rawTension = _getRawTension(tension * 15);
   if (tension >= 0) {
-    return pow(normalizedX, rawTension + 1).toDouble();
+    return _powPositive(normalizedX, rawTension + 1);
   } else {
-    return 1 - pow(1 - normalizedX, -rawTension + 1).toDouble();
+    return 1 - _powPositive(1 - normalizedX, -rawTension + 1);
   }
 }

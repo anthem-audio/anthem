@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,10 +19,26 @@
 
 import 'dart:ui';
 
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+
+var _runtimeGridTimeSignatureIdCounter = 0;
+
+TimeSignatureChangeModel _createRuntimeGridTimeSignatureChange({
+  required TimeSignatureModel timeSignature,
+  required int offset,
+}) {
+  return TimeSignatureChangeModel(
+    idAllocator: ProjectEntityIdAllocator.fromCallback(
+      () => _runtimeGridTimeSignatureIdCounter++,
+    ),
+    timeSignature: timeSignature,
+    offset: offset,
+  );
+}
 
 // All vertical lines plus every-four-bars shading
 void paintTimeGrid({
@@ -203,7 +219,7 @@ void paintPhraseShading({
   var timeSignatures =
       timeSignatureChanges.isEmpty || timeSignatureChanges[0].offset > 0
       ? [
-          TimeSignatureChangeModel(
+          _createRuntimeGridTimeSignatureChange(
             timeSignature: defaultTimeSignature,
             offset: 0,
           ),

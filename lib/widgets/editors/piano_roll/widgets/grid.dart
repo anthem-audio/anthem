@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -50,24 +50,18 @@ class PianoRollGrid extends StatelessWidget {
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return ClipRect(
-      child: AnimatedBuilder(
-        animation: keyValueAtTopAnimationController,
-        builder: (context, child) {
-          return AnimatedBuilder(
-            animation: timeViewAnimationController,
-            builder: (context, child) {
-              return CustomPaintObserver(
-                painterBuilder: () => PianoRollBackgroundPainter(
-                  project: project,
-                  viewModel: viewModel,
-                  keyValueAtTop: keyValueAtTopAnimation.value,
-                  timeViewStart: timeViewStartAnimation.value,
-                  timeViewEnd: timeViewEndAnimation.value,
-                ),
-              );
-            },
-          );
-        },
+      child: CustomPaint(
+        painter: PianoRollBackgroundPainter(
+          repaint: Listenable.merge([
+            timeViewAnimationController,
+            keyValueAtTopAnimationController,
+          ]),
+          project: project,
+          viewModel: viewModel,
+          keyValueAtTopAnimation: keyValueAtTopAnimation,
+          timeViewStartAnimation: timeViewStartAnimation,
+          timeViewEndAnimation: timeViewEndAnimation,
+        ),
       ),
     );
   }
@@ -75,18 +69,23 @@ class PianoRollGrid extends StatelessWidget {
 
 class PianoRollBackgroundPainter extends CustomPainterObserver {
   PianoRollBackgroundPainter({
+    required Listenable repaint,
     required this.project,
     required this.viewModel,
-    required this.keyValueAtTop,
-    required this.timeViewStart,
-    required this.timeViewEnd,
-  });
+    required this.keyValueAtTopAnimation,
+    required this.timeViewStartAnimation,
+    required this.timeViewEndAnimation,
+  }) : super(debugName: 'PianoRollBackgroundPainter', repaint: repaint);
 
   final ProjectModel project;
   final PianoRollViewModel viewModel;
-  final double keyValueAtTop;
-  final double timeViewStart;
-  final double timeViewEnd;
+  final Animation<double> keyValueAtTopAnimation;
+  final Animation<double> timeViewStartAnimation;
+  final Animation<double> timeViewEndAnimation;
+
+  double get keyValueAtTop => keyValueAtTopAnimation.value;
+  double get timeViewStart => timeViewStartAnimation.value;
+  double get timeViewEnd => timeViewEndAnimation.value;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -152,28 +151,26 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
     );
 
     // Row highlight for pressed note
-    if (viewModel.pressedNote != null && activePattern != null) {
-      final notes = activePattern.notes[project.activeInstrumentID];
-      if (notes != null) {
-        final key = notes
-            .firstWhere((note) => note.id == viewModel.pressedNote)
-            .key;
-
-        final keyHeight = viewModel.keyHeight;
-
-        final y = keyValueToPixels(
-          keyValue: key.toDouble(),
-          keyValueAtTop: keyValueAtTop,
-          keyHeight: keyHeight,
-        );
-
-        final isBlackKey = getKeyType(key) == KeyType.black;
-
-        canvas.drawRect(
-          Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
-          Paint()..color = Color(isBlackKey ? 0x16FFFFFF : 0x10FFFFFF),
-        );
+    if (activePattern != null) {
+      final pressedNote = viewModel.resolvePressedRenderedNote(activePattern);
+      if (pressedNote == null) {
+        return;
       }
+
+      final keyHeight = viewModel.keyHeight;
+
+      final y = keyValueToPixels(
+        keyValue: pressedNote.key.toDouble(),
+        keyValueAtTop: keyValueAtTop,
+        keyHeight: keyHeight,
+      );
+
+      final isBlackKey = getKeyType(pressedNote.key) == KeyType.black;
+
+      canvas.drawRect(
+        Rect.fromLTWH(0, y - keyHeight, size.width, keyHeight),
+        Paint()..color = Color(isBlackKey ? 0x16FFFFFF : 0x10FFFFFF),
+      );
     }
   }
 
@@ -181,9 +178,8 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
   bool shouldRepaint(covariant PianoRollBackgroundPainter oldDelegate) {
     return project != oldDelegate.project ||
         viewModel != oldDelegate.viewModel ||
-        keyValueAtTop != oldDelegate.keyValueAtTop ||
-        timeViewStart != oldDelegate.timeViewStart ||
-        timeViewEnd != oldDelegate.timeViewEnd ||
-        super.shouldRepaint(oldDelegate);
+        keyValueAtTopAnimation != oldDelegate.keyValueAtTopAnimation ||
+        timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
+        timeViewEndAnimation != oldDelegate.timeViewEndAnimation;
   }
 }

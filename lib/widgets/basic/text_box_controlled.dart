@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,12 +27,15 @@ class ControlledTextBox extends StatefulWidget {
   final double? width;
   final double? height;
 
+  final TextAlign? textAlign;
+
   const ControlledTextBox({
     super.key,
     required this.text,
     this.onChange,
     this.width,
     this.height,
+    this.textAlign,
   });
 
   @override
@@ -82,6 +85,7 @@ class ControlledTextBoxState extends State<ControlledTextBox> {
       focusNode: focusNode,
       width: widget.width,
       height: widget.height,
+      textAlign: widget.textAlign,
     );
   }
 }

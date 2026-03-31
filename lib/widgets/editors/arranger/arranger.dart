@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,24 +19,25 @@
 
 import 'dart:async';
 
-import 'package:anthem/logic/controller_registry.dart';
+import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
-import 'package:anthem/widgets/editors/arranger/widgets/pattern_picker.dart';
-import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
+import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
+import 'package:anthem/widgets/editors/shared/timeline/timeline_notification_handler.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/widgets/util/lazy_follower.dart';
@@ -45,12 +46,11 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart' as mobx;
 import 'package:provider/provider.dart';
 
-import '../shared/helpers/time_helpers.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
-import 'helpers.dart';
 
 const _timelineHeight = 38.0;
+const _scrollbarShortSideLength = 17.0;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -60,47 +60,23 @@ class Arranger extends StatefulWidget {
 }
 
 class _ArrangerState extends State<Arranger> {
-  double x = 0;
-  double y = 0;
-
-  ArrangerViewModel? viewModel;
-
-  ArrangerController? controller;
-
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-
-    viewModel ??= ArrangerViewModel(
-      baseTrackHeight: 45,
-      trackHeightModifiers: mobx.ObservableMap.of(
-        project.sequence.tracks.nonObservableInner.map(
-          (key, value) => MapEntry(key, 1),
-        ),
-      ),
-      timeView: TimeRange(0, 3072),
-    );
-
-    if (controller == null) {
-      controller = ArrangerController(viewModel: viewModel!, project: project);
-      ControllerRegistry.instance.registerController(project.id, controller!);
-    }
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    final viewModel = serviceRegistry.arrangerViewModel;
+    final controller = serviceRegistry.arrangerController;
 
     return MultiProvider(
       providers: [
-        Provider.value(value: viewModel!),
-        Provider.value(value: controller!),
+        Provider.value(value: viewModel),
+        Provider.value(value: controller),
       ],
       child: ArrangerTimeViewProvider(
         child: ShortcutConsumer(
           id: 'arranger',
-          shortcutHandler: controller!.onShortcut,
+          shortcutHandler: controller.onShortcut,
+          rawKeyHandler: controller.onRawKeyEvent,
           child: Container(
             color: AnthemTheme.panel.background,
             child: Column(
@@ -109,50 +85,81 @@ class _ArrangerState extends State<Arranger> {
                 _Header(),
                 Container(height: 1, color: AnthemTheme.panel.border),
                 Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(width: 126, child: PatternPicker()),
-                      Container(width: 1, color: AnthemTheme.panel.border),
-                      const Expanded(child: _ArrangerContent()),
-                      SizedBox(
-                        width: 17,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              height: _timelineHeight,
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  left: BorderSide(
-                                    color: AnthemTheme.panel.border,
-                                    width: 1,
-                                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Observer(
+                        builder: (context) {
+                          final editorHeight =
+                              constraints.maxHeight -
+                              _timelineHeight -
+                              _scrollbarShortSideLength;
+                          viewModel.editorHeight = editorHeight;
+                          viewModel.verticalScrollPosition = viewModel
+                              .verticalScrollPosition
+                              .clamp(0.0, viewModel.maxVerticalScrollPosition);
+
+                          viewModel.trackPositionCalculator.invalidate(
+                            editorHeight,
+                          );
+
+                          // As of writing, the main purpose of this call is to
+                          // allow the state machine to react to certain edge
+                          // cases. For example, when two-finger scrolling on a
+                          // trackpad, the mouse cursor stays still, and so does
+                          // not emit hover events. However, we still want to
+                          // update the editor cursor position, and this call
+                          // enables part of that.
+                          controller.onTrackLayoutChanged();
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Expanded(child: _ArrangerContent()),
+                              SizedBox(
+                                width: _scrollbarShortSideLength,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    Container(
+                                      height: _timelineHeight,
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          left: BorderSide(
+                                            color: AnthemTheme.panel.border,
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            left: BorderSide(
+                                              color: AnthemTheme.panel.border,
+                                              width: 1,
+                                            ),
+                                            top: BorderSide(
+                                              color: AnthemTheme.panel.border,
+                                              width: 1,
+                                            ),
+                                          ),
+                                        ),
+                                        child: _VerticalScrollbar(),
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      height: _scrollbarShortSideLength - 1,
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: AnthemTheme.panel.border,
-                                      width: 1,
-                                    ),
-                                    top: BorderSide(
-                                      color: AnthemTheme.panel.border,
-                                      width: 1,
-                                    ),
-                                  ),
-                                ),
-                                child: _VerticalScrollbar(),
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                          ],
-                        ),
-                      ),
-                    ],
+                            ],
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
               ],
@@ -171,6 +178,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final projectController = Provider.of<ProjectController>(context);
+    final controller = Provider.of<ArrangerController>(context, listen: false);
     final project = Provider.of<ProjectModel>(context);
 
     final menuController = AnthemMenuController();
@@ -186,7 +194,6 @@ class _Header extends StatelessWidget {
               menuDef: MenuDef(
                 children: [
                   AnthemMenuItem(
-                    disabled: true,
                     text: 'New arrangement',
                     hint: 'Create a new arrangement',
                     onSelected: () {
@@ -201,6 +208,12 @@ class _Header extends StatelessWidget {
                         AnthemMenuItem(
                           text: 'Add time signature change',
                           hint: 'Add a time signature change',
+                          onSelected: () {
+                            controller.addTimeSignatureChange(
+                              timeSignature: TimeSignatureModel(3, 4),
+                              offset: viewModel.timeView.start.floor(),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -268,7 +281,7 @@ class _Header extends StatelessWidget {
               builder: (context) {
                 return Dropdown(
                   hint: 'Change the active arrangement',
-                  selectedID: project.sequence.activeArrangementID,
+                  selectedID: project.sequence.activeArrangementID?.toString(),
                   horizontalExpand: false,
                   items: project.sequence.arrangementOrder.map<DropdownItem>((
                     id,
@@ -281,7 +294,9 @@ class _Header extends StatelessWidget {
                     );
                   }).toList(),
                   onChanged: (selectedID) {
-                    projectController.setActiveArrangement(selectedID);
+                    projectController.setActiveArrangement(
+                      selectedID == null ? null : int.parse(selectedID),
+                    );
                   },
                 );
               },
@@ -308,7 +323,7 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
         project.sequence.ticksPerQuarter * 4 * 4;
 
     return Container(
-      height: 17,
+      height: _scrollbarShortSideLength,
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(color: AnthemTheme.panel.border, width: 1),
@@ -331,30 +346,20 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
   }
 }
 
-class _VerticalScrollbar extends StatelessWidget {
+class _VerticalScrollbar extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Observer(
-          builder: (context) {
-            return ScrollbarRenderer(
-              scrollRegionStart: 0,
-              scrollRegionEnd: viewModel.scrollAreaHeight,
-              handleStart: viewModel.verticalScrollPosition,
-              handleEnd:
-                  viewModel.verticalScrollPosition +
-                  constraints.maxHeight -
-                  _timelineHeight,
-              onChange: (event) {
-                viewModel.verticalScrollPosition = event.handleStart;
-              },
-            );
-          },
-        );
+    return ScrollbarRenderer(
+      scrollRegionStart: 0,
+      scrollRegionEnd: viewModel.scrollAreaHeight,
+      handleStart: viewModel.verticalScrollPosition,
+      handleEnd: viewModel.verticalScrollPosition + viewModel.editorHeight,
+      onChange: (event) {
+        viewModel.verticalScrollPosition = event.handleStart;
       },
+      disableAtFullSize: true,
     );
   }
 }
@@ -396,8 +401,91 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   StreamSubscription<void>? baseTrackHeightChangedSub;
 
+  ArrangerController? _renderedViewTransformController;
+  double? _lastSyncedTimeViewStart;
+  double? _lastSyncedTimeViewEnd;
+  double? _lastSyncedVerticalScrollPosition;
+
+  void _syncRenderedViewTransform() {
+    if (!mounted) {
+      return;
+    }
+
+    final controller = _renderedViewTransformController;
+    final timeViewHelper = timeViewAnimationHelper;
+    final verticalHelper = verticalScrollPositionAnimationHelper;
+    if (controller == null ||
+        timeViewHelper == null ||
+        verticalHelper == null) {
+      return;
+    }
+
+    final [timeViewStartAnimItem, timeViewEndAnimItem] = timeViewHelper.items;
+    final [verticalScrollPositionAnimItem] = verticalHelper.items;
+
+    final timeViewStart = timeViewStartAnimItem.animation.value;
+    final timeViewEnd = timeViewEndAnimItem.animation.value;
+    final verticalScrollPosition =
+        verticalScrollPositionAnimItem.animation.value;
+
+    if (_lastSyncedTimeViewStart == timeViewStart &&
+        _lastSyncedTimeViewEnd == timeViewEnd &&
+        _lastSyncedVerticalScrollPosition == verticalScrollPosition) {
+      return;
+    }
+
+    _lastSyncedTimeViewStart = timeViewStart;
+    _lastSyncedTimeViewEnd = timeViewEnd;
+    _lastSyncedVerticalScrollPosition = verticalScrollPosition;
+
+    controller.onRenderedViewTransformChanged(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      verticalScrollPosition: verticalScrollPosition,
+    );
+  }
+
+  void _detachRenderedViewTransformListeners() {
+    final timeViewHelper = timeViewAnimationHelper;
+    if (timeViewHelper != null) {
+      timeViewHelper.animationController.removeListener(
+        _syncRenderedViewTransform,
+      );
+    }
+
+    final verticalHelper = verticalScrollPositionAnimationHelper;
+    if (verticalHelper != null) {
+      verticalHelper.animationController.removeListener(
+        _syncRenderedViewTransform,
+      );
+    }
+  }
+
+  void _attachRenderedViewTransformListeners(ArrangerController controller) {
+    if (identical(_renderedViewTransformController, controller)) {
+      return;
+    }
+
+    _detachRenderedViewTransformListeners();
+
+    _renderedViewTransformController = controller;
+    _lastSyncedTimeViewStart = null;
+    _lastSyncedTimeViewEnd = null;
+    _lastSyncedVerticalScrollPosition = null;
+
+    timeViewAnimationHelper!.animationController.addListener(
+      _syncRenderedViewTransform,
+    );
+    verticalScrollPositionAnimationHelper!.animationController.addListener(
+      _syncRenderedViewTransform,
+    );
+
+    _syncRenderedViewTransform();
+  }
+
   @override
   void dispose() {
+    _detachRenderedViewTransformListeners();
     timeViewAnimationHelper?.dispose();
     verticalScrollPositionAnimationHelper?.dispose();
     baseTrackHeightChangedSub?.cancel();
@@ -407,7 +495,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   @override
   Widget build(BuildContext context) {
-    const trackHeaderWidth = 130.0;
+    const trackHeaderWidth = 190.0;
 
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final controller = Provider.of<ArrangerController>(context);
@@ -417,6 +505,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
     timeViewAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,
@@ -437,6 +526,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
     verticalScrollPositionAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
       vsync: this,
+      animateOnFirstUpdate: false,
       items: [
         LazyFollowItem(
           initialValue: 0,
@@ -449,6 +539,9 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
     final [verticalScrollPositionAnimItem] =
         verticalScrollPositionAnimationHelper!.items;
+
+    _attachRenderedViewTransformListeners(controller);
+    _syncRenderedViewTransform();
 
     // Snap vertical scroll position when base track height is changed
     baseTrackHeightChangedSub ??= controller.onBaseTrackHeightChanged.stream
@@ -487,12 +580,17 @@ class _ArrangerContentState extends State<_ArrangerContent>
                 Expanded(
                   child: Observer(
                     builder: (context) {
-                      return Timeline.arrangement(
-                        timeViewAnimationController:
-                            timeViewEndAnimItem.animationController,
-                        timeViewStartAnimation: timeViewStartAnimItem.animation,
-                        timeViewEndAnimation: timeViewEndAnimItem.animation,
+                      return TimelineNotificationHandler(
+                        timelineKind: TimelineKind.arrangement,
                         arrangementID: project.sequence.activeArrangementID,
+                        child: Timeline.arrangement(
+                          timeViewAnimationController:
+                              timeViewEndAnimItem.animationController,
+                          timeViewStartAnimation:
+                              timeViewStartAnimItem.animation,
+                          timeViewEndAnimation: timeViewEndAnimItem.animation,
+                          arrangementID: project.sequence.activeArrangementID,
+                        ),
                       );
                     },
                   ),
@@ -510,7 +608,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     animation: verticalScrollPositionAnimationHelper!
                         .animationController,
                     builder: (context, child) {
-                      return _TrackHeaders(
+                      return TrackHeaders(
                         verticalScrollPosition:
                             verticalScrollPositionAnimItem.animation.value,
                       );
@@ -551,7 +649,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                   ),
                 ),
                 width: trackHeaderWidth,
-                height: 17,
+                height: _scrollbarShortSideLength,
               ),
               Expanded(child: _HorizontalScrollbar()),
             ],
@@ -584,295 +682,102 @@ class _ArrangerCanvas extends StatelessWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ArrangerViewModel>(context);
+    final renderedViewRepaint = Listenable.merge([
+      timeViewAnimationController,
+      verticalScrollPositionAnimationController,
+    ]);
 
-    return _ArrangerCanvasCursor(
-      child: Container(
-        clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(color: AnthemTheme.grid.backgroundLight),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final grid = Positioned.fill(
-              child: AnimatedBuilder(
-                animation: verticalScrollPositionAnimationController,
-                builder: (context, child) {
-                  return AnimatedBuilder(
-                    animation: timeViewAnimationController,
-                    builder: (context, child) {
-                      return CustomPaintObserver(
-                        painterBuilder: () => ArrangerBackgroundPainter(
-                          viewModel: viewModel,
-                          activeArrangement:
-                              project.sequence.arrangements[project
-                                  .sequence
-                                  .activeArrangementID],
-                          project: project,
-                          verticalScrollPosition:
-                              verticalScrollPositionAnimation.value,
-                          timeViewStart: timeViewStartAnimation.value,
-                          timeViewEnd: timeViewEndAnimation.value,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            );
-
-            final clipsContainer = Observer(
-              builder: (context) {
-                Widget clips() {
-                  return AnimatedBuilder(
-                    animation: verticalScrollPositionAnimationController,
-                    builder: (context, child) {
-                      return AnimatedBuilder(
-                        animation: timeViewAnimationController,
-                        builder: (context, child) {
-                          return ArrangerContentRenderer(
-                            timeViewStart: timeViewStartAnimation.value,
-                            timeViewEnd: timeViewEndAnimation.value,
-                            verticalScrollPosition:
-                                verticalScrollPositionAnimation.value,
-                            viewModel: viewModel,
-                          );
-                        },
-                      );
-                    },
-                  );
-                }
-
-                return Positioned.fill(
-                  child: project.sequence.activeArrangementID == null
-                      ? const SizedBox()
-                      : clips(),
-                );
-              },
-            );
-
-            final selectionBox = Observer(
-              builder: (context) {
-                if (viewModel.selectionBox == null) {
-                  return const SizedBox();
-                }
-
-                final selectionBox = viewModel.selectionBox!;
-
-                final left = timeToPixels(
-                  timeViewStart: viewModel.timeView.start,
-                  timeViewEnd: viewModel.timeView.end,
-                  viewPixelWidth: constraints.maxWidth,
-                  time: selectionBox.left,
-                );
-
-                final width = timeToPixels(
-                  timeViewStart: viewModel.timeView.start,
-                  timeViewEnd: viewModel.timeView.end,
-                  viewPixelWidth: constraints.maxWidth,
-                  time: viewModel.timeView.start + selectionBox.width,
-                );
-
-                final top = trackIndexToPos(
-                  baseTrackHeight: viewModel.baseTrackHeight,
-                  scrollPosition: viewModel.verticalScrollPosition,
-                  trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.sequence.trackOrder,
-                  trackIndex: selectionBox.top,
-                );
-
-                final bottom = trackIndexToPos(
-                  baseTrackHeight: viewModel.baseTrackHeight,
-                  scrollPosition: viewModel.verticalScrollPosition,
-                  trackHeightModifiers: viewModel.trackHeightModifiers,
-                  trackOrder: project.sequence.trackOrder,
-                  trackIndex: selectionBox.top + selectionBox.height,
-                );
-
-                final borderColor = const HSLColor.fromAHSL(
-                  1,
-                  166,
-                  0.6,
-                  0.35,
-                ).toColor();
-                final backgroundColor = borderColor.withAlpha(100);
-
-                return Positioned(
-                  left: left,
-                  top: top,
-                  child: Container(
-                    width: width,
-                    height: bottom - top,
-                    decoration: BoxDecoration(
-                      color: backgroundColor,
-                      border: Border.all(color: borderColor),
-                      borderRadius: const BorderRadius.all(Radius.circular(2)),
-                    ),
-                  ),
-                );
-              },
-            );
-
-            final playhead = Positioned.fill(
-              child: PlayheadLine(
-                timeViewAnimationController: timeViewAnimationController,
+    return Container(
+      clipBehavior: Clip.hardEdge,
+      decoration: BoxDecoration(color: AnthemTheme.grid.backgroundLight),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final grid = Positioned.fill(
+            child: CustomPaint(
+              painter: ArrangerBackgroundPainter(
+                repaint: renderedViewRepaint,
+                activeArrangement: project
+                    .sequence
+                    .arrangements[project.sequence.activeArrangementID],
+                project: project,
+                verticalScrollPositionAnimation:
+                    verticalScrollPositionAnimation,
                 timeViewStartAnimation: timeViewStartAnimation,
                 timeViewEndAnimation: timeViewEndAnimation,
-                isVisible: true,
-                editorActiveSequenceId: project.sequence.activeArrangementID,
               ),
-            );
+            ),
+          );
 
-            return ArrangerEventListener(
-              child: Stack(
-                children: [grid, clipsContainer, selectionBox, playhead],
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-/// Determines the current cursor for the arranger canvas.
-class _ArrangerCanvasCursor extends StatefulWidget {
-  final Widget? child;
-
-  const _ArrangerCanvasCursor({this.child});
-
-  @override
-  State<_ArrangerCanvasCursor> createState() => _ArrangerCanvasCursorState();
-}
-
-class _ArrangerCanvasCursorState extends State<_ArrangerCanvasCursor> {
-  MouseCursor cursor = MouseCursor.defer;
-
-  @override
-  Widget build(BuildContext context) {
-    final viewModel = Provider.of<ArrangerViewModel>(context);
-
-    return MouseRegion(
-      cursor: cursor,
-      onHover: (e) {
-        final pos = e.localPosition;
-
-        final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor = contentUnderCursor.resizeHandle != null
-            ? SystemMouseCursors.resizeLeftRight
-            : contentUnderCursor.clip != null
-            ? SystemMouseCursors.move
-            : MouseCursor.defer;
-
-        if (cursor == newCursor) return;
-
-        setState(() {
-          cursor = newCursor;
-        });
-      },
-      child: widget.child,
-    );
-  }
-}
-
-class _TrackHeaders extends StatefulWidget {
-  final double verticalScrollPosition;
-
-  const _TrackHeaders({required this.verticalScrollPosition});
-
-  @override
-  State<_TrackHeaders> createState() => _TrackHeadersState();
-}
-
-class _TrackHeadersState extends State<_TrackHeaders> {
-  double startPixelHeight = -1;
-  double startModifier = -1;
-  double startY = -1;
-
-  @override
-  Widget build(BuildContext context) {
-    final viewModel = Provider.of<ArrangerViewModel>(context);
-    final project = Provider.of<ProjectModel>(context);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Observer(
-          builder: (context) {
-            List<Widget> headers = [];
-            List<Widget> resizeHandles = [];
-
-            var trackPositionPointer = -widget.verticalScrollPosition;
-
-            for (final trackID in project.sequence.trackOrder) {
-              final heightModifier = viewModel.trackHeightModifiers[trackID]!;
-
-              final trackHeight = getTrackHeight(
-                viewModel.baseTrackHeight,
-                heightModifier,
-              );
-
-              if (trackPositionPointer < constraints.maxHeight &&
-                  trackPositionPointer + trackHeight > 0) {
-                headers.add(
-                  Positioned(
-                    key: Key(trackID),
-                    top: trackPositionPointer,
-                    left: 0,
-                    right: 0,
-                    child: SizedBox(
-                      height: trackHeight - 1,
-                      child: TrackHeader(trackID: trackID),
-                    ),
-                  ),
-                );
-                const resizeHandleHeight = 10.0;
-                resizeHandles.add(
-                  Positioned(
-                    key: Key('$trackID-handle'),
-                    left: 0,
-                    right: 0,
-                    top:
-                        trackPositionPointer +
-                        trackHeight -
-                        1 -
-                        resizeHandleHeight / 2,
-                    child: SizedBox(
-                      height: resizeHandleHeight,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.resizeUpDown,
-                        child: Listener(
-                          onPointerDown: (event) {
-                            startPixelHeight = trackHeight;
-                            startModifier = heightModifier;
-                            startY = event.position.dy;
-                          },
-                          onPointerMove: (event) {
-                            final newPixelHeight =
-                                (event.position.dy - startY + startPixelHeight)
-                                    .clamp(minTrackHeight, maxTrackHeight);
-                            final newModifier =
-                                newPixelHeight /
-                                startPixelHeight *
-                                startModifier;
-                            viewModel.trackHeightModifiers[trackID] =
-                                newModifier;
-                          },
-                          // Hack: Listener callbacks do nothing unless this is
-                          // here
-                          child: Container(color: const Color(0x00000000)),
-                        ),
-                      ),
-                    ),
-                  ),
+          final clipsContainer = Observer(
+            builder: (context) {
+              Widget clips() {
+                return ArrangerContentRenderer(
+                  repaint: renderedViewRepaint,
+                  timeViewStartAnimation: timeViewStartAnimation,
+                  timeViewEndAnimation: timeViewEndAnimation,
+                  verticalScrollPositionAnimation:
+                      verticalScrollPositionAnimation,
+                  viewModel: viewModel,
                 );
               }
 
-              if (trackPositionPointer >= constraints.maxHeight) break;
+              return Positioned.fill(
+                child: project.sequence.activeArrangementID == null
+                    ? const SizedBox()
+                    : clips(),
+              );
+            },
+          );
 
-              trackPositionPointer += trackHeight;
-            }
+          final selectionBox = Observer(
+            builder: (context) {
+              if (viewModel.selectionBox == null) {
+                return const SizedBox();
+              }
 
-            return ClipRect(child: Stack(children: headers + resizeHandles));
-          },
-        );
-      },
+              final selectionBox = viewModel.selectionBox!;
+
+              final borderColor = const HSLColor.fromAHSL(
+                1,
+                166,
+                0.6,
+                0.35,
+              ).toColor();
+              final backgroundColor = borderColor.withAlpha(100);
+
+              return Positioned(
+                left: selectionBox.left,
+                top: selectionBox.top,
+                child: Container(
+                  width: selectionBox.width,
+                  height: selectionBox.height,
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    border: Border.all(color: borderColor),
+                    borderRadius: const BorderRadius.all(Radius.circular(2)),
+                  ),
+                ),
+              );
+            },
+          );
+
+          final playhead = Positioned.fill(
+            child: PlayheadLine(
+              timeViewAnimationController: timeViewAnimationController,
+              timeViewStartAnimation: timeViewStartAnimation,
+              timeViewEndAnimation: timeViewEndAnimation,
+              isVisible: true,
+              editorActiveSequenceId: project.sequence.activeArrangementID,
+            ),
+          );
+
+          return ArrangerEventListener(
+            child: Stack(
+              children: [grid, clipsContainer, selectionBox, playhead],
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -276,13 +276,6 @@ dart run :cli -h
 dart run :cli codegen -h
 dart run :cli engine -h
 
-# We need to clean the codegen output. This is because the code generator is
-# currently unable to detect when the codegen for messages.dart needs to be
-# rebuilt, and cleaning the codegen output forces these files to be
-# regenerated. These files take an additional 20 to 30 seconds to produce, so
-# it's good to skip them if possible.
-dart run :cli codegen clean --root-only -y
-
 # This runs the code generator. The --root-only option prevents code generation
 # for the tests in the codegen folder, which aren't needed to build or run
 # Anthem.

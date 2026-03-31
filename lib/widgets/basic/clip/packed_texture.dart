@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,10 +45,15 @@ import 'dart:ui';
 /// drawn to it. This allows us to use drawAtlas to draw multiple cached
 /// drawings in a single draw call.
 class PackedTexture {
+  final double maxWidth;
   Image? textureAtlas;
+
+  PackedTexture({this.maxWidth = 2048.0}) : assert(maxWidth > 0);
 
   List<Rect> drawImages(List<Image> images) {
     if (images.isEmpty) {
+      textureAtlas?.dispose();
+      textureAtlas = null;
       return [];
     }
 
@@ -72,6 +77,7 @@ class PackedTexture {
     }
 
     final picture = pictureRecorder.endRecording();
+    textureAtlas?.dispose();
     textureAtlas = picture.toImageSync(
       atlasSize.width.ceil(),
       atlasSize.height.ceil(),
@@ -80,10 +86,7 @@ class PackedTexture {
     return rects;
   }
 
-  ({List<Rect> rects, Size atlasSize}) _layout(
-    List<Image> images, [
-    double maxWidth = 2048.0,
-  ]) {
+  ({List<Rect> rects, Size atlasSize}) _layout(List<Image> images) {
     if (images.isEmpty) {
       return (rects: [], atlasSize: Size.zero);
     }

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -31,14 +32,21 @@ enum AutomationCurveType { smooth, stairs, wave, hold }
 class AutomationPointModel extends _AutomationPointModel
     with _$AutomationPointModel, _$AutomationPointModelAnthemModelMixin {
   AutomationPointModel.uninitialized()
-    : super(offset: 0, value: 0, tension: 0, curve: AutomationCurveType.smooth);
+    : super(
+        id: -1,
+        offset: 0,
+        value: 0,
+        tension: 0,
+        curve: AutomationCurveType.smooth,
+      );
 
   AutomationPointModel({
+    required ProjectEntityIdAllocator idAllocator,
     required super.offset,
     required super.value,
     super.tension = 0,
     super.curve = AutomationCurveType.smooth,
-  });
+  }) : super(id: idAllocator.allocateId());
 
   factory AutomationPointModel.fromJson(Map<String, dynamic> json) =>
       _$AutomationPointModelAnthemModelMixin.fromJson(json);
@@ -46,7 +54,7 @@ class AutomationPointModel extends _AutomationPointModel
 
 abstract class _AutomationPointModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  late Id id;
+  Id id;
 
   @anthemObservable
   int offset;
@@ -61,11 +69,10 @@ abstract class _AutomationPointModel
   AutomationCurveType curve;
 
   _AutomationPointModel({
+    required this.id,
     required this.offset,
     required this.value,
     required this.tension,
     required this.curve,
-  }) {
-    id = getId();
-  }
+  });
 }

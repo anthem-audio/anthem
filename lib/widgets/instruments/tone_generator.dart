@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -54,12 +54,16 @@ class _ToneGeneratorState extends State<ToneGenerator> {
               Observer(
                 builder: (context) {
                   final value =
-                      widget.node
-                          .getPortById(
-                            ToneGeneratorProcessorModel.frequencyPortId,
-                          )
-                          .parameterValue ??
-                      440;
+                      ToneGeneratorProcessorModel.parameterValueToFrequency(
+                        widget.node
+                                .getPortById(
+                                  ToneGeneratorProcessorModel.frequencyPortId,
+                                )
+                                .parameterValue ??
+                            ToneGeneratorProcessorModel.frequencyToParameterValue(
+                              440,
+                            ),
+                      );
 
                   return Knob(
                     value: value,
@@ -73,7 +77,9 @@ class _ToneGeneratorState extends State<ToneGenerator> {
                                 ToneGeneratorProcessorModel.frequencyPortId,
                               )
                               .parameterValue =
-                          newValue;
+                          ToneGeneratorProcessorModel.frequencyToParameterValue(
+                            newValue,
+                          );
                     },
                   );
                 },

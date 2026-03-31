@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,54 +23,96 @@
 
 #include <algorithm>
 
-void AnthemSequenceCompiler::compilePattern(std::string patternId) {
+void AnthemSequenceCompiler::compilePattern(EntityId patternId) {
   auto& anthem = Anthem::getInstance();
 
   auto patternIter = anthem.project->sequence()->patterns()->find(patternId);
   if (patternIter == anthem.project->sequence()->patterns()->end()) {
     return;
   }
-  auto pattern = patternIter->second;
-  
-  // This will leak memory if it's not assigned somewhere or cleaned up here
+
   SequenceEventListCollection newSequence;
-  
-  // For every channel, get the note events for that channel
-  for (std::string& channelId : *anthem.project->generatorOrder()) {
-    // This will leak memory if it's not assigned somewhere or cleaned up here
-    SequenceEventList newChannelEvents;
+  SequenceEventList noTrackEvents;
 
-    getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
-    sortEventList(*newChannelEvents.events);
+  getPatternNoteEvents(
+    patternId,
+    std::nullopt,
+    std::nullopt,
+    std::nullopt,
+    *noTrackEvents.events
+  );
+  sortEventList(*noTrackEvents.events);
 
-    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
-  }
+  newSequence.tracks->insert_or_assign(
+    anthem_sequencer_track_ids::noTrack,
+    std::move(noTrackEvents)
+  );
 
-  // Add the new sequence to the store
   auto& store = *anthem.sequenceStore;
   store.addOrUpdateSequence(patternId, newSequence);
 }
 
 void AnthemSequenceCompiler::compilePattern(
-  std::string patternId,
-  std::vector<std::string>& channelIdsToRebuild,
+  EntityId patternId,
+  std::vector<EntityId>& trackIdsToRebuild,
   std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
-  auto& store = *Anthem::getInstance().sequenceStore;
+  // When compiling a bare pattern, we put all events into a special "no track"
+  // event list. For now, it's not possible for a pattern to contribute events
+  // to any other track.
+  //
+  // This allows us to choose where to send a pattern's events, depending on
+  // which track is currently active. If a pattern has multiple clips on
+  // multiple different tracks and we double-click on one of them, the active
+  // track is set. Then, when the pattern is played in e.g. the piano roll, the
+  // active sequence is set to the pattern's sequence, but we are able to choose
+  // the correct destination for those events because we know to forward them to
+  // the active track.
+  //
+  // The transport contains the real-time-facing source of truth for the active
+  // sequence ID.
 
-  for (auto& channelId : channelIdsToRebuild) {
-    // This will leak memory if it's not assigned somewhere or cleaned up here
-    SequenceEventList newChannelEvents;
-    newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
+  auto& anthem = Anthem::getInstance();
 
-    getChannelNoteEventsForPattern(channelId, patternId, std::nullopt, std::nullopt, *newChannelEvents.events);
-    sortEventList(*newChannelEvents.events);
-
-    store.addOrUpdateChannelInSequence(patternId, channelId, newChannelEvents);
+  auto patternIter = anthem.project->sequence()->patterns()->find(patternId);
+  if (patternIter == anthem.project->sequence()->patterns()->end()) {
+    return;
   }
+
+  bool shouldCompileNoTrackEvents = std::find(
+    trackIdsToRebuild.begin(),
+    trackIdsToRebuild.end(),
+    anthem_sequencer_track_ids::noTrack
+  ) != trackIdsToRebuild.end();
+
+  if (!shouldCompileNoTrackEvents) {
+    return;
+  }
+
+  SequenceEventList noTrackEvents;
+  if (!invalidationRanges.empty()) {
+    noTrackEvents.invalidationRanges =
+      new std::vector<std::tuple<double, double>>(invalidationRanges);
+  }
+
+  getPatternNoteEvents(
+    patternId,
+    std::nullopt,
+    std::nullopt,
+    std::nullopt,
+    *noTrackEvents.events
+  );
+  sortEventList(*noTrackEvents.events);
+
+  auto& store = *anthem.sequenceStore;
+  store.addOrUpdateTrackInSequence(
+    patternId,
+    anthem_sequencer_track_ids::noTrack,
+    noTrackEvents
+  );
 }
 
-void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
+void AnthemSequenceCompiler::compileArrangement(EntityId arrangementId) {
   auto& anthem = Anthem::getInstance();
 
   auto arrangementIter = anthem.project->sequence()->arrangements()->find(arrangementId);
@@ -82,15 +124,15 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
   // This will leak memory if it's not assigned somewhere or cleaned up here
   SequenceEventListCollection newSequence;
 
-  // For every channel, get the note events for that channel
-  for (std::string& channelId : *anthem.project->generatorOrder()) {
+  // For every track, get the note events for that track.
+  for (EntityId& trackId : *anthem.project->trackOrder()) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
 
-    getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
+    getTrackNoteEventsForArrangement(trackId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    newSequence.channels->insert_or_assign(channelId, std::move(newChannelEvents));
+    newSequence.tracks->insert_or_assign(trackId, std::move(newChannelEvents));
   }
 
   // Add the new sequence to the store
@@ -99,33 +141,33 @@ void AnthemSequenceCompiler::compileArrangement(std::string arrangementId) {
 }
 
 void AnthemSequenceCompiler::compileArrangement(
-  std::string arrangementId,
-  std::vector<std::string>& channelIdsToRebuild,
+  EntityId arrangementId,
+  std::vector<EntityId>& trackIdsToRebuild,
   std::vector<std::tuple<double, double>>& invalidationRanges
 ) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
-  for (auto& channelId : channelIdsToRebuild) {
+  for (auto& trackId : trackIdsToRebuild) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
     newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
 
-    getChannelNoteEventsForArrangement(channelId, arrangementId, *newChannelEvents.events);
+    getTrackNoteEventsForArrangement(trackId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
 
-    store.addOrUpdateChannelInSequence(arrangementId, channelId, newChannelEvents);
+    store.addOrUpdateTrackInSequence(arrangementId, trackId, newChannelEvents);
   }
 }
 
-void AnthemSequenceCompiler::cleanUpChannel(std::string channelId) {
+void AnthemSequenceCompiler::cleanUpTrack(EntityId trackId) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
-  store.removeChannelFromAllSequences(channelId);
+  store.removeTrackFromAllSequences(trackId);
 }
 
-void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
-  std::string channelId,
-  std::string arrangementId,
+void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
+  EntityId trackId,
+  EntityId arrangementId,
   std::vector<AnthemSequenceEvent>& events
 ) {
   auto& anthem = Anthem::getInstance();
@@ -141,10 +183,13 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
 
   for (auto& clipPair : *clips) {
     auto clip = clipPair.second;
+    if (clip->trackId() != trackId) {
+      continue;
+    }
 
-    getChannelNoteEventsForPattern(
-      channelId,
+    getPatternNoteEvents(
       clip->patternId(),
+      clip->id(),
       clip->timeView().has_value()
           ? std::make_optional(
               std::make_tuple(
@@ -159,9 +204,9 @@ void AnthemSequenceCompiler::getChannelNoteEventsForArrangement(
   }
 }
 
-void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
-  std::string channelId,
-  std::string patternId,
+void AnthemSequenceCompiler::getPatternNoteEvents(
+  EntityId patternId,
+  std::optional<EntityId> clipId,
   std::optional<std::tuple<double, double>> range,
   std::optional<double> offset,
   std::vector<AnthemSequenceEvent>& events
@@ -175,14 +220,14 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
   auto pattern = patternIter->second;
 
-  auto notesIter = pattern->notes()->find(channelId);
-  if (notesIter == pattern->notes()->end()) {
-    return;
-  }
-
-  auto notes = notesIter->second;
-
-  for (auto& note : *notes) {
+  for (auto& noteEntry : *pattern->notes()) {
+    auto note = noteEntry.second;
+    auto noteInstanceId = clipId.has_value()
+      ? anthem_note_instance_ids::fromArrangementClipNoteId(
+          clipId.value(),
+          note->id()
+        )
+      : anthem_note_instance_ids::fromPatternNoteId(note->id());
     auto rangeOptional = clampStartAndEndToRange(
       static_cast<double>(note->offset()),
       static_cast<double>(note->offset() + note->length()),
@@ -208,25 +253,25 @@ void AnthemSequenceCompiler::getChannelNoteEventsForPattern(
 
     events.push_back(AnthemSequenceEvent {
       .offset = startWithOffset,
+      .sourceId = noteInstanceId,
       .event = AnthemEvent(
         AnthemNoteOnEvent(
           static_cast<int16_t>(note->key()),
           static_cast<int16_t>(0),
           static_cast<float>(note->velocity()),
-          0.f,
-          static_cast<int32_t>(-1)
+          0.f
         )
       )
     });
 
     events.push_back(AnthemSequenceEvent {
       .offset = endWithOffset,
+      .sourceId = noteInstanceId,
       .event = AnthemEvent(
         AnthemNoteOffEvent(
           static_cast<int16_t>(note->key()),
           static_cast<int16_t>(0),
-          0.f,
-          static_cast<int32_t>(-1)
+          0.f
         )
       )
     });

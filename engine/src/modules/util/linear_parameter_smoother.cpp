@@ -28,8 +28,8 @@ LinearParameterSmoother::LinearParameterSmoother(float initialValue, float durat
   timeRemaining = 0.0f;
 }
 
-void LinearParameterSmoother::setTargetValue(float targetValue) {
-  this->targetValue = targetValue;
+void LinearParameterSmoother::setTargetValue(float newTargetValue) {
+  this->targetValue = newTargetValue;
   timeRemaining = duration;
 }
 

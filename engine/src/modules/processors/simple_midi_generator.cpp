@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -31,7 +31,7 @@ SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGener
   noteOn = false;
 
   currentNote = 0;
-  currentNoteId = 0;
+  currentNoteId = anthemInvalidLiveNoteId;
   currentNoteDuration = 0;
 }
 
@@ -48,13 +48,19 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
 
   if (!noteOn) {
     currentNote = 50;
-    currentNoteId = 0;
+    currentNoteId = context.rt_allocateLiveNoteId();
     currentNoteDuration = 0;
     eventOutBuffer->addEvent(
       AnthemLiveEvent {
-        .time = 0.0,
+        .sampleOffset = 0.0,
+        .liveId = currentNoteId,
         .event = AnthemEvent(
-          AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
+          AnthemNoteOnEvent(
+            currentNote,
+            0,
+            static_cast<float>(velocity),
+            0.0f
+          )
         )
       }
     );
@@ -75,15 +81,13 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
 
     if (currentNoteDuration >= durationSamples) {
       AnthemLiveEvent noteOffEvent = AnthemLiveEvent {
-        .time = 0.0,
-        .event = AnthemEvent(
-          AnthemNoteOffEvent(currentNote, 0, 0.0f, currentNoteId)
-        )
+        .sampleOffset = 0.0,
+        .liveId = currentNoteId,
+        .event = AnthemEvent(AnthemNoteOffEvent(currentNote, 0, 0.0f))
       };
 
       eventOutBuffer->addEvent(noteOffEvent);
 
-      currentNoteId++;
       currentNoteDuration = 0;
 
       currentNote += 2;
@@ -92,10 +96,18 @@ void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int nu
         currentNote = 50;
       }
 
+      currentNoteId = context.rt_allocateLiveNoteId();
+
       AnthemLiveEvent noteOnEvent = AnthemLiveEvent {
-        .time = 0.0,
+        .sampleOffset = 0.0,
+        .liveId = currentNoteId,
         .event = AnthemEvent(
-          AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f, currentNoteId)
+          AnthemNoteOnEvent(
+            currentNote,
+            0,
+            static_cast<float>(velocity),
+            0.0f
+          )
         )
       };
 

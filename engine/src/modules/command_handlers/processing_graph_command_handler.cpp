@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,8 +19,16 @@
 
 #include "processing_graph_command_handler.h"
 
+#include <string>
+
 #include "modules/core/anthem.h"
 #include "modules/processors/live_event_provider.h"
+
+namespace {
+std::string toIdString(int64_t id) {
+  return std::to_string(id);
+}
+}
 
 std::optional<Response>
 handleProcessingGraphCommand(Request& request) {
@@ -31,11 +39,34 @@ handleProcessingGraphCommand(Request& request) {
 
     juce::Logger::writeToLog("Compiling from UI request...");
 
-    // Test for the audio device to exist. We need to be able to query a valid
-    // audio device to get buffer size and sample rate
+    if (!anthem.isAudioThreadRunning()) {
+      juce::Logger::writeToLog(
+        "Skipping processing graph compile because the audio thread is not running."
+      );
+
+      return std::optional(CompileProcessingGraphResponse {
+        .success = true,
+        .error = std::nullopt,
+        .responseBase = ResponseBase {
+          .id = compileProcessingGraphRequest.requestBase.get().id
+        }
+      });
+    }
+
+    // We need a valid device in order to query the sample rate and block size
+    // used by the compiled graph.
     if (anthem.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
-      jassertfalse;
-      juce::JUCEApplicationBase::quit();
+      juce::Logger::writeToLog(
+        "Cannot compile processing graph because no audio device is active."
+      );
+
+      return std::optional(CompileProcessingGraphResponse {
+        .success = false,
+        .error = std::string("No audio device is active."),
+        .responseBase = ResponseBase {
+          .id = compileProcessingGraphRequest.requestBase.get().id
+        }
+      });
     }
 
     try {
@@ -79,14 +110,18 @@ handleProcessingGraphCommand(Request& request) {
     });
 
     if (node == nullptr) {
-      juce::Logger::writeToLog("Node " + getPluginStateRequest.nodeId + " not found in processing graph.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(getPluginStateRequest.nodeId) +
+        " not found in processing graph.");
       return errorResponse;
     }
 
     auto processor = node->getProcessor();
 
     if (!processor) {
-      juce::Logger::writeToLog("Node " + getPluginStateRequest.nodeId + " does not have a processor.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(getPluginStateRequest.nodeId) +
+        " does not have a processor.");
       return errorResponse;
     }
 
@@ -116,19 +151,25 @@ handleProcessingGraphCommand(Request& request) {
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
     if (node == nullptr) {
-      juce::Logger::writeToLog("Node " + setPluginStateRequest.nodeId + " not found in processing graph.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(setPluginStateRequest.nodeId) +
+        " not found in processing graph.");
       return std::nullopt;
     }
 
     auto processor = node->getProcessor();
 
     if (!processor) {
-      juce::Logger::writeToLog("Node " + setPluginStateRequest.nodeId + " does not have a processor.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(setPluginStateRequest.nodeId) +
+        " does not have a processor.");
       return std::nullopt;
     }
 
     if (setPluginStateRequest.state.empty()) {
-      juce::Logger::writeToLog("Received empty state for node " + setPluginStateRequest.nodeId);
+      juce::Logger::writeToLog(
+        "Received empty state for node " +
+        toIdString(setPluginStateRequest.nodeId));
       return std::nullopt;
     }
 
@@ -151,14 +192,18 @@ handleProcessingGraphCommand(Request& request) {
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
     if (node == nullptr) {
-      juce::Logger::writeToLog("Node " + sendLiveEventRequest.liveEventProviderNodeId + " not found in processing graph.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(sendLiveEventRequest.liveEventProviderNodeId) +
+        " not found in processing graph.");
       return std::nullopt;
     }
 
     auto processorOpt = node->getProcessor();
 
     if (!processorOpt) {
-      juce::Logger::writeToLog("Node " + sendLiveEventRequest.liveEventProviderNodeId + " does not have a processor.");
+      juce::Logger::writeToLog(
+        "Node " + toIdString(sendLiveEventRequest.liveEventProviderNodeId) +
+        " does not have a processor.");
       return std::nullopt;
     }
 
@@ -171,25 +216,32 @@ handleProcessingGraphCommand(Request& request) {
         using EventType = std::decay_t<decltype(field)>;
         if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOnEvent", std::shared_ptr<LiveEventRequestNoteOnEvent>>>) {
           auto& eventFromRequest = field.value();
-          AnthemLiveEvent liveEvent = AnthemLiveEvent {
-            .time = 0.0, // Handle as soon as possible
-            .event = AnthemEvent(AnthemNoteOnEvent())
+          AnthemLiveInputEvent liveInputEvent = AnthemLiveInputEvent {
+            .sampleOffset = 0.0, // Handle as soon as possible
+            .inputId = eventFromRequest->noteId,
+            .event = AnthemEvent(AnthemNoteOnEvent(
+              eventFromRequest->pitch,
+              eventFromRequest->channel,
+              eventFromRequest->velocity,
+              0.0f
+            ))
           };
-          liveEvent.event.noteOn.pitch = eventFromRequest->pitch;
-          liveEvent.event.noteOn.velocity = eventFromRequest->velocity;
           // liveEvent.event.noteOn.pan = eventFromRequest.pan;
 
-          liveEventProvider->addLiveEvent(std::move(liveEvent));
+          liveEventProvider->addLiveInputEvent(std::move(liveInputEvent));
         } else if constexpr (std::is_same_v<EventType, rfl::Field<"LiveEventRequestNoteOffEvent", std::shared_ptr<LiveEventRequestNoteOffEvent>>>) {
           auto& eventFromRequest = field.value();
-          AnthemLiveEvent liveEvent = AnthemLiveEvent {
-            .time = 0.0, // Handle as soon as possible
-            .event = AnthemEvent(AnthemNoteOffEvent())
+          AnthemLiveInputEvent liveInputEvent = AnthemLiveInputEvent {
+            .sampleOffset = 0.0, // Handle as soon as possible
+            .inputId = eventFromRequest->noteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(
+              eventFromRequest->pitch,
+              eventFromRequest->channel,
+              0.0f
+            ))
           };
 
-          liveEvent.event.noteOff.pitch = eventFromRequest->pitch;
-
-          liveEventProvider->addLiveEvent(liveEvent);
+          liveEventProvider->addLiveInputEvent(liveInputEvent);
         } else {
           jassertfalse; // unhandled event
         }

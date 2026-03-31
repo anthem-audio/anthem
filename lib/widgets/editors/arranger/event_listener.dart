@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,18 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/project.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+import 'helpers.dart';
 import 'view_model.dart';
 import 'controller/arranger_controller.dart';
-import 'events.dart';
-import 'helpers.dart';
 
 class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
@@ -42,28 +38,49 @@ class ArrangerEventListener extends StatefulWidget {
 class _ArrangerEventListenerState extends State<ArrangerEventListener> {
   var _panYStart = double.nan;
   var _panScrollPosStart = double.nan;
+  Size? _lastViewSize;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, boxConstraints) {
+        final viewSize = boxConstraints.biggest;
+        final controller = Provider.of<ArrangerController>(
+          context,
+          listen: false,
+        );
+
+        if (_lastViewSize != viewSize) {
+          _lastViewSize = viewSize;
+          controller.onViewSizeChanged(viewSize);
+        }
+
         return Observer(
           builder: (context) {
             final viewModel = Provider.of<ArrangerViewModel>(context);
-            final controller = Provider.of<ArrangerController>(context);
 
-            return EditorScrollManager(
+            return EditorScrollManager.editor(
               timeView: viewModel.timeView,
-              onVerticalScrollChange: (pixelDelta) {
-                viewModel.verticalScrollPosition =
-                    (viewModel.verticalScrollPosition +
-                            pixelDelta *
-                                0.01 *
-                                viewModel.baseTrackHeight.clamp(
-                                  minTrackHeight,
-                                  maxTrackHeight,
-                                ))
-                        .clamp(0, double.infinity);
+              onVerticalScrollChange: (delta) {
+                final previousVerticalScrollPosition =
+                    viewModel.verticalScrollPosition;
+
+                viewModel.applyVerticalScrollDelta(delta);
+
+                final appliedVerticalScrollDelta =
+                    viewModel.verticalScrollPosition -
+                    previousVerticalScrollPosition;
+                final deltaScale =
+                    0.01 *
+                    viewModel.baseTrackHeight.clamp(
+                      minTrackHeight,
+                      maxTrackHeight,
+                    );
+                if (deltaScale == 0) {
+                  return 0;
+                }
+
+                return appliedVerticalScrollDelta / deltaScale;
               },
               onVerticalPanStart: (y) {
                 _panYStart = y;
@@ -80,74 +97,31 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
                   viewModel.baseTrackHeight + delta * 15,
                 );
               },
-              child: Listener(
-                onPointerDown: (event) {
-                  controller.pointerDown(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                onPointerMove: (event) {
-                  controller.pointerMove(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                onPointerUp: (event) {
-                  controller.pointerUp(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                onPointerCancel: (event) {
-                  controller.pointerUp(
-                    convertPointerEvent(event, boxConstraints.biggest),
-                  );
-                },
-                child: widget.child,
+              child: MouseRegion(
+                cursor: viewModel.mouseCursor,
+                onEnter: controller.onEnter,
+                onExit: controller.onExit,
+                onHover: controller.onHover,
+                child: Listener(
+                  onPointerDown: (event) {
+                    controller.pointerDown(event);
+                  },
+                  onPointerMove: (event) {
+                    controller.pointerMove(event);
+                  },
+                  onPointerUp: (event) {
+                    controller.pointerUp(event);
+                  },
+                  onPointerCancel: (event) {
+                    controller.pointerUp(event);
+                  },
+                  child: widget.child,
+                ),
               ),
             );
           },
         );
       },
-    );
-  }
-
-  ArrangerPointerEvent convertPointerEvent(PointerEvent event, Size viewSize) {
-    final viewModel = Provider.of<ArrangerViewModel>(context, listen: false);
-    final project = Provider.of<ProjectModel>(context, listen: false);
-    final keyboardModifiers = Provider.of<KeyboardModifiers>(
-      context,
-      listen: false,
-    );
-
-    final offset = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
-      viewPixelWidth: viewSize.width,
-      pixelOffsetFromLeft: event.localPosition.dx,
-    );
-
-    final track = posToTrackIndex(
-      yOffset: event.localPosition.dy,
-      baseTrackHeight: viewModel.baseTrackHeight,
-      trackOrder: project.sequence.trackOrder,
-      trackHeightModifiers: viewModel.trackHeightModifiers,
-      scrollPosition: viewModel.verticalScrollPosition,
-    );
-
-    final (clip: clipUnderCursor, resizeHandle: resizeHandleUnderCursor) =
-        viewModel.getContentUnderCursor(event.localPosition);
-
-    return ArrangerPointerEvent(
-      offset: offset,
-      track: track,
-      pointerEvent: event,
-      arrangerSize: viewSize,
-      keyboardModifiers: keyboardModifiers,
-      clipUnderCursor:
-          clipUnderCursor?.metadata.id ?? resizeHandleUnderCursor?.metadata.id,
-      isResizeFromStart:
-          resizeHandleUnderCursor?.metadata.type == ResizeAreaType.start,
-      isResizeFromEnd:
-          resizeHandleUnderCursor?.metadata.type == ResizeAreaType.end,
     );
   }
 }
