@@ -49,8 +49,10 @@ class LiveEventManager {
     required int pitch,
     required int noteId,
   }) {
-    final notesByPitch =
-        _activeNoteIdsByTrackAndPitch.putIfAbsent(trackId, () => {});
+    final notesByPitch = _activeNoteIdsByTrackAndPitch.putIfAbsent(
+      trackId,
+      () => {},
+    );
     final activeNoteIds = notesByPitch.putIfAbsent(pitch, () => []);
     activeNoteIds.add(noteId);
   }
@@ -126,11 +128,7 @@ class LiveEventManager {
     return noteId;
   }
 
-  void noteOff({
-    required Id trackId,
-    required int pitch,
-    int channel = 0,
-  }) {
+  void noteOff({required Id trackId, required int pitch, int channel = 0}) {
     final noteId = _takeMostRecentActiveNoteId(trackId: trackId, pitch: pitch);
     if (noteId == null) {
       return;
