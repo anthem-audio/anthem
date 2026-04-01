@@ -22,8 +22,8 @@
 #include "modules/sequencer/events/event.h"
 
 #include <cstdint>
-#include <vector>
 #include <optional>
+#include <vector>
 
 // This class is used to compile a sequence into a set of sorted event lists.
 //
@@ -38,7 +38,7 @@
 // we don't recompile the entire sequence. Instead, we just update the event
 // lists for the relevant channel.
 class AnthemSequenceCompiler {
-friend class SequenceCompilerTest;
+  friend class SequenceCompilerTest;
 public:
   using EntityId = int64_t;
 
@@ -48,10 +48,9 @@ public:
 
   // Compiles the given tracks for the given pattern, and replaces them in the
   // sequence store.
-  static void compilePattern(
-    EntityId patternId,
-    std::vector<EntityId>& trackIdsToRebuild,
-    std::vector<std::tuple<double, double>>& invalidationRanges);
+  static void compilePattern(EntityId patternId,
+                             std::vector<EntityId>& trackIdsToRebuild,
+                             std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Compiles the given arrangement, and adds or replaces its entry in the
   // sequence store.
@@ -59,23 +58,19 @@ public:
 
   // Compiles the given tracks for the given arrangement, and replaces them in
   // the sequence store.
-  static void compileArrangement(
-    EntityId arrangementId,
-    std::vector<EntityId>& trackIdsToRebuild,
-    std::vector<std::tuple<double, double>>& invalidationRanges);
+  static void compileArrangement(EntityId arrangementId,
+                                 std::vector<EntityId>& trackIdsToRebuild,
+                                 std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Cleans up any sequences related to the given track ID.
   static void cleanUpTrack(EntityId trackId);
-
 private:
   // Gets the note events on a given track for the given arrangement.
   //
   // The events will be added to the given `events` vector.
-  static void getTrackNoteEventsForArrangement(
-    EntityId trackId,
-    EntityId arrangementId,
-    std::vector<AnthemSequenceEvent>& events
-  );
+  static void getTrackNoteEventsForArrangement(EntityId trackId,
+                                               EntityId arrangementId,
+                                               std::vector<AnthemSequenceEvent>& events);
 
   // Gets the note events for the given pattern.
   //
@@ -92,13 +87,11 @@ private:
   // The events will not be sorted. In the case of compiling an arrangement, a
   // given track may have notes from many clips, so we call this method
   // multiple times and sort at the end.
-  static void getPatternNoteEvents(
-    EntityId patternId,
-    std::optional<EntityId> clipId,
-    std::optional<std::tuple<double, double>> range,
-    std::optional<double> offset,
-    std::vector<AnthemSequenceEvent>& events
-  );
+  static void getPatternNoteEvents(EntityId patternId,
+                                   std::optional<EntityId> clipId,
+                                   std::optional<std::tuple<double, double>> range,
+                                   std::optional<double> offset,
+                                   std::vector<AnthemSequenceEvent>& events);
 
   static void sortEventList(std::vector<AnthemSequenceEvent>& events);
 
@@ -111,14 +104,8 @@ private:
   // If std::nullopt is returned, it means the event was entirely outside the
   // range.
   static std::optional<std::tuple<double, double>> clampStartAndEndToRange(
-    double start,
-    double end,
-    std::optional<std::tuple<double, double>> range
-  );
+      double start, double end, std::optional<std::tuple<double, double>> range);
 
   // Clamps a given timestamp to the given range.
-  static double clampTimeToRange(
-    double time,
-    std::tuple<double, double> range
-  );
+  static double clampTimeToRange(double time, std::tuple<double, double> range);
 };

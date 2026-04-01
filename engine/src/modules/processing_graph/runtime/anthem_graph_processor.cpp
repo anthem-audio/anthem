@@ -22,10 +22,9 @@
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 
 AnthemGraphProcessor::AnthemGraphProcessor()
-    : rt_services(std::make_unique<GraphRuntimeServices>()),
-      clearDeletionQueueTimedCallback(juce::TimedCallback([this]() {
-        this->clearDeletionQueueFromMainThread();
-      })) {
+  : rt_services(std::make_unique<GraphRuntimeServices>()),
+    clearDeletionQueueTimedCallback(
+        juce::TimedCallback([this]() { this->clearDeletionQueueFromMainThread(); })) {
   // Set up a JUCE timer to clear the deletion queue every 1s
   this->clearDeletionQueueTimedCallback.startTimer(2000);
   this->processingSteps = nullptr;
@@ -33,7 +32,8 @@ AnthemGraphProcessor::AnthemGraphProcessor()
 
 AnthemGraphProcessor::~AnthemGraphProcessor() = default;
 
-void AnthemGraphProcessor::setProcessingStepsFromMainThread(AnthemGraphCompilationResult* compilationResult) {
+void AnthemGraphProcessor::setProcessingStepsFromMainThread(
+    AnthemGraphCompilationResult* compilationResult) {
   this->processingStepsQueue.add(compilationResult);
 }
 

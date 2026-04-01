@@ -35,43 +35,31 @@ class PlayheadJumpEvent;
 // If this node's track ID matches the transport's active track ID, the node may
 // read from the reserved track-less sequence event list instead of the
 // per-track list.
-class SequenceNoteProviderProcessor
-  : public AnthemProcessor,
-    public SequenceNoteProviderProcessorModelBase {
+class SequenceNoteProviderProcessor : public AnthemProcessor,
+                                      public SequenceNoteProviderProcessorModelBase {
 private:
   static constexpr size_t rt_maxTrackedSequenceNotes = 256;
 
   NoteTracker<rt_maxTrackedSequenceNotes> rt_activeSequenceNotes;
 
-  void rt_emitLiveNoteOffFromTrackedNote(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    const TrackedNote& trackedNote,
-    double sampleOffset
-  );
-  void rt_emitLiveNoteOffsForAllTrackedNotes(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    double sampleOffset
-  );
-  void rt_handleSequenceNoteOn(
-    AnthemNodeProcessContext& context,
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    AnthemSourceNoteId sourceId,
-    const AnthemNoteOnEvent& noteOnEvent,
-    double sampleOffset
-  );
-  void rt_handleSequenceNoteOff(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    AnthemSourceNoteId sourceId,
-    const AnthemNoteOffEvent& noteOffEvent,
-    double sampleOffset
-  );
-  void rt_addEventsForJump(
-    AnthemNodeProcessContext& context,
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    const PlayheadJumpEvent& event,
-    double sampleTimeOffset = 0.0
-  );
-
+  void rt_emitLiveNoteOffFromTrackedNote(std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+                                         const TrackedNote& trackedNote,
+                                         double sampleOffset);
+  void rt_emitLiveNoteOffsForAllTrackedNotes(std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+                                             double sampleOffset);
+  void rt_handleSequenceNoteOn(AnthemNodeProcessContext& context,
+                               std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+                               AnthemSourceNoteId sourceId,
+                               const AnthemNoteOnEvent& noteOnEvent,
+                               double sampleOffset);
+  void rt_handleSequenceNoteOff(std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+                                AnthemSourceNoteId sourceId,
+                                const AnthemNoteOffEvent& noteOffEvent,
+                                double sampleOffset);
+  void rt_addEventsForJump(AnthemNodeProcessContext& context,
+                           std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+                           const PlayheadJumpEvent& event,
+                           double sampleTimeOffset = 0.0);
 public:
   SequenceNoteProviderProcessor(const SequenceNoteProviderProcessorModelImpl& _impl);
   ~SequenceNoteProviderProcessor() override;

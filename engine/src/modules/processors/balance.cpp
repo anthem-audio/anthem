@@ -24,7 +24,7 @@
 #include <juce_core/juce_core.h>
 
 BalanceProcessor::BalanceProcessor(const BalanceProcessorModelImpl& _impl)
-    : AnthemProcessor("Balance"), BalanceProcessorModelBase(_impl) {}
+  : AnthemProcessor("Balance"), BalanceProcessorModelBase(_impl) {}
 
 BalanceProcessor::~BalanceProcessor() {}
 
@@ -34,7 +34,8 @@ void BalanceProcessor::process(AnthemNodeProcessContext& context, int numSamples
   auto& audioInBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);
   auto& audioOutBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
 
-  auto& balanceControlBuffer = context.getInputControlBuffer(BalanceProcessorModelBase::balancePortId);
+  auto& balanceControlBuffer =
+      context.getInputControlBuffer(BalanceProcessorModelBase::balancePortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
     auto normalizedValue = balanceControlBuffer.getReadPointer(0)[sample];

@@ -32,10 +32,6 @@ void CopyEventsAction::execute([[maybe_unused]] int numSamples) {
 }
 
 void CopyEventsAction::debugPrint() {
-  std::cout 
-    << "CopyEventsAction: "
-    << this->source->getGraphNode()->id()
-    << " -> "
-    << this->destination->getGraphNode()->id()
-    << std::endl;
+  std::cout << "CopyEventsAction: " << this->source->getGraphNode()->id() << " -> "
+            << this->destination->getGraphNode()->id() << std::endl;
 }

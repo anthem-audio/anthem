@@ -35,21 +35,10 @@ struct AnthemNoteOnEvent {
   // The detune of the note on event. This is in cents.
   float detune;
 
-  AnthemNoteOnEvent(
-    int16_t pitch,
-    int16_t channel,
-    float velocity,
-    float detune
-  ) : pitch(pitch),
-      channel(channel),
-      velocity(velocity),
-      detune(detune) {}
+  AnthemNoteOnEvent(int16_t pitch, int16_t channel, float velocity, float detune)
+    : pitch(pitch), channel(channel), velocity(velocity), detune(detune) {}
 
-  AnthemNoteOnEvent()
-    : pitch(0),
-      channel(0),
-      velocity(0.0f),
-      detune(0.0f) {}
+  AnthemNoteOnEvent() : pitch(0), channel(0), velocity(0.0f), detune(0.0f) {}
 };
 
 // Event type for note off events.
@@ -63,18 +52,10 @@ struct AnthemNoteOffEvent {
   // The velocity of the note off event, in the range [0, 1].
   float velocity;
 
-  AnthemNoteOffEvent(
-    int16_t pitch,
-    int16_t channel,
-    float velocity
-  ) : pitch(pitch),
-      channel(channel),
-      velocity(velocity) {}
+  AnthemNoteOffEvent(int16_t pitch, int16_t channel, float velocity)
+    : pitch(pitch), channel(channel), velocity(velocity) {}
 
-  AnthemNoteOffEvent()
-    : pitch(0),
-      channel(0),
-      velocity(0.0f) {}
+  AnthemNoteOffEvent() : pitch(0), channel(0), velocity(0.0f) {}
 };
 
 struct AnthemAllVoicesOffEvent {

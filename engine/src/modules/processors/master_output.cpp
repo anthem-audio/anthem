@@ -18,15 +18,15 @@
 */
 
 #include "master_output.h"
+
 #include "modules/core/anthem.h"
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
+#include <iostream>
 #include <juce_audio_basics/juce_audio_basics.h>
 
-#include <iostream>
-
 MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImpl& _impl)
-      : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {}
+  : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {}
 
 MasterOutputProcessor::~MasterOutputProcessor() {}
 

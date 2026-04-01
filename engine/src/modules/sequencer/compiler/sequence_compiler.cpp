@@ -18,6 +18,7 @@
 */
 
 #include "sequence_compiler.h"
+
 #include "modules/core/anthem.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
@@ -34,29 +35,20 @@ void AnthemSequenceCompiler::compilePattern(EntityId patternId) {
   SequenceEventListCollection newSequence;
   SequenceEventList noTrackEvents;
 
-  getPatternNoteEvents(
-    patternId,
-    std::nullopt,
-    std::nullopt,
-    std::nullopt,
-    *noTrackEvents.events
-  );
+  getPatternNoteEvents(patternId, std::nullopt, std::nullopt, std::nullopt, *noTrackEvents.events);
   sortEventList(*noTrackEvents.events);
 
-  newSequence.tracks->insert_or_assign(
-    anthem_sequencer_track_ids::noTrack,
-    std::move(noTrackEvents)
-  );
+  newSequence.tracks->insert_or_assign(anthem_sequencer_track_ids::noTrack,
+                                       std::move(noTrackEvents));
 
   auto& store = *anthem.sequenceStore;
   store.addOrUpdateSequence(patternId, newSequence);
 }
 
 void AnthemSequenceCompiler::compilePattern(
-  EntityId patternId,
-  std::vector<EntityId>& trackIdsToRebuild,
-  std::vector<std::tuple<double, double>>& invalidationRanges
-) {
+    EntityId patternId,
+    std::vector<EntityId>& trackIdsToRebuild,
+    std::vector<std::tuple<double, double>>& invalidationRanges) {
   // When compiling a bare pattern, we put all events into a special "no track"
   // event list. For now, it's not possible for a pattern to contribute events
   // to any other track.
@@ -79,11 +71,10 @@ void AnthemSequenceCompiler::compilePattern(
     return;
   }
 
-  bool shouldCompileNoTrackEvents = std::find(
-    trackIdsToRebuild.begin(),
-    trackIdsToRebuild.end(),
-    anthem_sequencer_track_ids::noTrack
-  ) != trackIdsToRebuild.end();
+  bool shouldCompileNoTrackEvents =
+      std::find(trackIdsToRebuild.begin(),
+                trackIdsToRebuild.end(),
+                anthem_sequencer_track_ids::noTrack) != trackIdsToRebuild.end();
 
   if (!shouldCompileNoTrackEvents) {
     return;
@@ -92,24 +83,14 @@ void AnthemSequenceCompiler::compilePattern(
   SequenceEventList noTrackEvents;
   if (!invalidationRanges.empty()) {
     noTrackEvents.invalidationRanges =
-      new std::vector<std::tuple<double, double>>(invalidationRanges);
+        new std::vector<std::tuple<double, double>>(invalidationRanges);
   }
 
-  getPatternNoteEvents(
-    patternId,
-    std::nullopt,
-    std::nullopt,
-    std::nullopt,
-    *noTrackEvents.events
-  );
+  getPatternNoteEvents(patternId, std::nullopt, std::nullopt, std::nullopt, *noTrackEvents.events);
   sortEventList(*noTrackEvents.events);
 
   auto& store = *anthem.sequenceStore;
-  store.addOrUpdateTrackInSequence(
-    patternId,
-    anthem_sequencer_track_ids::noTrack,
-    noTrackEvents
-  );
+  store.addOrUpdateTrackInSequence(patternId, anthem_sequencer_track_ids::noTrack, noTrackEvents);
 }
 
 void AnthemSequenceCompiler::compileArrangement(EntityId arrangementId) {
@@ -141,16 +122,16 @@ void AnthemSequenceCompiler::compileArrangement(EntityId arrangementId) {
 }
 
 void AnthemSequenceCompiler::compileArrangement(
-  EntityId arrangementId,
-  std::vector<EntityId>& trackIdsToRebuild,
-  std::vector<std::tuple<double, double>>& invalidationRanges
-) {
+    EntityId arrangementId,
+    std::vector<EntityId>& trackIdsToRebuild,
+    std::vector<std::tuple<double, double>>& invalidationRanges) {
   auto& store = *Anthem::getInstance().sequenceStore;
 
   for (auto& trackId : trackIdsToRebuild) {
     // This will leak memory if it's not assigned somewhere or cleaned up here
     SequenceEventList newChannelEvents;
-    newChannelEvents.invalidationRanges = new std::vector<std::tuple<double, double>>(invalidationRanges);
+    newChannelEvents.invalidationRanges =
+        new std::vector<std::tuple<double, double>>(invalidationRanges);
 
     getTrackNoteEventsForArrangement(trackId, arrangementId, *newChannelEvents.events);
     sortEventList(*newChannelEvents.events);
@@ -166,10 +147,7 @@ void AnthemSequenceCompiler::cleanUpTrack(EntityId trackId) {
 }
 
 void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
-  EntityId trackId,
-  EntityId arrangementId,
-  std::vector<AnthemSequenceEvent>& events
-) {
+    EntityId trackId, EntityId arrangementId, std::vector<AnthemSequenceEvent>& events) {
   auto& anthem = Anthem::getInstance();
 
   auto arrangementIter = anthem.project->sequence()->arrangements()->find(arrangementId);
@@ -187,30 +165,23 @@ void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
       continue;
     }
 
-    getPatternNoteEvents(
-      clip->patternId(),
-      clip->id(),
-      clip->timeView().has_value()
-          ? std::make_optional(
-              std::make_tuple(
-                static_cast<double>(clip->timeView().value()->start()),
-                static_cast<double>(clip->timeView().value()->end())
-              )
-            )
-          : std::nullopt,
-      static_cast<double>(clip->offset()),
-      events
-    );
+    getPatternNoteEvents(clip->patternId(),
+                         clip->id(),
+                         clip->timeView().has_value()
+                             ? std::make_optional(std::make_tuple(
+                                   static_cast<double>(clip->timeView().value()->start()),
+                                   static_cast<double>(clip->timeView().value()->end())))
+                             : std::nullopt,
+                         static_cast<double>(clip->offset()),
+                         events);
   }
 }
 
-void AnthemSequenceCompiler::getPatternNoteEvents(
-  EntityId patternId,
-  std::optional<EntityId> clipId,
-  std::optional<std::tuple<double, double>> range,
-  std::optional<double> offset,
-  std::vector<AnthemSequenceEvent>& events
-) {
+void AnthemSequenceCompiler::getPatternNoteEvents(EntityId patternId,
+                                                  std::optional<EntityId> clipId,
+                                                  std::optional<std::tuple<double, double>> range,
+                                                  std::optional<double> offset,
+                                                  std::vector<AnthemSequenceEvent>& events) {
   auto& anthem = Anthem::getInstance();
 
   auto patternIter = anthem.project->sequence()->patterns()->find(patternId);
@@ -222,17 +193,14 @@ void AnthemSequenceCompiler::getPatternNoteEvents(
 
   for (auto& noteEntry : *pattern->notes()) {
     auto note = noteEntry.second;
-    auto noteInstanceId = clipId.has_value()
-      ? anthem_note_instance_ids::fromArrangementClipNoteId(
-          clipId.value(),
-          note->id()
-        )
-      : anthem_note_instance_ids::fromPatternNoteId(note->id());
-    auto rangeOptional = clampStartAndEndToRange(
-      static_cast<double>(note->offset()),
-      static_cast<double>(note->offset() + note->length()),
-      range
-    );
+    auto noteInstanceId =
+        clipId.has_value()
+            ? anthem_note_instance_ids::fromArrangementClipNoteId(clipId.value(), note->id())
+            : anthem_note_instance_ids::fromPatternNoteId(note->id());
+    auto rangeOptional =
+        clampStartAndEndToRange(static_cast<double>(note->offset()),
+                                static_cast<double>(note->offset() + note->length()),
+                                range);
 
     if (!rangeOptional.has_value()) {
       continue;
@@ -251,51 +219,38 @@ void AnthemSequenceCompiler::getPatternNoteEvents(
       endWithOffset = endWithOffset - std::get<0>(range.value());
     }
 
-    events.push_back(AnthemSequenceEvent {
-      .offset = startWithOffset,
-      .sourceId = noteInstanceId,
-      .event = AnthemEvent(
-        AnthemNoteOnEvent(
-          static_cast<int16_t>(note->key()),
-          static_cast<int16_t>(0),
-          static_cast<float>(note->velocity()),
-          0.f
-        )
-      )
-    });
+    events.push_back(AnthemSequenceEvent{
+        .offset = startWithOffset,
+        .sourceId = noteInstanceId,
+        .event = AnthemEvent(AnthemNoteOnEvent(static_cast<int16_t>(note->key()),
+                                               static_cast<int16_t>(0),
+                                               static_cast<float>(note->velocity()),
+                                               0.f))});
 
-    events.push_back(AnthemSequenceEvent {
-      .offset = endWithOffset,
-      .sourceId = noteInstanceId,
-      .event = AnthemEvent(
-        AnthemNoteOffEvent(
-          static_cast<int16_t>(note->key()),
-          static_cast<int16_t>(0),
-          0.f
-        )
-      )
-    });
+    events.push_back(
+        AnthemSequenceEvent{.offset = endWithOffset,
+                            .sourceId = noteInstanceId,
+                            .event = AnthemEvent(AnthemNoteOffEvent(
+                                static_cast<int16_t>(note->key()), static_cast<int16_t>(0), 0.f))});
   }
 }
 
 void AnthemSequenceCompiler::sortEventList(std::vector<AnthemSequenceEvent>& events) {
-  std::sort(events.begin(), events.end(), [](const AnthemSequenceEvent& a, const AnthemSequenceEvent& b) {
-    if (a.offset != b.offset) {
-      return a.offset < b.offset;
-    }
+  std::sort(
+      events.begin(), events.end(), [](const AnthemSequenceEvent& a, const AnthemSequenceEvent& b) {
+        if (a.offset != b.offset) {
+          return a.offset < b.offset;
+        }
 
-    // If the offsets are equal, sort by event type. This allows us to give
-    // certain events priority over others - e.g., if a noteOff and a noteOn
-    // occur at the same time, the noteOff should come first.
-    return a.event.type < b.event.type;
-  });
+        // If the offsets are equal, sort by event type. This allows us to give
+        // certain events priority over others - e.g., if a noteOff and a noteOn
+        // occur at the same time, the noteOff should come first.
+        return a.event.type < b.event.type;
+      });
 }
 
 std::optional<std::tuple<double, double>> AnthemSequenceCompiler::clampStartAndEndToRange(
-  double start,
-  double end,
-  std::optional<std::tuple<double, double>> range
-) {
+    double start, double end, std::optional<std::tuple<double, double>> range) {
   if (!range.has_value()) {
     return std::make_tuple(start, end);
   }
@@ -310,16 +265,11 @@ std::optional<std::tuple<double, double>> AnthemSequenceCompiler::clampStartAndE
     return std::nullopt;
   }
 
-  return std::make_tuple(
-    clampTimeToRange(start, range.value()),
-    clampTimeToRange(end, range.value())
-  );
+  return std::make_tuple(clampTimeToRange(start, range.value()),
+                         clampTimeToRange(end, range.value()));
 }
 
-double AnthemSequenceCompiler::clampTimeToRange(
-  double time,
-  std::tuple<double, double> range
-) {
+double AnthemSequenceCompiler::clampTimeToRange(double time, std::tuple<double, double> range) {
   auto [start, end] = range;
 
   if (time < start) {

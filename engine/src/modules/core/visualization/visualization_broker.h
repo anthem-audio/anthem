@@ -19,12 +19,13 @@
 
 #pragma once
 
+#include "juce_events/juce_events.h"
+#include "visualization_provider.h"
+
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
-#include <string>
-#include "visualization_provider.h"
-#include "juce_events/juce_events.h"
 
 // This class coordinates visualization subscriptions.
 //
@@ -71,7 +72,6 @@ private:
   double updateIntervalMs;
 
   void timerCallback() override;
-
 public:
   static VisualizationBroker& getInstance() {
     static VisualizationBroker instance;
@@ -79,10 +79,10 @@ public:
   }
 
   void setSubscriptions(
-    const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions
-  );
+      const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions);
   void setUpdateInterval(double updateIntervalMs);
-  void registerDataProvider(const std::string& name, std::shared_ptr<VisualizationDataProvider> provider) {
+  void registerDataProvider(const std::string& name,
+                            std::shared_ptr<VisualizationDataProvider> provider) {
     dataProviders[name] = provider;
   }
   void unregisterDataProvider(const std::string& name) {

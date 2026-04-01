@@ -19,15 +19,14 @@
 
 #pragma once
 
-#include <memory>
-#include <vector>
-#include <cstddef>
-
-#include <juce_core/juce_core.h>
-#include <juce_audio_basics/juce_audio_basics.h>
-
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
 #include "modules/sequencer/events/note_instance_id.h"
+
+#include <cstddef>
+#include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_core/juce_core.h>
+#include <memory>
+#include <vector>
 
 class Node;
 class GraphRuntimeServices;
@@ -66,12 +65,10 @@ public:
   // Reserves capacity for all graph-owned runtime objects before node contexts
   // are created. This keeps the backing arrays stable while compilation builds
   // buffer bindings into node contexts.
-  void reserve(
-    size_t nodeProcessContextCount,
-    size_t audioBufferCount,
-    size_t controlBufferCount,
-    size_t eventBufferCount
-  );
+  void reserve(size_t nodeProcessContextCount,
+               size_t audioBufferCount,
+               size_t controlBufferCount,
+               size_t eventBufferCount);
 
   // Appends a new graph-owned buffer and returns its stable index.
   size_t allocateAudioBuffer();

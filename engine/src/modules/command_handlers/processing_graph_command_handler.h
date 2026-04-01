@@ -19,8 +19,7 @@
 
 #pragma once
 
-#include "modules/core/anthem.h"
-
 #include "messages/messages.h"
+#include "modules/core/anthem.h"
 
 std::optional<Response> handleProcessingGraphCommand(Request& request);

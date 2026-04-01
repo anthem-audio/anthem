@@ -19,37 +19,32 @@
 
 #pragma once
 
-#include <vector>
-#include <memory>
-#include <iterator>
-
 #include "anthem_model_base.h"
 
-template <typename T>
-class AnthemModelVector : public AnthemModelBase {
+#include <iterator>
+#include <memory>
+#include <vector>
+
+template <typename T> class AnthemModelVector : public AnthemModelBase {
 private:
   // The internal vector
   std::vector<T> data;
 
   // Helper to check if T is std::shared_ptr<U> where U derives from AnthemModelBase
-  template <typename U>
-  struct IsSharedPtrOfAnthemModelBase : std::false_type {};
+  template <typename U> struct IsSharedPtrOfAnthemModelBase : std::false_type {};
 
   template <typename U>
-  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>>
-      : std::is_base_of<AnthemModelBase, U> {};
+  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>> : std::is_base_of<AnthemModelBase, U> {};
 
   // Helper to check if T is std::optional<std::shared_ptr<U>> where U derives from AnthemModelBase
-  template <typename U>
-  struct IsOptionalSharedPtrOfAnthemModelBase : std::false_type {};
+  template <typename U> struct IsOptionalSharedPtrOfAnthemModelBase : std::false_type {};
 
   template <typename U>
   struct IsOptionalSharedPtrOfAnthemModelBase<std::optional<std::shared_ptr<U>>>
-      : std::is_base_of<AnthemModelBase, U> {};
+    : std::is_base_of<AnthemModelBase, U> {};
 
   static constexpr bool isAnthemModelBase =
-      IsSharedPtrOfAnthemModelBase<T>::value ||
-          IsOptionalSharedPtrOfAnthemModelBase<T>::value;
+      IsSharedPtrOfAnthemModelBase<T>::value || IsOptionalSharedPtrOfAnthemModelBase<T>::value;
 
   // Helper method to initialize a single item if the vector is initialized
   void initializeItem(T& item) {
@@ -60,27 +55,24 @@ private:
     }
 
     if constexpr (IsOptionalSharedPtrOfAnthemModelBase<T>::value) {
-      if (item && *item) {  // Check if optional has value AND the shared_ptr is not null
+      if (item && *item) { // Check if optional has value AND the shared_ptr is not null
         (*item)->initialize(item, selfPtr);
       }
     } else if constexpr (IsSharedPtrOfAnthemModelBase<T>::value) {
-      if (item) {  // Check if the shared_ptr is not null
+      if (item) { // Check if the shared_ptr is not null
         item->initialize(item, selfPtr);
       }
     }
   }
-
 public:
   // Constructors
   AnthemModelVector() : data() {}
 
   // Copy constructor
-  AnthemModelVector(const AnthemModelVector& other)
-    : data(other.data) {}
+  AnthemModelVector(const AnthemModelVector& other) : data(other.data) {}
 
   // Move constructor
-  AnthemModelVector(AnthemModelVector&& other) noexcept
-    : data(std::move(other.data)) {}
+  AnthemModelVector(AnthemModelVector&& other) noexcept : data(std::move(other.data)) {}
 
   // Copy assignment operator
   AnthemModelVector& operator=(const AnthemModelVector& other) {
@@ -95,34 +87,56 @@ public:
   }
 
   // Range constructor
-  template<typename InputIt>
-  AnthemModelVector(InputIt first, InputIt last)
-    : data(first, last) {}
+  template <typename InputIt> AnthemModelVector(InputIt first, InputIt last) : data(first, last) {}
 
   // Access operators
-  T& operator[](size_t index) { return data[index]; }
-  const T& operator[](size_t index) const { return data[index]; }
+  T& operator[](size_t index) {
+    return data[index];
+  }
+  const T& operator[](size_t index) const {
+    return data[index];
+  }
 
   // At method with bounds checking
-  T& at(size_t index) { return data.at(index); }
-  const T& at(size_t index) const { return data.at(index); }
+  T& at(size_t index) {
+    return data.at(index);
+  }
+  const T& at(size_t index) const {
+    return data.at(index);
+  }
 
   // Front and back methods
-  T& front() { return data.front(); }
-  const T& front() const { return data.front(); }
-  T& back() { return data.back(); }
-  const T& back() const { return data.back(); }
+  T& front() {
+    return data.front();
+  }
+  const T& front() const {
+    return data.front();
+  }
+  T& back() {
+    return data.back();
+  }
+  const T& back() const {
+    return data.back();
+  }
 
   // Size and capacity methods
-  size_t size() const { return data.size(); }
-  size_t capacity() const { return data.capacity(); }
-  bool empty() const { return data.empty(); }
-  void reserve(size_t new_cap) { data.reserve(new_cap); }
-  
-  void resize(size_t count) { 
+  size_t size() const {
+    return data.size();
+  }
+  size_t capacity() const {
+    return data.capacity();
+  }
+  bool empty() const {
+    return data.empty();
+  }
+  void reserve(size_t new_cap) {
+    data.reserve(new_cap);
+  }
+
+  void resize(size_t count) {
     size_t oldSize = data.size();
-    data.resize(count); 
-    
+    data.resize(count);
+
     // Initialize new elements if expanding
     if (count > oldSize) {
       for (size_t i = oldSize; i < count; ++i) {
@@ -130,11 +144,11 @@ public:
       }
     }
   }
-  
-  void resize(size_t count, const T& value) { 
+
+  void resize(size_t count, const T& value) {
     size_t oldSize = data.size();
-    data.resize(count, value); 
-    
+    data.resize(count, value);
+
     // Initialize new elements if expanding
     if (count > oldSize) {
       for (size_t i = oldSize; i < count; ++i) {
@@ -144,29 +158,33 @@ public:
   }
 
   // Modifier methods
-  void push_back(const T& value) { 
+  void push_back(const T& value) {
     data.push_back(value);
     initializeItem(data.back());
   }
-  
-  void push_back(T&& value) { 
+
+  void push_back(T&& value) {
     data.push_back(std::move(value));
     initializeItem(data.back());
   }
 
-  template<typename... Args>
-  T& emplace_back(Args&&... args) {
+  template <typename... Args> T& emplace_back(Args&&... args) {
     T& item = data.emplace_back(std::forward<Args>(args)...);
     initializeItem(item);
     return item;
   }
 
-  void pop_back() { data.pop_back(); }
+  void pop_back() {
+    data.pop_back();
+  }
 
-  void clear() { data.clear(); }
+  void clear() {
+    data.clear();
+  }
 
   // Insert methods
-  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, const T& value) {
+  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos,
+                                           const T& value) {
     auto it = data.insert(pos, value);
     initializeItem(*it);
     return it;
@@ -178,7 +196,8 @@ public:
     return it;
   }
 
-  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, size_t count, const T& value) {
+  typename std::vector<T>::iterator
+  insert(typename std::vector<T>::const_iterator pos, size_t count, const T& value) {
     auto it = data.insert(pos, count, value);
     // Initialize all newly inserted elements
     for (size_t i = 0; i < count; ++i) {
@@ -187,8 +206,9 @@ public:
     return it;
   }
 
-  template<typename InputIt>
-  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, InputIt first, InputIt last) {
+  template <typename InputIt>
+  typename std::vector<T>::iterator
+  insert(typename std::vector<T>::const_iterator pos, InputIt first, InputIt last) {
     auto oldSize = data.size();
     auto it = data.insert(pos, first, last);
     // Calculate the distance from it to the end of the newly inserted elements
@@ -200,7 +220,8 @@ public:
     return it;
   }
 
-  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos, std::initializer_list<T> ilist) {
+  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos,
+                                           std::initializer_list<T> ilist) {
     auto it = data.insert(pos, ilist);
     // Initialize all newly inserted elements
     for (size_t i = 0; i < ilist.size(); ++i) {
@@ -210,8 +231,9 @@ public:
   }
 
   // Emplace method
-  template<typename... Args>
-  typename std::vector<T>::iterator emplace(typename std::vector<T>::const_iterator pos, Args&&... args) {
+  template <typename... Args>
+  typename std::vector<T>::iterator emplace(typename std::vector<T>::const_iterator pos,
+                                            Args&&... args) {
     auto it = data.emplace(pos, std::forward<Args>(args)...);
     initializeItem(*it);
     return it;
@@ -222,7 +244,8 @@ public:
     return data.erase(pos);
   }
 
-  typename std::vector<T>::iterator erase(typename std::vector<T>::const_iterator first, typename std::vector<T>::const_iterator last) {
+  typename std::vector<T>::iterator erase(typename std::vector<T>::const_iterator first,
+                                          typename std::vector<T>::const_iterator last) {
     return data.erase(first, last);
   }
 
@@ -232,30 +255,56 @@ public:
   }
 
   // Iterator access
-  typename std::vector<T>::iterator begin() { return data.begin(); }
-  typename std::vector<T>::iterator end() { return data.end(); }
-  typename std::vector<T>::const_iterator begin() const { return data.begin(); }
-  typename std::vector<T>::const_iterator end() const { return data.end(); }
-  typename std::vector<T>::const_iterator cbegin() const { return data.cbegin(); }
-  typename std::vector<T>::const_iterator cend() const { return data.cend(); }
-  typename std::vector<T>::reverse_iterator rbegin() { return data.rbegin(); }
-  typename std::vector<T>::reverse_iterator rend() { return data.rend(); }
-  typename std::vector<T>::const_reverse_iterator rbegin() const { return data.rbegin(); }
-  typename std::vector<T>::const_reverse_iterator rend() const { return data.rend(); }
+  typename std::vector<T>::iterator begin() {
+    return data.begin();
+  }
+  typename std::vector<T>::iterator end() {
+    return data.end();
+  }
+  typename std::vector<T>::const_iterator begin() const {
+    return data.begin();
+  }
+  typename std::vector<T>::const_iterator end() const {
+    return data.end();
+  }
+  typename std::vector<T>::const_iterator cbegin() const {
+    return data.cbegin();
+  }
+  typename std::vector<T>::const_iterator cend() const {
+    return data.cend();
+  }
+  typename std::vector<T>::reverse_iterator rbegin() {
+    return data.rbegin();
+  }
+  typename std::vector<T>::reverse_iterator rend() {
+    return data.rend();
+  }
+  typename std::vector<T>::const_reverse_iterator rbegin() const {
+    return data.rbegin();
+  }
+  typename std::vector<T>::const_reverse_iterator rend() const {
+    return data.rend();
+  }
 
   // Data access
-  T* data_ptr() noexcept { return data.data(); }
-  const T* data_ptr() const noexcept { return data.data(); }
+  T* data_ptr() noexcept {
+    return data.data();
+  }
+  const T* data_ptr() const noexcept {
+    return data.data();
+  }
 
   // Comparison operators
-  bool operator==(const AnthemModelVector& other) const { return data == other.data; }
-  bool operator!=(const AnthemModelVector& other) const { return data != other.data; }
+  bool operator==(const AnthemModelVector& other) const {
+    return data == other.data;
+  }
+  bool operator!=(const AnthemModelVector& other) const {
+    return data != other.data;
+  }
 
   // Additional methods
-  void initialize(
-    std::shared_ptr<AnthemModelBase> selfModel,
-    std::shared_ptr<AnthemModelBase> parentModel
-  ) override {
+  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
+                  std::shared_ptr<AnthemModelBase> parentModel) override {
     AnthemModelBase::initialize(selfModel, parentModel);
 
     // Initialize all elements in the vector, if applicable
@@ -268,18 +317,17 @@ public:
 };
 
 namespace rfl {
-  template <typename T>
-  struct Reflector<AnthemModelVector<T>> {
-    using ReflType = std::vector<T>;
+template <typename T> struct Reflector<AnthemModelVector<T>> {
+  using ReflType = std::vector<T>;
 
-    static AnthemModelVector<T> to(const ReflType& value) {
-      // Unfortunately, we have to copy here. We use shared_ptr for nontrivial
-      // data in collections, so this is mostly fine, but not optimal.
-      return AnthemModelVector<T>(value.begin(), value.end());
-    }
+  static AnthemModelVector<T> to(const ReflType& value) {
+    // Unfortunately, we have to copy here. We use shared_ptr for nontrivial
+    // data in collections, so this is mostly fine, but not optimal.
+    return AnthemModelVector<T>(value.begin(), value.end());
+  }
 
-    static ReflType from(const AnthemModelVector<T>& value) {
-      return ReflType(value.begin(), value.end());
-    }
-  };
-}
+  static ReflType from(const AnthemModelVector<T>& value) {
+    return ReflType(value.begin(), value.end());
+  }
+};
+} // namespace rfl

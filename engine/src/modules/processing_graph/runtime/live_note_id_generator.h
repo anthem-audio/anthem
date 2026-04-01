@@ -19,9 +19,9 @@
 
 #pragma once
 
-#include <cstdint>
-
 #include "modules/sequencer/events/note_instance_id.h"
+
+#include <cstdint>
 
 class LiveNoteIdGenerator {
 public:
@@ -30,8 +30,7 @@ public:
 
     if (rt_nextLiveNoteIdCounter >= 0x7ffffffeu) {
       rt_nextLiveNoteIdCounter = 0;
-    }
-    else {
+    } else {
       rt_nextLiveNoteIdCounter++;
     }
 
@@ -41,7 +40,6 @@ public:
   void reset() {
     rt_nextLiveNoteIdCounter = 0;
   }
-
 private:
   uint32_t rt_nextLiveNoteIdCounter = 0;
 };

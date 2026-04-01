@@ -19,121 +19,91 @@
 
 #include "sequence_note_provider.h"
 
-#include <optional>
-
 #include "modules/core/anthem.h"
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
+#include <optional>
+
 SequenceNoteProviderProcessor::SequenceNoteProviderProcessor(
-  const SequenceNoteProviderProcessorModelImpl& _impl
-) : AnthemProcessor("SequenceNoteProvider"),
-    SequenceNoteProviderProcessorModelBase(_impl) {}
+    const SequenceNoteProviderProcessorModelImpl& _impl)
+  : AnthemProcessor("SequenceNoteProvider"), SequenceNoteProviderProcessorModelBase(_impl) {}
 
 SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
   // Nothing to do here
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
-  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-  const TrackedNote& trackedNote,
-  double sampleOffset
-) {
+    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+    const TrackedNote& trackedNote,
+    double sampleOffset) {
   targetBuffer->addEvent(AnthemLiveEvent{
-    .sampleOffset = sampleOffset,
-    .liveId = trackedNote.liveId,
-    .event = AnthemEvent(AnthemNoteOffEvent(
-      trackedNote.pitch,
-      trackedNote.channel,
-      0.0f
-    )),
+      .sampleOffset = sampleOffset,
+      .liveId = trackedNote.liveId,
+      .event = AnthemEvent(AnthemNoteOffEvent(trackedNote.pitch, trackedNote.channel, 0.0f)),
   });
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffsForAllTrackedNotes(
-  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-  double sampleOffset
-) {
-  rt_activeSequenceNotes.rt_takeAll(
-    [&](const TrackedNote& trackedNote) {
-      rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote, sampleOffset);
-    }
-  );
+    std::unique_ptr<AnthemEventBuffer>& targetBuffer, double sampleOffset) {
+  rt_activeSequenceNotes.rt_takeAll([&](const TrackedNote& trackedNote) {
+    rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote, sampleOffset);
+  });
 }
 
 void SequenceNoteProviderProcessor::rt_handleSequenceNoteOn(
-  AnthemNodeProcessContext& context,
-  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-  AnthemSourceNoteId sourceId,
-  const AnthemNoteOnEvent& noteOnEvent,
-  double sampleOffset
-) {
+    AnthemNodeProcessContext& context,
+    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+    AnthemSourceNoteId sourceId,
+    const AnthemNoteOnEvent& noteOnEvent,
+    double sampleOffset) {
   auto liveId = context.rt_allocateLiveNoteId();
-  auto didTrackNote = rt_activeSequenceNotes.rt_add(
-    sourceId,
-    liveId,
-    noteOnEvent.pitch,
-    noteOnEvent.channel
-  );
+  auto didTrackNote =
+      rt_activeSequenceNotes.rt_add(sourceId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
 
   targetBuffer->addEvent(AnthemLiveEvent{
-    .sampleOffset = sampleOffset,
-    .liveId = didTrackNote ? liveId : anthemInvalidLiveNoteId,
-    .event = AnthemEvent(AnthemNoteOnEvent(
-      noteOnEvent.pitch,
-      noteOnEvent.channel,
-      noteOnEvent.velocity,
-      noteOnEvent.detune
-    )),
+      .sampleOffset = sampleOffset,
+      .liveId = didTrackNote ? liveId : anthemInvalidLiveNoteId,
+      .event = AnthemEvent(AnthemNoteOnEvent(
+          noteOnEvent.pitch, noteOnEvent.channel, noteOnEvent.velocity, noteOnEvent.detune)),
   });
 }
 
 void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(
-  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-  AnthemSourceNoteId sourceId,
-  const AnthemNoteOffEvent& noteOffEvent,
-  double sampleOffset
-) {
+    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+    AnthemSourceNoteId sourceId,
+    const AnthemNoteOffEvent& noteOffEvent,
+    double sampleOffset) {
   auto trackedNote = rt_activeSequenceNotes.rt_takeByInputId(sourceId);
   if (trackedNote.has_value()) {
-    rt_emitLiveNoteOffFromTrackedNote(
-      targetBuffer,
-      trackedNote.value(),
-      sampleOffset
-    );
+    rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote.value(), sampleOffset);
     return;
   }
 
   targetBuffer->addEvent(AnthemLiveEvent{
-    .sampleOffset = sampleOffset,
-    .liveId = anthemInvalidLiveNoteId,
-    .event = AnthemEvent(AnthemNoteOffEvent(
-      noteOffEvent.pitch,
-      noteOffEvent.channel,
-      noteOffEvent.velocity
-    )),
+      .sampleOffset = sampleOffset,
+      .liveId = anthemInvalidLiveNoteId,
+      .event = AnthemEvent(
+          AnthemNoteOffEvent(noteOffEvent.pitch, noteOffEvent.channel, noteOffEvent.velocity)),
   });
 }
 
 void SequenceNoteProviderProcessor::rt_addEventsForJump(
-  AnthemNodeProcessContext& context,
-  std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-  const PlayheadJumpEvent& event,
-  double sampleTimeOffset
-) {
+    AnthemNodeProcessContext& context,
+    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+    const PlayheadJumpEvent& event,
+    double sampleTimeOffset) {
   auto& trackId = this->trackId();
 
   auto playEventsIter = event.eventsToPlayAtJump.find(trackId);
   if (playEventsIter != event.eventsToPlayAtJump.end()) {
     for (const auto& jumpEvent : playEventsIter->second) {
       if (jumpEvent.event.type == AnthemEventType::NoteOn) {
-        rt_handleSequenceNoteOn(
-          context,
-          targetBuffer,
-          jumpEvent.sequenceNoteId,
-          jumpEvent.event.noteOn,
-          sampleTimeOffset
-        );
+        rt_handleSequenceNoteOn(context,
+                                targetBuffer,
+                                jumpEvent.sequenceNoteId,
+                                jumpEvent.event.noteOn,
+                                sampleTimeOffset);
       }
     }
   }
@@ -143,13 +113,9 @@ void SequenceNoteProviderProcessor::prepareToProcess() {
   // Nothing to do here
 }
 
-void SequenceNoteProviderProcessor::process(
-  AnthemNodeProcessContext& context,
-  int numSamples
-) {
-  auto& outputEventBuffer = context.getOutputEventBuffer(
-    SequenceNoteProviderProcessorModelBase::eventOutputPortId
-  );
+void SequenceNoteProviderProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
+  auto& outputEventBuffer =
+      context.getOutputEventBuffer(SequenceNoteProviderProcessorModelBase::eventOutputPortId);
 
   auto& trackId = this->trackId();
 
@@ -184,8 +150,7 @@ void SequenceNoteProviderProcessor::process(
 
   int64_t sourceTrackId = trackId;
   if (config->activeTrackId.has_value() && config->activeTrackId.value() == trackId) {
-    auto noTrackEventListIter =
-      eventsForSequence.tracks->find(anthem_sequencer_track_ids::noTrack);
+    auto noTrackEventListIter = eventsForSequence.tracks->find(anthem_sequencer_track_ids::noTrack);
     if (noTrackEventListIter != eventsForSequence.tracks->end()) {
       sourceTrackId = anthem_sequencer_track_ids::noTrack;
     }
@@ -205,10 +170,8 @@ void SequenceNoteProviderProcessor::process(
     rt_emitLiveNoteOffsForAllTrackedNotes(outputEventBuffer, 0.0);
   }
 
-  double ticks = sequencer_timing::sampleCountToTickDelta(
-    static_cast<double>(numSamples),
-    timingParams
-  );
+  double ticks =
+      sequencer_timing::sampleCountToTickDelta(static_cast<double>(numSamples), timingParams);
   double sampleTimeOffset = 0.0;
 
   double incrementRemaining = ticks;
@@ -228,8 +191,7 @@ void SequenceNoteProviderProcessor::process(
       playheadPos = loopStart;
       end = loopEnd;
       didJump = true;
-    }
-    else {
+    } else {
       playheadPos += incrementAmount;
       end = playheadPos;
       incrementRemaining = 0.0;
@@ -239,35 +201,19 @@ void SequenceNoteProviderProcessor::process(
       incrementAmount = 0;
     }
 
-    double sampleAdvance = sequencer_timing::tickDeltaToSampleOffset(
-      incrementAmount,
-      timingParams
-    );
+    double sampleAdvance = sequencer_timing::tickDeltaToSampleOffset(incrementAmount, timingParams);
 
     for (const auto& event : *channelEvents.events) {
       if (event.offset >= start && event.offset < end) {
-        auto eventSampleOffset = sampleTimeOffset +
-          sequencer_timing::tickDeltaToSampleOffset(
-            event.offset - start,
-            timingParams
-          );
+        auto eventSampleOffset = sampleTimeOffset + sequencer_timing::tickDeltaToSampleOffset(
+                                                        event.offset - start, timingParams);
 
         if (event.event.type == AnthemEventType::NoteOn) {
           rt_handleSequenceNoteOn(
-            context,
-            outputEventBuffer,
-            event.sourceId,
-            event.event.noteOn,
-            eventSampleOffset
-          );
-        }
-        else if (event.event.type == AnthemEventType::NoteOff) {
+              context, outputEventBuffer, event.sourceId, event.event.noteOn, eventSampleOffset);
+        } else if (event.event.type == AnthemEventType::NoteOff) {
           rt_handleSequenceNoteOff(
-            outputEventBuffer,
-            event.sourceId,
-            event.event.noteOff,
-            eventSampleOffset
-          );
+              outputEventBuffer, event.sourceId, event.event.noteOff, eventSampleOffset);
         }
       }
 
@@ -280,17 +226,12 @@ void SequenceNoteProviderProcessor::process(
       // Loop-stop behavior must be derived from the actual RT notes owned by
       // this provider. The loop-start payload may be slightly out of date, but
       // the active tracker is the authoritative source for what needs to stop.
-      rt_emitLiveNoteOffsForAllTrackedNotes(
-        outputEventBuffer,
-        sampleTimeOffset + sampleAdvance
-      );
+      rt_emitLiveNoteOffsForAllTrackedNotes(outputEventBuffer, sampleTimeOffset + sampleAdvance);
 
-      rt_addEventsForJump(
-        context,
-        outputEventBuffer,
-        config->playheadJumpEventForLoop.value(),
-        sampleTimeOffset + sampleAdvance
-      );
+      rt_addEventsForJump(context,
+                          outputEventBuffer,
+                          config->playheadJumpEventForLoop.value(),
+                          sampleTimeOffset + sampleAdvance);
     }
 
     sampleTimeOffset += sampleAdvance;

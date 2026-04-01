@@ -26,11 +26,9 @@
 #include <algorithm>
 #include <string>
 
-AnthemNodeProcessContext::AnthemNodeProcessContext(
-  std::shared_ptr<Node>& graphNode,
-  AnthemGraphProcessContext& graphProcessContext
-) : graphNode(graphNode),
-    graphProcessContext(&graphProcessContext) {
+AnthemNodeProcessContext::AnthemNodeProcessContext(std::shared_ptr<Node>& graphNode,
+                                                   AnthemGraphProcessContext& graphProcessContext)
+  : graphNode(graphNode), graphProcessContext(&graphProcessContext) {
   inputAudioBuffers.reserve(graphNode->audioInputPorts()->size());
   outputAudioBuffers.reserve(graphNode->audioOutputPorts()->size());
   inputControlBuffers.reserve(graphNode->controlInputPorts()->size());
@@ -40,48 +38,48 @@ AnthemNodeProcessContext::AnthemNodeProcessContext(
   inputParameters.reserve(graphNode->controlInputPorts()->size());
 
   for (auto& port : *graphNode->audioInputPorts()) {
-    inputAudioBuffers.push_back(PortBufferHandle {
-      .portId = port->id(),
-      .bufferIndex = graphProcessContext.allocateAudioBuffer(),
+    inputAudioBuffers.push_back(PortBufferHandle{
+        .portId = port->id(),
+        .bufferIndex = graphProcessContext.allocateAudioBuffer(),
     });
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {
-    outputAudioBuffers.push_back(PortBufferHandle {
-      .portId = port->id(),
-      .bufferIndex = graphProcessContext.allocateAudioBuffer(),
+    outputAudioBuffers.push_back(PortBufferHandle{
+        .portId = port->id(),
+        .bufferIndex = graphProcessContext.allocateAudioBuffer(),
     });
   }
 
   for (auto& port : *graphNode->controlInputPorts()) {
-    inputControlBuffers.push_back(PortBufferHandle {
-      .portId = port->id(),
-      .bufferIndex = graphProcessContext.allocateControlBuffer(),
+    inputControlBuffers.push_back(PortBufferHandle{
+        .portId = port->id(),
+        .bufferIndex = graphProcessContext.allocateControlBuffer(),
     });
   }
 
   for (auto& port : *graphNode->controlOutputPorts()) {
-    outputControlBuffers.push_back(PortBufferHandle {
-      .portId = port->id(),
-      .bufferIndex = graphProcessContext.allocateControlBuffer(),
+    outputControlBuffers.push_back(PortBufferHandle{
+        .portId = port->id(),
+        .bufferIndex = graphProcessContext.allocateControlBuffer(),
     });
   }
 
   for (auto& port : *graphNode->eventInputPorts()) {
     // TODO: Seed initial capacities from persisted per-port runtime hints once
     // graph recompilation can preserve processing state across compiles.
-    inputEventBuffers.push_back(PortBufferHandle {
-      .portId = port->id(),
-      .bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE),
+    inputEventBuffers.push_back(PortBufferHandle{
+        .portId = port->id(),
+        .bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE),
     });
   }
 
   for (auto& port : *graphNode->eventOutputPorts()) {
     // TODO: Seed initial capacities from persisted per-port runtime hints once
     // graph recompilation can preserve processing state across compiles.
-    outputEventBuffers.push_back(PortBufferHandle {
-      .portId = port->id(),
-      .bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE),
+    outputEventBuffers.push_back(PortBufferHandle{
+        .portId = port->id(),
+        .bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE),
     });
   }
 
@@ -90,16 +88,14 @@ AnthemNodeProcessContext::AnthemNodeProcessContext(
     auto parameterValue = static_cast<float>(port->parameterValue().value_or(0.0));
     auto& parameterConfig = port->config()->parameterConfig();
     auto& inputControlBuffer =
-      graphProcessContext.getControlBuffer(inputControlBuffers[inputParameterIndex].bufferIndex);
+        graphProcessContext.getControlBuffer(inputControlBuffers[inputParameterIndex].bufferIndex);
 
     InputParameterBinding state;
     state.portId = port->id();
     state.rt_buffer = &inputControlBuffer;
     state.value = std::make_unique<std::atomic<float>>(parameterValue);
     state.rt_smoother = std::make_unique<LinearParameterSmoother>(
-      parameterValue,
-      static_cast<float>(parameterConfig.value()->smoothingDurationSeconds())
-    );
+        parameterValue, static_cast<float>(parameterConfig.value()->smoothingDurationSeconds()));
     inputParameters.push_back(std::move(state));
     inputParameterIndex++;
   }
@@ -111,64 +107,49 @@ void AnthemNodeProcessContext::cleanup() {
 }
 
 const AnthemNodeProcessContext::PortBufferHandle& AnthemNodeProcessContext::findBufferHandle(
-  const std::vector<PortBufferHandle>& handles,
-  int64_t portId,
-  const char* bufferType
-) const {
-  auto it = std::find_if(
-    handles.begin(),
-    handles.end(),
-    [portId](const PortBufferHandle& handle) {
-      return handle.portId == portId;
-    }
-  );
+    const std::vector<PortBufferHandle>& handles, int64_t portId, const char* bufferType) const {
+  auto it = std::find_if(handles.begin(), handles.end(), [portId](const PortBufferHandle& handle) {
+    return handle.portId == portId;
+  });
 
   if (it == handles.end()) {
     jassertfalse;
-    throw std::runtime_error(
-      "AnthemNodeProcessContext could not find " + std::string(bufferType) +
-      " buffer for port ID " + std::to_string(portId) + "."
-    );
+    throw std::runtime_error("AnthemNodeProcessContext could not find " + std::string(bufferType) +
+                             " buffer for port ID " + std::to_string(portId) + ".");
   }
 
   return *it;
 }
 
-AnthemNodeProcessContext::InputParameterBinding& AnthemNodeProcessContext::findInputParameterBinding(int64_t id) {
+AnthemNodeProcessContext::InputParameterBinding&
+AnthemNodeProcessContext::findInputParameterBinding(int64_t id) {
   auto it = std::find_if(
-    inputParameters.begin(),
-    inputParameters.end(),
-    [id](const InputParameterBinding& inputParameter) {
-      return inputParameter.portId == id;
-    }
-  );
+      inputParameters.begin(),
+      inputParameters.end(),
+      [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
 
   if (it == inputParameters.end()) {
     jassertfalse;
     throw std::runtime_error(
-      "AnthemNodeProcessContext could not find input parameter binding for port ID " +
-      std::to_string(id) + "."
-    );
+        "AnthemNodeProcessContext could not find input parameter binding for port ID " +
+        std::to_string(id) + ".");
   }
 
   return *it;
 }
 
-const AnthemNodeProcessContext::InputParameterBinding& AnthemNodeProcessContext::findInputParameterBinding(int64_t id) const {
+const AnthemNodeProcessContext::InputParameterBinding&
+AnthemNodeProcessContext::findInputParameterBinding(int64_t id) const {
   auto it = std::find_if(
-    inputParameters.begin(),
-    inputParameters.end(),
-    [id](const InputParameterBinding& inputParameter) {
-      return inputParameter.portId == id;
-    }
-  );
+      inputParameters.begin(),
+      inputParameters.end(),
+      [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
 
   if (it == inputParameters.end()) {
     jassertfalse;
     throw std::runtime_error(
-      "AnthemNodeProcessContext could not find input parameter binding for port ID " +
-      std::to_string(id) + "."
-    );
+        "AnthemNodeProcessContext could not find input parameter binding for port ID " +
+        std::to_string(id) + ".");
   }
 
   return *it;
@@ -177,7 +158,8 @@ const AnthemNodeProcessContext::InputParameterBinding& AnthemNodeProcessContext:
 void AnthemNodeProcessContext::setParameterValue(int64_t id, float value) {
   // Throw if not on the JUCE message thread
   if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
-    throw std::runtime_error("AnthemNodeProcessContext::setParameterValue() must be called on the JUCE message thread.");
+    throw std::runtime_error(
+        "AnthemNodeProcessContext::setParameterValue() must be called on the JUCE message thread.");
   }
 
   findInputParameterBinding(id).value->store(value);
@@ -206,43 +188,37 @@ void AnthemNodeProcessContext::clearBuffers() {
 juce::AudioSampleBuffer& AnthemNodeProcessContext::getInputAudioBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getAudioBuffer(
-    findBufferHandle(inputAudioBuffers, id, "input audio").bufferIndex
-  );
+      findBufferHandle(inputAudioBuffers, id, "input audio").bufferIndex);
 }
 
 juce::AudioSampleBuffer& AnthemNodeProcessContext::getOutputAudioBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getAudioBuffer(
-    findBufferHandle(outputAudioBuffers, id, "output audio").bufferIndex
-  );
+      findBufferHandle(outputAudioBuffers, id, "output audio").bufferIndex);
 }
 
 juce::AudioSampleBuffer& AnthemNodeProcessContext::getInputControlBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getControlBuffer(
-    findBufferHandle(inputControlBuffers, id, "input control").bufferIndex
-  );
+      findBufferHandle(inputControlBuffers, id, "input control").bufferIndex);
 }
 
 juce::AudioSampleBuffer& AnthemNodeProcessContext::getOutputControlBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getControlBuffer(
-    findBufferHandle(outputControlBuffers, id, "output control").bufferIndex
-  );
+      findBufferHandle(outputControlBuffers, id, "output control").bufferIndex);
 }
 
 std::unique_ptr<AnthemEventBuffer>& AnthemNodeProcessContext::getInputEventBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getEventBuffer(
-    findBufferHandle(inputEventBuffers, id, "input event").bufferIndex
-  );
+      findBufferHandle(inputEventBuffers, id, "input event").bufferIndex);
 }
 
 std::unique_ptr<AnthemEventBuffer>& AnthemNodeProcessContext::getOutputEventBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getEventBuffer(
-    findBufferHandle(outputEventBuffers, id, "output event").bufferIndex
-  );
+      findBufferHandle(outputEventBuffers, id, "output event").bufferIndex);
 }
 
 AnthemLiveNoteId AnthemNodeProcessContext::rt_allocateLiveNoteId() {

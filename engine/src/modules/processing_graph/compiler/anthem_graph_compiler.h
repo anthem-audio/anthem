@@ -38,21 +38,19 @@
 
 #pragma once
 
-#include <memory>
-
-#include "modules/processing_graph/model/node.h"
-#include "modules/processing_graph/model/node_connection.h"
-
+#include "actions/clear_buffers_action.h"
+#include "actions/copy_audio_buffer_action.h"
+#include "actions/copy_control_buffer_action.h"
+#include "actions/copy_events_action.h"
+#include "actions/process_node_action.h"
+#include "actions/write_parameters_to_control_inputs_action.h"
 #include "anthem_graph_compilation_result.h"
 #include "anthem_graph_compiler_node.h"
 #include "anthem_graph_process_context.h"
+#include "modules/processing_graph/model/node.h"
+#include "modules/processing_graph/model/node_connection.h"
 
-#include "actions/clear_buffers_action.h"
-#include "actions/process_node_action.h"
-#include "actions/copy_audio_buffer_action.h"
-#include "actions/copy_control_buffer_action.h"
-#include "actions/write_parameters_to_control_inputs_action.h"
-#include "actions/copy_events_action.h"
+#include <memory>
 
 class GraphRuntimeServices;
 

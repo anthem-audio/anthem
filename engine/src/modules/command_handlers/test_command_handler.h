@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include <optional>
-
 #include "messages/messages.h"
+
+#include <optional>
 
 std::optional<Response> handleTestCommand(Request& request);

@@ -21,12 +21,11 @@
 
 #ifdef __EMSCRIPTEN__
 
-#include <bit>
-#include <cstdint>
-
 #include "emscripten.h"
 #include "emscripten/atomic.h"
 
+#include <bit>
+#include <cstdint>
 #include <juce_core/juce_core.h>
 
 // This is a ring buffer for communicating with the UI. The UI is expected to
@@ -42,13 +41,8 @@ public:
 
   juce::MemoryBlock buffer;
 
-  CommsRingBufferWasm(uint32_t capacityPow2) :
-    head(0),
-    tail(0),
-    capacity(capacityPow2),
-    mask(capacityPow2 - 1),
-    ticket(0)
-  {
+  CommsRingBufferWasm(uint32_t capacityPow2)
+    : head(0), tail(0), capacity(capacityPow2), mask(capacityPow2 - 1), ticket(0) {
     buffer.setSize(capacity);
     buffer.fillWith(0);
   }

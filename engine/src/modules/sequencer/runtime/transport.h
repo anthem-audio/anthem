@@ -19,18 +19,17 @@
 
 #pragma once
 
+#include "juce_events/juce_events.h"
+#include "modules/sequencer/events/event.h"
+#include "modules/sequencer/runtime/runtime_sequence_store.h"
+#include "modules/sequencer/runtime/sequencer_timing.h"
+#include "modules/util/ring_buffer.h"
+
 #include <atomic>
 #include <cstdint>
 #include <optional>
 #include <unordered_map>
 #include <vector>
-
-#include "juce_events/juce_events.h"
-
-#include "modules/sequencer/runtime/runtime_sequence_store.h"
-#include "modules/util/ring_buffer.h"
-#include "modules/sequencer/events/event.h"
-#include "modules/sequencer/runtime/sequencer_timing.h"
 
 // Represents the playhead jumping to a new location for the current sequence.
 //
@@ -45,7 +44,6 @@ struct PlayheadJumpSequenceEvent {
 class PlayheadJumpEvent {
 private:
   JUCE_LEAK_DETECTOR(PlayheadJumpEvent)
-
 public:
   double newPlayheadPosition = 0.0;
   std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>> eventsToPlayAtJump;
@@ -53,16 +51,13 @@ public:
 
 // Builds the untimed note-on payload that sequence providers should emit when
 // the playhead jumps to `playheadPosition`.
-PlayheadJumpEvent buildPlayheadJumpEvent(
-  const SequenceEventListCollection& sequence,
-  std::optional<int64_t> activeTrackId,
-  double playheadPosition
-);
+PlayheadJumpEvent buildPlayheadJumpEvent(const SequenceEventListCollection& sequence,
+                                         std::optional<int64_t> activeTrackId,
+                                         double playheadPosition);
 
 class TransportConfig {
 private:
   JUCE_LEAK_DETECTOR(TransportConfig)
-
 public:
   std::optional<int64_t> activeSequenceId;
 
@@ -122,7 +117,6 @@ private:
   void sendConfigToAudioThread();
 
   double sampleRate;
-
 public:
   // The transport config.
   //

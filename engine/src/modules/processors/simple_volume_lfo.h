@@ -27,7 +27,6 @@ private:
   float rate;
   float amplitude;
   bool increasing;
-
 public:
   SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcessorModelImpl& _impl);
   ~SimpleVolumeLfoProcessor() override;

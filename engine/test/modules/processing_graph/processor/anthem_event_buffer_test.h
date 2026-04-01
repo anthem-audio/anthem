@@ -44,11 +44,14 @@ public:
       expect(buffer.addEvent(first), "First event should be added.");
       expect(buffer.addEvent(second), "Second event should trigger growth and be added.");
 
-      expectEquals(static_cast<int>(buffer.getNumEvents()), 2, "Buffer should contain both events.");
+      expectEquals(
+          static_cast<int>(buffer.getNumEvents()), 2, "Buffer should contain both events.");
       expectEquals(static_cast<int>(buffer.getSize()), 2, "Buffer capacity should double.");
       expectEquals(static_cast<int>(buffer.getTimesGrown()), 1, "Buffer should have grown once.");
-      expectEquals(buffer.getEvent(0).sampleOffset, first.sampleOffset, "First event should be preserved.");
-      expectEquals(buffer.getEvent(1).sampleOffset, second.sampleOffset, "Second event should be written.");
+      expectEquals(
+          buffer.getEvent(0).sampleOffset, first.sampleOffset, "First event should be preserved.");
+      expectEquals(
+          buffer.getEvent(1).sampleOffset, second.sampleOffset, "Second event should be written.");
     }
 
     {
@@ -67,10 +70,15 @@ public:
 
       buffer.clear();
 
-      expectEquals(static_cast<int>(buffer.getNumEvents()), 0, "Clear should reset the event count.");
-      expectEquals(static_cast<int>(buffer.getSize()), static_cast<int>(capacityAfterGrowth), "Clear should preserve capacity.");
+      expectEquals(
+          static_cast<int>(buffer.getNumEvents()), 0, "Clear should reset the event count.");
+      expectEquals(static_cast<int>(buffer.getSize()),
+                   static_cast<int>(capacityAfterGrowth),
+                   "Clear should preserve capacity.");
       expect(!buffer.didOverflowThisBlock(), "Clear should reset the overflow flag.");
-      expectEquals(static_cast<int>(buffer.getDroppedEventsThisBlock()), 0, "Clear should reset dropped-event diagnostics.");
+      expectEquals(static_cast<int>(buffer.getDroppedEventsThisBlock()),
+                   0,
+                   "Clear should reset dropped-event diagnostics.");
     }
 
     {
@@ -87,10 +95,17 @@ public:
       }
 
       expect(!buffer.addEvent(event), "Events beyond the hard cap should be dropped.");
-      expect(buffer.didOverflowThisBlock(), "Dropping an event should mark the buffer as overflowed.");
-      expectEquals(static_cast<int>(buffer.getDroppedEventsThisBlock()), 1, "Dropped event count should increment.");
-      expectEquals(static_cast<int>(buffer.getNumEvents()), MAX_EVENT_BUFFER_SIZE, "Buffer should not exceed the hard cap.");
-      expectEquals(static_cast<int>(buffer.getHighWaterMark()), MAX_EVENT_BUFFER_SIZE, "High-water mark should reflect the cap.");
+      expect(buffer.didOverflowThisBlock(),
+             "Dropping an event should mark the buffer as overflowed.");
+      expectEquals(static_cast<int>(buffer.getDroppedEventsThisBlock()),
+                   1,
+                   "Dropped event count should increment.");
+      expectEquals(static_cast<int>(buffer.getNumEvents()),
+                   MAX_EVENT_BUFFER_SIZE,
+                   "Buffer should not exceed the hard cap.");
+      expectEquals(static_cast<int>(buffer.getHighWaterMark()),
+                   MAX_EVENT_BUFFER_SIZE,
+                   "High-water mark should reflect the cap.");
     }
   }
 };

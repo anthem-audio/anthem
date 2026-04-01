@@ -28,14 +28,12 @@ public:
 
   Sequencer(const Sequencer&) = delete;
   Sequencer& operator=(const Sequencer&) = delete;
-  
+
   Sequencer(Sequencer&&) noexcept = default;
   Sequencer& operator=(Sequencer&&) noexcept = default;
 
-  void initialize(
-    std::shared_ptr<AnthemModelBase> selfModel,
-    std::shared_ptr<AnthemModelBase> parentModel
-  ) override;
+  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
+                  std::shared_ptr<AnthemModelBase> parentModel) override;
 
   // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {
   //   SequencerModelBase::handleModelUpdate(request, fieldAccessIndex);

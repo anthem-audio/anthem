@@ -17,18 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <juce_core/juce_core.h>
-
 #include "console_logger.h"
-
 #include "modules/core/sequencer_test.h"
+#include "modules/processing_graph/processor/anthem_event_buffer_test.h"
 #include "modules/processors/gain_parameter_mapping_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/events/event_test.h"
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"
 #include "modules/sequencer/runtime/sequencer_timing_test.h"
 #include "modules/sequencer/runtime/transport_test.h"
-#include "modules/processing_graph/processor/anthem_event_buffer_test.h"
+
+#include <juce_core/juce_core.h>
 
 int main(int /* argc */, char** /* argv */) {
   juce::Logger::setCurrentLogger(new ConsoleLogger());
@@ -41,7 +40,7 @@ int main(int /* argc */, char** /* argv */) {
 
   for (int i = 0; i < resultCount; i++) {
     auto result = runner.getResult(i);
-    
+
     if (result->failures > 0) {
       failureCount++;
     }

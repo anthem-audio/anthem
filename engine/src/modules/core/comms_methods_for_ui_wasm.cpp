@@ -21,9 +21,9 @@
 
 #include "comms_methods_for_ui_wasm.h"
 
-#include <juce_core/juce_core.h>
-
 #include "anthem.h"
+
+#include <juce_core/juce_core.h>
 
 std::atomic<bool> commsReady(false);
 
@@ -50,11 +50,11 @@ extern "C" bool isCommsReady(int arg) {
 // buffer is the UI's write buffer and our write buffer is the UI's read buffer.
 
 extern "C" void* getWriteBufferHeadPtr() {
-  return (void*) &Anthem::getInstance().comms.getSocketOrPipe().readBuffer.head;
+  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().readBuffer.head;
 }
 
 extern "C" void* getWriteBufferTailPtr() {
-  return (void*) &Anthem::getInstance().comms.getSocketOrPipe().readBuffer.tail;
+  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().readBuffer.tail;
 }
 
 extern "C" uint32_t getWriteBufferCapacity() {
@@ -70,15 +70,15 @@ extern "C" void* getWriteBufferDataPtr() {
 }
 
 extern "C" void* getWriteBufferTicketPtr() {
-  return (void*) &Anthem::getInstance().comms.getSocketOrPipe().readBuffer.ticket;
+  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().readBuffer.ticket;
 }
 
 extern "C" void* getReadBufferHeadPtr() {
-  return (void*) &Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.head;
+  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.head;
 }
 
 extern "C" void* getReadBufferTailPtr() {
-  return (void*) &Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.tail;
+  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.tail;
 }
 
 extern "C" uint32_t getReadBufferCapacity() {
@@ -94,7 +94,7 @@ extern "C" void* getReadBufferDataPtr() {
 }
 
 extern "C" void* getReadBufferTicketPtr() {
-  return (void*) &Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.ticket;
+  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.ticket;
 }
 
 #endif // #ifdef __EMSCRIPTEN__

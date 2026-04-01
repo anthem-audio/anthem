@@ -28,37 +28,30 @@ class SequencerTest : public juce::UnitTest {
   static constexpr int64_t restoredPlayheadPosition = 96;
 
   static std::shared_ptr<Sequencer> createSequencer() {
-    auto defaultTimeSignature = std::make_shared<TimeSignatureModel>(
-      TimeSignatureModelImpl{
+    auto defaultTimeSignature = std::make_shared<TimeSignatureModel>(TimeSignatureModelImpl{
         .numerator = 4,
         .denominator = 4,
-      }
-    );
+    });
 
-    auto sequencer = std::make_shared<Sequencer>(
-      SequencerModelImpl{
+    auto sequencer = std::make_shared<Sequencer>(SequencerModelImpl{
         .ticksPerQuarter = 96,
         .beatsPerMinuteRaw = 12000,
-        .patterns = std::make_shared<
-          AnthemModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>
-        >(),
+        .patterns =
+            std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>(),
         .activePatternID = std::nullopt,
         .activeTrackID = std::nullopt,
-        .arrangements = std::make_shared<
-          AnthemModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>
-        >(),
+        .arrangements =
+            std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>(),
         .arrangementOrder = std::make_shared<AnthemModelVector<int64_t>>(),
         .activeArrangementID = std::nullopt,
         .activeTransportSequenceID = std::nullopt,
         .defaultTimeSignature = defaultTimeSignature,
         .playbackStartPosition = restoredPlayheadPosition,
         .isPlaying = false,
-      }
-    );
+    });
 
     return sequencer;
   }
-
 public:
   SequencerTest() : juce::UnitTest("SequencerTest", "Anthem") {}
 
@@ -76,22 +69,15 @@ public:
       anthem.transport = std::make_unique<Transport>();
 
       auto sequencer = createSequencer();
-      sequencer->initialize(
-        sequencer,
-        std::shared_ptr<AnthemModelBase>()
-      );
+      sequencer->initialize(sequencer, std::shared_ptr<AnthemModelBase>());
 
       anthem.transport->rt_prepareForProcessingBlock();
-      expectEquals(
-        anthem.transport->config.playheadStart,
-        static_cast<double>(restoredPlayheadPosition),
-        "Startup should restore the transport stop target."
-      );
-      expectEquals(
-        anthem.transport->rt_playhead,
-        static_cast<double>(restoredPlayheadPosition),
-        "Startup should restore the stopped playhead position."
-      );
+      expectEquals(anthem.transport->config.playheadStart,
+                   static_cast<double>(restoredPlayheadPosition),
+                   "Startup should restore the transport stop target.");
+      expectEquals(anthem.transport->rt_playhead,
+                   static_cast<double>(restoredPlayheadPosition),
+                   "Startup should restore the stopped playhead position.");
 
       anthem.transport->setIsPlaying(true);
       anthem.transport->rt_prepareForProcessingBlock();
@@ -100,10 +86,9 @@ public:
       anthem.transport->rt_prepareForProcessingBlock();
 
       expectEquals(
-        anthem.transport->rt_playhead,
-        static_cast<double>(restoredPlayheadPosition),
-        "After play then stop, the playhead should return to the restored startup position."
-      );
+          anthem.transport->rt_playhead,
+          static_cast<double>(restoredPlayheadPosition),
+          "After play then stop, the playhead should return to the restored startup position.");
     }
 
     Anthem::cleanup();

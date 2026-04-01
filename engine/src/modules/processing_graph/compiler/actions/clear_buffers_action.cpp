@@ -19,9 +19,9 @@
 
 #include "clear_buffers_action.h"
 
-#include <iostream>
-
 #include "modules/processing_graph/model/node.h"
+
+#include <iostream>
 
 void ClearBuffersAction::execute(int) {
   this->context->clearBuffers();

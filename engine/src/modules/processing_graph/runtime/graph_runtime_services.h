@@ -30,7 +30,6 @@ public:
   void rt_reset() {
     rt_liveNoteIdGenerator.reset();
   }
-
 private:
   LiveNoteIdGenerator rt_liveNoteIdGenerator;
 };

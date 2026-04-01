@@ -24,7 +24,7 @@
 
 class ConsoleLogger : public juce::Logger {
 public:
-  void logMessage (const juce::String& message) override {
+  void logMessage(const juce::String& message) override {
     std::cout << message << std::endl;
   }
 };

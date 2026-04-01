@@ -20,9 +20,8 @@
 #pragma once
 
 #include <juce_core/juce_core.h>
-
-#include <string>
 #include <memory>
+#include <string>
 
 class AnthemGraphNode;
 class AnthemNodeProcessContext;

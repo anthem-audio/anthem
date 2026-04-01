@@ -19,9 +19,9 @@
 
 #pragma once
 
-#include "modules/processing_graph/model/node_connection.h"
-#include "modules/processing_graph/model/node.h"
 #include "generated/lib/model/project.h"
+#include "modules/processing_graph/model/node.h"
+#include "modules/processing_graph/model/node_connection.h"
 #include "sequencer.h"
 
 class Project : public ProjectModelBase {
@@ -31,7 +31,7 @@ public:
 
   Project(const Project&) = delete;
   Project& operator=(const Project&) = delete;
-  
+
   Project(Project&&) noexcept = default;
   Project& operator=(Project&&) noexcept = default;
 

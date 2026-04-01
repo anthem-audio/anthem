@@ -19,21 +19,14 @@
 
 #pragma once
 
+#include <juce_core/juce_core.h>
 #include <optional>
 
-#include <juce_core/juce_core.h>
-
 // A thread- and realtime-safe queue for storing items of type T
-template <
-  typename T,
-  std::size_t size
->
-class RingBuffer
-{
+template <typename T, std::size_t size> class RingBuffer {
 private:
   using This = RingBuffer<T, size>;
   JUCE_LEAK_DETECTOR(This)
-
 public:
   RingBuffer() : fifo(size) {}
 
@@ -52,8 +45,7 @@ public:
   }
 
   // Reads the next item from the queue if it exists
-  std::optional<T> read()
-  {
+  std::optional<T> read() {
     int start1, size1, start2, size2;
     fifo.prepareToRead(1, start1, size1, start2, size2);
 
@@ -65,7 +57,6 @@ public:
 
     return std::nullopt;
   }
-
 private:
   juce::AbstractFifo fifo;
   std::array<T, size> buffer;

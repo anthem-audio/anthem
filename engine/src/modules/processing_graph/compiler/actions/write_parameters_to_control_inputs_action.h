@@ -19,12 +19,11 @@
 
 #pragma once
 
-#include <memory>
-
-#include <juce_core/juce_core.h>
-
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
+
+#include <juce_core/juce_core.h>
+#include <memory>
 
 // This action writes parameter values to control inputs ports for a given
 // processor (given by that processor's processContext). This initializes the

@@ -19,23 +19,21 @@
 
 #pragma once
 
-#include <vector>
-#include <optional>
-#include <string>
-#include <cstdint>
-#include <variant>
-
 #include "messages/messages.h"
 #include "modules/util/ring_buffer.h"
 
-template <typename T>
-struct TimestampedVisualizationData {
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <variant>
+#include <vector>
+
+template <typename T> struct TimestampedVisualizationData {
   std::vector<int64_t> sampleTimestamps;
   std::vector<T> values;
 };
 
-template <typename T>
-struct TimestampedVisualizationValue {
+template <typename T> struct TimestampedVisualizationValue {
   int64_t sampleTimestamp;
   T value;
 };
@@ -43,16 +41,12 @@ struct TimestampedVisualizationValue {
 using NumericVisualizationData = TimestampedVisualizationData<double>;
 using IntegerVisualizationData = TimestampedVisualizationData<int64_t>;
 using StringVisualizationData = TimestampedVisualizationData<std::string>;
-using VisualizationDataPayload = std::variant<
-  NumericVisualizationData,
-  IntegerVisualizationData,
-  StringVisualizationData
->;
+using VisualizationDataPayload =
+    std::variant<NumericVisualizationData, IntegerVisualizationData, StringVisualizationData>;
 
 template <typename T, std::size_t Size>
-std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuffer(
-  RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer
-) {
+std::optional<TimestampedVisualizationData<T>>
+drainTimestampedVisualizationBuffer(RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer) {
   TimestampedVisualizationData<T> data;
 
   while (true) {

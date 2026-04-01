@@ -19,41 +19,32 @@
 
 #include "test_command_handler.h"
 
+#include "modules/processors/gain_parameter_mapping.h"
+
 #include <cmath>
 #include <vector>
-
-#include "modules/processors/gain_parameter_mapping.h"
 
 std::optional<Response> handleTestCommand(Request& request) {
   if (!rfl::holds_alternative<TestSampleGainCurveRequest>(request.variant())) {
     return std::nullopt;
   }
 
-  auto& requestAsTestSampleGainCurve =
-    rfl::get<TestSampleGainCurveRequest>(request.variant());
+  auto& requestAsTestSampleGainCurve = rfl::get<TestSampleGainCurveRequest>(request.variant());
 
   if (requestAsTestSampleGainCurve.parameterValues == nullptr) {
-    return std::optional(TestSampleGainCurveResponse {
-      .dbValues = std::make_shared<std::vector<double>>(),
-      .isNegativeInfinity = std::make_shared<std::vector<bool>>(),
-      .responseBase = ResponseBase {
-        .id = requestAsTestSampleGainCurve.requestBase.get().id
-      }
-    });
+    return std::optional(TestSampleGainCurveResponse{
+        .dbValues = std::make_shared<std::vector<double>>(),
+        .isNegativeInfinity = std::make_shared<std::vector<bool>>(),
+        .responseBase = ResponseBase{.id = requestAsTestSampleGainCurve.requestBase.get().id}});
   }
 
   std::vector<double> dbValues;
   std::vector<bool> isNegativeInfinity;
   dbValues.reserve(requestAsTestSampleGainCurve.parameterValues->size());
-  isNegativeInfinity.reserve(
-    requestAsTestSampleGainCurve.parameterValues->size()
-  );
+  isNegativeInfinity.reserve(requestAsTestSampleGainCurve.parameterValues->size());
 
-  for (const auto parameterValue :
-       *requestAsTestSampleGainCurve.parameterValues) {
-    const auto dbValue = gainParameterValueToDb(
-      static_cast<float>(parameterValue)
-    );
+  for (const auto parameterValue : *requestAsTestSampleGainCurve.parameterValues) {
+    const auto dbValue = gainParameterValueToDb(static_cast<float>(parameterValue));
 
     if (std::isinf(dbValue) && dbValue < 0.0f) {
       dbValues.push_back(0.0);
@@ -64,12 +55,8 @@ std::optional<Response> handleTestCommand(Request& request) {
     }
   }
 
-  return std::optional(TestSampleGainCurveResponse {
-    .dbValues = std::make_shared<std::vector<double>>(std::move(dbValues)),
-    .isNegativeInfinity =
-      std::make_shared<std::vector<bool>>(std::move(isNegativeInfinity)),
-    .responseBase = ResponseBase {
-      .id = requestAsTestSampleGainCurve.requestBase.get().id
-    }
-  });
+  return std::optional(TestSampleGainCurveResponse{
+      .dbValues = std::make_shared<std::vector<double>>(std::move(dbValues)),
+      .isNegativeInfinity = std::make_shared<std::vector<bool>>(std::move(isNegativeInfinity)),
+      .responseBase = ResponseBase{.id = requestAsTestSampleGainCurve.requestBase.get().id}});
 }

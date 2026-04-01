@@ -19,27 +19,24 @@
 
 #pragma once
 
-#include <memory>
 #include <iostream>
 #include <juce_audio_devices/juce_audio_devices.h>
+#include <memory>
 
 #ifndef __EMSCRIPTEN__
 #include <juce_audio_processors/juce_audio_processors.h>
 #endif // #ifndef __EMSCRIPTEN__
 
 #include "comms.h"
-
-#include "modules/core/command_handler.h"
+#include "messages/messages.h"
 #include "modules/core/anthem_audio_callback.h"
+#include "modules/core/command_handler.h"
+#include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
-#include "modules/core/visualization/global_visualization_sources.h"
-
 #include "modules/util/id_generator.h"
-
 #include "project.h"
-#include "messages/messages.h"
 
 class Anthem {
 private:
@@ -49,7 +46,6 @@ private:
   static std::unique_ptr<Anthem> instance;
 
   std::unique_ptr<AnthemAudioCallback> audioCallback;
-
 public:
   // The project model.
   //
@@ -89,10 +85,10 @@ public:
   // JUCE class for managing audio devices
   juce::AudioDeviceManager audioDeviceManager;
 
-  #ifndef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN__
   // JUCE class for loading and managing plugins
   juce::AudioPluginFormatManager audioPluginFormatManager;
-  #endif // #ifndef __EMSCRIPTEN__
+#endif // #ifndef __EMSCRIPTEN__
 
   // The UI communication layer. This is used to send and receive messages from
   // the UI.

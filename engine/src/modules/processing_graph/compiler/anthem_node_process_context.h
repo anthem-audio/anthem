@@ -19,20 +19,19 @@
 
 #pragma once
 
-#include <atomic>
-#include <memory>
-#include <stdexcept>
-#include <vector>
-#include <cstdint>
-
-#include <juce_core/juce_core.h>
-#include <juce_audio_basics/juce_audio_basics.h>
-#include <juce_events/juce_events.h>
-
+#include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
 #include "modules/sequencer/events/note_instance_id.h"
 #include "modules/util/linear_parameter_smoother.h"
-#include "modules/processing_graph/model/node.h"
+
+#include <atomic>
+#include <cstdint>
+#include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_core/juce_core.h>
+#include <juce_events/juce_events.h>
+#include <memory>
+#include <stdexcept>
+#include <vector>
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
 // the inputs and outputs of the node associated with that processor.
@@ -46,7 +45,6 @@ public:
     std::unique_ptr<std::atomic<float>> value;
     std::unique_ptr<LinearParameterSmoother> rt_smoother;
   };
-
 private:
   JUCE_LEAK_DETECTOR(AnthemNodeProcessContext)
 
@@ -55,11 +53,9 @@ private:
     size_t bufferIndex;
   };
 
-  const PortBufferHandle& findBufferHandle(
-    const std::vector<PortBufferHandle>& handles,
-    int64_t portId,
-    const char* bufferType
-  ) const;
+  const PortBufferHandle& findBufferHandle(const std::vector<PortBufferHandle>& handles,
+                                           int64_t portId,
+                                           const char* bufferType) const;
   InputParameterBinding& findInputParameterBinding(int64_t id);
   const InputParameterBinding& findInputParameterBinding(int64_t id) const;
 
@@ -77,10 +73,8 @@ private:
   std::weak_ptr<Node> graphNode;
   AnthemGraphProcessContext* graphProcessContext = nullptr;
 public:
-  AnthemNodeProcessContext(
-    std::shared_ptr<Node>& graphNode,
-    AnthemGraphProcessContext& graphProcessContext
-  );
+  AnthemNodeProcessContext(std::shared_ptr<Node>& graphNode,
+                           AnthemGraphProcessContext& graphProcessContext);
 
   // Clean up the context. This must be called before the context is deallocated.
   void cleanup();
@@ -90,7 +84,8 @@ public:
     // message thread without any concern for thread safety, so we throw if
     // we're not on that thread.
     if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
-      throw std::runtime_error("AnthemNodeProcessContext::getGraphNode() must be called on the JUCE message thread.");
+      throw std::runtime_error(
+          "AnthemNodeProcessContext::getGraphNode() must be called on the JUCE message thread.");
     }
 
     return graphNode.lock();

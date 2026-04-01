@@ -30,15 +30,17 @@ public:
   void runTest() override {
     beginTest("AnthemSequenceEvent comparison operators");
 
-    AnthemSequenceEvent event1{ .offset = 10.5, .event = AnthemEvent(AnthemNoteOnEvent()) };
-    AnthemSequenceEvent event2{ .offset = 20.0, .event = AnthemEvent(AnthemNoteOffEvent()) };
-    AnthemSequenceEvent event3{ .offset = 10.5, .event = AnthemEvent(AnthemNoteOnEvent()) };
-    AnthemSequenceEvent event4{ .offset = 5.8, .event = AnthemEvent(AnthemNoteOffEvent()) };
-    AnthemSequenceEvent event5{ .offset = 10.8, .event = AnthemEvent(AnthemNoteOnEvent()) };
+    AnthemSequenceEvent event1{.offset = 10.5, .event = AnthemEvent(AnthemNoteOnEvent())};
+    AnthemSequenceEvent event2{.offset = 20.0, .event = AnthemEvent(AnthemNoteOffEvent())};
+    AnthemSequenceEvent event3{.offset = 10.5, .event = AnthemEvent(AnthemNoteOnEvent())};
+    AnthemSequenceEvent event4{.offset = 5.8, .event = AnthemEvent(AnthemNoteOffEvent())};
+    AnthemSequenceEvent event5{.offset = 10.8, .event = AnthemEvent(AnthemNoteOnEvent())};
 
     AnthemSequenceEvent eventCopy = event2;
     expectEquals(eventCopy.offset, event2.offset, "operator=: offset");
-    expectEquals(static_cast<int>(eventCopy.event.type), static_cast<int>(event2.event.type), "operator=: type");
+    expectEquals(static_cast<int>(eventCopy.event.type),
+                 static_cast<int>(event2.event.type),
+                 "operator=: type");
 
     expect(event1 < event2, "operator<: event1 < event2");
     expect(!(event2 < event1), "operator<: !(event2 < event1)");

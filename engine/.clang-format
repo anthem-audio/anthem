@@ -1,0 +1,40 @@
+# Keep the initial baseline close to the current engine style so adoption
+# doesn't require an immediate repo-wide reformat.
+---
+BasedOnStyle: LLVM
+Language: Cpp
+
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 100
+
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: false
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+SpaceBeforeParens: ControlStatements
+
+IndentAccessModifiers: false
+AccessModifierOffset: -2
+IndentCaseLabels: true
+NamespaceIndentation: None
+
+AlignAfterOpenBracket: Align
+BinPackArguments: false
+BinPackParameters: false
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 2
+
+IncludeBlocks: Regroup
+SortIncludes: CaseSensitive
+
+EmptyLineBeforeAccessModifier: Never
+FixNamespaceComments: true
+ReflowComments: false

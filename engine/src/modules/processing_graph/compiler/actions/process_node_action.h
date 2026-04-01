@@ -19,13 +19,12 @@
 
 #pragma once
 
-#include <memory>
+#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/processing_graph/processor/anthem_processor.h"
 
 #include <juce_core/juce_core.h>
-
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
-#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include <memory>
 
 class ProcessNodeAction : public AnthemGraphCompilerAction {
 private:
@@ -36,7 +35,8 @@ public:
 
   void execute(int numSamples) override;
 
-  ProcessNodeAction(AnthemNodeProcessContext* context, AnthemProcessor* processor) : context(context), processor(processor) {}
+  ProcessNodeAction(AnthemNodeProcessContext* context, AnthemProcessor* processor)
+    : context(context), processor(processor) {}
 
   void debugPrint() override;
 };

@@ -32,8 +32,10 @@ SimpleVolumeLfoProcessor::~SimpleVolumeLfoProcessor() {}
 void SimpleVolumeLfoProcessor::prepareToProcess() {}
 
 void SimpleVolumeLfoProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
-  auto& inputBuffer = context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
-  auto& outputBuffer = context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);
+  auto& inputBuffer =
+      context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
+  auto& outputBuffer =
+      context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);
 
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {
@@ -55,4 +57,3 @@ void SimpleVolumeLfoProcessor::process(AnthemNodeProcessContext& context, int nu
     }
   }
 }
-

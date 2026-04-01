@@ -24,7 +24,8 @@
 #include "modules/sequencer/events/note_events.h"
 #include "modules/sequencer/events/note_instance_id.h"
 
-class SimpleMidiGeneratorProcessor : public AnthemProcessor, public SimpleMidiGeneratorProcessorModelBase {
+class SimpleMidiGeneratorProcessor : public AnthemProcessor,
+                                     public SimpleMidiGeneratorProcessorModelBase {
 private:
   double sampleRate;
   size_t durationSamples;

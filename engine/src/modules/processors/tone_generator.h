@@ -19,10 +19,10 @@
 
 #pragma once
 
-#include <memory>
-
 #include "generated/lib/model/processing_graph/processors/tone_generator.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
+
+#include <memory>
 
 class ToneGeneratorProcessor : public AnthemProcessor, public ToneGeneratorProcessorModelBase {
 private:
@@ -44,8 +44,6 @@ public:
   void prepareToProcess() override;
   void process(AnthemNodeProcessContext& context, int numSamples) override;
 
-  void initialize(
-    std::shared_ptr<AnthemModelBase> selfModel,
-    std::shared_ptr<AnthemModelBase> parentModel
-  ) override;
+  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
+                  std::shared_ptr<AnthemModelBase> parentModel) override;
 };

@@ -19,18 +19,17 @@
 
 #pragma once
 
+#include "modules/sequencer/events/event.h"
+#include "modules/util/ring_buffer.h"
+
 #include <cstdint>
+#include <juce_core/juce_core.h>
+#include <juce_events/juce_events.h>
 #include <memory>
 #include <optional>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-
-#include <juce_core/juce_core.h>
-#include <juce_events/juce_events.h>
-
-#include "modules/sequencer/events/event.h"
-#include "modules/util/ring_buffer.h"
 
 namespace anthem_sequencer_track_ids {
 inline constexpr int64_t noTrack = -1;
@@ -62,7 +61,6 @@ using EntityId = int64_t;
 class SequenceEventList {
 private:
   JUCE_LEAK_DETECTOR(SequenceEventList)
-
 public:
   // List of events for this track.
   std::vector<AnthemSequenceEvent>* events;
@@ -97,7 +95,6 @@ public:
 class SequenceEventListCollection {
 private:
   JUCE_LEAK_DETECTOR(SequenceEventListCollection)
-
 public:
   // Map of track ID to list of events for that track. If there is no entry
   // for a given track, it means that there are no events for that track.
@@ -162,8 +159,7 @@ public:
 // we don't recompile the entire sequence. Instead, we just update the event
 // lists for the relevant track.
 class AnthemRuntimeSequenceStore {
-friend class RuntimeSequenceStoreTest;
-
+  friend class RuntimeSequenceStoreTest;
 private:
   JUCE_LEAK_DETECTOR(AnthemRuntimeSequenceStore)
 
@@ -200,29 +196,24 @@ private:
   // also clone the inner map (the track map for that sequence). When we
   // replace the track, we add the old track to this map. When the audio thread
   // releases the old track, we will clean it up.
-  std::unordered_map<
-    SequenceIdToEventsMap*,
-    // This is a vector because removeTrack will remove a track in a bunch of
-    // sequences at once. We need to clean up all of them when the audio thread
-    // releases the old pointer.
-    std::vector<
-      std::tuple<
-        // The track event list that was replaced - we need to clean up any heap
-        // memory it holds. If there was no entry for a given track when we
-        // replaced it, we don't need to clean up anything for it.
-        std::optional<SequenceEventList>,
+  std::unordered_map<SequenceIdToEventsMap*,
+                     // This is a vector because removeTrack will remove a track in a bunch of
+                     // sequences at once. We need to clean up all of them when the audio thread
+                     // releases the old pointer.
+                     std::vector<std::tuple<
+                         // The track event list that was replaced - we need to clean up any heap
+                         // memory it holds. If there was no entry for a given track when we
+                         // replaced it, we don't need to clean up anything for it.
+                         std::optional<SequenceEventList>,
 
-        // When we replace a track, we clone the map for that sequence (stored
-        // in SequenceEventListCollection). When the audio thread releases the old
-        // outer map (eventLists), we need to clean up the old inner map as well
-        // (SequenceEventListCollection::tracks).
-        std::unordered_map<EntityId, SequenceEventList>*
-      >
-    >
-  > pendingSequenceTrackDeletions;
+                         // When we replace a track, we clone the map for that sequence (stored
+                         // in SequenceEventListCollection). When the audio thread releases the old
+                         // outer map (eventLists), we need to clean up the old inner map as well
+                         // (SequenceEventListCollection::tracks).
+                         std::unordered_map<EntityId, SequenceEventList>*>>>
+      pendingSequenceTrackDeletions;
 
   void processDeletionQueues();
-
 public:
   AnthemRuntimeSequenceStore();
   ~AnthemRuntimeSequenceStore();
@@ -272,10 +263,7 @@ public:
   // track, and push the new map to the mapUpdateQueue. If the track already
   // exists, it will be replaced, and the old track will be added to the
   // pendingSequenceTrackDeletions map.
-  void addOrUpdateTrackInSequence(
-    EntityId sequenceId,
-    EntityId trackId,
-    SequenceEventList track);
+  void addOrUpdateTrackInSequence(EntityId sequenceId, EntityId trackId, SequenceEventList track);
 
   // Removes a track from a sequence in the event lists map.
   void removeTrackFromSequence(EntityId sequenceId, EntityId trackId);

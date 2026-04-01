@@ -19,20 +19,17 @@
 
 #pragma once
 
-#include <memory>
-#include <chrono>
-
-#include <juce_audio_devices/juce_audio_devices.h>
-
 #include "modules/core/constants.h"
+#include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/processors/master_output.h"
 
-#include "modules/core/visualization/global_visualization_sources.h"
+#include <chrono>
+#include <juce_audio_devices/juce_audio_devices.h>
+#include <memory>
 
 class Anthem;
 
-class AnthemAudioCallback : public juce::AudioIODeviceCallback
-{
+class AnthemAudioCallback : public juce::AudioIODeviceCallback {
 private:
   double sampleRate = -1.0;
 
@@ -68,11 +65,11 @@ public:
   AnthemAudioCallback(Anthem* anthem);
 
   void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
-                                                   int numInputChannels,
-                                                   float* const* outputChannelData,
-                                                   int numOutputChannels,
-                                                   int numSamples,
-                                                   const juce::AudioIODeviceCallbackContext& context) override;
+                                        int numInputChannels,
+                                        float* const* outputChannelData,
+                                        int numOutputChannels,
+                                        int numSamples,
+                                        const juce::AudioIODeviceCallbackContext& context) override;
   void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
   void audioDeviceStopped() override;
 };

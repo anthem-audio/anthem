@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "generated/lib/model/processing_graph/node.h"
+#include "modules/processing_graph/model/node_port.h"
 #include "modules/processors/balance.h"
 #include "modules/processors/db_meter.h"
 #include "modules/processors/gain.h"
@@ -29,11 +31,9 @@
 #include "modules/processors/simple_volume_lfo.h"
 #include "modules/processors/tone_generator.h"
 #include "modules/processors/vst3_processor.h"
-#include "modules/processing_graph/model/node_port.h"
-#include "generated/lib/model/processing_graph/node.h"
 
-#include <optional>
 #include <cstdint>
+#include <optional>
 
 class AnthemNodeProcessContext;
 class AnthemProcessor;
@@ -72,10 +72,8 @@ public:
   Node(Node&&) noexcept = default;
   Node& operator=(Node&&) noexcept = default;
 
-  void initialize(
-    std::shared_ptr<AnthemModelBase> selfModel,
-    std::shared_ptr<AnthemModelBase> parentModel
-  ) override {
+  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
+                  std::shared_ptr<AnthemModelBase> parentModel) override {
     NodeModelBase::initialize(selfModel, parentModel);
   }
 

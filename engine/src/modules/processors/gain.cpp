@@ -22,7 +22,7 @@
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
-    : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {}
+  : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {}
 
 GainProcessor::~GainProcessor() {}
 

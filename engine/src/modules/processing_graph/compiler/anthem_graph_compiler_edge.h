@@ -19,12 +19,11 @@
 
 #pragma once
 
-#include <memory>
-
-#include <juce_core/juce_core.h>
-
 #include "generated/lib/model/processing_graph/node_port_config.h"
 #include "modules/processing_graph/model/node_connection.h"
+
+#include <juce_core/juce_core.h>
+#include <memory>
 
 class AnthemGraphNodeConnection;
 class AnthemNodeProcessContext;
@@ -46,10 +45,10 @@ public:
   // Whether this edge has been processed
   bool processed = false;
 
-  AnthemGraphCompilerEdge(
-    std::shared_ptr<NodeConnection> edge,
-    AnthemNodeProcessContext* sourceNodeContext,
-    AnthemNodeProcessContext* destinationNodeContext,
-    NodePortDataType type
-  ) : edgeSource(edge), sourceNodeContext(sourceNodeContext), destinationNodeContext(destinationNodeContext), type(type) {}
+  AnthemGraphCompilerEdge(std::shared_ptr<NodeConnection> edge,
+                          AnthemNodeProcessContext* sourceNodeContext,
+                          AnthemNodeProcessContext* destinationNodeContext,
+                          NodePortDataType type)
+    : edgeSource(edge), sourceNodeContext(sourceNodeContext),
+      destinationNodeContext(destinationNodeContext), type(type) {}
 };

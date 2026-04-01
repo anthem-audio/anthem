@@ -55,10 +55,7 @@ inline AnthemSourceNoteId fromPatternNoteId(int64_t noteId) {
   return static_cast<AnthemSourceNoteId>(noteId);
 }
 
-inline AnthemSourceNoteId fromArrangementClipNoteId(
-  int64_t clipId,
-  int64_t noteId
-) {
+inline AnthemSourceNoteId fromArrangementClipNoteId(int64_t clipId, int64_t noteId) {
   // Project entity IDs are currently allocated from a monotonically
   // increasing integer counter in the UI, so packing the clip and note IDs
   // into 64 bits gives us a deterministic source note ID that can be carried
@@ -68,10 +65,8 @@ inline AnthemSourceNoteId fromArrangementClipNoteId(
   assert(static_cast<uint64_t>(clipId) <= 0xfffffffeULL);
   assert(static_cast<uint64_t>(noteId) <= 0xffffffffULL);
 
-  return static_cast<AnthemSourceNoteId>(
-    ((static_cast<uint64_t>(clipId) + 1ULL) << 32) |
-    (static_cast<uint64_t>(noteId) & 0xffffffffULL)
-  );
+  return static_cast<AnthemSourceNoteId>(((static_cast<uint64_t>(clipId) + 1ULL) << 32) |
+                                         (static_cast<uint64_t>(noteId) & 0xffffffffULL));
 }
 
 } // namespace anthem_note_instance_ids

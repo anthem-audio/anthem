@@ -21,10 +21,8 @@
 
 #include "modules/core/anthem.h"
 
-void Sequencer::initialize(
-  std::shared_ptr<AnthemModelBase> selfModel,
-  std::shared_ptr<AnthemModelBase> parentModel
-) {
+void Sequencer::initialize(std::shared_ptr<AnthemModelBase> selfModel,
+                           std::shared_ptr<AnthemModelBase> parentModel) {
   auto& transport = *Anthem::getInstance().transport;
 
   // Write initial values to transport
@@ -62,13 +60,11 @@ void Sequencer::initialize(
     Anthem::getInstance().transport->setActiveTrackId(value);
   });
 
-  addIsPlayingObserver([this](bool value) {
-    Anthem::getInstance().transport->setIsPlaying(value);
-  });
+  addIsPlayingObserver(
+      [this](bool value) { Anthem::getInstance().transport->setIsPlaying(value); });
 
-  addPlaybackStartPositionObserver([this](double value) {
-    Anthem::getInstance().transport->setPlayheadStart(value);
-  });
+  addPlaybackStartPositionObserver(
+      [this](double value) { Anthem::getInstance().transport->setPlayheadStart(value); });
 
   SequencerModelBase::initialize(selfModel, parentModel);
 }

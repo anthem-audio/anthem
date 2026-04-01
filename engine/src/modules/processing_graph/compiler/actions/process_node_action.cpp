@@ -19,14 +19,15 @@
 
 #include "process_node_action.h"
 
-#include <iostream>
-
 #include "modules/processing_graph/model/node.h"
+
+#include <iostream>
 
 void ProcessNodeAction::execute(int numSamples) {
   this->processor->process(*this->context, numSamples);
 }
 
 void ProcessNodeAction::debugPrint() {
-  std::cout << "ProcessNodeAction for node with ID: " << this->context->getGraphNode()->id() << std::endl;
+  std::cout << "ProcessNodeAction for node with ID: " << this->context->getGraphNode()->id()
+            << std::endl;
 }

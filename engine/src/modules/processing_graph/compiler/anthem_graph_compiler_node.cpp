@@ -18,63 +18,70 @@
 */
 
 #include "anthem_graph_compiler_node.h"
+
 #include "modules/core/anthem.h"
 
 void AnthemGraphCompilerNode::assignEdges(
-  std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-  std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge
-) {
+    std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
+    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge) {
   for (auto& port : *node->audioInputPorts()) {
     for (auto& connectionId : *port->connections()) {
-      auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
+      auto& connection =
+          Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
     }
   }
 
   for (auto& port : *node->controlInputPorts()) {
     for (auto& connectionId : *port->connections()) {
-      auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
+      auto& connection =
+          Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
     }
   }
 
   for (auto& port : *node->eventInputPorts()) {
     for (auto& connectionId : *port->connections()) {
-      auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
+      auto& connection =
+          Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, inputEdges, connection);
     }
   }
 
   for (auto& port : *node->audioOutputPorts()) {
     for (auto& connectionId : *port->connections()) {
-      auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
+      auto& connection =
+          Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
     }
   }
 
   for (auto& port : *node->controlOutputPorts()) {
     for (auto& connectionId : *port->connections()) {
-      auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
+      auto& connection =
+          Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
     }
   }
 
   for (auto& port : *node->eventOutputPorts()) {
     for (auto& connectionId : *port->connections()) {
-      auto& connection = Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
+      auto& connection =
+          Anthem::getInstance().project->processingGraph()->connections()->at(connectionId);
       assignEdge(nodeToCompilerNode, connectionToCompilerEdge, outputEdges, connection);
     }
   }
 }
 
 void AnthemGraphCompilerNode::assignEdge(
-  std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-  std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
-  std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
-  std::shared_ptr<NodeConnection>& connection
-) {
-  auto& sourceNode = Anthem::getInstance().project->processingGraph()->nodes()->at(connection->sourceNodeId());
-  auto& destinationNode = Anthem::getInstance().project->processingGraph()->nodes()->at(connection->destinationNodeId());
+    std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
+    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
+    std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
+    std::shared_ptr<NodeConnection>& connection) {
+  auto& sourceNode =
+      Anthem::getInstance().project->processingGraph()->nodes()->at(connection->sourceNodeId());
+  auto& destinationNode = Anthem::getInstance().project->processingGraph()->nodes()->at(
+      connection->destinationNodeId());
 
   auto sourceNodePort = sourceNode->getPortById(connection->sourcePortId());
   auto destinationNodePort = destinationNode->getPortById(connection->destinationPortId());
@@ -92,11 +99,7 @@ void AnthemGraphCompilerNode::assignEdge(
     edgeContainer.push_back(connectionToCompilerEdge[connection.get()]);
   } else {
     auto edge = std::make_shared<AnthemGraphCompilerEdge>(
-      connection,
-      sourceNodeContext,
-      destinationNodeContext,
-      portType
-    );
+        connection, sourceNodeContext, destinationNodeContext, portType);
 
     connectionToCompilerEdge[connection.get()] = edge;
 

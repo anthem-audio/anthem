@@ -19,13 +19,13 @@
 
 #include "simple_midi_generator.h"
 
+#include "modules/core/anthem.h"
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/sequencer/events/event.h"
 
-#include "modules/core/anthem.h"
-
-SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl)
-    : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {
+SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(
+    const SimpleMidiGeneratorProcessorModelImpl& _impl)
+  : AnthemProcessor("SimpleMidiGenerator"), SimpleMidiGeneratorProcessorModelBase(_impl) {
   durationSamples = 22050;
   velocity = 80;
   noteOn = false;
@@ -44,26 +44,18 @@ void SimpleMidiGeneratorProcessor::prepareToProcess() {
 }
 
 void SimpleMidiGeneratorProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
-  auto& eventOutBuffer = context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);
+  auto& eventOutBuffer =
+      context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);
 
   if (!noteOn) {
     currentNote = 50;
     currentNoteId = context.rt_allocateLiveNoteId();
     currentNoteDuration = 0;
-    eventOutBuffer->addEvent(
-      AnthemLiveEvent {
+    eventOutBuffer->addEvent(AnthemLiveEvent{
         .sampleOffset = 0.0,
         .liveId = currentNoteId,
-        .event = AnthemEvent(
-          AnthemNoteOnEvent(
-            currentNote,
-            0,
-            static_cast<float>(velocity),
-            0.0f
-          )
-        )
-      }
-    );
+        .event =
+            AnthemEvent(AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f))});
 
     noteOn = true;
   }
@@ -71,20 +63,16 @@ void SimpleMidiGeneratorProcessor::process(AnthemNodeProcessContext& context, in
   size_t samplesLeft = static_cast<size_t>(numSamples);
 
   while (samplesLeft > 0) {
-    size_t samplesToProcess = std::min(
-      samplesLeft,
-      durationSamples - currentNoteDuration
-    );
+    size_t samplesToProcess = std::min(samplesLeft, durationSamples - currentNoteDuration);
 
     currentNoteDuration += samplesToProcess;
     samplesLeft -= samplesToProcess;
 
     if (currentNoteDuration >= durationSamples) {
-      AnthemLiveEvent noteOffEvent = AnthemLiveEvent {
-        .sampleOffset = 0.0,
-        .liveId = currentNoteId,
-        .event = AnthemEvent(AnthemNoteOffEvent(currentNote, 0, 0.0f))
-      };
+      AnthemLiveEvent noteOffEvent =
+          AnthemLiveEvent{.sampleOffset = 0.0,
+                          .liveId = currentNoteId,
+                          .event = AnthemEvent(AnthemNoteOffEvent(currentNote, 0, 0.0f))};
 
       eventOutBuffer->addEvent(noteOffEvent);
 
@@ -98,18 +86,11 @@ void SimpleMidiGeneratorProcessor::process(AnthemNodeProcessContext& context, in
 
       currentNoteId = context.rt_allocateLiveNoteId();
 
-      AnthemLiveEvent noteOnEvent = AnthemLiveEvent {
-        .sampleOffset = 0.0,
-        .liveId = currentNoteId,
-        .event = AnthemEvent(
-          AnthemNoteOnEvent(
-            currentNote,
-            0,
-            static_cast<float>(velocity),
-            0.0f
-          )
-        )
-      };
+      AnthemLiveEvent noteOnEvent = AnthemLiveEvent{
+          .sampleOffset = 0.0,
+          .liveId = currentNoteId,
+          .event =
+              AnthemEvent(AnthemNoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f))};
 
       eventOutBuffer->addEvent(noteOnEvent);
     }

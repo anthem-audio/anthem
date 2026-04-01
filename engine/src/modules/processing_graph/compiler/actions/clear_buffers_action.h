@@ -19,12 +19,11 @@
 
 #pragma once
 
-#include <memory>
-
-#include <juce_core/juce_core.h>
-
 #include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
+
+#include <juce_core/juce_core.h>
+#include <memory>
 
 class ClearBuffersAction : public AnthemGraphCompilerAction {
 private:
