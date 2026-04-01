@@ -42,10 +42,10 @@
 
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
-#include "generated/lib/model/model.h"
 
 #include "anthem_graph_compilation_result.h"
 #include "anthem_graph_compiler_node.h"
+#include "anthem_graph_process_context.h"
 
 #include "actions/clear_buffers_action.h"
 #include "actions/process_node_action.h"

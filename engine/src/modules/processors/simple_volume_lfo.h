@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/processors/simple_volume_lfo.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
 class SimpleVolumeLfoProcessor : public AnthemProcessor, public SimpleVolumeLfoProcessorModelBase {
@@ -39,5 +39,5 @@ public:
   SimpleVolumeLfoProcessor& operator=(SimpleVolumeLfoProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 };

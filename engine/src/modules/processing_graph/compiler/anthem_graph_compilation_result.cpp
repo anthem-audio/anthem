@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,7 @@
 #include "anthem_graph_compilation_result.h"
 
 void AnthemGraphCompilationResult::cleanup() {
-  for (auto& processContext : processContexts) {
-    processContext->cleanup();
+  if (graphProcessContext != nullptr) {
+    graphProcessContext->cleanup();
   }
 }

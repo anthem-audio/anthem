@@ -19,9 +19,10 @@
 
 #pragma once
 
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/processors/simple_midi_generator.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 #include "modules/sequencer/events/note_events.h"
+#include "modules/sequencer/events/note_instance_id.h"
 
 class SimpleMidiGeneratorProcessor : public AnthemProcessor, public SimpleMidiGeneratorProcessorModelBase {
 private:
@@ -48,5 +49,5 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 };

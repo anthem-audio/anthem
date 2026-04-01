@@ -21,6 +21,8 @@
 
 #include <iostream>
 
+#include "modules/processing_graph/model/node.h"
+
 void ProcessNodeAction::execute(int numSamples) {
   this->processor->process(*this->context, numSamples);
 }

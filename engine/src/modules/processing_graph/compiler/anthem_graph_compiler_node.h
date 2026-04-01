@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,11 +26,10 @@
 #include <juce_core/juce_core.h>
 
 #include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
-
-#include "generated/lib/model/model.h"
+#include "modules/processing_graph/model/node.h"
 
 class AnthemGraphNode;
-class AnthemProcessContext;
+class AnthemNodeProcessContext;
 
 // Represents a node in the compiler. Used internally by the compiler to keep
 // track of details about nodes being processed.
@@ -43,12 +42,12 @@ public:
   std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> outputEdges;
 
   // The runtime context for this node
-  AnthemProcessContext* context;
+  AnthemNodeProcessContext* context;
 
   // Whether this node is ready to process
   bool readyToProcess = false;
 
-  AnthemGraphCompilerNode(std::shared_ptr<Node> node, AnthemProcessContext* context) : node(node), context(context) {}
+  AnthemGraphCompilerNode(std::shared_ptr<Node> node, AnthemNodeProcessContext* context) : node(node), context(context) {}
 
   // Populate the input and output edges for this node
   void assignEdges(

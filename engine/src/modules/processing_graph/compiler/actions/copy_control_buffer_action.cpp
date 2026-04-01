@@ -19,6 +19,8 @@
 
 #include "copy_control_buffer_action.h"
 
+#include "modules/processing_graph/model/node.h"
+
 void CopyControlBufferAction::execute(int numSamples) {
   auto& sourceBuffer = source->getOutputControlBuffer(sourcePortId);
   auto& destinationBuffer = destination->getInputControlBuffer(destinationPortId);

@@ -23,7 +23,7 @@
 
 #include <juce_core/juce_core.h>
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 void NodePort::initialize(
   std::shared_ptr<AnthemModelBase> selfModel,

@@ -21,6 +21,8 @@
 
 #include <iostream>
 
+#include "modules/processing_graph/model/node.h"
+
 void CopyAudioBufferAction::execute(int numSamples) {
   auto& sourceBuffer = this->source->getOutputAudioBuffer(this->sourcePortId);
   auto& destinationBuffer = this->destination->getInputAudioBuffer(this->destinationPortId);

@@ -24,7 +24,7 @@
 
 #include <juce_core/juce_core.h>
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
 
 // This action copies the data from a given control output to a given control
@@ -36,16 +36,16 @@ class CopyControlBufferAction : public AnthemGraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(CopyControlBufferAction)
 public:
-  AnthemProcessContext* source;
+  AnthemNodeProcessContext* source;
   int64_t sourcePortId;
 
-  AnthemProcessContext* destination;
+  AnthemNodeProcessContext* destination;
   int64_t destinationPortId;
 
   CopyControlBufferAction(
-    AnthemProcessContext* source,
+    AnthemNodeProcessContext* source,
     int64_t sourcePortId,
-    AnthemProcessContext* destination,
+    AnthemNodeProcessContext* destination,
     int64_t destinationPortId
   ) : source(source),
       sourcePortId(sourcePortId),

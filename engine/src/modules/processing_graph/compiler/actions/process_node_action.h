@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,7 +23,7 @@
 
 #include <juce_core/juce_core.h>
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
@@ -31,12 +31,12 @@ class ProcessNodeAction : public AnthemGraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(ProcessNodeAction)
 public:
-  AnthemProcessContext* context;
+  AnthemNodeProcessContext* context;
   AnthemProcessor* processor;
 
   void execute(int numSamples) override;
 
-  ProcessNodeAction(AnthemProcessContext* context, AnthemProcessor* processor) : context(context), processor(processor) {}
+  ProcessNodeAction(AnthemNodeProcessContext* context, AnthemProcessor* processor) : context(context), processor(processor) {}
 
   void debugPrint() override;
 };

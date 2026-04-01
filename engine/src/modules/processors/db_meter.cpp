@@ -24,7 +24,7 @@
 
 #include "modules/core/anthem.h"
 #include "modules/core/visualization/visualization_broker.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 std::optional<NumericVisualizationData>
 DbMeterVisualizationProvider::getTypedData() {
@@ -92,7 +92,7 @@ void DbMeterProcessor::prepareToProcess() {
   );
 }
 
-void DbMeterProcessor::process(AnthemProcessContext& context, int numSamples) {
+void DbMeterProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   if (channelProviders.empty() || numSamples <= 0) {
     return;
   }

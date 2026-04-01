@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -46,7 +46,7 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 
   void initialize(
     std::shared_ptr<AnthemModelBase> selfModel,

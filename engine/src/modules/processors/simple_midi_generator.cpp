@@ -19,7 +19,7 @@
 
 #include "simple_midi_generator.h"
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/sequencer/events/event.h"
 
 #include "modules/core/anthem.h"
@@ -43,7 +43,7 @@ void SimpleMidiGeneratorProcessor::prepareToProcess() {
   sampleRate = currentDevice->getCurrentSampleRate();
 }
 
-void SimpleMidiGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
+void SimpleMidiGeneratorProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   auto& eventOutBuffer = context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);
 
   if (!noteOn) {

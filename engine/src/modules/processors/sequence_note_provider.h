@@ -19,12 +19,14 @@
 
 #pragma once
 
-#include "generated/lib/model/model.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "generated/lib/model/processing_graph/processors/sequence_note_provider.h"
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 #include "modules/processors/note_tracker.h"
-#include "modules/sequencer/runtime/transport.h"
+#include "modules/sequencer/events/event.h"
+
+class AnthemNodeProcessContext;
+class PlayheadJumpEvent;
 
 // This processor is a bridge between the sequencer and the node graph. It's a
 // special node that the sequencer can use to send notes from the sequence to the
@@ -51,7 +53,7 @@ private:
     double sampleOffset
   );
   void rt_handleSequenceNoteOn(
-    AnthemProcessContext& context,
+    AnthemNodeProcessContext& context,
     std::unique_ptr<AnthemEventBuffer>& targetBuffer,
     AnthemSourceNoteId sourceId,
     const AnthemNoteOnEvent& noteOnEvent,
@@ -64,7 +66,7 @@ private:
     double sampleOffset
   );
   void rt_addEventsForJump(
-    AnthemProcessContext& context,
+    AnthemNodeProcessContext& context,
     std::unique_ptr<AnthemEventBuffer>& targetBuffer,
     const PlayheadJumpEvent& event,
     double sampleTimeOffset = 0.0
@@ -85,5 +87,5 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 };

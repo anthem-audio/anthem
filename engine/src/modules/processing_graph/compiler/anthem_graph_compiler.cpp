@@ -22,8 +22,6 @@
 #include "modules/core/anthem.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 
-#include "generated/lib/model/model.h"
-
 #include <iostream>
 
 // See the header file for an overview of the graph processing algorithm. Each
@@ -40,6 +38,26 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
   auto& processingGraphModel = Anthem::getInstance().project->processingGraph();
 
   AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
+  result->graphProcessContext = std::make_unique<AnthemGraphProcessContext>(rtServices);
+
+  size_t totalAudioBufferCount = 0;
+  size_t totalControlBufferCount = 0;
+  size_t totalEventBufferCount = 0;
+  for (auto& pair : *processingGraphModel->nodes()) {
+    auto& node = pair.second;
+    totalAudioBufferCount +=
+      node->audioInputPorts()->size() + node->audioOutputPorts()->size();
+    totalControlBufferCount +=
+      node->controlInputPorts()->size() + node->controlOutputPorts()->size();
+    totalEventBufferCount +=
+      node->eventInputPorts()->size() + node->eventOutputPorts()->size();
+  }
+  result->graphProcessContext->reserve(
+    processingGraphModel->nodes()->size(),
+    totalAudioBufferCount,
+    totalControlBufferCount,
+    totalEventBufferCount
+  );
 
   // We store these in a vector so that when it goes out of scope, the nodes
   // are destroyed. We will store the actual pointers in a set, which improves
@@ -66,14 +84,13 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
   for (auto& pair : *processingGraphModel->nodes()) {
     auto& node = pair.second;
 
-    auto context = new AnthemProcessContext(node, rtServices);
-    result->processContexts.push_back(std::unique_ptr<AnthemProcessContext>(context));
+    auto& context = result->graphProcessContext->createNodeProcessContext(node);
 
     result->graphNodes.push_back(node);
 
-    auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, context);
+    auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, &context);
 
-    node->runtimeContext = std::make_optional(context);
+    node->runtimeContext = std::make_optional(&context);
 
     vectorOfNodesToProcess.push_back(compilerNode);
     nodeToCompilerNode[node.get()] = compilerNode;

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@
 
 #include <memory>
 
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/processors/tone_generator.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
 class ToneGeneratorProcessor : public AnthemProcessor, public ToneGeneratorProcessorModelBase {
@@ -42,7 +42,7 @@ public:
   ToneGeneratorProcessor& operator=(ToneGeneratorProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 
   void initialize(
     std::shared_ptr<AnthemModelBase> selfModel,

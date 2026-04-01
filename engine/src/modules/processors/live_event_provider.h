@@ -21,13 +21,14 @@
 
 #include <memory>
 
-#include "generated/lib/model/model.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "generated/lib/model/processing_graph/processors/live_event_provider.h"
 #include "modules/processing_graph/processor/anthem_event_buffer.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 #include "modules/processors/note_tracker.h"
 #include "modules/sequencer/events/event.h"
 #include "modules/util/ring_buffer.h"
+
+class AnthemNodeProcessContext;
 
 struct AnthemLiveInputEvent {
   double sampleOffset = 0.0;
@@ -50,7 +51,7 @@ private:
     double sampleOffset
   );
   void rt_handleLiveNoteOn(
-    AnthemProcessContext& context,
+    AnthemNodeProcessContext& context,
     std::unique_ptr<AnthemEventBuffer>& targetBuffer,
     AnthemLiveInputNoteId inputId,
     const AnthemNoteOnEvent& noteOnEvent,
@@ -63,7 +64,7 @@ private:
     double sampleOffset
   );
   void rt_addLiveEventsToBuffer(
-    AnthemProcessContext& context,
+    AnthemNodeProcessContext& context,
     std::unique_ptr<AnthemEventBuffer>& targetBuffer
   );
 
@@ -82,7 +83,7 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 
   void addLiveInputEvent(AnthemLiveInputEvent event);
 };

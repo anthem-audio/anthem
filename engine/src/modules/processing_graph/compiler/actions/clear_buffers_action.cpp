@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,18 +21,10 @@
 
 #include <iostream>
 
+#include "modules/processing_graph/model/node.h"
+
 void ClearBuffersAction::execute(int) {
-  for (auto& pair : this->context->getAllInputAudioBuffers()) {
-    pair.second.clear();
-  }
-
-  for (auto& pair : this->context->getAllInputEventBuffers()) {
-    pair.second->clear();
-  }
-
-  for (auto& pair : this->context->getAllOutputEventBuffers()) {
-    pair.second->clear();
-  }
+  this->context->clearBuffers();
 }
 
 void ClearBuffersAction::debugPrint() {

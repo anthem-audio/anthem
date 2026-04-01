@@ -21,7 +21,7 @@
 
 #ifndef __EMSCRIPTEN__
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 #include "modules/core/anthem.h"
 #include "generated/lib/model/model.h"
@@ -87,7 +87,7 @@ void VST3Processor::prepareToProcess() {
   tryInitializePlugin();
 }
 
-void VST3Processor::process(AnthemProcessContext& context, int numSamples) {
+void VST3Processor::process(AnthemNodeProcessContext& context, int numSamples) {
   (void) numSamples;
 
   auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);

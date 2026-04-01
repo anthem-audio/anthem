@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,7 @@
 
 #include "master_output.h"
 #include "modules/core/anthem.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
@@ -44,7 +44,7 @@ void MasterOutputProcessor::prepareToProcess() {
   buffer = juce::AudioSampleBuffer(outputChannels, bufferSize);
 }
 
-void MasterOutputProcessor::process(AnthemProcessContext& context, int numSamples) {
+void MasterOutputProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   auto& inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {

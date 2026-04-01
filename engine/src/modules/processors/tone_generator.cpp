@@ -22,7 +22,7 @@
 #include <iostream>
 #include <cmath>
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 #include "modules/core/anthem.h"
 
@@ -47,7 +47,7 @@ void ToneGeneratorProcessor::prepareToProcess() {
   sampleRate = currentDevice->getCurrentSampleRate();
 }
 
-void ToneGeneratorProcessor::process(AnthemProcessContext& context, int numSamples) {
+void ToneGeneratorProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   auto& audioOutBuffer = context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
 
   auto& frequencyControlBuffer = context.getInputControlBuffer(ToneGeneratorProcessorModelBase::frequencyPortId);

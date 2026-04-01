@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,12 +19,23 @@
 
 #pragma once
 
+#include "modules/processors/balance.h"
+#include "modules/processors/db_meter.h"
+#include "modules/processors/gain.h"
+#include "modules/processors/live_event_provider.h"
+#include "modules/processors/master_output.h"
+#include "modules/processors/sequence_note_provider.h"
+#include "modules/processors/simple_midi_generator.h"
+#include "modules/processors/simple_volume_lfo.h"
+#include "modules/processors/tone_generator.h"
+#include "modules/processors/vst3_processor.h"
+#include "modules/processing_graph/model/node_port.h"
 #include "generated/lib/model/processing_graph/node.h"
 
 #include <optional>
 #include <cstdint>
 
-class AnthemProcessContext;
+class AnthemNodeProcessContext;
 class AnthemProcessor;
 
 class Node : public NodeModelBase {
@@ -50,7 +61,7 @@ public:
   // This field is always updated with a new pointer before the graph update is
   // sent to the audio thread, and the old pointer will not be freed until this
   // happens, so there is no risk of use-after-free.
-  std::optional<AnthemProcessContext*> runtimeContext;
+  std::optional<AnthemNodeProcessContext*> runtimeContext;
 
   Node(const NodeModelImpl& _impl) : NodeModelBase(_impl) {}
   ~Node() {}

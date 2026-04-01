@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/processors/db_meter.h"
 #include "modules/core/visualization/visualization_provider.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 #include "modules/util/ring_buffer.h"
@@ -79,7 +79,7 @@ public:
   DbMeterProcessor& operator=(DbMeterProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 
   void initialize(
     std::shared_ptr<AnthemModelBase> selfModel,

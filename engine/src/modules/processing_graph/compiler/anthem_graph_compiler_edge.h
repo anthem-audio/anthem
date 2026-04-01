@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,10 +23,11 @@
 
 #include <juce_core/juce_core.h>
 
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/node_port_config.h"
 #include "modules/processing_graph/model/node_connection.h"
 
 class AnthemGraphNodeConnection;
+class AnthemNodeProcessContext;
 
 class AnthemGraphCompilerEdge {
 private:
@@ -35,9 +36,9 @@ public:
   // The edge in the node graph
   std::shared_ptr<NodeConnection> edgeSource;
 
-  AnthemProcessContext* sourceNodeContext;
+  AnthemNodeProcessContext* sourceNodeContext;
 
-  AnthemProcessContext* destinationNodeContext;
+  AnthemNodeProcessContext* destinationNodeContext;
 
   // The type of this edge
   NodePortDataType type;
@@ -47,8 +48,8 @@ public:
 
   AnthemGraphCompilerEdge(
     std::shared_ptr<NodeConnection> edge,
-    AnthemProcessContext* sourceNodeContext,
-    AnthemProcessContext* destinationNodeContext,
+    AnthemNodeProcessContext* sourceNodeContext,
+    AnthemNodeProcessContext* destinationNodeContext,
     NodePortDataType type
   ) : edgeSource(edge), sourceNodeContext(sourceNodeContext), destinationNodeContext(destinationNodeContext), type(type) {}
 };

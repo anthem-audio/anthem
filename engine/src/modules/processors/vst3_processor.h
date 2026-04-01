@@ -25,7 +25,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/processors/vst3_processor.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
 class PluginEditorWindow : public juce::DocumentWindow {
@@ -184,7 +184,7 @@ public:
   VST3Processor& operator=(VST3Processor&&) noexcept = delete;
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 
   void initialize(
     std::shared_ptr<AnthemModelBase> selfModel,

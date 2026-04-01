@@ -19,6 +19,8 @@
 
 #include "live_event_provider.h"
 
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+
 LiveEventProviderProcessor::LiveEventProviderProcessor(
   const LiveEventProviderProcessorModelImpl& _impl
 ) : AnthemProcessor("LiveEventProvider"),
@@ -47,7 +49,7 @@ void LiveEventProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
 }
 
 void LiveEventProviderProcessor::rt_handleLiveNoteOn(
-  AnthemProcessContext& context,
+  AnthemNodeProcessContext& context,
   std::unique_ptr<AnthemEventBuffer>& targetBuffer,
   AnthemLiveInputNoteId inputId,
   const AnthemNoteOnEvent& noteOnEvent,
@@ -101,7 +103,7 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOff(
 }
 
 void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
-  AnthemProcessContext& context,
+  AnthemNodeProcessContext& context,
   std::unique_ptr<AnthemEventBuffer>& targetBuffer
 ) {
   while (true) {
@@ -145,7 +147,7 @@ void LiveEventProviderProcessor::addLiveInputEvent(AnthemLiveInputEvent event) {
 void LiveEventProviderProcessor::prepareToProcess() {}
 
 void LiveEventProviderProcessor::process(
-  AnthemProcessContext& context,
+  AnthemNodeProcessContext& context,
   int /*numSamples*/
 ) {
   auto& outputEventBuffer = context.getOutputEventBuffer(

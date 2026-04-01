@@ -25,8 +25,9 @@
 
 #include <juce_core/juce_core.h>
 
-#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
+#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/model/node.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
@@ -45,20 +46,9 @@ public:
     >
   > actionGroups;
 
-  // This contains all process contexts. These are used in a number of different
-  // actions, and are (among other things) provided to processors when process()
-  // is called. Since there is no obvious owner, these are owned by the root
-  // compilation result, because they become invalid and must be deallocated
-  // when the compilation result is deallocated.
-  //
-  // This would be a great use-case for std::shared_ptr, but std::shared_ptr
-  // uses standard thread synchronization mechanisms and so isn't real-time
-  // safe.
-  std::vector<
-    std::unique_ptr<
-      AnthemProcessContext
-    >
-  > processContexts;
+  // Owns all graph-scoped runtime storage for this compiled graph, including
+  // the node process contexts that point into that storage.
+  std::unique_ptr<AnthemGraphProcessContext> graphProcessContext;
 
   // This contains a shared_ptr reference to each graph node that was present
   // when this context was created.

@@ -22,6 +22,7 @@
 #include <optional>
 
 #include "modules/core/anthem.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
 SequenceNoteProviderProcessor::SequenceNoteProviderProcessor(
@@ -61,7 +62,7 @@ void SequenceNoteProviderProcessor::rt_emitLiveNoteOffsForAllTrackedNotes(
 }
 
 void SequenceNoteProviderProcessor::rt_handleSequenceNoteOn(
-  AnthemProcessContext& context,
+  AnthemNodeProcessContext& context,
   std::unique_ptr<AnthemEventBuffer>& targetBuffer,
   AnthemSourceNoteId sourceId,
   const AnthemNoteOnEvent& noteOnEvent,
@@ -115,7 +116,7 @@ void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(
 }
 
 void SequenceNoteProviderProcessor::rt_addEventsForJump(
-  AnthemProcessContext& context,
+  AnthemNodeProcessContext& context,
   std::unique_ptr<AnthemEventBuffer>& targetBuffer,
   const PlayheadJumpEvent& event,
   double sampleTimeOffset
@@ -143,7 +144,7 @@ void SequenceNoteProviderProcessor::prepareToProcess() {
 }
 
 void SequenceNoteProviderProcessor::process(
-  AnthemProcessContext& context,
+  AnthemNodeProcessContext& context,
   int numSamples
 ) {
   auto& outputEventBuffer = context.getOutputEventBuffer(

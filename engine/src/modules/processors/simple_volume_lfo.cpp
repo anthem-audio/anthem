@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,7 +19,7 @@
 
 #include "simple_volume_lfo.h"
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 SimpleVolumeLfoProcessor::SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcessorModelImpl& _impl)
   : AnthemProcessor("SimpleVolumeLfo"), SimpleVolumeLfoProcessorModelBase(_impl) {
@@ -31,7 +31,7 @@ SimpleVolumeLfoProcessor::~SimpleVolumeLfoProcessor() {}
 
 void SimpleVolumeLfoProcessor::prepareToProcess() {}
 
-void SimpleVolumeLfoProcessor::process(AnthemProcessContext& context, int numSamples) {
+void SimpleVolumeLfoProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   auto& inputBuffer = context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
   auto& outputBuffer = context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);
 

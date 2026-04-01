@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "modules/processing_graph/model/node_connection.h"
+#include "modules/processing_graph/model/node.h"
 #include "generated/lib/model/project.h"
 #include "sequencer.h"
 
