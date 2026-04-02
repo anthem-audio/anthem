@@ -156,6 +156,23 @@ String getModelSyncFn(ModelClassInfo context) {
   return writer.result.toString();
 }
 
+bool _shouldMoveTemporaryValue(ModelType type) {
+  return switch (type) {
+    IntModelType() ||
+    DoubleModelType() ||
+    NumModelType() ||
+    BoolModelType() ||
+    EnumModelType() ||
+    ColorModelType() => false,
+    StringModelType() ||
+    ListModelType() ||
+    MapModelType() ||
+    CustomModelType() ||
+    UnionModelType() ||
+    UnknownModelType() => true,
+  };
+}
+
 void _writeInvalidAccessWarning({
   required Writer writer,
   required ModelType type,
@@ -392,8 +409,11 @@ void _writeUpdate({
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
       );
+      final itemInsertValue = _shouldMoveTemporaryValue(type.itemType)
+          ? 'std::move(itemResult)'
+          : 'itemResult';
       writer.writeLine(
-        '$fieldAccessExpression->insert($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));',
+        '$fieldAccessExpression->insert($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), $itemInsertValue);',
       );
       writer.decrementWhitespace();
       writer.writeLine('} else {');
