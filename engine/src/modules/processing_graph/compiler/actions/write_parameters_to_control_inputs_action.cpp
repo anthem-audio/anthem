@@ -42,5 +42,5 @@ void WriteParametersToControlInputsAction::execute(int numSamples) {
 
 void WriteParametersToControlInputsAction::debugPrint() {
   std::cout << "WriteParametersToControlInputsAction: " << processContext->getGraphNode()->id()
-            << std::endl;
+            << '\n';
 }

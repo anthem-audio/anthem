@@ -68,9 +68,9 @@ public:
 
   void debugPrint() {
     juce::Logger::writeToLog("AnthemGraphCompilationResult");
-    std::cout << actionGroups.size() << " action groups" << std::endl;
+    std::cout << actionGroups.size() << " action groups" << '\n';
     for (auto& group : actionGroups) {
-      std::cout << "  ActionGroup" << std::endl << "  ";
+      std::cout << "  ActionGroup" << '\n' << "  ";
       for (auto& action : *group) {
         action->debugPrint();
       }

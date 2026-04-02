@@ -38,7 +38,7 @@ void NodePort::initialize(std::shared_ptr<AnthemModelBase> selfModel,
       if (!success) {
         std::cout
             << "Warning: failed to send parameter value update to audio thread. This is a bug."
-            << std::endl;
+            << '\n';
       }
     });
 
@@ -49,7 +49,7 @@ void NodePort::initialize(std::shared_ptr<AnthemModelBase> selfModel,
       if (!success) {
         std::cout << "Warning: failed to send initial parameter value to audio thread. This "
                      "indicates an unexpected timing issue and should be addressed."
-                  << std::endl;
+                  << '\n';
       }
     }
   }

@@ -29,5 +29,5 @@ void ProcessNodeAction::execute(int numSamples) {
 
 void ProcessNodeAction::debugPrint() {
   std::cout << "ProcessNodeAction for node with ID: " << this->context->getGraphNode()->id()
-            << std::endl;
+            << '\n';
 }

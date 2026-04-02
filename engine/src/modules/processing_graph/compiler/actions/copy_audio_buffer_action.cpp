@@ -43,5 +43,5 @@ void CopyAudioBufferAction::execute(int numSamples) {
 
 void CopyAudioBufferAction::debugPrint() {
   std::cout << "CopyAudioBufferAction: " << this->source->getGraphNode()->id() << " -> "
-            << this->destination->getGraphNode()->id() << std::endl;
+            << this->destination->getGraphNode()->id() << '\n';
 }

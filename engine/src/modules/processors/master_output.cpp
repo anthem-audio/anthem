@@ -34,7 +34,7 @@ void MasterOutputProcessor::prepareToProcess() {
   auto* device = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
   if (!device) {
     jassertfalse;
-    std::cerr << "Error: No audio device is currently set." << std::endl;
+    std::cerr << "Error: No audio device is currently set." << '\n';
     return;
   }
 
