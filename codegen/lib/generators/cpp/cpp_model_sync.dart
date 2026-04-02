@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -71,7 +71,7 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('if (self.expired()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": model has been deleted." << std::endl;',
+    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": model has been deleted." << \'\\n\';',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -87,7 +87,7 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('if (!fieldNameNullable.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": field name is null." << std::endl;',
+    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": field name is null." << \'\\n\';',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -144,7 +144,7 @@ String getModelSyncFn(ModelClassInfo context) {
     writer.writeLine('else {');
     writer.incrementWhitespace();
     writer.writeLine(
-      'std::cout << "Unexpected field name \\"" << fieldName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << std::endl;',
+      'std::cout << "Unexpected field name \\"" << fieldName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << \'\\n\';',
     );
     writer.decrementWhitespace();
     writer.writeLine('}');
@@ -163,13 +163,13 @@ void _writeInvalidAccessWarning({
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
-    'std::cout << "Invalid field access: \\"$fieldAccessExpression\\", on model \\"${context.annotatedClass.name}\\"" << std::endl;',
+    'std::cout << "Invalid field access: \\"$fieldAccessExpression\\", on model \\"${context.annotatedClass.name}\\"" << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "The accessor \\"$fieldAccessExpression\\" does not point to an Anthem model or collection of Anthem models, so the update could not be forwarded." << std::endl;',
+    'std::cout << "The accessor \\"$fieldAccessExpression\\" does not point to an Anthem model or collection of Anthem models, so the update could not be forwarded." << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "\\"$fieldAccessExpression\\" is of type \\"${type.dartName}\\"." << std::endl;',
+    'std::cout << "\\"$fieldAccessExpression\\" is of type \\"${type.dartName}\\"." << \'\\n\';',
   );
 }
 
@@ -181,10 +181,10 @@ void _writeSerializedValueNullCheck({
   writer.writeLine('if (!request.serializedValue.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"." << std::endl;',
+    'std::cout << "Error updating accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"." << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "Serialized value is null, but shouldn\'t be in this context." << std::endl;',
+    'std::cout << "Serialized value is null, but shouldn\'t be in this context." << \'\\n\';',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -221,10 +221,10 @@ void _writeUpdateTypeInvalidError({
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
-    'std::cout << "Invalid update type for accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"" << std::endl;',
+    'std::cout << "Invalid update type for accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"" << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << std::endl;',
+    'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << \'\\n\';',
   );
 }
 
@@ -239,7 +239,7 @@ void _writeJsonResultCheck({
   writer.writeLine('if (!$resultVariable.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << $resultVariable.error().what() << std::endl;',
+    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << \'\\n\' << $resultVariable.error().what() << \'\\n\';',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -358,7 +358,7 @@ void _writeUpdate({
       );
       writer.incrementWhitespace();
       writer.writeLine(
-        'std::cout << "Error processing list update for setter \\"${createFieldSetter("[value here]")}\\": list index is null." << std::endl;',
+        'std::cout << "Error processing list update for setter \\"${createFieldSetter("[value here]")}\\": list index is null." << \'\\n\';',
       );
       writer.writeLine('return;');
       writer.decrementWhitespace();
@@ -671,7 +671,7 @@ void _writeUpdate({
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          'std::cout << "The value at accessor $fieldAccessExpression is null, so the update could not be forwarded." << std::endl;',
+          'std::cout << "The value at accessor $fieldAccessExpression is null, so the update could not be forwarded." << \'\\n\';',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
@@ -700,7 +700,7 @@ void _writeKeyDeserialize({
     writer.writeLine('if (!$keyExpression.has_value()) {');
     writer.incrementWhitespace();
     writer.writeLine(
-      'std::cout << "Error deserializing map key: key is null." << std::endl;',
+      'std::cout << "Error deserializing map key: key is null." << \'\\n\';',
     );
     writer.writeLine('return;');
     writer.decrementWhitespace();
