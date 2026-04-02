@@ -50,7 +50,7 @@ void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
 }
 
 void AnthemGraphProcessor::process(int numSamples) {
-  auto nextCompilationResult = std::move(this->processingStepsQueue.read());
+  auto nextCompilationResult = this->processingStepsQueue.read();
 
   while (nextCompilationResult) {
     juce::Logger::writeToLog("Audio thread: New compilation result found, replacing old one");

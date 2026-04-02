@@ -202,7 +202,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
                                                          0.0f))};
               // liveEvent.event.noteOn.pan = eventFromRequest.pan;
 
-              liveEventProvider->addLiveInputEvent(std::move(liveInputEvent));
+              liveEventProvider->addLiveInputEvent(liveInputEvent);
             } else if constexpr (std::is_same_v<
                                      EventType,
                                      rfl::Field<"LiveEventRequestNoteOffEvent",

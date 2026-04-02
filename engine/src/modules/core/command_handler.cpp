@@ -90,7 +90,7 @@ void CommandHandler::processNextCommand() {
     auto exitReply =
         ExitReply{.responseBase = ResponseBase{.id = requestAsExit.requestBase.get().id}};
 
-    response = std::optional(std::move(exitReply));
+    response = std::optional(exitReply);
 
     isExit = true;
   }
@@ -101,7 +101,7 @@ void CommandHandler::processNextCommand() {
     auto heartbeatReply =
         HeartbeatReply{.responseBase = ResponseBase{.id = requestAsHeartbeat.requestBase.get().id}};
 
-    response = std::optional(std::move(heartbeatReply));
+    response = std::optional(heartbeatReply);
   }
 
   else if (rfl::holds_alternative<EngineReadyCheckRequest>(request.variant())) {

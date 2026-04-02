@@ -104,7 +104,7 @@ void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
 }
 
 void LiveEventProviderProcessor::addLiveInputEvent(AnthemLiveInputEvent event) {
-  liveInputEventBuffer->add(std::move(event));
+  liveInputEventBuffer->add(event);
 }
 
 void LiveEventProviderProcessor::prepareToProcess() {}
