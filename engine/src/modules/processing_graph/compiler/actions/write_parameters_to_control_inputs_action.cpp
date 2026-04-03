@@ -24,7 +24,7 @@
 void WriteParametersToControlInputsAction::execute(int numSamples) {
   for (auto& parameter : processContext->rt_getInputParameterBindings()) {
     auto value = parameter.value->load();
-    jassert(value >= 0.0f && value <= 1.0f);
+    jassert(juce::jlimit(0.0f, 1.0f, value) == value);
 
     if (parameter.rt_smoother->getTargetValue() != value) {
       parameter.rt_smoother->setTargetValue(value);
@@ -34,7 +34,7 @@ void WriteParametersToControlInputsAction::execute(int numSamples) {
     for (int sample = 0; sample < numSamples; sample++) {
       parameter.rt_smoother->process(1.0f / sampleRate);
       auto currentValue = parameter.rt_smoother->getCurrentValue();
-      jassert(currentValue >= 0.0f && currentValue <= 1.0f);
+      jassert(juce::jlimit(0.0f, 1.0f, currentValue) == currentValue);
       controlBuffer.setSample(0, sample, currentValue);
     }
   }

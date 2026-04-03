@@ -77,8 +77,8 @@ void ToneGeneratorProcessor::process(AnthemNodeProcessContext& context, int numS
   for (int sample = 0; sample < numSamples; ++sample) {
     auto normalizedFrequency = frequencyControlBuffer.getReadPointer(0)[sample];
     auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
-    jassert(normalizedFrequency >= 0.0f && normalizedFrequency <= 1.0f);
-    jassert(amplitude >= 0.0f && amplitude <= 1.0f);
+    jassert(juce::jlimit(0.0f, 1.0f, normalizedFrequency) == normalizedFrequency);
+    jassert(juce::jlimit(0.0f, 1.0f, amplitude) == amplitude);
 
     auto frequency = normalizedFrequency * (kMaxFrequencyHz - kMinFrequencyHz) + kMinFrequencyHz;
 

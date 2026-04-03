@@ -39,7 +39,7 @@ void BalanceProcessor::process(AnthemNodeProcessContext& context, int numSamples
 
   for (int sample = 0; sample < numSamples; sample++) {
     auto normalizedValue = balanceControlBuffer.getReadPointer(0)[sample];
-    jassert(normalizedValue >= 0.0f && normalizedValue <= 1.0f);
+    jassert(juce::jlimit(0.0f, 1.0f, normalizedValue) == normalizedValue);
     auto pan = normalizedValue * 2.0f - 1.0f;
 
     auto gainR = juce::jmin(1.0f - pan, 1.0f);

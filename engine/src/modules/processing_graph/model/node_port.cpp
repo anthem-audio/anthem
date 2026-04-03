@@ -56,7 +56,7 @@ void NodePort::initialize(std::shared_ptr<AnthemModelBase> selfModel,
 }
 
 bool NodePort::trySendParameterValueToAudioThread(double value) {
-  jassert(value >= 0.0 && value <= 1.0);
+  jassert(juce::jlimit(0.0, 1.0, value) == value);
 
   std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
 
