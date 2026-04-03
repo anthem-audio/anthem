@@ -178,6 +178,17 @@ bool _shouldMoveTemporaryValue(ModelType type) {
   };
 }
 
+bool _supportsNestedAnthemModelAccess(ModelType type) {
+  return type is CustomModelType ||
+      type is ListModelType ||
+      type is MapModelType;
+}
+
+bool _shouldSkipSubtypeOnWasm(ModelType type) {
+  return type is CustomModelType &&
+      type.modelClassInfo.annotation?.skipOnWasm == true;
+}
+
 void _writeInvalidAccessWarning({
   required Writer writer,
   required ModelType type,
@@ -287,6 +298,102 @@ String _writeJsonReadResult({
   );
 
   return resultVariable;
+}
+
+/// Writes a single `if constexpr (...) { ... }` block for the union members
+/// that can participate in Anthem's recursive model logic.
+///
+/// The generated C++ visitors usually want to do the same thing for every
+/// model-like union case. For example:
+/// - `Node.processor` should initialize whichever processor model is active
+/// - a nested update like `processor.someField` should forward into whichever
+///   processor model is active
+///
+/// Older codegen emitted one `if constexpr / else if constexpr` branch per
+/// union member even though each branch had the same body. Clang-tidy then
+/// flagged those as cloned branches. This helper collapses those cases into a
+/// single condition like:
+///
+/// `if constexpr (is Foo || is Bar || is Baz) { shared_body(); }`
+///
+/// `subTypes` should already be filtered down to the union members that really
+/// support recursive model access. Primitive cases like `int` should never be
+/// included here because they do not have `initialize(...)` or
+/// `handleModelUpdate(...)`.
+///
+/// The only complication is `skipOnWasm`: some union members exist on desktop
+/// builds but are compiled out for Emscripten. We preserve that behavior by
+/// splitting the condition into:
+/// - members that are always available
+/// - members that must sit behind `#ifndef __EMSCRIPTEN__`
+void _writeUnionModelSubtypeBlock({
+  required Writer writer,
+  required String variantNameType,
+  required List<ModelType> subTypes,
+  required void Function() writeBody,
+}) {
+  final regularSubTypes = subTypes
+      .where((t) => !_shouldSkipSubtypeOnWasm(t))
+      .toList();
+  final wasmSkippedSubTypes = subTypes.where(_shouldSkipSubtypeOnWasm).toList();
+
+  if (regularSubTypes.isEmpty && wasmSkippedSubTypes.isEmpty) {
+    return;
+  }
+
+  // If every eligible subtype is desktop-only, the whole block can disappear
+  // on Emscripten instead of threading preprocessor guards through the
+  // condition itself.
+  final wrapWholeBlockInIfndef = regularSubTypes.isEmpty;
+
+  if (wrapWholeBlockInIfndef) {
+    writer.writeLine('#ifndef __EMSCRIPTEN__');
+    writer.incrementWhitespace();
+  }
+
+  writer.writeLine('if constexpr (');
+  writer.incrementWhitespace();
+
+  var wroteCondition = false;
+
+  void writeConditionLine(ModelType subType) {
+    writer.writeLine(
+      '${wroteCondition ? '|| ' : ''}std::is_same<$variantNameType, rfl::Literal<"${subType.dartName}">>()',
+    );
+    wroteCondition = true;
+  }
+
+  for (final subType in regularSubTypes) {
+    writeConditionLine(subType);
+  }
+
+  // If we have a mix of always-available and desktop-only subtypes, only the
+  // desktop-only tag checks need to be hidden from the WASM build.
+  if (wasmSkippedSubTypes.isNotEmpty && !wrapWholeBlockInIfndef) {
+    writer.writeLine('#ifndef __EMSCRIPTEN__');
+    writer.incrementWhitespace();
+  }
+
+  for (final subType in wasmSkippedSubTypes) {
+    writeConditionLine(subType);
+  }
+
+  if (wasmSkippedSubTypes.isNotEmpty && !wrapWholeBlockInIfndef) {
+    writer.decrementWhitespace();
+    writer.writeLine('#endif');
+  }
+
+  writer.decrementWhitespace();
+  writer.writeLine(') {');
+  writer.incrementWhitespace();
+  writeBody();
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+
+  if (wrapWholeBlockInIfndef) {
+    writer.decrementWhitespace();
+    writer.writeLine('#endif');
+  }
 }
 
 String _writeRequiredOptionalValueBinding({
@@ -855,6 +962,9 @@ void _writeUpdate({
         final handleVariantName = writer.nextIdentifier('handle_variant');
         final variantFieldName = writer.nextIdentifier('variant_field');
         final variantNameType = writer.nextIdentifier('variant_name');
+        final nestedModelSubTypes = type.subTypes
+            .where(_supportsNestedAnthemModelAccess)
+            .toList();
         writer.writeLine(
           'const auto $handleVariantName = [&](const auto& $variantFieldName) {',
         );
@@ -863,43 +973,16 @@ void _writeUpdate({
           'using $variantNameType = typename std::decay_t<decltype($variantFieldName)>::Name;',
         );
 
-        var isFirst = true;
-        final skipAnyOnWasm = type.subTypes.any(
-          (t) =>
-              (t is CustomModelType &&
-              t.modelClassInfo.annotation?.skipOnWasm == true),
+        _writeUnionModelSubtypeBlock(
+          writer: writer,
+          variantNameType: variantNameType,
+          subTypes: nestedModelSubTypes,
+          writeBody: () {
+            writer.writeLine(
+              '$variantFieldName.value()->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
+            );
+          },
         );
-        if (skipAnyOnWasm) {
-          // Hack: Allow skipping any case just by omitting it
-          writer.writeLine('if (false) {}');
-        }
-        for (final subType in type.subTypes) {
-          final skipOnWasm =
-              subType is CustomModelType &&
-              subType.modelClassInfo.annotation?.skipOnWasm == true;
-
-          if (skipOnWasm) {
-            writer.writeLine('#ifndef __EMSCRIPTEN__');
-            writer.incrementWhitespace();
-          }
-
-          writer.writeLine(
-            '${(isFirst && !skipAnyOnWasm) ? '' : 'else '}if constexpr (std::is_same<$variantNameType, rfl::Literal<"${subType.dartName}">>()) {',
-          );
-          writer.incrementWhitespace();
-          writer.writeLine(
-            '$variantFieldName.value()->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
-          );
-          writer.decrementWhitespace();
-          writer.writeLine('}');
-
-          if (skipOnWasm) {
-            writer.decrementWhitespace();
-            writer.writeLine('#endif');
-          }
-
-          isFirst = false;
-        }
 
         writer.decrementWhitespace();
         writer.writeLine('};');
@@ -1072,6 +1155,9 @@ void writeParentSetterForType({
   } else if (type is UnionModelType) {
     final variantItemName = writer.nextIdentifier('variant_item');
     final variantNameType = writer.nextIdentifier('variant_name');
+    final initializedSubTypes = type.subTypes
+        .where(_supportsNestedAnthemModelAccess)
+        .toList();
 
     writer.writeLine('rfl::visit([&](auto& $variantItemName) {');
     writer.incrementWhitespace();
@@ -1080,28 +1166,16 @@ void writeParentSetterForType({
       'using $variantNameType = typename std::decay_t<decltype($variantItemName)>::Name;',
     );
 
-    bool isFirst = true;
-    for (final subType in type.subTypes) {
-      // If the subtype does not inherit from AnthemModelBase, then we
-      // don't need to do anything with it.
-      if (subType is! CustomModelType &&
-          subType is! ListModelType &&
-          subType is! MapModelType) {
-        continue;
-      }
-
-      writer.writeLine(
-        '${isFirst ? '' : 'else '}if constexpr (std::is_same<$variantNameType, rfl::Literal<"${subType.dartName}">>()) {',
-      );
-      writer.incrementWhitespace();
-      writer.writeLine(
-        '$variantItemName.value()->initialize($variantItemName.value(), $parentAccessor);',
-      );
-      writer.decrementWhitespace();
-      writer.writeLine('}');
-
-      isFirst = false;
-    }
+    _writeUnionModelSubtypeBlock(
+      writer: writer,
+      variantNameType: variantNameType,
+      subTypes: initializedSubTypes,
+      writeBody: () {
+        writer.writeLine(
+          '$variantItemName.value()->initialize($variantItemName.value(), $parentAccessor);',
+        );
+      },
+    );
 
     writer.decrementWhitespace();
     writer.writeLine('}, $resolvedFieldAccessor);');
