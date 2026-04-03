@@ -83,6 +83,15 @@ class _BuildEngineCommand extends Command<dynamic> {
       help:
           'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
     );
+
+    if (Platform.isWindows) {
+      argParser.addFlag(
+        'clang',
+        defaultsTo: false,
+        help:
+            'On Windows desktop builds, uses the Ninja generator with clang/clang++ instead of the default MSVC generator. Useful for warning checks and clang-tidy.',
+      );
+    }
   }
 
   @override
@@ -92,6 +101,7 @@ class _BuildEngineCommand extends Command<dynamic> {
     final addressSanitizer = argResults!['address-sanitizer'] as bool;
     final wasm = argResults!['wasm'] as bool;
     final skipConfiguration = argResults!['skip-configuration'] as bool;
+    final useClang = Platform.isWindows ? argResults!['clang'] as bool : false;
 
     if (release && debug) {
       print(
@@ -111,6 +121,15 @@ class _BuildEngineCommand extends Command<dynamic> {
       print(
         Colorize(
           'Error: Cannot build in release mode with address sanitizer enabled.',
+        )..red(),
+      );
+      return;
+    }
+
+    if (wasm && useClang) {
+      print(
+        Colorize(
+          'Error: The --clang flag is only for desktop builds. Use --wasm without it for the Emscripten path.',
         )..red(),
       );
       return;
@@ -148,16 +167,19 @@ Some things to keep in mind:
 ''',
     );
 
-    var buildDirectoryName = 'build';
-    if (wasm) buildDirectoryName += '_wasm';
-    if (release) buildDirectoryName += '_release';
-    if (addressSanitizer) buildDirectoryName += '_asan';
+    final buildDirectoryName = _getBuildDirectoryName(
+      wasm: wasm,
+      release: release,
+      addressSanitizer: addressSanitizer,
+      useClang: useClang,
+    );
 
     await _buildCmakeTarget(
       'AnthemEngine',
       wasm: wasm,
       addressSanitizer: addressSanitizer,
       debug: debug,
+      useClang: useClang,
       buildDirectoryName: buildDirectoryName,
       skipConfiguration: skipConfiguration,
     );
@@ -202,8 +224,9 @@ Some things to keep in mind:
         Colorize('Copying engine binary to Flutter assets directory...')
           ..lightGreen(),
       );
-      final engineBinaryPath = packageRootPath.resolve(
-        'engine/$buildDirectoryName/AnthemEngine_artefacts${debug ? '/Debug' : '/Release'}/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+      final engineBinaryPath = _getEngineBinaryLocation(
+        buildDirectoryName: buildDirectoryName,
+        debug: debug,
       );
       final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
 
@@ -304,6 +327,17 @@ class _CleanEngineCommand extends Command<dynamic> {
 }
 
 class _EngineUnitTestCommand extends Command<dynamic> {
+  _EngineUnitTestCommand() {
+    if (Platform.isWindows) {
+      argParser.addFlag(
+        'clang',
+        defaultsTo: false,
+        help:
+            'On Windows, uses the Ninja generator with clang/clang++ instead of the default MSVC generator.',
+      );
+    }
+  }
+
   @override
   String get name => 'unit-test';
 
@@ -314,11 +348,25 @@ class _EngineUnitTestCommand extends Command<dynamic> {
   Future<void> run() async {
     print(Colorize('Running tests for the Anthem engine...')..lightGreen());
 
-    await _buildCmakeTarget('AnthemTest', debug: true);
+    final useClang = Platform.isWindows ? argResults!['clang'] as bool : false;
+    final buildDirectoryName = _getBuildDirectoryName(
+      wasm: false,
+      release: false,
+      addressSanitizer: false,
+      useClang: useClang,
+    );
 
-    final packageRootPath = getPackageRootPath();
-    final testExecutableLocation = packageRootPath.resolve(
-      'engine/build${Platform.isWindows ? '/Debug' : ''}/AnthemTest${Platform.isWindows ? '.exe' : ''}',
+    await _buildCmakeTarget(
+      'AnthemTest',
+      debug: true,
+      useClang: useClang,
+      buildDirectoryName: buildDirectoryName,
+    );
+
+    final testExecutableLocation = _getEngineTestBinaryLocation(
+      buildDirectoryName: buildDirectoryName,
+      debug: true,
+      useClang: useClang,
     );
 
     final testProcess = await Process.start(
@@ -365,6 +413,7 @@ Future<void> _buildCmakeTarget(
   bool wasm = false,
   bool addressSanitizer = false,
   bool debug = false,
+  bool useClang = false,
   bool skipConfiguration = false,
   String buildDirectoryName = 'build',
 }) async {
@@ -389,6 +438,10 @@ Future<void> _buildCmakeTarget(
   final packageRootPath = getPackageRootPath();
 
   final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');
+  final usesSingleConfigBuild = _usesSingleConfigBuild(
+    wasm: wasm,
+    useClang: useClang,
+  );
 
   if (!skipConfiguration) {
     print(Colorize('Creating build directory...')..lightGreen());
@@ -398,6 +451,7 @@ Future<void> _buildCmakeTarget(
     final cmakeCommand = [
       if (wasm) 'emcmake',
       'cmake',
+      if (Platform.isWindows && useClang && !wasm) ...['-G', 'Ninja'],
 
       // Note: On Linux, if you get an error like: CMake Warning:
       // Manually-specified variables were not used by the project:
@@ -407,7 +461,7 @@ Future<void> _buildCmakeTarget(
       // Then you may need to set the debug/release flag in the same way that
       // Windows does below in the build command. E.g.:
       //     cmake --build . --config (Release/Debug)
-      if (Platform.isLinux || Platform.isMacOS || wasm)
+      if (usesSingleConfigBuild)
         '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
 
       if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
@@ -457,6 +511,8 @@ Future<void> _buildCmakeTarget(
         environment: {
           if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
           if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
+          if (Platform.isWindows && useClang && !wasm) 'CC': 'clang',
+          if (Platform.isWindows && useClang && !wasm) 'CXX': 'clang++',
         },
         mode: ProcessStartMode.inheritStdio,
       );
@@ -477,10 +533,8 @@ Future<void> _buildCmakeTarget(
     '.',
     '--target',
     target,
-    // For macOS, I think these are ignored, but they don't seem to break
-    // anything.
-    if (Platform.isWindows || Platform.isMacOS) '--config',
-    if (Platform.isWindows || Platform.isMacOS) debug ? 'Debug' : 'Release',
+    if (!usesSingleConfigBuild) '--config',
+    if (!usesSingleConfigBuild) debug ? 'Debug' : 'Release',
   ];
 
   final Process buildProcess;
@@ -509,4 +563,60 @@ Future<void> _buildCmakeTarget(
   }
 
   print(Colorize('\n\nBuild complete.').lightGreen());
+}
+
+String _getBuildDirectoryName({
+  required bool wasm,
+  required bool release,
+  required bool addressSanitizer,
+  required bool useClang,
+}) {
+  var buildDirectoryName = 'build';
+  if (useClang) buildDirectoryName += '_clang';
+  if (wasm) buildDirectoryName += '_wasm';
+  if (release) buildDirectoryName += '_release';
+  if (addressSanitizer) buildDirectoryName += '_asan';
+  return buildDirectoryName;
+}
+
+bool _usesSingleConfigBuild({required bool wasm, required bool useClang}) {
+  return Platform.isLinux ||
+      Platform.isMacOS ||
+      wasm ||
+      (Platform.isWindows && useClang);
+}
+
+Uri _getEngineBinaryLocation({
+  required String buildDirectoryName,
+  required bool debug,
+}) {
+  final packageRootPath = getPackageRootPath();
+  final binaryName = 'AnthemEngine${Platform.isWindows ? '.exe' : ''}';
+
+  if (Platform.isWindows) {
+    return packageRootPath.resolve(
+      'engine/$buildDirectoryName/AnthemEngine_artefacts${debug ? '/Debug' : '/Release'}/$binaryName',
+    );
+  }
+
+  return packageRootPath.resolve(
+    'engine/$buildDirectoryName/AnthemEngine_artefacts/$binaryName',
+  );
+}
+
+Uri _getEngineTestBinaryLocation({
+  required String buildDirectoryName,
+  required bool debug,
+  required bool useClang,
+}) {
+  final packageRootPath = getPackageRootPath();
+  final binaryName = 'AnthemTest${Platform.isWindows ? '.exe' : ''}';
+
+  if (Platform.isWindows && !useClang) {
+    return packageRootPath.resolve(
+      'engine/$buildDirectoryName/${debug ? 'Debug' : 'Release'}/$binaryName',
+    );
+  }
+
+  return packageRootPath.resolve('engine/$buildDirectoryName/$binaryName');
 }
