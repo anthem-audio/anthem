@@ -76,9 +76,9 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('return;');
   writer.decrementWhitespace();
   writer.writeLine('}');
-  final selfPtrName = writer.nextIdentifier('self_ptr');
-  final fieldNameNullableName = writer.nextIdentifier('field_name_nullable');
-  final fieldNameName = writer.nextIdentifier('field_name');
+  final selfPtrName = writer.nextIdentifier('selfPtr');
+  final fieldNameNullableName = writer.nextIdentifier('fieldNameNullable');
+  final fieldNameName = writer.nextIdentifier('fieldName');
 
   writer.writeLine('auto $selfPtrName = this->self.lock();');
 
@@ -406,7 +406,7 @@ String _writeRequiredOptionalValueBinding({
   // Bind the optional to a stable local before checking/unwrapping it. This
   // keeps recursive codegen readable and avoids repeatedly re-evaluating the
   // same accessor chain in the emitted C++.
-  final nullableValueName = writer.nextIdentifier('${nameStem}_nullable');
+  final nullableValueName = writer.nextIdentifier('${nameStem}Nullable');
   final valueName = writer.nextIdentifier(nameStem);
 
   writer.writeLine('auto& $nullableValueName = $optionalExpression;');
@@ -473,7 +473,7 @@ _writeListFieldAccessBinding({
   //
   // That keeps the generated C++ simpler and avoids repeating
   // `(*request.fieldAccesses)[...]->listIndex.value()` everywhere.
-  final fieldAccessVariable = writer.nextIdentifier('field_access');
+  final fieldAccessVariable = writer.nextIdentifier('fieldAccess');
   writer.writeLine(
     'auto& $fieldAccessVariable = (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod];',
   );
@@ -481,7 +481,7 @@ _writeListFieldAccessBinding({
   final listIndexVariable = _writeRequiredOptionalValueBinding(
     writer: writer,
     optionalExpression: '$fieldAccessVariable->listIndex',
-    nameStem: 'list_index',
+    nameStem: 'listIndex',
     errorLines: [
       'std::cout << "Error processing list update for setter \\"$createFieldSetterExample\\": list index is null." << \'\\n\';',
     ],
@@ -503,8 +503,8 @@ _writeMapFieldAccessBinding({
   // Map updates work the same way, except the request stores a serialized map
   // key instead of a list index. We bind the request accessor once, deserialize
   // the key once, and then let the recursive map logic reuse those locals.
-  final fieldAccessVariable = writer.nextIdentifier('field_access');
-  final deserializedKeyVariable = writer.nextIdentifier('deserialized_key');
+  final fieldAccessVariable = writer.nextIdentifier('fieldAccess');
+  final deserializedKeyVariable = writer.nextIdentifier('deserializedKey');
 
   writer.writeLine(
     'auto& $fieldAccessVariable = (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod];',
@@ -535,7 +535,7 @@ String _writeInitializationBindingIfNullable({
     return fieldAccessor;
   }
 
-  final nullableValueName = writer.nextIdentifier('${nameStem}_nullable');
+  final nullableValueName = writer.nextIdentifier('${nameStem}Nullable');
   final valueName = writer.nextIdentifier(nameStem);
 
   writer.writeLine('auto& $nullableValueName = $fieldAccessor;');
@@ -666,7 +666,7 @@ void _writeUpdate({
         writer: writer,
         type: type,
         fieldAccessExpression: fieldAccessExpression,
-        nameStem: 'list_value',
+        nameStem: 'listValue',
       );
       final access = _writeListFieldAccessBinding(
         writer: writer,
@@ -691,7 +691,7 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
-      final itemResultVariable = writer.nextIdentifier('item_result');
+      final itemResultVariable = writer.nextIdentifier('itemResult');
       writer.writeLine(
         '${getCppType(type.itemType, context)} $itemResultVariable;',
       );
@@ -787,7 +787,7 @@ void _writeUpdate({
         writer: writer,
         type: type,
         fieldAccessExpression: fieldAccessExpression,
-        nameStem: 'map_value',
+        nameStem: 'mapValue',
       );
       final access = _writeMapFieldAccessBinding(
         writer: writer,
@@ -952,16 +952,16 @@ void _writeUpdate({
         writer: writer,
         type: type,
         fieldAccessExpression: fieldAccessExpression,
-        nameStem: 'child_value',
+        nameStem: 'childValue',
       );
 
       if (type is UnionModelType) {
         // https://rfl.getml.com/variants_and_tagged_unions/#stdvariant-or-rflvariant-externally-tagged
         // See the visitor pattern example for how this is being parsed. This is
         // externally tagged, which is described there as well.
-        final handleVariantName = writer.nextIdentifier('handle_variant');
-        final variantFieldName = writer.nextIdentifier('variant_field');
-        final variantNameType = writer.nextIdentifier('variant_name');
+        final handleVariantName = writer.nextIdentifier('handleVariant');
+        final variantFieldName = writer.nextIdentifier('variantField');
+        final variantNameType = writer.nextIdentifier('variantName');
         final nestedModelSubTypes = type.subTypes
             .where(_supportsNestedAnthemModelAccess)
             .toList();
@@ -1018,7 +1018,7 @@ void _writeKeyDeserialize({
   final serializedKeyValue = _writeRequiredOptionalValueBinding(
     writer: writer,
     optionalExpression: keyExpression,
-    nameStem: 'serialized_map_key',
+    nameStem: 'serializedMapKey',
     errorLines: [
       'std::cout << "Error deserializing map key: key is null." << \'\\n\';',
     ],
@@ -1142,7 +1142,7 @@ void writeParentSetterForType({
           writer: writer,
           type: type,
           fieldAccessor: fieldAccessor,
-          nameStem: 'initialized_child',
+          nameStem: 'initializedChild',
         )
       : fieldAccessor;
 
@@ -1153,8 +1153,8 @@ void writeParentSetterForType({
       '$resolvedFieldAccessor->initialize($resolvedFieldAccessor, $parentAccessor);',
     );
   } else if (type is UnionModelType) {
-    final variantItemName = writer.nextIdentifier('variant_item');
-    final variantNameType = writer.nextIdentifier('variant_name');
+    final variantItemName = writer.nextIdentifier('variantItem');
+    final variantNameType = writer.nextIdentifier('variantName');
     final initializedSubTypes = type.subTypes
         .where(_supportsNestedAnthemModelAccess)
         .toList();
