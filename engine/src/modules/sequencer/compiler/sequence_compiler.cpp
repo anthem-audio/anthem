@@ -165,13 +165,13 @@ void AnthemSequenceCompiler::getTrackNoteEventsForArrangement(
       continue;
     }
 
+    auto& timeView = clip->timeView();
     getPatternNoteEvents(clip->patternId(),
                          clip->id(),
-                         clip->timeView().has_value()
-                             ? std::make_optional(std::make_tuple(
-                                   static_cast<double>(clip->timeView().value()->start()),
-                                   static_cast<double>(clip->timeView().value()->end())))
-                             : std::nullopt,
+                         timeView.has_value() ? std::make_optional(std::make_tuple(
+                                                    static_cast<double>((*timeView)->start()),
+                                                    static_cast<double>((*timeView)->end())))
+                                              : std::nullopt,
                          static_cast<double>(clip->offset()),
                          events);
   }

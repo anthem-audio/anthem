@@ -137,9 +137,9 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   playheadPositionProvider->rt_updatePlayheadPosition(
       *transport, blockStartSample, numSamples, this->sampleRate);
 
-  if (transport->rt_config->activeSequenceId.has_value()) {
-    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(
-        transport->rt_config->activeSequenceId.value(), blockStartSample);
+  auto& activeSequenceId = transport->rt_config->activeSequenceId;
+  if (activeSequenceId.has_value()) {
+    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(*activeSequenceId, blockStartSample);
   }
 
   transport->rt_advancePlayhead(numSamples);

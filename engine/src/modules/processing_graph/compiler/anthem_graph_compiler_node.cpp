@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -86,13 +86,19 @@ void AnthemGraphCompilerNode::assignEdge(
   auto sourceNodePort = sourceNode->getPortById(connection->sourcePortId());
   auto destinationNodePort = destinationNode->getPortById(connection->destinationPortId());
 
+  if (!sourceNodePort.has_value() || !destinationNodePort.has_value()) {
+    jassertfalse;
+    return;
+  }
+
   auto& sourceCompilerNode = nodeToCompilerNode[sourceNode.get()];
   auto& destinationCompilerNode = nodeToCompilerNode[destinationNode.get()];
 
   auto sourceNodeContext = sourceCompilerNode->context;
   auto destinationNodeContext = destinationCompilerNode->context;
 
-  auto portType = sourceNodePort.value()->config()->dataType();
+  auto& sourcePort = *sourceNodePort;
+  auto portType = sourcePort->config()->dataType();
 
   // If we've already created a compiler edge for this connection, use it
   if (connectionToCompilerEdge.find(connection.get()) != connectionToCompilerEdge.end()) {

@@ -85,19 +85,24 @@ AnthemNodeProcessContext::AnthemNodeProcessContext(std::shared_ptr<Node>& graphN
 
   size_t inputParameterIndex = 0;
   for (auto& port : *graphNode->controlInputPorts()) {
+    const auto controlBufferIndex = inputParameterIndex++;
     auto parameterValue = static_cast<float>(port->parameterValue().value_or(0.0));
     auto& parameterConfig = port->config()->parameterConfig();
     auto& inputControlBuffer =
-        graphProcessContext.getControlBuffer(inputControlBuffers[inputParameterIndex].bufferIndex);
+        graphProcessContext.getControlBuffer(inputControlBuffers[controlBufferIndex].bufferIndex);
+
+    if (!parameterConfig.has_value()) {
+      jassertfalse;
+      continue;
+    }
 
     InputParameterBinding state;
     state.portId = port->id();
     state.rt_buffer = &inputControlBuffer;
     state.value = std::make_unique<std::atomic<float>>(parameterValue);
     state.rt_smoother = std::make_unique<LinearParameterSmoother>(
-        parameterValue, static_cast<float>(parameterConfig.value()->smoothingDurationSeconds()));
+        parameterValue, static_cast<float>((*parameterConfig)->smoothingDurationSeconds()));
     inputParameters.push_back(std::move(state));
-    inputParameterIndex++;
   }
 }
 

@@ -197,7 +197,9 @@ void Transport::rt_prepareForProcessingBlock() {
   while (true) {
     auto newerConfigOpt = configBuffer.read();
     if (newerConfigOpt.has_value()) {
-      configDeleteBuffer.add(newConfigOpt.value());
+      if (newConfigOpt.has_value()) {
+        configDeleteBuffer.add(*newConfigOpt);
+      }
       newConfigOpt = newerConfigOpt;
     } else {
       break;
@@ -297,8 +299,9 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
     return event;
   }
 
+  const auto activeSequenceId = *config.activeSequenceId;
   auto* compiledSequence =
-      Anthem::getInstance().sequenceStore->getSequenceEventList(config.activeSequenceId.value());
+      Anthem::getInstance().sequenceStore->getSequenceEventList(activeSequenceId);
 
   if (compiledSequence == nullptr) {
     return event;
@@ -361,18 +364,30 @@ void Transport::updateLoopPoints(bool send) {
     return;
   }
 
+  const auto activeSequenceId = *config.activeSequenceId;
   auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
   auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
 
   std::shared_ptr<LoopPointsModel> loopPoints;
 
-  if (patterns.find(config.activeSequenceId.value()) != patterns.end() &&
-      patterns.at(config.activeSequenceId.value())->loopPoints().has_value()) {
-    loopPoints = patterns.at(config.activeSequenceId.value())->loopPoints().value();
-  } else if (arrangements.find(config.activeSequenceId.value()) != arrangements.end() &&
-             arrangements.at(config.activeSequenceId.value())->loopPoints().has_value()) {
-    loopPoints = arrangements.at(config.activeSequenceId.value())->loopPoints().value();
-  } else {
+  if (auto patternIt = patterns.find(activeSequenceId); patternIt != patterns.end()) {
+    auto& patternLoopPoints = patternIt->second->loopPoints();
+    if (patternLoopPoints.has_value()) {
+      loopPoints = *patternLoopPoints;
+    }
+  }
+
+  if (loopPoints == nullptr) {
+    if (auto arrangementIt = arrangements.find(activeSequenceId);
+        arrangementIt != arrangements.end()) {
+      auto& arrangementLoopPoints = arrangementIt->second->loopPoints();
+      if (arrangementLoopPoints.has_value()) {
+        loopPoints = *arrangementLoopPoints;
+      }
+    }
+  }
+
+  if (loopPoints == nullptr) {
     clearLoopPoints();
 
     if (send) {

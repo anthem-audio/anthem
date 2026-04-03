@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -63,7 +63,9 @@ std::optional<std::shared_ptr<NodePort>> Node::getPortById(int64_t id) {
 }
 
 std::optional<std::shared_ptr<AnthemProcessor>> Node::getProcessor() {
-  if (!this->processor().has_value()) {
+  auto& processor = this->processor();
+
+  if (!processor.has_value()) {
     return std::nullopt;
   }
 
@@ -83,5 +85,5 @@ std::optional<std::shared_ptr<AnthemProcessor>> Node::getProcessor() {
 
         return std::static_pointer_cast<AnthemProcessor>(field.value());
       },
-      this->processor().value());
+      *processor);
 }
