@@ -263,6 +263,168 @@ void _writeJsonResultCheck({
   writer.writeLine('}');
 }
 
+String _writeRequiredOptionalValueBinding({
+  required Writer writer,
+  required String optionalExpression,
+  required String nameStem,
+  required List<String> errorLines,
+  String valueDeclaration = 'auto&',
+}) {
+  // Bind the optional to a stable local before checking/unwrapping it. This
+  // keeps recursive codegen readable and avoids repeatedly re-evaluating the
+  // same accessor chain in the emitted C++.
+  final nullableValueName = writer.nextIdentifier('${nameStem}_nullable');
+  final valueName = writer.nextIdentifier(nameStem);
+
+  writer.writeLine('auto& $nullableValueName = $optionalExpression;');
+  writer.writeLine('if (!$nullableValueName.has_value()) {');
+  writer.incrementWhitespace();
+  for (final errorLine in errorLines) {
+    writer.writeLine(errorLine);
+  }
+  writer.writeLine('return;');
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+  writer.writeLine('$valueDeclaration $valueName = *$nullableValueName;');
+
+  return valueName;
+}
+
+String _writeForwardableValueBinding({
+  required Writer writer,
+  required ModelType type,
+  required String fieldAccessExpression,
+  required String nameStem,
+}) {
+  // This helper is used when the update path goes deeper than the current
+  // field. Example: if we are updating `loopPoints.startBeat`, we first need to
+  // get the value of `loopPoints` and then continue generating code for
+  // `startBeat`.
+  //
+  // For nullable fields, that means:
+  // 1. Save the optional field expression in a local.
+  // 2. Check whether it actually has a value.
+  // 3. Unwrap it once and recurse using that unwrapped local.
+  //
+  // Doing this in one place keeps the recursive generator logic simpler and
+  // avoids repeating long `.value()` chains in the emitted C++.
+  if (!type.isNullable) {
+    return fieldAccessExpression;
+  }
+
+  return _writeRequiredOptionalValueBinding(
+    writer: writer,
+    optionalExpression: fieldAccessExpression,
+    nameStem: nameStem,
+    errorLines: [
+      'std::cout << "The value at accessor $fieldAccessExpression is null, so the update could not be forwarded." << \'\\n\';',
+    ],
+  );
+}
+
+({String fieldAccessVariable, String listIndexVariable})
+_writeListFieldAccessBinding({
+  required Writer writer,
+  required int fieldAccessIndexMod,
+  required String createFieldSetterExample,
+}) {
+  // List updates pull information out of the request message itself. For
+  // example, an update like `notes[3]` stores that `3` inside
+  // `request.fieldAccesses[...]`.
+  //
+  // This helper:
+  // 1. Binds that request accessor entry to a local.
+  // 2. Pulls out its `listIndex` once.
+  // 3. Returns stable locals that the rest of the recursive list logic can
+  //    reuse.
+  //
+  // That keeps the generated C++ simpler and avoids repeating
+  // `(*request.fieldAccesses)[...]->listIndex.value()` everywhere.
+  final fieldAccessVariable = writer.nextIdentifier('field_access');
+  writer.writeLine(
+    'auto& $fieldAccessVariable = (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod];',
+  );
+
+  final listIndexVariable = _writeRequiredOptionalValueBinding(
+    writer: writer,
+    optionalExpression: '$fieldAccessVariable->listIndex',
+    nameStem: 'list_index',
+    errorLines: [
+      'std::cout << "Error processing list update for setter \\"$createFieldSetterExample\\": list index is null." << \'\\n\';',
+    ],
+    valueDeclaration: 'const auto&',
+  );
+
+  return (
+    fieldAccessVariable: fieldAccessVariable,
+    listIndexVariable: listIndexVariable,
+  );
+}
+
+({String fieldAccessVariable, String deserializedKeyVariable})
+_writeMapFieldAccessBinding({
+  required Writer writer,
+  required int fieldAccessIndexMod,
+  required ModelType keyType,
+}) {
+  // Map updates work the same way, except the request stores a serialized map
+  // key instead of a list index. We bind the request accessor once, deserialize
+  // the key once, and then let the recursive map logic reuse those locals.
+  final fieldAccessVariable = writer.nextIdentifier('field_access');
+  final deserializedKeyVariable = writer.nextIdentifier('deserialized_key');
+
+  writer.writeLine(
+    'auto& $fieldAccessVariable = (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod];',
+  );
+  _writeKeyDeserialize(
+    writer: writer,
+    keyExpression: '$fieldAccessVariable->serializedMapKey',
+    keyType: keyType,
+    outputVariable: deserializedKeyVariable,
+  );
+
+  return (
+    fieldAccessVariable: fieldAccessVariable,
+    deserializedKeyVariable: deserializedKeyVariable,
+  );
+}
+
+String _writeInitializationBindingIfNullable({
+  required Writer writer,
+  required ModelType type,
+  required String fieldAccessor,
+  required String nameStem,
+}) {
+  // Initialization has the same nullable-access issue as update forwarding. If
+  // a field is optional, open a scoped block with a stable unwrapped local and
+  // let the caller emit initialization code against that local.
+  if (!type.isNullable) {
+    return fieldAccessor;
+  }
+
+  final nullableValueName = writer.nextIdentifier('${nameStem}_nullable');
+  final valueName = writer.nextIdentifier(nameStem);
+
+  writer.writeLine('auto& $nullableValueName = $fieldAccessor;');
+  writer.writeLine('if ($nullableValueName.has_value()) {');
+  writer.incrementWhitespace();
+  writer.writeLine('auto& $valueName = *$nullableValueName;');
+
+  return valueName;
+}
+
+void _closeInitializationBindingIfNullable({
+  required Writer writer,
+  required ModelType type,
+}) {
+  if (!type.isNullable) {
+    return;
+  }
+
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+}
+
 /// Writes a field update for the given field.
 ///
 /// The [fieldAccessExpression] parameter specifies the target to be modified,
@@ -370,24 +532,24 @@ void _writeUpdate({
         'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses->size()) {',
       );
       writer.incrementWhitespace();
-
-      writer.writeLine(
-        'if (!(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.has_value()) {',
+      final collectionAccessExpression = _writeForwardableValueBinding(
+        writer: writer,
+        type: type,
+        fieldAccessExpression: fieldAccessExpression,
+        nameStem: 'list_value',
       );
-      writer.incrementWhitespace();
-      writer.writeLine(
-        'std::cout << "Error processing list update for setter \\"${createFieldSetter("[value here]")}\\": list index is null." << \'\\n\';',
+      final access = _writeListFieldAccessBinding(
+        writer: writer,
+        fieldAccessIndexMod: fieldAccessIndexMod,
+        createFieldSetterExample: createFieldSetter('[value here]'),
       );
-      writer.writeLine('return;');
-      writer.decrementWhitespace();
-      writer.writeLine('}');
 
       writer.writeLine(
         'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {',
       );
       writer.incrementWhitespace();
       writer.writeLine(
-        '$fieldAccessExpression->erase($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value());',
+        '$collectionAccessExpression->erase($collectionAccessExpression->begin() + ${access.listIndexVariable});',
       );
       writer.decrementWhitespace();
       writer.writeLine(
@@ -408,14 +570,14 @@ void _writeUpdate({
         createFieldSetter: (value) => 'itemResult = $value;',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: fieldAccessExpression,
+        parentAccessor: collectionAccessExpression,
         allowNestedAccess: false,
       );
       final itemInsertValue = _shouldMoveTemporaryValue(type.itemType)
           ? 'std::move(itemResult)'
           : 'itemResult';
       writer.writeLine(
-        '$fieldAccessExpression->insert($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), $itemInsertValue);',
+        '$collectionAccessExpression->insert($collectionAccessExpression->begin() + ${access.listIndexVariable}, $itemInsertValue);',
       );
       writer.decrementWhitespace();
       writer.writeLine('} else {');
@@ -427,12 +589,12 @@ void _writeUpdate({
         writer: writer,
         type: type.itemType,
         fieldAccessExpression:
-            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
+            '(*$collectionAccessExpression)[${access.listIndexVariable}]',
         createFieldSetter: (value) =>
-            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
+            '(*$collectionAccessExpression)[${access.listIndexVariable}] = $value;',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: fieldAccessExpression,
+        parentAccessor: collectionAccessExpression,
         isCollectionSetter: true,
       );
       writer.decrementWhitespace();
@@ -491,19 +653,25 @@ void _writeUpdate({
         'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses->size()) {',
       );
       writer.incrementWhitespace();
-      _writeKeyDeserialize(
+      final collectionAccessExpression = _writeForwardableValueBinding(
         writer: writer,
-        keyExpression:
-            '(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->serializedMapKey',
+        type: type,
+        fieldAccessExpression: fieldAccessExpression,
+        nameStem: 'map_value',
+      );
+      final access = _writeMapFieldAccessBinding(
+        writer: writer,
+        fieldAccessIndexMod: fieldAccessIndexMod,
         keyType: type.keyType,
-        outputVariable: 'deserializedKey',
       );
 
       writer.writeLine(
         'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {',
       );
       writer.incrementWhitespace();
-      writer.writeLine('$fieldAccessExpression->erase(deserializedKey);');
+      writer.writeLine(
+        '$collectionAccessExpression->erase(${access.deserializedKeyVariable});',
+      );
       writer.decrementWhitespace();
       writer.writeLine(
         '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {',
@@ -528,12 +696,13 @@ void _writeUpdate({
         context: context,
         writer: writer,
         type: type.valueType,
-        fieldAccessExpression: '$fieldAccessExpression->at(deserializedKey)',
+        fieldAccessExpression:
+            '$collectionAccessExpression->at(${access.deserializedKeyVariable})',
         createFieldSetter: (value) =>
-            '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
+            '$collectionAccessExpression->insert_or_assign(${access.deserializedKeyVariable}, $value);',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: fieldAccessExpression,
+        parentAccessor: collectionAccessExpression,
         isCollectionSetter: true,
       );
 
@@ -656,13 +825,12 @@ void _writeUpdate({
       // the chain, then we should forward the update to the child.
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-
-      var nullable = '';
-      if (type.isNullable) {
-        writer.writeLine('if ($fieldAccessExpression.has_value()) {');
-        writer.incrementWhitespace();
-        nullable = '.value()';
-      }
+      final resolvedFieldAccessExpression = _writeForwardableValueBinding(
+        writer: writer,
+        type: type,
+        fieldAccessExpression: fieldAccessExpression,
+        nameStem: 'child_value',
+      );
 
       if (type is UnionModelType) {
         // https://rfl.getml.com/variants_and_tagged_unions/#stdvariant-or-rflvariant-externally-tagged
@@ -718,23 +886,12 @@ void _writeUpdate({
         writer.writeLine('};');
 
         writer.writeLine(
-          'rfl::visit(handle_variant, $fieldAccessExpression$nullable);',
+          'rfl::visit(handle_variant, $resolvedFieldAccessExpression);',
         );
       } else {
         writer.writeLine(
-          '$fieldAccessExpression$nullable->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
+          '$resolvedFieldAccessExpression->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
         );
-      }
-
-      if (type.isNullable) {
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine(
-          'std::cout << "The value at accessor $fieldAccessExpression is null, so the update could not be forwarded." << \'\\n\';',
-        );
-        writer.decrementWhitespace();
-        writer.writeLine('}');
       }
 
       writer.decrementWhitespace();
@@ -756,101 +913,96 @@ void _writeKeyDeserialize({
     );
   }
 
-  void writeKeyExistsCheck() {
-    writer.writeLine('if (!$keyExpression.has_value()) {');
-    writer.incrementWhitespace();
-    writer.writeLine(
+  final serializedKeyValue = _writeRequiredOptionalValueBinding(
+    writer: writer,
+    optionalExpression: keyExpression,
+    nameStem: 'serialized_map_key',
+    errorLines: [
       'std::cout << "Error deserializing map key: key is null." << \'\\n\';',
-    );
-    writer.writeLine('return;');
-    writer.decrementWhitespace();
-    writer.writeLine('}');
-  }
+    ],
+    valueDeclaration: 'const auto&',
+  );
 
   switch (keyType) {
     case StringModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<std::string> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<std::string>($keyExpression.value().substr(1, $keyExpression.value().size() - 2));',
+          '$outputVariable = std::optional<std::string>($serializedKeyValue.substr(1, $serializedKeyValue.size() - 2));',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = $keyExpression.value().substr(1, $keyExpression.value().size() - 2);',
+          'auto $outputVariable = $serializedKeyValue.substr(1, $serializedKeyValue.size() - 2);',
         );
       }
       break;
     case IntModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<int64_t> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<int64_t>(std::stoll($keyExpression.value()));',
+          '$outputVariable = std::optional<int64_t>(std::stoll($serializedKeyValue));',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = std::stoll($keyExpression.value());',
+          'auto $outputVariable = std::stoll($serializedKeyValue);',
         );
       }
 
       break;
     case DoubleModelType() || NumModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<double> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<double>(std::stod($keyExpression.value()));',
+          '$outputVariable = std::optional<double>(std::stod($serializedKeyValue));',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = std::stod($keyExpression.value());',
+          'auto $outputVariable = std::stod($serializedKeyValue);',
         );
       }
 
       break;
     case BoolModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<bool> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<bool>($keyExpression.value() == "true");',
+          '$outputVariable = std::optional<bool>($serializedKeyValue == "true");',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = $keyExpression.value() == "true";',
+          'auto $outputVariable = $serializedKeyValue == "true";',
         );
       }
 
@@ -883,22 +1035,22 @@ void writeParentSetterForType({
       type is ListModelType ||
       type is MapModelType ||
       type is UnionModelType;
-
-  if (shouldWrite && type.isNullable) {
-    writer.writeLine('if ($fieldAccessor.has_value()) {');
-    writer.incrementWhitespace();
-  }
+  final resolvedFieldAccessor = shouldWrite
+      ? _writeInitializationBindingIfNullable(
+          writer: writer,
+          type: type,
+          fieldAccessor: fieldAccessor,
+          nameStem: 'initialized_child',
+        )
+      : fieldAccessor;
 
   if (type is CustomModelType ||
       type is ListModelType ||
       type is MapModelType) {
-    final valueFn = type.isNullable ? '.value()' : '';
     writer.writeLine(
-      '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
+      '$resolvedFieldAccessor->initialize($resolvedFieldAccessor, $parentAccessor);',
     );
   } else if (type is UnionModelType) {
-    final valueFn = type.isNullable ? '.value()' : '';
-
     writer.writeLine('rfl::visit([&](auto& item) {');
     writer.incrementWhitespace();
 
@@ -930,12 +1082,11 @@ void writeParentSetterForType({
     }
 
     writer.decrementWhitespace();
-    writer.writeLine('}, $fieldAccessor$valueFn);');
+    writer.writeLine('}, $resolvedFieldAccessor);');
   }
 
-  if (shouldWrite && type.isNullable) {
-    writer.decrementWhitespace();
-    writer.writeLine('}');
+  if (shouldWrite) {
+    _closeInitializationBindingIfNullable(writer: writer, type: type);
   }
 }
 
