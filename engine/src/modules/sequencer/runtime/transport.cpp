@@ -20,6 +20,7 @@
 #include "transport.h"
 
 #include "modules/core/anthem.h"
+#include "modules/util/intentionally_leak.h"
 
 #include <unordered_map>
 
@@ -27,6 +28,17 @@ namespace {
 using TrackToJumpEventsMap = std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>>;
 using ActiveNotesForTrack = std::unordered_map<AnthemSourceNoteId, AnthemNoteOnEvent>;
 using TrackToActiveNotesMap = std::unordered_map<int64_t, ActiveNotesForTrack>;
+
+template <std::size_t queueSize, typename T>
+// The audio thread uses this only for "old snapshot" objects that are already
+// logically retired and just need to make it back to the main thread for
+// deletion. If that bounded handoff queue overflows, we deliberately leak
+// instead of doing non-real-time-safe cleanup here.
+void enqueueForDeferredDeletionOrLeak(RingBuffer<T*, queueSize>& queue, T* ptr) {
+  if (!queue.add(ptr)) {
+    intentionallyLeak(ptr);
+  }
+}
 
 template <typename Callback>
 void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
@@ -198,7 +210,7 @@ void Transport::rt_prepareForProcessingBlock() {
     auto newerConfigOpt = configBuffer.read();
     if (newerConfigOpt.has_value()) {
       if (newConfigOpt.has_value()) {
-        configDeleteBuffer.add(*newConfigOpt);
+        enqueueForDeferredDeletionOrLeak(configDeleteBuffer, *newConfigOpt);
       }
       newConfigOpt = newerConfigOpt;
     } else {
@@ -219,13 +231,13 @@ void Transport::rt_prepareForProcessingBlock() {
       rt_playheadJumpEventForStart = &newConfig->playheadJumpEventForStart;
     }
 
-    configDeleteBuffer.add(rt_config);
+    enqueueForDeferredDeletionOrLeak(configDeleteBuffer, rt_config);
     rt_config = newConfig;
   }
 
   while (auto event = playheadJumpEventBuffer.read()) {
     if (rt_playheadJumpEventForSeek != nullptr) {
-      playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
+      enqueueForDeferredDeletionOrLeak(playheadJumpEventDeleteBuffer, rt_playheadJumpEventForSeek);
     }
     rt_playheadJumpEventForSeek = event.value();
   }
@@ -237,8 +249,10 @@ void Transport::rt_prepareForProcessingBlock() {
   }
 
   if (!rt_config->isPlaying) {
-    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
-    rt_playheadJumpEventForSeek = nullptr;
+    if (rt_playheadJumpEventForSeek != nullptr) {
+      enqueueForDeferredDeletionOrLeak(playheadJumpEventDeleteBuffer, rt_playheadJumpEventForSeek);
+      rt_playheadJumpEventForSeek = nullptr;
+    }
   }
 
   if (rt_playheadJumpEventForSeek != nullptr) {
@@ -257,7 +271,7 @@ void Transport::rt_advancePlayhead(int numSamples) {
   rt_shouldStopSequenceNotes = false;
 
   if (rt_playheadJumpEventForSeek != nullptr) {
-    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
+    enqueueForDeferredDeletionOrLeak(playheadJumpEventDeleteBuffer, rt_playheadJumpEventForSeek);
     rt_playheadJumpEventForSeek = nullptr;
   }
 
@@ -339,7 +353,10 @@ void Transport::jumpTo(double playheadPosition) {
   auto event = createPlayheadJumpEvent(playheadPosition);
   auto eventPtr = new PlayheadJumpEvent(event);
 
-  playheadJumpEventBuffer.add(eventPtr);
+  if (!playheadJumpEventBuffer.add(eventPtr)) {
+    jassertfalse;
+    delete eventPtr;
+  }
 }
 
 void Transport::clearLoopPoints() {
@@ -417,5 +434,8 @@ void Transport::timerCallback() {
 
 void Transport::sendConfigToAudioThread() {
   TransportConfig* configCopy = new TransportConfig(config);
-  configBuffer.add(configCopy);
+  if (!configBuffer.add(configCopy)) {
+    jassertfalse;
+    delete configCopy;
+  }
 }

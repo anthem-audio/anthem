@@ -24,6 +24,9 @@
 #include <cmath>
 #include <vector>
 
+// clang-analyzer loses track of the shared_ptr ownership when this response is
+// wrapped into the generated TaggedUnion Response inside std::optional.
+// NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
 std::optional<Response> handleTestCommand(Request& request) {
   if (!rfl::holds_alternative<TestSampleGainCurveRequest>(request.variant())) {
     return std::nullopt;
@@ -60,3 +63,4 @@ std::optional<Response> handleTestCommand(Request& request) {
       .isNegativeInfinity = std::make_shared<std::vector<bool>>(std::move(isNegativeInfinity)),
       .responseBase = ResponseBase{.id = requestAsTestSampleGainCurve.requestBase.get().id}});
 }
+// NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)

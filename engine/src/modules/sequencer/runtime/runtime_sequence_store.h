@@ -101,6 +101,7 @@ public:
   std::unordered_map<EntityId, SequenceEventList>* tracks;
 
   SequenceEventListCollection();
+  explicit SequenceEventListCollection(std::unordered_map<EntityId, SequenceEventList>* tracks);
 
   // These are here so we don't automatically deallocate anything.
   ~SequenceEventListCollection() = default;

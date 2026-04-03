@@ -20,6 +20,7 @@
 #include "anthem_graph_processor.h"
 
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
+#include "modules/util/intentionally_leak.h"
 
 AnthemGraphProcessor::AnthemGraphProcessor()
   : rt_services(std::make_unique<GraphRuntimeServices>()),
@@ -34,7 +35,11 @@ AnthemGraphProcessor::~AnthemGraphProcessor() = default;
 
 void AnthemGraphProcessor::setProcessingStepsFromMainThread(
     AnthemGraphCompilationResult* compilationResult) {
-  this->processingStepsQueue.add(compilationResult);
+  if (!this->processingStepsQueue.add(compilationResult)) {
+    jassertfalse;
+    compilationResult->cleanup();
+    delete compilationResult;
+  }
 }
 
 void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
@@ -55,7 +60,9 @@ void AnthemGraphProcessor::process(int numSamples) {
   while (nextCompilationResult) {
     juce::Logger::writeToLog("Audio thread: New compilation result found, replacing old one");
     if (this->processingSteps != nullptr) {
-      this->processingStepsDeletionQueue.add(this->processingSteps);
+      if (!this->processingStepsDeletionQueue.add(this->processingSteps)) {
+        intentionallyLeak(this->processingSteps);
+      }
     }
 
     this->processingSteps = nextCompilationResult.value();
