@@ -36,6 +36,8 @@
     "interprocess",
     "jassert",
     "jassertfalse",
+    "jlimit",
+    "jmin",
     "juce",
     "linf",
     "LTRB",
