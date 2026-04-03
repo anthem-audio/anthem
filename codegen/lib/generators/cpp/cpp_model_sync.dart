@@ -76,15 +76,19 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('return;');
   writer.decrementWhitespace();
   writer.writeLine('}');
-  writer.writeLine('auto selfPtr = this->self.lock();');
+  final selfPtrName = writer.nextIdentifier('self_ptr');
+  final fieldNameNullableName = writer.nextIdentifier('field_name_nullable');
+  final fieldNameName = writer.nextIdentifier('field_name');
+
+  writer.writeLine('auto $selfPtrName = this->self.lock();');
 
   var noCasesGenerated = true;
 
   writer.writeLine(
-    'auto& fieldNameNullable = (*request.fieldAccesses)[fieldAccessIndex]->fieldName;',
+    'auto& $fieldNameNullableName = (*request.fieldAccesses)[fieldAccessIndex]->fieldName;',
   );
 
-  writer.writeLine('if (!fieldNameNullable.has_value()) {');
+  writer.writeLine('if (!$fieldNameNullableName.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
     'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": field name is null." << \'\\n\';',
@@ -93,7 +97,7 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.decrementWhitespace();
   writer.writeLine('}');
 
-  writer.writeLine('auto& fieldName = fieldNameNullable.value();');
+  writer.writeLine('auto& $fieldNameName = $fieldNameNullableName.value();');
 
   for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
     if (field.isModelConstant) {
@@ -105,7 +109,7 @@ String getModelSyncFn(ModelClassInfo context) {
     }
 
     writer.writeLine(
-      '${noCasesGenerated ? '' : 'else '}if (fieldName == "$fieldName") {',
+      '${noCasesGenerated ? '' : 'else '}if ($fieldNameName == "$fieldName") {',
     );
     writer.incrementWhitespace();
 
@@ -115,8 +119,9 @@ String getModelSyncFn(ModelClassInfo context) {
       type: field.typeInfo,
       createFieldSetter: (value) => 'this->$fieldName$parentheses = $value;',
       observabilityNotifier:
-          'this->${fieldName}Observers.notify($fieldName$parentheses);',
+          'this->${fieldName}Observers.notify(this->$fieldName$parentheses);',
       fieldAccessExpression: 'this->$fieldName$parentheses',
+      parentAccessor: selfPtrName,
     );
 
     // If this was a raw field update, then we should notify the current model
@@ -144,7 +149,7 @@ String getModelSyncFn(ModelClassInfo context) {
     writer.writeLine('else {');
     writer.incrementWhitespace();
     writer.writeLine(
-      'std::cout << "Unexpected field name \\"" << fieldName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << \'\\n\';',
+      'std::cout << "Unexpected field name \\"" << $fieldNameName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << \'\\n\';',
     );
     writer.decrementWhitespace();
     writer.writeLine('}');
@@ -261,6 +266,27 @@ void _writeJsonResultCheck({
   writer.writeLine('return;');
   writer.decrementWhitespace();
   writer.writeLine('}');
+}
+
+String _writeJsonReadResult({
+  required Writer writer,
+  required ModelType type,
+  required ModelClassInfo context,
+  required String fieldAccessExpression,
+  String nameStem = 'result',
+}) {
+  final resultVariable = writer.nextIdentifier(nameStem);
+  writer.writeLine(
+    'auto $resultVariable = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
+  );
+  _writeJsonResultCheck(
+    writer: writer,
+    resultVariable: resultVariable,
+    context: context,
+    fieldAccessExpression: fieldAccessExpression,
+  );
+
+  return resultVariable;
 }
 
 String _writeRequiredOptionalValueBinding({
@@ -472,8 +498,8 @@ void _writeUpdate({
   required String observabilityNotifier,
   required String fieldAccessExpression,
   required ModelClassInfo context,
+  required String parentAccessor,
   int fieldAccessIndexMod = 0,
-  String parentAccessor = 'selfPtr',
   bool isCollectionSetter = false,
   bool allowNestedAccess = true,
 }) {
@@ -498,16 +524,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('result.value()'));
+      writer.writeLine(createFieldSetter('$resultVariable.value()'));
       writer.writeLine(observabilityNotifier);
 
       break;
@@ -561,21 +584,24 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
-      writer.writeLine('${getCppType(type.itemType, context)} itemResult;');
+      final itemResultVariable = writer.nextIdentifier('item_result');
+      writer.writeLine(
+        '${getCppType(type.itemType, context)} $itemResultVariable;',
+      );
       _writeUpdate(
         context: context,
         writer: writer,
         type: type.itemType,
-        fieldAccessExpression: 'itemResult',
-        createFieldSetter: (value) => 'itemResult = $value;',
+        fieldAccessExpression: itemResultVariable,
+        createFieldSetter: (value) => '$itemResultVariable = $value;',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: collectionAccessExpression,
         allowNestedAccess: false,
       );
       final itemInsertValue = _shouldMoveTemporaryValue(type.itemType)
-          ? 'std::move(itemResult)'
-          : 'itemResult';
+          ? 'std::move($itemResultVariable)'
+          : itemResultVariable;
       writer.writeLine(
         '$collectionAccessExpression->insert($collectionAccessExpression->begin() + ${access.listIndexVariable}, $itemInsertValue);',
       );
@@ -612,16 +638,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(createFieldSetter('std::move($resultVariable.value())'));
       writer.writeLine(observabilityNotifier);
       writeParentSetterForType(
         writer: writer,
@@ -721,16 +744,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(createFieldSetter('std::move($resultVariable.value())'));
       writer.writeLine(observabilityNotifier);
       writeParentSetterForType(
         writer: writer,
@@ -750,23 +770,22 @@ void _writeUpdate({
         // new list element itself, so there is no valid deeper child access to
         // forward here. Even for model-valued list items, we should only
         // deserialize the inserted value, not generate nested
-        // itemResult->handleModelUpdate(...) logic.
+        // temporary-value forwarding logic.
         _writeSerializedValueNullCheck(
           writer: writer,
           fieldAccessExpression: fieldAccessExpression,
           context: context,
         );
 
-        writer.writeLine(
-          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-        );
-        _writeJsonResultCheck(
+        final resultVariable = _writeJsonReadResult(
           writer: writer,
-          resultVariable: 'result',
+          type: type,
           context: context,
           fieldAccessExpression: fieldAccessExpression,
         );
-        writer.writeLine(createFieldSetter('std::move(result.value())'));
+        writer.writeLine(
+          createFieldSetter('std::move($resultVariable.value())'),
+        );
         writer.writeLine(observabilityNotifier);
 
         if (!isCollectionSetter) {
@@ -793,16 +812,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(createFieldSetter('std::move($resultVariable.value())'));
       writer.writeLine(observabilityNotifier);
 
       // If we're setting inside a collection (e.g. someList[someIndex] =
@@ -836,12 +852,15 @@ void _writeUpdate({
         // https://rfl.getml.com/variants_and_tagged_unions/#stdvariant-or-rflvariant-externally-tagged
         // See the visitor pattern example for how this is being parsed. This is
         // externally tagged, which is described there as well.
+        final handleVariantName = writer.nextIdentifier('handle_variant');
+        final variantFieldName = writer.nextIdentifier('variant_field');
+        final variantNameType = writer.nextIdentifier('variant_name');
         writer.writeLine(
-          'const auto handle_variant = [&](const auto& field) {',
+          'const auto $handleVariantName = [&](const auto& $variantFieldName) {',
         );
         writer.incrementWhitespace();
         writer.writeLine(
-          'using Name = typename std::decay_t<decltype(field)>::Name;',
+          'using $variantNameType = typename std::decay_t<decltype($variantFieldName)>::Name;',
         );
 
         var isFirst = true;
@@ -865,11 +884,11 @@ void _writeUpdate({
           }
 
           writer.writeLine(
-            '${(isFirst && !skipAnyOnWasm) ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
+            '${(isFirst && !skipAnyOnWasm) ? '' : 'else '}if constexpr (std::is_same<$variantNameType, rfl::Literal<"${subType.dartName}">>()) {',
           );
           writer.incrementWhitespace();
           writer.writeLine(
-            'field.value()->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
+            '$variantFieldName.value()->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
           );
           writer.decrementWhitespace();
           writer.writeLine('}');
@@ -886,7 +905,7 @@ void _writeUpdate({
         writer.writeLine('};');
 
         writer.writeLine(
-          'rfl::visit(handle_variant, $resolvedFieldAccessExpression);',
+          'rfl::visit($handleVariantName, $resolvedFieldAccessExpression);',
         );
       } else {
         writer.writeLine(
@@ -1051,11 +1070,14 @@ void writeParentSetterForType({
       '$resolvedFieldAccessor->initialize($resolvedFieldAccessor, $parentAccessor);',
     );
   } else if (type is UnionModelType) {
-    writer.writeLine('rfl::visit([&](auto& item) {');
+    final variantItemName = writer.nextIdentifier('variant_item');
+    final variantNameType = writer.nextIdentifier('variant_name');
+
+    writer.writeLine('rfl::visit([&](auto& $variantItemName) {');
     writer.incrementWhitespace();
 
     writer.writeLine(
-      'using Name = typename std::decay_t<decltype(item)>::Name;',
+      'using $variantNameType = typename std::decay_t<decltype($variantItemName)>::Name;',
     );
 
     bool isFirst = true;
@@ -1069,11 +1091,11 @@ void writeParentSetterForType({
       }
 
       writer.writeLine(
-        '${isFirst ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
+        '${isFirst ? '' : 'else '}if constexpr (std::is_same<$variantNameType, rfl::Literal<"${subType.dartName}">>()) {',
       );
       writer.incrementWhitespace();
       writer.writeLine(
-        'item.value()->initialize(item.value(), $parentAccessor);',
+        '$variantItemName.value()->initialize($variantItemName.value(), $parentAccessor);',
       );
       writer.decrementWhitespace();
       writer.writeLine('}');
