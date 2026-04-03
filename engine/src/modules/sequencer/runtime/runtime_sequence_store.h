@@ -251,7 +251,7 @@ public:
   // the current map, add the new sequence, and push the new map to the
   // mapUpdateQueue. If the sequence already exists, it will be replaced, and
   // the old sequence will be added to the pendingSequenceDeletions map.
-  void addOrUpdateSequence(EntityId sequenceId, SequenceEventListCollection sequence);
+  void addOrUpdateSequence(EntityId sequenceId, const SequenceEventListCollection& sequence);
 
   // Removes a sequence from the event lists map.
   void removeSequence(EntityId sequenceId);
@@ -263,7 +263,8 @@ public:
   // track, and push the new map to the mapUpdateQueue. If the track already
   // exists, it will be replaced, and the old track will be added to the
   // pendingSequenceTrackDeletions map.
-  void addOrUpdateTrackInSequence(EntityId sequenceId, EntityId trackId, SequenceEventList track);
+  void
+  addOrUpdateTrackInSequence(EntityId sequenceId, EntityId trackId, const SequenceEventList& track);
 
   // Removes a track from a sequence in the event lists map.
   void removeTrackFromSequence(EntityId sequenceId, EntityId trackId);

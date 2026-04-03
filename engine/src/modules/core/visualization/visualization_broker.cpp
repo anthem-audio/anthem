@@ -72,7 +72,7 @@ void VisualizationBroker::timerCallback() {
           [&](auto&& batchValue) {
             using Batch = RemoveCvRef<decltype(batchValue)>;
 
-            auto batch = std::move(batchValue);
+            auto batch = std::forward<decltype(batchValue)>(batchValue);
             if (batch.values.empty()) {
               return;
             }

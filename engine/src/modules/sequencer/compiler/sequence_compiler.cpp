@@ -269,7 +269,8 @@ std::optional<std::tuple<double, double>> AnthemSequenceCompiler::clampStartAndE
                          clampTimeToRange(end, range.value()));
 }
 
-double AnthemSequenceCompiler::clampTimeToRange(double time, std::tuple<double, double> range) {
+double AnthemSequenceCompiler::clampTimeToRange(double time,
+                                                const std::tuple<double, double>& range) {
   auto [start, end] = range;
 
   if (time < start) {

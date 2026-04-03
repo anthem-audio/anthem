@@ -83,7 +83,8 @@ void ToneGeneratorProcessor::process(AnthemNodeProcessContext& context, int numS
     auto frequency = normalizedFrequency * (kMaxFrequencyHz - kMinFrequencyHz) + kMinFrequencyHz;
 
     if (hasNoteOverride) {
-      frequency = 440.0f * std::pow(2.0f, (noteOverride - 69) / 12.0f);
+      const auto semitoneOffset = static_cast<float>(noteOverride - 69);
+      frequency = 440.0f * std::pow(2.0f, semitoneOffset / 12.0f);
     }
 
     const float value = amplitude * (float)std::sin(2.0 * juce::MathConstants<float>::pi * phase);

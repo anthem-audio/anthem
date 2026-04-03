@@ -174,8 +174,7 @@ AnthemRuntimeSequenceStore::SequenceIdToEventsMap& AnthemRuntimeSequenceStore::r
 
 AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
   : clearDeletionQueueTimedCallback(
-        juce::TimedCallback([this]() { this->processDeletionQueues(); })),
-    mapUpdateQueue(), mapDeletionQueue() {
+        juce::TimedCallback([this]() { this->processDeletionQueues(); })) {
   eventLists = new SequenceIdToEventsMap();
   rt_eventLists = eventLists;
 
@@ -249,7 +248,7 @@ void AnthemRuntimeSequenceStore::registerDeletionTimer() {
 }
 
 void AnthemRuntimeSequenceStore::addOrUpdateSequence(EntityId sequenceId,
-                                                     SequenceEventListCollection sequence) {
+                                                     const SequenceEventListCollection& sequence) {
   auto newMap = new SequenceIdToEventsMap(*eventLists);
   auto it = newMap->find(sequenceId);
 
@@ -288,7 +287,7 @@ void AnthemRuntimeSequenceStore::removeSequence(EntityId sequenceId) {
 
 void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(EntityId sequenceId,
                                                             EntityId trackId,
-                                                            SequenceEventList track) {
+                                                            const SequenceEventList& track) {
   auto newSequenceMap = new SequenceIdToEventsMap(*eventLists);
   auto sequenceMapIt = newSequenceMap->find(sequenceId);
 

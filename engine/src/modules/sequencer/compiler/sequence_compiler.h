@@ -107,5 +107,5 @@ private:
       double start, double end, std::optional<std::tuple<double, double>> range);
 
   // Clamps a given timestamp to the given range.
-  static double clampTimeToRange(double time, std::tuple<double, double> range);
+  static double clampTimeToRange(double time, const std::tuple<double, double>& range);
 };

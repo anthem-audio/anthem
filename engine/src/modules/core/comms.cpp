@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -30,7 +30,7 @@ int checkedSizeToSocketInt(size_t value) {
 }
 } // namespace
 
-AnthemSocketThread::AnthemSocketThread() : juce::Thread("AnthemSocketThread"), socket() {
+AnthemSocketThread::AnthemSocketThread() : juce::Thread("AnthemSocketThread") {
   pendingHeader.setSize(HEADER_SIZE);
   pendingBytes.setSize(0);
   messageBuffer.setSize(0);
