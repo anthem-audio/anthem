@@ -313,6 +313,7 @@ void _writeUpdate({
   int fieldAccessIndexMod = 0,
   String parentAccessor = 'selfPtr',
   bool isCollectionSetter = false,
+  bool allowNestedAccess = true,
 }) {
   switch (type) {
     case StringModelType _ ||
@@ -408,6 +409,7 @@ void _writeUpdate({
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
         parentAccessor: fieldAccessExpression,
+        allowNestedAccess: false,
       );
       final itemInsertValue = _shouldMoveTemporaryValue(type.itemType)
           ? 'std::move(itemResult)'
@@ -572,6 +574,44 @@ void _writeUpdate({
       writer.writeLine('}');
       break;
     case CustomModelType() || UnionModelType() || UnknownModelType():
+      if (!allowNestedAccess) {
+        // This path is used when we are materializing a temporary value for a
+        // list "add" operation before inserting it into the list. The outer
+        // list-add branch only runs when the accessor chain already ends at the
+        // new list element itself, so there is no valid deeper child access to
+        // forward here. Even for model-valued list items, we should only
+        // deserialize the inserted value, not generate nested
+        // itemResult->handleModelUpdate(...) logic.
+        _writeSerializedValueNullCheck(
+          writer: writer,
+          fieldAccessExpression: fieldAccessExpression,
+          context: context,
+        );
+
+        writer.writeLine(
+          'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
+        );
+        _writeJsonResultCheck(
+          writer: writer,
+          resultVariable: 'result',
+          context: context,
+          fieldAccessExpression: fieldAccessExpression,
+        );
+        writer.writeLine(createFieldSetter('std::move(result.value())'));
+        writer.writeLine(observabilityNotifier);
+
+        if (!isCollectionSetter) {
+          writeParentSetterForType(
+            writer: writer,
+            type: type,
+            fieldAccessor: fieldAccessExpression,
+            parentAccessor: parentAccessor,
+          );
+        }
+
+        break;
+      }
+
       // If this field is a custom model and this is the last accessor in the
       // chain, then we should deserialize the provided JSON into this field.
       writer.writeLine(
