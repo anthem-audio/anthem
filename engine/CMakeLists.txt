@@ -7,6 +7,10 @@ project(AnthemEngine
   LANGUAGES C CXX
 )
 
+# clangd and clang-tidy rely on this on generators that support compile
+# database export.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(IS_WASM FALSE)
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(IS_WASM TRUE)
