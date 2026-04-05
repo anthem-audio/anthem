@@ -32,11 +32,14 @@ class EngineCommand extends Command<dynamic> {
   String get name => 'engine';
 
   @override
-  String get description => 'Build, clean, or test the Anthem engine.';
+  String get description =>
+      'Build, clean, format, lint, or test the Anthem engine.';
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
     addSubcommand(_CleanEngineCommand());
+    addSubcommand(_FormatEngineCommand());
+    addSubcommand(_LintEngineCommand());
     addSubcommand(_EngineUnitTestCommand());
   }
 }
@@ -326,6 +329,176 @@ class _CleanEngineCommand extends Command<dynamic> {
   }
 }
 
+class _FormatEngineCommand extends Command<dynamic> {
+  _FormatEngineCommand() {
+    argParser.addFlag(
+      'check',
+      defaultsTo: false,
+      help:
+          'Checks whether the engine C++ files are already formatted without modifying them.',
+    );
+  }
+
+  @override
+  String get name => 'format';
+
+  @override
+  String get description => 'Formats Anthem-owned engine C++ files.';
+
+  @override
+  Future<void> run() async {
+    final checkOnly = argResults!['check'] as bool;
+
+    print(
+      Colorize(
+        checkOnly
+            ? 'Checking Anthem engine C++ formatting...'
+            : 'Formatting Anthem engine C++ files...',
+      )..lightGreen(),
+    );
+
+    final clangFormat = _requireLlvmExecutable('clang-format');
+    final packageRootPath = getPackageRootPath();
+    final files = _getOwnedEngineCppFiles();
+
+    if (files.isEmpty) {
+      print(
+        Colorize('No engine C++ files found, nothing to format.')..lightGreen(),
+      );
+      return;
+    }
+
+    var hasFailures = false;
+
+    for (final file in files) {
+      final process = await Process.start(
+        clangFormat,
+        [
+          if (checkOnly) '--dry-run',
+          if (checkOnly) '--Werror',
+          if (!checkOnly) '-i',
+          file.path,
+        ],
+        workingDirectory: packageRootPath.toFilePath(
+          windows: Platform.isWindows,
+        ),
+        mode: ProcessStartMode.inheritStdio,
+      );
+
+      final formatExitCode = await process.exitCode;
+      if (formatExitCode != 0) {
+        hasFailures = true;
+      }
+    }
+
+    if (hasFailures) {
+      print(
+        Colorize(
+          checkOnly
+              ? '\n\nError: Engine C++ formatting check failed.'
+              : '\n\nError: Engine C++ formatting failed.',
+        ).red(),
+      );
+      exit(1);
+    }
+
+    print(
+      Colorize(
+        checkOnly ? 'Formatting check complete.' : 'Formatting complete.',
+      ).lightGreen(),
+    );
+  }
+}
+
+class _LintEngineCommand extends Command<dynamic> {
+  _LintEngineCommand() {
+    argParser.addFlag(
+      'skip-configuration',
+      defaultsTo: false,
+      help:
+          'Skips refreshing the CMake compile database. The lint build directory must already be configured.',
+    );
+  }
+
+  @override
+  String get name => 'lint';
+
+  @override
+  String get description => 'Runs clang-tidy on Anthem-owned engine C++ files.';
+
+  @override
+  Future<void> run() async {
+    final skipConfiguration = argResults!['skip-configuration'] as bool;
+
+    print(Colorize('Linting Anthem engine C++ files...')..lightGreen());
+
+    final clangTidy = _requireLlvmExecutable('clang-tidy');
+    final useClangBuild = Platform.isWindows;
+    final buildDirectoryName = _getBuildDirectoryName(
+      wasm: false,
+      release: false,
+      addressSanitizer: false,
+      useClang: useClangBuild,
+    );
+
+    if (!skipConfiguration) {
+      await _configureCmakeBuild(
+        debug: true,
+        useClang: useClangBuild,
+        buildDirectoryName: buildDirectoryName,
+      );
+    }
+
+    final packageRootPath = getPackageRootPath();
+    final compileCommandsFile = File.fromUri(
+      packageRootPath.resolve(
+        'engine/$buildDirectoryName/compile_commands.json',
+      ),
+    );
+
+    if (!compileCommandsFile.existsSync()) {
+      print(
+        Colorize(
+          'Error: No compile_commands.json found for clang-tidy. Run the lint command without --skip-configuration, or configure the engine build first.',
+        ).red(),
+      );
+      exit(1);
+    }
+
+    final files = _getOwnedEngineCppFiles(translationUnitsOnly: true);
+    var hasFailures = false;
+
+    for (final file in files) {
+      final process = await Process.start(
+        clangTidy,
+        [
+          '-p',
+          compileCommandsFile.parent.path,
+          '--quiet',
+          '--warnings-as-errors=*',
+          file.path,
+        ],
+        workingDirectory: packageRootPath.toFilePath(
+          windows: Platform.isWindows,
+        ),
+        mode: ProcessStartMode.inheritStdio,
+      );
+
+      final lintExitCode = await process.exitCode;
+      if (lintExitCode != 0) {
+        hasFailures = true;
+      }
+    }
+
+    if (hasFailures) {
+      print(Colorize('\n\nError: clang-tidy found issues.').red());
+      exit(1);
+    }
+
+    print(Colorize('Lint complete.').lightGreen());
+  }
+}
+
 class _EngineUnitTestCommand extends Command<dynamic> {
   _EngineUnitTestCommand() {
     if (Platform.isWindows) {
@@ -386,7 +559,7 @@ class _EngineUnitTestCommand extends Command<dynamic> {
 
     if (hasError) {
       print(Colorize('\n\nError: Tests failed (stderr was not empty).').red());
-      exit(exitCode);
+      exit(1);
     } else if (testExitCode == 0xFFFF_FFFF_C000_0005) {
       // The leak detector isn't happy with a couple items in Anthem right now.
       // So far these are due to missing cleanup of objects whose lifetime is
@@ -444,85 +617,13 @@ Future<void> _buildCmakeTarget(
   );
 
   if (!skipConfiguration) {
-    print(Colorize('Creating build directory...')..lightGreen());
-    final buildDir = Directory.fromUri(buildDirPath);
-    buildDir.createSync();
-
-    final cmakeCommand = [
-      if (wasm) 'emcmake',
-      'cmake',
-      if (Platform.isWindows && useClang && !wasm) ...['-G', 'Ninja'],
-
-      // Note: On Linux, if you get an error like: CMake Warning:
-      // Manually-specified variables were not used by the project:
-      //
-      //     CMAKE_BUILD_TYPE
-      //
-      // Then you may need to set the debug/release flag in the same way that
-      // Windows does below in the build command. E.g.:
-      //     cmake --build . --config (Release/Debug)
-      if (usesSingleConfigBuild)
-        '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
-
-      if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
-        '-DCMAKE_C_FLAGS=-fsanitize=address',
-        '-DCMAKE_CXX_FLAGS=-fsanitize=address',
-        '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
-        '-DCMAKE_C_FLAGS_DEBUG=-fsanitize=address',
-        '-DCMAKE_CXX_FLAGS_DEBUG=-fsanitize=address',
-        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fsanitize=address',
-        '-DCMAKE_C_FLAGS_DEBUG=-fno-omit-frame-pointer',
-        '-DCMAKE_CXX_FLAGS_DEBUG=-fno-omit-frame-pointer',
-        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fno-omit-frame-pointer',
-        '-DCMAKE_C_FLAGS_DEBUG=-g',
-        '-DCMAKE_CXX_FLAGS_DEBUG=-g',
-        '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-g',
-        '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
-      ],
-
-      if (addressSanitizer && Platform.isWindows && !wasm) ...[
-        r'-DCMAKE_C_FLAGS="/fsanitize=address"',
-        r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
-      ],
-      '..',
-    ];
-
-    print(Colorize('Running CMake...')..lightGreen());
-    final Process cmakeProcess;
-
-    if (Platform.isWindows && wasm) {
-      cmakeProcess = await Process.start(
-        'wsl',
-        [
-          '--cd',
-          buildDirPath.toFilePath(windows: Platform.isWindows),
-          'bash',
-          '-lc',
-          cmakeCommand.map((e) => '"$e"').join(' '),
-        ],
-        // workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-        mode: ProcessStartMode.inheritStdio,
-      );
-    } else {
-      cmakeProcess = await Process.start(
-        cmakeCommand.first,
-        cmakeCommand.skip(1).toList(),
-        workingDirectory: buildDirPath.toFilePath(windows: Platform.isWindows),
-        environment: {
-          if (Platform.isLinux && !wasm) 'CC': '/usr/bin/clang',
-          if (Platform.isLinux && !wasm) 'CXX': '/usr/bin/clang++',
-          if (Platform.isWindows && useClang && !wasm) 'CC': 'clang',
-          if (Platform.isWindows && useClang && !wasm) 'CXX': 'clang++',
-        },
-        mode: ProcessStartMode.inheritStdio,
-      );
-    }
-
-    final cmakeExitCode = await cmakeProcess.exitCode;
-    if (cmakeExitCode != 0) {
-      print(Colorize('\n\nError: CMake failed.').red());
-      exit(exitCode);
-    }
+    await _configureCmakeBuild(
+      wasm: wasm,
+      addressSanitizer: addressSanitizer,
+      debug: debug,
+      useClang: useClang,
+      buildDirectoryName: buildDirectoryName,
+    );
   }
 
   print(Colorize('Running build...')..lightGreen());
@@ -559,10 +660,105 @@ Future<void> _buildCmakeTarget(
   final buildExitCode = await buildProcess.exitCode;
   if (buildExitCode != 0) {
     print(Colorize('\n\nError: Build failed.').red());
-    exit(exitCode);
+    exit(1);
   }
 
   print(Colorize('\n\nBuild complete.').lightGreen());
+}
+
+Future<void> _configureCmakeBuild({
+  bool wasm = false,
+  bool addressSanitizer = false,
+  bool debug = false,
+  bool useClang = false,
+  String buildDirectoryName = 'build',
+}) async {
+  final packageRootPath = getPackageRootPath();
+  final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');
+  final buildDirPathString = buildDirPath.toFilePath(
+    windows: Platform.isWindows,
+  );
+  final usesSingleConfigBuild = _usesSingleConfigBuild(
+    wasm: wasm,
+    useClang: useClang,
+  );
+  final compilerEnvironment = _getCmakeCompilerEnvironment(
+    wasm: wasm,
+    useClang: useClang,
+  );
+
+  print(Colorize('Creating build directory...')..lightGreen());
+  final buildDir = Directory.fromUri(buildDirPath);
+  buildDir.createSync(recursive: true);
+
+  final cmakeCommand = [
+    if (wasm) 'emcmake',
+    'cmake',
+    if (Platform.isWindows && useClang && !wasm) ...['-G', 'Ninja'],
+
+    // Note: On Linux, if you get an error like: CMake Warning:
+    // Manually-specified variables were not used by the project:
+    //
+    //     CMAKE_BUILD_TYPE
+    //
+    // Then you may need to set the debug/release flag in the same way that
+    // Windows does below in the build command. E.g.:
+    //     cmake --build . --config (Release/Debug)
+    if (usesSingleConfigBuild)
+      '-DCMAKE_BUILD_TYPE=${debug ? 'Debug' : 'Release'}',
+
+    if (Platform.isWindows && useClang && !wasm)
+      '-DCMAKE_MAKE_PROGRAM=${_toCmakePath(_requireNinjaExecutable())}',
+
+    if (addressSanitizer && (Platform.isLinux || Platform.isMacOS)) ...[
+      '-DCMAKE_C_FLAGS=-fsanitize=address',
+      '-DCMAKE_CXX_FLAGS=-fsanitize=address',
+      '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address',
+      '-DCMAKE_C_FLAGS_DEBUG=-fsanitize=address',
+      '-DCMAKE_CXX_FLAGS_DEBUG=-fsanitize=address',
+      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fsanitize=address',
+      '-DCMAKE_C_FLAGS_DEBUG=-fno-omit-frame-pointer',
+      '-DCMAKE_CXX_FLAGS_DEBUG=-fno-omit-frame-pointer',
+      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-fno-omit-frame-pointer',
+      '-DCMAKE_C_FLAGS_DEBUG=-g',
+      '-DCMAKE_CXX_FLAGS_DEBUG=-g',
+      '-DCMAKE_EXE_LINKER_FLAGS_DEBUG=-g',
+      '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address',
+    ],
+
+    if (addressSanitizer && Platform.isWindows && !wasm) ...[
+      r'-DCMAKE_C_FLAGS="/fsanitize=address"',
+      r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
+    ],
+    '..',
+  ];
+
+  print(Colorize('Running CMake...')..lightGreen());
+  final Process cmakeProcess;
+
+  if (Platform.isWindows && wasm) {
+    cmakeProcess = await Process.start('wsl', [
+      '--cd',
+      buildDirPathString,
+      'bash',
+      '-lc',
+      cmakeCommand.map((e) => '"$e"').join(' '),
+    ], mode: ProcessStartMode.inheritStdio);
+  } else {
+    cmakeProcess = await Process.start(
+      cmakeCommand.first,
+      cmakeCommand.skip(1).toList(),
+      workingDirectory: buildDirPathString,
+      environment: compilerEnvironment,
+      mode: ProcessStartMode.inheritStdio,
+    );
+  }
+
+  final cmakeExitCode = await cmakeProcess.exitCode;
+  if (cmakeExitCode != 0) {
+    print(Colorize('\n\nError: CMake failed.').red());
+    exit(1);
+  }
 }
 
 String _getBuildDirectoryName({
@@ -584,6 +780,84 @@ bool _usesSingleConfigBuild({required bool wasm, required bool useClang}) {
       Platform.isMacOS ||
       wasm ||
       (Platform.isWindows && useClang);
+}
+
+List<File> _getOwnedEngineCppFiles({bool translationUnitsOnly = false}) {
+  final packageRootPath = getPackageRootPath();
+  final fileExtensions = translationUnitsOnly ? ['.cpp'] : ['.cpp', '.h'];
+  final files = <File>[];
+
+  final roots = [
+    Directory.fromUri(packageRootPath.resolve('engine/src/')),
+    Directory.fromUri(packageRootPath.resolve('engine/test/')),
+  ];
+
+  for (final root in roots) {
+    if (!root.existsSync()) continue;
+
+    for (final entity in root.listSync(recursive: true).whereType<File>()) {
+      if (entity.uri.pathSegments.contains('generated')) continue;
+
+      final entityPath = entity.path.toLowerCase();
+      if (fileExtensions.any((extension) => entityPath.endsWith(extension))) {
+        files.add(entity);
+      }
+    }
+  }
+
+  files.sort((a, b) => a.path.compareTo(b.path));
+  return files;
+}
+
+Map<String, String> _getCmakeCompilerEnvironment({
+  required bool wasm,
+  required bool useClang,
+}) {
+  if (wasm) return const {};
+
+  if (Platform.isLinux) {
+    return {
+      'CC': _requireLlvmExecutable('clang'),
+      'CXX': _requireLlvmExecutable('clang++'),
+    };
+  }
+
+  if (Platform.isWindows && useClang) {
+    return {
+      'CC': _requireLlvmExecutable('clang'),
+      'CXX': _requireLlvmExecutable('clang++'),
+    };
+  }
+
+  return const {};
+}
+
+String _requireLlvmExecutable(String executableName) {
+  final executablePath = findLlvmExecutable(executableName);
+  if (executablePath != null) return executablePath;
+
+  print(
+    Colorize(
+      'Error: Could not find $executableName. Install LLVM and make it available on PATH, or set ANTHEM_LLVM_BIN to the LLVM bin directory.',
+    ).red(),
+  );
+  exit(1);
+}
+
+String _requireNinjaExecutable() {
+  final executablePath = findNinjaExecutable();
+  if (executablePath != null) return executablePath;
+
+  print(
+    Colorize(
+      'Error: Could not find ninja. Install Ninja and make it available on PATH before using the Windows clang engine workflow.',
+    ).red(),
+  );
+  exit(1);
+}
+
+String _toCmakePath(String path) {
+  return path.replaceAll('\\', '/');
 }
 
 Uri _getEngineBinaryLocation({

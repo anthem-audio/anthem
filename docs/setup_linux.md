@@ -13,7 +13,7 @@ In addition to Flutter, Anthem needs the following:
 - **Make**: Used for assembling Anthem components.
 - **Apt packages**: The following packages are required by either JUCE or Flutter, and can be installed with `apt` or a similar package manager:
    ```
-   ninja-build llvm clang libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.1-dev libcurl4-openssl-dev
+   ninja-build llvm clang clang-format clang-tidy libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.1-dev libcurl4-openssl-dev
    ```
 
 ### Instructions
@@ -32,9 +32,12 @@ In addition to Flutter, Anthem needs the following:
       export CXX=clang++
       export CMAKE_MAKE_PROGRAM=make
       ```
-9. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
-10. To keep the generated code updated with the source, you have two options:
+9. Use the following commands to format and lint engine C++ code:
+   - `dart run anthem:cli engine format`
+   - `dart run anthem:cli engine lint`
+10. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
+11. To keep the generated code updated with the source, you have two options:
    1. Open a new terminal session and run `dart run anthem:cli codegen generate --root-only --watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
    2. Run `dart run anthem:cli codegen generate --root-only` manually after modifying the model or the IPC messages. This method is a bit more surgical during update, and as a result, C++ build times may be faster when updating generated code with this method.
    - Note: you may need to clean and re-run code generation in order to re-generate the files for the IPC messages if they are changed, since they sometimes don't re-generate automatically. There is a note that prints when running the codegen command above which has more info about this.
-11. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+12. Use `flutter run` to run Anthem, or start Anthem via your IDE.

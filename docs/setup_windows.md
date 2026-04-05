@@ -8,6 +8,16 @@ In addition to Flutter, Anthem needs the following:
 
 - **The MSVC C++ compiler**: Already required by Flutter for Windows development.
 - **CMake**: Required to build the C++ components of Anthem. Download and install CMake from [here](https://cmake.org/).
+- **LLVM**: Required for `clang-format`, `clang-tidy`, and the Windows clang engine workflow. You can install it from [llvm.org](https://llvm.org/), or with Chocolatey:
+  ```powershell
+  choco install llvm -y
+  ```
+- **Ninja**: Required by the Windows clang engine workflow used by `dart run anthem:cli engine lint`. You can install it from [ninja-build.org](https://ninja-build.org/), or with Chocolatey:
+  ```powershell
+  choco install ninja -y
+  ```
+
+If LLVM is installed but its `bin` directory is not on `PATH`, you can set `ANTHEM_LLVM_BIN` to that directory before running the Anthem CLI.
 
 ### Instructions
 
@@ -19,9 +29,12 @@ In addition to Flutter, Anthem needs the following:
 6. `cd` to the `tools/anthem_analyzer_plugin` directory and run `dart pub get`.
 7. Return to the repository root and run `dart run anthem:cli codegen generate` to create or update generated code.
 8. Run `dart run anthem:cli engine build --debug`. This will build the engine executable.
-9. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
-10. To keep the generated code updated with the source, you have two options:
+9. Use the following commands to format and lint engine C++ code:
+   - `dart run anthem:cli engine format`
+   - `dart run anthem:cli engine lint`
+10. (Optional) Open the project in your preferred IDE, such as Visual Studio Code.
+11. To keep the generated code updated with the source, you have two options:
    1. Open a new terminal session and run `dart run anthem:cli codegen generate --root-only --watch`. This will run Dart-related code generation, and keep the generated files up-to-date as you develop.
    2. Run `dart run anthem:cli codegen generate --root-only` manually after modifying the model or the IPC messages. This method is a bit more surgical during update, and as a result, C++ build times may be faster when updating generated code with this method.
    - Note: you may need to clean and re-run code generation in order to re-generate the files for the IPC messages if they are changed, since they sometimes don't re-generate automatically. There is a note that prints when running the codegen command above which has more info about this.
-11. Use `flutter run` to run Anthem, or start Anthem via your IDE.
+12. Use `flutter run` to run Anthem, or start Anthem via your IDE.
