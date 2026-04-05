@@ -90,6 +90,7 @@ public:
 class Transport : private juce::Timer {
 private:
   JUCE_LEAK_DETECTOR(Transport)
+  friend class TransportTest;
 
   // The audio thread reads the transport state from here
   RingBuffer<TransportConfig*, 64> configBuffer;

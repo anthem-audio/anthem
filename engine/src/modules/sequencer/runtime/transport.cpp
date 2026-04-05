@@ -325,10 +325,6 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
 }
 
 void Transport::updatePlayheadJumpEventForStart(bool send) {
-  if (!config.activeSequenceId.has_value()) {
-    return;
-  }
-
   config.playheadJumpEventForStart = createPlayheadJumpEvent(config.playheadStart);
 
   if (send) {
@@ -419,7 +415,9 @@ void Transport::updateLoopPoints(bool send) {
   config.loopEnd = static_cast<double>(loopPoints->end());
   config.playheadJumpEventForLoop = createPlayheadJumpEvent(static_cast<double>(config.loopStart));
 
-  sendConfigToAudioThread();
+  if (send) {
+    sendConfigToAudioThread();
+  }
 }
 
 void Transport::timerCallback() {
