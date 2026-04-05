@@ -63,13 +63,12 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(GraphRuntimeServices&
   std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
   std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
 
-  std::cout << "\033[32m"
-            << "AnthemGraphCompiler::compile(): Compiling graph with "
-            << processingGraphModel->nodes()->size()
-            << (processingGraphModel->nodes()->size() > 1 ? " nodes" : " node") << " and "
-            << processingGraphModel->connections()->size()
-            << (processingGraphModel->connections()->size() > 1 ? " connections" : " connection")
-            << "\033[0m" << '\n';
+  const auto nodeCount = processingGraphModel->nodes()->size();
+  const auto connectionCount = processingGraphModel->connections()->size();
+
+  std::cout << "\033[32mAnthemGraphCompiler::compile(): Compiling graph with " << nodeCount
+            << (nodeCount > 1 ? " nodes" : " node") << " and " << connectionCount
+            << (connectionCount > 1 ? " connections" : " connection") << "\033[0m\n";
 
   // Create contexts for each node
   for (auto& pair : *processingGraphModel->nodes()) {
