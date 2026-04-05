@@ -227,7 +227,7 @@ Some things to keep in mind:
         Colorize('Copying engine binary to Flutter assets directory...')
           ..lightGreen(),
       );
-      final engineBinaryPath = _getEngineBinaryLocation(
+      final engineBinaryPath = _resolveExistingEngineBinaryLocation(
         buildDirectoryName: buildDirectoryName,
         debug: debug,
       );
@@ -860,7 +860,33 @@ String _toCmakePath(String path) {
   return path.replaceAll('\\', '/');
 }
 
-Uri _getEngineBinaryLocation({
+Uri _resolveExistingEngineBinaryLocation({
+  required String buildDirectoryName,
+  required bool debug,
+}) {
+  final candidatePaths = _getEngineBinaryLocationCandidates(
+    buildDirectoryName: buildDirectoryName,
+    debug: debug,
+  );
+
+  for (final candidatePath in candidatePaths) {
+    if (File.fromUri(candidatePath).existsSync()) {
+      return candidatePath;
+    }
+  }
+
+  final attemptedPaths = candidatePaths
+      .map((path) => path.toFilePath(windows: Platform.isWindows))
+      .join('\n - ');
+  print(
+    Colorize(
+      'Error: Could not find the built Anthem engine binary. Tried:\n - $attemptedPaths',
+    ).red(),
+  );
+  exit(1);
+}
+
+List<Uri> _getEngineBinaryLocationCandidates({
   required String buildDirectoryName,
   required bool debug,
 }) {
@@ -868,14 +894,25 @@ Uri _getEngineBinaryLocation({
   final binaryName = 'AnthemEngine${Platform.isWindows ? '.exe' : ''}';
 
   if (Platform.isWindows) {
-    return packageRootPath.resolve(
-      'engine/$buildDirectoryName/AnthemEngine_artefacts${debug ? '/Debug' : '/Release'}/$binaryName',
-    );
+    return [
+      packageRootPath.resolve(
+        'engine/$buildDirectoryName/AnthemEngine_artefacts${debug ? '/Debug' : '/Release'}/$binaryName',
+      ),
+      packageRootPath.resolve(
+        'engine/$buildDirectoryName/${debug ? 'Debug' : 'Release'}/$binaryName',
+      ),
+    ];
   }
 
-  return packageRootPath.resolve(
-    'engine/$buildDirectoryName/AnthemEngine_artefacts/$binaryName',
-  );
+  return [
+    packageRootPath.resolve('engine/$buildDirectoryName/$binaryName'),
+    packageRootPath.resolve(
+      'engine/$buildDirectoryName/AnthemEngine_artefacts/$binaryName',
+    ),
+    packageRootPath.resolve(
+      'engine/$buildDirectoryName/AnthemEngine_artefacts${debug ? '/Debug' : '/Release'}/$binaryName',
+    ),
+  ];
 }
 
 Uri _getEngineTestBinaryLocation({
