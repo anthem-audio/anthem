@@ -345,6 +345,11 @@ public:
   }
 
   // Additional methods
+  // This override is only used through concrete collection types in generated
+  // code. clang-tidy flags virtual members in class templates here as a
+  // cross-compiler portability risk, but this body is the same constexpr-
+  // guarded implementation for every instantiation we generate.
+  // NOLINTNEXTLINE(portability-template-virtual-member-function)
   void initialize(std::shared_ptr<AnthemModelBase> selfModel,
                   std::shared_ptr<AnthemModelBase> parentModel) override {
     AnthemModelBase::initialize(selfModel, parentModel);
