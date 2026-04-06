@@ -23,8 +23,6 @@
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
-#include <optional>
-
 SequenceNoteProviderProcessor::SequenceNoteProviderProcessor(
     const SequenceNoteProviderProcessorModelImpl& _impl)
   : AnthemProcessor("SequenceNoteProvider"), SequenceNoteProviderProcessorModelBase(_impl) {}
@@ -33,11 +31,34 @@ SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
   // Nothing to do here
 }
 
+const SequenceEventList*
+SequenceNoteProviderProcessor::rt_getSourceTrackEvents(const RuntimeDependencies& dependencies,
+                                                       int64_t trackId) {
+  if (dependencies.rt_activeSequence == nullptr) {
+    return nullptr;
+  }
+
+  int64_t sourceTrackId = trackId;
+  if (dependencies.rt_activeTrackId.has_value() &&
+      dependencies.rt_activeTrackId.value() == trackId) {
+    auto noTrackEventListIter =
+        dependencies.rt_activeSequence->tracks->find(anthem_sequencer_track_ids::noTrack);
+    if (noTrackEventListIter != dependencies.rt_activeSequence->tracks->end()) {
+      sourceTrackId = anthem_sequencer_track_ids::noTrack;
+    }
+  }
+
+  auto sourceTrackEventListIter = dependencies.rt_activeSequence->tracks->find(sourceTrackId);
+  if (sourceTrackEventListIter == dependencies.rt_activeSequence->tracks->end()) {
+    return nullptr;
+  }
+
+  return &sourceTrackEventListIter->second;
+}
+
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    const TrackedNote& trackedNote,
-    double sampleOffset) {
-  targetBuffer->addEvent(AnthemLiveEvent{
+    AnthemEventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset) {
+  targetBuffer.addEvent(AnthemLiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = trackedNote.liveId,
       .event = AnthemEvent(AnthemNoteOffEvent(trackedNote.pitch, trackedNote.channel, 0.0f)),
@@ -45,68 +66,29 @@ void SequenceNoteProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffsForAllTrackedNotes(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer, double sampleOffset) {
-  rt_activeSequenceNotes.rt_takeAll([&](const TrackedNote& trackedNote) {
+    RuntimeState& state, AnthemEventBuffer& targetBuffer, double sampleOffset) {
+  state.rt_activeSequenceNotes.rt_takeAll([&](const TrackedNote& trackedNote) {
     rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote, sampleOffset);
   });
 }
 
-void SequenceNoteProviderProcessor::rt_handleSequenceNoteOn(
-    AnthemNodeProcessContext& context,
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    AnthemSourceNoteId sourceId,
-    const AnthemNoteOnEvent& noteOnEvent,
-    double sampleOffset) {
-  auto liveId = context.rt_allocateLiveNoteId();
-  auto didTrackNote =
-      rt_activeSequenceNotes.rt_add(sourceId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
-
-  targetBuffer->addEvent(AnthemLiveEvent{
-      .sampleOffset = sampleOffset,
-      .liveId = didTrackNote ? liveId : anthemInvalidLiveNoteId,
-      .event = AnthemEvent(AnthemNoteOnEvent(
-          noteOnEvent.pitch, noteOnEvent.channel, noteOnEvent.velocity, noteOnEvent.detune)),
-  });
-}
-
-void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    AnthemSourceNoteId sourceId,
-    const AnthemNoteOffEvent& noteOffEvent,
-    double sampleOffset) {
-  auto trackedNote = rt_activeSequenceNotes.rt_takeByInputId(sourceId);
+void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state,
+                                                             AnthemEventBuffer& targetBuffer,
+                                                             AnthemSourceNoteId sourceId,
+                                                             const AnthemNoteOffEvent& noteOffEvent,
+                                                             double sampleOffset) {
+  auto trackedNote = state.rt_activeSequenceNotes.rt_takeByInputId(sourceId);
   if (trackedNote.has_value()) {
     rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote.value(), sampleOffset);
     return;
   }
 
-  targetBuffer->addEvent(AnthemLiveEvent{
+  targetBuffer.addEvent(AnthemLiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = anthemInvalidLiveNoteId,
       .event = AnthemEvent(
           AnthemNoteOffEvent(noteOffEvent.pitch, noteOffEvent.channel, noteOffEvent.velocity)),
   });
-}
-
-void SequenceNoteProviderProcessor::rt_addEventsForJump(
-    AnthemNodeProcessContext& context,
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    const PlayheadJumpEvent& event,
-    double sampleTimeOffset) {
-  auto& trackId = this->trackId();
-
-  auto playEventsIter = event.eventsToPlayAtJump.find(trackId);
-  if (playEventsIter != event.eventsToPlayAtJump.end()) {
-    for (const auto& jumpEvent : playEventsIter->second) {
-      if (jumpEvent.event.type == AnthemEventType::NoteOn) {
-        rt_handleSequenceNoteOn(context,
-                                targetBuffer,
-                                jumpEvent.sequenceNoteId,
-                                jumpEvent.event.noteOn,
-                                sampleTimeOffset);
-      }
-    }
-  }
 }
 
 void SequenceNoteProviderProcessor::prepareToProcess() {
@@ -118,122 +100,35 @@ void SequenceNoteProviderProcessor::process(AnthemNodeProcessContext& context, i
       context.getOutputEventBuffer(SequenceNoteProviderProcessorModelBase::eventOutputPortId);
 
   auto& trackId = this->trackId();
-
   auto& transport = Anthem::getInstance().transport;
-  auto* config = transport->rt_config;
-
-  if (transport->rt_shouldStopSequenceNotes) {
-    rt_emitLiveNoteOffsForAllTrackedNotes(outputEventBuffer, 0.0);
-  }
-
-  if (transport->rt_playheadJumpEvent != nullptr) {
-    rt_addEventsForJump(context, outputEventBuffer, *transport->rt_playheadJumpEvent);
-  }
-
-  if (!config->isPlaying) {
-    return;
-  }
-
+  const auto* config = transport->rt_config;
   auto& sequenceStore = *Anthem::getInstance().sequenceStore;
-  auto activeSequenceId = config->activeSequenceId;
 
-  if (!activeSequenceId) {
-    return;
-  }
-
-  auto& sequenceMap = sequenceStore.rt_getEventLists();
-  if (sequenceMap.find(*activeSequenceId) == sequenceMap.end()) {
-    return;
-  }
-
-  auto& eventsForSequence = sequenceMap.at(*activeSequenceId);
-
-  int64_t sourceTrackId = trackId;
-  if (config->activeTrackId.has_value() && config->activeTrackId.value() == trackId) {
-    auto noTrackEventListIter = eventsForSequence.tracks->find(anthem_sequencer_track_ids::noTrack);
-    if (noTrackEventListIter != eventsForSequence.tracks->end()) {
-      sourceTrackId = anthem_sequencer_track_ids::noTrack;
+  const SequenceEventListCollection* activeSequence = nullptr;
+  if (config->activeSequenceId.has_value()) {
+    auto& sequenceMap = sequenceStore.rt_getEventLists();
+    auto activeSequenceIter = sequenceMap.find(*config->activeSequenceId);
+    if (activeSequenceIter != sequenceMap.end()) {
+      activeSequence = &activeSequenceIter->second;
     }
   }
 
-  auto sourceTrackEventListIter = eventsForSequence.tracks->find(sourceTrackId);
-  if (sourceTrackEventListIter == eventsForSequence.tracks->end()) {
-    return;
-  }
+  RuntimeDependencies dependencies{
+      .rt_shouldStopSequenceNotes = transport->rt_shouldStopSequenceNotes,
+      .rt_playheadJumpEvent = transport->rt_playheadJumpEvent,
+      .rt_isPlaying = config->isPlaying,
+      .rt_activeTrackId = config->activeTrackId,
+      .rt_playhead = transport->rt_playhead,
+      .rt_loopStart = config->loopStart,
+      .rt_loopEnd = config->loopEnd,
+      .rt_playheadJumpEventForLoop = config->playheadJumpEventForLoop.has_value()
+                                         ? &config->playheadJumpEventForLoop.value()
+                                         : nullptr,
+      .rt_timingParams = transport->rt_getTimingParams(),
+      .rt_activeSequence = activeSequence,
+  };
 
-  auto& channelEvents = sourceTrackEventListIter->second;
-
-  double playheadPos = transport->rt_playhead;
-  auto timingParams = transport->rt_getTimingParams();
-
-  if (channelEvents.invalidationOccurred) {
-    rt_emitLiveNoteOffsForAllTrackedNotes(outputEventBuffer, 0.0);
-  }
-
-  double ticks =
-      sequencer_timing::sampleCountToTickDelta(static_cast<double>(numSamples), timingParams);
-  double sampleTimeOffset = 0.0;
-
-  double incrementRemaining = ticks;
-  double loopStart = config->loopStart;
-  double loopEnd = config->loopEnd;
-
-  while (incrementRemaining > 0.0) {
-    double incrementAmount = incrementRemaining;
-    bool didJump = false;
-
-    double start = playheadPos;
-    double end = -1;
-
-    if (playheadPos + incrementAmount >= loopEnd) {
-      incrementAmount = loopEnd - playheadPos;
-      incrementRemaining -= incrementAmount;
-      playheadPos = loopStart;
-      end = loopEnd;
-      didJump = true;
-    } else {
-      playheadPos += incrementAmount;
-      end = playheadPos;
-      incrementRemaining = 0.0;
-    }
-
-    if (incrementAmount < 0) {
-      incrementAmount = 0;
-    }
-
-    double sampleAdvance = sequencer_timing::tickDeltaToSampleOffset(incrementAmount, timingParams);
-
-    for (const auto& event : *channelEvents.events) {
-      if (event.offset >= start && event.offset < end) {
-        auto eventSampleOffset = sampleTimeOffset + sequencer_timing::tickDeltaToSampleOffset(
-                                                        event.offset - start, timingParams);
-
-        if (event.event.type == AnthemEventType::NoteOn) {
-          rt_handleSequenceNoteOn(
-              context, outputEventBuffer, event.sourceId, event.event.noteOn, eventSampleOffset);
-        } else if (event.event.type == AnthemEventType::NoteOff) {
-          rt_handleSequenceNoteOff(
-              outputEventBuffer, event.sourceId, event.event.noteOff, eventSampleOffset);
-        }
-      }
-
-      if (event.offset >= end) {
-        break;
-      }
-    }
-
-    if (didJump && config->playheadJumpEventForLoop.has_value()) {
-      // Loop-stop behavior must be derived from the actual RT notes owned by
-      // this provider. The loop-start payload may be slightly out of date, but
-      // the active tracker is the authoritative source for what needs to stop.
-      rt_emitLiveNoteOffsForAllTrackedNotes(outputEventBuffer, sampleTimeOffset + sampleAdvance);
-
-      rt_addEventsForJump(context,
-                          outputEventBuffer,
-                          config->playheadJumpEventForLoop.value(),
-                          sampleTimeOffset + sampleAdvance);
-    }
-
-    sampleTimeOffset += sampleAdvance;
-  }
+  rt_processBlock(rt_state, dependencies, *outputEventBuffer, trackId, numSamples, [&context]() {
+    return context.rt_allocateLiveNoteId();
+  });
 }

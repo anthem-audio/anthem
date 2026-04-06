@@ -21,6 +21,7 @@
 #include "modules/core/sequencer_test.h"
 #include "modules/processing_graph/processor/anthem_event_buffer_test.h"
 #include "modules/processors/gain_parameter_mapping_test.h"
+#include "modules/processors/sequence_note_provider_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/events/event_test.h"
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"
