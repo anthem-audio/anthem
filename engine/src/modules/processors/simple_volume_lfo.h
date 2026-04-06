@@ -24,9 +24,17 @@
 
 class SimpleVolumeLfoProcessor : public AnthemProcessor, public SimpleVolumeLfoProcessorModelBase {
 private:
-  float rate;
-  float amplitude;
-  bool increasing;
+  friend class SimpleVolumeLfoTest;
+
+  struct RuntimeState {
+    float rt_amplitude = 1.0f;
+    bool rt_increasing = false;
+  };
+
+  float rt_rate = 0.0001f;
+  RuntimeState rt_state;
+
+  static void rt_advanceState(RuntimeState& state, float rt_rate);
 public:
   SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcessorModelImpl& _impl);
   ~SimpleVolumeLfoProcessor() override;

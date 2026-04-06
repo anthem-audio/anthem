@@ -22,14 +22,29 @@
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 SimpleVolumeLfoProcessor::SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcessorModelImpl& _impl)
-  : AnthemProcessor("SimpleVolumeLfo"), SimpleVolumeLfoProcessorModelBase(_impl) {
-  rate = 0.0001f;
-  amplitude = 1;
-}
+  : AnthemProcessor("SimpleVolumeLfo"), SimpleVolumeLfoProcessorModelBase(_impl) {}
 
 SimpleVolumeLfoProcessor::~SimpleVolumeLfoProcessor() {}
 
-void SimpleVolumeLfoProcessor::prepareToProcess() {}
+void SimpleVolumeLfoProcessor::rt_advanceState(RuntimeState& state, float rt_rate) {
+  if (state.rt_increasing) {
+    state.rt_amplitude += rt_rate;
+  } else {
+    state.rt_amplitude -= rt_rate;
+  }
+
+  if (state.rt_amplitude >= 1.0f) {
+    state.rt_amplitude = 1.0f;
+    state.rt_increasing = false;
+  } else if (state.rt_amplitude <= 0.0f) {
+    state.rt_amplitude = 0.0f;
+    state.rt_increasing = true;
+  }
+}
+
+void SimpleVolumeLfoProcessor::prepareToProcess() {
+  rt_state = RuntimeState{};
+}
 
 void SimpleVolumeLfoProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   auto& inputBuffer =
@@ -41,19 +56,9 @@ void SimpleVolumeLfoProcessor::process(AnthemNodeProcessContext& context, int nu
   for (int sample = 0; sample < numSamples; ++sample) {
     for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel) {
       const float inputValue = inputBuffer.getSample(channel, sample);
-      outputBuffer.getWritePointer(channel)[sample] = inputValue * amplitude;
+      outputBuffer.getWritePointer(channel)[sample] = inputValue * rt_state.rt_amplitude;
     }
 
-    if (increasing) {
-      amplitude += rate;
-    } else {
-      amplitude -= rate;
-    }
-
-    if (amplitude >= 1) {
-      increasing = false;
-    } else if (amplitude <= 0) {
-      increasing = true;
-    }
+    rt_advanceState(rt_state, rt_rate);
   }
 }
