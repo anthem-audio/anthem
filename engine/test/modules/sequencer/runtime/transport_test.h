@@ -62,8 +62,8 @@ class TransportTest : public juce::UnitTest {
             std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>(),
         .activePatternID = std::nullopt,
         .activeTrackID = std::nullopt,
-        .arrangements = std::make_shared<
-            AnthemModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>(),
+        .arrangements =
+            std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>(),
         .arrangementOrder = std::make_shared<AnthemModelVector<int64_t>>(),
         .activeArrangementID = std::nullopt,
         .activeTransportSequenceID = std::nullopt,
@@ -80,8 +80,7 @@ class TransportTest : public juce::UnitTest {
     return std::make_shared<Project>(ProjectModelImpl{
         .sequence = createSequencerModel(),
         .processingGraph = std::make_shared<ProcessingGraphModel>(ProcessingGraphModelImpl{
-            .nodes =
-                std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>>(),
+            .nodes = std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>>(),
             .connections = std::make_shared<
                 AnthemModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>>(),
             .masterOutputNodeId = 0,
@@ -107,8 +106,8 @@ class TransportTest : public juce::UnitTest {
         .automation = std::make_shared<AutomationLaneModel>(AutomationLaneModelImpl{
             .points = std::make_shared<AnthemModelVector<std::shared_ptr<AutomationPointModel>>>(),
         }),
-        .timeSignatureChanges = std::make_shared<
-            AnthemModelVector<std::shared_ptr<TimeSignatureChangeModel>>>(),
+        .timeSignatureChanges =
+            std::make_shared<AnthemModelVector<std::shared_ptr<TimeSignatureChangeModel>>>(),
         .loopPoints = std::make_shared<LoopPointsModel>(LoopPointsModelImpl{
             .start = start,
             .end = end,
@@ -216,18 +215,21 @@ public:
     resetAnthemForTransportTests();
 
     auto& anthem = Anthem::getInstance();
-    anthem.project->sequence()->patterns()->insert_or_assign(sequenceId, createPatternWithLoopPoints(4, 8));
+    anthem.project->sequence()->patterns()->insert_or_assign(sequenceId,
+                                                             createPatternWithLoopPoints(4, 8));
 
     auto& transport = *anthem.transport;
     transport.config.playheadStart = 6.0;
 
-    expectEquals(drainPendingConfigCount(transport), 1, "Constructor should enqueue one initial config.");
+    expectEquals(
+        drainPendingConfigCount(transport), 1, "Constructor should enqueue one initial config.");
 
     std::optional<int64_t> activeSequenceId = sequenceId;
     transport.setActiveSequenceId(activeSequenceId);
 
     expect(transport.config.hasLoop, "Loop points should be loaded into the local config.");
-    expectEquals(transport.config.loopStart, 4.0, "Loop start should come from the active sequence.");
+    expectEquals(
+        transport.config.loopStart, 4.0, "Loop start should come from the active sequence.");
     expectEquals(transport.config.loopEnd, 8.0, "Loop end should come from the active sequence.");
     expectEquals(drainPendingConfigCount(transport),
                  1,
@@ -258,7 +260,8 @@ public:
     transport.setActiveSequenceId(activeSequenceId);
 
     auto* jumpEventsBeforeClear = getJumpEventsForTrack(transport.config.playheadJumpEventForStart);
-    expect(jumpEventsBeforeClear != nullptr, "The cached start payload should include sustained notes.");
+    expect(jumpEventsBeforeClear != nullptr,
+           "The cached start payload should include sustained notes.");
     expectEquals(transport.config.playheadJumpEventForStart.newPlayheadPosition,
                  1.0,
                  "The cached start payload should target the current playhead start.");
@@ -269,9 +272,10 @@ public:
     auto* jumpEventsAfterClear = getJumpEventsForTrack(transport.config.playheadJumpEventForStart);
     expect(jumpEventsAfterClear == nullptr,
            "Clearing the active sequence should remove cached jump-start note payloads.");
-    expectEquals(transport.config.playheadJumpEventForStart.newPlayheadPosition,
-                 1.0,
-                 "Clearing the active sequence should preserve the stored playhead-start position.");
+    expectEquals(
+        transport.config.playheadJumpEventForStart.newPlayheadPosition,
+        1.0,
+        "Clearing the active sequence should preserve the stored playhead-start position.");
 
     Anthem::cleanup();
   }
