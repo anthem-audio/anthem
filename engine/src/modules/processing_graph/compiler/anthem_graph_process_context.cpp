@@ -19,20 +19,15 @@
 
 #include "anthem_graph_process_context.h"
 
-#include "modules/core/anthem.h"
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 
-AnthemGraphProcessContext::AnthemGraphProcessContext(GraphRuntimeServices& rtServices)
+AnthemGraphProcessContext::AnthemGraphProcessContext(
+    GraphRuntimeServices& rtServices, const AnthemGraphBufferLayout& bufferLayout)
   : rt_services(&rtServices) {
-  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
-
-  if (currentDevice != nullptr) {
-    blockSize = currentDevice->getCurrentBufferSizeSamples();
-    numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits();
-  }
+  blockSize = bufferLayout.blockSize;
+  numAudioChannels = bufferLayout.numAudioChannels;
 }
 
 AnthemGraphProcessContext::~AnthemGraphProcessContext() = default;

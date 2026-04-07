@@ -17,25 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-/*
-  Steps to compile a processing graph:
-
-  1. Clear buffers for all nodes. For parameters, write the control values to
-     the control input port buffers as an initialization value. This may be
-     overwritten by actual control connections.
-  2. Find all nodes that have no incoming connections. These are the "root"
-     nodes of the graph. Mark these as ready to process.
-  3. For each ready node, add it to a processing step it and mark all of its
-     outgoing connections as ready to process.
-  4. For each ready connection, add it to a processing step to copy the data
-     from the source port to the destination port. This must be done in a single
-     thread in series, because if multiple connections are copying to the same
-     port, two threads cannot be copying the data at the same time.
-  5. Find all nodes whose incoming connections are all marked as processed. Mark
-     these as ready to process.
-  6. Repeat steps 3-5 until all nodes are marked as processed.
-*/
-
 #pragma once
 
 #include "actions/clear_buffers_action.h"
@@ -54,9 +35,20 @@
 
 class GraphRuntimeServices;
 
+struct AnthemGraphCompileRequest {
+  using NodeMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>;
+  using ConnectionMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>;
+
+  GraphRuntimeServices& rtServices;
+  NodeMap& nodes;
+  ConnectionMap& connections;
+  AnthemGraphBufferLayout bufferLayout;
+  double sampleRate = 0.0;
+};
+
 // This class is used to compile a processing graph into a set of processing
 // instructions that can be executed in a real-time context.
 class AnthemGraphCompiler {
 public:
-  static AnthemGraphCompilationResult* compile(GraphRuntimeServices& rtServices);
+  static AnthemGraphCompilationResult* compile(const AnthemGraphCompileRequest& request);
 };

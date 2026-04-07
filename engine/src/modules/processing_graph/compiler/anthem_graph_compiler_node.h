@@ -34,6 +34,9 @@ class AnthemNodeProcessContext;
 // track of details about nodes being processed.
 class AnthemGraphCompilerNode {
 public:
+  using NodeMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>;
+  using ConnectionMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>;
+
   // The node that this compiled node represents
   std::shared_ptr<Node> node;
 
@@ -50,15 +53,17 @@ public:
     : node(node), context(context) {}
 
   // Populate the input and output edges for this node
-  void assignEdges(std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
+  void assignEdges(const NodeMap& nodes,
+                   const ConnectionMap& connections,
+                   std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
                    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>&
                        connectionToCompilerEdge);
 private:
-  void assignEdge(
+  void assignEdge(const NodeMap& nodes,
       std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
       std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
       std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
-      std::shared_ptr<NodeConnection>& connection);
+      const std::shared_ptr<NodeConnection>& connection);
 
   JUCE_LEAK_DETECTOR(AnthemGraphCompilerNode)
 };

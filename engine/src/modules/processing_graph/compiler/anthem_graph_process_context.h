@@ -32,6 +32,11 @@ class Node;
 class GraphRuntimeServices;
 class AnthemNodeProcessContext;
 
+struct AnthemGraphBufferLayout {
+  int numAudioChannels = 0;
+  int blockSize = 0;
+};
+
 // Owns all graph-scoped runtime storage that is compiled alongside a live
 // processing graph result.
 //
@@ -58,8 +63,8 @@ private:
   // Owns all node-scoped views into the graph-owned runtime storage above.
   std::vector<std::unique_ptr<AnthemNodeProcessContext>> nodeProcessContexts;
 public:
-  // Initializes a graph context using the current audio device configuration.
-  explicit AnthemGraphProcessContext(GraphRuntimeServices& rtServices);
+  explicit AnthemGraphProcessContext(GraphRuntimeServices& rtServices,
+                                     const AnthemGraphBufferLayout& bufferLayout);
   ~AnthemGraphProcessContext();
 
   // Reserves capacity for all graph-owned runtime objects before node contexts

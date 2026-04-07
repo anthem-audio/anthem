@@ -19,36 +19,47 @@
 
 #include "anthem_graph_compiler.h"
 
-#include "modules/core/anthem.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 
 #include <iostream>
 
-// See the header file for an overview of the graph processing algorithm. Each
-// step in the algorithm is annotated here.
+/*
+  Steps to compile a processing graph:
 
-AnthemGraphCompilationResult* AnthemGraphCompiler::compile(GraphRuntimeServices& rtServices) {
-  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
+  1. Clear buffers for all nodes. For parameters, write the control values to
+     the control input port buffers as an initialization value. This may be
+     overwritten by actual control connections.
+  2. Find all nodes that have no incoming connections. These are the "root"
+     nodes of the graph. Mark these as ready to process.
+  3. For each ready node, add it to a processing step it and mark all of its
+     outgoing connections as ready to process.
+  4. For each ready connection, add it to a processing step to copy the data
+     from the source port to the destination port. This must be done in a single
+     thread in series, because if multiple connections are copying to the same
+     port, two threads cannot be copying the data at the same time.
+  5. Find all nodes whose incoming connections are all marked as processed. Mark
+     these as ready to process.
+  6. Repeat steps 3-5 until all nodes are marked as processed.
 
-  auto sampleRate = currentDevice->getCurrentSampleRate();
+  All steps are commented below.
+*/
 
-  auto& processingGraphModel = Anthem::getInstance().project->processingGraph();
-
+AnthemGraphCompilationResult* AnthemGraphCompiler::compile(const AnthemGraphCompileRequest& request) {
   AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
-  result->graphProcessContext = std::make_unique<AnthemGraphProcessContext>(rtServices);
+  result->graphProcessContext =
+      std::make_unique<AnthemGraphProcessContext>(request.rtServices, request.bufferLayout);
 
   size_t totalAudioBufferCount = 0;
   size_t totalControlBufferCount = 0;
   size_t totalEventBufferCount = 0;
-  for (auto& pair : *processingGraphModel->nodes()) {
+  for (auto& pair : request.nodes) {
     auto& node = pair.second;
     totalAudioBufferCount += node->audioInputPorts()->size() + node->audioOutputPorts()->size();
     totalControlBufferCount +=
         node->controlInputPorts()->size() + node->controlOutputPorts()->size();
     totalEventBufferCount += node->eventInputPorts()->size() + node->eventOutputPorts()->size();
   }
-  result->graphProcessContext->reserve(processingGraphModel->nodes()->size(),
+  result->graphProcessContext->reserve(request.nodes.size(),
                                        totalAudioBufferCount,
                                        totalControlBufferCount,
                                        totalEventBufferCount);
@@ -63,15 +74,15 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(GraphRuntimeServices&
   std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
   std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
 
-  const auto nodeCount = processingGraphModel->nodes()->size();
-  const auto connectionCount = processingGraphModel->connections()->size();
+  const auto nodeCount = request.nodes.size();
+  const auto connectionCount = request.connections.size();
 
   std::cout << "\033[32mAnthemGraphCompiler::compile(): Compiling graph with " << nodeCount
             << (nodeCount > 1 ? " nodes" : " node") << " and " << connectionCount
             << (connectionCount > 1 ? " connections" : " connection") << "\033[0m\n";
 
   // Create contexts for each node
-  for (auto& pair : *processingGraphModel->nodes()) {
+  for (auto& pair : request.nodes) {
     auto& node = pair.second;
 
     auto& context = result->graphProcessContext->createNodeProcessContext(node);
@@ -91,7 +102,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(GraphRuntimeServices&
   std::cout << '\n';
 
   for (auto& node : vectorOfNodesToProcess) {
-    node->assignEdges(nodeToCompilerNode, connectionToCompilerEdge);
+    node->assignEdges(request.nodes, request.connections, nodeToCompilerNode, connectionToCompilerEdge);
   }
 
   std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions =
@@ -142,7 +153,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(GraphRuntimeServices&
 
   for (auto& node : nodesToProcess) {
     actions->push_back(std::make_unique<WriteParametersToControlInputsAction>(
-        node->context, static_cast<float>(sampleRate)));
+        node->context, static_cast<float>(request.sampleRate)));
   }
 
   result->actionGroups.push_back(std::move(actions));
@@ -237,8 +248,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(GraphRuntimeServices&
         auto& sourcePortId = edge->edgeSource->sourcePortId();
         auto& destinationPortId = edge->edgeSource->destinationPortId();
 
-        auto& sourceNode = processingGraphModel->nodes()->at(sourceNodeId);
-        auto& destinationNode = processingGraphModel->nodes()->at(destinationNodeId);
+        auto& sourceNode = request.nodes.at(sourceNodeId);
+        auto& destinationNode = request.nodes.at(destinationNodeId);
 
         auto sourcePortResult = sourceNode->getPortById(sourcePortId);
         auto destinationPortResult = destinationNode->getPortById(destinationPortId);

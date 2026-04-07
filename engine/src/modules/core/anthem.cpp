@@ -168,7 +168,25 @@ std::shared_ptr<EngineAudioConfig> Anthem::getCurrentAudioConfig() const {
 }
 
 void Anthem::compileProcessingGraph() {
-  auto result = AnthemGraphCompiler::compile(graphProcessor->getRtServices());
+  auto* currentDevice = audioDeviceManager.getCurrentAudioDevice();
+  jassert(currentDevice != nullptr);
+  if (currentDevice == nullptr) {
+    return;
+  }
+
+  auto& processingGraph = *project->processingGraph();
+
+  auto result = AnthemGraphCompiler::compile(AnthemGraphCompileRequest{
+      .rtServices = graphProcessor->getRtServices(),
+      .nodes = *processingGraph.nodes(),
+      .connections = *processingGraph.connections(),
+      .bufferLayout =
+          AnthemGraphBufferLayout{
+              .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
+              .blockSize = currentDevice->getCurrentBufferSizeSamples(),
+          },
+      .sampleRate = currentDevice->getCurrentSampleRate(),
+  });
 
   // std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
 
@@ -180,7 +198,7 @@ void Anthem::compileProcessingGraph() {
   // }
 
   // Make sure all nodes have been prepared for processing
-  for (auto& pair : *project->processingGraph()->nodes()) {
+  for (auto& pair : *processingGraph.nodes()) {
     auto& node = *pair.second;
 
     auto& procVariant = node.processor();
