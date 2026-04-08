@@ -20,6 +20,23 @@
 #include "runtime_sequence_store.h"
 
 #include "modules/core/anthem.h"
+#include "modules/util/intentionally_leak.h"
+
+namespace {
+void cleanUpUnpublishedTrack(
+    SequenceEventList& track, const std::optional<SequenceEventList>& oldTrack) {
+  auto* oldEvents = oldTrack.has_value() ? oldTrack->events : nullptr;
+  auto* oldInvalidationRanges = oldTrack.has_value() ? oldTrack->invalidationRanges : nullptr;
+
+  if (track.events != oldEvents) {
+    delete track.events;
+  }
+
+  if (track.invalidationRanges != oldInvalidationRanges && track.invalidationRanges != nullptr) {
+    delete track.invalidationRanges;
+  }
+}
+} // namespace
 
 SequenceEventList::SequenceEventList() {
   events = new std::vector<AnthemSequenceEvent>();
@@ -39,6 +56,10 @@ SequenceEventListCollection::SequenceEventListCollection() {
   tracks = new std::unordered_map<EntityId, SequenceEventList>();
 }
 
+SequenceEventListCollection::SequenceEventListCollection(
+    std::unordered_map<EntityId, SequenceEventList>* newTracks)
+  : tracks(newTracks) {}
+
 // This is essentially a destructor for SequenceEventListCollection. We just
 // need very tight control over when specific event lists are deallocated. See
 // the comments in the header file for more information.
@@ -54,7 +75,7 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   auto result = mapUpdateQueue.read();
 
   double playheadStart = -1; // inclusive
-  double playheadEnd = -1; // not inclusive
+  double playheadEnd = -1;   // not inclusive
 
   // If this block includes a loop jump, these will be set to something besides
   // -1. These represent a range starting at the loop start and extending for
@@ -84,7 +105,9 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
     auto* oldMap = rt_eventLists;
     rt_eventLists = newMap;
 
-    mapDeletionQueue.add(oldMap);
+    if (!mapDeletionQueue.add(oldMap)) {
+      intentionallyLeak(oldMap);
+    }
 
     // This block checks invalidation ranges and flags any relevant sequences as
     // invalid for the current playhead position if necessary.
@@ -95,8 +118,8 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
 
       bool oldSeqObjExists = oldSeqObj != oldMap->end();
 
-      bool shouldCheckSequenceKey = !oldSeqObjExists ||
-        oldSeqObj->second.tracks != seqListObj.tracks;
+      bool shouldCheckSequenceKey =
+          !oldSeqObjExists || oldSeqObj->second.tracks != seqListObj.tracks;
 
       if (!shouldCheckSequenceKey) {
         // The track list is not new or updated, so we can skip it
@@ -139,11 +162,11 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
             // If the playhead is within the invalidation range, we need to
             // mark this track as invalid for the current processing block.
 
-            bool isWithinMainRange = playheadStart <= std::get<1>(range) &&
-              playheadEnd >= std::get<0>(range);
-            bool isWithinLoopRange = loopStartRangeBegin != -1.0 && (
-              loopStartRangeBegin <= std::get<1>(range) &&
-              loopStartRangeEnd >= std::get<0>(range));
+            bool isWithinMainRange =
+                playheadStart <= std::get<1>(range) && playheadEnd >= std::get<0>(range);
+            bool isWithinLoopRange =
+                loopStartRangeBegin != -1.0 && (loopStartRangeBegin <= std::get<1>(range) &&
+                                                   loopStartRangeEnd >= std::get<0>(range));
 
             if (isWithinMainRange || isWithinLoopRange) {
               trackListObj.invalidationOccurred = true;
@@ -159,8 +182,7 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
 }
 
 const SequenceEventListCollection* AnthemRuntimeSequenceStore::getSequenceEventList(
-  EntityId sequenceId
-) const {
+    EntityId sequenceId) const {
   auto it = eventLists->find(sequenceId);
   if (it == eventLists->end()) {
     return nullptr;
@@ -175,26 +197,16 @@ AnthemRuntimeSequenceStore::SequenceIdToEventsMap& AnthemRuntimeSequenceStore::r
 
 AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
   : clearDeletionQueueTimedCallback(
-      juce::TimedCallback([this]() {
-        this->processDeletionQueues();
-      })
-    ),
-    mapUpdateQueue(),
-    mapDeletionQueue()
-{
+        juce::TimedCallback([this]() { this->processDeletionQueues(); })) {
   eventLists = new SequenceIdToEventsMap();
   rt_eventLists = eventLists;
 
-  pendingSequenceDeletions = std::unordered_map<AnthemRuntimeSequenceStore::SequenceIdToEventsMap*, SequenceEventListCollection>();
-  pendingSequenceTrackDeletions = std::unordered_map<
-    AnthemRuntimeSequenceStore::SequenceIdToEventsMap*,
-    std::vector<
-      std::tuple<
-        std::optional<SequenceEventList>,
-        std::unordered_map<EntityId, SequenceEventList>*
-      >
-    >
-  >();
+  pendingSequenceDeletions = std::unordered_map<AnthemRuntimeSequenceStore::SequenceIdToEventsMap*,
+      SequenceEventListCollection>();
+  pendingSequenceTrackDeletions =
+      std::unordered_map<AnthemRuntimeSequenceStore::SequenceIdToEventsMap*,
+          std::vector<std::tuple<std::optional<SequenceEventList>,
+              std::unordered_map<EntityId, SequenceEventList>*>>>();
 }
 
 // The audio thread MUST be stopped before cleaning this up. Otherwise, this
@@ -258,19 +270,34 @@ void AnthemRuntimeSequenceStore::registerDeletionTimer() {
   clearDeletionQueueTimedCallback.startTimer(500);
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateSequence(EntityId sequenceId, SequenceEventListCollection sequence) {
+void AnthemRuntimeSequenceStore::addOrUpdateSequence(
+    EntityId sequenceId, const SequenceEventListCollection& sequence) {
   auto newMap = new SequenceIdToEventsMap(*eventLists);
   auto it = newMap->find(sequenceId);
+  auto replacedSequence = std::optional<SequenceEventListCollection>();
 
   if (it != newMap->end()) {
-    // If the sequence already exists, we need to replace it and add the old
-    // sequence to the pending deletions map.
-    pendingSequenceDeletions.insert_or_assign(eventLists, it->second);
+    replacedSequence = it->second;
   }
 
   newMap->insert_or_assign(sequenceId, sequence);
 
-  mapUpdateQueue.add(newMap);
+  if (!mapUpdateQueue.add(newMap)) {
+    jassertfalse;
+    auto* oldTracks = replacedSequence.has_value() ? replacedSequence->tracks : nullptr;
+    auto& unpublishedSequence = newMap->at(sequenceId);
+    if (unpublishedSequence.tracks != oldTracks) {
+      SequenceEventListCollection::cleanUpInstance(unpublishedSequence);
+    }
+    delete newMap;
+    return;
+  }
+
+  if (replacedSequence.has_value()) {
+    // If the sequence already exists, we need to replace it and add the old
+    // sequence to the pending deletions map.
+    pendingSequenceDeletions.insert_or_assign(eventLists, *replacedSequence);
+  }
 
   // The audio thread still has the old pointer. We will clean it up when the
   // audio thread releases it, via the JUCE timer in this class.
@@ -282,12 +309,18 @@ void AnthemRuntimeSequenceStore::removeSequence(EntityId sequenceId) {
 
   if (it != eventLists->end()) {
     auto newMap = new SequenceIdToEventsMap(*eventLists);
+    const auto removedSequence = it->second;
     // If the sequence exists, we need to remove it and add it to the pending
     // deletions map.
-    pendingSequenceDeletions.insert_or_assign(eventLists, it->second);
     newMap->erase(sequenceId);
 
-    mapUpdateQueue.add(newMap);
+    if (!mapUpdateQueue.add(newMap)) {
+      jassertfalse;
+      delete newMap;
+      return;
+    }
+
+    pendingSequenceDeletions.insert_or_assign(eventLists, removedSequence);
 
     // The audio thread still has the old pointer. We will clean it up when the
     // audio thread releases it, via the JUCE timer in this class.
@@ -296,54 +329,45 @@ void AnthemRuntimeSequenceStore::removeSequence(EntityId sequenceId) {
 }
 
 void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
-  EntityId sequenceId,
-  EntityId trackId,
-  SequenceEventList track
-) {
+    EntityId sequenceId, EntityId trackId, const SequenceEventList& track) {
   auto newSequenceMap = new SequenceIdToEventsMap(*eventLists);
   auto sequenceMapIt = newSequenceMap->find(sequenceId);
 
-  // If the sequence doesn't exist, we need to add it.
-  if (sequenceMapIt == newSequenceMap->end()) {
-    SequenceEventListCollection sequence;
+  auto* oldTracksMap =
+      sequenceMapIt != newSequenceMap->end() ? sequenceMapIt->second.tracks : nullptr;
+  auto replacedTrack = std::optional<SequenceEventList>();
 
-    newSequenceMap->insert_or_assign(sequenceId, sequence);
-
-    sequenceMapIt = newSequenceMap->find(sequenceId);
-  }
-
-  // We need to replace the track and add the old track to the pending
-  // deletions map.
-  auto& sequence = sequenceMapIt->second;
-  auto trackIt = sequence.tracks->find(trackId);
-
-  auto* newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
-
-  {
-    auto vec = std::vector<
-      std::tuple<
-        std::optional<SequenceEventList>,
-        std::unordered_map<EntityId, SequenceEventList>*
-      >
-    >();
-
-    if (trackIt != sequence.tracks->end()) {
-      vec.push_back(std::make_tuple(trackIt->second, sequence.tracks));
-    } else {
-      vec.push_back(std::make_tuple(std::nullopt, sequence.tracks));
+  if (oldTracksMap != nullptr) {
+    auto trackIt = oldTracksMap->find(trackId);
+    if (trackIt != oldTracksMap->end()) {
+      replacedTrack = trackIt->second;
     }
-
-    pendingSequenceTrackDeletions.insert_or_assign(eventLists, vec);
   }
+
+  auto* newTracksMap = oldTracksMap != nullptr
+                           ? new std::unordered_map<EntityId, SequenceEventList>(*oldTracksMap)
+                           : new std::unordered_map<EntityId, SequenceEventList>();
 
   newTracksMap->insert_or_assign(trackId, track);
 
-  SequenceEventListCollection newSequenceEventListObject;
-  newSequenceEventListObject.tracks = newTracksMap;
+  auto newSequenceEventListObject = SequenceEventListCollection(newTracksMap);
 
   newSequenceMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
 
-  mapUpdateQueue.add(newSequenceMap);
+  if (!mapUpdateQueue.add(newSequenceMap)) {
+    jassertfalse;
+    cleanUpUnpublishedTrack(newTracksMap->at(trackId), replacedTrack);
+    delete newTracksMap;
+    delete newSequenceMap;
+    return;
+  }
+
+  if (oldTracksMap != nullptr) {
+    auto vec = std::vector<std::tuple<std::optional<SequenceEventList>,
+        std::unordered_map<EntityId, SequenceEventList>*>>();
+    vec.push_back(std::make_tuple(replacedTrack, oldTracksMap));
+    pendingSequenceTrackDeletions.insert_or_assign(eventLists, std::move(vec));
+  }
 
   // The audio thread still has the old pointer. We will clean it up when the
   // audio thread releases it, via the JUCE timer in this class.
@@ -365,28 +389,26 @@ void AnthemRuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, En
   auto& sequence = newSequenceMap->at(sequenceId);
 
   auto newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
-  
-  {
-    auto vec = std::vector<
-      std::tuple<
-        std::optional<SequenceEventList>,
-        std::unordered_map<EntityId, SequenceEventList>*
-      >
-    >();
-
-    vec.push_back(std::make_tuple(trackMapIt->second, sequence.tracks));
-
-    pendingSequenceTrackDeletions.insert_or_assign(eventLists, vec);
-  }
+  const auto removedTrack = trackMapIt->second;
+  auto* oldTracksMap = sequence.tracks;
 
   newTracksMap->erase(trackId);
 
-  SequenceEventListCollection newSequenceEventListObject;
-  newSequenceEventListObject.tracks = newTracksMap;
+  auto newSequenceEventListObject = SequenceEventListCollection(newTracksMap);
 
   newSequenceMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
 
-  mapUpdateQueue.add(newSequenceMap);
+  if (!mapUpdateQueue.add(newSequenceMap)) {
+    jassertfalse;
+    delete newTracksMap;
+    delete newSequenceMap;
+    return;
+  }
+
+  auto vec = std::vector<std::tuple<std::optional<SequenceEventList>,
+      std::unordered_map<EntityId, SequenceEventList>*>>();
+  vec.push_back(std::make_tuple(removedTrack, oldTracksMap));
+  pendingSequenceTrackDeletions.insert_or_assign(eventLists, std::move(vec));
 
   // The audio thread still has the old pointer. We will clean it up when the
   // audio thread releases it, via the JUCE timer in this class.
@@ -396,12 +418,9 @@ void AnthemRuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, En
 void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
   auto newMap = new SequenceIdToEventsMap(*eventLists);
 
-  auto cleanupVec = std::vector<
-    std::tuple<
-      std::optional<SequenceEventList>,
-      std::unordered_map<EntityId, SequenceEventList>*
-    >
-  >();
+  auto cleanupVec = std::vector<std::tuple<std::optional<SequenceEventList>,
+      std::unordered_map<EntityId, SequenceEventList>*>>();
+  auto newTrackMaps = std::vector<std::unordered_map<EntityId, SequenceEventList>*>();
 
   for (auto& [sequenceId, sequence] : *newMap) {
     auto trackIt = sequence.tracks->find(trackId);
@@ -410,19 +429,24 @@ void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
       auto newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
 
       cleanupVec.push_back(std::make_tuple(trackIt->second, sequence.tracks));
+      newTrackMaps.push_back(newTracksMap);
 
       newTracksMap->erase(trackId);
 
-      SequenceEventListCollection newSequenceEventListObject;
-      newSequenceEventListObject.tracks = newTracksMap;
-
-      newMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
+      sequence.tracks = newTracksMap;
     }
   }
 
-  pendingSequenceTrackDeletions.insert_or_assign(eventLists, cleanupVec);
+  if (!mapUpdateQueue.add(newMap)) {
+    jassertfalse;
+    for (auto* newTrackMap : newTrackMaps) {
+      delete newTrackMap;
+    }
+    delete newMap;
+    return;
+  }
 
-  mapUpdateQueue.add(newMap);
+  pendingSequenceTrackDeletions.insert_or_assign(eventLists, std::move(cleanupVec));
 
   // The audio thread still has the old pointer. We will clean it up when the
   // audio thread releases it, via the JUCE timer in this class.

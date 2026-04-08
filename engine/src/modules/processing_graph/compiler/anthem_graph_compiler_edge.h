@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,14 +19,14 @@
 
 #pragma once
 
-#include <memory>
-
-#include <juce_core/juce_core.h>
-
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/node_port_config.h"
 #include "modules/processing_graph/model/node_connection.h"
 
+#include <juce_core/juce_core.h>
+#include <memory>
+
 class AnthemGraphNodeConnection;
+class AnthemNodeProcessContext;
 
 class AnthemGraphCompilerEdge {
 private:
@@ -35,9 +35,9 @@ public:
   // The edge in the node graph
   std::shared_ptr<NodeConnection> edgeSource;
 
-  AnthemProcessContext* sourceNodeContext;
+  AnthemNodeProcessContext* sourceNodeContext;
 
-  AnthemProcessContext* destinationNodeContext;
+  AnthemNodeProcessContext* destinationNodeContext;
 
   // The type of this edge
   NodePortDataType type;
@@ -45,10 +45,10 @@ public:
   // Whether this edge has been processed
   bool processed = false;
 
-  AnthemGraphCompilerEdge(
-    std::shared_ptr<NodeConnection> edge,
-    AnthemProcessContext* sourceNodeContext,
-    AnthemProcessContext* destinationNodeContext,
-    NodePortDataType type
-  ) : edgeSource(edge), sourceNodeContext(sourceNodeContext), destinationNodeContext(destinationNodeContext), type(type) {}
+  AnthemGraphCompilerEdge(std::shared_ptr<NodeConnection> edge,
+      AnthemNodeProcessContext* sourceNodeContext,
+      AnthemNodeProcessContext* destinationNodeContext,
+      NodePortDataType type)
+    : edgeSource(edge), sourceNodeContext(sourceNodeContext),
+      destinationNodeContext(destinationNodeContext), type(type) {}
 };

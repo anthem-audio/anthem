@@ -19,22 +19,31 @@
 
 #include "transport.h"
 
+#include "modules/core/anthem.h"
+#include "modules/util/intentionally_leak.h"
+
 #include <unordered_map>
 
-#include "modules/core/anthem.h"
-
 namespace {
-using TrackToJumpEventsMap =
-  std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>>;
+using TrackToJumpEventsMap = std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>>;
 using ActiveNotesForTrack = std::unordered_map<AnthemSourceNoteId, AnthemNoteOnEvent>;
 using TrackToActiveNotesMap = std::unordered_map<int64_t, ActiveNotesForTrack>;
 
+template <std::size_t queueSize, typename T>
+// The audio thread uses this only for "old snapshot" objects that are already
+// logically retired and just need to make it back to the main thread for
+// deletion. If that bounded handoff queue overflows, we deliberately leak
+// instead of doing non-real-time-safe cleanup here.
+void enqueueForDeferredDeletionOrLeak(RingBuffer<T*, queueSize>& queue, T* ptr) {
+  if (!queue.add(ptr)) {
+    intentionallyLeak(ptr);
+  }
+}
+
 template <typename Callback>
-void forEachPlayableTrackEventList(
-  const SequenceEventListCollection& sequence,
-  std::optional<int64_t> activeTrackId,
-  Callback&& callback
-) {
+void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
+    std::optional<int64_t> activeTrackId,
+    Callback&& callback) {
   auto noTrackIter = sequence.tracks->find(anthem_sequencer_track_ids::noTrack);
   if (noTrackIter != sequence.tracks->end()) {
     if (activeTrackId.has_value()) {
@@ -49,9 +58,7 @@ void forEachPlayableTrackEventList(
 }
 
 bool shouldApplySequenceEventToActiveNoteSnapshot(
-  const AnthemSequenceEvent& sequenceEvent,
-  double position
-) {
+    const AnthemSequenceEvent& sequenceEvent, double position) {
   if (sequenceEvent.offset < position) {
     return true;
   }
@@ -70,9 +77,7 @@ bool shouldApplySequenceEventToActiveNoteSnapshot(
 }
 
 ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
-  const std::vector<AnthemSequenceEvent>& events,
-  double position
-) {
+    const std::vector<AnthemSequenceEvent>& events, double position) {
   auto activeNotes = ActiveNotesForTrack();
 
   for (const auto& sequenceEvent : events) {
@@ -81,12 +86,8 @@ ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
     }
 
     if (sequenceEvent.event.type == AnthemEventType::NoteOn) {
-      activeNotes.insert_or_assign(
-        sequenceEvent.sourceId,
-        sequenceEvent.event.noteOn
-      );
-    }
-    else if (sequenceEvent.event.type == AnthemEventType::NoteOff) {
+      activeNotes.insert_or_assign(sequenceEvent.sourceId, sequenceEvent.event.noteOn);
+    } else if (sequenceEvent.event.type == AnthemEventType::NoteOff) {
       activeNotes.erase(sequenceEvent.sourceId);
     }
   }
@@ -95,58 +96,46 @@ ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
 }
 
 TrackToActiveNotesMap collectNotesActiveAtPositionForSequence(
-  const SequenceEventListCollection& sequence,
-  std::optional<int64_t> activeTrackId,
-  double position
-) {
+    const SequenceEventListCollection& sequence,
+    std::optional<int64_t> activeTrackId,
+    double position) {
   auto collector = TrackToActiveNotesMap();
 
-  forEachPlayableTrackEventList(
-    sequence,
-    activeTrackId,
-    [&](int64_t destinationTrackId, const std::vector<AnthemSequenceEvent>& events) {
-      auto activeNotes = collectNotesActiveAtPositionForTrack(events, position);
-      if (!activeNotes.empty()) {
-        collector.insert_or_assign(destinationTrackId, std::move(activeNotes));
-      }
-    }
-  );
+  forEachPlayableTrackEventList(sequence,
+      activeTrackId,
+      [&](int64_t destinationTrackId, const std::vector<AnthemSequenceEvent>& events) {
+        auto activeNotes = collectNotesActiveAtPositionForTrack(events, position);
+        if (!activeNotes.empty()) {
+          collector.insert_or_assign(destinationTrackId, std::move(activeNotes));
+        }
+      });
 
   return collector;
 }
 
 void appendStartEvents(
-  const TrackToActiveNotesMap& activeNotesByTrack,
-  TrackToJumpEventsMap& collector
-) {
+    const TrackToActiveNotesMap& activeNotesByTrack, TrackToJumpEventsMap& collector) {
   for (const auto& [trackId, activeNotes] : activeNotesByTrack) {
     auto& events = collector[trackId];
     for (const auto& [sourceId, noteOn] : activeNotes) {
       events.push_back(PlayheadJumpSequenceEvent{
-        .sequenceNoteId = sourceId,
-        .event = AnthemEvent(noteOn),
+          .sequenceNoteId = sourceId,
+          .event = AnthemEvent(noteOn),
       });
     }
   }
 }
 } // namespace
 
-PlayheadJumpEvent buildPlayheadJumpEvent(
-  const SequenceEventListCollection& sequence,
-  std::optional<int64_t> activeTrackId,
-  double playheadPosition
-) {
+PlayheadJumpEvent buildPlayheadJumpEvent(const SequenceEventListCollection& sequence,
+    std::optional<int64_t> activeTrackId,
+    double playheadPosition) {
   auto event = PlayheadJumpEvent();
   event.newPlayheadPosition = playheadPosition;
 
   appendStartEvents(
-    collectNotesActiveAtPositionForSequence(
-      sequence,
-      activeTrackId,
-      playheadPosition
-    ),
-    event.eventsToPlayAtJump
-  );
+      collectNotesActiveAtPositionForSequence(sequence, activeTrackId, playheadPosition),
+      event.eventsToPlayAtJump);
 
   return event;
 }
@@ -181,8 +170,7 @@ void Transport::setActiveTrackId(std::optional<int64_t>& trackId) {
   bool shouldRebuildJumpEvents = false;
   if (config.activeSequenceId.has_value()) {
     auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
-    shouldRebuildJumpEvents =
-      patterns.find(config.activeSequenceId.value()) != patterns.end();
+    shouldRebuildJumpEvents = patterns.find(config.activeSequenceId.value()) != patterns.end();
   }
 
   if (shouldRebuildJumpEvents) {
@@ -219,10 +207,11 @@ void Transport::rt_prepareForProcessingBlock() {
   while (true) {
     auto newerConfigOpt = configBuffer.read();
     if (newerConfigOpt.has_value()) {
-      configDeleteBuffer.add(newConfigOpt.value());
+      if (newConfigOpt.has_value()) {
+        enqueueForDeferredDeletionOrLeak(configDeleteBuffer, *newConfigOpt);
+      }
       newConfigOpt = newerConfigOpt;
-    }
-    else {
+    } else {
       break;
     }
   }
@@ -240,13 +229,13 @@ void Transport::rt_prepareForProcessingBlock() {
       rt_playheadJumpEventForStart = &newConfig->playheadJumpEventForStart;
     }
 
-    configDeleteBuffer.add(rt_config);
+    enqueueForDeferredDeletionOrLeak(configDeleteBuffer, rt_config);
     rt_config = newConfig;
   }
 
   while (auto event = playheadJumpEventBuffer.read()) {
     if (rt_playheadJumpEventForSeek != nullptr) {
-      playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
+      enqueueForDeferredDeletionOrLeak(playheadJumpEventDeleteBuffer, rt_playheadJumpEventForSeek);
     }
     rt_playheadJumpEventForSeek = event.value();
   }
@@ -258,17 +247,17 @@ void Transport::rt_prepareForProcessingBlock() {
   }
 
   if (!rt_config->isPlaying) {
-    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
-    rt_playheadJumpEventForSeek = nullptr;
+    if (rt_playheadJumpEventForSeek != nullptr) {
+      enqueueForDeferredDeletionOrLeak(playheadJumpEventDeleteBuffer, rt_playheadJumpEventForSeek);
+      rt_playheadJumpEventForSeek = nullptr;
+    }
   }
 
   if (rt_playheadJumpEventForSeek != nullptr) {
     rt_playheadJumpEvent = rt_playheadJumpEventForSeek;
-  }
-  else if (rt_playheadJumpEventForStart != nullptr) {
+  } else if (rt_playheadJumpEventForStart != nullptr) {
     rt_playheadJumpEvent = rt_playheadJumpEventForStart;
-  }
-  else {
+  } else {
     rt_playheadJumpEvent = nullptr;
   }
 }
@@ -280,7 +269,7 @@ void Transport::rt_advancePlayhead(int numSamples) {
   rt_shouldStopSequenceNotes = false;
 
   if (rt_playheadJumpEventForSeek != nullptr) {
-    playheadJumpEventDeleteBuffer.add(rt_playheadJumpEventForSeek);
+    enqueueForDeferredDeletionOrLeak(playheadJumpEventDeleteBuffer, rt_playheadJumpEventForSeek);
     rt_playheadJumpEventForSeek = nullptr;
   }
 
@@ -293,16 +282,14 @@ double Transport::rt_getPlayheadAdvanceAmount(int numSamples) const {
   }
 
   return sequencer_timing::sampleCountToTickDelta(
-    static_cast<double>(numSamples),
-    rt_getTimingParams()
-  );
+      static_cast<double>(numSamples), rt_getTimingParams());
 }
 
 sequencer_timing::TimingParams Transport::rt_getTimingParams() const {
   return sequencer_timing::TimingParams{
-    .ticksPerQuarter = rt_config->ticksPerQuarter,
-    .beatsPerMinute = rt_config->beatsPerMinute,
-    .sampleRate = sampleRate,
+      .ticksPerQuarter = rt_config->ticksPerQuarter,
+      .beatsPerMinute = rt_config->beatsPerMinute,
+      .sampleRate = sampleRate,
   };
 }
 
@@ -310,11 +297,7 @@ double Transport::rt_getPlayheadAfterAdvance(int numSamples) const {
   if (rt_config->isPlaying) {
     auto ticks = rt_getPlayheadAdvanceAmount(numSamples);
     return sequencer_timing::advancePlayheadByTickDelta(
-      rt_playhead,
-      ticks,
-      rt_config->loopStart,
-      rt_config->loopEnd
-    );
+        rt_playhead, ticks, rt_config->loopStart, rt_config->loopEnd);
   }
 
   return rt_playhead;
@@ -328,27 +311,18 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
     return event;
   }
 
+  const auto activeSequenceId = *config.activeSequenceId;
   auto* compiledSequence =
-    Anthem::getInstance().sequenceStore->getSequenceEventList(
-      config.activeSequenceId.value()
-    );
+      Anthem::getInstance().sequenceStore->getSequenceEventList(activeSequenceId);
 
   if (compiledSequence == nullptr) {
     return event;
   }
 
-  return buildPlayheadJumpEvent(
-    *compiledSequence,
-    config.activeTrackId,
-    playheadPosition
-  );
+  return buildPlayheadJumpEvent(*compiledSequence, config.activeTrackId, playheadPosition);
 }
 
 void Transport::updatePlayheadJumpEventForStart(bool send) {
-  if (!config.activeSequenceId.has_value()) {
-    return;
-  }
-
   config.playheadJumpEventForStart = createPlayheadJumpEvent(config.playheadStart);
 
   if (send) {
@@ -366,17 +340,17 @@ void Transport::setPlayheadStart(double playheadStart) {
 
 void Transport::jumpTo(double playheadPosition) {
   if (config.hasLoop) {
-    playheadPosition = sequencer_timing::wrapPlayheadToLoop(
-      playheadPosition,
-      config.loopStart,
-      config.loopEnd
-    );
+    playheadPosition =
+        sequencer_timing::wrapPlayheadToLoop(playheadPosition, config.loopStart, config.loopEnd);
   }
 
   auto event = createPlayheadJumpEvent(playheadPosition);
   auto eventPtr = new PlayheadJumpEvent(event);
 
-  playheadJumpEventBuffer.add(eventPtr);
+  if (!playheadJumpEventBuffer.add(eventPtr)) {
+    jassertfalse;
+    delete eventPtr;
+  }
 }
 
 void Transport::clearLoopPoints() {
@@ -401,20 +375,30 @@ void Transport::updateLoopPoints(bool send) {
     return;
   }
 
+  const auto activeSequenceId = *config.activeSequenceId;
   auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
   auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
 
   std::shared_ptr<LoopPointsModel> loopPoints;
 
-  if (patterns.find(config.activeSequenceId.value()) != patterns.end() &&
-      patterns.at(config.activeSequenceId.value())->loopPoints().has_value()) {
-    loopPoints = patterns.at(config.activeSequenceId.value())->loopPoints().value();
+  if (auto patternIt = patterns.find(activeSequenceId); patternIt != patterns.end()) {
+    auto& patternLoopPoints = patternIt->second->loopPoints();
+    if (patternLoopPoints.has_value()) {
+      loopPoints = *patternLoopPoints;
+    }
   }
-  else if (arrangements.find(config.activeSequenceId.value()) != arrangements.end() &&
-      arrangements.at(config.activeSequenceId.value())->loopPoints().has_value()) {
-    loopPoints = arrangements.at(config.activeSequenceId.value())->loopPoints().value();
+
+  if (loopPoints == nullptr) {
+    if (auto arrangementIt = arrangements.find(activeSequenceId);
+        arrangementIt != arrangements.end()) {
+      auto& arrangementLoopPoints = arrangementIt->second->loopPoints();
+      if (arrangementLoopPoints.has_value()) {
+        loopPoints = *arrangementLoopPoints;
+      }
+    }
   }
-  else {
+
+  if (loopPoints == nullptr) {
     clearLoopPoints();
 
     if (send) {
@@ -427,11 +411,11 @@ void Transport::updateLoopPoints(bool send) {
   config.hasLoop = true;
   config.loopStart = static_cast<double>(loopPoints->start());
   config.loopEnd = static_cast<double>(loopPoints->end());
-  config.playheadJumpEventForLoop = createPlayheadJumpEvent(
-    static_cast<double>(config.loopStart)
-  );
+  config.playheadJumpEventForLoop = createPlayheadJumpEvent(static_cast<double>(config.loopStart));
 
-  sendConfigToAudioThread();
+  if (send) {
+    sendConfigToAudioThread();
+  }
 }
 
 void Transport::timerCallback() {
@@ -446,5 +430,8 @@ void Transport::timerCallback() {
 
 void Transport::sendConfigToAudioThread() {
   TransportConfig* configCopy = new TransportConfig(config);
-  configBuffer.add(configCopy);
+  if (!configBuffer.add(configCopy)) {
+    jassertfalse;
+    delete configCopy;
+  }
 }

@@ -23,17 +23,17 @@
 
 std::optional<Response> handleVisualizationCommand(Request& request) {
   if (rfl::holds_alternative<SetVisualizationSubscriptionsRequest>(request.variant())) {
-    auto& setVisualizationSubscriptionsRequest = rfl::get<SetVisualizationSubscriptionsRequest>(request.variant());
+    auto& setVisualizationSubscriptionsRequest =
+        rfl::get<SetVisualizationSubscriptionsRequest>(request.variant());
 
     VisualizationBroker::getInstance().setSubscriptions(
-      *setVisualizationSubscriptionsRequest.subscriptions
-    );
+        *setVisualizationSubscriptionsRequest.subscriptions);
   } else if (rfl::holds_alternative<SetVisualizationUpdateIntervalRequest>(request.variant())) {
-    auto& setVisualizationUpdateIntervalRequest = rfl::get<SetVisualizationUpdateIntervalRequest>(request.variant());
+    auto& setVisualizationUpdateIntervalRequest =
+        rfl::get<SetVisualizationUpdateIntervalRequest>(request.variant());
 
     VisualizationBroker::getInstance().setUpdateInterval(
-      setVisualizationUpdateIntervalRequest.intervalMilliseconds
-    );
+        setVisualizationUpdateIntervalRequest.intervalMilliseconds);
   }
 
   return std::nullopt;

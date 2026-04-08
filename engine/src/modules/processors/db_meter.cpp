@@ -19,33 +19,26 @@
 
 #include "db_meter.h"
 
+#include "modules/core/anthem.h"
+#include "modules/core/visualization/visualization_broker.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+
 #include <algorithm>
 #include <cmath>
 
-#include "modules/core/anthem.h"
-#include "modules/core/visualization/visualization_broker.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
-
-std::optional<NumericVisualizationData>
-DbMeterVisualizationProvider::getTypedData() {
+std::optional<NumericVisualizationData> DbMeterVisualizationProvider::getTypedData() {
   return drainTimestampedVisualizationBuffer(valueBuffer);
 }
 
-void DbMeterVisualizationProvider::rt_pushValue(
-  double value,
-  int64_t sampleTimestamp
-) {
-  valueBuffer.add(
-    TimestampedVisualizationValue<double> {
+void DbMeterVisualizationProvider::rt_pushValue(double value, int64_t sampleTimestamp) {
+  valueBuffer.add(TimestampedVisualizationValue<double>{
       .sampleTimestamp = sampleTimestamp,
       .value = value,
-    }
-  );
+  });
 }
 
 DbMeterProcessor::DbMeterProcessor(const DbMeterProcessorModelImpl& _impl)
-  : AnthemProcessor("DbMeter"),
-    DbMeterProcessorModelBase(_impl),
+  : AnthemProcessor("DbMeter"), DbMeterProcessorModelBase(_impl),
     rt_publishEverySamples(std::make_shared<std::atomic<int64_t>>(1)) {}
 
 DbMeterProcessor::~DbMeterProcessor() {
@@ -53,21 +46,14 @@ DbMeterProcessor::~DbMeterProcessor() {
 }
 
 void DbMeterProcessor::initialize(
-  std::shared_ptr<AnthemModelBase> selfModel,
-  std::shared_ptr<AnthemModelBase> parentModel
-) {
+    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
   DbMeterProcessorModelBase::initialize(selfModel, parentModel);
 
   rt_publishEverySamples->store(
-    std::max<int64_t>(1, publishEverySamples()),
-    std::memory_order_relaxed
-  );
+      std::max<int64_t>(1, publishEverySamples()), std::memory_order_relaxed);
 
   addPublishEverySamplesObserver([this](int64_t newValue) {
-    rt_publishEverySamples->store(
-      std::max<int64_t>(1, newValue),
-      std::memory_order_relaxed
-    );
+    rt_publishEverySamples->store(std::max<int64_t>(1, newValue), std::memory_order_relaxed);
   });
 
   syncVisualizationProviders();
@@ -82,23 +68,20 @@ void DbMeterProcessor::prepareToProcess() {
 
   if (currentDevice != nullptr) {
     const auto rt_channelCount =
-      static_cast<size_t>(currentDevice->getActiveOutputChannels().countNumberOfSetBits());
+        static_cast<size_t>(currentDevice->getActiveOutputChannels().countNumberOfSetBits());
     rt_channelPeakLinear.assign(rt_channelCount, 0.0f);
   }
 
   rt_publishEverySamples->store(
-    std::max<int64_t>(1, publishEverySamples()),
-    std::memory_order_relaxed
-  );
+      std::max<int64_t>(1, publishEverySamples()), std::memory_order_relaxed);
 }
 
-void DbMeterProcessor::process(AnthemProcessContext& context, int numSamples) {
+void DbMeterProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   if (channelProviders.empty() || numSamples <= 0) {
     return;
   }
 
-  auto& audioInBuffer =
-    context.getInputAudioBuffer(DbMeterProcessorModelBase::audioInputPortId);
+  auto& audioInBuffer = context.getInputAudioBuffer(DbMeterProcessorModelBase::audioInputPortId);
   const int channelCount = audioInBuffer.getNumChannels();
 
   if (channelCount <= 0) {
@@ -111,28 +94,21 @@ void DbMeterProcessor::process(AnthemProcessContext& context, int numSamples) {
   }
 
   const int64_t publishEverySamples =
-    std::max<int64_t>(1, rt_publishEverySamples->load(std::memory_order_relaxed));
-  const int64_t blockStartSample =
-    Anthem::getInstance().transport->rt_sampleCounter;
+      std::max<int64_t>(1, rt_publishEverySamples->load(std::memory_order_relaxed));
+  const int64_t blockStartSample = Anthem::getInstance().transport->rt_sampleCounter;
 
   for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
     for (int channelIndex = 0; channelIndex < channelCount; ++channelIndex) {
-      const float absoluteSample = std::abs(
-        audioInBuffer.getSample(channelIndex, sampleIndex)
-      );
-      rt_channelPeakLinear[static_cast<size_t>(channelIndex)] = std::max(
-        rt_channelPeakLinear[static_cast<size_t>(channelIndex)],
-        absoluteSample
-      );
+      const float absoluteSample = std::abs(audioInBuffer.getSample(channelIndex, sampleIndex));
+      rt_channelPeakLinear[static_cast<size_t>(channelIndex)] =
+          std::max(rt_channelPeakLinear[static_cast<size_t>(channelIndex)], absoluteSample);
     }
 
     rt_samplesSinceLastPublish++;
 
     if (rt_samplesSinceLastPublish >= publishEverySamples) {
       rt_publishCurrentWindow(
-        channelCount,
-        blockStartSample + static_cast<int64_t>(sampleIndex) + 1
-      );
+          channelCount, blockStartSample + static_cast<int64_t>(sampleIndex) + 1);
       rt_samplesSinceLastPublish = 0;
     }
   }
@@ -149,10 +125,7 @@ void DbMeterProcessor::syncVisualizationProviders() {
 
   for (const auto& visualizationId : *visualizationIds()) {
     auto provider = std::make_shared<DbMeterVisualizationProvider>();
-    VisualizationBroker::getInstance().registerDataProvider(
-      visualizationId,
-      provider
-    );
+    VisualizationBroker::getInstance().registerDataProvider(visualizationId, provider);
 
     channelProviders.push_back(provider);
     registeredVisualizationIds.push_back(visualizationId);
@@ -168,14 +141,8 @@ void DbMeterProcessor::unregisterVisualizationProviders() {
   channelProviders.clear();
 }
 
-void DbMeterProcessor::rt_publishCurrentWindow(
-  int channelCount,
-  int64_t sampleTimestamp
-) {
-  const size_t providerCount = std::min(
-    channelProviders.size(),
-    static_cast<size_t>(channelCount)
-  );
+void DbMeterProcessor::rt_publishCurrentWindow(int channelCount, int64_t sampleTimestamp) {
+  const size_t providerCount = std::min(channelProviders.size(), static_cast<size_t>(channelCount));
 
   for (size_t channelIndex = 0; channelIndex < providerCount; ++channelIndex) {
     auto& provider = channelProviders[channelIndex];
@@ -183,10 +150,7 @@ void DbMeterProcessor::rt_publishCurrentWindow(
       continue;
     }
 
-    provider->rt_pushValue(
-      peakLinearToDb(rt_channelPeakLinear[channelIndex]),
-      sampleTimestamp
-    );
+    provider->rt_pushValue(peakLinearToDb(rt_channelPeakLinear[channelIndex]), sampleTimestamp);
   }
 
   std::fill(rt_channelPeakLinear.begin(), rt_channelPeakLinear.end(), 0.0f);

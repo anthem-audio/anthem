@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,14 +19,12 @@
 
 #pragma once
 
-#include <memory>
-
-#include <juce_audio_basics/juce_audio_basics.h>
-
+#include "generated/lib/model/processing_graph/processors/master_output.h"
 #include "modules/core/constants.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
-#include "generated/lib/model/processing_graph/processors/master_output.h"
+#include <juce_audio_basics/juce_audio_basics.h>
+#include <memory>
 
 class MasterOutputProcessor : public AnthemProcessor, public MasterOutputProcessorModelBase {
 public:
@@ -46,12 +44,10 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 
-  void initialize(
-    std::shared_ptr<AnthemModelBase> selfModel,
-    std::shared_ptr<AnthemModelBase> parentModel
-  ) override {
+  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
+      std::shared_ptr<AnthemModelBase> parentModel) override {
     MasterOutputProcessorModelBase::initialize(selfModel, parentModel);
 
     // Empty for now...

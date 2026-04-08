@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -71,29 +71,33 @@ String getModelSyncFn(ModelClassInfo context) {
   writer.writeLine('if (self.expired()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": model has been deleted." << std::endl;',
+    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": model has been deleted." << \'\\n\';',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
   writer.writeLine('}');
-  writer.writeLine('auto selfPtr = this->self.lock();');
+  final selfPtrName = writer.nextIdentifier('selfPtr');
+  final fieldNameNullableName = writer.nextIdentifier('fieldNameNullable');
+  final fieldNameName = writer.nextIdentifier('fieldName');
+
+  writer.writeLine('auto $selfPtrName = this->self.lock();');
 
   var noCasesGenerated = true;
 
   writer.writeLine(
-    'auto& fieldNameNullable = (*request.fieldAccesses)[fieldAccessIndex]->fieldName;',
+    'auto& $fieldNameNullableName = (*request.fieldAccesses)[fieldAccessIndex]->fieldName;',
   );
 
-  writer.writeLine('if (!fieldNameNullable.has_value()) {');
+  writer.writeLine('if (!$fieldNameNullableName.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": field name is null." << std::endl;',
+    'std::cout << "Error updating model \\"${context.annotatedClass.name}\\": field name is null." << \'\\n\';',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
   writer.writeLine('}');
 
-  writer.writeLine('auto& fieldName = fieldNameNullable.value();');
+  writer.writeLine('auto& $fieldNameName = $fieldNameNullableName.value();');
 
   for (var MapEntry(key: fieldName, value: field) in context.fields.entries) {
     if (field.isModelConstant) {
@@ -105,7 +109,7 @@ String getModelSyncFn(ModelClassInfo context) {
     }
 
     writer.writeLine(
-      '${noCasesGenerated ? '' : 'else '}if (fieldName == "$fieldName") {',
+      '${noCasesGenerated ? '' : 'else '}if ($fieldNameName == "$fieldName") {',
     );
     writer.incrementWhitespace();
 
@@ -115,8 +119,9 @@ String getModelSyncFn(ModelClassInfo context) {
       type: field.typeInfo,
       createFieldSetter: (value) => 'this->$fieldName$parentheses = $value;',
       observabilityNotifier:
-          'this->${fieldName}Observers.notify($fieldName$parentheses);',
+          'this->${fieldName}Observers.notify(this->$fieldName$parentheses);',
       fieldAccessExpression: 'this->$fieldName$parentheses',
+      parentAccessor: selfPtrName,
     );
 
     // If this was a raw field update, then we should notify the current model
@@ -144,7 +149,7 @@ String getModelSyncFn(ModelClassInfo context) {
     writer.writeLine('else {');
     writer.incrementWhitespace();
     writer.writeLine(
-      'std::cout << "Unexpected field name \\"" << fieldName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << std::endl;',
+      'std::cout << "Unexpected field name \\"" << $fieldNameName << "\\" on model \\"${context.annotatedClass.name}\\". This update will be ignored." << \'\\n\';',
     );
     writer.decrementWhitespace();
     writer.writeLine('}');
@@ -156,6 +161,34 @@ String getModelSyncFn(ModelClassInfo context) {
   return writer.result.toString();
 }
 
+bool _shouldMoveTemporaryValue(ModelType type) {
+  return switch (type) {
+    IntModelType() ||
+    DoubleModelType() ||
+    NumModelType() ||
+    BoolModelType() ||
+    EnumModelType() ||
+    ColorModelType() => false,
+    StringModelType() ||
+    ListModelType() ||
+    MapModelType() ||
+    CustomModelType() ||
+    UnionModelType() ||
+    UnknownModelType() => true,
+  };
+}
+
+bool _supportsNestedAnthemModelAccess(ModelType type) {
+  return type is CustomModelType ||
+      type is ListModelType ||
+      type is MapModelType;
+}
+
+bool _shouldSkipSubtypeOnWasm(ModelType type) {
+  return type is CustomModelType &&
+      type.modelClassInfo.annotation?.skipOnWasm == true;
+}
+
 void _writeInvalidAccessWarning({
   required Writer writer,
   required ModelType type,
@@ -163,13 +196,13 @@ void _writeInvalidAccessWarning({
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
-    'std::cout << "Invalid field access: \\"$fieldAccessExpression\\", on model \\"${context.annotatedClass.name}\\"" << std::endl;',
+    'std::cout << "Invalid field access: \\"$fieldAccessExpression\\", on model \\"${context.annotatedClass.name}\\"" << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "The accessor \\"$fieldAccessExpression\\" does not point to an Anthem model or collection of Anthem models, so the update could not be forwarded." << std::endl;',
+    'std::cout << "The accessor \\"$fieldAccessExpression\\" does not point to an Anthem model or collection of Anthem models, so the update could not be forwarded." << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "\\"$fieldAccessExpression\\" is of type \\"${type.dartName}\\"." << std::endl;',
+    'std::cout << "\\"$fieldAccessExpression\\" is of type \\"${type.dartName}\\"." << \'\\n\';',
   );
 }
 
@@ -181,10 +214,10 @@ void _writeSerializedValueNullCheck({
   writer.writeLine('if (!request.serializedValue.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error updating accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"." << std::endl;',
+    'std::cout << "Error updating accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"." << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "Serialized value is null, but shouldn\'t be in this context." << std::endl;',
+    'std::cout << "Serialized value is null, but shouldn\'t be in this context." << \'\\n\';',
   );
   writer.writeLine('return;');
   writer.decrementWhitespace();
@@ -221,10 +254,10 @@ void _writeUpdateTypeInvalidError({
   required String fieldAccessExpression,
 }) {
   writer.writeLine(
-    'std::cout << "Invalid update type for accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"" << std::endl;',
+    'std::cout << "Invalid update type for accessor \\"$fieldAccessExpression\\" on model \\"${context.annotatedClass.name}\\"" << \'\\n\';',
   );
   writer.writeLine(
-    'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << std::endl;',
+    'std::cout << "Update type \\"$updateKind\\" is not valid for field \\"$fieldAccessExpression\\" of type ${type.toString()}." << \'\\n\';',
   );
 }
 
@@ -239,9 +272,288 @@ void _writeJsonResultCheck({
   writer.writeLine('if (!$resultVariable.has_value()) {');
   writer.incrementWhitespace();
   writer.writeLine(
-    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << std::endl << $resultVariable.error().what() << std::endl;',
+    'std::cout << "Error deserializing to field \\"$fieldAccessExpression\\" in model \\"${context.annotatedClass.name}\\":" << \'\\n\' << $resultVariable.error().what() << \'\\n\';',
   );
   writer.writeLine('return;');
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+}
+
+String _writeJsonReadResult({
+  required Writer writer,
+  required ModelType type,
+  required ModelClassInfo context,
+  required String fieldAccessExpression,
+  String nameStem = 'result',
+}) {
+  final resultVariable = writer.nextIdentifier(nameStem);
+  writer.writeLine(
+    'auto $resultVariable = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
+  );
+  _writeJsonResultCheck(
+    writer: writer,
+    resultVariable: resultVariable,
+    context: context,
+    fieldAccessExpression: fieldAccessExpression,
+  );
+
+  return resultVariable;
+}
+
+/// Writes a single `if constexpr (...) { ... }` block for the union members
+/// that can participate in Anthem's recursive model logic.
+///
+/// The generated C++ visitors usually want to do the same thing for every
+/// model-like union case. For example:
+/// - `Node.processor` should initialize whichever processor model is active
+/// - a nested update like `processor.someField` should forward into whichever
+///   processor model is active
+///
+/// Older codegen emitted one `if constexpr / else if constexpr` branch per
+/// union member even though each branch had the same body. Clang-tidy then
+/// flagged those as cloned branches. This helper collapses those cases into a
+/// single condition like:
+///
+/// `if constexpr (is Foo || is Bar || is Baz) { shared_body(); }`
+///
+/// `subTypes` should already be filtered down to the union members that really
+/// support recursive model access. Primitive cases like `int` should never be
+/// included here because they do not have `initialize(...)` or
+/// `handleModelUpdate(...)`.
+///
+/// The only complication is `skipOnWasm`: some union members exist on desktop
+/// builds but are compiled out for Emscripten. We preserve that behavior by
+/// splitting the condition into:
+/// - members that are always available
+/// - members that must sit behind `#ifndef __EMSCRIPTEN__`
+void _writeUnionModelSubtypeBlock({
+  required Writer writer,
+  required String variantNameType,
+  required List<ModelType> subTypes,
+  required void Function() writeBody,
+}) {
+  final regularSubTypes = subTypes
+      .where((t) => !_shouldSkipSubtypeOnWasm(t))
+      .toList();
+  final wasmSkippedSubTypes = subTypes.where(_shouldSkipSubtypeOnWasm).toList();
+
+  if (regularSubTypes.isEmpty && wasmSkippedSubTypes.isEmpty) {
+    return;
+  }
+
+  // If every eligible subtype is desktop-only, the whole block can disappear
+  // on Emscripten instead of threading preprocessor guards through the
+  // condition itself.
+  final wrapWholeBlockInIfndef = regularSubTypes.isEmpty;
+
+  if (wrapWholeBlockInIfndef) {
+    writer.writeLine('#ifndef __EMSCRIPTEN__');
+    writer.incrementWhitespace();
+  }
+
+  writer.writeLine('if constexpr (');
+  writer.incrementWhitespace();
+
+  var wroteCondition = false;
+
+  void writeConditionLine(ModelType subType) {
+    writer.writeLine(
+      '${wroteCondition ? '|| ' : ''}std::is_same<$variantNameType, rfl::Literal<"${subType.dartName}">>()',
+    );
+    wroteCondition = true;
+  }
+
+  for (final subType in regularSubTypes) {
+    writeConditionLine(subType);
+  }
+
+  // If we have a mix of always-available and desktop-only subtypes, only the
+  // desktop-only tag checks need to be hidden from the WASM build.
+  if (wasmSkippedSubTypes.isNotEmpty && !wrapWholeBlockInIfndef) {
+    writer.writeLine('#ifndef __EMSCRIPTEN__');
+    writer.incrementWhitespace();
+  }
+
+  for (final subType in wasmSkippedSubTypes) {
+    writeConditionLine(subType);
+  }
+
+  if (wasmSkippedSubTypes.isNotEmpty && !wrapWholeBlockInIfndef) {
+    writer.decrementWhitespace();
+    writer.writeLine('#endif');
+  }
+
+  writer.decrementWhitespace();
+  writer.writeLine(') {');
+  writer.incrementWhitespace();
+  writeBody();
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+
+  if (wrapWholeBlockInIfndef) {
+    writer.decrementWhitespace();
+    writer.writeLine('#endif');
+  }
+}
+
+String _writeRequiredOptionalValueBinding({
+  required Writer writer,
+  required String optionalExpression,
+  required String nameStem,
+  required List<String> errorLines,
+  String valueDeclaration = 'auto&',
+}) {
+  // Bind the optional to a stable local before checking/unwrapping it. This
+  // keeps recursive codegen readable and avoids repeatedly re-evaluating the
+  // same accessor chain in the emitted C++.
+  final nullableValueName = writer.nextIdentifier('${nameStem}Nullable');
+  final valueName = writer.nextIdentifier(nameStem);
+
+  writer.writeLine('auto& $nullableValueName = $optionalExpression;');
+  writer.writeLine('if (!$nullableValueName.has_value()) {');
+  writer.incrementWhitespace();
+  for (final errorLine in errorLines) {
+    writer.writeLine(errorLine);
+  }
+  writer.writeLine('return;');
+  writer.decrementWhitespace();
+  writer.writeLine('}');
+  writer.writeLine('$valueDeclaration $valueName = *$nullableValueName;');
+
+  return valueName;
+}
+
+String _writeForwardableValueBinding({
+  required Writer writer,
+  required ModelType type,
+  required String fieldAccessExpression,
+  required String nameStem,
+}) {
+  // This helper is used when the update path goes deeper than the current
+  // field. Example: if we are updating `loopPoints.startBeat`, we first need to
+  // get the value of `loopPoints` and then continue generating code for
+  // `startBeat`.
+  //
+  // For nullable fields, that means:
+  // 1. Save the optional field expression in a local.
+  // 2. Check whether it actually has a value.
+  // 3. Unwrap it once and recurse using that unwrapped local.
+  //
+  // Doing this in one place keeps the recursive generator logic simpler and
+  // avoids repeating long `.value()` chains in the emitted C++.
+  if (!type.isNullable) {
+    return fieldAccessExpression;
+  }
+
+  return _writeRequiredOptionalValueBinding(
+    writer: writer,
+    optionalExpression: fieldAccessExpression,
+    nameStem: nameStem,
+    errorLines: [
+      'std::cout << "The value at accessor $fieldAccessExpression is null, so the update could not be forwarded." << \'\\n\';',
+    ],
+  );
+}
+
+({String fieldAccessVariable, String listIndexVariable})
+_writeListFieldAccessBinding({
+  required Writer writer,
+  required int fieldAccessIndexMod,
+  required String createFieldSetterExample,
+}) {
+  // List updates pull information out of the request message itself. For
+  // example, an update like `notes[3]` stores that `3` inside
+  // `request.fieldAccesses[...]`.
+  //
+  // This helper:
+  // 1. Binds that request accessor entry to a local.
+  // 2. Pulls out its `listIndex` once.
+  // 3. Returns stable locals that the rest of the recursive list logic can
+  //    reuse.
+  //
+  // That keeps the generated C++ simpler and avoids repeating
+  // `(*request.fieldAccesses)[...]->listIndex.value()` everywhere.
+  final fieldAccessVariable = writer.nextIdentifier('fieldAccess');
+  writer.writeLine(
+    'auto& $fieldAccessVariable = (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod];',
+  );
+
+  final listIndexVariable = _writeRequiredOptionalValueBinding(
+    writer: writer,
+    optionalExpression: '$fieldAccessVariable->listIndex',
+    nameStem: 'listIndex',
+    errorLines: [
+      'std::cout << "Error processing list update for setter \\"$createFieldSetterExample\\": list index is null." << \'\\n\';',
+    ],
+    valueDeclaration: 'const auto&',
+  );
+
+  return (
+    fieldAccessVariable: fieldAccessVariable,
+    listIndexVariable: listIndexVariable,
+  );
+}
+
+({String fieldAccessVariable, String deserializedKeyVariable})
+_writeMapFieldAccessBinding({
+  required Writer writer,
+  required int fieldAccessIndexMod,
+  required ModelType keyType,
+}) {
+  // Map updates work the same way, except the request stores a serialized map
+  // key instead of a list index. We bind the request accessor once, deserialize
+  // the key once, and then let the recursive map logic reuse those locals.
+  final fieldAccessVariable = writer.nextIdentifier('fieldAccess');
+  final deserializedKeyVariable = writer.nextIdentifier('deserializedKey');
+
+  writer.writeLine(
+    'auto& $fieldAccessVariable = (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod];',
+  );
+  _writeKeyDeserialize(
+    writer: writer,
+    keyExpression: '$fieldAccessVariable->serializedMapKey',
+    keyType: keyType,
+    outputVariable: deserializedKeyVariable,
+  );
+
+  return (
+    fieldAccessVariable: fieldAccessVariable,
+    deserializedKeyVariable: deserializedKeyVariable,
+  );
+}
+
+String _writeInitializationBindingIfNullable({
+  required Writer writer,
+  required ModelType type,
+  required String fieldAccessor,
+  required String nameStem,
+}) {
+  // Initialization has the same nullable-access issue as update forwarding. If
+  // a field is optional, open a scoped block with a stable unwrapped local and
+  // let the caller emit initialization code against that local.
+  if (!type.isNullable) {
+    return fieldAccessor;
+  }
+
+  final nullableValueName = writer.nextIdentifier('${nameStem}Nullable');
+  final valueName = writer.nextIdentifier(nameStem);
+
+  writer.writeLine('auto& $nullableValueName = $fieldAccessor;');
+  writer.writeLine('if ($nullableValueName.has_value()) {');
+  writer.incrementWhitespace();
+  writer.writeLine('auto& $valueName = *$nullableValueName;');
+
+  return valueName;
+}
+
+void _closeInitializationBindingIfNullable({
+  required Writer writer,
+  required ModelType type,
+}) {
+  if (!type.isNullable) {
+    return;
+  }
+
   writer.decrementWhitespace();
   writer.writeLine('}');
 }
@@ -293,9 +605,10 @@ void _writeUpdate({
   required String observabilityNotifier,
   required String fieldAccessExpression,
   required ModelClassInfo context,
+  required String parentAccessor,
   int fieldAccessIndexMod = 0,
-  String parentAccessor = 'selfPtr',
   bool isCollectionSetter = false,
+  bool allowNestedAccess = true,
 }) {
   switch (type) {
     case StringModelType _ ||
@@ -318,16 +631,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('result.value()'));
+      writer.writeLine(createFieldSetter('$resultVariable.value()'));
       writer.writeLine(observabilityNotifier);
 
       break;
@@ -352,24 +662,24 @@ void _writeUpdate({
         'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses->size()) {',
       );
       writer.incrementWhitespace();
-
-      writer.writeLine(
-        'if (!(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.has_value()) {',
+      final collectionAccessExpression = _writeForwardableValueBinding(
+        writer: writer,
+        type: type,
+        fieldAccessExpression: fieldAccessExpression,
+        nameStem: 'listValue',
       );
-      writer.incrementWhitespace();
-      writer.writeLine(
-        'std::cout << "Error processing list update for setter \\"${createFieldSetter("[value here]")}\\": list index is null." << std::endl;',
+      final access = _writeListFieldAccessBinding(
+        writer: writer,
+        fieldAccessIndexMod: fieldAccessIndexMod,
+        createFieldSetterExample: createFieldSetter('[value here]'),
       );
-      writer.writeLine('return;');
-      writer.decrementWhitespace();
-      writer.writeLine('}');
 
       writer.writeLine(
         'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {',
       );
       writer.incrementWhitespace();
       writer.writeLine(
-        '$fieldAccessExpression->erase($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value());',
+        '$collectionAccessExpression->erase($collectionAccessExpression->begin() + ${access.listIndexVariable});',
       );
       writer.decrementWhitespace();
       writer.writeLine(
@@ -381,19 +691,26 @@ void _writeUpdate({
         fieldAccessExpression: fieldAccessExpression,
         context: context,
       );
-      writer.writeLine('${getCppType(type.itemType, context)} itemResult;');
+      final itemResultVariable = writer.nextIdentifier('itemResult');
+      writer.writeLine(
+        '${getCppType(type.itemType, context)} $itemResultVariable;',
+      );
       _writeUpdate(
         context: context,
         writer: writer,
         type: type.itemType,
-        fieldAccessExpression: 'itemResult',
-        createFieldSetter: (value) => 'itemResult = $value;',
+        fieldAccessExpression: itemResultVariable,
+        createFieldSetter: (value) => '$itemResultVariable = $value;',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: fieldAccessExpression,
+        parentAccessor: collectionAccessExpression,
+        allowNestedAccess: false,
       );
+      final itemInsertValue = _shouldMoveTemporaryValue(type.itemType)
+          ? 'std::move($itemResultVariable)'
+          : itemResultVariable;
       writer.writeLine(
-        '$fieldAccessExpression->insert($fieldAccessExpression->begin() + (*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value(), std::move(itemResult));',
+        '$collectionAccessExpression->insert($collectionAccessExpression->begin() + ${access.listIndexVariable}, $itemInsertValue);',
       );
       writer.decrementWhitespace();
       writer.writeLine('} else {');
@@ -405,12 +722,12 @@ void _writeUpdate({
         writer: writer,
         type: type.itemType,
         fieldAccessExpression:
-            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()]',
+            '(*$collectionAccessExpression)[${access.listIndexVariable}]',
         createFieldSetter: (value) =>
-            '(*$fieldAccessExpression)[(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->listIndex.value()] = $value;',
+            '(*$collectionAccessExpression)[${access.listIndexVariable}] = $value;',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: fieldAccessExpression,
+        parentAccessor: collectionAccessExpression,
         isCollectionSetter: true,
       );
       writer.decrementWhitespace();
@@ -428,16 +745,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(createFieldSetter('std::move($resultVariable.value())'));
       writer.writeLine(observabilityNotifier);
       writeParentSetterForType(
         writer: writer,
@@ -469,19 +783,25 @@ void _writeUpdate({
         'if (fieldAccessIndex + 1 + $fieldAccessIndexMod < request.fieldAccesses->size()) {',
       );
       writer.incrementWhitespace();
-      _writeKeyDeserialize(
+      final collectionAccessExpression = _writeForwardableValueBinding(
         writer: writer,
-        keyExpression:
-            '(*request.fieldAccesses)[fieldAccessIndex + 1 + $fieldAccessIndexMod]->serializedMapKey',
+        type: type,
+        fieldAccessExpression: fieldAccessExpression,
+        nameStem: 'mapValue',
+      );
+      final access = _writeMapFieldAccessBinding(
+        writer: writer,
+        fieldAccessIndexMod: fieldAccessIndexMod,
         keyType: type.keyType,
-        outputVariable: 'deserializedKey',
       );
 
       writer.writeLine(
         'if (request.updateKind == FieldUpdateKind::remove && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {',
       );
       writer.incrementWhitespace();
-      writer.writeLine('$fieldAccessExpression->erase(deserializedKey);');
+      writer.writeLine(
+        '$collectionAccessExpression->erase(${access.deserializedKeyVariable});',
+      );
       writer.decrementWhitespace();
       writer.writeLine(
         '} else if (request.updateKind == FieldUpdateKind::add && request.fieldAccesses->size() - 1 == fieldAccessIndex + 1 + $fieldAccessIndexMod) {',
@@ -506,12 +826,13 @@ void _writeUpdate({
         context: context,
         writer: writer,
         type: type.valueType,
-        fieldAccessExpression: '$fieldAccessExpression->at(deserializedKey)',
+        fieldAccessExpression:
+            '$collectionAccessExpression->at(${access.deserializedKeyVariable})',
         createFieldSetter: (value) =>
-            '$fieldAccessExpression->insert_or_assign(deserializedKey, $value);',
+            '$collectionAccessExpression->insert_or_assign(${access.deserializedKeyVariable}, $value);',
         observabilityNotifier: '',
         fieldAccessIndexMod: fieldAccessIndexMod + 1,
-        parentAccessor: fieldAccessExpression,
+        parentAccessor: collectionAccessExpression,
         isCollectionSetter: true,
       );
 
@@ -530,16 +851,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(createFieldSetter('std::move($resultVariable.value())'));
       writer.writeLine(observabilityNotifier);
       writeParentSetterForType(
         writer: writer,
@@ -552,6 +870,43 @@ void _writeUpdate({
       writer.writeLine('}');
       break;
     case CustomModelType() || UnionModelType() || UnknownModelType():
+      if (!allowNestedAccess) {
+        // This path is used when we are materializing a temporary value for a
+        // list "add" operation before inserting it into the list. The outer
+        // list-add branch only runs when the accessor chain already ends at the
+        // new list element itself, so there is no valid deeper child access to
+        // forward here. Even for model-valued list items, we should only
+        // deserialize the inserted value, not generate nested
+        // temporary-value forwarding logic.
+        _writeSerializedValueNullCheck(
+          writer: writer,
+          fieldAccessExpression: fieldAccessExpression,
+          context: context,
+        );
+
+        final resultVariable = _writeJsonReadResult(
+          writer: writer,
+          type: type,
+          context: context,
+          fieldAccessExpression: fieldAccessExpression,
+        );
+        writer.writeLine(
+          createFieldSetter('std::move($resultVariable.value())'),
+        );
+        writer.writeLine(observabilityNotifier);
+
+        if (!isCollectionSetter) {
+          writeParentSetterForType(
+            writer: writer,
+            type: type,
+            fieldAccessor: fieldAccessExpression,
+            parentAccessor: parentAccessor,
+          );
+        }
+
+        break;
+      }
+
       // If this field is a custom model and this is the last accessor in the
       // chain, then we should deserialize the provided JSON into this field.
       writer.writeLine(
@@ -564,16 +919,13 @@ void _writeUpdate({
         context: context,
       );
 
-      writer.writeLine(
-        'auto result = rfl::json::read<${getCppType(type, context)}>(request.serializedValue.value());',
-      );
-      _writeJsonResultCheck(
+      final resultVariable = _writeJsonReadResult(
         writer: writer,
-        resultVariable: 'result',
+        type: type,
         context: context,
         fieldAccessExpression: fieldAccessExpression,
       );
-      writer.writeLine(createFieldSetter('std::move(result.value())'));
+      writer.writeLine(createFieldSetter('std::move($resultVariable.value())'));
       writer.writeLine(observabilityNotifier);
 
       // If we're setting inside a collection (e.g. someList[someIndex] =
@@ -596,85 +948,52 @@ void _writeUpdate({
       // the chain, then we should forward the update to the child.
       writer.writeLine('} else {');
       writer.incrementWhitespace();
-
-      var nullable = '';
-      if (type.isNullable) {
-        writer.writeLine('if ($fieldAccessExpression.has_value()) {');
-        writer.incrementWhitespace();
-        nullable = '.value()';
-      }
+      final resolvedFieldAccessExpression = _writeForwardableValueBinding(
+        writer: writer,
+        type: type,
+        fieldAccessExpression: fieldAccessExpression,
+        nameStem: 'childValue',
+      );
 
       if (type is UnionModelType) {
         // https://rfl.getml.com/variants_and_tagged_unions/#stdvariant-or-rflvariant-externally-tagged
         // See the visitor pattern example for how this is being parsed. This is
         // externally tagged, which is described there as well.
+        final handleVariantName = writer.nextIdentifier('handleVariant');
+        final variantFieldName = writer.nextIdentifier('variantField');
+        final variantNameType = writer.nextIdentifier('variantName');
+        final nestedModelSubTypes = type.subTypes
+            .where(_supportsNestedAnthemModelAccess)
+            .toList();
         writer.writeLine(
-          'const auto handle_variant = [&](const auto& field) {',
+          'const auto $handleVariantName = [&](const auto& $variantFieldName) {',
         );
         writer.incrementWhitespace();
         writer.writeLine(
-          'using Name = typename std::decay_t<decltype(field)>::Name;',
+          'using $variantNameType = typename std::decay_t<decltype($variantFieldName)>::Name;',
         );
 
-        var isFirst = true;
-        final skipAnyOnWasm = type.subTypes.any(
-          (t) =>
-              (t is CustomModelType &&
-              t.modelClassInfo.annotation?.skipOnWasm == true),
+        _writeUnionModelSubtypeBlock(
+          writer: writer,
+          variantNameType: variantNameType,
+          subTypes: nestedModelSubTypes,
+          writeBody: () {
+            writer.writeLine(
+              '$variantFieldName.value()->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
+            );
+          },
         );
-        if (skipAnyOnWasm) {
-          // Hack: Allow skipping any case just by omitting it
-          writer.writeLine('if (false) {}');
-        }
-        for (final subType in type.subTypes) {
-          final skipOnWasm =
-              subType is CustomModelType &&
-              subType.modelClassInfo.annotation?.skipOnWasm == true;
-
-          if (skipOnWasm) {
-            writer.writeLine('#ifndef __EMSCRIPTEN__');
-            writer.incrementWhitespace();
-          }
-
-          writer.writeLine(
-            '${(isFirst && !skipAnyOnWasm) ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
-          );
-          writer.incrementWhitespace();
-          writer.writeLine(
-            'field.value()->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
-          );
-          writer.decrementWhitespace();
-          writer.writeLine('}');
-
-          if (skipOnWasm) {
-            writer.decrementWhitespace();
-            writer.writeLine('#endif');
-          }
-
-          isFirst = false;
-        }
 
         writer.decrementWhitespace();
         writer.writeLine('};');
 
         writer.writeLine(
-          'rfl::visit(handle_variant, $fieldAccessExpression$nullable);',
+          'rfl::visit($handleVariantName, $resolvedFieldAccessExpression);',
         );
       } else {
         writer.writeLine(
-          '$fieldAccessExpression$nullable->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
+          '$resolvedFieldAccessExpression->handleModelUpdate(request, fieldAccessIndex + 1 + $fieldAccessIndexMod);',
         );
-      }
-
-      if (type.isNullable) {
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine(
-          'std::cout << "The value at accessor $fieldAccessExpression is null, so the update could not be forwarded." << std::endl;',
-        );
-        writer.decrementWhitespace();
-        writer.writeLine('}');
       }
 
       writer.decrementWhitespace();
@@ -696,101 +1015,96 @@ void _writeKeyDeserialize({
     );
   }
 
-  void writeKeyExistsCheck() {
-    writer.writeLine('if (!$keyExpression.has_value()) {');
-    writer.incrementWhitespace();
-    writer.writeLine(
-      'std::cout << "Error deserializing map key: key is null." << std::endl;',
-    );
-    writer.writeLine('return;');
-    writer.decrementWhitespace();
-    writer.writeLine('}');
-  }
+  final serializedKeyValue = _writeRequiredOptionalValueBinding(
+    writer: writer,
+    optionalExpression: keyExpression,
+    nameStem: 'serializedMapKey',
+    errorLines: [
+      'std::cout << "Error deserializing map key: key is null." << \'\\n\';',
+    ],
+    valueDeclaration: 'const auto&',
+  );
 
   switch (keyType) {
     case StringModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<std::string> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<std::string>($keyExpression.value().substr(1, $keyExpression.value().size() - 2));',
+          '$outputVariable = std::optional<std::string>($serializedKeyValue.substr(1, $serializedKeyValue.size() - 2));',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = $keyExpression.value().substr(1, $keyExpression.value().size() - 2);',
+          'auto $outputVariable = $serializedKeyValue.substr(1, $serializedKeyValue.size() - 2);',
         );
       }
       break;
     case IntModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<int64_t> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<int64_t>(std::stoll($keyExpression.value()));',
+          '$outputVariable = std::optional<int64_t>(std::stoll($serializedKeyValue));',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = std::stoll($keyExpression.value());',
+          'auto $outputVariable = std::stoll($serializedKeyValue);',
         );
       }
 
       break;
     case DoubleModelType() || NumModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<double> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<double>(std::stod($keyExpression.value()));',
+          '$outputVariable = std::optional<double>(std::stod($serializedKeyValue));',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = std::stod($keyExpression.value());',
+          'auto $outputVariable = std::stod($serializedKeyValue);',
         );
       }
 
       break;
     case BoolModelType():
-      writeKeyExistsCheck();
       if (keyType.isNullable) {
         writer.writeLine('std::optional<bool> $outputVariable;');
-        writer.writeLine('if ($keyExpression.value() == "null") {');
+        writer.writeLine('if ($serializedKeyValue == "null") {');
         writer.incrementWhitespace();
         writer.writeLine('$outputVariable = std::nullopt;');
         writer.decrementWhitespace();
         writer.writeLine('} else {');
         writer.incrementWhitespace();
         writer.writeLine(
-          '$outputVariable = std::optional<bool>($keyExpression.value() == "true");',
+          '$outputVariable = std::optional<bool>($serializedKeyValue == "true");',
         );
         writer.decrementWhitespace();
         writer.writeLine('}');
       } else {
         writer.writeLine(
-          'auto $outputVariable = $keyExpression.value() == "true";',
+          'auto $outputVariable = $serializedKeyValue == "true";',
         );
       }
 
@@ -823,59 +1137,52 @@ void writeParentSetterForType({
       type is ListModelType ||
       type is MapModelType ||
       type is UnionModelType;
-
-  if (shouldWrite && type.isNullable) {
-    writer.writeLine('if ($fieldAccessor.has_value()) {');
-    writer.incrementWhitespace();
-  }
+  final resolvedFieldAccessor = shouldWrite
+      ? _writeInitializationBindingIfNullable(
+          writer: writer,
+          type: type,
+          fieldAccessor: fieldAccessor,
+          nameStem: 'initializedChild',
+        )
+      : fieldAccessor;
 
   if (type is CustomModelType ||
       type is ListModelType ||
       type is MapModelType) {
-    final valueFn = type.isNullable ? '.value()' : '';
     writer.writeLine(
-      '$fieldAccessor$valueFn->initialize($fieldAccessor$valueFn, $parentAccessor);',
+      '$resolvedFieldAccessor->initialize($resolvedFieldAccessor, $parentAccessor);',
     );
   } else if (type is UnionModelType) {
-    final valueFn = type.isNullable ? '.value()' : '';
+    final variantItemName = writer.nextIdentifier('variantItem');
+    final variantNameType = writer.nextIdentifier('variantName');
+    final initializedSubTypes = type.subTypes
+        .where(_supportsNestedAnthemModelAccess)
+        .toList();
 
-    writer.writeLine('rfl::visit([&](auto& item) {');
+    writer.writeLine('rfl::visit([&](auto& $variantItemName) {');
     writer.incrementWhitespace();
 
     writer.writeLine(
-      'using Name = typename std::decay_t<decltype(item)>::Name;',
+      'using $variantNameType = typename std::decay_t<decltype($variantItemName)>::Name;',
     );
 
-    bool isFirst = true;
-    for (final subType in type.subTypes) {
-      // If the subtype does not inherit from AnthemModelBase, then we
-      // don't need to do anything with it.
-      if (subType is! CustomModelType &&
-          subType is! ListModelType &&
-          subType is! MapModelType) {
-        continue;
-      }
-
-      writer.writeLine(
-        '${isFirst ? '' : 'else '}if constexpr (std::is_same<Name, rfl::Literal<"${subType.dartName}">>()) {',
-      );
-      writer.incrementWhitespace();
-      writer.writeLine(
-        'item.value()->initialize(item.value(), $parentAccessor);',
-      );
-      writer.decrementWhitespace();
-      writer.writeLine('}');
-
-      isFirst = false;
-    }
+    _writeUnionModelSubtypeBlock(
+      writer: writer,
+      variantNameType: variantNameType,
+      subTypes: initializedSubTypes,
+      writeBody: () {
+        writer.writeLine(
+          '$variantItemName.value()->initialize($variantItemName.value(), $parentAccessor);',
+        );
+      },
+    );
 
     writer.decrementWhitespace();
-    writer.writeLine('}, $fieldAccessor$valueFn);');
+    writer.writeLine('}, $resolvedFieldAccessor);');
   }
 
-  if (shouldWrite && type.isNullable) {
-    writer.decrementWhitespace();
-    writer.writeLine('}');
+  if (shouldWrite) {
+    _closeInitializationBindingIfNullable(writer: writer, type: type);
   }
 }
 

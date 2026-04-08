@@ -19,7 +19,8 @@
 
 #pragma once
 
-#include <optional>
 #include "messages/messages.h"
+
+#include <optional>
 
 std::optional<Response> handleVisualizationCommand(Request& request);

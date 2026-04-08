@@ -24,8 +24,7 @@ struct ObserverHandle {
 };
 
 // A utility class that holds observers for a single field.
-template <typename T>
-class FieldObservers {
+template <typename T> class FieldObservers {
 public:
   ObserverHandle addObserver(std::function<void(const T&)> observer) {
     // Generate a unique ID, store the observer in a map.
@@ -44,7 +43,6 @@ public:
       kv.second(value);
     }
   }
-
 private:
   size_t nextId = 0;
   std::unordered_map<size_t, std::function<void(const T&)>> observers;

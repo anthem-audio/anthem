@@ -32,37 +32,27 @@ struct TimingParams {
 };
 
 inline bool hasValidTimingParams(const TimingParams& params) {
-  return params.ticksPerQuarter > 0 &&
-    params.beatsPerMinute > 0.0 &&
-    params.sampleRate > 0.0;
+  return params.ticksPerQuarter > 0 && params.beatsPerMinute > 0.0 && params.sampleRate > 0.0;
 }
 
-inline double sampleCountToTickDelta(
-  double sampleCount,
-  const TimingParams& params
-) {
+inline double sampleCountToTickDelta(double sampleCount, const TimingParams& params) {
   if (!hasValidTimingParams(params)) {
     return 0.0;
   }
 
-  auto ticksPerMinute =
-    static_cast<double>(params.ticksPerQuarter) * params.beatsPerMinute;
+  auto ticksPerMinute = static_cast<double>(params.ticksPerQuarter) * params.beatsPerMinute;
   auto ticksPerSecond = ticksPerMinute / 60.0;
   auto ticksPerSample = ticksPerSecond / params.sampleRate;
 
   return sampleCount * ticksPerSample;
 }
 
-inline double tickDeltaToSampleOffset(
-  double tickDelta,
-  const TimingParams& params
-) {
+inline double tickDeltaToSampleOffset(double tickDelta, const TimingParams& params) {
   if (!hasValidTimingParams(params)) {
     return 0.0;
   }
 
-  auto ticksPerMinute =
-    static_cast<double>(params.ticksPerQuarter) * params.beatsPerMinute;
+  auto ticksPerMinute = static_cast<double>(params.ticksPerQuarter) * params.beatsPerMinute;
   auto ticksPerSecond = ticksPerMinute / 60.0;
   auto ticksPerSample = ticksPerSecond / params.sampleRate;
 
@@ -70,23 +60,16 @@ inline double tickDeltaToSampleOffset(
 }
 
 inline bool hasValidLoopRange(double loopStart, double loopEnd) {
-  return std::isfinite(loopStart) &&
-    std::isfinite(loopEnd) &&
-    loopEnd > loopStart;
+  return std::isfinite(loopStart) && std::isfinite(loopEnd) && loopEnd > loopStart;
 }
 
-inline double wrapPlayheadToLoop(
-  double playheadPosition,
-  double loopStart,
-  double loopEnd
-) {
+inline double wrapPlayheadToLoop(double playheadPosition, double loopStart, double loopEnd) {
   if (!hasValidLoopRange(loopStart, loopEnd)) {
     return playheadPosition;
   }
 
   auto loopLength = loopEnd - loopStart;
-  auto normalizedPosition =
-    std::fmod(playheadPosition - loopStart, loopLength);
+  auto normalizedPosition = std::fmod(playheadPosition - loopStart, loopLength);
 
   if (normalizedPosition < 0.0) {
     normalizedPosition += loopLength;
@@ -96,11 +79,7 @@ inline double wrapPlayheadToLoop(
 }
 
 inline double advancePlayheadByTickDelta(
-  double playheadPosition,
-  double tickDelta,
-  double loopStart,
-  double loopEnd
-) {
+    double playheadPosition, double tickDelta, double loopStart, double loopEnd) {
   if (tickDelta <= 0.0) {
     return playheadPosition;
   }
@@ -119,8 +98,7 @@ inline double advancePlayheadByTickDelta(
       incrementAmount = loopEnd - timePointer;
       incrementRemaining -= incrementAmount;
       timePointer = loopStart;
-    }
-    else {
+    } else {
       timePointer += incrementAmount;
       incrementRemaining = 0.0;
     }

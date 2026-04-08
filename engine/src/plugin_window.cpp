@@ -22,33 +22,26 @@
 #include "plugin_window.h"
 
 PluginWindow::PluginWindow(juce::AudioProcessor* processor)
-  : DocumentWindow(processor->getName(),
-           juce::Colours::lightgrey,
-           juce::DocumentWindow::allButtons)
-{
+  : DocumentWindow(
+        processor->getName(), juce::Colours::lightgrey, juce::DocumentWindow::allButtons) {
   auto* editor = processor->createEditorIfNeeded();
-  if (editor != nullptr)
-  {
+  if (editor != nullptr) {
     setContentOwned(editor, true);
     setResizable(false, false);
     setUsingNativeTitleBar(true);
     setSize(editor->getWidth(), editor->getHeight());
     centreWithSize(getWidth(), getHeight());
-  }
-  else
-  {
+  } else {
     jassertfalse; // The plugin should have a valid editor
   }
 }
 
-PluginWindow::~PluginWindow()
-{
+PluginWindow::~PluginWindow() {
   // Make sure to remove the editor and release the plugin instance
   setContentOwned(nullptr, true);
 }
 
-void PluginWindow::closeButtonPressed()
-{
+void PluginWindow::closeButtonPressed() {
   setVisible(false);
 }
 

@@ -19,10 +19,10 @@
 
 #pragma once
 
-#include <memory>
-#include <unordered_map>
 #include <functional>
+#include <memory>
 #include <optional>
+#include <unordered_map>
 
 class AnthemModelBase;
 
@@ -56,11 +56,9 @@ private:
   uint64_t nextObserverId = 0;
 
   // The set of observers that are listening for changes to this model.
-  std::unordered_map<
-    uint64_t,
-    std::tuple<std::optional<AnthemModelChangeFilter>, std::function<void()>>
-  > observers;
-
+  std::unordered_map<uint64_t,
+      std::tuple<std::optional<AnthemModelChangeFilter>, std::function<void()>>>
+      observers;
 public:
   // Default empty constructor
   AnthemModelBase() = default;
@@ -82,9 +80,7 @@ public:
   std::weak_ptr<AnthemModelBase> self;
 
   virtual void initialize(
-    std::shared_ptr<AnthemModelBase> selfModel,
-    std::shared_ptr<AnthemModelBase> parentModel
-  ) {
+      std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
     this->self = selfModel;
     this->parent = parentModel;
   }
@@ -110,7 +106,8 @@ public:
     for (auto& [_, observerTuple] : observers) {
       auto [filter, observer] = observerTuple;
 
-      if (!filter.has_value() || !filter->fieldName.has_value() || filter->fieldName.value() == fieldName) {
+      if (!filter.has_value() || !filter->fieldName.has_value() ||
+          filter->fieldName.value() == fieldName) {
         observer();
       }
     }

@@ -19,10 +19,10 @@
 
 #include "global_visualization_sources.h"
 
+#include "modules/sequencer/runtime/transport.h"
+
 #include <algorithm>
 #include <cmath>
-
-#include "modules/sequencer/runtime/transport.h"
 
 namespace {
 constexpr double playheadUpdateIntervalMs = 5.0;
@@ -30,38 +30,27 @@ constexpr double cpuAggregationWindowMs = 500.0;
 
 int64_t samplesForDuration(double sampleRate, double durationMs) {
   jassert(sampleRate > 0.0);
-  return std::max<int64_t>(
-    1,
-    static_cast<int64_t>(std::llround(sampleRate * durationMs / 1000.0))
-  );
+  return std::max<int64_t>(1, static_cast<int64_t>(std::llround(sampleRate * durationMs / 1000.0)));
 }
 
 int64_t alignSampleTimestampToBlock(
-  int64_t sampleTimestamp,
-  int64_t blockStartSample,
-  int64_t samplesPerStep
-) {
+    int64_t sampleTimestamp, int64_t blockStartSample, int64_t samplesPerStep) {
   if (sampleTimestamp >= blockStartSample) {
     return sampleTimestamp;
   }
 
   const auto samplesBehind = blockStartSample - sampleTimestamp;
-  const auto intervalsBehind =
-    (samplesBehind + samplesPerStep - 1) / samplesPerStep;
+  const auto intervalsBehind = (samplesBehind + samplesPerStep - 1) / samplesPerStep;
   return sampleTimestamp + intervalsBehind * samplesPerStep;
 }
-}
+} // namespace
 
 std::optional<NumericVisualizationData> CpuVisualizationProvider::getTypedData() {
   return drainTimestampedVisualizationBuffer(cpuBurdenBuffer);
 }
 
 void CpuVisualizationProvider::rt_updateCpuBurden(
-  double newCpuBurden,
-  int64_t blockStartSample,
-  int numSamples,
-  double sampleRate
-) {
+    double newCpuBurden, int64_t blockStartSample, int numSamples, double sampleRate) {
   if (sampleRate <= 0.0 || numSamples <= 0) {
     jassertfalse;
     return;
@@ -77,18 +66,15 @@ void CpuVisualizationProvider::rt_updateCpuBurden(
   }
 
   const auto blockEndSample = blockStartSample + static_cast<int64_t>(numSamples);
-  rt_windowMaxCpuBurden = rt_hasWindowCpuBurden
-    ? std::max(rt_windowMaxCpuBurden, newCpuBurden)
-    : newCpuBurden;
+  rt_windowMaxCpuBurden =
+      rt_hasWindowCpuBurden ? std::max(rt_windowMaxCpuBurden, newCpuBurden) : newCpuBurden;
   rt_hasWindowCpuBurden = true;
 
   while (blockEndSample >= rt_nextWindowEndSample) {
-    cpuBurdenBuffer.add(
-      TimestampedVisualizationValue<double> {
+    cpuBurdenBuffer.add(TimestampedVisualizationValue<double>{
         .sampleTimestamp = rt_nextWindowEndSample,
         .value = rt_windowMaxCpuBurden,
-      }
-    );
+    });
 
     rt_nextWindowEndSample += rt_samplesPerWindow;
     rt_windowMaxCpuBurden = newCpuBurden;
@@ -101,11 +87,7 @@ std::optional<NumericVisualizationData> PlayheadPositionVisualizationProvider::g
 }
 
 void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
-  const Transport& transport,
-  int64_t blockStartSample,
-  int numSamples,
-  double sampleRate
-) {
+    const Transport& transport, int64_t blockStartSample, int numSamples, double sampleRate) {
   if (sampleRate <= 0.0 || numSamples <= 0) {
     jassertfalse;
     return;
@@ -122,28 +104,21 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
 
   if (!transport.rt_config->isPlaying) {
     if (transport.rt_playheadJumpOrPauseOccurred) {
-      playheadPositionBuffer.add(
-        TimestampedVisualizationValue<double> {
+      playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
           .sampleTimestamp = blockStartSample,
           .value = transport.rt_playhead,
-        }
-      );
+      });
       rt_nextSampleTimestamp = blockStartSample + rt_samplesPerUpdate;
     } else {
       rt_nextSampleTimestamp = alignSampleTimestampToBlock(
-        rt_nextSampleTimestamp,
-        blockStartSample,
-        rt_samplesPerUpdate
-      );
+          rt_nextSampleTimestamp, blockStartSample, rt_samplesPerUpdate);
     }
 
     while (rt_nextSampleTimestamp < blockEndSample) {
-      playheadPositionBuffer.add(
-        TimestampedVisualizationValue<double> {
+      playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
           .sampleTimestamp = rt_nextSampleTimestamp,
           .value = transport.rt_playhead,
-        }
-      );
+      });
       rt_nextSampleTimestamp += rt_samplesPerUpdate;
     }
 
@@ -151,34 +126,26 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
   }
 
   if (transport.rt_playheadJumpOrPauseOccurred) {
-    playheadPositionBuffer.add(
-      TimestampedVisualizationValue<double> {
+    playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
         .sampleTimestamp = blockStartSample,
         .value = transport.rt_playhead,
-      }
-    );
+    });
     rt_nextSampleTimestamp = blockStartSample + rt_samplesPerUpdate;
   }
 
-  rt_nextSampleTimestamp = alignSampleTimestampToBlock(
-    rt_nextSampleTimestamp,
-    blockStartSample,
-    rt_samplesPerUpdate
-  );
+  rt_nextSampleTimestamp =
+      alignSampleTimestampToBlock(rt_nextSampleTimestamp, blockStartSample, rt_samplesPerUpdate);
 
   while (rt_nextSampleTimestamp < blockEndSample) {
     const auto sampleOffset = static_cast<int>(rt_nextSampleTimestamp - blockStartSample);
-    const auto playheadPosition =
-      sampleOffset == 0
-      ? transport.rt_playhead
-      : transport.rt_getPlayheadAfterAdvance(sampleOffset);
+    const auto playheadPosition = sampleOffset == 0
+                                      ? transport.rt_playhead
+                                      : transport.rt_getPlayheadAfterAdvance(sampleOffset);
 
-    playheadPositionBuffer.add(
-      TimestampedVisualizationValue<double> {
+    playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
         .sampleTimestamp = rt_nextSampleTimestamp,
         .value = playheadPosition,
-      }
-    );
+    });
     rt_nextSampleTimestamp += rt_samplesPerUpdate;
   }
 }
@@ -188,20 +155,16 @@ std::optional<IntegerVisualizationData> PlayheadSequenceIdVisualizationProvider:
 }
 
 void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(
-  int64_t newPlayheadSequenceId,
-  int64_t sampleTimestamp
-) {
+    int64_t newPlayheadSequenceId, int64_t sampleTimestamp) {
   if (lastQueuedId.has_value() && lastQueuedId.value() == newPlayheadSequenceId) {
     return;
   }
 
   lastQueuedId = newPlayheadSequenceId;
-  playheadSequenceIdBuffer.add(
-    TimestampedVisualizationValue<int64_t> {
+  playheadSequenceIdBuffer.add(TimestampedVisualizationValue<int64_t>{
       .sampleTimestamp = sampleTimestamp,
       .value = newPlayheadSequenceId,
-    }
-  );
+  });
 }
 
 GlobalVisualizationSources::GlobalVisualizationSources() {
@@ -211,6 +174,8 @@ GlobalVisualizationSources::GlobalVisualizationSources() {
 
   // Register global sources with the visualization broker
   VisualizationBroker::getInstance().registerDataProvider("cpu", cpuBurdenProvider);
-  VisualizationBroker::getInstance().registerDataProvider("playhead_position", playheadPositionProvider);
-  VisualizationBroker::getInstance().registerDataProvider("playhead_sequence_id", playheadSequenceIdProvider);
+  VisualizationBroker::getInstance().registerDataProvider(
+      "playhead_position", playheadPositionProvider);
+  VisualizationBroker::getInstance().registerDataProvider(
+      "playhead_sequence_id", playheadSequenceIdProvider);
 }

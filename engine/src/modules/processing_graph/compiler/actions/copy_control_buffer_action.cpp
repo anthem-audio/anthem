@@ -19,6 +19,8 @@
 
 #include "copy_control_buffer_action.h"
 
+#include "modules/processing_graph/model/node.h"
+
 void CopyControlBufferAction::execute(int numSamples) {
   auto& sourceBuffer = source->getOutputControlBuffer(sourcePortId);
   auto& destinationBuffer = destination->getInputControlBuffer(destinationPortId);
@@ -31,18 +33,13 @@ void CopyControlBufferAction::execute(int numSamples) {
     for (int sample = 0; sample < numSamples; ++sample) {
       float sourceSample = sourceBuffer.getSample(channel, sample);
       jassert(!std::isnan(sourceSample));
-      jassert(sourceSample >= 0.0f && sourceSample <= 1.0f);
+      jassert(juce::jlimit(0.0f, 1.0f, sourceSample) == sourceSample);
       destinationBuffer.setSample(channel, sample, sourceSample);
     }
   }
 }
 
 void CopyControlBufferAction::debugPrint() {
-  std::cout 
-    << "CopyControlBufferAction: "
-    << this->source->getGraphNode()->id()
-    << " -> "
-    << this->destination->getGraphNode()->id()
-    << std::endl;
+  std::cout << "CopyControlBufferAction: " << this->source->getGraphNode()->id() << " -> "
+            << this->destination->getGraphNode()->id() << '\n';
 }
-

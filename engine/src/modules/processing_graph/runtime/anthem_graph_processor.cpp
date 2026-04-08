@@ -20,55 +20,64 @@
 #include "anthem_graph_processor.h"
 
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
+#include "modules/util/intentionally_leak.h"
 
 AnthemGraphProcessor::AnthemGraphProcessor()
-    : rt_services(std::make_unique<GraphRuntimeServices>()),
-      clearDeletionQueueTimedCallback(juce::TimedCallback([this]() {
-        this->clearDeletionQueueFromMainThread();
-      })) {
-  // Set up a JUCE timer to clear the deletion queue every 1s
+  : rt_services(std::make_unique<GraphRuntimeServices>()),
+    clearDeletionQueueTimedCallback(
+        juce::TimedCallback([this]() { this->clearDeletionQueueFromMainThread(); })) {
+  // Periodically retire replaced compilation results on the main thread.
   this->clearDeletionQueueTimedCallback.startTimer(2000);
-  this->processingSteps = nullptr;
+  this->rt_activeCompilationResult = nullptr;
 }
 
 AnthemGraphProcessor::~AnthemGraphProcessor() = default;
 
-void AnthemGraphProcessor::setProcessingStepsFromMainThread(AnthemGraphCompilationResult* compilationResult) {
-  this->processingStepsQueue.add(compilationResult);
+void AnthemGraphProcessor::setProcessingStepsFromMainThread(
+    AnthemGraphCompilationResult* compilationResult) {
+  if (!this->pendingCompilationResultsQueue.add(compilationResult)) {
+    jassertfalse;
+    compilationResult->cleanup();
+    delete compilationResult;
+  }
 }
 
 void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
-  auto nextCompilationResult = this->processingStepsDeletionQueue.read();
+  auto nextCompilationResult = this->retiredCompilationResultsQueue.read();
 
   while (nextCompilationResult) {
     auto* ptr = nextCompilationResult.value();
     ptr->cleanup();
     delete ptr;
 
-    nextCompilationResult = this->processingStepsDeletionQueue.read();
+    nextCompilationResult = this->retiredCompilationResultsQueue.read();
   }
 }
 
 void AnthemGraphProcessor::process(int numSamples) {
-  auto nextCompilationResult = std::move(this->processingStepsQueue.read());
+  auto nextCompilationResult = this->pendingCompilationResultsQueue.read();
 
   while (nextCompilationResult) {
     juce::Logger::writeToLog("Audio thread: New compilation result found, replacing old one");
-    if (this->processingSteps != nullptr) {
-      this->processingStepsDeletionQueue.add(this->processingSteps);
+    if (this->rt_activeCompilationResult != nullptr) {
+      if (!this->retiredCompilationResultsQueue.add(this->rt_activeCompilationResult)) {
+        // If the handoff queue overflows, preserve real-time safety and leak the
+        // retired result instead of deleting it on the audio thread.
+        intentionallyLeak(this->rt_activeCompilationResult);
+      }
     }
 
-    this->processingSteps = nextCompilationResult.value();
-    nextCompilationResult = this->processingStepsQueue.read();
+    this->rt_activeCompilationResult = nextCompilationResult.value();
+    nextCompilationResult = this->pendingCompilationResultsQueue.read();
   }
 
   // The audio thread can't do anything until it receives the first graph
   // compilation result.
-  if (this->processingSteps == nullptr) {
+  if (this->rt_activeCompilationResult == nullptr) {
     return;
   }
 
-  auto& actionGroups = this->processingSteps->actionGroups;
+  auto& actionGroups = this->rt_activeCompilationResult->actionGroups;
 
   for (auto& group : actionGroups) {
     // Actions within groups can be executed in parallel, but we're not doing

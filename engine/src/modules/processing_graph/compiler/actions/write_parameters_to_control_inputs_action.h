@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,12 +19,11 @@
 
 #pragma once
 
-#include <memory>
+#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 #include <juce_core/juce_core.h>
-
-#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
+#include <memory>
 
 // This action writes parameter values to control inputs ports for a given
 // processor (given by that processor's processContext). This initializes the
@@ -36,10 +35,10 @@ class WriteParametersToControlInputsAction : public AnthemGraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(WriteParametersToControlInputsAction)
 
-  AnthemProcessContext* processContext;
+  AnthemNodeProcessContext* processContext;
   float sampleRate;
 public:
-  WriteParametersToControlInputsAction(AnthemProcessContext* processContext, float sampleRate)
+  WriteParametersToControlInputsAction(AnthemNodeProcessContext* processContext, float sampleRate)
     : processContext(processContext), sampleRate(sampleRate) {}
 
   void execute(int numSamples) override;

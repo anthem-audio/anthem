@@ -19,6 +19,8 @@
 
 #include "copy_events_action.h"
 
+#include "modules/processing_graph/model/node.h"
+
 void CopyEventsAction::execute([[maybe_unused]] int numSamples) {
   auto& sourceBuffer = this->source->getOutputEventBuffer(this->sourcePortId);
   auto& destinationBuffer = this->destination->getInputEventBuffer(this->destinationPortId);
@@ -30,10 +32,6 @@ void CopyEventsAction::execute([[maybe_unused]] int numSamples) {
 }
 
 void CopyEventsAction::debugPrint() {
-  std::cout 
-    << "CopyEventsAction: "
-    << this->source->getGraphNode()->id()
-    << " -> "
-    << this->destination->getGraphNode()->id()
-    << std::endl;
+  std::cout << "CopyEventsAction: " << this->source->getGraphNode()->id() << " -> "
+            << this->destination->getGraphNode()->id() << '\n';
 }

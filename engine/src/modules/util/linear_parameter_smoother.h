@@ -28,7 +28,6 @@ private:
   float currentValue;
   float duration;
   float timeRemaining;
-
 public:
   LinearParameterSmoother(float initialValue, float duration);
 

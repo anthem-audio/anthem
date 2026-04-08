@@ -19,18 +19,17 @@
 
 #pragma once
 
+#include "bw_math.h"
+#include "generated/lib/model/processing_graph/processors/db_meter.h"
+#include "modules/core/visualization/visualization_provider.h"
+#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/util/ring_buffer.h"
+
 #include <atomic>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
-
-#include "generated/lib/model/model.h"
-#include "modules/core/visualization/visualization_provider.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
-#include "modules/util/ring_buffer.h"
-
-#include "bw_math.h"
 
 class DbMeterVisualizationProvider
   : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
@@ -38,7 +37,6 @@ private:
   JUCE_LEAK_DETECTOR(DbMeterVisualizationProvider)
 
   RingBuffer<TimestampedVisualizationValue<double>, 2048> valueBuffer;
-
 public:
   DbMeterVisualizationProvider()
     : valueBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
@@ -67,7 +65,6 @@ private:
 
     return static_cast<double>(bw_lin2dBf(peakLinear));
   }
-
 public:
   DbMeterProcessor(const DbMeterProcessorModelImpl& _impl);
   ~DbMeterProcessor() override;
@@ -79,10 +76,8 @@ public:
   DbMeterProcessor& operator=(DbMeterProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 
-  void initialize(
-    std::shared_ptr<AnthemModelBase> selfModel,
-    std::shared_ptr<AnthemModelBase> parentModel
-  ) override;
+  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
+      std::shared_ptr<AnthemModelBase> parentModel) override;
 };

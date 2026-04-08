@@ -19,9 +19,9 @@
 
 #pragma once
 
-#include <cmath>
-
 #include "modules/sequencer/compiler/sequence_compiler.h"
+
+#include <cmath>
 
 class SequenceCompilerTest : public juce::UnitTest {
   static bool nearlyEqual(double a, double b) {
@@ -34,17 +34,14 @@ class SequenceCompilerTest : public juce::UnitTest {
         return false;
       }
 
-      if (
-        nearlyEqual(events.at(i - 1).offset, events.at(i).offset) &&
-        events.at(i - 1).event.type > events.at(i).event.type
-      ) {
+      if (nearlyEqual(events.at(i - 1).offset, events.at(i).offset) &&
+          events.at(i - 1).event.type > events.at(i).event.type) {
         return false;
       }
     }
 
     return true;
   }
-
 public:
   SequenceCompilerTest() : juce::UnitTest("SequenceCompilerTest", "Anthem") {}
 
@@ -60,34 +57,24 @@ public:
     auto eventList = std::vector<AnthemSequenceEvent>();
     AnthemSequenceCompiler::sortEventList(eventList);
 
-    eventList.push_back(AnthemSequenceEvent {
-      .offset = 1.0,
-      .event = AnthemEvent(
-        AnthemNoteOnEvent()
-      )
-    });
+    eventList.push_back(
+        AnthemSequenceEvent{.offset = 1.0, .event = AnthemEvent(AnthemNoteOnEvent())});
 
-    eventList.push_back(AnthemSequenceEvent {
-      .offset = 1.0,
-      .event = AnthemEvent(
-        AnthemNoteOffEvent()
-      )
-    });
+    eventList.push_back(
+        AnthemSequenceEvent{.offset = 1.0, .event = AnthemEvent(AnthemNoteOffEvent())});
 
-    eventList.push_back(AnthemSequenceEvent {
-      .offset = 0.5,
-      .event = AnthemEvent(
-        AnthemNoteOnEvent()
-      )
-    });
+    eventList.push_back(
+        AnthemSequenceEvent{.offset = 0.5, .event = AnthemEvent(AnthemNoteOnEvent())});
 
     AnthemSequenceCompiler::sortEventList(eventList);
 
     expect(eventList.size() == 3, "There are three events");
     expect(isSorted(eventList), "The events are sorted");
     expect(nearlyEqual(eventList.at(0).offset, 0.5), "First event offset is 0.5");
-    expect(eventList.at(1).event.type == AnthemEventType::NoteOff, "NoteOff is ordered before NoteOn at equal offset");
-    expect(eventList.at(2).event.type == AnthemEventType::NoteOn, "NoteOn is ordered after NoteOff at equal offset");
+    expect(eventList.at(1).event.type == AnthemEventType::NoteOff,
+        "NoteOff is ordered before NoteOn at equal offset");
+    expect(eventList.at(2).event.type == AnthemEventType::NoteOn,
+        "NoteOn is ordered after NoteOff at equal offset");
   }
 
   void testClampTimeToRange() {
@@ -95,11 +82,16 @@ public:
 
     auto range = std::make_tuple(20.0, 30.0);
 
-    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(10.0, range), 20.0), "Time below range clamps to start");
-    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(40.0, range), 30.0), "Time above range clamps to end");
-    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(25.5, range), 25.5), "Time in range is unchanged");
-    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(20.0, range), 20.0), "Range start is unchanged");
-    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(30.0, range), 30.0), "Range end is unchanged");
+    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(10.0, range), 20.0),
+        "Time below range clamps to start");
+    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(40.0, range), 30.0),
+        "Time above range clamps to end");
+    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(25.5, range), 25.5),
+        "Time in range is unchanged");
+    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(20.0, range), 20.0),
+        "Range start is unchanged");
+    expect(nearlyEqual(AnthemSequenceCompiler::clampTimeToRange(30.0, range), 30.0),
+        "Range end is unchanged");
   }
 
   void testClampStartAndEndToRange() {

@@ -31,10 +31,8 @@ std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device)
   auto audioConfig = std::make_shared<EngineAudioConfig>();
   audioConfig->sampleRate = device->getCurrentSampleRate();
   audioConfig->blockSize = device->getCurrentBufferSizeSamples();
-  audioConfig->inputChannelCount =
-    device->getActiveInputChannels().countNumberOfSetBits();
-  audioConfig->outputChannelCount =
-    device->getActiveOutputChannels().countNumberOfSetBits();
+  audioConfig->inputChannelCount = device->getActiveInputChannels().countNumberOfSetBits();
+  audioConfig->outputChannelCount = device->getActiveOutputChannels().countNumberOfSetBits();
   return audioConfig;
 }
 } // namespace
@@ -51,33 +49,32 @@ void Anthem::initialize() {
   transport = std::make_unique<Transport>();
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 
-  #ifndef __EMSCRIPTEN__
+#ifndef __EMSCRIPTEN__
   juce::addDefaultFormatsToManager(audioPluginFormatManager);
   juce::Logger::writeToLog(
-    "Initialized audio plugin format manager with UI-capable plugin formats."
-  );
-  #endif // #ifndef __EMSCRIPTEN__
+      "Initialized audio plugin format manager with UI-capable plugin formats.");
+#endif // #ifndef __EMSCRIPTEN__
 
   comms.init();
 
-  // On desktop, we use a heartbeat to make sure that we have an active
-  // connection to the UI. While it shouldn't be possible due to how we start
-  // the engine from the Dart side, this is a last resort to make sure that we
-  // don't have a dangling engine process if something goes wrong.
-  //
-  // On web, we don't need this for two reasons: First, the web version is
-  // self-contained within the browser tab; if something is wrong, the tab can
-  // just be closed. Second, the connection between the UI and engine is much
-  // more direct on web, since the UI gets an object to puppeteer the engine
-  // directly, and the risk of losing track of the engine is much lower.
-  //
-  // The other reason this is removed on web is that when the browser loses
-  // focus, it may throttle or pause background tasks, which causes the UI to
-  // stop sending heartbeats. We could fix this, but since it's not needed on
-  // web anyway, it's simpler to just disable it.
-  #ifndef __EMSCRIPTEN__
+// On desktop, we use a heartbeat to make sure that we have an active
+// connection to the UI. While it shouldn't be possible due to how we start
+// the engine from the Dart side, this is a last resort to make sure that we
+// don't have a dangling engine process if something goes wrong.
+//
+// On web, we don't need this for two reasons: First, the web version is
+// self-contained within the browser tab; if something is wrong, the tab can
+// just be closed. Second, the connection between the UI and engine is much
+// more direct on web, since the UI gets an object to puppeteer the engine
+// directly, and the risk of losing track of the engine is much lower.
+//
+// The other reason this is removed on web is that when the browser loses
+// focus, it may throttle or pause background tasks, which causes the UI to
+// stop sending heartbeats. We could fix this, but since it's not needed on
+// web anyway, it's simpler to just disable it.
+#ifndef __EMSCRIPTEN__
   commandHandler.startHeartbeatThread();
-  #endif // #ifndef __EMSCRIPTEN__
+#endif // #ifndef __EMSCRIPTEN__
 }
 
 void Anthem::shutdown() {
@@ -86,9 +83,8 @@ void Anthem::shutdown() {
 
 std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   if (isAudioCallbackRunning) {
-    juce::Logger::writeToLog(
-      "Tried to start audio callback when it was already running. This probably doesn't break anything, but it's definitely a bug."
-    );
+    juce::Logger::writeToLog("Tried to start audio callback when it was already running. This "
+                             "probably doesn't break anything, but it's definitely a bug.");
     return getCurrentAudioConfig();
   }
 
@@ -97,9 +93,7 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   try {
     audioCallback = std::make_unique<AnthemAudioCallback>(this);
   } catch (const std::exception& e) {
-    juce::Logger::writeToLog(
-      "Failed to create audio callback: " + juce::String(e.what())
-    );
+    juce::Logger::writeToLog("Failed to create audio callback: " + juce::String(e.what()));
     return nullptr;
   }
 
@@ -107,9 +101,7 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   juce::Logger::writeToLog("Listing available audio devices...");
   auto& deviceTypes = audioDeviceManager.getAvailableDeviceTypes();
   juce::Logger::writeToLog(
-    "Found " + juce::String(static_cast<int>(deviceTypes.size())) +
-    " device types:"
-  );
+      "Found " + juce::String(static_cast<int>(deviceTypes.size())) + " device types:");
   for (int i = 0; i < deviceTypes.size(); i++) {
     auto* deviceType = deviceTypes[i];
     juce::Logger::writeToLog(" - " + deviceType->getTypeName());
@@ -118,28 +110,21 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   // Initialize the audio device manager with 2 input and 2 output channels
   auto initError = this->audioDeviceManager.initialiseWithDefaultDevices(2, 2);
   if (initError.isNotEmpty()) {
-    juce::Logger::writeToLog(
-      "initialiseWithDefaultDevices(2, 2) failed: " + initError
-    );
-    juce::Logger::writeToLog(
-      "Retrying with 0 input channels and 2 output channels..."
-    );
+    juce::Logger::writeToLog("initialiseWithDefaultDevices(2, 2) failed: " + initError);
+    juce::Logger::writeToLog("Retrying with 0 input channels and 2 output channels...");
 
     initError = this->audioDeviceManager.initialiseWithDefaultDevices(0, 2);
   }
 
   if (initError.isNotEmpty()) {
-    juce::Logger::writeToLog(
-      "initialiseWithDefaultDevices() failed again: " + initError
-    );
+    juce::Logger::writeToLog("initialiseWithDefaultDevices() failed again: " + initError);
     return nullptr;
   }
 
   auto* device = this->audioDeviceManager.getCurrentAudioDevice();
   if (device == nullptr) {
     juce::Logger::writeToLog(
-      "Audio device manager initialized, but no current audio device is available."
-    );
+        "Audio device manager initialized, but no current audio device is available.");
     return nullptr;
   }
 
@@ -150,16 +135,10 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   }
 
   juce::Logger::writeToLog("Selected audio device: " + device->getName());
-  juce::Logger::writeToLog(
-    "Sample rate: " + juce::String(device->getCurrentSampleRate())
-  );
-  juce::Logger::writeToLog(
-    "Buffer size: " + juce::String(device->getCurrentBufferSizeSamples())
-  );
-  juce::Logger::writeToLog(
-    "Active output channels: " +
-    juce::String(device->getActiveOutputChannels().countNumberOfSetBits())
-  );
+  juce::Logger::writeToLog("Sample rate: " + juce::String(device->getCurrentSampleRate()));
+  juce::Logger::writeToLog("Buffer size: " + juce::String(device->getCurrentBufferSizeSamples()));
+  juce::Logger::writeToLog("Active output channels: " +
+                           juce::String(device->getActiveOutputChannels().countNumberOfSetBits()));
 
   transport->prepareToProcess();
   graphProcessor->resetRtServices();
@@ -189,7 +168,25 @@ std::shared_ptr<EngineAudioConfig> Anthem::getCurrentAudioConfig() const {
 }
 
 void Anthem::compileProcessingGraph() {
-  auto result = AnthemGraphCompiler::compile(graphProcessor->getRtServices());
+  auto* currentDevice = audioDeviceManager.getCurrentAudioDevice();
+  jassert(currentDevice != nullptr);
+  if (currentDevice == nullptr) {
+    return;
+  }
+
+  auto& processingGraph = *project->processingGraph();
+
+  auto result = AnthemGraphCompiler::compile(AnthemGraphCompileRequest{
+      .rtServices = graphProcessor->getRtServices(),
+      .nodes = *processingGraph.nodes(),
+      .connections = *processingGraph.connections(),
+      .bufferLayout =
+          AnthemGraphBufferLayout{
+              .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
+              .blockSize = currentDevice->getCurrentBufferSizeSamples(),
+          },
+      .sampleRate = currentDevice->getCurrentSampleRate(),
+  });
 
   // std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
 
@@ -201,7 +198,7 @@ void Anthem::compileProcessingGraph() {
   // }
 
   // Make sure all nodes have been prepared for processing
-  for (auto& pair : *project->processingGraph()->nodes()) {
+  for (auto& pair : *processingGraph.nodes()) {
     auto& node = *pair.second;
 
     auto& procVariant = node.processor();
@@ -209,21 +206,23 @@ void Anthem::compileProcessingGraph() {
       continue;
     }
 
-    rfl::visit([&](const auto& field) {
-      // 'field' is the rfl::Field<Name, Type> wrapper.
-      // We get the actual std::shared_ptr with .value().
-      const auto& sharedPtr = field.value();
+    rfl::visit(
+        [&](const auto& field) {
+          // 'field' is the rfl::Field<Name, Type> wrapper.
+          // We get the actual std::shared_ptr with .value().
+          const auto& sharedPtr = field.value();
 
-      // sharedPtr is a std::shared_ptr<DerivedProcessor>.
-      // .get() returns a DerivedProcessor*.
-      // C++ polymorphism allows us to assign a Derived* to a Base*.
-      AnthemProcessor* baseProcessor = sharedPtr.get();
+          // sharedPtr is a std::shared_ptr<DerivedProcessor>.
+          // .get() returns a DerivedProcessor*.
+          // C++ polymorphism allows us to assign a Derived* to a Base*.
+          AnthemProcessor* baseProcessor = sharedPtr.get();
 
-      if (!baseProcessor->isPrepared) {
-        baseProcessor->prepareToProcess();
-        baseProcessor->isPrepared = true;
-      }
-    }, procVariant.value());
+          if (!baseProcessor->isPrepared) {
+            baseProcessor->prepareToProcess();
+            baseProcessor->isPrepared = true;
+          }
+        },
+        procVariant.value());
   }
 
   graphProcessor->setProcessingStepsFromMainThread(result);

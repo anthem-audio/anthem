@@ -19,14 +19,13 @@
 
 #pragma once
 
-#include <cstddef>
-#include <cstdlib>
-#include <stdexcept>
-
-#include <juce_core/juce_core.h>
-
 #include "modules/core/constants.h"
 #include "modules/sequencer/events/event.h"
+
+#include <cstddef>
+#include <cstdlib>
+#include <juce_core/juce_core.h>
+#include <stdexcept>
 
 class AnthemEventBuffer {
 private:
@@ -37,10 +36,8 @@ private:
     size_t capacity;
   };
 
-  static_assert(
-    sizeof(StorageBlock) % alignof(AnthemLiveEvent) == 0,
-    "StorageBlock must leave the event payload aligned."
-  );
+  static_assert(sizeof(StorageBlock) % alignof(AnthemLiveEvent) == 0,
+      "StorageBlock must leave the event payload aligned.");
 
   StorageBlock* activeBlock;
 
@@ -79,8 +76,7 @@ private:
 
   static AnthemLiveEvent* getBlockBuffer(StorageBlock* block) {
     return reinterpret_cast<AnthemLiveEvent*>(
-      reinterpret_cast<std::byte*>(block) + sizeof(StorageBlock)
-    );
+        reinterpret_cast<std::byte*>(block) + sizeof(StorageBlock));
   }
 
   static void destroyBlocks(StorageBlock* block) {
@@ -125,14 +121,8 @@ private:
   }
 public:
   explicit AnthemEventBuffer(size_t initialCapacity)
-    : activeBlock(nullptr),
-      buffer(nullptr),
-      capacity(0),
-      numEvents(0),
-      highWaterMark(0),
-      timesGrown(0),
-      overflowedThisBlock(false),
-      droppedEventsThisBlock(0) {
+    : activeBlock(nullptr), buffer(nullptr), capacity(0), numEvents(0), highWaterMark(0),
+      timesGrown(0), overflowedThisBlock(false), droppedEventsThisBlock(0) {
     auto requestedCapacity = initialCapacity;
     if (requestedCapacity == 0) {
       requestedCapacity = 1;

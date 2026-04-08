@@ -19,6 +19,8 @@
 
 #include "copy_audio_buffer_action.h"
 
+#include "modules/processing_graph/model/node.h"
+
 #include <iostream>
 
 void CopyAudioBufferAction::execute(int numSamples) {
@@ -40,10 +42,6 @@ void CopyAudioBufferAction::execute(int numSamples) {
 }
 
 void CopyAudioBufferAction::debugPrint() {
-  std::cout 
-    << "CopyAudioBufferAction: "
-    << this->source->getGraphNode()->id()
-    << " -> "
-    << this->destination->getGraphNode()->id()
-    << std::endl;
+  std::cout << "CopyAudioBufferAction: " << this->source->getGraphNode()->id() << " -> "
+            << this->destination->getGraphNode()->id() << '\n';
 }

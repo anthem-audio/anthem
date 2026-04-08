@@ -22,17 +22,15 @@
 
 #pragma once
 
-#include <juce_core/juce_core.h>
-
-#include <optional>
-#include <cstdint>
-#include <memory>
-#include <vector>
-
-#include "modules/core/visualization/visualization_provider.h"
 #include "modules/core/visualization/visualization_broker.h"
-
+#include "modules/core/visualization/visualization_provider.h"
 #include "modules/util/ring_buffer.h"
+
+#include <cstdint>
+#include <juce_core/juce_core.h>
+#include <memory>
+#include <optional>
+#include <vector>
 
 class Transport;
 
@@ -47,16 +45,11 @@ private:
   int64_t rt_nextWindowEndSample = 0;
   double rt_windowMaxCpuBurden = 0.0;
   bool rt_hasWindowCpuBurden = false;
-
 public:
   std::optional<NumericVisualizationData> getTypedData() override;
 
   void rt_updateCpuBurden(
-    double newCpuBurden,
-    int64_t blockStartSample,
-    int numSamples,
-    double sampleRate
-  );
+      double newCpuBurden, int64_t blockStartSample, int numSamples, double sampleRate);
 
   CpuVisualizationProvider()
     : cpuBurdenBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
@@ -71,16 +64,11 @@ private:
   double rt_sampleRate = 0.0;
   int64_t rt_samplesPerUpdate = 0;
   int64_t rt_nextSampleTimestamp = 0;
-
 public:
   std::optional<NumericVisualizationData> getTypedData() override;
 
   void rt_updatePlayheadPosition(
-    const Transport& transport,
-    int64_t blockStartSample,
-    int numSamples,
-    double sampleRate
-  );
+      const Transport& transport, int64_t blockStartSample, int numSamples, double sampleRate);
 
   PlayheadPositionVisualizationProvider()
     : playheadPositionBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
@@ -93,14 +81,10 @@ private:
 
   RingBuffer<TimestampedVisualizationValue<int64_t>, 64> playheadSequenceIdBuffer;
   std::optional<int64_t> lastQueuedId;
-
 public:
   std::optional<IntegerVisualizationData> getTypedData() override;
 
-  void rt_updatePlayheadSequenceId(
-    int64_t newPlayheadSequenceId,
-    int64_t sampleTimestamp
-  );
+  void rt_updatePlayheadSequenceId(int64_t newPlayheadSequenceId, int64_t sampleTimestamp);
 
   PlayheadSequenceIdVisualizationProvider()
     : playheadSequenceIdBuffer(RingBuffer<TimestampedVisualizationValue<int64_t>, 64>()) {}
@@ -109,7 +93,6 @@ public:
 class GlobalVisualizationSources {
 private:
   JUCE_LEAK_DETECTOR(GlobalVisualizationSources)
-
 public:
   // Measures the processing time relative to the buffer size.
   std::shared_ptr<CpuVisualizationProvider> cpuBurdenProvider;

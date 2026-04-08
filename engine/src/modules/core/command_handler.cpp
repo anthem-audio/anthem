@@ -19,16 +19,15 @@
 
 #include "command_handler.h"
 
-#include <rfl/json.hpp>
-#include <rfl.hpp>
-
-#include "modules/core/visualization/visualization_broker.h"
-
 #include "modules/command_handlers/model_sync_command_handler.h"
 #include "modules/command_handlers/processing_graph_command_handler.h"
 #include "modules/command_handlers/sequencer_command_handler.h"
 #include "modules/command_handlers/test_command_handler.h"
 #include "modules/command_handlers/visualization_command_handler.h"
+#include "modules/core/visualization/visualization_broker.h"
+
+#include <rfl.hpp>
+#include <rfl/json.hpp>
 
 void HeartbeatThread::run() {
   while (!threadShouldExit()) {
@@ -36,10 +35,9 @@ void HeartbeatThread::run() {
     wait(10000);
 
     if (!gotMessageSinceLastHeartbeatCheck) {
-      juce::Logger::writeToLog("No heartbeat or message received in the last 10 seconds. Exiting...");
-      juce::MessageManager::callAsync([]() {
-        juce::JUCEApplicationBase::quit();
-      });
+      juce::Logger::writeToLog(
+          "No heartbeat or message received in the last 10 seconds. Exiting...");
+      juce::MessageManager::callAsync([]() { juce::JUCEApplicationBase::quit(); });
     } else {
       gotMessageSinceLastHeartbeatCheck = false;
     }
@@ -50,9 +48,7 @@ void CommandHandler::addCommandBytesToQueue(juce::MemoryBlock bytes) {
   juce::ScopedLock lock(commandQueueMutex);
   commandQueue.push(std::move(bytes));
 
-  juce::MessageManager::callAsync([this]() {
-    processNextCommand();
-  });
+  juce::MessageManager::callAsync([this]() { processNextCommand(); });
 }
 
 void CommandHandler::processNextCommand() {
@@ -91,15 +87,10 @@ void CommandHandler::processNextCommand() {
   if (rfl::holds_alternative<Exit>(request.variant())) {
     auto& requestAsExit = rfl::get<Exit>(request.variant());
 
-    auto exitReply = ExitReply{
-      .responseBase = ResponseBase{
-        .id = requestAsExit.requestBase.get().id
-      }
-    };
+    auto exitReply =
+        ExitReply{.responseBase = ResponseBase{.id = requestAsExit.requestBase.get().id}};
 
-    response = std::optional(
-      std::move(exitReply)
-    );
+    response = std::optional(exitReply);
 
     isExit = true;
   }
@@ -107,31 +98,20 @@ void CommandHandler::processNextCommand() {
   else if (rfl::holds_alternative<Heartbeat>(request.variant())) {
     auto& requestAsHeartbeat = rfl::get<Heartbeat>(request.variant());
 
-    auto heartbeatReply = HeartbeatReply{
-      .responseBase = ResponseBase {
-        .id = requestAsHeartbeat.requestBase.get().id
-      }
-    };
+    auto heartbeatReply =
+        HeartbeatReply{.responseBase = ResponseBase{.id = requestAsHeartbeat.requestBase.get().id}};
 
-    response = std::optional(
-      std::move(heartbeatReply)
-    );
+    response = std::optional(heartbeatReply);
   }
 
   else if (rfl::holds_alternative<EngineReadyCheckRequest>(request.variant())) {
     auto& requestAsReadyCheck = rfl::get<EngineReadyCheckRequest>(request.variant());
 
-    auto readyCheckReply = EngineReadyCheckResponse{
-      .success = true,
-      .error = std::nullopt,
-      .responseBase = ResponseBase {
-        .id = requestAsReadyCheck.requestBase.get().id
-      }
-    };
+    auto readyCheckReply = EngineReadyCheckResponse{.success = true,
+        .error = std::nullopt,
+        .responseBase = ResponseBase{.id = requestAsReadyCheck.requestBase.get().id}};
 
-    response = std::optional(
-      std::move(readyCheckReply)
-    );
+    response = std::optional(std::move(readyCheckReply));
   }
 
   else if (rfl::holds_alternative<StartAudioRequest>(request.variant())) {
@@ -141,30 +121,20 @@ void CommandHandler::processNextCommand() {
     auto audioConfig = Anthem::getInstance().startAudioCallback();
     juce::Logger::writeToLog("startAudioCallback() returned.");
 
-    auto startAudioReply = StartAudioResponse{
-      .success = audioConfig != nullptr,
-      .error =
-        audioConfig != nullptr
-          ? std::nullopt
-          : std::optional<std::string>("Failed to initialize audio device."),
-      .audioConfig =
-        audioConfig != nullptr
-          ? std::optional(audioConfig)
-          : std::nullopt,
-      .responseBase = ResponseBase{
-        .id = requestAsStartAudio.requestBase.get().id
-      }
-    };
+    auto startAudioReply = StartAudioResponse{.success = audioConfig != nullptr,
+        .error = audioConfig != nullptr
+                     ? std::nullopt
+                     : std::optional<std::string>("Failed to initialize audio device."),
+        .audioConfig = audioConfig != nullptr ? std::optional(audioConfig) : std::nullopt,
+        .responseBase = ResponseBase{.id = requestAsStartAudio.requestBase.get().id}};
 
-    response = std::optional(
-      std::move(startAudioReply)
-    );
+    response = std::optional(std::move(startAudioReply));
   }
 
   // Forward request to handlers
 
   bool didOverwriteResponse = false;
-  
+
   auto handleModelSyncCommandResponse = handleModelSyncCommand(request);
   if (handleModelSyncCommandResponse.has_value()) {
     if (response.has_value()) {
@@ -209,7 +179,9 @@ void CommandHandler::processNextCommand() {
   // command is being handled multiple times, which is probably a bug.
 
   if (didOverwriteResponse) {
-    juce::Logger::writeToLog("Warning: Multiple command handlers tried to reply to a single command. Only the last reply will be sent back. This is probably a bug.");
+    juce::Logger::writeToLog(
+        "Warning: Multiple command handlers tried to reply to a single command. Only the last "
+        "reply will be sent back. This is probably a bug.");
   }
 
   if (response.has_value()) {

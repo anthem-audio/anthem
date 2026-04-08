@@ -19,10 +19,10 @@
 
 #pragma once
 
+#include "messages/messages.h"
+
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
-
-#include "messages/messages.h"
 
 class Anthem;
 
@@ -40,7 +40,6 @@ private:
 
   juce::CriticalSection commandQueueMutex;
   std::queue<juce::MemoryBlock> commandQueue;
-
 public:
   void startHeartbeatThread() {
     heartbeatThread.startThread();
