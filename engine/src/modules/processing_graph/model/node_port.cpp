@@ -24,8 +24,8 @@
 
 #include <juce_core/juce_core.h>
 
-void NodePort::initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                          std::shared_ptr<AnthemModelBase> parentModel) {
+void NodePort::initialize(
+    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
   NodePortModelBase::initialize(selfModel, parentModel);
 
   if (this->config()->parameterConfig().has_value()) {

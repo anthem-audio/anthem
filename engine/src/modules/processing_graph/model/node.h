@@ -73,7 +73,7 @@ public:
   Node& operator=(Node&&) noexcept = default;
 
   void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                  std::shared_ptr<AnthemModelBase> parentModel) override {
+      std::shared_ptr<AnthemModelBase> parentModel) override {
     NodeModelBase::initialize(selfModel, parentModel);
   }
 

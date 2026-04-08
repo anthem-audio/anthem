@@ -35,8 +35,8 @@ AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   auto& processingGraph = Anthem::getInstance().project->processingGraph();
   auto masterOutputNodeId = processingGraph->masterOutputNodeId();
 
-  juce::Logger::writeToLog("AnthemAudioCallback: master output node id = " +
-                           juce::String(masterOutputNodeId));
+  juce::Logger::writeToLog(
+      "AnthemAudioCallback: master output node id = " + juce::String(masterOutputNodeId));
 
   auto& nodes = *processingGraph->nodes();
   auto masterOutputNodeIter = nodes.find(masterOutputNodeId);
@@ -114,13 +114,13 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
   // Get ms since epoch
   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-                 std::chrono::system_clock::now().time_since_epoch())
+      std::chrono::system_clock::now().time_since_epoch())
                  .count();
 
   if (now - lastDebugOutputTime > 2000) {
     if (badValue) {
-      juce::Logger::writeToLog("Bad value detected in audio callback. Last bad value: " +
-                               juce::String(lastBadValue));
+      juce::Logger::writeToLog(
+          "Bad value detected in audio callback. Last bad value: " + juce::String(lastBadValue));
     }
     lastDebugOutputTime = now;
   }
@@ -171,8 +171,8 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
     auto& anthem = Anthem::getInstance();
 
     anthem.transport->prepareToProcess();
-    juce::Logger::writeToLog("audioDeviceAboutToStart(): transport prepared for device " +
-                             deviceName);
+    juce::Logger::writeToLog(
+        "audioDeviceAboutToStart(): transport prepared for device " + deviceName);
 
     auto audioConfig = anthem.getCurrentAudioConfig();
     if (audioConfig == nullptr) {

@@ -78,10 +78,8 @@ inline double wrapPlayheadToLoop(double playheadPosition, double loopStart, doub
   return loopStart + normalizedPosition;
 }
 
-inline double advancePlayheadByTickDelta(double playheadPosition,
-                                         double tickDelta,
-                                         double loopStart,
-                                         double loopEnd) {
+inline double advancePlayheadByTickDelta(
+    double playheadPosition, double tickDelta, double loopStart, double loopEnd) {
   if (tickDelta <= 0.0) {
     return playheadPosition;
   }

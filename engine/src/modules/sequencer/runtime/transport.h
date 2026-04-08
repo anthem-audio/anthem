@@ -52,8 +52,8 @@ public:
 // Builds the untimed note-on payload that sequence providers should emit when
 // the playhead jumps to `playheadPosition`.
 PlayheadJumpEvent buildPlayheadJumpEvent(const SequenceEventListCollection& sequence,
-                                         std::optional<int64_t> activeTrackId,
-                                         double playheadPosition);
+    std::optional<int64_t> activeTrackId,
+    double playheadPosition);
 
 class TransportConfig {
 private:

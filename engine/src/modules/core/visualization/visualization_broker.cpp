@@ -124,8 +124,7 @@ void VisualizationBroker::timerCallback() {
   }
 
   // Create a VisualizationUpdateEvent message and send it to the UI
-  Response visualizationUpdate = VisualizationUpdateEvent{
-      .items = visualizationItems,
+  Response visualizationUpdate = VisualizationUpdateEvent{.items = visualizationItems,
       .responseBase = ResponseBase{
           // Usually, the response ID is the same as the ID of the request that was
           // sent to the engine. In this case, there was no request, so we set it to

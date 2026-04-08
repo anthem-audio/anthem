@@ -52,8 +52,8 @@ class AnthemGraphProcessorTest : public juce::UnitTest {
     std::shared_ptr<ActionProbe> probe;
   };
 
-  static AnthemGraphCompilationResult*
-  makeCompilationResult(const std::shared_ptr<ActionProbe>& probe) {
+  static AnthemGraphCompilationResult* makeCompilationResult(
+      const std::shared_ptr<ActionProbe>& probe) {
     auto* result = new AnthemGraphCompilationResult();
 
     auto actionGroup = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
@@ -95,11 +95,11 @@ public:
     processor.process(32);
 
     expectEquals(probe->executeCount,
-                 2,
-                 "The first queued compilation result should become the active graph immediately.");
+        2,
+        "The first queued compilation result should become the active graph immediately.");
     expectEquals(probe->lastNumSamples,
-                 32,
-                 "Active processing steps should keep receiving later block sizes.");
+        32,
+        "Active processing steps should keep receiving later block sizes.");
 
     installSentinelAndClearDeletionQueue(processor);
   }
@@ -118,11 +118,11 @@ public:
     processor.process(8);
 
     expectEquals(firstProbe->executeCount,
-                 1,
-                 "The old active result should stop executing once a replacement is picked up.");
+        1,
+        "The old active result should stop executing once a replacement is picked up.");
     expectEquals(secondProbe->executeCount,
-                 1,
-                 "The replacement result should execute on the block where it is picked up.");
+        1,
+        "The replacement result should execute on the block where it is picked up.");
     expectEquals(
         secondProbe->lastNumSamples, 8, "The replacement should receive the current block size.");
 
@@ -143,15 +143,15 @@ public:
     processor.process(24);
 
     expectEquals(olderProbe->executeCount,
-                 0,
-                 "Older queued results should be replaced before they execute.");
+        0,
+        "Older queued results should be replaced before they execute.");
     expectEquals(
         newerProbe->executeCount, 1, "Only the newest queued result should execute for the block.");
 
     processor.clearDeletionQueueFromMainThread();
     expectEquals(olderProbe->destroyCount,
-                 1,
-                 "Coalesced results should move through the deletion queue for cleanup.");
+        1,
+        "Coalesced results should move through the deletion queue for cleanup.");
 
     installSentinelAndClearDeletionQueue(processor);
   }
@@ -169,16 +169,15 @@ public:
     processor.setProcessingStepsFromMainThread(makeCompilationResult(newProbe));
     processor.process(4);
 
-    expectEquals(
-        oldProbe->destroyCount,
+    expectEquals(oldProbe->destroyCount,
         0,
         "Replaced results should remain alive until the main thread clears the deletion queue.");
 
     processor.clearDeletionQueueFromMainThread();
 
     expectEquals(oldProbe->destroyCount,
-                 1,
-                 "Clearing the deletion queue should delete the replaced result.");
+        1,
+        "Clearing the deletion queue should delete the replaced result.");
 
     installSentinelAndClearDeletionQueue(processor);
   }
@@ -189,17 +188,17 @@ public:
     AnthemGraphProcessor processor;
 
     expectEquals(processor.getRtServices().rt_allocateLiveNoteId(),
-                 0,
-                 "Live note IDs should start from zero.");
+        0,
+        "Live note IDs should start from zero.");
     expectEquals(processor.getRtServices().rt_allocateLiveNoteId(),
-                 1,
-                 "Live note IDs should increment while runtime services stay active.");
+        1,
+        "Live note IDs should increment while runtime services stay active.");
 
     processor.resetRtServices();
 
     expectEquals(processor.getRtServices().rt_allocateLiveNoteId(),
-                 0,
-                 "Resetting runtime services should reset the live note ID stream.");
+        0,
+        "Resetting runtime services should reset the live note ID stream.");
   }
 };
 

@@ -35,10 +35,10 @@ std::optional<Response> handleTestCommand(Request& request) {
   auto& requestAsTestSampleGainCurve = rfl::get<TestSampleGainCurveRequest>(request.variant());
 
   if (requestAsTestSampleGainCurve.parameterValues == nullptr) {
-    return std::optional(TestSampleGainCurveResponse{
-        .dbValues = std::make_shared<std::vector<double>>(),
-        .isNegativeInfinity = std::make_shared<std::vector<bool>>(),
-        .responseBase = ResponseBase{.id = requestAsTestSampleGainCurve.requestBase.get().id}});
+    return std::optional(
+        TestSampleGainCurveResponse{.dbValues = std::make_shared<std::vector<double>>(),
+            .isNegativeInfinity = std::make_shared<std::vector<bool>>(),
+            .responseBase = ResponseBase{.id = requestAsTestSampleGainCurve.requestBase.get().id}});
   }
 
   std::vector<double> dbValues;

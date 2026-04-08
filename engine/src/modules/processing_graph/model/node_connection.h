@@ -33,7 +33,7 @@ public:
   NodeConnection& operator=(NodeConnection&&) noexcept = default;
 
   void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                  std::shared_ptr<AnthemModelBase> parentModel) override {
+      std::shared_ptr<AnthemModelBase> parentModel) override {
     NodeConnectionModelBase::initialize(selfModel, parentModel);
   }
 };

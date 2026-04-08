@@ -183,8 +183,8 @@ public:
   }
 
   // Insert methods
-  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos,
-                                           const T& value) {
+  typename std::vector<T>::iterator insert(
+      typename std::vector<T>::const_iterator pos, const T& value) {
     auto it = data.insert(pos, value);
     initializeItem(*it);
     return it;
@@ -196,8 +196,8 @@ public:
     return it;
   }
 
-  typename std::vector<T>::iterator
-  insert(typename std::vector<T>::const_iterator pos, size_t count, const T& value) {
+  typename std::vector<T>::iterator insert(
+      typename std::vector<T>::const_iterator pos, size_t count, const T& value) {
     auto it = data.insert(pos, count, value);
     // Initialize all newly inserted elements
     for (size_t i = 0; i < count; ++i) {
@@ -207,8 +207,8 @@ public:
   }
 
   template <typename InputIt>
-  typename std::vector<T>::iterator
-  insert(typename std::vector<T>::const_iterator pos, InputIt first, InputIt last) {
+  typename std::vector<T>::iterator insert(
+      typename std::vector<T>::const_iterator pos, InputIt first, InputIt last) {
     auto oldSize = data.size();
     auto it = data.insert(pos, first, last);
     // Calculate the distance from it to the end of the newly inserted elements
@@ -220,8 +220,8 @@ public:
     return it;
   }
 
-  typename std::vector<T>::iterator insert(typename std::vector<T>::const_iterator pos,
-                                           std::initializer_list<T> ilist) {
+  typename std::vector<T>::iterator insert(
+      typename std::vector<T>::const_iterator pos, std::initializer_list<T> ilist) {
     auto it = data.insert(pos, ilist);
     // Initialize all newly inserted elements
     for (size_t i = 0; i < ilist.size(); ++i) {
@@ -232,8 +232,8 @@ public:
 
   // Emplace method
   template <typename... Args>
-  typename std::vector<T>::iterator emplace(typename std::vector<T>::const_iterator pos,
-                                            Args&&... args) {
+  typename std::vector<T>::iterator emplace(
+      typename std::vector<T>::const_iterator pos, Args&&... args) {
     auto it = data.emplace(pos, std::forward<Args>(args)...);
     initializeItem(*it);
     return it;
@@ -244,8 +244,8 @@ public:
     return data.erase(pos);
   }
 
-  typename std::vector<T>::iterator erase(typename std::vector<T>::const_iterator first,
-                                          typename std::vector<T>::const_iterator last) {
+  typename std::vector<T>::iterator erase(
+      typename std::vector<T>::const_iterator first, typename std::vector<T>::const_iterator last) {
     return data.erase(first, last);
   }
 
@@ -309,7 +309,7 @@ public:
   // guarded implementation for every instantiation we generate.
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
   void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                  std::shared_ptr<AnthemModelBase> parentModel) override {
+      std::shared_ptr<AnthemModelBase> parentModel) override {
     AnthemModelBase::initialize(selfModel, parentModel);
 
     // Initialize all elements in the vector, if applicable

@@ -148,7 +148,7 @@ int AnthemSocketThread::writePendingBytes() {
     // Write the header
     auto bytesToWrite = HEADER_SIZE - writeIndex;
     auto bytesWritten = socket.write(static_cast<char*>(pendingHeader.getData()) + writeIndex,
-                                     checkedSizeToSocketInt(bytesToWrite));
+        checkedSizeToSocketInt(bytesToWrite));
     if (bytesWritten < 0) {
       jassertfalse;
       return -1; // Error state
@@ -176,7 +176,7 @@ int AnthemSocketThread::writePendingBytes() {
 
   auto bytesWritten =
       socket.write(static_cast<char*>(pendingBytes.getData()) + writeIndexInPendingBytes,
-                   checkedSizeToSocketInt(bytesToWrite));
+          checkedSizeToSocketInt(bytesToWrite));
   if (bytesWritten < 0) {
     jassertfalse;
     return -1; // Error state

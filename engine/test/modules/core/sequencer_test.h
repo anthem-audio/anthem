@@ -73,11 +73,11 @@ public:
 
       anthem.transport->rt_prepareForProcessingBlock();
       expectEquals(anthem.transport->config.playheadStart,
-                   static_cast<double>(restoredPlayheadPosition),
-                   "Startup should restore the transport stop target.");
+          static_cast<double>(restoredPlayheadPosition),
+          "Startup should restore the transport stop target.");
       expectEquals(anthem.transport->rt_playhead,
-                   static_cast<double>(restoredPlayheadPosition),
-                   "Startup should restore the stopped playhead position.");
+          static_cast<double>(restoredPlayheadPosition),
+          "Startup should restore the stopped playhead position.");
 
       anthem.transport->setIsPlaying(true);
       anthem.transport->rt_prepareForProcessingBlock();
@@ -85,8 +85,7 @@ public:
       anthem.transport->setIsPlaying(false);
       anthem.transport->rt_prepareForProcessingBlock();
 
-      expectEquals(
-          anthem.transport->rt_playhead,
+      expectEquals(anthem.transport->rt_playhead,
           static_cast<double>(restoredPlayheadPosition),
           "After play then stop, the playhead should return to the restored startup position.");
     }

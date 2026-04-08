@@ -39,8 +39,8 @@ public:
     AnthemSequenceEvent eventCopy = event2;
     expectEquals(eventCopy.offset, event2.offset, "operator=: offset");
     expectEquals(static_cast<int>(eventCopy.event.type),
-                 static_cast<int>(event2.event.type),
-                 "operator=: type");
+        static_cast<int>(event2.event.type),
+        "operator=: type");
 
     expect(event1 < event2, "operator<: event1 < event2");
     expect(!(event2 < event1), "operator<: !(event2 < event1)");

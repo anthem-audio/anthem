@@ -38,26 +38,24 @@ class ProcessingGraphModelHelpersTest : public juce::UnitTest {
     return node;
   }
 
-  static std::shared_ptr<Node> makeInitializedNodeWithControlParameter(int64_t nodeId,
-                                                                       double parameterValue) {
+  static std::shared_ptr<Node> makeInitializedNodeWithControlParameter(
+      int64_t nodeId, double parameterValue) {
     auto node = makeInitializedNode(nodeId);
-    node->controlInputPorts()->push_back(
-        graph_test_helpers::makePort(kControlPortId,
-                                     nodeId,
-                                     NodePortDataType::control,
-                                     parameterValue,
-                                     graph_test_helpers::makeParameterConfig(101, parameterValue)));
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(kControlPortId,
+        nodeId,
+        NodePortDataType::control,
+        parameterValue,
+        graph_test_helpers::makeParameterConfig(101, parameterValue)));
     return node;
   }
 
-  static std::shared_ptr<NodePort> makeStandaloneInitializedParameterPort(int64_t nodeId,
-                                                                          double parameterValue) {
-    auto port =
-        graph_test_helpers::makePort(kControlPortId,
-                                     nodeId,
-                                     NodePortDataType::control,
-                                     parameterValue,
-                                     graph_test_helpers::makeParameterConfig(101, parameterValue));
+  static std::shared_ptr<NodePort> makeStandaloneInitializedParameterPort(
+      int64_t nodeId, double parameterValue) {
+    auto port = graph_test_helpers::makePort(kControlPortId,
+        nodeId,
+        NodePortDataType::control,
+        parameterValue,
+        graph_test_helpers::makeParameterConfig(101, parameterValue));
     port->initialize(port, std::shared_ptr<AnthemModelBase>());
     return port;
   }
@@ -102,12 +100,11 @@ public:
         graph_test_helpers::makePort(1, 10, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(2, 10, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(
-        graph_test_helpers::makePort(3,
-                                     10,
-                                     NodePortDataType::control,
-                                     0.25,
-                                     graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(3,
+        10,
+        NodePortDataType::control,
+        0.25,
+        graph_test_helpers::makeParameterConfig(101, 0.25)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(4, 10, NodePortDataType::control));
     node->eventInputPorts()->push_back(
@@ -136,7 +133,7 @@ public:
     expect(!missingProcessor.has_value(), "Nodes without processors should return nullopt.");
     expect(processor.has_value(), "Nodes with processors should return a processor instance.");
     expect(dynamic_cast<GainProcessor*>(processor.value().get()) != nullptr,
-           "The returned processor should preserve its concrete processor type.");
+        "The returned processor should preserve its concrete processor type.");
   }
 
   void testNodePortParameterUpdatesPropagateToRuntimeContext() {
@@ -148,10 +145,10 @@ public:
 
     GraphRuntimeServices rtServices;
     AnthemGraphProcessContext graphContext(rtServices,
-                                           AnthemGraphBufferLayout{
-                                               .numAudioChannels = 2,
-                                               .blockSize = 16,
-                                           });
+        AnthemGraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 16,
+        });
     graphContext.reserve(1, 0, 1, 0);
 
     auto& nodeContext = graphContext.createNodeProcessContext(node);
@@ -162,14 +159,14 @@ public:
     applyParameterValueUpdate(port, 0.75);
 
     expectWithinAbsoluteError(nodeContext.getParameterValue(kControlPortId),
-                              0.75f,
-                              0.0001f,
-                              "Parameter updates should be forwarded to the runtime context.");
+        0.75f,
+        0.0001f,
+        "Parameter updates should be forwarded to the runtime context.");
     expect(port.parameterValue().has_value(), "The model parameter value should also update.");
     expectWithinAbsoluteError(static_cast<float>(port.parameterValue().value()),
-                              0.75f,
-                              0.0001f,
-                              "The model should keep the latest parameter value.");
+        0.75f,
+        0.0001f,
+        "The model should keep the latest parameter value.");
 
     graphContext.cleanup();
   }
@@ -181,10 +178,10 @@ public:
 
     GraphRuntimeServices rtServices;
     AnthemGraphProcessContext graphContext(rtServices,
-                                           AnthemGraphBufferLayout{
-                                               .numAudioChannels = 2,
-                                               .blockSize = 16,
-                                           });
+        AnthemGraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 16,
+        });
     graphContext.reserve(1, 0, 1, 0);
 
     auto& nodeContext = graphContext.createNodeProcessContext(node);
@@ -192,16 +189,15 @@ public:
 
     applyParameterValueUpdate(port, 0.75);
 
-    expectWithinAbsoluteError(
-        nodeContext.getParameterValue(kControlPortId),
+    expectWithinAbsoluteError(nodeContext.getParameterValue(kControlPortId),
         0.25f,
         0.0001f,
         "Without a runtime context, the audio-thread parameter binding should remain unchanged.");
     expect(port.parameterValue().has_value(), "The model parameter value should still update.");
     expectWithinAbsoluteError(static_cast<float>(port.parameterValue().value()),
-                              0.75f,
-                              0.0001f,
-                              "The model should still store the new parameter value.");
+        0.75f,
+        0.0001f,
+        "The model should still store the new parameter value.");
 
     graphContext.cleanup();
   }
@@ -214,9 +210,8 @@ public:
     applyParameterValueUpdate(*port, 0.6);
 
     expect(port->parameterValue().has_value(),
-           "The standalone port should still store the updated model value.");
-    expectWithinAbsoluteError(
-        static_cast<float>(port->parameterValue().value()),
+        "The standalone port should still store the updated model value.");
+    expectWithinAbsoluteError(static_cast<float>(port->parameterValue().value()),
         0.6f,
         0.0001f,
         "Broken ancestry should prevent runtime propagation without blocking the model update.");

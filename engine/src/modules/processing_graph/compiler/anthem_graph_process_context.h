@@ -63,17 +63,17 @@ private:
   // Owns all node-scoped views into the graph-owned runtime storage above.
   std::vector<std::unique_ptr<AnthemNodeProcessContext>> nodeProcessContexts;
 public:
-  explicit AnthemGraphProcessContext(GraphRuntimeServices& rtServices,
-                                     const AnthemGraphBufferLayout& bufferLayout);
+  explicit AnthemGraphProcessContext(
+      GraphRuntimeServices& rtServices, const AnthemGraphBufferLayout& bufferLayout);
   ~AnthemGraphProcessContext();
 
   // Reserves capacity for all graph-owned runtime objects before node contexts
   // are created. This keeps the backing arrays stable while compilation builds
   // buffer bindings into node contexts.
   void reserve(size_t nodeProcessContextCount,
-               size_t audioBufferCount,
-               size_t controlBufferCount,
-               size_t eventBufferCount);
+      size_t audioBufferCount,
+      size_t controlBufferCount,
+      size_t eventBufferCount);
 
   // Appends a new graph-owned buffer and returns its stable index.
   size_t allocateAudioBuffer();

@@ -95,9 +95,9 @@ public:
     auto& eventListsAfterRemove = store->rt_getEventLists();
     expect(eventListsAfterRemove.size() == 1, "There is one sequence after remove");
     expect(eventListsAfterRemove.find(sequence1Id) == eventListsAfterRemove.end(),
-           "sequence1 removed");
+        "sequence1 removed");
     expect(eventListsAfterRemove.find(sequence2Id) != eventListsAfterRemove.end(),
-           "sequence2 still exists");
+        "sequence2 still exists");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
@@ -126,10 +126,10 @@ public:
     expect(eventLists.at(sequence1Id).tracks->size() == 2, "Two tracks were added");
     expect(eventLists.at(sequence1Id).tracks->find(track1Id) !=
                eventLists.at(sequence1Id).tracks->end(),
-           "track1 exists");
+        "track1 exists");
     expect(eventLists.at(sequence1Id).tracks->find(track2Id) !=
                eventLists.at(sequence1Id).tracks->end(),
-           "track2 exists");
+        "track2 exists");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
@@ -144,9 +144,9 @@ public:
 
     auto& eventListsAfterReplace = store->rt_getEventLists();
     expect(eventListsAfterReplace.at(sequence1Id).tracks->size() == 2,
-           "Track count stays at two after replace");
+        "Track count stays at two after replace");
     expect(eventListsAfterReplace.at(sequence1Id).tracks->at(track2Id).events->size() == 1,
-           "Replaced track has one event");
+        "Replaced track has one event");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
@@ -157,10 +157,10 @@ public:
 
     auto& eventListsAfterRemove = store->rt_getEventLists();
     expect(eventListsAfterRemove.at(sequence1Id).tracks->size() == 1,
-           "One track remains after remove");
+        "One track remains after remove");
     expect(eventListsAfterRemove.at(sequence1Id).tracks->find(track1Id) ==
                eventListsAfterRemove.at(sequence1Id).tracks->end(),
-           "track1 removed");
+        "track1 removed");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);
@@ -192,16 +192,16 @@ public:
     auto& eventLists = store->rt_getEventLists();
     expect(eventLists.at(sequence1Id).tracks->find(track1Id) ==
                eventLists.at(sequence1Id).tracks->end(),
-           "track1 removed from sequence1");
+        "track1 removed from sequence1");
     expect(eventLists.at(sequence2Id).tracks->find(track1Id) ==
                eventLists.at(sequence2Id).tracks->end(),
-           "track1 removed from sequence2");
+        "track1 removed from sequence2");
     expect(eventLists.at(sequence3Id).tracks->find(track1Id) ==
                eventLists.at(sequence3Id).tracks->end(),
-           "track1 removed from sequence3");
+        "track1 removed from sequence3");
     expect(eventLists.at(sequence3Id).tracks->find(track2Id) !=
                eventLists.at(sequence3Id).tracks->end(),
-           "track2 preserved in sequence3");
+        "track2 preserved in sequence3");
 
     store->processDeletionQueues();
     expectNoPendingDeletions(store);

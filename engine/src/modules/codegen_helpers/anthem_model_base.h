@@ -57,7 +57,7 @@ private:
 
   // The set of observers that are listening for changes to this model.
   std::unordered_map<uint64_t,
-                     std::tuple<std::optional<AnthemModelChangeFilter>, std::function<void()>>>
+      std::tuple<std::optional<AnthemModelChangeFilter>, std::function<void()>>>
       observers;
 public:
   // Default empty constructor
@@ -79,8 +79,8 @@ public:
   // This model.
   std::weak_ptr<AnthemModelBase> self;
 
-  virtual void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                          std::shared_ptr<AnthemModelBase> parentModel) {
+  virtual void initialize(
+      std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
     this->self = selfModel;
     this->parent = parentModel;
   }

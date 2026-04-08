@@ -37,7 +37,7 @@ private:
   };
 
   static_assert(sizeof(StorageBlock) % alignof(AnthemLiveEvent) == 0,
-                "StorageBlock must leave the event payload aligned.");
+      "StorageBlock must leave the event payload aligned.");
 
   StorageBlock* activeBlock;
 
@@ -75,8 +75,8 @@ private:
   }
 
   static AnthemLiveEvent* getBlockBuffer(StorageBlock* block) {
-    return reinterpret_cast<AnthemLiveEvent*>(reinterpret_cast<std::byte*>(block) +
-                                              sizeof(StorageBlock));
+    return reinterpret_cast<AnthemLiveEvent*>(
+        reinterpret_cast<std::byte*>(block) + sizeof(StorageBlock));
   }
 
   static void destroyBlocks(StorageBlock* block) {

@@ -100,8 +100,8 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   juce::Logger::writeToLog("Initializing audio device manager...");
   juce::Logger::writeToLog("Listing available audio devices...");
   auto& deviceTypes = audioDeviceManager.getAvailableDeviceTypes();
-  juce::Logger::writeToLog("Found " + juce::String(static_cast<int>(deviceTypes.size())) +
-                           " device types:");
+  juce::Logger::writeToLog(
+      "Found " + juce::String(static_cast<int>(deviceTypes.size())) + " device types:");
   for (int i = 0; i < deviceTypes.size(); i++) {
     auto* deviceType = deviceTypes[i];
     juce::Logger::writeToLog(" - " + deviceType->getTypeName());

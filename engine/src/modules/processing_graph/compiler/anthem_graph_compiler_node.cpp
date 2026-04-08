@@ -19,8 +19,7 @@
 
 #include "anthem_graph_compiler_node.h"
 
-void AnthemGraphCompilerNode::assignEdges(
-    const NodeMap& nodes,
+void AnthemGraphCompilerNode::assignEdges(const NodeMap& nodes,
     const ConnectionMap& connections,
     std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
     std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge) {
@@ -67,8 +66,7 @@ void AnthemGraphCompilerNode::assignEdges(
   }
 }
 
-void AnthemGraphCompilerNode::assignEdge(
-    const NodeMap& nodes,
+void AnthemGraphCompilerNode::assignEdge(const NodeMap& nodes,
     std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
     std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
     std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,

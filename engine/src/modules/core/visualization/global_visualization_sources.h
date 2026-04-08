@@ -48,10 +48,8 @@ private:
 public:
   std::optional<NumericVisualizationData> getTypedData() override;
 
-  void rt_updateCpuBurden(double newCpuBurden,
-                          int64_t blockStartSample,
-                          int numSamples,
-                          double sampleRate);
+  void rt_updateCpuBurden(
+      double newCpuBurden, int64_t blockStartSample, int numSamples, double sampleRate);
 
   CpuVisualizationProvider()
     : cpuBurdenBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
@@ -69,10 +67,8 @@ private:
 public:
   std::optional<NumericVisualizationData> getTypedData() override;
 
-  void rt_updatePlayheadPosition(const Transport& transport,
-                                 int64_t blockStartSample,
-                                 int numSamples,
-                                 double sampleRate);
+  void rt_updatePlayheadPosition(
+      const Transport& transport, int64_t blockStartSample, int numSamples, double sampleRate);
 
   PlayheadPositionVisualizationProvider()
     : playheadPositionBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}

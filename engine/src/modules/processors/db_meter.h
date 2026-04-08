@@ -79,5 +79,5 @@ public:
   void process(AnthemNodeProcessContext& context, int numSamples) override;
 
   void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                  std::shared_ptr<AnthemModelBase> parentModel) override;
+      std::shared_ptr<AnthemModelBase> parentModel) override;
 };

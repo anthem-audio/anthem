@@ -81,8 +81,8 @@ public:
   void setSubscriptions(
       const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions);
   void setUpdateInterval(double updateIntervalMs);
-  void registerDataProvider(const std::string& name,
-                            std::shared_ptr<VisualizationDataProvider> provider) {
+  void registerDataProvider(
+      const std::string& name, std::shared_ptr<VisualizationDataProvider> provider) {
     dataProviders[name] = provider;
   }
   void unregisterDataProvider(const std::string& name) {

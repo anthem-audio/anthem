@@ -198,20 +198,20 @@ private:
   // replace the track, we add the old track to this map. When the audio thread
   // releases the old track, we will clean it up.
   std::unordered_map<SequenceIdToEventsMap*,
-                     // This is a vector because removeTrack will remove a track in a bunch of
-                     // sequences at once. We need to clean up all of them when the audio thread
-                     // releases the old pointer.
-                     std::vector<std::tuple<
-                         // The track event list that was replaced - we need to clean up any heap
-                         // memory it holds. If there was no entry for a given track when we
-                         // replaced it, we don't need to clean up anything for it.
-                         std::optional<SequenceEventList>,
+      // This is a vector because removeTrack will remove a track in a bunch of
+      // sequences at once. We need to clean up all of them when the audio thread
+      // releases the old pointer.
+      std::vector<std::tuple<
+          // The track event list that was replaced - we need to clean up any heap
+          // memory it holds. If there was no entry for a given track when we
+          // replaced it, we don't need to clean up anything for it.
+          std::optional<SequenceEventList>,
 
-                         // When we replace a track, we clone the map for that sequence (stored
-                         // in SequenceEventListCollection). When the audio thread releases the old
-                         // outer map (eventLists), we need to clean up the old inner map as well
-                         // (SequenceEventListCollection::tracks).
-                         std::unordered_map<EntityId, SequenceEventList>*>>>
+          // When we replace a track, we clone the map for that sequence (stored
+          // in SequenceEventListCollection). When the audio thread releases the old
+          // outer map (eventLists), we need to clean up the old inner map as well
+          // (SequenceEventListCollection::tracks).
+          std::unordered_map<EntityId, SequenceEventList>*>>>
       pendingSequenceTrackDeletions;
 
   void processDeletionQueues();
@@ -264,8 +264,8 @@ public:
   // track, and push the new map to the mapUpdateQueue. If the track already
   // exists, it will be replaced, and the old track will be added to the
   // pendingSequenceTrackDeletions map.
-  void
-  addOrUpdateTrackInSequence(EntityId sequenceId, EntityId trackId, const SequenceEventList& track);
+  void addOrUpdateTrackInSequence(
+      EntityId sequenceId, EntityId trackId, const SequenceEventList& track);
 
   // Removes a track from a sequence in the event lists map.
   void removeTrackFromSequence(EntityId sequenceId, EntityId trackId);

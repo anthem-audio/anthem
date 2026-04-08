@@ -49,8 +49,8 @@ class AnthemGraphCompilerTest : public juce::UnitTest {
     return count;
   }
 
-  static AnthemGraphCompileRequest buildCompileRequest(GraphRuntimeServices& rtServices,
-                                                       ProcessingGraphModel& graph) {
+  static AnthemGraphCompileRequest buildCompileRequest(
+      GraphRuntimeServices& rtServices, ProcessingGraphModel& graph) {
     return AnthemGraphCompileRequest{
         .rtServices = rtServices,
         .nodes = *graph.nodes(),
@@ -88,14 +88,14 @@ public:
 
     expect(result != nullptr, "Compiling an empty graph should still produce a result.");
     expectEquals(static_cast<int>(result->actionGroups.size()),
-                 2,
-                 "Empty graphs should only produce the two initialization action groups.");
+        2,
+        "Empty graphs should only produce the two initialization action groups.");
     expectEquals(static_cast<int>(result->actionGroups[0]->size()),
-                 0,
-                 "Clear-buffers group should be empty for an empty graph.");
+        0,
+        "Clear-buffers group should be empty for an empty graph.");
     expectEquals(static_cast<int>(result->actionGroups[1]->size()),
-                 0,
-                 "Parameter-write group should be empty for an empty graph.");
+        0,
+        "Parameter-write group should be empty for an empty graph.");
 
     result->cleanup();
     delete result;
@@ -115,10 +115,10 @@ public:
         GainProcessorModelBase::audioOutputPortId, gainNodeId, NodePortDataType::audio));
     gainNode->controlInputPorts()->push_back(
         graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
-                                     gainNodeId,
-                                     NodePortDataType::control,
-                                     0.5,
-                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
+            gainNodeId,
+            NodePortDataType::control,
+            0.5,
+            graph_test_helpers::makeParameterConfig(101, 0.5)));
 
     graph->nodes()->insert_or_assign(gainNodeId, gainNode);
 
@@ -126,14 +126,14 @@ public:
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<ProcessNodeAction>(*result),
-                 1,
-                 "Single-node graphs should process the node once.");
+        1,
+        "Single-node graphs should process the node once.");
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
-                 0,
-                 "Single-node graphs should not emit copy actions.");
+        0,
+        "Single-node graphs should not emit copy actions.");
     expectEquals(static_cast<int>(result->actionGroups.size()),
-                 4,
-                 "Single-node graphs should produce init, process, and empty copy groups.");
+        4,
+        "Single-node graphs should produce init, process, and empty copy groups.");
 
     result->cleanup();
     delete result;
@@ -156,20 +156,19 @@ public:
         GainProcessorModelBase::audioOutputPortId, gainNodeId, NodePortDataType::audio));
     gainNode->controlInputPorts()->push_back(
         graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
-                                     gainNodeId,
-                                     NodePortDataType::control,
-                                     0.5,
-                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
+            gainNodeId,
+            NodePortDataType::control,
+            0.5,
+            graph_test_helpers::makeParameterConfig(101, 0.5)));
 
     masterNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, masterNodeId, NodePortDataType::audio));
 
-    auto connection =
-        graph_test_helpers::makeConnection(connectionId,
-                                           gainNodeId,
-                                           GainProcessorModelBase::audioOutputPortId,
-                                           masterNodeId,
-                                           MasterOutputProcessorModelBase::inputPortId);
+    auto connection = graph_test_helpers::makeConnection(connectionId,
+        gainNodeId,
+        GainProcessorModelBase::audioOutputPortId,
+        masterNodeId,
+        MasterOutputProcessorModelBase::inputPortId);
 
     gainNode->audioOutputPorts()->at(0)->connections()->push_back(connectionId);
     masterNode->audioInputPorts()->at(0)->connections()->push_back(connectionId);
@@ -184,63 +183,62 @@ public:
 
     expect(result != nullptr, "Compiling a simple graph should produce a result.");
     expectEquals(static_cast<int>(result->graphNodes.size()),
-                 2,
-                 "The result should retain both graph nodes.");
+        2,
+        "The result should retain both graph nodes.");
     expect(gainNode->runtimeContext.has_value(),
-           "Compilation should assign a runtime context to the gain node.");
+        "Compilation should assign a runtime context to the gain node.");
     expect(masterNode->runtimeContext.has_value(),
-           "Compilation should assign a runtime context to the master-output node.");
+        "Compilation should assign a runtime context to the master-output node.");
 
     expectEquals(static_cast<int>(result->actionGroups.size()),
-                 6,
-                 "A two-node single-edge graph should produce the expected initialization, "
-                 "process, and copy groups.");
+        6,
+        "A two-node single-edge graph should produce the expected initialization, "
+        "process, and copy groups.");
     expectEquals(static_cast<int>(result->actionGroups[0]->size()),
-                 2,
-                 "Both nodes should get a clear-buffers action.");
+        2,
+        "Both nodes should get a clear-buffers action.");
     expect(dynamic_cast<ClearBuffersAction*>(result->actionGroups[0]->at(0).get()) != nullptr,
-           "Initialization group 0 should contain clear-buffers actions.");
+        "Initialization group 0 should contain clear-buffers actions.");
     expect(dynamic_cast<ClearBuffersAction*>(result->actionGroups[0]->at(1).get()) != nullptr,
-           "Initialization group 0 should contain clear-buffers actions.");
+        "Initialization group 0 should contain clear-buffers actions.");
 
-    expectEquals(
-        static_cast<int>(result->actionGroups[1]->size()),
+    expectEquals(static_cast<int>(result->actionGroups[1]->size()),
         2,
         "Both nodes should get a parameter-write action, even if one has no control inputs.");
     expect(dynamic_cast<WriteParametersToControlInputsAction*>(
                result->actionGroups[1]->at(0).get()) != nullptr,
-           "Initialization group 1 should contain parameter-write actions.");
+        "Initialization group 1 should contain parameter-write actions.");
     expect(dynamic_cast<WriteParametersToControlInputsAction*>(
                result->actionGroups[1]->at(1).get()) != nullptr,
-           "Initialization group 1 should contain parameter-write actions.");
+        "Initialization group 1 should contain parameter-write actions.");
 
     auto* processGainAction =
         dynamic_cast<ProcessNodeAction*>(result->actionGroups[2]->at(0).get());
     expect(processGainAction != nullptr,
-           "The first non-initialization group should process the root gain node.");
+        "The first non-initialization group should process the root gain node.");
     expect(processGainAction->processor == gainNode->getProcessor().value().get(),
-           "The root process action should target the gain processor.");
+        "The root process action should target the gain processor.");
 
     auto* copyAudioAction =
         dynamic_cast<CopyAudioBufferAction*>(result->actionGroups[3]->at(0).get());
     expect(copyAudioAction != nullptr, "The connection group should contain an audio-copy action.");
     expectEquals(copyAudioAction->sourcePortId,
-                 GainProcessorModelBase::audioOutputPortId,
-                 "Audio copy should read from the gain output port.");
+        GainProcessorModelBase::audioOutputPortId,
+        "Audio copy should read from the gain output port.");
     expectEquals(copyAudioAction->destinationPortId,
-                 MasterOutputProcessorModelBase::inputPortId,
-                 "Audio copy should write to the master input port.");
+        MasterOutputProcessorModelBase::inputPortId,
+        "Audio copy should write to the master input port.");
 
     auto* processMasterAction =
         dynamic_cast<ProcessNodeAction*>(result->actionGroups[4]->at(0).get());
     expect(processMasterAction != nullptr,
-           "The final non-empty process group should process the master-output node.");
+        "The final non-empty process group should process the master-output node.");
     expect(processMasterAction->processor == masterNode->getProcessor().value().get(),
-           "The final process action should target the master-output processor.");
+        "The final process action should target the master-output processor.");
 
     expectEquals(static_cast<int>(result->actionGroups[5]->size()),
-                 0,
-                 "The final connection group should be empty once all edges are consumed.");
+        0,
+        "The final connection group should be empty once all edges are consumed.");
 
     result->cleanup();
     delete result;
@@ -264,28 +262,26 @@ public:
         GainProcessorModelBase::audioOutputPortId, sourceNodeId, NodePortDataType::audio));
     sourceNode->controlInputPorts()->push_back(
         graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
-                                     sourceNodeId,
-                                     NodePortDataType::control,
-                                     0.5,
-                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
+            sourceNodeId,
+            NodePortDataType::control,
+            0.5,
+            graph_test_helpers::makeParameterConfig(101, 0.5)));
 
     firstSinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, firstSinkNodeId, NodePortDataType::audio));
     secondSinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, secondSinkNodeId, NodePortDataType::audio));
 
-    auto firstConnection =
-        graph_test_helpers::makeConnection(100,
-                                           sourceNodeId,
-                                           GainProcessorModelBase::audioOutputPortId,
-                                           firstSinkNodeId,
-                                           MasterOutputProcessorModelBase::inputPortId);
-    auto secondConnection =
-        graph_test_helpers::makeConnection(101,
-                                           sourceNodeId,
-                                           GainProcessorModelBase::audioOutputPortId,
-                                           secondSinkNodeId,
-                                           MasterOutputProcessorModelBase::inputPortId);
+    auto firstConnection = graph_test_helpers::makeConnection(100,
+        sourceNodeId,
+        GainProcessorModelBase::audioOutputPortId,
+        firstSinkNodeId,
+        MasterOutputProcessorModelBase::inputPortId);
+    auto secondConnection = graph_test_helpers::makeConnection(101,
+        sourceNodeId,
+        GainProcessorModelBase::audioOutputPortId,
+        secondSinkNodeId,
+        MasterOutputProcessorModelBase::inputPortId);
 
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(100);
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(101);
@@ -302,17 +298,17 @@ public:
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
-                 2,
-                 "Fan-out should create one audio-copy action per outgoing edge.");
+        2,
+        "Fan-out should create one audio-copy action per outgoing edge.");
     expectEquals(countActionsOfType<ProcessNodeAction>(*result),
-                 3,
-                 "Source and both sinks should each be processed once.");
+        3,
+        "Source and both sinks should each be processed once.");
     expectEquals(static_cast<int>(result->actionGroups[3]->size()),
-                 2,
-                 "The copy group should contain both fan-out edges together.");
+        2,
+        "The copy group should contain both fan-out edges together.");
     expectEquals(static_cast<int>(result->actionGroups[4]->size()),
-                 2,
-                 "Both downstream sinks should become ready in the same process group.");
+        2,
+        "Both downstream sinks should become ready in the same process group.");
 
     result->cleanup();
     delete result;
@@ -335,29 +331,27 @@ public:
           GainProcessorModelBase::audioInputPortId, nodeInfo->id(), NodePortDataType::audio));
       nodeInfo->audioOutputPorts()->push_back(graph_test_helpers::makePort(
           GainProcessorModelBase::audioOutputPortId, nodeInfo->id(), NodePortDataType::audio));
-      nodeInfo->controlInputPorts()->push_back(graph_test_helpers::makePort(
-          GainProcessorModelBase::gainPortId,
-          nodeInfo->id(),
-          NodePortDataType::control,
-          0.5,
-          graph_test_helpers::makeParameterConfig(100 + nodeInfo->id(), 0.5)));
+      nodeInfo->controlInputPorts()->push_back(
+          graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+              nodeInfo->id(),
+              NodePortDataType::control,
+              0.5,
+              graph_test_helpers::makeParameterConfig(100 + nodeInfo->id(), 0.5)));
     }
 
     sinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, sinkNodeId, NodePortDataType::audio));
 
-    auto firstConnection =
-        graph_test_helpers::makeConnection(100,
-                                           firstSourceNodeId,
-                                           GainProcessorModelBase::audioOutputPortId,
-                                           sinkNodeId,
-                                           MasterOutputProcessorModelBase::inputPortId);
-    auto secondConnection =
-        graph_test_helpers::makeConnection(101,
-                                           secondSourceNodeId,
-                                           GainProcessorModelBase::audioOutputPortId,
-                                           sinkNodeId,
-                                           MasterOutputProcessorModelBase::inputPortId);
+    auto firstConnection = graph_test_helpers::makeConnection(100,
+        firstSourceNodeId,
+        GainProcessorModelBase::audioOutputPortId,
+        sinkNodeId,
+        MasterOutputProcessorModelBase::inputPortId);
+    auto secondConnection = graph_test_helpers::makeConnection(101,
+        secondSourceNodeId,
+        GainProcessorModelBase::audioOutputPortId,
+        sinkNodeId,
+        MasterOutputProcessorModelBase::inputPortId);
 
     firstSourceNode->audioOutputPorts()->at(0)->connections()->push_back(100);
     secondSourceNode->audioOutputPorts()->at(0)->connections()->push_back(101);
@@ -374,20 +368,20 @@ public:
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
-                 2,
-                 "Fan-in should create one audio-copy action per incoming edge.");
+        2,
+        "Fan-in should create one audio-copy action per incoming edge.");
     expectEquals(countActionsOfType<ProcessNodeAction>(*result),
-                 3,
-                 "Both sources and the sink should each be processed once.");
+        3,
+        "Both sources and the sink should each be processed once.");
     expectEquals(static_cast<int>(result->actionGroups[2]->size()),
-                 2,
-                 "Both root sources should be processed in the same group.");
+        2,
+        "Both root sources should be processed in the same group.");
     expectEquals(static_cast<int>(result->actionGroups[3]->size()),
-                 2,
-                 "Both incoming edges should be copied in the same connection group.");
+        2,
+        "Both incoming edges should be copied in the same connection group.");
     expectEquals(static_cast<int>(result->actionGroups[4]->size()),
-                 1,
-                 "The sink should process only after both incoming edges are copied.");
+        1,
+        "The sink should process only after both incoming edges are copied.");
 
     result->cleanup();
     delete result;
@@ -412,10 +406,10 @@ public:
         GainProcessorModelBase::audioOutputPortId, sinkNodeId, NodePortDataType::audio));
     sinkNode->controlInputPorts()->push_back(
         graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
-                                     sinkNodeId,
-                                     NodePortDataType::control,
-                                     0.5,
-                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
+            sinkNodeId,
+            NodePortDataType::control,
+            0.5,
+            graph_test_helpers::makeParameterConfig(101, 0.5)));
 
     auto connection = graph_test_helpers::makeConnection(
         100, sourceNodeId, sourcePortId, sinkNodeId, GainProcessorModelBase::gainPortId);
@@ -431,11 +425,11 @@ public:
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyControlBufferAction>(*result),
-                 1,
-                 "Control graphs should emit control-copy actions.");
+        1,
+        "Control graphs should emit control-copy actions.");
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
-                 0,
-                 "Control-only graphs should not emit audio-copy actions.");
+        0,
+        "Control-only graphs should not emit audio-copy actions.");
 
     result->cleanup();
     delete result;
@@ -472,11 +466,11 @@ public:
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyEventsAction>(*result),
-                 1,
-                 "Event graphs should emit event-copy actions.");
+        1,
+        "Event graphs should emit event-copy actions.");
     expectEquals(countActionsOfType<ProcessNodeAction>(*result),
-                 0,
-                 "Processor-less event test nodes should not emit process actions.");
+        0,
+        "Processor-less event test nodes should not emit process actions.");
 
     result->cleanup();
     delete result;
@@ -547,10 +541,10 @@ public:
         GainProcessorModelBase::audioOutputPortId, sourceNodeId, NodePortDataType::audio));
     sourceNode->controlInputPorts()->push_back(
         graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
-                                     sourceNodeId,
-                                     NodePortDataType::control,
-                                     0.5,
-                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
+            sourceNodeId,
+            NodePortDataType::control,
+            0.5,
+            graph_test_helpers::makeParameterConfig(101, 0.5)));
     sinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, sinkNodeId, NodePortDataType::audio));
 
@@ -568,11 +562,11 @@ public:
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
-                 0,
-                 "Malformed connections should not produce copy actions.");
+        0,
+        "Malformed connections should not produce copy actions.");
     expectEquals(countActionsOfType<ProcessNodeAction>(*result),
-                 2,
-                 "Without a valid edge, both nodes should behave like independent roots.");
+        2,
+        "Without a valid edge, both nodes should behave like independent roots.");
 
     result->cleanup();
     delete result;

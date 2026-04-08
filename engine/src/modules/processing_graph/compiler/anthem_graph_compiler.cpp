@@ -44,8 +44,8 @@
   All steps are commented below.
 */
 
-AnthemGraphCompilationResult*
-AnthemGraphCompiler::compile(const AnthemGraphCompileRequest& request) {
+AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
+    const AnthemGraphCompileRequest& request) {
   AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
   result->graphProcessContext =
       std::make_unique<AnthemGraphProcessContext>(request.rtServices, request.bufferLayout);
@@ -265,22 +265,21 @@ AnthemGraphCompiler::compile(const AnthemGraphCompileRequest& request) {
         switch (edge->type) {
           case NodePortDataType::audio:
             actions->push_back(std::make_unique<CopyAudioBufferAction>(edge->sourceNodeContext,
-                                                                       sourcePort->id(),
-                                                                       edge->destinationNodeContext,
-                                                                       destinationPort->id()));
+                sourcePort->id(),
+                edge->destinationNodeContext,
+                destinationPort->id()));
             break;
           case NodePortDataType::event:
             actions->push_back(std::make_unique<CopyEventsAction>(edge->sourceNodeContext,
-                                                                  sourcePort->id(),
-                                                                  edge->destinationNodeContext,
-                                                                  destinationPort->id()));
+                sourcePort->id(),
+                edge->destinationNodeContext,
+                destinationPort->id()));
             break;
           case NodePortDataType::control:
-            actions->push_back(
-                std::make_unique<CopyControlBufferAction>(edge->sourceNodeContext,
-                                                          sourcePort->id(),
-                                                          edge->destinationNodeContext,
-                                                          destinationPort->id()));
+            actions->push_back(std::make_unique<CopyControlBufferAction>(edge->sourceNodeContext,
+                sourcePort->id(),
+                edge->destinationNodeContext,
+                destinationPort->id()));
             break;
         }
 
@@ -324,8 +323,8 @@ AnthemGraphCompiler::compile(const AnthemGraphCompileRequest& request) {
       }
     }
 
-    juce::Logger::writeToLog("Step 5: Found " + std::to_string(i) +
-                             " nodes with no unprocessed input connections");
+    juce::Logger::writeToLog(
+        "Step 5: Found " + std::to_string(i) + " nodes with no unprocessed input connections");
 
     juce::Logger::writeToLog("Restarting loop...");
     std::cout << '\n';

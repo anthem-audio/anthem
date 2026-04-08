@@ -46,9 +46,9 @@ public:
   bool processed = false;
 
   AnthemGraphCompilerEdge(std::shared_ptr<NodeConnection> edge,
-                          AnthemNodeProcessContext* sourceNodeContext,
-                          AnthemNodeProcessContext* destinationNodeContext,
-                          NodePortDataType type)
+      AnthemNodeProcessContext* sourceNodeContext,
+      AnthemNodeProcessContext* destinationNodeContext,
+      NodePortDataType type)
     : edgeSource(edge), sourceNodeContext(sourceNodeContext),
       destinationNodeContext(destinationNodeContext), type(type) {}
 };

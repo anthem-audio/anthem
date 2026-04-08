@@ -45,12 +45,12 @@ DbMeterProcessor::~DbMeterProcessor() {
   unregisterVisualizationProviders();
 }
 
-void DbMeterProcessor::initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                                  std::shared_ptr<AnthemModelBase> parentModel) {
+void DbMeterProcessor::initialize(
+    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
   DbMeterProcessorModelBase::initialize(selfModel, parentModel);
 
-  rt_publishEverySamples->store(std::max<int64_t>(1, publishEverySamples()),
-                                std::memory_order_relaxed);
+  rt_publishEverySamples->store(
+      std::max<int64_t>(1, publishEverySamples()), std::memory_order_relaxed);
 
   addPublishEverySamplesObserver([this](int64_t newValue) {
     rt_publishEverySamples->store(std::max<int64_t>(1, newValue), std::memory_order_relaxed);
@@ -72,8 +72,8 @@ void DbMeterProcessor::prepareToProcess() {
     rt_channelPeakLinear.assign(rt_channelCount, 0.0f);
   }
 
-  rt_publishEverySamples->store(std::max<int64_t>(1, publishEverySamples()),
-                                std::memory_order_relaxed);
+  rt_publishEverySamples->store(
+      std::max<int64_t>(1, publishEverySamples()), std::memory_order_relaxed);
 }
 
 void DbMeterProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
@@ -107,8 +107,8 @@ void DbMeterProcessor::process(AnthemNodeProcessContext& context, int numSamples
     rt_samplesSinceLastPublish++;
 
     if (rt_samplesSinceLastPublish >= publishEverySamples) {
-      rt_publishCurrentWindow(channelCount,
-                              blockStartSample + static_cast<int64_t>(sampleIndex) + 1);
+      rt_publishCurrentWindow(
+          channelCount, blockStartSample + static_cast<int64_t>(sampleIndex) + 1);
       rt_samplesSinceLastPublish = 0;
     }
   }

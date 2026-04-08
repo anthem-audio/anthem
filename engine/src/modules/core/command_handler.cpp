@@ -107,8 +107,7 @@ void CommandHandler::processNextCommand() {
   else if (rfl::holds_alternative<EngineReadyCheckRequest>(request.variant())) {
     auto& requestAsReadyCheck = rfl::get<EngineReadyCheckRequest>(request.variant());
 
-    auto readyCheckReply = EngineReadyCheckResponse{
-        .success = true,
+    auto readyCheckReply = EngineReadyCheckResponse{.success = true,
         .error = std::nullopt,
         .responseBase = ResponseBase{.id = requestAsReadyCheck.requestBase.get().id}};
 
@@ -122,8 +121,7 @@ void CommandHandler::processNextCommand() {
     auto audioConfig = Anthem::getInstance().startAudioCallback();
     juce::Logger::writeToLog("startAudioCallback() returned.");
 
-    auto startAudioReply = StartAudioResponse{
-        .success = audioConfig != nullptr,
+    auto startAudioReply = StartAudioResponse{.success = audioConfig != nullptr,
         .error = audioConfig != nullptr
                      ? std::nullopt
                      : std::optional<std::string>("Failed to initialize audio device."),

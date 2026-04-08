@@ -97,26 +97,24 @@ void VST3Processor::process(AnthemNodeProcessContext& context, int numSamples) {
     auto& liveEvent = eventInBuffer->getEvent(i);
 
     if (liveEvent.event.type == AnthemEventType::NoteOn) {
-      auto noteOn = juce::MidiMessage::noteOn(
-          liveEvent.event.noteOn.channel + 1,
+      auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
           liveEvent.event.noteOn.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
 
-      rt_eventBufferForPlugin.addEvent(noteOn,
-                                       static_cast<int>(std::round(liveEvent.sampleOffset)));
+      rt_eventBufferForPlugin.addEvent(
+          noteOn, static_cast<int>(std::round(liveEvent.sampleOffset)));
     } else if (liveEvent.event.type == AnthemEventType::NoteOff) {
-      auto noteOff = juce::MidiMessage::noteOff(
-          liveEvent.event.noteOff.channel + 1,
+      auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
           liveEvent.event.noteOff.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
 
-      rt_eventBufferForPlugin.addEvent(noteOff,
-                                       static_cast<int>(std::round(liveEvent.sampleOffset)));
+      rt_eventBufferForPlugin.addEvent(
+          noteOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
     } else if (liveEvent.event.type == AnthemEventType::AllVoicesOff) {
       for (int channel = 1; channel <= 16; channel++) {
         auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
-        rt_eventBufferForPlugin.addEvent(allVoicesOff,
-                                         static_cast<int>(std::round(liveEvent.sampleOffset)));
+        rt_eventBufferForPlugin.addEvent(
+            allVoicesOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
       }
     }
   }
@@ -127,8 +125,8 @@ void VST3Processor::process(AnthemNodeProcessContext& context, int numSamples) {
   rt_eventBufferForPlugin.clear();
 }
 
-void VST3Processor::initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                               std::shared_ptr<AnthemModelBase> parentModel) {
+void VST3Processor::initialize(
+    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
   VST3ProcessorModelBase::initialize(selfModel, parentModel);
 }
 
@@ -149,8 +147,8 @@ void VST3Processor::tryInitializePlugin() {
   }
 
   writeVST3Log(*this,
-               "Initializing plugin. Sample rate: " + juce::String(device->getCurrentSampleRate()) +
-                   ", buffer size: " + juce::String(device->getCurrentBufferSizeSamples()));
+      "Initializing plugin. Sample rate: " + juce::String(device->getCurrentSampleRate()) +
+          ", buffer size: " + juce::String(device->getCurrentBufferSizeSamples()));
 
   // First, scan the VST3 file to get proper plugin descriptions
   juce::VST3PluginFormat vst3Format;
@@ -163,13 +161,13 @@ void VST3Processor::tryInitializePlugin() {
     return;
   }
 
-  writeVST3Log(*this,
-               "Found " + juce::String(foundPlugins.size()) + " plugin description(s) in file.");
+  writeVST3Log(
+      *this, "Found " + juce::String(foundPlugins.size()) + " plugin description(s) in file.");
   for (int i = 0; i < foundPlugins.size(); ++i) {
     auto* description = foundPlugins[i];
     writeVST3Log(*this,
-                 "  [" + juce::String(i) + "] " + description->name + " by " +
-                     description->manufacturerName + " (" + description->pluginFormatName + ")");
+        "  [" + juce::String(i) + "] " + description->name + " by " +
+            description->manufacturerName + " (" + description->pluginFormatName + ")");
   }
 
   // Use the first plugin found (not the proper way to do this)
@@ -180,8 +178,7 @@ void VST3Processor::tryInitializePlugin() {
   auto hostBufferChannels = device->getActiveOutputChannels().countNumberOfSetBits();
   auto weakSelf = self;
 
-  audioPluginFormatManager.createPluginInstanceAsync(
-      pluginDescription,
+  audioPluginFormatManager.createPluginInstanceAsync(pluginDescription,
       sampleRate,
       bufferSize,
       [weakSelf, sampleRate, bufferSize, hostBufferChannels](
@@ -198,8 +195,7 @@ void VST3Processor::tryInitializePlugin() {
         }
 
         if (instance == nullptr) {
-          writeVST3Log(
-              *selfShared,
+          writeVST3Log(*selfShared,
               "Plugin creation callback returned a null instance without an error message.");
           return;
         }
@@ -213,16 +209,15 @@ void VST3Processor::tryInitializePlugin() {
 
         if (requiredProcessChannels > hostBufferChannels) {
           writeVST3Log(*selfShared,
-                       "Plugin requires " + juce::String(requiredProcessChannels) +
-                           " process channel(s), but Anthem currently allocates " +
-                           juce::String(hostBufferChannels) +
-                           " channel(s) per plugin buffer. Refusing to load to avoid a host buffer "
-                           "overrun.");
+              "Plugin requires " + juce::String(requiredProcessChannels) +
+                  " process channel(s), but Anthem currently allocates " +
+                  juce::String(hostBufferChannels) +
+                  " channel(s) per plugin buffer. Refusing to load to avoid a host buffer "
+                  "overrun.");
           return;
         }
 
-        writeVST3Log(
-            *selfShared,
+        writeVST3Log(*selfShared,
             "Plugin instance created. Name: " + instance->getName() +
                 ", acceptsMidi=" + juce::String(instance->acceptsMidi() ? "true" : "false") +
                 ", producesMidi=" + juce::String(instance->producesMidi() ? "true" : "false") +
@@ -237,9 +232,9 @@ void VST3Processor::tryInitializePlugin() {
         writeVST3Log(*selfShared, "Plugin listener attached. Sending PluginLoadedEvent to UI.");
 
         Response event = PluginLoadedEvent{.nodeId = selfShared->nodeId(),
-                                           .responseBase = ResponseBase{
-                                               .id = -1,
-                                           }};
+            .responseBase = ResponseBase{
+                .id = -1,
+            }};
 
         auto eventString = rfl::json::write(event);
         Anthem::getInstance().comms.send(eventString);
@@ -304,8 +299,8 @@ void VST3Processor::showPluginGUI() {
         std::make_unique<juce::ScopedThreadDPIAwarenessSetter>(hostPeer->getNativeHandle());
   } else {
     writeVST3Log(*this,
-                 "Plugin editor host window has no native peer yet. Falling back to the current "
-                 "thread DPI context.");
+        "Plugin editor host window has no native peer yet. Falling back to the current "
+        "thread DPI context.");
   }
 #endif
 
@@ -334,7 +329,7 @@ void VST3Processor::showPluginGUI() {
       !activeWindow->getScreenBounds().isEmpty()) {
     initialBounds = initialBounds.withCentre(activeWindow->getScreenBounds().getCentre());
   } else if (auto* primaryDisplay = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
-             primaryDisplay != nullptr) {
+      primaryDisplay != nullptr) {
     initialBounds = initialBounds.withCentre(primaryDisplay->userArea.getCentre());
   } else {
     initialBounds.setPosition(50, 50);
@@ -350,8 +345,8 @@ void VST3Processor::showPluginGUI() {
   editorWindow->setVisible(true);
 
   writeVST3Log(*this,
-               "Plugin editor window opened at " + juce::String(editorWindow->getWidth()) + "x" +
-                   juce::String(editorWindow->getHeight()) + ".");
+      "Plugin editor window opened at " + juce::String(editorWindow->getWidth()) + "x" +
+          juce::String(editorWindow->getHeight()) + ".");
 }
 
 void VST3Processor::hidePluginGUI() {
@@ -363,9 +358,8 @@ void VST3Processor::hidePluginGUI() {
   }
 }
 
-void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* /*processor*/,
-                                                   int parameterIndex,
-                                                   float newValue) {
+void VST3Processor::audioProcessorParameterChanged(
+    juce::AudioProcessor* /*processor*/, int parameterIndex, float newValue) {
   auto weakSelf = self;
 
   juce::MessageManager::callAsync([weakSelf, parameterIndex, newValue]() {
@@ -376,19 +370,19 @@ void VST3Processor::audioProcessorParameterChanged(juce::AudioProcessor* /*proce
     }
 
     Response event = PluginParameterChangedEvent{.nodeId = processor->nodeId(),
-                                                 .parameterIndex = parameterIndex,
-                                                 .newValue = newValue,
-                                                 .responseBase = ResponseBase{
-                                                     .id = -1,
-                                                 }};
+        .parameterIndex = parameterIndex,
+        .newValue = newValue,
+        .responseBase = ResponseBase{
+            .id = -1,
+        }};
 
     auto eventString = rfl::json::write(event);
     Anthem::getInstance().comms.send(eventString);
   });
 }
 
-void VST3Processor::audioProcessorChanged(juce::AudioProcessor* /*processor*/,
-                                          const juce::AudioProcessor::ChangeDetails& details) {
+void VST3Processor::audioProcessorChanged(
+    juce::AudioProcessor* /*processor*/, const juce::AudioProcessor::ChangeDetails& details) {
   auto weakSelf = self;
 
   juce::MessageManager::callAsync([weakSelf, details]() {
@@ -398,15 +392,14 @@ void VST3Processor::audioProcessorChanged(juce::AudioProcessor* /*processor*/,
       return;
     }
 
-    Response event =
-        PluginChangedEvent{.nodeId = processor->nodeId(),
-                           .latencyChanged = details.latencyChanged,
-                           .parameterInfoChanged = details.parameterInfoChanged,
-                           .programChanged = details.programChanged,
-                           .nonParameterStateChanged = details.nonParameterStateChanged,
-                           .responseBase = ResponseBase{
-                               .id = -1,
-                           }};
+    Response event = PluginChangedEvent{.nodeId = processor->nodeId(),
+        .latencyChanged = details.latencyChanged,
+        .parameterInfoChanged = details.parameterInfoChanged,
+        .programChanged = details.programChanged,
+        .nonParameterStateChanged = details.nonParameterStateChanged,
+        .responseBase = ResponseBase{
+            .id = -1,
+        }};
 
     auto eventString = rfl::json::write(event);
     Anthem::getInstance().comms.send(eventString);
@@ -422,8 +415,8 @@ void VST3Processor::getState(juce::MemoryBlock& target) {
 void VST3Processor::setState(const juce::MemoryBlock& state) {
   if (pluginInstance) {
     writeVST3Log(*this,
-                 "Applying plugin state block of " +
-                     juce::String(static_cast<int>(state.getSize())) + " bytes.");
+        "Applying plugin state block of " + juce::String(static_cast<int>(state.getSize())) +
+            " bytes.");
     pluginInstance->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
   }
 }

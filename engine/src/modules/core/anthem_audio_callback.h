@@ -65,11 +65,11 @@ public:
   AnthemAudioCallback(Anthem* anthem);
 
   void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
-                                        int numInputChannels,
-                                        float* const* outputChannelData,
-                                        int numOutputChannels,
-                                        int numSamples,
-                                        const juce::AudioIODeviceCallbackContext& context) override;
+      int numInputChannels,
+      float* const* outputChannelData,
+      int numOutputChannels,
+      int numSamples,
+      const juce::AudioIODeviceCallbackContext& context) override;
   void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
   void audioDeviceStopped() override;
 };

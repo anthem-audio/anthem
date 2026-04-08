@@ -49,8 +49,8 @@ public:
   // Compiles the given tracks for the given pattern, and replaces them in the
   // sequence store.
   static void compilePattern(EntityId patternId,
-                             std::vector<EntityId>& trackIdsToRebuild,
-                             std::vector<std::tuple<double, double>>& invalidationRanges);
+      std::vector<EntityId>& trackIdsToRebuild,
+      std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Compiles the given arrangement, and adds or replaces its entry in the
   // sequence store.
@@ -59,8 +59,8 @@ public:
   // Compiles the given tracks for the given arrangement, and replaces them in
   // the sequence store.
   static void compileArrangement(EntityId arrangementId,
-                                 std::vector<EntityId>& trackIdsToRebuild,
-                                 std::vector<std::tuple<double, double>>& invalidationRanges);
+      std::vector<EntityId>& trackIdsToRebuild,
+      std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Cleans up any sequences related to the given track ID.
   static void cleanUpTrack(EntityId trackId);
@@ -68,9 +68,8 @@ private:
   // Gets the note events on a given track for the given arrangement.
   //
   // The events will be added to the given `events` vector.
-  static void getTrackNoteEventsForArrangement(EntityId trackId,
-                                               EntityId arrangementId,
-                                               std::vector<AnthemSequenceEvent>& events);
+  static void getTrackNoteEventsForArrangement(
+      EntityId trackId, EntityId arrangementId, std::vector<AnthemSequenceEvent>& events);
 
   // Gets the note events for the given pattern.
   //
@@ -88,10 +87,10 @@ private:
   // given track may have notes from many clips, so we call this method
   // multiple times and sort at the end.
   static void getPatternNoteEvents(EntityId patternId,
-                                   std::optional<EntityId> clipId,
-                                   std::optional<std::tuple<double, double>> range,
-                                   std::optional<double> offset,
-                                   std::vector<AnthemSequenceEvent>& events);
+      std::optional<EntityId> clipId,
+      std::optional<std::tuple<double, double>> range,
+      std::optional<double> offset,
+      std::vector<AnthemSequenceEvent>& events);
 
   static void sortEventList(std::vector<AnthemSequenceEvent>& events);
 

@@ -34,8 +34,8 @@ namespace graph_test_helpers {
 using NodeProcessorVariant =
     typename std::remove_cvref_t<decltype(std::declval<NodeModelImpl>().processor)>::value_type;
 
-inline std::shared_ptr<ParameterConfigModel>
-makeParameterConfig(int64_t id, double defaultValue, double smoothingDurationSeconds = 0.0) {
+inline std::shared_ptr<ParameterConfigModel> makeParameterConfig(
+    int64_t id, double defaultValue, double smoothingDurationSeconds = 0.0) {
   return std::make_shared<ParameterConfigModel>(ParameterConfigModelImpl{
       .id = id,
       .defaultValue = defaultValue,
@@ -43,12 +43,11 @@ makeParameterConfig(int64_t id, double defaultValue, double smoothingDurationSec
   });
 }
 
-inline std::shared_ptr<NodePort>
-makePort(int64_t id,
-         int64_t nodeId,
-         NodePortDataType dataType,
-         std::optional<double> parameterValue = std::nullopt,
-         std::optional<std::shared_ptr<ParameterConfigModel>> parameterConfig = std::nullopt) {
+inline std::shared_ptr<NodePort> makePort(int64_t id,
+    int64_t nodeId,
+    NodePortDataType dataType,
+    std::optional<double> parameterValue = std::nullopt,
+    std::optional<std::shared_ptr<ParameterConfigModel>> parameterConfig = std::nullopt) {
   return std::make_shared<NodePort>(NodePortModelImpl{
       .id = id,
       .nodeId = nodeId,
@@ -109,10 +108,10 @@ inline std::shared_ptr<Node> makeMasterOutputNode(int64_t nodeId) {
 }
 
 inline std::shared_ptr<NodeConnection> makeConnection(int64_t id,
-                                                      int64_t sourceNodeId,
-                                                      int64_t sourcePortId,
-                                                      int64_t destinationNodeId,
-                                                      int64_t destinationPortId) {
+    int64_t sourceNodeId,
+    int64_t sourcePortId,
+    int64_t destinationNodeId,
+    int64_t destinationPortId) {
   return std::make_shared<NodeConnection>(NodeConnectionModelImpl{
       .id = id,
       .sourceNodeId = sourceNodeId,

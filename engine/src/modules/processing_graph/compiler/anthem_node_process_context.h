@@ -53,9 +53,8 @@ private:
     size_t bufferIndex;
   };
 
-  const PortBufferHandle& findBufferHandle(const std::vector<PortBufferHandle>& handles,
-                                           int64_t portId,
-                                           const char* bufferType) const;
+  const PortBufferHandle& findBufferHandle(
+      const std::vector<PortBufferHandle>& handles, int64_t portId, const char* bufferType) const;
   InputParameterBinding& findInputParameterBinding(int64_t id);
   const InputParameterBinding& findInputParameterBinding(int64_t id) const;
 
@@ -73,8 +72,8 @@ private:
   std::weak_ptr<Node> graphNode;
   AnthemGraphProcessContext* graphProcessContext = nullptr;
 public:
-  AnthemNodeProcessContext(std::shared_ptr<Node>& graphNode,
-                           AnthemGraphProcessContext& graphProcessContext);
+  AnthemNodeProcessContext(
+      std::shared_ptr<Node>& graphNode, AnthemGraphProcessContext& graphProcessContext);
 
   // Clean up the context. This must be called before the context is deallocated.
   void cleanup();

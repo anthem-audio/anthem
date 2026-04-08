@@ -31,9 +31,8 @@ SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
   // Nothing to do here
 }
 
-const SequenceEventList*
-SequenceNoteProviderProcessor::rt_getSourceTrackEvents(const RuntimeDependencies& dependencies,
-                                                       int64_t trackId) {
+const SequenceEventList* SequenceNoteProviderProcessor::rt_getSourceTrackEvents(
+    const RuntimeDependencies& dependencies, int64_t trackId) {
   if (dependencies.rt_activeSequence == nullptr) {
     return nullptr;
   }
@@ -73,10 +72,10 @@ void SequenceNoteProviderProcessor::rt_emitLiveNoteOffsForAllTrackedNotes(
 }
 
 void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state,
-                                                             AnthemEventBuffer& targetBuffer,
-                                                             AnthemSourceNoteId sourceId,
-                                                             const AnthemNoteOffEvent& noteOffEvent,
-                                                             double sampleOffset) {
+    AnthemEventBuffer& targetBuffer,
+    AnthemSourceNoteId sourceId,
+    const AnthemNoteOffEvent& noteOffEvent,
+    double sampleOffset) {
   auto trackedNote = state.rt_activeSequenceNotes.rt_takeByInputId(sourceId);
   if (trackedNote.has_value()) {
     rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote.value(), sampleOffset);

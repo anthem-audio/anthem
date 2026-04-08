@@ -45,8 +45,8 @@ using VisualizationDataPayload =
     std::variant<NumericVisualizationData, IntegerVisualizationData, StringVisualizationData>;
 
 template <typename T, std::size_t Size>
-std::optional<TimestampedVisualizationData<T>>
-drainTimestampedVisualizationBuffer(RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer) {
+std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuffer(
+    RingBuffer<TimestampedVisualizationValue<T>, Size>& buffer) {
   TimestampedVisualizationData<T> data;
 
   while (true) {

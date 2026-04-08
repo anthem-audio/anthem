@@ -25,9 +25,9 @@
 #include <unordered_map>
 
 template <typename Key,
-          typename T,
-          typename Hash = std::hash<Key>,
-          typename KeyEqual = std::equal_to<Key>>
+    typename T,
+    typename Hash = std::hash<Key>,
+    typename KeyEqual = std::equal_to<Key>>
 class AnthemModelUnorderedMap : public AnthemModelBase {
 private:
   // The internal unordered_map
@@ -157,8 +157,8 @@ public:
     data.clear();
   }
 
-  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool>
-  insert(const typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type& value) {
+  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> insert(
+      const typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type& value) {
     auto result = data.insert(value);
     if (result.second) { // If insertion was successful
       initializeItem(result.first->second);
@@ -166,9 +166,9 @@ public:
     return result;
   }
 
-  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator
-  insert(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint,
-         const typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type& value) {
+  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator insert(
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint,
+      const typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type& value) {
     auto resultIt = data.insert(hint, value);
     initializeItem(resultIt->second);
     return resultIt;
@@ -191,7 +191,7 @@ public:
   }
 
   void insert(std::initializer_list<typename std::unordered_map<Key, T, Hash, KeyEqual>::value_type>
-                  ilist) {
+          ilist) {
     // Store the initial size to check for new elements
     size_t initialSize = data.size();
     data.insert(ilist);
@@ -208,26 +208,26 @@ public:
   }
 
   template <typename M>
-  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool>
-  insert_or_assign(const Key& k, M&& obj) {
+  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> insert_or_assign(
+      const Key& k, M&& obj) {
     auto result = data.insert_or_assign(k, std::forward<M>(obj));
     initializeItem(result.first->second);
     return result;
   }
 
   template <typename M>
-  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool>
-  insert_or_assign(Key&& k, M&& obj) {
+  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> insert_or_assign(
+      Key&& k, M&& obj) {
     auto result = data.insert_or_assign(std::move(k), std::forward<M>(obj));
     initializeItem(result.first->second);
     return result;
   }
 
   template <typename M>
-  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator
-  insert_or_assign(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint,
-                   const Key& k,
-                   M&& obj) {
+  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator insert_or_assign(
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint,
+      const Key& k,
+      M&& obj) {
     auto resultIt = data.insert_or_assign(hint, k, std::forward<M>(obj));
     initializeItem(resultIt->second);
     return resultIt;
@@ -242,8 +242,8 @@ public:
   }
 
   template <typename... Args>
-  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool>
-  emplace(Args&&... args) {
+  std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator, bool> emplace(
+      Args&&... args) {
     auto result = data.emplace(std::forward<Args>(args)...);
     if (result.second) { // If insertion was successful
       initializeItem(result.first->second);
@@ -252,22 +252,21 @@ public:
   }
 
   template <typename... Args>
-  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator
-  emplace_hint(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint,
-               Args&&... args) {
+  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator emplace_hint(
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator hint, Args&&... args) {
     auto resultIt = data.emplace_hint(hint, std::forward<Args>(args)...);
     initializeItem(resultIt->second);
     return resultIt;
   }
 
-  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator
-  erase(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator pos) {
+  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator erase(
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator pos) {
     return data.erase(pos);
   }
 
-  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator
-  erase(typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator first,
-        typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator last) {
+  typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator erase(
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator first,
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator last) {
     return data.erase(first, last);
   }
 
@@ -292,13 +291,13 @@ public:
   }
 
   std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator,
-            typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator>
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::iterator>
   equal_range(const Key& key) {
     return data.equal_range(key);
   }
 
   std::pair<typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator,
-            typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator>
+      typename std::unordered_map<Key, T, Hash, KeyEqual>::const_iterator>
   equal_range(const Key& key) const {
     return data.equal_range(key);
   }
@@ -351,7 +350,7 @@ public:
   // guarded implementation for every instantiation we generate.
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
   void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                  std::shared_ptr<AnthemModelBase> parentModel) override {
+      std::shared_ptr<AnthemModelBase> parentModel) override {
     AnthemModelBase::initialize(selfModel, parentModel);
 
     // Initialize all existing items in the map, if this map is holding Anthem
@@ -366,23 +365,23 @@ public:
   // Friend functions for comparison operators
   template <typename K, typename V, typename H, typename KE>
   friend bool operator==(const AnthemModelUnorderedMap<K, V, H, KE>& lhs,
-                         const AnthemModelUnorderedMap<K, V, H, KE>& rhs);
+      const AnthemModelUnorderedMap<K, V, H, KE>& rhs);
 
   template <typename K, typename V, typename H, typename KE>
   friend bool operator!=(const AnthemModelUnorderedMap<K, V, H, KE>& lhs,
-                         const AnthemModelUnorderedMap<K, V, H, KE>& rhs);
+      const AnthemModelUnorderedMap<K, V, H, KE>& rhs);
 };
 
 // Comparison operators
 template <typename Key, typename T, typename Hash, typename KeyEqual>
 bool operator==(const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& lhs,
-                const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
+    const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
   return lhs.data == rhs.data;
 }
 
 template <typename Key, typename T, typename Hash, typename KeyEqual>
 bool operator!=(const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& lhs,
-                const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
+    const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
   return lhs.data != rhs.data;
 }
 

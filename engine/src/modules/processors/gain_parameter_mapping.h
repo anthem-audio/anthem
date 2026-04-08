@@ -76,7 +76,7 @@ inline float gainParameterValueToDb(float parameterValue) {
   if (rawValue < kGainParameterCurveSectionCeilingNormalized) {
     const double normalizedValue = (rawValue - kGainParameterLinearSectionCeilingNormalized) /
                                    (kGainParameterCurveSectionCeilingNormalized -
-                                    kGainParameterLinearSectionCeilingNormalized);
+                                       kGainParameterLinearSectionCeilingNormalized);
 
     return static_cast<float>(
         kGainParameterLinearSectionCeilingDb +
@@ -108,7 +108,7 @@ inline float gainDbToParameterValue(float db) {
     return static_cast<float>(kGainParameterLinearSectionCeilingNormalized +
                               std::pow(normalizedDb, kGainParameterCurveExponent) *
                                   (kGainParameterCurveSectionCeilingNormalized -
-                                   kGainParameterLinearSectionCeilingNormalized));
+                                      kGainParameterLinearSectionCeilingNormalized));
   }
 
   return static_cast<float>(kGainParameterZeroDbNormalized + (dbValue / 64.0));

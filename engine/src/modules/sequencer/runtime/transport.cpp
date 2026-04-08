@@ -42,8 +42,8 @@ void enqueueForDeferredDeletionOrLeak(RingBuffer<T*, queueSize>& queue, T* ptr) 
 
 template <typename Callback>
 void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
-                                   std::optional<int64_t> activeTrackId,
-                                   Callback&& callback) {
+    std::optional<int64_t> activeTrackId,
+    Callback&& callback) {
   auto noTrackIter = sequence.tracks->find(anthem_sequencer_track_ids::noTrack);
   if (noTrackIter != sequence.tracks->end()) {
     if (activeTrackId.has_value()) {
@@ -57,8 +57,8 @@ void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
   }
 }
 
-bool shouldApplySequenceEventToActiveNoteSnapshot(const AnthemSequenceEvent& sequenceEvent,
-                                                  double position) {
+bool shouldApplySequenceEventToActiveNoteSnapshot(
+    const AnthemSequenceEvent& sequenceEvent, double position) {
   if (sequenceEvent.offset < position) {
     return true;
   }
@@ -76,9 +76,8 @@ bool shouldApplySequenceEventToActiveNoteSnapshot(const AnthemSequenceEvent& seq
   return sequenceEvent.event.type < AnthemEventType::NoteOn;
 }
 
-ActiveNotesForTrack
-collectNotesActiveAtPositionForTrack(const std::vector<AnthemSequenceEvent>& events,
-                                     double position) {
+ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
+    const std::vector<AnthemSequenceEvent>& events, double position) {
   auto activeNotes = ActiveNotesForTrack();
 
   for (const auto& sequenceEvent : events) {
@@ -96,14 +95,13 @@ collectNotesActiveAtPositionForTrack(const std::vector<AnthemSequenceEvent>& eve
   return activeNotes;
 }
 
-TrackToActiveNotesMap
-collectNotesActiveAtPositionForSequence(const SequenceEventListCollection& sequence,
-                                        std::optional<int64_t> activeTrackId,
-                                        double position) {
+TrackToActiveNotesMap collectNotesActiveAtPositionForSequence(
+    const SequenceEventListCollection& sequence,
+    std::optional<int64_t> activeTrackId,
+    double position) {
   auto collector = TrackToActiveNotesMap();
 
-  forEachPlayableTrackEventList(
-      sequence,
+  forEachPlayableTrackEventList(sequence,
       activeTrackId,
       [&](int64_t destinationTrackId, const std::vector<AnthemSequenceEvent>& events) {
         auto activeNotes = collectNotesActiveAtPositionForTrack(events, position);
@@ -115,8 +113,8 @@ collectNotesActiveAtPositionForSequence(const SequenceEventListCollection& seque
   return collector;
 }
 
-void appendStartEvents(const TrackToActiveNotesMap& activeNotesByTrack,
-                       TrackToJumpEventsMap& collector) {
+void appendStartEvents(
+    const TrackToActiveNotesMap& activeNotesByTrack, TrackToJumpEventsMap& collector) {
   for (const auto& [trackId, activeNotes] : activeNotesByTrack) {
     auto& events = collector[trackId];
     for (const auto& [sourceId, noteOn] : activeNotes) {
@@ -130,8 +128,8 @@ void appendStartEvents(const TrackToActiveNotesMap& activeNotesByTrack,
 } // namespace
 
 PlayheadJumpEvent buildPlayheadJumpEvent(const SequenceEventListCollection& sequence,
-                                         std::optional<int64_t> activeTrackId,
-                                         double playheadPosition) {
+    std::optional<int64_t> activeTrackId,
+    double playheadPosition) {
   auto event = PlayheadJumpEvent();
   event.newPlayheadPosition = playheadPosition;
 
@@ -283,8 +281,8 @@ double Transport::rt_getPlayheadAdvanceAmount(int numSamples) const {
     return 0.0;
   }
 
-  return sequencer_timing::sampleCountToTickDelta(static_cast<double>(numSamples),
-                                                  rt_getTimingParams());
+  return sequencer_timing::sampleCountToTickDelta(
+      static_cast<double>(numSamples), rt_getTimingParams());
 }
 
 sequencer_timing::TimingParams Transport::rt_getTimingParams() const {

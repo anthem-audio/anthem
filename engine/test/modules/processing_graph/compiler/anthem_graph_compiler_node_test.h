@@ -31,9 +31,8 @@ class AnthemGraphCompilerNodeTest : public juce::UnitTest {
   using NodeMap = AnthemGraphCompilerNode::NodeMap;
   using ConnectionMap = AnthemGraphCompilerNode::ConnectionMap;
 
-  static std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>
-  buildCompilerNodeMap(std::initializer_list<std::shared_ptr<Node>> nodes,
-                       AnthemGraphProcessContext& graphContext) {
+  static std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>> buildCompilerNodeMap(
+      std::initializer_list<std::shared_ptr<Node>> nodes, AnthemGraphProcessContext& graphContext) {
     auto compilerNodes = std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>();
 
     for (const auto& node : nodes) {
@@ -71,19 +70,18 @@ public:
         GainProcessorModelBase::audioOutputPortId, sourceNodeId, NodePortDataType::audio));
     sourceNode->controlInputPorts()->push_back(
         graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
-                                     sourceNodeId,
-                                     NodePortDataType::control,
-                                     0.5,
-                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
+            sourceNodeId,
+            NodePortDataType::control,
+            0.5,
+            graph_test_helpers::makeParameterConfig(101, 0.5)));
     sinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, sinkNodeId, NodePortDataType::audio));
 
-    auto connection =
-        graph_test_helpers::makeConnection(connectionId,
-                                           sourceNodeId,
-                                           GainProcessorModelBase::audioOutputPortId,
-                                           sinkNodeId,
-                                           MasterOutputProcessorModelBase::inputPortId);
+    auto connection = graph_test_helpers::makeConnection(connectionId,
+        sourceNodeId,
+        GainProcessorModelBase::audioOutputPortId,
+        sinkNodeId,
+        MasterOutputProcessorModelBase::inputPortId);
 
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(connectionId);
     sinkNode->audioInputPorts()->at(0)->connections()->push_back(connectionId);
@@ -97,10 +95,10 @@ public:
 
     GraphRuntimeServices rtServices;
     AnthemGraphProcessContext graphContext(rtServices,
-                                           AnthemGraphBufferLayout{
-                                               .numAudioChannels = 2,
-                                               .blockSize = 64,
-                                           });
+        AnthemGraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 64,
+        });
     graphContext.reserve(2, 3, 1, 0);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
@@ -115,16 +113,16 @@ public:
     auto& sinkCompilerNode = *compilerNodes.at(sinkNode.get());
 
     expectEquals(static_cast<int>(sourceCompilerNode.outputEdges.size()),
-                 1,
-                 "The source node should expose one output edge.");
+        1,
+        "The source node should expose one output edge.");
     expectEquals(static_cast<int>(sinkCompilerNode.inputEdges.size()),
-                 1,
-                 "The sink node should expose one input edge.");
+        1,
+        "The sink node should expose one input edge.");
     expect(sourceCompilerNode.outputEdges.at(0) == sinkCompilerNode.inputEdges.at(0),
-           "The source and sink should reference the same compiler edge.");
+        "The source and sink should reference the same compiler edge.");
     expectEquals(static_cast<int>(sourceCompilerNode.outputEdges.at(0)->type),
-                 static_cast<int>(NodePortDataType::audio),
-                 "The assigned edge type should match the source port type.");
+        static_cast<int>(NodePortDataType::audio),
+        "The assigned edge type should match the source port type.");
 
     graphContext.cleanup();
   }
@@ -158,10 +156,10 @@ public:
 
     GraphRuntimeServices rtServices;
     AnthemGraphProcessContext graphContext(rtServices,
-                                           AnthemGraphBufferLayout{
-                                               .numAudioChannels = 2,
-                                               .blockSize = 64,
-                                           });
+        AnthemGraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 64,
+        });
     graphContext.reserve(2, 0, 0, 2);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
@@ -173,11 +171,11 @@ public:
         ->assignEdges(nodes, connections, compilerNodes, connectionToCompilerEdge);
 
     expectEquals(static_cast<int>(connectionToCompilerEdge.size()),
-                 1,
-                 "The shared connection should create only one compiler edge instance.");
+        1,
+        "The shared connection should create only one compiler edge instance.");
     expect(compilerNodes.at(sourceNode.get())->outputEdges.at(0) ==
                compilerNodes.at(sinkNode.get())->inputEdges.at(0),
-           "Both nodes should reuse the same compiler edge object.");
+        "Both nodes should reuse the same compiler edge object.");
 
     graphContext.cleanup();
   }
@@ -228,10 +226,10 @@ public:
 
     GraphRuntimeServices rtServices;
     AnthemGraphProcessContext graphContext(rtServices,
-                                           AnthemGraphBufferLayout{
-                                               .numAudioChannels = 2,
-                                               .blockSize = 64,
-                                           });
+        AnthemGraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 64,
+        });
     graphContext.reserve(2, 2, 2, 2);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
@@ -241,17 +239,17 @@ public:
         ->assignEdges(nodes, connections, compilerNodes, connectionToCompilerEdge);
 
     expectEquals(static_cast<int>(compilerNodes.at(sourceNode.get())->outputEdges.size()),
-                 3,
-                 "All outgoing edge types should be discovered.");
+        3,
+        "All outgoing edge types should be discovered.");
     expectEquals(static_cast<int>(compilerNodes.at(sourceNode.get())->outputEdges.at(0)->type),
-                 static_cast<int>(NodePortDataType::audio),
-                 "Audio edges should keep the audio type.");
+        static_cast<int>(NodePortDataType::audio),
+        "Audio edges should keep the audio type.");
     expectEquals(static_cast<int>(compilerNodes.at(sourceNode.get())->outputEdges.at(1)->type),
-                 static_cast<int>(NodePortDataType::control),
-                 "Control edges should keep the control type.");
+        static_cast<int>(NodePortDataType::control),
+        "Control edges should keep the control type.");
     expectEquals(static_cast<int>(compilerNodes.at(sourceNode.get())->outputEdges.at(2)->type),
-                 static_cast<int>(NodePortDataType::event),
-                 "Event edges should keep the event type.");
+        static_cast<int>(NodePortDataType::event),
+        "Event edges should keep the event type.");
 
     graphContext.cleanup();
   }
@@ -285,10 +283,10 @@ public:
 
     GraphRuntimeServices rtServices;
     AnthemGraphProcessContext graphContext(rtServices,
-                                           AnthemGraphBufferLayout{
-                                               .numAudioChannels = 2,
-                                               .blockSize = 64,
-                                           });
+        AnthemGraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 64,
+        });
     graphContext.reserve(2, 2, 0, 0);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
@@ -300,14 +298,14 @@ public:
         ->assignEdges(nodes, connections, compilerNodes, connectionToCompilerEdge);
 
     expectEquals(static_cast<int>(connectionToCompilerEdge.size()),
-                 0,
-                 "Invalid ports should prevent compiler-edge creation.");
+        0,
+        "Invalid ports should prevent compiler-edge creation.");
     expectEquals(static_cast<int>(compilerNodes.at(sourceNode.get())->outputEdges.size()),
-                 0,
-                 "Invalid edges should not appear in the source output edge list.");
+        0,
+        "Invalid edges should not appear in the source output edge list.");
     expectEquals(static_cast<int>(compilerNodes.at(sinkNode.get())->inputEdges.size()),
-                 0,
-                 "Invalid edges should not appear in the destination input edge list.");
+        0,
+        "Invalid edges should not appear in the destination input edge list.");
 
     graphContext.cleanup();
   }

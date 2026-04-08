@@ -31,8 +31,8 @@ class PluginEditorWindow : public juce::DocumentWindow {
 public:
   PluginEditorWindow(const juce::String& name, std::function<void()> onClose)
     : DocumentWindow(name,
-                     juce::Colours::lightgrey,
-                     DocumentWindow::closeButton | DocumentWindow::minimiseButton),
+          juce::Colours::lightgrey,
+          DocumentWindow::closeButton | DocumentWindow::minimiseButton),
       closeCallback(onClose), constrainer(*this) {
     setUsingNativeTitleBar(true);
     setConstrainer(&constrainer);
@@ -71,8 +71,8 @@ private:
     return {};
   }
 
-  static juce::Rectangle<int> clampBoundsToArea(juce::Rectangle<int> bounds,
-                                                const juce::Rectangle<int>& area) {
+  static juce::Rectangle<int> clampBoundsToArea(
+      juce::Rectangle<int> bounds, const juce::Rectangle<int>& area) {
     if (bounds.getWidth() >= area.getWidth()) {
       bounds.setX(area.getX());
     } else {
@@ -167,15 +167,14 @@ public:
   void process(AnthemNodeProcessContext& context, int numSamples) override;
 
   void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-                  std::shared_ptr<AnthemModelBase> parentModel) override;
+      std::shared_ptr<AnthemModelBase> parentModel) override;
 
   void tryInitializePlugin();
 
-  void audioProcessorParameterChanged(juce::AudioProcessor* processor,
-                                      int parameterIndex,
-                                      float newValue) override;
-  void audioProcessorChanged(juce::AudioProcessor* processor,
-                             const juce::AudioProcessor::ChangeDetails& details) override;
+  void audioProcessorParameterChanged(
+      juce::AudioProcessor* processor, int parameterIndex, float newValue) override;
+  void audioProcessorChanged(
+      juce::AudioProcessor* processor, const juce::AudioProcessor::ChangeDetails& details) override;
 
   void getState(juce::MemoryBlock& target) override;
   void setState(const juce::MemoryBlock& state) override;

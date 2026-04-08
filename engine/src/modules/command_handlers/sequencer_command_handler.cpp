@@ -40,8 +40,8 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 
         // Compile only the specified tracks for the given pattern.
         AnthemSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value(),
-                                               *compileSequenceRequest.tracksToRebuild.value(),
-                                               invalidationRanges);
+            *compileSequenceRequest.tracksToRebuild.value(),
+            invalidationRanges);
       } else {
         // Compile the entire pattern
         AnthemSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
@@ -66,8 +66,8 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 
         // Compile only the specified tracks for the given arrangement.
         AnthemSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value(),
-                                                   *compileSequenceRequest.tracksToRebuild.value(),
-                                                   invalidationRanges);
+            *compileSequenceRequest.tracksToRebuild.value(),
+            invalidationRanges);
       } else {
         // Compile the entire arrangement
         AnthemSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());

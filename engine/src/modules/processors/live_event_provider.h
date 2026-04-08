@@ -45,19 +45,19 @@ private:
   NoteTracker<rt_maxTrackedLiveNotes> rt_activeLiveNotes;
 
   void rt_emitLiveNoteOffFromTrackedNote(std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-                                         const TrackedNote& trackedNote,
-                                         double sampleOffset);
+      const TrackedNote& trackedNote,
+      double sampleOffset);
   void rt_handleLiveNoteOn(AnthemNodeProcessContext& context,
-                           std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-                           AnthemLiveInputNoteId inputId,
-                           const AnthemNoteOnEvent& noteOnEvent,
-                           double sampleOffset);
+      std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+      AnthemLiveInputNoteId inputId,
+      const AnthemNoteOnEvent& noteOnEvent,
+      double sampleOffset);
   void rt_handleLiveNoteOff(std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-                            AnthemLiveInputNoteId inputId,
-                            const AnthemNoteOffEvent& noteOffEvent,
-                            double sampleOffset);
-  void rt_addLiveEventsToBuffer(AnthemNodeProcessContext& context,
-                                std::unique_ptr<AnthemEventBuffer>& targetBuffer);
+      AnthemLiveInputNoteId inputId,
+      const AnthemNoteOffEvent& noteOffEvent,
+      double sampleOffset);
+  void rt_addLiveEventsToBuffer(
+      AnthemNodeProcessContext& context, std::unique_ptr<AnthemEventBuffer>& targetBuffer);
 public:
   LiveEventProviderProcessor(const LiveEventProviderProcessorModelImpl& _impl);
   ~LiveEventProviderProcessor() override;

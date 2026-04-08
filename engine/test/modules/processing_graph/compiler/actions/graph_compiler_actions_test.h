@@ -34,13 +34,13 @@
 #include <juce_core/juce_core.h>
 
 class GraphCompilerActionsTest : public juce::UnitTest {
-  static AnthemGraphProcessContext makeGraphContext(GraphRuntimeServices& rtServices,
-                                                    int blockSize = 16) {
+  static AnthemGraphProcessContext makeGraphContext(
+      GraphRuntimeServices& rtServices, int blockSize = 16) {
     return AnthemGraphProcessContext(rtServices,
-                                     AnthemGraphBufferLayout{
-                                         .numAudioChannels = 2,
-                                         .blockSize = blockSize,
-                                     });
+        AnthemGraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = blockSize,
+        });
   }
 
   static std::shared_ptr<Node> makeAudioPassNode(int64_t nodeId) {
@@ -54,12 +54,11 @@ class GraphCompilerActionsTest : public juce::UnitTest {
 
   static std::shared_ptr<Node> makeControlPassNode(int64_t nodeId) {
     auto node = graph_test_helpers::makeNode(nodeId);
-    node->controlInputPorts()->push_back(
-        graph_test_helpers::makePort(1,
-                                     nodeId,
-                                     NodePortDataType::control,
-                                     0.0,
-                                     graph_test_helpers::makeParameterConfig(101, 0.0)));
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(1,
+        nodeId,
+        NodePortDataType::control,
+        0.0,
+        graph_test_helpers::makeParameterConfig(101, 0.0)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(2, nodeId, NodePortDataType::control));
     return node;
@@ -117,19 +116,19 @@ public:
     action.execute(16);
 
     expectWithinAbsoluteError(context.getInputAudioBuffer(3).getSample(0, 0),
-                              0.0f,
-                              0.0001f,
-                              "Input audio should be cleared.");
+        0.0f,
+        0.0001f,
+        "Input audio should be cleared.");
     expectWithinAbsoluteError(context.getOutputAudioBuffer(4).getSample(0, 0),
-                              0.5f,
-                              0.0001f,
-                              "Output audio should be preserved.");
+        0.5f,
+        0.0001f,
+        "Output audio should be preserved.");
     expectEquals(static_cast<int>(context.getInputEventBuffer(1)->getNumEvents()),
-                 0,
-                 "Input events should be cleared.");
+        0,
+        "Input events should be cleared.");
     expectEquals(static_cast<int>(context.getOutputEventBuffer(2)->getNumEvents()),
-                 0,
-                 "Output events should be cleared.");
+        0,
+        "Output events should be cleared.");
 
     graphContext.cleanup();
   }
@@ -151,9 +150,9 @@ public:
     auto& controlBuffer = context.getInputControlBuffer(1);
     for (int sample = 0; sample < 8; ++sample) {
       expectWithinAbsoluteError(controlBuffer.getSample(0, sample),
-                                0.0f,
-                                0.0001f,
-                                "Control buffer should be initialized from the parameter value.");
+          0.0f,
+          0.0001f,
+          "Control buffer should be initialized from the parameter value.");
     }
 
     graphContext.cleanup();
@@ -183,13 +182,13 @@ public:
     action.execute(4);
 
     expectWithinAbsoluteError(destinationBuffer.getSample(0, 0),
-                              1.0f,
-                              0.0001f,
-                              "Audio copy should sum the source into the destination.");
+        1.0f,
+        0.0001f,
+        "Audio copy should sum the source into the destination.");
     expectWithinAbsoluteError(destinationBuffer.getSample(1, 0),
-                              0.75f,
-                              0.0001f,
-                              "Audio copy should sum per-channel samples independently.");
+        0.75f,
+        0.0001f,
+        "Audio copy should sum per-channel samples independently.");
 
     graphContext.cleanup();
   }
@@ -218,13 +217,13 @@ public:
     action.execute(4);
 
     expectWithinAbsoluteError(destinationBuffer.getSample(0, 0),
-                              0.25f,
-                              0.0001f,
-                              "Control copy should overwrite existing destination samples.");
+        0.25f,
+        0.0001f,
+        "Control copy should overwrite existing destination samples.");
     expectWithinAbsoluteError(destinationBuffer.getSample(0, 1),
-                              0.75f,
-                              0.0001f,
-                              "Control copy should preserve the source values exactly.");
+        0.75f,
+        0.0001f,
+        "Control copy should preserve the source values exactly.");
 
     graphContext.cleanup();
   }
@@ -258,15 +257,15 @@ public:
 
     auto& destinationBuffer = destinationContext.getInputEventBuffer(1);
     expectEquals(static_cast<int>(destinationBuffer->getNumEvents()),
-                 2,
-                 "Event copy should append source events to existing destination events.");
+        2,
+        "Event copy should append source events to existing destination events.");
     expectWithinAbsoluteError(destinationBuffer->getEvent(1).sampleOffset,
-                              0.5,
-                              0.0001,
-                              "Copied events should preserve their sample offsets.");
+        0.5,
+        0.0001,
+        "Copied events should preserve their sample offsets.");
     expectEquals(destinationBuffer->getEvent(1).liveId,
-                 10,
-                 "Copied events should preserve their live note IDs.");
+        10,
+        "Copied events should preserve their live note IDs.");
 
     graphContext.cleanup();
   }
@@ -279,12 +278,12 @@ public:
         GainProcessorModelBase::audioInputPortId, 10, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::audioOutputPortId, 10, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId,
-        10,
-        NodePortDataType::control,
-        kGainParameterZeroDbNormalized,
-        graph_test_helpers::makeParameterConfig(101, kGainParameterZeroDbNormalized)));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+            10,
+            NodePortDataType::control,
+            kGainParameterZeroDbNormalized,
+            graph_test_helpers::makeParameterConfig(101, kGainParameterZeroDbNormalized)));
 
     GraphRuntimeServices rtServices;
     auto graphContext = makeGraphContext(rtServices, 4);
@@ -309,13 +308,13 @@ public:
 
     auto expectedGain = gainParameterValueToLinear(kGainParameterZeroDbNormalized);
     expectWithinAbsoluteError(audioOutBuffer.getSample(0, 0),
-                              0.5f * expectedGain,
-                              0.0001f,
-                              "Process action should invoke the processor with the node context.");
+        0.5f * expectedGain,
+        0.0001f,
+        "Process action should invoke the processor with the node context.");
     expectWithinAbsoluteError(audioOutBuffer.getSample(1, 0),
-                              0.25f * expectedGain,
-                              0.0001f,
-                              "Process action should write the processor output buffer.");
+        0.25f * expectedGain,
+        0.0001f,
+        "Process action should write the processor output buffer.");
 
     graphContext.cleanup();
   }

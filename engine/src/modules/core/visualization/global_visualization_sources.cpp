@@ -33,9 +33,8 @@ int64_t samplesForDuration(double sampleRate, double durationMs) {
   return std::max<int64_t>(1, static_cast<int64_t>(std::llround(sampleRate * durationMs / 1000.0)));
 }
 
-int64_t alignSampleTimestampToBlock(int64_t sampleTimestamp,
-                                    int64_t blockStartSample,
-                                    int64_t samplesPerStep) {
+int64_t alignSampleTimestampToBlock(
+    int64_t sampleTimestamp, int64_t blockStartSample, int64_t samplesPerStep) {
   if (sampleTimestamp >= blockStartSample) {
     return sampleTimestamp;
   }
@@ -50,10 +49,8 @@ std::optional<NumericVisualizationData> CpuVisualizationProvider::getTypedData()
   return drainTimestampedVisualizationBuffer(cpuBurdenBuffer);
 }
 
-void CpuVisualizationProvider::rt_updateCpuBurden(double newCpuBurden,
-                                                  int64_t blockStartSample,
-                                                  int numSamples,
-                                                  double sampleRate) {
+void CpuVisualizationProvider::rt_updateCpuBurden(
+    double newCpuBurden, int64_t blockStartSample, int numSamples, double sampleRate) {
   if (sampleRate <= 0.0 || numSamples <= 0) {
     jassertfalse;
     return;
@@ -89,10 +86,8 @@ std::optional<NumericVisualizationData> PlayheadPositionVisualizationProvider::g
   return drainTimestampedVisualizationBuffer(playheadPositionBuffer);
 }
 
-void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(const Transport& transport,
-                                                                      int64_t blockStartSample,
-                                                                      int numSamples,
-                                                                      double sampleRate) {
+void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
+    const Transport& transport, int64_t blockStartSample, int numSamples, double sampleRate) {
   if (sampleRate <= 0.0 || numSamples <= 0) {
     jassertfalse;
     return;
@@ -179,8 +174,8 @@ GlobalVisualizationSources::GlobalVisualizationSources() {
 
   // Register global sources with the visualization broker
   VisualizationBroker::getInstance().registerDataProvider("cpu", cpuBurdenProvider);
-  VisualizationBroker::getInstance().registerDataProvider("playhead_position",
-                                                          playheadPositionProvider);
-  VisualizationBroker::getInstance().registerDataProvider("playhead_sequence_id",
-                                                          playheadSequenceIdProvider);
+  VisualizationBroker::getInstance().registerDataProvider(
+      "playhead_position", playheadPositionProvider);
+  VisualizationBroker::getInstance().registerDataProvider(
+      "playhead_sequence_id", playheadSequenceIdProvider);
 }

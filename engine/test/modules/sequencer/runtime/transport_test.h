@@ -31,8 +31,8 @@ class TransportTest : public juce::UnitTest {
   static constexpr AnthemSourceNoteId firstNoteId = 101;
   static constexpr AnthemSourceNoteId secondNoteId = 102;
 
-  static SequenceEventListCollection
-  buildSequence(std::initializer_list<AnthemSequenceEvent> events) {
+  static SequenceEventListCollection buildSequence(
+      std::initializer_list<AnthemSequenceEvent> events) {
     auto sequence = SequenceEventListCollection();
     auto track = SequenceEventList();
 
@@ -44,8 +44,8 @@ class TransportTest : public juce::UnitTest {
     return sequence;
   }
 
-  static const std::vector<PlayheadJumpSequenceEvent>*
-  getJumpEventsForTrack(const PlayheadJumpEvent& event) {
+  static const std::vector<PlayheadJumpSequenceEvent>* getJumpEventsForTrack(
+      const PlayheadJumpEvent& event) {
     auto eventsIter = event.eventsToPlayAtJump.find(trackId);
     if (eventsIter == event.eventsToPlayAtJump.end()) {
       return nullptr;
@@ -147,19 +147,18 @@ public:
   void testJumpSnapshotExcludesNotesEndingAtBoundary() {
     beginTest("Jump snapshot excludes notes that end at the boundary");
 
-    auto sequence = buildSequence(
-        {AnthemSequenceEvent{.offset = 0.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-         AnthemSequenceEvent{.offset = 1.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))},
-         AnthemSequenceEvent{.offset = 1.0,
-                             .sourceId = secondNoteId,
-                             .event = AnthemEvent(AnthemNoteOnEvent(62, 0, 1.0f, 0.0f))},
-         AnthemSequenceEvent{.offset = 2.0,
-                             .sourceId = secondNoteId,
-                             .event = AnthemEvent(AnthemNoteOffEvent(62, 0, 0.0f))}});
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 1.0,
+            .sourceId = firstNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))},
+        AnthemSequenceEvent{.offset = 1.0,
+            .sourceId = secondNoteId,
+            .event = AnthemEvent(AnthemNoteOnEvent(62, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 2.0,
+            .sourceId = secondNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(62, 0, 0.0f))}});
 
     auto jumpEvent = buildPlayheadJumpEvent(sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
@@ -170,13 +169,12 @@ public:
   void testJumpSnapshotKeepsSustainedNotesActive() {
     beginTest("Jump snapshot keeps sustained notes active");
 
-    auto sequence = buildSequence(
-        {AnthemSequenceEvent{.offset = 0.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-         AnthemSequenceEvent{.offset = 2.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 2.0,
+            .sourceId = firstNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
 
     auto jumpEvent = buildPlayheadJumpEvent(sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
@@ -187,26 +185,25 @@ public:
     expectEquals(
         jumpEvents->at(0).sequenceNoteId, firstNoteId, "The sustained note should be restarted.");
     expectEquals(static_cast<int>(jumpEvents->at(0).event.type),
-                 static_cast<int>(AnthemEventType::NoteOn),
-                 "Jump payload should only contain note-on events.");
+        static_cast<int>(AnthemEventType::NoteOn),
+        "Jump payload should only contain note-on events.");
   }
 
   void testJumpSnapshotExcludesNotesStartingAtBoundary() {
     beginTest("Jump snapshot excludes notes that start at the boundary");
 
-    auto sequence = buildSequence(
-        {AnthemSequenceEvent{.offset = 1.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-         AnthemSequenceEvent{.offset = 2.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 1.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 2.0,
+            .sourceId = firstNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
 
     auto jumpEvent = buildPlayheadJumpEvent(sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
 
     expect(jumpEvents == nullptr,
-           "Boundary note-ons should be emitted by normal block playback, not jump-start.");
+        "Boundary note-ons should be emitted by normal block playback, not jump-start.");
   }
 
   void testSetActiveSequenceBatchesLoopAndJumpUpdatesIntoSingleConfig() {
@@ -215,8 +212,8 @@ public:
     resetAnthemForTransportTests();
 
     auto& anthem = Anthem::getInstance();
-    anthem.project->sequence()->patterns()->insert_or_assign(sequenceId,
-                                                             createPatternWithLoopPoints(4, 8));
+    anthem.project->sequence()->patterns()->insert_or_assign(
+        sequenceId, createPatternWithLoopPoints(4, 8));
 
     auto& transport = *anthem.transport;
     transport.config.playheadStart = 6.0;
@@ -232,8 +229,8 @@ public:
         transport.config.loopStart, 4.0, "Loop start should come from the active sequence.");
     expectEquals(transport.config.loopEnd, 8.0, "Loop end should come from the active sequence.");
     expectEquals(drainPendingConfigCount(transport),
-                 1,
-                 "setActiveSequenceId() should publish a single combined config snapshot.");
+        1,
+        "setActiveSequenceId() should publish a single combined config snapshot.");
 
     Anthem::cleanup();
   }
@@ -244,13 +241,12 @@ public:
     resetAnthemForTransportTests();
 
     auto& anthem = Anthem::getInstance();
-    auto sequence = buildSequence(
-        {AnthemSequenceEvent{.offset = 0.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-         AnthemSequenceEvent{.offset = 2.0,
-                             .sourceId = firstNoteId,
-                             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 2.0,
+            .sourceId = firstNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
     anthem.sequenceStore->addOrUpdateSequence(sequenceId, sequence);
 
     auto& transport = *anthem.transport;
@@ -261,19 +257,18 @@ public:
 
     auto* jumpEventsBeforeClear = getJumpEventsForTrack(transport.config.playheadJumpEventForStart);
     expect(jumpEventsBeforeClear != nullptr,
-           "The cached start payload should include sustained notes.");
+        "The cached start payload should include sustained notes.");
     expectEquals(transport.config.playheadJumpEventForStart.newPlayheadPosition,
-                 1.0,
-                 "The cached start payload should target the current playhead start.");
+        1.0,
+        "The cached start payload should target the current playhead start.");
 
     std::optional<int64_t> noActiveSequence = std::nullopt;
     transport.setActiveSequenceId(noActiveSequence);
 
     auto* jumpEventsAfterClear = getJumpEventsForTrack(transport.config.playheadJumpEventForStart);
     expect(jumpEventsAfterClear == nullptr,
-           "Clearing the active sequence should remove cached jump-start note payloads.");
-    expectEquals(
-        transport.config.playheadJumpEventForStart.newPlayheadPosition,
+        "Clearing the active sequence should remove cached jump-start note payloads.");
+    expectEquals(transport.config.playheadJumpEventForStart.newPlayheadPosition,
         1.0,
         "Clearing the active sequence should preserve the stored playhead-start position.");
 

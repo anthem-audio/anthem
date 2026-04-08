@@ -35,32 +35,32 @@ public:
     beginTest("Gain parameter mapping hits the expected breakpoint values");
 
     expect(std::isinf(gainParameterValueToDb(0.0f)));
-    expect(std::abs(gainParameterValueToDb(
-                        static_cast<float>(kGainParameterLinearSectionCeilingNormalized)) -
-                    static_cast<float>(kGainParameterLinearSectionCeilingDb)) <
-               comparisonToleranceDb,
-           "the linear section ceiling should map to -180 dB");
-    expect(std::abs(gainParameterValueToDb(
-                        static_cast<float>(kGainParameterCurveSectionCeilingNormalized)) -
-                    static_cast<float>(kGainParameterCurveSectionCeilingDb)) <
-               comparisonToleranceDb,
-           "the curve section ceiling should map to -36 dB");
+    expect(
+        std::abs(gainParameterValueToDb(
+                     static_cast<float>(kGainParameterLinearSectionCeilingNormalized)) -
+                 static_cast<float>(kGainParameterLinearSectionCeilingDb)) < comparisonToleranceDb,
+        "the linear section ceiling should map to -180 dB");
+    expect(
+        std::abs(gainParameterValueToDb(
+                     static_cast<float>(kGainParameterCurveSectionCeilingNormalized)) -
+                 static_cast<float>(kGainParameterCurveSectionCeilingDb)) < comparisonToleranceDb,
+        "the curve section ceiling should map to -36 dB");
     expect(std::abs(gainParameterValueToDb(kGainParameterZeroDbNormalized) - 0.0f) <
                comparisonToleranceDb,
-           "unity gain should map to 0 dB");
+        "unity gain should map to 0 dB");
     expect(std::abs(gainParameterValueToDb(1.0f) - static_cast<float>(kGainParameterDbCeiling)) <
                comparisonToleranceDb,
-           "the top of the parameter range should map to +12 dB");
+        "the top of the parameter range should map to +12 dB");
 
     beginTest("Gain parameter mapping clamps values above +12 dB");
 
     expect(gainDbToParameterValue(18.0f) == 1.0f,
-           "values above +12 dB should clamp to the top of the range");
+        "values above +12 dB should clamp to the top of the range");
 
     beginTest("Gain parameter mapping maps unity gain to exactly 0 dB");
 
     expect(gainParameterValueToDb(kGainParameterZeroDbNormalized) == 0.0f,
-           "unity gain should map to an exact 0 dB value");
+        "unity gain should map to an exact 0 dB value");
 
     beginTest("Gain parameter mapping round-trips breakpoint and unity values");
 
@@ -83,7 +83,7 @@ public:
         expect(gainDbToParameterValue(db) == 0.0f);
       } else {
         expect(std::abs(gainDbToParameterValue(db) - sample) < 0.000001f,
-               "the shared gain mapping should round-trip representative samples");
+            "the shared gain mapping should round-trip representative samples");
       }
     }
 
@@ -93,11 +93,11 @@ public:
                         static_cast<float>(kGainParameterLinearSectionCeilingNormalized)) -
                     gainDbToLinear(static_cast<float>(kGainParameterLinearSectionCeilingDb))) <
                comparisonToleranceDb,
-           "the curve breakpoint should match the dB floor in linear space");
+        "the curve breakpoint should match the dB floor in linear space");
     expect(std::abs(gainParameterValueToLinear(1.0f) -
                     gainDbToLinear(static_cast<float>(kGainParameterDbCeiling))) <
                comparisonToleranceDb,
-           "the top of the range should match +12 dB in linear space");
+        "the top of the range should match +12 dB in linear space");
   }
 };
 

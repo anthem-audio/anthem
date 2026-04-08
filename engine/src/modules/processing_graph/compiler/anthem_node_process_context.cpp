@@ -26,8 +26,8 @@
 #include <algorithm>
 #include <string>
 
-AnthemNodeProcessContext::AnthemNodeProcessContext(std::shared_ptr<Node>& graphNode,
-                                                   AnthemGraphProcessContext& graphProcessContext)
+AnthemNodeProcessContext::AnthemNodeProcessContext(
+    std::shared_ptr<Node>& graphNode, AnthemGraphProcessContext& graphProcessContext)
   : graphNode(graphNode), graphProcessContext(&graphProcessContext) {
   inputAudioBuffers.reserve(graphNode->audioInputPorts()->size());
   outputAudioBuffers.reserve(graphNode->audioOutputPorts()->size());
@@ -128,8 +128,7 @@ const AnthemNodeProcessContext::PortBufferHandle& AnthemNodeProcessContext::find
 
 AnthemNodeProcessContext::InputParameterBinding&
 AnthemNodeProcessContext::findInputParameterBinding(int64_t id) {
-  auto it = std::find_if(
-      inputParameters.begin(),
+  auto it = std::find_if(inputParameters.begin(),
       inputParameters.end(),
       [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
 
@@ -145,8 +144,7 @@ AnthemNodeProcessContext::findInputParameterBinding(int64_t id) {
 
 const AnthemNodeProcessContext::InputParameterBinding&
 AnthemNodeProcessContext::findInputParameterBinding(int64_t id) const {
-  auto it = std::find_if(
-      inputParameters.begin(),
+  auto it = std::find_if(inputParameters.begin(),
       inputParameters.end(),
       [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
 

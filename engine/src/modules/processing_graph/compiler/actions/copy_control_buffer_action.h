@@ -42,9 +42,9 @@ public:
   int64_t destinationPortId;
 
   CopyControlBufferAction(AnthemNodeProcessContext* source,
-                          int64_t sourcePortId,
-                          AnthemNodeProcessContext* destination,
-                          int64_t destinationPortId)
+      int64_t sourcePortId,
+      AnthemNodeProcessContext* destination,
+      int64_t destinationPortId)
     : source(source), sourcePortId(sourcePortId), destination(destination),
       destinationPortId(destinationPortId) {}
 

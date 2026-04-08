@@ -23,8 +23,8 @@
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 
-AnthemGraphProcessContext::AnthemGraphProcessContext(GraphRuntimeServices& rtServices,
-                                                     const AnthemGraphBufferLayout& bufferLayout)
+AnthemGraphProcessContext::AnthemGraphProcessContext(
+    GraphRuntimeServices& rtServices, const AnthemGraphBufferLayout& bufferLayout)
   : rt_services(&rtServices) {
   blockSize = bufferLayout.blockSize;
   numAudioChannels = bufferLayout.numAudioChannels;
@@ -33,9 +33,9 @@ AnthemGraphProcessContext::AnthemGraphProcessContext(GraphRuntimeServices& rtSer
 AnthemGraphProcessContext::~AnthemGraphProcessContext() = default;
 
 void AnthemGraphProcessContext::reserve(size_t nodeProcessContextCount,
-                                        size_t audioBufferCount,
-                                        size_t controlBufferCount,
-                                        size_t eventBufferCount) {
+    size_t audioBufferCount,
+    size_t controlBufferCount,
+    size_t eventBufferCount) {
   nodeProcessContexts.reserve(nodeProcessContextCount);
   audioBuffers.reserve(audioBufferCount);
   controlBuffers.reserve(controlBufferCount);
@@ -57,8 +57,8 @@ size_t AnthemGraphProcessContext::allocateEventBuffer(size_t initialCapacity) {
   return eventBuffers.size() - 1;
 }
 
-AnthemNodeProcessContext&
-AnthemGraphProcessContext::createNodeProcessContext(std::shared_ptr<Node>& graphNode) {
+AnthemNodeProcessContext& AnthemGraphProcessContext::createNodeProcessContext(
+    std::shared_ptr<Node>& graphNode) {
   auto context = std::make_unique<AnthemNodeProcessContext>(graphNode, *this);
   auto* contextPtr = context.get();
   nodeProcessContexts.push_back(std::move(context));

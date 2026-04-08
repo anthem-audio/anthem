@@ -67,8 +67,8 @@ public:
   }
 
   void unhandledException(const std::exception* /*exception*/,
-                          const juce::String& /*sourceFilename*/,
-                          int /*lineNumber*/) override {
+      const juce::String& /*sourceFilename*/,
+      int /*lineNumber*/) override {
     // This might not work
   }
 

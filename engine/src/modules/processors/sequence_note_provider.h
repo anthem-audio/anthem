@@ -69,28 +69,26 @@ private:
 
   RuntimeState rt_state;
 
-  static const SequenceEventList* rt_getSourceTrackEvents(const RuntimeDependencies& dependencies,
-                                                          int64_t trackId);
+  static const SequenceEventList* rt_getSourceTrackEvents(
+      const RuntimeDependencies& dependencies, int64_t trackId);
 
-  static void rt_emitLiveNoteOffFromTrackedNote(AnthemEventBuffer& targetBuffer,
-                                                const TrackedNote& trackedNote,
-                                                double sampleOffset);
-  static void rt_emitLiveNoteOffsForAllTrackedNotes(RuntimeState& state,
-                                                    AnthemEventBuffer& targetBuffer,
-                                                    double sampleOffset);
+  static void rt_emitLiveNoteOffFromTrackedNote(
+      AnthemEventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset);
+  static void rt_emitLiveNoteOffsForAllTrackedNotes(
+      RuntimeState& state, AnthemEventBuffer& targetBuffer, double sampleOffset);
   static void rt_handleSequenceNoteOff(RuntimeState& state,
-                                       AnthemEventBuffer& targetBuffer,
-                                       AnthemSourceNoteId sourceId,
-                                       const AnthemNoteOffEvent& noteOffEvent,
-                                       double sampleOffset);
+      AnthemEventBuffer& targetBuffer,
+      AnthemSourceNoteId sourceId,
+      const AnthemNoteOffEvent& noteOffEvent,
+      double sampleOffset);
 
   template <SequenceNoteLiveIdAllocator LiveNoteIdAllocator>
   static void rt_handleSequenceNoteOn(RuntimeState& state,
-                                      AnthemEventBuffer& targetBuffer,
-                                      LiveNoteIdAllocator&& liveNoteIdAllocator,
-                                      AnthemSourceNoteId sourceId,
-                                      const AnthemNoteOnEvent& noteOnEvent,
-                                      double sampleOffset) {
+      AnthemEventBuffer& targetBuffer,
+      LiveNoteIdAllocator&& liveNoteIdAllocator,
+      AnthemSourceNoteId sourceId,
+      const AnthemNoteOnEvent& noteOnEvent,
+      double sampleOffset) {
     AnthemLiveNoteId liveId = liveNoteIdAllocator();
     auto didTrackNote = state.rt_activeSequenceNotes.rt_add(
         sourceId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
@@ -105,11 +103,11 @@ private:
 
   template <SequenceNoteLiveIdAllocator LiveNoteIdAllocator>
   static void rt_addEventsForJump(RuntimeState& state,
-                                  AnthemEventBuffer& targetBuffer,
-                                  int64_t trackId,
-                                  const PlayheadJumpEvent& event,
-                                  LiveNoteIdAllocator&& liveNoteIdAllocator,
-                                  double sampleTimeOffset = 0.0) {
+      AnthemEventBuffer& targetBuffer,
+      int64_t trackId,
+      const PlayheadJumpEvent& event,
+      LiveNoteIdAllocator&& liveNoteIdAllocator,
+      double sampleTimeOffset = 0.0) {
     auto playEventsIter = event.eventsToPlayAtJump.find(trackId);
     if (playEventsIter == event.eventsToPlayAtJump.end()) {
       return;
@@ -118,22 +116,22 @@ private:
     for (const auto& jumpEvent : playEventsIter->second) {
       if (jumpEvent.event.type == AnthemEventType::NoteOn) {
         rt_handleSequenceNoteOn(state,
-                                targetBuffer,
-                                liveNoteIdAllocator,
-                                jumpEvent.sequenceNoteId,
-                                jumpEvent.event.noteOn,
-                                sampleTimeOffset);
+            targetBuffer,
+            liveNoteIdAllocator,
+            jumpEvent.sequenceNoteId,
+            jumpEvent.event.noteOn,
+            sampleTimeOffset);
       }
     }
   }
 
   template <SequenceNoteLiveIdAllocator LiveNoteIdAllocator>
   static void rt_processBlock(RuntimeState& state,
-                              const RuntimeDependencies& dependencies,
-                              AnthemEventBuffer& targetBuffer,
-                              int64_t trackId,
-                              int numSamples,
-                              LiveNoteIdAllocator&& liveNoteIdAllocator) {
+      const RuntimeDependencies& dependencies,
+      AnthemEventBuffer& targetBuffer,
+      int64_t trackId,
+      int numSamples,
+      LiveNoteIdAllocator&& liveNoteIdAllocator) {
     if (dependencies.rt_shouldStopSequenceNotes) {
       rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, 0.0);
     }
@@ -158,8 +156,8 @@ private:
       rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, 0.0);
     }
 
-    double ticks = sequencer_timing::sampleCountToTickDelta(static_cast<double>(numSamples),
-                                                            dependencies.rt_timingParams);
+    double ticks = sequencer_timing::sampleCountToTickDelta(
+        static_cast<double>(numSamples), dependencies.rt_timingParams);
     double sampleTimeOffset = 0.0;
 
     double incrementRemaining = ticks;
@@ -198,11 +196,11 @@ private:
 
           if (event.event.type == AnthemEventType::NoteOn) {
             rt_handleSequenceNoteOn(state,
-                                    targetBuffer,
-                                    liveNoteIdAllocator,
-                                    event.sourceId,
-                                    event.event.noteOn,
-                                    eventSampleOffset);
+                targetBuffer,
+                liveNoteIdAllocator,
+                event.sourceId,
+                event.event.noteOn,
+                eventSampleOffset);
           } else if (event.event.type == AnthemEventType::NoteOff) {
             rt_handleSequenceNoteOff(
                 state, targetBuffer, event.sourceId, event.event.noteOff, eventSampleOffset);
@@ -222,11 +220,11 @@ private:
             state, targetBuffer, sampleTimeOffset + sampleAdvance);
 
         rt_addEventsForJump(state,
-                            targetBuffer,
-                            trackId,
-                            *dependencies.rt_playheadJumpEventForLoop,
-                            liveNoteIdAllocator,
-                            sampleTimeOffset + sampleAdvance);
+            targetBuffer,
+            trackId,
+            *dependencies.rt_playheadJumpEventForLoop,
+            liveNoteIdAllocator,
+            sampleTimeOffset + sampleAdvance);
       }
 
       sampleTimeOffset += sampleAdvance;

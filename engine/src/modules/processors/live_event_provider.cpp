@@ -42,8 +42,7 @@ void LiveEventProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
   });
 }
 
-void LiveEventProviderProcessor::rt_handleLiveNoteOn(
-    AnthemNodeProcessContext& context,
+void LiveEventProviderProcessor::rt_handleLiveNoteOn(AnthemNodeProcessContext& context,
     std::unique_ptr<AnthemEventBuffer>& targetBuffer,
     AnthemLiveInputNoteId inputId,
     const AnthemNoteOnEvent& noteOnEvent,

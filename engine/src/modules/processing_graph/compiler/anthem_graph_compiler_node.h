@@ -54,13 +54,12 @@ public:
 
   // Populate the input and output edges for this node
   void assignEdges(const NodeMap& nodes,
-                   const ConnectionMap& connections,
-                   std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-                   std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>&
-                       connectionToCompilerEdge);
+      const ConnectionMap& connections,
+      std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
+      std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>&
+          connectionToCompilerEdge);
 private:
-  void assignEdge(
-      const NodeMap& nodes,
+  void assignEdge(const NodeMap& nodes,
       std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
       std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
       std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
