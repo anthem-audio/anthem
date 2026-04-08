@@ -21,9 +21,9 @@
 
 #include "modules/processing_graph/compiler/anthem_graph_compiler_node.h"
 #include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
-#include "modules/processing_graph/graph_test_helpers.h"
 
 #include <juce_core/juce_core.h>
 
@@ -37,7 +37,8 @@ class AnthemGraphCompilerNodeTest : public juce::UnitTest {
     auto compilerNodes = std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>();
 
     for (const auto& node : nodes) {
-      auto& context = graphContext.createNodeProcessContext(const_cast<std::shared_ptr<Node>&>(node));
+      auto& context =
+          graphContext.createNodeProcessContext(const_cast<std::shared_ptr<Node>&>(node));
       auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, &context);
       compilerNodes.insert_or_assign(node.get(), compilerNode);
     }
@@ -68,20 +69,21 @@ public:
         GainProcessorModelBase::audioInputPortId, sourceNodeId, NodePortDataType::audio));
     sourceNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::audioOutputPortId, sourceNodeId, NodePortDataType::audio));
-    sourceNode->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId,
-        sourceNodeId,
-        NodePortDataType::control,
-        0.5,
-        graph_test_helpers::makeParameterConfig(101, 0.5)));
+    sourceNode->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+                                     sourceNodeId,
+                                     NodePortDataType::control,
+                                     0.5,
+                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
     sinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, sinkNodeId, NodePortDataType::audio));
 
-    auto connection = graph_test_helpers::makeConnection(connectionId,
-                                                         sourceNodeId,
-                                                         GainProcessorModelBase::audioOutputPortId,
-                                                         sinkNodeId,
-                                                         MasterOutputProcessorModelBase::inputPortId);
+    auto connection =
+        graph_test_helpers::makeConnection(connectionId,
+                                           sourceNodeId,
+                                           GainProcessorModelBase::audioOutputPortId,
+                                           sinkNodeId,
+                                           MasterOutputProcessorModelBase::inputPortId);
 
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(connectionId);
     sinkNode->audioInputPorts()->at(0)->connections()->push_back(connectionId);
@@ -94,12 +96,11 @@ public:
     connections.insert_or_assign(connectionId, connection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 64,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 64,
+                                           });
     graphContext.reserve(2, 3, 1, 0);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
@@ -143,7 +144,8 @@ public:
     sinkNode->eventInputPorts()->push_back(
         graph_test_helpers::makePort(2, sinkNodeId, NodePortDataType::event));
 
-    auto connection = graph_test_helpers::makeConnection(connectionId, sourceNodeId, 1, sinkNodeId, 2);
+    auto connection =
+        graph_test_helpers::makeConnection(connectionId, sourceNodeId, 1, sinkNodeId, 2);
     sourceNode->eventOutputPorts()->at(0)->connections()->push_back(connectionId);
     sinkNode->eventInputPorts()->at(0)->connections()->push_back(connectionId);
 
@@ -155,12 +157,11 @@ public:
     connections.insert_or_assign(connectionId, connection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 64,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 64,
+                                           });
     graphContext.reserve(2, 0, 0, 2);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
@@ -205,7 +206,8 @@ public:
         graph_test_helpers::makePort(6, sinkNodeId, NodePortDataType::event));
 
     auto audioConnection = graph_test_helpers::makeConnection(100, sourceNodeId, 1, sinkNodeId, 4);
-    auto controlConnection = graph_test_helpers::makeConnection(101, sourceNodeId, 2, sinkNodeId, 5);
+    auto controlConnection =
+        graph_test_helpers::makeConnection(101, sourceNodeId, 2, sinkNodeId, 5);
     auto eventConnection = graph_test_helpers::makeConnection(102, sourceNodeId, 3, sinkNodeId, 6);
 
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(100);
@@ -225,12 +227,11 @@ public:
     connections.insert_or_assign(102, eventConnection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 64,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 64,
+                                           });
     graphContext.reserve(2, 2, 2, 2);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
@@ -283,12 +284,11 @@ public:
     connections.insert_or_assign(connectionId, invalidConnection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 64,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 64,
+                                           });
     graphContext.reserve(2, 2, 0, 0);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);

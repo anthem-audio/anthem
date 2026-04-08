@@ -59,7 +59,8 @@ public:
                    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>&
                        connectionToCompilerEdge);
 private:
-  void assignEdge(const NodeMap& nodes,
+  void assignEdge(
+      const NodeMap& nodes,
       std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
       std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
       std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,

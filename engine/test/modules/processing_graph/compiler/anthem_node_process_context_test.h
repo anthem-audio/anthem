@@ -21,8 +21,8 @@
 
 #include "modules/core/constants.h"
 #include "modules/processing_graph/compiler/anthem_graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
 
 #include <juce_core/juce_core.h>
 
@@ -47,12 +47,12 @@ class AnthemNodeProcessContextTest : public juce::UnitTest {
         graph_test_helpers::makePort(1, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(2, nodeId, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        3,
-        nodeId,
-        NodePortDataType::control,
-        0.25,
-        graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(3,
+                                     nodeId,
+                                     NodePortDataType::control,
+                                     0.25,
+                                     graph_test_helpers::makeParameterConfig(101, 0.25)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(4, nodeId, NodePortDataType::control));
     node->eventInputPorts()->push_back(
@@ -83,12 +83,11 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 32,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 32,
+                                           });
     graphContext.reserve(1, 2, 2, 2);
 
     auto& context = createNodeContext(node, graphContext);
@@ -100,9 +99,12 @@ public:
     auto& inputEventBuffer = context.getInputEventBuffer(5);
     auto& outputEventBuffer = context.getOutputEventBuffer(6);
 
-    expectEquals(inputAudioBuffer.getNumChannels(), 2, "Input audio should use the graph channel count.");
-    expectEquals(outputAudioBuffer.getNumSamples(), 32, "Output audio should use the graph block size.");
-    expect(&inputAudioBuffer != &outputAudioBuffer, "Input and output audio ports should bind to different buffers.");
+    expectEquals(
+        inputAudioBuffer.getNumChannels(), 2, "Input audio should use the graph channel count.");
+    expectEquals(
+        outputAudioBuffer.getNumSamples(), 32, "Output audio should use the graph block size.");
+    expect(&inputAudioBuffer != &outputAudioBuffer,
+           "Input and output audio ports should bind to different buffers.");
     expectEquals(inputControlBuffer.getNumChannels(), 1, "Input control should be mono.");
     expectEquals(outputControlBuffer.getNumChannels(), 1, "Output control should be mono.");
     expectEquals(static_cast<int>(inputEventBuffer->getSize()),
@@ -121,18 +123,19 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 32,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 32,
+                                           });
     graphContext.reserve(1, 2, 2, 2);
 
     auto& context = createNodeContext(node, graphContext);
 
-    expectWithinAbsoluteError(
-        context.getParameterValue(3), 0.25f, 0.0001f, "Parameter values should be seeded from the port model.");
+    expectWithinAbsoluteError(context.getParameterValue(3),
+                              0.25f,
+                              0.0001f,
+                              "Parameter values should be seeded from the port model.");
     expectEquals(static_cast<int>(context.rt_getInputParameterBindings().size()),
                  1,
                  "One control input should create one parameter binding.");
@@ -152,12 +155,11 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 16,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 16,
+                                           });
     graphContext.reserve(1, 2, 2, 2);
 
     auto& context = createNodeContext(node, graphContext);
@@ -204,24 +206,23 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 32,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 32,
+                                           });
     graphContext.reserve(1, 2, 2, 2);
 
     auto& context = createNodeContext(node, graphContext);
 
-    expectThrowsRuntimeError(
-        [&]() { (void)context.getInputAudioBuffer(9999); }, "Missing audio ports should throw.");
-    expectThrowsRuntimeError(
-        [&]() { (void)context.getInputControlBuffer(9999); }, "Missing control ports should throw.");
-    expectThrowsRuntimeError(
-        [&]() { (void)context.getInputEventBuffer(9999); }, "Missing event ports should throw.");
-    expectThrowsRuntimeError(
-        [&]() { (void)context.getParameterValue(9999); }, "Missing parameter bindings should throw.");
+    expectThrowsRuntimeError([&]() { (void)context.getInputAudioBuffer(9999); },
+                             "Missing audio ports should throw.");
+    expectThrowsRuntimeError([&]() { (void)context.getInputControlBuffer(9999); },
+                             "Missing control ports should throw.");
+    expectThrowsRuntimeError([&]() { (void)context.getInputEventBuffer(9999); },
+                             "Missing event ports should throw.");
+    expectThrowsRuntimeError([&]() { (void)context.getParameterValue(9999); },
+                             "Missing parameter bindings should throw.");
 
     graphContext.cleanup();
   }

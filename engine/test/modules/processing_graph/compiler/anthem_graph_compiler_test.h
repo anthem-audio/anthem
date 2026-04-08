@@ -26,17 +26,16 @@
 #include "modules/processing_graph/compiler/actions/process_node_action.h"
 #include "modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h"
 #include "modules/processing_graph/compiler/anthem_graph_compiler.h"
+#include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
 #include "modules/processors/master_output.h"
-#include "modules/processing_graph/graph_test_helpers.h"
 
 #include <juce_core/juce_core.h>
 #include <stdexcept>
 
 class AnthemGraphCompilerTest : public juce::UnitTest {
-  template <typename T>
-  static int countActionsOfType(const AnthemGraphCompilationResult& result) {
+  template <typename T> static int countActionsOfType(const AnthemGraphCompilationResult& result) {
     int count = 0;
 
     for (const auto& group : result.actionGroups) {
@@ -114,22 +113,24 @@ public:
         GainProcessorModelBase::audioInputPortId, gainNodeId, NodePortDataType::audio));
     gainNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::audioOutputPortId, gainNodeId, NodePortDataType::audio));
-    gainNode->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId,
-        gainNodeId,
-        NodePortDataType::control,
-        0.5,
-        graph_test_helpers::makeParameterConfig(101, 0.5)));
+    gainNode->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+                                     gainNodeId,
+                                     NodePortDataType::control,
+                                     0.5,
+                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
 
     graph->nodes()->insert_or_assign(gainNodeId, gainNode);
 
     GraphRuntimeServices rtServices;
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(
-        countActionsOfType<ProcessNodeAction>(*result), 1, "Single-node graphs should process the node once.");
-    expectEquals(
-        countActionsOfType<CopyAudioBufferAction>(*result), 0, "Single-node graphs should not emit copy actions.");
+    expectEquals(countActionsOfType<ProcessNodeAction>(*result),
+                 1,
+                 "Single-node graphs should process the node once.");
+    expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
+                 0,
+                 "Single-node graphs should not emit copy actions.");
     expectEquals(static_cast<int>(result->actionGroups.size()),
                  4,
                  "Single-node graphs should produce init, process, and empty copy groups.");
@@ -153,21 +154,22 @@ public:
         GainProcessorModelBase::audioInputPortId, gainNodeId, NodePortDataType::audio));
     gainNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::audioOutputPortId, gainNodeId, NodePortDataType::audio));
-    gainNode->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId,
-        gainNodeId,
-        NodePortDataType::control,
-        0.5,
-        graph_test_helpers::makeParameterConfig(101, 0.5)));
+    gainNode->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+                                     gainNodeId,
+                                     NodePortDataType::control,
+                                     0.5,
+                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
 
     masterNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, masterNodeId, NodePortDataType::audio));
 
-    auto connection = graph_test_helpers::makeConnection(connectionId,
-                                                         gainNodeId,
-                                                         GainProcessorModelBase::audioOutputPortId,
-                                                         masterNodeId,
-                                                         MasterOutputProcessorModelBase::inputPortId);
+    auto connection =
+        graph_test_helpers::makeConnection(connectionId,
+                                           gainNodeId,
+                                           GainProcessorModelBase::audioOutputPortId,
+                                           masterNodeId,
+                                           MasterOutputProcessorModelBase::inputPortId);
 
     gainNode->audioOutputPorts()->at(0)->connections()->push_back(connectionId);
     masterNode->audioInputPorts()->at(0)->connections()->push_back(connectionId);
@@ -191,7 +193,8 @@ public:
 
     expectEquals(static_cast<int>(result->actionGroups.size()),
                  6,
-                 "A two-node single-edge graph should produce the expected initialization, process, and copy groups.");
+                 "A two-node single-edge graph should produce the expected initialization, "
+                 "process, and copy groups.");
     expectEquals(static_cast<int>(result->actionGroups[0]->size()),
                  2,
                  "Both nodes should get a clear-buffers action.");
@@ -200,20 +203,21 @@ public:
     expect(dynamic_cast<ClearBuffersAction*>(result->actionGroups[0]->at(1).get()) != nullptr,
            "Initialization group 0 should contain clear-buffers actions.");
 
-    expectEquals(static_cast<int>(result->actionGroups[1]->size()),
-                 2,
-                 "Both nodes should get a parameter-write action, even if one has no control inputs.");
-    expect(
-        dynamic_cast<WriteParametersToControlInputsAction*>(result->actionGroups[1]->at(0).get()) !=
-            nullptr,
-        "Initialization group 1 should contain parameter-write actions.");
-    expect(
-        dynamic_cast<WriteParametersToControlInputsAction*>(result->actionGroups[1]->at(1).get()) !=
-            nullptr,
-        "Initialization group 1 should contain parameter-write actions.");
+    expectEquals(
+        static_cast<int>(result->actionGroups[1]->size()),
+        2,
+        "Both nodes should get a parameter-write action, even if one has no control inputs.");
+    expect(dynamic_cast<WriteParametersToControlInputsAction*>(
+               result->actionGroups[1]->at(0).get()) != nullptr,
+           "Initialization group 1 should contain parameter-write actions.");
+    expect(dynamic_cast<WriteParametersToControlInputsAction*>(
+               result->actionGroups[1]->at(1).get()) != nullptr,
+           "Initialization group 1 should contain parameter-write actions.");
 
-    auto* processGainAction = dynamic_cast<ProcessNodeAction*>(result->actionGroups[2]->at(0).get());
-    expect(processGainAction != nullptr, "The first non-initialization group should process the root gain node.");
+    auto* processGainAction =
+        dynamic_cast<ProcessNodeAction*>(result->actionGroups[2]->at(0).get());
+    expect(processGainAction != nullptr,
+           "The first non-initialization group should process the root gain node.");
     expect(processGainAction->processor == gainNode->getProcessor().value().get(),
            "The root process action should target the gain processor.");
 
@@ -258,28 +262,30 @@ public:
         GainProcessorModelBase::audioInputPortId, sourceNodeId, NodePortDataType::audio));
     sourceNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::audioOutputPortId, sourceNodeId, NodePortDataType::audio));
-    sourceNode->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId,
-        sourceNodeId,
-        NodePortDataType::control,
-        0.5,
-        graph_test_helpers::makeParameterConfig(101, 0.5)));
+    sourceNode->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+                                     sourceNodeId,
+                                     NodePortDataType::control,
+                                     0.5,
+                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
 
     firstSinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, firstSinkNodeId, NodePortDataType::audio));
     secondSinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, secondSinkNodeId, NodePortDataType::audio));
 
-    auto firstConnection = graph_test_helpers::makeConnection(100,
-                                                              sourceNodeId,
-                                                              GainProcessorModelBase::audioOutputPortId,
-                                                              firstSinkNodeId,
-                                                              MasterOutputProcessorModelBase::inputPortId);
-    auto secondConnection = graph_test_helpers::makeConnection(101,
-                                                               sourceNodeId,
-                                                               GainProcessorModelBase::audioOutputPortId,
-                                                               secondSinkNodeId,
-                                                               MasterOutputProcessorModelBase::inputPortId);
+    auto firstConnection =
+        graph_test_helpers::makeConnection(100,
+                                           sourceNodeId,
+                                           GainProcessorModelBase::audioOutputPortId,
+                                           firstSinkNodeId,
+                                           MasterOutputProcessorModelBase::inputPortId);
+    auto secondConnection =
+        graph_test_helpers::makeConnection(101,
+                                           sourceNodeId,
+                                           GainProcessorModelBase::audioOutputPortId,
+                                           secondSinkNodeId,
+                                           MasterOutputProcessorModelBase::inputPortId);
 
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(100);
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(101);
@@ -340,16 +346,18 @@ public:
     sinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, sinkNodeId, NodePortDataType::audio));
 
-    auto firstConnection = graph_test_helpers::makeConnection(100,
-                                                              firstSourceNodeId,
-                                                              GainProcessorModelBase::audioOutputPortId,
-                                                              sinkNodeId,
-                                                              MasterOutputProcessorModelBase::inputPortId);
-    auto secondConnection = graph_test_helpers::makeConnection(101,
-                                                               secondSourceNodeId,
-                                                               GainProcessorModelBase::audioOutputPortId,
-                                                               sinkNodeId,
-                                                               MasterOutputProcessorModelBase::inputPortId);
+    auto firstConnection =
+        graph_test_helpers::makeConnection(100,
+                                           firstSourceNodeId,
+                                           GainProcessorModelBase::audioOutputPortId,
+                                           sinkNodeId,
+                                           MasterOutputProcessorModelBase::inputPortId);
+    auto secondConnection =
+        graph_test_helpers::makeConnection(101,
+                                           secondSourceNodeId,
+                                           GainProcessorModelBase::audioOutputPortId,
+                                           sinkNodeId,
+                                           MasterOutputProcessorModelBase::inputPortId);
 
     firstSourceNode->audioOutputPorts()->at(0)->connections()->push_back(100);
     secondSourceNode->audioOutputPorts()->at(0)->connections()->push_back(101);
@@ -402,18 +410,15 @@ public:
         GainProcessorModelBase::audioInputPortId, sinkNodeId, NodePortDataType::audio));
     sinkNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::audioOutputPortId, sinkNodeId, NodePortDataType::audio));
-    sinkNode->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId,
-        sinkNodeId,
-        NodePortDataType::control,
-        0.5,
-        graph_test_helpers::makeParameterConfig(101, 0.5)));
+    sinkNode->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+                                     sinkNodeId,
+                                     NodePortDataType::control,
+                                     0.5,
+                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
 
-    auto connection = graph_test_helpers::makeConnection(100,
-                                                         sourceNodeId,
-                                                         sourcePortId,
-                                                         sinkNodeId,
-                                                         GainProcessorModelBase::gainPortId);
+    auto connection = graph_test_helpers::makeConnection(
+        100, sourceNodeId, sourcePortId, sinkNodeId, GainProcessorModelBase::gainPortId);
 
     sourceNode->controlOutputPorts()->at(0)->connections()->push_back(100);
     sinkNode->controlInputPorts()->at(0)->connections()->push_back(100);
@@ -466,10 +471,12 @@ public:
     GraphRuntimeServices rtServices;
     auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(
-        countActionsOfType<CopyEventsAction>(*result), 1, "Event graphs should emit event-copy actions.");
-    expectEquals(
-        countActionsOfType<ProcessNodeAction>(*result), 0, "Processor-less event test nodes should not emit process actions.");
+    expectEquals(countActionsOfType<CopyEventsAction>(*result),
+                 1,
+                 "Event graphs should emit event-copy actions.");
+    expectEquals(countActionsOfType<ProcessNodeAction>(*result),
+                 0,
+                 "Processor-less event test nodes should not emit process actions.");
 
     result->cleanup();
     delete result;
@@ -495,7 +502,8 @@ public:
         graph_test_helpers::makePort(4, secondNodeId, NodePortDataType::audio));
 
     auto firstConnection = graph_test_helpers::makeConnection(100, firstNodeId, 2, secondNodeId, 3);
-    auto secondConnection = graph_test_helpers::makeConnection(101, secondNodeId, 4, firstNodeId, 1);
+    auto secondConnection =
+        graph_test_helpers::makeConnection(101, secondNodeId, 4, firstNodeId, 1);
 
     firstNode->audioInputPorts()->at(0)->connections()->push_back(101);
     firstNode->audioOutputPorts()->at(0)->connections()->push_back(100);
@@ -537,12 +545,12 @@ public:
         GainProcessorModelBase::audioInputPortId, sourceNodeId, NodePortDataType::audio));
     sourceNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::audioOutputPortId, sourceNodeId, NodePortDataType::audio));
-    sourceNode->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId,
-        sourceNodeId,
-        NodePortDataType::control,
-        0.5,
-        graph_test_helpers::makeParameterConfig(101, 0.5)));
+    sourceNode->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessorModelBase::gainPortId,
+                                     sourceNodeId,
+                                     NodePortDataType::control,
+                                     0.5,
+                                     graph_test_helpers::makeParameterConfig(101, 0.5)));
     sinkNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
         MasterOutputProcessorModelBase::inputPortId, sinkNodeId, NodePortDataType::audio));
 

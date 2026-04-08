@@ -21,9 +21,9 @@
 
 #include "modules/core/constants.h"
 #include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
-#include "modules/processing_graph/graph_test_helpers.h"
 
 #include <juce_core/juce_core.h>
 
@@ -35,12 +35,12 @@ class AnthemGraphProcessContextTest : public juce::UnitTest {
         graph_test_helpers::makePort(1, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(2, nodeId, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        3,
-        nodeId,
-        NodePortDataType::control,
-        0.25,
-        graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(3,
+                                     nodeId,
+                                     NodePortDataType::control,
+                                     0.25,
+                                     graph_test_helpers::makeParameterConfig(101, 0.25)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(4, nodeId, NodePortDataType::control));
     node->eventInputPorts()->push_back(
@@ -81,12 +81,11 @@ public:
     beginTest("Graph-owned buffers use the explicit compile-time layout");
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 64,
-        });
+    AnthemGraphProcessContext context(rtServices,
+                                      AnthemGraphBufferLayout{
+                                          .numAudioChannels = 2,
+                                          .blockSize = 64,
+                                      });
 
     auto audioIndex = context.allocateAudioBuffer();
     auto controlIndex = context.allocateControlBuffer();
@@ -96,23 +95,27 @@ public:
     auto& controlBuffer = context.getControlBuffer(controlIndex);
     auto& eventBuffer = context.getEventBuffer(eventIndex);
 
-    expectEquals(audioBuffer.getNumChannels(), 2, "Audio buffer should use the configured channel count.");
-    expectEquals(audioBuffer.getNumSamples(), 64, "Audio buffer should use the configured block size.");
+    expectEquals(
+        audioBuffer.getNumChannels(), 2, "Audio buffer should use the configured channel count.");
+    expectEquals(
+        audioBuffer.getNumSamples(), 64, "Audio buffer should use the configured block size.");
     expectEquals(controlBuffer.getNumChannels(), 1, "Control buffers should stay mono.");
-    expectEquals(controlBuffer.getNumSamples(), 64, "Control buffers should use the configured block size.");
-    expectEquals(static_cast<int>(eventBuffer->getSize()), 4, "Event buffer should use the requested initial capacity.");
+    expectEquals(
+        controlBuffer.getNumSamples(), 64, "Control buffers should use the configured block size.");
+    expectEquals(static_cast<int>(eventBuffer->getSize()),
+                 4,
+                 "Event buffer should use the requested initial capacity.");
   }
 
   void testBufferIndicesRemainStableAndMonotonic() {
     beginTest("Graph-owned buffer indices remain stable as buffers are appended");
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 16,
-        });
+    AnthemGraphProcessContext context(rtServices,
+                                      AnthemGraphBufferLayout{
+                                          .numAudioChannels = 2,
+                                          .blockSize = 16,
+                                      });
 
     auto firstAudioIndex = context.allocateAudioBuffer();
     auto secondAudioIndex = context.allocateAudioBuffer();
@@ -123,34 +126,52 @@ public:
 
     context.getAudioBuffer(firstAudioIndex).setSample(0, 0, 0.5f);
     context.getControlBuffer(firstControlIndex).setSample(0, 0, 0.25f);
-    context.getEventBuffer(firstEventIndex)->addEvent(AnthemLiveEvent{
-        .sampleOffset = 0.0,
-        .liveId = 7,
-        .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f)),
-    });
+    context.getEventBuffer(firstEventIndex)
+        ->addEvent(AnthemLiveEvent{
+            .sampleOffset = 0.0,
+            .liveId = 7,
+            .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f)),
+        });
 
     auto thirdAudioIndex = context.allocateAudioBuffer();
     auto thirdControlIndex = context.allocateControlBuffer();
     auto thirdEventIndex = context.allocateEventBuffer(4);
 
-    expectEquals(static_cast<int>(firstAudioIndex), 0, "First audio buffer index should start at zero.");
-    expectEquals(static_cast<int>(secondAudioIndex), 1, "Audio buffer indices should increment monotonically.");
-    expectEquals(static_cast<int>(thirdAudioIndex), 2, "Appended audio buffers should keep stable earlier indices.");
-    expectEquals(static_cast<int>(firstControlIndex), 0, "First control buffer index should start at zero.");
-    expectEquals(static_cast<int>(secondControlIndex), 1, "Control buffer indices should increment monotonically.");
-    expectEquals(static_cast<int>(thirdControlIndex), 2, "Appended control buffers should keep stable earlier indices.");
-    expectEquals(static_cast<int>(firstEventIndex), 0, "First event buffer index should start at zero.");
-    expectEquals(static_cast<int>(secondEventIndex), 1, "Event buffer indices should increment monotonically.");
-    expectEquals(static_cast<int>(thirdEventIndex), 2, "Appended event buffers should keep stable earlier indices.");
+    expectEquals(
+        static_cast<int>(firstAudioIndex), 0, "First audio buffer index should start at zero.");
+    expectEquals(static_cast<int>(secondAudioIndex),
+                 1,
+                 "Audio buffer indices should increment monotonically.");
+    expectEquals(static_cast<int>(thirdAudioIndex),
+                 2,
+                 "Appended audio buffers should keep stable earlier indices.");
+    expectEquals(
+        static_cast<int>(firstControlIndex), 0, "First control buffer index should start at zero.");
+    expectEquals(static_cast<int>(secondControlIndex),
+                 1,
+                 "Control buffer indices should increment monotonically.");
+    expectEquals(static_cast<int>(thirdControlIndex),
+                 2,
+                 "Appended control buffers should keep stable earlier indices.");
+    expectEquals(
+        static_cast<int>(firstEventIndex), 0, "First event buffer index should start at zero.");
+    expectEquals(static_cast<int>(secondEventIndex),
+                 1,
+                 "Event buffer indices should increment monotonically.");
+    expectEquals(static_cast<int>(thirdEventIndex),
+                 2,
+                 "Appended event buffers should keep stable earlier indices.");
 
-    expectWithinAbsoluteError(context.getAudioBuffer(firstAudioIndex).getSample(0, 0),
-                              0.5f,
-                              0.0001f,
-                              "Earlier audio buffers should remain reachable by their original index.");
-    expectWithinAbsoluteError(context.getControlBuffer(firstControlIndex).getSample(0, 0),
-                              0.25f,
-                              0.0001f,
-                              "Earlier control buffers should remain reachable by their original index.");
+    expectWithinAbsoluteError(
+        context.getAudioBuffer(firstAudioIndex).getSample(0, 0),
+        0.5f,
+        0.0001f,
+        "Earlier audio buffers should remain reachable by their original index.");
+    expectWithinAbsoluteError(
+        context.getControlBuffer(firstControlIndex).getSample(0, 0),
+        0.25f,
+        0.0001f,
+        "Earlier control buffers should remain reachable by their original index.");
     expectEquals(static_cast<int>(context.getEventBuffer(firstEventIndex)->getNumEvents()),
                  1,
                  "Earlier event buffers should remain reachable by their original index.");
@@ -160,12 +181,11 @@ public:
     beginTest("reserve only reserves capacity and does not allocate graph buffers eagerly");
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 32,
-        });
+    AnthemGraphProcessContext context(rtServices,
+                                      AnthemGraphBufferLayout{
+                                          .numAudioChannels = 2,
+                                          .blockSize = 32,
+                                      });
 
     context.reserve(2, 4, 3, 5);
 
@@ -173,15 +193,19 @@ public:
     auto controlIndex = context.allocateControlBuffer();
     auto eventIndex = context.allocateEventBuffer(6);
 
-    expectEquals(static_cast<int>(audioIndex), 0, "reserve should not consume audio buffer indices.");
-    expectEquals(static_cast<int>(controlIndex), 0, "reserve should not consume control buffer indices.");
-    expectEquals(static_cast<int>(eventIndex), 0, "reserve should not consume event buffer indices.");
+    expectEquals(
+        static_cast<int>(audioIndex), 0, "reserve should not consume audio buffer indices.");
+    expectEquals(
+        static_cast<int>(controlIndex), 0, "reserve should not consume control buffer indices.");
+    expectEquals(
+        static_cast<int>(eventIndex), 0, "reserve should not consume event buffer indices.");
     expectEquals(context.getAudioBuffer(audioIndex).getNumSamples(),
                  32,
                  "Buffers allocated after reserve should still use the configured block size.");
-    expectEquals(static_cast<int>(context.getEventBuffer(eventIndex)->getSize()),
-                 6,
-                 "Event buffers allocated after reserve should use the requested initial capacity.");
+    expectEquals(
+        static_cast<int>(context.getEventBuffer(eventIndex)->getSize()),
+        6,
+        "Event buffers allocated after reserve should use the requested initial capacity.");
   }
 
   void testNodeContextBindsPortsAndParameters() {
@@ -197,20 +221,19 @@ public:
         graph_test_helpers::makePort(inputPortId, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(outputPortId, nodeId, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        gainPortId,
-        nodeId,
-        NodePortDataType::control,
-        0.25,
-        graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(gainPortId,
+                                     nodeId,
+                                     NodePortDataType::control,
+                                     0.25,
+                                     graph_test_helpers::makeParameterConfig(101, 0.25)));
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 32,
-        });
+    AnthemGraphProcessContext context(rtServices,
+                                      AnthemGraphBufferLayout{
+                                          .numAudioChannels = 2,
+                                          .blockSize = 32,
+                                      });
     context.reserve(1, 2, 1, 0);
 
     auto& nodeContext = context.createNodeProcessContext(node);
@@ -227,27 +250,33 @@ public:
     expectEquals(static_cast<int>(nodeContext.rt_getInputParameterBindings().size()),
                  1,
                  "A single control input should create one parameter binding.");
-    expectWithinAbsoluteError(
-        nodeContext.getParameterValue(gainPortId), 0.25f, 0.0001f, "Parameter binding should start from the port value.");
-    expectEquals(nodeContext.rt_allocateLiveNoteId(), 0, "The first live note ID should come from the shared runtime services.");
-    expectEquals(nodeContext.rt_allocateLiveNoteId(), 1, "Live note IDs should increment through the shared runtime services.");
+    expectWithinAbsoluteError(nodeContext.getParameterValue(gainPortId),
+                              0.25f,
+                              0.0001f,
+                              "Parameter binding should start from the port value.");
+    expectEquals(nodeContext.rt_allocateLiveNoteId(),
+                 0,
+                 "The first live note ID should come from the shared runtime services.");
+    expectEquals(nodeContext.rt_allocateLiveNoteId(),
+                 1,
+                 "Live note IDs should increment through the shared runtime services.");
 
     context.cleanup();
   }
 
   void testMultipleNodeContextsShareGraphOwnedServices() {
-    beginTest("Multiple node contexts share the same graph-owned runtime services but not per-port buffers");
+    beginTest("Multiple node contexts share the same graph-owned runtime services but not per-port "
+              "buffers");
 
     auto firstNode = makeFullyBoundNode(10);
     auto secondNode = makeFullyBoundNode(20);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 24,
-        });
+    AnthemGraphProcessContext context(rtServices,
+                                      AnthemGraphBufferLayout{
+                                          .numAudioChannels = 2,
+                                          .blockSize = 24,
+                                      });
     context.reserve(2, 4, 4, 4);
 
     auto& firstNodeContext = context.createNodeProcessContext(firstNode);
@@ -260,10 +289,11 @@ public:
 
     expect(&firstInputAudio != &secondInputAudio,
            "Each node context should get distinct graph-owned buffers for matching port shapes.");
-    expectWithinAbsoluteError(secondInputAudio.getSample(0, 0),
-                              0.25f,
-                              0.0001f,
-                              "Writing one node context should not mutate another node context's buffers.");
+    expectWithinAbsoluteError(
+        secondInputAudio.getSample(0, 0),
+        0.25f,
+        0.0001f,
+        "Writing one node context should not mutate another node context's buffers.");
     expectEquals(firstNodeContext.rt_allocateLiveNoteId(),
                  0,
                  "The first node context should allocate the first shared live note ID.");
@@ -280,12 +310,11 @@ public:
     auto node = makeEventHeavyNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 16,
-        });
+    AnthemGraphProcessContext context(rtServices,
+                                      AnthemGraphBufferLayout{
+                                          .numAudioChannels = 2,
+                                          .blockSize = 16,
+                                      });
     context.reserve(1, 0, 0, 4);
 
     auto& nodeContext = context.createNodeProcessContext(node);
@@ -307,9 +336,12 @@ public:
     expectEquals(static_cast<int>(outputTwo->getSize()),
                  DEFAULT_EVENT_BUFFER_SIZE,
                  "Each output event port should allocate its own event buffer.");
-    expect(inputOne.get() != inputTwo.get(), "Distinct input event ports should not share storage.");
-    expect(inputOne.get() != outputOne.get(), "Input and output event ports should not share storage.");
-    expect(outputOne.get() != outputTwo.get(), "Distinct output event ports should not share storage.");
+    expect(inputOne.get() != inputTwo.get(),
+           "Distinct input event ports should not share storage.");
+    expect(inputOne.get() != outputOne.get(),
+           "Input and output event ports should not share storage.");
+    expect(outputOne.get() != outputTwo.get(),
+           "Distinct output event ports should not share storage.");
 
     context.cleanup();
   }

@@ -33,8 +33,7 @@ class AnthemNodeProcessContext;
 
 template <typename T>
 concept SequenceNoteLiveIdAllocator =
-    std::invocable<T&> &&
-    std::convertible_to<std::invoke_result_t<T&>, AnthemLiveNoteId>;
+    std::invocable<T&> && std::convertible_to<std::invoke_result_t<T&>, AnthemLiveNoteId>;
 
 // This processor is a bridge between the sequencer and the node graph. It's a
 // special node that the sequencer can use to send notes from the sequence to the

@@ -24,7 +24,6 @@
 #include "modules/processing_graph/runtime/anthem_graph_processor.h"
 
 #include <juce_core/juce_core.h>
-
 #include <memory>
 #include <vector>
 
@@ -53,12 +52,11 @@ class AnthemGraphProcessorTest : public juce::UnitTest {
     std::shared_ptr<ActionProbe> probe;
   };
 
-  static AnthemGraphCompilationResult* makeCompilationResult(
-      const std::shared_ptr<ActionProbe>& probe) {
+  static AnthemGraphCompilationResult*
+  makeCompilationResult(const std::shared_ptr<ActionProbe>& probe) {
     auto* result = new AnthemGraphCompilationResult();
 
-    auto actionGroup =
-        std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+    auto actionGroup = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
     actionGroup->push_back(std::make_unique<ProbeAction>(probe));
     result->actionGroups.push_back(std::move(actionGroup));
 
@@ -125,16 +123,16 @@ public:
     expectEquals(secondProbe->executeCount,
                  1,
                  "The replacement result should execute on the block where it is picked up.");
-    expectEquals(secondProbe->lastNumSamples,
-                 8,
-                 "The replacement should receive the current block size.");
+    expectEquals(
+        secondProbe->lastNumSamples, 8, "The replacement should receive the current block size.");
 
     processor.clearDeletionQueueFromMainThread();
     installSentinelAndClearDeletionQueue(processor);
   }
 
   void testQueuedResultCoalescing() {
-    beginTest("Queued compilation results coalesce down to the most recent result before execution");
+    beginTest(
+        "Queued compilation results coalesce down to the most recent result before execution");
 
     AnthemGraphProcessor processor;
     auto olderProbe = std::make_shared<ActionProbe>();
@@ -147,9 +145,8 @@ public:
     expectEquals(olderProbe->executeCount,
                  0,
                  "Older queued results should be replaced before they execute.");
-    expectEquals(newerProbe->executeCount,
-                 1,
-                 "Only the newest queued result should execute for the block.");
+    expectEquals(
+        newerProbe->executeCount, 1, "Only the newest queued result should execute for the block.");
 
     processor.clearDeletionQueueFromMainThread();
     expectEquals(olderProbe->destroyCount,
@@ -172,9 +169,10 @@ public:
     processor.setProcessingStepsFromMainThread(makeCompilationResult(newProbe));
     processor.process(4);
 
-    expectEquals(oldProbe->destroyCount,
-                 0,
-                 "Replaced results should remain alive until the main thread clears the deletion queue.");
+    expectEquals(
+        oldProbe->destroyCount,
+        0,
+        "Replaced results should remain alive until the main thread clears the deletion queue.");
 
     processor.clearDeletionQueueFromMainThread();
 

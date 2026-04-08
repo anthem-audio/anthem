@@ -21,9 +21,9 @@
 
 #include "generated/lib/engine_api/messages/messages.h"
 #include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
-#include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processors/gain.h"
 
 #include <juce_core/juce_core.h>
@@ -41,23 +41,23 @@ class ProcessingGraphModelHelpersTest : public juce::UnitTest {
   static std::shared_ptr<Node> makeInitializedNodeWithControlParameter(int64_t nodeId,
                                                                        double parameterValue) {
     auto node = makeInitializedNode(nodeId);
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        kControlPortId,
-        nodeId,
-        NodePortDataType::control,
-        parameterValue,
-        graph_test_helpers::makeParameterConfig(101, parameterValue)));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(kControlPortId,
+                                     nodeId,
+                                     NodePortDataType::control,
+                                     parameterValue,
+                                     graph_test_helpers::makeParameterConfig(101, parameterValue)));
     return node;
   }
 
   static std::shared_ptr<NodePort> makeStandaloneInitializedParameterPort(int64_t nodeId,
                                                                           double parameterValue) {
-    auto port = graph_test_helpers::makePort(
-        kControlPortId,
-        nodeId,
-        NodePortDataType::control,
-        parameterValue,
-        graph_test_helpers::makeParameterConfig(101, parameterValue));
+    auto port =
+        graph_test_helpers::makePort(kControlPortId,
+                                     nodeId,
+                                     NodePortDataType::control,
+                                     parameterValue,
+                                     graph_test_helpers::makeParameterConfig(101, parameterValue));
     port->initialize(port, std::shared_ptr<AnthemModelBase>());
     return port;
   }
@@ -84,8 +84,7 @@ class ProcessingGraphModelHelpersTest : public juce::UnitTest {
     port.handleModelUpdate(request, 0);
   }
 public:
-  ProcessingGraphModelHelpersTest()
-    : juce::UnitTest("ProcessingGraphModelHelpersTest", "Anthem") {}
+  ProcessingGraphModelHelpersTest() : juce::UnitTest("ProcessingGraphModelHelpersTest", "Anthem") {}
 
   void runTest() override {
     testGetPortByIdFindsAllPortKinds();
@@ -99,18 +98,22 @@ public:
     beginTest("Node::getPortById finds ports across all port collections");
 
     auto node = makeInitializedNode(10);
-    node->audioInputPorts()->push_back(graph_test_helpers::makePort(1, 10, NodePortDataType::audio));
-    node->audioOutputPorts()->push_back(graph_test_helpers::makePort(2, 10, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        3,
-        10,
-        NodePortDataType::control,
-        0.25,
-        graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->audioInputPorts()->push_back(
+        graph_test_helpers::makePort(1, 10, NodePortDataType::audio));
+    node->audioOutputPorts()->push_back(
+        graph_test_helpers::makePort(2, 10, NodePortDataType::audio));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(3,
+                                     10,
+                                     NodePortDataType::control,
+                                     0.25,
+                                     graph_test_helpers::makeParameterConfig(101, 0.25)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(4, 10, NodePortDataType::control));
-    node->eventInputPorts()->push_back(graph_test_helpers::makePort(5, 10, NodePortDataType::event));
-    node->eventOutputPorts()->push_back(graph_test_helpers::makePort(6, 10, NodePortDataType::event));
+    node->eventInputPorts()->push_back(
+        graph_test_helpers::makePort(5, 10, NodePortDataType::event));
+    node->eventOutputPorts()->push_back(
+        graph_test_helpers::makePort(6, 10, NodePortDataType::event));
 
     expect(node->getPortById(1).has_value(), "Audio input ports should be discoverable by ID.");
     expect(node->getPortById(2).has_value(), "Audio output ports should be discoverable by ID.");
@@ -144,12 +147,11 @@ public:
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 16,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 16,
+                                           });
     graphContext.reserve(1, 0, 1, 0);
 
     auto& nodeContext = graphContext.createNodeProcessContext(node);
@@ -178,12 +180,11 @@ public:
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 16,
-        });
+    AnthemGraphProcessContext graphContext(rtServices,
+                                           AnthemGraphBufferLayout{
+                                               .numAudioChannels = 2,
+                                               .blockSize = 16,
+                                           });
     graphContext.reserve(1, 0, 1, 0);
 
     auto& nodeContext = graphContext.createNodeProcessContext(node);
@@ -191,10 +192,11 @@ public:
 
     applyParameterValueUpdate(port, 0.75);
 
-    expectWithinAbsoluteError(nodeContext.getParameterValue(kControlPortId),
-                              0.25f,
-                              0.0001f,
-                              "Without a runtime context, the audio-thread parameter binding should remain unchanged.");
+    expectWithinAbsoluteError(
+        nodeContext.getParameterValue(kControlPortId),
+        0.25f,
+        0.0001f,
+        "Without a runtime context, the audio-thread parameter binding should remain unchanged.");
     expect(port.parameterValue().has_value(), "The model parameter value should still update.");
     expectWithinAbsoluteError(static_cast<float>(port.parameterValue().value()),
                               0.75f,
@@ -211,11 +213,13 @@ public:
 
     applyParameterValueUpdate(*port, 0.6);
 
-    expect(port->parameterValue().has_value(), "The standalone port should still store the updated model value.");
-    expectWithinAbsoluteError(static_cast<float>(port->parameterValue().value()),
-                              0.6f,
-                              0.0001f,
-                              "Broken ancestry should prevent runtime propagation without blocking the model update.");
+    expect(port->parameterValue().has_value(),
+           "The standalone port should still store the updated model value.");
+    expectWithinAbsoluteError(
+        static_cast<float>(port->parameterValue().value()),
+        0.6f,
+        0.0001f,
+        "Broken ancestry should prevent runtime propagation without blocking the model update.");
   }
 };
 

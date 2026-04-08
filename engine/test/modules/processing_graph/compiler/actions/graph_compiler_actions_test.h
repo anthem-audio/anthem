@@ -26,22 +26,21 @@
 #include "modules/processing_graph/compiler/actions/process_node_action.h"
 #include "modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h"
 #include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
 #include "modules/processors/gain_parameter_mapping.h"
-#include "modules/processing_graph/graph_test_helpers.h"
 
 #include <juce_core/juce_core.h>
 
 class GraphCompilerActionsTest : public juce::UnitTest {
   static AnthemGraphProcessContext makeGraphContext(GraphRuntimeServices& rtServices,
                                                     int blockSize = 16) {
-    return AnthemGraphProcessContext(
-        rtServices,
-        AnthemGraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = blockSize,
-        });
+    return AnthemGraphProcessContext(rtServices,
+                                     AnthemGraphBufferLayout{
+                                         .numAudioChannels = 2,
+                                         .blockSize = blockSize,
+                                     });
   }
 
   static std::shared_ptr<Node> makeAudioPassNode(int64_t nodeId) {
@@ -55,12 +54,12 @@ class GraphCompilerActionsTest : public juce::UnitTest {
 
   static std::shared_ptr<Node> makeControlPassNode(int64_t nodeId) {
     auto node = graph_test_helpers::makeNode(nodeId);
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        1,
-        nodeId,
-        NodePortDataType::control,
-        0.0,
-        graph_test_helpers::makeParameterConfig(101, 0.0)));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(1,
+                                     nodeId,
+                                     NodePortDataType::control,
+                                     0.0,
+                                     graph_test_helpers::makeParameterConfig(101, 0.0)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(2, nodeId, NodePortDataType::control));
     return node;
@@ -117,14 +116,17 @@ public:
     ClearBuffersAction action(&context);
     action.execute(16);
 
-    expectWithinAbsoluteError(
-        context.getInputAudioBuffer(3).getSample(0, 0), 0.0f, 0.0001f, "Input audio should be cleared.");
+    expectWithinAbsoluteError(context.getInputAudioBuffer(3).getSample(0, 0),
+                              0.0f,
+                              0.0001f,
+                              "Input audio should be cleared.");
     expectWithinAbsoluteError(context.getOutputAudioBuffer(4).getSample(0, 0),
                               0.5f,
                               0.0001f,
                               "Output audio should be preserved.");
-    expectEquals(
-        static_cast<int>(context.getInputEventBuffer(1)->getNumEvents()), 0, "Input events should be cleared.");
+    expectEquals(static_cast<int>(context.getInputEventBuffer(1)->getNumEvents()),
+                 0,
+                 "Input events should be cleared.");
     expectEquals(static_cast<int>(context.getOutputEventBuffer(2)->getNumEvents()),
                  0,
                  "Output events should be cleared.");
@@ -180,8 +182,10 @@ public:
     CopyAudioBufferAction action(&sourceContext, 2, &destinationContext, 1);
     action.execute(4);
 
-    expectWithinAbsoluteError(
-        destinationBuffer.getSample(0, 0), 1.0f, 0.0001f, "Audio copy should sum the source into the destination.");
+    expectWithinAbsoluteError(destinationBuffer.getSample(0, 0),
+                              1.0f,
+                              0.0001f,
+                              "Audio copy should sum the source into the destination.");
     expectWithinAbsoluteError(destinationBuffer.getSample(1, 0),
                               0.75f,
                               0.0001f,
@@ -271,10 +275,10 @@ public:
     beginTest("ProcessNodeAction delegates processing to the wrapped processor");
 
     auto node = graph_test_helpers::makeGainNode(10);
-    node->audioInputPorts()->push_back(
-        graph_test_helpers::makePort(GainProcessorModelBase::audioInputPortId, 10, NodePortDataType::audio));
-    node->audioOutputPorts()->push_back(
-        graph_test_helpers::makePort(GainProcessorModelBase::audioOutputPortId, 10, NodePortDataType::audio));
+    node->audioInputPorts()->push_back(graph_test_helpers::makePort(
+        GainProcessorModelBase::audioInputPortId, 10, NodePortDataType::audio));
+    node->audioOutputPorts()->push_back(graph_test_helpers::makePort(
+        GainProcessorModelBase::audioOutputPortId, 10, NodePortDataType::audio));
     node->controlInputPorts()->push_back(graph_test_helpers::makePort(
         GainProcessorModelBase::gainPortId,
         10,

@@ -44,7 +44,8 @@
   All steps are commented below.
 */
 
-AnthemGraphCompilationResult* AnthemGraphCompiler::compile(const AnthemGraphCompileRequest& request) {
+AnthemGraphCompilationResult*
+AnthemGraphCompiler::compile(const AnthemGraphCompileRequest& request) {
   AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
   result->graphProcessContext =
       std::make_unique<AnthemGraphProcessContext>(request.rtServices, request.bufferLayout);
@@ -59,10 +60,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(const AnthemGraphComp
         node->controlInputPorts()->size() + node->controlOutputPorts()->size();
     totalEventBufferCount += node->eventInputPorts()->size() + node->eventOutputPorts()->size();
   }
-  result->graphProcessContext->reserve(request.nodes.size(),
-                                       totalAudioBufferCount,
-                                       totalControlBufferCount,
-                                       totalEventBufferCount);
+  result->graphProcessContext->reserve(
+      request.nodes.size(), totalAudioBufferCount, totalControlBufferCount, totalEventBufferCount);
 
   // We store these in a vector so that when it goes out of scope, the nodes
   // are destroyed. We will store the actual pointers in a set, which improves
@@ -102,7 +101,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(const AnthemGraphComp
   std::cout << '\n';
 
   for (auto& node : vectorOfNodesToProcess) {
-    node->assignEdges(request.nodes, request.connections, nodeToCompilerNode, connectionToCompilerEdge);
+    node->assignEdges(
+        request.nodes, request.connections, nodeToCompilerNode, connectionToCompilerEdge);
   }
 
   std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions =

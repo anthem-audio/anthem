@@ -23,8 +23,8 @@
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 
-AnthemGraphProcessContext::AnthemGraphProcessContext(
-    GraphRuntimeServices& rtServices, const AnthemGraphBufferLayout& bufferLayout)
+AnthemGraphProcessContext::AnthemGraphProcessContext(GraphRuntimeServices& rtServices,
+                                                     const AnthemGraphBufferLayout& bufferLayout)
   : rt_services(&rtServices) {
   blockSize = bufferLayout.blockSize;
   numAudioChannels = bufferLayout.numAudioChannels;

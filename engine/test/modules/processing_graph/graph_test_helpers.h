@@ -52,11 +52,10 @@ makePort(int64_t id,
   return std::make_shared<NodePort>(NodePortModelImpl{
       .id = id,
       .nodeId = nodeId,
-      .config =
-          std::make_shared<NodePortConfigModel>(NodePortConfigModelImpl{
-              .dataType = dataType,
-              .parameterConfig = parameterConfig,
-          }),
+      .config = std::make_shared<NodePortConfigModel>(NodePortConfigModelImpl{
+          .dataType = dataType,
+          .parameterConfig = parameterConfig,
+      }),
       .connections = std::make_shared<AnthemModelVector<int64_t>>(),
       .parameterValue = parameterValue,
   });
@@ -105,17 +104,15 @@ inline std::shared_ptr<Node> makeMasterOutputNode(int64_t nodeId) {
       .eventOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
       .controlOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
       .isThirdPartyPlugin = false,
-      .processor =
-          NodeProcessorVariant(rfl::make_field<"MasterOutputProcessorModel">(processor)),
+      .processor = NodeProcessorVariant(rfl::make_field<"MasterOutputProcessorModel">(processor)),
   });
 }
 
-inline std::shared_ptr<NodeConnection>
-makeConnection(int64_t id,
-               int64_t sourceNodeId,
-               int64_t sourcePortId,
-               int64_t destinationNodeId,
-               int64_t destinationPortId) {
+inline std::shared_ptr<NodeConnection> makeConnection(int64_t id,
+                                                      int64_t sourceNodeId,
+                                                      int64_t sourcePortId,
+                                                      int64_t destinationNodeId,
+                                                      int64_t destinationPortId) {
   return std::make_shared<NodeConnection>(NodeConnectionModelImpl{
       .id = id,
       .sourceNodeId = sourceNodeId,
