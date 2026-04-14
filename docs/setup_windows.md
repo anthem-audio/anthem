@@ -8,9 +8,9 @@ In addition to Flutter, Anthem needs the following:
 
 - **The MSVC C++ compiler**: Already required by Flutter for Windows development.
 - **CMake**: Required to build the C++ components of Anthem. Download and install CMake from [here](https://cmake.org/).
-- **LLVM**: Required for `clang-format`, `clang-tidy`, and the Windows clang engine workflow. You can install it from [llvm.org](https://llvm.org/), or with Chocolatey:
+- **LLVM 22**: Required for `clang-format`, `clang-tidy`, and the Windows clang engine workflow. Formatting can differ between LLVM major versions, so use LLVM 22 to match CI. You can install it from [llvm.org](https://llvm.org/), or with Chocolatey:
   ```powershell
-  choco install llvm -y
+  choco install llvm --version=22.1.0 -y
   ```
 - **Ninja**: Required by the Windows clang engine workflow used by `dart run anthem:cli engine lint`. You can install it from [ninja-build.org](https://ninja-build.org/), or with Chocolatey:
   ```powershell

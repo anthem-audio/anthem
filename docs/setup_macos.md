@@ -4,17 +4,23 @@
 
 Anthem is developed with the Flutter framework. [You can see instructions for installing Flutter for macOS here.](https://docs.flutter.dev/get-started/install/macos/desktop)
 
-Homebrew is recommended for installing CocoaPods and the C++ tooling used by Anthem. You can get Homebrew [here](https://brew.sh/). To install CocoaPods, LLVM, and Ninja with Homebrew, you can use the following command:
+Homebrew is recommended for installing CocoaPods and the C++ tooling used by Anthem. You can get Homebrew [here](https://brew.sh/). To install CocoaPods, LLVM 22, and Ninja with Homebrew, you can use the following command:
 
 ```sh
-brew install cocoapods llvm ninja
+brew install cocoapods llvm@22 ninja
 ```
 
 In addition to Flutter, Anthem needs the following:
 
 - **CMake**: Required to build the C++ components of Anthem. Download and install CMake from [here](https://cmake.org/).
-- **LLVM**: Required for `clang-format` and `clang-tidy`. The Anthem CLI will look in common Homebrew LLVM locations automatically, or you can set `ANTHEM_LLVM_BIN` to the LLVM `bin` directory.
+- **LLVM 22**: Required for `clang-format` and `clang-tidy`. Set `ANTHEM_LLVM_BIN` to the LLVM 22 `bin` directory if those tools are not exposed as the default `clang`, `clang-format`, and `clang-tidy` on `PATH`.
 - **Ninja**: Required if you want to mirror the CI clang tooling setup locally.
+
+If needed, point the Anthem CLI at the Homebrew LLVM 22 tools:
+
+```sh
+export ANTHEM_LLVM_BIN="$(brew --prefix llvm@22)/bin"
+```
 
 ### Instructions
 

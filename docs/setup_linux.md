@@ -8,13 +8,20 @@ Anthem is developed with the Flutter framework. [You can see instructions for in
 
 In addition to Flutter, Anthem needs the following:
 
-- **The Clang compiler**: Used to compile multiple components within Anthem.
+- **The Clang compiler**: Used to compile multiple components within Anthem. Use LLVM/Clang 22 to match CI.
 - **CMake**: Build tool used for multiple components within Anthem.
 - **Make**: Used for assembling Anthem components.
 - **Apt packages**: The following packages are required by either JUCE or Flutter, and can be installed with `apt` or a similar package manager:
    ```
-   ninja-build llvm clang clang-format clang-tidy libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.1-dev libcurl4-openssl-dev
+   ninja-build llvm-22 clang-22 clang-format-22 clang-tidy-22 libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.1-dev libcurl4-openssl-dev
    ```
+  On Ubuntu, the `clang-format` package provided by the default distribution repositories may be an older LLVM version. If `llvm-22`, `clang-22`, `clang-format-22`, or `clang-tidy-22` are not available, install LLVM 22 from [apt.llvm.org](https://apt.llvm.org/).
+
+Set `ANTHEM_LLVM_BIN` to the LLVM 22 `bin` directory if those tools are not exposed as the default `clang`, `clang-format`, and `clang-tidy` on `PATH`:
+
+```sh
+export ANTHEM_LLVM_BIN=/usr/lib/llvm-22/bin
+```
 
 ### Instructions
 
@@ -28,8 +35,8 @@ In addition to Flutter, Anthem needs the following:
 8. Run `dart run anthem:cli engine build --debug`. This will build the engine executable.
    - Note: You may need to tell CMake which make and compiler tools to use. Anthem is built with `make` and `Clang`. Other tools may work, but are untested. You can tell CMake which tools to use by setting environment variables. Place these in your shell's environment file (e.g. `~/.bashrc` for bash, `/etc/zsh/zshenv` for zsh, etc.):
       ```
-      export CC=clang
-      export CXX=clang++
+      export CC=/usr/lib/llvm-22/bin/clang
+      export CXX=/usr/lib/llvm-22/bin/clang++
       export CMAKE_MAKE_PROGRAM=make
       ```
 9. Use the following commands to format and lint engine C++ code:
