@@ -279,6 +279,7 @@ void VST3Processor::showPluginGUI() {
   auto pendingEditorWindow = std::make_unique<PluginEditorWindow>(
       pluginDescription.name + " - " + pluginDescription.manufacturerName, std::function<void()>{});
 
+#if JUCE_WINDOWS
   auto* hostPeer = pendingEditorWindow->getPeer();
 
   if (hostPeer == nullptr) {
@@ -286,7 +287,6 @@ void VST3Processor::showPluginGUI() {
     hostPeer = pendingEditorWindow->getPeer();
   }
 
-#if JUCE_WINDOWS
   // This is intentionally Windows-only. Windows has a per-thread DPI-awareness
   // context, and JUCE provides a helper to temporarily match that context to the
   // host HWND we just created. Other platforms don't expose an equivalent JUCE
@@ -301,6 +301,10 @@ void VST3Processor::showPluginGUI() {
     writeVST3Log(*this,
         "Plugin editor host window has no native peer yet. Falling back to the current "
         "thread DPI context.");
+  }
+#else
+  if (pendingEditorWindow->getPeer() == nullptr) {
+    pendingEditorWindow->addToDesktop();
   }
 #endif
 

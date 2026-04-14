@@ -219,6 +219,11 @@ if (NOT IS_WASM)
     test/test.cpp
   )
 
+  target_include_directories(AnthemTest
+    PRIVATE
+      ${PROJECT_SOURCE_DIR}/test
+  )
+
   target_link_libraries(AnthemTest
     PRIVATE
       AnthemEngineLib
