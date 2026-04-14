@@ -87,6 +87,13 @@ class _BuildEngineCommand extends Command<dynamic> {
           'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
     );
 
+    argParser.addOption(
+      'jobs',
+      abbr: 'j',
+      help:
+          'Maximum number of parallel build jobs to pass to CMake. Use 1 for single-threaded compilation.',
+    );
+
     if (Platform.isWindows) {
       argParser.addFlag(
         'clang',
@@ -105,6 +112,7 @@ class _BuildEngineCommand extends Command<dynamic> {
     final wasm = argResults!['wasm'] as bool;
     final skipConfiguration = argResults!['skip-configuration'] as bool;
     final useClang = Platform.isWindows ? argResults!['clang'] as bool : false;
+    final jobs = _parseJobsOption(argResults!['jobs'] as String?);
 
     if (release && debug) {
       print(
@@ -185,6 +193,7 @@ Some things to keep in mind:
       useClang: useClang,
       buildDirectoryName: buildDirectoryName,
       skipConfiguration: skipConfiguration,
+      jobs: jobs,
     );
 
     if (wasm) {
@@ -465,6 +474,7 @@ class _LintEngineCommand extends Command<dynamic> {
       exit(1);
     }
 
+    final extraArgs = await _getClangTidyExtraArgs();
     final files = _getOwnedEngineCppFiles(translationUnitsOnly: true);
     var hasFailures = false;
 
@@ -476,6 +486,7 @@ class _LintEngineCommand extends Command<dynamic> {
           compileCommandsFile.parent.path,
           '--quiet',
           '--warnings-as-errors=*',
+          ...extraArgs,
           file.path,
         ],
         workingDirectory: packageRootPath.toFilePath(
@@ -501,6 +512,13 @@ class _LintEngineCommand extends Command<dynamic> {
 
 class _EngineUnitTestCommand extends Command<dynamic> {
   _EngineUnitTestCommand() {
+    argParser.addOption(
+      'jobs',
+      abbr: 'j',
+      help:
+          'Maximum number of parallel build jobs to pass to CMake before running tests. Use 1 for single-threaded compilation.',
+    );
+
     if (Platform.isWindows) {
       argParser.addFlag(
         'clang',
@@ -522,6 +540,7 @@ class _EngineUnitTestCommand extends Command<dynamic> {
     print(Colorize('Running tests for the Anthem engine...')..lightGreen());
 
     final useClang = Platform.isWindows ? argResults!['clang'] as bool : false;
+    final jobs = _parseJobsOption(argResults!['jobs'] as String?);
     final buildDirectoryName = _getBuildDirectoryName(
       wasm: false,
       release: false,
@@ -534,6 +553,7 @@ class _EngineUnitTestCommand extends Command<dynamic> {
       debug: true,
       useClang: useClang,
       buildDirectoryName: buildDirectoryName,
+      jobs: jobs,
     );
 
     final testExecutableLocation = _getEngineTestBinaryLocation(
@@ -589,6 +609,7 @@ Future<void> _buildCmakeTarget(
   bool useClang = false,
   bool skipConfiguration = false,
   String buildDirectoryName = 'build',
+  int? jobs,
 }) async {
   if (addressSanitizer && !wasm) {
     print(
@@ -634,6 +655,8 @@ Future<void> _buildCmakeTarget(
     '.',
     '--target',
     target,
+    if (jobs != null) '--parallel',
+    if (jobs != null) '$jobs',
     if (!usesSingleConfigBuild) '--config',
     if (!usesSingleConfigBuild) debug ? 'Debug' : 'Release',
   ];
@@ -664,6 +687,23 @@ Future<void> _buildCmakeTarget(
   }
 
   print(Colorize('\n\nBuild complete.').lightGreen());
+}
+
+int? _parseJobsOption(String? rawValue) {
+  if (rawValue == null || rawValue.isEmpty) {
+    return null;
+  }
+
+  final parsed = int.tryParse(rawValue);
+  if (parsed == null || parsed < 1) {
+    print(
+      Colorize('Error: --jobs must be an integer greater than or equal to 1.')
+        ..red(),
+    );
+    exit(1);
+  }
+
+  return parsed;
 }
 
 Future<void> _configureCmakeBuild({
@@ -830,6 +870,30 @@ Map<String, String> _getCmakeCompilerEnvironment({
   }
 
   return const {};
+}
+
+Future<List<String>> _getClangTidyExtraArgs() async {
+  if (!Platform.isMacOS) return const [];
+
+  final processResult = await Process.run('xcrun', ['--show-sdk-path']);
+  if (processResult.exitCode != 0) {
+    print(
+      Colorize(
+        'Error: Could not find the macOS SDK path for clang-tidy. xcrun --show-sdk-path failed.',
+      ).red(),
+    );
+    exit(1);
+  }
+
+  final sdkPath = (processResult.stdout as String).trim();
+  if (sdkPath.isEmpty) {
+    print(
+      Colorize('Error: xcrun --show-sdk-path returned an empty path.').red(),
+    );
+    exit(1);
+  }
+
+  return ['--extra-arg=-isysroot', '--extra-arg=$sdkPath'];
 }
 
 String _requireLlvmExecutable(String executableName) {

@@ -14,6 +14,9 @@ Checks: >-
   -bugprone-easily-swappable-parameters,
   -bugprone-exception-escape,
   -bugprone-forward-declaration-namespace,
+  # Disabled because Homebrew clang-tidy 22.1.2 crashes on macOS ARM while
+  # matching this check in JUCE's juce_Ranges.h.
+  -bugprone-pointer-arithmetic-on-polymorphic-object,
   -performance-enum-size,
   -performance-no-automatic-move
 FormatStyle: none
