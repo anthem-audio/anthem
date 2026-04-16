@@ -477,8 +477,15 @@ class _LintEngineCommand extends Command<dynamic> {
     final extraArgs = await _getClangTidyExtraArgs();
     final files = _getOwnedEngineCppFiles(translationUnitsOnly: true);
     var hasFailures = false;
+    var completedFileCount = 0;
 
     for (final file in files) {
+      completedFileCount++;
+      final relativeFilePath = _getPathRelativeToRoot(packageRootPath, file);
+      print(
+        '[$completedFileCount/${files.length}] clang-tidy $relativeFilePath',
+      );
+
       final process = await Process.start(
         clangTidy,
         [
@@ -847,6 +854,18 @@ List<File> _getOwnedEngineCppFiles({bool translationUnitsOnly = false}) {
 
   files.sort((a, b) => a.path.compareTo(b.path));
   return files;
+}
+
+String _getPathRelativeToRoot(Uri packageRootPath, File file) {
+  final rootPath = packageRootPath.toFilePath(windows: Platform.isWindows);
+  final filePath = file.path;
+
+  if (!filePath.startsWith(rootPath)) return filePath;
+
+  return filePath
+      .substring(rootPath.length)
+      .replaceFirst(RegExp(r'^[\\/]'), '')
+      .replaceAll('\\', '/');
 }
 
 Map<String, String> _getCmakeCompilerEnvironment({
