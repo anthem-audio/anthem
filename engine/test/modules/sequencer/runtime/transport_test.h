@@ -24,6 +24,7 @@
 #include "modules/sequencer/runtime/transport.h"
 
 #include <juce_core/juce_core.h>
+#include <memory>
 
 class TransportTest : public juce::UnitTest {
   static constexpr EntityId trackId = 11;
@@ -31,16 +32,16 @@ class TransportTest : public juce::UnitTest {
   static constexpr AnthemSourceNoteId firstNoteId = 101;
   static constexpr AnthemSourceNoteId secondNoteId = 102;
 
-  static SequenceEventListCollection buildSequence(
+  static std::unique_ptr<SequenceEventListCollection> buildSequence(
       std::initializer_list<AnthemSequenceEvent> events) {
-    auto sequence = SequenceEventListCollection();
-    auto track = SequenceEventList();
+    auto sequence = std::make_unique<SequenceEventListCollection>();
+    auto* track = new SequenceEventList();
 
     for (const auto& event : events) {
-      track.events->push_back(event);
+      track->events.push_back(event);
     }
 
-    sequence.tracks->insert_or_assign(trackId, std::move(track));
+    sequence->setTrack(trackId, track);
     return sequence;
   }
 
@@ -161,12 +162,10 @@ public:
             .sourceId = secondNoteId,
             .event = AnthemEvent(AnthemNoteOffEvent(62, 0, 0.0f))}});
 
-    auto jumpEvent = buildPlayheadJumpEvent(sequence, std::nullopt, 1.0);
+    auto jumpEvent = buildPlayheadJumpEvent(*sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
 
     expect(jumpEvents == nullptr, "No jump-start notes should be emitted at the boundary.");
-
-    SequenceEventListCollection::cleanUpInstance(sequence);
   }
 
   void testJumpSnapshotKeepsSustainedNotesActive() {
@@ -179,7 +178,7 @@ public:
             .sourceId = firstNoteId,
             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
 
-    auto jumpEvent = buildPlayheadJumpEvent(sequence, std::nullopt, 1.0);
+    auto jumpEvent = buildPlayheadJumpEvent(*sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
 
     expect(jumpEvents != nullptr, "A sustained note should still be active at the jump position.");
@@ -190,8 +189,6 @@ public:
     expectEquals(static_cast<int>(jumpEvents->at(0).event.type),
         static_cast<int>(AnthemEventType::NoteOn),
         "Jump payload should only contain note-on events.");
-
-    SequenceEventListCollection::cleanUpInstance(sequence);
   }
 
   void testJumpSnapshotExcludesNotesStartingAtBoundary() {
@@ -204,13 +201,11 @@ public:
             .sourceId = firstNoteId,
             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
 
-    auto jumpEvent = buildPlayheadJumpEvent(sequence, std::nullopt, 1.0);
+    auto jumpEvent = buildPlayheadJumpEvent(*sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
 
     expect(jumpEvents == nullptr,
         "Boundary note-ons should be emitted by normal block playback, not jump-start.");
-
-    SequenceEventListCollection::cleanUpInstance(sequence);
   }
 
   void testSetActiveSequenceBatchesLoopAndJumpUpdatesIntoSingleConfig() {
@@ -254,7 +249,7 @@ public:
         AnthemSequenceEvent{.offset = 2.0,
             .sourceId = firstNoteId,
             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
-    anthem.sequenceStore->addOrUpdateSequence(sequenceId, sequence);
+    anthem.sequenceStore->addOrUpdateSequence(sequenceId, *sequence);
 
     auto& transport = *anthem.transport;
     transport.config.playheadStart = 1.0;

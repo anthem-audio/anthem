@@ -55,14 +55,14 @@ class SequenceNoteProviderTest : public juce::UnitTest {
       int64_t sourceTrackId,
       std::initializer_list<AnthemSequenceEvent> events,
       bool invalidationOccurred = false) {
-    auto track = SequenceEventList();
-    track.invalidationOccurred = invalidationOccurred;
+    auto* track = new SequenceEventList();
+    track->rt_invalidationOccurred = invalidationOccurred;
 
     for (const auto& event : events) {
-      track.events->push_back(event);
+      track->events.push_back(event);
     }
 
-    sequence.tracks->insert_or_assign(sourceTrackId, std::move(track));
+    sequence.setTrack(sourceTrackId, track);
   }
 
   static RuntimeDependencies buildDependencies(const SequenceEventListCollection* activeSequence) {

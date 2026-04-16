@@ -41,18 +41,18 @@ const SequenceEventList* SequenceNoteProviderProcessor::rt_getSourceTrackEvents(
   if (dependencies.rt_activeTrackId.has_value() &&
       dependencies.rt_activeTrackId.value() == trackId) {
     auto noTrackEventListIter =
-        dependencies.rt_activeSequence->tracks->find(anthem_sequencer_track_ids::noTrack);
-    if (noTrackEventListIter != dependencies.rt_activeSequence->tracks->end()) {
+        dependencies.rt_activeSequence->tracks.find(anthem_sequencer_track_ids::noTrack);
+    if (noTrackEventListIter != dependencies.rt_activeSequence->tracks.end()) {
       sourceTrackId = anthem_sequencer_track_ids::noTrack;
     }
   }
 
-  auto sourceTrackEventListIter = dependencies.rt_activeSequence->tracks->find(sourceTrackId);
-  if (sourceTrackEventListIter == dependencies.rt_activeSequence->tracks->end()) {
+  auto sourceTrackEventListIter = dependencies.rt_activeSequence->tracks.find(sourceTrackId);
+  if (sourceTrackEventListIter == dependencies.rt_activeSequence->tracks.end()) {
     return nullptr;
   }
 
-  return &sourceTrackEventListIter->second;
+  return sourceTrackEventListIter->second;
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
@@ -105,10 +105,10 @@ void SequenceNoteProviderProcessor::process(AnthemNodeProcessContext& context, i
 
   const SequenceEventListCollection* activeSequence = nullptr;
   if (config->activeSequenceId.has_value()) {
-    auto& sequenceMap = sequenceStore.rt_getEventLists();
-    auto activeSequenceIter = sequenceMap.find(*config->activeSequenceId);
-    if (activeSequenceIter != sequenceMap.end()) {
-      activeSequence = &activeSequenceIter->second;
+    auto& sequenceSnapshot = sequenceStore.rt_getEventLists();
+    auto activeSequenceIter = sequenceSnapshot.sequences.find(*config->activeSequenceId);
+    if (activeSequenceIter != sequenceSnapshot.sequences.end()) {
+      activeSequence = activeSequenceIter->second;
     }
   }
 

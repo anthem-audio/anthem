@@ -152,7 +152,7 @@ private:
 
     double playheadPos = dependencies.rt_playhead;
 
-    if (channelEvents->invalidationOccurred) {
+    if (channelEvents->rt_invalidationOccurred) {
       rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, 0.0);
     }
 
@@ -188,7 +188,7 @@ private:
       double sampleAdvance =
           sequencer_timing::tickDeltaToSampleOffset(incrementAmount, dependencies.rt_timingParams);
 
-      for (const auto& event : *channelEvents->events) {
+      for (const auto& event : channelEvents->events) {
         if (event.offset >= start && event.offset < end) {
           auto eventSampleOffset =
               sampleTimeOffset + sequencer_timing::tickDeltaToSampleOffset(

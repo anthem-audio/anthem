@@ -51,16 +51,16 @@ template <typename Callback>
 void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
     std::optional<int64_t> activeTrackId,
     Callback&& callback) {
-  auto noTrackIter = sequence.tracks->find(anthem_sequencer_track_ids::noTrack);
-  if (noTrackIter != sequence.tracks->end()) {
+  auto noTrackIter = sequence.tracks.find(anthem_sequencer_track_ids::noTrack);
+  if (noTrackIter != sequence.tracks.end()) {
     if (activeTrackId.has_value()) {
-      callback(activeTrackId.value(), *noTrackIter->second.events);
+      callback(activeTrackId.value(), noTrackIter->second->events);
     }
     return;
   }
 
-  for (auto& [trackId, eventList] : *sequence.tracks) {
-    callback(trackId, *eventList.events);
+  for (auto& [trackId, eventList] : sequence.tracks) {
+    callback(trackId, eventList->events);
   }
 }
 
