@@ -22,6 +22,17 @@
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/util/intentionally_leak.h"
 
+namespace {
+void deleteCompilationResult(AnthemGraphCompilationResult* result) {
+  if (result == nullptr) {
+    return;
+  }
+
+  result->cleanup();
+  delete result;
+}
+} // namespace
+
 AnthemGraphProcessor::AnthemGraphProcessor()
   : rt_services(std::make_unique<GraphRuntimeServices>()),
     clearDeletionQueueTimedCallback(
@@ -31,7 +42,18 @@ AnthemGraphProcessor::AnthemGraphProcessor()
   this->rt_activeCompilationResult = nullptr;
 }
 
-AnthemGraphProcessor::~AnthemGraphProcessor() = default;
+AnthemGraphProcessor::~AnthemGraphProcessor() {
+  this->clearDeletionQueueTimedCallback.stopTimer();
+
+  while (auto nextCompilationResult = this->pendingCompilationResultsQueue.read()) {
+    deleteCompilationResult(nextCompilationResult.value());
+  }
+
+  this->clearDeletionQueueFromMainThread();
+
+  deleteCompilationResult(this->rt_activeCompilationResult);
+  this->rt_activeCompilationResult = nullptr;
+}
 
 void AnthemGraphProcessor::setProcessingStepsFromMainThread(
     AnthemGraphCompilationResult* compilationResult) {
@@ -46,9 +68,7 @@ void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
   auto nextCompilationResult = this->retiredCompilationResultsQueue.read();
 
   while (nextCompilationResult) {
-    auto* ptr = nextCompilationResult.value();
-    ptr->cleanup();
-    delete ptr;
+    deleteCompilationResult(nextCompilationResult.value());
 
     nextCompilationResult = this->retiredCompilationResultsQueue.read();
   }

@@ -62,17 +62,6 @@ class AnthemGraphProcessorTest : public juce::UnitTest {
 
     return result;
   }
-
-  static AnthemGraphCompilationResult& getSentinelCompilationResult() {
-    static auto* result = new AnthemGraphCompilationResult();
-    return *result;
-  }
-
-  static void installSentinelAndClearDeletionQueue(AnthemGraphProcessor& processor) {
-    processor.setProcessingStepsFromMainThread(&getSentinelCompilationResult());
-    processor.process(0);
-    processor.clearDeletionQueueFromMainThread();
-  }
 public:
   AnthemGraphProcessorTest() : juce::UnitTest("AnthemGraphProcessorTest", "Anthem") {}
 
@@ -100,8 +89,6 @@ public:
     expectEquals(probe->lastNumSamples,
         32,
         "Active processing steps should keep receiving later block sizes.");
-
-    installSentinelAndClearDeletionQueue(processor);
   }
 
   void testReplacingActiveCompilationResults() {
@@ -125,9 +112,7 @@ public:
         "The replacement result should execute on the block where it is picked up.");
     expectEquals(
         secondProbe->lastNumSamples, 8, "The replacement should receive the current block size.");
-
     processor.clearDeletionQueueFromMainThread();
-    installSentinelAndClearDeletionQueue(processor);
   }
 
   void testQueuedResultCoalescing() {
@@ -152,8 +137,6 @@ public:
     expectEquals(olderProbe->destroyCount,
         1,
         "Coalesced results should move through the deletion queue for cleanup.");
-
-    installSentinelAndClearDeletionQueue(processor);
   }
 
   void testDeletionQueueCleanup() {
@@ -178,8 +161,6 @@ public:
     expectEquals(oldProbe->destroyCount,
         1,
         "Clearing the deletion queue should delete the replaced result.");
-
-    installSentinelAndClearDeletionQueue(processor);
   }
 
   void testRuntimeServiceReset() {

@@ -155,6 +155,7 @@ public:
   bool rt_shouldStopSequenceNotes = false;
 
   Transport();
+  ~Transport();
 
   void setIsPlaying(bool isPlaying);
   void setActiveSequenceId(std::optional<int64_t>& sequenceId);

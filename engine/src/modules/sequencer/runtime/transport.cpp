@@ -40,6 +40,13 @@ void enqueueForDeferredDeletionOrLeak(RingBuffer<T*, queueSize>& queue, T* ptr) 
   }
 }
 
+template <std::size_t queueSize, typename T>
+void deleteAllFromQueue(RingBuffer<T*, queueSize>& queue) {
+  while (auto item = queue.read()) {
+    delete item.value();
+  }
+}
+
 template <typename Callback>
 void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
     std::optional<int64_t> activeTrackId,
@@ -150,6 +157,23 @@ Transport::Transport() : rt_playhead{0.0}, rt_sampleCounter{0} {
   rt_playheadJumpEventForStart = nullptr;
 
   this->startTimer(100);
+}
+
+Transport::~Transport() {
+  stopTimer();
+
+  deleteAllFromQueue(configBuffer);
+  deleteAllFromQueue(configDeleteBuffer);
+  deleteAllFromQueue(playheadJumpEventBuffer);
+  deleteAllFromQueue(playheadJumpEventDeleteBuffer);
+
+  delete rt_playheadJumpEventForSeek;
+  rt_playheadJumpEventForSeek = nullptr;
+  rt_playheadJumpEventForStart = nullptr;
+  rt_playheadJumpEvent = nullptr;
+
+  delete rt_config;
+  rt_config = nullptr;
 }
 
 void Transport::setIsPlaying(bool isPlaying) {

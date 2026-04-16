@@ -127,7 +127,8 @@ class TransportTest : public juce::UnitTest {
   static int drainPendingConfigCount(Transport& transport) {
     int count = 0;
 
-    while (transport.configBuffer.read().has_value()) {
+    while (auto pendingConfig = transport.configBuffer.read()) {
+      delete pendingConfig.value();
       count++;
     }
 
@@ -164,6 +165,8 @@ public:
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
 
     expect(jumpEvents == nullptr, "No jump-start notes should be emitted at the boundary.");
+
+    SequenceEventListCollection::cleanUpInstance(sequence);
   }
 
   void testJumpSnapshotKeepsSustainedNotesActive() {
@@ -187,6 +190,8 @@ public:
     expectEquals(static_cast<int>(jumpEvents->at(0).event.type),
         static_cast<int>(AnthemEventType::NoteOn),
         "Jump payload should only contain note-on events.");
+
+    SequenceEventListCollection::cleanUpInstance(sequence);
   }
 
   void testJumpSnapshotExcludesNotesStartingAtBoundary() {
@@ -204,6 +209,8 @@ public:
 
     expect(jumpEvents == nullptr,
         "Boundary note-ons should be emitted by normal block playback, not jump-start.");
+
+    SequenceEventListCollection::cleanUpInstance(sequence);
   }
 
   void testSetActiveSequenceBatchesLoopAndJumpUpdatesIntoSingleConfig() {

@@ -22,6 +22,8 @@
 #include "modules/core/anthem.h"
 #include "modules/util/intentionally_leak.h"
 
+#include <unordered_set>
+
 namespace {
 void cleanUpUnpublishedTrack(
     SequenceEventList& track, const std::optional<SequenceEventList>& oldTrack) {
@@ -210,16 +212,51 @@ AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
 }
 
 // The audio thread MUST be stopped before cleaning this up. Otherwise, this
-// will leak memory.
+// can race with map handoffs.
 AnthemRuntimeSequenceStore::~AnthemRuntimeSequenceStore() {
-  // Clean up any remaining maps in the deletion queue
+  clearDeletionQueueTimedCallback.stopTimer();
+
+  // Clean up maps already released by the audio thread.
   processDeletionQueues();
+
+  auto mapsToDelete = std::unordered_set<SequenceIdToEventsMap*>();
+
+  while (auto pendingMap = mapUpdateQueue.read()) {
+    mapsToDelete.insert(pendingMap.value());
+  }
+
+  mapsToDelete.insert(eventLists);
+  mapsToDelete.insert(rt_eventLists);
+
+  for (auto& [map, sequence] : pendingSequenceDeletions) {
+    SequenceEventListCollection::cleanUpInstance(sequence);
+    mapsToDelete.insert(map);
+  }
+  pendingSequenceDeletions.clear();
+
+  for (auto& [map, tracks] : pendingSequenceTrackDeletions) {
+    for (auto& [oldEventsForTrack, oldTrackMap] : tracks) {
+      if (oldEventsForTrack.has_value()) {
+        SequenceEventList::cleanUpInstance(oldEventsForTrack.value());
+      }
+
+      delete oldTrackMap;
+    }
+
+    mapsToDelete.insert(map);
+  }
+  pendingSequenceTrackDeletions.clear();
 
   for (auto& [key, seqListObj] : *eventLists) {
     SequenceEventListCollection::cleanUpInstance(seqListObj);
   }
 
-  delete eventLists;
+  for (auto* map : mapsToDelete) {
+    delete map;
+  }
+
+  eventLists = nullptr;
+  rt_eventLists = nullptr;
 }
 
 void AnthemRuntimeSequenceStore::processDeletionQueues() {
