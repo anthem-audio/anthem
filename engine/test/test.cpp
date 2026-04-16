@@ -36,8 +36,10 @@
 #include "modules/sequencer/runtime/transport_test.h"
 
 #include <juce_core/juce_core.h>
+#include <juce_events/juce_events.h>
 
 int main(int /* argc */, char** /* argv */) {
+  juce::ScopedJuceInitialiser_GUI juceInitialiser;
   juce::Logger::setCurrentLogger(new ConsoleLogger());
 
   juce::UnitTestRunner runner;

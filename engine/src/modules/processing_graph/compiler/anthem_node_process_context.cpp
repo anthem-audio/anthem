@@ -92,7 +92,6 @@ AnthemNodeProcessContext::AnthemNodeProcessContext(
         graphProcessContext.getControlBuffer(inputControlBuffers[controlBufferIndex].bufferIndex);
 
     if (!parameterConfig.has_value()) {
-      jassertfalse;
       continue;
     }
 
@@ -118,7 +117,6 @@ const AnthemNodeProcessContext::PortBufferHandle& AnthemNodeProcessContext::find
   });
 
   if (it == handles.end()) {
-    jassertfalse;
     throw std::runtime_error("AnthemNodeProcessContext could not find " + std::string(bufferType) +
                              " buffer for port ID " + std::to_string(portId) + ".");
   }
@@ -133,7 +131,6 @@ AnthemNodeProcessContext::findInputParameterBinding(int64_t id) {
       [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
 
   if (it == inputParameters.end()) {
-    jassertfalse;
     throw std::runtime_error(
         "AnthemNodeProcessContext could not find input parameter binding for port ID " +
         std::to_string(id) + ".");
@@ -149,7 +146,6 @@ AnthemNodeProcessContext::findInputParameterBinding(int64_t id) const {
       [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
 
   if (it == inputParameters.end()) {
-    jassertfalse;
     throw std::runtime_error(
         "AnthemNodeProcessContext could not find input parameter binding for port ID " +
         std::to_string(id) + ".");

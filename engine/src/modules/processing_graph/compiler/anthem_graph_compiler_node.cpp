@@ -78,7 +78,6 @@ void AnthemGraphCompilerNode::assignEdge(const NodeMap& nodes,
   auto destinationNodePort = destinationNode->getPortById(connection->destinationPortId());
 
   if (!sourceNodePort.has_value() || !destinationNodePort.has_value()) {
-    jassertfalse;
     return;
   }
 

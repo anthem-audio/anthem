@@ -46,7 +46,7 @@
 
 AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
     const AnthemGraphCompileRequest& request) {
-  AnthemGraphCompilationResult* result = new AnthemGraphCompilationResult();
+  auto result = std::make_unique<AnthemGraphCompilationResult>();
   result->graphProcessContext =
       std::make_unique<AnthemGraphProcessContext>(request.rtServices, request.bufferLayout);
 
@@ -330,5 +330,5 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
     std::cout << '\n';
   }
 
-  return result;
+  return result.release();
 }

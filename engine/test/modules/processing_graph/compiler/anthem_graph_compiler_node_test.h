@@ -198,8 +198,11 @@ public:
 
     sinkNode->audioInputPorts()->push_back(
         graph_test_helpers::makePort(4, sinkNodeId, NodePortDataType::audio));
-    sinkNode->controlInputPorts()->push_back(
-        graph_test_helpers::makePort(5, sinkNodeId, NodePortDataType::control, 0.5));
+    sinkNode->controlInputPorts()->push_back(graph_test_helpers::makePort(5,
+        sinkNodeId,
+        NodePortDataType::control,
+        0.5,
+        graph_test_helpers::makeParameterConfig(105, 0.5)));
     sinkNode->eventInputPorts()->push_back(
         graph_test_helpers::makePort(6, sinkNodeId, NodePortDataType::event));
 
