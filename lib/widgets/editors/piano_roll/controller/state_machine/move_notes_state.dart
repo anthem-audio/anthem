@@ -70,7 +70,8 @@ class PianoRollMoveNotesSessionData {
        movingTransientNoteIds = Set<Id>.unmodifiable(movingTransientNoteIds);
 }
 
-class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
+class PianoRollMoveNotesState extends PianoRollSessionLeafState
+    with PianoRollSharedNoteSessionHelpers, PianoRollMoveSessionHelpers {
   PianoRollMoveNotesSessionData? _sessionData;
   Map<Id, PianoRollMoveNotePreview>? _preview;
 
@@ -79,11 +80,6 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
 
   @visibleForTesting
   Map<Id, PianoRollMoveNotePreview>? get preview => _preview;
-
-  bool _isMovePointerDownSignal(EditorStateMachineEvent event) {
-    return event is EditorStateMachineSignalEvent &&
-        event.signal is _PianoRollPointerDownSignal;
-  }
 
   void _applyPreview({
     required PianoRollMoveNotesSessionData sessionData,
@@ -122,10 +118,120 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
     syncLivePreviewForMoveSession(sessionData: sessionData, preview: preview);
   }
 
+  NoteModel _buildTransientDuplicate(
+    NoteModel source, {
+    required Set<Id> duplicatedNoteIds,
+    required Set<Id> movingTransientNoteIds,
+  }) {
+    final previewNote = NoteModel(
+      idAllocator: controller.idAllocator,
+      key: source.key,
+      velocity: source.velocity,
+      length: source.length,
+      offset: source.offset,
+      pan: source.pan,
+    );
+    parentState.activePattern.addPreviewNote(previewNote);
+    duplicatedNoteIds.add(previewNote.id);
+    movingTransientNoteIds.add(previewNote.id);
+    return previewNote;
+  }
+
+  ({
+    NoteModel sessionPressedNote,
+    List<NoteModel> notesToMove,
+    bool didDuplicateOnPointerDown,
+  })
+  _beginSelectionMove({
+    required NoteModel pressedNote,
+    required Iterable<NoteModel> selectedNotes,
+    required bool shiftPressed,
+    required Set<Id> duplicatedNoteIds,
+    required Set<Id> movingTransientNoteIds,
+  }) {
+    if (!shiftPressed) {
+      viewModel.pressedNote = pressedNote.id;
+      return (
+        sessionPressedNote: pressedNote,
+        notesToMove: selectedNotes.toList(growable: false),
+        didDuplicateOnPointerDown: false,
+      );
+    }
+
+    final newSelectedNotes = <Id>{};
+    final transientNotesToMove = <NoteModel>[];
+    var sessionPressedNote = pressedNote;
+
+    for (final note in selectedNotes) {
+      final previewNote = _buildTransientDuplicate(
+        note,
+        duplicatedNoteIds: duplicatedNoteIds,
+        movingTransientNoteIds: movingTransientNoteIds,
+      );
+
+      newSelectedNotes.add(previewNote.id);
+      transientNotesToMove.add(previewNote);
+
+      if (note.id == pressedNote.id) {
+        sessionPressedNote = previewNote;
+        viewModel.pressedNote = previewNote.id;
+      }
+    }
+
+    viewModel.selectedNotes = ObservableSet.of(newSelectedNotes);
+    return (
+      sessionPressedNote: sessionPressedNote,
+      notesToMove: transientNotesToMove,
+      didDuplicateOnPointerDown: true,
+    );
+  }
+
+  ({
+    NoteModel sessionPressedNote,
+    List<NoteModel> notesToMove,
+    bool didDuplicateOnPointerDown,
+  })
+  _beginSingleNoteMove({
+    required NoteModel pressedNote,
+    required bool shiftPressed,
+    required Set<Id> duplicatedNoteIds,
+    required Set<Id> movingTransientNoteIds,
+  }) {
+    viewModel.selectedNotes.clear();
+
+    if (!shiftPressed) {
+      viewModel.pressedNote = pressedNote.id;
+      setCursorNoteParameters(pressedNote);
+      return (
+        sessionPressedNote: pressedNote,
+        notesToMove: [pressedNote],
+        didDuplicateOnPointerDown: false,
+      );
+    }
+
+    // Shift-dragging a single unselected note previews the duplicate itself
+    // as the moving note. The original stays committed and stationary until
+    // the gesture ends.
+    final previewNote = _buildTransientDuplicate(
+      pressedNote,
+      duplicatedNoteIds: duplicatedNoteIds,
+      movingTransientNoteIds: movingTransientNoteIds,
+    );
+    viewModel.selectedNotes = ObservableSet.of({previewNote.id});
+    viewModel.pressedNote = previewNote.id;
+    setCursorNoteParameters(pressedNote);
+
+    return (
+      sessionPressedNote: previewNote,
+      notesToMove: [previewNote],
+      didDuplicateOnPointerDown: true,
+    );
+  }
+
   void _initializeSession() {
     final dragStartContext = parentState.dragStartContext;
     final noteId = parentState.dragStartRealNoteId;
-    if (noteId == null) {
+    if (dragStartContext == null || noteId == null) {
       throw StateError(
         'Move-note sessions require a note under the cursor on pointer down.',
       );
@@ -136,97 +242,33 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
     final pattern = parentState.activePattern;
     final notes = pattern.notes.nonObservableInner.values;
     final selectedNotes = viewModel.selectedNotes.nonObservableInner;
-    var pressedNote = parentState.requireActivePatternNote(noteId);
-    var sessionPressedNote = pressedNote;
+    final pressedNote = parentState.requireActivePatternNote(noteId);
     final isSelectionMove = selectedNotes.contains(noteId);
-    var didDuplicateOnPointerDown = false;
     final duplicatedNoteIds = <Id>{};
     final movingTransientNoteIds = <Id>{};
-    late final List<NoteModel> notesToMove;
-
-    if (isSelectionMove) {
-      if (interactionState.isShiftPressed) {
-        didDuplicateOnPointerDown = true;
-
-        final newSelectedNotes = <Id>{};
-        final transientNotesToMove = <NoteModel>[];
-
-        for (final note
-            in notes
-                .where((note) {
-                  return selectedNotes.contains(note.id);
-                })
-                .toList(growable: false)) {
-          final previewNote = NoteModel(
-            idAllocator: controller.idAllocator,
-            key: note.key,
-            velocity: note.velocity,
-            length: note.length,
-            offset: note.offset,
-            pan: note.pan,
+    final selectedNoteModels = notes
+        .where((note) => selectedNotes.contains(note.id))
+        .toList(growable: false);
+    final moveStart = isSelectionMove
+        ? _beginSelectionMove(
+            pressedNote: pressedNote,
+            selectedNotes: selectedNoteModels,
+            shiftPressed: interactionState.isShiftPressed,
+            duplicatedNoteIds: duplicatedNoteIds,
+            movingTransientNoteIds: movingTransientNoteIds,
+          )
+        : _beginSingleNoteMove(
+            pressedNote: pressedNote,
+            shiftPressed: interactionState.isShiftPressed,
+            duplicatedNoteIds: duplicatedNoteIds,
+            movingTransientNoteIds: movingTransientNoteIds,
           );
-          pattern.addPreviewNote(previewNote);
-
-          newSelectedNotes.add(previewNote.id);
-          duplicatedNoteIds.add(previewNote.id);
-          movingTransientNoteIds.add(previewNote.id);
-          transientNotesToMove.add(previewNote);
-
-          if (note.id == noteId) {
-            sessionPressedNote = previewNote;
-            viewModel.pressedNote = previewNote.id;
-          }
-        }
-
-        viewModel.selectedNotes = ObservableSet.of(newSelectedNotes);
-        notesToMove = transientNotesToMove;
-      } else {
-        viewModel.pressedNote = pressedNote.id;
-        notesToMove = pattern.notes.values
-            .where(
-              (note) =>
-                  viewModel.selectedNotes.nonObservableInner.contains(note.id),
-            )
-            .toList(growable: false);
-      }
-    } else {
-      viewModel.selectedNotes.clear();
-
-      if (interactionState.isShiftPressed) {
-        didDuplicateOnPointerDown = true;
-
-        // Shift-dragging a single unselected note now previews the duplicate
-        // itself as the moving note, matching the multi-note duplicate flow.
-        // The original note stays committed and stationary until the gesture
-        // ends, then the preview note is committed with the same ID.
-        final previewNote = NoteModel(
-          idAllocator: controller.idAllocator,
-          key: pressedNote.key,
-          velocity: pressedNote.velocity,
-          length: pressedNote.length,
-          offset: pressedNote.offset,
-          pan: pressedNote.pan,
-        );
-        pattern.addPreviewNote(previewNote);
-        duplicatedNoteIds.add(previewNote.id);
-        movingTransientNoteIds.add(previewNote.id);
-        sessionPressedNote = previewNote;
-        viewModel.selectedNotes = ObservableSet.of({previewNote.id});
-        viewModel.pressedNote = previewNote.id;
-        notesToMove = [previewNote];
-      } else {
-        viewModel.pressedNote = pressedNote.id;
-        notesToMove = [pressedNote];
-      }
-
-      setCursorNoteParameters(pressedNote);
-    }
 
     _sessionData = createMoveNotesSessionData(
-      pointerOffset: dragStartContext!.offset,
-      noteUnderCursor: sessionPressedNote,
-      notesToMove: notesToMove,
-      didDuplicateOnPointerDown: didDuplicateOnPointerDown,
+      pointerOffset: dragStartContext.offset,
+      noteUnderCursor: moveStart.sessionPressedNote,
+      notesToMove: moveStart.notesToMove,
+      didDuplicateOnPointerDown: moveStart.didDuplicateOnPointerDown,
       duplicatedNoteIds: duplicatedNoteIds,
       movingTransientNoteIds: movingTransientNoteIds,
     );
@@ -257,7 +299,7 @@ class PianoRollMoveNotesState extends PianoRollNoteInteractionState {
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
               PianoRollInteractionFamily.moveNotes &&
-          _isMovePointerDownSignal(event),
+          isPointerDownSignal(event),
     ),
     .new(
       name: 'Exit move notes',

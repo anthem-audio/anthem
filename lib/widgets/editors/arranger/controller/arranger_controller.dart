@@ -85,7 +85,7 @@ abstract class _ArrangerController {
     stateMachine.dispose();
   }
 
-  void pointerDown(PointerEvent pointerEvent) {
+  void pointerDown(PointerDownEvent pointerEvent) {
     stateMachine.onPointerDown(pointerEvent);
   }
 

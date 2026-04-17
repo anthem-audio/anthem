@@ -19,15 +19,7 @@
 
 part of 'arranger_state_machine.dart';
 
-class ArrangerSelectionBoxState
-    extends EditorStateMachineState<ArrangerStateMachineData> {
-  ArrangerStateMachine get arrangerStateMachine =>
-      stateMachine as ArrangerStateMachine;
-
-  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
-
-  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
-
+class ArrangerSelectionBoxState extends _ArrangerLeafState {
   @override
   ArrangerDragState get parentState => super.parentState as ArrangerDragState;
 
@@ -63,12 +55,7 @@ class ArrangerSelectionBoxState
       return null;
     }
 
-    final contentUnderCursor = viewModel.getContentUnderCursor(
-      Offset(startPosition.x, startPosition.y),
-    );
-
-    return contentUnderCursor.clip?.metadata ??
-        contentUnderCursor.resizeHandle?.metadata.id;
+    return clipIdAtPoint(Offset(startPosition.x, startPosition.y));
   }
 
   void _initializeSelectionSession() {

@@ -541,7 +541,15 @@ class PianoRollPointerSessionState
   PianoRollPointerSessionState(super.parentState);
 }
 
-abstract class PianoRollNoteInteractionState
+/// Shared base for every per-interaction leaf state under
+/// [PianoRollPointerSessionState] (create/move/resize/erase/selection-box).
+///
+/// Carries only context-access plumbing: handles to the state machine,
+/// project, view model, and controller, plus the drag-context snapshots
+/// captured by the parent pointer-session state. Interaction-specific
+/// helpers (snapping, move previews, etc.) live in the mixins below so that
+/// leaves only pay for what they use.
+abstract class PianoRollSessionLeafState
     extends EditorStateMachineState<PianoRollStateMachineData> {
   @override
   PianoRollPointerSessionState get parentState =>
@@ -572,6 +580,24 @@ abstract class PianoRollNoteInteractionState
     return parentState.requireActivePatternNote(noteId);
   }
 
+  /// True when [event] carries the pointer-down signal that leaves use as
+  /// their entry trigger. Extracted so every `canTransition` gate is written
+  /// the same way.
+  bool isPointerDownSignal(EditorStateMachineEvent event) {
+    return event is EditorStateMachineSignalEvent &&
+        event.signal is _PianoRollPointerDownSignal;
+  }
+
+  PianoRollSessionLeafState(super.parentState);
+}
+
+/// Helpers shared by every leaf that needs to snap note times or prime the
+/// cursor note parameters from a real note.
+///
+/// Applied to create / move / resize leaves. Erase and selection-box don't
+/// snap individual notes, so they skip this mixin to keep their API surface
+/// small.
+mixin PianoRollSharedNoteSessionHelpers on PianoRollSessionLeafState {
   int snapTimeInActivePattern({
     required int rawTime,
     bool ceil = false,
@@ -592,6 +618,21 @@ abstract class PianoRollNoteInteractionState
     viewModel.cursorNoteVelocity = note.velocity;
     viewModel.cursorNotePan = note.pan;
   }
+}
+
+/// Helpers used by leaves that reposition notes during a drag (create and
+/// move). Resize doesn't move notes, so it doesn't mix this in; erase and
+/// selection-box don't preview per-note motion at all.
+///
+/// Bundled here so the preview/command plumbing stays in one place rather
+/// than being duplicated between the create and move leaves.
+mixin PianoRollMoveSessionHelpers
+    on PianoRollSessionLeafState, PianoRollSharedNoteSessionHelpers {
+  /// Vertical anchor between the cursor Y (fractional key value) and the
+  /// moving note's integer key. 0.5 centers the cursor on the note row; the
+  /// preview computes `targetKey = cursor.key - noteOffset` so a cursor
+  /// dropped on the middle of a row lands that note on that row.
+  static const double _verticalNoteAnchorOffset = 0.5;
 
   PianoRollMoveNotesSessionData createMoveNotesSessionData({
     required double pointerOffset,
@@ -631,7 +672,7 @@ abstract class PianoRollNoteInteractionState
       anchorNoteId: anchorNote.id,
       notesById: movingNotesById,
       timeOffset: pointerOffset - anchorNote.offset,
-      noteOffset: 0.5,
+      noteOffset: _verticalNoteAnchorOffset,
       startOfFirstNote: startOfFirstNote,
       keyOfTopNote: keyOfTopNote,
       keyOfBottomNote: keyOfBottomNote,
@@ -744,6 +785,4 @@ abstract class PianoRollNoteInteractionState
           .toList(growable: false),
     );
   }
-
-  PianoRollNoteInteractionState(super.parentState);
 }

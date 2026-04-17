@@ -29,7 +29,8 @@ class PianoRollCreateNoteSessionData {
   });
 }
 
-class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
+class PianoRollCreateNoteState extends PianoRollSessionLeafState
+    with PianoRollSharedNoteSessionHelpers, PianoRollMoveSessionHelpers {
   PianoRollCreateNoteSessionData? _sessionData;
   Map<Id, PianoRollMoveNotePreview>? _preview;
 
@@ -38,11 +39,6 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
 
   @visibleForTesting
   Map<Id, PianoRollMoveNotePreview>? get preview => _preview;
-
-  bool _isCreatePointerDownSignal(EditorStateMachineEvent event) {
-    return event is EditorStateMachineSignalEvent &&
-        event.signal is _PianoRollPointerDownSignal;
-  }
 
   NoteModel? _createPreviewNoteFromPointerDown({
     required double key,
@@ -150,7 +146,7 @@ class PianoRollCreateNoteState extends PianoRollNoteInteractionState {
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
               PianoRollInteractionFamily.createNote &&
-          _isCreatePointerDownSignal(event),
+          isPointerDownSignal(event),
     ),
     .new(
       name: 'Exit create note',

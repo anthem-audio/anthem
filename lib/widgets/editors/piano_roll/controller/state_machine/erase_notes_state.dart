@@ -31,21 +31,7 @@ class PianoRollEraseNotesSessionData {
   });
 }
 
-class PianoRollEraseNotesState
-    extends EditorStateMachineState<PianoRollStateMachineData> {
-  @override
-  PianoRollPointerSessionState get parentState =>
-      super.parentState as PianoRollPointerSessionState;
-
-  PianoRollStateMachine get pianoRollStateMachine =>
-      stateMachine as PianoRollStateMachine;
-
-  PianoRollStateMachineData get interactionState => pianoRollStateMachine.data;
-
-  ProjectModel get project => pianoRollStateMachine.project;
-  PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
-  PianoRollController get controller => pianoRollStateMachine.controller;
-
+class PianoRollEraseNotesState extends PianoRollSessionLeafState {
   PianoRollEraseNotesSessionData? _sessionData;
 
   @visibleForTesting
@@ -169,8 +155,7 @@ class PianoRollEraseNotesState
       to: PianoRollEraseNotesState,
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily == PianoRollInteractionFamily.erase &&
-          event is EditorStateMachineSignalEvent &&
-          event.signal is _PianoRollPointerDownSignal,
+          isPointerDownSignal(event),
     ),
     .new(
       name: 'Exit erase notes',

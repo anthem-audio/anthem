@@ -19,16 +19,7 @@
 
 part of 'arranger_state_machine.dart';
 
-class ArrangerClipMoveState
-    extends EditorStateMachineState<ArrangerStateMachineData> {
-  ArrangerStateMachine get arrangerStateMachine =>
-      stateMachine as ArrangerStateMachine;
-
-  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
-
-  ProjectModel get project => arrangerStateMachine.project;
-  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
-
+class ArrangerClipMoveState extends _ArrangerLeafState {
   @override
   ArrangerDragState get parentState => super.parentState as ArrangerDragState;
 
@@ -107,17 +98,13 @@ class ArrangerClipMoveState
     }
 
     final movingClipIds = _movingClipIds;
-    final arrangementId = project.sequence.activeArrangementID;
-    if (movingClipIds == null || arrangementId == null) {
+    final arrangementData = activeArrangementWithClips();
+    if (movingClipIds == null || arrangementData == null) {
       return;
     }
 
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return;
-    }
-
-    final arrangementClips = arrangement.clips.nonObservableInner;
+    final arrangement = arrangementData.arrangement;
+    final arrangementClips = arrangementData.clips;
     final clipTimingOverrides =
         viewModel.clipTimingOverrides.nonObservableInner;
     final clipMoves = <({Id clipID, int oldOffset, int newOffset})>[];
@@ -157,16 +144,11 @@ class ArrangerClipMoveState
     final clipTimingOverrides = viewModel.clipTimingOverrides;
     clipTimingOverrides.clear();
 
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
+    final arrangementData = activeArrangementWithClips();
+    if (arrangementData == null) {
       return;
     }
-
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return;
-    }
-    final arrangementClips = arrangement.clips.nonObservableInner;
+    final arrangementClips = arrangementData.clips;
 
     final pressedClipId = parentState.dragStartClipId;
     if (pressedClipId == null) {
@@ -234,41 +216,17 @@ class ArrangerClipMoveState
       return;
     }
 
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
+    final arrangementData = activeArrangementWithClips();
+    if (arrangementData == null) {
       return;
     }
+    final arrangementClips = arrangementData.clips;
 
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return;
-    }
-    final arrangementClips = arrangement.clips.nonObservableInner;
-
-    final startTime = pixelsToTime(
-      timeViewStart: interactionState.renderedTimeViewStart,
-      timeViewEnd: interactionState.renderedTimeViewEnd,
-      viewPixelWidth: interactionState.viewSize.width,
-      pixelOffsetFromLeft: dragStartPosition.x,
-    );
-    final currentTime = pixelsToTime(
-      timeViewStart: interactionState.renderedTimeViewStart,
-      timeViewEnd: interactionState.renderedTimeViewEnd,
-      viewPixelWidth: interactionState.viewSize.width,
-      pixelOffsetFromLeft: dragCurrentPosition.x,
-    );
-
-    final startTimeRounded = startTime.round();
-    final currentTimeRounded = currentTime.round();
-    var movedDistance = currentTimeRounded - startTimeRounded;
-
-    if (!interactionState.isAltPressed) {
-      movedDistance = getSnappedDragDelta(
-        startTime: startTimeRounded,
-        currentTime: currentTimeRounded,
-        divisionChanges: arrangerStateMachine.divisionChanges(),
-      );
-    }
+    var movedDistance = resolveSnappedDragDelta(
+      startPx: dragStartPosition.x,
+      currentPx: dragCurrentPosition.x,
+      snapOverridden: interactionState.isAltPressed,
+    ).delta;
 
     if (movedDistance < _minimumMoveDelta) {
       movedDistance = _minimumMoveDelta;

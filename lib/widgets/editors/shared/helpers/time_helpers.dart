@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -302,6 +302,27 @@ List<DivisionChange> getDivisionChanges({
   }
 
   return result;
+}
+
+int getSnapSizeAtAbsoluteTime({
+  required int absoluteTime,
+  required List<DivisionChange> divisionChanges,
+}) {
+  if (divisionChanges.isEmpty) {
+    return 1;
+  }
+
+  for (var i = 0; i < divisionChanges.length; i++) {
+    if (absoluteTime >= 0 &&
+        i < divisionChanges.length - 1 &&
+        divisionChanges[i + 1].offset <= absoluteTime) {
+      continue;
+    }
+
+    return max(1, divisionChanges[i].divisionSnapSize);
+  }
+
+  return max(1, divisionChanges.last.divisionSnapSize);
 }
 
 // Rounds the input time down to the nearest snap boundary

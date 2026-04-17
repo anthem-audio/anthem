@@ -19,6 +19,11 @@
 
 part of 'arranger_state_machine.dart';
 
+/// Immutable snapshot of a clip's timing at the moment a resize session
+/// begins. We freeze these at session start and resolve every preview tick
+/// from them - the underlying [ClipModel] isn't mutated during the drag, so
+/// using the baseline (rather than re-reading the clip) keeps the delta math
+/// stable even if the UI redraws mid-drag.
 class _ClipResizeBaseline {
   final int oldOffset;
   final TimeViewModel? oldTimeView;
@@ -35,22 +40,21 @@ class _ClipResizeBaseline {
   int get oldWidth => oldTimeViewEnd - oldTimeViewStart;
 }
 
-class ArrangerClipResizeState
-    extends EditorStateMachineState<ArrangerStateMachineData> {
-  ArrangerStateMachine get arrangerStateMachine =>
-      stateMachine as ArrangerStateMachine;
-
-  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
-
-  ProjectModel get project => arrangerStateMachine.project;
-  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
-
+class ArrangerClipResizeState extends _ArrangerLeafState {
   @override
   ArrangerDragState get parentState => super.parentState as ArrangerDragState;
 
   Set<Id>? _resizingClipIds;
   final Map<Id, _ClipResizeBaseline> _resizeBaselines = {};
   ResizeAreaType? _resizeAreaType;
+
+  /// The min/max delta that keeps every participating clip in a valid state,
+  /// cached once in [_initializeResizeSession]. Baselines don't change during
+  /// a session, so this range doesn't need to be recomputed per move event.
+  ({int minDelta, int maxDelta}) _validResizeDeltaRange = (
+    minDelta: 0,
+    maxDelta: 0,
+  );
 
   @override
   Iterable<EditorStateMachineStateTransition<ArrangerStateMachineData>>
@@ -104,19 +108,15 @@ class ArrangerClipResizeState
     _resizingClipIds = null;
     _resizeBaselines.clear();
     _resizeAreaType = null;
+    _validResizeDeltaRange = (minDelta: 0, maxDelta: 0);
     final clipTimingOverrides = viewModel.clipTimingOverrides;
     clipTimingOverrides.clear();
 
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
+    final arrangementData = activeArrangementWithClips();
+    if (arrangementData == null) {
       return;
     }
-
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return;
-    }
-    final arrangementClips = arrangement.clips.nonObservableInner;
+    final arrangementClips = arrangementData.clips;
 
     final pressedClipId = parentState.dragStartResizeHandleClipId;
     final resizeAreaType = parentState.dragStartResizeAreaType;
@@ -172,7 +172,11 @@ class ArrangerClipResizeState
     if (!hasAnyOverrides) {
       _resizingClipIds = null;
       _resizeAreaType = null;
+      _validResizeDeltaRange = (minDelta: 0, maxDelta: 0);
+      return;
     }
+
+    _validResizeDeltaRange = _getValidResizeDeltaRange();
   }
 
   void _syncClipOverrides() {
@@ -187,41 +191,22 @@ class ArrangerClipResizeState
       return;
     }
 
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
+    final arrangementData = activeArrangementWithClips();
+    if (arrangementData == null) {
       return;
     }
+    final arrangementClips = arrangementData.clips;
 
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return;
-    }
-
-    final startTime = pixelsToTime(
-      timeViewStart: interactionState.renderedTimeViewStart,
-      timeViewEnd: interactionState.renderedTimeViewEnd,
-      viewPixelWidth: interactionState.viewSize.width,
-      pixelOffsetFromLeft: dragStartPosition.x,
+    final snappedDelta = resolveSnappedDragDelta(
+      startPx: dragStartPosition.x,
+      currentPx: dragCurrentPosition.x,
+      snapOverridden: interactionState.isAltPressed,
     );
-    final currentTime = pixelsToTime(
-      timeViewStart: interactionState.renderedTimeViewStart,
-      timeViewEnd: interactionState.renderedTimeViewEnd,
-      viewPixelWidth: interactionState.viewSize.width,
-      pixelOffsetFromLeft: dragCurrentPosition.x,
-    );
-
-    final startTimeRounded = startTime.round();
-    final currentTimeRounded = currentTime.round();
-    var resizeDelta = currentTimeRounded - startTimeRounded;
+    var resizeDelta = snappedDelta.delta;
     final divisionChanges = arrangerStateMachine.divisionChanges();
     if (!interactionState.isAltPressed) {
-      resizeDelta = getSnappedDragDelta(
-        startTime: startTimeRounded,
-        currentTime: currentTimeRounded,
-        divisionChanges: divisionChanges,
-      );
       resizeDelta = _clampSnappedDeltaToValidRange(
-        startTime: startTimeRounded,
+        startTime: snappedDelta.startTime,
         resizeDelta: resizeDelta,
         divisionChanges: divisionChanges,
       );
@@ -232,7 +217,7 @@ class ArrangerClipResizeState
     final clipTimingOverrides = viewModel.clipTimingOverrides;
 
     for (final clipId in resizingClipIds) {
-      final clip = arrangement.clips.nonObservableInner[clipId];
+      final clip = arrangementClips[clipId];
       final baseline = _resizeBaselines[clipId];
       if (clip == null || baseline == null) {
         clipTimingOverrides.remove(clipId);
@@ -266,45 +251,34 @@ class ArrangerClipResizeState
     }
   }
 
+  /// Pulls [resizeDelta] back into [_validResizeDeltaRange] one snap interval
+  /// at a time.
+  ///
+  /// The snap interval can change when the time signature changes. If the snap
+  /// interval were guaranteed to be the same everywhere, then this would be
+  /// much simpler; but due to time signature change markers, we can have
+  /// multiple grids active across a given time range. This stepping approach
+  /// allows us to handle snapping correctly across any number of weird time
+  /// signature markers.
   int _clampSnappedDeltaToValidRange({
     required int startTime,
     required int resizeDelta,
     required List<DivisionChange> divisionChanges,
   }) {
-    if (_isResizeDeltaValid(resizeDelta)) {
-      return resizeDelta;
-    }
-
+    final (:minDelta, :maxDelta) = _validResizeDeltaRange;
     var guardedDelta = resizeDelta;
-    if (guardedDelta == 0) {
-      return guardedDelta;
-    }
-
-    // Keep stepping one snap interval toward zero until we reach a valid
-    // snapped size. This prevents stepping to the next snap when that would
-    // make any clip zero/negative width.
-    var loopCount = 0;
-    while (!_isResizeDeltaValid(guardedDelta) &&
-        guardedDelta != 0 &&
-        loopCount < 8192) {
+    while (guardedDelta < minDelta || guardedDelta > maxDelta) {
       guardedDelta = stepSnappedDragDeltaTowardZero(
         startTime: startTime,
         snappedDelta: guardedDelta,
         divisionChanges: divisionChanges,
       );
-
-      loopCount++;
     }
-
-    if (_isResizeDeltaValid(guardedDelta)) {
-      return guardedDelta;
-    }
-
-    return _clampDeltaToValidRange(resizeDelta);
+    return guardedDelta;
   }
 
   int _clampDeltaToValidRange(int resizeDelta) {
-    final (minDelta, maxDelta) = _getValidResizeDeltaRange();
+    final (:minDelta, :maxDelta) = _validResizeDeltaRange;
     if (resizeDelta < minDelta) {
       return minDelta;
     }
@@ -316,15 +290,19 @@ class ArrangerClipResizeState
     return resizeDelta;
   }
 
-  /// Looks at all resized clips and the current resize side, then determines
-  /// the range of delta values that keep every clip in a valid state. Valid
-  /// state in this case means:
-  /// - Clip size is greater than 0
-  /// - Clip offset is greater than or equal to 0 (for start-handle resize)
-  (int minDelta, int maxDelta) _getValidResizeDeltaRange() {
+  /// Computes the delta range that keeps every participating clip valid.
+  ///
+  /// "Valid" means:
+  /// - Clip width stays greater than zero.
+  /// - Clip offset stays non-negative (only relevant for the start handle,
+  ///   since moving the start handle left shifts the offset).
+  ///
+  /// Called once at session start; the cached result is stored in
+  /// [_validResizeDeltaRange] for reuse on every move event.
+  ({int minDelta, int maxDelta}) _getValidResizeDeltaRange() {
     final resizeAreaType = _resizeAreaType;
     if (resizeAreaType == null) {
-      return (0, 0);
+      return (minDelta: 0, maxDelta: 0);
     }
 
     const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
@@ -341,16 +319,7 @@ class ArrangerClipResizeState
       }
     }
 
-    return (minDelta, maxDelta);
-  }
-
-  bool _isResizeDeltaValid(int resizeDelta) {
-    if (_resizeAreaType == null) {
-      return false;
-    }
-
-    final (minDelta, maxDelta) = _getValidResizeDeltaRange();
-    return resizeDelta >= minDelta && resizeDelta <= maxDelta;
+    return (minDelta: minDelta, maxDelta: maxDelta);
   }
 
   void _commitResizeSessionIfNeeded({required EditorStateMachineEvent event}) {
@@ -369,17 +338,13 @@ class ArrangerClipResizeState
     }
 
     final resizingClipIds = _resizingClipIds;
-    final arrangementId = project.sequence.activeArrangementID;
-    if (resizingClipIds == null || arrangementId == null) {
+    final arrangementData = activeArrangementWithClips();
+    if (resizingClipIds == null || arrangementData == null) {
       return;
     }
 
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return;
-    }
-
-    final arrangementClips = arrangement.clips.nonObservableInner;
+    final arrangement = arrangementData.arrangement;
+    final arrangementClips = arrangementData.clips;
     final clipTimingOverrides =
         viewModel.clipTimingOverrides.nonObservableInner;
     final clipResizes =
@@ -442,6 +407,7 @@ class ArrangerClipResizeState
     _resizingClipIds = null;
     _resizeBaselines.clear();
     _resizeAreaType = null;
+    _validResizeDeltaRange = (minDelta: 0, maxDelta: 0);
     viewModel.clipTimingOverrides.clear();
     viewModel.pressedClip = null;
   }

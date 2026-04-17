@@ -52,7 +52,8 @@ class PianoRollResizeNotesSessionData {
   }) : notesById = Map<Id, PianoRollSessionNoteState>.unmodifiable(notesById);
 }
 
-class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
+class PianoRollResizeNotesState extends PianoRollSessionLeafState
+    with PianoRollSharedNoteSessionHelpers {
   PianoRollResizeNotesSessionData? _sessionData;
   Map<Id, PianoRollResizeNotePreview>? _preview;
 
@@ -61,11 +62,6 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
 
   @visibleForTesting
   Map<Id, PianoRollResizeNotePreview>? get preview => _preview;
-
-  bool _isResizePointerDownSignal(EditorStateMachineEvent event) {
-    return event is EditorStateMachineSignalEvent &&
-        event.signal is _PianoRollPointerDownSignal;
-  }
 
   PianoRollResizeNotesSessionData _createResizeNotesSessionData({
     required double pointerStartOffset,
@@ -138,19 +134,11 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
       );
     }
 
-    late int snapAtSmallestNoteStart;
-
     final offsetOfSmallestNoteAtStart = sessionData.smallestStartLength;
-
-    for (var i = 0; i < divisionChanges.length; i++) {
-      if (i < divisionChanges.length - 1 &&
-          divisionChanges[i + 1].offset <= offsetOfSmallestNoteAtStart) {
-        continue;
-      }
-
-      snapAtSmallestNoteStart = divisionChanges[i].divisionSnapSize;
-      break;
-    }
+    final snapAtSmallestNoteStart = getSnapSizeAtAbsoluteTime(
+      absoluteTime: offsetOfSmallestNoteAtStart,
+      divisionChanges: divisionChanges,
+    );
 
     var diff = snappedEventTime - snappedOriginalTime;
 
@@ -246,6 +234,11 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
     viewModel.pressedNote = pressedNote.id;
     setCursorNoteParameters(pressedNote);
 
+    final dragStartOffset = parentState.dragStartOffset;
+    if (dragStartOffset == null) {
+      return;
+    }
+
     final notesToResize = isSelectionResize
         ? viewModel.selectedNotes.nonObservableInner
               .map((noteId) => pattern.notes[noteId])
@@ -253,7 +246,7 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
         : <NoteModel>[pressedNote];
 
     _sessionData = _createResizeNotesSessionData(
-      pointerStartOffset: parentState.dragStartOffset!,
+      pointerStartOffset: dragStartOffset,
       pressedNote: pressedNote,
       notesToResize: notesToResize,
       isSelectionResize: isSelectionResize,
@@ -285,7 +278,7 @@ class PianoRollResizeNotesState extends PianoRollNoteInteractionState {
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
               PianoRollInteractionFamily.resizeNotes &&
-          _isResizePointerDownSignal(event),
+          isPointerDownSignal(event),
     ),
     .new(
       name: 'Exit resize notes',
