@@ -20,6 +20,7 @@
 // ignore_for_file: avoid_print
 // cspell:ignore DCMAKE fsanitize emcmake
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -575,17 +576,32 @@ class _EngineUnitTestCommand extends Command<dynamic> {
       mode: ProcessStartMode.normal,
     );
 
-    var hasError = false;
-    testProcess.stdout.listen(stdout.add);
-    testProcess.stderr.listen((e) {
-      stderr.add(e);
-      hasError = true;
+    final stderrLines = <String>[];
+    final stdoutSubscription = testProcess.stdout.listen(stdout.add);
+    final stderrSubscription = testProcess.stderr
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) {
+      stderr.writeln(line);
+      stderrLines.add(line);
     });
 
     final testExitCode = await testProcess.exitCode;
+    await Future.wait([
+      stdoutSubscription.asFuture<void>(),
+      stderrSubscription.asFuture<void>(),
+    ]);
 
-    if (hasError) {
+    if (stderrLines.isNotEmpty) {
       print(Colorize('\n\nError: Tests failed (stderr was not empty).').red());
+      print(
+        Colorize(
+          '\nLines captured on stderr (${stderrLines.length}):',
+        ).red(),
+      );
+      for (final line in stderrLines) {
+        print(Colorize('  $line').red());
+      }
       exit(1);
     } else if (testExitCode == 0xFFFF_FFFF_C000_0005) {
       // The leak detector isn't happy with a couple items in Anthem right now.
