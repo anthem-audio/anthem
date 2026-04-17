@@ -576,15 +576,31 @@ class _EngineUnitTestCommand extends Command<dynamic> {
       mode: ProcessStartMode.normal,
     );
 
+    // stderr lines matching any of these patterns are dropped: they're known
+    // benign noise that shouldn't fail the run. Blank lines are ignored because
+    // LineSplitter emits one between each paragraph of real stderr.
+    final stderrIgnorePatterns = <RegExp>[
+      RegExp(r'^\s*$'),
+      // On headless Linux CI runners /dev/snd/seq doesn't exist; JUCE probes
+      // ALSA during MIDI init, ALSA prints this, then JUCE's jassertfalse
+      // below fires. Neither is a real failure for our test suite.
+      RegExp(
+        r'^ALSA lib seq_hw\.c:\d+:\(snd_seq_hw_open\) '
+        r'open /dev/snd/seq failed: No such file or directory$',
+      ),
+      RegExp(r'^JUCE Assertion failure in juce_Midi_linux\.cpp:\d+$'),
+    ];
+
     final stderrLines = <String>[];
     final stdoutSubscription = testProcess.stdout.listen(stdout.add);
     final stderrSubscription = testProcess.stderr
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen((line) {
-      stderr.writeln(line);
-      stderrLines.add(line);
-    });
+          if (stderrIgnorePatterns.any((p) => p.hasMatch(line))) return;
+          stderr.writeln(line);
+          stderrLines.add(line);
+        });
 
     final testExitCode = await testProcess.exitCode;
     await Future.wait([
@@ -595,9 +611,7 @@ class _EngineUnitTestCommand extends Command<dynamic> {
     if (stderrLines.isNotEmpty) {
       print(Colorize('\n\nError: Tests failed (stderr was not empty).').red());
       print(
-        Colorize(
-          '\nLines captured on stderr (${stderrLines.length}):',
-        ).red(),
+        Colorize('\nLines captured on stderr (${stderrLines.length}):').red(),
       );
       for (final line in stderrLines) {
         print(Colorize('  $line').red());
