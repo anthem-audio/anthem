@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,6 +24,7 @@
 class Writer {
   var result = StringBuffer();
   var whitespace = '';
+  var _generatedIdentifierCount = 0;
 
   void incrementWhitespace() {
     whitespace += '  ';
@@ -41,4 +42,28 @@ class Writer {
 
     result.writeln('$whitespace${line ?? ''}');
   }
+
+  /// Returns a generator-owned identifier that cannot collide with model field
+  /// names or other user-defined symbols in emitted code.
+  String nextIdentifier(String stem) {
+    final identifierIndex = _generatedIdentifierCount++;
+
+    if (stem.isEmpty) {
+      return 'anthemCodegen$identifierIndex';
+    }
+
+    if (!_isLowerCamelCase(stem)) {
+      throw ArgumentError.value(
+        stem,
+        'stem',
+        'Expected a lowerCamelCase identifier stem.',
+      );
+    }
+
+    return 'anthemCodegen${stem[0].toUpperCase()}${stem.substring(1)}$identifierIndex';
+  }
+}
+
+bool _isLowerCamelCase(String value) {
+  return RegExp(r'^[a-z][A-Za-z0-9]*$').hasMatch(value);
 }

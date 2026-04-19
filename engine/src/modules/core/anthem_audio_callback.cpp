@@ -18,6 +18,7 @@
 */
 
 #include "anthem_audio_callback.h"
+
 #include "modules/core/anthem.h"
 
 #include <stdexcept>
@@ -35,9 +36,7 @@ AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   auto masterOutputNodeId = processingGraph->masterOutputNodeId();
 
   juce::Logger::writeToLog(
-    "AnthemAudioCallback: master output node id = " +
-    juce::String(masterOutputNodeId)
-  );
+      "AnthemAudioCallback: master output node id = " + juce::String(masterOutputNodeId));
 
   auto& nodes = *processingGraph->nodes();
   auto masterOutputNodeIter = nodes.find(masterOutputNodeId);
@@ -52,7 +51,7 @@ AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   }
 
   masterOutputProcessorSharedPtr =
-    std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputProcessorOpt.value());
+      std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputProcessorOpt.value());
   if (masterOutputProcessorSharedPtr == nullptr) {
     throw std::runtime_error("master output processor is not a MasterOutputProcessor");
   }
@@ -60,22 +59,23 @@ AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
   cpuBurdenProvider = Anthem::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
-  playheadPositionProvider = Anthem::getInstance().globalVisualizationSources->playheadPositionProvider.get();
-  playheadSequenceIdProvider = Anthem::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
+  playheadPositionProvider =
+      Anthem::getInstance().globalVisualizationSources->playheadPositionProvider.get();
+  playheadSequenceIdProvider =
+      Anthem::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
 
   juce::Logger::writeToLog("AnthemAudioCallback: constructed successfully.");
 }
 
 void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
-  [[maybe_unused]] const float* const* inputChannelData,
-  [[maybe_unused]] int numInputChannels,
-  float* const* outputChannelData,
-  int numOutputChannels,
-  int numSamples,
-  [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context
-) {
+    [[maybe_unused]] const float* const* inputChannelData,
+    [[maybe_unused]] int numInputChannels,
+    float* const* outputChannelData,
+    int numOutputChannels,
+    int numSamples,
+    [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context) {
   auto startTime = std::chrono::high_resolution_clock::now();
-  
+
   auto transport = anthem->transport.get();
 
   // Set up the transport for this processing block
@@ -91,7 +91,7 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
   bool badValue = false;
   float lastBadValue = 0.0f;
-  
+
   // The master output node may have an empty buffer if it hasn't been initialized yet
   if (outputBuffer.getNumChannels() > 0 && outputBuffer.getNumSamples() > 0) {
     for (int channel = 0; channel < numOutputChannels; ++channel) {
@@ -101,7 +101,8 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
       for (int sample = 0; sample < numSamples; ++sample) {
         auto sampleValue = outputBuffer.getSample(channel, sample);
-        if (std::isnan(sampleValue) || std::isinf(sampleValue) || sampleValue > 100.0f || sampleValue < -100.0f) {
+        if (std::isnan(sampleValue) || std::isinf(sampleValue) || sampleValue > 100.0f ||
+            sampleValue < -100.0f) {
           badValue = true;
           lastBadValue = sampleValue;
           sampleValue = 0.0f;
@@ -113,43 +114,32 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
 
   // Get ms since epoch
   auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now().time_since_epoch()
-  ).count();
+      std::chrono::system_clock::now().time_since_epoch())
+                 .count();
 
   if (now - lastDebugOutputTime > 2000) {
     if (badValue) {
       juce::Logger::writeToLog(
-        "Bad value detected in audio callback. Last bad value: " +
-        juce::String(lastBadValue)
-      );
+          "Bad value detected in audio callback. Last bad value: " + juce::String(lastBadValue));
     }
     lastDebugOutputTime = now;
   }
 
   auto endTime = std::chrono::high_resolution_clock::now();
 
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
   auto durationInSeconds = static_cast<double>(duration) / 1e6;
-  auto cpuBurden = durationInSeconds * this->sampleRate / static_cast<double>(numSamples); // actual time / total buffer time
-  cpuBurdenProvider->rt_updateCpuBurden(
-    cpuBurden,
-    blockStartSample,
-    numSamples,
-    this->sampleRate
-  );
+  auto cpuBurden = durationInSeconds * this->sampleRate /
+                   static_cast<double>(numSamples); // actual time / total buffer time
+  cpuBurdenProvider->rt_updateCpuBurden(cpuBurden, blockStartSample, numSamples, this->sampleRate);
 
   playheadPositionProvider->rt_updatePlayheadPosition(
-    *transport,
-    blockStartSample,
-    numSamples,
-    this->sampleRate
-  );
+      *transport, blockStartSample, numSamples, this->sampleRate);
 
-  if (transport->rt_config->activeSequenceId.has_value()) {
-    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(
-      transport->rt_config->activeSequenceId.value(),
-      blockStartSample
-    );
+  auto& activeSequenceId = transport->rt_config->activeSequenceId;
+  if (activeSequenceId.has_value()) {
+    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(*activeSequenceId, blockStartSample);
   }
 
   transport->rt_advancePlayhead(numSamples);
@@ -171,11 +161,9 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
   const auto deviceSampleRate = device->getCurrentSampleRate();
   const auto bufferSize = device->getCurrentBufferSizeSamples();
 
-  juce::Logger::writeToLog(
-    "audioDeviceAboutToStart(): device=" + deviceName +
-    ", sampleRate=" + juce::String(deviceSampleRate) +
-    ", bufferSize=" + juce::String(bufferSize)
-  );
+  juce::Logger::writeToLog("audioDeviceAboutToStart(): device=" + deviceName +
+                           ", sampleRate=" + juce::String(deviceSampleRate) +
+                           ", bufferSize=" + juce::String(bufferSize));
 
   this->sampleRate = deviceSampleRate;
 
@@ -184,30 +172,24 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
 
     anthem.transport->prepareToProcess();
     juce::Logger::writeToLog(
-      "audioDeviceAboutToStart(): transport prepared for device " + deviceName
-    );
+        "audioDeviceAboutToStart(): transport prepared for device " + deviceName);
 
     auto audioConfig = anthem.getCurrentAudioConfig();
     if (audioConfig == nullptr) {
       juce::Logger::writeToLog(
-        "audioDeviceAboutToStart(): Failed to build audio config for current device."
-      );
+          "audioDeviceAboutToStart(): Failed to build audio config for current device.");
       return;
     }
-    
+
     // This notifies the UI that the engine has started
-    Response response = AudioReadyEvent {
-      .audioConfig = audioConfig,
-      .responseBase = ResponseBase {
-        .id = -1
-      },
+    Response response = AudioReadyEvent{
+        .audioConfig = audioConfig,
+        .responseBase = ResponseBase{.id = -1},
     };
-    
+
     auto responseText = rfl::json::write(response);
     Anthem::getInstance().comms.send(responseText);
-    juce::Logger::writeToLog(
-      "audioDeviceAboutToStart(): AudioReadyEvent sent to UI."
-    );
+    juce::Logger::writeToLog("audioDeviceAboutToStart(): AudioReadyEvent sent to UI.");
   });
 }
 

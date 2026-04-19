@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,28 +19,28 @@
 
 #pragma once
 
-#include <juce_core/juce_core.h>
-#include <cstdint>
-
-#include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+
+#include <cstdint>
+#include <juce_core/juce_core.h>
 
 class CopyEventsAction : public AnthemGraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(CopyEventsAction)
 public:
-  AnthemProcessContext* source;
+  AnthemNodeProcessContext* source;
   int64_t sourcePortId;
 
-  AnthemProcessContext* destination;
+  AnthemNodeProcessContext* destination;
   int64_t destinationPortId;
 
-  CopyEventsAction(
-    AnthemProcessContext* source,
-    int64_t sourcePortId,
-    AnthemProcessContext* destination,
-    int64_t destinationPortId
-  ) : source(source), sourcePortId(sourcePortId), destination(destination), destinationPortId(destinationPortId) {}
+  CopyEventsAction(AnthemNodeProcessContext* source,
+      int64_t sourcePortId,
+      AnthemNodeProcessContext* destination,
+      int64_t destinationPortId)
+    : source(source), sourcePortId(sourcePortId), destination(destination),
+      destinationPortId(destinationPortId) {}
 
   void execute(int numSamples) override;
 

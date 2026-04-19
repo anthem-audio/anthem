@@ -19,10 +19,10 @@
 
 #pragma once
 
-#include "plugin_window.h"
-#include "modules/core/anthem.h"
-#include <rfl.hpp>
-
 #include "messages/messages.h"
+#include "modules/core/anthem.h"
+#include "plugin_window.h"
+
+#include <rfl.hpp>
 
 std::optional<Response> handleModelSyncCommand(Request& request);

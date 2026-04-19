@@ -19,26 +19,18 @@
 
 part of 'arranger_state_machine.dart';
 
-class ArrangerCreateClipState
-    extends EditorStateMachineState<ArrangerStateMachineData> {
+class ArrangerCreateClipState extends _ArrangerLeafState {
   @override
   ArrangerDragState get parentState => super.parentState as ArrangerDragState;
 
-  /// Convenience getter to fetch the base state machine object.
-  ArrangerStateMachine get arrangerStateMachine =>
-      stateMachine as ArrangerStateMachine;
-
-  /// The main input data for the state machine, which is the current
-  /// interaction state (e.g. what pointers are down and where, which modifier
-  /// keys are pressed).
-  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
-
-  ProjectModel get project => arrangerStateMachine.project;
-  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
-  ArrangerController get controller => arrangerStateMachine.controller;
-
   Id? _targetTrackId;
   double? _defaultStartOffset;
+
+  // Local latch of parentState.hasCrossedActivationDistance. The parent drag
+  // state resets that flag during its own pointer-up handling, which runs
+  // before this leaf's onActive sees the up signal. Without the latch, the
+  // up handler could no longer tell whether the user actually dragged a
+  // clip-create rectangle versus just double-clicked to insert in place.
   bool _didCrossActivationDistance = false;
 
   bool _shouldExitCreateClipState() {

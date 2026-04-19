@@ -21,19 +21,17 @@
 
 #ifndef __EMSCRIPTEN__
 
-#include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_gui_basics/juce_gui_basics.h>
 
-class PluginWindow : public juce::DocumentWindow
-{
+class PluginWindow : public juce::DocumentWindow {
 public:
   PluginWindow(juce::AudioProcessor* processor);
   ~PluginWindow();
 
   void closeButtonPressed() override;
-
 private:
-  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWindow)
+  JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PluginWindow)
 };
 
 #endif // #ifndef __EMSCRIPTEN__

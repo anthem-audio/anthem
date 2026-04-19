@@ -19,20 +19,18 @@
 
 #pragma once
 
-#include <queue>
-#include <string>
+#include "comms.h"
+#include "comms_pipe_wasm.h"
 
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
-
-#include "comms_pipe_wasm.h"
-#include "comms.h"
+#include <queue>
+#include <string>
 
 class Anthem;
 
 class AnthemSocketThread : public juce::Thread {
   friend class AnthemComms;
-
 private:
   static constexpr size_t HEADER_SIZE = sizeof(uint64_t);
 
@@ -47,11 +45,11 @@ private:
 
   static constexpr int THREAD_SLEEP_MS = 1;
 
-  #ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
   AnthemPipeWasm socket;
-  #else // #ifdef __EMSCRIPTEN__
+#else  // #ifdef __EMSCRIPTEN__
   juce::StreamingSocket socket;
-  #endif // #ifdef __EMSCRIPTEN__
+#endif // #ifdef __EMSCRIPTEN__
 
   // Tries writing the current message to the socket. This may complete without
   // sending everything.
@@ -80,13 +78,11 @@ private:
 
   bool messageQueueHasMessages();
   void prepareNextMessage();
-  
-  void processIncomingMessage(uint64_t messageLength);
 
+  void processIncomingMessage(uint64_t messageLength);
 protected:
   std::queue<juce::MemoryBlock> messageQueue;
   juce::CriticalSection queueLock;
-
 public:
   AnthemSocketThread();
 
@@ -108,15 +104,15 @@ public:
   void send(std::string& message);
   void sendRaw(juce::MemoryBlock& message);
 
-  #ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
   AnthemPipeWasm& getSocketOrPipe() {
     return socketThread.socket;
   }
-  #else // #ifdef __EMSCRIPTEN__
+#else  // #ifdef __EMSCRIPTEN__
   juce::StreamingSocket& getSocketOrPipe() {
     return socketThread.socket;
   }
-  #endif // #ifdef __EMSCRIPTEN__
+#endif // #ifdef __EMSCRIPTEN__
 
   // Stops the socket thread, after all messages have been sent.
   //

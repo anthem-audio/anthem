@@ -19,13 +19,12 @@
 
 #pragma once
 
-#include <memory>
-#include <cstdint>
-
-#include <juce_core/juce_core.h>
-
-#include "modules/processing_graph/compiler/anthem_process_context.h"
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+
+#include <cstdint>
+#include <juce_core/juce_core.h>
+#include <memory>
 
 // This action copies the data from a given control output to a given control
 // input.
@@ -36,20 +35,17 @@ class CopyControlBufferAction : public AnthemGraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(CopyControlBufferAction)
 public:
-  AnthemProcessContext* source;
+  AnthemNodeProcessContext* source;
   int64_t sourcePortId;
 
-  AnthemProcessContext* destination;
+  AnthemNodeProcessContext* destination;
   int64_t destinationPortId;
 
-  CopyControlBufferAction(
-    AnthemProcessContext* source,
-    int64_t sourcePortId,
-    AnthemProcessContext* destination,
-    int64_t destinationPortId
-  ) : source(source),
-      sourcePortId(sourcePortId),
-      destination(destination),
+  CopyControlBufferAction(AnthemNodeProcessContext* source,
+      int64_t sourcePortId,
+      AnthemNodeProcessContext* destination,
+      int64_t destinationPortId)
+    : source(source), sourcePortId(sourcePortId), destination(destination),
       destinationPortId(destinationPortId) {}
 
   void execute(int numSamples) override;

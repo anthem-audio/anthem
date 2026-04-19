@@ -19,13 +19,12 @@
 
 #pragma once
 
-#include <memory>
+#include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
+#include "modules/util/ring_buffer.h"
 
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
-
-#include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
-#include "modules/util/ring_buffer.h"
+#include <memory>
 
 class GraphRuntimeServices;
 
@@ -35,16 +34,24 @@ class GraphRuntimeServices;
 // those instructions in a real-time context.
 //
 // This class should only be accessed from the audio thread, except for the
-// setProcessingStepsFromMainThread function, which is intended to be called
-// from the main thread.
+// setProcessingStepsFromMainThread and clearDeletionQueueFromMainThread
+// functions, which are intended to be called from the main thread.
 class AnthemGraphProcessor {
 private:
   JUCE_LEAK_DETECTOR(AnthemGraphProcessor)
 
-  AnthemGraphCompilationResult* processingSteps;
+  // Owned by the audio thread until a newer compilation result is swapped in.
+  AnthemGraphCompilationResult* rt_activeCompilationResult;
   std::unique_ptr<GraphRuntimeServices> rt_services;
-  RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsQueue;
-  RingBuffer<AnthemGraphCompilationResult*, 512> processingStepsDeletionQueue;
+
+  // Ownership is transferred from the main thread into this queue, then picked
+  // up by the audio thread at the start of process().
+  RingBuffer<AnthemGraphCompilationResult*, 512> pendingCompilationResultsQueue;
+
+  // Replaced active results are transferred back to the main thread through
+  // this queue so cleanup and deletion happen off the audio thread.
+  RingBuffer<AnthemGraphCompilationResult*, 512> retiredCompilationResultsQueue;
+
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
   ~AnthemGraphProcessor();
@@ -53,14 +60,13 @@ public:
   // propagate event and control data.
   void process(int numSamples);
 
-  // This function adds a new set of processing steps to the queue. This is
-  // intended to be called from the main thread, and the processing steps will
-  // be picked up by the audio thread.
+  // Transfers ownership of a newly compiled result from the main thread to the
+  // audio thread. The result will become active at the start of a later
+  // process() call.
   void setProcessingStepsFromMainThread(AnthemGraphCompilationResult* compilationResult);
 
-  // This function clears the deletion queue. This is intended to be called from
-  // the main thread. The audio thread should not deallocate memory, so old compilation
-  // results are added to a deletion queue and then cleared from the main thread.
+  // Destroys retired compilation results on the main thread. The audio thread
+  // never deletes compilation results directly.
   void clearDeletionQueueFromMainThread();
 
   GraphRuntimeServices& getRtServices();

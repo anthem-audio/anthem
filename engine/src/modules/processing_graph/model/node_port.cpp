@@ -20,15 +20,12 @@
 #include "node_port.h"
 
 #include "generated/lib/model/model.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 #include <juce_core/juce_core.h>
 
-#include "modules/processing_graph/compiler/anthem_process_context.h"
-
 void NodePort::initialize(
-  std::shared_ptr<AnthemModelBase> selfModel,
-  std::shared_ptr<AnthemModelBase> parentModel
-) {
+    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
   NodePortModelBase::initialize(selfModel, parentModel);
 
   if (this->config()->parameterConfig().has_value()) {
@@ -39,7 +36,9 @@ void NodePort::initialize(
 
       bool success = this->trySendParameterValueToAudioThread(value.value());
       if (!success) {
-        std::cout << "Warning: failed to send parameter value update to audio thread. This is a bug." << std::endl;
+        std::cout
+            << "Warning: failed to send parameter value update to audio thread. This is a bug."
+            << '\n';
       }
     });
 
@@ -48,14 +47,16 @@ void NodePort::initialize(
     if (value.has_value()) {
       bool success = this->trySendParameterValueToAudioThread(value.value());
       if (!success) {
-        std::cout << "Warning: failed to send initial parameter value to audio thread. This indicates an unexpected timing issue and should be addressed." << std::endl;
+        std::cout << "Warning: failed to send initial parameter value to audio thread. This "
+                     "indicates an unexpected timing issue and should be addressed."
+                  << '\n';
       }
     }
   }
 }
 
 bool NodePort::trySendParameterValueToAudioThread(double value) {
-  jassert(value >= 0.0 && value <= 1.0);
+  jassert(juce::jlimit(0.0, 1.0, value) == value);
 
   std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
 

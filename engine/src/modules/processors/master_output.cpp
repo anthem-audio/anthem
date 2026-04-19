@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,23 +18,23 @@
 */
 
 #include "master_output.h"
-#include "modules/core/anthem.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
 
-#include <juce_audio_basics/juce_audio_basics.h>
+#include "modules/core/anthem.h"
+#include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
 #include <iostream>
+#include <juce_audio_basics/juce_audio_basics.h>
 
 MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImpl& _impl)
-      : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {}
+  : AnthemProcessor("MasterOutput"), MasterOutputProcessorModelBase(_impl) {}
 
 MasterOutputProcessor::~MasterOutputProcessor() {}
 
 void MasterOutputProcessor::prepareToProcess() {
   auto* device = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  if (!device) {
+  if (device == nullptr) {
     jassertfalse;
-    std::cerr << "Error: No audio device is currently set." << std::endl;
+    std::cerr << "Error: No audio device is currently set." << '\n';
     return;
   }
 
@@ -44,7 +44,7 @@ void MasterOutputProcessor::prepareToProcess() {
   buffer = juce::AudioSampleBuffer(outputChannels, bufferSize);
 }
 
-void MasterOutputProcessor::process(AnthemProcessContext& context, int numSamples) {
+void MasterOutputProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
   auto& inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {

@@ -31,21 +31,7 @@ class PianoRollSelectionBoxSessionData {
   });
 }
 
-class PianoRollSelectionBoxState
-    extends EditorStateMachineState<PianoRollStateMachineData> {
-  @override
-  PianoRollPointerSessionState get parentState =>
-      super.parentState as PianoRollPointerSessionState;
-
-  PianoRollStateMachine get pianoRollStateMachine =>
-      stateMachine as PianoRollStateMachine;
-
-  PianoRollStateMachineData get interactionState => pianoRollStateMachine.data;
-
-  ProjectModel get project => pianoRollStateMachine.project;
-  PianoRollViewModel get viewModel => pianoRollStateMachine.viewModel;
-  PianoRollController get controller => pianoRollStateMachine.controller;
-
+class PianoRollSelectionBoxState extends PianoRollSessionLeafState {
   PianoRollSelectionBoxSessionData? _sessionData;
 
   @visibleForTesting
@@ -120,8 +106,7 @@ class PianoRollSelectionBoxState
       canTransition: ({required data, required event, required currentState}) =>
           data.activeInteractionFamily ==
               PianoRollInteractionFamily.selectionBox &&
-          event is EditorStateMachineSignalEvent &&
-          event.signal is _PianoRollPointerDownSignal,
+          isPointerDownSignal(event),
     ),
     .new(
       name: 'Exit selection box',

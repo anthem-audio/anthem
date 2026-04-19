@@ -20,41 +20,242 @@
 #include "runtime_sequence_store.h"
 
 #include "modules/core/anthem.h"
+#include "modules/util/intentionally_leak.h"
 
-SequenceEventList::SequenceEventList() {
-  events = new std::vector<AnthemSequenceEvent>();
-}
+#include <algorithm>
 
-void SequenceEventList::cleanUpInstance(SequenceEventList& instance) {
-  delete instance.events;
-
-  // If the list is never sent to the audio thread for some reason, this might
-  // be set. I don't think it's possible in practice, but this seems safest.
-  if (instance.invalidationRanges != nullptr) {
-    delete instance.invalidationRanges;
+namespace {
+void retain(SequenceEventList* track) {
+  if (track != nullptr) {
+    track->snapshotRefCount++;
   }
 }
 
-SequenceEventListCollection::SequenceEventListCollection() {
-  tracks = new std::unordered_map<EntityId, SequenceEventList>();
-}
-
-// This is essentially a destructor for SequenceEventListCollection. We just
-// need very tight control over when specific event lists are deallocated. See
-// the comments in the header file for more information.
-void SequenceEventListCollection::cleanUpInstance(SequenceEventListCollection& instance) {
-  for (auto& [key, seqListObj] : *instance.tracks) {
-    SequenceEventList::cleanUpInstance(seqListObj);
+void release(SequenceEventList* track) {
+  if (track == nullptr) {
+    return;
   }
 
-  delete instance.tracks;
+  jassert(track->snapshotRefCount > 0);
+  track->snapshotRefCount--;
+
+  if (track->snapshotRefCount == 0) {
+    delete track;
+  }
+}
+
+void retain(SequenceEventListCollection* sequence) {
+  if (sequence != nullptr) {
+    sequence->snapshotRefCount++;
+  }
+}
+
+void release(SequenceEventListCollection* sequence) {
+  if (sequence == nullptr) {
+    return;
+  }
+
+  jassert(sequence->snapshotRefCount > 0);
+  sequence->snapshotRefCount--;
+
+  if (sequence->snapshotRefCount == 0) {
+    delete sequence;
+  }
+}
+
+bool rt_hasInvalidationForCurrentBlock(
+    const std::vector<std::tuple<double, double>>& invalidationRanges,
+    double playheadStart,
+    double playheadEnd,
+    double loopStartRangeBegin,
+    double loopStartRangeEnd) {
+  for (const auto& range : invalidationRanges) {
+    const bool isWithinMainRange =
+        playheadStart <= std::get<1>(range) && playheadEnd >= std::get<0>(range);
+    const bool isWithinLoopRange =
+        loopStartRangeBegin != -1.0 &&
+        (loopStartRangeBegin <= std::get<1>(range) && loopStartRangeEnd >= std::get<0>(range));
+
+    if (isWithinMainRange || isWithinLoopRange) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void rt_applyChangedTrackInvalidation(SequenceStoreSnapshot& snapshot,
+    const ChangedSequenceTrack& changedTrack,
+    double playheadStart,
+    double playheadEnd,
+    double loopStartRangeBegin,
+    double loopStartRangeEnd) {
+  if (!rt_hasInvalidationForCurrentBlock(changedTrack.invalidationRanges,
+          playheadStart,
+          playheadEnd,
+          loopStartRangeBegin,
+          loopStartRangeEnd)) {
+    return;
+  }
+
+  auto sequenceIter = snapshot.sequences.find(changedTrack.sequenceId);
+  if (sequenceIter == snapshot.sequences.end()) {
+    return;
+  }
+
+  auto* sequence = sequenceIter->second;
+  auto trackIter = sequence->tracks.find(changedTrack.trackId);
+  if (trackIter == sequence->tracks.end()) {
+    return;
+  }
+
+  trackIter->second->rt_invalidationOccurred = true;
+}
+
+bool publishSnapshot(RingBuffer<SequenceStoreSnapshot*, 1024>& queue,
+    SequenceStoreSnapshot*& currentSnapshot,
+    SequenceStoreSnapshot* newSnapshot) {
+  if (!queue.add(newSnapshot)) {
+    jassertfalse;
+    delete newSnapshot;
+    return false;
+  }
+
+  currentSnapshot = newSnapshot;
+  return true;
+}
+
+void addSnapshotForDeletion(
+    std::vector<SequenceStoreSnapshot*>& snapshots, SequenceStoreSnapshot* snapshot) {
+  if (snapshot == nullptr) {
+    return;
+  }
+
+  if (std::find(snapshots.begin(), snapshots.end(), snapshot) == snapshots.end()) {
+    snapshots.push_back(snapshot);
+  }
+}
+} // namespace
+
+SequenceEventList::SequenceEventList() = default;
+
+SequenceEventList::SequenceEventList(const SequenceEventList& other)
+  : events(other.events), invalidationRanges(other.invalidationRanges),
+    rt_invalidationOccurred(other.rt_invalidationOccurred) {}
+
+SequenceEventList::SequenceEventList(SequenceEventList&& other) noexcept
+  : events(std::move(other.events)), invalidationRanges(std::move(other.invalidationRanges)),
+    rt_invalidationOccurred(other.rt_invalidationOccurred) {
+  other.rt_invalidationOccurred = false;
+}
+
+SequenceEventList& SequenceEventList::operator=(const SequenceEventList& other) {
+  jassert(snapshotRefCount == 0);
+  events = other.events;
+  invalidationRanges = other.invalidationRanges;
+  rt_invalidationOccurred = other.rt_invalidationOccurred;
+  return *this;
+}
+
+SequenceEventList& SequenceEventList::operator=(SequenceEventList&& other) noexcept {
+  jassert(snapshotRefCount == 0);
+  events = std::move(other.events);
+  invalidationRanges = std::move(other.invalidationRanges);
+  rt_invalidationOccurred = other.rt_invalidationOccurred;
+  other.rt_invalidationOccurred = false;
+  return *this;
+}
+
+SequenceEventListCollection::SequenceEventListCollection() = default;
+
+SequenceEventListCollection::~SequenceEventListCollection() {
+  for (auto& [trackId, track] : tracks) {
+    release(track);
+  }
+}
+
+SequenceEventListCollection* SequenceEventListCollection::clone() const {
+  auto* result = new SequenceEventListCollection();
+
+  for (auto& [trackId, track] : tracks) {
+    result->setTrack(trackId, track);
+  }
+
+  return result;
+}
+
+void SequenceEventListCollection::setTrack(EntityId trackId, SequenceEventList* track) {
+  retain(track);
+
+  auto existingTrack = tracks.find(trackId);
+  if (existingTrack != tracks.end()) {
+    release(existingTrack->second);
+    existingTrack->second = track;
+    return;
+  }
+
+  tracks.insert_or_assign(trackId, track);
+}
+
+void SequenceEventListCollection::removeTrack(EntityId trackId) {
+  auto existingTrack = tracks.find(trackId);
+  if (existingTrack == tracks.end()) {
+    return;
+  }
+
+  release(existingTrack->second);
+  tracks.erase(existingTrack);
+}
+
+SequenceStoreSnapshot::SequenceStoreSnapshot() = default;
+
+SequenceStoreSnapshot::~SequenceStoreSnapshot() {
+  for (auto& [sequenceId, sequence] : sequences) {
+    release(sequence);
+  }
+}
+
+SequenceStoreSnapshot* SequenceStoreSnapshot::clone() const {
+  auto* result = new SequenceStoreSnapshot();
+
+  for (auto& [sequenceId, sequence] : sequences) {
+    result->setSequence(sequenceId, sequence);
+  }
+
+  result->changedTracks = changedTracks;
+
+  return result;
+}
+
+void SequenceStoreSnapshot::setSequence(
+    EntityId sequenceId, SequenceEventListCollection* sequence) {
+  retain(sequence);
+
+  auto existingSequence = sequences.find(sequenceId);
+  if (existingSequence != sequences.end()) {
+    release(existingSequence->second);
+    existingSequence->second = sequence;
+    return;
+  }
+
+  sequences.insert_or_assign(sequenceId, sequence);
+}
+
+void SequenceStoreSnapshot::removeSequence(EntityId sequenceId) {
+  auto existingSequence = sequences.find(sequenceId);
+  if (existingSequence == sequences.end()) {
+    return;
+  }
+
+  release(existingSequence->second);
+  sequences.erase(existingSequence);
 }
 
 void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   auto result = mapUpdateQueue.read();
 
   double playheadStart = -1; // inclusive
-  double playheadEnd = -1; // not inclusive
+  double playheadEnd = -1;   // not inclusive
 
   // If this block includes a loop jump, these will be set to something besides
   // -1. These represent a range starting at the loop start and extending for
@@ -76,82 +277,23 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
     }
   }
 
-  // Take all the updates from the queue, and push old values to the deletion
-  // queue.
   while (result.has_value()) {
-    auto* newMap = result.value();
+    auto* newSnapshot = result.value();
 
-    auto* oldMap = rt_eventLists;
-    rt_eventLists = newMap;
+    for (auto& changedTrack : newSnapshot->changedTracks) {
+      rt_applyChangedTrackInvalidation(*newSnapshot,
+          changedTrack,
+          playheadStart,
+          playheadEnd,
+          loopStartRangeBegin,
+          loopStartRangeEnd);
+    }
 
-    mapDeletionQueue.add(oldMap);
+    auto* oldSnapshot = rt_eventLists;
+    rt_eventLists = newSnapshot;
 
-    // This block checks invalidation ranges and flags any relevant sequences as
-    // invalid for the current playhead position if necessary.
-    for (auto& [seqKey, seqListObj] : *newMap) {
-      // First, we need to find all track event lists that are new or have
-      // changed
-      auto oldSeqObj = oldMap->find(seqKey);
-
-      bool oldSeqObjExists = oldSeqObj != oldMap->end();
-
-      bool shouldCheckSequenceKey = !oldSeqObjExists ||
-        oldSeqObj->second.tracks != seqListObj.tracks;
-
-      if (!shouldCheckSequenceKey) {
-        // The track list is not new or updated, so we can skip it
-        continue;
-      }
-
-      for (auto& [trackId, trackListObj] : *seqListObj.tracks) {
-        if (oldSeqObjExists &&
-            oldSeqObj->second.tracks->find(trackId) != oldSeqObj->second.tracks->end()) {
-          auto oldTrackListObj = oldSeqObj->second.tracks->find(trackId);
-          if (oldTrackListObj != oldSeqObj->second.tracks->end()) {
-            // If the old event list exists, it may not have had a chance to be
-            // used yet. In that case, it may be marked as invalid for the current
-            // block, so we will carry over that state to the new track
-            if (oldTrackListObj->second.invalidationOccurred) {
-              trackListObj.invalidationOccurred = true;
-            }
-
-            // If the inner event list pointer is identical, then the event list
-            // wasn't updated. We still need to carry over the invalidation
-            // state so we don't need to recalculate it (which we do above), but
-            // we can skip processing further for this track.
-            if (oldTrackListObj->second.events == trackListObj.events) {
-              continue;
-            }
-          }
-        }
-
-        // If the invalidation didn't carry over, or if the event list is brand
-        // new, we need to check and see if the playhead is within any of the
-        // invalidation ranges for this event list update.
-        if (!trackListObj.invalidationOccurred) {
-          if (trackListObj.invalidationRanges == nullptr) {
-            // If there are no invalidation ranges, we can skip this track.
-            continue;
-          }
-
-          auto& invalidationRanges = *trackListObj.invalidationRanges;
-          for (const auto& range : invalidationRanges) {
-            // If the playhead is within the invalidation range, we need to
-            // mark this track as invalid for the current processing block.
-
-            bool isWithinMainRange = playheadStart <= std::get<1>(range) &&
-              playheadEnd >= std::get<0>(range);
-            bool isWithinLoopRange = loopStartRangeBegin != -1.0 && (
-              loopStartRangeBegin <= std::get<1>(range) &&
-              loopStartRangeEnd >= std::get<0>(range));
-
-            if (isWithinMainRange || isWithinLoopRange) {
-              trackListObj.invalidationOccurred = true;
-              break; // We only need to set this once
-            }
-          }
-        }
-      }
+    if (!mapDeletionQueue.add(oldSnapshot)) {
+      intentionallyLeak(oldSnapshot);
     }
 
     result = mapUpdateQueue.read();
@@ -159,98 +301,60 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
 }
 
 const SequenceEventListCollection* AnthemRuntimeSequenceStore::getSequenceEventList(
-  EntityId sequenceId
-) const {
-  auto it = eventLists->find(sequenceId);
-  if (it == eventLists->end()) {
+    EntityId sequenceId) const {
+  auto it = eventLists->sequences.find(sequenceId);
+  if (it == eventLists->sequences.end()) {
     return nullptr;
   }
 
-  return &it->second;
+  return it->second;
 }
 
-AnthemRuntimeSequenceStore::SequenceIdToEventsMap& AnthemRuntimeSequenceStore::rt_getEventLists() {
+SequenceStoreSnapshot& AnthemRuntimeSequenceStore::rt_getEventLists() {
   return *rt_eventLists;
 }
 
 AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
   : clearDeletionQueueTimedCallback(
-      juce::TimedCallback([this]() {
-        this->processDeletionQueues();
-      })
-    ),
-    mapUpdateQueue(),
-    mapDeletionQueue()
-{
-  eventLists = new SequenceIdToEventsMap();
+        juce::TimedCallback([this]() { this->processDeletionQueues(); })) {
+  eventLists = new SequenceStoreSnapshot();
   rt_eventLists = eventLists;
-
-  pendingSequenceDeletions = std::unordered_map<AnthemRuntimeSequenceStore::SequenceIdToEventsMap*, SequenceEventListCollection>();
-  pendingSequenceTrackDeletions = std::unordered_map<
-    AnthemRuntimeSequenceStore::SequenceIdToEventsMap*,
-    std::vector<
-      std::tuple<
-        std::optional<SequenceEventList>,
-        std::unordered_map<EntityId, SequenceEventList>*
-      >
-    >
-  >();
 }
 
-// The audio thread MUST be stopped before cleaning this up. Otherwise, this
-// will leak memory.
+// The audio thread must be stopped before destruction. This drains handoff
+// queues and deletes both main-thread and audio-thread snapshots.
 AnthemRuntimeSequenceStore::~AnthemRuntimeSequenceStore() {
-  // Clean up any remaining maps in the deletion queue
+  clearDeletionQueueTimedCallback.stopTimer();
+
   processDeletionQueues();
 
-  for (auto& [key, seqListObj] : *eventLists) {
-    SequenceEventListCollection::cleanUpInstance(seqListObj);
+  auto snapshotsToDelete = std::vector<SequenceStoreSnapshot*>();
+
+  while (auto pendingSnapshot = mapUpdateQueue.read()) {
+    addSnapshotForDeletion(snapshotsToDelete, pendingSnapshot.value());
   }
 
-  delete eventLists;
+  while (auto retiredSnapshot = mapDeletionQueue.read()) {
+    addSnapshotForDeletion(snapshotsToDelete, retiredSnapshot.value());
+  }
+
+  addSnapshotForDeletion(snapshotsToDelete, eventLists);
+  addSnapshotForDeletion(snapshotsToDelete, rt_eventLists);
+
+  for (auto* snapshot : snapshotsToDelete) {
+    delete snapshot;
+  }
+
+  eventLists = nullptr;
+  rt_eventLists = nullptr;
 }
 
 void AnthemRuntimeSequenceStore::processDeletionQueues() {
-  auto nextMap = mapDeletionQueue.read();
+  auto nextSnapshot = mapDeletionQueue.read();
 
-  while (nextMap.has_value()) {
-    auto* map = nextMap.value();
-
-    // Check if there is a pending deletion for this map
-
-    {
-      auto it = pendingSequenceDeletions.find(map);
-      if (it != pendingSequenceDeletions.end()) {
-        SequenceEventListCollection::cleanUpInstance(it->second);
-        pendingSequenceDeletions.erase(it);
-      }
-    }
-
-    {
-      auto it = pendingSequenceTrackDeletions.find(map);
-      if (it != pendingSequenceTrackDeletions.end()) {
-        for (auto& [oldEventsForTrack, oldTrackMap] : it->second) {
-          if (oldEventsForTrack.has_value()) {
-            SequenceEventList::cleanUpInstance(oldEventsForTrack.value());
-          }
-
-          delete oldTrackMap;
-        }
-
-        pendingSequenceTrackDeletions.erase(it);
-      }
-    }
-
-    delete map;
-
-    nextMap = mapDeletionQueue.read();
-  }
-
-  auto nextInvalidationRangeList = invalidationRangesDeletionQueue.read();
-
-  while (nextInvalidationRangeList.has_value()) {
-    delete nextInvalidationRangeList.value();
-    nextInvalidationRangeList = invalidationRangesDeletionQueue.read();
+  while (nextSnapshot.has_value()) {
+    delete nextSnapshot.value();
+    nextSnapshot = mapDeletionQueue.read();
   }
 }
 
@@ -258,181 +362,88 @@ void AnthemRuntimeSequenceStore::registerDeletionTimer() {
   clearDeletionQueueTimedCallback.startTimer(500);
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateSequence(EntityId sequenceId, SequenceEventListCollection sequence) {
-  auto newMap = new SequenceIdToEventsMap(*eventLists);
-  auto it = newMap->find(sequenceId);
+void AnthemRuntimeSequenceStore::addOrUpdateSequence(
+    EntityId sequenceId, const SequenceEventListCollection& sequence) {
+  auto* newSnapshot = eventLists->clone();
+  auto* newSequence = sequence.clone();
 
-  if (it != newMap->end()) {
-    // If the sequence already exists, we need to replace it and add the old
-    // sequence to the pending deletions map.
-    pendingSequenceDeletions.insert_or_assign(eventLists, it->second);
-  }
+  newSnapshot->setSequence(sequenceId, newSequence);
 
-  newMap->insert_or_assign(sequenceId, sequence);
-
-  mapUpdateQueue.add(newMap);
-
-  // The audio thread still has the old pointer. We will clean it up when the
-  // audio thread releases it, via the JUCE timer in this class.
-  eventLists = newMap;
+  publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
 void AnthemRuntimeSequenceStore::removeSequence(EntityId sequenceId) {
-  auto it = eventLists->find(sequenceId);
-
-  if (it != eventLists->end()) {
-    auto newMap = new SequenceIdToEventsMap(*eventLists);
-    // If the sequence exists, we need to remove it and add it to the pending
-    // deletions map.
-    pendingSequenceDeletions.insert_or_assign(eventLists, it->second);
-    newMap->erase(sequenceId);
-
-    mapUpdateQueue.add(newMap);
-
-    // The audio thread still has the old pointer. We will clean it up when the
-    // audio thread releases it, via the JUCE timer in this class.
-    eventLists = newMap;
+  if (eventLists->sequences.find(sequenceId) == eventLists->sequences.end()) {
+    return;
   }
+
+  auto* newSnapshot = eventLists->clone();
+  newSnapshot->removeSequence(sequenceId);
+
+  publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
 void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
-  EntityId sequenceId,
-  EntityId trackId,
-  SequenceEventList track
-) {
-  auto newSequenceMap = new SequenceIdToEventsMap(*eventLists);
-  auto sequenceMapIt = newSequenceMap->find(sequenceId);
+    EntityId sequenceId, EntityId trackId, const SequenceEventList& track) {
+  auto* newSnapshot = eventLists->clone();
 
-  // If the sequence doesn't exist, we need to add it.
-  if (sequenceMapIt == newSequenceMap->end()) {
-    SequenceEventListCollection sequence;
+  auto oldSequenceIter = eventLists->sequences.find(sequenceId);
+  auto* newSequence = oldSequenceIter != eventLists->sequences.end()
+                          ? oldSequenceIter->second->clone()
+                          : new SequenceEventListCollection();
 
-    newSequenceMap->insert_or_assign(sequenceId, sequence);
+  newSequence->setTrack(trackId, new SequenceEventList(track));
+  newSnapshot->setSequence(sequenceId, newSequence);
 
-    sequenceMapIt = newSequenceMap->find(sequenceId);
+  if (!track.invalidationRanges.empty()) {
+    newSnapshot->changedTracks.push_back(ChangedSequenceTrack{
+        .sequenceId = sequenceId,
+        .trackId = trackId,
+        .invalidationRanges = track.invalidationRanges,
+    });
   }
 
-  // We need to replace the track and add the old track to the pending
-  // deletions map.
-  auto& sequence = sequenceMapIt->second;
-  auto trackIt = sequence.tracks->find(trackId);
-
-  auto* newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
-
-  {
-    auto vec = std::vector<
-      std::tuple<
-        std::optional<SequenceEventList>,
-        std::unordered_map<EntityId, SequenceEventList>*
-      >
-    >();
-
-    if (trackIt != sequence.tracks->end()) {
-      vec.push_back(std::make_tuple(trackIt->second, sequence.tracks));
-    } else {
-      vec.push_back(std::make_tuple(std::nullopt, sequence.tracks));
-    }
-
-    pendingSequenceTrackDeletions.insert_or_assign(eventLists, vec);
-  }
-
-  newTracksMap->insert_or_assign(trackId, track);
-
-  SequenceEventListCollection newSequenceEventListObject;
-  newSequenceEventListObject.tracks = newTracksMap;
-
-  newSequenceMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
-
-  mapUpdateQueue.add(newSequenceMap);
-
-  // The audio thread still has the old pointer. We will clean it up when the
-  // audio thread releases it, via the JUCE timer in this class.
-  eventLists = newSequenceMap;
+  publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
 void AnthemRuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, EntityId trackId) {
-  auto sequenceMapIt = eventLists->find(sequenceId);
-  if (sequenceMapIt == eventLists->end()) {
+  auto sequenceIter = eventLists->sequences.find(sequenceId);
+  if (sequenceIter == eventLists->sequences.end()) {
     return;
   }
 
-  auto trackMapIt = sequenceMapIt->second.tracks->find(trackId);
-  if (trackMapIt == sequenceMapIt->second.tracks->end()) {
+  if (sequenceIter->second->tracks.find(trackId) == sequenceIter->second->tracks.end()) {
     return;
   }
 
-  auto newSequenceMap = new SequenceIdToEventsMap(*eventLists);
-  auto& sequence = newSequenceMap->at(sequenceId);
+  auto* newSnapshot = eventLists->clone();
+  auto* newSequence = sequenceIter->second->clone();
+  newSequence->removeTrack(trackId);
+  newSnapshot->setSequence(sequenceId, newSequence);
 
-  auto newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
-  
-  {
-    auto vec = std::vector<
-      std::tuple<
-        std::optional<SequenceEventList>,
-        std::unordered_map<EntityId, SequenceEventList>*
-      >
-    >();
-
-    vec.push_back(std::make_tuple(trackMapIt->second, sequence.tracks));
-
-    pendingSequenceTrackDeletions.insert_or_assign(eventLists, vec);
-  }
-
-  newTracksMap->erase(trackId);
-
-  SequenceEventListCollection newSequenceEventListObject;
-  newSequenceEventListObject.tracks = newTracksMap;
-
-  newSequenceMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
-
-  mapUpdateQueue.add(newSequenceMap);
-
-  // The audio thread still has the old pointer. We will clean it up when the
-  // audio thread releases it, via the JUCE timer in this class.
-  eventLists = newSequenceMap;
+  publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
 void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
-  auto newMap = new SequenceIdToEventsMap(*eventLists);
+  auto* newSnapshot = eventLists->clone();
 
-  auto cleanupVec = std::vector<
-    std::tuple<
-      std::optional<SequenceEventList>,
-      std::unordered_map<EntityId, SequenceEventList>*
-    >
-  >();
-
-  for (auto& [sequenceId, sequence] : *newMap) {
-    auto trackIt = sequence.tracks->find(trackId);
-
-    if (trackIt != sequence.tracks->end()) {
-      auto newTracksMap = new std::unordered_map<EntityId, SequenceEventList>(*sequence.tracks);
-
-      cleanupVec.push_back(std::make_tuple(trackIt->second, sequence.tracks));
-
-      newTracksMap->erase(trackId);
-
-      SequenceEventListCollection newSequenceEventListObject;
-      newSequenceEventListObject.tracks = newTracksMap;
-
-      newMap->insert_or_assign(sequenceId, std::move(newSequenceEventListObject));
+  for (auto& [sequenceId, sequence] : eventLists->sequences) {
+    if (sequence->tracks.find(trackId) == sequence->tracks.end()) {
+      continue;
     }
+
+    auto* newSequence = sequence->clone();
+    newSequence->removeTrack(trackId);
+    newSnapshot->setSequence(sequenceId, newSequence);
   }
 
-  pendingSequenceTrackDeletions.insert_or_assign(eventLists, cleanupVec);
-
-  mapUpdateQueue.add(newMap);
-
-  // The audio thread still has the old pointer. We will clean it up when the
-  // audio thread releases it, via the JUCE timer in this class.
-  eventLists = newMap;
+  publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
 void AnthemRuntimeSequenceStore::rt_cleanupAfterBlock() {
-  for (auto& [key, seqListObj] : *rt_eventLists) {
-    for (auto& [trackId, trackEvents] : *seqListObj.tracks) {
-      trackEvents.invalidationOccurred = false;
+  for (auto& [sequenceId, sequence] : rt_eventLists->sequences) {
+    for (auto& [trackId, trackEvents] : sequence->tracks) {
+      trackEvents->rt_invalidationOccurred = false;
     }
   }
 }

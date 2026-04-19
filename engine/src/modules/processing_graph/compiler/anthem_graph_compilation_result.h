@@ -19,14 +19,14 @@
 
 #pragma once
 
+#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
+#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/model/node.h"
+
+#include <iostream>
+#include <juce_core/juce_core.h>
 #include <memory>
 #include <vector>
-#include <iostream>
-
-#include <juce_core/juce_core.h>
-
-#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
-#include "modules/processing_graph/compiler/anthem_process_context.h"
 
 // This class is used to represent the result of compiling a processing graph.
 class AnthemGraphCompilationResult {
@@ -34,31 +34,15 @@ private:
   JUCE_LEAK_DETECTOR(AnthemGraphCompilationResult)
 public:
   // All actions in a given group can be executed in parallel.
-  // 
+  //
   // The way these groups are constructed currently is quite naive and no work
   // has been done to optimize it.
-  std::vector<
-    std::unique_ptr<
-      std::vector<
-        std::unique_ptr<AnthemGraphCompilerAction>
-      >
-    >
-  > actionGroups;
+  std::vector<std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>>
+      actionGroups;
 
-  // This contains all process contexts. These are used in a number of different
-  // actions, and are (among other things) provided to processors when process()
-  // is called. Since there is no obvious owner, these are owned by the root
-  // compilation result, because they become invalid and must be deallocated
-  // when the compilation result is deallocated.
-  //
-  // This would be a great use-case for std::shared_ptr, but std::shared_ptr
-  // uses standard thread synchronization mechanisms and so isn't real-time
-  // safe.
-  std::vector<
-    std::unique_ptr<
-      AnthemProcessContext
-    >
-  > processContexts;
+  // Owns all graph-scoped runtime storage for this compiled graph, including
+  // the node process contexts that point into that storage.
+  std::unique_ptr<AnthemGraphProcessContext> graphProcessContext;
 
   // This contains a shared_ptr reference to each graph node that was present
   // when this context was created.
@@ -80,17 +64,13 @@ public:
   //       because it has no more shared_ptr references.
   //    5. The audio thread continues to use its raw pointer to try to access
   //       the node, which results in a use-after-free.
-  std::vector<
-    std::shared_ptr<
-      Node
-    >
-  > graphNodes;
+  std::vector<std::shared_ptr<Node>> graphNodes;
 
   void debugPrint() {
     juce::Logger::writeToLog("AnthemGraphCompilationResult");
-    std::cout << actionGroups.size() << " action groups" << std::endl;
+    std::cout << actionGroups.size() << " action groups" << '\n';
     for (auto& group : actionGroups) {
-      std::cout << "  ActionGroup" << std::endl << "  ";
+      std::cout << "  ActionGroup" << '\n' << "  ";
       for (auto& action : *group) {
         action->debugPrint();
       }

@@ -41,7 +41,7 @@ int AnthemPipeWasm::read(void* destBuffer, int maxBytesToRead, bool shouldBlock)
     ((uint8_t*)destBuffer)[bytesWritten] = byte;
     bytesWritten++;
   }
-  
+
   return bytesWritten;
 }
 

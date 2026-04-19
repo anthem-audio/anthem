@@ -7,6 +7,10 @@ project(AnthemEngine
   LANGUAGES C CXX
 )
 
+# clangd and clang-tidy rely on this on generators that support compile
+# database export.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(IS_WASM FALSE)
 if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(IS_WASM TRUE)
@@ -162,7 +166,13 @@ else()
       juce::juce_recommended_lto_flags
   )
 
-  target_compile_definitions(AnthemEngineLib PUBLIC JUCE_PLUGINHOST_VST3=1)
+  target_compile_definitions(AnthemEngineLib PUBLIC
+    JUCE_PLUGINHOST_VST3=1
+    # Suppress JUCE's "JUCE vX.Y.Z" startup banner. On macOS it goes to stderr
+    # via DBG -> Logger::outputDebugString, which our unit-test runner treats as
+    # a failure signal.
+    JUCE_DISABLE_JUCE_VERSION_PRINTING=1
+  )
 
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(AnthemEngineLib PUBLIC juce::juce_recommended_warning_flags)
@@ -213,6 +223,11 @@ if (NOT IS_WASM)
   # -------------------------------------------------------------------
   add_executable(AnthemTest
     test/test.cpp
+  )
+
+  target_include_directories(AnthemTest
+    PRIVATE
+      ${PROJECT_SOURCE_DIR}/test
   )
 
   target_link_libraries(AnthemTest

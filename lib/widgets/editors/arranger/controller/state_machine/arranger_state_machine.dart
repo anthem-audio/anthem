@@ -21,6 +21,7 @@ import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -101,7 +102,7 @@ class ArrangerStateMachine
   ArrangerViewModel viewModel;
   ArrangerController controller;
 
-  void onPointerDown(PointerEvent event) {
+  void onPointerDown(PointerDownEvent event) {
     data.handlePointerDown(event);
     emitSignal(_ArrangerPointerDownSignal(event));
     notifyDataUpdated();
@@ -121,6 +122,7 @@ class ArrangerStateMachine
     notifyDataUpdated();
 
     if (activePrimaryPointerId == event.pointer) {
+      // Exiting states need to see cancellation until their onExit has run.
       data.clearInteractionCancellation();
     }
   }
@@ -268,9 +270,116 @@ class ArrangerStateMachine
   }
 }
 
+/// Shared base for the arranger's leaf (non-idle, non-drag-parent) states.
+///
+/// Every concrete leaf state needs access to the same five handles (the state
+/// machine, its interaction data, the project, and the arranger's view model
+/// and controller), plus a small set of helpers for the work those states do
+/// repeatedly (resolving the clip under a point, looking up the active
+/// arrangement's clips, converting a pixel drag into a snapped tick delta).
+/// Hosting them here keeps each leaf focused on its interaction-specific
+/// logic.
+abstract class _ArrangerLeafState
+    extends EditorStateMachineState<ArrangerStateMachineData> {
+  _ArrangerLeafState([super.parentState]);
+
+  /// The owning state machine, cast to its concrete type.
+  ArrangerStateMachine get arrangerStateMachine =>
+      stateMachine as ArrangerStateMachine;
+
+  /// The state machine's input data: active pointers and their positions,
+  /// modifier key state, the rendered time view, and cancellation flag.
+  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
+
+  ProjectModel get project => arrangerStateMachine.project;
+  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+  ArrangerController get controller => arrangerStateMachine.controller;
+
+  /// Returns the clip ID for whatever was rendered at the cursor, preferring
+  /// the clip body, then falling back to the resize handle (which overhangs
+  /// the clip's right edge). Returns `null` if the cursor is over empty
+  /// arranger canvas.
+  Id? clipIdFromContentUnderCursor(ArrangerContentUnderCursor content) {
+    return content.clip?.metadata ?? content.resizeHandle?.metadata.id;
+  }
+
+  /// Convenience wrapper for the common
+  /// `clipIdFromContentUnderCursor(viewModel.getContentUnderCursor(...))`
+  /// pattern used by click handlers and hit-testing.
+  Id? clipIdAtPoint(Offset position) {
+    return clipIdFromContentUnderCursor(
+      viewModel.getContentUnderCursor(position),
+    );
+  }
+
+  /// Resolves the currently active arrangement alongside its clips map.
+  ///
+  /// Returns `null` if there is no active arrangement (project has none
+  /// selected, or the selected ID no longer resolves to a model). Callers
+  /// should early-return in that case rather than crashing.
+  ({ArrangementModel arrangement, Map<Id, ClipModel> clips})?
+  activeArrangementWithClips() {
+    final arrangementId = project.sequence.activeArrangementID;
+    if (arrangementId == null) {
+      return null;
+    }
+
+    final arrangement = project.sequence.arrangements[arrangementId];
+    if (arrangement == null) {
+      return null;
+    }
+
+    return (
+      arrangement: arrangement,
+      clips: arrangement.clips.nonObservableInner,
+    );
+  }
+
+  /// Converts a pixel drag (start/current X in local coordinates) into tick
+  /// times plus a drag delta.
+  ///
+  /// When [snapOverridden] is true (typically Alt held), the delta is the raw
+  /// `currentTime - startTime`. Otherwise it snaps to the nearest grid
+  /// division crossing along the drag path, using the arranger's current
+  /// division changes.
+  ({int startTime, int currentTime, int delta}) resolveSnappedDragDelta({
+    required double startPx,
+    required double currentPx,
+    required bool snapOverridden,
+  }) {
+    final startTime = pixelsToTime(
+      timeViewStart: interactionState.renderedTimeViewStart,
+      timeViewEnd: interactionState.renderedTimeViewEnd,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: startPx,
+    ).round();
+    final currentTime = pixelsToTime(
+      timeViewStart: interactionState.renderedTimeViewStart,
+      timeViewEnd: interactionState.renderedTimeViewEnd,
+      viewPixelWidth: interactionState.viewSize.width,
+      pixelOffsetFromLeft: currentPx,
+    ).round();
+    final delta = snapOverridden
+        ? currentTime - startTime
+        : getSnappedDragDelta(
+            startTime: startTime,
+            currentTime: currentTime,
+            divisionChanges: arrangerStateMachine.divisionChanges(),
+          );
+
+    return (startTime: startTime, currentTime: currentTime, delta: delta);
+  }
+}
+
+/// An immutable snapshot of a pointer position in local arranger coordinates.
+///
+/// New instances are created whenever a pointer moves; callers never mutate
+/// an existing one in place. Value equality (`==` / `hashCode`) lets us
+/// cheaply compare "did this pointer actually move?" without reaching into
+/// individual fields.
 class ActivePointer {
-  double x;
-  double y;
+  final double x;
+  final double y;
 
   ActivePointer(this.x, this.y);
 
@@ -329,12 +438,11 @@ class ArrangerStateMachineData {
     }
   }
 
-  void handlePointerDown(PointerEvent pointerEvent) {
+  void handlePointerDown(PointerDownEvent pointerEvent) {
     final pos = pointerEvent.localPosition;
-    pointers[pointerEvent.pointer] = .new(pos.dx, pos.dy);
+    pointers[pointerEvent.pointer] = ActivePointer(pos.dx, pos.dy);
 
-    if (pointerEvent is PointerDownEvent &&
-        pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton) {
+    if (pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton) {
       activePrimaryPointerId = pointerEvent.pointer;
       activePrimaryPointerDownPosition = ActivePointer(pos.dx, pos.dy);
       clearInteractionCancellation();
@@ -346,8 +454,7 @@ class ArrangerStateMachineData {
     if (pointer == null) return;
 
     final pos = event.localPosition;
-    pointer.x = pos.dx;
-    pointer.y = pos.dy;
+    pointers[event.pointer] = ActivePointer(pos.dx, pos.dy);
   }
 
   void handlePointerUp(PointerEvent event) {
@@ -359,9 +466,7 @@ class ArrangerStateMachineData {
           pos.dx <= viewSize.width &&
           pos.dy <= viewSize.height;
       if (isInView) {
-        hoveredPointer ??= ActivePointer(pos.dx, pos.dy);
-        hoveredPointer!.x = pos.dx;
-        hoveredPointer!.y = pos.dy;
+        hoveredPointer = ActivePointer(pos.dx, pos.dy);
       }
     }
 
@@ -381,9 +486,7 @@ class ArrangerStateMachineData {
   }
 
   void handleHover(PointerHoverEvent e) {
-    hoveredPointer ??= .new(e.localPosition.dx, e.localPosition.dy);
-    hoveredPointer!.x = e.localPosition.dx;
-    hoveredPointer!.y = e.localPosition.dy;
+    hoveredPointer = ActivePointer(e.localPosition.dx, e.localPosition.dy);
   }
 
   void requestInteractionCancellation() {
@@ -395,26 +498,12 @@ class ArrangerStateMachineData {
   }
 }
 
-class ArrangerIdleState
-    extends EditorStateMachineState<ArrangerStateMachineData> {
+class ArrangerIdleState extends _ArrangerLeafState {
   static const Duration _doubleClickThreshold = Duration(milliseconds: 500);
   static const double _maxClickTravelDistance = 8;
   static const double _maxDoubleClickDistance = 8;
   static void Function(Offset globalPosition, MenuDef menu) openContextMenuFn =
       openContextMenu;
-
-  /// Convenience getter to fetch the base state machine object.
-  ArrangerStateMachine get arrangerStateMachine =>
-      stateMachine as ArrangerStateMachine;
-
-  /// The main input data for the state machine, which is the current
-  /// interaction state (e.g. what pointers are down and where, which modifier
-  /// keys are pressed).
-  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
-
-  ProjectModel get project => arrangerStateMachine.project;
-  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
-  ArrangerController get controller => arrangerStateMachine.controller;
 
   ActivePointer? lastHoveredPointer;
 
@@ -447,9 +536,7 @@ class ArrangerIdleState
 
     final (x, y) = coordinates;
     final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
-    final hoveredClipId =
-        contentUnderCursor.resizeHandle?.metadata.id ??
-        contentUnderCursor.clip?.metadata;
+    final hoveredClipId = clipIdFromContentUnderCursor(contentUnderCursor);
     if (viewModel.hoveredClip != hoveredClipId) {
       viewModel.hoveredClip = hoveredClipId;
     }
@@ -615,12 +702,7 @@ class ArrangerIdleState
   }
 
   void handleSingleClick(PointerEvent event) {
-    final contentUnderCursor = viewModel.getContentUnderCursor(
-      event.localPosition,
-    );
-    final clipId =
-        contentUnderCursor.clip?.metadata ??
-        contentUnderCursor.resizeHandle?.metadata.id;
+    final clipId = clipIdAtPoint(event.localPosition);
 
     if (clipId == null) {
       viewModel.selectedClips.clear();
@@ -646,12 +728,7 @@ class ArrangerIdleState
   }
 
   void handleSecondaryClick(PointerEvent event) {
-    final contentUnderCursor = viewModel.getContentUnderCursor(
-      event.localPosition,
-    );
-    final clipId =
-        contentUnderCursor.clip?.metadata ??
-        contentUnderCursor.resizeHandle?.metadata.id;
+    final clipId = clipIdAtPoint(event.localPosition);
     if (clipId == null) {
       return;
     }
@@ -678,12 +755,7 @@ class ArrangerIdleState
   }
 
   void handleDoubleClick(PointerEvent event) {
-    final contentUnderCursor = viewModel.getContentUnderCursor(
-      event.localPosition,
-    );
-    final clipId =
-        contentUnderCursor.clip?.metadata ??
-        contentUnderCursor.resizeHandle?.metadata.id;
+    final clipId = clipIdAtPoint(event.localPosition);
     if (clipId == null) {
       return;
     }
@@ -721,21 +793,8 @@ class ArrangerIdleState
   }
 }
 
-class ArrangerDragState
-    extends EditorStateMachineState<ArrangerStateMachineData> {
+class ArrangerDragState extends _ArrangerLeafState {
   static const double _dragActivationDistance = 4;
-
-  /// Convenience getter to fetch the base state machine object.
-  ArrangerStateMachine get arrangerStateMachine =>
-      stateMachine as ArrangerStateMachine;
-
-  /// The main input data for the state machine, which is the current
-  /// interaction state (e.g. what pointers are down and where, which modifier
-  /// keys are pressed).
-  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
-
-  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
-  ArrangerController get controller => arrangerStateMachine.controller;
 
   @override
   ArrangerIdleState get parentState => super.parentState as ArrangerIdleState;
@@ -768,9 +827,20 @@ class ArrangerDragState
 
   /// Resolves the interaction family this drag should delegate to, if any.
   ///
-  /// The result is intentionally not latched in shared state yet. We use it to
-  /// centralize precedence while preserving the existing per-state latching
-  /// behavior after entry.
+  /// Priority (first match wins):
+  ///
+  /// 1. No interaction if the pointer is up or the drag has been canceled.
+  /// 2. Selection box - when Ctrl is held or the select tool is active, once
+  ///    the pointer has moved past the activation distance.
+  /// 3. Create clip - on a double-click press over empty canvas with the pencil
+  ///    tool. Deliberately fires *before* the activation distance so a
+  ///    double-click-release (no drag) can still insert at a point.
+  /// 4. Clip resize - activation distance crossed with the drag start over a
+  ///    resize handle.
+  /// 5. Clip move - activation distance crossed with the drag start over a clip
+  ///    body (not on its resize handle).
+  ///
+  /// Anything else returns null, meaning "stay in drag-parent".
   ArrangerInteractionFamily? get interactionFamily {
     if (!isDragPointerActive || interactionState.isCurrentInteractionCanceled) {
       return null;
@@ -806,8 +876,9 @@ class ArrangerDragState
       !_isSelectionModeActive &&
       (_isDragStartOverClip || _isDragStartOverResizeHandle);
 
-  Id? get _pressedClipCandidateId =>
-      dragStartContentUnderCursor?.clip?.metadata ?? dragStartResizeHandle?.id;
+  Id? get _pressedClipCandidateId => dragStartContentUnderCursor == null
+      ? null
+      : clipIdFromContentUnderCursor(dragStartContentUnderCursor!);
 
   void _syncPressedClip() {
     final nextPressedClip = _isClipPressEligible
@@ -831,9 +902,10 @@ class ArrangerDragState
       return;
     }
 
-    // This means a new pointer has been pressed. Since we're only dealing with
-    // one pointer for now, we treat this as the main pointer press signal, and
-    // we store parameters for a drag in case the pointer moves.
+    // A different primary pointer is now active than we last saw, which means
+    // a new press just happened (we support one primary pointer at a time).
+    // Capture the drag-start fixtures up front so later move events have a
+    // fixed origin; interactionFamily / leaf states read these as-is.
     if (activePointerId != nextActivePointerId) {
       activePointerId = nextActivePointerId;
       dragStartPosition = interactionState.activePrimaryPointerDownPosition

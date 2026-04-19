@@ -19,37 +19,38 @@
 
 // #define JUCE_CHECK_MEMORY_LEAKS 0
 
-#include <juce_events/juce_events.h>
-#include <juce_core/juce_core.h>
-#include <juce_audio_devices/juce_audio_devices.h>
+#include "console_logger.h"
+#include "modules/core/anthem.h"
 
 #include <iostream>
-
-#include "console_logger.h"
-
-#include "modules/core/anthem.h"
+#include <juce_audio_devices/juce_audio_devices.h>
+#include <juce_core/juce_core.h>
+#include <juce_events/juce_events.h>
 
 #ifdef __EMSCRIPTEN__
 #include "modules/core/comms_methods_for_ui_wasm.h"
 #endif
 
-class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener
-{
+class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener {
 private:
-  void changeListenerCallback(juce::ChangeBroadcaster */*source*/) override
-  {
+  void changeListenerCallback(juce::ChangeBroadcaster* /*source*/) override {
     // juce::Logger::writeToLog("change detected");
   }
-
 public:
   AnthemEngineApplication() {}
 
-  const juce::String getApplicationName() override { return "JUCE_APPLICATION_NAME_STRING"; }
-  const juce::String getApplicationVersion() override { return "0.0.1"; }
+  const juce::String getApplicationName() override {
+    return "JUCE_APPLICATION_NAME_STRING";
+  }
+  const juce::String getApplicationVersion() override {
+    return "0.0.1";
+  }
 
-  bool moreThanOneInstanceAllowed() override { return true; }
+  bool moreThanOneInstanceAllowed() override {
+    return true;
+  }
 
-  void anotherInstanceStarted(const juce::String &/*commandLineParameters*/) override {}
+  void anotherInstanceStarted(const juce::String& /*commandLineParameters*/) override {}
   void suspended() override {}
   void resumed() override {}
   void shutdown() override {
@@ -60,25 +61,23 @@ public:
     }
   }
 
-  void systemRequestedQuit() override
-  {
+  void systemRequestedQuit() override {
     setApplicationReturnValue(0);
     quit();
   }
 
-  void unhandledException(const std::exception */*exception*/, const juce::String &/*sourceFilename*/,
-              int /*lineNumber*/) override
-  {
+  void unhandledException(const std::exception* /*exception*/,
+      const juce::String& /*sourceFilename*/,
+      int /*lineNumber*/) override {
     // This might not work
   }
 
-  void initialise(const juce::String &/*commandLineParameters*/) override
-  {
+  void initialise(const juce::String& /*commandLineParameters*/) override {
     // Remove this line to disable logging
     juce::Logger::setCurrentLogger(new ConsoleLogger());
 
-                                // wow, C++ sure is weird
-    const char * anthemSplash = R"V0G0N(
+    // wow, C++ sure is weird
+    const char* anthemSplash = R"V0G0N(
            ,++,
           /####\
          /##**##\
@@ -100,7 +99,7 @@ public:
     // std::cin.get();
 
     juce::Logger::writeToLog("Starting Anthem engine...");
-    
+
     Anthem::getInstance().initialize();
   }
 };

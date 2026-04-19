@@ -1,0 +1,25 @@
+---
+Checks: >-
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  modernize-use-bool-literals,
+  modernize-use-nullptr,
+  modernize-use-override,
+  readability-implicit-bool-conversion,
+  readability-redundant-member-init,
+  readability-simplify-boolean-expr,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  -bugprone-forward-declaration-namespace,
+  # Disabled because Homebrew clang-tidy 22.1.2 crashes on macOS ARM while
+  # matching this check in JUCE's juce_Ranges.h.
+  -bugprone-pointer-arithmetic-on-polymorphic-object,
+  -performance-enum-size,
+  -performance-no-automatic-move
+FormatStyle: none
+HeaderFilterRegex: '(^|.*[\\/])engine[\\/](src(?![\\/]generated)|test)[\\/].*'
+SystemHeaders: false
+UseColor: false

@@ -106,37 +106,16 @@ int _stepSnappedDragDelta({
 
   final cursor = startTime + snappedDelta;
   if (direction > 0) {
-    final step = _getSnapSizeAtAbsoluteTime(
+    final step = getSnapSizeAtAbsoluteTime(
       absoluteTime: cursor,
       divisionChanges: divisionChanges,
     );
     return snappedDelta + step;
   }
 
-  final step = _getSnapSizeAtAbsoluteTime(
+  final step = getSnapSizeAtAbsoluteTime(
     absoluteTime: cursor - 1,
     divisionChanges: divisionChanges,
   );
   return snappedDelta - step;
-}
-
-int _getSnapSizeAtAbsoluteTime({
-  required int absoluteTime,
-  required List<DivisionChange> divisionChanges,
-}) {
-  if (divisionChanges.isEmpty) {
-    return 1;
-  }
-
-  for (var i = 0; i < divisionChanges.length; i++) {
-    if (absoluteTime >= 0 &&
-        i < divisionChanges.length - 1 &&
-        divisionChanges[i + 1].offset <= absoluteTime) {
-      continue;
-    }
-
-    return max(1, divisionChanges[i].divisionSnapSize);
-  }
-
-  return max(1, divisionChanges.last.divisionSnapSize);
 }

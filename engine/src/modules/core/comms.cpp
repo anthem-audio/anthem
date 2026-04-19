@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,18 +19,18 @@
 
 #include "comms.h"
 
-#include <limits>
-
 #include "modules/core/anthem.h"
+
+#include <limits>
 
 namespace {
 int checkedSizeToSocketInt(size_t value) {
   jassert(value <= static_cast<size_t>(std::numeric_limits<int>::max()));
   return static_cast<int>(value);
 }
-}
+} // namespace
 
-AnthemSocketThread::AnthemSocketThread() : juce::Thread("AnthemSocketThread"), socket() {
+AnthemSocketThread::AnthemSocketThread() : juce::Thread("AnthemSocketThread") {
   pendingHeader.setSize(HEADER_SIZE);
   pendingBytes.setSize(0);
   messageBuffer.setSize(0);
@@ -147,10 +147,8 @@ int AnthemSocketThread::writePendingBytes() {
   if (writeIndex < HEADER_SIZE) {
     // Write the header
     auto bytesToWrite = HEADER_SIZE - writeIndex;
-    auto bytesWritten = socket.write(
-      static_cast<char*>(pendingHeader.getData()) + writeIndex,
-      checkedSizeToSocketInt(bytesToWrite)
-    );
+    auto bytesWritten = socket.write(static_cast<char*>(pendingHeader.getData()) + writeIndex,
+        checkedSizeToSocketInt(bytesToWrite));
     if (bytesWritten < 0) {
       jassertfalse;
       return -1; // Error state
@@ -176,10 +174,9 @@ int AnthemSocketThread::writePendingBytes() {
     return 1; // Timeout
   }
 
-  auto bytesWritten = socket.write(
-    static_cast<char*>(pendingBytes.getData()) + writeIndexInPendingBytes,
-    checkedSizeToSocketInt(bytesToWrite)
-  );
+  auto bytesWritten =
+      socket.write(static_cast<char*>(pendingBytes.getData()) + writeIndexInPendingBytes,
+          checkedSizeToSocketInt(bytesToWrite));
   if (bytesWritten < 0) {
     jassertfalse;
     return -1; // Error state
@@ -195,7 +192,8 @@ int AnthemSocketThread::writePendingBytes() {
 }
 
 void AnthemSocketThread::processIncomingMessage(uint64_t messageLength) {
-  const uint8_t* messagePtr = static_cast<const uint8_t*>(messageBuffer.getData()) + sizeof(uint64_t);
+  const uint8_t* messagePtr =
+      static_cast<const uint8_t*>(messageBuffer.getData()) + sizeof(uint64_t);
 
   juce::MemoryBlock messageBlock(messageLength, false);
   std::memcpy(messageBlock.getData(), messagePtr, messageLength);
@@ -237,20 +235,20 @@ void AnthemSocketThread::prepareNextMessage() {
 }
 
 void AnthemComms::init() {
-  #ifdef __EMSCRIPTEN__
+#ifdef __EMSCRIPTEN__
 
   // In WASM we currently have only one engine instance per browser tab.
   juce::String portStr = "0";
   juce::String idStr = "0";
 
-  #else // #ifdef __EMSCRIPTEN__
+#else // #ifdef __EMSCRIPTEN__
 
   auto parameters = juce::JUCEApplicationBase::getCommandLineParameters();
 
   auto spaceIndex = parameters.indexOfChar(' ');
 
   if (spaceIndex == -1) {
-    std::cerr << "Invalid command line args: " << parameters << " - Exiting..." << std::endl;
+    std::cerr << "Invalid command line args: " << parameters << " - Exiting..." << '\n';
     juce::JUCEApplicationBase::quit();
     return;
   }
@@ -259,18 +257,18 @@ void AnthemComms::init() {
   auto idStr = parameters.substring(spaceIndex + 1);
 
   if (portStr.length() == 0) {
-    std::cerr << "Port was not provided. Args: " << parameters << " - Exiting..." << std::endl;
+    std::cerr << "Port was not provided. Args: " << parameters << " - Exiting..." << '\n';
     juce::JUCEApplicationBase::quit();
     return;
   }
 
   if (idStr.length() == 0) {
-    std::cerr << "Engine ID was not provided. Args: " << parameters << " - Exiting..." << std::endl;
+    std::cerr << "Engine ID was not provided. Args: " << parameters << " - Exiting..." << '\n';
     juce::JUCEApplicationBase::quit();
     return;
   }
 
-  #endif // #ifdef __EMSCRIPTEN__
+#endif // #ifdef __EMSCRIPTEN__
 
   juce::Logger::writeToLog("Opening socket connection to UI at port " + portStr + "...");
 
@@ -279,7 +277,7 @@ void AnthemComms::init() {
   auto success = socketThread.socket.connect("::1", port);
   socketThread.socket.waitUntilReady(false, 1000); // should be unnecessary?
   if (!success) {
-    std::cerr << "Socket failed to start. Exiting..." << std::endl;
+    std::cerr << "Socket failed to start. Exiting..." << '\n';
     juce::JUCEApplicationBase::quit();
     return;
   }

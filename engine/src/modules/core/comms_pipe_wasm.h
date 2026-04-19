@@ -26,11 +26,10 @@
 
 #ifdef __EMSCRIPTEN__
 
+#include "comms_ring_buffer_wasm.h"
 #include "emscripten.h"
 
 #include <juce_core/juce_core.h>
-
-#include "comms_ring_buffer_wasm.h"
 
 class AnthemPipeWasm {
 private:
@@ -43,7 +42,7 @@ public:
   ~AnthemPipeWasm() {}
 
   int connect(juce::String address, int port, int timeoutMs = 0);
-  
+
   int waitUntilReady(bool forRead, int timeoutMs = 0);
 
   int read(void* destBuffer, int maxBytesToRead, bool shouldBlock);

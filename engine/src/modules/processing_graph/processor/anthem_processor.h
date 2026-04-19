@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,12 +20,11 @@
 #pragma once
 
 #include <juce_core/juce_core.h>
-
-#include <string>
 #include <memory>
+#include <string>
 
 class AnthemGraphNode;
-class AnthemProcessContext;
+class AnthemNodeProcessContext;
 
 // This class is used to process audio, event and control data. It can produce
 // and/or consume any of these data types.
@@ -53,7 +52,7 @@ public:
 
   // This method is called by the processing graph to process audio, event and
   // control data. It is called once per processing block.
-  virtual void process(AnthemProcessContext& context, int numSamples) = 0;
+  virtual void process(AnthemNodeProcessContext& context, int numSamples) = 0;
 
   // Gets the state of the processor
   virtual void getState(juce::MemoryBlock& /*target*/) {}

@@ -53,12 +53,13 @@ namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kPi4Plus0273 = kPi / 4.0 + 0.273;
 constexpr double kPi2 = kPi / 2.0;
-}
+} // namespace
 
 float fastAtan2(float y, float x) {
   const double absy = std::fabs(static_cast<double>(y));
   const double absx = std::fabs(static_cast<double>(x));
-  const short octant = ((x < 0.0f) << 2) + ((y < 0.0f) << 1) + (absx <= absy);
+  const int octant = (static_cast<int>(x < 0.0f) << 2) | (static_cast<int>(y < 0.0f) << 1) |
+                     static_cast<int>(absx <= absy);
 
   switch (octant) {
     case 0: {

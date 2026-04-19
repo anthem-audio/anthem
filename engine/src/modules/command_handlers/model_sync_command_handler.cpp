@@ -37,61 +37,35 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
 
     // std::cout << modelInitRequest.serializedModel << std::endl;
 
-    auto result = rfl::json::read<std::shared_ptr<Project>>(
-      modelInitRequest.serializedModel
-    );
+    auto result = rfl::json::read<std::shared_ptr<Project>>(modelInitRequest.serializedModel);
 
     if (!result.has_value()) {
       auto error = std::string(result.error().what());
       juce::Logger::writeToLog("Error during deserialize: " + juce::String(error));
-      return std::optional(ModelInitResponse {
-        .success = false,
-        .error = error,
-        .responseBase = ResponseBase {
-          .id = requestId
-        }
-      });
-    }
-    else {
-      anthem.project = std::move(
-        result.value()
-      );
+      return std::optional(ModelInitResponse{
+          .success = false, .error = error, .responseBase = ResponseBase{.id = requestId}});
+    } else {
+      anthem.project = std::move(result.value());
 
-      anthem.project->initialize(
-        anthem.project,
-        nullptr
-      );
+      anthem.project->initialize(anthem.project, nullptr);
 
       juce::Logger::writeToLog("Loaded project model");
 
-      return std::optional(ModelInitResponse {
-        .success = true,
-        .error = std::nullopt,
-        .responseBase = ResponseBase {
-          .id = requestId
-        }
-      });
+      return std::optional(ModelInitResponse{
+          .success = true, .error = std::nullopt, .responseBase = ResponseBase{.id = requestId}});
     }
-  }
-  else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
+  } else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
 
-    anthem.project->handleModelUpdate(
-      modelUpdateRequest,
-      0
-    );
-  }
-  else if (rfl::holds_alternative<GetSerializedModelFromEngineRequest>(request.variant())) {
-    auto& getSerializedModelFromEngineRequest = rfl::get<GetSerializedModelFromEngineRequest>(request.variant());
+    anthem.project->handleModelUpdate(modelUpdateRequest, 0);
+  } else if (rfl::holds_alternative<GetSerializedModelFromEngineRequest>(request.variant())) {
+    auto& getSerializedModelFromEngineRequest =
+        rfl::get<GetSerializedModelFromEngineRequest>(request.variant());
 
-    return std::optional(GetSerializedModelFromEngineResponse {
-      .serializedModel = rfl::json::write(
-        anthem.project.get()
-      ),
-      .responseBase = ResponseBase {
-        .id = getSerializedModelFromEngineRequest.requestBase.get().id
-      }
-    });
+    return std::optional(GetSerializedModelFromEngineResponse{
+        .serializedModel = rfl::json::write(anthem.project.get()),
+        .responseBase =
+            ResponseBase{.id = getSerializedModelFromEngineRequest.requestBase.get().id}});
   }
 
   return std::nullopt;

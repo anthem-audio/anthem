@@ -30,5 +30,5 @@
 // to worry about it.
 class GlobalIDGenerator {
 public:
-    static uint64_t generateID();
+  static uint64_t generateID();
 };

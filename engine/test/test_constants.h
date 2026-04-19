@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include <string>
 #include <format>
+#include <string>
 
 class TestConstants {
 public:

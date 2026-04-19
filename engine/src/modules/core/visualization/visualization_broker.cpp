@@ -20,15 +20,13 @@
 #include "visualization_broker.h"
 
 #include "messages/messages.h"
-
 #include "modules/core/anthem.h"
 
 #include <type_traits>
 #include <utility>
 
 namespace {
-template <typename T>
-using RemoveCvRef = std::remove_cv_t<std::remove_reference_t<T>>;
+template <typename T> using RemoveCvRef = std::remove_cv_t<std::remove_reference_t<T>>;
 }
 
 VisualizationBroker::VisualizationBroker() {
@@ -37,14 +35,11 @@ VisualizationBroker::VisualizationBroker() {
 }
 
 void VisualizationBroker::setSubscriptions(
-  const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions
-) {
+    const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions) {
   this->subscriptions = newSubscriptions;
 }
 
-void VisualizationBroker::setUpdateInterval(
-  double newUpdateIntervalMs
-) {
+void VisualizationBroker::setUpdateInterval(double newUpdateIntervalMs) {
   this->updateIntervalMs = newUpdateIntervalMs;
 
   this->stopTimer();
@@ -74,66 +69,53 @@ void VisualizationBroker::timerCallback() {
       }
 
       std::visit(
-        [&](auto&& batchValue) {
-          using Batch = RemoveCvRef<decltype(batchValue)>;
+          [&](auto&& batchValue) {
+            using Batch = RemoveCvRef<decltype(batchValue)>;
 
-          auto batch = std::move(batchValue);
-          if (batch.values.empty()) {
-            return;
-          }
+            auto batch = std::forward<decltype(batchValue)>(batchValue);
+            if (batch.values.empty()) {
+              return;
+            }
 
-          if (batch.sampleTimestamps.size() != batch.values.size()) {
-            jassertfalse;
-            return;
-          }
+            if (batch.sampleTimestamps.size() != batch.values.size()) {
+              jassertfalse;
+              return;
+            }
 
-          auto sampleTimestampsSharedPtr = std::make_shared<std::vector<int64_t>>(
-            std::move(batch.sampleTimestamps)
-          );
+            auto sampleTimestampsSharedPtr =
+                std::make_shared<std::vector<int64_t>>(std::move(batch.sampleTimestamps));
 
-          if constexpr (std::is_same_v<Batch, NumericVisualizationData>) {
-            auto dataSharedPtr = std::make_shared<std::vector<double>>(std::move(batch.values));
+            if constexpr (std::is_same_v<Batch, NumericVisualizationData>) {
+              auto dataSharedPtr = std::make_shared<std::vector<double>>(std::move(batch.values));
 
-            visualizationItems->push_back(
-              std::make_shared<VisualizationItem>(
-                VisualizationItem {
+              visualizationItems->push_back(std::make_shared<VisualizationItem>(VisualizationItem{
                   .id = subscription->id,
                   .valueType = VisualizationValueType::doubleValue,
                   .values = rfl::make_field<"List<double>">(dataSharedPtr),
                   .sampleTimestamps = sampleTimestampsSharedPtr,
-                }
-              )
-            );
-          } else if constexpr (std::is_same_v<Batch, IntegerVisualizationData>) {
-            auto dataSharedPtr = std::make_shared<std::vector<int64_t>>(std::move(batch.values));
+              }));
+            } else if constexpr (std::is_same_v<Batch, IntegerVisualizationData>) {
+              auto dataSharedPtr = std::make_shared<std::vector<int64_t>>(std::move(batch.values));
 
-            visualizationItems->push_back(
-              std::make_shared<VisualizationItem>(
-                VisualizationItem {
+              visualizationItems->push_back(std::make_shared<VisualizationItem>(VisualizationItem{
                   .id = subscription->id,
                   .valueType = VisualizationValueType::intValue,
                   .values = rfl::make_field<"List<int>">(dataSharedPtr),
                   .sampleTimestamps = sampleTimestampsSharedPtr,
-                }
-              )
-            );
-          } else if constexpr (std::is_same_v<Batch, StringVisualizationData>) {
-            auto dataSharedPtr = std::make_shared<std::vector<std::string>>(std::move(batch.values));
+              }));
+            } else if constexpr (std::is_same_v<Batch, StringVisualizationData>) {
+              auto dataSharedPtr =
+                  std::make_shared<std::vector<std::string>>(std::move(batch.values));
 
-            visualizationItems->push_back(
-              std::make_shared<VisualizationItem>(
-                VisualizationItem {
+              visualizationItems->push_back(std::make_shared<VisualizationItem>(VisualizationItem{
                   .id = subscription->id,
                   .valueType = VisualizationValueType::stringValue,
                   .values = rfl::make_field<"List<String>">(dataSharedPtr),
                   .sampleTimestamps = sampleTimestampsSharedPtr,
-                }
-              )
-            );
-          }
-        },
-        std::move(data.value())
-      );
+              }));
+            }
+          },
+          std::move(data.value()));
     }
   }
 
@@ -142,15 +124,13 @@ void VisualizationBroker::timerCallback() {
   }
 
   // Create a VisualizationUpdateEvent message and send it to the UI
-  Response visualizationUpdate = VisualizationUpdateEvent {
-    .items = visualizationItems,
-    .responseBase = ResponseBase {
-      // Usually, the response ID is the same as the ID of the request that was
-      // sent to the engine. In this case, there was no request, so we set it to
-      // -1.
-      .id = -1,
-    }
-  };
+  Response visualizationUpdate = VisualizationUpdateEvent{.items = visualizationItems,
+      .responseBase = ResponseBase{
+          // Usually, the response ID is the same as the ID of the request that was
+          // sent to the engine. In this case, there was no request, so we set it to
+          // -1.
+          .id = -1,
+      }};
 
   auto responseText = rfl::json::write(visualizationUpdate);
   Anthem::getInstance().comms.send(responseText);

@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "generated/lib/model/model.h"
+#include "generated/lib/model/processing_graph/processors/balance.h"
 #include "modules/processing_graph/processor/anthem_processor.h"
 
 // A balance processor.
@@ -36,5 +36,5 @@ public:
   BalanceProcessor& operator=(BalanceProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemProcessContext& context, int numSamples) override;
+  void process(AnthemNodeProcessContext& context, int numSamples) override;
 };

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,28 +19,28 @@
 
 #include "write_parameters_to_control_inputs_action.h"
 
+#include "modules/processing_graph/model/node.h"
+
 void WriteParametersToControlInputsAction::execute(int numSamples) {
-  auto& parameterValues = processContext->getParameterValues();
-  auto& parameterSmoothers = processContext->getParameterSmoothers();
+  for (auto& parameter : processContext->rt_getInputParameterBindings()) {
+    auto value = parameter.value->load();
+    jassert(juce::jlimit(0.0f, 1.0f, value) == value);
 
-  for (auto& [id, valueAtomic] : parameterValues) {
-    auto& smoother = parameterSmoothers[id];
-    auto value = valueAtomic->load();
-    jassert(value >= 0.0f && value <= 1.0f);
-
-    if (smoother->getTargetValue() != value) {
-      smoother->setTargetValue(value);
+    if (parameter.rt_smoother->getTargetValue() != value) {
+      parameter.rt_smoother->setTargetValue(value);
     }
 
-    for (int j = 0; j < numSamples; j++) {
-      smoother->process(1.0f / sampleRate);
-      auto currentValue = smoother->getCurrentValue();
-      jassert(currentValue >= 0.0f && currentValue <= 1.0f);
-      processContext->getInputControlBuffer(id).setSample(0, j, currentValue);
+    auto& controlBuffer = *parameter.rt_buffer;
+    for (int sample = 0; sample < numSamples; sample++) {
+      parameter.rt_smoother->process(1.0f / sampleRate);
+      auto currentValue = parameter.rt_smoother->getCurrentValue();
+      jassert(juce::jlimit(0.0f, 1.0f, currentValue) == currentValue);
+      controlBuffer.setSample(0, sample, currentValue);
     }
   }
 }
 
 void WriteParametersToControlInputsAction::debugPrint() {
-  std::cout << "WriteParametersToControlInputsAction: " << processContext->getGraphNode()->id() << std::endl;
+  std::cout << "WriteParametersToControlInputsAction: " << processContext->getGraphNode()->id()
+            << '\n';
 }
