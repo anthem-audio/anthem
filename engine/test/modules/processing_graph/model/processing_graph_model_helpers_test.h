@@ -20,7 +20,7 @@
 #pragma once
 
 #include "generated/lib/engine_api/messages/messages.h"
-#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"

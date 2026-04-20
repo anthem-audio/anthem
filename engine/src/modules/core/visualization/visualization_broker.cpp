@@ -20,7 +20,7 @@
 #include "visualization_broker.h"
 
 #include "messages/messages.h"
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 
 #include <type_traits>
 #include <utility>

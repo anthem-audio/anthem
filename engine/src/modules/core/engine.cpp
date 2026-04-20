@@ -17,10 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 
 #include "modules/core/adapters/transport_adapters.h"
-#include "modules/processing_graph/compiler/anthem_graph_compiler.h"
+#include "modules/processing_graph/compiler/graph_compiler.h"
 #include "modules/processors/db_meter.h"
 
 namespace anthem {

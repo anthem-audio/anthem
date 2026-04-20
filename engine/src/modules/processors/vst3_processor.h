@@ -22,7 +22,7 @@
 #ifndef __EMSCRIPTEN__
 
 #include "generated/lib/model/processing_graph/processors/vst3_processor.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>

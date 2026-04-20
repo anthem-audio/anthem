@@ -22,8 +22,8 @@
 #ifndef __EMSCRIPTEN__
 
 #include "generated/lib/model/model.h"
-#include "modules/core/anthem.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/core/engine.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 
 #if JUCE_WINDOWS
 // JUCE exposes the helper for matching the current thread's DPI-awareness

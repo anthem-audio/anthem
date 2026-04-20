@@ -17,10 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_node_process_context.h"
+#include "node_process_context.h"
 
 #include "modules/core/constants.h"
-#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/model/node.h"
 
 #include <algorithm>

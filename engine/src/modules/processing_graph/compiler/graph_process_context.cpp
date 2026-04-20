@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_process_context.h"
+#include "graph_process_context.h"
 
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 

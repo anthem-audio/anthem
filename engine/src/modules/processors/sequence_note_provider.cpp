@@ -19,8 +19,8 @@
 
 #include "sequence_note_provider.h"
 
-#include "modules/core/anthem.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/core/engine.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
 namespace anthem {

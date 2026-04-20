@@ -21,7 +21,7 @@
 
 #include "comms_methods_for_ui_wasm.h"
 
-#include "anthem.h"
+#include "engine.h"
 
 #include <juce_core/juce_core.h>
 

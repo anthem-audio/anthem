@@ -19,9 +19,9 @@
 
 #include "db_meter.h"
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 #include "modules/core/visualization/visualization_broker.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 
 #include <algorithm>
 #include <cmath>

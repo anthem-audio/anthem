@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/anthem_graph_compiler_node.h"
-#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/compiler/graph_compiler_node.h"
+#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"

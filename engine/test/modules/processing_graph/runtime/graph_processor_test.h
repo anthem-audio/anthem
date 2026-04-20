@@ -19,9 +19,9 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
-#include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
-#include "modules/processing_graph/runtime/anthem_graph_processor.h"
+#include "modules/processing_graph/compiler/actions/graph_compiler_action.h"
+#include "modules/processing_graph/compiler/graph_compilation_result.h"
+#include "modules/processing_graph/runtime/graph_processor.h"
 
 #include <juce_core/juce_core.h>
 #include <memory>

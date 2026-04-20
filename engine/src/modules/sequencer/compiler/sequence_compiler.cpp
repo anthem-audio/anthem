@@ -19,7 +19,7 @@
 
 #include "sequence_compiler.h"
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
 #include <algorithm>

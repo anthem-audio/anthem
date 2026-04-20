@@ -19,7 +19,7 @@
 
 #include "processing_graph_command_handler.h"
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 #include "modules/processors/live_event_provider.h"
 
 #include <string>

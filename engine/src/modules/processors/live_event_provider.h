@@ -20,8 +20,8 @@
 #pragma once
 
 #include "generated/lib/model/processing_graph/processors/live_event_provider.h"
-#include "modules/processing_graph/processor/anthem_event_buffer.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/event_buffer.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/processors/note_tracker.h"
 #include "modules/sequencer/events/event.h"
 #include "modules/util/ring_buffer.h"

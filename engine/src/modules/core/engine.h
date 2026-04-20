@@ -29,10 +29,10 @@
 
 #include "comms.h"
 #include "messages/messages.h"
-#include "modules/core/anthem_audio_callback.h"
+#include "modules/core/audio_callback.h"
 #include "modules/core/command_handler.h"
 #include "modules/core/visualization/global_visualization_sources.h"
-#include "modules/processing_graph/runtime/anthem_graph_processor.h"
+#include "modules/processing_graph/runtime/graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
 #include "modules/util/id_generator.h"

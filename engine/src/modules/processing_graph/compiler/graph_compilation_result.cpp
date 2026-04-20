@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_compilation_result.h"
+#include "graph_compilation_result.h"
 
 namespace anthem {
 

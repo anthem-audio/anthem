@@ -431,9 +431,9 @@ ${skipFileForWasm ? '#ifndef __EMSCRIPTEN__' : ''}
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
-#include "modules/codegen_helpers/anthem_model_base.h"
-#include "modules/codegen_helpers/anthem_model_vector.h"
-#include "modules/codegen_helpers/anthem_model_unordered_map.h"
+#include "modules/codegen_helpers/model_base.h"
+#include "modules/codegen_helpers/model_vector.h"
+#include "modules/codegen_helpers/model_unordered_map.h"
 
 ''';
 

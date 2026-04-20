@@ -224,5 +224,5 @@ The detailed C++ behavior and constraints are covered in the engine-side model-s
 - [`lib/engine_api/api/model_sync_api.dart`](/lib/engine_api/api/model_sync_api.dart)
 - [`codegen/test/model_sync_test.dart`](/codegen/test/model_sync_test.dart)
 - [`codegen/test/model_change_listener_test.dart`](/codegen/test/model_change_listener_test.dart)
-- [`engine/src/modules/codegen_helpers/anthem_model_base.h`](/engine/src/modules/codegen_helpers/anthem_model_base.h)
+- [`engine/src/modules/codegen_helpers/model_base.h`](/engine/src/modules/codegen_helpers/model_base.h)
 - [`engine/src/modules/codegen_helpers/observability_helpers.h`](/engine/src/modules/codegen_helpers/observability_helpers.h)

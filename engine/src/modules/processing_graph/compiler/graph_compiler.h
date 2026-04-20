@@ -25,9 +25,9 @@
 #include "actions/copy_events_action.h"
 #include "actions/process_node_action.h"
 #include "actions/write_parameters_to_control_inputs_action.h"
-#include "anthem_graph_compilation_result.h"
-#include "anthem_graph_compiler_node.h"
-#include "anthem_graph_process_context.h"
+#include "graph_compilation_result.h"
+#include "graph_compiler_node.h"
+#include "graph_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 

@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_compiler.h"
+#include "graph_compiler.h"
 
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 

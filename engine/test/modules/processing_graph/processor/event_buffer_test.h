@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/processing_graph/processor/anthem_event_buffer.h"
+#include "modules/processing_graph/processor/event_buffer.h"
 
 #include <juce_core/juce_core.h>
 

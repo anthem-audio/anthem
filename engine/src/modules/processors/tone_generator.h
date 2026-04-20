@@ -20,7 +20,7 @@
 #pragma once
 
 #include "generated/lib/model/processing_graph/processors/tone_generator.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 
 #include <memory>
 

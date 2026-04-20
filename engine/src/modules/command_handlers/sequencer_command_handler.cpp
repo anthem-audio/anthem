@@ -19,7 +19,7 @@
 
 #include "sequencer_command_handler.h"
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 #include "modules/sequencer/compiler/sequence_compiler.h"
 
 namespace anthem {

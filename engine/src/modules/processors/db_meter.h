@@ -22,7 +22,7 @@
 #include "bw_math.h"
 #include "generated/lib/model/processing_graph/processors/db_meter.h"
 #include "modules/core/visualization/visualization_provider.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/util/ring_buffer.h"
 
 #include <atomic>

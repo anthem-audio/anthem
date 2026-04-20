@@ -20,7 +20,7 @@
 #pragma once
 
 #include "generated/lib/model/processing_graph/processors/balance.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 
 // A balance processor.
 namespace anthem {

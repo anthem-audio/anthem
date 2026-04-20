@@ -19,8 +19,8 @@
 
 #include "simple_midi_generator.h"
 
-#include "modules/core/anthem.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/core/engine.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/sequencer/events/event.h"
 
 namespace anthem {

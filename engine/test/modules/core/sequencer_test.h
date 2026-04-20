@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 #include "modules/core/sequencer.h"
 
 #include <juce_core/juce_core.h>

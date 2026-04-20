@@ -17,9 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_audio_callback.h"
+#include "audio_callback.h"
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 
 #include <stdexcept>
 

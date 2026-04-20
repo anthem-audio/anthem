@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_processor.h"
+#include "graph_processor.h"
 
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/util/intentionally_leak.h"

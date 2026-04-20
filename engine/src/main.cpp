@@ -20,7 +20,7 @@
 // #define JUCE_CHECK_MEMORY_LEAKS 0
 
 #include "console_logger.h"
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 
 #include <iostream>
 #include <juce_audio_devices/juce_audio_devices.h>

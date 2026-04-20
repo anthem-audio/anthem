@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/anthem_graph_compilation_result.h"
+#include "modules/processing_graph/compiler/graph_compilation_result.h"
 #include "modules/util/ring_buffer.h"
 
 #include <juce_core/juce_core.h>

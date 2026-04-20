@@ -20,7 +20,7 @@
 #pragma once
 
 #include "generated/lib/model/processing_graph/processors/gain.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/processors/gain_parameter_mapping.h"
 
 // Applies gain to the input audio signal.

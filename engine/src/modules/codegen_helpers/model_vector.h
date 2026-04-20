@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "anthem_model_base.h"
+#include "model_base.h"
 
 #include <iterator>
 #include <memory>

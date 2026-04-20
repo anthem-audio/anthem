@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
+#include "modules/processing_graph/compiler/graph_compiler_edge.h"
 #include "modules/processing_graph/model/node.h"
 
 #include <juce_core/juce_core.h>

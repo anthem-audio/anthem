@@ -25,7 +25,7 @@
 #include "modules/processing_graph/compiler/actions/copy_events_action.h"
 #include "modules/processing_graph/compiler/actions/process_node_action.h"
 #include "modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h"
-#include "modules/processing_graph/compiler/anthem_graph_compiler.h"
+#include "modules/processing_graph/compiler/graph_compiler.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
