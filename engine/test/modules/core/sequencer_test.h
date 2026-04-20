@@ -27,6 +27,26 @@
 class SequencerTest : public juce::UnitTest {
   static constexpr int64_t restoredPlayheadPosition = 96;
 
+  struct FakeProjectView : TransportProjectView {
+    std::optional<LoopPointsSnapshot> lookupLoopPoints(int64_t /* sequenceId */) const override {
+      return std::nullopt;
+    }
+
+    bool isPatternSequence(int64_t /* sequenceId */) const override {
+      return false;
+    }
+
+    const SequenceEventListCollection* compiledSequence(int64_t /* sequenceId */) const override {
+      return nullptr;
+    }
+  };
+
+  struct FakeClock : TransportClock {
+    double currentSampleRate() const override {
+      return 48000.0;
+    }
+  };
+
   static std::shared_ptr<Sequencer> createSequencer() {
     auto defaultTimeSignature = std::make_shared<TimeSignatureModel>(TimeSignatureModelImpl{
         .numerator = 4,
@@ -66,7 +86,8 @@ public:
 
     {
       auto& anthem = Anthem::getInstance();
-      anthem.transport = std::make_unique<Transport>();
+      anthem.transport = std::make_unique<Transport>(
+          std::make_unique<FakeProjectView>(), std::make_unique<FakeClock>());
 
       auto sequencer = createSequencer();
       sequencer->initialize(sequencer, std::shared_ptr<AnthemModelBase>());

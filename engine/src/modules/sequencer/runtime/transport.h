@@ -27,8 +27,11 @@
 
 #include <atomic>
 #include <cstdint>
+#include <limits>
+#include <memory>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 // Represents the playhead jumping to a new location for the current sequence.
@@ -54,6 +57,30 @@ public:
 PlayheadJumpEvent buildPlayheadJumpEvent(const SequenceEventListCollection& sequence,
     std::optional<int64_t> activeTrackId,
     double playheadPosition);
+
+struct LoopPointsSnapshot {
+  double start;
+  double end;
+};
+
+class TransportProjectView {
+public:
+  virtual ~TransportProjectView() = default;
+
+  virtual std::optional<LoopPointsSnapshot> lookupLoopPoints(int64_t sequenceId) const = 0;
+  virtual bool isPatternSequence(int64_t sequenceId) const = 0;
+
+  // Returns a borrowed view that must only be used immediately. Transport must
+  // not retain the returned pointer.
+  virtual const SequenceEventListCollection* compiledSequence(int64_t sequenceId) const = 0;
+};
+
+class TransportClock {
+public:
+  virtual ~TransportClock() = default;
+
+  virtual double currentSampleRate() const = 0;
+};
 
 class TransportConfig {
 private:
@@ -108,6 +135,9 @@ private:
   PlayheadJumpEvent* rt_playheadJumpEventForSeek;
   PlayheadJumpEvent* rt_playheadJumpEventForStart;
 
+  std::unique_ptr<TransportProjectView> projectView;
+  std::unique_ptr<TransportClock> clock;
+
   void timerCallback() override;
 
   PlayheadJumpEvent createPlayheadJumpEvent(double playheadPosition);
@@ -154,12 +184,13 @@ public:
   // before any jump-start notes are emitted.
   bool rt_shouldStopSequenceNotes = false;
 
-  Transport();
+  Transport(
+      std::unique_ptr<TransportProjectView> projectView, std::unique_ptr<TransportClock> clock);
   ~Transport();
 
   void setIsPlaying(bool isPlaying);
-  void setActiveSequenceId(std::optional<int64_t>& sequenceId);
-  void setActiveTrackId(std::optional<int64_t>& trackId);
+  void setActiveSequenceId(const std::optional<int64_t>& sequenceId);
+  void setActiveTrackId(const std::optional<int64_t>& trackId);
   void setTicksPerQuarter(int64_t ticksPerQuarter);
   void setBeatsPerMinute(double beatsPerMinute);
 

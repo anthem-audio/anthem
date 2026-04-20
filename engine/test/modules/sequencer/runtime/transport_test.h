@@ -19,12 +19,12 @@
 
 #pragma once
 
-#include "modules/core/anthem.h"
-#include "modules/core/project.h"
 #include "modules/sequencer/runtime/transport.h"
 
 #include <juce_core/juce_core.h>
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 
 class TransportTest : public juce::UnitTest {
   static constexpr EntityId trackId = 11;
@@ -32,8 +32,44 @@ class TransportTest : public juce::UnitTest {
   static constexpr AnthemSourceNoteId firstNoteId = 101;
   static constexpr AnthemSourceNoteId secondNoteId = 102;
 
+  struct FakeProjectView : TransportProjectView {
+    std::unordered_map<EntityId, LoopPointsSnapshot> loopPoints;
+    std::unordered_set<EntityId> patternSequences;
+    std::unordered_map<EntityId, const SequenceEventListCollection*> compiledSequences;
+
+    std::optional<LoopPointsSnapshot> lookupLoopPoints(int64_t id) const override {
+      auto loopPointsIter = loopPoints.find(id);
+      if (loopPointsIter == loopPoints.end()) {
+        return std::nullopt;
+      }
+
+      return loopPointsIter->second;
+    }
+
+    bool isPatternSequence(int64_t id) const override {
+      return patternSequences.find(id) != patternSequences.end();
+    }
+
+    const SequenceEventListCollection* compiledSequence(int64_t id) const override {
+      auto compiledSequenceIter = compiledSequences.find(id);
+      if (compiledSequenceIter == compiledSequences.end()) {
+        return nullptr;
+      }
+
+      return compiledSequenceIter->second;
+    }
+  };
+
+  struct FakeClock : TransportClock {
+    double sampleRate = 48000.0;
+
+    double currentSampleRate() const override {
+      return sampleRate;
+    }
+  };
+
   static std::unique_ptr<SequenceEventListCollection> buildSequence(
-      std::initializer_list<AnthemSequenceEvent> events) {
+      std::initializer_list<AnthemSequenceEvent> events, EntityId eventTrackId = trackId) {
     auto sequence = std::make_unique<SequenceEventListCollection>();
     auto* track = new SequenceEventList();
 
@@ -41,13 +77,13 @@ class TransportTest : public juce::UnitTest {
       track->events.push_back(event);
     }
 
-    sequence->setTrack(trackId, track);
+    sequence->setTrack(eventTrackId, track);
     return sequence;
   }
 
   static const std::vector<PlayheadJumpSequenceEvent>* getJumpEventsForTrack(
-      const PlayheadJumpEvent& event) {
-    auto eventsIter = event.eventsToPlayAtJump.find(trackId);
+      const PlayheadJumpEvent& event, EntityId destinationTrackId = trackId) {
+    auto eventsIter = event.eventsToPlayAtJump.find(destinationTrackId);
     if (eventsIter == event.eventsToPlayAtJump.end()) {
       return nullptr;
     }
@@ -55,81 +91,22 @@ class TransportTest : public juce::UnitTest {
     return &eventsIter->second;
   }
 
-  static std::shared_ptr<Sequencer> createSequencerModel() {
-    return std::make_shared<Sequencer>(SequencerModelImpl{
-        .ticksPerQuarter = 96,
-        .beatsPerMinuteRaw = 12000,
-        .patterns =
-            std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>(),
-        .activePatternID = std::nullopt,
-        .activeTrackID = std::nullopt,
-        .arrangements =
-            std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>(),
-        .arrangementOrder = std::make_shared<AnthemModelVector<int64_t>>(),
-        .activeArrangementID = std::nullopt,
-        .activeTransportSequenceID = std::nullopt,
-        .defaultTimeSignature = std::make_shared<TimeSignatureModel>(TimeSignatureModelImpl{
-            .numerator = 4,
-            .denominator = 4,
-        }),
-        .playbackStartPosition = 0,
-        .isPlaying = false,
-    });
-  }
-
-  static std::shared_ptr<Project> createProject() {
-    return std::make_shared<Project>(ProjectModelImpl{
-        .sequence = createSequencerModel(),
-        .processingGraph = std::make_shared<ProcessingGraphModel>(ProcessingGraphModelImpl{
-            .nodes = std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>>(),
-            .connections = std::make_shared<
-                AnthemModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>>(),
-            .masterOutputNodeId = 0,
-        }),
-        .masterOutputNodeId = std::nullopt,
-        .tracks = std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<TrackModel>>>(),
-        .trackOrder = std::make_shared<AnthemModelVector<int64_t>>(),
-        .sendTrackOrder = std::make_shared<AnthemModelVector<int64_t>>(),
-        .filePath = std::nullopt,
-        .isDirty = false,
-    });
-  }
-
-  static std::shared_ptr<PatternModel> createPatternWithLoopPoints(int64_t start, int64_t end) {
-    return std::make_shared<PatternModel>(PatternModelImpl{
-        .id = sequenceId,
-        .name = "Pattern",
-        .color = std::make_shared<AnthemColor>(AnthemColorImpl{
-            .hue = 0.0,
-            .palette = AnthemColorPaletteKind::normal,
-        }),
-        .notes = std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<NoteModel>>>(),
-        .automation = std::make_shared<AutomationLaneModel>(AutomationLaneModelImpl{
-            .points = std::make_shared<AnthemModelVector<std::shared_ptr<AutomationPointModel>>>(),
-        }),
-        .timeSignatureChanges =
-            std::make_shared<AnthemModelVector<std::shared_ptr<TimeSignatureChangeModel>>>(),
-        .loopPoints = std::make_shared<LoopPointsModel>(LoopPointsModelImpl{
-            .start = start,
-            .end = end,
-        }),
-    });
-  }
-
-  static void resetAnthemForTransportTests() {
-    Anthem::cleanup();
-
-    auto& anthem = Anthem::getInstance();
-    anthem.project = createProject();
-    anthem.sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
-    anthem.transport = std::make_unique<Transport>();
-  }
-
   static int drainPendingConfigCount(Transport& transport) {
     int count = 0;
 
     while (auto pendingConfig = transport.configBuffer.read()) {
       delete pendingConfig.value();
+      count++;
+    }
+
+    return count;
+  }
+
+  static int drainRetiredConfigCount(Transport& transport) {
+    int count = 0;
+
+    while (auto retiredConfig = transport.configDeleteBuffer.read()) {
+      delete retiredConfig.value();
       count++;
     }
 
@@ -144,6 +121,17 @@ public:
     testJumpSnapshotExcludesNotesStartingAtBoundary();
     testSetActiveSequenceBatchesLoopAndJumpUpdatesIntoSingleConfig();
     testClearingActiveSequenceClearsStartJumpPayload();
+    testPrepareToProcessUsesInjectedClock();
+    testSeekWhilePlayingPublishesJumpEvent();
+    testStartPublishesStartJumpPayload();
+    testStopReturnsToPlayheadStartAndStopsSequenceNotes();
+    testLoopWrappingDuringBlockAdvance();
+    testLoopStartJumpPayloadUsesCompiledSequence();
+    testClearingActiveSequenceClearsLoopPoints();
+    testConfigQueueReplacementUsesLatestConfig();
+    testTimingParamsReflectTransportConfig();
+    testJumpToWrapsSeekTargetIntoLoop();
+    testActiveTrackChangeRebuildsJumpPayloadOnlyForPatterns();
   }
 
   void testJumpSnapshotExcludesNotesEndingAtBoundary() {
@@ -211,13 +199,11 @@ public:
   void testSetActiveSequenceBatchesLoopAndJumpUpdatesIntoSingleConfig() {
     beginTest("Setting the active sequence batches loop and jump updates into one config");
 
-    resetAnthemForTransportTests();
+    auto projectView = std::make_unique<FakeProjectView>();
+    projectView->loopPoints.insert_or_assign(sequenceId, LoopPointsSnapshot{.start = 4, .end = 8});
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
 
-    auto& anthem = Anthem::getInstance();
-    anthem.project->sequence()->patterns()->insert_or_assign(
-        sequenceId, createPatternWithLoopPoints(4, 8));
-
-    auto& transport = *anthem.transport;
     transport.config.playheadStart = 6.0;
 
     expectEquals(
@@ -233,25 +219,22 @@ public:
     expectEquals(drainPendingConfigCount(transport),
         1,
         "setActiveSequenceId() should publish a single combined config snapshot.");
-
-    Anthem::cleanup();
   }
 
   void testClearingActiveSequenceClearsStartJumpPayload() {
     beginTest("Clearing the active sequence clears the cached start jump payload");
 
-    resetAnthemForTransportTests();
-
-    auto& anthem = Anthem::getInstance();
+    auto projectView = std::make_unique<FakeProjectView>();
     auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
                                        .sourceId = firstNoteId,
                                        .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
         AnthemSequenceEvent{.offset = 2.0,
             .sourceId = firstNoteId,
             .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
-    anthem.sequenceStore->addOrUpdateSequence(sequenceId, *sequence);
+    projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
 
-    auto& transport = *anthem.transport;
     transport.config.playheadStart = 1.0;
 
     std::optional<int64_t> activeSequenceId = sequenceId;
@@ -273,8 +256,289 @@ public:
     expectEquals(transport.config.playheadJumpEventForStart.newPlayheadPosition,
         1.0,
         "Clearing the active sequence should preserve the stored playhead-start position.");
+  }
 
-    Anthem::cleanup();
+  void testPrepareToProcessUsesInjectedClock() {
+    beginTest("prepareToProcess uses the injected clock and resets the sample counter");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto clock = std::make_unique<FakeClock>();
+    clock->sampleRate = 96000.0;
+    Transport transport(std::move(projectView), std::move(clock));
+
+    transport.rt_sampleCounter = 123;
+    transport.prepareToProcess();
+
+    auto timingParams = transport.rt_getTimingParams();
+    expectEquals(timingParams.sampleRate, 96000.0, "Sample rate should come from the clock.");
+    expectEquals(transport.rt_sampleCounter, static_cast<int64_t>(0), "Sample counter is reset.");
+  }
+
+  void testSeekWhilePlayingPublishesJumpEvent() {
+    beginTest("Seek while playing publishes a jump event for the processing block");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 2.0,
+            .sourceId = firstNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+    projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+    transport.setIsPlaying(true);
+    transport.rt_prepareForProcessingBlock();
+    transport.rt_advancePlayhead(0);
+
+    transport.jumpTo(1.0);
+    transport.rt_prepareForProcessingBlock();
+
+    expectEquals(transport.rt_playhead, 1.0, "Seek should update the RT playhead.");
+    expect(transport.rt_playheadJumpOrPauseOccurred, "Seek should flag a jump for this block.");
+    expect(transport.rt_shouldStopSequenceNotes, "Seek should stop previously emitted notes.");
+    expect(transport.rt_playheadJumpEvent != nullptr, "Seek should publish a jump payload.");
+
+    auto* jumpEvents = getJumpEventsForTrack(*transport.rt_playheadJumpEvent);
+    expect(jumpEvents != nullptr, "Seek payload should restart sustained notes at the new point.");
+    expectEquals(static_cast<int>(jumpEvents->size()), 1, "Exactly one note should restart.");
+  }
+
+  void testStartPublishesStartJumpPayload() {
+    beginTest("Starting playback publishes the cached start jump payload");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 2.0,
+            .sourceId = firstNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+    projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+    transport.setPlayheadStart(1.0);
+    transport.setIsPlaying(true);
+
+    transport.rt_prepareForProcessingBlock();
+
+    expect(transport.rt_playheadJumpEvent != nullptr,
+        "Starting playback should publish the cached jump-start payload.");
+
+    auto* jumpEvents = getJumpEventsForTrack(*transport.rt_playheadJumpEvent);
+    expect(jumpEvents != nullptr, "Start payload should restart sustained notes.");
+    expectEquals(static_cast<int>(jumpEvents->size()), 1, "Exactly one note should restart.");
+    expectEquals(
+        jumpEvents->at(0).sequenceNoteId, firstNoteId, "The sustained note should restart.");
+  }
+
+  void testStopReturnsToPlayheadStartAndStopsSequenceNotes() {
+    beginTest("Stop returns to playheadStart and stops sequence notes");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+    transport.prepareToProcess();
+
+    transport.setPlayheadStart(96.0);
+    transport.jumpTo(96.0);
+    transport.rt_prepareForProcessingBlock();
+    expectEquals(transport.rt_playhead, 96.0, "Initial stopped seek should restore playhead.");
+    transport.rt_advancePlayhead(0);
+
+    transport.setIsPlaying(true);
+    transport.rt_prepareForProcessingBlock();
+    transport.rt_advancePlayhead(250);
+    expectEquals(transport.rt_playhead, 97.0, "Playing transport should advance by one tick.");
+
+    transport.setIsPlaying(false);
+    transport.rt_prepareForProcessingBlock();
+
+    expectEquals(transport.rt_playhead, 96.0, "Stopping should return to the start position.");
+    expect(transport.rt_playheadJumpOrPauseOccurred, "Stopping should flag a jump/pause.");
+    expect(transport.rt_shouldStopSequenceNotes, "Stopping should stop sequence-owned notes.");
+  }
+
+  void testLoopWrappingDuringBlockAdvance() {
+    beginTest("Loop wrapping during block advancement wraps to the loop start");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    projectView->loopPoints.insert_or_assign(
+        sequenceId, LoopPointsSnapshot{.start = 10, .end = 14});
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+    transport.prepareToProcess();
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+    transport.setIsPlaying(true);
+    transport.rt_prepareForProcessingBlock();
+
+    transport.rt_playhead = 13.0;
+    transport.rt_advancePlayhead(500);
+
+    expectEquals(transport.rt_playhead, 11.0, "Advancing past loop end should wrap.");
+    expectEquals(transport.rt_sampleCounter,
+        static_cast<int64_t>(500),
+        "Sample counter should advance with processed samples.");
+  }
+
+  void testLoopStartJumpPayloadUsesCompiledSequence() {
+    beginTest("Loop-start jump payload uses the compiled active sequence");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    projectView->loopPoints.insert_or_assign(sequenceId, LoopPointsSnapshot{.start = 4, .end = 8});
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+        AnthemSequenceEvent{.offset = 6.0,
+            .sourceId = firstNoteId,
+            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+    projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+
+    expect(transport.config.playheadJumpEventForLoop.has_value(),
+        "Loop config should include a loop-start jump payload.");
+
+    auto* jumpEvents = getJumpEventsForTrack(transport.config.playheadJumpEventForLoop.value());
+    expect(jumpEvents != nullptr, "Sustained notes at loop start should be included.");
+    expectEquals(static_cast<int>(jumpEvents->size()), 1, "Exactly one loop-start note restarts.");
+    expectEquals(jumpEvents->at(0).sequenceNoteId, firstNoteId, "The sustained note restarts.");
+  }
+
+  void testClearingActiveSequenceClearsLoopPoints() {
+    beginTest("Clearing the active sequence clears loop points");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    projectView->loopPoints.insert_or_assign(sequenceId, LoopPointsSnapshot{.start = 4, .end = 8});
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+
+    expect(transport.config.hasLoop, "Active sequence should load loop points.");
+    expect(transport.config.playheadJumpEventForLoop.has_value(),
+        "Active sequence should build loop-start jump payload storage.");
+
+    std::optional<int64_t> noActiveSequence = std::nullopt;
+    transport.setActiveSequenceId(noActiveSequence);
+
+    expect(!transport.config.hasLoop, "Clearing active sequence should clear hasLoop.");
+    expectEquals(transport.config.loopStart, 0.0, "Loop start should reset.");
+    expectEquals(transport.config.loopEnd,
+        std::numeric_limits<double>::infinity(),
+        "Loop end should reset.");
+    expect(!transport.config.playheadJumpEventForLoop.has_value(),
+        "Loop-start jump payload should be cleared.");
+  }
+
+  void testConfigQueueReplacementUsesLatestConfig() {
+    beginTest("Config queue replacement uses the latest pending config");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    transport.setBeatsPerMinute(130.0);
+    transport.setBeatsPerMinute(140.0);
+    transport.rt_prepareForProcessingBlock();
+
+    expectEquals(
+        transport.rt_config->beatsPerMinute, 140.0, "RT config should use the newest value.");
+    expectEquals(drainRetiredConfigCount(transport),
+        3,
+        "Superseded pending configs and the old RT config should be retired.");
+  }
+
+  void testTimingParamsReflectTransportConfig() {
+    beginTest("Timing params reflect transport config");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto clock = std::make_unique<FakeClock>();
+    clock->sampleRate = 96000.0;
+    Transport transport(std::move(projectView), std::move(clock));
+    transport.prepareToProcess();
+
+    transport.setTicksPerQuarter(192);
+    transport.setBeatsPerMinute(90.0);
+    transport.rt_prepareForProcessingBlock();
+
+    auto timingParams = transport.rt_getTimingParams();
+    expectEquals(timingParams.ticksPerQuarter,
+        static_cast<int64_t>(192),
+        "Timing params should use the latest TPQ.");
+    expectEquals(timingParams.beatsPerMinute, 90.0, "Timing params should use the latest BPM.");
+    expectEquals(
+        timingParams.sampleRate, 96000.0, "Timing params should use the clock sample rate.");
+  }
+
+  void testJumpToWrapsSeekTargetIntoLoop() {
+    beginTest("jumpTo wraps seek targets into the active loop");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    projectView->loopPoints.insert_or_assign(
+        sequenceId, LoopPointsSnapshot{.start = 10, .end = 14});
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+    transport.jumpTo(17.0);
+    transport.rt_prepareForProcessingBlock();
+
+    expectEquals(transport.rt_playhead, 13.0, "Seek target should wrap into the active loop.");
+  }
+
+  void testActiveTrackChangeRebuildsJumpPayloadOnlyForPatterns() {
+    beginTest("Active track changes rebuild jump payloads only for pattern playback");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto* projectViewPtr = projectView.get();
+    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+                                       .sourceId = firstNoteId,
+                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
+                                      AnthemSequenceEvent{.offset = 2.0,
+                                          .sourceId = firstNoteId,
+                                          .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}},
+        anthem_sequencer_track_ids::noTrack);
+    projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    transport.config.playheadStart = 1.0;
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+
+    std::optional<int64_t> activeTrackId = trackId;
+    transport.setActiveTrackId(activeTrackId);
+
+    auto* jumpEventsBeforePattern =
+        getJumpEventsForTrack(transport.config.playheadJumpEventForStart);
+    expect(jumpEventsBeforePattern == nullptr,
+        "Non-pattern active track changes should not rebuild no-track routing payloads.");
+
+    projectViewPtr->patternSequences.insert(sequenceId);
+    transport.setActiveTrackId(activeTrackId);
+
+    auto* jumpEventsAfterPattern =
+        getJumpEventsForTrack(transport.config.playheadJumpEventForStart);
+    expect(jumpEventsAfterPattern != nullptr,
+        "Pattern active track changes should rebuild no-track routing payloads.");
+    expectEquals(static_cast<int>(jumpEventsAfterPattern->size()),
+        1,
+        "The rebuilt payload should route one sustained note to the active track.");
   }
 };
 

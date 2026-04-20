@@ -70,6 +70,12 @@ public:
   // and uses it on the audio thread to process data in the graph
   std::unique_ptr<AnthemGraphProcessor> graphProcessor;
 
+  // JUCE class for managing audio devices.
+  //
+  // This is declared before transport so the audio device manager outlives the
+  // clock adapter owned by transport.
+  juce::AudioDeviceManager audioDeviceManager;
+
   // The transport contains information about:
   // - The sequence being played
   // - The track currently selected for direct pattern playback
@@ -81,9 +87,6 @@ public:
   // Class for coordinating global visualization that is sent back to the UI,
   // such as CPU burden and transport location.
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
-
-  // JUCE class for managing audio devices
-  juce::AudioDeviceManager audioDeviceManager;
 
 #ifndef __EMSCRIPTEN__
   // JUCE class for loading and managing plugins

@@ -19,7 +19,6 @@
 
 #include "transport.h"
 
-#include "modules/core/anthem.h"
 #include "modules/util/intentionally_leak.h"
 
 #include <unordered_map>
@@ -147,7 +146,13 @@ PlayheadJumpEvent buildPlayheadJumpEvent(const SequenceEventListCollection& sequ
   return event;
 }
 
-Transport::Transport() : rt_playhead{0.0}, rt_sampleCounter{0} {
+Transport::Transport(
+    std::unique_ptr<TransportProjectView> projectView, std::unique_ptr<TransportClock> clock)
+  : projectView(std::move(projectView)), clock(std::move(clock)), sampleRate{0.0}, rt_playhead{0.0},
+    rt_sampleCounter{0} {
+  jassert(this->projectView != nullptr);
+  jassert(this->clock != nullptr);
+
   rt_config = new TransportConfig();
 
   sendConfigToAudioThread();
@@ -181,20 +186,19 @@ void Transport::setIsPlaying(bool isPlaying) {
   sendConfigToAudioThread();
 }
 
-void Transport::setActiveSequenceId(std::optional<int64_t>& sequenceId) {
+void Transport::setActiveSequenceId(const std::optional<int64_t>& sequenceId) {
   config.activeSequenceId = sequenceId;
   updateLoopPoints(false);
   updatePlayheadJumpEventForStart(false);
   sendConfigToAudioThread();
 }
 
-void Transport::setActiveTrackId(std::optional<int64_t>& trackId) {
+void Transport::setActiveTrackId(const std::optional<int64_t>& trackId) {
   config.activeTrackId = trackId;
 
   bool shouldRebuildJumpEvents = false;
   if (config.activeSequenceId.has_value()) {
-    auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
-    shouldRebuildJumpEvents = patterns.find(config.activeSequenceId.value()) != patterns.end();
+    shouldRebuildJumpEvents = projectView->isPatternSequence(config.activeSequenceId.value());
   }
 
   if (shouldRebuildJumpEvents) {
@@ -216,10 +220,7 @@ void Transport::setBeatsPerMinute(double beatsPerMinute) {
 }
 
 void Transport::prepareToProcess() {
-  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
-  sampleRate = currentDevice->getCurrentSampleRate();
-
+  sampleRate = clock->currentSampleRate();
   rt_sampleCounter = 0;
 }
 
@@ -336,8 +337,7 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
   }
 
   const auto activeSequenceId = *config.activeSequenceId;
-  auto* compiledSequence =
-      Anthem::getInstance().sequenceStore->getSequenceEventList(activeSequenceId);
+  auto* compiledSequence = projectView->compiledSequence(activeSequenceId);
 
   if (compiledSequence == nullptr) {
     return event;
@@ -400,29 +400,9 @@ void Transport::updateLoopPoints(bool send) {
   }
 
   const auto activeSequenceId = *config.activeSequenceId;
-  auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
-  auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
+  auto loopPoints = projectView->lookupLoopPoints(activeSequenceId);
 
-  std::shared_ptr<LoopPointsModel> loopPoints;
-
-  if (auto patternIt = patterns.find(activeSequenceId); patternIt != patterns.end()) {
-    auto& patternLoopPoints = patternIt->second->loopPoints();
-    if (patternLoopPoints.has_value()) {
-      loopPoints = *patternLoopPoints;
-    }
-  }
-
-  if (loopPoints == nullptr) {
-    if (auto arrangementIt = arrangements.find(activeSequenceId);
-        arrangementIt != arrangements.end()) {
-      auto& arrangementLoopPoints = arrangementIt->second->loopPoints();
-      if (arrangementLoopPoints.has_value()) {
-        loopPoints = *arrangementLoopPoints;
-      }
-    }
-  }
-
-  if (loopPoints == nullptr) {
+  if (!loopPoints.has_value()) {
     clearLoopPoints();
 
     if (send) {
@@ -433,8 +413,8 @@ void Transport::updateLoopPoints(bool send) {
   }
 
   config.hasLoop = true;
-  config.loopStart = static_cast<double>(loopPoints->start());
-  config.loopEnd = static_cast<double>(loopPoints->end());
+  config.loopStart = loopPoints->start;
+  config.loopEnd = loopPoints->end;
   config.playheadJumpEventForLoop = createPlayheadJumpEvent(static_cast<double>(config.loopStart));
 
   if (send) {

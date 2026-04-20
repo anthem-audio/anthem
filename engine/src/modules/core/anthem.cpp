@@ -19,6 +19,7 @@
 
 #include "modules/core/anthem.h"
 
+#include "modules/core/adapters/transport_adapters.h"
 #include "modules/processing_graph/compiler/anthem_graph_compiler.h"
 #include "modules/processors/db_meter.h"
 
@@ -46,7 +47,8 @@ Anthem::Anthem() {
 void Anthem::initialize() {
   this->graphProcessor = std::make_unique<AnthemGraphProcessor>();
   this->sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
-  transport = std::make_unique<Transport>();
+  transport = std::make_unique<Transport>(
+      createAnthemTransportProjectView(*this), createAnthemTransportClock(audioDeviceManager));
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 
 #ifndef __EMSCRIPTEN__
