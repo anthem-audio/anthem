@@ -23,6 +23,8 @@
 
 #include <limits>
 
+namespace anthem {
+
 namespace {
 int checkedSizeToSocketInt(size_t value) {
   jassert(value <= static_cast<size_t>(std::numeric_limits<int>::max()));
@@ -30,7 +32,7 @@ int checkedSizeToSocketInt(size_t value) {
 }
 } // namespace
 
-AnthemSocketThread::AnthemSocketThread() : juce::Thread("AnthemSocketThread") {
+SocketThread::SocketThread() : juce::Thread("AnthemSocketThread") {
   pendingHeader.setSize(HEADER_SIZE);
   pendingBytes.setSize(0);
   messageBuffer.setSize(0);
@@ -43,7 +45,7 @@ AnthemSocketThread::AnthemSocketThread() : juce::Thread("AnthemSocketThread") {
   juce::Logger::writeToLog("AnthemSocketThread initialized.");
 }
 
-void AnthemSocketThread::run() {
+void SocketThread::run() {
   while (!threadShouldExit()) {
     // Try write
 
@@ -124,7 +126,7 @@ void AnthemSocketThread::run() {
   }
 }
 
-int AnthemSocketThread::writePendingBytes() {
+int SocketThread::writePendingBytes() {
   if (!pendingBytesReadyAndNotFinished && !messageQueueHasMessages()) {
     return 0; // Nothing to write
   }
@@ -191,7 +193,7 @@ int AnthemSocketThread::writePendingBytes() {
   return 1;
 }
 
-void AnthemSocketThread::processIncomingMessage(uint64_t messageLength) {
+void SocketThread::processIncomingMessage(uint64_t messageLength) {
   const uint8_t* messagePtr =
       static_cast<const uint8_t*>(messageBuffer.getData()) + sizeof(uint64_t);
 
@@ -201,15 +203,15 @@ void AnthemSocketThread::processIncomingMessage(uint64_t messageLength) {
   // Remove the processed message from the buffer
   messageBuffer.removeSection(0, sizeof(uint64_t) + messageLength);
 
-  Anthem::getInstance().commandHandler.addCommandBytesToQueue(std::move(messageBlock));
+  Engine::getInstance().commandHandler.addCommandBytesToQueue(std::move(messageBlock));
 }
 
-bool AnthemSocketThread::messageQueueHasMessages() {
+bool SocketThread::messageQueueHasMessages() {
   juce::ScopedLock lock(queueLock);
   return !messageQueue.empty();
 }
 
-void AnthemSocketThread::prepareNextMessage() {
+void SocketThread::prepareNextMessage() {
   // Narrow block scope so that we unlock as soon as possible
   {
     juce::ScopedLock lock(queueLock);
@@ -234,7 +236,7 @@ void AnthemSocketThread::prepareNextMessage() {
   pendingBytesReadyAndNotFinished = true;
 }
 
-void AnthemComms::init() {
+void Comms::init() {
 #ifdef __EMSCRIPTEN__
 
   // In WASM we currently have only one engine instance per browser tab.
@@ -293,17 +295,17 @@ void AnthemComms::init() {
   socketThread.startThread();
 }
 
-void AnthemComms::sendRaw(juce::MemoryBlock& message) {
+void Comms::sendRaw(juce::MemoryBlock& message) {
   juce::ScopedLock lock(socketThread.queueLock);
   socketThread.messageQueue.push(message);
 }
 
-void AnthemComms::send(std::string& message) {
+void Comms::send(std::string& message) {
   juce::MemoryBlock messageBlock(message.data(), message.size());
   sendRaw(messageBlock);
 }
 
-void AnthemComms::closeSocketThread() {
+void Comms::closeSocketThread() {
   int i = 0;
   while (socketThread.messageQueueHasMessages()) {
     juce::Thread::sleep(100);
@@ -316,3 +318,5 @@ void AnthemComms::closeSocketThread() {
 
   socketThread.stopThread(1000);
 }
+
+} // namespace anthem

@@ -26,8 +26,10 @@
 
 #include <string>
 
+namespace anthem {
+
 std::optional<Response> handleModelSyncCommand(Request& request) {
-  auto& anthem = Anthem::getInstance();
+  auto& engine = Engine::getInstance();
 
   if (rfl::holds_alternative<ModelInitRequest>(request.variant())) {
     juce::Logger::writeToLog("Loading project model...");
@@ -45,9 +47,9 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
       return std::optional(ModelInitResponse{
           .success = false, .error = error, .responseBase = ResponseBase{.id = requestId}});
     } else {
-      anthem.project = std::move(result.value());
+      engine.project = std::move(result.value());
 
-      anthem.project->initialize(anthem.project, nullptr);
+      engine.project->initialize(engine.project, nullptr);
 
       juce::Logger::writeToLog("Loaded project model");
 
@@ -57,16 +59,18 @@ std::optional<Response> handleModelSyncCommand(Request& request) {
   } else if (rfl::holds_alternative<ModelUpdateRequest>(request.variant())) {
     auto& modelUpdateRequest = rfl::get<ModelUpdateRequest>(request.variant());
 
-    anthem.project->handleModelUpdate(modelUpdateRequest, 0);
+    engine.project->handleModelUpdate(modelUpdateRequest, 0);
   } else if (rfl::holds_alternative<GetSerializedModelFromEngineRequest>(request.variant())) {
     auto& getSerializedModelFromEngineRequest =
         rfl::get<GetSerializedModelFromEngineRequest>(request.variant());
 
     return std::optional(GetSerializedModelFromEngineResponse{
-        .serializedModel = rfl::json::write(anthem.project.get()),
+        .serializedModel = rfl::json::write(engine.project.get()),
         .responseBase =
             ResponseBase{.id = getSerializedModelFromEngineRequest.requestBase.get().id}});
   }
 
   return std::nullopt;
 }
+
+} // namespace anthem

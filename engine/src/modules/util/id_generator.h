@@ -28,7 +28,11 @@
 // multiple machines. If Anthem were to ever support multi-user editing, the
 // synchronization would happen in the UI process and the engine wouldn't need
 // to worry about it.
+namespace anthem {
+
 class GlobalIDGenerator {
 public:
   static uint64_t generateID();
 };
+
+} // namespace anthem

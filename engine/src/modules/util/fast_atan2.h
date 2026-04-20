@@ -26,4 +26,8 @@
 // Rajan, S.; Wang, S.; Inkol, R. & Joyal, A.
 // Efficient approximations for the arctangent function
 // Signal Processing Magazine, IEEE, 2006, 23, 108-111
+namespace anthem {
+
 float fastAtan2(float y, float x);
+
+} // namespace anthem

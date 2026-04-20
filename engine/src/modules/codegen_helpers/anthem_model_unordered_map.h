@@ -24,11 +24,13 @@
 #include <memory>
 #include <unordered_map>
 
+namespace anthem {
+
 template <typename Key,
     typename T,
     typename Hash = std::hash<Key>,
     typename KeyEqual = std::equal_to<Key>>
-class AnthemModelUnorderedMap : public AnthemModelBase {
+class ModelUnorderedMap : public ModelBase {
 private:
   // The internal unordered_map
   std::unordered_map<Key, T, Hash, KeyEqual> data;
@@ -37,14 +39,14 @@ private:
   template <typename U> struct IsSharedPtrOfAnthemModelBase : std::false_type {};
 
   template <typename U>
-  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>> : std::is_base_of<AnthemModelBase, U> {};
+  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>> : std::is_base_of<ModelBase, U> {};
 
   // Helper to check if T is std::optional<std::shared_ptr<U>> where U derives from AnthemModelBase
   template <typename U> struct IsOptionalSharedPtrOfAnthemModelBase : std::false_type {};
 
   template <typename U>
   struct IsOptionalSharedPtrOfAnthemModelBase<std::optional<std::shared_ptr<U>>>
-    : std::is_base_of<AnthemModelBase, U> {};
+    : std::is_base_of<ModelBase, U> {};
 
   static constexpr bool isAnthemModelBase =
       IsSharedPtrOfAnthemModelBase<T>::value || IsOptionalSharedPtrOfAnthemModelBase<T>::value;
@@ -69,26 +71,25 @@ private:
   }
 public:
   // Constructors
-  AnthemModelUnorderedMap() = default;
+  ModelUnorderedMap() = default;
 
   // Copy constructor
-  AnthemModelUnorderedMap(const AnthemModelUnorderedMap& other) : data(other.data) {}
+  ModelUnorderedMap(const ModelUnorderedMap& other) : data(other.data) {}
 
   // Move constructor
-  AnthemModelUnorderedMap(AnthemModelUnorderedMap&& other) noexcept : data(std::move(other.data)) {}
+  ModelUnorderedMap(ModelUnorderedMap&& other) noexcept : data(std::move(other.data)) {}
 
   // Initializer list constructor
-  AnthemModelUnorderedMap(
-      std::initializer_list<typename std::unordered_map<Key, T>::value_type> init)
+  ModelUnorderedMap(std::initializer_list<typename std::unordered_map<Key, T>::value_type> init)
     : data(init) {}
 
   // Assignment operators
-  AnthemModelUnorderedMap& operator=(const AnthemModelUnorderedMap& other) {
+  ModelUnorderedMap& operator=(const ModelUnorderedMap& other) {
     data = other.data;
     return *this;
   }
 
-  AnthemModelUnorderedMap& operator=(AnthemModelUnorderedMap&& other) noexcept {
+  ModelUnorderedMap& operator=(ModelUnorderedMap&& other) noexcept {
     data = std::move(other.data);
     return *this;
   }
@@ -274,7 +275,7 @@ public:
     return data.erase(key);
   }
 
-  void swap(AnthemModelUnorderedMap& other) noexcept {
+  void swap(ModelUnorderedMap& other) noexcept {
     data.swap(other.data);
   }
 
@@ -349,9 +350,9 @@ public:
   // cross-compiler portability risk, but this body is the same constexpr-
   // guarded implementation for every instantiation we generate.
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override {
-    AnthemModelBase::initialize(selfModel, parentModel);
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override {
+    ModelBase::initialize(selfModel, parentModel);
 
     // Initialize all existing items in the map, if this map is holding Anthem
     // models
@@ -364,41 +365,43 @@ public:
 
   // Friend functions for comparison operators
   template <typename K, typename V, typename H, typename KE>
-  friend bool operator==(const AnthemModelUnorderedMap<K, V, H, KE>& lhs,
-      const AnthemModelUnorderedMap<K, V, H, KE>& rhs);
+  friend bool operator==(
+      const ModelUnorderedMap<K, V, H, KE>& lhs, const ModelUnorderedMap<K, V, H, KE>& rhs);
 
   template <typename K, typename V, typename H, typename KE>
-  friend bool operator!=(const AnthemModelUnorderedMap<K, V, H, KE>& lhs,
-      const AnthemModelUnorderedMap<K, V, H, KE>& rhs);
+  friend bool operator!=(
+      const ModelUnorderedMap<K, V, H, KE>& lhs, const ModelUnorderedMap<K, V, H, KE>& rhs);
 };
 
 // Comparison operators
 template <typename Key, typename T, typename Hash, typename KeyEqual>
-bool operator==(const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& lhs,
-    const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
+bool operator==(const ModelUnorderedMap<Key, T, Hash, KeyEqual>& lhs,
+    const ModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
   return lhs.data == rhs.data;
 }
 
 template <typename Key, typename T, typename Hash, typename KeyEqual>
-bool operator!=(const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& lhs,
-    const AnthemModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
+bool operator!=(const ModelUnorderedMap<Key, T, Hash, KeyEqual>& lhs,
+    const ModelUnorderedMap<Key, T, Hash, KeyEqual>& rhs) {
   return lhs.data != rhs.data;
 }
+
+} // namespace anthem
 
 namespace rfl {
 // Note that unordered_map has hash and key_equal as template parameters. If
 // they are ever changed from the default, they will need to be added to the
 // Reflector.
-template <typename Key, typename T> struct Reflector<AnthemModelUnorderedMap<Key, T>> {
+template <typename Key, typename T> struct Reflector<anthem::ModelUnorderedMap<Key, T>> {
   using ReflType = std::unordered_map<Key, T>;
 
-  static AnthemModelUnorderedMap<Key, T> to(const ReflType& value) {
-    AnthemModelUnorderedMap<Key, T> result;
+  static anthem::ModelUnorderedMap<Key, T> to(const ReflType& value) {
+    anthem::ModelUnorderedMap<Key, T> result;
     result.insert(value.begin(), value.end());
     return result;
   }
 
-  static ReflType from(const AnthemModelUnorderedMap<Key, T>& value) {
+  static ReflType from(const anthem::ModelUnorderedMap<Key, T>& value) {
     ReflType result;
     result.insert(value.begin(), value.end());
     return result;

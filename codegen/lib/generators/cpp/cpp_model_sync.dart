@@ -62,9 +62,10 @@ String getModelSyncFn(ModelClassInfo context) {
   final baseSuffix = context.annotation?.cppBehaviorClassName != null
       ? 'Base'
       : '';
+  final className = context.annotatedClass.name;
 
   writer.writeLine(
-    'void ${context.annotatedClass.name}$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {',
+    'void $className$baseSuffix::handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {',
   );
   writer.incrementWhitespace();
 
@@ -1222,10 +1223,10 @@ String getInitializeFn(ModelClassInfo context) {
       : '';
 
   writer.writeLine(
-    'void $className$baseSuffix::initialize(std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {',
+    'void $className$baseSuffix::initialize(std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) {',
   );
   writer.incrementWhitespace();
-  writer.writeLine('AnthemModelBase::initialize(selfModel, parentModel);');
+  writer.writeLine('ModelBase::initialize(selfModel, parentModel);');
   writer.writeLine();
 
   _writeParentSettersForInitializeFn(writer: writer, context: context);

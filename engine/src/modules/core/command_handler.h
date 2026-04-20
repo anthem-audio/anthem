@@ -24,7 +24,9 @@
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 
-class Anthem;
+namespace anthem {
+
+class Engine;
 
 class HeartbeatThread : public juce::Thread {
 public:
@@ -51,3 +53,5 @@ public:
   // Must be called from the message thread
   void processNextCommand();
 };
+
+} // namespace anthem

@@ -25,6 +25,8 @@
 #include <type_traits>
 #include <utility>
 
+namespace anthem {
+
 namespace {
 template <typename T> using RemoveCvRef = std::remove_cv_t<std::remove_reference_t<T>>;
 }
@@ -133,7 +135,7 @@ void VisualizationBroker::timerCallback() {
       }};
 
   auto responseText = rfl::json::write(visualizationUpdate);
-  Anthem::getInstance().comms.send(responseText);
+  Engine::getInstance().comms.send(responseText);
 }
 
 void VisualizationBroker::dispose() {
@@ -141,3 +143,5 @@ void VisualizationBroker::dispose() {
   this->dataProviders.clear();
   this->subscriptions.clear();
 }
+
+} // namespace anthem

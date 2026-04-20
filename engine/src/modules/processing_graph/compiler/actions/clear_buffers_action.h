@@ -25,15 +25,19 @@
 #include <juce_core/juce_core.h>
 #include <memory>
 
-class ClearBuffersAction : public AnthemGraphCompilerAction {
+namespace anthem {
+
+class ClearBuffersAction : public GraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(ClearBuffersAction)
 public:
-  AnthemNodeProcessContext* context;
+  NodeProcessContext* context;
 
-  ClearBuffersAction(AnthemNodeProcessContext* context) : context(context) {}
+  ClearBuffersAction(NodeProcessContext* context) : context(context) {}
 
   void execute(int numSamples) override;
 
   void debugPrint() override;
 };
+
+} // namespace anthem

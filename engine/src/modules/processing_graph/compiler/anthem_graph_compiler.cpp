@@ -44,11 +44,12 @@
   All steps are commented below.
 */
 
-AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
-    const AnthemGraphCompileRequest& request) {
-  auto result = std::make_unique<AnthemGraphCompilationResult>();
+namespace anthem {
+
+GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& request) {
+  auto result = std::make_unique<GraphCompilationResult>();
   result->graphProcessContext =
-      std::make_unique<AnthemGraphProcessContext>(request.rtServices, request.bufferLayout);
+      std::make_unique<GraphProcessContext>(request.rtServices, request.bufferLayout);
 
   size_t totalAudioBufferCount = 0;
   size_t totalControlBufferCount = 0;
@@ -66,12 +67,12 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
   // We store these in a vector so that when it goes out of scope, the nodes
   // are destroyed. We will store the actual pointers in a set, which improves
   // performance for large graphs.
-  std::vector<std::shared_ptr<AnthemGraphCompilerNode>> vectorOfNodesToProcess;
+  std::vector<std::shared_ptr<GraphCompilerNode>> vectorOfNodesToProcess;
 
-  std::set<AnthemGraphCompilerNode*> nodesToProcess;
+  std::set<GraphCompilerNode*> nodesToProcess;
 
-  std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>> nodeToCompilerNode;
-  std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
+  std::map<Node*, std::shared_ptr<GraphCompilerNode>> nodeToCompilerNode;
+  std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>> connectionToCompilerEdge;
 
   const auto nodeCount = request.nodes.size();
   const auto connectionCount = request.connections.size();
@@ -88,7 +89,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
 
     result->graphNodes.push_back(node);
 
-    auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, &context);
+    auto compilerNode = std::make_shared<GraphCompilerNode>(node, &context);
 
     node->runtimeContext = std::make_optional(&context);
 
@@ -105,8 +106,8 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
         request.nodes, request.connections, nodeToCompilerNode, connectionToCompilerEdge);
   }
 
-  std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>> actions =
-      std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+  std::unique_ptr<std::vector<std::unique_ptr<GraphCompilerAction>>> actions =
+      std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
 
   juce::Logger::writeToLog("Step 1: Zero input buffers");
 
@@ -134,7 +135,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
 
   result->actionGroups.push_back(std::move(actions));
 
-  actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+  actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
 
   // Step 1 (part 2): Initialize control input buffers with corresponding
   // parameter values.
@@ -158,7 +159,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
 
   result->actionGroups.push_back(std::move(actions));
 
-  actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+  actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
 
   std::cout << result->actionGroups.size() << " action groups" << '\n';
   std::cout << '\n';
@@ -196,7 +197,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
 
     lastSize = nodesToProcess.size();
 
-    std::vector<AnthemGraphCompilerNode*> nodesToRemoveFromProcessing;
+    std::vector<GraphCompilerNode*> nodesToRemoveFromProcessing;
 
     i = 0;
 
@@ -223,7 +224,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
 
     result->actionGroups.push_back(std::move(actions));
 
-    actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+    actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
 
     std::cout << result->actionGroups.size() << " action groups" << '\n';
 
@@ -293,7 +294,7 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
 
     result->actionGroups.push_back(std::move(actions));
 
-    actions = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+    actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
 
     // Step 5: Mark nodes with no unprocessed input connections as ready to process
 
@@ -332,3 +333,5 @@ AnthemGraphCompilationResult* AnthemGraphCompiler::compile(
 
   return result.release();
 }
+
+} // namespace anthem

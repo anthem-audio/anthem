@@ -23,37 +23,37 @@
 
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 class SequenceNoteProviderTest : public juce::UnitTest {
   using RuntimeDependencies = SequenceNoteProviderProcessor::RuntimeDependencies;
   using RuntimeState = SequenceNoteProviderProcessor::RuntimeState;
 
   static constexpr int64_t trackId = 11;
-  static constexpr AnthemSourceNoteId firstNoteId = 101;
-  static constexpr AnthemSourceNoteId secondNoteId = 102;
-  static constexpr AnthemLiveNoteId firstLiveId = 1001;
-  static constexpr AnthemLiveNoteId secondLiveId = 1002;
+  static constexpr SourceNoteId firstNoteId = 101;
+  static constexpr SourceNoteId secondNoteId = 102;
+  static constexpr LiveNoteId firstLiveId = 1001;
+  static constexpr LiveNoteId secondLiveId = 1002;
 
-  static AnthemSequenceEvent makeNoteOnEvent(
-      double offset, AnthemSourceNoteId sourceId, int16_t pitch) {
-    return AnthemSequenceEvent{
+  static SequenceEvent makeNoteOnEvent(double offset, SourceNoteId sourceId, int16_t pitch) {
+    return SequenceEvent{
         .offset = offset,
         .sourceId = sourceId,
-        .event = AnthemEvent(AnthemNoteOnEvent(pitch, 0, 1.0f, 0.0f)),
+        .event = Event(NoteOnEvent(pitch, 0, 1.0f, 0.0f)),
     };
   }
 
-  static AnthemSequenceEvent makeNoteOffEvent(
-      double offset, AnthemSourceNoteId sourceId, int16_t pitch) {
-    return AnthemSequenceEvent{
+  static SequenceEvent makeNoteOffEvent(double offset, SourceNoteId sourceId, int16_t pitch) {
+    return SequenceEvent{
         .offset = offset,
         .sourceId = sourceId,
-        .event = AnthemEvent(AnthemNoteOffEvent(pitch, 0, 0.0f)),
+        .event = Event(NoteOffEvent(pitch, 0, 0.0f)),
     };
   }
 
   static void addTrack(SequenceEventListCollection& sequence,
       int64_t sourceTrackId,
-      std::initializer_list<AnthemSequenceEvent> events,
+      std::initializer_list<SequenceEvent> events,
       bool invalidationOccurred = false) {
     auto* track = new SequenceEventList();
     track->rt_invalidationOccurred = invalidationOccurred;
@@ -93,11 +93,11 @@ class SequenceNoteProviderTest : public juce::UnitTest {
     return jumpEvent;
   }
 
-  void expectEvent(AnthemEventBuffer& buffer,
+  void expectEvent(EventBuffer& buffer,
       size_t index,
       double sampleOffset,
-      AnthemEventType type,
-      AnthemLiveNoteId liveId,
+      EventType type,
+      LiveNoteId liveId,
       int16_t pitch) {
     expect(buffer.getNumEvents() > index, "Expected event index should exist.");
     auto& event = buffer.getEvent(index);
@@ -108,9 +108,9 @@ class SequenceNoteProviderTest : public juce::UnitTest {
         static_cast<int>(event.event.type), static_cast<int>(type), "Unexpected event type.");
     expectEquals(event.liveId, liveId, "Unexpected live note ID.");
 
-    if (type == AnthemEventType::NoteOn) {
+    if (type == EventType::NoteOn) {
       expectEquals(event.event.noteOn.pitch, pitch, "Unexpected note-on pitch.");
-    } else if (type == AnthemEventType::NoteOff) {
+    } else if (type == EventType::NoteOff) {
       expectEquals(event.event.noteOff.pitch, pitch, "Unexpected note-off pitch.");
     }
   }
@@ -135,16 +135,16 @@ public:
 
     auto dependencies = buildDependencies(&sequence);
     RuntimeState state;
-    AnthemEventBuffer buffer(8);
-    AnthemLiveNoteId nextLiveId = firstLiveId;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
 
     SequenceNoteProviderProcessor::rt_processBlock(
         state, dependencies, buffer, trackId, 4, [&nextLiveId]() { return nextLiveId++; });
 
     expectEquals(
         static_cast<int>(buffer.getNumEvents()), 2, "Expected one note-on and one note-off.");
-    expectEvent(buffer, 0, 1.0, AnthemEventType::NoteOn, firstLiveId, 60);
-    expectEvent(buffer, 1, 3.0, AnthemEventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 0, 1.0, EventType::NoteOn, firstLiveId, 60);
+    expectEvent(buffer, 1, 3.0, EventType::NoteOff, firstLiveId, 60);
     expectEquals(static_cast<int>(state.rt_activeSequenceNotes.rt_getSize()),
         0,
         "Tracked notes should be empty after the matching note-off.");
@@ -158,8 +158,8 @@ public:
 
     auto dependencies = buildDependencies(&sequence);
     RuntimeState state;
-    AnthemEventBuffer buffer(8);
-    AnthemLiveNoteId nextLiveId = firstLiveId;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
 
     SequenceNoteProviderProcessor::rt_processBlock(
         state, dependencies, buffer, trackId, 1, [&nextLiveId]() { return nextLiveId++; });
@@ -167,7 +167,7 @@ public:
     auto jumpEvent = buildJumpEvent(trackId,
         {PlayheadJumpSequenceEvent{
             .sequenceNoteId = secondNoteId,
-            .event = AnthemEvent(AnthemNoteOnEvent(67, 0, 1.0f, 0.0f)),
+            .event = Event(NoteOnEvent(67, 0, 1.0f, 0.0f)),
         }});
 
     buffer.clear();
@@ -181,8 +181,8 @@ public:
     expectEquals(static_cast<int>(buffer.getNumEvents()),
         2,
         "Stopping and jumping should emit one note-off and one restart note-on.");
-    expectEvent(buffer, 0, 0.0, AnthemEventType::NoteOff, firstLiveId, 60);
-    expectEvent(buffer, 1, 0.0, AnthemEventType::NoteOn, secondLiveId, 67);
+    expectEvent(buffer, 0, 0.0, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 1, 0.0, EventType::NoteOn, secondLiveId, 67);
     expectEquals(static_cast<int>(state.rt_activeSequenceNotes.rt_getSize()),
         1,
         "Jump-start note should remain tracked after the restart.");
@@ -196,8 +196,8 @@ public:
 
     auto dependencies = buildDependencies(&initialSequence);
     RuntimeState state;
-    AnthemEventBuffer buffer(8);
-    AnthemLiveNoteId nextLiveId = firstLiveId;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
 
     SequenceNoteProviderProcessor::rt_processBlock(
         state, dependencies, buffer, trackId, 1, [&nextLiveId]() { return nextLiveId++; });
@@ -214,8 +214,8 @@ public:
     expectEquals(static_cast<int>(buffer.getNumEvents()),
         2,
         "Invalidation should stop the old note and emit the replacement note.");
-    expectEvent(buffer, 0, 0.0, AnthemEventType::NoteOff, firstLiveId, 60);
-    expectEvent(buffer, 1, 1.0, AnthemEventType::NoteOn, secondLiveId, 64);
+    expectEvent(buffer, 0, 0.0, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 1, 1.0, EventType::NoteOn, secondLiveId, 64);
   }
 
   void testLoopBoundaryStopsTrackedNotesAndAppliesLoopJump() {
@@ -226,8 +226,8 @@ public:
 
     auto dependencies = buildDependencies(&sequence);
     RuntimeState state;
-    AnthemEventBuffer buffer(8);
-    AnthemLiveNoteId nextLiveId = firstLiveId;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
 
     dependencies.rt_playhead = 1.0;
     SequenceNoteProviderProcessor::rt_processBlock(
@@ -236,7 +236,7 @@ public:
     auto loopJumpEvent = buildJumpEvent(trackId,
         {PlayheadJumpSequenceEvent{
             .sequenceNoteId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f)),
+            .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
         }});
 
     buffer.clear();
@@ -251,8 +251,8 @@ public:
     expectEquals(static_cast<int>(buffer.getNumEvents()),
         2,
         "Crossing the loop should stop existing notes and restart loop-start notes.");
-    expectEvent(buffer, 0, 1.0, AnthemEventType::NoteOff, firstLiveId, 60);
-    expectEvent(buffer, 1, 1.0, AnthemEventType::NoteOn, secondLiveId, 60);
+    expectEvent(buffer, 0, 1.0, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 1, 1.0, EventType::NoteOn, secondLiveId, 60);
   }
 
   void testActiveTrackUsesNoTrackSequenceEvents() {
@@ -260,23 +260,24 @@ public:
 
     auto sequence = SequenceEventListCollection();
     addTrack(sequence, trackId, {makeNoteOnEvent(0.0, firstNoteId, 72)});
-    addTrack(
-        sequence, anthem_sequencer_track_ids::noTrack, {makeNoteOnEvent(0.0, secondNoteId, 60)});
+    addTrack(sequence, sequencer_track_ids::noTrack, {makeNoteOnEvent(0.0, secondNoteId, 60)});
 
     auto dependencies = buildDependencies(&sequence);
     dependencies.rt_activeTrackId = trackId;
 
     RuntimeState state;
-    AnthemEventBuffer buffer(8);
-    AnthemLiveNoteId nextLiveId = firstLiveId;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
 
     SequenceNoteProviderProcessor::rt_processBlock(
         state, dependencies, buffer, trackId, 1, [&nextLiveId]() { return nextLiveId++; });
 
     expectEquals(
         static_cast<int>(buffer.getNumEvents()), 1, "Exactly one event should be emitted.");
-    expectEvent(buffer, 0, 0.0, AnthemEventType::NoteOn, firstLiveId, 60);
+    expectEvent(buffer, 0, 0.0, EventType::NoteOn, firstLiveId, 60);
   }
 };
 
 static SequenceNoteProviderTest sequenceNoteProviderTest;
+
+} // namespace anthem

@@ -23,7 +23,9 @@
 #include "modules/processing_graph/processor/anthem_processor.h"
 
 // A balance processor.
-class BalanceProcessor : public AnthemProcessor, public BalanceProcessorModelBase {
+namespace anthem {
+
+class BalanceProcessor : public Processor, public BalanceProcessorModelBase {
 private:
 public:
   BalanceProcessor(const BalanceProcessorModelImpl& _impl);
@@ -36,5 +38,7 @@ public:
   BalanceProcessor& operator=(BalanceProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 };
+
+} // namespace anthem

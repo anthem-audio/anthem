@@ -27,19 +27,21 @@
 #include <memory>
 
 // Copies data from an output port to an input port
-class CopyAudioBufferAction : public AnthemGraphCompilerAction {
+namespace anthem {
+
+class CopyAudioBufferAction : public GraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(CopyAudioBufferAction)
 public:
-  AnthemNodeProcessContext* source;
+  NodeProcessContext* source;
   int64_t sourcePortId;
 
-  AnthemNodeProcessContext* destination;
+  NodeProcessContext* destination;
   int64_t destinationPortId;
 
-  CopyAudioBufferAction(AnthemNodeProcessContext* source,
+  CopyAudioBufferAction(NodeProcessContext* source,
       int64_t sourcePortId,
-      AnthemNodeProcessContext* destination,
+      NodeProcessContext* destination,
       int64_t destinationPortId)
     : source(source), sourcePortId(sourcePortId), destination(destination),
       destinationPortId(destinationPortId) {}
@@ -48,3 +50,5 @@ public:
 
   void debugPrint() override;
 };
+
+} // namespace anthem

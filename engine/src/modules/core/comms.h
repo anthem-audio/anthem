@@ -27,10 +27,12 @@
 #include <queue>
 #include <string>
 
-class Anthem;
+namespace anthem {
 
-class AnthemSocketThread : public juce::Thread {
-  friend class AnthemComms;
+class Engine;
+
+class SocketThread : public juce::Thread {
+  friend class Comms;
 private:
   static constexpr size_t HEADER_SIZE = sizeof(uint64_t);
 
@@ -46,7 +48,7 @@ private:
   static constexpr int THREAD_SLEEP_MS = 1;
 
 #ifdef __EMSCRIPTEN__
-  AnthemPipeWasm socket;
+  PipeWasm socket;
 #else  // #ifdef __EMSCRIPTEN__
   juce::StreamingSocket socket;
 #endif // #ifdef __EMSCRIPTEN__
@@ -84,20 +86,20 @@ protected:
   std::queue<juce::MemoryBlock> messageQueue;
   juce::CriticalSection queueLock;
 public:
-  AnthemSocketThread();
+  SocketThread();
 
   void run() override;
 };
 
 // This class manages communication with the UI.
-class AnthemComms {
+class Comms {
 private:
-  AnthemSocketThread socketThread;
+  SocketThread socketThread;
 public:
-  AnthemComms() : socketThread() {
+  Comms() : socketThread() {
     juce::Logger::writeToLog("AnthemComms initialized.");
   }
-  ~AnthemComms() = default;
+  ~Comms() = default;
 
   void init();
 
@@ -105,7 +107,7 @@ public:
   void sendRaw(juce::MemoryBlock& message);
 
 #ifdef __EMSCRIPTEN__
-  AnthemPipeWasm& getSocketOrPipe() {
+  PipeWasm& getSocketOrPipe() {
     return socketThread.socket;
   }
 #else  // #ifdef __EMSCRIPTEN__
@@ -120,3 +122,5 @@ public:
   // there's definitely no more data to send or receive.
   void closeSocketThread();
 };
+
+} // namespace anthem

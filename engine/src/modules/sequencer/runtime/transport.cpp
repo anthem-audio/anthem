@@ -23,9 +23,11 @@
 
 #include <unordered_map>
 
+namespace anthem {
+
 namespace {
 using TrackToJumpEventsMap = std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>>;
-using ActiveNotesForTrack = std::unordered_map<AnthemSourceNoteId, AnthemNoteOnEvent>;
+using ActiveNotesForTrack = std::unordered_map<SourceNoteId, NoteOnEvent>;
 using TrackToActiveNotesMap = std::unordered_map<int64_t, ActiveNotesForTrack>;
 
 template <std::size_t queueSize, typename T>
@@ -50,7 +52,7 @@ template <typename Callback>
 void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
     std::optional<int64_t> activeTrackId,
     Callback&& callback) {
-  auto noTrackIter = sequence.tracks.find(anthem_sequencer_track_ids::noTrack);
+  auto noTrackIter = sequence.tracks.find(sequencer_track_ids::noTrack);
   if (noTrackIter != sequence.tracks.end()) {
     if (activeTrackId.has_value()) {
       callback(activeTrackId.value(), noTrackIter->second->events);
@@ -64,7 +66,7 @@ void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
 }
 
 bool shouldApplySequenceEventToActiveNoteSnapshot(
-    const AnthemSequenceEvent& sequenceEvent, double position) {
+    const SequenceEvent& sequenceEvent, double position) {
   if (sequenceEvent.offset < position) {
     return true;
   }
@@ -79,11 +81,11 @@ bool shouldApplySequenceEventToActiveNoteSnapshot(
   // We intentionally use the enum sort order here instead of `!= NoteOn`.
   // `NoteOff` is defined to sort before `NoteOn`, so only events ordered before
   // `NoteOn` should affect the "active at position" snapshot.
-  return sequenceEvent.event.type < AnthemEventType::NoteOn;
+  return sequenceEvent.event.type < EventType::NoteOn;
 }
 
 ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
-    const std::vector<AnthemSequenceEvent>& events, double position) {
+    const std::vector<SequenceEvent>& events, double position) {
   auto activeNotes = ActiveNotesForTrack();
 
   for (const auto& sequenceEvent : events) {
@@ -91,9 +93,9 @@ ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
       break;
     }
 
-    if (sequenceEvent.event.type == AnthemEventType::NoteOn) {
+    if (sequenceEvent.event.type == EventType::NoteOn) {
       activeNotes.insert_or_assign(sequenceEvent.sourceId, sequenceEvent.event.noteOn);
-    } else if (sequenceEvent.event.type == AnthemEventType::NoteOff) {
+    } else if (sequenceEvent.event.type == EventType::NoteOff) {
       activeNotes.erase(sequenceEvent.sourceId);
     }
   }
@@ -109,7 +111,7 @@ TrackToActiveNotesMap collectNotesActiveAtPositionForSequence(
 
   forEachPlayableTrackEventList(sequence,
       activeTrackId,
-      [&](int64_t destinationTrackId, const std::vector<AnthemSequenceEvent>& events) {
+      [&](int64_t destinationTrackId, const std::vector<SequenceEvent>& events) {
         auto activeNotes = collectNotesActiveAtPositionForTrack(events, position);
         if (!activeNotes.empty()) {
           collector.insert_or_assign(destinationTrackId, std::move(activeNotes));
@@ -126,7 +128,7 @@ void appendStartEvents(
     for (const auto& [sourceId, noteOn] : activeNotes) {
       events.push_back(PlayheadJumpSequenceEvent{
           .sequenceNoteId = sourceId,
-          .event = AnthemEvent(noteOn),
+          .event = Event(noteOn),
       });
     }
   }
@@ -439,3 +441,5 @@ void Transport::sendConfigToAudioThread() {
     delete configCopy;
   }
 }
+
+} // namespace anthem

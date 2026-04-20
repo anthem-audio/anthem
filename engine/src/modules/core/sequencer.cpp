@@ -21,9 +21,11 @@
 
 #include "modules/core/anthem.h"
 
+namespace anthem {
+
 void Sequencer::initialize(
-    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
-  auto& transport = *Anthem::getInstance().transport;
+    std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) {
+  auto& transport = *Engine::getInstance().transport;
 
   // Write initial values to transport
   transport.setTicksPerQuarter(this->ticksPerQuarter());
@@ -49,22 +51,24 @@ void Sequencer::initialize(
     //
     // So far this completely ignores tempo automation, so we'll need to address
     // that at some point.
-    Anthem::getInstance().transport->setBeatsPerMinute(beatsPerMinute);
+    Engine::getInstance().transport->setBeatsPerMinute(beatsPerMinute);
   });
 
   addActiveTransportSequenceIDObserver([this](std::optional<int64_t> value) {
-    Anthem::getInstance().transport->setActiveSequenceId(value);
+    Engine::getInstance().transport->setActiveSequenceId(value);
   });
 
   addActiveTrackIDObserver([this](std::optional<int64_t> value) {
-    Anthem::getInstance().transport->setActiveTrackId(value);
+    Engine::getInstance().transport->setActiveTrackId(value);
   });
 
   addIsPlayingObserver(
-      [this](bool value) { Anthem::getInstance().transport->setIsPlaying(value); });
+      [this](bool value) { Engine::getInstance().transport->setIsPlaying(value); });
 
   addPlaybackStartPositionObserver(
-      [this](double value) { Anthem::getInstance().transport->setPlayheadStart(value); });
+      [this](double value) { Engine::getInstance().transport->setPlayheadStart(value); });
 
   SequencerModelBase::initialize(selfModel, parentModel);
 }
+
+} // namespace anthem

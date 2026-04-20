@@ -27,9 +27,11 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
 
-class Anthem;
+namespace anthem {
 
-class AnthemAudioCallback : public juce::AudioIODeviceCallback {
+class Engine;
+
+class AudioCallback : public juce::AudioIODeviceCallback {
 private:
   double sampleRate = -1.0;
 
@@ -42,10 +44,10 @@ private:
 
   MasterOutputProcessor* masterOutputProcessor;
 
-  // We will assume the Anthem application class is always available. This is
+  // We will assume the engine application class is always available. This is
   // normally stored in a shared_ptr, which we can't use from the audio thread
   // since it's not real-time safe.
-  Anthem* anthem;
+  Engine* engine;
 
   // This is a reference to the CPU burden provider. The audio callback
   // calculates the CPU burden every time the audio callback is called, and sets
@@ -62,7 +64,7 @@ private:
   // called, and sets it here.
   PlayheadSequenceIdVisualizationProvider* playheadSequenceIdProvider;
 public:
-  AnthemAudioCallback(Anthem* anthem);
+  AudioCallback(Engine* engine);
 
   void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
       int numInputChannels,
@@ -73,3 +75,5 @@ public:
   void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
   void audioDeviceStopped() override;
 };
+
+} // namespace anthem

@@ -22,6 +22,8 @@
 #include "generated/lib/model/model.h"
 #include "modules/processors/db_meter.h"
 
+namespace anthem {
+
 std::optional<std::shared_ptr<NodePort>> Node::getPortById(int64_t id) {
   for (auto& port : *this->audioInputPorts()) {
     if (port->id() == id) {
@@ -62,7 +64,7 @@ std::optional<std::shared_ptr<NodePort>> Node::getPortById(int64_t id) {
   return std::nullopt;
 }
 
-std::optional<std::shared_ptr<AnthemProcessor>> Node::getProcessor() {
+std::optional<std::shared_ptr<Processor>> Node::getProcessor() {
   auto& processor = this->processor();
 
   if (!processor.has_value()) {
@@ -70,7 +72,7 @@ std::optional<std::shared_ptr<AnthemProcessor>> Node::getProcessor() {
   }
 
   return rfl::visit(
-      [](auto const& field) -> std::shared_ptr<AnthemProcessor> {
+      [](auto const& field) -> std::shared_ptr<Processor> {
         // field is of type rfl::Field<Name, T>
         using FieldType = std::decay_t<decltype(field)>;
         // T is the second template parameter of rfl::Field
@@ -78,12 +80,14 @@ std::optional<std::shared_ptr<AnthemProcessor>> Node::getProcessor() {
         // e.g. std::shared_ptr<ToneGeneratorProcessor>
 
         // Check that all stored types truly derive from AnthemProcessor:
-        static_assert(std::is_base_of_v<AnthemProcessor, typename PtrType::element_type>,
+        static_assert(std::is_base_of_v<Processor, typename PtrType::element_type>,
             "All types must derive from AnthemProcessor. This means that all processors "
             "need a user-defined implementation class that inherits from "
             "AnthemProcessor. See master_output.h for an example.");
 
-        return std::static_pointer_cast<AnthemProcessor>(field.value());
+        return std::static_pointer_cast<Processor>(field.value());
       },
       *processor);
 }
+
+} // namespace anthem

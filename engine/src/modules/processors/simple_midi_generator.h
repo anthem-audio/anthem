@@ -24,7 +24,9 @@
 #include "modules/sequencer/events/note_events.h"
 #include "modules/sequencer/events/note_instance_id.h"
 
-class SimpleMidiGeneratorProcessor : public AnthemProcessor,
+namespace anthem {
+
+class SimpleMidiGeneratorProcessor : public Processor,
                                      public SimpleMidiGeneratorProcessorModelBase {
 private:
   double sampleRate;
@@ -33,7 +35,7 @@ private:
   bool noteOn;
 
   int16_t currentNote;
-  AnthemLiveNoteId currentNoteId;
+  LiveNoteId currentNoteId;
   size_t currentNoteDuration;
 public:
   SimpleMidiGeneratorProcessor(const SimpleMidiGeneratorProcessorModelImpl& _impl);
@@ -50,5 +52,7 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 };
+
+} // namespace anthem

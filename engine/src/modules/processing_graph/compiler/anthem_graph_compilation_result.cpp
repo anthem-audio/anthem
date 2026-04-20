@@ -19,8 +19,12 @@
 
 #include "anthem_graph_compilation_result.h"
 
-void AnthemGraphCompilationResult::cleanup() {
+namespace anthem {
+
+void GraphCompilationResult::cleanup() {
   if (graphProcessContext != nullptr) {
     graphProcessContext->cleanup();
   }
 }
+
+} // namespace anthem

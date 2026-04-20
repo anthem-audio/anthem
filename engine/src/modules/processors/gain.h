@@ -24,7 +24,9 @@
 #include "modules/processors/gain_parameter_mapping.h"
 
 // Applies gain to the input audio signal.
-class GainProcessor : public AnthemProcessor, public GainProcessorModelBase {
+namespace anthem {
+
+class GainProcessor : public Processor, public GainProcessorModelBase {
 private:
   // Converts an incoming [0.0, 1.0] parameter value to a linear gain value.
   //
@@ -43,5 +45,7 @@ public:
   GainProcessor& operator=(GainProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 };
+
+} // namespace anthem

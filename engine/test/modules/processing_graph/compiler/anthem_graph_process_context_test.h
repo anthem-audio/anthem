@@ -27,7 +27,9 @@
 
 #include <juce_core/juce_core.h>
 
-class AnthemGraphProcessContextTest : public juce::UnitTest {
+namespace anthem {
+
+class GraphProcessContextTest : public juce::UnitTest {
   static std::shared_ptr<Node> makeFullyBoundNode(int64_t nodeId) {
     auto node = graph_test_helpers::makeNode(nodeId);
 
@@ -65,7 +67,7 @@ class AnthemGraphProcessContextTest : public juce::UnitTest {
     return node;
   }
 public:
-  AnthemGraphProcessContextTest() : juce::UnitTest("AnthemGraphProcessContextTest", "Anthem") {}
+  GraphProcessContextTest() : juce::UnitTest("AnthemGraphProcessContextTest", "Anthem") {}
 
   void runTest() override {
     testBuffersUseExplicitLayout();
@@ -80,8 +82,8 @@ public:
     beginTest("Graph-owned buffers use the explicit compile-time layout");
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext context(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 64,
         });
@@ -110,8 +112,8 @@ public:
     beginTest("Graph-owned buffer indices remain stable as buffers are appended");
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext context(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
@@ -126,10 +128,10 @@ public:
     context.getAudioBuffer(firstAudioIndex).setSample(0, 0, 0.5f);
     context.getControlBuffer(firstControlIndex).setSample(0, 0, 0.25f);
     context.getEventBuffer(firstEventIndex)
-        ->addEvent(AnthemLiveEvent{
+        ->addEvent(LiveEvent{
             .sampleOffset = 0.0,
             .liveId = 7,
-            .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f)),
+            .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
         });
 
     auto thirdAudioIndex = context.allocateAudioBuffer();
@@ -178,8 +180,8 @@ public:
     beginTest("reserve only reserves capacity and does not allocate graph buffers eagerly");
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext context(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 32,
         });
@@ -224,8 +226,8 @@ public:
         graph_test_helpers::makeParameterConfig(101, 0.25)));
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext context(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 32,
         });
@@ -267,8 +269,8 @@ public:
     auto secondNode = makeFullyBoundNode(20);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext context(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 24,
         });
@@ -304,8 +306,8 @@ public:
     auto node = makeEventHeavyNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext context(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext context(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
@@ -341,4 +343,6 @@ public:
   }
 };
 
-static AnthemGraphProcessContextTest anthemGraphProcessContextTest;
+static GraphProcessContextTest anthemGraphProcessContextTest;
+
+} // namespace anthem

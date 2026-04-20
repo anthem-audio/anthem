@@ -37,7 +37,9 @@
 // something is changed, e.g. some notes are moved around for a given pattern,
 // we don't recompile the entire sequence. Instead, we just update the event
 // lists for the relevant channel.
-class AnthemSequenceCompiler {
+namespace anthem {
+
+class SequenceCompiler {
   friend class SequenceCompilerTest;
 public:
   using EntityId = int64_t;
@@ -69,7 +71,7 @@ private:
   //
   // The events will be added to the given `events` vector.
   static void getTrackNoteEventsForArrangement(
-      EntityId trackId, EntityId arrangementId, std::vector<AnthemSequenceEvent>& events);
+      EntityId trackId, EntityId arrangementId, std::vector<SequenceEvent>& events);
 
   // Gets the note events for the given pattern.
   //
@@ -90,9 +92,9 @@ private:
       std::optional<EntityId> clipId,
       std::optional<std::tuple<double, double>> range,
       std::optional<double> offset,
-      std::vector<AnthemSequenceEvent>& events);
+      std::vector<SequenceEvent>& events);
 
-  static void sortEventList(std::vector<AnthemSequenceEvent>& events);
+  static void sortEventList(std::vector<SequenceEvent>& events);
 
   // Clamps a time range to the start and end times of a clip. The intent here
   // is for events with durations (e.g. note, audio) to be clamped to the start
@@ -108,3 +110,5 @@ private:
   // Clamps a given timestamp to the given range.
   static double clampTimeToRange(double time, const std::tuple<double, double>& range);
 };
+
+} // namespace anthem

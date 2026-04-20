@@ -34,8 +34,10 @@
 #include <juce_core/juce_core.h>
 #include <stdexcept>
 
-class AnthemGraphCompilerTest : public juce::UnitTest {
-  template <typename T> static int countActionsOfType(const AnthemGraphCompilationResult& result) {
+namespace anthem {
+
+class GraphCompilerTest : public juce::UnitTest {
+  template <typename T> static int countActionsOfType(const GraphCompilationResult& result) {
     int count = 0;
 
     for (const auto& group : result.actionGroups) {
@@ -49,14 +51,14 @@ class AnthemGraphCompilerTest : public juce::UnitTest {
     return count;
   }
 
-  static AnthemGraphCompileRequest buildCompileRequest(
+  static GraphCompileRequest buildCompileRequest(
       GraphRuntimeServices& rtServices, ProcessingGraphModel& graph) {
-    return AnthemGraphCompileRequest{
+    return GraphCompileRequest{
         .rtServices = rtServices,
         .nodes = *graph.nodes(),
         .connections = *graph.connections(),
         .bufferLayout =
-            AnthemGraphBufferLayout{
+            GraphBufferLayout{
                 .numAudioChannels = 2,
                 .blockSize = 64,
             },
@@ -64,7 +66,7 @@ class AnthemGraphCompilerTest : public juce::UnitTest {
     };
   }
 public:
-  AnthemGraphCompilerTest() : juce::UnitTest("AnthemGraphCompilerTest", "Anthem") {}
+  GraphCompilerTest() : juce::UnitTest("AnthemGraphCompilerTest", "Anthem") {}
 
   void runTest() override {
     testCompileEmptyGraphProducesOnlyInitializationGroups();
@@ -84,7 +86,7 @@ public:
     GraphRuntimeServices rtServices;
     auto graph = graph_test_helpers::makeProcessingGraph();
 
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expect(result != nullptr, "Compiling an empty graph should still produce a result.");
     expectEquals(static_cast<int>(result->actionGroups.size()),
@@ -123,7 +125,7 @@ public:
     graph->nodes()->insert_or_assign(gainNodeId, gainNode);
 
     GraphRuntimeServices rtServices;
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<ProcessNodeAction>(*result),
         1,
@@ -179,7 +181,7 @@ public:
     graph->masterOutputNodeId() = masterNodeId;
 
     GraphRuntimeServices rtServices;
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expect(result != nullptr, "Compiling a simple graph should produce a result.");
     expectEquals(static_cast<int>(result->graphNodes.size()),
@@ -295,7 +297,7 @@ public:
     graph->connections()->insert_or_assign(101, secondConnection);
 
     GraphRuntimeServices rtServices;
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
         2,
@@ -365,7 +367,7 @@ public:
     graph->connections()->insert_or_assign(101, secondConnection);
 
     GraphRuntimeServices rtServices;
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
         2,
@@ -422,7 +424,7 @@ public:
     graph->connections()->insert_or_assign(100, connection);
 
     GraphRuntimeServices rtServices;
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyControlBufferAction>(*result),
         1,
@@ -463,7 +465,7 @@ public:
     graph->connections()->insert_or_assign(100, connection);
 
     GraphRuntimeServices rtServices;
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyEventsAction>(*result),
         1,
@@ -513,7 +515,7 @@ public:
 
     bool didThrow = false;
     try {
-      auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+      auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
       if (result != nullptr) {
         result->cleanup();
         delete result;
@@ -559,7 +561,7 @@ public:
     graph->connections()->insert_or_assign(100, malformedConnection);
 
     GraphRuntimeServices rtServices;
-    auto* result = AnthemGraphCompiler::compile(buildCompileRequest(rtServices, *graph));
+    auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
         0,
@@ -573,4 +575,6 @@ public:
   }
 };
 
-static AnthemGraphCompilerTest anthemGraphCompilerTest;
+static GraphCompilerTest anthemGraphCompilerTest;
+
+} // namespace anthem

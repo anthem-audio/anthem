@@ -27,14 +27,16 @@
 #include <memory>
 #include <vector>
 
-class AnthemGraphProcessorTest : public juce::UnitTest {
+namespace anthem {
+
+class GraphProcessorTest : public juce::UnitTest {
   struct ActionProbe {
     int executeCount = 0;
     int destroyCount = 0;
     int lastNumSamples = -1;
   };
 
-  class ProbeAction : public AnthemGraphCompilerAction {
+  class ProbeAction : public GraphCompilerAction {
   public:
     explicit ProbeAction(std::shared_ptr<ActionProbe> probe) : probe(std::move(probe)) {}
 
@@ -52,18 +54,17 @@ class AnthemGraphProcessorTest : public juce::UnitTest {
     std::shared_ptr<ActionProbe> probe;
   };
 
-  static AnthemGraphCompilationResult* makeCompilationResult(
-      const std::shared_ptr<ActionProbe>& probe) {
-    auto* result = new AnthemGraphCompilationResult();
+  static GraphCompilationResult* makeCompilationResult(const std::shared_ptr<ActionProbe>& probe) {
+    auto* result = new GraphCompilationResult();
 
-    auto actionGroup = std::make_unique<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>();
+    auto actionGroup = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
     actionGroup->push_back(std::make_unique<ProbeAction>(probe));
     result->actionGroups.push_back(std::move(actionGroup));
 
     return result;
   }
 public:
-  AnthemGraphProcessorTest() : juce::UnitTest("AnthemGraphProcessorTest", "Anthem") {}
+  GraphProcessorTest() : juce::UnitTest("AnthemGraphProcessorTest", "Anthem") {}
 
   void runTest() override {
     testFirstCompilationResultPickup();
@@ -76,7 +77,7 @@ public:
   void testFirstCompilationResultPickup() {
     beginTest("The first queued compilation result becomes active and processes subsequent blocks");
 
-    AnthemGraphProcessor processor;
+    GraphProcessor processor;
     auto probe = std::make_shared<ActionProbe>();
 
     processor.setProcessingStepsFromMainThread(makeCompilationResult(probe));
@@ -94,7 +95,7 @@ public:
   void testReplacingActiveCompilationResults() {
     beginTest("New compilation results replace the active result on the next audio block");
 
-    AnthemGraphProcessor processor;
+    GraphProcessor processor;
     auto firstProbe = std::make_shared<ActionProbe>();
     auto secondProbe = std::make_shared<ActionProbe>();
 
@@ -119,7 +120,7 @@ public:
     beginTest(
         "Queued compilation results coalesce down to the most recent result before execution");
 
-    AnthemGraphProcessor processor;
+    GraphProcessor processor;
     auto olderProbe = std::make_shared<ActionProbe>();
     auto newerProbe = std::make_shared<ActionProbe>();
 
@@ -142,7 +143,7 @@ public:
   void testDeletionQueueCleanup() {
     beginTest("Clearing the deletion queue deletes replaced compilation results");
 
-    AnthemGraphProcessor processor;
+    GraphProcessor processor;
     auto oldProbe = std::make_shared<ActionProbe>();
     auto newProbe = std::make_shared<ActionProbe>();
 
@@ -166,7 +167,7 @@ public:
   void testRuntimeServiceReset() {
     beginTest("Resetting runtime services resets the live note ID generator");
 
-    AnthemGraphProcessor processor;
+    GraphProcessor processor;
 
     expectEquals(processor.getRtServices().rt_allocateLiveNoteId(),
         0,
@@ -183,4 +184,6 @@ public:
   }
 };
 
-static AnthemGraphProcessorTest anthemGraphProcessorTest;
+static GraphProcessorTest anthemGraphProcessorTest;
+
+} // namespace anthem

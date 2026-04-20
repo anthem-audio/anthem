@@ -24,6 +24,8 @@
 #include <cmath>
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 class SequencerTimingTest : public juce::UnitTest {
   static bool nearlyEqual(double a, double b) {
     return std::abs(a - b) < 0.0001;
@@ -100,3 +102,5 @@ public:
 };
 
 static SequencerTimingTest sequencerTimingTest;
+
+} // namespace anthem

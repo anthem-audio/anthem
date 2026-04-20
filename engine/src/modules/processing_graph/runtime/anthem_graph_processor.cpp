@@ -22,8 +22,10 @@
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/util/intentionally_leak.h"
 
+namespace anthem {
+
 namespace {
-void deleteCompilationResult(AnthemGraphCompilationResult* result) {
+void deleteCompilationResult(GraphCompilationResult* result) {
   if (result == nullptr) {
     return;
   }
@@ -33,7 +35,7 @@ void deleteCompilationResult(AnthemGraphCompilationResult* result) {
 }
 } // namespace
 
-AnthemGraphProcessor::AnthemGraphProcessor()
+GraphProcessor::GraphProcessor()
   : rt_services(std::make_unique<GraphRuntimeServices>()),
     clearDeletionQueueTimedCallback(
         juce::TimedCallback([this]() { this->clearDeletionQueueFromMainThread(); })) {
@@ -42,7 +44,7 @@ AnthemGraphProcessor::AnthemGraphProcessor()
   this->rt_activeCompilationResult = nullptr;
 }
 
-AnthemGraphProcessor::~AnthemGraphProcessor() {
+GraphProcessor::~GraphProcessor() {
   this->clearDeletionQueueTimedCallback.stopTimer();
 
   while (auto nextCompilationResult = this->pendingCompilationResultsQueue.read()) {
@@ -55,8 +57,7 @@ AnthemGraphProcessor::~AnthemGraphProcessor() {
   this->rt_activeCompilationResult = nullptr;
 }
 
-void AnthemGraphProcessor::setProcessingStepsFromMainThread(
-    AnthemGraphCompilationResult* compilationResult) {
+void GraphProcessor::setProcessingStepsFromMainThread(GraphCompilationResult* compilationResult) {
   if (!this->pendingCompilationResultsQueue.add(compilationResult)) {
     jassertfalse;
     compilationResult->cleanup();
@@ -64,7 +65,7 @@ void AnthemGraphProcessor::setProcessingStepsFromMainThread(
   }
 }
 
-void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
+void GraphProcessor::clearDeletionQueueFromMainThread() {
   auto nextCompilationResult = this->retiredCompilationResultsQueue.read();
 
   while (nextCompilationResult) {
@@ -74,7 +75,7 @@ void AnthemGraphProcessor::clearDeletionQueueFromMainThread() {
   }
 }
 
-void AnthemGraphProcessor::process(int numSamples) {
+void GraphProcessor::process(int numSamples) {
   auto nextCompilationResult = this->pendingCompilationResultsQueue.read();
 
   while (nextCompilationResult) {
@@ -115,14 +116,16 @@ void AnthemGraphProcessor::process(int numSamples) {
   }
 }
 
-GraphRuntimeServices& AnthemGraphProcessor::getRtServices() {
+GraphRuntimeServices& GraphProcessor::getRtServices() {
   jassert(rt_services != nullptr);
   return *rt_services;
 }
 
-void AnthemGraphProcessor::resetRtServices() {
+void GraphProcessor::resetRtServices() {
   jassert(rt_services != nullptr);
   if (rt_services != nullptr) {
     rt_services->rt_reset();
   }
 }
+
+} // namespace anthem

@@ -23,4 +23,8 @@
 
 #include <optional>
 
+namespace anthem {
+
 std::optional<Response> handleVisualizationCommand(Request& request);
+
+} // namespace anthem

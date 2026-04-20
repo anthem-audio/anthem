@@ -21,6 +21,8 @@
 
 #include "generated/lib/model/processing_graph/node_port.h"
 
+namespace anthem {
+
 class NodePort : public NodePortModelBase {
 public:
   NodePort(const NodePortModelImpl& _impl) : NodePortModelBase(_impl) {}
@@ -32,8 +34,10 @@ public:
   NodePort(NodePort&&) noexcept = default;
   NodePort& operator=(NodePort&&) = default;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override;
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 private:
   bool trySendParameterValueToAudioThread(double value);
 };
+
+} // namespace anthem

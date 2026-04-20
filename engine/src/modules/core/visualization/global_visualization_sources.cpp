@@ -24,6 +24,8 @@
 #include <algorithm>
 #include <cmath>
 
+namespace anthem {
+
 namespace {
 constexpr double playheadUpdateIntervalMs = 5.0;
 constexpr double cpuAggregationWindowMs = 500.0;
@@ -179,3 +181,5 @@ GlobalVisualizationSources::GlobalVisualizationSources() {
   VisualizationBroker::getInstance().registerDataProvider(
       "playhead_sequence_id", playheadSequenceIdProvider);
 }
+
+} // namespace anthem

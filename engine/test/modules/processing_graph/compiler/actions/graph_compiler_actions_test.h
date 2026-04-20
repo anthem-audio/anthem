@@ -33,11 +33,13 @@
 
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 class GraphCompilerActionsTest : public juce::UnitTest {
-  static AnthemGraphProcessContext makeGraphContext(
+  static GraphProcessContext makeGraphContext(
       GraphRuntimeServices& rtServices, int blockSize = 16) {
-    return AnthemGraphProcessContext(rtServices,
-        AnthemGraphBufferLayout{
+    return GraphProcessContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = blockSize,
         });
@@ -101,15 +103,15 @@ public:
 
     context.getInputAudioBuffer(3).setSample(0, 0, 0.75f);
     context.getOutputAudioBuffer(4).setSample(0, 0, 0.5f);
-    context.getInputEventBuffer(1)->addEvent(AnthemLiveEvent{
+    context.getInputEventBuffer(1)->addEvent(LiveEvent{
         .sampleOffset = 0.0,
         .liveId = 1,
-        .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f)),
+        .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
     });
-    context.getOutputEventBuffer(2)->addEvent(AnthemLiveEvent{
+    context.getOutputEventBuffer(2)->addEvent(LiveEvent{
         .sampleOffset = 0.0,
         .liveId = 2,
-        .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f)),
+        .event = Event(NoteOffEvent(60, 0, 0.0f)),
     });
 
     ClearBuffersAction action(&context);
@@ -241,15 +243,15 @@ public:
     auto& sourceContext = graphContext.createNodeProcessContext(sourceNode);
     auto& destinationContext = graphContext.createNodeProcessContext(destinationNode);
 
-    sourceContext.getOutputEventBuffer(2)->addEvent(AnthemLiveEvent{
+    sourceContext.getOutputEventBuffer(2)->addEvent(LiveEvent{
         .sampleOffset = 0.5,
         .liveId = 10,
-        .event = AnthemEvent(AnthemNoteOnEvent(64, 0, 1.0f, 0.0f)),
+        .event = Event(NoteOnEvent(64, 0, 1.0f, 0.0f)),
     });
-    destinationContext.getInputEventBuffer(1)->addEvent(AnthemLiveEvent{
+    destinationContext.getInputEventBuffer(1)->addEvent(LiveEvent{
         .sampleOffset = 0.25,
         .liveId = 9,
-        .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f)),
+        .event = Event(NoteOffEvent(60, 0, 0.0f)),
     });
 
     CopyEventsAction action(&sourceContext, 2, &destinationContext, 1);
@@ -321,3 +323,5 @@ public:
 };
 
 static GraphCompilerActionsTest graphCompilerActionsTest;
+
+} // namespace anthem

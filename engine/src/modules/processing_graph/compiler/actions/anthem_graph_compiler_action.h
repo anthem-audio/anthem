@@ -21,11 +21,15 @@
 
 #include <juce_core/juce_core.h>
 
-class AnthemGraphCompilerAction {
+namespace anthem {
+
+class GraphCompilerAction {
 private:
-  JUCE_LEAK_DETECTOR(AnthemGraphCompilerAction)
+  JUCE_LEAK_DETECTOR(GraphCompilerAction)
 public:
   virtual void execute(int numSamples) = 0;
   virtual void debugPrint() = 0;
-  virtual ~AnthemGraphCompilerAction() = default;
+  virtual ~GraphCompilerAction() = default;
 };
+
+} // namespace anthem

@@ -21,10 +21,12 @@
 
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
+namespace anthem {
+
 LiveEventProviderProcessor::LiveEventProviderProcessor(
     const LiveEventProviderProcessorModelImpl& _impl)
-  : AnthemProcessor("LiveEventProvider"), LiveEventProviderProcessorModelBase(_impl) {
-  liveInputEventBuffer = std::make_unique<RingBuffer<AnthemLiveInputEvent, 4096>>();
+  : Processor("LiveEventProvider"), LiveEventProviderProcessorModelBase(_impl) {
+  liveInputEventBuffer = std::make_unique<RingBuffer<LiveInputEvent, 4096>>();
 }
 
 LiveEventProviderProcessor::~LiveEventProviderProcessor() {
@@ -32,37 +34,36 @@ LiveEventProviderProcessor::~LiveEventProviderProcessor() {
 }
 
 void LiveEventProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
+    std::unique_ptr<EventBuffer>& targetBuffer,
     const TrackedNote& trackedNote,
     double sampleOffset) {
-  targetBuffer->addEvent(AnthemLiveEvent{
+  targetBuffer->addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = trackedNote.liveId,
-      .event = AnthemEvent(AnthemNoteOffEvent(trackedNote.pitch, trackedNote.channel, 0.0f)),
+      .event = Event(NoteOffEvent(trackedNote.pitch, trackedNote.channel, 0.0f)),
   });
 }
 
-void LiveEventProviderProcessor::rt_handleLiveNoteOn(AnthemNodeProcessContext& context,
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    AnthemLiveInputNoteId inputId,
-    const AnthemNoteOnEvent& noteOnEvent,
+void LiveEventProviderProcessor::rt_handleLiveNoteOn(NodeProcessContext& context,
+    std::unique_ptr<EventBuffer>& targetBuffer,
+    LiveInputNoteId inputId,
+    const NoteOnEvent& noteOnEvent,
     double sampleOffset) {
   auto liveId = context.rt_allocateLiveNoteId();
   auto didTrackNote =
       rt_activeLiveNotes.rt_add(inputId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
 
-  targetBuffer->addEvent(AnthemLiveEvent{
+  targetBuffer->addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
-      .liveId = didTrackNote ? liveId : anthemInvalidLiveNoteId,
-      .event = AnthemEvent(AnthemNoteOnEvent(
+      .liveId = didTrackNote ? liveId : invalidLiveNoteId,
+      .event = Event(NoteOnEvent(
           noteOnEvent.pitch, noteOnEvent.channel, noteOnEvent.velocity, noteOnEvent.detune)),
   });
 }
 
-void LiveEventProviderProcessor::rt_handleLiveNoteOff(
-    std::unique_ptr<AnthemEventBuffer>& targetBuffer,
-    AnthemLiveInputNoteId inputId,
-    const AnthemNoteOffEvent& noteOffEvent,
+void LiveEventProviderProcessor::rt_handleLiveNoteOff(std::unique_ptr<EventBuffer>& targetBuffer,
+    LiveInputNoteId inputId,
+    const NoteOffEvent& noteOffEvent,
     double sampleOffset) {
   auto trackedNote = rt_activeLiveNotes.rt_takeByInputId(inputId);
   if (trackedNote.has_value()) {
@@ -70,16 +71,15 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOff(
     return;
   }
 
-  targetBuffer->addEvent(AnthemLiveEvent{
+  targetBuffer->addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
-      .liveId = anthemInvalidLiveNoteId,
-      .event = AnthemEvent(
-          AnthemNoteOffEvent(noteOffEvent.pitch, noteOffEvent.channel, noteOffEvent.velocity)),
+      .liveId = invalidLiveNoteId,
+      .event = Event(NoteOffEvent(noteOffEvent.pitch, noteOffEvent.channel, noteOffEvent.velocity)),
   });
 }
 
 void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
-    AnthemNodeProcessContext& context, std::unique_ptr<AnthemEventBuffer>& targetBuffer) {
+    NodeProcessContext& context, std::unique_ptr<EventBuffer>& targetBuffer) {
   while (true) {
     auto eventOpt = liveInputEventBuffer->read();
     if (!eventOpt.has_value()) {
@@ -87,31 +87,33 @@ void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
     }
 
     auto event = eventOpt.value();
-    if (event.event.type == AnthemEventType::NoteOn) {
+    if (event.event.type == EventType::NoteOn) {
       rt_handleLiveNoteOn(
           context, targetBuffer, event.inputId, event.event.noteOn, event.sampleOffset);
-    } else if (event.event.type == AnthemEventType::NoteOff) {
+    } else if (event.event.type == EventType::NoteOff) {
       rt_handleLiveNoteOff(targetBuffer, event.inputId, event.event.noteOff, event.sampleOffset);
     } else {
-      targetBuffer->addEvent(AnthemLiveEvent{
+      targetBuffer->addEvent(LiveEvent{
           .sampleOffset = event.sampleOffset,
-          .liveId = anthemInvalidLiveNoteId,
+          .liveId = invalidLiveNoteId,
           .event = event.event,
       });
     }
   }
 }
 
-void LiveEventProviderProcessor::addLiveInputEvent(AnthemLiveInputEvent event) {
+void LiveEventProviderProcessor::addLiveInputEvent(LiveInputEvent event) {
   liveInputEventBuffer->add(event);
 }
 
 void LiveEventProviderProcessor::prepareToProcess() {}
 
-void LiveEventProviderProcessor::process(AnthemNodeProcessContext& context, int /*numSamples*/
+void LiveEventProviderProcessor::process(NodeProcessContext& context, int /*numSamples*/
 ) {
   auto& outputEventBuffer =
       context.getOutputEventBuffer(LiveEventProviderProcessorModelBase::eventOutputPortId);
 
   rt_addLiveEventsToBuffer(context, outputEventBuffer);
 }
+
+} // namespace anthem

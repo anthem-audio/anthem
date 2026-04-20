@@ -31,19 +31,21 @@
 //
 // Control values are transported as normalized values in the range [0, 1].
 // This action does not interpret their meaning.
-class CopyControlBufferAction : public AnthemGraphCompilerAction {
+namespace anthem {
+
+class CopyControlBufferAction : public GraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(CopyControlBufferAction)
 public:
-  AnthemNodeProcessContext* source;
+  NodeProcessContext* source;
   int64_t sourcePortId;
 
-  AnthemNodeProcessContext* destination;
+  NodeProcessContext* destination;
   int64_t destinationPortId;
 
-  CopyControlBufferAction(AnthemNodeProcessContext* source,
+  CopyControlBufferAction(NodeProcessContext* source,
       int64_t sourcePortId,
-      AnthemNodeProcessContext* destination,
+      NodeProcessContext* destination,
       int64_t destinationPortId)
     : source(source), sourcePortId(sourcePortId), destination(destination),
       destinationPortId(destinationPortId) {}
@@ -52,3 +54,5 @@ public:
 
   void debugPrint() override;
 };
+
+} // namespace anthem

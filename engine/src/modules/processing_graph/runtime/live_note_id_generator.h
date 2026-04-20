@@ -23,10 +23,12 @@
 
 #include <cstdint>
 
+namespace anthem {
+
 class LiveNoteIdGenerator {
 public:
-  AnthemLiveNoteId rt_allocate() {
-    auto liveNoteId = static_cast<AnthemLiveNoteId>(rt_nextLiveNoteIdCounter);
+  LiveNoteId rt_allocate() {
+    auto liveNoteId = static_cast<LiveNoteId>(rt_nextLiveNoteIdCounter);
 
     if (rt_nextLiveNoteIdCounter >= 0x7ffffffeu) {
       rt_nextLiveNoteIdCounter = 0;
@@ -43,3 +45,5 @@ public:
 private:
   uint32_t rt_nextLiveNoteIdCounter = 0;
 };
+
+} // namespace anthem

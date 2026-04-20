@@ -24,8 +24,10 @@
 
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 void NodePort::initialize(
-    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
+    std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) {
   NodePortModelBase::initialize(selfModel, parentModel);
 
   if (this->config()->parameterConfig().has_value()) {
@@ -58,13 +60,13 @@ void NodePort::initialize(
 bool NodePort::trySendParameterValueToAudioThread(double value) {
   jassert(juce::jlimit(0.0, 1.0, value) == value);
 
-  std::shared_ptr<AnthemModelBase> collectionParent = this->parent.lock();
+  std::shared_ptr<ModelBase> collectionParent = this->parent.lock();
 
   if (!collectionParent) {
     return false;
   }
 
-  std::shared_ptr<AnthemModelBase> nodeAsBase = collectionParent->parent.lock();
+  std::shared_ptr<ModelBase> nodeAsBase = collectionParent->parent.lock();
 
   if (!nodeAsBase) {
     return false;
@@ -84,3 +86,5 @@ bool NodePort::trySendParameterValueToAudioThread(double value) {
 
   return true;
 }
+
+} // namespace anthem

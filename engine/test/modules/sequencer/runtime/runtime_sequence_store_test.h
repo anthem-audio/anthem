@@ -27,6 +27,8 @@
 #include <memory>
 #include <optional>
 
+namespace anthem {
+
 class RuntimeSequenceStoreTest : public juce::UnitTest {
   static constexpr EntityId sequence1Id = 1;
   static constexpr EntityId sequence2Id = 2;
@@ -57,22 +59,22 @@ class RuntimeSequenceStoreTest : public juce::UnitTest {
   };
 
   void installTransport(std::optional<LoopPointsSnapshot> loopPoints = std::nullopt) {
-    Anthem::cleanup();
+    Engine::cleanup();
 
     auto projectView = std::make_unique<FakeProjectView>();
     projectView->loopPoints = loopPoints;
 
-    auto& anthem = Anthem::getInstance();
-    anthem.transport =
+    auto& engine = Engine::getInstance();
+    engine.transport =
         std::make_unique<Transport>(std::move(projectView), std::make_unique<FakeClock>());
-    anthem.transport->prepareToProcess();
+    engine.transport->prepareToProcess();
   }
 
   void preparePlayingTransport(
       double playheadPosition, std::optional<LoopPointsSnapshot> loopPoints = std::nullopt) {
     installTransport(loopPoints);
 
-    auto& transport = *Anthem::getInstance().transport;
+    auto& transport = *Engine::getInstance().transport;
 
     if (loopPoints.has_value()) {
       std::optional<int64_t> activeSequenceId = sequence1Id;
@@ -90,7 +92,7 @@ class RuntimeSequenceStoreTest : public juce::UnitTest {
     return track;
   }
 
-  void applyPendingRtUpdates(AnthemRuntimeSequenceStore* store) {
+  void applyPendingRtUpdates(RuntimeSequenceStore* store) {
     auto nextMap = store->mapUpdateQueue.read();
 
     while (nextMap.has_value()) {
@@ -104,15 +106,15 @@ class RuntimeSequenceStoreTest : public juce::UnitTest {
     }
   }
 
-  void expectNoRetiredSnapshots(AnthemRuntimeSequenceStore* store) {
+  void expectNoRetiredSnapshots(RuntimeSequenceStore* store) {
     expect(!store->mapDeletionQueue.read().has_value(), "No retired snapshots");
   }
 
-  void expectNoPendingSnapshots(AnthemRuntimeSequenceStore* store, const juce::String& message) {
+  void expectNoPendingSnapshots(RuntimeSequenceStore* store, const juce::String& message) {
     expect(!store->mapUpdateQueue.read().has_value(), message);
   }
 
-  void expectTrackInvalidation(AnthemRuntimeSequenceStore* store,
+  void expectTrackInvalidation(RuntimeSequenceStore* store,
       EntityId sequenceId,
       EntityId trackId,
       bool expected,
@@ -139,7 +141,7 @@ public:
   void testCreateAndReadEmptyStore() {
     beginTest("Create store and read empty event list map");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
     auto& eventLists = store->rt_getEventLists();
 
     expect(eventLists.sequences.size() == 0, "Event lists are empty");
@@ -151,11 +153,10 @@ public:
   void testMainThreadSnapshotUpdatesBeforeRtHandoff() {
     beginTest("Main-thread snapshot updates before RT handoff");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     SequenceEventList track;
-    track.events.push_back(
-        AnthemSequenceEvent{.offset = 2.0, .event = AnthemEvent(AnthemNoteOnEvent())});
+    track.events.push_back(SequenceEvent{.offset = 2.0, .event = Event(NoteOnEvent())});
 
     store->addOrUpdateTrackInSequence(sequence1Id, track1Id, track);
 
@@ -179,7 +180,7 @@ public:
   void testNoOpRemovalsDoNotPublishSnapshots() {
     beginTest("No-op sequence and track removals do not publish snapshots");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     store->removeSequence(sequence1Id);
     expectNoPendingSnapshots(store, "Removing a missing sequence should not publish a snapshot");
@@ -203,7 +204,7 @@ public:
   void testAddAndRemoveSequences() {
     beginTest("Add and remove sequences");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     store->addOrUpdateSequence(sequence1Id, SequenceEventListCollection());
     store->addOrUpdateSequence(sequence2Id, SequenceEventListCollection());
@@ -243,15 +244,14 @@ public:
   void testAddAndRemoveTracks() {
     beginTest("Add, replace, and remove tracks in a sequence");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     store->addOrUpdateSequence(sequence1Id, SequenceEventListCollection());
     applyPendingRtUpdates(store);
     store->processDeletionQueues();
 
     SequenceEventList track1;
-    track1.events.push_back(
-        AnthemSequenceEvent{.offset = 0.0, .event = AnthemEvent(AnthemNoteOnEvent())});
+    track1.events.push_back(SequenceEvent{.offset = 0.0, .event = Event(NoteOnEvent())});
 
     store->addOrUpdateTrackInSequence(sequence1Id, track1Id, track1);
     store->addOrUpdateTrackInSequence(sequence1Id, track2Id, SequenceEventList());
@@ -271,8 +271,7 @@ public:
 
     // Replace track2
     SequenceEventList replacement;
-    replacement.events.push_back(
-        AnthemSequenceEvent{.offset = 1.0, .event = AnthemEvent(AnthemNoteOffEvent())});
+    replacement.events.push_back(SequenceEvent{.offset = 1.0, .event = Event(NoteOffEvent())});
 
     store->addOrUpdateTrackInSequence(sequence1Id, track2Id, replacement);
     applyPendingRtUpdates(store);
@@ -307,7 +306,7 @@ public:
   void testRemoveTrackFromAllSequences() {
     beginTest("Remove one track from all sequences");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     store->addOrUpdateTrackInSequence(sequence1Id, track1Id, SequenceEventList());
     store->addOrUpdateTrackInSequence(sequence2Id, track1Id, SequenceEventList());
@@ -350,7 +349,7 @@ public:
 
     preparePlayingTransport(4.0);
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
     store->addOrUpdateTrackInSequence(
         sequence1Id, track1Id, createTrackWithInvalidation(4.25, 4.75));
 
@@ -366,7 +365,7 @@ public:
     expectNoRetiredSnapshots(store);
 
     delete store;
-    Anthem::cleanup();
+    Engine::cleanup();
   }
 
   void testRtInvalidationIgnoresNonOverlappingRanges() {
@@ -374,7 +373,7 @@ public:
 
     preparePlayingTransport(4.0);
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
     store->addOrUpdateTrackInSequence(sequence1Id, track1Id, createTrackWithInvalidation(6.0, 7.0));
 
     store->rt_processSequenceChanges(250);
@@ -389,7 +388,7 @@ public:
     expectNoRetiredSnapshots(store);
 
     delete store;
-    Anthem::cleanup();
+    Engine::cleanup();
   }
 
   void testRtInvalidationForLoopStartRange() {
@@ -397,7 +396,7 @@ public:
 
     preparePlayingTransport(11.5, LoopPointsSnapshot{.start = 10.0, .end = 12.0});
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
     store->addOrUpdateTrackInSequence(
         sequence1Id, track1Id, createTrackWithInvalidation(10.25, 10.75));
 
@@ -413,7 +412,7 @@ public:
     expectNoRetiredSnapshots(store);
 
     delete store;
-    Anthem::cleanup();
+    Engine::cleanup();
   }
 
   void testCleanupAfterBlockClearsInvalidationFlags() {
@@ -421,7 +420,7 @@ public:
 
     preparePlayingTransport(4.0);
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
     store->addOrUpdateTrackInSequence(
         sequence1Id, track1Id, createTrackWithInvalidation(4.25, 4.75));
 
@@ -437,8 +436,10 @@ public:
     expectNoRetiredSnapshots(store);
 
     delete store;
-    Anthem::cleanup();
+    Engine::cleanup();
   }
 };
 
 static RuntimeSequenceStoreTest runtimeSequenceStoreTest;
+
+} // namespace anthem

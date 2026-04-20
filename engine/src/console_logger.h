@@ -22,9 +22,13 @@
 #include <iostream>
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 class ConsoleLogger : public juce::Logger {
 public:
   void logMessage(const juce::String& message) override {
     std::cout << message << '\n';
   }
 };
+
+} // namespace anthem

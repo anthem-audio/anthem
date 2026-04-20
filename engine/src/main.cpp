@@ -31,13 +31,15 @@
 #include "modules/core/comms_methods_for_ui_wasm.h"
 #endif
 
-class AnthemEngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener {
+namespace anthem {
+
+class EngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener {
 private:
   void changeListenerCallback(juce::ChangeBroadcaster* /*source*/) override {
     // juce::Logger::writeToLog("change detected");
   }
 public:
-  AnthemEngineApplication() {}
+  EngineApplication() {}
 
   const juce::String getApplicationName() override {
     return "JUCE_APPLICATION_NAME_STRING";
@@ -55,9 +57,9 @@ public:
   void resumed() override {}
   void shutdown() override {
     // Destruct Anthem instance
-    if (Anthem::hasInstance()) {
-      Anthem::getInstance().shutdown();
-      Anthem::cleanup();
+    if (Engine::hasInstance()) {
+      Engine::getInstance().shutdown();
+      Engine::cleanup();
     }
   }
 
@@ -100,8 +102,10 @@ public:
 
     juce::Logger::writeToLog("Starting Anthem engine...");
 
-    Anthem::getInstance().initialize();
+    Engine::getInstance().initialize();
   }
 };
 
-START_JUCE_APPLICATION(AnthemEngineApplication);
+} // namespace anthem
+
+START_JUCE_APPLICATION(anthem::EngineApplication);

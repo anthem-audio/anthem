@@ -21,9 +21,11 @@
 
 #include "modules/processing_graph/runtime/live_note_id_generator.h"
 
+namespace anthem {
+
 class GraphRuntimeServices {
 public:
-  AnthemLiveNoteId rt_allocateLiveNoteId() {
+  LiveNoteId rt_allocateLiveNoteId() {
     return rt_liveNoteIdGenerator.rt_allocate();
   }
 
@@ -33,3 +35,5 @@ public:
 private:
   LiveNoteIdGenerator rt_liveNoteIdGenerator;
 };
+
+} // namespace anthem

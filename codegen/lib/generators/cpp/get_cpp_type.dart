@@ -33,9 +33,9 @@ String getCppType(ModelType type, ModelClassInfo context) {
       'rfl::NamedTuple<rfl::Field<"r", unsigned char>, rfl::Field<"g", unsigned char>, rfl::Field<"b", unsigned char>, rfl::Field<"a", unsigned char>>',
     EnumModelType(enumName: final name) => name,
     ListModelType(itemType: final inner) =>
-      'std::shared_ptr<${context.annotation?.generateModelSync == true ? 'AnthemModelVector' : 'std::vector'}<${getCppType(inner, context)}>>',
+      'std::shared_ptr<${context.annotation?.generateModelSync == true ? 'ModelVector' : 'std::vector'}<${getCppType(inner, context)}>>',
     MapModelType(keyType: final key, valueType: final value) =>
-      'std::shared_ptr<${context.annotation?.generateModelSync == true ? 'AnthemModelUnorderedMap' : 'std::unordered_map'}<${getCppType(key, context)}, ${getCppType(value, context)}>>',
+      'std::shared_ptr<${context.annotation?.generateModelSync == true ? 'ModelUnorderedMap' : 'std::unordered_map'}<${getCppType(key, context)}, ${getCppType(value, context)}>>',
     CustomModelType(dartName: final dartName) =>
       'std::shared_ptr<${type.modelClassInfo.annotation?.cppBehaviorClassName != null ? type.modelClassInfo.annotation!.cppBehaviorClassName : dartName}>',
     UnionModelType() =>

@@ -22,4 +22,8 @@
 #include "messages/messages.h"
 #include "modules/core/anthem.h"
 
+namespace anthem {
+
 std::optional<Response> handleProcessingGraphCommand(Request& request);
+
+} // namespace anthem

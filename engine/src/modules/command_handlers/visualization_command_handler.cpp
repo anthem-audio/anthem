@@ -21,6 +21,8 @@
 
 #include "modules/core/visualization/visualization_broker.h"
 
+namespace anthem {
+
 std::optional<Response> handleVisualizationCommand(Request& request) {
   if (rfl::holds_alternative<SetVisualizationSubscriptionsRequest>(request.variant())) {
     auto& setVisualizationSubscriptionsRequest =
@@ -38,3 +40,5 @@ std::optional<Response> handleVisualizationCommand(Request& request) {
 
   return std::nullopt;
 }
+
+} // namespace anthem

@@ -29,12 +29,14 @@
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 
+namespace anthem {
+
 class ProcessingGraphModelHelpersTest : public juce::UnitTest {
   static constexpr int64_t kControlPortId = 3;
 
   static std::shared_ptr<Node> makeInitializedNode(int64_t nodeId) {
     auto node = graph_test_helpers::makeNode(nodeId);
-    node->initialize(node, std::shared_ptr<AnthemModelBase>());
+    node->initialize(node, std::shared_ptr<ModelBase>());
     return node;
   }
 
@@ -56,7 +58,7 @@ class ProcessingGraphModelHelpersTest : public juce::UnitTest {
         NodePortDataType::control,
         parameterValue,
         graph_test_helpers::makeParameterConfig(101, parameterValue));
-    port->initialize(port, std::shared_ptr<AnthemModelBase>());
+    port->initialize(port, std::shared_ptr<ModelBase>());
     return port;
   }
 
@@ -144,8 +146,8 @@ public:
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
@@ -177,8 +179,8 @@ public:
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
@@ -219,3 +221,5 @@ public:
 };
 
 static ProcessingGraphModelHelpersTest processingGraphModelHelpersTest;
+
+} // namespace anthem

@@ -26,7 +26,9 @@
 
 #include <juce_core/juce_core.h>
 
-class AnthemNodeProcessContextTest : public juce::UnitTest {
+namespace anthem {
+
+class NodeProcessContextTest : public juce::UnitTest {
   template <typename Callback>
   void expectThrowsRuntimeError(Callback&& callback, const juce::String& failureMessage) {
     bool didThrow = false;
@@ -62,12 +64,12 @@ class AnthemNodeProcessContextTest : public juce::UnitTest {
     return node;
   }
 
-  static AnthemNodeProcessContext& createNodeContext(
-      std::shared_ptr<Node>& node, AnthemGraphProcessContext& graphContext) {
+  static NodeProcessContext& createNodeContext(
+      std::shared_ptr<Node>& node, GraphProcessContext& graphContext) {
     return graphContext.createNodeProcessContext(node);
   }
 public:
-  AnthemNodeProcessContextTest() : juce::UnitTest("AnthemNodeProcessContextTest", "Anthem") {}
+  NodeProcessContextTest() : juce::UnitTest("AnthemNodeProcessContextTest", "Anthem") {}
 
   void runTest() override {
     testPortToBufferBinding();
@@ -82,8 +84,8 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 32,
         });
@@ -122,8 +124,8 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 32,
         });
@@ -154,8 +156,8 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
@@ -170,15 +172,15 @@ public:
 
     inputAudioBuffer.setSample(0, 0, 0.75f);
     outputAudioBuffer.setSample(0, 0, 0.5f);
-    inputEventBuffer->addEvent(AnthemLiveEvent{
+    inputEventBuffer->addEvent(LiveEvent{
         .sampleOffset = 0.0,
         .liveId = 10,
-        .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f)),
+        .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
     });
-    outputEventBuffer->addEvent(AnthemLiveEvent{
+    outputEventBuffer->addEvent(LiveEvent{
         .sampleOffset = 0.0,
         .liveId = 11,
-        .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f)),
+        .event = Event(NoteOffEvent(60, 0, 0.0f)),
     });
 
     context.clearBuffers();
@@ -205,8 +207,8 @@ public:
     auto node = makeFullyBoundNode(10);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 32,
         });
@@ -227,4 +229,6 @@ public:
   }
 };
 
-static AnthemNodeProcessContextTest anthemNodeProcessContextTest;
+static NodeProcessContextTest anthemNodeProcessContextTest;
+
+} // namespace anthem

@@ -24,6 +24,8 @@
 #include "modules/processing_graph/model/node_connection.h"
 #include "sequencer.h"
 
+namespace anthem {
+
 class Project : public ProjectModelBase {
 public:
   Project(const ProjectModelImpl& _impl) : ProjectModelBase(_impl) {}
@@ -39,3 +41,5 @@ public:
   //   ProjectModelBase::handleModelUpdate(request, fieldAccessIndex);
   // }
 };
+
+} // namespace anthem

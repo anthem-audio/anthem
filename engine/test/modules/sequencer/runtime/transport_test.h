@@ -26,11 +26,13 @@
 #include <unordered_map>
 #include <unordered_set>
 
+namespace anthem {
+
 class TransportTest : public juce::UnitTest {
   static constexpr EntityId trackId = 11;
   static constexpr EntityId sequenceId = 200;
-  static constexpr AnthemSourceNoteId firstNoteId = 101;
-  static constexpr AnthemSourceNoteId secondNoteId = 102;
+  static constexpr SourceNoteId firstNoteId = 101;
+  static constexpr SourceNoteId secondNoteId = 102;
 
   struct FakeProjectView : TransportProjectView {
     std::unordered_map<EntityId, LoopPointsSnapshot> loopPoints;
@@ -69,7 +71,7 @@ class TransportTest : public juce::UnitTest {
   };
 
   static std::unique_ptr<SequenceEventListCollection> buildSequence(
-      std::initializer_list<AnthemSequenceEvent> events, EntityId eventTrackId = trackId) {
+      std::initializer_list<SequenceEvent> events, EntityId eventTrackId = trackId) {
     auto sequence = std::make_unique<SequenceEventListCollection>();
     auto* track = new SequenceEventList();
 
@@ -137,18 +139,16 @@ public:
   void testJumpSnapshotExcludesNotesEndingAtBoundary() {
     beginTest("Jump snapshot excludes notes that end at the boundary");
 
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+    auto sequence = buildSequence({SequenceEvent{.offset = 0.0,
                                        .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 1.0,
-            .sourceId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))},
-        AnthemSequenceEvent{.offset = 1.0,
+                                       .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 1.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))},
+        SequenceEvent{.offset = 1.0,
             .sourceId = secondNoteId,
-            .event = AnthemEvent(AnthemNoteOnEvent(62, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 2.0,
-            .sourceId = secondNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(62, 0, 0.0f))}});
+            .event = Event(NoteOnEvent(62, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 2.0, .sourceId = secondNoteId, .event = Event(NoteOffEvent(62, 0, 0.0f))}});
 
     auto jumpEvent = buildPlayheadJumpEvent(*sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
@@ -159,12 +159,11 @@ public:
   void testJumpSnapshotKeepsSustainedNotesActive() {
     beginTest("Jump snapshot keeps sustained notes active");
 
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+    auto sequence = buildSequence({SequenceEvent{.offset = 0.0,
                                        .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 2.0,
-            .sourceId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+                                       .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 2.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))}});
 
     auto jumpEvent = buildPlayheadJumpEvent(*sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
@@ -175,19 +174,18 @@ public:
     expectEquals(
         jumpEvents->at(0).sequenceNoteId, firstNoteId, "The sustained note should be restarted.");
     expectEquals(static_cast<int>(jumpEvents->at(0).event.type),
-        static_cast<int>(AnthemEventType::NoteOn),
+        static_cast<int>(EventType::NoteOn),
         "Jump payload should only contain note-on events.");
   }
 
   void testJumpSnapshotExcludesNotesStartingAtBoundary() {
     beginTest("Jump snapshot excludes notes that start at the boundary");
 
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 1.0,
+    auto sequence = buildSequence({SequenceEvent{.offset = 1.0,
                                        .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 2.0,
-            .sourceId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+                                       .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 2.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))}});
 
     auto jumpEvent = buildPlayheadJumpEvent(*sequence, std::nullopt, 1.0);
     auto* jumpEvents = getJumpEventsForTrack(jumpEvent);
@@ -225,12 +223,11 @@ public:
     beginTest("Clearing the active sequence clears the cached start jump payload");
 
     auto projectView = std::make_unique<FakeProjectView>();
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+    auto sequence = buildSequence({SequenceEvent{.offset = 0.0,
                                        .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 2.0,
-            .sourceId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+                                       .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 2.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))}});
     projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
     auto clock = std::make_unique<FakeClock>();
     Transport transport(std::move(projectView), std::move(clock));
@@ -278,12 +275,11 @@ public:
     beginTest("Seek while playing publishes a jump event for the processing block");
 
     auto projectView = std::make_unique<FakeProjectView>();
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+    auto sequence = buildSequence({SequenceEvent{.offset = 0.0,
                                        .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 2.0,
-            .sourceId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+                                       .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 2.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))}});
     projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
     auto clock = std::make_unique<FakeClock>();
     Transport transport(std::move(projectView), std::move(clock));
@@ -311,12 +307,11 @@ public:
     beginTest("Starting playback publishes the cached start jump payload");
 
     auto projectView = std::make_unique<FakeProjectView>();
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+    auto sequence = buildSequence({SequenceEvent{.offset = 0.0,
                                        .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 2.0,
-            .sourceId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+                                       .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 2.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))}});
     projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
     auto clock = std::make_unique<FakeClock>();
     Transport transport(std::move(projectView), std::move(clock));
@@ -394,12 +389,11 @@ public:
 
     auto projectView = std::make_unique<FakeProjectView>();
     projectView->loopPoints.insert_or_assign(sequenceId, LoopPointsSnapshot{.start = 4, .end = 8});
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
+    auto sequence = buildSequence({SequenceEvent{.offset = 0.0,
                                        .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-        AnthemSequenceEvent{.offset = 6.0,
-            .sourceId = firstNoteId,
-            .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}});
+                                       .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+        SequenceEvent{
+            .offset = 6.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))}});
     projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
     auto clock = std::make_unique<FakeClock>();
     Transport transport(std::move(projectView), std::move(clock));
@@ -505,13 +499,13 @@ public:
 
     auto projectView = std::make_unique<FakeProjectView>();
     auto* projectViewPtr = projectView.get();
-    auto sequence = buildSequence({AnthemSequenceEvent{.offset = 0.0,
-                                       .sourceId = firstNoteId,
-                                       .event = AnthemEvent(AnthemNoteOnEvent(60, 0, 1.0f, 0.0f))},
-                                      AnthemSequenceEvent{.offset = 2.0,
-                                          .sourceId = firstNoteId,
-                                          .event = AnthemEvent(AnthemNoteOffEvent(60, 0, 0.0f))}},
-        anthem_sequencer_track_ids::noTrack);
+    auto sequence = buildSequence(
+        {SequenceEvent{.offset = 0.0,
+             .sourceId = firstNoteId,
+             .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f))},
+            SequenceEvent{
+                .offset = 2.0, .sourceId = firstNoteId, .event = Event(NoteOffEvent(60, 0, 0.0f))}},
+        sequencer_track_ids::noTrack);
     projectView->compiledSequences.insert_or_assign(sequenceId, sequence.get());
     auto clock = std::make_unique<FakeClock>();
     Transport transport(std::move(projectView), std::move(clock));
@@ -543,3 +537,5 @@ public:
 };
 
 static TransportTest transportTest;
+
+} // namespace anthem

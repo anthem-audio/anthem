@@ -31,6 +31,8 @@
 #include <string>
 #include <vector>
 
+namespace anthem {
+
 class DbMeterVisualizationProvider
   : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
 private:
@@ -46,7 +48,7 @@ public:
   void rt_pushValue(double value, int64_t sampleTimestamp);
 };
 
-class DbMeterProcessor : public AnthemProcessor, public DbMeterProcessorModelBase {
+class DbMeterProcessor : public Processor, public DbMeterProcessorModelBase {
 private:
   std::vector<std::shared_ptr<DbMeterVisualizationProvider>> channelProviders;
   std::vector<std::string> registeredVisualizationIds;
@@ -76,8 +78,10 @@ public:
   DbMeterProcessor& operator=(DbMeterProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override;
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 };
+
+} // namespace anthem

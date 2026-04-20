@@ -21,6 +21,8 @@
 
 #include "modules/processing_graph/model/node.h"
 
+namespace anthem {
+
 void WriteParametersToControlInputsAction::execute(int numSamples) {
   for (auto& parameter : processContext->rt_getInputParameterBindings()) {
     auto value = parameter.value->load();
@@ -44,3 +46,5 @@ void WriteParametersToControlInputsAction::debugPrint() {
   std::cout << "WriteParametersToControlInputsAction: " << processContext->getGraphNode()->id()
             << '\n';
 }
+
+} // namespace anthem

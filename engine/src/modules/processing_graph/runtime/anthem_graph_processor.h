@@ -26,6 +26,8 @@
 #include <juce_events/juce_events.h>
 #include <memory>
 
+namespace anthem {
+
 class GraphRuntimeServices;
 
 // This class is used to handle the audio thread concerns of the processing
@@ -36,25 +38,25 @@ class GraphRuntimeServices;
 // This class should only be accessed from the audio thread, except for the
 // setProcessingStepsFromMainThread and clearDeletionQueueFromMainThread
 // functions, which are intended to be called from the main thread.
-class AnthemGraphProcessor {
+class GraphProcessor {
 private:
-  JUCE_LEAK_DETECTOR(AnthemGraphProcessor)
+  JUCE_LEAK_DETECTOR(GraphProcessor)
 
   // Owned by the audio thread until a newer compilation result is swapped in.
-  AnthemGraphCompilationResult* rt_activeCompilationResult;
+  GraphCompilationResult* rt_activeCompilationResult;
   std::unique_ptr<GraphRuntimeServices> rt_services;
 
   // Ownership is transferred from the main thread into this queue, then picked
   // up by the audio thread at the start of process().
-  RingBuffer<AnthemGraphCompilationResult*, 512> pendingCompilationResultsQueue;
+  RingBuffer<GraphCompilationResult*, 512> pendingCompilationResultsQueue;
 
   // Replaced active results are transferred back to the main thread through
   // this queue so cleanup and deletion happen off the audio thread.
-  RingBuffer<AnthemGraphCompilationResult*, 512> retiredCompilationResultsQueue;
+  RingBuffer<GraphCompilationResult*, 512> retiredCompilationResultsQueue;
 
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
-  ~AnthemGraphProcessor();
+  ~GraphProcessor();
 
   // Processes a single block of audio in the graph. This will also process and
   // propagate event and control data.
@@ -63,7 +65,7 @@ public:
   // Transfers ownership of a newly compiled result from the main thread to the
   // audio thread. The result will become active at the start of a later
   // process() call.
-  void setProcessingStepsFromMainThread(AnthemGraphCompilationResult* compilationResult);
+  void setProcessingStepsFromMainThread(GraphCompilationResult* compilationResult);
 
   // Destroys retired compilation results on the main thread. The audio thread
   // never deletes compilation results directly.
@@ -72,5 +74,7 @@ public:
   GraphRuntimeServices& getRtServices();
   void resetRtServices();
 
-  AnthemGraphProcessor();
+  GraphProcessor();
 };
+
+} // namespace anthem

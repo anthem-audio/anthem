@@ -22,6 +22,8 @@
 #include "modules/core/anthem.h"
 #include "modules/sequencer/compiler/sequence_compiler.h"
 
+namespace anthem {
+
 std::optional<Response> handleSequencerCommand(Request& request) {
   if (rfl::holds_alternative<CompileSequenceRequest>(request.variant())) {
     auto& compileSequenceRequest = rfl::get<CompileSequenceRequest>(request.variant());
@@ -39,17 +41,17 @@ std::optional<Response> handleSequencerCommand(Request& request) {
         }
 
         // Compile only the specified tracks for the given pattern.
-        AnthemSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value(),
+        SequenceCompiler::compilePattern(compileSequenceRequest.patternId.value(),
             *compileSequenceRequest.tracksToRebuild.value(),
             invalidationRanges);
       } else {
         // Compile the entire pattern
-        AnthemSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
+        SequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
       }
 
-      if (Anthem::getInstance().transport->config.activeSequenceId ==
+      if (Engine::getInstance().transport->config.activeSequenceId ==
           compileSequenceRequest.patternId.value()) {
-        auto& transport = *Anthem::getInstance().transport;
+        auto& transport = *Engine::getInstance().transport;
         transport.updateLoopPoints();
         transport.updatePlayheadJumpEventForStart(true);
       }
@@ -65,17 +67,17 @@ std::optional<Response> handleSequencerCommand(Request& request) {
         }
 
         // Compile only the specified tracks for the given arrangement.
-        AnthemSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value(),
+        SequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value(),
             *compileSequenceRequest.tracksToRebuild.value(),
             invalidationRanges);
       } else {
         // Compile the entire arrangement
-        AnthemSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());
+        SequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());
       }
 
-      if (Anthem::getInstance().transport->config.activeSequenceId ==
+      if (Engine::getInstance().transport->config.activeSequenceId ==
           compileSequenceRequest.arrangementId.value()) {
-        auto& transport = *Anthem::getInstance().transport;
+        auto& transport = *Engine::getInstance().transport;
         transport.updateLoopPoints();
         transport.updatePlayheadJumpEventForStart(true);
       }
@@ -83,15 +85,15 @@ std::optional<Response> handleSequencerCommand(Request& request) {
   } else if (rfl::holds_alternative<RemoveTrackRequest>(request.variant())) {
     auto& removeTrackRequest = rfl::get<RemoveTrackRequest>(request.variant());
 
-    AnthemSequenceCompiler::cleanUpTrack(removeTrackRequest.trackId);
+    SequenceCompiler::cleanUpTrack(removeTrackRequest.trackId);
   } else if (rfl::holds_alternative<PlayheadJumpRequest>(request.variant())) {
     auto& playheadJumpRequest = rfl::get<PlayheadJumpRequest>(request.variant());
 
-    Anthem::getInstance().transport->jumpTo(playheadJumpRequest.offset);
+    Engine::getInstance().transport->jumpTo(playheadJumpRequest.offset);
   } else if (rfl::holds_alternative<LoopPointsChangedRequest>(request.variant())) {
     auto& loopPointsChangedRequest = rfl::get<LoopPointsChangedRequest>(request.variant());
 
-    auto& transport = *Anthem::getInstance().transport;
+    auto& transport = *Engine::getInstance().transport;
     if (transport.config.activeSequenceId == loopPointsChangedRequest.sequenceId) {
       transport.updateLoopPoints();
     }
@@ -99,3 +101,5 @@ std::optional<Response> handleSequencerCommand(Request& request) {
 
   return std::nullopt;
 }
+
+} // namespace anthem

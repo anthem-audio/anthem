@@ -29,6 +29,8 @@
 #include <type_traits>
 #include <utility>
 
+namespace anthem {
+
 namespace graph_test_helpers {
 
 using NodeProcessorVariant =
@@ -55,7 +57,7 @@ inline std::shared_ptr<NodePort> makePort(int64_t id,
           .dataType = dataType,
           .parameterConfig = parameterConfig,
       }),
-      .connections = std::make_shared<AnthemModelVector<int64_t>>(),
+      .connections = std::make_shared<ModelVector<int64_t>>(),
       .parameterValue = parameterValue,
   });
 }
@@ -65,12 +67,12 @@ inline std::shared_ptr<Node> makeGainNode(int64_t nodeId) {
 
   return std::make_shared<Node>(NodeModelImpl{
       .id = nodeId,
-      .audioInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .eventInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .controlInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .audioOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .eventOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .controlOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
+      .audioInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .isThirdPartyPlugin = false,
       .processor = NodeProcessorVariant(rfl::make_field<"GainProcessorModel">(gainProcessor)),
   });
@@ -79,12 +81,12 @@ inline std::shared_ptr<Node> makeGainNode(int64_t nodeId) {
 inline std::shared_ptr<Node> makeNode(int64_t nodeId) {
   return std::make_shared<Node>(NodeModelImpl{
       .id = nodeId,
-      .audioInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .eventInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .controlInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .audioOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .eventOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .controlOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
+      .audioInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .isThirdPartyPlugin = false,
       .processor = std::nullopt,
   });
@@ -96,12 +98,12 @@ inline std::shared_ptr<Node> makeMasterOutputNode(int64_t nodeId) {
 
   return std::make_shared<Node>(NodeModelImpl{
       .id = nodeId,
-      .audioInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .eventInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .controlInputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .audioOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .eventOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
-      .controlOutputPorts = std::make_shared<AnthemModelVector<std::shared_ptr<NodePort>>>(),
+      .audioInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .isThirdPartyPlugin = false,
       .processor = NodeProcessorVariant(rfl::make_field<"MasterOutputProcessorModel">(processor)),
   });
@@ -123,11 +125,13 @@ inline std::shared_ptr<NodeConnection> makeConnection(int64_t id,
 
 inline std::shared_ptr<ProcessingGraphModel> makeProcessingGraph() {
   return std::make_shared<ProcessingGraphModel>(ProcessingGraphModelImpl{
-      .nodes = std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>>(),
+      .nodes = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<Node>>>(),
       .connections =
-          std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>>(),
+          std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>>(),
       .masterOutputNodeId = 0,
   });
 }
 
 } // namespace graph_test_helpers
+
+} // namespace anthem

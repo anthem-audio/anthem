@@ -39,9 +39,11 @@
 // The maps included here contain untimed sequencer note-on events that
 // sequence providers should translate into emitted live note IDs on the audio
 // thread.
+namespace anthem {
+
 struct PlayheadJumpSequenceEvent {
-  AnthemSourceNoteId sequenceNoteId = anthemInvalidSourceNoteId;
-  AnthemEvent event;
+  SourceNoteId sequenceNoteId = invalidSourceNoteId;
+  Event event;
 };
 
 class PlayheadJumpEvent {
@@ -237,3 +239,5 @@ public:
   // given number of samples.
   double rt_getPlayheadAfterAdvance(int samples) const;
 };
+
+} // namespace anthem

@@ -23,22 +23,24 @@
 #include <memory>
 #include <string>
 
-class AnthemGraphNode;
-class AnthemNodeProcessContext;
+namespace anthem {
+
+class GraphNode;
+class NodeProcessContext;
 
 // This class is used to process audio, event and control data. It can produce
 // and/or consume any of these data types.
 //
 // This serves as a base class for internal and external plugins, but also for
 // several internal processing modules that interact with the processing graph.
-class AnthemProcessor {
+class Processor {
 public:
   // The name of the processor.
   std::string name;
 
-  AnthemProcessor(std::string name) : name(name) {}
+  Processor(std::string name) : name(name) {}
 
-  virtual ~AnthemProcessor() = default;
+  virtual ~Processor() = default;
 
   // Called on the JUCE message thread to initialize the processor.
   //
@@ -52,7 +54,7 @@ public:
 
   // This method is called by the processing graph to process audio, event and
   // control data. It is called once per processing block.
-  virtual void process(AnthemNodeProcessContext& context, int numSamples) = 0;
+  virtual void process(NodeProcessContext& context, int numSamples) = 0;
 
   // Gets the state of the processor
   virtual void getState(juce::MemoryBlock& /*target*/) {}
@@ -60,3 +62,5 @@ public:
   // Loads the state of the processor from a value exported by getState()
   virtual void setState(const juce::MemoryBlock& /*state*/) {}
 };
+
+} // namespace anthem

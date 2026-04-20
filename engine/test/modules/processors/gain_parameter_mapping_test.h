@@ -25,6 +25,8 @@
 #include <cmath>
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 class GainParameterMappingTest : public juce::UnitTest {
 public:
   GainParameterMappingTest() : juce::UnitTest("GainParameterMappingTest", "Anthem") {}
@@ -102,3 +104,5 @@ public:
 };
 
 static GainParameterMappingTest gainParameterMappingTest;
+
+} // namespace anthem

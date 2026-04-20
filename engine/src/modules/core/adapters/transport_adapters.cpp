@@ -21,6 +21,8 @@
 
 #include "modules/core/anthem.h"
 
+namespace anthem {
+
 namespace {
 std::optional<LoopPointsSnapshot> snapshotFromLoopPoints(
     const std::optional<std::shared_ptr<LoopPointsModel>>& loopPoints) {
@@ -34,18 +36,18 @@ std::optional<LoopPointsSnapshot> snapshotFromLoopPoints(
   };
 }
 
-class AnthemTransportProjectView : public TransportProjectView {
+class EngineTransportProjectView : public TransportProjectView {
 private:
-  Anthem& anthem;
+  Engine& engine;
 public:
-  explicit AnthemTransportProjectView(Anthem& anthem) : anthem(anthem) {}
+  explicit EngineTransportProjectView(Engine& engine) : engine(engine) {}
 
   std::optional<LoopPointsSnapshot> lookupLoopPoints(int64_t sequenceId) const override {
-    if (anthem.project == nullptr) {
+    if (engine.project == nullptr) {
       return std::nullopt;
     }
 
-    auto& sequence = *anthem.project->sequence();
+    auto& sequence = *engine.project->sequence();
     auto& patterns = *sequence.patterns();
     auto& arrangements = *sequence.arrangements();
 
@@ -63,28 +65,28 @@ public:
   }
 
   bool isPatternSequence(int64_t sequenceId) const override {
-    if (anthem.project == nullptr) {
+    if (engine.project == nullptr) {
       return false;
     }
 
-    auto& patterns = *anthem.project->sequence()->patterns();
+    auto& patterns = *engine.project->sequence()->patterns();
     return patterns.find(sequenceId) != patterns.end();
   }
 
   const SequenceEventListCollection* compiledSequence(int64_t sequenceId) const override {
-    if (anthem.sequenceStore == nullptr) {
+    if (engine.sequenceStore == nullptr) {
       return nullptr;
     }
 
-    return anthem.sequenceStore->getSequenceEventList(sequenceId);
+    return engine.sequenceStore->getSequenceEventList(sequenceId);
   }
 };
 
-class AnthemTransportClock : public TransportClock {
+class AudioDeviceTransportClock : public TransportClock {
 private:
   juce::AudioDeviceManager& audioDeviceManager;
 public:
-  explicit AnthemTransportClock(juce::AudioDeviceManager& audioDeviceManager)
+  explicit AudioDeviceTransportClock(juce::AudioDeviceManager& audioDeviceManager)
     : audioDeviceManager(audioDeviceManager) {}
 
   double currentSampleRate() const override {
@@ -99,11 +101,12 @@ public:
 };
 } // namespace
 
-std::unique_ptr<TransportProjectView> createAnthemTransportProjectView(Anthem& anthem) {
-  return std::make_unique<AnthemTransportProjectView>(anthem);
+std::unique_ptr<TransportProjectView> createTransportProjectView(Engine& engine) {
+  return std::make_unique<EngineTransportProjectView>(engine);
 }
 
-std::unique_ptr<TransportClock> createAnthemTransportClock(
-    juce::AudioDeviceManager& audioDeviceManager) {
-  return std::make_unique<AnthemTransportClock>(audioDeviceManager);
+std::unique_ptr<TransportClock> createTransportClock(juce::AudioDeviceManager& audioDeviceManager) {
+  return std::make_unique<AudioDeviceTransportClock>(audioDeviceManager);
 }
+
+} // namespace anthem

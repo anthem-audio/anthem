@@ -23,6 +23,8 @@
 
 #include <iostream>
 
+namespace anthem {
+
 void ProcessNodeAction::execute(int numSamples) {
   this->processor->process(*this->context, numSamples);
 }
@@ -31,3 +33,5 @@ void ProcessNodeAction::debugPrint() {
   std::cout << "ProcessNodeAction for node with ID: " << this->context->getGraphNode()->id()
             << '\n';
 }
+
+} // namespace anthem

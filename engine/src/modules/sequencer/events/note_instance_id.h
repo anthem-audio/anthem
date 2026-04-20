@@ -31,31 +31,33 @@
 //   and the note so the same pattern note reused in multiple clips produces
 //   different source note IDs.
 //
-using AnthemSourceNoteId = int64_t;
+namespace anthem {
+
+using SourceNoteId = int64_t;
 
 // Identifies a live note request before the live event provider translates it
 // into a runtime live note ID.
-using AnthemLiveInputNoteId = int64_t;
+using LiveInputNoteId = int64_t;
 
 // Runtime live note IDs are assigned by event providers after they translate a
 // source note ID into a concrete emitted note for downstream processors.
 //
 // This stays 32-bit so it lines up with plugin APIs such as VST3 note IDs.
-using AnthemLiveNoteId = int32_t;
+using LiveNoteId = int32_t;
 
-inline constexpr AnthemSourceNoteId anthemInvalidSourceNoteId = -1;
-inline constexpr AnthemLiveInputNoteId anthemInvalidLiveInputNoteId = -1;
-inline constexpr AnthemLiveNoteId anthemInvalidLiveNoteId = -1;
+inline constexpr SourceNoteId invalidSourceNoteId = -1;
+inline constexpr LiveInputNoteId invalidLiveInputNoteId = -1;
+inline constexpr LiveNoteId invalidLiveNoteId = -1;
 
-namespace anthem_note_instance_ids {
+namespace note_instance_ids {
 
-inline AnthemSourceNoteId fromPatternNoteId(int64_t noteId) {
+inline SourceNoteId fromPatternNoteId(int64_t noteId) {
   assert(noteId >= 0);
   assert(static_cast<uint64_t>(noteId) <= 0xffffffffULL);
-  return static_cast<AnthemSourceNoteId>(noteId);
+  return static_cast<SourceNoteId>(noteId);
 }
 
-inline AnthemSourceNoteId fromArrangementClipNoteId(int64_t clipId, int64_t noteId) {
+inline SourceNoteId fromArrangementClipNoteId(int64_t clipId, int64_t noteId) {
   // Project entity IDs are currently allocated from a monotonically
   // increasing integer counter in the UI, so packing the clip and note IDs
   // into 64 bits gives us a deterministic source note ID that can be carried
@@ -65,8 +67,10 @@ inline AnthemSourceNoteId fromArrangementClipNoteId(int64_t clipId, int64_t note
   assert(static_cast<uint64_t>(clipId) <= 0xfffffffeULL);
   assert(static_cast<uint64_t>(noteId) <= 0xffffffffULL);
 
-  return static_cast<AnthemSourceNoteId>(((static_cast<uint64_t>(clipId) + 1ULL) << 32) |
-                                         (static_cast<uint64_t>(noteId) & 0xffffffffULL));
+  return static_cast<SourceNoteId>(((static_cast<uint64_t>(clipId) + 1ULL) << 32) |
+                                   (static_cast<uint64_t>(noteId) & 0xffffffffULL));
 }
 
-} // namespace anthem_note_instance_ids
+} // namespace note_instance_ids
+
+} // namespace anthem

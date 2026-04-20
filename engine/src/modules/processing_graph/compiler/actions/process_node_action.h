@@ -26,17 +26,21 @@
 #include <juce_core/juce_core.h>
 #include <memory>
 
-class ProcessNodeAction : public AnthemGraphCompilerAction {
+namespace anthem {
+
+class ProcessNodeAction : public GraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(ProcessNodeAction)
 public:
-  AnthemNodeProcessContext* context;
-  AnthemProcessor* processor;
+  NodeProcessContext* context;
+  Processor* processor;
 
   void execute(int numSamples) override;
 
-  ProcessNodeAction(AnthemNodeProcessContext* context, AnthemProcessor* processor)
+  ProcessNodeAction(NodeProcessContext* context, Processor* processor)
     : context(context), processor(processor) {}
 
   void debugPrint() override;
 };
+
+} // namespace anthem

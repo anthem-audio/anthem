@@ -24,7 +24,9 @@
 
 #include <memory>
 
-class ToneGeneratorProcessor : public AnthemProcessor, public ToneGeneratorProcessorModelBase {
+namespace anthem {
+
+class ToneGeneratorProcessor : public Processor, public ToneGeneratorProcessorModelBase {
 private:
   double phase;
   double sampleRate;
@@ -42,8 +44,10 @@ public:
   ToneGeneratorProcessor& operator=(ToneGeneratorProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override;
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 };
+
+} // namespace anthem

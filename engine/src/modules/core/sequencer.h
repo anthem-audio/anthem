@@ -21,6 +21,8 @@
 
 #include "generated/lib/model/sequencer.h"
 
+namespace anthem {
+
 class Sequencer : public SequencerModelBase {
 public:
   Sequencer(const SequencerModelImpl& _impl) : SequencerModelBase(_impl) {}
@@ -32,10 +34,12 @@ public:
   Sequencer(Sequencer&&) noexcept = default;
   Sequencer& operator=(Sequencer&&) noexcept = default;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override;
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 
   // void handleModelUpdate(ModelUpdateRequest& request, int fieldAccessIndex) {
   //   SequencerModelBase::handleModelUpdate(request, fieldAccessIndex);
   // }
 };
+
+} // namespace anthem

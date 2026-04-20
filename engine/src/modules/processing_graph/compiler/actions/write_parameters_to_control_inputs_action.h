@@ -31,17 +31,21 @@
 // incoming connections to the port. If there are no incoming connections, then
 // the data written to each buffer by this step will be the data in that buffer
 // when the node is processed.
-class WriteParametersToControlInputsAction : public AnthemGraphCompilerAction {
+namespace anthem {
+
+class WriteParametersToControlInputsAction : public GraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(WriteParametersToControlInputsAction)
 
-  AnthemNodeProcessContext* processContext;
+  NodeProcessContext* processContext;
   float sampleRate;
 public:
-  WriteParametersToControlInputsAction(AnthemNodeProcessContext* processContext, float sampleRate)
+  WriteParametersToControlInputsAction(NodeProcessContext* processContext, float sampleRate)
     : processContext(processContext), sampleRate(sampleRate) {}
 
   void execute(int numSamples) override;
 
   void debugPrint() override;
 };
+
+} // namespace anthem

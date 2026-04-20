@@ -24,6 +24,8 @@
 
 #include <string>
 
+namespace anthem {
+
 namespace {
 std::string toIdString(int64_t id) {
   return std::to_string(id);
@@ -31,7 +33,7 @@ std::string toIdString(int64_t id) {
 } // namespace
 
 std::optional<Response> handleProcessingGraphCommand(Request& request) {
-  auto& anthem = Anthem::getInstance();
+  auto& engine = Engine::getInstance();
 
   if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
     auto& compileProcessingGraphRequest =
@@ -39,7 +41,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     juce::Logger::writeToLog("Compiling from UI request...");
 
-    if (!anthem.isAudioThreadRunning()) {
+    if (!engine.isAudioThreadRunning()) {
       juce::Logger::writeToLog(
           "Skipping processing graph compile because the audio thread is not running.");
 
@@ -50,7 +52,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     // We need a valid device in order to query the sample rate and block size
     // used by the compiled graph.
-    if (anthem.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
+    if (engine.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
       juce::Logger::writeToLog(
           "Cannot compile processing graph because no audio device is active.");
 
@@ -60,7 +62,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     }
 
     try {
-      anthem.compileProcessingGraph();
+      engine.compileProcessingGraph();
     } catch (std::runtime_error& e) {
       juce::Logger::writeToLog("Error compiling: " + std::string(e.what()));
 
@@ -79,7 +81,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     auto& getPluginStateRequest = rfl::get<GetPluginStateRequest>(request.variant());
 
-    auto& nodes = *Anthem::getInstance().project->processingGraph()->nodes();
+    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
     auto nodeIter = nodes.find(getPluginStateRequest.nodeId);
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
@@ -118,7 +120,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     auto& setPluginStateRequest = rfl::get<SetPluginStateRequest>(request.variant());
 
-    auto& nodes = *Anthem::getInstance().project->processingGraph()->nodes();
+    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
     auto nodeIter = nodes.find(setPluginStateRequest.nodeId);
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
@@ -156,7 +158,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     auto& sendLiveEventRequest = rfl::get<SendLiveEventRequest>(request.variant());
 
     // Get the node that is the live event provider
-    auto& nodes = *Anthem::getInstance().project->processingGraph()->nodes();
+    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
     auto nodeIter = nodes.find(sendLiveEventRequest.liveEventProviderNodeId);
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
@@ -186,10 +188,10 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
                               rfl::Field<"LiveEventRequestNoteOnEvent",
                                   std::shared_ptr<LiveEventRequestNoteOnEvent>>>) {
               auto& eventFromRequest = field.value();
-              AnthemLiveInputEvent liveInputEvent =
-                  AnthemLiveInputEvent{.sampleOffset = 0.0, // Handle as soon as possible
+              LiveInputEvent liveInputEvent =
+                  LiveInputEvent{.sampleOffset = 0.0, // Handle as soon as possible
                       .inputId = eventFromRequest->noteId,
-                      .event = AnthemEvent(AnthemNoteOnEvent(eventFromRequest->pitch,
+                      .event = Event(NoteOnEvent(eventFromRequest->pitch,
                           eventFromRequest->channel,
                           eventFromRequest->velocity,
                           0.0f))};
@@ -200,11 +202,11 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
                                      rfl::Field<"LiveEventRequestNoteOffEvent",
                                          std::shared_ptr<LiveEventRequestNoteOffEvent>>>) {
               auto& eventFromRequest = field.value();
-              AnthemLiveInputEvent liveInputEvent =
-                  AnthemLiveInputEvent{.sampleOffset = 0.0, // Handle as soon as possible
+              LiveInputEvent liveInputEvent =
+                  LiveInputEvent{.sampleOffset = 0.0, // Handle as soon as possible
                       .inputId = eventFromRequest->noteId,
-                      .event = AnthemEvent(AnthemNoteOffEvent(
-                          eventFromRequest->pitch, eventFromRequest->channel, 0.0f))};
+                      .event = Event(
+                          NoteOffEvent(eventFromRequest->pitch, eventFromRequest->channel, 0.0f))};
 
               liveEventProvider->addLiveInputEvent(liveInputEvent);
             } else {
@@ -222,3 +224,5 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
   return std::nullopt;
 }
+
+} // namespace anthem

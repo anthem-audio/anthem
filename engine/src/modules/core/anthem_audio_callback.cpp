@@ -23,16 +23,18 @@
 
 #include <stdexcept>
 
-AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
-  this->anthem = anthem;
+namespace anthem {
+
+AudioCallback::AudioCallback(Engine* engine) {
+  this->engine = engine;
 
   juce::Logger::writeToLog("AnthemAudioCallback: constructing...");
 
-  if (Anthem::getInstance().project == nullptr) {
+  if (Engine::getInstance().project == nullptr) {
     throw std::runtime_error("project model is null");
   }
 
-  auto& processingGraph = Anthem::getInstance().project->processingGraph();
+  auto& processingGraph = Engine::getInstance().project->processingGraph();
   auto masterOutputNodeId = processingGraph->masterOutputNodeId();
 
   juce::Logger::writeToLog(
@@ -58,16 +60,16 @@ AnthemAudioCallback::AnthemAudioCallback(Anthem* anthem) {
 
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
-  cpuBurdenProvider = Anthem::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
+  cpuBurdenProvider = Engine::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
   playheadPositionProvider =
-      Anthem::getInstance().globalVisualizationSources->playheadPositionProvider.get();
+      Engine::getInstance().globalVisualizationSources->playheadPositionProvider.get();
   playheadSequenceIdProvider =
-      Anthem::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
+      Engine::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
 
   juce::Logger::writeToLog("AnthemAudioCallback: constructed successfully.");
 }
 
-void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
+void AudioCallback::audioDeviceIOCallbackWithContext(
     [[maybe_unused]] const float* const* inputChannelData,
     [[maybe_unused]] int numInputChannels,
     float* const* outputChannelData,
@@ -76,16 +78,16 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
     [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context) {
   auto startTime = std::chrono::high_resolution_clock::now();
 
-  auto transport = anthem->transport.get();
+  auto transport = engine->transport.get();
 
   // Set up the transport for this processing block
   transport->rt_prepareForProcessingBlock();
   const auto blockStartSample = transport->rt_sampleCounter;
 
   // Tell the sequence store to pick up any sequence updates.
-  anthem->sequenceStore->rt_processSequenceChanges(numSamples);
+  engine->sequenceStore->rt_processSequenceChanges(numSamples);
 
-  anthem->graphProcessor->process(numSamples);
+  engine->graphProcessor->process(numSamples);
 
   auto& outputBuffer = masterOutputProcessor->buffer;
 
@@ -143,10 +145,10 @@ void AnthemAudioCallback::audioDeviceIOCallbackWithContext(
   }
 
   transport->rt_advancePlayhead(numSamples);
-  anthem->sequenceStore->rt_cleanupAfterBlock();
+  engine->sequenceStore->rt_cleanupAfterBlock();
 }
 
-void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {
+void AudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {
   // According to this:
   //    https://forum.juce.com/t/which-thread-calls-audiodeviceabouttostart-stopped/6594
   // -- we don't have any guarantees about which thread this will be called on, so we
@@ -168,13 +170,13 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
   this->sampleRate = deviceSampleRate;
 
   juce::MessageManager::callAsync([deviceName, deviceSampleRate, this]() {
-    auto& anthem = Anthem::getInstance();
+    auto& engine = Engine::getInstance();
 
-    anthem.transport->prepareToProcess();
+    engine.transport->prepareToProcess();
     juce::Logger::writeToLog(
         "audioDeviceAboutToStart(): transport prepared for device " + deviceName);
 
-    auto audioConfig = anthem.getCurrentAudioConfig();
+    auto audioConfig = engine.getCurrentAudioConfig();
     if (audioConfig == nullptr) {
       juce::Logger::writeToLog(
           "audioDeviceAboutToStart(): Failed to build audio config for current device.");
@@ -188,11 +190,13 @@ void AnthemAudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIO
     };
 
     auto responseText = rfl::json::write(response);
-    Anthem::getInstance().comms.send(responseText);
+    Engine::getInstance().comms.send(responseText);
     juce::Logger::writeToLog("audioDeviceAboutToStart(): AudioReadyEvent sent to UI.");
   });
 }
 
-void AnthemAudioCallback::audioDeviceStopped() {
+void AudioCallback::audioDeviceStopped() {
   // this->currentSample = 0;
 }
+
+} // namespace anthem

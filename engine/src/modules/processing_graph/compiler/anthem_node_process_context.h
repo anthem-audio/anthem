@@ -35,9 +35,11 @@
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
 // the inputs and outputs of the node associated with that processor.
-class AnthemGraphProcessContext;
+namespace anthem {
 
-class AnthemNodeProcessContext {
+class GraphProcessContext;
+
+class NodeProcessContext {
 public:
   struct InputParameterBinding {
     int64_t portId;
@@ -46,7 +48,7 @@ public:
     std::unique_ptr<LinearParameterSmoother> rt_smoother;
   };
 private:
-  JUCE_LEAK_DETECTOR(AnthemNodeProcessContext)
+  JUCE_LEAK_DETECTOR(NodeProcessContext)
 
   struct PortBufferHandle {
     int64_t portId;
@@ -70,10 +72,9 @@ private:
   std::vector<InputParameterBinding> inputParameters;
 
   std::weak_ptr<Node> graphNode;
-  AnthemGraphProcessContext* graphProcessContext = nullptr;
+  GraphProcessContext* graphProcessContext = nullptr;
 public:
-  AnthemNodeProcessContext(
-      std::shared_ptr<Node>& graphNode, AnthemGraphProcessContext& graphProcessContext);
+  NodeProcessContext(std::shared_ptr<Node>& graphNode, GraphProcessContext& graphProcessContext);
 
   // Clean up the context. This must be called before the context is deallocated.
   void cleanup();
@@ -101,12 +102,14 @@ public:
   juce::AudioSampleBuffer& getInputControlBuffer(int64_t id);
   juce::AudioSampleBuffer& getOutputControlBuffer(int64_t id);
 
-  std::unique_ptr<AnthemEventBuffer>& getInputEventBuffer(int64_t id);
-  std::unique_ptr<AnthemEventBuffer>& getOutputEventBuffer(int64_t id);
+  std::unique_ptr<EventBuffer>& getInputEventBuffer(int64_t id);
+  std::unique_ptr<EventBuffer>& getOutputEventBuffer(int64_t id);
 
   const std::vector<InputParameterBinding>& rt_getInputParameterBindings() const {
     return inputParameters;
   }
 
-  AnthemLiveNoteId rt_allocateLiveNoteId();
+  LiveNoteId rt_allocateLiveNoteId();
 };
+
+} // namespace anthem

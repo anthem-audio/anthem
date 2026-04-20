@@ -23,4 +23,8 @@
 
 #include <optional>
 
+namespace anthem {
+
 std::optional<Response> handleTestCommand(Request& request);
+
+} // namespace anthem

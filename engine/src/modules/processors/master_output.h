@@ -26,7 +26,9 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <memory>
 
-class MasterOutputProcessor : public AnthemProcessor, public MasterOutputProcessorModelBase {
+namespace anthem {
+
+class MasterOutputProcessor : public Processor, public MasterOutputProcessorModelBase {
 public:
   juce::AudioSampleBuffer buffer;
 
@@ -44,12 +46,14 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override {
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override {
     MasterOutputProcessorModelBase::initialize(selfModel, parentModel);
 
     // Empty for now...
   }
 };
+
+} // namespace anthem

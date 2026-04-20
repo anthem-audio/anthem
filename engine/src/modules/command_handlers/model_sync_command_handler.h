@@ -25,4 +25,8 @@
 
 #include <rfl.hpp>
 
+namespace anthem {
+
 std::optional<Response> handleModelSyncCommand(Request& request);
+
+} // namespace anthem

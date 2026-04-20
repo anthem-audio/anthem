@@ -23,6 +23,8 @@
 #include <optional>
 
 // A thread- and realtime-safe queue for storing items of type T
+namespace anthem {
+
 template <typename T, std::size_t size> class RingBuffer {
 private:
   using This = RingBuffer<T, size>;
@@ -61,3 +63,5 @@ private:
   juce::AbstractFifo fifo;
   std::array<T, size> buffer;
 };
+
+} // namespace anthem

@@ -29,7 +29,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace anthem_sequencer_track_ids {
+namespace anthem {
+
+namespace sequencer_track_ids {
 inline constexpr int64_t noTrack = -1;
 }
 
@@ -61,7 +63,7 @@ private:
   JUCE_LEAK_DETECTOR(SequenceEventList)
 public:
   // List of events for this track.
-  std::vector<AnthemSequenceEvent> events;
+  std::vector<SequenceEvent> events;
 
   // List of invalidation ranges to check when this event list is published to
   // the audio thread.
@@ -149,10 +151,10 @@ public:
 // something is changed, e.g. some notes are moved around for a given pattern,
 // we don't recompile the entire sequence. Instead, we just update the event
 // lists for the relevant track.
-class AnthemRuntimeSequenceStore {
+class RuntimeSequenceStore {
   friend class RuntimeSequenceStoreTest;
 private:
-  JUCE_LEAK_DETECTOR(AnthemRuntimeSequenceStore)
+  JUCE_LEAK_DETECTOR(RuntimeSequenceStore)
 
   // Map of sequence ID to a set of event lists for that sequence.
   SequenceStoreSnapshot* eventLists;
@@ -172,8 +174,8 @@ private:
 
   void processDeletionQueues();
 public:
-  AnthemRuntimeSequenceStore();
-  ~AnthemRuntimeSequenceStore();
+  RuntimeSequenceStore();
+  ~RuntimeSequenceStore();
 
   // Picks up any updates to the event lists map from the mapUpdateQueue.
   //
@@ -224,3 +226,5 @@ public:
   // processing block.
   void rt_cleanupAfterBlock();
 };
+
+} // namespace anthem

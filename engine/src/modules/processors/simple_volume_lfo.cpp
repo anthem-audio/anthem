@@ -21,8 +21,10 @@
 
 #include "modules/processing_graph/compiler/anthem_node_process_context.h"
 
+namespace anthem {
+
 SimpleVolumeLfoProcessor::SimpleVolumeLfoProcessor(const SimpleVolumeLfoProcessorModelImpl& _impl)
-  : AnthemProcessor("SimpleVolumeLfo"), SimpleVolumeLfoProcessorModelBase(_impl) {}
+  : Processor("SimpleVolumeLfo"), SimpleVolumeLfoProcessorModelBase(_impl) {}
 
 SimpleVolumeLfoProcessor::~SimpleVolumeLfoProcessor() {}
 
@@ -46,7 +48,7 @@ void SimpleVolumeLfoProcessor::prepareToProcess() {
   rt_state = RuntimeState{};
 }
 
-void SimpleVolumeLfoProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
+void SimpleVolumeLfoProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& inputBuffer =
       context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
   auto& outputBuffer =
@@ -62,3 +64,5 @@ void SimpleVolumeLfoProcessor::process(AnthemNodeProcessContext& context, int nu
     rt_advanceState(rt_state, rt_rate);
   }
 }
+
+} // namespace anthem

@@ -40,7 +40,7 @@
 
 int main(int /* argc */, char** /* argv */) {
   juce::ScopedJuceInitialiser_GUI juceInitialiser;
-  juce::Logger::setCurrentLogger(new ConsoleLogger());
+  juce::Logger::setCurrentLogger(new anthem::ConsoleLogger());
 
   juce::UnitTestRunner runner;
   runner.runAllTests();

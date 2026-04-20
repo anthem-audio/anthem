@@ -31,6 +31,8 @@
 #include <juce_gui_basics/native/juce_ScopedThreadDPIAwarenessSetter_windows.h>
 #endif
 
+namespace anthem {
+
 namespace {
 void writeVST3Log(VST3Processor& processor, const juce::String& message) {
   juce::Logger::writeToLog("[VST3:" + juce::String(processor.nodeId()) + "] " + message);
@@ -39,7 +41,7 @@ void writeVST3Log(VST3Processor& processor, const juce::String& message) {
 } // namespace
 
 VST3Processor::VST3Processor(const VST3ProcessorModelImpl& _impl)
-  : AnthemProcessor("VST3"), VST3ProcessorModelBase(_impl) {}
+  : Processor("VST3"), VST3ProcessorModelBase(_impl) {}
 
 VST3Processor::~VST3Processor() {
   detachPluginListener();
@@ -79,7 +81,7 @@ void VST3Processor::prepareToProcess() {
   tryInitializePlugin();
 }
 
-void VST3Processor::process(AnthemNodeProcessContext& context, int numSamples) {
+void VST3Processor::process(NodeProcessContext& context, int numSamples) {
   (void)numSamples;
 
   auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
@@ -96,21 +98,21 @@ void VST3Processor::process(AnthemNodeProcessContext& context, int numSamples) {
   for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
     auto& liveEvent = eventInBuffer->getEvent(i);
 
-    if (liveEvent.event.type == AnthemEventType::NoteOn) {
+    if (liveEvent.event.type == EventType::NoteOn) {
       auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
           liveEvent.event.noteOn.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
 
       rt_eventBufferForPlugin.addEvent(
           noteOn, static_cast<int>(std::round(liveEvent.sampleOffset)));
-    } else if (liveEvent.event.type == AnthemEventType::NoteOff) {
+    } else if (liveEvent.event.type == EventType::NoteOff) {
       auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
           liveEvent.event.noteOff.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
 
       rt_eventBufferForPlugin.addEvent(
           noteOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
-    } else if (liveEvent.event.type == AnthemEventType::AllVoicesOff) {
+    } else if (liveEvent.event.type == EventType::AllVoicesOff) {
       for (int channel = 1; channel <= 16; channel++) {
         auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
         rt_eventBufferForPlugin.addEvent(
@@ -126,7 +128,7 @@ void VST3Processor::process(AnthemNodeProcessContext& context, int numSamples) {
 }
 
 void VST3Processor::initialize(
-    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
+    std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) {
   VST3ProcessorModelBase::initialize(selfModel, parentModel);
 }
 
@@ -136,8 +138,8 @@ void VST3Processor::tryInitializePlugin() {
     return;
   }
 
-  auto& audioPluginFormatManager = Anthem::getInstance().audioPluginFormatManager;
-  auto& audioDeviceManager = Anthem::getInstance().audioDeviceManager;
+  auto& audioPluginFormatManager = Engine::getInstance().audioPluginFormatManager;
+  auto& audioDeviceManager = Engine::getInstance().audioDeviceManager;
 
   auto* device = audioDeviceManager.getCurrentAudioDevice();
 
@@ -237,7 +239,7 @@ void VST3Processor::tryInitializePlugin() {
             }};
 
         auto eventString = rfl::json::write(event);
-        Anthem::getInstance().comms.send(eventString);
+        Engine::getInstance().comms.send(eventString);
 
         // The plugin instance is created asynchronously. Open the editor on the message thread
         // and only if the processor still exists by the time we get there.
@@ -381,7 +383,7 @@ void VST3Processor::audioProcessorParameterChanged(
         }};
 
     auto eventString = rfl::json::write(event);
-    Anthem::getInstance().comms.send(eventString);
+    Engine::getInstance().comms.send(eventString);
   });
 }
 
@@ -406,7 +408,7 @@ void VST3Processor::audioProcessorChanged(
         }};
 
     auto eventString = rfl::json::write(event);
-    Anthem::getInstance().comms.send(eventString);
+    Engine::getInstance().comms.send(eventString);
   });
 }
 
@@ -424,5 +426,7 @@ void VST3Processor::setState(const juce::MemoryBlock& state) {
     pluginInstance->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
   }
 }
+
+} // namespace anthem
 
 #endif // #ifndef __EMSCRIPTEN__
