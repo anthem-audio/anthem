@@ -17,22 +17,24 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_process_context.h"
+#include "graph_process_context.h"
 
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 
-AnthemGraphProcessContext::AnthemGraphProcessContext(
-    GraphRuntimeServices& rtServices, const AnthemGraphBufferLayout& bufferLayout)
+namespace anthem {
+
+GraphProcessContext::GraphProcessContext(
+    GraphRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout)
   : rt_services(&rtServices) {
   blockSize = bufferLayout.blockSize;
   numAudioChannels = bufferLayout.numAudioChannels;
 }
 
-AnthemGraphProcessContext::~AnthemGraphProcessContext() = default;
+GraphProcessContext::~GraphProcessContext() = default;
 
-void AnthemGraphProcessContext::reserve(size_t nodeProcessContextCount,
+void GraphProcessContext::reserve(size_t nodeProcessContextCount,
     size_t audioBufferCount,
     size_t controlBufferCount,
     size_t eventBufferCount) {
@@ -42,55 +44,57 @@ void AnthemGraphProcessContext::reserve(size_t nodeProcessContextCount,
   eventBuffers.reserve(eventBufferCount);
 }
 
-size_t AnthemGraphProcessContext::allocateAudioBuffer() {
+size_t GraphProcessContext::allocateAudioBuffer() {
   audioBuffers.emplace_back(numAudioChannels, blockSize);
   return audioBuffers.size() - 1;
 }
 
-size_t AnthemGraphProcessContext::allocateControlBuffer() {
+size_t GraphProcessContext::allocateControlBuffer() {
   controlBuffers.emplace_back(1, blockSize);
   return controlBuffers.size() - 1;
 }
 
-size_t AnthemGraphProcessContext::allocateEventBuffer(size_t initialCapacity) {
-  eventBuffers.push_back(std::make_unique<AnthemEventBuffer>(initialCapacity));
+size_t GraphProcessContext::allocateEventBuffer(size_t initialCapacity) {
+  eventBuffers.push_back(std::make_unique<EventBuffer>(initialCapacity));
   return eventBuffers.size() - 1;
 }
 
-AnthemNodeProcessContext& AnthemGraphProcessContext::createNodeProcessContext(
+NodeProcessContext& GraphProcessContext::createNodeProcessContext(
     std::shared_ptr<Node>& graphNode) {
-  auto context = std::make_unique<AnthemNodeProcessContext>(graphNode, *this);
+  auto context = std::make_unique<NodeProcessContext>(graphNode, *this);
   auto* contextPtr = context.get();
   nodeProcessContexts.push_back(std::move(context));
   return *contextPtr;
 }
 
-juce::AudioSampleBuffer& AnthemGraphProcessContext::getAudioBuffer(size_t index) {
+juce::AudioSampleBuffer& GraphProcessContext::getAudioBuffer(size_t index) {
   jassert(index < audioBuffers.size());
   return audioBuffers[index];
 }
 
-juce::AudioSampleBuffer& AnthemGraphProcessContext::getControlBuffer(size_t index) {
+juce::AudioSampleBuffer& GraphProcessContext::getControlBuffer(size_t index) {
   jassert(index < controlBuffers.size());
   return controlBuffers[index];
 }
 
-std::unique_ptr<AnthemEventBuffer>& AnthemGraphProcessContext::getEventBuffer(size_t index) {
+std::unique_ptr<EventBuffer>& GraphProcessContext::getEventBuffer(size_t index) {
   jassert(index < eventBuffers.size());
   return eventBuffers[index];
 }
 
-AnthemLiveNoteId AnthemGraphProcessContext::rt_allocateLiveNoteId() {
+LiveNoteId GraphProcessContext::rt_allocateLiveNoteId() {
   jassert(rt_services != nullptr);
   if (rt_services == nullptr) {
-    return anthemInvalidLiveNoteId;
+    return invalidLiveNoteId;
   }
 
   return rt_services->rt_allocateLiveNoteId();
 }
 
-void AnthemGraphProcessContext::cleanup() {
+void GraphProcessContext::cleanup() {
   for (auto& context : nodeProcessContexts) {
     context->cleanup();
   }
 }
+
+} // namespace anthem

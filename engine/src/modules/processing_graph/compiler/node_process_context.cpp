@@ -17,17 +17,19 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_node_process_context.h"
+#include "node_process_context.h"
 
 #include "modules/core/constants.h"
-#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/model/node.h"
 
 #include <algorithm>
 #include <string>
 
-AnthemNodeProcessContext::AnthemNodeProcessContext(
-    std::shared_ptr<Node>& graphNode, AnthemGraphProcessContext& graphProcessContext)
+namespace anthem {
+
+NodeProcessContext::NodeProcessContext(
+    std::shared_ptr<Node>& graphNode, GraphProcessContext& graphProcessContext)
   : graphNode(graphNode), graphProcessContext(&graphProcessContext) {
   inputAudioBuffers.reserve(graphNode->audioInputPorts()->size());
   outputAudioBuffers.reserve(graphNode->audioOutputPorts()->size());
@@ -105,12 +107,12 @@ AnthemNodeProcessContext::AnthemNodeProcessContext(
   }
 }
 
-void AnthemNodeProcessContext::cleanup() {
+void NodeProcessContext::cleanup() {
   // Intentionally empty. The graph context owns the underlying storage and
   // everything else is managed with RAII.
 }
 
-const AnthemNodeProcessContext::PortBufferHandle& AnthemNodeProcessContext::findBufferHandle(
+const NodeProcessContext::PortBufferHandle& NodeProcessContext::findBufferHandle(
     const std::vector<PortBufferHandle>& handles, int64_t portId, const char* bufferType) const {
   auto it = std::find_if(handles.begin(), handles.end(), [portId](const PortBufferHandle& handle) {
     return handle.portId == portId;
@@ -124,8 +126,8 @@ const AnthemNodeProcessContext::PortBufferHandle& AnthemNodeProcessContext::find
   return *it;
 }
 
-AnthemNodeProcessContext::InputParameterBinding&
-AnthemNodeProcessContext::findInputParameterBinding(int64_t id) {
+NodeProcessContext::InputParameterBinding& NodeProcessContext::findInputParameterBinding(
+    int64_t id) {
   auto it = std::find_if(inputParameters.begin(),
       inputParameters.end(),
       [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
@@ -139,8 +141,8 @@ AnthemNodeProcessContext::findInputParameterBinding(int64_t id) {
   return *it;
 }
 
-const AnthemNodeProcessContext::InputParameterBinding&
-AnthemNodeProcessContext::findInputParameterBinding(int64_t id) const {
+const NodeProcessContext::InputParameterBinding& NodeProcessContext::findInputParameterBinding(
+    int64_t id) const {
   auto it = std::find_if(inputParameters.begin(),
       inputParameters.end(),
       [id](const InputParameterBinding& inputParameter) { return inputParameter.portId == id; });
@@ -154,7 +156,7 @@ AnthemNodeProcessContext::findInputParameterBinding(int64_t id) const {
   return *it;
 }
 
-void AnthemNodeProcessContext::setParameterValue(int64_t id, float value) {
+void NodeProcessContext::setParameterValue(int64_t id, float value) {
   // Throw if not on the JUCE message thread
   if (!juce::MessageManager::getInstance()->isThisTheMessageThread()) {
     throw std::runtime_error(
@@ -164,11 +166,11 @@ void AnthemNodeProcessContext::setParameterValue(int64_t id, float value) {
   findInputParameterBinding(id).value->store(value);
 }
 
-float AnthemNodeProcessContext::getParameterValue(int64_t id) {
+float NodeProcessContext::getParameterValue(int64_t id) {
   return findInputParameterBinding(id).value->load();
 }
 
-void AnthemNodeProcessContext::clearBuffers() {
+void NodeProcessContext::clearBuffers() {
   jassert(graphProcessContext != nullptr);
 
   for (const auto& handle : inputAudioBuffers) {
@@ -184,47 +186,49 @@ void AnthemNodeProcessContext::clearBuffers() {
   }
 }
 
-juce::AudioSampleBuffer& AnthemNodeProcessContext::getInputAudioBuffer(int64_t id) {
+juce::AudioSampleBuffer& NodeProcessContext::getInputAudioBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getAudioBuffer(
       findBufferHandle(inputAudioBuffers, id, "input audio").bufferIndex);
 }
 
-juce::AudioSampleBuffer& AnthemNodeProcessContext::getOutputAudioBuffer(int64_t id) {
+juce::AudioSampleBuffer& NodeProcessContext::getOutputAudioBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getAudioBuffer(
       findBufferHandle(outputAudioBuffers, id, "output audio").bufferIndex);
 }
 
-juce::AudioSampleBuffer& AnthemNodeProcessContext::getInputControlBuffer(int64_t id) {
+juce::AudioSampleBuffer& NodeProcessContext::getInputControlBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getControlBuffer(
       findBufferHandle(inputControlBuffers, id, "input control").bufferIndex);
 }
 
-juce::AudioSampleBuffer& AnthemNodeProcessContext::getOutputControlBuffer(int64_t id) {
+juce::AudioSampleBuffer& NodeProcessContext::getOutputControlBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getControlBuffer(
       findBufferHandle(outputControlBuffers, id, "output control").bufferIndex);
 }
 
-std::unique_ptr<AnthemEventBuffer>& AnthemNodeProcessContext::getInputEventBuffer(int64_t id) {
+std::unique_ptr<EventBuffer>& NodeProcessContext::getInputEventBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getEventBuffer(
       findBufferHandle(inputEventBuffers, id, "input event").bufferIndex);
 }
 
-std::unique_ptr<AnthemEventBuffer>& AnthemNodeProcessContext::getOutputEventBuffer(int64_t id) {
+std::unique_ptr<EventBuffer>& NodeProcessContext::getOutputEventBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getEventBuffer(
       findBufferHandle(outputEventBuffers, id, "output event").bufferIndex);
 }
 
-AnthemLiveNoteId AnthemNodeProcessContext::rt_allocateLiveNoteId() {
+LiveNoteId NodeProcessContext::rt_allocateLiveNoteId() {
   jassert(graphProcessContext != nullptr);
   if (graphProcessContext == nullptr) {
-    return anthemInvalidLiveNoteId;
+    return invalidLiveNoteId;
   }
 
   return graphProcessContext->rt_allocateLiveNoteId();
 }
+
+} // namespace anthem

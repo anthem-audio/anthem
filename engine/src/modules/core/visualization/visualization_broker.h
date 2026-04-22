@@ -45,6 +45,8 @@
 // The UI can then subscribe to any of these data providers. Whatever
 // subscriptions are active will determine which data providers have their data
 // queried and sent to the UI.
+namespace anthem {
+
 class VisualizationBroker : private juce::Timer {
 private:
   // Private constructor for singleton pattern
@@ -91,3 +93,5 @@ public:
 
   void dispose();
 };
+
+} // namespace anthem

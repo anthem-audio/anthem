@@ -20,26 +20,28 @@
 #pragma once
 
 #include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 
 #include <cstdint>
 #include <juce_core/juce_core.h>
 #include <memory>
 
 // Copies data from an output port to an input port
-class CopyAudioBufferAction : public AnthemGraphCompilerAction {
+namespace anthem {
+
+class CopyAudioBufferAction : public GraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(CopyAudioBufferAction)
 public:
-  AnthemNodeProcessContext* source;
+  NodeProcessContext* source;
   int64_t sourcePortId;
 
-  AnthemNodeProcessContext* destination;
+  NodeProcessContext* destination;
   int64_t destinationPortId;
 
-  CopyAudioBufferAction(AnthemNodeProcessContext* source,
+  CopyAudioBufferAction(NodeProcessContext* source,
       int64_t sourcePortId,
-      AnthemNodeProcessContext* destination,
+      NodeProcessContext* destination,
       int64_t destinationPortId)
     : source(source), sourcePortId(sourcePortId), destination(destination),
       destinationPortId(destinationPortId) {}
@@ -48,3 +50,5 @@ public:
 
   void debugPrint() override;
 };
+
+} // namespace anthem

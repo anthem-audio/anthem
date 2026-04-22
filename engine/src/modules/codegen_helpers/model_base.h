@@ -24,10 +24,12 @@
 #include <optional>
 #include <unordered_map>
 
-class AnthemModelBase;
+namespace anthem {
+
+class ModelBase;
 
 // Specifies a set of filters on model changes.
-struct AnthemModelChangeFilter {
+struct ModelChangeFilter {
   std::optional<std::string> fieldName;
 
   // We can add more things here if needed, like collection change filters, etc.
@@ -51,49 +53,48 @@ struct AnthemModelChangeFilter {
 // This class is not intended to be used directly, but rather to be inherited by
 // generated model classes, and anything else that is part of the model tree (e.g.
 // collection wrappers).
-class AnthemModelBase {
+class ModelBase {
 private:
   uint64_t nextObserverId = 0;
 
   // The set of observers that are listening for changes to this model.
-  std::unordered_map<uint64_t,
-      std::tuple<std::optional<AnthemModelChangeFilter>, std::function<void()>>>
+  std::unordered_map<uint64_t, std::tuple<std::optional<ModelChangeFilter>, std::function<void()>>>
       observers;
 public:
   // Default empty constructor
-  AnthemModelBase() = default;
+  ModelBase() = default;
 
   // Delete copy constructors
-  AnthemModelBase(const AnthemModelBase&) = delete;
-  AnthemModelBase& operator=(const AnthemModelBase&) = delete;
+  ModelBase(const ModelBase&) = delete;
+  ModelBase& operator=(const ModelBase&) = delete;
 
   // Default move constructors
-  AnthemModelBase(AnthemModelBase&&) noexcept = default;
-  AnthemModelBase& operator=(AnthemModelBase&&) noexcept = default;
+  ModelBase(ModelBase&&) noexcept = default;
+  ModelBase& operator=(ModelBase&&) noexcept = default;
 
-  virtual ~AnthemModelBase() = default;
+  virtual ~ModelBase() = default;
 
   // The parent of this model.
-  std::weak_ptr<AnthemModelBase> parent;
+  std::weak_ptr<ModelBase> parent;
 
   // This model.
-  std::weak_ptr<AnthemModelBase> self;
+  std::weak_ptr<ModelBase> self;
 
   virtual void initialize(
-      std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) {
     this->self = selfModel;
     this->parent = parentModel;
   }
 
   // Adds an observer to this model.
-  uint64_t addObserver(AnthemModelChangeFilter filter, std::function<void()> observer) {
+  uint64_t addObserver(ModelChangeFilter filter, std::function<void()> observer) {
     auto id = nextObserverId++;
     observers[id] = std::make_tuple(filter, observer);
     return id;
   }
 
   uint64_t addObserver(std::string fieldName, std::function<void()> observer) {
-    return addObserver(AnthemModelChangeFilter{.fieldName = std::optional(fieldName)}, observer);
+    return addObserver(ModelChangeFilter{.fieldName = std::optional(fieldName)}, observer);
   }
 
   // Removes an observer from this model.
@@ -113,3 +114,5 @@ public:
     }
   }
 };
+
+} // namespace anthem

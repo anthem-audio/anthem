@@ -19,18 +19,20 @@
 
 #include "balance.h"
 
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 BalanceProcessor::BalanceProcessor(const BalanceProcessorModelImpl& _impl)
-  : AnthemProcessor("Balance"), BalanceProcessorModelBase(_impl) {}
+  : Processor("Balance"), BalanceProcessorModelBase(_impl) {}
 
 BalanceProcessor::~BalanceProcessor() {}
 
 void BalanceProcessor::prepareToProcess() {}
 
-void BalanceProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
+void BalanceProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);
   auto& audioOutBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
 
@@ -59,3 +61,5 @@ void BalanceProcessor::process(AnthemNodeProcessContext& context, int numSamples
     }
   }
 }
+
+} // namespace anthem

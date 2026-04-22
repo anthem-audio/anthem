@@ -20,8 +20,8 @@
 #pragma once
 
 #include "generated/lib/model/processing_graph/processors/sequence_note_provider.h"
-#include "modules/processing_graph/processor/anthem_event_buffer.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/event_buffer.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/processors/note_tracker.h"
 #include "modules/sequencer/events/event.h"
 #include "modules/sequencer/runtime/transport.h"
@@ -29,11 +29,13 @@
 #include <concepts>
 #include <type_traits>
 
-class AnthemNodeProcessContext;
+namespace anthem {
+
+class NodeProcessContext;
 
 template <typename T>
 concept SequenceNoteLiveIdAllocator =
-    std::invocable<T&> && std::convertible_to<std::invoke_result_t<T&>, AnthemLiveNoteId>;
+    std::invocable<T&> && std::convertible_to<std::invoke_result_t<T&>, LiveNoteId>;
 
 // This processor is a bridge between the sequencer and the node graph. It's a
 // special node that the sequencer can use to send notes from the sequence to the
@@ -42,7 +44,7 @@ concept SequenceNoteLiveIdAllocator =
 // If this node's track ID matches the transport's active track ID, the node may
 // read from the reserved track-less sequence event list instead of the
 // per-track list.
-class SequenceNoteProviderProcessor : public AnthemProcessor,
+class SequenceNoteProviderProcessor : public Processor,
                                       public SequenceNoteProviderProcessorModelBase {
 private:
   static constexpr size_t rt_maxTrackedSequenceNotes = 256;
@@ -73,37 +75,37 @@ private:
       const RuntimeDependencies& dependencies, int64_t trackId);
 
   static void rt_emitLiveNoteOffFromTrackedNote(
-      AnthemEventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset);
+      EventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset);
   static void rt_emitLiveNoteOffsForAllTrackedNotes(
-      RuntimeState& state, AnthemEventBuffer& targetBuffer, double sampleOffset);
+      RuntimeState& state, EventBuffer& targetBuffer, double sampleOffset);
   static void rt_handleSequenceNoteOff(RuntimeState& state,
-      AnthemEventBuffer& targetBuffer,
-      AnthemSourceNoteId sourceId,
-      const AnthemNoteOffEvent& noteOffEvent,
+      EventBuffer& targetBuffer,
+      SourceNoteId sourceId,
+      const NoteOffEvent& noteOffEvent,
       double sampleOffset);
 
   template <SequenceNoteLiveIdAllocator LiveNoteIdAllocator>
   static void rt_handleSequenceNoteOn(RuntimeState& state,
-      AnthemEventBuffer& targetBuffer,
+      EventBuffer& targetBuffer,
       LiveNoteIdAllocator&& liveNoteIdAllocator,
-      AnthemSourceNoteId sourceId,
-      const AnthemNoteOnEvent& noteOnEvent,
+      SourceNoteId sourceId,
+      const NoteOnEvent& noteOnEvent,
       double sampleOffset) {
-    AnthemLiveNoteId liveId = liveNoteIdAllocator();
+    LiveNoteId liveId = liveNoteIdAllocator();
     auto didTrackNote = state.rt_activeSequenceNotes.rt_add(
         sourceId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
 
-    targetBuffer.addEvent(AnthemLiveEvent{
+    targetBuffer.addEvent(LiveEvent{
         .sampleOffset = sampleOffset,
-        .liveId = didTrackNote ? liveId : anthemInvalidLiveNoteId,
-        .event = AnthemEvent(AnthemNoteOnEvent(
+        .liveId = didTrackNote ? liveId : invalidLiveNoteId,
+        .event = Event(NoteOnEvent(
             noteOnEvent.pitch, noteOnEvent.channel, noteOnEvent.velocity, noteOnEvent.detune)),
     });
   }
 
   template <SequenceNoteLiveIdAllocator LiveNoteIdAllocator>
   static void rt_addEventsForJump(RuntimeState& state,
-      AnthemEventBuffer& targetBuffer,
+      EventBuffer& targetBuffer,
       int64_t trackId,
       const PlayheadJumpEvent& event,
       LiveNoteIdAllocator&& liveNoteIdAllocator,
@@ -114,7 +116,7 @@ private:
     }
 
     for (const auto& jumpEvent : playEventsIter->second) {
-      if (jumpEvent.event.type == AnthemEventType::NoteOn) {
+      if (jumpEvent.event.type == EventType::NoteOn) {
         rt_handleSequenceNoteOn(state,
             targetBuffer,
             liveNoteIdAllocator,
@@ -128,7 +130,7 @@ private:
   template <SequenceNoteLiveIdAllocator LiveNoteIdAllocator>
   static void rt_processBlock(RuntimeState& state,
       const RuntimeDependencies& dependencies,
-      AnthemEventBuffer& targetBuffer,
+      EventBuffer& targetBuffer,
       int64_t trackId,
       int numSamples,
       LiveNoteIdAllocator&& liveNoteIdAllocator) {
@@ -194,14 +196,14 @@ private:
               sampleTimeOffset + sequencer_timing::tickDeltaToSampleOffset(
                                      event.offset - start, dependencies.rt_timingParams);
 
-          if (event.event.type == AnthemEventType::NoteOn) {
+          if (event.event.type == EventType::NoteOn) {
             rt_handleSequenceNoteOn(state,
                 targetBuffer,
                 liveNoteIdAllocator,
                 event.sourceId,
                 event.event.noteOn,
                 eventSampleOffset);
-          } else if (event.event.type == AnthemEventType::NoteOff) {
+          } else if (event.event.type == EventType::NoteOff) {
             rt_handleSequenceNoteOff(
                 state, targetBuffer, event.sourceId, event.event.noteOff, eventSampleOffset);
           }
@@ -245,5 +247,7 @@ public:
   }
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 };
+
+} // namespace anthem

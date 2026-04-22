@@ -19,33 +19,35 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/anthem_graph_compiler_node.h"
-#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/compiler/graph_compiler_node.h"
+#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
 
 #include <juce_core/juce_core.h>
 
-class AnthemGraphCompilerNodeTest : public juce::UnitTest {
-  using NodeMap = AnthemGraphCompilerNode::NodeMap;
-  using ConnectionMap = AnthemGraphCompilerNode::ConnectionMap;
+namespace anthem {
 
-  static std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>> buildCompilerNodeMap(
-      std::initializer_list<std::shared_ptr<Node>> nodes, AnthemGraphProcessContext& graphContext) {
-    auto compilerNodes = std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>();
+class GraphCompilerNodeTest : public juce::UnitTest {
+  using NodeMap = GraphCompilerNode::NodeMap;
+  using ConnectionMap = GraphCompilerNode::ConnectionMap;
+
+  static std::map<Node*, std::shared_ptr<GraphCompilerNode>> buildCompilerNodeMap(
+      std::initializer_list<std::shared_ptr<Node>> nodes, GraphProcessContext& graphContext) {
+    auto compilerNodes = std::map<Node*, std::shared_ptr<GraphCompilerNode>>();
 
     for (const auto& node : nodes) {
       auto& context =
           graphContext.createNodeProcessContext(const_cast<std::shared_ptr<Node>&>(node));
-      auto compilerNode = std::make_shared<AnthemGraphCompilerNode>(node, &context);
+      auto compilerNode = std::make_shared<GraphCompilerNode>(node, &context);
       compilerNodes.insert_or_assign(node.get(), compilerNode);
     }
 
     return compilerNodes;
   }
 public:
-  AnthemGraphCompilerNodeTest() : juce::UnitTest("AnthemGraphCompilerNodeTest", "Anthem") {}
+  GraphCompilerNodeTest() : juce::UnitTest("AnthemGraphCompilerNodeTest", "Anthem") {}
 
   void runTest() override {
     testInputAndOutputEdgesAreAssigned();
@@ -94,15 +96,15 @@ public:
     connections.insert_or_assign(connectionId, connection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 64,
         });
     graphContext.reserve(2, 3, 1, 0);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
-    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
+    std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>> connectionToCompilerEdge;
 
     compilerNodes.at(sourceNode.get())
         ->assignEdges(nodes, connections, compilerNodes, connectionToCompilerEdge);
@@ -155,15 +157,15 @@ public:
     connections.insert_or_assign(connectionId, connection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 64,
         });
     graphContext.reserve(2, 0, 0, 2);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
-    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
+    std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>> connectionToCompilerEdge;
 
     compilerNodes.at(sourceNode.get())
         ->assignEdges(nodes, connections, compilerNodes, connectionToCompilerEdge);
@@ -228,15 +230,15 @@ public:
     connections.insert_or_assign(102, eventConnection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 64,
         });
     graphContext.reserve(2, 2, 2, 2);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
-    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
+    std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>> connectionToCompilerEdge;
 
     compilerNodes.at(sourceNode.get())
         ->assignEdges(nodes, connections, compilerNodes, connectionToCompilerEdge);
@@ -285,15 +287,15 @@ public:
     connections.insert_or_assign(connectionId, invalidConnection);
 
     GraphRuntimeServices rtServices;
-    AnthemGraphProcessContext graphContext(rtServices,
-        AnthemGraphBufferLayout{
+    GraphProcessContext graphContext(rtServices,
+        GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 64,
         });
     graphContext.reserve(2, 2, 0, 0);
 
     auto compilerNodes = buildCompilerNodeMap({sourceNode, sinkNode}, graphContext);
-    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>> connectionToCompilerEdge;
+    std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>> connectionToCompilerEdge;
 
     compilerNodes.at(sourceNode.get())
         ->assignEdges(nodes, connections, compilerNodes, connectionToCompilerEdge);
@@ -314,4 +316,6 @@ public:
   }
 };
 
-static AnthemGraphCompilerNodeTest anthemGraphCompilerNodeTest;
+static GraphCompilerNodeTest anthemGraphCompilerNodeTest;
+
+} // namespace anthem

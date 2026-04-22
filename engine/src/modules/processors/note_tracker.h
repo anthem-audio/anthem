@@ -30,9 +30,11 @@
 //
 // This stores enough information to emit a matching note-off later after the
 // original note-on has already been translated into a runtime live note ID.
+namespace anthem {
+
 struct TrackedNote {
   int64_t inputId = -1;
-  AnthemLiveNoteId liveId = anthemInvalidLiveNoteId;
+  LiveNoteId liveId = invalidLiveNoteId;
   int16_t pitch = 0;
   int16_t channel = 0;
 };
@@ -44,7 +46,7 @@ struct TrackedNote {
 // Entries are removed with swap-remove because ordering does not matter.
 template <size_t Capacity> class NoteTracker {
 public:
-  bool rt_add(int64_t inputId, AnthemLiveNoteId liveId, int16_t pitch, int16_t channel) {
+  bool rt_add(int64_t inputId, LiveNoteId liveId, int16_t pitch, int16_t channel) {
     if (rt_size >= Capacity) {
       rt_overflowCount++;
       return false;
@@ -109,3 +111,5 @@ private:
   size_t rt_highWaterMark = 0;
   size_t rt_overflowCount = 0;
 };
+
+} // namespace anthem

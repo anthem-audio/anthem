@@ -21,6 +21,8 @@
 
 #include "bw_math.h"
 
+namespace anthem {
+
 LinearParameterSmoother::LinearParameterSmoother(float initialValue, float duration) {
   targetValue = initialValue;
   currentValue = initialValue;
@@ -50,3 +52,5 @@ void LinearParameterSmoother::process(float deltaTime) {
     currentValue = targetValue;
   }
 }
+
+} // namespace anthem

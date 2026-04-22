@@ -17,10 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 
-#include "modules/processing_graph/compiler/anthem_graph_compiler.h"
+#include "modules/core/adapters/transport_adapters.h"
+#include "modules/processing_graph/compiler/graph_compiler.h"
 #include "modules/processors/db_meter.h"
+
+namespace anthem {
 
 namespace {
 std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device) {
@@ -37,16 +40,17 @@ std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device)
 }
 } // namespace
 
-std::unique_ptr<Anthem> Anthem::instance = nullptr;
+std::unique_ptr<Engine> Engine::instance = nullptr;
 
-Anthem::Anthem() {
+Engine::Engine() {
   isAudioCallbackRunning = false;
 }
 
-void Anthem::initialize() {
-  this->graphProcessor = std::make_unique<AnthemGraphProcessor>();
-  this->sequenceStore = std::make_unique<AnthemRuntimeSequenceStore>();
-  transport = std::make_unique<Transport>();
+void Engine::initialize() {
+  this->graphProcessor = std::make_unique<GraphProcessor>();
+  this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
+  transport = std::make_unique<Transport>(
+      createTransportProjectView(*this), createTransportClock(audioDeviceManager));
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 
 #ifndef __EMSCRIPTEN__
@@ -77,11 +81,11 @@ void Anthem::initialize() {
 #endif // #ifndef __EMSCRIPTEN__
 }
 
-void Anthem::shutdown() {
+void Engine::shutdown() {
   stopAudioCallback();
 }
 
-std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
+std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
   if (isAudioCallbackRunning) {
     juce::Logger::writeToLog("Tried to start audio callback when it was already running. This "
                              "probably doesn't break anything, but it's definitely a bug.");
@@ -91,7 +95,7 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   juce::Logger::writeToLog("Creating audio callback...");
 
   try {
-    audioCallback = std::make_unique<AnthemAudioCallback>(this);
+    audioCallback = std::make_unique<AudioCallback>(this);
   } catch (const std::exception& e) {
     juce::Logger::writeToLog("Failed to create audio callback: " + juce::String(e.what()));
     return nullptr;
@@ -153,7 +157,7 @@ std::shared_ptr<EngineAudioConfig> Anthem::startAudioCallback() {
   return audioConfig;
 }
 
-void Anthem::stopAudioCallback() {
+void Engine::stopAudioCallback() {
   if (isAudioCallbackRunning) {
     audioDeviceManager.removeAudioCallback(audioCallback.get());
     audioDeviceManager.closeAudioDevice();
@@ -163,11 +167,11 @@ void Anthem::stopAudioCallback() {
   audioCallback.reset();
 }
 
-std::shared_ptr<EngineAudioConfig> Anthem::getCurrentAudioConfig() const {
+std::shared_ptr<EngineAudioConfig> Engine::getCurrentAudioConfig() const {
   return buildAudioConfig(audioDeviceManager.getCurrentAudioDevice());
 }
 
-void Anthem::compileProcessingGraph() {
+void Engine::compileProcessingGraph() {
   auto* currentDevice = audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
   if (currentDevice == nullptr) {
@@ -176,12 +180,12 @@ void Anthem::compileProcessingGraph() {
 
   auto& processingGraph = *project->processingGraph();
 
-  auto result = AnthemGraphCompiler::compile(AnthemGraphCompileRequest{
+  auto result = GraphCompiler::compile(GraphCompileRequest{
       .rtServices = graphProcessor->getRtServices(),
       .nodes = *processingGraph.nodes(),
       .connections = *processingGraph.connections(),
       .bufferLayout =
-          AnthemGraphBufferLayout{
+          GraphBufferLayout{
               .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
               .blockSize = currentDevice->getCurrentBufferSizeSamples(),
           },
@@ -215,7 +219,7 @@ void Anthem::compileProcessingGraph() {
           // sharedPtr is a std::shared_ptr<DerivedProcessor>.
           // .get() returns a DerivedProcessor*.
           // C++ polymorphism allows us to assign a Derived* to a Base*.
-          AnthemProcessor* baseProcessor = sharedPtr.get();
+          Processor* baseProcessor = sharedPtr.get();
 
           if (!baseProcessor->isPrepared) {
             baseProcessor->prepareToProcess();
@@ -227,3 +231,5 @@ void Anthem::compileProcessingGraph() {
 
   graphProcessor->setProcessingStepsFromMainThread(result);
 }
+
+} // namespace anthem

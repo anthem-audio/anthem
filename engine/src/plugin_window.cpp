@@ -21,6 +21,8 @@
 
 #include "plugin_window.h"
 
+namespace anthem {
+
 PluginWindow::PluginWindow(juce::AudioProcessor* processor)
   : DocumentWindow(
         processor->getName(), juce::Colours::lightgrey, juce::DocumentWindow::allButtons) {
@@ -44,5 +46,7 @@ PluginWindow::~PluginWindow() {
 void PluginWindow::closeButtonPressed() {
   setVisible(false);
 }
+
+} // namespace anthem
 
 #endif // #ifndef __EMSCRIPTEN__

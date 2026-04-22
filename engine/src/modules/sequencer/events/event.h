@@ -24,7 +24,9 @@
 
 // The event type. This determines ordering for events that occur at the same
 // time - e.g. NoteOff must come before NoteOn.
-enum AnthemEventType {
+namespace anthem {
+
+enum EventType {
   AllVoicesOff,
   NoteOff,
   NoteOn,
@@ -39,50 +41,49 @@ enum AnthemEventType {
 // - AnthemLiveEvent: block-relative position, expressed as a sample offset from
 //   the start of the current processing block.
 //
-struct AnthemEvent {
-  AnthemEventType type;
+struct Event {
+  EventType type;
 
   union {
-    AnthemNoteOnEvent noteOn;
-    AnthemNoteOffEvent noteOff;
-    AnthemAllVoicesOffEvent allVoicesOff;
+    NoteOnEvent noteOn;
+    NoteOffEvent noteOff;
+    AllVoicesOffEvent allVoicesOff;
   };
 
-  AnthemEvent() : type(AllVoicesOff), allVoicesOff{} {}
-  AnthemEvent(AnthemNoteOnEvent noteOn) : type(NoteOn), noteOn(noteOn) {}
-  AnthemEvent(AnthemNoteOffEvent noteOff) : type(NoteOff), noteOff(noteOff) {}
-  AnthemEvent(AnthemAllVoicesOffEvent allVoicesOff)
-    : type(AllVoicesOff), allVoicesOff(allVoicesOff) {}
+  Event() : type(AllVoicesOff), allVoicesOff{} {}
+  Event(NoteOnEvent noteOn) : type(NoteOn), noteOn(noteOn) {}
+  Event(NoteOffEvent noteOff) : type(NoteOff), noteOff(noteOff) {}
+  Event(AllVoicesOffEvent allVoicesOff) : type(AllVoicesOff), allVoicesOff(allVoicesOff) {}
 };
 
-struct AnthemSequenceEvent {
+struct SequenceEvent {
   // The time of the event, relative to the start of the sequence.
   double offset;
 
   // The deterministic source note ID for this event.
-  AnthemSourceNoteId sourceId = anthemInvalidSourceNoteId;
+  SourceNoteId sourceId = invalidSourceNoteId;
 
   // The event itself.
-  AnthemEvent event;
+  Event event;
 
-  bool operator<(const AnthemSequenceEvent& other) const {
+  bool operator<(const SequenceEvent& other) const {
     return offset < other.offset;
   }
 
-  bool operator>(const AnthemSequenceEvent& other) const {
+  bool operator>(const SequenceEvent& other) const {
     return offset > other.offset;
   }
 
-  bool operator<=(const AnthemSequenceEvent& other) const {
+  bool operator<=(const SequenceEvent& other) const {
     return offset <= other.offset;
   }
 
-  bool operator>=(const AnthemSequenceEvent& other) const {
+  bool operator>=(const SequenceEvent& other) const {
     return offset >= other.offset;
   }
 };
 
-struct AnthemLiveEvent {
+struct LiveEvent {
   // Offset, in samples, from the start of the current processing block.
   //
   // `0.0` means "at block start". Positive values schedule the event later in
@@ -99,8 +100,10 @@ struct AnthemLiveEvent {
   // This is assigned by note-producing processors and is the identity that
   // downstream processors should use to track active notes. Non-note events
   // should leave this as `anthemInvalidLiveNoteId`.
-  AnthemLiveNoteId liveId = anthemInvalidLiveNoteId;
+  LiveNoteId liveId = invalidLiveNoteId;
 
   // The event itself.
-  AnthemEvent event;
+  Event event;
 };
+
+} // namespace anthem

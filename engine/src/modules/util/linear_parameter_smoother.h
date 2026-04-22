@@ -21,6 +21,8 @@
 
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 class LinearParameterSmoother {
 private:
   JUCE_LEAK_DETECTOR(LinearParameterSmoother)
@@ -36,3 +38,5 @@ public:
   float getTargetValue();
   void process(float deltaTime);
 };
+
+} // namespace anthem

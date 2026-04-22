@@ -35,8 +35,10 @@
 #include <cstdint>
 #include <optional>
 
-class AnthemNodeProcessContext;
-class AnthemProcessor;
+namespace anthem {
+
+class NodeProcessContext;
+class Processor;
 
 class Node : public NodeModelBase {
 public:
@@ -61,7 +63,7 @@ public:
   // This field is always updated with a new pointer before the graph update is
   // sent to the audio thread, and the old pointer will not be freed until this
   // happens, so there is no risk of use-after-free.
-  std::optional<AnthemNodeProcessContext*> runtimeContext;
+  std::optional<NodeProcessContext*> runtimeContext;
 
   Node(const NodeModelImpl& _impl) : NodeModelBase(_impl) {}
   ~Node() {}
@@ -72,12 +74,14 @@ public:
   Node(Node&&) noexcept = default;
   Node& operator=(Node&&) noexcept = default;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override {
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override {
     NodeModelBase::initialize(selfModel, parentModel);
   }
 
   std::optional<std::shared_ptr<NodePort>> getPortById(int64_t id);
 
-  std::optional<std::shared_ptr<AnthemProcessor>> getProcessor();
+  std::optional<std::shared_ptr<Processor>> getProcessor();
 };
+
+} // namespace anthem

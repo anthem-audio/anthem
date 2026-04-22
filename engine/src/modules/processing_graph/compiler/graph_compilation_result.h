@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
-#include "modules/processing_graph/compiler/anthem_graph_process_context.h"
+#include "modules/processing_graph/compiler/actions/graph_compiler_action.h"
+#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/model/node.h"
 
 #include <iostream>
@@ -29,20 +29,21 @@
 #include <vector>
 
 // This class is used to represent the result of compiling a processing graph.
-class AnthemGraphCompilationResult {
+namespace anthem {
+
+class GraphCompilationResult {
 private:
-  JUCE_LEAK_DETECTOR(AnthemGraphCompilationResult)
+  JUCE_LEAK_DETECTOR(GraphCompilationResult)
 public:
   // All actions in a given group can be executed in parallel.
   //
   // The way these groups are constructed currently is quite naive and no work
   // has been done to optimize it.
-  std::vector<std::unique_ptr<std::vector<std::unique_ptr<AnthemGraphCompilerAction>>>>
-      actionGroups;
+  std::vector<std::unique_ptr<std::vector<std::unique_ptr<GraphCompilerAction>>>> actionGroups;
 
   // Owns all graph-scoped runtime storage for this compiled graph, including
   // the node process contexts that point into that storage.
-  std::unique_ptr<AnthemGraphProcessContext> graphProcessContext;
+  std::unique_ptr<GraphProcessContext> graphProcessContext;
 
   // This contains a shared_ptr reference to each graph node that was present
   // when this context was created.
@@ -81,3 +82,5 @@ public:
   // result is deallocated.
   void cleanup();
 };
+
+} // namespace anthem

@@ -21,4 +21,8 @@
 
 #include "messages/messages.h"
 
+namespace anthem {
+
 std::optional<Response> handleSequencerCommand(Request& request);
+
+} // namespace anthem

@@ -28,6 +28,8 @@
 #include <variant>
 #include <vector>
 
+namespace anthem {
+
 template <typename T> struct TimestampedVisualizationData {
   std::vector<int64_t> sampleTimestamps;
   std::vector<T> values;
@@ -99,3 +101,5 @@ public:
 
   virtual std::optional<TimestampedVisualizationData<T>> getTypedData() = 0;
 };
+
+} // namespace anthem

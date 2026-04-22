@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/processing_graph/processor/anthem_event_buffer.h"
+#include "modules/processing_graph/processor/event_buffer.h"
 #include "modules/sequencer/events/note_instance_id.h"
 
 #include <cstddef>
@@ -28,11 +28,13 @@
 #include <memory>
 #include <vector>
 
+namespace anthem {
+
 class Node;
 class GraphRuntimeServices;
-class AnthemNodeProcessContext;
+class NodeProcessContext;
 
-struct AnthemGraphBufferLayout {
+struct GraphBufferLayout {
   int numAudioChannels = 0;
   int blockSize = 0;
 };
@@ -43,9 +45,9 @@ struct AnthemGraphBufferLayout {
 // This is the storage owner for a compiled graph's contiguous runtime state.
 // Node contexts are created through this class and act as lightweight views
 // into the buffers and services owned here.
-class AnthemGraphProcessContext {
+class GraphProcessContext {
 private:
-  JUCE_LEAK_DETECTOR(AnthemGraphProcessContext)
+  JUCE_LEAK_DETECTOR(GraphProcessContext)
 
   // Long-lived runtime services that are shared across compiled graphs and
   // must remain stable across graph recompilation.
@@ -58,14 +60,14 @@ private:
   // Backing storage for graph-owned per-port buffers.
   std::vector<juce::AudioSampleBuffer> audioBuffers;
   std::vector<juce::AudioSampleBuffer> controlBuffers;
-  std::vector<std::unique_ptr<AnthemEventBuffer>> eventBuffers;
+  std::vector<std::unique_ptr<EventBuffer>> eventBuffers;
 
   // Owns all node-scoped views into the graph-owned runtime storage above.
-  std::vector<std::unique_ptr<AnthemNodeProcessContext>> nodeProcessContexts;
+  std::vector<std::unique_ptr<NodeProcessContext>> nodeProcessContexts;
 public:
-  explicit AnthemGraphProcessContext(
-      GraphRuntimeServices& rtServices, const AnthemGraphBufferLayout& bufferLayout);
-  ~AnthemGraphProcessContext();
+  explicit GraphProcessContext(
+      GraphRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout);
+  ~GraphProcessContext();
 
   // Reserves capacity for all graph-owned runtime objects before node contexts
   // are created. This keeps the backing arrays stable while compilation builds
@@ -81,17 +83,19 @@ public:
   size_t allocateEventBuffer(size_t initialCapacity);
 
   // Creates a node-scoped view into this graph-owned storage.
-  AnthemNodeProcessContext& createNodeProcessContext(std::shared_ptr<Node>& graphNode);
+  NodeProcessContext& createNodeProcessContext(std::shared_ptr<Node>& graphNode);
 
   // Access graph-owned buffers by the indices stored in node contexts.
   juce::AudioSampleBuffer& getAudioBuffer(size_t index);
   juce::AudioSampleBuffer& getControlBuffer(size_t index);
-  std::unique_ptr<AnthemEventBuffer>& getEventBuffer(size_t index);
+  std::unique_ptr<EventBuffer>& getEventBuffer(size_t index);
 
   // Allocates a live note ID using the shared runtime service layer.
-  AnthemLiveNoteId rt_allocateLiveNoteId();
+  LiveNoteId rt_allocateLiveNoteId();
 
   // Gives owned node contexts a chance to release any non-RAII runtime state
   // before this graph context is destroyed.
   void cleanup();
 };
+
+} // namespace anthem

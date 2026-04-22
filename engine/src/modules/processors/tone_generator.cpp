@@ -19,11 +19,13 @@
 
 #include "tone_generator.h"
 
-#include "modules/core/anthem.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/core/engine.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 
 #include <cmath>
 #include <iostream>
+
+namespace anthem {
 
 namespace {
 constexpr float kMinFrequencyHz = 1.0f;
@@ -31,7 +33,7 @@ constexpr float kMaxFrequencyHz = 22500.0f;
 } // namespace
 
 ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModelImpl& _impl)
-  : AnthemProcessor("ToneGenerator"), ToneGeneratorProcessorModelBase(_impl) {
+  : Processor("ToneGenerator"), ToneGeneratorProcessorModelBase(_impl) {
   phase = 0;
 
   hasNoteOverride = false;
@@ -41,12 +43,12 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
 ToneGeneratorProcessor::~ToneGeneratorProcessor() {}
 
 void ToneGeneratorProcessor::prepareToProcess() {
-  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
+  auto* currentDevice = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
   sampleRate = currentDevice->getCurrentSampleRate();
 }
 
-void ToneGeneratorProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
+void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioOutBuffer =
       context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
 
@@ -62,7 +64,7 @@ void ToneGeneratorProcessor::process(AnthemNodeProcessContext& context, int numS
   for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
     auto& liveEvent = eventInBuffer->getEvent(i);
 
-    if (liveEvent.event.type == AnthemEventType::NoteOn) {
+    if (liveEvent.event.type == EventType::NoteOn) {
       hasNoteOverride = true;
       noteOverride = liveEvent.event.noteOn.pitch;
 
@@ -99,8 +101,10 @@ void ToneGeneratorProcessor::process(AnthemNodeProcessContext& context, int numS
 }
 
 void ToneGeneratorProcessor::initialize(
-    std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) {
+    std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) {
   ToneGeneratorProcessorModelBase::initialize(selfModel, parentModel);
 
   // Empty for now...
 }
+
+} // namespace anthem

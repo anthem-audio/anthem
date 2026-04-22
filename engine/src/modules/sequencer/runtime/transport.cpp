@@ -19,14 +19,15 @@
 
 #include "transport.h"
 
-#include "modules/core/anthem.h"
 #include "modules/util/intentionally_leak.h"
 
 #include <unordered_map>
 
+namespace anthem {
+
 namespace {
 using TrackToJumpEventsMap = std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>>;
-using ActiveNotesForTrack = std::unordered_map<AnthemSourceNoteId, AnthemNoteOnEvent>;
+using ActiveNotesForTrack = std::unordered_map<SourceNoteId, NoteOnEvent>;
 using TrackToActiveNotesMap = std::unordered_map<int64_t, ActiveNotesForTrack>;
 
 template <std::size_t queueSize, typename T>
@@ -51,7 +52,7 @@ template <typename Callback>
 void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
     std::optional<int64_t> activeTrackId,
     Callback&& callback) {
-  auto noTrackIter = sequence.tracks.find(anthem_sequencer_track_ids::noTrack);
+  auto noTrackIter = sequence.tracks.find(sequencer_track_ids::noTrack);
   if (noTrackIter != sequence.tracks.end()) {
     if (activeTrackId.has_value()) {
       callback(activeTrackId.value(), noTrackIter->second->events);
@@ -65,7 +66,7 @@ void forEachPlayableTrackEventList(const SequenceEventListCollection& sequence,
 }
 
 bool shouldApplySequenceEventToActiveNoteSnapshot(
-    const AnthemSequenceEvent& sequenceEvent, double position) {
+    const SequenceEvent& sequenceEvent, double position) {
   if (sequenceEvent.offset < position) {
     return true;
   }
@@ -80,11 +81,11 @@ bool shouldApplySequenceEventToActiveNoteSnapshot(
   // We intentionally use the enum sort order here instead of `!= NoteOn`.
   // `NoteOff` is defined to sort before `NoteOn`, so only events ordered before
   // `NoteOn` should affect the "active at position" snapshot.
-  return sequenceEvent.event.type < AnthemEventType::NoteOn;
+  return sequenceEvent.event.type < EventType::NoteOn;
 }
 
 ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
-    const std::vector<AnthemSequenceEvent>& events, double position) {
+    const std::vector<SequenceEvent>& events, double position) {
   auto activeNotes = ActiveNotesForTrack();
 
   for (const auto& sequenceEvent : events) {
@@ -92,9 +93,9 @@ ActiveNotesForTrack collectNotesActiveAtPositionForTrack(
       break;
     }
 
-    if (sequenceEvent.event.type == AnthemEventType::NoteOn) {
+    if (sequenceEvent.event.type == EventType::NoteOn) {
       activeNotes.insert_or_assign(sequenceEvent.sourceId, sequenceEvent.event.noteOn);
-    } else if (sequenceEvent.event.type == AnthemEventType::NoteOff) {
+    } else if (sequenceEvent.event.type == EventType::NoteOff) {
       activeNotes.erase(sequenceEvent.sourceId);
     }
   }
@@ -110,7 +111,7 @@ TrackToActiveNotesMap collectNotesActiveAtPositionForSequence(
 
   forEachPlayableTrackEventList(sequence,
       activeTrackId,
-      [&](int64_t destinationTrackId, const std::vector<AnthemSequenceEvent>& events) {
+      [&](int64_t destinationTrackId, const std::vector<SequenceEvent>& events) {
         auto activeNotes = collectNotesActiveAtPositionForTrack(events, position);
         if (!activeNotes.empty()) {
           collector.insert_or_assign(destinationTrackId, std::move(activeNotes));
@@ -127,7 +128,7 @@ void appendStartEvents(
     for (const auto& [sourceId, noteOn] : activeNotes) {
       events.push_back(PlayheadJumpSequenceEvent{
           .sequenceNoteId = sourceId,
-          .event = AnthemEvent(noteOn),
+          .event = Event(noteOn),
       });
     }
   }
@@ -147,7 +148,13 @@ PlayheadJumpEvent buildPlayheadJumpEvent(const SequenceEventListCollection& sequ
   return event;
 }
 
-Transport::Transport() : rt_playhead{0.0}, rt_sampleCounter{0} {
+Transport::Transport(
+    std::unique_ptr<TransportProjectView> projectView, std::unique_ptr<TransportClock> clock)
+  : projectView(std::move(projectView)), clock(std::move(clock)), sampleRate{0.0}, rt_playhead{0.0},
+    rt_sampleCounter{0} {
+  jassert(this->projectView != nullptr);
+  jassert(this->clock != nullptr);
+
   rt_config = new TransportConfig();
 
   sendConfigToAudioThread();
@@ -181,20 +188,19 @@ void Transport::setIsPlaying(bool isPlaying) {
   sendConfigToAudioThread();
 }
 
-void Transport::setActiveSequenceId(std::optional<int64_t>& sequenceId) {
+void Transport::setActiveSequenceId(const std::optional<int64_t>& sequenceId) {
   config.activeSequenceId = sequenceId;
   updateLoopPoints(false);
   updatePlayheadJumpEventForStart(false);
   sendConfigToAudioThread();
 }
 
-void Transport::setActiveTrackId(std::optional<int64_t>& trackId) {
+void Transport::setActiveTrackId(const std::optional<int64_t>& trackId) {
   config.activeTrackId = trackId;
 
   bool shouldRebuildJumpEvents = false;
   if (config.activeSequenceId.has_value()) {
-    auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
-    shouldRebuildJumpEvents = patterns.find(config.activeSequenceId.value()) != patterns.end();
+    shouldRebuildJumpEvents = projectView->isPatternSequence(config.activeSequenceId.value());
   }
 
   if (shouldRebuildJumpEvents) {
@@ -216,10 +222,7 @@ void Transport::setBeatsPerMinute(double beatsPerMinute) {
 }
 
 void Transport::prepareToProcess() {
-  auto* currentDevice = Anthem::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
-  sampleRate = currentDevice->getCurrentSampleRate();
-
+  sampleRate = clock->currentSampleRate();
   rt_sampleCounter = 0;
 }
 
@@ -336,8 +339,7 @@ PlayheadJumpEvent Transport::createPlayheadJumpEvent(double playheadPosition) {
   }
 
   const auto activeSequenceId = *config.activeSequenceId;
-  auto* compiledSequence =
-      Anthem::getInstance().sequenceStore->getSequenceEventList(activeSequenceId);
+  auto* compiledSequence = projectView->compiledSequence(activeSequenceId);
 
   if (compiledSequence == nullptr) {
     return event;
@@ -400,29 +402,9 @@ void Transport::updateLoopPoints(bool send) {
   }
 
   const auto activeSequenceId = *config.activeSequenceId;
-  auto& patterns = *Anthem::getInstance().project->sequence()->patterns();
-  auto& arrangements = *Anthem::getInstance().project->sequence()->arrangements();
+  auto loopPoints = projectView->lookupLoopPoints(activeSequenceId);
 
-  std::shared_ptr<LoopPointsModel> loopPoints;
-
-  if (auto patternIt = patterns.find(activeSequenceId); patternIt != patterns.end()) {
-    auto& patternLoopPoints = patternIt->second->loopPoints();
-    if (patternLoopPoints.has_value()) {
-      loopPoints = *patternLoopPoints;
-    }
-  }
-
-  if (loopPoints == nullptr) {
-    if (auto arrangementIt = arrangements.find(activeSequenceId);
-        arrangementIt != arrangements.end()) {
-      auto& arrangementLoopPoints = arrangementIt->second->loopPoints();
-      if (arrangementLoopPoints.has_value()) {
-        loopPoints = *arrangementLoopPoints;
-      }
-    }
-  }
-
-  if (loopPoints == nullptr) {
+  if (!loopPoints.has_value()) {
     clearLoopPoints();
 
     if (send) {
@@ -433,8 +415,8 @@ void Transport::updateLoopPoints(bool send) {
   }
 
   config.hasLoop = true;
-  config.loopStart = static_cast<double>(loopPoints->start());
-  config.loopEnd = static_cast<double>(loopPoints->end());
+  config.loopStart = loopPoints->start;
+  config.loopEnd = loopPoints->end;
   config.playheadJumpEventForLoop = createPlayheadJumpEvent(static_cast<double>(config.loopStart));
 
   if (send) {
@@ -459,3 +441,5 @@ void Transport::sendConfigToAudioThread() {
     delete configCopy;
   }
 }
+
+} // namespace anthem

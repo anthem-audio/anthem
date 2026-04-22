@@ -431,9 +431,9 @@ ${skipFileForWasm ? '#ifndef __EMSCRIPTEN__' : ''}
 #include <rfl/json.hpp>
 #include <rfl.hpp>
 
-#include "modules/codegen_helpers/anthem_model_base.h"
-#include "modules/codegen_helpers/anthem_model_vector.h"
-#include "modules/codegen_helpers/anthem_model_unordered_map.h"
+#include "modules/codegen_helpers/model_base.h"
+#include "modules/codegen_helpers/model_vector.h"
+#include "modules/codegen_helpers/model_unordered_map.h"
 
 ''';
 
@@ -462,6 +462,17 @@ ${skipFileForWasm ? '#ifndef __EMSCRIPTEN__' : ''}
 
       cppCodeToWrite += '\n';
 
+      if (functionDefinitions.isNotEmpty) {
+        cppCodeToWrite += 'namespace anthem {\n\n';
+      }
+
+      for (final import in moduleFileImports) {
+        headerCodeToWrite += import;
+        headerCodeToWrite += '\n';
+      }
+
+      headerCodeToWrite += '\nnamespace anthem {\n\n';
+
       // We forward declare all enums and structs at the top of the file, to
       // ensure that order doesn't matter when actually defining the structs and
       // enums.
@@ -481,11 +492,6 @@ ${skipFileForWasm ? '#ifndef __EMSCRIPTEN__' : ''}
         headerCodeToWrite += '\n';
       }
 
-      for (final import in moduleFileImports) {
-        headerCodeToWrite += import;
-        headerCodeToWrite += '\n';
-      }
-
       headerCodeToWrite += '\n';
 
       // The rest of the code blocks are the structs and enums themselves.
@@ -497,6 +503,12 @@ ${skipFileForWasm ? '#ifndef __EMSCRIPTEN__' : ''}
       for (final functionDefinition in functionDefinitions) {
         cppCodeToWrite += functionDefinition;
         cppCodeToWrite += '\n';
+      }
+
+      headerCodeToWrite += '\n} // namespace anthem\n';
+
+      if (functionDefinitions.isNotEmpty) {
+        cppCodeToWrite += '\n} // namespace anthem\n';
       }
 
       if (skipFileForWasm) {
@@ -661,7 +673,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
       forwardDeclarations.add('class $outwardFacingClassName;');
     }
 
-    writer.writeLine('class $className$baseSuffix : public AnthemModelBase {');
+    writer.writeLine('class $className$baseSuffix : public ModelBase {');
     writer.writeLine('public:');
     writer.incrementWhitespace();
 
@@ -712,7 +724,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
     writer.writeLine();
 
     writer.writeLine(
-      'virtual void initialize(std::shared_ptr<AnthemModelBase> selfModel, std::shared_ptr<AnthemModelBase> parentModel) override;',
+      'virtual void initialize(std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;',
     );
     writer.writeLine();
 
@@ -813,8 +825,10 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
     }
 
     final baseClassName = modelClassInfo.annotatedClass.name!;
+    final baseFieldName =
+        baseClassName[0].toLowerCase() + baseClassName.substring(1);
     writer.writeLine(
-      'rfl::Flatten<${baseClassName}Base> ${baseClassName[0].toLowerCase() + baseClassName.substring(1)}Base;',
+      'rfl::Flatten<${baseClassName}Base> ${baseFieldName}Base;',
     );
 
     writer.decrementWhitespace();

@@ -22,4 +22,8 @@
 // Deliberately loses ownership of a heap allocation after a bounded real-time
 // handoff queue overflows. This keeps cleanup policy centralized so the queue
 // sites can stay explicit without repeating analyzer suppressions.
+namespace anthem {
+
 void intentionallyLeak(void* ptr);
+
+} // namespace anthem

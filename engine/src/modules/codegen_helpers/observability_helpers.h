@@ -19,6 +19,8 @@
 
 #pragma once
 
+namespace anthem {
+
 struct ObserverHandle {
   size_t id;
 };
@@ -47,3 +49,5 @@ private:
   size_t nextId = 0;
   std::unordered_map<size_t, std::function<void(const T&)>> observers;
 };
+
+} // namespace anthem

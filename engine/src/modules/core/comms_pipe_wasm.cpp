@@ -21,16 +21,18 @@
 
 #include "comms_pipe_wasm.h"
 
-int AnthemPipeWasm::connect(juce::String address, int port, int timeoutMs) {
+namespace anthem {
+
+int PipeWasm::connect(juce::String address, int port, int timeoutMs) {
   isConnectedFlag = true;
   return 1;
 }
 
-int AnthemPipeWasm::waitUntilReady(bool forRead, int timeoutMs) {
+int PipeWasm::waitUntilReady(bool forRead, int timeoutMs) {
   return 1; // always ready
 }
 
-int AnthemPipeWasm::read(void* destBuffer, int maxBytesToRead, bool shouldBlock) {
+int PipeWasm::read(void* destBuffer, int maxBytesToRead, bool shouldBlock) {
   int bytesWritten = 0;
 
   while (bytesWritten < maxBytesToRead) {
@@ -45,7 +47,7 @@ int AnthemPipeWasm::read(void* destBuffer, int maxBytesToRead, bool shouldBlock)
   return bytesWritten;
 }
 
-int AnthemPipeWasm::write(const void* sourceBuffer, int numBytesToWrite) {
+int PipeWasm::write(const void* sourceBuffer, int numBytesToWrite) {
   int bytesWritten = 0;
 
   for (int i = 0; i < numBytesToWrite; i++) {
@@ -64,8 +66,10 @@ int AnthemPipeWasm::write(const void* sourceBuffer, int numBytesToWrite) {
   return bytesWritten;
 }
 
-bool AnthemPipeWasm::isConnected() const {
+bool PipeWasm::isConnected() const {
   return isConnectedFlag;
 }
+
+} // namespace anthem
 
 #endif // #ifdef __EMSCRIPTEN__

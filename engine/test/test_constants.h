@@ -22,6 +22,8 @@
 #include <format>
 #include <string>
 
+namespace anthem {
+
 class TestConstants {
 public:
   static std::string getEmptyProjectJson() {
@@ -75,3 +77,5 @@ public:
     return oss.str();
   }
 };
+
+} // namespace anthem

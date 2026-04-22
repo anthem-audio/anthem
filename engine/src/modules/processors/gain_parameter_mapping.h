@@ -34,6 +34,8 @@
 // implementations and validates that they are identical (besides floating point
 // precision differences).
 
+namespace anthem {
+
 constexpr double kGainParameterLinearSectionCeilingDb = -180.0;
 constexpr double kGainParameterCurveSectionCeilingDb = -36.0;
 constexpr double kGainParameterDbCeiling = 12.0;
@@ -117,3 +119,5 @@ inline float gainDbToParameterValue(float db) {
 inline float gainParameterValueToLinear(float parameterValue) {
   return gainDbToLinear(gainParameterValueToDb(parameterValue));
 }
+
+} // namespace anthem

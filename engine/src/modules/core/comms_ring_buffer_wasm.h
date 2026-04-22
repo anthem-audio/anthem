@@ -31,6 +31,8 @@
 // This is a ring buffer for communicating with the UI. The UI is expected to
 // hook into this memory and use it via the Atomics API. One side writes while
 // the other reads.
+namespace anthem {
+
 class CommsRingBufferWasm {
 public:
   uint32_t head;
@@ -100,5 +102,7 @@ public:
     emscripten_atomic_notify(&ticket, 1);
   }
 };
+
+} // namespace anthem
 
 #endif // #ifdef __EMSCRIPTEN__

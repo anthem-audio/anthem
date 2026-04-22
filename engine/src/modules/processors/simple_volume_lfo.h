@@ -20,9 +20,11 @@
 #pragma once
 
 #include "generated/lib/model/processing_graph/processors/simple_volume_lfo.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 
-class SimpleVolumeLfoProcessor : public AnthemProcessor, public SimpleVolumeLfoProcessorModelBase {
+namespace anthem {
+
+class SimpleVolumeLfoProcessor : public Processor, public SimpleVolumeLfoProcessorModelBase {
 private:
   friend class SimpleVolumeLfoTest;
 
@@ -46,5 +48,7 @@ public:
   SimpleVolumeLfoProcessor& operator=(SimpleVolumeLfoProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 };
+
+} // namespace anthem

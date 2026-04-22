@@ -20,6 +20,10 @@
 #pragma once
 
 #include "messages/messages.h"
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
+
+namespace anthem {
 
 std::optional<Response> handleProcessingGraphCommand(Request& request);
+
+} // namespace anthem

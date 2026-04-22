@@ -22,7 +22,7 @@
 #include "bw_math.h"
 #include "generated/lib/model/processing_graph/processors/db_meter.h"
 #include "modules/core/visualization/visualization_provider.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/util/ring_buffer.h"
 
 #include <atomic>
@@ -30,6 +30,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+
+namespace anthem {
 
 class DbMeterVisualizationProvider
   : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
@@ -46,7 +48,7 @@ public:
   void rt_pushValue(double value, int64_t sampleTimestamp);
 };
 
-class DbMeterProcessor : public AnthemProcessor, public DbMeterProcessorModelBase {
+class DbMeterProcessor : public Processor, public DbMeterProcessorModelBase {
 private:
   std::vector<std::shared_ptr<DbMeterVisualizationProvider>> channelProviders;
   std::vector<std::string> registeredVisualizationIds;
@@ -76,8 +78,10 @@ public:
   DbMeterProcessor& operator=(DbMeterProcessor&&) noexcept = default;
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override;
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 };
+
+} // namespace anthem

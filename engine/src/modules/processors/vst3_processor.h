@@ -22,10 +22,12 @@
 #ifndef __EMSCRIPTEN__
 
 #include "generated/lib/model/processing_graph/processors/vst3_processor.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/processor/processor.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
+
+namespace anthem {
 
 class PluginEditorWindow : public juce::DocumentWindow {
 public:
@@ -138,7 +140,7 @@ public:
   DecoratorConstrainer constrainer;
 };
 
-class VST3Processor : public AnthemProcessor,
+class VST3Processor : public Processor,
                       public VST3ProcessorModelBase,
                       public juce::AudioProcessorListener {
 private:
@@ -164,10 +166,10 @@ public:
   VST3Processor& operator=(VST3Processor&&) noexcept = delete;
 
   void prepareToProcess() override;
-  void process(AnthemNodeProcessContext& context, int numSamples) override;
+  void process(NodeProcessContext& context, int numSamples) override;
 
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override;
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 
   void tryInitializePlugin();
 
@@ -179,5 +181,7 @@ public:
   void getState(juce::MemoryBlock& target) override;
   void setState(const juce::MemoryBlock& state) override;
 };
+
+} // namespace anthem
 
 #endif // #ifndef __EMSCRIPTEN__

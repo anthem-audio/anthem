@@ -19,13 +19,15 @@
 
 #pragma once
 
-#include "anthem_model_base.h"
+#include "model_base.h"
 
 #include <iterator>
 #include <memory>
 #include <vector>
 
-template <typename T> class AnthemModelVector : public AnthemModelBase {
+namespace anthem {
+
+template <typename T> class ModelVector : public ModelBase {
 private:
   // The internal vector
   std::vector<T> data;
@@ -34,14 +36,14 @@ private:
   template <typename U> struct IsSharedPtrOfAnthemModelBase : std::false_type {};
 
   template <typename U>
-  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>> : std::is_base_of<AnthemModelBase, U> {};
+  struct IsSharedPtrOfAnthemModelBase<std::shared_ptr<U>> : std::is_base_of<ModelBase, U> {};
 
   // Helper to check if T is std::optional<std::shared_ptr<U>> where U derives from AnthemModelBase
   template <typename U> struct IsOptionalSharedPtrOfAnthemModelBase : std::false_type {};
 
   template <typename U>
   struct IsOptionalSharedPtrOfAnthemModelBase<std::optional<std::shared_ptr<U>>>
-    : std::is_base_of<AnthemModelBase, U> {};
+    : std::is_base_of<ModelBase, U> {};
 
   static constexpr bool isAnthemModelBase =
       IsSharedPtrOfAnthemModelBase<T>::value || IsOptionalSharedPtrOfAnthemModelBase<T>::value;
@@ -66,28 +68,28 @@ private:
   }
 public:
   // Constructors
-  AnthemModelVector() : data() {}
+  ModelVector() : data() {}
 
   // Copy constructor
-  AnthemModelVector(const AnthemModelVector& other) : data(other.data) {}
+  ModelVector(const ModelVector& other) : data(other.data) {}
 
   // Move constructor
-  AnthemModelVector(AnthemModelVector&& other) noexcept : data(std::move(other.data)) {}
+  ModelVector(ModelVector&& other) noexcept : data(std::move(other.data)) {}
 
   // Copy assignment operator
-  AnthemModelVector& operator=(const AnthemModelVector& other) {
+  ModelVector& operator=(const ModelVector& other) {
     data = other.data;
     return *this;
   }
 
   // Move assignment operator
-  AnthemModelVector& operator=(AnthemModelVector&& other) noexcept {
+  ModelVector& operator=(ModelVector&& other) noexcept {
     data = std::move(other.data);
     return *this;
   }
 
   // Range constructor
-  template <typename InputIt> AnthemModelVector(InputIt first, InputIt last) : data(first, last) {}
+  template <typename InputIt> ModelVector(InputIt first, InputIt last) : data(first, last) {}
 
   // Access operators
   T& operator[](size_t index) {
@@ -250,7 +252,7 @@ public:
   }
 
   // Swap method
-  void swap(AnthemModelVector& other) noexcept(std::is_nothrow_swappable_v<std::vector<T>>) {
+  void swap(ModelVector& other) noexcept(std::is_nothrow_swappable_v<std::vector<T>>) {
     data.swap(other.data);
   }
 
@@ -295,10 +297,10 @@ public:
   }
 
   // Comparison operators
-  bool operator==(const AnthemModelVector& other) const {
+  bool operator==(const ModelVector& other) const {
     return data == other.data;
   }
-  bool operator!=(const AnthemModelVector& other) const {
+  bool operator!=(const ModelVector& other) const {
     return data != other.data;
   }
 
@@ -308,9 +310,9 @@ public:
   // cross-compiler portability risk, but this body is the same constexpr-
   // guarded implementation for every instantiation we generate.
   // NOLINTNEXTLINE(portability-template-virtual-member-function)
-  void initialize(std::shared_ptr<AnthemModelBase> selfModel,
-      std::shared_ptr<AnthemModelBase> parentModel) override {
-    AnthemModelBase::initialize(selfModel, parentModel);
+  void initialize(
+      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override {
+    ModelBase::initialize(selfModel, parentModel);
 
     // Initialize all elements in the vector, if applicable
     if constexpr (isAnthemModelBase) {
@@ -321,17 +323,19 @@ public:
   }
 };
 
+} // namespace anthem
+
 namespace rfl {
-template <typename T> struct Reflector<AnthemModelVector<T>> {
+template <typename T> struct Reflector<anthem::ModelVector<T>> {
   using ReflType = std::vector<T>;
 
-  static AnthemModelVector<T> to(const ReflType& value) {
+  static anthem::ModelVector<T> to(const ReflType& value) {
     // Unfortunately, we have to copy here. We use shared_ptr for nontrivial
     // data in collections, so this is mostly fine, but not optimal.
-    return AnthemModelVector<T>(value.begin(), value.end());
+    return anthem::ModelVector<T>(value.begin(), value.end());
   }
 
-  static ReflType from(const AnthemModelVector<T>& value) {
+  static ReflType from(const anthem::ModelVector<T>& value) {
     return ReflType(value.begin(), value.end());
   }
 };

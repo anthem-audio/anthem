@@ -19,10 +19,12 @@
 
 #include "runtime_sequence_store.h"
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 #include "modules/util/intentionally_leak.h"
 
 #include <algorithm>
+
+namespace anthem {
 
 namespace {
 void retain(SequenceEventList* track) {
@@ -251,7 +253,7 @@ void SequenceStoreSnapshot::removeSequence(EntityId sequenceId) {
   sequences.erase(existingSequence);
 }
 
-void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
+void RuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   auto result = mapUpdateQueue.read();
 
   double playheadStart = -1; // inclusive
@@ -266,7 +268,7 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   double loopStartRangeEnd = -1;
 
   if (result.has_value()) {
-    auto& transport = *Anthem::getInstance().transport;
+    auto& transport = *Engine::getInstance().transport;
     double advanceAmount = transport.rt_getPlayheadAdvanceAmount(bufferSize);
     playheadStart = transport.rt_playhead;
     playheadEnd = playheadStart + advanceAmount;
@@ -300,7 +302,7 @@ void AnthemRuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   }
 }
 
-const SequenceEventListCollection* AnthemRuntimeSequenceStore::getSequenceEventList(
+const SequenceEventListCollection* RuntimeSequenceStore::getSequenceEventList(
     EntityId sequenceId) const {
   auto it = eventLists->sequences.find(sequenceId);
   if (it == eventLists->sequences.end()) {
@@ -310,11 +312,11 @@ const SequenceEventListCollection* AnthemRuntimeSequenceStore::getSequenceEventL
   return it->second;
 }
 
-SequenceStoreSnapshot& AnthemRuntimeSequenceStore::rt_getEventLists() {
+SequenceStoreSnapshot& RuntimeSequenceStore::rt_getEventLists() {
   return *rt_eventLists;
 }
 
-AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
+RuntimeSequenceStore::RuntimeSequenceStore()
   : clearDeletionQueueTimedCallback(
         juce::TimedCallback([this]() { this->processDeletionQueues(); })) {
   eventLists = new SequenceStoreSnapshot();
@@ -323,7 +325,7 @@ AnthemRuntimeSequenceStore::AnthemRuntimeSequenceStore()
 
 // The audio thread must be stopped before destruction. This drains handoff
 // queues and deletes both main-thread and audio-thread snapshots.
-AnthemRuntimeSequenceStore::~AnthemRuntimeSequenceStore() {
+RuntimeSequenceStore::~RuntimeSequenceStore() {
   clearDeletionQueueTimedCallback.stopTimer();
 
   processDeletionQueues();
@@ -349,7 +351,7 @@ AnthemRuntimeSequenceStore::~AnthemRuntimeSequenceStore() {
   rt_eventLists = nullptr;
 }
 
-void AnthemRuntimeSequenceStore::processDeletionQueues() {
+void RuntimeSequenceStore::processDeletionQueues() {
   auto nextSnapshot = mapDeletionQueue.read();
 
   while (nextSnapshot.has_value()) {
@@ -358,11 +360,11 @@ void AnthemRuntimeSequenceStore::processDeletionQueues() {
   }
 }
 
-void AnthemRuntimeSequenceStore::registerDeletionTimer() {
+void RuntimeSequenceStore::registerDeletionTimer() {
   clearDeletionQueueTimedCallback.startTimer(500);
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateSequence(
+void RuntimeSequenceStore::addOrUpdateSequence(
     EntityId sequenceId, const SequenceEventListCollection& sequence) {
   auto* newSnapshot = eventLists->clone();
   auto* newSequence = sequence.clone();
@@ -372,7 +374,7 @@ void AnthemRuntimeSequenceStore::addOrUpdateSequence(
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void AnthemRuntimeSequenceStore::removeSequence(EntityId sequenceId) {
+void RuntimeSequenceStore::removeSequence(EntityId sequenceId) {
   if (eventLists->sequences.find(sequenceId) == eventLists->sequences.end()) {
     return;
   }
@@ -383,7 +385,7 @@ void AnthemRuntimeSequenceStore::removeSequence(EntityId sequenceId) {
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
+void RuntimeSequenceStore::addOrUpdateTrackInSequence(
     EntityId sequenceId, EntityId trackId, const SequenceEventList& track) {
   auto* newSnapshot = eventLists->clone();
 
@@ -406,7 +408,7 @@ void AnthemRuntimeSequenceStore::addOrUpdateTrackInSequence(
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void AnthemRuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, EntityId trackId) {
+void RuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, EntityId trackId) {
   auto sequenceIter = eventLists->sequences.find(sequenceId);
   if (sequenceIter == eventLists->sequences.end()) {
     return;
@@ -424,7 +426,7 @@ void AnthemRuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, En
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
+void RuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
   auto* newSnapshot = eventLists->clone();
 
   for (auto& [sequenceId, sequence] : eventLists->sequences) {
@@ -440,10 +442,12 @@ void AnthemRuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void AnthemRuntimeSequenceStore::rt_cleanupAfterBlock() {
+void RuntimeSequenceStore::rt_cleanupAfterBlock() {
   for (auto& [sequenceId, sequence] : rt_eventLists->sequences) {
     for (auto& [trackId, trackEvents] : sequence->tracks) {
       trackEvents->rt_invalidationOccurred = false;
     }
   }
 }
+
+} // namespace anthem

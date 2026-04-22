@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 - 2026 Joshua Wade
+  Copyright (C) 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,10 +17,22 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_compilation_result.h"
+#pragma once
 
-void AnthemGraphCompilationResult::cleanup() {
-  if (graphProcessContext != nullptr) {
-    graphProcessContext->cleanup();
-  }
+#include "modules/sequencer/runtime/transport.h"
+
+#include <memory>
+
+namespace juce {
+class AudioDeviceManager;
 }
+
+namespace anthem {
+
+class Engine;
+
+std::unique_ptr<TransportProjectView> createTransportProjectView(Engine& engine);
+
+std::unique_ptr<TransportClock> createTransportClock(juce::AudioDeviceManager& audioDeviceManager);
+
+} // namespace anthem

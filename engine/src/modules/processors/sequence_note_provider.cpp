@@ -19,13 +19,15 @@
 
 #include "sequence_note_provider.h"
 
-#include "modules/core/anthem.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/core/engine.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
+
+namespace anthem {
 
 SequenceNoteProviderProcessor::SequenceNoteProviderProcessor(
     const SequenceNoteProviderProcessorModelImpl& _impl)
-  : AnthemProcessor("SequenceNoteProvider"), SequenceNoteProviderProcessorModelBase(_impl) {}
+  : Processor("SequenceNoteProvider"), SequenceNoteProviderProcessorModelBase(_impl) {}
 
 SequenceNoteProviderProcessor::~SequenceNoteProviderProcessor() {
   // Nothing to do here
@@ -41,9 +43,9 @@ const SequenceEventList* SequenceNoteProviderProcessor::rt_getSourceTrackEvents(
   if (dependencies.rt_activeTrackId.has_value() &&
       dependencies.rt_activeTrackId.value() == trackId) {
     auto noTrackEventListIter =
-        dependencies.rt_activeSequence->tracks.find(anthem_sequencer_track_ids::noTrack);
+        dependencies.rt_activeSequence->tracks.find(sequencer_track_ids::noTrack);
     if (noTrackEventListIter != dependencies.rt_activeSequence->tracks.end()) {
-      sourceTrackId = anthem_sequencer_track_ids::noTrack;
+      sourceTrackId = sequencer_track_ids::noTrack;
     }
   }
 
@@ -56,25 +58,25 @@ const SequenceEventList* SequenceNoteProviderProcessor::rt_getSourceTrackEvents(
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
-    AnthemEventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset) {
-  targetBuffer.addEvent(AnthemLiveEvent{
+    EventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset) {
+  targetBuffer.addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = trackedNote.liveId,
-      .event = AnthemEvent(AnthemNoteOffEvent(trackedNote.pitch, trackedNote.channel, 0.0f)),
+      .event = Event(NoteOffEvent(trackedNote.pitch, trackedNote.channel, 0.0f)),
   });
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffsForAllTrackedNotes(
-    RuntimeState& state, AnthemEventBuffer& targetBuffer, double sampleOffset) {
+    RuntimeState& state, EventBuffer& targetBuffer, double sampleOffset) {
   state.rt_activeSequenceNotes.rt_takeAll([&](const TrackedNote& trackedNote) {
     rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote, sampleOffset);
   });
 }
 
 void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state,
-    AnthemEventBuffer& targetBuffer,
-    AnthemSourceNoteId sourceId,
-    const AnthemNoteOffEvent& noteOffEvent,
+    EventBuffer& targetBuffer,
+    SourceNoteId sourceId,
+    const NoteOffEvent& noteOffEvent,
     double sampleOffset) {
   auto trackedNote = state.rt_activeSequenceNotes.rt_takeByInputId(sourceId);
   if (trackedNote.has_value()) {
@@ -82,11 +84,10 @@ void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state
     return;
   }
 
-  targetBuffer.addEvent(AnthemLiveEvent{
+  targetBuffer.addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
-      .liveId = anthemInvalidLiveNoteId,
-      .event = AnthemEvent(
-          AnthemNoteOffEvent(noteOffEvent.pitch, noteOffEvent.channel, noteOffEvent.velocity)),
+      .liveId = invalidLiveNoteId,
+      .event = Event(NoteOffEvent(noteOffEvent.pitch, noteOffEvent.channel, noteOffEvent.velocity)),
   });
 }
 
@@ -94,14 +95,14 @@ void SequenceNoteProviderProcessor::prepareToProcess() {
   // Nothing to do here
 }
 
-void SequenceNoteProviderProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
+void SequenceNoteProviderProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& outputEventBuffer =
       context.getOutputEventBuffer(SequenceNoteProviderProcessorModelBase::eventOutputPortId);
 
   auto& trackId = this->trackId();
-  auto& transport = Anthem::getInstance().transport;
+  auto& transport = Engine::getInstance().transport;
   const auto* config = transport->rt_config;
-  auto& sequenceStore = *Anthem::getInstance().sequenceStore;
+  auto& sequenceStore = *Engine::getInstance().sequenceStore;
 
   const SequenceEventListCollection* activeSequence = nullptr;
   if (config->activeSequenceId.has_value()) {
@@ -131,3 +132,5 @@ void SequenceNoteProviderProcessor::process(AnthemNodeProcessContext& context, i
     return context.rt_allocateLiveNoteId();
   });
 }
+
+} // namespace anthem

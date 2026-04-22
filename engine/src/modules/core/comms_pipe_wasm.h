@@ -31,15 +31,17 @@
 
 #include <juce_core/juce_core.h>
 
-class AnthemPipeWasm {
+namespace anthem {
+
+class PipeWasm {
 private:
   bool isConnectedFlag = false;
 public:
   CommsRingBufferWasm readBuffer;
   CommsRingBufferWasm writeBuffer;
 
-  AnthemPipeWasm() : readBuffer(65536), writeBuffer(65536) {}
-  ~AnthemPipeWasm() {}
+  PipeWasm() : readBuffer(65536), writeBuffer(65536) {}
+  ~PipeWasm() {}
 
   int connect(juce::String address, int port, int timeoutMs = 0);
 
@@ -51,5 +53,7 @@ public:
 
   bool isConnected() const;
 };
+
+} // namespace anthem
 
 #endif // #ifdef __EMSCRIPTEN__

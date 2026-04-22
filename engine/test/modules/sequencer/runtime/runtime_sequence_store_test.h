@@ -19,8 +19,15 @@
 
 #pragma once
 
+#include "modules/core/engine.h"
 #include "modules/sequencer/events/event.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
+#include "modules/sequencer/runtime/transport.h"
+
+#include <memory>
+#include <optional>
+
+namespace anthem {
 
 class RuntimeSequenceStoreTest : public juce::UnitTest {
   static constexpr EntityId sequence1Id = 1;
@@ -29,7 +36,63 @@ class RuntimeSequenceStoreTest : public juce::UnitTest {
   static constexpr EntityId track1Id = 11;
   static constexpr EntityId track2Id = 12;
 
-  void applyPendingRtUpdates(AnthemRuntimeSequenceStore* store) {
+  struct FakeProjectView : TransportProjectView {
+    std::optional<LoopPointsSnapshot> loopPoints;
+
+    std::optional<LoopPointsSnapshot> lookupLoopPoints(int64_t /* sequenceId */) const override {
+      return loopPoints;
+    }
+
+    bool isPatternSequence(int64_t /* sequenceId */) const override {
+      return false;
+    }
+
+    const SequenceEventListCollection* compiledSequence(int64_t /* sequenceId */) const override {
+      return nullptr;
+    }
+  };
+
+  struct FakeClock : TransportClock {
+    double currentSampleRate() const override {
+      return 48000.0;
+    }
+  };
+
+  void installTransport(std::optional<LoopPointsSnapshot> loopPoints = std::nullopt) {
+    Engine::cleanup();
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    projectView->loopPoints = loopPoints;
+
+    auto& engine = Engine::getInstance();
+    engine.transport =
+        std::make_unique<Transport>(std::move(projectView), std::make_unique<FakeClock>());
+    engine.transport->prepareToProcess();
+  }
+
+  void preparePlayingTransport(
+      double playheadPosition, std::optional<LoopPointsSnapshot> loopPoints = std::nullopt) {
+    installTransport(loopPoints);
+
+    auto& transport = *Engine::getInstance().transport;
+
+    if (loopPoints.has_value()) {
+      std::optional<int64_t> activeSequenceId = sequence1Id;
+      transport.setActiveSequenceId(activeSequenceId);
+    }
+
+    transport.setIsPlaying(true);
+    transport.rt_prepareForProcessingBlock();
+    transport.rt_playhead = playheadPosition;
+  }
+
+  SequenceEventList createTrackWithInvalidation(double start, double end) {
+    SequenceEventList track;
+    track.invalidationRanges.emplace_back(start, end);
+    return track;
+  }
+
+  void applyPendingRtUpdates(RuntimeSequenceStore* store) {
     auto nextMap = store->mapUpdateQueue.read();
 
     while (nextMap.has_value()) {
@@ -43,23 +106,42 @@ class RuntimeSequenceStoreTest : public juce::UnitTest {
     }
   }
 
-  void expectNoRetiredSnapshots(AnthemRuntimeSequenceStore* store) {
+  void expectNoRetiredSnapshots(RuntimeSequenceStore* store) {
     expect(!store->mapDeletionQueue.read().has_value(), "No retired snapshots");
+  }
+
+  void expectNoPendingSnapshots(RuntimeSequenceStore* store, const juce::String& message) {
+    expect(!store->mapUpdateQueue.read().has_value(), message);
+  }
+
+  void expectTrackInvalidation(RuntimeSequenceStore* store,
+      EntityId sequenceId,
+      EntityId trackId,
+      bool expected,
+      const juce::String& message) {
+    auto* track = store->rt_getEventLists().sequences.at(sequenceId)->tracks.at(trackId);
+    expect(track->rt_invalidationOccurred == expected, message);
   }
 public:
   RuntimeSequenceStoreTest() : juce::UnitTest("RuntimeSequenceStoreTest", "Anthem") {}
 
   void runTest() override {
     testCreateAndReadEmptyStore();
+    testMainThreadSnapshotUpdatesBeforeRtHandoff();
+    testNoOpRemovalsDoNotPublishSnapshots();
     testAddAndRemoveSequences();
     testAddAndRemoveTracks();
     testRemoveTrackFromAllSequences();
+    testRtInvalidationForCurrentBlock();
+    testRtInvalidationIgnoresNonOverlappingRanges();
+    testRtInvalidationForLoopStartRange();
+    testCleanupAfterBlockClearsInvalidationFlags();
   }
 
   void testCreateAndReadEmptyStore() {
     beginTest("Create store and read empty event list map");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
     auto& eventLists = store->rt_getEventLists();
 
     expect(eventLists.sequences.size() == 0, "Event lists are empty");
@@ -68,10 +150,61 @@ public:
     delete store;
   }
 
+  void testMainThreadSnapshotUpdatesBeforeRtHandoff() {
+    beginTest("Main-thread snapshot updates before RT handoff");
+
+    auto* store = new RuntimeSequenceStore();
+
+    SequenceEventList track;
+    track.events.push_back(SequenceEvent{.offset = 2.0, .event = Event(NoteOnEvent())});
+
+    store->addOrUpdateTrackInSequence(sequence1Id, track1Id, track);
+
+    auto* mainThreadSequence = store->getSequenceEventList(sequence1Id);
+    expect(mainThreadSequence != nullptr, "Main-thread sequence should be visible immediately");
+    expect(mainThreadSequence->tracks.find(track1Id) != mainThreadSequence->tracks.end(),
+        "Main-thread track should be visible immediately");
+    expect(mainThreadSequence->tracks.at(track1Id)->events.size() == 1,
+        "Main-thread track should include the new event");
+    expect(store->rt_getEventLists().sequences.find(sequence1Id) ==
+               store->rt_getEventLists().sequences.end(),
+        "RT snapshot should not change before the handoff is consumed");
+
+    applyPendingRtUpdates(store);
+    store->processDeletionQueues();
+    expectNoRetiredSnapshots(store);
+
+    delete store;
+  }
+
+  void testNoOpRemovalsDoNotPublishSnapshots() {
+    beginTest("No-op sequence and track removals do not publish snapshots");
+
+    auto* store = new RuntimeSequenceStore();
+
+    store->removeSequence(sequence1Id);
+    expectNoPendingSnapshots(store, "Removing a missing sequence should not publish a snapshot");
+
+    store->addOrUpdateSequence(sequence1Id, SequenceEventListCollection());
+    applyPendingRtUpdates(store);
+    store->processDeletionQueues();
+    expectNoRetiredSnapshots(store);
+
+    store->removeTrackFromSequence(sequence1Id, track1Id);
+    expectNoPendingSnapshots(
+        store, "Removing a missing track from an existing sequence should not publish a snapshot");
+
+    store->removeTrackFromSequence(sequence2Id, track1Id);
+    expectNoPendingSnapshots(
+        store, "Removing a track from a missing sequence should not publish a snapshot");
+
+    delete store;
+  }
+
   void testAddAndRemoveSequences() {
     beginTest("Add and remove sequences");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     store->addOrUpdateSequence(sequence1Id, SequenceEventListCollection());
     store->addOrUpdateSequence(sequence2Id, SequenceEventListCollection());
@@ -111,15 +244,14 @@ public:
   void testAddAndRemoveTracks() {
     beginTest("Add, replace, and remove tracks in a sequence");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     store->addOrUpdateSequence(sequence1Id, SequenceEventListCollection());
     applyPendingRtUpdates(store);
     store->processDeletionQueues();
 
     SequenceEventList track1;
-    track1.events.push_back(
-        AnthemSequenceEvent{.offset = 0.0, .event = AnthemEvent(AnthemNoteOnEvent())});
+    track1.events.push_back(SequenceEvent{.offset = 0.0, .event = Event(NoteOnEvent())});
 
     store->addOrUpdateTrackInSequence(sequence1Id, track1Id, track1);
     store->addOrUpdateTrackInSequence(sequence1Id, track2Id, SequenceEventList());
@@ -139,8 +271,7 @@ public:
 
     // Replace track2
     SequenceEventList replacement;
-    replacement.events.push_back(
-        AnthemSequenceEvent{.offset = 1.0, .event = AnthemEvent(AnthemNoteOffEvent())});
+    replacement.events.push_back(SequenceEvent{.offset = 1.0, .event = Event(NoteOffEvent())});
 
     store->addOrUpdateTrackInSequence(sequence1Id, track2Id, replacement);
     applyPendingRtUpdates(store);
@@ -175,7 +306,7 @@ public:
   void testRemoveTrackFromAllSequences() {
     beginTest("Remove one track from all sequences");
 
-    auto* store = new AnthemRuntimeSequenceStore();
+    auto* store = new RuntimeSequenceStore();
 
     store->addOrUpdateTrackInSequence(sequence1Id, track1Id, SequenceEventList());
     store->addOrUpdateTrackInSequence(sequence2Id, track1Id, SequenceEventList());
@@ -212,6 +343,103 @@ public:
 
     delete store;
   }
+
+  void testRtInvalidationForCurrentBlock() {
+    beginTest("RT handoff marks invalidation ranges that overlap the current block");
+
+    preparePlayingTransport(4.0);
+
+    auto* store = new RuntimeSequenceStore();
+    store->addOrUpdateTrackInSequence(
+        sequence1Id, track1Id, createTrackWithInvalidation(4.25, 4.75));
+
+    store->rt_processSequenceChanges(250);
+
+    expectTrackInvalidation(store,
+        sequence1Id,
+        track1Id,
+        true,
+        "An invalidation range inside the current block should be marked");
+
+    store->processDeletionQueues();
+    expectNoRetiredSnapshots(store);
+
+    delete store;
+    Engine::cleanup();
+  }
+
+  void testRtInvalidationIgnoresNonOverlappingRanges() {
+    beginTest("RT handoff ignores invalidation ranges outside the current block");
+
+    preparePlayingTransport(4.0);
+
+    auto* store = new RuntimeSequenceStore();
+    store->addOrUpdateTrackInSequence(sequence1Id, track1Id, createTrackWithInvalidation(6.0, 7.0));
+
+    store->rt_processSequenceChanges(250);
+
+    expectTrackInvalidation(store,
+        sequence1Id,
+        track1Id,
+        false,
+        "An invalidation range outside the current block should not be marked");
+
+    store->processDeletionQueues();
+    expectNoRetiredSnapshots(store);
+
+    delete store;
+    Engine::cleanup();
+  }
+
+  void testRtInvalidationForLoopStartRange() {
+    beginTest("RT handoff checks the loop-start range when the block wraps");
+
+    preparePlayingTransport(11.5, LoopPointsSnapshot{.start = 10.0, .end = 12.0});
+
+    auto* store = new RuntimeSequenceStore();
+    store->addOrUpdateTrackInSequence(
+        sequence1Id, track1Id, createTrackWithInvalidation(10.25, 10.75));
+
+    store->rt_processSequenceChanges(250);
+
+    expectTrackInvalidation(store,
+        sequence1Id,
+        track1Id,
+        true,
+        "A wrapped block should check invalidations near the loop start");
+
+    store->processDeletionQueues();
+    expectNoRetiredSnapshots(store);
+
+    delete store;
+    Engine::cleanup();
+  }
+
+  void testCleanupAfterBlockClearsInvalidationFlags() {
+    beginTest("RT cleanup clears per-block invalidation flags");
+
+    preparePlayingTransport(4.0);
+
+    auto* store = new RuntimeSequenceStore();
+    store->addOrUpdateTrackInSequence(
+        sequence1Id, track1Id, createTrackWithInvalidation(4.25, 4.75));
+
+    store->rt_processSequenceChanges(250);
+    expectTrackInvalidation(
+        store, sequence1Id, track1Id, true, "The track should be marked before cleanup");
+
+    store->rt_cleanupAfterBlock();
+    expectTrackInvalidation(
+        store, sequence1Id, track1Id, false, "The track should not stay marked after cleanup");
+
+    store->processDeletionQueues();
+    expectNoRetiredSnapshots(store);
+
+    delete store;
+    Engine::cleanup();
+  }
 };
 
 static RuntimeSequenceStoreTest runtimeSequenceStoreTest;
+
+} // namespace anthem

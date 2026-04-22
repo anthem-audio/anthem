@@ -25,19 +25,21 @@
 #include <juce_core/juce_core.h>
 #include <memory>
 
-class AnthemGraphNodeConnection;
-class AnthemNodeProcessContext;
+namespace anthem {
 
-class AnthemGraphCompilerEdge {
+class GraphNodeConnection;
+class NodeProcessContext;
+
+class GraphCompilerEdge {
 private:
-  JUCE_LEAK_DETECTOR(AnthemGraphCompilerEdge)
+  JUCE_LEAK_DETECTOR(GraphCompilerEdge)
 public:
   // The edge in the node graph
   std::shared_ptr<NodeConnection> edgeSource;
 
-  AnthemNodeProcessContext* sourceNodeContext;
+  NodeProcessContext* sourceNodeContext;
 
-  AnthemNodeProcessContext* destinationNodeContext;
+  NodeProcessContext* destinationNodeContext;
 
   // The type of this edge
   NodePortDataType type;
@@ -45,10 +47,12 @@ public:
   // Whether this edge has been processed
   bool processed = false;
 
-  AnthemGraphCompilerEdge(std::shared_ptr<NodeConnection> edge,
-      AnthemNodeProcessContext* sourceNodeContext,
-      AnthemNodeProcessContext* destinationNodeContext,
+  GraphCompilerEdge(std::shared_ptr<NodeConnection> edge,
+      NodeProcessContext* sourceNodeContext,
+      NodeProcessContext* destinationNodeContext,
       NodePortDataType type)
     : edgeSource(edge), sourceNodeContext(sourceNodeContext),
       destinationNodeContext(destinationNodeContext), type(type) {}
 };
+
+} // namespace anthem

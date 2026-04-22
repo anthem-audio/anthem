@@ -19,16 +19,18 @@
 
 #include "gain.h"
 
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
+
+namespace anthem {
 
 GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
-  : AnthemProcessor("Gain"), GainProcessorModelBase(_impl) {}
+  : Processor("Gain"), GainProcessorModelBase(_impl) {}
 
 GainProcessor::~GainProcessor() {}
 
 void GainProcessor::prepareToProcess() {}
 
-void GainProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
+void GainProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
   auto& audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
 
@@ -46,3 +48,5 @@ void GainProcessor::process(AnthemNodeProcessContext& context, int numSamples) {
     }
   }
 }
+
+} // namespace anthem

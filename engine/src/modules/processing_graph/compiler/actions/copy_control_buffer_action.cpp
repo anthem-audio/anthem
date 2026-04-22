@@ -21,6 +21,8 @@
 
 #include "modules/processing_graph/model/node.h"
 
+namespace anthem {
+
 void CopyControlBufferAction::execute(int numSamples) {
   auto& sourceBuffer = source->getOutputControlBuffer(sourcePortId);
   auto& destinationBuffer = destination->getInputControlBuffer(destinationPortId);
@@ -43,3 +45,5 @@ void CopyControlBufferAction::debugPrint() {
   std::cout << "CopyControlBufferAction: " << this->source->getGraphNode()->id() << " -> "
             << this->destination->getGraphNode()->id() << '\n';
 }
+
+} // namespace anthem

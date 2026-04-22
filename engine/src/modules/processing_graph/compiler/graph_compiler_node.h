@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/anthem_graph_compiler_edge.h"
+#include "modules/processing_graph/compiler/graph_compiler_edge.h"
 #include "modules/processing_graph/model/node.h"
 
 #include <juce_core/juce_core.h>
@@ -27,43 +27,46 @@
 #include <memory>
 #include <vector>
 
-class AnthemGraphNode;
-class AnthemNodeProcessContext;
+namespace anthem {
+
+class GraphNode;
+class NodeProcessContext;
 
 // Represents a node in the compiler. Used internally by the compiler to keep
 // track of details about nodes being processed.
-class AnthemGraphCompilerNode {
+class GraphCompilerNode {
 public:
-  using NodeMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>;
-  using ConnectionMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>;
+  using NodeMap = ModelUnorderedMap<int64_t, std::shared_ptr<Node>>;
+  using ConnectionMap = ModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>;
 
   // The node that this compiled node represents
   std::shared_ptr<Node> node;
 
-  std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> inputEdges;
-  std::vector<std::shared_ptr<AnthemGraphCompilerEdge>> outputEdges;
+  std::vector<std::shared_ptr<GraphCompilerEdge>> inputEdges;
+  std::vector<std::shared_ptr<GraphCompilerEdge>> outputEdges;
 
   // The runtime context for this node
-  AnthemNodeProcessContext* context;
+  NodeProcessContext* context;
 
   // Whether this node is ready to process
   bool readyToProcess = false;
 
-  AnthemGraphCompilerNode(std::shared_ptr<Node> node, AnthemNodeProcessContext* context)
+  GraphCompilerNode(std::shared_ptr<Node> node, NodeProcessContext* context)
     : node(node), context(context) {}
 
   // Populate the input and output edges for this node
   void assignEdges(const NodeMap& nodes,
       const ConnectionMap& connections,
-      std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-      std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>&
-          connectionToCompilerEdge);
+      std::map<Node*, std::shared_ptr<GraphCompilerNode>>& nodeToCompilerNode,
+      std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>>& connectionToCompilerEdge);
 private:
   void assignEdge(const NodeMap& nodes,
-      std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-      std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
-      std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
+      std::map<Node*, std::shared_ptr<GraphCompilerNode>>& nodeToCompilerNode,
+      std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>>& connectionToCompilerEdge,
+      std::vector<std::shared_ptr<GraphCompilerEdge>>& edgeContainer,
       const std::shared_ptr<NodeConnection>& connection);
 
-  JUCE_LEAK_DETECTOR(AnthemGraphCompilerNode)
+  JUCE_LEAK_DETECTOR(GraphCompilerNode)
 };
+
+} // namespace anthem

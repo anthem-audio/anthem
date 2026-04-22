@@ -17,12 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "anthem_graph_compiler_node.h"
+#include "graph_compiler_node.h"
 
-void AnthemGraphCompilerNode::assignEdges(const NodeMap& nodes,
+namespace anthem {
+
+void GraphCompilerNode::assignEdges(const NodeMap& nodes,
     const ConnectionMap& connections,
-    std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge) {
+    std::map<Node*, std::shared_ptr<GraphCompilerNode>>& nodeToCompilerNode,
+    std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>>& connectionToCompilerEdge) {
   for (auto& port : *node->audioInputPorts()) {
     for (auto& connectionId : *port->connections()) {
       auto& connection = connections.at(connectionId);
@@ -66,10 +68,10 @@ void AnthemGraphCompilerNode::assignEdges(const NodeMap& nodes,
   }
 }
 
-void AnthemGraphCompilerNode::assignEdge(const NodeMap& nodes,
-    std::map<Node*, std::shared_ptr<AnthemGraphCompilerNode>>& nodeToCompilerNode,
-    std::map<NodeConnection*, std::shared_ptr<AnthemGraphCompilerEdge>>& connectionToCompilerEdge,
-    std::vector<std::shared_ptr<AnthemGraphCompilerEdge>>& edgeContainer,
+void GraphCompilerNode::assignEdge(const NodeMap& nodes,
+    std::map<Node*, std::shared_ptr<GraphCompilerNode>>& nodeToCompilerNode,
+    std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>>& connectionToCompilerEdge,
+    std::vector<std::shared_ptr<GraphCompilerEdge>>& edgeContainer,
     const std::shared_ptr<NodeConnection>& connection) {
   auto& sourceNode = nodes.at(connection->sourceNodeId());
   auto& destinationNode = nodes.at(connection->destinationNodeId());
@@ -94,7 +96,7 @@ void AnthemGraphCompilerNode::assignEdge(const NodeMap& nodes,
   if (connectionToCompilerEdge.find(connection.get()) != connectionToCompilerEdge.end()) {
     edgeContainer.push_back(connectionToCompilerEdge[connection.get()]);
   } else {
-    auto edge = std::make_shared<AnthemGraphCompilerEdge>(
+    auto edge = std::make_shared<GraphCompilerEdge>(
         connection, sourceNodeContext, destinationNodeContext, portType);
 
     connectionToCompilerEdge[connection.get()] = edge;
@@ -102,3 +104,5 @@ void AnthemGraphCompilerNode::assignEdge(const NodeMap& nodes,
     edgeContainer.push_back(edge);
   }
 }
+
+} // namespace anthem

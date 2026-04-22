@@ -21,7 +21,7 @@
 
 #include "comms_methods_for_ui_wasm.h"
 
-#include "anthem.h"
+#include "engine.h"
 
 #include <juce_core/juce_core.h>
 
@@ -32,7 +32,7 @@ std::atomic<bool> commsReady(false);
 // that this will be polled from the UI side until it returns true.
 extern "C" bool isCommsReady(int arg) {
   juce::MessageManager::callAsync([]() {
-    if (Anthem::hasInstance()) {
+    if (anthem::Engine::hasInstance()) {
       commsReady.store(true);
     } else {
       commsReady.store(false);
@@ -50,51 +50,51 @@ extern "C" bool isCommsReady(int arg) {
 // buffer is the UI's write buffer and our write buffer is the UI's read buffer.
 
 extern "C" void* getWriteBufferHeadPtr() {
-  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().readBuffer.head;
+  return (void*)&anthem::Engine::getInstance().comms.getSocketOrPipe().readBuffer.head;
 }
 
 extern "C" void* getWriteBufferTailPtr() {
-  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().readBuffer.tail;
+  return (void*)&anthem::Engine::getInstance().comms.getSocketOrPipe().readBuffer.tail;
 }
 
 extern "C" uint32_t getWriteBufferCapacity() {
-  return Anthem::getInstance().comms.getSocketOrPipe().readBuffer.capacity;
+  return anthem::Engine::getInstance().comms.getSocketOrPipe().readBuffer.capacity;
 }
 
 extern "C" uint32_t getWriteBufferMask() {
-  return Anthem::getInstance().comms.getSocketOrPipe().readBuffer.mask;
+  return anthem::Engine::getInstance().comms.getSocketOrPipe().readBuffer.mask;
 }
 
 extern "C" void* getWriteBufferDataPtr() {
-  return Anthem::getInstance().comms.getSocketOrPipe().readBuffer.buffer.getData();
+  return anthem::Engine::getInstance().comms.getSocketOrPipe().readBuffer.buffer.getData();
 }
 
 extern "C" void* getWriteBufferTicketPtr() {
-  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().readBuffer.ticket;
+  return (void*)&anthem::Engine::getInstance().comms.getSocketOrPipe().readBuffer.ticket;
 }
 
 extern "C" void* getReadBufferHeadPtr() {
-  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.head;
+  return (void*)&anthem::Engine::getInstance().comms.getSocketOrPipe().writeBuffer.head;
 }
 
 extern "C" void* getReadBufferTailPtr() {
-  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.tail;
+  return (void*)&anthem::Engine::getInstance().comms.getSocketOrPipe().writeBuffer.tail;
 }
 
 extern "C" uint32_t getReadBufferCapacity() {
-  return Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.capacity;
+  return anthem::Engine::getInstance().comms.getSocketOrPipe().writeBuffer.capacity;
 }
 
 extern "C" uint32_t getReadBufferMask() {
-  return Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.mask;
+  return anthem::Engine::getInstance().comms.getSocketOrPipe().writeBuffer.mask;
 }
 
 extern "C" void* getReadBufferDataPtr() {
-  return Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.buffer.getData();
+  return anthem::Engine::getInstance().comms.getSocketOrPipe().writeBuffer.buffer.getData();
 }
 
 extern "C" void* getReadBufferTicketPtr() {
-  return (void*)&Anthem::getInstance().comms.getSocketOrPipe().writeBuffer.ticket;
+  return (void*)&anthem::Engine::getInstance().comms.getSocketOrPipe().writeBuffer.ticket;
 }
 
 #endif // #ifdef __EMSCRIPTEN__

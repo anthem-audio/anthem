@@ -19,27 +19,29 @@
 
 #pragma once
 
-#include "modules/processing_graph/processor/anthem_event_buffer.h"
+#include "modules/processing_graph/processor/event_buffer.h"
 
 #include <juce_core/juce_core.h>
 
-class AnthemEventBufferTest : public juce::UnitTest {
+namespace anthem {
+
+class EventBufferTest : public juce::UnitTest {
 public:
-  AnthemEventBufferTest() : juce::UnitTest("AnthemEventBufferTest", "Anthem") {}
+  EventBufferTest() : juce::UnitTest("AnthemEventBufferTest", "Anthem") {}
 
   void runTest() override {
     {
       beginTest("Event buffer grows and preserves existing events");
 
-      AnthemEventBuffer buffer(1);
+      EventBuffer buffer(1);
 
-      AnthemLiveEvent first{};
+      LiveEvent first{};
       first.sampleOffset = 1.0;
-      first.event.type = AnthemEventType::NoteOn;
+      first.event.type = EventType::NoteOn;
 
-      AnthemLiveEvent second{};
+      LiveEvent second{};
       second.sampleOffset = 2.0;
-      second.event.type = AnthemEventType::NoteOff;
+      second.event.type = EventType::NoteOff;
 
       expect(buffer.addEvent(first), "First event should be added.");
       expect(buffer.addEvent(second), "Second event should trigger growth and be added.");
@@ -57,11 +59,11 @@ public:
     {
       beginTest("Clear preserves grown capacity and resets per-block overflow state");
 
-      AnthemEventBuffer buffer(1);
+      EventBuffer buffer(1);
 
-      AnthemLiveEvent event{};
+      LiveEvent event{};
       event.sampleOffset = 0.0;
-      event.event.type = AnthemEventType::NoteOn;
+      event.event.type = EventType::NoteOn;
 
       expect(buffer.addEvent(event), "First event should be added.");
       expect(buffer.addEvent(event), "Second event should grow the buffer.");
@@ -84,11 +86,11 @@ public:
     {
       beginTest("Event buffer enforces the hard maximum size");
 
-      AnthemEventBuffer buffer(MAX_EVENT_BUFFER_SIZE);
+      EventBuffer buffer(MAX_EVENT_BUFFER_SIZE);
 
-      AnthemLiveEvent event{};
+      LiveEvent event{};
       event.sampleOffset = 0.0;
-      event.event.type = AnthemEventType::NoteOn;
+      event.event.type = EventType::NoteOn;
 
       for (int i = 0; i < MAX_EVENT_BUFFER_SIZE; i++) {
         expect(buffer.addEvent(event), "Events up to the hard cap should be accepted.");
@@ -110,4 +112,6 @@ public:
   }
 };
 
-static AnthemEventBufferTest anthemEventBufferTest;
+static EventBufferTest anthemEventBufferTest;
+
+} // namespace anthem

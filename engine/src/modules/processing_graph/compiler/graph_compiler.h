@@ -25,30 +25,34 @@
 #include "actions/copy_events_action.h"
 #include "actions/process_node_action.h"
 #include "actions/write_parameters_to_control_inputs_action.h"
-#include "anthem_graph_compilation_result.h"
-#include "anthem_graph_compiler_node.h"
-#include "anthem_graph_process_context.h"
+#include "graph_compilation_result.h"
+#include "graph_compiler_node.h"
+#include "graph_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 
 #include <memory>
 
+namespace anthem {
+
 class GraphRuntimeServices;
 
-struct AnthemGraphCompileRequest {
-  using NodeMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<Node>>;
-  using ConnectionMap = AnthemModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>;
+struct GraphCompileRequest {
+  using NodeMap = ModelUnorderedMap<int64_t, std::shared_ptr<Node>>;
+  using ConnectionMap = ModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>;
 
   GraphRuntimeServices& rtServices;
   NodeMap& nodes;
   ConnectionMap& connections;
-  AnthemGraphBufferLayout bufferLayout;
+  GraphBufferLayout bufferLayout;
   double sampleRate = 0.0;
 };
 
 // This class is used to compile a processing graph into a set of processing
 // instructions that can be executed in a real-time context.
-class AnthemGraphCompiler {
+class GraphCompiler {
 public:
-  static AnthemGraphCompilationResult* compile(const AnthemGraphCompileRequest& request);
+  static GraphCompilationResult* compile(const GraphCompileRequest& request);
 };
+
+} // namespace anthem

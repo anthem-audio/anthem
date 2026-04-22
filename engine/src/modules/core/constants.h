@@ -29,6 +29,8 @@
 // For context, event buffers are used whenever a node in the processing graph
 // needs to send events to another node, or when a node needs to receive events
 // from either the sequencer or another node.
+namespace anthem {
+
 const int DEFAULT_EVENT_BUFFER_SIZE = 1024;
 
 // The maximum size for an event buffer, in number of events.
@@ -37,3 +39,5 @@ const int DEFAULT_EVENT_BUFFER_SIZE = 1024;
 // generation. Once a buffer reaches this size, new events for that buffer are
 // dropped for the remainder of the current block.
 const int MAX_EVENT_BUFFER_SIZE = 32768;
+
+} // namespace anthem

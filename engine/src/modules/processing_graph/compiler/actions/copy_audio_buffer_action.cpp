@@ -23,6 +23,8 @@
 
 #include <iostream>
 
+namespace anthem {
+
 void CopyAudioBufferAction::execute(int numSamples) {
   auto& sourceBuffer = this->source->getOutputAudioBuffer(this->sourcePortId);
   auto& destinationBuffer = this->destination->getInputAudioBuffer(this->destinationPortId);
@@ -45,3 +47,5 @@ void CopyAudioBufferAction::debugPrint() {
   std::cout << "CopyAudioBufferAction: " << this->source->getGraphNode()->id() << " -> "
             << this->destination->getGraphNode()->id() << '\n';
 }
+
+} // namespace anthem

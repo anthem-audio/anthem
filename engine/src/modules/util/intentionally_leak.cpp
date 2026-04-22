@@ -24,8 +24,12 @@
 // Queue overflow on these paths is treated as a debug-time bug. In release
 // builds we still avoid non-real-time-safe cleanup by intentionally leaking.
 // NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
+namespace anthem {
+
 void intentionallyLeak(void* ptr) {
   jassertfalse;
   juce::ignoreUnused(ptr);
 }
+
+} // namespace anthem
 // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)

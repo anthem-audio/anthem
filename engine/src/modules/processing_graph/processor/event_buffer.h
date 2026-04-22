@@ -27,22 +27,24 @@
 #include <juce_core/juce_core.h>
 #include <stdexcept>
 
-class AnthemEventBuffer {
-private:
-  JUCE_LEAK_DETECTOR(AnthemEventBuffer)
+namespace anthem {
 
-  struct alignas(AnthemLiveEvent) StorageBlock {
+class EventBuffer {
+private:
+  JUCE_LEAK_DETECTOR(EventBuffer)
+
+  struct alignas(LiveEvent) StorageBlock {
     StorageBlock* previous;
     size_t capacity;
   };
 
-  static_assert(sizeof(StorageBlock) % alignof(AnthemLiveEvent) == 0,
+  static_assert(sizeof(StorageBlock) % alignof(LiveEvent) == 0,
       "StorageBlock must leave the event payload aligned.");
 
   StorageBlock* activeBlock;
 
   // The active contiguous event storage.
-  AnthemLiveEvent* buffer;
+  LiveEvent* buffer;
 
   // The capacity of the active buffer.
   size_t capacity;
@@ -60,7 +62,7 @@ private:
 
   static StorageBlock* allocateBlock(size_t requestedCapacity) {
     auto clampedCapacity = requestedCapacity == 0 ? static_cast<size_t>(1) : requestedCapacity;
-    auto bytes = sizeof(StorageBlock) + sizeof(AnthemLiveEvent) * clampedCapacity;
+    auto bytes = sizeof(StorageBlock) + sizeof(LiveEvent) * clampedCapacity;
     auto* raw = static_cast<std::byte*>(std::malloc(bytes));
 
     if (raw == nullptr) {
@@ -74,9 +76,8 @@ private:
     return block;
   }
 
-  static AnthemLiveEvent* getBlockBuffer(StorageBlock* block) {
-    return reinterpret_cast<AnthemLiveEvent*>(
-        reinterpret_cast<std::byte*>(block) + sizeof(StorageBlock));
+  static LiveEvent* getBlockBuffer(StorageBlock* block) {
+    return reinterpret_cast<LiveEvent*>(reinterpret_cast<std::byte*>(block) + sizeof(StorageBlock));
   }
 
   static void destroyBlocks(StorageBlock* block) {
@@ -120,7 +121,7 @@ private:
     return true;
   }
 public:
-  explicit AnthemEventBuffer(size_t initialCapacity)
+  explicit EventBuffer(size_t initialCapacity)
     : activeBlock(nullptr), buffer(nullptr), capacity(0), numEvents(0), highWaterMark(0),
       timesGrown(0), overflowedThisBlock(false), droppedEventsThisBlock(0) {
     auto requestedCapacity = initialCapacity;
@@ -141,11 +142,11 @@ public:
     capacity = activeBlock->capacity;
   }
 
-  ~AnthemEventBuffer() {
+  ~EventBuffer() {
     destroyBlocks(activeBlock);
   }
 
-  bool addEvent(AnthemLiveEvent event) {
+  bool addEvent(LiveEvent event) {
     if (numEvents >= capacity && !grow()) {
       overflowedThisBlock = true;
       droppedEventsThisBlock++;
@@ -168,7 +169,7 @@ public:
     droppedEventsThisBlock = 0;
   }
 
-  AnthemLiveEvent& getEvent(size_t index) {
+  LiveEvent& getEvent(size_t index) {
     return buffer[index];
   }
 
@@ -196,3 +197,5 @@ public:
     return timesGrown;
   }
 };
+
+} // namespace anthem

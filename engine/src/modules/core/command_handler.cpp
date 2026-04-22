@@ -29,6 +29,8 @@
 #include <rfl.hpp>
 #include <rfl/json.hpp>
 
+namespace anthem {
+
 void HeartbeatThread::run() {
   while (!threadShouldExit()) {
     // Sleep for 10 seconds
@@ -118,7 +120,7 @@ void CommandHandler::processNextCommand() {
     auto& requestAsStartAudio = rfl::get<StartAudioRequest>(request.variant());
 
     juce::Logger::writeToLog("Starting audio callback after model init...");
-    auto audioConfig = Anthem::getInstance().startAudioCallback();
+    auto audioConfig = Engine::getInstance().startAudioCallback();
     juce::Logger::writeToLog("startAudioCallback() returned.");
 
     auto startAudioReply = StartAudioResponse{.success = audioConfig != nullptr,
@@ -188,7 +190,7 @@ void CommandHandler::processNextCommand() {
     // Serialize the response to a string
     auto responseStr = rfl::json::write(response.value());
 
-    Anthem::getInstance().comms.send(responseStr);
+    Engine::getInstance().comms.send(responseStr);
   }
 
   if (isExit) {
@@ -196,8 +198,10 @@ void CommandHandler::processNextCommand() {
 
     VisualizationBroker::getInstance().dispose();
 
-    Anthem::getInstance().comms.closeSocketThread();
-    Anthem::getInstance().shutdown();
+    Engine::getInstance().comms.closeSocketThread();
+    Engine::getInstance().shutdown();
     juce::JUCEApplicationBase::quit();
   }
 }
+
+} // namespace anthem

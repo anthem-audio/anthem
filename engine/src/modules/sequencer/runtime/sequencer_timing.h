@@ -23,6 +23,8 @@
 #include <cstdint>
 #include <limits>
 
+namespace anthem {
+
 namespace sequencer_timing {
 
 struct TimingParams {
@@ -108,3 +110,5 @@ inline double advancePlayheadByTickDelta(
 }
 
 } // namespace sequencer_timing
+
+} // namespace anthem

@@ -32,6 +32,8 @@
 #include <optional>
 #include <vector>
 
+namespace anthem {
+
 class Transport;
 
 class CpuVisualizationProvider
@@ -105,3 +107,5 @@ public:
 
   GlobalVisualizationSources();
 };
+
+} // namespace anthem

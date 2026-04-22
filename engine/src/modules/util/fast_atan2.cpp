@@ -49,6 +49,8 @@
 
 #include <cmath>
 
+namespace anthem {
+
 namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kPi4Plus0273 = kPi / 4.0 + 0.273;
@@ -114,3 +116,5 @@ float fastAtan2(float y, float x) {
       return 0.0f;
   }
 }
+
+} // namespace anthem

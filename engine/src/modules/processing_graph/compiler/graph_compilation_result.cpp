@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,21 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "process_node_action.h"
-
-#include "modules/processing_graph/model/node.h"
-
-#include <iostream>
+#include "graph_compilation_result.h"
 
 namespace anthem {
 
-void ProcessNodeAction::execute(int numSamples) {
-  this->processor->process(*this->context, numSamples);
-}
-
-void ProcessNodeAction::debugPrint() {
-  std::cout << "ProcessNodeAction for node with ID: " << this->context->getGraphNode()->id()
-            << '\n';
+void GraphCompilationResult::cleanup() {
+  if (graphProcessContext != nullptr) {
+    graphProcessContext->cleanup();
+  }
 }
 
 } // namespace anthem

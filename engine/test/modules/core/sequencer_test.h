@@ -19,13 +19,35 @@
 
 #pragma once
 
-#include "modules/core/anthem.h"
+#include "modules/core/engine.h"
 #include "modules/core/sequencer.h"
 
 #include <juce_core/juce_core.h>
 
+namespace anthem {
+
 class SequencerTest : public juce::UnitTest {
   static constexpr int64_t restoredPlayheadPosition = 96;
+
+  struct FakeProjectView : TransportProjectView {
+    std::optional<LoopPointsSnapshot> lookupLoopPoints(int64_t /* sequenceId */) const override {
+      return std::nullopt;
+    }
+
+    bool isPatternSequence(int64_t /* sequenceId */) const override {
+      return false;
+    }
+
+    const SequenceEventListCollection* compiledSequence(int64_t /* sequenceId */) const override {
+      return nullptr;
+    }
+  };
+
+  struct FakeClock : TransportClock {
+    double currentSampleRate() const override {
+      return 48000.0;
+    }
+  };
 
   static std::shared_ptr<Sequencer> createSequencer() {
     auto defaultTimeSignature = std::make_shared<TimeSignatureModel>(TimeSignatureModelImpl{
@@ -36,13 +58,12 @@ class SequencerTest : public juce::UnitTest {
     auto sequencer = std::make_shared<Sequencer>(SequencerModelImpl{
         .ticksPerQuarter = 96,
         .beatsPerMinuteRaw = 12000,
-        .patterns =
-            std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>(),
+        .patterns = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>(),
         .activePatternID = std::nullopt,
         .activeTrackID = std::nullopt,
         .arrangements =
-            std::make_shared<AnthemModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>(),
-        .arrangementOrder = std::make_shared<AnthemModelVector<int64_t>>(),
+            std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>(),
+        .arrangementOrder = std::make_shared<ModelVector<int64_t>>(),
         .activeArrangementID = std::nullopt,
         .activeTransportSequenceID = std::nullopt,
         .defaultTimeSignature = defaultTimeSignature,
@@ -62,36 +83,39 @@ public:
   void testInitializeRestoresPlaybackStartPositionForStop() {
     beginTest("Sequencer initialization restores the stop target from playbackStartPosition");
 
-    Anthem::cleanup();
+    Engine::cleanup();
 
     {
-      auto& anthem = Anthem::getInstance();
-      anthem.transport = std::make_unique<Transport>();
+      auto& engine = Engine::getInstance();
+      engine.transport = std::make_unique<Transport>(
+          std::make_unique<FakeProjectView>(), std::make_unique<FakeClock>());
 
       auto sequencer = createSequencer();
-      sequencer->initialize(sequencer, std::shared_ptr<AnthemModelBase>());
+      sequencer->initialize(sequencer, std::shared_ptr<ModelBase>());
 
-      anthem.transport->rt_prepareForProcessingBlock();
-      expectEquals(anthem.transport->config.playheadStart,
+      engine.transport->rt_prepareForProcessingBlock();
+      expectEquals(engine.transport->config.playheadStart,
           static_cast<double>(restoredPlayheadPosition),
           "Startup should restore the transport stop target.");
-      expectEquals(anthem.transport->rt_playhead,
+      expectEquals(engine.transport->rt_playhead,
           static_cast<double>(restoredPlayheadPosition),
           "Startup should restore the stopped playhead position.");
 
-      anthem.transport->setIsPlaying(true);
-      anthem.transport->rt_prepareForProcessingBlock();
+      engine.transport->setIsPlaying(true);
+      engine.transport->rt_prepareForProcessingBlock();
 
-      anthem.transport->setIsPlaying(false);
-      anthem.transport->rt_prepareForProcessingBlock();
+      engine.transport->setIsPlaying(false);
+      engine.transport->rt_prepareForProcessingBlock();
 
-      expectEquals(anthem.transport->rt_playhead,
+      expectEquals(engine.transport->rt_playhead,
           static_cast<double>(restoredPlayheadPosition),
           "After play then stop, the playhead should return to the restored startup position.");
     }
 
-    Anthem::cleanup();
+    Engine::cleanup();
   }
 };
 
 static SequencerTest sequencerTest;
+
+} // namespace anthem

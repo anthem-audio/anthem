@@ -29,23 +29,25 @@
 
 #include "comms.h"
 #include "messages/messages.h"
-#include "modules/core/anthem_audio_callback.h"
+#include "modules/core/audio_callback.h"
 #include "modules/core/command_handler.h"
 #include "modules/core/visualization/global_visualization_sources.h"
-#include "modules/processing_graph/runtime/anthem_graph_processor.h"
+#include "modules/processing_graph/runtime/graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
 #include "modules/util/id_generator.h"
 #include "project.h"
 
-class Anthem {
+namespace anthem {
+
+class Engine {
 private:
   bool isAudioCallbackRunning;
 
   // Singleton shared pointer instance
-  static std::unique_ptr<Anthem> instance;
+  static std::unique_ptr<Engine> instance;
 
-  std::unique_ptr<AnthemAudioCallback> audioCallback;
+  std::unique_ptr<AudioCallback> audioCallback;
 public:
   // The project model.
   //
@@ -60,7 +62,7 @@ public:
 
   // The sequence store stores the compiled sequences. It is used by the
   // sequencer to get the compiled sequences for playback.
-  std::unique_ptr<AnthemRuntimeSequenceStore> sequenceStore;
+  std::unique_ptr<RuntimeSequenceStore> sequenceStore;
 
   // The graph compiler turns the graph topology from the model into processing
   // steps. The compile method on AnthemGraphCompiler is static, so we don't need
@@ -68,7 +70,13 @@ public:
 
   // The graph processor, which takes the compilation result from the compiler
   // and uses it on the audio thread to process data in the graph
-  std::unique_ptr<AnthemGraphProcessor> graphProcessor;
+  std::unique_ptr<GraphProcessor> graphProcessor;
+
+  // JUCE class for managing audio devices.
+  //
+  // This is declared before transport so the audio device manager outlives the
+  // clock adapter owned by transport.
+  juce::AudioDeviceManager audioDeviceManager;
 
   // The transport contains information about:
   // - The sequence being played
@@ -82,9 +90,6 @@ public:
   // such as CPU burden and transport location.
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
 
-  // JUCE class for managing audio devices
-  juce::AudioDeviceManager audioDeviceManager;
-
 #ifndef __EMSCRIPTEN__
   // JUCE class for loading and managing plugins
   juce::AudioPluginFormatManager audioPluginFormatManager;
@@ -92,19 +97,19 @@ public:
 
   // The UI communication layer. This is used to send and receive messages from
   // the UI.
-  AnthemComms comms;
+  Comms comms;
 
   // Handles command messages from the UI.
   CommandHandler commandHandler;
 
-  Anthem();
+  Engine();
 
   void initialize();
 
   // Singleton instance getter
-  static Anthem& getInstance() {
+  static Engine& getInstance() {
     if (!instance) {
-      instance = std::make_unique<Anthem>();
+      instance = std::make_unique<Engine>();
     }
     return *instance;
   }
@@ -131,3 +136,5 @@ public:
 
   void compileProcessingGraph();
 };
+
+} // namespace anthem

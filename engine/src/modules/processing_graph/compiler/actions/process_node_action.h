@@ -19,24 +19,28 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/actions/anthem_graph_compiler_action.h"
-#include "modules/processing_graph/compiler/anthem_node_process_context.h"
-#include "modules/processing_graph/processor/anthem_processor.h"
+#include "modules/processing_graph/compiler/actions/graph_compiler_action.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph/processor/processor.h"
 
 #include <juce_core/juce_core.h>
 #include <memory>
 
-class ProcessNodeAction : public AnthemGraphCompilerAction {
+namespace anthem {
+
+class ProcessNodeAction : public GraphCompilerAction {
 private:
   JUCE_LEAK_DETECTOR(ProcessNodeAction)
 public:
-  AnthemNodeProcessContext* context;
-  AnthemProcessor* processor;
+  NodeProcessContext* context;
+  Processor* processor;
 
   void execute(int numSamples) override;
 
-  ProcessNodeAction(AnthemNodeProcessContext* context, AnthemProcessor* processor)
+  ProcessNodeAction(NodeProcessContext* context, Processor* processor)
     : context(context), processor(processor) {}
 
   void debugPrint() override;
 };
+
+} // namespace anthem

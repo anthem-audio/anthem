@@ -23,6 +23,8 @@
 
 #include <iostream>
 
+namespace anthem {
+
 void ClearBuffersAction::execute(int) {
   this->context->clearBuffers();
 }
@@ -30,3 +32,5 @@ void ClearBuffersAction::execute(int) {
 void ClearBuffersAction::debugPrint() {
   std::cout << "ClearBuffersAction: " << this->context->getGraphNode()->id() << '\n';
 }
+
+} // namespace anthem
