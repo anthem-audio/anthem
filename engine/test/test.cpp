@@ -38,6 +38,7 @@
 #include "modules/sequencer/runtime/sequencer_timing_test.h"
 #include "modules/sequencer/runtime/transport_test.h"
 #include "modules/util/note_tracker_test.h"
+#include "modules/util/ring_buffer_test.h"
 
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
