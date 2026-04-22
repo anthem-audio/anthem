@@ -76,7 +76,7 @@ public:
   void prepareToProcess() override;
   void process(NodeProcessContext& context, int numSamples) override;
 
-  void addLiveInputEvent(LiveInputEvent event);
+  bool addLiveInputEvent(LiveInputEvent event);
 };
 
 } // namespace anthem

@@ -102,8 +102,8 @@ void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
   }
 }
 
-void LiveEventProviderProcessor::addLiveInputEvent(LiveInputEvent event) {
-  liveInputEventBuffer->add(event);
+bool LiveEventProviderProcessor::addLiveInputEvent(LiveInputEvent event) {
+  return liveInputEventBuffer->add(event);
 }
 
 void LiveEventProviderProcessor::prepareToProcess() {}
