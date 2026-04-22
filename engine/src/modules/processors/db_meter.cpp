@@ -24,7 +24,6 @@
 #include "modules/processing_graph/compiler/node_process_context.h"
 
 #include <algorithm>
-#include <cmath>
 
 namespace anthem {
 
@@ -65,14 +64,14 @@ void DbMeterProcessor::prepareToProcess() {
   auto* currentDevice = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
 
-  rt_samplesSinceLastPublish = 0;
-  rt_channelPeakLinear.clear();
+  size_t rt_channelCount = 0;
 
   if (currentDevice != nullptr) {
-    const auto rt_channelCount =
+    rt_channelCount =
         static_cast<size_t>(currentDevice->getActiveOutputChannels().countNumberOfSetBits());
-    rt_channelPeakLinear.assign(rt_channelCount, 0.0f);
   }
+
+  rt_accumulator.rt_prepare(rt_channelCount);
 
   rt_publishEverySamples->store(
       std::max<int64_t>(1, publishEverySamples()), std::memory_order_relaxed);
@@ -84,36 +83,25 @@ void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {
   }
 
   auto& audioInBuffer = context.getInputAudioBuffer(DbMeterProcessorModelBase::audioInputPortId);
-  const int channelCount = audioInBuffer.getNumChannels();
-
-  if (channelCount <= 0) {
-    return;
-  }
-
-  if (rt_channelPeakLinear.size() != static_cast<size_t>(channelCount)) {
-    jassertfalse;
-    return;
-  }
-
   const int64_t publishEverySamples =
       std::max<int64_t>(1, rt_publishEverySamples->load(std::memory_order_relaxed));
   const int64_t blockStartSample = Engine::getInstance().transport->rt_sampleCounter;
+  rt_accumulator.rt_processBlock(audioInBuffer,
+      numSamples,
+      blockStartSample,
+      publishEverySamples,
+      [this](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
+        if (channelIndex >= channelProviders.size()) {
+          return;
+        }
 
-  for (int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
-    for (int channelIndex = 0; channelIndex < channelCount; ++channelIndex) {
-      const float absoluteSample = std::abs(audioInBuffer.getSample(channelIndex, sampleIndex));
-      rt_channelPeakLinear[static_cast<size_t>(channelIndex)] =
-          std::max(rt_channelPeakLinear[static_cast<size_t>(channelIndex)], absoluteSample);
-    }
+        auto& provider = channelProviders[channelIndex];
+        if (provider == nullptr) {
+          return;
+        }
 
-    rt_samplesSinceLastPublish++;
-
-    if (rt_samplesSinceLastPublish >= publishEverySamples) {
-      rt_publishCurrentWindow(
-          channelCount, blockStartSample + static_cast<int64_t>(sampleIndex) + 1);
-      rt_samplesSinceLastPublish = 0;
-    }
-  }
+        provider->rt_pushValue(valueDb, sampleTimestamp);
+      });
 }
 
 void DbMeterProcessor::syncVisualizationProviders() {
@@ -142,20 +130,4 @@ void DbMeterProcessor::unregisterVisualizationProviders() {
   registeredVisualizationIds.clear();
   channelProviders.clear();
 }
-
-void DbMeterProcessor::rt_publishCurrentWindow(int channelCount, int64_t sampleTimestamp) {
-  const size_t providerCount = std::min(channelProviders.size(), static_cast<size_t>(channelCount));
-
-  for (size_t channelIndex = 0; channelIndex < providerCount; ++channelIndex) {
-    auto& provider = channelProviders[channelIndex];
-    if (provider == nullptr) {
-      continue;
-    }
-
-    provider->rt_pushValue(peakLinearToDb(rt_channelPeakLinear[channelIndex]), sampleTimestamp);
-  }
-
-  std::fill(rt_channelPeakLinear.begin(), rt_channelPeakLinear.end(), 0.0f);
-}
-
 } // namespace anthem
