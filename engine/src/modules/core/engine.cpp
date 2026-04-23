@@ -192,15 +192,6 @@ void Engine::compileProcessingGraph() {
       .sampleRate = currentDevice->getCurrentSampleRate(),
   });
 
-  // std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
-
-  // for (auto& group : result->actionGroups) {
-  //   juce::Logger::writeToLog("ACTION GROUP");
-  //   for (auto& action : *group) {
-  //     action->debugPrint();
-  //   }
-  // }
-
   // Make sure all nodes have been prepared for processing
   for (auto& pair : *processingGraph.nodes()) {
     auto& node = *pair.second;
@@ -215,10 +206,6 @@ void Engine::compileProcessingGraph() {
           // 'field' is the rfl::Field<Name, Type> wrapper.
           // We get the actual std::shared_ptr with .value().
           const auto& sharedPtr = field.value();
-
-          // sharedPtr is a std::shared_ptr<DerivedProcessor>.
-          // .get() returns a DerivedProcessor*.
-          // C++ polymorphism allows us to assign a Derived* to a Base*.
           Processor* baseProcessor = sharedPtr.get();
 
           if (!baseProcessor->isPrepared) {

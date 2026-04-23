@@ -19,26 +19,24 @@
 
 #include "graph_compiler.h"
 
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
-
-#include <iostream>
 
 /*
   Steps to compile a processing graph:
 
-  1. Clear buffers for all nodes. For parameters, write the control values to
-     the control input port buffers as an initialization value. This may be
-     overwritten by actual control connections.
+  1. Append initialization actions for every node. This clears the relevant
+     buffers and writes parameter values to control inputs.
   2. Find all nodes that have no incoming connections. These are the "root"
      nodes of the graph. Mark these as ready to process.
-  3. For each ready node, add it to a processing step it and mark all of its
-     outgoing connections as ready to process.
-  4. For each ready connection, add it to a processing step to copy the data
-     from the source port to the destination port. This must be done in a single
-     thread in series, because if multiple connections are copying to the same
-     port, two threads cannot be copying the data at the same time.
-  5. Find all nodes whose incoming connections are all marked as processed. Mark
-     these as ready to process.
+  3. Append process actions for all nodes that are ready to process.
+  4. Append copy actions for the outgoing connections of the nodes that were
+     just processed.
+     Note: this phase is serialized today. If it is ever parallelized, fan-in
+     needs special care because multiple connections may target the same
+     destination buffer, and audio copies sum into that destination.
+  5. Find all remaining nodes whose incoming connections are now all processed.
+     Mark these as ready to process.
   6. Repeat steps 3-5 until all nodes are marked as processed.
 
   All steps are commented below.
@@ -48,6 +46,7 @@ namespace anthem {
 
 GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& request) {
   auto result = std::make_unique<GraphCompilationResult>();
+  result->sampleRate = static_cast<float>(request.sampleRate);
   result->graphProcessContext =
       std::make_unique<GraphProcessContext>(request.rtServices, request.bufferLayout);
 
@@ -63,6 +62,7 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
   }
   result->graphProcessContext->reserve(
       request.nodes.size(), totalAudioBufferCount, totalControlBufferCount, totalEventBufferCount);
+  result->actions.reserve(request.nodes.size() * 3 + request.connections.size());
 
   // We store these in a vector so that when it goes out of scope, the nodes
   // are destroyed. We will store the actual pointers in a set, which improves
@@ -73,13 +73,6 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
 
   std::map<Node*, std::shared_ptr<GraphCompilerNode>> nodeToCompilerNode;
   std::map<NodeConnection*, std::shared_ptr<GraphCompilerEdge>> connectionToCompilerEdge;
-
-  const auto nodeCount = request.nodes.size();
-  const auto connectionCount = request.connections.size();
-
-  std::cout << "\033[32mAnthemGraphCompiler::compile(): Compiling graph with " << nodeCount
-            << (nodeCount > 1 ? " nodes" : " node") << " and " << connectionCount
-            << (connectionCount > 1 ? " connections" : " connection") << "\033[0m\n";
 
   // Create contexts for each node
   for (auto& pair : request.nodes) {
@@ -98,22 +91,62 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
     nodesToProcess.insert(compilerNode.get());
   }
 
-  std::cout << vectorOfNodesToProcess.size() << " nodes to process" << '\n';
-  std::cout << '\n';
-
   for (auto& node : vectorOfNodesToProcess) {
     node->assignEdges(
         request.nodes, request.connections, nodeToCompilerNode, connectionToCompilerEdge);
   }
 
-  std::unique_ptr<std::vector<std::unique_ptr<GraphCompilerAction>>> actions =
-      std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
+  auto addClearBuffersAction = [&](NodeProcessContext* context) {
+    result->actions.push_back(GraphAction::makeClearBuffers(context));
+  };
 
-  juce::Logger::writeToLog("Step 1: Zero input buffers");
+  auto addWriteParametersToControlInputsAction = [&](NodeProcessContext* context) {
+    result->actions.push_back(GraphAction::makeWriteParametersToControlInputs(context));
+  };
+
+  auto addProcessNodeAction = [&](NodeProcessContext* context, Processor* processor) {
+    result->actions.push_back(GraphAction::makeProcessNode(context, processor));
+  };
+
+  auto addCopyAudioBufferAction = [&](NodeProcessContext* sourceContext,
+                                      int64_t sourcePortId,
+                                      NodeProcessContext* destinationContext,
+                                      int64_t destinationPortId) {
+    result->actions.push_back(GraphAction::makeCopyAudioBuffer(
+        sourceContext->getBufferIndex(
+            NodePortDataType::audio, NodeProcessContext::BufferDirection::output, sourcePortId),
+        destinationContext->getBufferIndex(NodePortDataType::audio,
+            NodeProcessContext::BufferDirection::input,
+            destinationPortId)));
+  };
+
+  auto addCopyEventsAction = [&](NodeProcessContext* sourceContext,
+                                 int64_t sourcePortId,
+                                 NodeProcessContext* destinationContext,
+                                 int64_t destinationPortId) {
+    result->actions.push_back(GraphAction::makeCopyEvents(
+        sourceContext->getBufferIndex(
+            NodePortDataType::event, NodeProcessContext::BufferDirection::output, sourcePortId),
+        destinationContext->getBufferIndex(NodePortDataType::event,
+            NodeProcessContext::BufferDirection::input,
+            destinationPortId)));
+  };
+
+  auto addCopyControlBufferAction = [&](NodeProcessContext* sourceContext,
+                                        int64_t sourcePortId,
+                                        NodeProcessContext* destinationContext,
+                                        int64_t destinationPortId) {
+    result->actions.push_back(GraphAction::makeCopyControlBuffer(
+        sourceContext->getBufferIndex(
+            NodePortDataType::control, NodeProcessContext::BufferDirection::output, sourcePortId),
+        destinationContext->getBufferIndex(NodePortDataType::control,
+            NodeProcessContext::BufferDirection::input,
+            destinationPortId)));
+  };
 
   // Step 1 (part 1): Clear buffers
   //
-  // Before starting, we add an action that writes zeros to all audio input
+  // Before starting, we append an action that writes zeros to all audio input
   // buffers. If no inputs are present at an audio input port, then the input
   // for that port should be silence (e.g. all zeros), as opposed to either
   // garbage data or the data from the last block.
@@ -123,19 +156,15 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
   // then the event data from the last block will be processed again, which
   // could cause duplicate notes to be played, or other odd behavior.
   //
-  // Note that this does not do anything to contorl input buffers. In Anthem,
+  // Note that this does not do anything to control input buffers. In Anthem,
   // control values are audio-rate sampled data, but unlike audio input ports,
   // each control input port has a corresponding parameter definition that has a
   // current value, and the control value is initialized with that current value
   // instead. See below for more.
 
   for (auto& node : nodesToProcess) {
-    actions->push_back(std::move(std::make_unique<ClearBuffersAction>(node->context)));
+    addClearBuffersAction(node->context);
   }
-
-  result->actionGroups.push_back(std::move(actions));
-
-  actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
 
   // Step 1 (part 2): Initialize control input buffers with corresponding
   // parameter values.
@@ -144,7 +173,7 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
   // definition, which provides a default value, and a parameter instance, which
   // provides the current value. This action writes the current value from each
   // parameter to the input buffer for each control input. If there is a
-  // connection to a given contorl input, then the value from that connection
+  // connection to a given control input, then the value from that connection
   // will overwrite the parameter value in a future step.
   //
   // We don't skip this step for control input ports that have attached inputs,
@@ -153,41 +182,20 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
   // smoother could produce odd behavior when connections are made or destroyed.
 
   for (auto& node : nodesToProcess) {
-    actions->push_back(std::make_unique<WriteParametersToControlInputsAction>(
-        node->context, static_cast<float>(request.sampleRate)));
+    addWriteParametersToControlInputsAction(node->context);
   }
-
-  result->actionGroups.push_back(std::move(actions));
-
-  actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
-
-  std::cout << result->actionGroups.size() << " action groups" << '\n';
-  std::cout << '\n';
 
   // Step 2: Find nodes with no inputs and mark them as ready to process
 
-  int i = 0;
-
   for (auto& node : nodesToProcess) {
     if (node->inputEdges.size() == 0) {
-      i++;
       node->readyToProcess = true;
     }
   }
 
-  juce::Logger::writeToLog("Step 2: Found " + std::to_string(i) + " nodes with no inputs");
-  std::cout << '\n';
-
   auto lastSize = SIZE_MAX;
 
-  int j = 0;
-
   while (!nodesToProcess.empty()) {
-    j++;
-    juce::Logger::writeToLog("\033[32mLoop iteration " + std::to_string(j) + "\033[0m");
-    std::cout << "Nodes still left to process: " << std::to_string(nodesToProcess.size()) << '\n';
-    std::cout << "Last size: " << std::to_string(lastSize) << '\n';
-
     // If there's an infinite loop, throw an error. This should never happen,
     // and a bug that causes an infinite loop here would prevent the engine from
     // being shut down. This is a safety check to prevent that.
@@ -199,49 +207,26 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
 
     std::vector<GraphCompilerNode*> nodesToRemoveFromProcessing;
 
-    i = 0;
-
-    // Step 3: Process nodes that are ready to process
+    // Step 3: Append process actions for nodes that are ready to process
     for (auto& node : nodesToProcess) {
       if (node->readyToProcess) {
-        std::cout << "Processing node " << node->node->id() << '\n';
-
         nodesToRemoveFromProcessing.push_back(node);
-        i++;
 
         auto processor = node->node->getProcessor();
         if (!processor.has_value()) {
-          std::cout << "Error: Node " << node->node->id() << " has no processor." << '\n';
           continue;
         }
 
-        actions->push_back(
-            std::make_unique<ProcessNodeAction>(node->context, processor.value().get()));
+        addProcessNodeAction(node->context, processor.value().get());
       }
     }
 
-    juce::Logger::writeToLog("Step 3: Added process actions for " + std::to_string(i) + " nodes");
-
-    result->actionGroups.push_back(std::move(actions));
-
-    actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
-
-    std::cout << result->actionGroups.size() << " action groups" << '\n';
-
-    i = 0;
-
     // Remove processed nodes from the list of nodes to process
     for (auto& node : nodesToRemoveFromProcessing) {
-      i++;
       nodesToProcess.erase(node);
     }
 
-    juce::Logger::writeToLog("Step 3: Removed " + std::to_string(i) + " nodes from processing");
-    std::cout << '\n';
-
-    i = 0;
-
-    // Step 4: Process connections
+    // Step 4: Append connection-copy actions
     for (auto& node : nodesToRemoveFromProcessing) {
       for (auto& edge : node->outputEdges) {
         auto& sourceNodeId = edge->edgeSource->sourceNodeId();
@@ -256,7 +241,6 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
         auto destinationPortResult = destinationNode->getPortById(destinationPortId);
 
         if (!sourcePortResult.has_value() || !destinationPortResult.has_value()) {
-          std::cout << "Error: Could not find source or destination port" << '\n';
           continue;
         }
 
@@ -265,70 +249,45 @@ GraphCompilationResult* GraphCompiler::compile(const GraphCompileRequest& reques
 
         switch (edge->type) {
           case NodePortDataType::audio:
-            actions->push_back(std::make_unique<CopyAudioBufferAction>(edge->sourceNodeContext,
+            addCopyAudioBufferAction(edge->sourceNodeContext,
                 sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort->id()));
+                destinationPort->id());
             break;
           case NodePortDataType::event:
-            actions->push_back(std::make_unique<CopyEventsAction>(edge->sourceNodeContext,
+            addCopyEventsAction(edge->sourceNodeContext,
                 sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort->id()));
+                destinationPort->id());
             break;
           case NodePortDataType::control:
-            actions->push_back(std::make_unique<CopyControlBufferAction>(edge->sourceNodeContext,
+            addCopyControlBufferAction(edge->sourceNodeContext,
                 sourcePort->id(),
                 edge->destinationNodeContext,
-                destinationPort->id()));
+                destinationPort->id());
             break;
         }
 
         edge->processed = true;
-        i++;
       }
     }
 
-    juce::Logger::writeToLog("Step 4: Added " + std::to_string(i) + " connection actions");
-    std::cout << '\n';
-
-    result->actionGroups.push_back(std::move(actions));
-
-    actions = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
-
     // Step 5: Mark nodes with no unprocessed input connections as ready to process
-
-    i = 0;
 
     for (auto& node : nodesToProcess) {
       bool allInputsProcessed = true;
 
-      std::cout << "Checking node " << node->node->id() << '\n';
-
       for (auto& edge : node->inputEdges) {
         if (!edge->processed) {
-          std::cout << "\033[34m";
-          std::cout << "Found unprocessed edge with pointer " << std::hex << edge.get() << std::dec
-                    << '\n';
-          std::cout << "This compiler edge represents a real edge with pointer " << std::hex
-                    << edge->edgeSource.get() << std::dec << '\n';
-          std::cout << "\033[0m";
           allInputsProcessed = false;
           break;
         }
       }
 
       if (allInputsProcessed) {
-        i++;
         node->readyToProcess = true;
       }
     }
-
-    juce::Logger::writeToLog(
-        "Step 5: Found " + std::to_string(i) + " nodes with no unprocessed input connections");
-
-    juce::Logger::writeToLog("Restarting loop...");
-    std::cout << '\n';
   }
 
   return result.release();

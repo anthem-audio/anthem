@@ -19,47 +19,65 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/actions/graph_compiler_action.h"
+#include "modules/processing_graph/compiler/graph_action.h"
 #include "modules/processing_graph/compiler/graph_compilation_result.h"
+#include "modules/processing_graph/compiler/graph_process_context.h"
+#include "modules/processing_graph/graph_test_helpers.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/processing_graph/runtime/graph_processor.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
 
 #include <juce_core/juce_core.h>
 #include <memory>
-#include <vector>
 
 namespace anthem {
 
 class GraphProcessorTest : public juce::UnitTest {
   struct ActionProbe {
     int executeCount = 0;
-    int destroyCount = 0;
     int lastNumSamples = -1;
+    std::weak_ptr<Node> ownedNode;
+    std::shared_ptr<GraphRuntimeServices> retainedRtServices;
+    std::shared_ptr<Processor> retainedProcessor;
   };
 
-  class ProbeAction : public GraphCompilerAction {
+  class ProbeProcessor : public Processor {
   public:
-    explicit ProbeAction(std::shared_ptr<ActionProbe> probe) : probe(std::move(probe)) {}
+    explicit ProbeProcessor(std::shared_ptr<ActionProbe> probe)
+      : Processor("ProbeProcessor"), probe(std::move(probe)) {}
 
-    ~ProbeAction() override {
-      probe->destroyCount++;
-    }
+    void prepareToProcess() override {}
 
-    void execute(int numSamples) override {
+    void process(NodeProcessContext&, int numSamples) override {
       probe->executeCount++;
       probe->lastNumSamples = numSamples;
     }
-
-    void debugPrint() override {}
   private:
     std::shared_ptr<ActionProbe> probe;
   };
 
   static GraphCompilationResult* makeCompilationResult(const std::shared_ptr<ActionProbe>& probe) {
     auto* result = new GraphCompilationResult();
+    result->sampleRate = 48000.0f;
 
-    auto actionGroup = std::make_unique<std::vector<std::unique_ptr<GraphCompilerAction>>>();
-    actionGroup->push_back(std::make_unique<ProbeAction>(probe));
-    result->actionGroups.push_back(std::move(actionGroup));
+    auto node = graph_test_helpers::makeNode(1);
+    probe->ownedNode = node;
+    result->graphNodes.push_back(node);
+
+    probe->retainedRtServices = std::make_shared<GraphRuntimeServices>();
+    result->graphProcessContext = std::make_unique<GraphProcessContext>(*probe->retainedRtServices,
+        GraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 64,
+        });
+    result->graphProcessContext->reserve(1, 0, 0, 0);
+
+    auto& context = result->graphProcessContext->createNodeProcessContext(node);
+
+    auto processor = std::make_shared<ProbeProcessor>(probe);
+    probe->retainedProcessor = processor;
+
+    result->actions.push_back(GraphAction::makeProcessNode(&context, processor.get()));
 
     return result;
   }
@@ -135,8 +153,7 @@ public:
         newerProbe->executeCount, 1, "Only the newest queued result should execute for the block.");
 
     processor.clearDeletionQueueFromMainThread();
-    expectEquals(olderProbe->destroyCount,
-        1,
+    expect(olderProbe->ownedNode.expired(),
         "Coalesced results should move through the deletion queue for cleanup.");
   }
 
@@ -153,14 +170,12 @@ public:
     processor.setProcessingStepsFromMainThread(makeCompilationResult(newProbe));
     processor.process(4);
 
-    expectEquals(oldProbe->destroyCount,
-        0,
+    expect(!oldProbe->ownedNode.expired(),
         "Replaced results should remain alive until the main thread clears the deletion queue.");
 
     processor.clearDeletionQueueFromMainThread();
 
-    expectEquals(oldProbe->destroyCount,
-        1,
+    expect(oldProbe->ownedNode.expired(),
         "Clearing the deletion queue should delete the replaced result.");
   }
 

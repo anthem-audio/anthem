@@ -19,23 +19,20 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
-#include "modules/processing_graph/compiler/actions/copy_audio_buffer_action.h"
-#include "modules/processing_graph/compiler/actions/copy_control_buffer_action.h"
-#include "modules/processing_graph/compiler/actions/copy_events_action.h"
-#include "modules/processing_graph/compiler/actions/process_node_action.h"
-#include "modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h"
+#include "modules/processing_graph/compiler/graph_action.h"
 #include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
+#include "modules/processing_graph/runtime/graph_action_executor.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
 #include "modules/processors/gain_parameter_mapping.h"
 
+#include <array>
 #include <juce_core/juce_core.h>
 
 namespace anthem {
 
-class GraphCompilerActionsTest : public juce::UnitTest {
+class GraphActionExecutorTest : public juce::UnitTest {
   static GraphProcessContext makeGraphContext(
       GraphRuntimeServices& rtServices, int blockSize = 16) {
     return GraphProcessContext(rtServices,
@@ -75,7 +72,7 @@ class GraphCompilerActionsTest : public juce::UnitTest {
     return node;
   }
 public:
-  GraphCompilerActionsTest() : juce::UnitTest("GraphCompilerActionsTest", "Anthem") {}
+  GraphActionExecutorTest() : juce::UnitTest("GraphActionExecutorTest", "Anthem") {}
 
   void runTest() override {
     testClearBuffersAction();
@@ -87,7 +84,7 @@ public:
   }
 
   void testClearBuffersAction() {
-    beginTest("ClearBuffersAction clears input audio and event buffers");
+    beginTest("GraphAction executor clears input audio and event buffers");
 
     auto node = makeEventPassNode(10);
     node->audioInputPorts()->push_back(
@@ -100,7 +97,6 @@ public:
     graphContext.reserve(1, 2, 0, 2);
 
     auto& context = graphContext.createNodeProcessContext(node);
-
     context.getInputAudioBuffer(3).setSample(0, 0, 0.75f);
     context.getOutputAudioBuffer(4).setSample(0, 0, 0.5f);
     context.getInputEventBuffer(1)->addEvent(LiveEvent{
@@ -114,8 +110,9 @@ public:
         .event = Event(NoteOffEvent(60, 0, 0.0f)),
     });
 
-    ClearBuffersAction action(&context);
-    action.execute(16);
+    const std::array actions{GraphAction::makeClearBuffers(&context)};
+
+    executeGraphActions(actions, graphContext, 48000.0f, 16);
 
     expectWithinAbsoluteError(context.getInputAudioBuffer(3).getSample(0, 0),
         0.0f,
@@ -136,7 +133,7 @@ public:
   }
 
   void testWriteParametersToControlInputsAction() {
-    beginTest("WriteParametersToControlInputsAction writes parameter values into control buffers");
+    beginTest("GraphAction executor writes parameter values into control buffers");
 
     auto node = makeControlPassNode(10);
 
@@ -146,8 +143,9 @@ public:
 
     auto& context = graphContext.createNodeProcessContext(node);
 
-    WriteParametersToControlInputsAction action(&context, 48000.0f);
-    action.execute(8);
+    const std::array actions{GraphAction::makeWriteParametersToControlInputs(&context)};
+
+    executeGraphActions(actions, graphContext, 48000.0f, 8);
 
     auto& controlBuffer = context.getInputControlBuffer(1);
     for (int sample = 0; sample < 8; ++sample) {
@@ -161,7 +159,7 @@ public:
   }
 
   void testCopyAudioBufferAction() {
-    beginTest("CopyAudioBufferAction adds source audio into the destination input");
+    beginTest("GraphAction executor adds source audio into the destination input");
 
     auto sourceNode = makeAudioPassNode(10);
     auto destinationNode = makeAudioPassNode(20);
@@ -180,8 +178,13 @@ public:
     destinationBuffer.setSample(0, 0, 0.75f);
     destinationBuffer.setSample(1, 0, 0.25f);
 
-    CopyAudioBufferAction action(&sourceContext, 2, &destinationContext, 1);
-    action.execute(4);
+    const std::array actions{GraphAction::makeCopyAudioBuffer(
+        sourceContext.getBufferIndex(
+            NodePortDataType::audio, NodeProcessContext::BufferDirection::output, 2),
+        destinationContext.getBufferIndex(
+            NodePortDataType::audio, NodeProcessContext::BufferDirection::input, 1))};
+
+    executeGraphActions(actions, graphContext, 48000.0f, 4);
 
     expectWithinAbsoluteError(destinationBuffer.getSample(0, 0),
         1.0f,
@@ -196,7 +199,7 @@ public:
   }
 
   void testCopyControlBufferAction() {
-    beginTest("CopyControlBufferAction overwrites destination control values");
+    beginTest("GraphAction executor overwrites destination control values");
 
     auto sourceNode = makeControlPassNode(10);
     auto destinationNode = makeControlPassNode(20);
@@ -215,8 +218,13 @@ public:
     destinationBuffer.setSample(0, 0, 0.9f);
     destinationBuffer.setSample(0, 1, 0.1f);
 
-    CopyControlBufferAction action(&sourceContext, 2, &destinationContext, 1);
-    action.execute(4);
+    const std::array actions{GraphAction::makeCopyControlBuffer(
+        sourceContext.getBufferIndex(
+            NodePortDataType::control, NodeProcessContext::BufferDirection::output, 2),
+        destinationContext.getBufferIndex(
+            NodePortDataType::control, NodeProcessContext::BufferDirection::input, 1))};
+
+    executeGraphActions(actions, graphContext, 48000.0f, 4);
 
     expectWithinAbsoluteError(destinationBuffer.getSample(0, 0),
         0.25f,
@@ -231,7 +239,7 @@ public:
   }
 
   void testCopyEventsAction() {
-    beginTest("CopyEventsAction appends source events to the destination input buffer");
+    beginTest("GraphAction executor appends source events to the destination input buffer");
 
     auto sourceNode = makeEventPassNode(10);
     auto destinationNode = makeEventPassNode(20);
@@ -243,21 +251,27 @@ public:
     auto& sourceContext = graphContext.createNodeProcessContext(sourceNode);
     auto& destinationContext = graphContext.createNodeProcessContext(destinationNode);
 
-    sourceContext.getOutputEventBuffer(2)->addEvent(LiveEvent{
+    auto* sourceBuffer = sourceContext.getOutputEventBuffer(2).get();
+    auto* destinationBuffer = destinationContext.getInputEventBuffer(1).get();
+    sourceBuffer->addEvent(LiveEvent{
         .sampleOffset = 0.5,
         .liveId = 10,
         .event = Event(NoteOnEvent(64, 0, 1.0f, 0.0f)),
     });
-    destinationContext.getInputEventBuffer(1)->addEvent(LiveEvent{
+    destinationBuffer->addEvent(LiveEvent{
         .sampleOffset = 0.25,
         .liveId = 9,
         .event = Event(NoteOffEvent(60, 0, 0.0f)),
     });
 
-    CopyEventsAction action(&sourceContext, 2, &destinationContext, 1);
-    action.execute(4);
+    const std::array actions{GraphAction::makeCopyEvents(
+        sourceContext.getBufferIndex(
+            NodePortDataType::event, NodeProcessContext::BufferDirection::output, 2),
+        destinationContext.getBufferIndex(
+            NodePortDataType::event, NodeProcessContext::BufferDirection::input, 1))};
 
-    auto& destinationBuffer = destinationContext.getInputEventBuffer(1);
+    executeGraphActions(actions, graphContext, 48000.0f, 4);
+
     expectEquals(static_cast<int>(destinationBuffer->getNumEvents()),
         2,
         "Event copy should append source events to existing destination events.");
@@ -273,7 +287,7 @@ public:
   }
 
   void testProcessNodeAction() {
-    beginTest("ProcessNodeAction delegates processing to the wrapped processor");
+    beginTest("GraphAction executor delegates processing to the wrapped processor");
 
     auto node = graph_test_helpers::makeGainNode(10);
     node->audioInputPorts()->push_back(graph_test_helpers::makePort(
@@ -305,8 +319,9 @@ public:
       controlBuffer.setSample(0, sample, kGainParameterZeroDbNormalized);
     }
 
-    ProcessNodeAction action(&context, processor.value().get());
-    action.execute(4);
+    const std::array actions{GraphAction::makeProcessNode(&context, processor.value().get())};
+
+    executeGraphActions(actions, graphContext, 48000.0f, 4);
 
     auto expectedGain = gainParameterValueToLinear(kGainParameterZeroDbNormalized);
     expectWithinAbsoluteError(audioOutBuffer.getSample(0, 0),
@@ -322,6 +337,6 @@ public:
   }
 };
 
-static GraphCompilerActionsTest graphCompilerActionsTest;
+static GraphActionExecutorTest graphActionExecutorTest;
 
 } // namespace anthem

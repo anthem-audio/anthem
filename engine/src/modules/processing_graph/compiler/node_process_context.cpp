@@ -24,7 +24,6 @@
 #include "modules/processing_graph/model/node.h"
 
 #include <algorithm>
-#include <string>
 
 namespace anthem {
 
@@ -40,58 +39,40 @@ NodeProcessContext::NodeProcessContext(
   inputParameters.reserve(graphNode->controlInputPorts()->size());
 
   for (auto& port : *graphNode->audioInputPorts()) {
-    inputAudioBuffers.push_back(PortBufferHandle{
-        .portId = port->id(),
-        .bufferIndex = graphProcessContext.allocateAudioBuffer(),
-    });
+    inputAudioBuffers.emplace(port->id(), graphProcessContext.allocateAudioBuffer());
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {
-    outputAudioBuffers.push_back(PortBufferHandle{
-        .portId = port->id(),
-        .bufferIndex = graphProcessContext.allocateAudioBuffer(),
-    });
+    outputAudioBuffers.emplace(port->id(), graphProcessContext.allocateAudioBuffer());
   }
 
   for (auto& port : *graphNode->controlInputPorts()) {
-    inputControlBuffers.push_back(PortBufferHandle{
-        .portId = port->id(),
-        .bufferIndex = graphProcessContext.allocateControlBuffer(),
-    });
+    inputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
   }
 
   for (auto& port : *graphNode->controlOutputPorts()) {
-    outputControlBuffers.push_back(PortBufferHandle{
-        .portId = port->id(),
-        .bufferIndex = graphProcessContext.allocateControlBuffer(),
-    });
+    outputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
   }
 
   for (auto& port : *graphNode->eventInputPorts()) {
     // TODO: Seed initial capacities from persisted per-port runtime hints once
     // graph recompilation can preserve processing state across compiles.
-    inputEventBuffers.push_back(PortBufferHandle{
-        .portId = port->id(),
-        .bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE),
-    });
+    inputEventBuffers.emplace(
+        port->id(), graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE));
   }
 
   for (auto& port : *graphNode->eventOutputPorts()) {
     // TODO: Seed initial capacities from persisted per-port runtime hints once
     // graph recompilation can preserve processing state across compiles.
-    outputEventBuffers.push_back(PortBufferHandle{
-        .portId = port->id(),
-        .bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE),
-    });
+    outputEventBuffers.emplace(
+        port->id(), graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE));
   }
 
-  size_t inputParameterIndex = 0;
   for (auto& port : *graphNode->controlInputPorts()) {
-    const auto controlBufferIndex = inputParameterIndex++;
+    const auto controlBufferIndex = inputControlBuffers.at(port->id());
     auto parameterValue = static_cast<float>(port->parameterValue().value_or(0.0));
     auto& parameterConfig = port->config()->parameterConfig();
-    auto& inputControlBuffer =
-        graphProcessContext.getControlBuffer(inputControlBuffers[controlBufferIndex].bufferIndex);
+    auto& inputControlBuffer = graphProcessContext.getControlBuffer(controlBufferIndex);
 
     if (!parameterConfig.has_value()) {
       continue;
@@ -110,20 +91,6 @@ NodeProcessContext::NodeProcessContext(
 void NodeProcessContext::cleanup() {
   // Intentionally empty. The graph context owns the underlying storage and
   // everything else is managed with RAII.
-}
-
-const NodeProcessContext::PortBufferHandle& NodeProcessContext::findBufferHandle(
-    const std::vector<PortBufferHandle>& handles, int64_t portId, const char* bufferType) const {
-  auto it = std::find_if(handles.begin(), handles.end(), [portId](const PortBufferHandle& handle) {
-    return handle.portId == portId;
-  });
-
-  if (it == handles.end()) {
-    throw std::runtime_error("AnthemNodeProcessContext could not find " + std::string(bufferType) +
-                             " buffer for port ID " + std::to_string(portId) + ".");
-  }
-
-  return *it;
 }
 
 NodeProcessContext::InputParameterBinding& NodeProcessContext::findInputParameterBinding(
@@ -173,53 +140,67 @@ float NodeProcessContext::getParameterValue(int64_t id) {
 void NodeProcessContext::clearBuffers() {
   jassert(graphProcessContext != nullptr);
 
-  for (const auto& handle : inputAudioBuffers) {
-    graphProcessContext->getAudioBuffer(handle.bufferIndex).clear();
+  for (const auto& [portId, bufferIndex] : inputAudioBuffers) {
+    juce::ignoreUnused(portId);
+    graphProcessContext->getAudioBuffer(bufferIndex).clear();
   }
 
-  for (const auto& handle : inputEventBuffers) {
-    graphProcessContext->getEventBuffer(handle.bufferIndex)->clear();
+  for (const auto& [portId, bufferIndex] : inputEventBuffers) {
+    juce::ignoreUnused(portId);
+    graphProcessContext->getEventBuffer(bufferIndex)->clear();
   }
 
-  for (const auto& handle : outputEventBuffers) {
-    graphProcessContext->getEventBuffer(handle.bufferIndex)->clear();
+  for (const auto& [portId, bufferIndex] : outputEventBuffers) {
+    juce::ignoreUnused(portId);
+    graphProcessContext->getEventBuffer(bufferIndex)->clear();
   }
+}
+
+size_t NodeProcessContext::getBufferIndex(
+    NodePortDataType dataType, BufferDirection direction, int64_t id) const {
+  switch (dataType) {
+    case NodePortDataType::audio:
+      return direction == BufferDirection::input ? inputAudioBuffers.at(id)
+                                                 : outputAudioBuffers.at(id);
+    case NodePortDataType::control:
+      return direction == BufferDirection::input ? inputControlBuffers.at(id)
+                                                 : outputControlBuffers.at(id);
+    case NodePortDataType::event:
+      return direction == BufferDirection::input ? inputEventBuffers.at(id)
+                                                 : outputEventBuffers.at(id);
+  }
+
+  throw std::runtime_error("AnthemNodeProcessContext received an unsupported port data type.");
 }
 
 juce::AudioSampleBuffer& NodeProcessContext::getInputAudioBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getAudioBuffer(
-      findBufferHandle(inputAudioBuffers, id, "input audio").bufferIndex);
+  return graphProcessContext->getAudioBuffer(inputAudioBuffers.at(id));
 }
 
 juce::AudioSampleBuffer& NodeProcessContext::getOutputAudioBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getAudioBuffer(
-      findBufferHandle(outputAudioBuffers, id, "output audio").bufferIndex);
+  return graphProcessContext->getAudioBuffer(outputAudioBuffers.at(id));
 }
 
 juce::AudioSampleBuffer& NodeProcessContext::getInputControlBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getControlBuffer(
-      findBufferHandle(inputControlBuffers, id, "input control").bufferIndex);
+  return graphProcessContext->getControlBuffer(inputControlBuffers.at(id));
 }
 
 juce::AudioSampleBuffer& NodeProcessContext::getOutputControlBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getControlBuffer(
-      findBufferHandle(outputControlBuffers, id, "output control").bufferIndex);
+  return graphProcessContext->getControlBuffer(outputControlBuffers.at(id));
 }
 
 std::unique_ptr<EventBuffer>& NodeProcessContext::getInputEventBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getEventBuffer(
-      findBufferHandle(inputEventBuffers, id, "input event").bufferIndex);
+  return graphProcessContext->getEventBuffer(inputEventBuffers.at(id));
 }
 
 std::unique_ptr<EventBuffer>& NodeProcessContext::getOutputEventBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getEventBuffer(
-      findBufferHandle(outputEventBuffers, id, "output event").bufferIndex);
+  return graphProcessContext->getEventBuffer(outputEventBuffers.at(id));
 }
 
 LiveNoteId NodeProcessContext::rt_allocateLiveNoteId() {

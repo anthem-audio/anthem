@@ -19,6 +19,7 @@
 
 #include "graph_processor.h"
 
+#include "modules/processing_graph/runtime/graph_action_executor.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/util/intentionally_leak.h"
 
@@ -98,22 +99,7 @@ void GraphProcessor::process(int numSamples) {
     return;
   }
 
-  auto& actionGroups = this->rt_activeCompilationResult->actionGroups;
-
-  for (auto& group : actionGroups) {
-    // Actions within groups can be executed in parallel, but we're not doing
-    // that yet because the grouping is naive and we haven't profiled the
-    // performance characteristics of everything yet. Some actions may be too
-    // small to benefit from parallel execution, and the way we're grouping
-    // at the moment may be suboptimal for some graphs.
-    //
-    // ALso, the action groups that write output buffers to input buffers
-    // cannot be safely executed in parallel because they may have two actions
-    // that target the same buffer.
-    for (auto& action : *group) {
-      action->execute(numSamples);
-    }
-  }
+  executeGraphActions(*this->rt_activeCompilationResult, numSamples);
 }
 
 GraphRuntimeServices& GraphProcessor::getRtServices() {

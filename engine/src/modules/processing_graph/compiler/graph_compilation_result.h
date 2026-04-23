@@ -19,11 +19,10 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/actions/graph_compiler_action.h"
+#include "modules/processing_graph/compiler/graph_action.h"
 #include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/model/node.h"
 
-#include <iostream>
 #include <juce_core/juce_core.h>
 #include <memory>
 #include <vector>
@@ -35,11 +34,11 @@ class GraphCompilationResult {
 private:
   JUCE_LEAK_DETECTOR(GraphCompilationResult)
 public:
-  // All actions in a given group can be executed in parallel.
-  //
-  // The way these groups are constructed currently is quite naive and no work
-  // has been done to optimize it.
-  std::vector<std::unique_ptr<std::vector<std::unique_ptr<GraphCompilerAction>>>> actionGroups;
+  // Actions in execution order for the compiled graph.
+  std::vector<GraphAction> actions;
+
+  // Shared execution data for the compiled graph.
+  float sampleRate = 0.0f;
 
   // Owns all graph-scoped runtime storage for this compiled graph, including
   // the node process contexts that point into that storage.
@@ -66,17 +65,6 @@ public:
   //    5. The audio thread continues to use its raw pointer to try to access
   //       the node, which results in a use-after-free.
   std::vector<std::shared_ptr<Node>> graphNodes;
-
-  void debugPrint() {
-    juce::Logger::writeToLog("AnthemGraphCompilationResult");
-    std::cout << actionGroups.size() << " action groups" << '\n';
-    for (auto& group : actionGroups) {
-      std::cout << "  ActionGroup" << '\n' << "  ";
-      for (auto& action : *group) {
-        action->debugPrint();
-      }
-    }
-  }
 
   // Clean up the compilation result. This must be called before the compilation
   // result is deallocated.

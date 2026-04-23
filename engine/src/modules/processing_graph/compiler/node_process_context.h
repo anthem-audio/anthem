@@ -31,6 +31,7 @@
 #include <juce_events/juce_events.h>
 #include <memory>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
@@ -41,6 +42,11 @@ class GraphProcessContext;
 
 class NodeProcessContext {
 public:
+  enum class BufferDirection : uint8_t {
+    input,
+    output,
+  };
+
   struct InputParameterBinding {
     int64_t portId;
     juce::AudioSampleBuffer* rt_buffer = nullptr;
@@ -50,24 +56,19 @@ public:
 private:
   JUCE_LEAK_DETECTOR(NodeProcessContext)
 
-  struct PortBufferHandle {
-    int64_t portId;
-    size_t bufferIndex;
-  };
+  using PortBufferIndexMap = std::unordered_map<int64_t, size_t>;
 
-  const PortBufferHandle& findBufferHandle(
-      const std::vector<PortBufferHandle>& handles, int64_t portId, const char* bufferType) const;
   InputParameterBinding& findInputParameterBinding(int64_t id);
   const InputParameterBinding& findInputParameterBinding(int64_t id) const;
 
-  std::vector<PortBufferHandle> inputAudioBuffers;
-  std::vector<PortBufferHandle> outputAudioBuffers;
+  PortBufferIndexMap inputAudioBuffers;
+  PortBufferIndexMap outputAudioBuffers;
 
-  std::vector<PortBufferHandle> inputControlBuffers;
-  std::vector<PortBufferHandle> outputControlBuffers;
+  PortBufferIndexMap inputControlBuffers;
+  PortBufferIndexMap outputControlBuffers;
 
-  std::vector<PortBufferHandle> inputEventBuffers;
-  std::vector<PortBufferHandle> outputEventBuffers;
+  PortBufferIndexMap inputEventBuffers;
+  PortBufferIndexMap outputEventBuffers;
 
   std::vector<InputParameterBinding> inputParameters;
 
@@ -95,6 +96,7 @@ public:
   float getParameterValue(int64_t id);
 
   void clearBuffers();
+  size_t getBufferIndex(NodePortDataType dataType, BufferDirection direction, int64_t id) const;
 
   juce::AudioSampleBuffer& getInputAudioBuffer(int64_t id);
   juce::AudioSampleBuffer& getOutputAudioBuffer(int64_t id);

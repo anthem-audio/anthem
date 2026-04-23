@@ -19,36 +19,25 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/actions/clear_buffers_action.h"
-#include "modules/processing_graph/compiler/actions/copy_audio_buffer_action.h"
-#include "modules/processing_graph/compiler/actions/copy_control_buffer_action.h"
-#include "modules/processing_graph/compiler/actions/copy_events_action.h"
-#include "modules/processing_graph/compiler/actions/process_node_action.h"
-#include "modules/processing_graph/compiler/actions/write_parameters_to_control_inputs_action.h"
+#include "modules/processing_graph/compiler/graph_action.h"
 #include "modules/processing_graph/compiler/graph_compiler.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
 #include "modules/processors/master_output.h"
 
+#include <algorithm>
 #include <juce_core/juce_core.h>
 #include <stdexcept>
 
 namespace anthem {
 
 class GraphCompilerTest : public juce::UnitTest {
-  template <typename T> static int countActionsOfType(const GraphCompilationResult& result) {
-    int count = 0;
-
-    for (const auto& group : result.actionGroups) {
-      for (const auto& action : *group) {
-        if (dynamic_cast<T*>(action.get()) != nullptr) {
-          count++;
-        }
-      }
-    }
-
-    return count;
+  static int countActionsOfType(const GraphCompilationResult& result, GraphActionType type) {
+    return static_cast<int>(std::count_if(result.actions.begin(),
+        result.actions.end(),
+        [type](const GraphAction& action) { return action.type == type; }));
   }
 
   static GraphCompileRequest buildCompileRequest(
@@ -69,7 +58,7 @@ public:
   GraphCompilerTest() : juce::UnitTest("AnthemGraphCompilerTest", "Anthem") {}
 
   void runTest() override {
-    testCompileEmptyGraphProducesOnlyInitializationGroups();
+    testCompileEmptyGraphProducesNoActions();
     testCompileSingleNodeGraphProducesOneProcessAction();
     testCompileTwoNodeAudioGraphProducesExpectedActionFlow();
     testCompileFanOutGraphProducesMultipleCopyActions();
@@ -80,8 +69,8 @@ public:
     testCompileMalformedConnectionSkipsInvalidEdge();
   }
 
-  void testCompileEmptyGraphProducesOnlyInitializationGroups() {
-    beginTest("Empty graphs compile into empty initialization groups");
+  void testCompileEmptyGraphProducesNoActions() {
+    beginTest("Empty graphs compile into no actions");
 
     GraphRuntimeServices rtServices;
     auto graph = graph_test_helpers::makeProcessingGraph();
@@ -89,15 +78,10 @@ public:
     auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
     expect(result != nullptr, "Compiling an empty graph should still produce a result.");
-    expectEquals(static_cast<int>(result->actionGroups.size()),
-        2,
-        "Empty graphs should only produce the two initialization action groups.");
-    expectEquals(static_cast<int>(result->actionGroups[0]->size()),
-        0,
-        "Clear-buffers group should be empty for an empty graph.");
-    expectEquals(static_cast<int>(result->actionGroups[1]->size()),
-        0,
-        "Parameter-write group should be empty for an empty graph.");
+    expectEquals(
+        static_cast<int>(result->actions.size()), 0, "Empty graphs should not emit any actions.");
+    expectWithinAbsoluteError(
+        result->sampleRate, 48000.0f, 0.0001f, "Compilation should retain the sample rate.");
 
     result->cleanup();
     delete result;
@@ -127,15 +111,30 @@ public:
     GraphRuntimeServices rtServices;
     auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(countActionsOfType<ProcessNodeAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::ClearBuffers),
+        1,
+        "Single-node graphs should emit one clear action.");
+    expectEquals(countActionsOfType(*result, GraphActionType::WriteParametersToControlInputs),
+        1,
+        "Single-node graphs should emit one parameter-write action.");
+    expectEquals(countActionsOfType(*result, GraphActionType::ProcessNode),
         1,
         "Single-node graphs should process the node once.");
-    expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyAudioBuffer),
         0,
-        "Single-node graphs should not emit copy actions.");
-    expectEquals(static_cast<int>(result->actionGroups.size()),
-        4,
-        "Single-node graphs should produce init, process, and empty copy groups.");
+        "Single-node graphs should not emit audio-copy actions.");
+    expectEquals(static_cast<int>(result->actions.size()),
+        3,
+        "Single-node graphs should emit clear, parameter-write, and process actions.");
+
+    expect(result->actions[0].type == GraphActionType::ClearBuffers,
+        "The first action should clear buffers.");
+    expect(result->actions[1].type == GraphActionType::WriteParametersToControlInputs,
+        "The second action should initialize control inputs.");
+    expect(result->actions[2].type == GraphActionType::ProcessNode,
+        "The third action should process the node.");
+    expect(result->actions[2].processNode.processor == gainNode->getProcessor().value().get(),
+        "The process action should target the node's processor.");
 
     result->cleanup();
     delete result;
@@ -191,56 +190,56 @@ public:
         "Compilation should assign a runtime context to the gain node.");
     expect(masterNode->runtimeContext.has_value(),
         "Compilation should assign a runtime context to the master-output node.");
-
-    expectEquals(static_cast<int>(result->actionGroups.size()),
-        6,
-        "A two-node single-edge graph should produce the expected initialization, "
-        "process, and copy groups.");
-    expectEquals(static_cast<int>(result->actionGroups[0]->size()),
+    expectEquals(countActionsOfType(*result, GraphActionType::ClearBuffers),
         2,
-        "Both nodes should get a clear-buffers action.");
-    expect(dynamic_cast<ClearBuffersAction*>(result->actionGroups[0]->at(0).get()) != nullptr,
-        "Initialization group 0 should contain clear-buffers actions.");
-    expect(dynamic_cast<ClearBuffersAction*>(result->actionGroups[0]->at(1).get()) != nullptr,
-        "Initialization group 0 should contain clear-buffers actions.");
-
-    expectEquals(static_cast<int>(result->actionGroups[1]->size()),
+        "Both nodes should get clear actions.");
+    expectEquals(countActionsOfType(*result, GraphActionType::WriteParametersToControlInputs),
         2,
-        "Both nodes should get a parameter-write action, even if one has no control inputs.");
-    expect(dynamic_cast<WriteParametersToControlInputsAction*>(
-               result->actionGroups[1]->at(0).get()) != nullptr,
-        "Initialization group 1 should contain parameter-write actions.");
-    expect(dynamic_cast<WriteParametersToControlInputsAction*>(
-               result->actionGroups[1]->at(1).get()) != nullptr,
-        "Initialization group 1 should contain parameter-write actions.");
+        "Both nodes should get parameter-write actions.");
+    expectEquals(countActionsOfType(*result, GraphActionType::ProcessNode),
+        2,
+        "Both nodes should get process actions.");
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyAudioBuffer),
+        1,
+        "The edge should get one audio-copy action.");
+    expectEquals(static_cast<int>(result->actions.size()),
+        7,
+        "A two-node single-edge graph should emit all expected actions.");
 
-    auto* processGainAction =
-        dynamic_cast<ProcessNodeAction*>(result->actionGroups[2]->at(0).get());
-    expect(processGainAction != nullptr,
-        "The first non-initialization group should process the root gain node.");
-    expect(processGainAction->processor == gainNode->getProcessor().value().get(),
-        "The root process action should target the gain processor.");
+    for (int index = 0; index < 2; ++index) {
+      expect(result->actions[index].type == GraphActionType::ClearBuffers,
+          "Initialization should begin with clear-buffer actions.");
+    }
 
-    auto* copyAudioAction =
-        dynamic_cast<CopyAudioBufferAction*>(result->actionGroups[3]->at(0).get());
-    expect(copyAudioAction != nullptr, "The connection group should contain an audio-copy action.");
-    expectEquals(copyAudioAction->sourcePortId,
-        GainProcessorModelBase::audioOutputPortId,
-        "Audio copy should read from the gain output port.");
-    expectEquals(copyAudioAction->destinationPortId,
-        MasterOutputProcessorModelBase::inputPortId,
-        "Audio copy should write to the master input port.");
+    for (int index = 2; index < 4; ++index) {
+      expect(result->actions[index].type == GraphActionType::WriteParametersToControlInputs,
+          "Clear actions should be followed by parameter-write actions.");
+    }
 
-    auto* processMasterAction =
-        dynamic_cast<ProcessNodeAction*>(result->actionGroups[4]->at(0).get());
-    expect(processMasterAction != nullptr,
-        "The final non-empty process group should process the master-output node.");
-    expect(processMasterAction->processor == masterNode->getProcessor().value().get(),
+    expect(result->actions[4].type == GraphActionType::ProcessNode,
+        "The root node should process before copies.");
+    expect(result->actions[5].type == GraphActionType::CopyAudioBuffer,
+        "The connection copy should happen after the root process.");
+    expect(result->actions[6].type == GraphActionType::ProcessNode,
+        "The sink node should process after its incoming copy.");
+
+    expect(result->actions[4].processNode.processor == gainNode->getProcessor().value().get(),
+        "The first process action should target the gain processor.");
+    expect(result->actions[6].processNode.processor == masterNode->getProcessor().value().get(),
         "The final process action should target the master-output processor.");
 
-    expectEquals(static_cast<int>(result->actionGroups[5]->size()),
-        0,
-        "The final connection group should be empty once all edges are consumed.");
+    auto* gainContext = gainNode->runtimeContext.value();
+    auto* masterContext = masterNode->runtimeContext.value();
+    expectEquals(result->actions[5].copyAudioBuffer.sourceBufferIndex,
+        gainContext->getBufferIndex(NodePortDataType::audio,
+            NodeProcessContext::BufferDirection::output,
+            GainProcessorModelBase::audioOutputPortId),
+        "The audio-copy action should use the gain output buffer index.");
+    expectEquals(result->actions[5].copyAudioBuffer.destinationBufferIndex,
+        masterContext->getBufferIndex(NodePortDataType::audio,
+            NodeProcessContext::BufferDirection::input,
+            MasterOutputProcessorModelBase::inputPortId),
+        "The audio-copy action should target the master input buffer index.");
 
     result->cleanup();
     delete result;
@@ -299,18 +298,26 @@ public:
     GraphRuntimeServices rtServices;
     auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyAudioBuffer),
         2,
         "Fan-out should create one audio-copy action per outgoing edge.");
-    expectEquals(countActionsOfType<ProcessNodeAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::ProcessNode),
         3,
         "Source and both sinks should each be processed once.");
-    expectEquals(static_cast<int>(result->actionGroups[3]->size()),
-        2,
-        "The copy group should contain both fan-out edges together.");
-    expectEquals(static_cast<int>(result->actionGroups[4]->size()),
-        2,
-        "Both downstream sinks should become ready in the same process group.");
+    expectEquals(static_cast<int>(result->actions.size()),
+        11,
+        "Fan-out should emit initialization, one root process, two copies, and two sink "
+        "processes.");
+    expect(result->actions[6].type == GraphActionType::ProcessNode,
+        "The source should process before any fan-out copies.");
+    expect(result->actions[7].type == GraphActionType::CopyAudioBuffer,
+        "Fan-out copies should come immediately after the source process.");
+    expect(result->actions[8].type == GraphActionType::CopyAudioBuffer,
+        "All outgoing fan-out copies should be grouped together.");
+    expect(result->actions[9].type == GraphActionType::ProcessNode,
+        "Downstream sinks should process after the copies.");
+    expect(result->actions[10].type == GraphActionType::ProcessNode,
+        "Both downstream sinks should become ready in the same phase.");
 
     result->cleanup();
     delete result;
@@ -369,20 +376,24 @@ public:
     GraphRuntimeServices rtServices;
     auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyAudioBuffer),
         2,
         "Fan-in should create one audio-copy action per incoming edge.");
-    expectEquals(countActionsOfType<ProcessNodeAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::ProcessNode),
         3,
         "Both sources and the sink should each be processed once.");
-    expectEquals(static_cast<int>(result->actionGroups[2]->size()),
-        2,
-        "Both root sources should be processed in the same group.");
-    expectEquals(static_cast<int>(result->actionGroups[3]->size()),
-        2,
-        "Both incoming edges should be copied in the same connection group.");
-    expectEquals(static_cast<int>(result->actionGroups[4]->size()),
-        1,
+    expectEquals(static_cast<int>(result->actions.size()),
+        11,
+        "Fan-in should emit initialization, two root processes, two copies, and one sink process.");
+    expect(result->actions[6].type == GraphActionType::ProcessNode,
+        "Both root sources should process before copies.");
+    expect(result->actions[7].type == GraphActionType::ProcessNode,
+        "Both root sources should process in the same phase.");
+    expect(result->actions[8].type == GraphActionType::CopyAudioBuffer,
+        "Incoming copies should be emitted after the root processes.");
+    expect(result->actions[9].type == GraphActionType::CopyAudioBuffer,
+        "All incoming copies should be grouped together.");
+    expect(result->actions[10].type == GraphActionType::ProcessNode,
         "The sink should process only after both incoming edges are copied.");
 
     result->cleanup();
@@ -426,12 +437,22 @@ public:
     GraphRuntimeServices rtServices;
     auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(countActionsOfType<CopyControlBufferAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyControlBuffer),
         1,
         "Control graphs should emit control-copy actions.");
-    expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyAudioBuffer),
         0,
         "Control-only graphs should not emit audio-copy actions.");
+    expectEquals(countActionsOfType(*result, GraphActionType::ProcessNode),
+        1,
+        "Only the sink node should emit a process action in this test graph.");
+    expectEquals(static_cast<int>(result->actions.size()),
+        6,
+        "Control graphs should emit initialization, one control copy, and one sink process.");
+    expect(result->actions[4].type == GraphActionType::CopyControlBuffer,
+        "The control copy should happen before the sink processes.");
+    expect(result->actions[5].type == GraphActionType::ProcessNode,
+        "The sink should process after receiving its control input.");
 
     result->cleanup();
     delete result;
@@ -467,12 +488,17 @@ public:
     GraphRuntimeServices rtServices;
     auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(countActionsOfType<CopyEventsAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyEvents),
         1,
         "Event graphs should emit event-copy actions.");
-    expectEquals(countActionsOfType<ProcessNodeAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::ProcessNode),
         0,
         "Processor-less event test nodes should not emit process actions.");
+    expectEquals(static_cast<int>(result->actions.size()),
+        5,
+        "Event graphs should emit initialization and one event copy.");
+    expect(result->actions[4].type == GraphActionType::CopyEvents,
+        "The event copy should occur after initialization.");
 
     result->cleanup();
     delete result;
@@ -563,10 +589,10 @@ public:
     GraphRuntimeServices rtServices;
     auto* result = GraphCompiler::compile(buildCompileRequest(rtServices, *graph));
 
-    expectEquals(countActionsOfType<CopyAudioBufferAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::CopyAudioBuffer),
         0,
         "Malformed connections should not produce copy actions.");
-    expectEquals(countActionsOfType<ProcessNodeAction>(*result),
+    expectEquals(countActionsOfType(*result, GraphActionType::ProcessNode),
         2,
         "Without a valid edge, both nodes should behave like independent roots.");
 
