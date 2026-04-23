@@ -209,44 +209,35 @@ void paintClipList({
 
     final sequence = project.sequence;
     final spriteSheet = sequence.patternTitleTexture;
-    final textureAtlas = spriteSheet.textureAtlas;
-    final atlasRectsByPatternId = sequence.clipTitleAtlasRectsByPatternId;
+    final textureAtlases = spriteSheet.textureAtlases;
+    final atlasEntriesByPatternId = sequence.clipTitleAtlasEntriesByPatternId;
 
     final isTextureAtlasDevicePixelRatioMatch =
-        textureAtlas != null &&
+        textureAtlases.isNotEmpty &&
         sequence.clipTitleTextureAtlasDevicePixelRatio == devicePixelRatio;
 
     if (isTextureAtlasDevicePixelRatioMatch) {
-      var clipEntriesWithAtlasRectCount = 0;
-      var hasClipEntriesWithoutAtlasRect = false;
+      final clipEntriesByAtlasIndex = <int, List<ClipRenderInfo>>{};
+      var hasClipEntriesWithoutAtlasEntry = false;
 
       for (final clipEntry in clipList) {
-        if (atlasRectsByPatternId[clipEntry.pattern.id] != null) {
-          clipEntriesWithAtlasRectCount++;
+        final atlasEntry = atlasEntriesByPatternId[clipEntry.pattern.id];
+
+        if (atlasEntry != null &&
+            atlasEntry.atlasIndex < textureAtlases.length) {
+          clipEntriesByAtlasIndex
+              .putIfAbsent(atlasEntry.atlasIndex, () => <ClipRenderInfo>[])
+              .add(clipEntry);
         } else {
-          hasClipEntriesWithoutAtlasRect = true;
+          hasClipEntriesWithoutAtlasEntry = true;
         }
       }
 
-      if (clipEntriesWithAtlasRectCount > 0) {
-        var cursor = 0;
-
-        ClipRenderInfo nextClipEntryWithAtlasRect() {
-          while (cursor < clipList.length) {
-            final clipEntry = clipList[cursor++];
-            if (atlasRectsByPatternId[clipEntry.pattern.id] != null) {
-              return clipEntry;
-            }
-          }
-
-          throw StateError(
-            'Expected clip entry with atlas rect while generating drawAtlas '
-            'inputs.',
-          );
-        }
-
-        final transforms = List.generate(clipEntriesWithAtlasRectCount, (i) {
-          final clipEntry = nextClipEntryWithAtlasRect();
+      for (final entry in clipEntriesByAtlasIndex.entries) {
+        final textureAtlas = textureAtlases[entry.key];
+        final clipEntries = entry.value;
+        final transforms = List.generate(clipEntries.length, (i) {
+          final clipEntry = clipEntries[i];
           return RSTransform.fromComponents(
             rotation: 0,
             scale: 1 / devicePixelRatio,
@@ -260,27 +251,24 @@ void paintClipList({
                     : (clipEntry.height / 2) - (textHeight / 2)),
           );
         }, growable: false);
-
-        cursor = 0;
-        final rects = List.generate(clipEntriesWithAtlasRectCount, (i) {
-          final clipEntry = nextClipEntryWithAtlasRect();
-          final rect = atlasRectsByPatternId[clipEntry.pattern.id]!;
+        final rects = List.generate(clipEntries.length, (i) {
+          final clipEntry = clipEntries[i];
+          final atlasEntry = atlasEntriesByPatternId[clipEntry.pattern.id]!;
           return Rect.fromLTWH(
-            rect.left,
-            rect.top,
+            atlasEntry.rect.left,
+            atlasEntry.rect.top,
             min(
-              rect.width,
+              atlasEntry.rect.width,
               (clipEntry.width - _clipTitlePadding * 2) * devicePixelRatio,
             ),
-            rect.height,
+            atlasEntry.rect.height,
           );
         }, growable: false);
-
         canvas.drawAtlas(
           textureAtlas,
           transforms,
           rects,
-          List.generate(clipEntriesWithAtlasRectCount, (i) {
+          List.generate(clipEntries.length, (i) {
             return _contentBaseColor;
           }, growable: false),
           BlendMode.dstIn,
@@ -292,9 +280,13 @@ void paintClipList({
       // A new pattern can exist in the arrangement before its title has been
       // packed into the shared atlas. In that case, fall back to direct title
       // rendering for that clip instead of crashing the entire paint pass.
-      if (hasClipEntriesWithoutAtlasRect) {
+      if (hasClipEntriesWithoutAtlasEntry) {
         for (final clipEntry in clipList) {
-          if (atlasRectsByPatternId[clipEntry.pattern.id] != null) continue;
+          final atlasEntry = atlasEntriesByPatternId[clipEntry.pattern.id];
+          if (atlasEntry != null &&
+              atlasEntry.atlasIndex < textureAtlases.length) {
+            continue;
+          }
 
           _drawClipTitleDirect(
             canvas: canvas,
