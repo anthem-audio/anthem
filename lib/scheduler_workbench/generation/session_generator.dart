@@ -43,6 +43,7 @@ class SessionGenerator {
     required GenerationSettings settings,
   }) {
     final random = Random(settings.seed);
+    final processingRandom = Random(settings.seed ^ 0x4D2B);
     final tracks = <TrackModel>[];
     final sendNodeIds = <int>[];
 
@@ -107,6 +108,11 @@ class SessionGenerator {
       connectionCount: settings.crossTrackConnectionCount,
     );
     _removeCycles(graph);
+    _assignProcessingTicks(
+      graph: graph,
+      random: processingRandom,
+      settings: settings,
+    );
 
     session.replace(
       tracks: tracks,
@@ -344,6 +350,20 @@ class SessionGenerator {
         destinationPortId: target.audioInputPorts.first.id,
       ),
     );
+  }
+
+  void _assignProcessingTicks({
+    required ProcessingGraphModel graph,
+    required Random random,
+    required GenerationSettings settings,
+  }) {
+    final minTicks = settings.minNodeProcessingTicks;
+    final maxTicks = settings.maxNodeProcessingTicks;
+    final tickRange = maxTicks - minTicks + 1;
+
+    for (final node in graph.nodes.values) {
+      node.setProcessingTicks(minTicks + random.nextInt(tickRange));
+    }
   }
 
   void _addCrossTrackConnections({

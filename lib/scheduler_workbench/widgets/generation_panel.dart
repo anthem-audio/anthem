@@ -83,6 +83,16 @@ class GenerationPanel extends StatelessWidget {
                   onChanged: settings.setMaxNodeSteps,
                 ),
                 _IntegerSetting(
+                  label: 'Min processing ticks',
+                  value: settings.minNodeProcessingTicks,
+                  onChanged: settings.setMinNodeProcessingTicks,
+                ),
+                _IntegerSetting(
+                  label: 'Max processing ticks',
+                  value: settings.maxNodeProcessingTicks,
+                  onChanged: settings.setMaxNodeProcessingTicks,
+                ),
+                _IntegerSetting(
                   label: 'Cross-track connections',
                   value: settings.crossTrackConnectionCount,
                   onChanged: settings.setCrossTrackConnectionCount,

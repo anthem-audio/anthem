@@ -19,12 +19,16 @@
 
 import 'package:mobx/mobx.dart';
 
+import '../simulation/simulation.dart';
+
 part 'node_connection.g.dart';
 
 // ignore: library_private_types_in_public_api
 class NodeConnectionModel = _NodeConnectionModel with _$NodeConnectionModel;
 
 abstract class _NodeConnectionModel with Store {
+  Simulation? _simulation;
+
   @observable
   int id;
 
@@ -40,6 +44,9 @@ abstract class _NodeConnectionModel with Store {
   @observable
   int destinationPortId;
 
+  @observable
+  bool isCopied = false;
+
   _NodeConnectionModel({
     required this.id,
     required this.sourceNodeId,
@@ -47,4 +54,23 @@ abstract class _NodeConnectionModel with Store {
     required this.destinationNodeId,
     required this.destinationPortId,
   });
+
+  void attachSimulation(Simulation simulation) {
+    _simulation = simulation;
+  }
+
+  void moveData() {
+    final simulation = _simulation;
+
+    if (simulation == null) {
+      throw StateError('Connection $id is not attached to a simulation.');
+    }
+
+    simulation.moveData(this as NodeConnectionModel);
+  }
+
+  @action
+  void setCopied(bool value) {
+    isCopied = value;
+  }
 }

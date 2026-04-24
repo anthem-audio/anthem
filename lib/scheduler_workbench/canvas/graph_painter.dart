@@ -21,6 +21,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../models/node.dart';
 import '../models/node_connection.dart';
 import 'node_title_atlas.dart';
 
@@ -44,11 +45,13 @@ class NodeSnapshot {
   final int id;
   final String name;
   final Offset position;
+  final NodeProcessingState processingState;
 
   const NodeSnapshot({
     required this.id,
     required this.name,
     required this.position,
+    required this.processingState,
   });
 }
 
@@ -86,7 +89,7 @@ class GraphPainter extends CustomPainter {
         continue;
       }
 
-      _drawConnection(canvas, source, destination);
+      _drawConnection(canvas, connection, source, destination);
     }
 
     for (final node in snapshot.nodes) {
@@ -128,6 +131,7 @@ class GraphPainter extends CustomPainter {
 
   void _drawConnection(
     Canvas canvas,
+    NodeConnectionModel connection,
     NodeSnapshot source,
     NodeSnapshot destination,
   ) {
@@ -144,12 +148,15 @@ class GraphPainter extends CustomPainter {
 
     final direction = vector / distance;
     final normal = Offset(-direction.dy, direction.dx);
-    final arrowLength = 13 / snapshot.zoom;
-    final arrowWidth = 8 / snapshot.zoom;
+    const arrowLength = 13.0;
+    const arrowWidth = 8.0;
     final lineEnd = end - direction * arrowLength * 0.65;
+    final connectionColor = connection.isCopied
+        ? const Color(0xFF45C66A)
+        : const Color(0xFFC97843);
     final linePaint = Paint()
-      ..color = const Color(0xFFC97843)
-      ..strokeWidth = 2 / snapshot.zoom
+      ..color = connectionColor
+      ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
     canvas.drawLine(start, lineEnd, linePaint);
@@ -166,24 +173,44 @@ class GraphPainter extends CustomPainter {
       )
       ..close();
 
-    canvas.drawPath(arrowPath, Paint()..color = const Color(0xFFC97843));
+    canvas.drawPath(arrowPath, Paint()..color = connectionColor);
   }
 
   void _drawNode(Canvas canvas, NodeSnapshot node) {
     final rect = _nodeRect(node);
     final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
+    final fillColor = _nodeFillColor(node.processingState);
+    final borderColor = _nodeBorderColor(node.processingState);
     final shadowPaint = Paint()
       ..color = const Color(0x66000000)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
-    final fillPaint = Paint()..color = const Color(0xFF202733);
+    final fillPaint = Paint()..color = fillColor;
     final borderPaint = Paint()
-      ..color = const Color(0xFF6E879F)
+      ..color = borderColor
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5 / snapshot.zoom;
 
     canvas.drawRRect(rrect.shift(const Offset(0, 6)), shadowPaint);
     canvas.drawRRect(rrect, fillPaint);
     canvas.drawRRect(rrect, borderPaint);
+  }
+
+  Color _nodeFillColor(NodeProcessingState state) {
+    return switch (state) {
+      NodeProcessingState.notReady => const Color(0xFF202733),
+      NodeProcessingState.ready => const Color(0xFF244A66),
+      NodeProcessingState.processing => const Color(0xFF6A4B1F),
+      NodeProcessingState.completed => const Color(0xFF214F33),
+    };
+  }
+
+  Color _nodeBorderColor(NodeProcessingState state) {
+    return switch (state) {
+      NodeProcessingState.notReady => const Color(0xFF6E879F),
+      NodeProcessingState.ready => const Color(0xFF6DB7E8),
+      NodeProcessingState.processing => const Color(0xFFE1AE54),
+      NodeProcessingState.completed => const Color(0xFF72D991),
+    };
   }
 
   void _drawNodeTitles(Canvas canvas) {

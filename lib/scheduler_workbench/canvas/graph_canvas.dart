@@ -158,6 +158,7 @@ GraphSnapshot _buildSnapshot(
           id: node.id,
           name: node.name,
           position: Offset(node.x, node.y),
+          processingState: node.processingState,
         ),
       )
       .toList(growable: false);

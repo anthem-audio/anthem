@@ -28,6 +28,8 @@ class GenerationSettings {
   final int busTrackInputCount;
   final int minNodeSteps;
   final int maxNodeSteps;
+  final int minNodeProcessingTicks;
+  final int maxNodeProcessingTicks;
   final int crossTrackConnectionCount;
   final double splitChance;
   final double recombineChance;
@@ -40,6 +42,8 @@ class GenerationSettings {
     required this.busTrackInputCount,
     required this.minNodeSteps,
     required this.maxNodeSteps,
+    required this.minNodeProcessingTicks,
+    required this.maxNodeProcessingTicks,
     required this.crossTrackConnectionCount,
     required this.splitChance,
     required this.recombineChance,
@@ -71,6 +75,12 @@ abstract class _GenerationSettingsViewModel with Store {
   int maxNodeSteps = 20;
 
   @observable
+  int minNodeProcessingTicks = 1;
+
+  @observable
+  int maxNodeProcessingTicks = 12;
+
+  @observable
   int crossTrackConnectionCount = 15;
 
   @observable
@@ -90,6 +100,8 @@ abstract class _GenerationSettingsViewModel with Store {
       busTrackInputCount: busTrackInputCount,
       minNodeSteps: minNodeSteps,
       maxNodeSteps: maxNodeSteps,
+      minNodeProcessingTicks: minNodeProcessingTicks,
+      maxNodeProcessingTicks: maxNodeProcessingTicks,
       crossTrackConnectionCount: crossTrackConnectionCount,
       splitChance: splitChance,
       recombineChance: recombineChance,
@@ -125,6 +137,16 @@ abstract class _GenerationSettingsViewModel with Store {
   @action
   void setMaxNodeSteps(int value) {
     maxNodeSteps = value.clamp(minNodeSteps, 64);
+  }
+
+  @action
+  void setMinNodeProcessingTicks(int value) {
+    minNodeProcessingTicks = value.clamp(1, maxNodeProcessingTicks);
+  }
+
+  @action
+  void setMaxNodeProcessingTicks(int value) {
+    maxNodeProcessingTicks = value.clamp(minNodeProcessingTicks, 1000000);
   }
 
   @action

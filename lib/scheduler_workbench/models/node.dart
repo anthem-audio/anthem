@@ -19,9 +19,12 @@
 
 import 'package:mobx/mobx.dart';
 
+import '../simulation/simulation.dart';
 import 'node_port.dart';
 
 part 'node.g.dart';
+
+enum NodeProcessingState { notReady, ready, processing, completed }
 
 // ignore: library_private_types_in_public_api
 class NodeModel = _NodeModel with _$NodeModel;
@@ -29,12 +32,19 @@ class NodeModel = _NodeModel with _$NodeModel;
 abstract class _NodeModel with Store {
   final int id;
   final String name;
+  Simulation? _simulation;
 
   @observable
   double x;
 
   @observable
   double y;
+
+  @observable
+  int processingTicks = 1;
+
+  @observable
+  NodeProcessingState processingState = NodeProcessingState.notReady;
 
   @observable
   ObservableList<NodePortModel> audioInputPorts;
@@ -73,10 +83,36 @@ abstract class _NodeModel with Store {
        controlOutputPorts =
            controlOutputPorts ?? ObservableList<NodePortModel>();
 
+  void attachSimulation(Simulation simulation) {
+    _simulation = simulation;
+  }
+
+  Future<void> process() {
+    final simulation = _simulation;
+
+    if (simulation == null) {
+      return Future.error(
+        StateError('Node $id is not attached to a simulation.'),
+      );
+    }
+
+    return simulation.processNode(this as NodeModel);
+  }
+
   @action
   void setPosition({required double x, required double y}) {
     this.x = x;
     this.y = y;
+  }
+
+  @action
+  void setProcessingTicks(int value) {
+    processingTicks = value.clamp(1, 1000000);
+  }
+
+  @action
+  void setProcessingState(NodeProcessingState state) {
+    processingState = state;
   }
 
   NodePortModel getPortById(int portId) {

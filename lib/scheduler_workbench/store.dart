@@ -21,26 +21,51 @@ import 'generation/generation_settings.dart';
 import 'generation/session_generator.dart';
 import 'models/processing_graph.dart';
 import 'models/session.dart';
+import 'simulation/agents/priority_queue_multi_threaded_agent.dart';
+import 'simulation/agents/single_threaded_agent.dart';
+import 'simulation/agents/simulation_agent.dart';
+import 'simulation/simulation.dart';
 
 class WorkbenchStore {
+  static final WorkbenchStore instance = WorkbenchStore.demo();
+
   final ProcessingGraphModel graph;
   final SessionModel session;
   final GenerationSettingsViewModel generationSettings;
   final SessionGenerator sessionGenerator;
+  final Simulation simulation;
+  final Map<SimulationAgentType, SimulationAgent> agents;
+  SimulationAgentType selectedAgentType;
+
+  SimulationAgentType? _preparedAgentType;
+  int? _preparedSimulationVersion;
 
   WorkbenchStore({
     required this.graph,
     required this.session,
     required this.generationSettings,
     required this.sessionGenerator,
+    required this.simulation,
+    required this.agents,
+    this.selectedAgentType = SimulationAgentType.singleThreaded,
   });
 
   factory WorkbenchStore.demo() {
+    final graph = ProcessingGraphModel();
+    final simulation = Simulation(graph: graph);
     final store = WorkbenchStore(
-      graph: ProcessingGraphModel(),
+      graph: graph,
       session: SessionModel(),
       generationSettings: GenerationSettingsViewModel(),
       sessionGenerator: SessionGenerator(),
+      simulation: simulation,
+      agents: {
+        SimulationAgentType.singleThreaded: SingleThreadedAgent(
+          simulation: simulation,
+        ),
+        SimulationAgentType.priorityQueueMultiThreaded:
+            PriorityQueueMultiThreadedAgent(simulation: simulation),
+      },
     );
 
     store.regenerateSession();
@@ -53,5 +78,54 @@ class WorkbenchStore {
       session: session,
       settings: generationSettings.toSettings(),
     );
+    simulation.reset();
+    _clearPreparedAgent();
+  }
+
+  void playSimulation() {
+    _prepareSelectedAgent();
+    selectedAgent.run();
+    simulation.play();
+  }
+
+  void pauseSimulation() {
+    simulation.pause();
+  }
+
+  void stepSimulation() {
+    _prepareSelectedAgent();
+    selectedAgent.run();
+    simulation.step();
+  }
+
+  SimulationAgent get selectedAgent => agents[selectedAgentType]!;
+
+  Iterable<SimulationAgentType> get availableAgentTypes =>
+      SimulationAgentType.values;
+
+  void selectAgentType(SimulationAgentType agentType) {
+    if (selectedAgentType == agentType) {
+      return;
+    }
+
+    selectedAgentType = agentType;
+    simulation.reset();
+    _clearPreparedAgent();
+  }
+
+  void _prepareSelectedAgent() {
+    if (_preparedAgentType == selectedAgentType &&
+        _preparedSimulationVersion == simulation.version) {
+      return;
+    }
+
+    selectedAgent.prepare();
+    _preparedAgentType = selectedAgentType;
+    _preparedSimulationVersion = simulation.version;
+  }
+
+  void _clearPreparedAgent() {
+    _preparedAgentType = null;
+    _preparedSimulationVersion = null;
   }
 }
