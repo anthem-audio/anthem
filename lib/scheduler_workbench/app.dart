@@ -45,7 +45,7 @@ class _WorkbenchAppState extends State<WorkbenchApp>
 
   double _tickAccumulator = 0;
   bool _isAdvancingSimulation = false;
-  bool _isLogPanelOpen = false;
+  bool _isLogPanelOpen = true;
 
   @override
   void initState() {
@@ -84,6 +84,13 @@ class _WorkbenchAppState extends State<WorkbenchApp>
 
   void _stepSimulation() {
     store.stepSimulation();
+  }
+
+  void _resetSimulation() {
+    _simulationTicker.stop();
+    _tickAccumulator = 0;
+    _isAdvancingSimulation = false;
+    store.resetSimulation();
   }
 
   void _selectAgentType(SimulationAgentType agentType) {
@@ -188,6 +195,7 @@ class _WorkbenchAppState extends State<WorkbenchApp>
               onAgentChanged: _selectAgentType,
               isLogPanelOpen: _isLogPanelOpen,
               onToggleLogPanel: _toggleLogPanel,
+              onReset: _resetSimulation,
               onPlayPause: _togglePlayback,
               onStep: _stepSimulation,
             ),

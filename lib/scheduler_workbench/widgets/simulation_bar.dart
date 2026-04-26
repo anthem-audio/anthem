@@ -30,6 +30,7 @@ class SimulationBar extends StatelessWidget {
   final ValueChanged<SimulationAgentType> onAgentChanged;
   final bool isLogPanelOpen;
   final VoidCallback onToggleLogPanel;
+  final VoidCallback onReset;
   final VoidCallback onPlayPause;
   final VoidCallback onStep;
 
@@ -41,6 +42,7 @@ class SimulationBar extends StatelessWidget {
     required this.onAgentChanged,
     required this.isLogPanelOpen,
     required this.onToggleLogPanel,
+    required this.onReset,
     required this.onPlayPause,
     required this.onStep,
   });
@@ -113,6 +115,11 @@ class SimulationBar extends StatelessWidget {
                     icon: Icon(
                       simulation.isPlaying ? Icons.pause : Icons.play_arrow,
                     ),
+                  ),
+                  IconButton(
+                    tooltip: 'Reset',
+                    onPressed: onReset,
+                    icon: const Icon(Icons.restart_alt),
                   ),
                   IconButton(
                     tooltip: 'Step',

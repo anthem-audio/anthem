@@ -47,7 +47,7 @@ class WorkbenchStore {
     required this.sessionGenerator,
     required this.simulation,
     required this.agents,
-    this.selectedAgentType = SimulationAgentType.singleThreaded,
+    this.selectedAgentType = SimulationAgentType.priorityQueueMultiThreaded,
   });
 
   factory WorkbenchStore.demo() {
@@ -90,6 +90,11 @@ class WorkbenchStore {
 
   void pauseSimulation() {
     simulation.pause();
+  }
+
+  void resetSimulation() {
+    simulation.reset();
+    _clearPreparedAgent();
   }
 
   void stepSimulation() {

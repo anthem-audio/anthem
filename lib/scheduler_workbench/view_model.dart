@@ -30,7 +30,7 @@ class WorkbenchViewModel = _WorkbenchViewModel with _$WorkbenchViewModel;
 
 abstract class _WorkbenchViewModel with Store {
   @observable
-  double zoom = 1.0;
+  double zoom = workbenchMinZoom;
 
   @observable
   Offset viewportOffset = Offset.zero;
