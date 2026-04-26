@@ -22,7 +22,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../../widgets/basic/clip/packed_texture.dart';
+import '../../../widgets/basic/clip/packed_texture.dart';
 
 class NodeTitleAtlasEntry {
   final int nodeId;

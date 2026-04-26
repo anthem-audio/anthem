@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/scheduler_workbench/models/node.dart';
-import 'package:anthem/scheduler_workbench/models/node_connection.dart';
-import 'package:anthem/scheduler_workbench/models/node_port.dart';
-import 'package:anthem/scheduler_workbench/models/processing_graph.dart';
-import 'package:anthem/scheduler_workbench/simulation/agents/priority_queue_multi_threaded_agent.dart';
-import 'package:anthem/scheduler_workbench/simulation/agents/single_threaded_agent.dart';
-import 'package:anthem/scheduler_workbench/simulation/simulation.dart';
+import 'package:anthem/demos/scheduler_workbench/models/node.dart';
+import 'package:anthem/demos/scheduler_workbench/models/node_connection.dart';
+import 'package:anthem/demos/scheduler_workbench/models/node_port.dart';
+import 'package:anthem/demos/scheduler_workbench/models/processing_graph.dart';
+import 'package:anthem/demos/scheduler_workbench/simulation/agents/priority_queue_multi_threaded_agent.dart';
+import 'package:anthem/demos/scheduler_workbench/simulation/agents/single_threaded_agent.dart';
+import 'package:anthem/demos/scheduler_workbench/simulation/simulation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobx/mobx.dart';
 

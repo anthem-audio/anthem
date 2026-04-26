@@ -19,7 +19,7 @@
 
 import 'package:flutter/widgets.dart';
 
-import 'scheduler_workbench/app.dart';
+import 'app.dart';
 
 /// A separate application for prototyping a scheduling algorithm for
 /// multi-threaded processing of the audio graph.
