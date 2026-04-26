@@ -135,11 +135,11 @@ void main() {
   });
 
   test(
-    'priority queue multi-threaded agent starts four nodes at once',
+    'priority queue multi-threaded agent starts eight nodes at once',
     () async {
       final graph = ProcessingGraphModel();
       final nodes = [
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < 9; i++)
           _addNode(graph, name: 'Node $i', processingTicks: 2),
       ];
       final simulation = Simulation(graph: graph);
@@ -154,7 +154,7 @@ void main() {
               (node) => node.processingState == NodeProcessingState.processing,
             )
             .length,
-        4,
+        8,
       );
       expect(
         nodes
@@ -249,9 +249,10 @@ void main() {
     expect(simulation.logs, hasLength(1));
     expect(
       simulation.logs.single.message,
-      contains('Overall worker utilization: 100.0%.'),
+      contains('Overall worker utilization: 50.0%.'),
     );
     expect(simulation.logs.single.message, contains('Thread 1: 1 nodes'));
+    expect(simulation.logs.single.message, contains('Thread 5: 0 nodes'));
   });
 }
 
