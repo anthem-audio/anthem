@@ -49,7 +49,7 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
     int64_t connectionId) {
   auto connectionIter = graphConnections.find(connectionId);
   if (connectionIter == graphConnections.end()) {
-    throw std::invalid_argument(
+    throw std::runtime_error(
         "Threaded graph connection ID not found: " + std::to_string(connectionId));
   }
 
@@ -58,20 +58,20 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
   auto destinationNodeId = connection.destinationNodeId();
 
   if (destinationNodeId != inputPortNodeId) {
-    throw std::invalid_argument("Threaded graph connection destination does not match input port "
-                                "owner node: " +
-                                std::to_string(connectionId));
+    throw std::runtime_error("Threaded graph connection destination does not match input port "
+                             "owner node: " +
+                             std::to_string(connectionId));
   }
 
   auto sourceNodeIter = runtimeGraph.nodes.find(sourceNodeId);
   if (sourceNodeIter == runtimeGraph.nodes.end()) {
-    throw std::invalid_argument(
+    throw std::runtime_error(
         "Threaded graph source node ID not found: " + std::to_string(sourceNodeId));
   }
 
   auto destinationNodeIter = runtimeGraph.nodes.find(destinationNodeId);
   if (destinationNodeIter == runtimeGraph.nodes.end()) {
-    throw std::invalid_argument(
+    throw std::runtime_error(
         "Threaded graph destination node ID not found: " + std::to_string(destinationNodeId));
   }
 
@@ -152,11 +152,11 @@ RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingG
 
   for (auto& [nodeId, graphNode] : graphNodes) {
     if (graphNode == nullptr) {
-      throw std::invalid_argument("Threaded graph cannot build from a null graph node.");
+      throw std::runtime_error("Threaded graph cannot build from a null graph node.");
     }
 
     if (nodeId != graphNode->id()) {
-      throw std::invalid_argument(
+      throw std::runtime_error(
           "Threaded graph node map key does not match node ID: " + std::to_string(nodeId));
     }
 

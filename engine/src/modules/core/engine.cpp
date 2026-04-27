@@ -21,6 +21,7 @@
 
 #include "modules/core/adapters/transport_adapters.h"
 #include "modules/processing_graph/compiler/graph_compiler.h"
+#include "modules/processing_graph_threaded/model/runtime_graph.h"
 #include "modules/processors/db_meter.h"
 
 namespace anthem {
@@ -181,17 +182,32 @@ void Engine::compileProcessingGraph() {
 
   auto& processingGraph = *project->processingGraph();
 
-  auto result = GraphCompiler::compile(GraphCompileRequest{
-      .rtServices = graphProcessor->getRtServices(),
-      .nodes = *processingGraph.nodes(),
-      .connections = *processingGraph.connections(),
-      .bufferLayout =
-          GraphBufferLayout{
-              .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
-              .blockSize = currentDevice->getCurrentBufferSizeSamples(),
-          },
-      .sampleRate = currentDevice->getCurrentSampleRate(),
-  });
+  auto cleanupCompilationResult = [](GraphCompilationResult* resultToDelete) {
+    if (resultToDelete == nullptr) {
+      return;
+    }
+
+    resultToDelete->cleanup();
+    delete resultToDelete;
+  };
+
+  auto result = std::unique_ptr<GraphCompilationResult, decltype(cleanupCompilationResult)>(
+      GraphCompiler::compile(GraphCompileRequest{
+          .rtServices = graphProcessor->getRtServices(),
+          .nodes = *processingGraph.nodes(),
+          .connections = *processingGraph.connections(),
+          .bufferLayout =
+              GraphBufferLayout{
+                  .numAudioChannels =
+                      currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
+                  .blockSize = currentDevice->getCurrentBufferSizeSamples(),
+              },
+          .sampleRate = currentDevice->getCurrentSampleRate(),
+      }),
+      cleanupCompilationResult);
+
+  auto threadedRuntimeGraph = std::make_unique<threaded_graph::RuntimeGraph>(
+      threaded_graph::RuntimeGraph::fromProcessingGraph(processingGraph));
 
   // Make sure all nodes have been prepared for processing
   for (auto& pair : *processingGraph.nodes()) {
@@ -217,7 +233,8 @@ void Engine::compileProcessingGraph() {
         procVariant.value());
   }
 
-  graphProcessor->setProcessingStepsFromMainThread(result);
+  graphProcessor->setProcessingStepsFromMainThread(result.release());
+  threadedGraphProcessor->setRuntimeGraphFromMainThread(threadedRuntimeGraph.release());
 }
 
 } // namespace anthem
