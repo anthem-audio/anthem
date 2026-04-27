@@ -33,18 +33,19 @@ namespace anthem::threaded_graph {
 namespace {
 
 enum class DfsState : uint8_t {
-  unvisited,
+  unvisited = 0,
   visiting,
   visited,
 };
 
-using UniqueDestinationMap = std::unordered_map<Node::Id, std::unordered_set<Node::Id>>;
+using UniqueDestinationMap =
+    std::unordered_map<RuntimeNode::Id, std::unordered_set<RuntimeNode::Id>>;
 using GraphConnectionMap = ModelUnorderedMap<int64_t, std::shared_ptr<anthem::NodeConnection>>;
 
 void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
     GraphConnectionMap& graphConnections,
     UniqueDestinationMap& uniqueDestinationIdsBySource,
-    Node::Id inputPortNodeId,
+    RuntimeNode::Id inputPortNodeId,
     int64_t connectionId) {
   auto connectionIter = graphConnections.find(connectionId);
   if (connectionIter == graphConnections.end()) {
@@ -74,7 +75,14 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
         "Threaded graph destination node ID not found: " + std::to_string(destinationNodeId));
   }
 
-  auto& uniqueDestinationIds = uniqueDestinationIdsBySource[sourceNodeId];
+  auto uniqueDestinationIdsIter = uniqueDestinationIdsBySource.find(sourceNodeId);
+  if (uniqueDestinationIdsIter == uniqueDestinationIdsBySource.end()) {
+    auto [insertedIter, _] =
+        uniqueDestinationIdsBySource.emplace(sourceNodeId, std::unordered_set<RuntimeNode::Id>{});
+    uniqueDestinationIdsIter = insertedIter;
+  }
+
+  auto& uniqueDestinationIds = uniqueDestinationIdsIter->second;
   auto [_, wasInserted] = uniqueDestinationIds.insert(destinationNodeId);
 
   if (!wasInserted) {
@@ -104,8 +112,15 @@ void addInputPortConnectionsToRuntimeGraph(RuntimeGraph& runtimeGraph,
   }
 }
 
-void assertAcyclicFromNode(Node& node, std::unordered_map<Node::Id, DfsState>& dfsStates) {
-  auto& state = dfsStates[node.id];
+void assertAcyclicFromNode(
+    RuntimeNode& node, std::unordered_map<RuntimeNode::Id, DfsState>& dfsStates) {
+  auto dfsStateIter = dfsStates.find(node.id);
+  if (dfsStateIter == dfsStates.end()) {
+    auto [insertedIter, _] = dfsStates.emplace(node.id, DfsState::unvisited);
+    dfsStateIter = insertedIter;
+  }
+
+  auto& state = dfsStateIter->second;
 
   if (state == DfsState::visiting) {
     throw std::runtime_error(
@@ -145,7 +160,11 @@ RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingG
           "Threaded graph node map key does not match node ID: " + std::to_string(nodeId));
     }
 
-    runtimeGraph.nodes.emplace(nodeId, Node{.id = nodeId});
+    runtimeGraph.nodes.emplace(nodeId,
+        RuntimeNode{
+            .id = nodeId,
+            .sourceNode = graphNode,
+        });
   }
 
   UniqueDestinationMap uniqueDestinationIdsBySource;
@@ -177,7 +196,7 @@ RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingG
     }
   }
 
-  std::unordered_map<Node::Id, DfsState> dfsStates;
+  std::unordered_map<RuntimeNode::Id, DfsState> dfsStates;
   dfsStates.reserve(runtimeGraph.nodes.size());
 
   // We do input nodes first, because in all correctly-formed graphs, this will

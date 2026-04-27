@@ -21,21 +21,34 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <vector>
+
+namespace anthem {
+
+class Node;
+
+} // namespace anthem
 
 namespace anthem::threaded_graph {
 
-struct Node {
+struct RuntimeNode {
   using Id = int64_t;
 
   // This matches the ID from the project model's processing graph node.
   Id id;
 
+  // Keeps the source graph node alive while this runtime graph is active.
+  //
+  // Note that this cannot be accessed from real-time threads, since shared_ptr
+  // is not real-time safe.
+  std::shared_ptr<anthem::Node> sourceNode;
+
   // Number of unique nodes that must finish before this node can process.
   size_t upstreamNodeCount = 0;
 
   // Non-owning pointers to nodes owned by the RuntimeGraph.
-  std::vector<Node*> outgoingConnections;
+  std::vector<RuntimeNode*> outgoingConnections;
 };
 
 } // namespace anthem::threaded_graph

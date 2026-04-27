@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/processing_graph_threaded/model/node.h"
+#include "modules/processing_graph_threaded/model/runtime_node.h"
 
 #include <unordered_map>
 #include <vector>
@@ -45,8 +45,8 @@ public:
 
   static RuntimeGraph fromProcessingGraph(ProcessingGraphModel& processingGraph);
 
-  std::unordered_map<Node::Id, Node> nodes;
-  std::vector<Node*> inputNodes;
+  std::unordered_map<RuntimeNode::Id, RuntimeNode> nodes;
+  std::vector<RuntimeNode*> inputNodes;
 };
 
 } // namespace anthem::threaded_graph

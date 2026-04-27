@@ -102,9 +102,9 @@ public:
     beginTest("RuntimeGraph builds nodes, input nodes, and outgoing edges");
 
     auto graph = graph_test_helpers::makeProcessingGraph();
-    addGraphNode(*graph, 1);
-    addGraphNode(*graph, 2);
-    addGraphNode(*graph, 3);
+    auto firstGraphNode = addGraphNode(*graph, 1);
+    auto secondGraphNode = addGraphNode(*graph, 2);
+    auto thirdGraphNode = addGraphNode(*graph, 3);
     addConnection(*graph, 100, 1, 3);
     addConnection(*graph, 101, 2, 3);
 
@@ -125,6 +125,12 @@ public:
     expectEquals(static_cast<int>(firstNode.upstreamNodeCount), 0);
     expectEquals(static_cast<int>(secondNode.upstreamNodeCount), 0);
     expectEquals(static_cast<int>(thirdNode.upstreamNodeCount), 2);
+    expect(firstNode.sourceNode == firstGraphNode,
+        "Runtime nodes should keep their source graph nodes alive.");
+    expect(secondNode.sourceNode == secondGraphNode,
+        "Runtime nodes should keep their source graph nodes alive.");
+    expect(thirdNode.sourceNode == thirdGraphNode,
+        "Runtime nodes should keep their source graph nodes alive.");
 
     expectEquals(static_cast<int>(firstNode.outgoingConnections.size()), 1);
     expectEquals(static_cast<int>(secondNode.outgoingConnections.size()), 1);

@@ -17,6 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "node.h"
+#include "runtime_node.h"
 
 namespace anthem::threaded_graph {} // namespace anthem::threaded_graph
