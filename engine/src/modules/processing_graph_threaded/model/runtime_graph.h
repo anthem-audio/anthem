@@ -21,6 +21,8 @@
 
 #include "modules/processing_graph_threaded/model/runtime_node.h"
 
+#include <cstddef>
+#include <queue>
 #include <unordered_map>
 #include <vector>
 
@@ -32,9 +34,18 @@ class ProcessingGraphModel;
 
 namespace anthem::threaded_graph {
 
+class RuntimeNodePriorityComparator {
+public:
+  bool operator()(const RuntimeNode* left, const RuntimeNode* right) const;
+};
+
 class RuntimeGraph {
 public:
-  RuntimeGraph() = default;
+  using AvailableTaskQueue =
+      std::priority_queue<RuntimeNode*, std::vector<RuntimeNode*>, RuntimeNodePriorityComparator>;
+
+  RuntimeGraph();
+  explicit RuntimeGraph(size_t nodeCapacity);
   ~RuntimeGraph() = default;
 
   RuntimeGraph(const RuntimeGraph&) = delete;
@@ -47,6 +58,9 @@ public:
 
   std::unordered_map<RuntimeNode::Id, RuntimeNode> nodes;
   std::vector<RuntimeNode*> inputNodes;
+  AvailableTaskQueue availableTasks;
+private:
+  static AvailableTaskQueue createAvailableTaskQueue(size_t nodeCapacity);
 };
 
 } // namespace anthem::threaded_graph

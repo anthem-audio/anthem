@@ -30,6 +30,15 @@
 
 namespace anthem::threaded_graph {
 
+bool RuntimeNodePriorityComparator::operator()(
+    const RuntimeNode* left, const RuntimeNode* right) const {
+  if (left->priority == right->priority) {
+    return left->id > right->id;
+  }
+
+  return left->priority < right->priority;
+}
+
 namespace {
 
 enum class DfsState : uint8_t {
@@ -140,13 +149,28 @@ void assertAcyclicFromNode(
   state = DfsState::visited;
 }
 
+size_t getAndSetPriority(RuntimeNode& node) {
+  if (node.priority != 0) {
+    return node.priority;
+  }
+
+  size_t priority = 1;
+
+  for (auto* downstreamNode : node.outgoingConnections) {
+    priority += getAndSetPriority(*downstreamNode);
+  }
+
+  node.priority = priority;
+  return priority;
+}
+
 } // namespace
 
 RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingGraph) {
-  RuntimeGraph runtimeGraph;
-
   auto& graphNodes = *processingGraph.nodes();
   auto& graphConnections = *processingGraph.connections();
+
+  RuntimeGraph runtimeGraph(graphNodes.size());
 
   runtimeGraph.nodes.reserve(graphNodes.size());
 
@@ -211,7 +235,27 @@ RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingG
     assertAcyclicFromNode(runtimeNode, dfsStates);
   }
 
+  for (auto* inputNode : runtimeGraph.inputNodes) {
+    getAndSetPriority(*inputNode);
+  }
+
+  for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
+    getAndSetPriority(runtimeNode);
+  }
+
   return runtimeGraph;
+}
+
+RuntimeGraph::RuntimeGraph() : RuntimeGraph(0) {}
+
+RuntimeGraph::RuntimeGraph(size_t nodeCapacity)
+  : availableTasks(createAvailableTaskQueue(nodeCapacity)) {}
+
+RuntimeGraph::AvailableTaskQueue RuntimeGraph::createAvailableTaskQueue(size_t nodeCapacity) {
+  std::vector<RuntimeNode*> taskStorage;
+  taskStorage.reserve(nodeCapacity);
+
+  return AvailableTaskQueue(RuntimeNodePriorityComparator(), std::move(taskStorage));
 }
 
 } // namespace anthem::threaded_graph

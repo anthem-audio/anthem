@@ -94,6 +94,10 @@ public:
   void runTest() override {
     testBuildsNodesInputNodesAndEdges();
     testDeduplicatesNodeConnections();
+    testCalculatesLinearPriorities();
+    testCalculatesDiamondPriorities();
+    testCalculatesDisconnectedComponentPriorities();
+    testAvailableTaskQueueOrdersByPriorityThenId();
     testDetectsReachableCycle();
     testDetectsCycleWithoutInputNodes();
   }
@@ -125,6 +129,9 @@ public:
     expectEquals(static_cast<int>(firstNode.upstreamNodeCount), 0);
     expectEquals(static_cast<int>(secondNode.upstreamNodeCount), 0);
     expectEquals(static_cast<int>(thirdNode.upstreamNodeCount), 2);
+    expectEquals(static_cast<int>(firstNode.priority), 2);
+    expectEquals(static_cast<int>(secondNode.priority), 2);
+    expectEquals(static_cast<int>(thirdNode.priority), 1);
     expect(firstNode.sourceNode == firstGraphNode,
         "Runtime nodes should keep their source graph nodes alive.");
     expect(secondNode.sourceNode == secondGraphNode,
@@ -163,6 +170,100 @@ public:
     expectEquals(static_cast<int>(destinationNode.upstreamNodeCount),
         1,
         "Duplicate node-level edges should only count as one upstream node.");
+    expectEquals(static_cast<int>(sourceNode.priority),
+        2,
+        "Duplicate node-level edges should only contribute once to priority.");
+    expectEquals(static_cast<int>(destinationNode.priority), 1);
+  }
+
+  void testCalculatesLinearPriorities() {
+    beginTest("RuntimeGraph calculates priorities for a linear chain");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addGraphNode(*graph, 3);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 2, 3);
+
+    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(1).priority), 3);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(2).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(3).priority), 1);
+  }
+
+  void testCalculatesDiamondPriorities() {
+    beginTest("RuntimeGraph calculates priorities for a diamond graph");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addGraphNode(*graph, 3);
+    addGraphNode(*graph, 4);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 1, 3);
+    addConnection(*graph, 102, 2, 4);
+    addConnection(*graph, 103, 3, 4);
+
+    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(1).priority), 5);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(2).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(3).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(4).priority), 1);
+  }
+
+  void testCalculatesDisconnectedComponentPriorities() {
+    beginTest("RuntimeGraph calculates priorities across disconnected components");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addGraphNode(*graph, 3);
+    addGraphNode(*graph, 4);
+    addGraphNode(*graph, 5);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 3, 4);
+    addConnection(*graph, 102, 4, 5);
+
+    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(1).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(2).priority), 1);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(3).priority), 3);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(4).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph.nodes.at(5).priority), 1);
+  }
+
+  void testAvailableTaskQueueOrdersByPriorityThenId() {
+    beginTest("RuntimeGraph available task queue orders by priority, then ID");
+
+    threaded_graph::RuntimeNode lowPriorityNode{.id = 10, .priority = 1};
+    threaded_graph::RuntimeNode highPriorityNode{.id = 20, .priority = 3};
+    threaded_graph::RuntimeNode lowerIdNode{.id = 1, .priority = 2};
+    threaded_graph::RuntimeNode higherIdNode{.id = 2, .priority = 2};
+
+    threaded_graph::RuntimeGraph runtimeGraph(4);
+    runtimeGraph.availableTasks.push(&lowPriorityNode);
+    runtimeGraph.availableTasks.push(&higherIdNode);
+    runtimeGraph.availableTasks.push(&highPriorityNode);
+    runtimeGraph.availableTasks.push(&lowerIdNode);
+
+    expect(runtimeGraph.availableTasks.top() == &highPriorityNode,
+        "The highest-priority node should be dequeued first.");
+    runtimeGraph.availableTasks.pop();
+
+    expect(runtimeGraph.availableTasks.top() == &lowerIdNode,
+        "Lower node IDs should break equal-priority ties.");
+    runtimeGraph.availableTasks.pop();
+
+    expect(runtimeGraph.availableTasks.top() == &higherIdNode,
+        "The other equal-priority node should be dequeued next.");
+    runtimeGraph.availableTasks.pop();
+
+    expect(runtimeGraph.availableTasks.top() == &lowPriorityNode,
+        "The lowest-priority node should be dequeued last.");
   }
 
   void testDetectsReachableCycle() {

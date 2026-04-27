@@ -44,6 +44,9 @@ struct RuntimeNode {
   // is not real-time safe.
   std::shared_ptr<anthem::Node> sourceNode;
 
+  // Higher values should be processed first when this node is ready.
+  size_t priority = 0;
+
   // Number of unique nodes that must finish before this node can process.
   size_t upstreamNodeCount = 0;
 
