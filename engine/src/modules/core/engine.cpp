@@ -48,6 +48,7 @@ Engine::Engine() {
 
 void Engine::initialize() {
   this->graphProcessor = std::make_unique<GraphProcessor>();
+  this->threadedGraphProcessor = std::make_unique<threaded_graph::GraphProcessor>();
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
   transport = std::make_unique<Transport>(
       createTransportProjectView(*this), createTransportClock(audioDeviceManager));

@@ -27,6 +27,7 @@
 #include "modules/processing_graph/processor/event_buffer_test.h"
 #include "modules/processing_graph/runtime/graph_action_executor_test.h"
 #include "modules/processing_graph/runtime/graph_processor_test.h"
+#include "modules/processing_graph_threaded/model/runtime_graph_test.h"
 #include "modules/processors/balance_test.h"
 #include "modules/processors/db_meter_test.h"
 #include "modules/processors/gain_parameter_mapping_test.h"

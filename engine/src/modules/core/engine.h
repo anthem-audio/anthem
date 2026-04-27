@@ -33,6 +33,7 @@
 #include "modules/core/command_handler.h"
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/processing_graph/runtime/graph_processor.h"
+#include "modules/processing_graph_threaded/graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
 #include "modules/util/id_generator.h"
@@ -71,6 +72,9 @@ public:
   // The graph processor, which takes the compilation result from the compiler
   // and uses it on the audio thread to process data in the graph
   std::unique_ptr<GraphProcessor> graphProcessor;
+
+  // Temporary home for the new threaded graph processor implementation.
+  std::unique_ptr<threaded_graph::GraphProcessor> threadedGraphProcessor;
 
   // JUCE class for managing audio devices.
   //
