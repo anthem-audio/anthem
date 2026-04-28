@@ -19,12 +19,12 @@
 
 #pragma once
 
+#include "modules/processing_graph/executor/graph_executor.h"
+#include "modules/processing_graph/executor/graph_executor_shared.h"
 #include "modules/processing_graph/graph_test_helpers.h"
-#include "modules/processing_graph_threaded/executor/graph_executor.h"
-#include "modules/processing_graph_threaded/executor/graph_executor_shared.h"
-#include "modules/processing_graph_threaded/model/runtime_graph.h"
-#include "modules/processing_graph_threaded/runtime/graph_runtime_services.h"
-#include "modules/processing_graph_threaded/runtime/node_process_context.h"
+#include "modules/processing_graph/model/runtime_graph.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <atomic>
 #include <juce_core/juce_core.h>
@@ -32,7 +32,7 @@
 
 namespace anthem {
 
-class ThreadedRuntimeGraphTest : public juce::UnitTest {
+class RuntimeGraphTest : public juce::UnitTest {
   static int64_t inputPortId(int64_t nodeId) {
     return nodeId * 10 + 1;
   }
@@ -74,7 +74,7 @@ class ThreadedRuntimeGraphTest : public juce::UnitTest {
     graph.connections()->insert_or_assign(connectionId, connection);
   }
 
-  static bool hasInputNode(const threaded_graph::RuntimeGraph& runtimeGraph, int64_t nodeId) {
+  static bool hasInputNode(const RuntimeGraph& runtimeGraph, int64_t nodeId) {
     for (auto* inputNode : runtimeGraph.inputNodes) {
       if (inputNode->id == nodeId) {
         return true;
@@ -84,9 +84,9 @@ class ThreadedRuntimeGraphTest : public juce::UnitTest {
     return false;
   }
 
-  static std::unique_ptr<threaded_graph::RuntimeGraph> buildRuntimeGraph(
+  static std::unique_ptr<RuntimeGraph> buildRuntimeGraph(
       ProcessingGraphModel& graph, GraphRuntimeServices& rtServices) {
-    return threaded_graph::RuntimeGraph::fromProcessingGraph(graph,
+    return RuntimeGraph::fromProcessingGraph(graph,
         rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -107,12 +107,12 @@ class ThreadedRuntimeGraphTest : public juce::UnitTest {
     return false;
   }
 
-  static void processRuntimeGraph(threaded_graph::RuntimeGraph& runtimeGraph, int numSamples) {
-    threaded_graph::GraphExecutor executor;
+  static void processRuntimeGraph(RuntimeGraph& runtimeGraph, int numSamples) {
+    GraphExecutor executor;
     executor.rt_processBlock(runtimeGraph, numSamples);
   }
 public:
-  ThreadedRuntimeGraphTest() : juce::UnitTest("ThreadedRuntimeGraphTest", "Anthem") {}
+  RuntimeGraphTest() : juce::UnitTest("RuntimeGraphTest", "Anthem") {}
 
   void runTest() override {
     testBuildsNodesInputNodesAndEdges();
@@ -170,7 +170,7 @@ public:
     expect(firstGraphNode->runtimeContext.has_value(),
         "The source node should point at the new runtime context.");
     expect(firstGraphNode->runtimeContext.value() == firstNode.nodeProcessContext,
-        "The source node should point at the threaded runtime context.");
+        "The source node should point at the active runtime context.");
 
     expectEquals(static_cast<int>(firstNode.outgoingConnections.size()), 1);
     expectEquals(static_cast<int>(secondNode.outgoingConnections.size()), 1);
@@ -233,8 +233,8 @@ public:
       runtimeNode.rt_state.rt_remainingUpstreamNodes.store(99, std::memory_order_relaxed);
     }
 
-    threaded_graph::GraphExecutorState executorState(*runtimeGraph);
-    threaded_graph::rt_prepareGraphForBlock(executorState);
+    GraphExecutorState executorState(*runtimeGraph);
+    rt_prepareGraphForBlock(executorState);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).rt_state.rt_remainingUpstreamNodes.load(
                      std::memory_order_relaxed)),
@@ -250,16 +250,16 @@ public:
   void testDecrementRemainingUpstreamNodeCounter() {
     beginTest("Runtime graph atomically decrements remaining upstream node counters");
 
-    threaded_graph::RuntimeNode runtimeNode(1, nullptr);
+    RuntimeNode runtimeNode(1, nullptr);
     runtimeNode.rt_state.rt_remainingUpstreamNodes.store(2, std::memory_order_relaxed);
 
-    expect(!threaded_graph::rt_decrementRemainingUpstreamNodes(runtimeNode),
+    expect(!rt_decrementRemainingUpstreamNodes(runtimeNode),
         "The node should not be ready while one upstream node remains.");
     expectEquals(static_cast<int>(runtimeNode.rt_state.rt_remainingUpstreamNodes.load(
                      std::memory_order_relaxed)),
         1);
 
-    expect(threaded_graph::rt_decrementRemainingUpstreamNodes(runtimeNode),
+    expect(rt_decrementRemainingUpstreamNodes(runtimeNode),
         "The node should be ready when the counter reaches zero.");
     expectEquals(static_cast<int>(runtimeNode.rt_state.rt_remainingUpstreamNodes.load(
                      std::memory_order_relaxed)),
@@ -443,17 +443,17 @@ public:
   void testAvailableTaskQueueOrdersByPriorityThenId() {
     beginTest("RuntimeGraph available task queue orders by priority, then ID");
 
-    threaded_graph::RuntimeNode lowPriorityNode(10, nullptr);
-    threaded_graph::RuntimeNode highPriorityNode(20, nullptr);
-    threaded_graph::RuntimeNode lowerIdNode(1, nullptr);
-    threaded_graph::RuntimeNode higherIdNode(2, nullptr);
+    RuntimeNode lowPriorityNode(10, nullptr);
+    RuntimeNode highPriorityNode(20, nullptr);
+    RuntimeNode lowerIdNode(1, nullptr);
+    RuntimeNode higherIdNode(2, nullptr);
 
     lowPriorityNode.priority = 1;
     highPriorityNode.priority = 3;
     lowerIdNode.priority = 2;
     higherIdNode.priority = 2;
 
-    threaded_graph::RuntimeGraph runtimeGraph(4);
+    RuntimeGraph runtimeGraph(4);
     runtimeGraph.availableTasks.push(&lowPriorityNode);
     runtimeGraph.availableTasks.push(&higherIdNode);
     runtimeGraph.availableTasks.push(&highPriorityNode);
@@ -504,6 +504,6 @@ public:
   }
 };
 
-static ThreadedRuntimeGraphTest threadedRuntimeGraphTest;
+static RuntimeGraphTest runtimeGraphTest;
 
 } // namespace anthem

@@ -20,7 +20,7 @@
 #include "tone_generator.h"
 
 #include "modules/core/engine.h"
-#include "modules/processing_graph_threaded/runtime/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <cmath>
 #include <iostream>

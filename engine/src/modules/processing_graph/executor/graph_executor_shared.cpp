@@ -19,15 +19,15 @@
 
 #include "graph_executor_shared.h"
 
+#include "modules/processing_graph/model/runtime_graph.h"
 #include "modules/processing_graph/processor/event_buffer.h"
 #include "modules/processing_graph/processor/processor.h"
-#include "modules/processing_graph_threaded/model/runtime_graph.h"
-#include "modules/processing_graph_threaded/runtime/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <atomic>
 #include <juce_core/juce_core.h>
 
-namespace anthem::threaded_graph {
+namespace anthem {
 
 GraphExecutorState::GraphExecutorState(RuntimeGraph& runtimeGraph) : runtimeGraph(runtimeGraph) {}
 
@@ -147,4 +147,4 @@ bool rt_decrementRemainingUpstreamNodes(RuntimeNode& node) {
   return previousRemainingUpstreamNodeCount == 1;
 }
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

@@ -20,7 +20,7 @@
 #include "modules/core/engine.h"
 
 #include "modules/core/adapters/transport_adapters.h"
-#include "modules/processing_graph_threaded/model/runtime_graph.h"
+#include "modules/processing_graph/model/runtime_graph.h"
 #include "modules/processors/db_meter.h"
 
 namespace anthem {
@@ -47,7 +47,7 @@ Engine::Engine() {
 }
 
 void Engine::initialize() {
-  this->threadedGraphProcessor = std::make_unique<threaded_graph::GraphProcessor>();
+  this->graphProcessor = std::make_unique<GraphProcessor>();
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
   transport = std::make_unique<Transport>(
       createTransportProjectView(*this), createTransportClock(audioDeviceManager));
@@ -145,7 +145,7 @@ std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
                            juce::String(device->getActiveOutputChannels().countNumberOfSetBits()));
 
   transport->prepareToProcess();
-  threadedGraphProcessor->resetRtServices();
+  graphProcessor->resetRtServices();
   juce::Logger::writeToLog("Transport prepared before audio callback registration.");
 
   // Set up the audio callback
@@ -180,8 +180,8 @@ void Engine::compileProcessingGraph() {
 
   auto& processingGraph = *project->processingGraph();
 
-  auto threadedRuntimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(processingGraph,
-      threadedGraphProcessor->getRtServices(),
+  auto runtimeGraph = RuntimeGraph::fromProcessingGraph(processingGraph,
+      graphProcessor->getRtServices(),
       GraphBufferLayout{
           .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
           .blockSize = currentDevice->getCurrentBufferSizeSamples(),
@@ -212,7 +212,7 @@ void Engine::compileProcessingGraph() {
         procVariant.value());
   }
 
-  threadedGraphProcessor->setRuntimeGraphFromMainThread(threadedRuntimeGraph.release());
+  graphProcessor->setRuntimeGraphFromMainThread(runtimeGraph.release());
 }
 
 } // namespace anthem

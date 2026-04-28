@@ -17,31 +17,23 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "graph_executor.h"
+#pragma once
 
-#include "graph_executor_shared.h"
-#include "modules/processing_graph_threaded/model/runtime_graph.h"
+#include "modules/processing_graph/runtime/live_note_id_generator.h"
 
-#include <juce_core/juce_core.h>
+namespace anthem {
 
-#if JUCE_WINDOWS
-#include "native/graph_executor_windows.ipp"
-#else
-#include "native/graph_executor_generic.ipp"
-#endif
+class GraphRuntimeServices {
+public:
+  LiveNoteId rt_allocateLiveNoteId() {
+    return rt_liveNoteIdGenerator.rt_allocate();
+  }
 
-namespace anthem::threaded_graph {
+  void rt_reset() {
+    rt_liveNoteIdGenerator.reset();
+  }
+private:
+  LiveNoteIdGenerator rt_liveNoteIdGenerator;
+};
 
-GraphExecutor::GraphExecutor() : impl(std::make_unique<Impl>()) {}
-
-GraphExecutor::~GraphExecutor() = default;
-
-void GraphExecutor::prepare() {
-  impl->prepare();
-}
-
-void GraphExecutor::rt_processBlock(RuntimeGraph& runtimeGraph, int numSamples) {
-  impl->rt_processBlock(runtimeGraph, numSamples);
-}
-
-} // namespace anthem::threaded_graph
+} // namespace anthem

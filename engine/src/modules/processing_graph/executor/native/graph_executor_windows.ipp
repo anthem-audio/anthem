@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-namespace anthem::threaded_graph {
+namespace anthem {
 
 namespace {
 
@@ -59,4 +59,4 @@ public:
   }
 };
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

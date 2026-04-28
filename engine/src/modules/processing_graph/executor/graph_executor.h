@@ -19,26 +19,29 @@
 
 #pragma once
 
-namespace anthem::threaded_graph {
+#include <memory>
+
+namespace anthem {
 
 class RuntimeGraph;
-struct RuntimeNode;
 
-struct GraphExecutorState {
-  explicit GraphExecutorState(RuntimeGraph& runtimeGraph);
+class GraphExecutor {
+public:
+  GraphExecutor();
+  ~GraphExecutor();
 
-  RuntimeGraph& runtimeGraph;
+  GraphExecutor(const GraphExecutor&) = delete;
+  GraphExecutor& operator=(const GraphExecutor&) = delete;
+
+  GraphExecutor(GraphExecutor&&) = delete;
+  GraphExecutor& operator=(GraphExecutor&&) = delete;
+
+  void prepare();
+  void rt_processBlock(RuntimeGraph& runtimeGraph, int numSamples);
+private:
+  class Impl;
+
+  std::unique_ptr<Impl> impl;
 };
 
-// Resets per-block runtime counters before scheduling starts.
-void rt_prepareGraphForBlock(GraphExecutorState& state);
-
-// Copies this node's incoming connection data, updates parameter input buffers,
-// then invokes the node's processor if it has one.
-void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples);
-
-// Marks one upstream node as processed and returns true if this node is now
-// ready to run.
-bool rt_decrementRemainingUpstreamNodes(RuntimeNode& node);
-
-} // namespace anthem::threaded_graph
+} // namespace anthem

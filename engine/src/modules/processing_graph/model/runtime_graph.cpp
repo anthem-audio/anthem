@@ -23,13 +23,13 @@
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 #include "modules/processing_graph/model/node_port.h"
-#include "modules/processing_graph_threaded/runtime/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
 
-namespace anthem::threaded_graph {
+namespace anthem {
 
 bool RuntimeNodePriorityComparator::operator()(
     const RuntimeNode* left, const RuntimeNode* right) const {
@@ -62,7 +62,7 @@ RuntimeConnectionDataType toRuntimeConnectionDataType(NodePortDataType dataType)
       return RuntimeConnectionDataType::event;
   }
 
-  throw std::runtime_error("Threaded graph received an unsupported port data type.");
+  throw std::runtime_error("Processing graph received an unsupported port data type.");
 }
 
 void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
@@ -106,7 +106,7 @@ void createNodeProcessContexts(RuntimeGraph& runtimeGraph) {
 
   for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
     if (runtimeNode.sourceNode == nullptr) {
-      throw std::runtime_error("Threaded graph cannot create a context for a null graph node.");
+      throw std::runtime_error("Processing graph cannot create a context for a null graph node.");
     }
 
     auto& nodeProcessContext =
@@ -131,7 +131,7 @@ void addIncomingConnectionCopyToRuntimeNode(RuntimeNode& sourceNode,
     anthem::NodeConnection& connection,
     NodePortDataType dataType) {
   if (sourceNode.nodeProcessContext == nullptr || destinationNode.nodeProcessContext == nullptr) {
-    throw std::runtime_error("Threaded graph connection encountered a node without a context.");
+    throw std::runtime_error("Processing graph connection encountered a node without a context.");
   }
 
   auto sourceBufferIndex = sourceNode.nodeProcessContext->getBufferIndex(
@@ -155,7 +155,7 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
   auto connectionIter = graphConnections.find(connectionId);
   if (connectionIter == graphConnections.end()) {
     throw std::runtime_error(
-        "Threaded graph connection ID not found: " + std::to_string(connectionId));
+        "Processing graph connection ID not found: " + std::to_string(connectionId));
   }
 
   auto& connection = *connectionIter->second;
@@ -163,7 +163,7 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
   auto destinationNodeId = connection.destinationNodeId();
 
   if (destinationNodeId != inputPortNodeId) {
-    throw std::runtime_error("Threaded graph connection destination does not match input port "
+    throw std::runtime_error("Processing graph connection destination does not match input port "
                              "owner node: " +
                              std::to_string(connectionId));
   }
@@ -171,13 +171,13 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
   auto sourceNodeIter = runtimeGraph.nodes.find(sourceNodeId);
   if (sourceNodeIter == runtimeGraph.nodes.end()) {
     throw std::runtime_error(
-        "Threaded graph source node ID not found: " + std::to_string(sourceNodeId));
+        "Processing graph source node ID not found: " + std::to_string(sourceNodeId));
   }
 
   auto destinationNodeIter = runtimeGraph.nodes.find(destinationNodeId);
   if (destinationNodeIter == runtimeGraph.nodes.end()) {
     throw std::runtime_error(
-        "Threaded graph destination node ID not found: " + std::to_string(destinationNodeId));
+        "Processing graph destination node ID not found: " + std::to_string(destinationNodeId));
   }
 
   auto& sourceNode = sourceNodeIter->second;
@@ -233,7 +233,7 @@ void assertAcyclicFromNode(
 
   if (state == DfsState::visiting) {
     throw std::runtime_error(
-        "Cycle detected in threaded graph at node: " + std::to_string(node.id));
+        "Cycle detected in processing graph at node: " + std::to_string(node.id));
   }
 
   if (state == DfsState::visited) {
@@ -284,12 +284,12 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
 
   for (auto& [nodeId, graphNode] : graphNodes) {
     if (graphNode == nullptr) {
-      throw std::runtime_error("Threaded graph cannot build from a null graph node.");
+      throw std::runtime_error("Processing graph cannot build from a null graph node.");
     }
 
     if (nodeId != graphNode->id()) {
       throw std::runtime_error(
-          "Threaded graph node map key does not match node ID: " + std::to_string(nodeId));
+          "Processing graph node map key does not match node ID: " + std::to_string(nodeId));
     }
 
     runtimeGraph.nodes.emplace(nodeId, RuntimeNode(nodeId, graphNode));
@@ -394,4 +394,4 @@ RuntimeGraph::AvailableTaskQueue RuntimeGraph::createAvailableTaskQueue(size_t n
   return AvailableTaskQueue(RuntimeNodePriorityComparator(), std::move(taskStorage));
 }
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

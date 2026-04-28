@@ -22,7 +22,7 @@
 #include "modules/core/constants.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_port.h"
-#include "modules/processing_graph_threaded/runtime/graph_process_context.h"
+#include "modules/processing_graph/runtime/graph_process_context.h"
 
 #include <algorithm>
 

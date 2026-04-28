@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include "modules/processing_graph_threaded/model/runtime_node.h"
-#include "modules/processing_graph_threaded/runtime/graph_process_context.h"
+#include "modules/processing_graph/model/runtime_node.h"
+#include "modules/processing_graph/runtime/graph_process_context.h"
 
 #include <cstddef>
 #include <memory>
@@ -32,10 +32,6 @@ namespace anthem {
 
 class GraphRuntimeServices;
 class ProcessingGraphModel;
-
-} // namespace anthem
-
-namespace anthem::threaded_graph {
 
 class RuntimeNodePriorityComparator {
 public:
@@ -75,4 +71,4 @@ private:
   static AvailableTaskQueue createAvailableTaskQueue(size_t nodeCapacity);
 };
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

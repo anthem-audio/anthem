@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "modules/processing_graph_threaded/model/runtime_graph.h"
+#include "modules/processing_graph/model/runtime_graph.h"
 #include "modules/util/ring_buffer.h"
 
 #include <juce_events/juce_events.h>
@@ -27,13 +27,8 @@
 
 namespace anthem {
 
-class GraphRuntimeServices;
-
-} // namespace anthem
-
-namespace anthem::threaded_graph {
-
 class GraphExecutor;
+class GraphRuntimeServices;
 
 class GraphProcessor {
 private:
@@ -60,7 +55,7 @@ public:
   void setRuntimeGraphFromMainThread(RuntimeGraph* runtimeGraph);
 
   // Picks up graph updates on the audio thread. This does not process audio
-  // yet; it only keeps the threaded graph mirror in sync.
+  // yet; it only keeps the runtime graph in sync.
   void rt_processGraphUpdates();
 
   // Processes the active runtime graph on the audio thread.
@@ -73,4 +68,4 @@ public:
   void clearDeletionQueueFromMainThread();
 };
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

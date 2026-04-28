@@ -20,8 +20,8 @@
 #include "graph_process_context.h"
 
 #include "modules/processing_graph/model/node.h"
-#include "modules/processing_graph_threaded/runtime/graph_runtime_services.h"
-#include "modules/processing_graph_threaded/runtime/node_process_context.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 namespace anthem {
 

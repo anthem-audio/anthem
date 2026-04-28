@@ -31,10 +31,6 @@ class Node;
 class NodeProcessContext;
 class Processor;
 
-} // namespace anthem
-
-namespace anthem::threaded_graph {
-
 enum class RuntimeConnectionDataType : uint8_t {
   audio,
   control,
@@ -104,4 +100,4 @@ struct RuntimeNode {
   std::vector<RuntimeNode*> outgoingConnections;
 };
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

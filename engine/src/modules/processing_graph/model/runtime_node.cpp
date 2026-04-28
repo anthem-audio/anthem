@@ -21,7 +21,7 @@
 
 #include <utility>
 
-namespace anthem::threaded_graph {
+namespace anthem {
 
 RuntimeNodeState::RuntimeNodeState(RuntimeNodeState&& other) noexcept {
   rt_remainingUpstreamNodes.store(
@@ -63,4 +63,4 @@ RuntimeNode& RuntimeNode::operator=(RuntimeNode&& other) noexcept {
   return *this;
 }
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

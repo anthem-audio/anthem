@@ -17,31 +17,31 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-#pragma once
+#include "graph_executor.h"
 
-#include <memory>
+#include "graph_executor_shared.h"
+#include "modules/processing_graph/model/runtime_graph.h"
 
-namespace anthem::threaded_graph {
+#include <juce_core/juce_core.h>
 
-class RuntimeGraph;
+#if JUCE_WINDOWS
+#include "native/graph_executor_windows.ipp"
+#else
+#include "native/graph_executor_generic.ipp"
+#endif
 
-class GraphExecutor {
-public:
-  GraphExecutor();
-  ~GraphExecutor();
+namespace anthem {
 
-  GraphExecutor(const GraphExecutor&) = delete;
-  GraphExecutor& operator=(const GraphExecutor&) = delete;
+GraphExecutor::GraphExecutor() : impl(std::make_unique<Impl>()) {}
 
-  GraphExecutor(GraphExecutor&&) = delete;
-  GraphExecutor& operator=(GraphExecutor&&) = delete;
+GraphExecutor::~GraphExecutor() = default;
 
-  void prepare();
-  void rt_processBlock(RuntimeGraph& runtimeGraph, int numSamples);
-private:
-  class Impl;
+void GraphExecutor::prepare() {
+  impl->prepare();
+}
 
-  std::unique_ptr<Impl> impl;
-};
+void GraphExecutor::rt_processBlock(RuntimeGraph& runtimeGraph, int numSamples) {
+  impl->rt_processBlock(runtimeGraph, numSamples);
+}
 
-} // namespace anthem::threaded_graph
+} // namespace anthem

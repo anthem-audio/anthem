@@ -19,21 +19,26 @@
 
 #pragma once
 
-#include "modules/processing_graph_threaded/runtime/live_note_id_generator.h"
-
 namespace anthem {
 
-class GraphRuntimeServices {
-public:
-  LiveNoteId rt_allocateLiveNoteId() {
-    return rt_liveNoteIdGenerator.rt_allocate();
-  }
+class RuntimeGraph;
+struct RuntimeNode;
 
-  void rt_reset() {
-    rt_liveNoteIdGenerator.reset();
-  }
-private:
-  LiveNoteIdGenerator rt_liveNoteIdGenerator;
+struct GraphExecutorState {
+  explicit GraphExecutorState(RuntimeGraph& runtimeGraph);
+
+  RuntimeGraph& runtimeGraph;
 };
+
+// Resets per-block runtime counters before scheduling starts.
+void rt_prepareGraphForBlock(GraphExecutorState& state);
+
+// Copies this node's incoming connection data, updates parameter input buffers,
+// then invokes the node's processor if it has one.
+void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples);
+
+// Marks one upstream node as processed and returns true if this node is now
+// ready to run.
+bool rt_decrementRemainingUpstreamNodes(RuntimeNode& node);
 
 } // namespace anthem
