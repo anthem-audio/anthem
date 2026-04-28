@@ -19,9 +19,14 @@
 
 #pragma once
 
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
+#include "modules/processing_graph_threaded/executor/graph_executor.h"
+#include "modules/processing_graph_threaded/executor/graph_executor_shared.h"
 #include "modules/processing_graph_threaded/model/runtime_graph.h"
 
+#include <atomic>
 #include <juce_core/juce_core.h>
 #include <stdexcept>
 
@@ -79,14 +84,32 @@ class ThreadedRuntimeGraphTest : public juce::UnitTest {
     return false;
   }
 
+  static std::unique_ptr<threaded_graph::RuntimeGraph> buildRuntimeGraph(
+      ProcessingGraphModel& graph, GraphRuntimeServices& rtServices) {
+    return threaded_graph::RuntimeGraph::fromProcessingGraph(graph,
+        rtServices,
+        GraphBufferLayout{
+            .numAudioChannels = 2,
+            .blockSize = 8,
+        },
+        44100.0);
+  }
+
   static bool buildThrowsRuntimeError(ProcessingGraphModel& graph) {
+    GraphRuntimeServices rtServices;
+
     try {
-      (void)threaded_graph::RuntimeGraph::fromProcessingGraph(graph);
+      (void)buildRuntimeGraph(graph, rtServices);
     } catch (const std::runtime_error&) {
       return true;
     }
 
     return false;
+  }
+
+  static void processRuntimeGraph(threaded_graph::RuntimeGraph& runtimeGraph, int numSamples) {
+    threaded_graph::GraphExecutor executor;
+    executor.rt_processBlock(runtimeGraph, numSamples);
   }
 public:
   ThreadedRuntimeGraphTest() : juce::UnitTest("ThreadedRuntimeGraphTest", "Anthem") {}
@@ -94,6 +117,11 @@ public:
   void runTest() override {
     testBuildsNodesInputNodesAndEdges();
     testDeduplicatesNodeConnections();
+    testPrepareGraphForBlockResetsRemainingUpstreamNodeCounters();
+    testDecrementRemainingUpstreamNodeCounter();
+    testSingleThreadedExecutorCopiesAudioToReadyDownstreamNodes();
+    testSingleThreadedExecutorHandlesDuplicateEdges();
+    testSingleThreadedExecutorProcessesNodesWithoutProcessors();
     testCalculatesLinearPriorities();
     testCalculatesDiamondPriorities();
     testCalculatesDisconnectedComponentPriorities();
@@ -112,19 +140,20 @@ public:
     addConnection(*graph, 100, 1, 3);
     addConnection(*graph, 101, 2, 3);
 
-    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    expectEquals(static_cast<int>(runtimeGraph.nodes.size()), 3, "All graph nodes should copy.");
-    expectEquals(static_cast<int>(runtimeGraph.inputNodes.size()),
+    expectEquals(static_cast<int>(runtimeGraph->nodes.size()), 3, "All graph nodes should copy.");
+    expectEquals(static_cast<int>(runtimeGraph->inputNodes.size()),
         2,
         "Nodes without upstream dependencies should be listed as input nodes.");
-    expect(hasInputNode(runtimeGraph, 1), "Node 1 should be an input node.");
-    expect(hasInputNode(runtimeGraph, 2), "Node 2 should be an input node.");
-    expect(!hasInputNode(runtimeGraph, 3), "Node 3 should not be an input node.");
+    expect(hasInputNode(*runtimeGraph, 1), "Node 1 should be an input node.");
+    expect(hasInputNode(*runtimeGraph, 2), "Node 2 should be an input node.");
+    expect(!hasInputNode(*runtimeGraph, 3), "Node 3 should not be an input node.");
 
-    auto& firstNode = runtimeGraph.nodes.at(1);
-    auto& secondNode = runtimeGraph.nodes.at(2);
-    auto& thirdNode = runtimeGraph.nodes.at(3);
+    auto& firstNode = runtimeGraph->nodes.at(1);
+    auto& secondNode = runtimeGraph->nodes.at(2);
+    auto& thirdNode = runtimeGraph->nodes.at(3);
 
     expectEquals(static_cast<int>(firstNode.upstreamNodeCount), 0);
     expectEquals(static_cast<int>(secondNode.upstreamNodeCount), 0);
@@ -138,6 +167,10 @@ public:
         "Runtime nodes should keep their source graph nodes alive.");
     expect(thirdNode.sourceNode == thirdGraphNode,
         "Runtime nodes should keep their source graph nodes alive.");
+    expect(firstGraphNode->runtimeContext.has_value(),
+        "The source node should point at the new runtime context.");
+    expect(firstGraphNode->runtimeContext.value() == firstNode.nodeProcessContext,
+        "The source node should point at the threaded runtime context.");
 
     expectEquals(static_cast<int>(firstNode.outgoingConnections.size()), 1);
     expectEquals(static_cast<int>(secondNode.outgoingConnections.size()), 1);
@@ -146,6 +179,9 @@ public:
         "Node 1 should point to its downstream node.");
     expect(secondNode.outgoingConnections[0] == &thirdNode,
         "Node 2 should point to its downstream node.");
+    expectEquals(static_cast<int>(thirdNode.incomingConnectionCopies.size()),
+        2,
+        "Each real incoming connection should have a copy operation.");
   }
 
   void testDeduplicatesNodeConnections() {
@@ -157,10 +193,11 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 1, 2);
 
-    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& sourceNode = runtimeGraph.nodes.at(1);
-    auto& destinationNode = runtimeGraph.nodes.at(2);
+    auto& sourceNode = runtimeGraph->nodes.at(1);
+    auto& destinationNode = runtimeGraph->nodes.at(2);
 
     expectEquals(static_cast<int>(sourceNode.outgoingConnections.size()),
         1,
@@ -170,10 +207,174 @@ public:
     expectEquals(static_cast<int>(destinationNode.upstreamNodeCount),
         1,
         "Duplicate node-level edges should only count as one upstream node.");
+    expectEquals(static_cast<int>(destinationNode.incomingConnectionCopies.size()),
+        2,
+        "Duplicate real connections should still create separate copy operations.");
     expectEquals(static_cast<int>(sourceNode.priority),
         2,
         "Duplicate node-level edges should only contribute once to priority.");
     expectEquals(static_cast<int>(destinationNode.priority), 1);
+  }
+
+  void testPrepareGraphForBlockResetsRemainingUpstreamNodeCounters() {
+    beginTest("Runtime graph block preparation resets remaining upstream node counters");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addGraphNode(*graph, 3);
+    addConnection(*graph, 100, 1, 3);
+    addConnection(*graph, 101, 2, 3);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    for (auto& [_, runtimeNode] : runtimeGraph->nodes) {
+      runtimeNode.rt_state.rt_remainingUpstreamNodes.store(99, std::memory_order_relaxed);
+    }
+
+    threaded_graph::GraphExecutorState executorState(*runtimeGraph);
+    threaded_graph::rt_prepareGraphForBlock(executorState);
+
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).rt_state.rt_remainingUpstreamNodes.load(
+                     std::memory_order_relaxed)),
+        0);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).rt_state.rt_remainingUpstreamNodes.load(
+                     std::memory_order_relaxed)),
+        0);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).rt_state.rt_remainingUpstreamNodes.load(
+                     std::memory_order_relaxed)),
+        2);
+  }
+
+  void testDecrementRemainingUpstreamNodeCounter() {
+    beginTest("Runtime graph atomically decrements remaining upstream node counters");
+
+    threaded_graph::RuntimeNode runtimeNode(1, nullptr);
+    runtimeNode.rt_state.rt_remainingUpstreamNodes.store(2, std::memory_order_relaxed);
+
+    expect(!threaded_graph::rt_decrementRemainingUpstreamNodes(runtimeNode),
+        "The node should not be ready while one upstream node remains.");
+    expectEquals(static_cast<int>(runtimeNode.rt_state.rt_remainingUpstreamNodes.load(
+                     std::memory_order_relaxed)),
+        1);
+
+    expect(threaded_graph::rt_decrementRemainingUpstreamNodes(runtimeNode),
+        "The node should be ready when the counter reaches zero.");
+    expectEquals(static_cast<int>(runtimeNode.rt_state.rt_remainingUpstreamNodes.load(
+                     std::memory_order_relaxed)),
+        0);
+  }
+
+  void testSingleThreadedExecutorCopiesAudioToReadyDownstreamNodes() {
+    beginTest("Single-threaded executor copies audio to ready downstream nodes");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addConnection(*graph, 100, 1, 2);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& sourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+
+    for (int channel = 0; channel < sourceOutputBuffer.getNumChannels(); ++channel) {
+      for (int sample = 0; sample < 4; ++sample) {
+        sourceOutputBuffer.setSample(channel, sample, static_cast<float>(channel * 10 + sample));
+      }
+    }
+
+    processRuntimeGraph(*runtimeGraph, 4);
+
+    auto& destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+
+    for (int channel = 0; channel < destinationInputBuffer.getNumChannels(); ++channel) {
+      for (int sample = 0; sample < 4; ++sample) {
+        expectWithinAbsoluteError(destinationInputBuffer.getSample(channel, sample),
+            static_cast<float>(channel * 10 + sample),
+            0.0001f);
+      }
+    }
+  }
+
+  void testSingleThreadedExecutorHandlesDuplicateEdges() {
+    beginTest("Single-threaded executor handles duplicate edges");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 1, 2);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& sourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+
+    for (int channel = 0; channel < sourceOutputBuffer.getNumChannels(); ++channel) {
+      for (int sample = 0; sample < 4; ++sample) {
+        sourceOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 1));
+      }
+    }
+
+    processRuntimeGraph(*runtimeGraph, 4);
+
+    auto& destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+
+    for (int channel = 0; channel < destinationInputBuffer.getNumChannels(); ++channel) {
+      for (int sample = 0; sample < 4; ++sample) {
+        expectWithinAbsoluteError(destinationInputBuffer.getSample(channel, sample),
+            static_cast<float>((sample + 1) * 2),
+            0.0001f);
+      }
+    }
+  }
+
+  void testSingleThreadedExecutorProcessesNodesWithoutProcessors() {
+    beginTest("Single-threaded executor processes nodes without processors");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addGraphNode(*graph, 3);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 2, 3);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& firstOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+    auto& secondOutputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputAudioBuffer(outputPortId(2));
+
+    for (int channel = 0; channel < firstOutputBuffer.getNumChannels(); ++channel) {
+      for (int sample = 0; sample < 4; ++sample) {
+        firstOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 1));
+        secondOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 10));
+      }
+    }
+
+    processRuntimeGraph(*runtimeGraph, 4);
+
+    auto& secondInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+    auto& thirdInputBuffer =
+        runtimeGraph->nodes.at(3).nodeProcessContext->getInputAudioBuffer(inputPortId(3));
+
+    for (int channel = 0; channel < secondInputBuffer.getNumChannels(); ++channel) {
+      for (int sample = 0; sample < 4; ++sample) {
+        expectWithinAbsoluteError(
+            secondInputBuffer.getSample(channel, sample), static_cast<float>(sample + 1), 0.0001f);
+        expectWithinAbsoluteError(
+            thirdInputBuffer.getSample(channel, sample), static_cast<float>(sample + 10), 0.0001f);
+      }
+    }
   }
 
   void testCalculatesLinearPriorities() {
@@ -186,11 +387,12 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 2, 3);
 
-    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(1).priority), 3);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(2).priority), 2);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(3).priority), 1);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 3);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).priority), 1);
   }
 
   void testCalculatesDiamondPriorities() {
@@ -206,12 +408,13 @@ public:
     addConnection(*graph, 102, 2, 4);
     addConnection(*graph, 103, 3, 4);
 
-    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(1).priority), 5);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(2).priority), 2);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(3).priority), 2);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(4).priority), 1);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 5);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(4).priority), 1);
   }
 
   void testCalculatesDisconnectedComponentPriorities() {
@@ -227,22 +430,28 @@ public:
     addConnection(*graph, 101, 3, 4);
     addConnection(*graph, 102, 4, 5);
 
-    auto runtimeGraph = threaded_graph::RuntimeGraph::fromProcessingGraph(*graph);
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(1).priority), 2);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(2).priority), 1);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(3).priority), 3);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(4).priority), 2);
-    expectEquals(static_cast<int>(runtimeGraph.nodes.at(5).priority), 1);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).priority), 1);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).priority), 3);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(4).priority), 2);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(5).priority), 1);
   }
 
   void testAvailableTaskQueueOrdersByPriorityThenId() {
     beginTest("RuntimeGraph available task queue orders by priority, then ID");
 
-    threaded_graph::RuntimeNode lowPriorityNode{.id = 10, .priority = 1};
-    threaded_graph::RuntimeNode highPriorityNode{.id = 20, .priority = 3};
-    threaded_graph::RuntimeNode lowerIdNode{.id = 1, .priority = 2};
-    threaded_graph::RuntimeNode higherIdNode{.id = 2, .priority = 2};
+    threaded_graph::RuntimeNode lowPriorityNode(10, nullptr);
+    threaded_graph::RuntimeNode highPriorityNode(20, nullptr);
+    threaded_graph::RuntimeNode lowerIdNode(1, nullptr);
+    threaded_graph::RuntimeNode higherIdNode(2, nullptr);
+
+    lowPriorityNode.priority = 1;
+    highPriorityNode.priority = 3;
+    lowerIdNode.priority = 2;
+    higherIdNode.priority = 2;
 
     threaded_graph::RuntimeGraph runtimeGraph(4);
     runtimeGraph.availableTasks.push(&lowPriorityNode);

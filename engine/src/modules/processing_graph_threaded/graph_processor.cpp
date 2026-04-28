@@ -19,18 +19,16 @@
 
 #include "graph_processor.h"
 
+#include "modules/processing_graph/runtime/graph_runtime_services.h"
+#include "modules/processing_graph_threaded/executor/graph_executor.h"
 #include "modules/util/intentionally_leak.h"
 
 namespace anthem::threaded_graph {
 
-namespace {
-void deleteRuntimeGraph(RuntimeGraph* runtimeGraph) {
-  delete runtimeGraph;
-}
-} // namespace
-
 GraphProcessor::GraphProcessor()
-  : clearDeletionQueueTimedCallback(
+  : executor(std::make_unique<GraphExecutor>()),
+    rt_services(std::make_unique<GraphRuntimeServices>()),
+    clearDeletionQueueTimedCallback(
         juce::TimedCallback([this]() { this->clearDeletionQueueFromMainThread(); })) {
   clearDeletionQueueTimedCallback.startTimer(2000);
 }
@@ -39,19 +37,20 @@ GraphProcessor::~GraphProcessor() {
   clearDeletionQueueTimedCallback.stopTimer();
 
   while (auto nextRuntimeGraph = pendingRuntimeGraphsQueue.read()) {
-    deleteRuntimeGraph(nextRuntimeGraph.value());
+    delete nextRuntimeGraph.value();
   }
 
   clearDeletionQueueFromMainThread();
 
-  deleteRuntimeGraph(rt_activeRuntimeGraph);
+  delete rt_activeRuntimeGraph;
   rt_activeRuntimeGraph = nullptr;
 }
 
 void GraphProcessor::setRuntimeGraphFromMainThread(RuntimeGraph* runtimeGraph) {
   if (!pendingRuntimeGraphsQueue.add(runtimeGraph)) {
     jassertfalse;
-    deleteRuntimeGraph(runtimeGraph);
+    delete runtimeGraph;
+    return;
   }
 }
 
@@ -72,11 +71,35 @@ void GraphProcessor::rt_processGraphUpdates() {
   }
 }
 
+void GraphProcessor::rt_process(int numSamples) {
+  rt_processGraphUpdates();
+
+  // The audio thread can run before the first runtime graph has been compiled
+  // and handed over.
+  if (rt_activeRuntimeGraph == nullptr) {
+    return;
+  }
+
+  executor->rt_processBlock(*rt_activeRuntimeGraph, numSamples);
+}
+
+GraphRuntimeServices& GraphProcessor::getRtServices() {
+  jassert(rt_services != nullptr);
+  return *rt_services;
+}
+
+void GraphProcessor::resetRtServices() {
+  jassert(rt_services != nullptr);
+  if (rt_services != nullptr) {
+    rt_services->rt_reset();
+  }
+}
+
 void GraphProcessor::clearDeletionQueueFromMainThread() {
   auto nextRuntimeGraph = retiredRuntimeGraphsQueue.read();
 
   while (nextRuntimeGraph) {
-    deleteRuntimeGraph(nextRuntimeGraph.value());
+    delete nextRuntimeGraph.value();
     nextRuntimeGraph = retiredRuntimeGraphsQueue.read();
   }
 }

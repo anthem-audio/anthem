@@ -87,8 +87,7 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
   // Tell the sequence store to pick up any sequence updates.
   engine->sequenceStore->rt_processSequenceChanges(numSamples);
 
-  engine->threadedGraphProcessor->rt_processGraphUpdates();
-  engine->graphProcessor->process(numSamples);
+  engine->threadedGraphProcessor->rt_process(numSamples);
 
   auto& outputBuffer = masterOutputProcessor->buffer;
 

@@ -19,4 +19,48 @@
 
 #include "runtime_node.h"
 
-namespace anthem::threaded_graph {} // namespace anthem::threaded_graph
+#include <utility>
+
+namespace anthem::threaded_graph {
+
+RuntimeNodeState::RuntimeNodeState(RuntimeNodeState&& other) noexcept {
+  rt_remainingUpstreamNodes.store(
+      other.rt_remainingUpstreamNodes.load(std::memory_order_relaxed), std::memory_order_relaxed);
+}
+
+RuntimeNodeState& RuntimeNodeState::operator=(RuntimeNodeState&& other) noexcept {
+  if (this != &other) {
+    rt_remainingUpstreamNodes.store(
+        other.rt_remainingUpstreamNodes.load(std::memory_order_relaxed), std::memory_order_relaxed);
+  }
+
+  return *this;
+}
+
+RuntimeNode::RuntimeNode(Id id, std::shared_ptr<anthem::Node> sourceNode)
+  : id(id), sourceNode(std::move(sourceNode)) {}
+
+RuntimeNode::RuntimeNode(RuntimeNode&& other) noexcept
+  : id(other.id), sourceNode(std::move(other.sourceNode)), priority(other.priority),
+    upstreamNodeCount(other.upstreamNodeCount), nodeProcessContext(other.nodeProcessContext),
+    processor(other.processor), rt_state(std::move(other.rt_state)),
+    incomingConnectionCopies(std::move(other.incomingConnectionCopies)),
+    outgoingConnections(std::move(other.outgoingConnections)) {}
+
+RuntimeNode& RuntimeNode::operator=(RuntimeNode&& other) noexcept {
+  if (this != &other) {
+    id = other.id;
+    sourceNode = std::move(other.sourceNode);
+    priority = other.priority;
+    upstreamNodeCount = other.upstreamNodeCount;
+    nodeProcessContext = other.nodeProcessContext;
+    processor = other.processor;
+    rt_state = std::move(other.rt_state);
+    incomingConnectionCopies = std::move(other.incomingConnectionCopies);
+    outgoingConnections = std::move(other.outgoingConnections);
+  }
+
+  return *this;
+}
+
+} // namespace anthem::threaded_graph

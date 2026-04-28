@@ -20,6 +20,7 @@
 #include "runtime_graph.h"
 
 #include "generated/lib/model/processing_graph/processing_graph.h"
+#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 #include "modules/processing_graph/model/node_port.h"
@@ -51,10 +52,105 @@ using UniqueDestinationMap =
     std::unordered_map<RuntimeNode::Id, std::unordered_set<RuntimeNode::Id>>;
 using GraphConnectionMap = ModelUnorderedMap<int64_t, std::shared_ptr<anthem::NodeConnection>>;
 
+RuntimeConnectionDataType toRuntimeConnectionDataType(NodePortDataType dataType) {
+  switch (dataType) {
+    case NodePortDataType::audio:
+      return RuntimeConnectionDataType::audio;
+    case NodePortDataType::control:
+      return RuntimeConnectionDataType::control;
+    case NodePortDataType::event:
+      return RuntimeConnectionDataType::event;
+  }
+
+  throw std::runtime_error("Threaded graph received an unsupported port data type.");
+}
+
+void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes) {
+  size_t totalAudioBufferCount = 0;
+  size_t totalControlBufferCount = 0;
+  size_t totalEventBufferCount = 0;
+
+  for (auto& [nodeId, graphNode] : graphNodes) {
+    totalAudioBufferCount +=
+        graphNode->audioInputPorts()->size() + graphNode->audioOutputPorts()->size();
+    totalControlBufferCount +=
+        graphNode->controlInputPorts()->size() + graphNode->controlOutputPorts()->size();
+    totalEventBufferCount +=
+        graphNode->eventInputPorts()->size() + graphNode->eventOutputPorts()->size();
+
+    size_t incomingConnectionCount = 0;
+
+    for (auto& port : *graphNode->audioInputPorts()) {
+      incomingConnectionCount += port->connections()->size();
+    }
+
+    for (auto& port : *graphNode->controlInputPorts()) {
+      incomingConnectionCount += port->connections()->size();
+    }
+
+    for (auto& port : *graphNode->eventInputPorts()) {
+      incomingConnectionCount += port->connections()->size();
+    }
+
+    runtimeGraph.nodes.at(nodeId).incomingConnectionCopies.reserve(incomingConnectionCount);
+  }
+
+  runtimeGraph.inputNodes.reserve(graphNodes.size());
+  runtimeGraph.graphProcessContext->reserve(
+      graphNodes.size(), totalAudioBufferCount, totalControlBufferCount, totalEventBufferCount);
+}
+
+void createNodeProcessContexts(RuntimeGraph& runtimeGraph) {
+  jassert(runtimeGraph.graphProcessContext != nullptr);
+
+  for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
+    if (runtimeNode.sourceNode == nullptr) {
+      throw std::runtime_error("Threaded graph cannot create a context for a null graph node.");
+    }
+
+    auto& nodeProcessContext =
+        runtimeGraph.graphProcessContext->createNodeProcessContext(runtimeNode.sourceNode);
+    runtimeNode.nodeProcessContext = &nodeProcessContext;
+
+    auto processor = runtimeNode.sourceNode->getProcessor();
+    if (processor.has_value()) {
+      runtimeNode.processor = processor.value().get();
+    }
+  }
+}
+
+void publishRuntimeContexts(RuntimeGraph& runtimeGraph) {
+  for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
+    runtimeNode.sourceNode->runtimeContext = runtimeNode.nodeProcessContext;
+  }
+}
+
+void addIncomingConnectionCopyToRuntimeNode(RuntimeNode& sourceNode,
+    RuntimeNode& destinationNode,
+    anthem::NodeConnection& connection,
+    NodePortDataType dataType) {
+  if (sourceNode.nodeProcessContext == nullptr || destinationNode.nodeProcessContext == nullptr) {
+    throw std::runtime_error("Threaded graph connection encountered a node without a context.");
+  }
+
+  auto sourceBufferIndex = sourceNode.nodeProcessContext->getBufferIndex(
+      dataType, NodeProcessContext::BufferDirection::output, connection.sourcePortId());
+  auto destinationBufferIndex = destinationNode.nodeProcessContext->getBufferIndex(
+      dataType, NodeProcessContext::BufferDirection::input, connection.destinationPortId());
+
+  destinationNode.incomingConnectionCopies.push_back(RuntimeConnectionCopy{
+      .dataType = toRuntimeConnectionDataType(dataType),
+      .sourceBufferIndex = sourceBufferIndex,
+      .destinationBufferIndex = destinationBufferIndex,
+  });
+}
+
 void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
     GraphConnectionMap& graphConnections,
     UniqueDestinationMap& uniqueDestinationIdsBySource,
     RuntimeNode::Id inputPortNodeId,
+    NodePortDataType dataType,
     int64_t connectionId) {
   auto connectionIter = graphConnections.find(connectionId);
   if (connectionIter == graphConnections.end()) {
@@ -84,6 +180,11 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
         "Threaded graph destination node ID not found: " + std::to_string(destinationNodeId));
   }
 
+  auto& sourceNode = sourceNodeIter->second;
+  auto& destinationNode = destinationNodeIter->second;
+
+  addIncomingConnectionCopyToRuntimeNode(sourceNode, destinationNode, connection, dataType);
+
   auto uniqueDestinationIdsIter = uniqueDestinationIdsBySource.find(sourceNodeId);
   if (uniqueDestinationIdsIter == uniqueDestinationIdsBySource.end()) {
     auto [insertedIter, _] =
@@ -98,9 +199,6 @@ void addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
     return;
   }
 
-  auto& sourceNode = sourceNodeIter->second;
-  auto& destinationNode = destinationNodeIter->second;
-
   sourceNode.outgoingConnections.push_back(&destinationNode);
   destinationNode.upstreamNodeCount++;
 }
@@ -109,13 +207,15 @@ void addInputPortConnectionsToRuntimeGraph(RuntimeGraph& runtimeGraph,
     GraphConnectionMap& graphConnections,
     UniqueDestinationMap& uniqueDestinationIdsBySource,
     anthem::Node& graphNode,
-    ModelVector<std::shared_ptr<NodePort>>& inputPorts) {
+    ModelVector<std::shared_ptr<NodePort>>& inputPorts,
+    NodePortDataType dataType) {
   for (auto& inputPort : inputPorts) {
     for (auto connectionId : *inputPort->connections()) {
       addConnectionToRuntimeGraph(runtimeGraph,
           graphConnections,
           uniqueDestinationIdsBySource,
           graphNode.id(),
+          dataType,
           connectionId);
     }
   }
@@ -166,12 +266,20 @@ size_t getAndSetPriority(RuntimeNode& node) {
 
 } // namespace
 
-RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingGraph) {
+std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
+    ProcessingGraphModel& processingGraph,
+    GraphRuntimeServices& rtServices,
+    const GraphBufferLayout& bufferLayout,
+    double sampleRate) {
   auto& graphNodes = *processingGraph.nodes();
   auto& graphConnections = *processingGraph.connections();
 
-  RuntimeGraph runtimeGraph(graphNodes.size());
+  auto runtimeGraphStorage = std::make_unique<RuntimeGraph>(graphNodes.size());
+  auto& runtimeGraph = *runtimeGraphStorage;
 
+  runtimeGraph.sampleRate = static_cast<float>(sampleRate);
+  runtimeGraph.graphProcessContext =
+      std::make_unique<GraphProcessContext>(rtServices, bufferLayout);
   runtimeGraph.nodes.reserve(graphNodes.size());
 
   for (auto& [nodeId, graphNode] : graphNodes) {
@@ -184,12 +292,11 @@ RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingG
           "Threaded graph node map key does not match node ID: " + std::to_string(nodeId));
     }
 
-    runtimeGraph.nodes.emplace(nodeId,
-        RuntimeNode{
-            .id = nodeId,
-            .sourceNode = graphNode,
-        });
+    runtimeGraph.nodes.emplace(nodeId, RuntimeNode(nodeId, graphNode));
   }
+
+  reserveRuntimeGraphStorage(runtimeGraph, graphNodes);
+  createNodeProcessContexts(runtimeGraph);
 
   UniqueDestinationMap uniqueDestinationIdsBySource;
   uniqueDestinationIdsBySource.reserve(graphNodes.size());
@@ -199,20 +306,21 @@ RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingG
         graphConnections,
         uniqueDestinationIdsBySource,
         *graphNode,
-        *graphNode->audioInputPorts());
+        *graphNode->audioInputPorts(),
+        NodePortDataType::audio);
     addInputPortConnectionsToRuntimeGraph(runtimeGraph,
         graphConnections,
         uniqueDestinationIdsBySource,
         *graphNode,
-        *graphNode->controlInputPorts());
+        *graphNode->controlInputPorts(),
+        NodePortDataType::control);
     addInputPortConnectionsToRuntimeGraph(runtimeGraph,
         graphConnections,
         uniqueDestinationIdsBySource,
         *graphNode,
-        *graphNode->eventInputPorts());
+        *graphNode->eventInputPorts(),
+        NodePortDataType::event);
   }
-
-  runtimeGraph.inputNodes.reserve(runtimeGraph.nodes.size());
 
   for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
     if (runtimeNode.upstreamNodeCount == 0) {
@@ -243,13 +351,41 @@ RuntimeGraph RuntimeGraph::fromProcessingGraph(ProcessingGraphModel& processingG
     getAndSetPriority(runtimeNode);
   }
 
-  return runtimeGraph;
+  publishRuntimeContexts(runtimeGraph);
+
+  return runtimeGraphStorage;
 }
 
 RuntimeGraph::RuntimeGraph() : RuntimeGraph(0) {}
 
 RuntimeGraph::RuntimeGraph(size_t nodeCapacity)
   : availableTasks(createAvailableTaskQueue(nodeCapacity)) {}
+
+RuntimeGraph::~RuntimeGraph() {
+  cleanup();
+}
+
+void RuntimeGraph::cleanup() {
+  if (hasCleanedUp) {
+    return;
+  }
+
+  for (auto& [_, runtimeNode] : nodes) {
+    if (runtimeNode.sourceNode == nullptr || !runtimeNode.sourceNode->runtimeContext.has_value()) {
+      continue;
+    }
+
+    if (runtimeNode.sourceNode->runtimeContext.value() == runtimeNode.nodeProcessContext) {
+      runtimeNode.sourceNode->runtimeContext.reset();
+    }
+  }
+
+  if (graphProcessContext != nullptr) {
+    graphProcessContext->cleanup();
+  }
+
+  hasCleanedUp = true;
+}
 
 RuntimeGraph::AvailableTaskQueue RuntimeGraph::createAvailableTaskQueue(size_t nodeCapacity) {
   std::vector<RuntimeNode*> taskStorage;

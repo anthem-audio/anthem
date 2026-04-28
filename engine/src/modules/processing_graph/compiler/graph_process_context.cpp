@@ -64,6 +64,7 @@ NodeProcessContext& GraphProcessContext::createNodeProcessContext(
   auto context = std::make_unique<NodeProcessContext>(graphNode, *this);
   auto* contextPtr = context.get();
   nodeProcessContexts.push_back(std::move(context));
+
   return *contextPtr;
 }
 

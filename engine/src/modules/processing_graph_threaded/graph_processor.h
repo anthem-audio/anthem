@@ -23,8 +23,17 @@
 #include "modules/util/ring_buffer.h"
 
 #include <juce_events/juce_events.h>
+#include <memory>
+
+namespace anthem {
+
+class GraphRuntimeServices;
+
+} // namespace anthem
 
 namespace anthem::threaded_graph {
+
+class GraphExecutor;
 
 class GraphProcessor {
 private:
@@ -39,6 +48,8 @@ private:
   // shared_ptr references are released off the audio thread.
   RingBuffer<RuntimeGraph*, 512> retiredRuntimeGraphsQueue;
 
+  std::unique_ptr<GraphExecutor> executor;
+  std::unique_ptr<GraphRuntimeServices> rt_services;
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
   GraphProcessor();
@@ -51,6 +62,12 @@ public:
   // Picks up graph updates on the audio thread. This does not process audio
   // yet; it only keeps the threaded graph mirror in sync.
   void rt_processGraphUpdates();
+
+  // Processes the active runtime graph on the audio thread.
+  void rt_process(int numSamples);
+
+  GraphRuntimeServices& getRtServices();
+  void resetRtServices();
 
   // Destroys retired runtime graphs on the main thread.
   void clearDeletionQueueFromMainThread();

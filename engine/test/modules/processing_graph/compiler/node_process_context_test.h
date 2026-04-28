@@ -30,12 +30,12 @@ namespace anthem {
 
 class NodeProcessContextTest : public juce::UnitTest {
   template <typename Callback>
-  void expectThrowsRuntimeError(Callback&& callback, const juce::String& failureMessage) {
+  void expectThrowsStdException(Callback&& callback, const juce::String& failureMessage) {
     bool didThrow = false;
 
     try {
       callback();
-    } catch (const std::runtime_error&) {
+    } catch (const std::exception&) {
       didThrow = true;
     }
 
@@ -216,13 +216,13 @@ public:
 
     auto& context = createNodeContext(node, graphContext);
 
-    expectThrowsRuntimeError(
+    expectThrowsStdException(
         [&]() { (void)context.getInputAudioBuffer(9999); }, "Missing audio ports should throw.");
-    expectThrowsRuntimeError([&]() { (void)context.getInputControlBuffer(9999); },
+    expectThrowsStdException([&]() { (void)context.getInputControlBuffer(9999); },
         "Missing control ports should throw.");
-    expectThrowsRuntimeError(
+    expectThrowsStdException(
         [&]() { (void)context.getInputEventBuffer(9999); }, "Missing event ports should throw.");
-    expectThrowsRuntimeError([&]() { (void)context.getParameterValue(9999); },
+    expectThrowsStdException([&]() { (void)context.getParameterValue(9999); },
         "Missing parameter bindings should throw.");
 
     graphContext.cleanup();

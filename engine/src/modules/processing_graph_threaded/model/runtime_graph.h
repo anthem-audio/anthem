@@ -19,15 +19,18 @@
 
 #pragma once
 
+#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph_threaded/model/runtime_node.h"
 
 #include <cstddef>
+#include <memory>
 #include <queue>
 #include <unordered_map>
 #include <vector>
 
 namespace anthem {
 
+class GraphRuntimeServices;
 class ProcessingGraphModel;
 
 } // namespace anthem
@@ -46,20 +49,29 @@ public:
 
   RuntimeGraph();
   explicit RuntimeGraph(size_t nodeCapacity);
-  ~RuntimeGraph() = default;
+  ~RuntimeGraph();
 
   RuntimeGraph(const RuntimeGraph&) = delete;
   RuntimeGraph& operator=(const RuntimeGraph&) = delete;
 
-  RuntimeGraph(RuntimeGraph&&) noexcept = default;
-  RuntimeGraph& operator=(RuntimeGraph&&) noexcept = default;
+  RuntimeGraph(RuntimeGraph&&) = delete;
+  RuntimeGraph& operator=(RuntimeGraph&&) = delete;
 
-  static RuntimeGraph fromProcessingGraph(ProcessingGraphModel& processingGraph);
+  static std::unique_ptr<RuntimeGraph> fromProcessingGraph(ProcessingGraphModel& processingGraph,
+      GraphRuntimeServices& rtServices,
+      const GraphBufferLayout& bufferLayout,
+      double sampleRate);
+
+  void cleanup();
 
   std::unordered_map<RuntimeNode::Id, RuntimeNode> nodes;
   std::vector<RuntimeNode*> inputNodes;
   AvailableTaskQueue availableTasks;
+  std::unique_ptr<GraphProcessContext> graphProcessContext;
+  float sampleRate = 0.0f;
 private:
+  bool hasCleanedUp = false;
+
   static AvailableTaskQueue createAvailableTaskQueue(size_t nodeCapacity);
 };
 
