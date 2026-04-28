@@ -19,12 +19,12 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph_threaded/executor/graph_executor.h"
 #include "modules/processing_graph_threaded/executor/graph_executor_shared.h"
 #include "modules/processing_graph_threaded/model/runtime_graph.h"
+#include "modules/processing_graph_threaded/runtime/graph_runtime_services.h"
+#include "modules/processing_graph_threaded/runtime/node_process_context.h"
 
 #include <atomic>
 #include <juce_core/juce_core.h>

@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph_threaded/model/runtime_node.h"
+#include "modules/processing_graph_threaded/runtime/graph_process_context.h"
 
 #include <cstddef>
 #include <memory>

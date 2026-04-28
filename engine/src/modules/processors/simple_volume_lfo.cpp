@@ -19,7 +19,7 @@
 
 #include "simple_volume_lfo.h"
 
-#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph_threaded/runtime/node_process_context.h"
 
 namespace anthem {
 

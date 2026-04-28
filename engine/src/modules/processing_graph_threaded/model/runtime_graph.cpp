@@ -20,10 +20,10 @@
 #include "runtime_graph.h"
 
 #include "generated/lib/model/processing_graph/processing_graph.h"
-#include "modules/processing_graph/compiler/node_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 #include "modules/processing_graph/model/node_port.h"
+#include "modules/processing_graph_threaded/runtime/node_process_context.h"
 
 #include <stdexcept>
 #include <string>

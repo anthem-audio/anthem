@@ -19,18 +19,21 @@
 
 #pragma once
 
-#include "modules/processing_graph/compiler/graph_action.h"
-#include "modules/processing_graph/compiler/graph_compilation_result.h"
-#include "modules/processing_graph/compiler/graph_process_context.h"
-
-#include <span>
+#include "modules/processing_graph_threaded/runtime/live_note_id_generator.h"
 
 namespace anthem {
 
-void executeGraphActions(std::span<const GraphAction> actions,
-    GraphProcessContext& graphProcessContext,
-    float sampleRate,
-    int numSamples);
-void executeGraphActions(const GraphCompilationResult& result, int numSamples);
+class GraphRuntimeServices {
+public:
+  LiveNoteId rt_allocateLiveNoteId() {
+    return rt_liveNoteIdGenerator.rt_allocate();
+  }
+
+  void rt_reset() {
+    rt_liveNoteIdGenerator.reset();
+  }
+private:
+  LiveNoteIdGenerator rt_liveNoteIdGenerator;
+};
 
 } // namespace anthem

@@ -20,7 +20,7 @@
 #include "node_port.h"
 
 #include "generated/lib/model/model.h"
-#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph_threaded/runtime/node_process_context.h"
 
 #include <juce_core/juce_core.h>
 

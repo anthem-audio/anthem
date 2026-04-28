@@ -20,9 +20,9 @@
 #include "node_process_context.h"
 
 #include "modules/core/constants.h"
-#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_port.h"
+#include "modules/processing_graph_threaded/runtime/graph_process_context.h"
 
 #include <algorithm>
 
@@ -161,17 +161,14 @@ size_t NodeProcessContext::getBufferIndex(
     NodePortDataType dataType, BufferDirection direction, int64_t id) const {
   switch (dataType) {
     case NodePortDataType::audio:
-      return direction == BufferDirection::input
-                 ? inputAudioBuffers.at(id)
-                 : outputAudioBuffers.at(id);
+      return direction == BufferDirection::input ? inputAudioBuffers.at(id)
+                                                 : outputAudioBuffers.at(id);
     case NodePortDataType::control:
-      return direction == BufferDirection::input
-                 ? inputControlBuffers.at(id)
-                 : outputControlBuffers.at(id);
+      return direction == BufferDirection::input ? inputControlBuffers.at(id)
+                                                 : outputControlBuffers.at(id);
     case NodePortDataType::event:
-      return direction == BufferDirection::input
-                 ? inputEventBuffers.at(id)
-                 : outputEventBuffers.at(id);
+      return direction == BufferDirection::input ? inputEventBuffers.at(id)
+                                                 : outputEventBuffers.at(id);
   }
 
   throw std::runtime_error("AnthemNodeProcessContext received an unsupported port data type.");
