@@ -109,7 +109,10 @@ class RuntimeGraphTest : public juce::UnitTest {
 
   static void processRuntimeGraph(RuntimeGraph& runtimeGraph, int numSamples) {
     GraphExecutor executor;
-    executor.rt_processBlock(runtimeGraph, numSamples);
+    executor.prepare();
+    auto runtimeState = executor.createRuntimeStateForGraph(runtimeGraph);
+
+    executor.rt_processBlock(runtimeGraph, *runtimeState, numSamples);
   }
 public:
   RuntimeGraphTest() : juce::UnitTest("RuntimeGraphTest", "Anthem") {}

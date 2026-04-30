@@ -19,6 +19,13 @@
 
 namespace anthem {
 
+class GraphExecutor::RuntimeState::Impl final {
+public:
+  Impl(size_t readyNodeQueueCount, size_t readyNodeQueueCapacity) {
+    juce::ignoreUnused(readyNodeQueueCount, readyNodeQueueCapacity);
+  }
+};
+
 namespace {
 
 void rt_processSingleThreaded(GraphExecutorState& state, int numSamples) {
@@ -52,7 +59,13 @@ public:
 
   void prepare() {}
 
-  void rt_processBlock(RuntimeGraph& runtimeGraph, int numSamples) {
+  size_t getReadyNodeQueueCount() const {
+    return 1;
+  }
+
+  void rt_processBlock(RuntimeGraph& runtimeGraph, RuntimeState& runtimeState, int numSamples) {
+    juce::ignoreUnused(runtimeState);
+
     GraphExecutorState state(runtimeGraph);
     rt_prepareGraphForBlock(state);
     rt_processSingleThreaded(state, numSamples);

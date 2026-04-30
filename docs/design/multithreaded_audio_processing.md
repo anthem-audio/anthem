@@ -50,7 +50,11 @@ Each thread runs a loop that does the following:
 6. For all downstream nodes, decrements a counter on that node indicating unprocessed inputs - if the counter reaches 0, adds that node to a thread-local ring buffer to indicate it is ready for processing
 
 The tricky part here is that we can't put the primary audio thread to sleep. This means that step 3 actually differs depending on whether the current thread is the primary audio thread or one of the workers:
-- For the audio thread, this step must ALWAYS give back an available node, unless the graph is finished processing.
+- For the audio thread, this step must give back an available node if at all possible, unless the graph is finished processing.
 - For the other worker threads, they will take an item from the queue only if there are at least two items available.
 
 In addition to this, step 1 has an extra condition: There is a flag indicating whether the audio thread is currently trying to acquire the lock for steps 2 - 4. If this flag is set to true, no other thread will acquire the lock until the audio thread is successful. If this flag is true then the audio thread is spin-waiting, so we want to prioritize it.
+
+This very nearly works to prevent the audio thread from ever waiting on a worker, but unfortunately we cannot guarantee it.
+
+Take the following scenario: Nodes A and B both flow into node C, which is the output node. The audio thread picks up node A, while a worker picks up B. In this case, if B takes 5x as long to process as A, the audio thread will complete first and have no choice but to wait. Since it cannot sleep, it must spin until B is completed, at which point it can pick up node C.

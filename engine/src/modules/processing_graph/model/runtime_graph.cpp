@@ -96,7 +96,6 @@ void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
     runtimeGraph.nodes.at(nodeId).incomingConnectionCopies.reserve(incomingConnectionCount);
   }
 
-  runtimeGraph.inputNodes.reserve(graphNodes.size());
   runtimeGraph.graphProcessContext->reserve(
       graphNodes.size(), totalAudioBufferCount, totalControlBufferCount, totalEventBufferCount);
 }
@@ -325,6 +324,11 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
   for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
     if (runtimeNode.upstreamNodeCount == 0) {
       runtimeGraph.inputNodes.push_back(&runtimeNode);
+    }
+
+    if (runtimeNode.outgoingConnections.empty()) {
+      runtimeNode.isOutputNode = true;
+      runtimeGraph.outputNodes.push_back(&runtimeNode);
     }
   }
 

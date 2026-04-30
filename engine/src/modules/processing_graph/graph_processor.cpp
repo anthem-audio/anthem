@@ -25,49 +25,66 @@
 
 namespace anthem {
 
+struct GraphProcessor::RuntimeGraphHandoff {
+  RuntimeGraphHandoff(
+      RuntimeGraph* runtimeGraph, std::unique_ptr<GraphExecutor::RuntimeState> executorState)
+    : runtimeGraph(runtimeGraph), executorState(std::move(executorState)) {}
+
+  std::unique_ptr<RuntimeGraph> runtimeGraph;
+  std::unique_ptr<GraphExecutor::RuntimeState> executorState;
+};
+
 GraphProcessor::GraphProcessor()
   : executor(std::make_unique<GraphExecutor>()),
     rt_services(std::make_unique<GraphRuntimeServices>()),
     clearDeletionQueueTimedCallback(
         juce::TimedCallback([this]() { this->clearDeletionQueueFromMainThread(); })) {
+  executor->prepare();
   clearDeletionQueueTimedCallback.startTimer(2000);
 }
 
 GraphProcessor::~GraphProcessor() {
   clearDeletionQueueTimedCallback.stopTimer();
 
-  while (auto nextRuntimeGraph = pendingRuntimeGraphsQueue.read()) {
-    delete nextRuntimeGraph.value();
+  while (auto nextHandoff = pendingRuntimeGraphHandoffsQueue.read()) {
+    delete nextHandoff.value();
   }
 
   clearDeletionQueueFromMainThread();
 
-  delete rt_activeRuntimeGraph;
-  rt_activeRuntimeGraph = nullptr;
+  delete rt_activeRuntimeGraphHandoff;
+  rt_activeRuntimeGraphHandoff = nullptr;
 }
 
 void GraphProcessor::setRuntimeGraphFromMainThread(RuntimeGraph* runtimeGraph) {
-  if (!pendingRuntimeGraphsQueue.add(runtimeGraph)) {
+  if (runtimeGraph == nullptr) {
+    return;
+  }
+
+  auto executorState = executor->createRuntimeStateForGraph(*runtimeGraph);
+  auto* handoff = new RuntimeGraphHandoff(runtimeGraph, std::move(executorState));
+
+  if (!pendingRuntimeGraphHandoffsQueue.add(handoff)) {
     jassertfalse;
-    delete runtimeGraph;
+    delete handoff;
     return;
   }
 }
 
 void GraphProcessor::rt_processGraphUpdates() {
-  auto nextRuntimeGraph = pendingRuntimeGraphsQueue.read();
+  auto nextHandoff = pendingRuntimeGraphHandoffsQueue.read();
 
-  while (nextRuntimeGraph) {
-    if (rt_activeRuntimeGraph != nullptr) {
-      if (!retiredRuntimeGraphsQueue.add(rt_activeRuntimeGraph)) {
+  while (nextHandoff) {
+    if (rt_activeRuntimeGraphHandoff != nullptr) {
+      if (!retiredRuntimeGraphHandoffsQueue.add(rt_activeRuntimeGraphHandoff)) {
         // If the handoff queue overflows, preserve real-time safety and leak
         // the retired graph instead of deleting it on the audio thread.
-        intentionallyLeak(rt_activeRuntimeGraph);
+        intentionallyLeak(rt_activeRuntimeGraphHandoff);
       }
     }
 
-    rt_activeRuntimeGraph = nextRuntimeGraph.value();
-    nextRuntimeGraph = pendingRuntimeGraphsQueue.read();
+    rt_activeRuntimeGraphHandoff = nextHandoff.value();
+    nextHandoff = pendingRuntimeGraphHandoffsQueue.read();
   }
 }
 
@@ -76,11 +93,20 @@ void GraphProcessor::rt_process(int numSamples) {
 
   // The audio thread can run before the first runtime graph has been compiled
   // and handed over.
-  if (rt_activeRuntimeGraph == nullptr) {
+  if (rt_activeRuntimeGraphHandoff == nullptr) {
     return;
   }
 
-  executor->rt_processBlock(*rt_activeRuntimeGraph, numSamples);
+  auto& handoff = *rt_activeRuntimeGraphHandoff;
+
+  jassert(handoff.runtimeGraph != nullptr);
+  jassert(handoff.executorState != nullptr);
+
+  if (handoff.runtimeGraph == nullptr || handoff.executorState == nullptr) {
+    return;
+  }
+
+  executor->rt_processBlock(*handoff.runtimeGraph, *handoff.executorState, numSamples);
 }
 
 GraphRuntimeServices& GraphProcessor::getRtServices() {
@@ -96,11 +122,11 @@ void GraphProcessor::resetRtServices() {
 }
 
 void GraphProcessor::clearDeletionQueueFromMainThread() {
-  auto nextRuntimeGraph = retiredRuntimeGraphsQueue.read();
+  auto nextHandoff = retiredRuntimeGraphHandoffsQueue.read();
 
-  while (nextRuntimeGraph) {
-    delete nextRuntimeGraph.value();
-    nextRuntimeGraph = retiredRuntimeGraphsQueue.read();
+  while (nextHandoff) {
+    delete nextHandoff.value();
+    nextHandoff = retiredRuntimeGraphHandoffsQueue.read();
   }
 }
 

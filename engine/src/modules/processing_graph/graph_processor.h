@@ -32,16 +32,18 @@ class GraphRuntimeServices;
 
 class GraphProcessor {
 private:
-  // Owned by the audio thread until a newer runtime graph is swapped in.
-  RuntimeGraph* rt_activeRuntimeGraph = nullptr;
+  struct RuntimeGraphHandoff;
 
-  // Ownership is transferred from the main thread into this queue, then picked
-  // up by the audio thread.
-  RingBuffer<RuntimeGraph*, 512> pendingRuntimeGraphsQueue;
+  // Owned by the audio thread until a newer runtime graph is swapped in.
+  RuntimeGraphHandoff* rt_activeRuntimeGraphHandoff = nullptr;
+
+  // Graph ownership and executor-prepared state are transferred from the main
+  // thread into this queue, then picked up by the audio thread.
+  RingBuffer<RuntimeGraphHandoff*, 512> pendingRuntimeGraphHandoffsQueue;
 
   // Replaced runtime graphs are transferred back to the main thread so their
-  // shared_ptr references are released off the audio thread.
-  RingBuffer<RuntimeGraph*, 512> retiredRuntimeGraphsQueue;
+  // shared_ptr references and executor state are released off the audio thread.
+  RingBuffer<RuntimeGraphHandoff*, 512> retiredRuntimeGraphHandoffsQueue;
 
   std::unique_ptr<GraphExecutor> executor;
   std::unique_ptr<GraphRuntimeServices> rt_services;

@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 
 namespace anthem {
@@ -26,7 +27,29 @@ namespace anthem {
 class RuntimeGraph;
 
 class GraphExecutor {
+private:
+  class Impl;
 public:
+  class RuntimeState {
+  public:
+    ~RuntimeState();
+
+    RuntimeState(const RuntimeState&) = delete;
+    RuntimeState& operator=(const RuntimeState&) = delete;
+
+    RuntimeState(RuntimeState&&) = delete;
+    RuntimeState& operator=(RuntimeState&&) = delete;
+  private:
+    class Impl;
+
+    RuntimeState(size_t readyNodeQueueCount, size_t readyNodeQueueCapacity);
+
+    friend class GraphExecutor::Impl;
+    friend class GraphExecutor;
+
+    std::unique_ptr<Impl> impl;
+  };
+
   GraphExecutor();
   ~GraphExecutor();
 
@@ -37,10 +60,9 @@ public:
   GraphExecutor& operator=(GraphExecutor&&) = delete;
 
   void prepare();
-  void rt_processBlock(RuntimeGraph& runtimeGraph, int numSamples);
+  std::unique_ptr<RuntimeState> createRuntimeStateForGraph(RuntimeGraph& runtimeGraph);
+  void rt_processBlock(RuntimeGraph& runtimeGraph, RuntimeState& runtimeState, int numSamples);
 private:
-  class Impl;
-
   std::unique_ptr<Impl> impl;
 };
 
