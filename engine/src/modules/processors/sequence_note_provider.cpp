@@ -58,7 +58,7 @@ const SequenceEventList* SequenceNoteProviderProcessor::rt_getSourceTrackEvents(
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
-    EventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset) {
+    EventBuffer& targetBuffer, const TrackedNote& trackedNote, int sampleOffset) {
   targetBuffer.addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = trackedNote.liveId,
@@ -67,7 +67,7 @@ void SequenceNoteProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
 }
 
 void SequenceNoteProviderProcessor::rt_emitLiveNoteOffsForAllTrackedNotes(
-    RuntimeState& state, EventBuffer& targetBuffer, double sampleOffset) {
+    RuntimeState& state, EventBuffer& targetBuffer, int sampleOffset) {
   state.rt_activeSequenceNotes.rt_takeAll([&](const TrackedNote& trackedNote) {
     rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote, sampleOffset);
   });
@@ -77,7 +77,7 @@ void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state
     EventBuffer& targetBuffer,
     SourceNoteId sourceId,
     const NoteOffEvent& noteOffEvent,
-    double sampleOffset) {
+    int sampleOffset) {
   auto trackedNote = state.rt_activeSequenceNotes.rt_takeByInputId(sourceId);
   if (trackedNote.has_value()) {
     rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote.value(), sampleOffset);

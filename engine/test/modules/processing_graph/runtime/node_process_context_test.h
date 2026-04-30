@@ -173,12 +173,12 @@ public:
     inputAudioBuffer.setSample(0, 0, 0.75f);
     outputAudioBuffer.setSample(0, 0, 0.5f);
     inputEventBuffer->addEvent(LiveEvent{
-        .sampleOffset = 0.0,
+        .sampleOffset = 0,
         .liveId = 10,
         .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
     });
     outputEventBuffer->addEvent(LiveEvent{
-        .sampleOffset = 0.0,
+        .sampleOffset = 0,
         .liveId = 11,
         .event = Event(NoteOffEvent(60, 0, 0.0f)),
     });

@@ -43,7 +43,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
     return node;
   }
 
-  static LiveInputEvent makeNoteOn(double sampleOffset,
+  static LiveInputEvent makeNoteOn(int sampleOffset,
       LiveInputNoteId inputId,
       int16_t pitch,
       int16_t channel = 0,
@@ -56,7 +56,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
     };
   }
 
-  static LiveInputEvent makeNoteOff(double sampleOffset,
+  static LiveInputEvent makeNoteOff(int sampleOffset,
       LiveInputNoteId inputId,
       int16_t pitch,
       int16_t channel = 0,
@@ -68,7 +68,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
     };
   }
 
-  static LiveInputEvent makeAllVoicesOff(double sampleOffset) {
+  static LiveInputEvent makeAllVoicesOff(int sampleOffset) {
     return LiveInputEvent{
         .sampleOffset = sampleOffset,
         .inputId = invalidLiveInputNoteId,
@@ -83,20 +83,20 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
   void expectEventBase(EventBuffer& buffer,
       size_t index,
       EventType type,
-      double sampleOffset,
+      int sampleOffset,
       LiveNoteId liveId,
       const juce::String& context) {
     expect(buffer.getNumEvents() > index, context + " event index should exist");
     auto& event = buffer.getEvent(index);
 
     expectEquals(static_cast<int>(event.event.type), static_cast<int>(type), context + " type");
-    expectWithinAbsoluteError(event.sampleOffset, sampleOffset, 0.0001, context + " offset");
+    expectEquals(event.sampleOffset, sampleOffset, context + " offset");
     expectEquals(event.liveId, liveId, context + " live ID");
   }
 
   void expectNoteOn(EventBuffer& buffer,
       size_t index,
-      double sampleOffset,
+      int sampleOffset,
       LiveNoteId liveId,
       int16_t pitch,
       int16_t channel,
@@ -115,7 +115,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
 
   void expectNoteOff(EventBuffer& buffer,
       size_t index,
-      double sampleOffset,
+      int sampleOffset,
       LiveNoteId liveId,
       int16_t pitch,
       int16_t channel,
@@ -131,7 +131,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
   }
 
   void expectAllVoicesOff(
-      EventBuffer& buffer, size_t index, double sampleOffset, const juce::String& context) {
+      EventBuffer& buffer, size_t index, int sampleOffset, const juce::String& context) {
     expectEventBase(
         buffer, index, EventType::AllVoicesOff, sampleOffset, invalidLiveNoteId, context);
   }
@@ -163,19 +163,19 @@ public:
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
 
-    expect(processor.addLiveInputEvent(makeNoteOn(1.0, firstInputId, 60, 1, 0.75f, 2.0f)),
+    expect(processor.addLiveInputEvent(makeNoteOn(1, firstInputId, 60, 1, 0.75f, 2.0f)),
         "First event should be queued");
-    expect(processor.addLiveInputEvent(makeAllVoicesOff(2.0)), "Second event should be queued");
-    expect(processor.addLiveInputEvent(makeNoteOff(3.0, secondInputId, 64, 2, 0.25f)),
+    expect(processor.addLiveInputEvent(makeAllVoicesOff(2)), "Second event should be queued");
+    expect(processor.addLiveInputEvent(makeNoteOff(3, secondInputId, 64, 2, 0.25f)),
         "Third event should be queued");
 
     auto& outputBuffer = getOutputBuffer(context);
     processor.process(context, 1);
 
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()), 3, "All queued events should emit");
-    expectNoteOn(outputBuffer, 0, 1.0, 0, 60, 1, 0.75f, 2.0f, "First queued event");
-    expectAllVoicesOff(outputBuffer, 1, 2.0, "Second queued event");
-    expectNoteOff(outputBuffer, 2, 3.0, invalidLiveNoteId, 64, 2, 0.25f, "Third queued event");
+    expectNoteOn(outputBuffer, 0, 1, 0, 60, 1, 0.75f, 2.0f, "First queued event");
+    expectAllVoicesOff(outputBuffer, 1, 2, "Second queued event");
+    expectNoteOff(outputBuffer, 2, 3, invalidLiveNoteId, 64, 2, 0.25f, "Third queued event");
 
     outputBuffer.clear();
     processor.process(context, 1);
@@ -202,21 +202,21 @@ public:
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
 
-    expect(processor.addLiveInputEvent(makeNoteOn(0.5, firstInputId, 60, 3, 0.8f, 4.0f)),
+    expect(processor.addLiveInputEvent(makeNoteOn(0, firstInputId, 60, 3, 0.8f, 4.0f)),
         "Note-on should be queued");
     processor.process(context, 1);
 
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()), 1, "One note-on should emit");
-    expectNoteOn(outputBuffer, 0, 0.5, 0, 60, 3, 0.8f, 4.0f, "Tracked note-on");
+    expectNoteOn(outputBuffer, 0, 0, 0, 60, 3, 0.8f, 4.0f, "Tracked note-on");
 
     outputBuffer.clear();
 
-    expect(processor.addLiveInputEvent(makeNoteOff(1.5, firstInputId, 99, 7, 0.3f)),
+    expect(processor.addLiveInputEvent(makeNoteOff(1, firstInputId, 99, 7, 0.3f)),
         "Note-off should be queued");
     processor.process(context, 1);
 
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()), 1, "One note-off should emit");
-    expectNoteOff(outputBuffer, 0, 1.5, 0, 60, 3, 0.0f, "Tracked note-off");
+    expectNoteOff(outputBuffer, 0, 1, 0, 60, 3, 0.0f, "Tracked note-off");
 
     graphContext.cleanup();
   }
@@ -238,12 +238,12 @@ public:
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
 
-    expect(processor.addLiveInputEvent(makeNoteOff(2.5, secondInputId, 67, 4, 0.35f)),
+    expect(processor.addLiveInputEvent(makeNoteOff(2, secondInputId, 67, 4, 0.35f)),
         "Unmatched note-off should be queued");
     processor.process(context, 1);
 
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()), 1, "One note-off should emit");
-    expectNoteOff(outputBuffer, 0, 2.5, invalidLiveNoteId, 67, 4, 0.35f, "Unmatched note-off");
+    expectNoteOff(outputBuffer, 0, 2, invalidLiveNoteId, 67, 4, 0.35f, "Unmatched note-off");
 
     graphContext.cleanup();
   }
@@ -265,11 +265,11 @@ public:
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
 
-    expect(processor.addLiveInputEvent(makeAllVoicesOff(4.0)), "All-voices-off should be queued");
+    expect(processor.addLiveInputEvent(makeAllVoicesOff(4)), "All-voices-off should be queued");
     processor.process(context, 1);
 
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()), 1, "One event should emit");
-    expectAllVoicesOff(outputBuffer, 0, 4.0, "All-voices-off event");
+    expectAllVoicesOff(outputBuffer, 0, 4, "All-voices-off event");
 
     graphContext.cleanup();
   }
@@ -293,7 +293,7 @@ public:
 
     for (size_t i = 0; i <= trackedNoteCapacity; ++i) {
       expect(processor.addLiveInputEvent(
-                 makeNoteOn(static_cast<double>(i), static_cast<LiveInputNoteId>(i), 60)),
+                 makeNoteOn(static_cast<int>(i), static_cast<LiveInputNoteId>(i), 60)),
           "Note-on should fit in the input queue");
     }
 
@@ -302,10 +302,10 @@ public:
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()),
         static_cast<int>(trackedNoteCapacity + 1),
         "All queued note-ons should emit");
-    expectNoteOn(outputBuffer, 0, 0.0, 0, 60, 0, 1.0f, 0.0f, "First tracked note");
+    expectNoteOn(outputBuffer, 0, 0, 0, 60, 0, 1.0f, 0.0f, "First tracked note");
     expectNoteOn(outputBuffer,
         trackedNoteCapacity - 1,
-        static_cast<double>(trackedNoteCapacity - 1),
+        static_cast<int>(trackedNoteCapacity - 1),
         static_cast<LiveNoteId>(trackedNoteCapacity - 1),
         60,
         0,
@@ -314,7 +314,7 @@ public:
         "Last tracked note");
     expectNoteOn(outputBuffer,
         trackedNoteCapacity,
-        static_cast<double>(trackedNoteCapacity),
+        static_cast<int>(trackedNoteCapacity),
         invalidLiveNoteId,
         60,
         0,
@@ -325,12 +325,12 @@ public:
     outputBuffer.clear();
 
     expect(processor.addLiveInputEvent(
-               makeNoteOff(8.0, static_cast<LiveInputNoteId>(trackedNoteCapacity), 72, 2, 0.5f)),
+               makeNoteOff(8, static_cast<LiveInputNoteId>(trackedNoteCapacity), 72, 2, 0.5f)),
         "Overflow note-off should be queued");
     processor.process(context, 1);
 
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()), 1, "One note-off should emit");
-    expectNoteOff(outputBuffer, 0, 8.0, invalidLiveNoteId, 72, 2, 0.5f, "Overflow note-off");
+    expectNoteOff(outputBuffer, 0, 8, invalidLiveNoteId, 72, 2, 0.5f, "Overflow note-off");
 
     graphContext.cleanup();
   }
@@ -356,7 +356,7 @@ public:
     bool sawRejectedEvent = false;
 
     for (int i = 0; i < 5000; ++i) {
-      if (processor.addLiveInputEvent(makeAllVoicesOff(static_cast<double>(i)))) {
+      if (processor.addLiveInputEvent(makeAllVoicesOff(i))) {
         acceptedCount++;
         continue;
       }
@@ -373,7 +373,7 @@ public:
     expectEquals(static_cast<int>(outputBuffer.getNumEvents()),
         acceptedCount,
         "Only accepted input events should be emitted");
-    expectAllVoicesOff(outputBuffer, 0, 0.0, "First accepted event");
+    expectAllVoicesOff(outputBuffer, 0, 0, "First accepted event");
     expectAllVoicesOff(outputBuffer,
         static_cast<size_t>(acceptedCount - 1),
         acceptedCount - 1,

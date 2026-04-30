@@ -129,7 +129,7 @@ public:
     context.getControlBuffer(firstControlIndex).setSample(0, 0, 0.25f);
     context.getEventBuffer(firstEventIndex)
         ->addEvent(LiveEvent{
-            .sampleOffset = 0.0,
+            .sampleOffset = 0,
             .liveId = 7,
             .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
         });

@@ -189,7 +189,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
                                   std::shared_ptr<LiveEventRequestNoteOnEvent>>>) {
               auto& eventFromRequest = field.value();
               LiveInputEvent liveInputEvent =
-                  LiveInputEvent{.sampleOffset = 0.0, // Handle as soon as possible
+                  LiveInputEvent{.sampleOffset = 0, // Handle as soon as possible
                       .inputId = eventFromRequest->noteId,
                       .event = Event(NoteOnEvent(eventFromRequest->pitch,
                           eventFromRequest->channel,
@@ -203,7 +203,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
                                          std::shared_ptr<LiveEventRequestNoteOffEvent>>>) {
               auto& eventFromRequest = field.value();
               LiveInputEvent liveInputEvent =
-                  LiveInputEvent{.sampleOffset = 0.0, // Handle as soon as possible
+                  LiveInputEvent{.sampleOffset = 0, // Handle as soon as possible
                       .inputId = eventFromRequest->noteId,
                       .event = Event(
                           NoteOffEvent(eventFromRequest->pitch, eventFromRequest->channel, 0.0f))};

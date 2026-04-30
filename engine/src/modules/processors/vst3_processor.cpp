@@ -82,8 +82,6 @@ void VST3Processor::prepareToProcess() {
 }
 
 void VST3Processor::process(NodeProcessContext& context, int numSamples) {
-  (void)numSamples;
-
   auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
   auto& eventInBuffer = context.getInputEventBuffer(VST3ProcessorModelBase::eventInputPortId);
 
@@ -97,26 +95,24 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
 
   for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
     auto& liveEvent = eventInBuffer->getEvent(i);
+    jassert(liveEvent.sampleOffset >= 0 && liveEvent.sampleOffset < numSamples);
 
     if (liveEvent.event.type == EventType::NoteOn) {
       auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
           liveEvent.event.noteOn.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
 
-      rt_eventBufferForPlugin.addEvent(
-          noteOn, static_cast<int>(std::round(liveEvent.sampleOffset)));
+      rt_eventBufferForPlugin.addEvent(noteOn, liveEvent.sampleOffset);
     } else if (liveEvent.event.type == EventType::NoteOff) {
       auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
           liveEvent.event.noteOff.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
 
-      rt_eventBufferForPlugin.addEvent(
-          noteOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
+      rt_eventBufferForPlugin.addEvent(noteOff, liveEvent.sampleOffset);
     } else if (liveEvent.event.type == EventType::AllVoicesOff) {
       for (int channel = 1; channel <= 16; channel++) {
         auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
-        rt_eventBufferForPlugin.addEvent(
-            allVoicesOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
+        rt_eventBufferForPlugin.addEvent(allVoicesOff, liveEvent.sampleOffset);
       }
     }
   }

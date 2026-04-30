@@ -33,7 +33,7 @@ namespace anthem {
 class NodeProcessContext;
 
 struct LiveInputEvent {
-  double sampleOffset = 0.0;
+  int sampleOffset = 0;
   LiveInputNoteId inputId = invalidLiveInputNoteId;
   Event event;
 };
@@ -45,18 +45,17 @@ private:
   std::unique_ptr<RingBuffer<LiveInputEvent, 4096>> liveInputEventBuffer;
   NoteTracker<rt_maxTrackedLiveNotes> rt_activeLiveNotes;
 
-  void rt_emitLiveNoteOffFromTrackedNote(std::unique_ptr<EventBuffer>& targetBuffer,
-      const TrackedNote& trackedNote,
-      double sampleOffset);
+  void rt_emitLiveNoteOffFromTrackedNote(
+      std::unique_ptr<EventBuffer>& targetBuffer, const TrackedNote& trackedNote, int sampleOffset);
   void rt_handleLiveNoteOn(NodeProcessContext& context,
       std::unique_ptr<EventBuffer>& targetBuffer,
       LiveInputNoteId inputId,
       const NoteOnEvent& noteOnEvent,
-      double sampleOffset);
+      int sampleOffset);
   void rt_handleLiveNoteOff(std::unique_ptr<EventBuffer>& targetBuffer,
       LiveInputNoteId inputId,
       const NoteOffEvent& noteOffEvent,
-      double sampleOffset);
+      int sampleOffset);
   void rt_addLiveEventsToBuffer(
       NodeProcessContext& context, std::unique_ptr<EventBuffer>& targetBuffer);
 public:
