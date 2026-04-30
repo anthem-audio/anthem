@@ -24,10 +24,10 @@
 
 #include <juce_core/juce_core.h>
 
-#if JUCE_WINDOWS
-#include "native/graph_executor_windows.ipp"
+#if JUCE_WINDOWS || JUCE_MAC || JUCE_LINUX
+#include "native/graph_executor_threaded.ipp"
 #else
-#include "native/graph_executor_generic.ipp"
+#include "native/graph_executor_single_threaded.ipp"
 #endif
 
 namespace anthem {

@@ -17,15 +17,26 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-// cspell:ignore avrt
-
 #include <algorithm>
 #include <atomic>
-#include <intrin.h>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <vector>
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
+#if JUCE_WINDOWS
+#include "graph_executor_thread_platform_windows.ipp"
+#elif JUCE_LINUX
+#include "graph_executor_thread_platform_linux.ipp"
+#elif JUCE_MAC
+#include "graph_executor_thread_platform_macos.ipp"
+#else
+#include "graph_executor_thread_platform_noop.ipp"
+#endif
 
 namespace anthem {
 
@@ -55,7 +66,7 @@ inline void spin_pause() noexcept {
   __yield();
 
 #else
-#error "The Windows processing graph executor needs a hardware spin pause implementation."
+#error "The threaded processing graph executor needs a hardware spin pause implementation."
 #endif
 }
 
@@ -66,11 +77,6 @@ int getAvailableCoreCount() {
 int getWorkerThreadCountForCoreCount(int coreCount) {
   jassert(coreCount >= 1);
   return coreCount - 1;
-}
-
-void logMmcssRegistrationFailure(int workerIndex, const juce::String& reason) {
-  juce::Logger::writeToLog(
-      "Graph worker " + juce::String(workerIndex) + " failed to register with MMCSS: " + reason);
 }
 
 // This is a ring buffer, but it has a dynamic size so that it can be sized to
@@ -127,78 +133,6 @@ public:
 private:
   juce::AbstractFifo fifo;
   std::vector<RuntimeNode*> buffer;
-};
-
-class MmcssRegistration {
-public:
-  explicit MmcssRegistration(int workerIndex) {
-    using AvSetMmThreadCharacteristicsWFn = void*(JUCE_CALLTYPE*)(const wchar_t*, unsigned long*);
-    using AvSetMmThreadPriorityFn = int(JUCE_CALLTYPE*)(void*, int);
-    using AvRevertMmThreadCharacteristicsFn = int(JUCE_CALLTYPE*)(void*);
-
-    if (!library.open("avrt.dll")) {
-      logMmcssRegistrationFailure(workerIndex, "avrt.dll could not be loaded.");
-      return;
-    }
-
-    auto* setThreadCharacteristics = reinterpret_cast<AvSetMmThreadCharacteristicsWFn>(
-        library.getFunction("AvSetMmThreadCharacteristicsW"));
-    auto* setThreadPriority =
-        reinterpret_cast<AvSetMmThreadPriorityFn>(library.getFunction("AvSetMmThreadPriority"));
-
-    revertThreadCharacteristics = reinterpret_cast<AvRevertMmThreadCharacteristicsFn>(
-        library.getFunction("AvRevertMmThreadCharacteristics"));
-
-    if (setThreadCharacteristics == nullptr) {
-      logMmcssRegistrationFailure(
-          workerIndex, "AvSetMmThreadCharacteristicsW could not be loaded.");
-      return;
-    }
-
-    if (setThreadPriority == nullptr) {
-      logMmcssRegistrationFailure(workerIndex, "AvSetMmThreadPriority could not be loaded.");
-      return;
-    }
-
-    if (revertThreadCharacteristics == nullptr) {
-      logMmcssRegistrationFailure(
-          workerIndex, "AvRevertMmThreadCharacteristics could not be loaded.");
-      return;
-    }
-
-    unsigned long taskIndex = 0;
-    taskHandle = setThreadCharacteristics(L"Pro Audio", &taskIndex);
-
-    if (taskHandle == nullptr) {
-      logMmcssRegistrationFailure(
-          workerIndex, "AvSetMmThreadCharacteristicsW returned a null task handle.");
-      return;
-    }
-
-    constexpr int avrtPriorityNormal = 0;
-
-    if (setThreadPriority(taskHandle, avrtPriorityNormal) == 0) {
-      logMmcssRegistrationFailure(workerIndex, "AvSetMmThreadPriority failed.");
-    }
-  }
-
-  ~MmcssRegistration() {
-    if (taskHandle != nullptr && revertThreadCharacteristics != nullptr) {
-      revertThreadCharacteristics(taskHandle);
-    }
-  }
-
-  MmcssRegistration(const MmcssRegistration&) = delete;
-  MmcssRegistration& operator=(const MmcssRegistration&) = delete;
-
-  MmcssRegistration(MmcssRegistration&&) = delete;
-  MmcssRegistration& operator=(MmcssRegistration&&) = delete;
-private:
-  using AvRevertMmThreadCharacteristicsFn = int(JUCE_CALLTYPE*)(void*);
-
-  juce::DynamicLibrary library;
-  void* taskHandle = nullptr;
-  AvRevertMmThreadCharacteristicsFn revertThreadCharacteristics = nullptr;
 };
 
 } // namespace
@@ -295,7 +229,7 @@ private:
     }
 
     bool start() {
-      return startThread(juce::Thread::Priority::high);
+      return startThread(getGraphExecutorWorkerThreadPriority());
     }
 
     void stop() {
@@ -317,7 +251,7 @@ private:
     }
 
     void run() override {
-      MmcssRegistration mmcssRegistration(index);
+      [[maybe_unused]] GraphExecutorWorkerThreadStartupScope startup(index, getThreadName());
 
       while (!threadShouldExit()) {
         isSleeping.store(true, std::memory_order_release);
