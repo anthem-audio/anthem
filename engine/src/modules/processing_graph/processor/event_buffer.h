@@ -33,7 +33,7 @@ class EventBuffer {
 private:
   JUCE_LEAK_DETECTOR(EventBuffer)
 
-  struct alignas(LiveEvent) StorageBlock {
+  struct StorageBlock {
     StorageBlock* previous;
     size_t capacity;
   };
