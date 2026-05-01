@@ -38,9 +38,8 @@ void NodePort::initialize(
 
       bool success = this->trySendParameterValueToAudioThread(value.value());
       if (!success) {
-        std::cout
-            << "Warning: failed to send parameter value update to audio thread. This is a bug."
-            << '\n';
+        juce::Logger::writeToLog(
+            "Warning: failed to send parameter value update to audio thread. This is a bug.");
       }
     });
 
@@ -49,9 +48,9 @@ void NodePort::initialize(
     if (value.has_value()) {
       bool success = this->trySendParameterValueToAudioThread(value.value());
       if (!success) {
-        std::cout << "Warning: failed to send initial parameter value to audio thread. This "
-                     "indicates an unexpected timing issue and should be addressed."
-                  << '\n';
+        juce::Logger::writeToLog(
+            "Warning: failed to send initial parameter value to audio thread. This "
+            "indicates an unexpected timing issue and should be addressed.");
       }
     }
   }
