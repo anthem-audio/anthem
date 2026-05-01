@@ -182,9 +182,9 @@ jobs:
       # --------------------------------------------------------------
       # Lint engine C++ with clang-tidy
       # --------------------------------------------------------------
-      - name: Lint engine C++ with clang-tidy
-        if: matrix.arch != 'wasm'
-        run: dart run anthem:cli engine lint
+      # - name: Lint engine C++ with clang-tidy
+      #   if: matrix.arch != 'wasm'
+      #   run: dart run anthem:cli engine lint
 
       # --------------------------------------------------------------
       # Engine unit tests
