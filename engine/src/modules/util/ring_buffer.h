@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <array>
 #include <juce_core/juce_core.h>
 #include <optional>
 
@@ -30,7 +31,7 @@ private:
   using This = RingBuffer<T, size>;
   JUCE_LEAK_DETECTOR(This)
 public:
-  RingBuffer() : fifo(size) {}
+  RingBuffer() : fifo(static_cast<int>(size + 1)) {}
 
   // Adds an item to the queue from the main thread
   bool add(T item) {
@@ -61,7 +62,7 @@ public:
   }
 private:
   juce::AbstractFifo fifo;
-  std::array<T, size> buffer;
+  std::array<T, size + 1> buffer;
 };
 
 } // namespace anthem

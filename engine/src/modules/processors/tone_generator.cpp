@@ -20,7 +20,7 @@
 #include "tone_generator.h"
 
 #include "modules/core/engine.h"
-#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <cmath>
 #include <iostream>
@@ -70,8 +70,8 @@ void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples
 
       // We're deliberately ignoring the live timing information here for
       // simplicity. This would not be correct for a real device - we should be
-      // reading liveEvent.sampleOffset, which represents the sample offset
-      // from the start of the processing block.
+      // reading liveEvent.sampleOffset, which represents the sample index in
+      // the current processing block.
     }
   }
 

@@ -20,7 +20,7 @@
 #include "simple_midi_generator.h"
 
 #include "modules/core/engine.h"
-#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/sequencer/events/event.h"
 
 namespace anthem {
@@ -53,7 +53,7 @@ void SimpleMidiGeneratorProcessor::process(NodeProcessContext& context, int numS
     currentNote = 50;
     currentNoteId = context.rt_allocateLiveNoteId();
     currentNoteDuration = 0;
-    eventOutBuffer->addEvent(LiveEvent{.sampleOffset = 0.0,
+    eventOutBuffer->addEvent(LiveEvent{.sampleOffset = 0,
         .liveId = currentNoteId,
         .event = Event(NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f))});
 
@@ -69,7 +69,7 @@ void SimpleMidiGeneratorProcessor::process(NodeProcessContext& context, int numS
     samplesLeft -= samplesToProcess;
 
     if (currentNoteDuration >= durationSamples) {
-      LiveEvent noteOffEvent = LiveEvent{.sampleOffset = 0.0,
+      LiveEvent noteOffEvent = LiveEvent{.sampleOffset = 0,
           .liveId = currentNoteId,
           .event = Event(NoteOffEvent(currentNote, 0, 0.0f))};
 
@@ -85,7 +85,7 @@ void SimpleMidiGeneratorProcessor::process(NodeProcessContext& context, int numS
 
       currentNoteId = context.rt_allocateLiveNoteId();
 
-      LiveEvent noteOnEvent = LiveEvent{.sampleOffset = 0.0,
+      LiveEvent noteOnEvent = LiveEvent{.sampleOffset = 0,
           .liveId = currentNoteId,
           .event = Event(NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f))};
 

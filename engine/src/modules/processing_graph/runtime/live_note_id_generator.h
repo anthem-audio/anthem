@@ -21,6 +21,7 @@
 
 #include "modules/sequencer/events/note_instance_id.h"
 
+#include <atomic>
 #include <cstdint>
 
 namespace anthem {
@@ -28,22 +29,25 @@ namespace anthem {
 class LiveNoteIdGenerator {
 public:
   LiveNoteId rt_allocate() {
-    auto liveNoteId = static_cast<LiveNoteId>(rt_nextLiveNoteIdCounter);
+    auto currentCounter = rt_nextLiveNoteIdCounter.load(std::memory_order_relaxed);
 
-    if (rt_nextLiveNoteIdCounter >= 0x7ffffffeu) {
-      rt_nextLiveNoteIdCounter = 0;
-    } else {
-      rt_nextLiveNoteIdCounter++;
+    while (true) {
+      const auto nextCounter = currentCounter >= maxLiveNoteId ? 0 : currentCounter + 1;
+
+      if (rt_nextLiveNoteIdCounter.compare_exchange_weak(
+              currentCounter, nextCounter, std::memory_order_relaxed, std::memory_order_relaxed)) {
+        return static_cast<LiveNoteId>(currentCounter);
+      }
     }
-
-    return liveNoteId;
   }
 
   void reset() {
-    rt_nextLiveNoteIdCounter = 0;
+    rt_nextLiveNoteIdCounter.store(0, std::memory_order_relaxed);
   }
 private:
-  uint32_t rt_nextLiveNoteIdCounter = 0;
+  static constexpr uint32_t maxLiveNoteId = 0x7ffffffeu;
+
+  std::atomic<uint32_t> rt_nextLiveNoteIdCounter = 0;
 };
 
 } // namespace anthem

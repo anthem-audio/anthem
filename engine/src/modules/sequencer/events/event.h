@@ -86,12 +86,10 @@ struct SequenceEvent {
 struct LiveEvent {
   // Offset, in samples, from the start of the current processing block.
   //
-  // `0.0` means "at block start". Positive values schedule the event later in
-  // the block. This is the time domain used by processing-graph consumers, so
-  // this must never contain sequencer ticks or seconds. The value may be
-  // fractional and may be negative in edge cases where an event needs to
-  // describe something that logically occurred just before the block started.
-  double sampleOffset;
+  // `0` means "at block start". Positive values schedule the event later in the
+  // block. This is the time domain used by processing-graph consumers, so this
+  // must never contain sequencer ticks, seconds, or fractional sample offsets.
+  int sampleOffset = 0;
 
   // The runtime live note ID for this event.
   //

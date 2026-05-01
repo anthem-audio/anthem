@@ -56,13 +56,13 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
   double? clipTitleTextureAtlasDevicePixelRatio;
 
   @hide
-  final Map<Id, Rect> clipTitleAtlasRectsByPatternId = {};
+  final Map<Id, PackedTextureEntry> clipTitleAtlasEntriesByPatternId = {};
 
   @hide
   final Map<_ClipTitleCacheKey, Image> renderedClipTitleCache = {};
 
   void invalidateClipTitleAtlasEntryForPattern(Id patternId) {
-    clipTitleAtlasRectsByPatternId.remove(patternId);
+    clipTitleAtlasEntriesByPatternId.remove(patternId);
     scheduleClipTitleTextureAtlasUpdate();
   }
 
@@ -154,20 +154,20 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
         .map((cacheKey) => renderedClipTitleCache[cacheKey]!)
         .toList(growable: false);
 
-    final rects = patternTitleTexture.drawImages(images);
+    final entries = patternTitleTexture.drawImages(images);
 
     clipTitleTextureAtlasDevicePixelRatio = images.isEmpty
         ? null
         : devicePixelRatio;
 
-    clipTitleAtlasRectsByPatternId.clear();
+    clipTitleAtlasEntriesByPatternId.clear();
 
     for (var i = 0; i < orderedKeys.length; i++) {
-      final rect = rects[i];
+      final entry = entries[i];
       final patternIds = patternIdsByCacheKey[orderedKeys[i]]!;
 
       for (final patternId in patternIds) {
-        clipTitleAtlasRectsByPatternId[patternId] = rect;
+        clipTitleAtlasEntriesByPatternId[patternId] = entry;
       }
     }
   }
@@ -185,10 +185,9 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
   }
 
   void disposeClipTitleTextureAtlasCache() {
-    patternTitleTexture.textureAtlas?.dispose();
-    patternTitleTexture.textureAtlas = null;
+    patternTitleTexture.dispose();
     clipTitleTextureAtlasDevicePixelRatio = null;
-    clipTitleAtlasRectsByPatternId.clear();
+    clipTitleAtlasEntriesByPatternId.clear();
 
     for (final image in renderedClipTitleCache.values) {
       image.dispose();

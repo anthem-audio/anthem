@@ -93,6 +93,7 @@ endif()
 if (LINUX AND NOT IS_WASM)
   find_package(PkgConfig REQUIRED)
   find_package(CURL REQUIRED)
+  pkg_check_modules(GIO REQUIRED gio-2.0)
   pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
   pkg_check_modules(WEBKIT2GTK REQUIRED webkit2gtk-4.1)
 endif()
@@ -179,9 +180,27 @@ else()
   endif()
 
   if (LINUX)
-    target_include_directories(AnthemEngineLib PUBLIC ${GTK3_INCLUDE_DIRS} ${WEBKIT2GTK_INCLUDE_DIRS})
-    target_link_directories(AnthemEngineLib PUBLIC ${GTK3_LIBRARY_DIRS} ${WEBKIT2GTK_LIBRARY_DIRS})
-    target_link_libraries(AnthemEngineLib PUBLIC ${GTK3_LIBRARIES} ${WEBKIT2GTK_LIBRARIES})
+    target_include_directories(
+      AnthemEngineLib
+      PUBLIC
+        ${GIO_INCLUDE_DIRS}
+        ${GTK3_INCLUDE_DIRS}
+        ${WEBKIT2GTK_INCLUDE_DIRS}
+    )
+    target_link_directories(
+      AnthemEngineLib
+      PUBLIC
+        ${GIO_LIBRARY_DIRS}
+        ${GTK3_LIBRARY_DIRS}
+        ${WEBKIT2GTK_LIBRARY_DIRS}
+    )
+    target_link_libraries(
+      AnthemEngineLib
+      PUBLIC
+        ${GIO_LIBRARIES}
+        ${GTK3_LIBRARIES}
+        ${WEBKIT2GTK_LIBRARIES}
+    )
     target_link_libraries(AnthemEngineLib PUBLIC CURL::libcurl atomic)
   endif()
 endif()
@@ -239,8 +258,20 @@ if (NOT IS_WASM)
   # lib, but these are here in case we want to add test-only code later that needs
   # the include dirs directly)
   if (LINUX)
-    target_include_directories(AnthemTest PRIVATE ${GTK3_INCLUDE_DIRS} ${WEBKIT2GTK_INCLUDE_DIRS})
-    target_link_directories(AnthemTest PRIVATE ${GTK3_LIBRARY_DIRS} ${WEBKIT2GTK_LIBRARY_DIRS})
+    target_include_directories(
+      AnthemTest
+      PRIVATE
+        ${GIO_INCLUDE_DIRS}
+        ${GTK3_INCLUDE_DIRS}
+        ${WEBKIT2GTK_INCLUDE_DIRS}
+    )
+    target_link_directories(
+      AnthemTest
+      PRIVATE
+        ${GIO_LIBRARY_DIRS}
+        ${GTK3_LIBRARY_DIRS}
+        ${WEBKIT2GTK_LIBRARY_DIRS}
+    )
     target_link_libraries(AnthemTest PRIVATE CURL::libcurl atomic)
   endif()
 endif()

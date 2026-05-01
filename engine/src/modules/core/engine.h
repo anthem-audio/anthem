@@ -32,7 +32,7 @@
 #include "modules/core/audio_callback.h"
 #include "modules/core/command_handler.h"
 #include "modules/core/visualization/global_visualization_sources.h"
-#include "modules/processing_graph/runtime/graph_processor.h"
+#include "modules/processing_graph/graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
 #include "modules/util/id_generator.h"
@@ -64,12 +64,7 @@ public:
   // sequencer to get the compiled sequences for playback.
   std::unique_ptr<RuntimeSequenceStore> sequenceStore;
 
-  // The graph compiler turns the graph topology from the model into processing
-  // steps. The compile method on AnthemGraphCompiler is static, so we don't need
-  // an instance of AnthemGraphCompiler.
-
-  // The graph processor, which takes the compilation result from the compiler
-  // and uses it on the audio thread to process data in the graph
+  // Executes the processing graph on the audio thread.
   std::unique_ptr<GraphProcessor> graphProcessor;
 
   // JUCE class for managing audio devices.

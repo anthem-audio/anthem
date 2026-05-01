@@ -36,11 +36,11 @@ public:
       EventBuffer buffer(1);
 
       LiveEvent first{};
-      first.sampleOffset = 1.0;
+      first.sampleOffset = 1;
       first.event.type = EventType::NoteOn;
 
       LiveEvent second{};
-      second.sampleOffset = 2.0;
+      second.sampleOffset = 2;
       second.event.type = EventType::NoteOff;
 
       expect(buffer.addEvent(first), "First event should be added.");
@@ -62,7 +62,7 @@ public:
       EventBuffer buffer(1);
 
       LiveEvent event{};
-      event.sampleOffset = 0.0;
+      event.sampleOffset = 0;
       event.event.type = EventType::NoteOn;
 
       expect(buffer.addEvent(event), "First event should be added.");
@@ -89,7 +89,7 @@ public:
       EventBuffer buffer(MAX_EVENT_BUFFER_SIZE);
 
       LiveEvent event{};
-      event.sampleOffset = 0.0;
+      event.sampleOffset = 0;
       event.event.type = EventType::NoteOn;
 
       for (int i = 0; i < MAX_EVENT_BUFFER_SIZE; i++) {

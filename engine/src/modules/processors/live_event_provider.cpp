@@ -19,7 +19,7 @@
 
 #include "live_event_provider.h"
 
-#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 namespace anthem {
 
@@ -34,9 +34,7 @@ LiveEventProviderProcessor::~LiveEventProviderProcessor() {
 }
 
 void LiveEventProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
-    std::unique_ptr<EventBuffer>& targetBuffer,
-    const TrackedNote& trackedNote,
-    double sampleOffset) {
+    std::unique_ptr<EventBuffer>& targetBuffer, const TrackedNote& trackedNote, int sampleOffset) {
   targetBuffer->addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = trackedNote.liveId,
@@ -48,7 +46,7 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOn(NodeProcessContext& context
     std::unique_ptr<EventBuffer>& targetBuffer,
     LiveInputNoteId inputId,
     const NoteOnEvent& noteOnEvent,
-    double sampleOffset) {
+    int sampleOffset) {
   auto liveId = context.rt_allocateLiveNoteId();
   auto didTrackNote =
       rt_activeLiveNotes.rt_add(inputId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
@@ -64,7 +62,7 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOn(NodeProcessContext& context
 void LiveEventProviderProcessor::rt_handleLiveNoteOff(std::unique_ptr<EventBuffer>& targetBuffer,
     LiveInputNoteId inputId,
     const NoteOffEvent& noteOffEvent,
-    double sampleOffset) {
+    int sampleOffset) {
   auto trackedNote = rt_activeLiveNotes.rt_takeByInputId(inputId);
   if (trackedNote.has_value()) {
     rt_emitLiveNoteOffFromTrackedNote(targetBuffer, trackedNote.value(), sampleOffset);
@@ -102,8 +100,8 @@ void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
   }
 }
 
-void LiveEventProviderProcessor::addLiveInputEvent(LiveInputEvent event) {
-  liveInputEventBuffer->add(event);
+bool LiveEventProviderProcessor::addLiveInputEvent(LiveInputEvent event) {
+  return liveInputEventBuffer->add(event);
 }
 
 void LiveEventProviderProcessor::prepareToProcess() {}
