@@ -79,6 +79,46 @@ int getWorkerThreadCountForCoreCount(int coreCount) {
   return coreCount - 1;
 }
 
+size_t getActiveWorkerThreadCount(int workerThreadCount, const GraphExecutor::ThreadConfig& config) {
+  const auto availableWorkerThreadCount = static_cast<size_t>(std::max(0, workerThreadCount));
+
+  if (config.maxActiveWorkerThreadCount > 0) {
+    return std::min(availableWorkerThreadCount, config.maxActiveWorkerThreadCount);
+  }
+
+  return availableWorkerThreadCount;
+}
+
+bool canUsePlatformRealtimeThreading(const GraphExecutor::ThreadConfig& config) {
+  return config.audioBlockSize > 0 && config.sampleRate > 0.0;
+}
+
+GraphExecutor::ThreadConfig buildPreparedThreadConfig(
+    int workerThreadCount, const GraphExecutor::ThreadConfig& requestedConfig) {
+  auto preparedConfig = requestedConfig;
+  preparedConfig.activeWorkerThreadCount =
+      getActiveWorkerThreadCount(workerThreadCount, requestedConfig);
+
+  preparedConfig.platformRealtimeWorkerThreadCount =
+      canUsePlatformRealtimeThreading(preparedConfig) ? preparedConfig.activeWorkerThreadCount : 0;
+
+  return preparedConfig;
+}
+
+bool threadConfigsMatch(
+    const GraphExecutor::ThreadConfig& a, const GraphExecutor::ThreadConfig& b) {
+  auto matches = a.audioBlockSize == b.audioBlockSize && a.sampleRate == b.sampleRate &&
+                 a.maxActiveWorkerThreadCount == b.maxActiveWorkerThreadCount &&
+                 a.activeWorkerThreadCount == b.activeWorkerThreadCount &&
+                 a.platformRealtimeWorkerThreadCount == b.platformRealtimeWorkerThreadCount;
+
+#if JUCE_MAC
+  matches = matches && a.macAudioWorkgroup == b.macAudioWorkgroup;
+#endif
+
+  return matches;
+}
+
 // This is a ring buffer, but it has a dynamic size so that it can be sized to
 // the total node count. Our standard ring buffer has a compile-time size.
 class RuntimeReadyNodeQueue {
@@ -158,19 +198,22 @@ public:
     stopWorkerThreads();
   }
 
-  void prepare() {
+  void prepare(const GraphExecutor::ThreadConfig& threadConfig) {
     availableCoreCount = getAvailableCoreCount();
     const auto targetWorkerThreadCount = getWorkerThreadCountForCoreCount(availableCoreCount);
+    auto targetThreadConfig = buildPreparedThreadConfig(targetWorkerThreadCount, threadConfig);
 
-    if (static_cast<int>(workerThreads.size()) == targetWorkerThreadCount) {
+    if (static_cast<int>(workerThreads.size()) == targetWorkerThreadCount &&
+        threadConfigsMatch(currentThreadConfig, targetThreadConfig)) {
       return;
     }
 
     stopWorkerThreads();
+    currentThreadConfig = targetThreadConfig;
     workerThreads.reserve(static_cast<size_t>(targetWorkerThreadCount));
 
     for (int workerIndex = 0; workerIndex < targetWorkerThreadCount; ++workerIndex) {
-      auto workerThread = std::make_unique<GraphWorkerThread>(*this, workerIndex);
+      auto workerThread = std::make_unique<GraphWorkerThread>(*this, workerIndex, currentThreadConfig);
 
       if (!workerThread->start()) {
         jassertfalse;
@@ -220,16 +263,19 @@ public:
 private:
   class GraphWorkerThread final : public juce::Thread {
   public:
-    GraphWorkerThread(Impl& owner, int workerIndex)
+    GraphWorkerThread(Impl& owner,
+        int workerIndex,
+        const GraphExecutor::ThreadConfig& threadConfig)
       : juce::Thread("Anthem Graph Worker " + juce::String(workerIndex)), owner(owner),
-        index(workerIndex), readyQueueIndex(static_cast<size_t>(workerIndex) + 1) {}
+        threadConfig(threadConfig), index(workerIndex),
+        readyQueueIndex(static_cast<size_t>(workerIndex) + 1) {}
 
     ~GraphWorkerThread() override {
       stop();
     }
 
     bool start() {
-      return startThread(getGraphExecutorWorkerThreadPriority());
+      return startGraphExecutorWorkerThread(*this, index, threadConfig);
     }
 
     void stop() {
@@ -251,7 +297,8 @@ private:
     }
 
     void run() override {
-      [[maybe_unused]] GraphExecutorWorkerThreadStartupScope startup(index, getThreadName());
+      [[maybe_unused]] GraphExecutorWorkerThreadStartupScope startup(
+          index, getThreadName(), threadConfig);
 
       while (!threadShouldExit()) {
         isSleeping.store(true, std::memory_order_release);
@@ -262,11 +309,12 @@ private:
           break;
         }
 
-        owner.rt_doWorkerWork(readyQueueIndex);
+        owner.rt_doWorkerWork(index, readyQueueIndex);
       }
     }
   private:
     Impl& owner;
+    GraphExecutor::ThreadConfig threadConfig;
     int index;
     size_t readyQueueIndex;
     std::atomic<bool> isSleeping{false};
@@ -305,7 +353,16 @@ private:
     }
   }
 
-  void rt_doWorkerWork(size_t readyQueueIndex) {
+  bool rt_isWorkerThreadActive(int workerIndex) const {
+    return workerIndex >= 0 &&
+           static_cast<size_t>(workerIndex) < currentThreadConfig.activeWorkerThreadCount;
+  }
+
+  void rt_doWorkerWork(int workerIndex, size_t readyQueueIndex) {
+    if (!rt_isWorkerThreadActive(workerIndex)) {
+      return;
+    }
+
     rt_activeWorkerThreadCount.fetch_add(1, std::memory_order_acq_rel);
     const juce::ScopeGuard activeWorkerThreadScope{
         [this]() { rt_activeWorkerThreadCount.fetch_sub(1, std::memory_order_acq_rel); }};
@@ -515,7 +572,11 @@ private:
       return;
     }
 
-    for (auto& workerThread : workerThreads) {
+    for (size_t workerIndex = 0; workerIndex < currentThreadConfig.activeWorkerThreadCount &&
+                                 workerIndex < workerThreads.size();
+         ++workerIndex) {
+      auto& workerThread = workerThreads[workerIndex];
+
       if (workerThread->tryWake()) {
         return;
       }
@@ -523,6 +584,7 @@ private:
   }
 
   int availableCoreCount = minimumCoreCount;
+  GraphExecutor::ThreadConfig currentThreadConfig;
   std::vector<std::unique_ptr<GraphWorkerThread>> workerThreads;
   std::atomic<bool> schedulerGate{false};
   std::atomic<bool> audioThreadWaitingForSchedulerGate{false};

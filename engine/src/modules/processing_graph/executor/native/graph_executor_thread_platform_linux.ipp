@@ -314,8 +314,10 @@ RealtimeSchedulingResult trySetCurrentThreadRealtimePriorityWithRtkit() {
 
 class GraphExecutorWorkerThreadStartupScope final {
 public:
-  GraphExecutorWorkerThreadStartupScope(int workerIndex, const juce::String& threadName) {
-    juce::ignoreUnused(threadName);
+  GraphExecutorWorkerThreadStartupScope(int workerIndex,
+      const juce::String& threadName,
+      const GraphExecutor::ThreadConfig& threadConfig) {
+    juce::ignoreUnused(threadName, threadConfig);
 
     if (pthread_getschedparam(pthread_self(), &originalScheduler, &originalScheduleParameter) !=
         0) {
@@ -377,6 +379,13 @@ private:
 
 juce::Thread::Priority getGraphExecutorWorkerThreadPriority() {
   return juce::Thread::Priority::high;
+}
+
+bool startGraphExecutorWorkerThread(juce::Thread& thread,
+    int workerIndex,
+    const GraphExecutor::ThreadConfig& threadConfig) {
+  juce::ignoreUnused(workerIndex, threadConfig);
+  return thread.startThread(getGraphExecutorWorkerThreadPriority());
 }
 
 } // namespace

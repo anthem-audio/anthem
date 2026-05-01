@@ -25,6 +25,10 @@
 #include <juce_events/juce_events.h>
 #include <memory>
 
+namespace juce {
+class AudioIODevice;
+}
+
 namespace anthem {
 
 class GraphExecutor;
@@ -51,6 +55,8 @@ private:
 public:
   GraphProcessor();
   ~GraphProcessor();
+
+  void prepareForAudioDevice(juce::AudioIODevice* device);
 
   // Transfers ownership of a newly built runtime graph from the main thread to
   // the audio thread.

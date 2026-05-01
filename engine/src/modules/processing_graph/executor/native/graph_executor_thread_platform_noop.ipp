@@ -23,13 +23,22 @@ namespace {
 
 class GraphExecutorWorkerThreadStartupScope final {
 public:
-  GraphExecutorWorkerThreadStartupScope(int workerIndex, const juce::String& threadName) {
-    juce::ignoreUnused(workerIndex, threadName);
+  GraphExecutorWorkerThreadStartupScope(int workerIndex,
+      const juce::String& threadName,
+      const GraphExecutor::ThreadConfig& threadConfig) {
+    juce::ignoreUnused(workerIndex, threadName, threadConfig);
   }
 };
 
 juce::Thread::Priority getGraphExecutorWorkerThreadPriority() {
   return juce::Thread::Priority::high;
+}
+
+bool startGraphExecutorWorkerThread(juce::Thread& thread,
+    int workerIndex,
+    const GraphExecutor::ThreadConfig& threadConfig) {
+  juce::ignoreUnused(workerIndex, threadConfig);
+  return thread.startThread(getGraphExecutorWorkerThreadPriority());
 }
 
 } // namespace

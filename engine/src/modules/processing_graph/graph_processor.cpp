@@ -23,6 +23,8 @@
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/util/intentionally_leak.h"
 
+#include <juce_audio_devices/juce_audio_devices.h>
+
 namespace anthem {
 
 struct GraphProcessor::RuntimeGraphHandoff {
@@ -54,6 +56,27 @@ GraphProcessor::~GraphProcessor() {
 
   delete rt_activeRuntimeGraphHandoff;
   rt_activeRuntimeGraphHandoff = nullptr;
+}
+
+void GraphProcessor::prepareForAudioDevice(juce::AudioIODevice* device) {
+  GraphExecutor::ThreadConfig threadConfig;
+
+  if (device != nullptr) {
+    threadConfig.audioBlockSize = device->getCurrentBufferSizeSamples();
+    threadConfig.sampleRate = device->getCurrentSampleRate();
+
+#if JUCE_MAC
+    threadConfig.macAudioWorkgroup = device->getWorkgroup();
+
+    if (threadConfig.macAudioWorkgroup) {
+      threadConfig.maxActiveWorkerThreadCount =
+          threadConfig.macAudioWorkgroup.getMaxParallelThreadCount();
+    }
+#endif
+  }
+
+  executor->prepare(threadConfig);
+  resetRtServices();
 }
 
 void GraphProcessor::setRuntimeGraphFromMainThread(RuntimeGraph* runtimeGraph) {

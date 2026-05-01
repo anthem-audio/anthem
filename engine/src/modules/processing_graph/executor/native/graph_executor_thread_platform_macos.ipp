@@ -21,15 +21,62 @@ namespace anthem {
 
 namespace {
 
+void logGraphExecutorWorkerThreadStartupResult(int workerIndex, const juce::String& result) {
+  juce::Logger::writeToLog("Graph worker " + juce::String(workerIndex) + " " + result);
+}
+
 class GraphExecutorWorkerThreadStartupScope final {
 public:
-  GraphExecutorWorkerThreadStartupScope(int workerIndex, const juce::String& threadName) {
-    juce::ignoreUnused(workerIndex, threadName);
+  GraphExecutorWorkerThreadStartupScope(int workerIndex,
+      const juce::String& threadName,
+      const GraphExecutor::ThreadConfig& threadConfig) {
+    juce::ignoreUnused(threadName);
+
+    if (!threadConfig.macAudioWorkgroup ||
+        static_cast<size_t>(workerIndex) >= threadConfig.platformRealtimeWorkerThreadCount) {
+      return;
+    }
+
+    threadConfig.macAudioWorkgroup.join(workgroupToken);
+
+    if (!workgroupToken) {
+      logGraphExecutorWorkerThreadStartupResult(
+          workerIndex, "failed to join the macOS audio workgroup.");
+    }
   }
+
+  GraphExecutorWorkerThreadStartupScope(const GraphExecutorWorkerThreadStartupScope&) = delete;
+  GraphExecutorWorkerThreadStartupScope& operator=(const GraphExecutorWorkerThreadStartupScope&) =
+      delete;
+
+  GraphExecutorWorkerThreadStartupScope(GraphExecutorWorkerThreadStartupScope&&) = delete;
+  GraphExecutorWorkerThreadStartupScope& operator=(GraphExecutorWorkerThreadStartupScope&&) =
+      delete;
+private:
+  juce::WorkgroupToken workgroupToken;
 };
 
 juce::Thread::Priority getGraphExecutorWorkerThreadPriority() {
   return juce::Thread::Priority::high;
+}
+
+bool startGraphExecutorWorkerThread(juce::Thread& thread,
+    int workerIndex,
+    const GraphExecutor::ThreadConfig& threadConfig) {
+  if (static_cast<size_t>(workerIndex) < threadConfig.platformRealtimeWorkerThreadCount &&
+      threadConfig.audioBlockSize > 0 && threadConfig.sampleRate > 0.0) {
+    auto realtimeOptions = juce::Thread::RealtimeOptions{}.withApproximateAudioProcessingTime(
+        threadConfig.audioBlockSize, threadConfig.sampleRate);
+
+    if (thread.startRealtimeThread(realtimeOptions)) {
+      return true;
+    }
+
+    logGraphExecutorWorkerThreadStartupResult(
+        workerIndex, "failed to start as a macOS realtime thread; falling back to high priority.");
+  }
+
+  return thread.startThread(getGraphExecutorWorkerThreadPriority());
 }
 
 } // namespace

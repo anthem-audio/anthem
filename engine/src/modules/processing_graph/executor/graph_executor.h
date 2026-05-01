@@ -20,7 +20,12 @@
 #pragma once
 
 #include <cstddef>
+#include <juce_core/juce_core.h>
 #include <memory>
+
+#if JUCE_MAC
+#include <juce_audio_basics/juce_audio_basics.h>
+#endif
 
 namespace anthem {
 
@@ -30,6 +35,21 @@ class GraphExecutor {
 private:
   class Impl;
 public:
+  struct ThreadConfig {
+    int audioBlockSize = 0;
+    double sampleRate = 0.0;
+    size_t maxActiveWorkerThreadCount = 0;
+
+    // Filled by GraphExecutor::prepare(). These are exposed here so the
+    // platform-specific worker startup scopes can stay self-contained.
+    size_t activeWorkerThreadCount = 0;
+    size_t platformRealtimeWorkerThreadCount = 0;
+
+#if JUCE_MAC
+    juce::AudioWorkgroup macAudioWorkgroup;
+#endif
+  };
+
   class RuntimeState {
   public:
     ~RuntimeState();
@@ -59,7 +79,7 @@ public:
   GraphExecutor(GraphExecutor&&) = delete;
   GraphExecutor& operator=(GraphExecutor&&) = delete;
 
-  void prepare();
+  void prepare(const ThreadConfig& threadConfig = {});
   std::unique_ptr<RuntimeState> createRuntimeStateForGraph(RuntimeGraph& runtimeGraph);
   void rt_processBlock(RuntimeGraph& runtimeGraph, RuntimeState& runtimeState, int numSamples);
 private:

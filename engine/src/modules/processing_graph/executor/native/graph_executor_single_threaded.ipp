@@ -57,7 +57,9 @@ class GraphExecutor::Impl final {
 public:
   Impl() = default;
 
-  void prepare() {}
+  void prepare(const GraphExecutor::ThreadConfig& threadConfig) {
+    juce::ignoreUnused(threadConfig);
+  }
 
   size_t getReadyNodeQueueCount() const {
     return 1;

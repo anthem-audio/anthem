@@ -144,8 +144,8 @@ std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
   juce::Logger::writeToLog("Active output channels: " +
                            juce::String(device->getActiveOutputChannels().countNumberOfSetBits()));
 
+  graphProcessor->prepareForAudioDevice(device);
   transport->prepareToProcess();
-  graphProcessor->resetRtServices();
   juce::Logger::writeToLog("Transport prepared before audio callback registration.");
 
   // Set up the audio callback
