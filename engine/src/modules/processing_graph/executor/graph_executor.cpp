@@ -41,6 +41,10 @@ GraphExecutor::GraphExecutor() : impl(std::make_unique<Impl>()) {}
 
 GraphExecutor::~GraphExecutor() = default;
 
+void GraphExecutor::prepare() {
+  prepare(ThreadConfig{});
+}
+
 void GraphExecutor::prepare(const ThreadConfig& threadConfig) {
   impl->prepare(threadConfig);
 }

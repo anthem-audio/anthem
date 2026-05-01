@@ -79,7 +79,8 @@ public:
   GraphExecutor(GraphExecutor&&) = delete;
   GraphExecutor& operator=(GraphExecutor&&) = delete;
 
-  void prepare(const ThreadConfig& threadConfig = {});
+  void prepare();
+  void prepare(const ThreadConfig& threadConfig);
   std::unique_ptr<RuntimeState> createRuntimeStateForGraph(RuntimeGraph& runtimeGraph);
   void rt_processBlock(RuntimeGraph& runtimeGraph, RuntimeState& runtimeState, int numSamples);
 private:
