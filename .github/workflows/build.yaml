@@ -191,6 +191,12 @@ jobs:
           name: anthem-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/build/macos/Build/Products/Release
 
+      - name: Install Node.js
+        if: matrix.arch == 'wasm'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          
       - name: Deploy web build to CloudFlare Pages
         if: matrix.arch == 'wasm'
         run: |
