@@ -261,7 +261,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: anthem-macos-${{ matrix.arch }}
-          path: ${{ github.workspace }}/build/macos/Build/Products/Release/Anthem.app
+          path: ${{ github.workspace }}/build/macos/Build/Products/Release
 
       # --------------------------------------------------------------
       # Deploy web build
