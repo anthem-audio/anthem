@@ -33,10 +33,10 @@ jobs:
     steps:
       - name: Set up Emscripten
         if: matrix.arch == 'wasm'
-        uses: mymindstorm/setup-emsdk@v14
+        uses: emscripten-core/setup-emsdk@v16
 
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
@@ -167,7 +167,7 @@ jobs:
 
       - name: Upload artifact (Windows)
         if: contains(matrix.os, 'windows')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: anthem-windows-${{ matrix.arch }}
           # As of writing, Flutter on Windows currently builds x64, as Dart does
@@ -179,14 +179,14 @@ jobs:
 
       - name: Upload artifact (Linux)
         if: contains(matrix.os, 'ubuntu') && matrix.arch != 'wasm'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: anthem-linux-${{ matrix.arch }}
           path: ${{ github.workspace }}/${{ matrix.arch == 'x64' && 'build/linux/x64/release/bundle' || 'build/linux/arm64/release/bundle' }}
 
       - name: Upload artifact (macOS)
         if: contains(matrix.os, 'macos')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: anthem-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/build/macos/Build/Products/Release
