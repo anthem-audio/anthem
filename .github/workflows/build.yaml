@@ -189,7 +189,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: anthem-macos-${{ matrix.arch }}
-          path: ${{ github.workspace }}/build/macos/Build/Products/Release/Anthem.app
+          path: ${{ github.workspace }}/build/macos/Build/Products/Release
 
       - name: Deploy web build to CloudFlare Pages
         if: matrix.arch == 'wasm'
