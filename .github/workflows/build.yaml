@@ -261,7 +261,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: anthem-macos-${{ matrix.arch }}
-          path: ${{ github.workspace }}/build/macos/Build/Products/Release
+          # https://github.com/actions/upload-artifact#upload-using-multiple-paths-and-exclusions
+          # If a wildcard pattern is used, the path hierarchy will start with the first wildcard pattern
+          path: ${{ github.workspace }}/build/macos/Build/Products/Release/*.app
 
       # --------------------------------------------------------------
       # Deploy web build
