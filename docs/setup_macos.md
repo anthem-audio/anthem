@@ -7,7 +7,7 @@ Anthem is developed with the Flutter framework. [You can see instructions for in
 Homebrew is recommended for installing CocoaPods and the C++ tooling used by Anthem. You can get Homebrew [here](https://brew.sh/). To install CocoaPods, LLVM 22, and Ninja with Homebrew, you can use the following command:
 
 ```sh
-brew install cocoapods llvm@22 ninja
+brew install cocoapods llvm@22 ninja cmake
 ```
 
 In addition to Flutter, Anthem needs the following:
