@@ -241,7 +241,7 @@ jobs:
           # are built as x64, and are output to the x64 folder. If (hopefully
           # when) this changes, the path here would look like the Linux path
           # below.
-          path: ${{ github.workspace }}/build/windows/x64/runner/Release
+          path: build/windows/x64/runner/Release
 
       # --------------------------------------------------------------
       # Upload artifacts (Linux)
@@ -251,7 +251,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: anthem-linux-${{ matrix.arch }}
-          path: ${{ github.workspace }}/${{ matrix.arch == 'x64' && 'build/linux/x64/release/bundle' || 'build/linux/arm64/release/bundle' }}
+          path: build/linux/${{ matrix.arch }}/release/bundle
 
       # --------------------------------------------------------------
       # Upload artifacts (macOS)
@@ -263,7 +263,7 @@ jobs:
           name: anthem-macos-${{ matrix.arch }}
           # https://github.com/actions/upload-artifact#upload-using-multiple-paths-and-exclusions
           # If a wildcard pattern is used, the path hierarchy will start with the first wildcard pattern
-          path: ${{ github.workspace }}/build/macos/Build/Products/Release/*.app
+          path: build/macos/Build/Products/Release/*.app
 
       # --------------------------------------------------------------
       # Deploy web build
