@@ -28,6 +28,7 @@
 
 #include <atomic>
 #include <juce_core/juce_core.h>
+#include <optional>
 #include <stdexcept>
 
 namespace anthem {
@@ -41,6 +42,22 @@ class RuntimeGraphTest : public juce::UnitTest {
     return nodeId * 10 + 2;
   }
 
+  static int64_t controlInputPortId(int64_t nodeId) {
+    return nodeId * 10 + 3;
+  }
+
+  static int64_t controlOutputPortId(int64_t nodeId) {
+    return nodeId * 10 + 4;
+  }
+
+  static int64_t eventInputPortId(int64_t nodeId) {
+    return nodeId * 10 + 5;
+  }
+
+  static int64_t eventOutputPortId(int64_t nodeId) {
+    return nodeId * 10 + 6;
+  }
+
   static std::shared_ptr<Node> addGraphNode(ProcessingGraphModel& graph, int64_t nodeId) {
     auto node = graph_test_helpers::makeNode(nodeId);
 
@@ -48,6 +65,38 @@ class RuntimeGraphTest : public juce::UnitTest {
         graph_test_helpers::makePort(inputPortId(nodeId), nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(outputPortId(nodeId), nodeId, NodePortDataType::audio));
+
+    graph.nodes()->insert_or_assign(nodeId, node);
+
+    return node;
+  }
+
+  static std::shared_ptr<Node> addControlGraphNode(
+      ProcessingGraphModel& graph, int64_t nodeId, bool inputHasParameter = false) {
+    auto node = graph_test_helpers::makeNode(nodeId);
+
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(controlInputPortId(nodeId),
+        nodeId,
+        NodePortDataType::control,
+        inputHasParameter ? std::optional<double>(0.25) : std::nullopt,
+        inputHasParameter ? std::optional<std::shared_ptr<ParameterConfigModel>>(
+                                graph_test_helpers::makeParameterConfig(nodeId * 100 + 1, 0.25))
+                          : std::nullopt));
+    node->controlOutputPorts()->push_back(graph_test_helpers::makePort(
+        controlOutputPortId(nodeId), nodeId, NodePortDataType::control));
+
+    graph.nodes()->insert_or_assign(nodeId, node);
+
+    return node;
+  }
+
+  static std::shared_ptr<Node> addEventGraphNode(ProcessingGraphModel& graph, int64_t nodeId) {
+    auto node = graph_test_helpers::makeNode(nodeId);
+
+    node->eventInputPorts()->push_back(
+        graph_test_helpers::makePort(eventInputPortId(nodeId), nodeId, NodePortDataType::event));
+    node->eventOutputPorts()->push_back(
+        graph_test_helpers::makePort(eventOutputPortId(nodeId), nodeId, NodePortDataType::event));
 
     graph.nodes()->insert_or_assign(nodeId, node);
 
@@ -70,6 +119,46 @@ class RuntimeGraphTest : public juce::UnitTest {
 
     sourceNode->audioOutputPorts()->at(0)->connections()->push_back(connectionId);
     destinationNode->audioInputPorts()->at(0)->connections()->push_back(connectionId);
+
+    graph.connections()->insert_or_assign(connectionId, connection);
+  }
+
+  static void addControlConnection(ProcessingGraphModel& graph,
+      int64_t connectionId,
+      int64_t sourceNodeId,
+      int64_t destinationNodeId) {
+    auto& nodes = *graph.nodes();
+    auto& sourceNode = nodes.at(sourceNodeId);
+    auto& destinationNode = nodes.at(destinationNodeId);
+
+    auto connection = graph_test_helpers::makeConnection(connectionId,
+        sourceNodeId,
+        controlOutputPortId(sourceNodeId),
+        destinationNodeId,
+        controlInputPortId(destinationNodeId));
+
+    sourceNode->controlOutputPorts()->at(0)->connections()->push_back(connectionId);
+    destinationNode->controlInputPorts()->at(0)->connections()->push_back(connectionId);
+
+    graph.connections()->insert_or_assign(connectionId, connection);
+  }
+
+  static void addEventConnection(ProcessingGraphModel& graph,
+      int64_t connectionId,
+      int64_t sourceNodeId,
+      int64_t destinationNodeId) {
+    auto& nodes = *graph.nodes();
+    auto& sourceNode = nodes.at(sourceNodeId);
+    auto& destinationNode = nodes.at(destinationNodeId);
+
+    auto connection = graph_test_helpers::makeConnection(connectionId,
+        sourceNodeId,
+        eventOutputPortId(sourceNodeId),
+        destinationNodeId,
+        eventInputPortId(destinationNodeId));
+
+    sourceNode->eventOutputPorts()->at(0)->connections()->push_back(connectionId);
+    destinationNode->eventInputPorts()->at(0)->connections()->push_back(connectionId);
 
     graph.connections()->insert_or_assign(connectionId, connection);
   }
@@ -120,10 +209,15 @@ public:
   void runTest() override {
     testBuildsNodesInputNodesAndEdges();
     testDeduplicatesNodeConnections();
+    testAliasesSingleAudioConnection();
+    testAliasesAudioFanOutConnections();
+    testDisconnectedAudioInputsShareSilentBuffer();
+    testAliasesSingleEventConnection();
     testPrepareGraphForBlockResetsRemainingUpstreamNodeCounters();
     testDecrementRemainingUpstreamNodeCounter();
-    testSingleThreadedExecutorCopiesAudioToReadyDownstreamNodes();
+    testSingleThreadedExecutorMakesAudioAvailableToReadyDownstreamNodes();
     testSingleThreadedExecutorHandlesDuplicateEdges();
+    testConnectedControlParameterDoesNotOverwriteAliasedSignal();
     testSingleThreadedExecutorProcessesNodesWithoutProcessors();
     testCalculatesLinearPriorities();
     testCalculatesDiamondPriorities();
@@ -219,6 +313,111 @@ public:
     expectEquals(static_cast<int>(destinationNode.priority), 1);
   }
 
+  void testAliasesSingleAudioConnection() {
+    beginTest("RuntimeGraph aliases single audio connection buffers");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addConnection(*graph, 100, 1, 2);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& sourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+    auto& destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+
+    expect(&sourceOutputBuffer == &destinationInputBuffer,
+        "A single audio connection should bind the destination input to the source output.");
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()),
+        0,
+        "A single aliased connection should not need a copy operation.");
+  }
+
+  void testAliasesAudioFanOutConnections() {
+    beginTest("RuntimeGraph aliases audio fan-out connections");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    addGraphNode(*graph, 3);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 1, 3);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& sourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+    auto& firstDestinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+    auto& secondDestinationInputBuffer =
+        runtimeGraph->nodes.at(3).nodeProcessContext->getInputAudioBuffer(inputPortId(3));
+
+    expect(&sourceOutputBuffer == &firstDestinationInputBuffer,
+        "The first fan-out destination should alias the source output.");
+    expect(&sourceOutputBuffer == &secondDestinationInputBuffer,
+        "The second fan-out destination should alias the source output.");
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()), 0);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).incomingConnectionCopies.size()), 0);
+  }
+
+  void testDisconnectedAudioInputsShareSilentBuffer() {
+    beginTest("RuntimeGraph shares one silent buffer across disconnected audio inputs");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& firstInputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getInputAudioBuffer(inputPortId(1));
+    auto& secondInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+
+    expect(&firstInputBuffer == &secondInputBuffer,
+        "Disconnected audio inputs should share the graph's silent input buffer.");
+    expectWithinAbsoluteError(
+        firstInputBuffer.getSample(0, 0), 0.0f, 0.0001f, "The shared buffer should be silent.");
+  }
+
+  void testAliasesSingleEventConnection() {
+    beginTest("RuntimeGraph aliases single event connection buffers");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addEventGraphNode(*graph, 1);
+    addEventGraphNode(*graph, 2);
+    addEventConnection(*graph, 100, 1, 2);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& sourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputEventBuffer(eventOutputPortId(1));
+    auto& destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputEventBuffer(eventInputPortId(2));
+
+    expect(&sourceOutputBuffer == &destinationInputBuffer,
+        "A single event connection should bind the destination input to the source output.");
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()),
+        0,
+        "A single aliased event connection should not need a copy operation.");
+
+    sourceOutputBuffer.addEvent(LiveEvent{
+        .sampleOffset = 0,
+        .liveId = 7,
+        .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
+    });
+
+    expectEquals(static_cast<int>(destinationInputBuffer.getNumEvents()),
+        1,
+        "The destination input should see source output events through the alias.");
+  }
+
   void testPrepareGraphForBlockResetsRemainingUpstreamNodeCounters() {
     beginTest("Runtime graph block preparation resets remaining upstream node counters");
 
@@ -269,8 +468,8 @@ public:
         0);
   }
 
-  void testSingleThreadedExecutorCopiesAudioToReadyDownstreamNodes() {
-    beginTest("Single-threaded executor copies audio to ready downstream nodes");
+  void testSingleThreadedExecutorMakesAudioAvailableToReadyDownstreamNodes() {
+    beginTest("Single-threaded executor makes audio available to ready downstream nodes");
 
     auto graph = graph_test_helpers::makeProcessingGraph();
     addGraphNode(*graph, 1);
@@ -335,6 +534,40 @@ public:
             static_cast<float>((sample + 1) * 2),
             0.0001f);
       }
+    }
+  }
+
+  void testConnectedControlParameterDoesNotOverwriteAliasedSignal() {
+    beginTest("Connected control parameter does not overwrite an aliased control signal");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addControlGraphNode(*graph, 1);
+    addControlGraphNode(*graph, 2, true);
+    addControlConnection(*graph, 100, 1, 2);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& sourceOutputBuffer = runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
+        controlOutputPortId(1));
+    auto& destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputControlBuffer(controlInputPortId(2));
+
+    expect(&sourceOutputBuffer == &destinationInputBuffer,
+        "A single control connection should alias the destination input to the source output.");
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()), 0);
+
+    for (int sample = 0; sample < 4; ++sample) {
+      sourceOutputBuffer.setSample(0, sample, static_cast<float>(sample) * 0.2f);
+    }
+
+    processRuntimeGraph(*runtimeGraph, 4);
+
+    for (int sample = 0; sample < 4; ++sample) {
+      expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
+          static_cast<float>(sample) * 0.2f,
+          0.0001f,
+          "The connected control input should keep the source output value.");
     }
   }
 

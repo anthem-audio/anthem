@@ -93,8 +93,8 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
 
   jassert(numSamples == pluginInstance->getBlockSize());
 
-  for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
-    auto& liveEvent = eventInBuffer->getEvent(i);
+  for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
+    const auto& liveEvent = eventInBuffer.getEvent(i);
     jassert(liveEvent.sampleOffset >= 0 && liveEvent.sampleOffset < numSamples);
 
     if (liveEvent.event.type == EventType::NoteOn) {

@@ -66,7 +66,7 @@ class NodeProcessContextTest : public juce::UnitTest {
 
   static NodeProcessContext& createNodeContext(
       std::shared_ptr<Node>& node, GraphProcessContext& graphContext) {
-    return graphContext.createNodeProcessContext(node);
+    return graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
   }
 public:
   NodeProcessContextTest() : juce::UnitTest("AnthemNodeProcessContextTest", "Anthem") {}
@@ -108,10 +108,10 @@ public:
         "Input and output audio ports should bind to different buffers.");
     expectEquals(inputControlBuffer.getNumChannels(), 1, "Input control should be mono.");
     expectEquals(outputControlBuffer.getNumChannels(), 1, "Output control should be mono.");
-    expectEquals(static_cast<int>(inputEventBuffer->getSize()),
+    expectEquals(static_cast<int>(inputEventBuffer.getSize()),
         DEFAULT_EVENT_BUFFER_SIZE,
         "Input event ports should allocate the default event-buffer capacity.");
-    expectEquals(static_cast<int>(outputEventBuffer->getSize()),
+    expectEquals(static_cast<int>(outputEventBuffer.getSize()),
         DEFAULT_EVENT_BUFFER_SIZE,
         "Output event ports should allocate the default event-buffer capacity.");
 
@@ -165,19 +165,21 @@ public:
 
     auto& context = createNodeContext(node, graphContext);
 
-    auto& inputAudioBuffer = context.getInputAudioBuffer(1);
+    auto& inputAudioBuffer = graphContext.getAudioBuffer(context.getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, 1));
     auto& outputAudioBuffer = context.getOutputAudioBuffer(2);
-    auto& inputEventBuffer = context.getInputEventBuffer(5);
+    auto& inputEventBuffer = *graphContext.getEventBuffer(context.getBufferIndex(
+        NodePortDataType::event, NodeProcessContext::BufferDirection::input, 5));
     auto& outputEventBuffer = context.getOutputEventBuffer(6);
 
     inputAudioBuffer.setSample(0, 0, 0.75f);
     outputAudioBuffer.setSample(0, 0, 0.5f);
-    inputEventBuffer->addEvent(LiveEvent{
+    inputEventBuffer.addEvent(LiveEvent{
         .sampleOffset = 0,
         .liveId = 10,
         .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
     });
-    outputEventBuffer->addEvent(LiveEvent{
+    outputEventBuffer.addEvent(LiveEvent{
         .sampleOffset = 0,
         .liveId = 11,
         .event = Event(NoteOffEvent(60, 0, 0.0f)),
@@ -191,10 +193,10 @@ public:
         0.5f,
         0.0001f,
         "Output audio buffers should not be touched by clearBuffers().");
-    expectEquals(static_cast<int>(inputEventBuffer->getNumEvents()),
+    expectEquals(static_cast<int>(inputEventBuffer.getNumEvents()),
         0,
         "Input event buffers should be cleared.");
-    expectEquals(static_cast<int>(outputEventBuffer->getNumEvents()),
+    expectEquals(static_cast<int>(outputEventBuffer.getNumEvents()),
         0,
         "Output event buffers should be cleared.");
 

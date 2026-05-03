@@ -61,8 +61,8 @@ void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples
   auto& eventInBuffer =
       context.getInputEventBuffer(ToneGeneratorProcessorModelBase::eventInputPortId);
 
-  for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
-    auto& liveEvent = eventInBuffer->getEvent(i);
+  for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
+    const auto& liveEvent = eventInBuffer.getEvent(i);
 
     if (liveEvent.event.type == EventType::NoteOn) {
       hasNoteOverride = true;

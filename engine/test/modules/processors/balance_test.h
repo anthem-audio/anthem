@@ -65,10 +65,15 @@ public:
         });
     graphContext.reserve(1, 2, 1, 0);
 
-    auto& context = graphContext.createNodeProcessContext(node);
-    auto& inputBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto& outputBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
-    auto& balanceBuffer = context.getInputControlBuffer(BalanceProcessorModelBase::balancePortId);
+    auto& inputBuffer = graphContext.getAudioBuffer(context.getBufferIndex(NodePortDataType::audio,
+        NodeProcessContext::BufferDirection::input,
+        BalanceProcessorModelBase::audioInputPortId));
+    auto& balanceBuffer =
+        graphContext.getControlBuffer(context.getBufferIndex(NodePortDataType::control,
+            NodeProcessContext::BufferDirection::input,
+            BalanceProcessorModelBase::balancePortId));
 
     const std::array<float, blockSize> balanceValues{0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
     const std::array<float, blockSize> expectedLeftGains{1.0f, 1.0f, 1.0f, 0.5f, 0.0f};

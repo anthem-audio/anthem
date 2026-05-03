@@ -128,7 +128,7 @@ void SequenceNoteProviderProcessor::process(NodeProcessContext& context, int num
       .rt_activeSequence = activeSequence,
   };
 
-  rt_processBlock(rt_state, dependencies, *outputEventBuffer, trackId, numSamples, [&context]() {
+  rt_processBlock(rt_state, dependencies, outputEventBuffer, trackId, numSamples, [&context]() {
     return context.rt_allocateLiveNoteId();
   });
 }

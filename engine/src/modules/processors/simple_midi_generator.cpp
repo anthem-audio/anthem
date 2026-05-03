@@ -53,7 +53,7 @@ void SimpleMidiGeneratorProcessor::process(NodeProcessContext& context, int numS
     currentNote = 50;
     currentNoteId = context.rt_allocateLiveNoteId();
     currentNoteDuration = 0;
-    eventOutBuffer->addEvent(LiveEvent{.sampleOffset = 0,
+    eventOutBuffer.addEvent(LiveEvent{.sampleOffset = 0,
         .liveId = currentNoteId,
         .event = Event(NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f))});
 
@@ -73,7 +73,7 @@ void SimpleMidiGeneratorProcessor::process(NodeProcessContext& context, int numS
           .liveId = currentNoteId,
           .event = Event(NoteOffEvent(currentNote, 0, 0.0f))};
 
-      eventOutBuffer->addEvent(noteOffEvent);
+      eventOutBuffer.addEvent(noteOffEvent);
 
       currentNoteDuration = 0;
 
@@ -89,7 +89,7 @@ void SimpleMidiGeneratorProcessor::process(NodeProcessContext& context, int numS
           .liveId = currentNoteId,
           .event = Event(NoteOnEvent(currentNote, 0, static_cast<float>(velocity), 0.0f))};
 
-      eventOutBuffer->addEvent(noteOnEvent);
+      eventOutBuffer.addEvent(noteOnEvent);
     }
   }
 }

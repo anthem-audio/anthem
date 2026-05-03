@@ -34,8 +34,8 @@ LiveEventProviderProcessor::~LiveEventProviderProcessor() {
 }
 
 void LiveEventProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
-    std::unique_ptr<EventBuffer>& targetBuffer, const TrackedNote& trackedNote, int sampleOffset) {
-  targetBuffer->addEvent(LiveEvent{
+    EventBuffer& targetBuffer, const TrackedNote& trackedNote, int sampleOffset) {
+  targetBuffer.addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = trackedNote.liveId,
       .event = Event(NoteOffEvent(trackedNote.pitch, trackedNote.channel, 0.0f)),
@@ -43,7 +43,7 @@ void LiveEventProviderProcessor::rt_emitLiveNoteOffFromTrackedNote(
 }
 
 void LiveEventProviderProcessor::rt_handleLiveNoteOn(NodeProcessContext& context,
-    std::unique_ptr<EventBuffer>& targetBuffer,
+    EventBuffer& targetBuffer,
     LiveInputNoteId inputId,
     const NoteOnEvent& noteOnEvent,
     int sampleOffset) {
@@ -51,7 +51,7 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOn(NodeProcessContext& context
   auto didTrackNote =
       rt_activeLiveNotes.rt_add(inputId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
 
-  targetBuffer->addEvent(LiveEvent{
+  targetBuffer.addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = didTrackNote ? liveId : invalidLiveNoteId,
       .event = Event(NoteOnEvent(
@@ -59,7 +59,7 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOn(NodeProcessContext& context
   });
 }
 
-void LiveEventProviderProcessor::rt_handleLiveNoteOff(std::unique_ptr<EventBuffer>& targetBuffer,
+void LiveEventProviderProcessor::rt_handleLiveNoteOff(EventBuffer& targetBuffer,
     LiveInputNoteId inputId,
     const NoteOffEvent& noteOffEvent,
     int sampleOffset) {
@@ -69,7 +69,7 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOff(std::unique_ptr<EventBuffe
     return;
   }
 
-  targetBuffer->addEvent(LiveEvent{
+  targetBuffer.addEvent(LiveEvent{
       .sampleOffset = sampleOffset,
       .liveId = invalidLiveNoteId,
       .event = Event(NoteOffEvent(noteOffEvent.pitch, noteOffEvent.channel, noteOffEvent.velocity)),
@@ -77,7 +77,7 @@ void LiveEventProviderProcessor::rt_handleLiveNoteOff(std::unique_ptr<EventBuffe
 }
 
 void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
-    NodeProcessContext& context, std::unique_ptr<EventBuffer>& targetBuffer) {
+    NodeProcessContext& context, EventBuffer& targetBuffer) {
   while (true) {
     auto eventOpt = liveInputEventBuffer->read();
     if (!eventOpt.has_value()) {
@@ -91,7 +91,7 @@ void LiveEventProviderProcessor::rt_addLiveEventsToBuffer(
     } else if (event.event.type == EventType::NoteOff) {
       rt_handleLiveNoteOff(targetBuffer, event.inputId, event.event.noteOff, event.sampleOffset);
     } else {
-      targetBuffer->addEvent(LiveEvent{
+      targetBuffer.addEvent(LiveEvent{
           .sampleOffset = event.sampleOffset,
           .liveId = invalidLiveNoteId,
           .event = event.event,

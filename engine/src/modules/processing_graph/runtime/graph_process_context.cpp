@@ -19,6 +19,7 @@
 
 #include "graph_process_context.h"
 
+#include "modules/core/constants.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
@@ -59,9 +60,27 @@ size_t GraphProcessContext::allocateEventBuffer(size_t initialCapacity) {
   return eventBuffers.size() - 1;
 }
 
+size_t GraphProcessContext::getSharedSilentAudioBufferIndex() {
+  if (!sharedSilentAudioBufferIndex.has_value()) {
+    sharedSilentAudioBufferIndex = allocateAudioBuffer();
+    getAudioBuffer(sharedSilentAudioBufferIndex.value()).clear();
+  }
+
+  return sharedSilentAudioBufferIndex.value();
+}
+
+size_t GraphProcessContext::getSharedEmptyEventBufferIndex() {
+  if (!sharedEmptyEventBufferIndex.has_value()) {
+    sharedEmptyEventBufferIndex = allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+    getEventBuffer(sharedEmptyEventBufferIndex.value())->clear();
+  }
+
+  return sharedEmptyEventBufferIndex.value();
+}
+
 NodeProcessContext& GraphProcessContext::createNodeProcessContext(
-    std::shared_ptr<Node>& graphNode) {
-  auto context = std::make_unique<NodeProcessContext>(graphNode, *this);
+    std::shared_ptr<Node>& graphNode, NodeProcessContext::BufferBindings bufferBindings) {
+  auto context = std::make_unique<NodeProcessContext>(graphNode, *this, std::move(bufferBindings));
   auto* contextPtr = context.get();
   nodeProcessContexts.push_back(std::move(context));
 

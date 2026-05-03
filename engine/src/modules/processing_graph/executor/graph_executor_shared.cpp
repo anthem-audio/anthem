@@ -39,6 +39,10 @@ void rt_writeParametersToControlInputs(
   const auto secondsPerSample = sampleRate > 0.0f ? 1.0f / sampleRate : 0.0f;
 
   for (auto& parameter : context.rt_getInputParameterBindings()) {
+    if (!parameter.rt_shouldWriteToBuffer) {
+      continue;
+    }
+
     auto value = parameter.value->load();
     jassert(juce::jlimit(0.0f, 1.0f, value) == value);
 
@@ -83,7 +87,7 @@ void rt_copyControlBuffer(
 }
 
 void rt_copyEvents(const RuntimeConnectionCopy& copy, GraphProcessContext& graphProcessContext) {
-  auto* source = graphProcessContext.getEventBuffer(copy.sourceBufferIndex).get();
+  const auto* source = graphProcessContext.getEventBuffer(copy.sourceBufferIndex).get();
   auto* destination = graphProcessContext.getEventBuffer(copy.destinationBufferIndex).get();
   jassert(source != nullptr);
   jassert(destination != nullptr);

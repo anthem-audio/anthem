@@ -65,10 +65,15 @@ public:
         });
     graphContext.reserve(1, 2, 1, 0);
 
-    auto& context = graphContext.createNodeProcessContext(node);
-    auto& inputBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto& outputBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
-    auto& gainBuffer = context.getInputControlBuffer(GainProcessorModelBase::gainPortId);
+    auto& inputBuffer = graphContext.getAudioBuffer(context.getBufferIndex(NodePortDataType::audio,
+        NodeProcessContext::BufferDirection::input,
+        GainProcessorModelBase::audioInputPortId));
+    auto& gainBuffer =
+        graphContext.getControlBuffer(context.getBufferIndex(NodePortDataType::control,
+            NodeProcessContext::BufferDirection::input,
+            GainProcessorModelBase::gainPortId));
 
     const std::array<float, blockSize> channel0Samples{1.0f, -1.0f, 0.5f, 0.25f};
     const std::array<float, blockSize> channel1Samples{0.2f, -0.4f, 1.0f, -1.0f};

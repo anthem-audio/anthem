@@ -32,6 +32,7 @@
 #include <memory>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
@@ -42,21 +43,41 @@ class GraphProcessContext;
 
 class NodeProcessContext {
 public:
+  using PortBufferIndexMap = std::unordered_map<int64_t, size_t>;
+
   enum class BufferDirection : uint8_t {
     input,
     output,
   };
 
+  // Maps node ports to graph-owned buffers. Input bindings may refer to
+  // buffers owned for this node, another node's output buffer, or a shared
+  // silent/empty buffer. The rt_*ToClear lists identify only the buffers this
+  // node should clear before processing.
+  struct BufferBindings {
+    PortBufferIndexMap inputAudioBuffers;
+    PortBufferIndexMap outputAudioBuffers;
+
+    PortBufferIndexMap inputControlBuffers;
+    PortBufferIndexMap outputControlBuffers;
+
+    PortBufferIndexMap inputEventBuffers;
+    PortBufferIndexMap outputEventBuffers;
+
+    std::vector<size_t> rt_audioBuffersToClear;
+    std::vector<size_t> rt_eventBuffersToClear;
+    std::unordered_set<int64_t> rt_parameterInputPortsToWrite;
+  };
+
   struct InputParameterBinding {
     int64_t portId;
     juce::AudioSampleBuffer* rt_buffer = nullptr;
+    bool rt_shouldWriteToBuffer = true;
     std::unique_ptr<std::atomic<float>> value;
     std::unique_ptr<LinearParameterSmoother> rt_smoother;
   };
 private:
   JUCE_LEAK_DETECTOR(NodeProcessContext)
-
-  using PortBufferIndexMap = std::unordered_map<int64_t, size_t>;
 
   InputParameterBinding& findInputParameterBinding(int64_t id);
   const InputParameterBinding& findInputParameterBinding(int64_t id) const;
@@ -70,12 +91,17 @@ private:
   PortBufferIndexMap inputEventBuffers;
   PortBufferIndexMap outputEventBuffers;
 
+  std::vector<size_t> rt_audioBuffersToClear;
+  std::vector<size_t> rt_eventBuffersToClear;
+
   std::vector<InputParameterBinding> inputParameters;
 
   std::weak_ptr<Node> graphNode;
   GraphProcessContext* graphProcessContext = nullptr;
 public:
-  NodeProcessContext(std::shared_ptr<Node>& graphNode, GraphProcessContext& graphProcessContext);
+  NodeProcessContext(std::shared_ptr<Node>& graphNode,
+      GraphProcessContext& graphProcessContext,
+      BufferBindings bufferBindings);
 
   // Clean up the context. This must be called before the context is deallocated.
   void cleanup();
@@ -98,14 +124,14 @@ public:
   void clearBuffers();
   size_t getBufferIndex(NodePortDataType dataType, BufferDirection direction, int64_t id) const;
 
-  juce::AudioSampleBuffer& getInputAudioBuffer(int64_t id);
+  const juce::AudioSampleBuffer& getInputAudioBuffer(int64_t id) const;
   juce::AudioSampleBuffer& getOutputAudioBuffer(int64_t id);
 
-  juce::AudioSampleBuffer& getInputControlBuffer(int64_t id);
+  const juce::AudioSampleBuffer& getInputControlBuffer(int64_t id) const;
   juce::AudioSampleBuffer& getOutputControlBuffer(int64_t id);
 
-  std::unique_ptr<EventBuffer>& getInputEventBuffer(int64_t id);
-  std::unique_ptr<EventBuffer>& getOutputEventBuffer(int64_t id);
+  const EventBuffer& getInputEventBuffer(int64_t id) const;
+  EventBuffer& getOutputEventBuffer(int64_t id);
 
   const std::vector<InputParameterBinding>& rt_getInputParameterBindings() const {
     return inputParameters;

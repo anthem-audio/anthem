@@ -19,55 +19,31 @@
 
 #include "node_process_context.h"
 
-#include "modules/core/constants.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_port.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace anthem {
 
-NodeProcessContext::NodeProcessContext(
-    std::shared_ptr<Node>& graphNode, GraphProcessContext& graphProcessContext)
+NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
+    GraphProcessContext& graphProcessContext,
+    BufferBindings bufferBindings)
   : graphNode(graphNode), graphProcessContext(&graphProcessContext) {
-  inputAudioBuffers.reserve(graphNode->audioInputPorts()->size());
-  outputAudioBuffers.reserve(graphNode->audioOutputPorts()->size());
-  inputControlBuffers.reserve(graphNode->controlInputPorts()->size());
-  outputControlBuffers.reserve(graphNode->controlOutputPorts()->size());
-  inputEventBuffers.reserve(graphNode->eventInputPorts()->size());
-  outputEventBuffers.reserve(graphNode->eventOutputPorts()->size());
+  auto parameterInputPortsToWrite = std::move(bufferBindings.rt_parameterInputPortsToWrite);
+
+  inputAudioBuffers = std::move(bufferBindings.inputAudioBuffers);
+  outputAudioBuffers = std::move(bufferBindings.outputAudioBuffers);
+  inputControlBuffers = std::move(bufferBindings.inputControlBuffers);
+  outputControlBuffers = std::move(bufferBindings.outputControlBuffers);
+  inputEventBuffers = std::move(bufferBindings.inputEventBuffers);
+  outputEventBuffers = std::move(bufferBindings.outputEventBuffers);
+  rt_audioBuffersToClear = std::move(bufferBindings.rt_audioBuffersToClear);
+  rt_eventBuffersToClear = std::move(bufferBindings.rt_eventBuffersToClear);
+
   inputParameters.reserve(graphNode->controlInputPorts()->size());
-
-  for (auto& port : *graphNode->audioInputPorts()) {
-    inputAudioBuffers.emplace(port->id(), graphProcessContext.allocateAudioBuffer());
-  }
-
-  for (auto& port : *graphNode->audioOutputPorts()) {
-    outputAudioBuffers.emplace(port->id(), graphProcessContext.allocateAudioBuffer());
-  }
-
-  for (auto& port : *graphNode->controlInputPorts()) {
-    inputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
-  }
-
-  for (auto& port : *graphNode->controlOutputPorts()) {
-    outputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
-  }
-
-  for (auto& port : *graphNode->eventInputPorts()) {
-    // TODO: Seed initial capacities from persisted per-port runtime hints once
-    // graph recompilation can preserve processing state across compiles.
-    inputEventBuffers.emplace(
-        port->id(), graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE));
-  }
-
-  for (auto& port : *graphNode->eventOutputPorts()) {
-    // TODO: Seed initial capacities from persisted per-port runtime hints once
-    // graph recompilation can preserve processing state across compiles.
-    outputEventBuffers.emplace(
-        port->id(), graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE));
-  }
 
   for (auto& port : *graphNode->controlInputPorts()) {
     const auto controlBufferIndex = inputControlBuffers.at(port->id());
@@ -82,6 +58,8 @@ NodeProcessContext::NodeProcessContext(
     InputParameterBinding state;
     state.portId = port->id();
     state.rt_buffer = &inputControlBuffer;
+    state.rt_shouldWriteToBuffer =
+        parameterInputPortsToWrite.find(port->id()) != parameterInputPortsToWrite.end();
     state.value = std::make_unique<std::atomic<float>>(parameterValue);
     state.rt_smoother = std::make_unique<LinearParameterSmoother>(
         parameterValue, static_cast<float>((*parameterConfig)->smoothingDurationSeconds()));
@@ -141,18 +119,11 @@ float NodeProcessContext::getParameterValue(int64_t id) {
 void NodeProcessContext::clearBuffers() {
   jassert(graphProcessContext != nullptr);
 
-  for (const auto& [portId, bufferIndex] : inputAudioBuffers) {
-    juce::ignoreUnused(portId);
+  for (const auto bufferIndex : rt_audioBuffersToClear) {
     graphProcessContext->getAudioBuffer(bufferIndex).clear();
   }
 
-  for (const auto& [portId, bufferIndex] : inputEventBuffers) {
-    juce::ignoreUnused(portId);
-    graphProcessContext->getEventBuffer(bufferIndex)->clear();
-  }
-
-  for (const auto& [portId, bufferIndex] : outputEventBuffers) {
-    juce::ignoreUnused(portId);
+  for (const auto bufferIndex : rt_eventBuffersToClear) {
     graphProcessContext->getEventBuffer(bufferIndex)->clear();
   }
 }
@@ -174,7 +145,7 @@ size_t NodeProcessContext::getBufferIndex(
   throw std::runtime_error("AnthemNodeProcessContext received an unsupported port data type.");
 }
 
-juce::AudioSampleBuffer& NodeProcessContext::getInputAudioBuffer(int64_t id) {
+const juce::AudioSampleBuffer& NodeProcessContext::getInputAudioBuffer(int64_t id) const {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getAudioBuffer(inputAudioBuffers.at(id));
 }
@@ -184,7 +155,7 @@ juce::AudioSampleBuffer& NodeProcessContext::getOutputAudioBuffer(int64_t id) {
   return graphProcessContext->getAudioBuffer(outputAudioBuffers.at(id));
 }
 
-juce::AudioSampleBuffer& NodeProcessContext::getInputControlBuffer(int64_t id) {
+const juce::AudioSampleBuffer& NodeProcessContext::getInputControlBuffer(int64_t id) const {
   jassert(graphProcessContext != nullptr);
   return graphProcessContext->getControlBuffer(inputControlBuffers.at(id));
 }
@@ -194,14 +165,14 @@ juce::AudioSampleBuffer& NodeProcessContext::getOutputControlBuffer(int64_t id) 
   return graphProcessContext->getControlBuffer(outputControlBuffers.at(id));
 }
 
-std::unique_ptr<EventBuffer>& NodeProcessContext::getInputEventBuffer(int64_t id) {
+const EventBuffer& NodeProcessContext::getInputEventBuffer(int64_t id) const {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getEventBuffer(inputEventBuffers.at(id));
+  return *graphProcessContext->getEventBuffer(inputEventBuffers.at(id));
 }
 
-std::unique_ptr<EventBuffer>& NodeProcessContext::getOutputEventBuffer(int64_t id) {
+EventBuffer& NodeProcessContext::getOutputEventBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getEventBuffer(outputEventBuffers.at(id));
+  return *graphProcessContext->getEventBuffer(outputEventBuffers.at(id));
 }
 
 LiveNoteId NodeProcessContext::rt_allocateLiveNoteId() {

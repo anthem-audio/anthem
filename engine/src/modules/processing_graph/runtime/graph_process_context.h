@@ -20,19 +20,20 @@
 #pragma once
 
 #include "modules/processing_graph/processor/event_buffer.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/sequencer/events/note_instance_id.h"
 
 #include <cstddef>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_core/juce_core.h>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace anthem {
 
 class Node;
 class GraphRuntimeServices;
-class NodeProcessContext;
 
 struct GraphBufferLayout {
   int numAudioChannels = 0;
@@ -62,6 +63,9 @@ private:
   std::vector<juce::AudioSampleBuffer> controlBuffers;
   std::vector<std::unique_ptr<EventBuffer>> eventBuffers;
 
+  std::optional<size_t> sharedSilentAudioBufferIndex;
+  std::optional<size_t> sharedEmptyEventBufferIndex;
+
   // Owns all node-scoped views into the graph-owned runtime storage above.
   std::vector<std::unique_ptr<NodeProcessContext>> nodeProcessContexts;
 public:
@@ -82,8 +86,12 @@ public:
   size_t allocateControlBuffer();
   size_t allocateEventBuffer(size_t initialCapacity);
 
+  size_t getSharedSilentAudioBufferIndex();
+  size_t getSharedEmptyEventBufferIndex();
+
   // Creates a node-scoped view into this graph-owned storage.
-  NodeProcessContext& createNodeProcessContext(std::shared_ptr<Node>& graphNode);
+  NodeProcessContext& createNodeProcessContext(
+      std::shared_ptr<Node>& graphNode, NodeProcessContext::BufferBindings bufferBindings);
 
   // Access graph-owned buffers by the indices stored in node contexts.
   juce::AudioSampleBuffer& getAudioBuffer(size_t index);

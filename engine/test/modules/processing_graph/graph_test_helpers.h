@@ -20,9 +20,11 @@
 #pragma once
 
 #include "generated/lib/model/model.h"
+#include "modules/core/constants.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 #include "modules/processing_graph/model/node_port.h"
+#include "modules/processing_graph/runtime/graph_process_context.h"
 #include "modules/processors/gain.h"
 #include "modules/processors/master_output.h"
 
@@ -130,6 +132,64 @@ inline std::shared_ptr<ProcessingGraphModel> makeProcessingGraph() {
           std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<NodeConnection>>>(),
       .masterOutputNodeId = 0,
   });
+}
+
+inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
+    std::shared_ptr<Node>& graphNode, GraphProcessContext& graphProcessContext) {
+  NodeProcessContext::BufferBindings bindings;
+
+  bindings.inputAudioBuffers.reserve(graphNode->audioInputPorts()->size());
+  bindings.outputAudioBuffers.reserve(graphNode->audioOutputPorts()->size());
+  bindings.inputControlBuffers.reserve(graphNode->controlInputPorts()->size());
+  bindings.outputControlBuffers.reserve(graphNode->controlOutputPorts()->size());
+  bindings.inputEventBuffers.reserve(graphNode->eventInputPorts()->size());
+  bindings.outputEventBuffers.reserve(graphNode->eventOutputPorts()->size());
+  bindings.rt_audioBuffersToClear.reserve(graphNode->audioInputPorts()->size());
+  bindings.rt_eventBuffersToClear.reserve(
+      graphNode->eventInputPorts()->size() + graphNode->eventOutputPorts()->size());
+  bindings.rt_parameterInputPortsToWrite.reserve(graphNode->controlInputPorts()->size());
+
+  for (auto& port : *graphNode->audioInputPorts()) {
+    auto bufferIndex = graphProcessContext.allocateAudioBuffer();
+    bindings.inputAudioBuffers.emplace(port->id(), bufferIndex);
+    bindings.rt_audioBuffersToClear.push_back(bufferIndex);
+  }
+
+  for (auto& port : *graphNode->audioOutputPorts()) {
+    bindings.outputAudioBuffers.emplace(port->id(), graphProcessContext.allocateAudioBuffer());
+  }
+
+  for (auto& port : *graphNode->controlInputPorts()) {
+    bindings.inputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
+
+    if (port->config()->parameterConfig().has_value()) {
+      bindings.rt_parameterInputPortsToWrite.insert(port->id());
+    }
+  }
+
+  for (auto& port : *graphNode->controlOutputPorts()) {
+    bindings.outputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
+  }
+
+  for (auto& port : *graphNode->eventInputPorts()) {
+    auto bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+    bindings.inputEventBuffers.emplace(port->id(), bufferIndex);
+    bindings.rt_eventBuffersToClear.push_back(bufferIndex);
+  }
+
+  for (auto& port : *graphNode->eventOutputPorts()) {
+    auto bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+    bindings.outputEventBuffers.emplace(port->id(), bufferIndex);
+    bindings.rt_eventBuffersToClear.push_back(bufferIndex);
+  }
+
+  return bindings;
+}
+
+inline NodeProcessContext& createStandaloneNodeProcessContext(
+    GraphProcessContext& graphProcessContext, std::shared_ptr<Node>& graphNode) {
+  return graphProcessContext.createNodeProcessContext(
+      graphNode, createStandaloneBufferBindings(graphNode, graphProcessContext));
 }
 
 } // namespace graph_test_helpers

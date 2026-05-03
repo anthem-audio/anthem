@@ -169,7 +169,7 @@ public:
     droppedEventsThisBlock = 0;
   }
 
-  LiveEvent& getEvent(size_t index) {
+  const LiveEvent& getEvent(size_t index) const {
     return buffer[index];
   }
 

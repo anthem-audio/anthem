@@ -46,18 +46,17 @@ private:
   NoteTracker<rt_maxTrackedLiveNotes> rt_activeLiveNotes;
 
   void rt_emitLiveNoteOffFromTrackedNote(
-      std::unique_ptr<EventBuffer>& targetBuffer, const TrackedNote& trackedNote, int sampleOffset);
+      EventBuffer& targetBuffer, const TrackedNote& trackedNote, int sampleOffset);
   void rt_handleLiveNoteOn(NodeProcessContext& context,
-      std::unique_ptr<EventBuffer>& targetBuffer,
+      EventBuffer& targetBuffer,
       LiveInputNoteId inputId,
       const NoteOnEvent& noteOnEvent,
       int sampleOffset);
-  void rt_handleLiveNoteOff(std::unique_ptr<EventBuffer>& targetBuffer,
+  void rt_handleLiveNoteOff(EventBuffer& targetBuffer,
       LiveInputNoteId inputId,
       const NoteOffEvent& noteOffEvent,
       int sampleOffset);
-  void rt_addLiveEventsToBuffer(
-      NodeProcessContext& context, std::unique_ptr<EventBuffer>& targetBuffer);
+  void rt_addLiveEventsToBuffer(NodeProcessContext& context, EventBuffer& targetBuffer);
 public:
   LiveEventProviderProcessor(const LiveEventProviderProcessorModelImpl& _impl);
   ~LiveEventProviderProcessor() override;

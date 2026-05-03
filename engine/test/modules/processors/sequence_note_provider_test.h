@@ -100,7 +100,7 @@ class SequenceNoteProviderTest : public juce::UnitTest {
       LiveNoteId liveId,
       int16_t pitch) {
     expect(buffer.getNumEvents() > index, "Expected event index should exist.");
-    auto& event = buffer.getEvent(index);
+    const auto& event = buffer.getEvent(index);
 
     expectEquals(event.sampleOffset, sampleOffset, "Unexpected sample offset.");
     expectEquals(

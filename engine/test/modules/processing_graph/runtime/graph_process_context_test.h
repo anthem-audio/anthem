@@ -233,7 +233,7 @@ public:
         });
     context.reserve(1, 2, 1, 0);
 
-    auto& nodeContext = context.createNodeProcessContext(node);
+    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(context, node);
 
     expectEquals(nodeContext.getInputAudioBuffer(inputPortId).getNumChannels(),
         2,
@@ -276,13 +276,21 @@ public:
         });
     context.reserve(2, 4, 4, 4);
 
-    auto& firstNodeContext = context.createNodeProcessContext(firstNode);
-    auto& secondNodeContext = context.createNodeProcessContext(secondNode);
+    auto& firstNodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(context, firstNode);
+    auto& secondNodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(context, secondNode);
 
     auto& firstInputAudio = firstNodeContext.getInputAudioBuffer(1);
     auto& secondInputAudio = secondNodeContext.getInputAudioBuffer(1);
-    firstInputAudio.setSample(0, 0, 0.5f);
-    secondInputAudio.setSample(0, 0, 0.25f);
+    context
+        .getAudioBuffer(firstNodeContext.getBufferIndex(
+            NodePortDataType::audio, NodeProcessContext::BufferDirection::input, 1))
+        .setSample(0, 0, 0.5f);
+    context
+        .getAudioBuffer(secondNodeContext.getBufferIndex(
+            NodePortDataType::audio, NodeProcessContext::BufferDirection::input, 1))
+        .setSample(0, 0, 0.25f);
 
     expect(&firstInputAudio != &secondInputAudio,
         "Each node context should get distinct graph-owned buffers for matching port shapes.");
@@ -313,31 +321,28 @@ public:
         });
     context.reserve(1, 0, 0, 4);
 
-    auto& nodeContext = context.createNodeProcessContext(node);
+    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(context, node);
 
     auto& inputOne = nodeContext.getInputEventBuffer(11);
     auto& inputTwo = nodeContext.getInputEventBuffer(12);
     auto& outputOne = nodeContext.getOutputEventBuffer(13);
     auto& outputTwo = nodeContext.getOutputEventBuffer(14);
 
-    expectEquals(static_cast<int>(inputOne->getSize()),
+    expectEquals(static_cast<int>(inputOne.getSize()),
         DEFAULT_EVENT_BUFFER_SIZE,
         "Each input event port should allocate the default event-buffer capacity.");
-    expectEquals(static_cast<int>(inputTwo->getSize()),
+    expectEquals(static_cast<int>(inputTwo.getSize()),
         DEFAULT_EVENT_BUFFER_SIZE,
         "Each input event port should allocate its own event buffer.");
-    expectEquals(static_cast<int>(outputOne->getSize()),
+    expectEquals(static_cast<int>(outputOne.getSize()),
         DEFAULT_EVENT_BUFFER_SIZE,
         "Each output event port should allocate the default event-buffer capacity.");
-    expectEquals(static_cast<int>(outputTwo->getSize()),
+    expectEquals(static_cast<int>(outputTwo.getSize()),
         DEFAULT_EVENT_BUFFER_SIZE,
         "Each output event port should allocate its own event buffer.");
-    expect(
-        inputOne.get() != inputTwo.get(), "Distinct input event ports should not share storage.");
-    expect(inputOne.get() != outputOne.get(),
-        "Input and output event ports should not share storage.");
-    expect(outputOne.get() != outputTwo.get(),
-        "Distinct output event ports should not share storage.");
+    expect(&inputOne != &inputTwo, "Distinct input event ports should not share storage.");
+    expect(&inputOne != &outputOne, "Input and output event ports should not share storage.");
+    expect(&outputOne != &outputTwo, "Distinct output event ports should not share storage.");
 
     context.cleanup();
   }

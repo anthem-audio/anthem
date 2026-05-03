@@ -77,7 +77,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
   }
 
   static EventBuffer& getOutputBuffer(NodeProcessContext& context) {
-    return *context.getOutputEventBuffer(LiveEventProviderProcessorModelBase::eventOutputPortId);
+    return context.getOutputEventBuffer(LiveEventProviderProcessorModelBase::eventOutputPortId);
   }
 
   void expectEventBase(EventBuffer& buffer,
@@ -87,7 +87,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
       LiveNoteId liveId,
       const juce::String& context) {
     expect(buffer.getNumEvents() > index, context + " event index should exist");
-    auto& event = buffer.getEvent(index);
+    const auto& event = buffer.getEvent(index);
 
     expectEquals(static_cast<int>(event.event.type), static_cast<int>(type), context + " type");
     expectEquals(event.sampleOffset, sampleOffset, context + " offset");
@@ -105,7 +105,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
       const juce::String& context) {
     expectEventBase(buffer, index, EventType::NoteOn, sampleOffset, liveId, context);
 
-    auto& event = buffer.getEvent(index);
+    const auto& event = buffer.getEvent(index);
     expectEquals(event.event.noteOn.pitch, pitch, context + " pitch");
     expectEquals(event.event.noteOn.channel, channel, context + " channel");
     expectWithinAbsoluteError(
@@ -123,7 +123,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
       const juce::String& context) {
     expectEventBase(buffer, index, EventType::NoteOff, sampleOffset, liveId, context);
 
-    auto& event = buffer.getEvent(index);
+    const auto& event = buffer.getEvent(index);
     expectEquals(event.event.noteOff.pitch, pitch, context + " pitch");
     expectEquals(event.event.noteOff.channel, channel, context + " channel");
     expectWithinAbsoluteError(
@@ -159,7 +159,7 @@ public:
         });
     graphContext.reserve(1, 0, 0, 1);
 
-    auto& context = graphContext.createNodeProcessContext(node);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
 
@@ -197,7 +197,7 @@ public:
         });
     graphContext.reserve(1, 0, 0, 1);
 
-    auto& context = graphContext.createNodeProcessContext(node);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -233,7 +233,7 @@ public:
         });
     graphContext.reserve(1, 0, 0, 1);
 
-    auto& context = graphContext.createNodeProcessContext(node);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -260,7 +260,7 @@ public:
         });
     graphContext.reserve(1, 0, 0, 1);
 
-    auto& context = graphContext.createNodeProcessContext(node);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -286,7 +286,7 @@ public:
         });
     graphContext.reserve(1, 0, 0, 1);
 
-    auto& context = graphContext.createNodeProcessContext(node);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -347,7 +347,7 @@ public:
         });
     graphContext.reserve(1, 0, 0, 1);
 
-    auto& context = graphContext.createNodeProcessContext(node);
+    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
