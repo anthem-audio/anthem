@@ -22,28 +22,8 @@ jobs:
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
-      - name: Format code
-        run: dart format . --set-exit-if-changed -o none
-
-      - name: Lint code
-        run: |
-          mkdir -p assets/engine
-          dart analyze --fatal-infos
-
-      - name: Check engine C++ formatting
-        run: dart run anthem:cli engine format --check
-
       - name: Build engine
         run: dart run anthem:cli engine build --release
-
-      - name: Lint engine C++ with clang-tidy
-        run: dart run anthem:cli engine lint
-
-      - name: Run engine unit tests
-        run: dart run anthem:cli engine unit-test
-
-      - name: Run Flutter tests
-        run: dart run anthem:cli flutter_test
 
       - name: Build Flutter
         run: flutter build linux --verbose --release
@@ -69,28 +49,8 @@ jobs:
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
-      - name: Format code
-        run: dart format . --set-exit-if-changed -o none
-
-      - name: Lint code
-        run: |
-          mkdir -p assets/engine
-          dart analyze --fatal-infos
-
-      - name: Check engine C++ formatting
-        run: dart run anthem:cli engine format --check
-
       - name: Build engine
         run: dart run anthem:cli engine build --release
-
-      - name: Lint engine C++ with clang-tidy
-        run: dart run anthem:cli engine lint
-
-      - name: Run engine unit tests
-        run: dart run anthem:cli engine unit-test
-
-      - name: Run Flutter tests
-        run: dart run anthem:cli flutter_test
 
       - name: Build Flutter
         run: flutter build macos --verbose --release
@@ -118,28 +78,8 @@ jobs:
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
-      - name: Format code
-        run: dart format . --set-exit-if-changed -o none
-
-      - name: Lint code
-        run: |
-          mkdir assets\engine
-          dart analyze --fatal-infos
-
-      - name: Check engine C++ formatting
-        run: dart run anthem:cli engine format --check
-
       - name: Build engine
         run: dart run anthem:cli engine build --release
-
-      - name: Lint engine C++ with clang-tidy
-        run: dart run anthem:cli engine lint
-
-      - name: Run engine unit tests
-        run: dart run anthem:cli engine unit-test
-
-      - name: Run Flutter tests
-        run: dart run anthem:cli flutter_test
 
       - name: Build Flutter
         run: flutter build windows --verbose --release
@@ -161,9 +101,6 @@ jobs:
     steps:
       - name: Initialize project
         uses: ./.github/actions/shared-init
-
-      - name: Format code
-        run: dart format . --set-exit-if-changed -o none
 
       - name: Set up Emscripten
         uses: emscripten-core/setup-emsdk@v16

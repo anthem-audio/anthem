@@ -1,0 +1,89 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
+
+      - name: Format code
+        run: dart format . --set-exit-if-changed -o none
+
+      - name: Lint code
+        run: |
+          mkdir -p assets/engine
+          dart analyze --fatal-infos
+
+      - name: Check engine C++ formatting
+        run: dart run anthem:cli engine format --check
+
+      - name: Lint engine C++ with clang-tidy
+        run: dart run anthem:cli engine lint
+
+      - name: Run engine unit tests
+        run: dart run anthem:cli engine unit-test
+
+      - name: Run Flutter tests
+        run: dart run anthem:cli flutter_test
+
+  lint-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
+
+      - name: Format code
+        run: dart format . --set-exit-if-changed -o none
+
+      - name: Lint code
+        run: |
+          mkdir -p assets/engine
+          dart analyze --fatal-infos
+
+      - name: Check engine C++ formatting
+        run: dart run anthem:cli engine format --check
+
+      - name: Lint engine C++ with clang-tidy
+        run: dart run anthem:cli engine lint
+
+      - name: Run engine unit tests
+        run: dart run anthem:cli engine unit-test
+
+      - name: Run Flutter tests
+        run: dart run anthem:cli flutter_test
+
+  lint-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
+
+      - name: Format code
+        run: dart format . --set-exit-if-changed -o none
+
+      - name: Lint code
+        run: |
+          mkdir assets\engine
+          dart analyze --fatal-infos
+
+      - name: Check engine C++ formatting
+        run: dart run anthem:cli engine format --check
+
+      - name: Lint engine C++ with clang-tidy
+        run: dart run anthem:cli engine lint
+
+      - name: Run engine unit tests
+        run: dart run anthem:cli engine unit-test
+
+      - name: Run Flutter tests
+        run: dart run anthem:cli flutter_test
