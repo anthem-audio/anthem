@@ -1,5 +1,5 @@
-name: Install prerequisites
-description: Set up the build environment
+name: Initialize project
+description: Install build tools, check out the code, and run code generation
 runs:
   using: composite
   steps:
@@ -56,3 +56,19 @@ runs:
     - name: Install Flutter
       shell: bash
       run: flutter doctor
+
+    - name: Check out code
+      uses: actions/checkout@v6
+      with:
+        submodules: recursive
+
+    - name: Get Dart dependencies
+      shell: bash
+      run: |
+        flutter pub get
+        (cd codegen && flutter pub get)
+        (cd tools/anthem_analyzer_plugin && dart pub get)
+
+    - name: Run code generation
+      shell: bash
+      run: dart run anthem:cli codegen generate --explicit-format-for-ci

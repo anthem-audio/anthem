@@ -19,22 +19,8 @@ jobs:
             arch: arm64
 
     steps:
-      - name: Install prerequisites
-        uses: ./.github/actions/install-prereqs
-
-      - name: Check out code
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Get Dart dependencies
-        run: |
-          flutter pub get
-          (cd codegen && flutter pub get)
-          (cd tools/anthem_analyzer_plugin && dart pub get)
-
-      - name: Run code generation
-        run: dart run anthem:cli codegen generate --explicit-format-for-ci
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
 
       - name: Format code
         run: dart format . --set-exit-if-changed -o none
@@ -80,22 +66,8 @@ jobs:
             arch: x64
 
     steps:
-      - name: Install prerequisites
-        uses: ./.github/actions/install-prereqs
-
-      - name: Check out code
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Get Dart dependencies
-        run: |
-          flutter pub get
-          (cd codegen && flutter pub get)
-          (cd tools/anthem_analyzer_plugin && dart pub get)
-
-      - name: Run code generation
-        run: dart run anthem:cli codegen generate --explicit-format-for-ci
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
 
       - name: Format code
         run: dart format . --set-exit-if-changed -o none
@@ -143,24 +115,8 @@ jobs:
             arch: arm64
 
     steps:
-      - name: Install prerequisites
-        uses: ./.github/actions/install-prereqs
-
-      - name: Check out code
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Get root dependencies
-        run: |
-          flutter pub get
-          cd codegen
-          flutter pub get
-          cd ..\tools\anthem_analyzer_plugin
-          dart pub get
-
-      - name: Run code generation
-        run: dart run anthem:cli codegen generate --explicit-format-for-ci
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
 
       - name: Format code
         run: dart format . --set-exit-if-changed -o none
@@ -203,28 +159,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up Emscripten
-        uses: emscripten-core/setup-emsdk@v16
-
-      - name: Install other prerequisites
-        uses: ./.github/actions/install-prereqs
-
-      - name: Check out code
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-
-      - name: Get Dart dependencies
-        run: |
-          flutter pub get
-          (cd codegen && flutter pub get)
-          (cd tools/anthem_analyzer_plugin && dart pub get)
-
-      - name: Run code generation
-        run: dart run anthem:cli codegen generate --explicit-format-for-ci
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
 
       - name: Format code
         run: dart format . --set-exit-if-changed -o none
+
+      - name: Set up Emscripten
+        uses: emscripten-core/setup-emsdk@v16
 
       - name: Build engine
         run: dart run anthem:cli engine build --release --wasm
