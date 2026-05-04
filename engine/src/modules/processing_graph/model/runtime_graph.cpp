@@ -343,7 +343,7 @@ void bindControlInputPort(RuntimeGraph& runtimeGraph,
     NodeProcessContext::BufferBindings& bindings) {
   // The logic here for zero-, one- and multi-input ports is similar to audio
   // ports, which is documented above.
-  
+
   jassert(runtimeGraph.graphProcessContext != nullptr);
 
   auto connectionCount = inputPort.connections()->size();

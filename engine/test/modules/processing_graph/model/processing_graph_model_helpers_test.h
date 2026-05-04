@@ -154,8 +154,7 @@ public:
         });
     graphContext.reserve(1, 0, 1, 0);
 
-    auto& nodeContext =
-        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     node->runtimeContext = std::make_optional(&nodeContext);
 
     auto& port = *node->controlInputPorts()->at(0);
@@ -188,8 +187,7 @@ public:
         });
     graphContext.reserve(1, 0, 1, 0);
 
-    auto& nodeContext =
-        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto& port = *node->controlInputPorts()->at(0);
 
     applyParameterValueUpdate(port, 0.75);

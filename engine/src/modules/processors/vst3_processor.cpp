@@ -82,6 +82,8 @@ void VST3Processor::prepareToProcess() {
 }
 
 void VST3Processor::process(NodeProcessContext& context, int numSamples) {
+  juce::ignoreUnused(numSamples);
+
   auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
   auto& eventInBuffer = context.getInputEventBuffer(VST3ProcessorModelBase::eventInputPortId);
 
@@ -95,7 +97,7 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
 
   for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
     const auto& liveEvent = eventInBuffer.getEvent(i);
-    jassert(liveEvent.sampleOffset >= 0 && liveEvent.sampleOffset < numSamples);
+    jassert(juce::isPositiveAndBelow(liveEvent.sampleOffset, numSamples));
 
     if (liveEvent.event.type == EventType::NoteOn) {
       auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,

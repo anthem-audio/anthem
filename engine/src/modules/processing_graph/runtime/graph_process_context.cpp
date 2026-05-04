@@ -61,21 +61,27 @@ size_t GraphProcessContext::allocateEventBuffer(size_t initialCapacity) {
 }
 
 size_t GraphProcessContext::getSharedSilentAudioBufferIndex() {
-  if (!sharedSilentAudioBufferIndex.has_value()) {
-    sharedSilentAudioBufferIndex = allocateAudioBuffer();
-    getAudioBuffer(sharedSilentAudioBufferIndex.value()).clear();
+  if (sharedSilentAudioBufferIndex.has_value()) {
+    return *sharedSilentAudioBufferIndex;
   }
 
-  return sharedSilentAudioBufferIndex.value();
+  auto bufferIndex = allocateAudioBuffer();
+  getAudioBuffer(bufferIndex).clear();
+  sharedSilentAudioBufferIndex = bufferIndex;
+
+  return bufferIndex;
 }
 
 size_t GraphProcessContext::getSharedEmptyEventBufferIndex() {
-  if (!sharedEmptyEventBufferIndex.has_value()) {
-    sharedEmptyEventBufferIndex = allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
-    getEventBuffer(sharedEmptyEventBufferIndex.value())->clear();
+  if (sharedEmptyEventBufferIndex.has_value()) {
+    return *sharedEmptyEventBufferIndex;
   }
 
-  return sharedEmptyEventBufferIndex.value();
+  auto bufferIndex = allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+  getEventBuffer(bufferIndex)->clear();
+  sharedEmptyEventBufferIndex = bufferIndex;
+
+  return bufferIndex;
 }
 
 NodeProcessContext& GraphProcessContext::createNodeProcessContext(

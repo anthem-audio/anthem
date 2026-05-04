@@ -47,7 +47,7 @@ private:
     juce::Logger::setCurrentLogger(logger.get());
 #else
     auto fileLogger = std::unique_ptr<juce::FileLogger>(juce::FileLogger::createDefaultAppLogger(
-        "Anthem", "AnthemEngine.log", "Anthem Engine", 1024 * 1024));
+        "Anthem", "AnthemEngine.log", "Anthem Engine", static_cast<juce::int64>(1024) * 1024));
 
     if (fileLogger == nullptr) {
       juce::Logger::writeToLog("Failed to create Anthem engine file logger.");
