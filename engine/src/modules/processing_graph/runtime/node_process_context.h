@@ -52,8 +52,8 @@ public:
 
   // Maps node ports to graph-owned buffers. Input bindings may refer to
   // buffers owned for this node, another node's output buffer, or a shared
-  // silent/empty buffer. The rt_*ToClear lists identify only the buffers this
-  // node should clear before processing.
+  // silent/empty buffer. The rt_eventBuffersToClear list identifies only the
+  // buffers this node should clear before processing.
   struct BufferBindings {
     PortBufferIndexMap inputAudioBuffers;
     PortBufferIndexMap outputAudioBuffers;
@@ -64,7 +64,6 @@ public:
     PortBufferIndexMap inputEventBuffers;
     PortBufferIndexMap outputEventBuffers;
 
-    std::vector<size_t> rt_audioBuffersToClear;
     std::vector<size_t> rt_eventBuffersToClear;
     std::unordered_set<int64_t> rt_parameterInputPortsToWrite;
   };
@@ -91,7 +90,6 @@ private:
   PortBufferIndexMap inputEventBuffers;
   PortBufferIndexMap outputEventBuffers;
 
-  std::vector<size_t> rt_audioBuffersToClear;
   std::vector<size_t> rt_eventBuffersToClear;
 
   std::vector<InputParameterBinding> inputParameters;

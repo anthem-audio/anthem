@@ -40,7 +40,6 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
   outputControlBuffers = std::move(bufferBindings.outputControlBuffers);
   inputEventBuffers = std::move(bufferBindings.inputEventBuffers);
   outputEventBuffers = std::move(bufferBindings.outputEventBuffers);
-  rt_audioBuffersToClear = std::move(bufferBindings.rt_audioBuffersToClear);
   rt_eventBuffersToClear = std::move(bufferBindings.rt_eventBuffersToClear);
 
   inputParameters.reserve(graphNode->controlInputPorts()->size());
@@ -118,10 +117,6 @@ float NodeProcessContext::getParameterValue(int64_t id) {
 
 void NodeProcessContext::clearBuffers() {
   jassert(graphProcessContext != nullptr);
-
-  for (const auto bufferIndex : rt_audioBuffersToClear) {
-    graphProcessContext->getAudioBuffer(bufferIndex).clear();
-  }
 
   for (const auto bufferIndex : rt_eventBuffersToClear) {
     graphProcessContext->getEventBuffer(bufferIndex)->clear();

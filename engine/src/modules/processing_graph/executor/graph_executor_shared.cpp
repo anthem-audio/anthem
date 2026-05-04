@@ -60,23 +60,13 @@ void rt_writeParametersToControlInputs(
   }
 }
 
-void rt_copyAudioBuffer(
-    const RuntimeConnectionCopy& copy, GraphProcessContext& graphProcessContext, int numSamples) {
-  auto& source = graphProcessContext.getAudioBuffer(copy.sourceBufferIndex);
-  auto& destination = graphProcessContext.getAudioBuffer(copy.destinationBufferIndex);
-  jassert(source.getNumChannels() == destination.getNumChannels());
-  jassert(source.getNumSamples() == destination.getNumSamples());
-  jassert(numSamples <= source.getNumSamples());
+void rt_applyControlConnectionTransfer(const RuntimeConnectionTransferAction& action,
+    GraphProcessContext& graphProcessContext,
+    int numSamples) {
+  jassert(!action.sourceBufferIndices.empty());
 
-  for (int channel = 0; channel < source.getNumChannels(); ++channel) {
-    destination.addFrom(channel, 0, source, channel, 0, numSamples);
-  }
-}
-
-void rt_copyControlBuffer(
-    const RuntimeConnectionCopy& copy, GraphProcessContext& graphProcessContext, int numSamples) {
-  auto& source = graphProcessContext.getControlBuffer(copy.sourceBufferIndex);
-  auto& destination = graphProcessContext.getControlBuffer(copy.destinationBufferIndex);
+  auto& source = graphProcessContext.getControlBuffer(action.sourceBufferIndices.back());
+  auto& destination = graphProcessContext.getControlBuffer(action.destinationBufferIndex);
   jassert(source.getNumChannels() == destination.getNumChannels());
   jassert(source.getNumSamples() == destination.getNumSamples());
   jassert(numSamples <= source.getNumSamples());
@@ -86,28 +76,67 @@ void rt_copyControlBuffer(
   }
 }
 
-void rt_copyEvents(const RuntimeConnectionCopy& copy, GraphProcessContext& graphProcessContext) {
-  const auto* source = graphProcessContext.getEventBuffer(copy.sourceBufferIndex).get();
-  auto* destination = graphProcessContext.getEventBuffer(copy.destinationBufferIndex).get();
-  jassert(source != nullptr);
+void rt_applyEventConnectionTransfer(
+    const RuntimeConnectionTransferAction& action, GraphProcessContext& graphProcessContext) {
+  jassert(!action.sourceBufferIndices.empty());
+
+  auto* destination = graphProcessContext.getEventBuffer(action.destinationBufferIndex).get();
   jassert(destination != nullptr);
 
-  for (size_t eventIndex = 0; eventIndex < source->getNumEvents(); ++eventIndex) {
-    destination->addEvent(source->getEvent(eventIndex));
+  for (const auto sourceBufferIndex : action.sourceBufferIndices) {
+    const auto* source = graphProcessContext.getEventBuffer(sourceBufferIndex).get();
+    jassert(source != nullptr);
+
+    for (size_t eventIndex = 0; eventIndex < source->getNumEvents(); ++eventIndex) {
+      destination->addEvent(source->getEvent(eventIndex));
+    }
   }
 }
 
-void rt_copyIncomingConnection(
-    const RuntimeConnectionCopy& copy, GraphProcessContext& graphProcessContext, int numSamples) {
-  switch (copy.dataType) {
+void rt_applyAudioConnectionTransfer(const RuntimeConnectionTransferAction& action,
+    GraphProcessContext& graphProcessContext,
+    int numSamples) {
+  auto& destination = graphProcessContext.getAudioBuffer(action.destinationBufferIndex);
+  jassert(!action.sourceBufferIndices.empty());
+  jassert(numSamples <= destination.getNumSamples());
+
+#if JUCE_ASSERTIONS_ENABLED
+  for (const auto sourceBufferIndex : action.sourceBufferIndices) {
+    const auto& source = graphProcessContext.getAudioBuffer(sourceBufferIndex);
+    jassert(source.getNumChannels() == destination.getNumChannels());
+    jassert(source.getNumSamples() == destination.getNumSamples());
+    jassert(numSamples <= source.getNumSamples());
+  }
+#endif
+
+  for (int channel = 0; channel < destination.getNumChannels(); ++channel) {
+    auto* destinationSamples = destination.getWritePointer(channel);
+
+    for (int sample = 0; sample < numSamples; ++sample) {
+      float sum = 0.0f;
+
+      for (const auto sourceBufferIndex : action.sourceBufferIndices) {
+        const auto& source = graphProcessContext.getAudioBuffer(sourceBufferIndex);
+        sum += source.getReadPointer(channel)[sample];
+      }
+
+      destinationSamples[sample] = sum;
+    }
+  }
+}
+
+void rt_applyConnectionTransfer(const RuntimeConnectionTransferAction& action,
+    GraphProcessContext& graphProcessContext,
+    int numSamples) {
+  switch (action.dataType) {
     case RuntimeConnectionDataType::audio:
-      rt_copyAudioBuffer(copy, graphProcessContext, numSamples);
+      rt_applyAudioConnectionTransfer(action, graphProcessContext, numSamples);
       break;
     case RuntimeConnectionDataType::control:
-      rt_copyControlBuffer(copy, graphProcessContext, numSamples);
+      rt_applyControlConnectionTransfer(action, graphProcessContext, numSamples);
       break;
     case RuntimeConnectionDataType::event:
-      rt_copyEvents(copy, graphProcessContext);
+      rt_applyEventConnectionTransfer(action, graphProcessContext);
       break;
   }
 }
@@ -133,9 +162,9 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
   rt_writeParametersToControlInputs(
       *node.nodeProcessContext, state.runtimeGraph.sampleRate, numSamples);
 
-  for (const auto& incomingConnectionCopy : node.incomingConnectionCopies) {
-    rt_copyIncomingConnection(
-        incomingConnectionCopy, *state.runtimeGraph.graphProcessContext, numSamples);
+  for (const auto& connectionTransferAction : node.connectionTransferActions) {
+    rt_applyConnectionTransfer(
+        connectionTransferAction, *state.runtimeGraph.graphProcessContext, numSamples);
   }
 
   if (node.processor != nullptr) {

@@ -33,8 +33,8 @@ struct GraphExecutorState {
 // Resets per-block runtime counters before scheduling starts.
 void rt_prepareGraphForBlock(GraphExecutorState& state);
 
-// Copies this node's incoming connection data, updates parameter input buffers,
-// then invokes the node's processor if it has one.
+// Merges/copies this node's incoming connection data, updates parameter input
+// buffers, then invokes the node's processor if it has one.
 void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples);
 
 // Marks one upstream node as processed and returns true if this node is now

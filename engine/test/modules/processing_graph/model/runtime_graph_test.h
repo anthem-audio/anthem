@@ -213,11 +213,13 @@ public:
     testAliasesAudioFanOutConnections();
     testDisconnectedAudioInputsShareSilentBuffer();
     testAliasesSingleEventConnection();
+    testBuildsEventFanInTransferAction();
     testPrepareGraphForBlockResetsRemainingUpstreamNodeCounters();
     testDecrementRemainingUpstreamNodeCounter();
     testSingleThreadedExecutorMakesAudioAvailableToReadyDownstreamNodes();
     testSingleThreadedExecutorHandlesDuplicateEdges();
     testConnectedControlParameterDoesNotOverwriteAliasedSignal();
+    testSingleThreadedExecutorHandlesControlFanIn();
     testSingleThreadedExecutorProcessesNodesWithoutProcessors();
     testCalculatesLinearPriorities();
     testCalculatesDiamondPriorities();
@@ -276,9 +278,15 @@ public:
         "Node 1 should point to its downstream node.");
     expect(secondNode.outgoingConnections[0] == &thirdNode,
         "Node 2 should point to its downstream node.");
-    expectEquals(static_cast<int>(thirdNode.incomingConnectionCopies.size()),
+    expectEquals(static_cast<int>(thirdNode.connectionTransferActions.size()),
+        1,
+        "Audio fan-in should create one grouped transfer action for the destination port.");
+    expect(thirdNode.connectionTransferActions[0].dataType == RuntimeConnectionDataType::audio,
+        "The transfer action should preserve its audio data type.");
+    expectEquals(
+        static_cast<int>(thirdNode.connectionTransferActions[0].sourceBufferIndices.size()),
         2,
-        "Each real incoming connection should have a copy operation.");
+        "Each real incoming audio connection should contribute to the grouped merge.");
   }
 
   void testDeduplicatesNodeConnections() {
@@ -304,9 +312,16 @@ public:
     expectEquals(static_cast<int>(destinationNode.upstreamNodeCount),
         1,
         "Duplicate node-level edges should only count as one upstream node.");
-    expectEquals(static_cast<int>(destinationNode.incomingConnectionCopies.size()),
+    expectEquals(static_cast<int>(destinationNode.connectionTransferActions.size()),
+        1,
+        "Duplicate real audio connections should share one grouped transfer action.");
+    expect(
+        destinationNode.connectionTransferActions[0].dataType == RuntimeConnectionDataType::audio,
+        "The transfer action should preserve its audio data type.");
+    expectEquals(
+        static_cast<int>(destinationNode.connectionTransferActions[0].sourceBufferIndices.size()),
         2,
-        "Duplicate real connections should still create separate copy operations.");
+        "Duplicate real audio connections should still contribute separately.");
     expectEquals(static_cast<int>(sourceNode.priority),
         2,
         "Duplicate node-level edges should only contribute once to priority.");
@@ -331,9 +346,9 @@ public:
 
     expect(&sourceOutputBuffer == &destinationInputBuffer,
         "A single audio connection should bind the destination input to the source output.");
-    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()),
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()),
         0,
-        "A single aliased connection should not need a copy operation.");
+        "A single aliased connection should not need a transfer action.");
   }
 
   void testAliasesAudioFanOutConnections() {
@@ -360,8 +375,8 @@ public:
         "The first fan-out destination should alias the source output.");
     expect(&sourceOutputBuffer == &secondDestinationInputBuffer,
         "The second fan-out destination should alias the source output.");
-    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()), 0);
-    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).incomingConnectionCopies.size()), 0);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 0);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()), 0);
   }
 
   void testDisconnectedAudioInputsShareSilentBuffer() {
@@ -403,9 +418,9 @@ public:
 
     expect(&sourceOutputBuffer == &destinationInputBuffer,
         "A single event connection should bind the destination input to the source output.");
-    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()),
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()),
         0,
-        "A single aliased event connection should not need a copy operation.");
+        "A single aliased event connection should not need a transfer action.");
 
     sourceOutputBuffer.addEvent(LiveEvent{
         .sampleOffset = 0,
@@ -416,6 +431,33 @@ public:
     expectEquals(static_cast<int>(destinationInputBuffer.getNumEvents()),
         1,
         "The destination input should see source output events through the alias.");
+  }
+
+  void testBuildsEventFanInTransferAction() {
+    beginTest("RuntimeGraph builds event fan-in transfer actions");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addEventGraphNode(*graph, 1);
+    addEventGraphNode(*graph, 2);
+    addEventGraphNode(*graph, 3);
+    addEventConnection(*graph, 100, 1, 3);
+    addEventConnection(*graph, 101, 2, 3);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& destinationNode = runtimeGraph->nodes.at(3);
+
+    expectEquals(static_cast<int>(destinationNode.connectionTransferActions.size()),
+        1,
+        "Event fan-in should create one grouped transfer action for the destination port.");
+    expect(
+        destinationNode.connectionTransferActions[0].dataType == RuntimeConnectionDataType::event,
+        "The transfer action should preserve its event data type.");
+    expectEquals(
+        static_cast<int>(destinationNode.connectionTransferActions[0].sourceBufferIndices.size()),
+        2,
+        "Each real incoming event connection should contribute to the grouped transfer.");
   }
 
   void testPrepareGraphForBlockResetsRemainingUpstreamNodeCounters() {
@@ -516,17 +558,22 @@ public:
 
     auto& sourceOutputBuffer =
         runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+    auto destinationInputBufferIndex = runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(2));
+    auto& destinationInputBuffer =
+        runtimeGraph->graphProcessContext->getAudioBuffer(destinationInputBufferIndex);
+
+    expect(&sourceOutputBuffer != &destinationInputBuffer,
+        "Audio fan-in should use a dedicated destination buffer.");
 
     for (int channel = 0; channel < sourceOutputBuffer.getNumChannels(); ++channel) {
       for (int sample = 0; sample < 4; ++sample) {
         sourceOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 1));
+        destinationInputBuffer.setSample(channel, sample, 99.0f);
       }
     }
 
     processRuntimeGraph(*runtimeGraph, 4);
-
-    auto& destinationInputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
 
     for (int channel = 0; channel < destinationInputBuffer.getNumChannels(); ++channel) {
       for (int sample = 0; sample < 4; ++sample) {
@@ -555,7 +602,7 @@ public:
 
     expect(&sourceOutputBuffer == &destinationInputBuffer,
         "A single control connection should alias the destination input to the source output.");
-    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).incomingConnectionCopies.size()), 0);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 0);
 
     for (int sample = 0; sample < 4; ++sample) {
       sourceOutputBuffer.setSample(0, sample, static_cast<float>(sample) * 0.2f);
@@ -568,6 +615,52 @@ public:
           static_cast<float>(sample) * 0.2f,
           0.0001f,
           "The connected control input should keep the source output value.");
+    }
+  }
+
+  void testSingleThreadedExecutorHandlesControlFanIn() {
+    beginTest("Single-threaded executor handles control fan-in");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addControlGraphNode(*graph, 1);
+    addControlGraphNode(*graph, 2);
+    addControlGraphNode(*graph, 3);
+    addControlConnection(*graph, 100, 1, 3);
+    addControlConnection(*graph, 101, 2, 3);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto& firstSourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
+            controlOutputPortId(1));
+    auto& secondSourceOutputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputControlBuffer(
+            controlOutputPortId(2));
+    auto& destinationInputBuffer =
+        runtimeGraph->nodes.at(3).nodeProcessContext->getInputControlBuffer(controlInputPortId(3));
+
+    expect(&secondSourceOutputBuffer != &destinationInputBuffer,
+        "Control fan-in should use a dedicated destination buffer.");
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()),
+        1,
+        "Control fan-in should create one grouped transfer action.");
+    expect(runtimeGraph->nodes.at(3).connectionTransferActions[0].dataType ==
+               RuntimeConnectionDataType::control,
+        "The transfer action should preserve its control data type.");
+
+    for (int sample = 0; sample < 4; ++sample) {
+      firstSourceOutputBuffer.setSample(0, sample, static_cast<float>(sample) * 0.1f);
+      secondSourceOutputBuffer.setSample(0, sample, 0.5f + static_cast<float>(sample) * 0.1f);
+    }
+
+    processRuntimeGraph(*runtimeGraph, 4);
+
+    for (int sample = 0; sample < 4; ++sample) {
+      expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
+          0.5f + static_cast<float>(sample) * 0.1f,
+          0.0001f,
+          "Control fan-in should keep the most recent connection value.");
     }
   }
 

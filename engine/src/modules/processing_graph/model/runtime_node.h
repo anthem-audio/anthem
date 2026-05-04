@@ -37,13 +37,12 @@ enum class RuntimeConnectionDataType : uint8_t {
   event,
 };
 
-struct RuntimeConnectionCopy {
-  // Precomputed graph-owned buffer indices for a single connection into this
-  // runtime node. These let the audio thread copy connection data without
-  // walking the project model.
+struct RuntimeConnectionTransferAction {
+  // Precomputed graph-owned buffer indices for a multi-source input. The data
+  // type determines whether sources are summed, copied, or appended.
   RuntimeConnectionDataType dataType;
-  size_t sourceBufferIndex = 0;
   size_t destinationBufferIndex = 0;
+  std::vector<size_t> sourceBufferIndices;
 };
 
 struct RuntimeNodeState {
@@ -97,8 +96,9 @@ struct RuntimeNode {
   // Mutable state that is reset for each processing block.
   RuntimeNodeState rt_state;
 
-  // Buffer copies that must run before this node processes.
-  std::vector<RuntimeConnectionCopy> incomingConnectionCopies;
+  // Connection-derived buffer operations that must run before this node
+  // processes.
+  std::vector<RuntimeConnectionTransferAction> connectionTransferActions;
 
   // Non-owning pointers to nodes owned by the RuntimeGraph.
   std::vector<RuntimeNode*> outgoingConnections;

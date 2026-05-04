@@ -44,7 +44,7 @@ RuntimeNode::RuntimeNode(RuntimeNode&& other) noexcept
   : id(other.id), sourceNode(std::move(other.sourceNode)), priority(other.priority),
     upstreamNodeCount(other.upstreamNodeCount), nodeProcessContext(other.nodeProcessContext),
     processor(other.processor), rt_state(std::move(other.rt_state)),
-    incomingConnectionCopies(std::move(other.incomingConnectionCopies)),
+    connectionTransferActions(std::move(other.connectionTransferActions)),
     outgoingConnections(std::move(other.outgoingConnections)) {}
 
 RuntimeNode& RuntimeNode::operator=(RuntimeNode&& other) noexcept {
@@ -56,7 +56,7 @@ RuntimeNode& RuntimeNode::operator=(RuntimeNode&& other) noexcept {
     nodeProcessContext = other.nodeProcessContext;
     processor = other.processor;
     rt_state = std::move(other.rt_state);
-    incomingConnectionCopies = std::move(other.incomingConnectionCopies);
+    connectionTransferActions = std::move(other.connectionTransferActions);
     outgoingConnections = std::move(other.outgoingConnections);
   }
 

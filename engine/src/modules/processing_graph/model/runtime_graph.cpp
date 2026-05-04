@@ -130,7 +130,7 @@ void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
       incomingConnectionCount += port->connections()->size();
     }
 
-    runtimeGraph.nodes.at(nodeId).incomingConnectionCopies.reserve(incomingConnectionCount);
+    runtimeGraph.nodes.at(nodeId).connectionTransferActions.reserve(incomingConnectionCount);
   }
 
   runtimeGraph.graphProcessContext->reserve(
@@ -168,31 +168,6 @@ void publishRuntimeContexts(RuntimeGraph& runtimeGraph) {
   for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
     runtimeNode.sourceNode->runtimeContext = runtimeNode.nodeProcessContext;
   }
-}
-
-void addIncomingConnectionCopyToRuntimeNode(RuntimeNode& destinationNode,
-    anthem::NodeConnection& connection,
-    NodePortDataType dataType,
-    BufferBindingsByNodeId& bufferBindingsByNodeId) {
-  auto sourceBufferIndex = getBufferIndex(bufferBindingsByNodeId.at(connection.sourceNodeId()),
-      dataType,
-      NodeProcessContext::BufferDirection::output,
-      connection.sourcePortId());
-  auto destinationBufferIndex =
-      getBufferIndex(bufferBindingsByNodeId.at(connection.destinationNodeId()),
-          dataType,
-          NodeProcessContext::BufferDirection::input,
-          connection.destinationPortId());
-
-  if (sourceBufferIndex == destinationBufferIndex) {
-    return;
-  }
-
-  destinationNode.incomingConnectionCopies.push_back(RuntimeConnectionCopy{
-      .dataType = toRuntimeConnectionDataType(dataType),
-      .sourceBufferIndex = sourceBufferIndex,
-      .destinationBufferIndex = destinationBufferIndex,
-  });
 }
 
 RuntimeNode& addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
@@ -243,6 +218,25 @@ RuntimeNode& addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
   return destinationNode;
 }
 
+void addConnectionSourceToTransferAction(RuntimeConnectionTransferAction& action,
+    RuntimeNode*& destinationRuntimeNode,
+    RuntimeGraph& runtimeGraph,
+    UniqueDestinationMap& uniqueDestinationIdsBySource,
+    anthem::NodeConnection& connection,
+    NodePortDataType dataType,
+    RuntimeNode::Id inputPortNodeId,
+    BufferBindingsByNodeId& bufferBindingsByNodeId) {
+  auto& destinationNode = addConnectionToRuntimeGraph(
+      runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
+  destinationRuntimeNode = &destinationNode;
+
+  auto sourceBufferIndex = getBufferIndex(bufferBindingsByNodeId.at(connection.sourceNodeId()),
+      dataType,
+      NodeProcessContext::BufferDirection::output,
+      connection.sourcePortId());
+  action.sourceBufferIndices.push_back(sourceBufferIndex);
+}
+
 void reserveBufferBindingStorage(
     NodeProcessContext::BufferBindings& bindings, anthem::Node& graphNode) {
   bindings.inputAudioBuffers.reserve(graphNode.audioInputPorts()->size());
@@ -251,7 +245,6 @@ void reserveBufferBindingStorage(
   bindings.outputControlBuffers.reserve(graphNode.controlOutputPorts()->size());
   bindings.inputEventBuffers.reserve(graphNode.eventInputPorts()->size());
   bindings.outputEventBuffers.reserve(graphNode.eventOutputPorts()->size());
-  bindings.rt_audioBuffersToClear.reserve(graphNode.audioInputPorts()->size());
   bindings.rt_eventBuffersToClear.reserve(
       graphNode.eventInputPorts()->size() + graphNode.eventOutputPorts()->size());
   bindings.rt_parameterInputPortsToWrite.reserve(graphNode.controlInputPorts()->size());
@@ -317,20 +310,34 @@ void bindAudioInputPort(RuntimeGraph& runtimeGraph,
     return;
   }
 
-  // Finally, the only case where we need to actually copy from outputs to
-  // inputs is cases where the input port has multiple incoming connections. In
-  // this case, we sum all the connected output buffers into the input buffer.
+  // Finally, the only case where we need a dedicated input buffer is when the
+  // input port has multiple incoming connections. In this case, we sum all the
+  // connected output buffers into the input buffer.
 
   auto destinationBufferIndex = runtimeGraph.graphProcessContext->allocateAudioBuffer();
   bindings.inputAudioBuffers.emplace(inputPort.id(), destinationBufferIndex);
-  bindings.rt_audioBuffersToClear.push_back(destinationBufferIndex);
+
+  RuntimeConnectionTransferAction action;
+  action.dataType = RuntimeConnectionDataType::audio;
+  action.destinationBufferIndex = destinationBufferIndex;
+  action.sourceBufferIndices.reserve(connectionCount);
+  RuntimeNode* destinationRuntimeNode = nullptr;
 
   for (auto connectionId : *inputPort.connections()) {
     auto& connection = getGraphConnection(graphConnections, connectionId);
-    auto& destinationNode = addConnectionToRuntimeGraph(
-        runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
-    addIncomingConnectionCopyToRuntimeNode(
-        destinationNode, connection, NodePortDataType::audio, bufferBindingsByNodeId);
+    addConnectionSourceToTransferAction(action,
+        destinationRuntimeNode,
+        runtimeGraph,
+        uniqueDestinationIdsBySource,
+        connection,
+        NodePortDataType::audio,
+        inputPortNodeId,
+        bufferBindingsByNodeId);
+  }
+
+  jassert(destinationRuntimeNode != nullptr);
+  if (destinationRuntimeNode != nullptr) {
+    destinationRuntimeNode->connectionTransferActions.push_back(std::move(action));
   }
 }
 
@@ -366,7 +373,7 @@ void bindControlInputPort(RuntimeGraph& runtimeGraph,
         runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
 
     // A single-source input can read directly from the source output. Fan-in
-    // inputs below get a dedicated destination buffer and connection copies.
+    // inputs below get a dedicated destination buffer and transfer action.
     auto sourceBufferIndex = getBufferIndex(bufferBindingsByNodeId.at(connection.sourceNodeId()),
         NodePortDataType::control,
         NodeProcessContext::BufferDirection::output,
@@ -378,12 +385,27 @@ void bindControlInputPort(RuntimeGraph& runtimeGraph,
   auto destinationBufferIndex = runtimeGraph.graphProcessContext->allocateControlBuffer();
   bindings.inputControlBuffers.emplace(inputPort.id(), destinationBufferIndex);
 
+  RuntimeConnectionTransferAction action;
+  action.dataType = RuntimeConnectionDataType::control;
+  action.destinationBufferIndex = destinationBufferIndex;
+  action.sourceBufferIndices.reserve(connectionCount);
+  RuntimeNode* destinationRuntimeNode = nullptr;
+
   for (auto connectionId : *inputPort.connections()) {
     auto& connection = getGraphConnection(graphConnections, connectionId);
-    auto& destinationNode = addConnectionToRuntimeGraph(
-        runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
-    addIncomingConnectionCopyToRuntimeNode(
-        destinationNode, connection, NodePortDataType::control, bufferBindingsByNodeId);
+    addConnectionSourceToTransferAction(action,
+        destinationRuntimeNode,
+        runtimeGraph,
+        uniqueDestinationIdsBySource,
+        connection,
+        NodePortDataType::control,
+        inputPortNodeId,
+        bufferBindingsByNodeId);
+  }
+
+  jassert(destinationRuntimeNode != nullptr);
+  if (destinationRuntimeNode != nullptr) {
+    destinationRuntimeNode->connectionTransferActions.push_back(std::move(action));
   }
 }
 
@@ -413,7 +435,7 @@ void bindEventInputPort(RuntimeGraph& runtimeGraph,
         runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
 
     // A single-source input can read directly from the source output. Fan-in
-    // inputs below get a dedicated destination buffer and connection copies.
+    // inputs below get a dedicated destination buffer and transfer action.
     auto sourceBufferIndex = getBufferIndex(bufferBindingsByNodeId.at(connection.sourceNodeId()),
         NodePortDataType::event,
         NodeProcessContext::BufferDirection::output,
@@ -429,12 +451,27 @@ void bindEventInputPort(RuntimeGraph& runtimeGraph,
   bindings.inputEventBuffers.emplace(inputPort.id(), destinationBufferIndex);
   bindings.rt_eventBuffersToClear.push_back(destinationBufferIndex);
 
+  RuntimeConnectionTransferAction action;
+  action.dataType = RuntimeConnectionDataType::event;
+  action.destinationBufferIndex = destinationBufferIndex;
+  action.sourceBufferIndices.reserve(connectionCount);
+  RuntimeNode* destinationRuntimeNode = nullptr;
+
   for (auto connectionId : *inputPort.connections()) {
     auto& connection = getGraphConnection(graphConnections, connectionId);
-    auto& destinationNode = addConnectionToRuntimeGraph(
-        runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
-    addIncomingConnectionCopyToRuntimeNode(
-        destinationNode, connection, NodePortDataType::event, bufferBindingsByNodeId);
+    addConnectionSourceToTransferAction(action,
+        destinationRuntimeNode,
+        runtimeGraph,
+        uniqueDestinationIdsBySource,
+        connection,
+        NodePortDataType::event,
+        inputPortNodeId,
+        bufferBindingsByNodeId);
+  }
+
+  jassert(destinationRuntimeNode != nullptr);
+  if (destinationRuntimeNode != nullptr) {
+    destinationRuntimeNode->connectionTransferActions.push_back(std::move(action));
   }
 }
 

@@ -144,7 +144,6 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
   bindings.outputControlBuffers.reserve(graphNode->controlOutputPorts()->size());
   bindings.inputEventBuffers.reserve(graphNode->eventInputPorts()->size());
   bindings.outputEventBuffers.reserve(graphNode->eventOutputPorts()->size());
-  bindings.rt_audioBuffersToClear.reserve(graphNode->audioInputPorts()->size());
   bindings.rt_eventBuffersToClear.reserve(
       graphNode->eventInputPorts()->size() + graphNode->eventOutputPorts()->size());
   bindings.rt_parameterInputPortsToWrite.reserve(graphNode->controlInputPorts()->size());
@@ -152,7 +151,6 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
   for (auto& port : *graphNode->audioInputPorts()) {
     auto bufferIndex = graphProcessContext.allocateAudioBuffer();
     bindings.inputAudioBuffers.emplace(port->id(), bufferIndex);
-    bindings.rt_audioBuffersToClear.push_back(bufferIndex);
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {

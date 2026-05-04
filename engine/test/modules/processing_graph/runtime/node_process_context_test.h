@@ -151,7 +151,7 @@ public:
   }
 
   void testClearBuffersClearsOnlyDocumentedBuffers() {
-    beginTest("clearBuffers clears input audio and all event buffers");
+    beginTest("clearBuffers clears event buffers");
 
     auto node = makeFullyBoundNode(10);
 
@@ -187,8 +187,10 @@ public:
 
     context.clearBuffers();
 
-    expectWithinAbsoluteError(
-        inputAudioBuffer.getSample(0, 0), 0.0f, 0.0001f, "Input audio buffers should be cleared.");
+    expectWithinAbsoluteError(inputAudioBuffer.getSample(0, 0),
+        0.75f,
+        0.0001f,
+        "Input audio buffers should be left as-is.");
     expectWithinAbsoluteError(outputAudioBuffer.getSample(0, 0),
         0.5f,
         0.0001f,
