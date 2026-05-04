@@ -83,10 +83,6 @@ struct RuntimeNode {
   // Number of unique nodes that must finish before this node can process.
   size_t upstreamNodeCount = 0;
 
-  // Nodes with no downstream connections are final graph outputs. These are
-  // reserved for the primary audio thread so it controls block completion.
-  bool isOutputNode = false;
-
   // Raw audio-thread-safe view into graph-owned buffers for this node.
   anthem::NodeProcessContext* nodeProcessContext = nullptr;
 

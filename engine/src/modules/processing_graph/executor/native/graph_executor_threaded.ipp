@@ -233,14 +233,11 @@ public:
     rt_prepareGraphForBlock(state);
 
     if (runtimeGraph.nodes.empty()) {
+      rt_remainingNodeCount.store(0, std::memory_order_release);
       return;
     }
 
-    jassert(!runtimeGraph.outputNodes.empty());
-    if (runtimeGraph.outputNodes.empty()) {
-      return;
-    }
-
+    rt_remainingNodeCount.store(runtimeGraph.nodes.size(), std::memory_order_release);
     rt_prepareQueuesForBlock(runtimeGraph, runtimeState);
 
     rt_currentState.store(&state, std::memory_order_release);
@@ -343,10 +340,6 @@ private:
     }
 
     for (auto* inputNode : runtimeGraph.inputNodes) {
-      if (inputNode->isOutputNode) {
-        continue;
-      }
-
       if (!readyNodeQueues[audioThreadReadyQueueIndex]->add(inputNode)) {
         jassertfalse;
       }
@@ -399,12 +392,11 @@ private:
       auto* runtimeNode = rt_getNextNodeToProcess(state.runtimeGraph, runtimeState, role);
 
       if (runtimeNode == nullptr) {
-        if (role == ExecutorThreadRole::workerThread) {
+        if (rt_hasFinishedBlock()) {
           return;
         }
 
-        if (rt_canProcessOutputNodes(state.runtimeGraph)) {
-          rt_processOutputNodes(state, numSamples);
+        if (role == ExecutorThreadRole::workerThread) {
           return;
         }
 
@@ -412,10 +404,9 @@ private:
         continue;
       }
 
-      jassert(role == ExecutorThreadRole::audioThread || !runtimeNode->isOutputNode);
-
       rt_processNode(state, *runtimeNode, numSamples);
       rt_enqueueReadyDownstreamNodes(*runtimeNode, runtimeState, readyQueueIndex);
+      rt_markNodeProcessed();
     }
   }
 
@@ -505,11 +496,6 @@ private:
       }
     }
 
-    jassert(!nextNode->isOutputNode);
-    if (nextNode->isOutputNode) {
-      return nullptr;
-    }
-
     runtimeGraph.availableTasks.pop();
     return nextNode;
   }
@@ -531,40 +517,20 @@ private:
         continue;
       }
 
-      if (downstreamNode->isOutputNode) {
-        continue;
-      }
-
       if (!readyNodeQueue.add(downstreamNode)) {
         jassertfalse;
       }
     }
   }
 
-  bool rt_canProcessOutputNodes(RuntimeGraph& runtimeGraph) {
-    for (auto* outputNode : runtimeGraph.outputNodes) {
-      jassert(outputNode != nullptr);
-
-      if (outputNode == nullptr) {
-        return false;
-      }
-
-      if (outputNode->rt_state.rt_remainingUpstreamNodes.load(std::memory_order_acquire) != 0) {
-        return false;
-      }
-    }
-
-    return true;
+  bool rt_hasFinishedBlock() const {
+    return rt_remainingNodeCount.load(std::memory_order_acquire) == 0;
   }
 
-  void rt_processOutputNodes(GraphExecutorState& state, int numSamples) {
-    for (auto* outputNode : state.runtimeGraph.outputNodes) {
-      jassert(outputNode != nullptr);
-
-      if (outputNode != nullptr) {
-        rt_processNode(state, *outputNode, numSamples);
-      }
-    }
+  void rt_markNodeProcessed() {
+    const auto previousRemainingNodeCount =
+        rt_remainingNodeCount.fetch_sub(1, std::memory_order_acq_rel);
+    jassert(previousRemainingNodeCount > 0);
   }
 
   void rt_wakeWorkerBeforeReleasingSchedulerGate(RuntimeGraph& runtimeGraph) {
@@ -593,6 +559,7 @@ private:
   std::atomic<int> rt_currentNumSamples{0};
   std::atomic<bool> rt_workerThreadsMayRun{false};
   std::atomic<int> rt_activeWorkerThreadCount{0};
+  std::atomic<size_t> rt_remainingNodeCount{0};
 };
 
 } // namespace anthem

@@ -631,11 +631,6 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
     if (runtimeNode.upstreamNodeCount == 0) {
       runtimeGraph.inputNodes.push_back(&runtimeNode);
     }
-
-    if (runtimeNode.outgoingConnections.empty()) {
-      runtimeNode.isOutputNode = true;
-      runtimeGraph.outputNodes.push_back(&runtimeNode);
-    }
   }
 
   std::unordered_map<RuntimeNode::Id, DfsState> dfsStates;

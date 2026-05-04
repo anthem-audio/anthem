@@ -62,7 +62,6 @@ public:
 
   std::unordered_map<RuntimeNode::Id, RuntimeNode> nodes;
   std::vector<RuntimeNode*> inputNodes;
-  std::vector<RuntimeNode*> outputNodes;
   AvailableTaskQueue availableTasks;
   std::unique_ptr<GraphProcessContext> graphProcessContext;
   float sampleRate = 0.0f;
