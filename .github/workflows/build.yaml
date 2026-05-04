@@ -19,6 +19,11 @@ jobs:
             arch: arm64
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
@@ -46,6 +51,11 @@ jobs:
             arch: x64
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
@@ -75,6 +85,11 @@ jobs:
             arch: arm64
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
@@ -99,6 +114,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Initialize project
         uses: ./.github/actions/shared-init
 

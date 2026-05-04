@@ -11,6 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
@@ -38,6 +43,11 @@ jobs:
     runs-on: macos-latest
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
@@ -65,6 +75,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
       - name: Initialize project
         uses: ./.github/actions/shared-init
 

@@ -57,11 +57,6 @@ runs:
       shell: bash
       run: flutter doctor
 
-    - name: Check out code
-      uses: actions/checkout@v6
-      with:
-        submodules: recursive
-
     - name: Get Dart dependencies
       shell: bash
       run: |
