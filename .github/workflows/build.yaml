@@ -38,9 +38,6 @@ jobs:
         with:
           submodules: recursive
 
-      # --------------------------------------------------------------
-      # Install dependencies (Linux only)
-      # --------------------------------------------------------------
       - name: Install apt dependencies
         if: contains(matrix.os, 'ubuntu')
         run: |
@@ -59,9 +56,6 @@ jobs:
           echo "ANTHEM_LLVM_BIN=/usr/lib/llvm-22/bin" >> "$GITHUB_ENV"
           echo "/usr/lib/llvm-22/bin" >> "$GITHUB_PATH"
 
-      # --------------------------------------------------------------
-      # Install dependencies (Windows only)
-      # --------------------------------------------------------------
       - name: Install Windows dependencies
         if: contains(matrix.os, 'windows')
         run: |
@@ -71,9 +65,6 @@ jobs:
           Add-Content $env:GITHUB_PATH 'C:\Program Files\LLVM\bin'
           Add-Content $env:GITHUB_PATH 'C:\ProgramData\chocolatey\bin'
 
-      # --------------------------------------------------------------
-      # Install dependencies (macOS only)
-      # --------------------------------------------------------------
       - name: Install macOS dependencies
         if: contains(matrix.os, 'macos')
         run: |
@@ -81,9 +72,6 @@ jobs:
           echo "ANTHEM_LLVM_BIN=$(brew --prefix llvm@22)/bin" >> $GITHUB_ENV
           echo "$(brew --prefix llvm@22)/bin" >> $GITHUB_PATH
 
-      # --------------------------------------------------------------
-      # Print LLVM tool versions
-      # --------------------------------------------------------------
       - name: Print LLVM tool versions
         if: matrix.arch != 'wasm'
         run: |
@@ -91,33 +79,21 @@ jobs:
           clang-format --version
           clang-tidy --version
 
-      # --------------------------------------------------------------
-      # Clone + set up Flutter (Windows)
-      # --------------------------------------------------------------
       - name: Clone Flutter (Windows)
         if: contains(matrix.os, 'windows')
         run: |
           git clone --branch stable https://github.com/flutter/flutter.git $env:RUNNER_TEMP\flutter
           Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\flutter\bin"
 
-      # --------------------------------------------------------------
-      # Clone + set up Flutter (Linux, macOS)
-      # --------------------------------------------------------------
       - name: Clone Flutter (Linux, macOS)
         if: contains(matrix.os, 'ubuntu') || contains(matrix.os, 'macos')
         run: |
           git clone --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
           echo "$RUNNER_TEMP/flutter/bin" >> $GITHUB_PATH
 
-      # --------------------------------------------------------------
-      # Flutter doctor
-      # --------------------------------------------------------------
       - name: Install Flutter
         run: flutter doctor
       
-      # --------------------------------------------------------------
-      # Get dependencies
-      # --------------------------------------------------------------
       - name: Get root dependencies
         run: flutter pub get
 
@@ -129,46 +105,28 @@ jobs:
         working-directory: tools/anthem_analyzer_plugin
         run: dart pub get
 
-      # --------------------------------------------------------------
-      # Run code generation
-      # --------------------------------------------------------------
       - name: Run code generation
         run: dart run anthem:cli codegen generate --explicit-format-for-ci
 
-      # --------------------------------------------------------------
-      # Check formatting
-      # --------------------------------------------------------------
       - name: Format code
         run: dart format . --set-exit-if-changed -o none
 
-      # --------------------------------------------------------------
-      # Lint (Windows)
-      # --------------------------------------------------------------
       - name: Lint code (Windows)
         if: contains(matrix.os, 'windows')
         run: |
           mkdir assets\engine
           dart analyze --fatal-infos
       
-      # --------------------------------------------------------------
-      # Lint (Linux, macOS)
-      # --------------------------------------------------------------
       - name: Lint code (Linux, macOS)
         if: contains(matrix.os, 'ubuntu') || contains(matrix.os, 'macos')
         run: |
           mkdir -p assets/engine
           dart analyze --fatal-infos
 
-      # --------------------------------------------------------------
-      # Check engine C++ formatting
-      # --------------------------------------------------------------
       - name: Check engine C++ formatting
         if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine format --check
 
-      # --------------------------------------------------------------
-      # Build engine (desktop)
-      # --------------------------------------------------------------
       - name: Build engine (desktop)
         if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine build --release
@@ -177,58 +135,34 @@ jobs:
         if: matrix.arch == 'wasm'
         run: dart run anthem:cli engine build --release --wasm
 
-      # --------------------------------------------------------------
-      # Lint engine C++ with clang-tidy
-      # --------------------------------------------------------------
       - name: Lint engine C++ with clang-tidy
         if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine lint
 
-      # --------------------------------------------------------------
-      # Engine unit tests
-      # --------------------------------------------------------------
       - name: Run engine unit tests
         if: matrix.arch != 'wasm'
         run: dart run anthem:cli engine unit-test
 
-      # --------------------------------------------------------------
-      # Flutter unit + integration tests
-      # --------------------------------------------------------------
       - name: Run Flutter tests
         if: matrix.arch != 'wasm'
         run: dart run anthem:cli flutter_test
 
-      # --------------------------------------------------------------
-      # Build Flutter (Windows)
-      # --------------------------------------------------------------
       - name: Build Flutter (Windows)
         if: contains(matrix.os, 'windows')
         run: flutter build windows --verbose --release
         
-      # --------------------------------------------------------------
-      # Build Flutter (Linux)
-      # --------------------------------------------------------------
       - name: Build Flutter (Linux)
         if: contains(matrix.os, 'ubuntu') && matrix.arch != 'wasm'
         run: flutter build linux --verbose --release
       
-      # --------------------------------------------------------------
-      # Build Flutter (macOS)
-      # --------------------------------------------------------------
       - name: Build Flutter (macOS)
         if: contains(matrix.os, 'macos')
         run: flutter build macos --verbose --release
 
-      # --------------------------------------------------------------
-      # Build Flutter (WASM)
-      # --------------------------------------------------------------
       - name: Build Flutter (WASM)
         if: matrix.arch == 'wasm'
         run: flutter build web --verbose --release --wasm
 
-      # --------------------------------------------------------------
-      # Upload artifacts (Windows)
-      # --------------------------------------------------------------
       - name: Upload artifact (Windows)
         if: contains(matrix.os, 'windows')
         uses: actions/upload-artifact@v7
@@ -241,9 +175,6 @@ jobs:
           # below.
           path: build/windows/x64/runner/Release
 
-      # --------------------------------------------------------------
-      # Upload artifacts (Linux)
-      # --------------------------------------------------------------
       - name: Upload artifact (Linux)
         if: contains(matrix.os, 'ubuntu') && matrix.arch != 'wasm'
         uses: actions/upload-artifact@v7
@@ -251,9 +182,6 @@ jobs:
           name: anthem-linux-${{ matrix.arch }}
           path: build/linux/${{ matrix.arch }}/release/bundle
 
-      # --------------------------------------------------------------
-      # Upload artifacts (macOS)
-      # --------------------------------------------------------------
       - name: Upload artifact (macOS)
         if: contains(matrix.os, 'macos')
         uses: actions/upload-artifact@v7
@@ -263,9 +191,6 @@ jobs:
           # If a wildcard pattern is used, the path hierarchy will start with the first wildcard pattern
           path: build/macos/Build/Products/Release/*.app
 
-      # --------------------------------------------------------------
-      # Deploy web build
-      # --------------------------------------------------------------
       - name: Install Node.js
         if: matrix.arch == 'wasm'
         uses: actions/setup-node@v6
