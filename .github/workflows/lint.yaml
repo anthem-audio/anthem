@@ -1,0 +1,51 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
+          - os: windows-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Initialize project
+        uses: ./.github/actions/shared-init
+
+      - name: Format code
+        run: dart format . --set-exit-if-changed -o none
+
+      - name: Lint code
+        shell: bash
+        run: |
+          mkdir -p assets/engine
+          dart analyze --fatal-infos
+
+      - name: Check engine C++ formatting
+        run: dart run anthem:cli engine format --check
+
+      - name: Lint engine C++ with clang-tidy
+        run: dart run anthem:cli engine lint
+
+      - name: Run engine unit tests
+        run: dart run anthem:cli engine unit-test
+
+      - name: Build engine
+        run: dart run anthem:cli engine build --release
+
+      - name: Run Flutter tests
+        run: dart run anthem:cli flutter_test
