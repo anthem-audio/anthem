@@ -44,5 +44,8 @@ jobs:
       - name: Run engine unit tests
         run: dart run anthem:cli engine unit-test
 
+      - name: Build engine
+        run: dart run anthem:cli engine build --release
+
       - name: Run Flutter tests
         run: dart run anthem:cli flutter_test
