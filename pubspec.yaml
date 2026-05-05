@@ -6,6 +6,10 @@ version: 0.0.1
 environment:
   sdk: ">=3.11.0 <4.0.0"
 
+workspace:
+  - codegen
+  - tools/anthem_analyzer_plugin
+
 dependencies:
   flutter:
     sdk: flutter
