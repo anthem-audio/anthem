@@ -20,8 +20,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/model/processing_graph/processors/balance.dart';
-import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
@@ -232,9 +231,9 @@ class _TrackContent extends StatelessWidget {
                           if (height >= heightThreshold1)
                             Slider(
                               value:
-                                  track.gainNode
+                                  track.utilityNode
                                       ?.getPortById(
-                                        GainProcessorModel.gainPortId,
+                                        UtilityProcessorModel.gainPortId,
                                       )
                                       .parameterValue ??
                                   gainParameterZeroDbNormalized,
@@ -246,12 +245,12 @@ class _TrackContent extends StatelessWidget {
                               hint: (v) =>
                                   'Track gain: ${gainParameterValueToString(v)}',
                               onValueChanged: (value) {
-                                final node = track.gainNode;
+                                final node = track.utilityNode;
                                 if (node == null) return;
 
                                 node
                                         .getPortById(
-                                          GainProcessorModel.gainPortId,
+                                          UtilityProcessorModel.gainPortId,
                                         )
                                         .parameterValue =
                                     value;
@@ -259,13 +258,13 @@ class _TrackContent extends StatelessWidget {
                             ),
                           if (height >= heightThreshold2)
                             Slider(
-                              value: BalanceProcessorModel.parameterValueToPan(
-                                track.balanceNode
+                              value: UtilityProcessorModel.parameterValueToPan(
+                                track.utilityNode
                                         ?.getPortById(
-                                          BalanceProcessorModel.balancePortId,
+                                          UtilityProcessorModel.balancePortId,
                                         )
                                         .parameterValue ??
-                                    BalanceProcessorModel.panToParameterValue(
+                                    UtilityProcessorModel.panToParameterValue(
                                       0,
                                     ),
                               ),
@@ -276,17 +275,17 @@ class _TrackContent extends StatelessWidget {
                               type: .pan,
                               stickyPoints: [0],
                               hint: (v) =>
-                                  'Track balance: ${BalanceProcessorModel.parameterValueToString(BalanceProcessorModel.panToParameterValue(v))}',
+                                  'Track balance: ${UtilityProcessorModel.parameterValueToString(UtilityProcessorModel.panToParameterValue(v))}',
                               onValueChanged: (value) {
-                                final node = track.balanceNode;
+                                final node = track.utilityNode;
                                 if (node == null) return;
 
                                 node
                                         .getPortById(
-                                          BalanceProcessorModel.balancePortId,
+                                          UtilityProcessorModel.balancePortId,
                                         )
                                         .parameterValue =
-                                    BalanceProcessorModel.panToParameterValue(
+                                    UtilityProcessorModel.panToParameterValue(
                                       value,
                                     );
                               },

@@ -194,13 +194,7 @@ class _TempCodegenPackage {
   }
 
   Future<void> build() {
-    return _runFlutterCommand([
-      'pub',
-      'run',
-      'build_runner',
-      'build',
-      '--delete-conflicting-outputs',
-    ]);
+    return _runFlutterCommand(['pub', 'run', 'build_runner', 'build']);
   }
 
   Future<void> _runFlutterCommand(List<String> args) async {

@@ -22,8 +22,8 @@
 #include "generated/lib/model/processing_graph/processors/live_event_provider.h"
 #include "modules/processing_graph/processor/event_buffer.h"
 #include "modules/processing_graph/processor/processor.h"
-#include "modules/processors/note_tracker.h"
 #include "modules/sequencer/events/event.h"
+#include "modules/util/note_tracker.h"
 #include "modules/util/ring_buffer.h"
 
 #include <memory>
@@ -33,7 +33,7 @@ namespace anthem {
 class NodeProcessContext;
 
 struct LiveInputEvent {
-  double sampleOffset = 0.0;
+  int sampleOffset = 0;
   LiveInputNoteId inputId = invalidLiveInputNoteId;
   Event event;
 };
@@ -45,20 +45,18 @@ private:
   std::unique_ptr<RingBuffer<LiveInputEvent, 4096>> liveInputEventBuffer;
   NoteTracker<rt_maxTrackedLiveNotes> rt_activeLiveNotes;
 
-  void rt_emitLiveNoteOffFromTrackedNote(std::unique_ptr<EventBuffer>& targetBuffer,
-      const TrackedNote& trackedNote,
-      double sampleOffset);
+  void rt_emitLiveNoteOffFromTrackedNote(
+      EventBuffer& targetBuffer, const TrackedNote& trackedNote, int sampleOffset);
   void rt_handleLiveNoteOn(NodeProcessContext& context,
-      std::unique_ptr<EventBuffer>& targetBuffer,
+      EventBuffer& targetBuffer,
       LiveInputNoteId inputId,
       const NoteOnEvent& noteOnEvent,
-      double sampleOffset);
-  void rt_handleLiveNoteOff(std::unique_ptr<EventBuffer>& targetBuffer,
+      int sampleOffset);
+  void rt_handleLiveNoteOff(EventBuffer& targetBuffer,
       LiveInputNoteId inputId,
       const NoteOffEvent& noteOffEvent,
-      double sampleOffset);
-  void rt_addLiveEventsToBuffer(
-      NodeProcessContext& context, std::unique_ptr<EventBuffer>& targetBuffer);
+      int sampleOffset);
+  void rt_addLiveEventsToBuffer(NodeProcessContext& context, EventBuffer& targetBuffer);
 public:
   LiveEventProviderProcessor(const LiveEventProviderProcessorModelImpl& _impl);
   ~LiveEventProviderProcessor() override;
@@ -76,7 +74,7 @@ public:
   void prepareToProcess() override;
   void process(NodeProcessContext& context, int numSamples) override;
 
-  void addLiveInputEvent(LiveInputEvent event);
+  bool addLiveInputEvent(LiveInputEvent event);
 };
 
 } // namespace anthem

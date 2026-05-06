@@ -1,0 +1,79 @@
+/*
+  Copyright (C) 2026 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+#pragma once
+
+#include "modules/processing_graph/model/runtime_graph.h"
+#include "modules/util/ring_buffer.h"
+
+#include <juce_events/juce_events.h>
+#include <memory>
+
+namespace juce {
+class AudioIODevice;
+}
+
+namespace anthem {
+
+class GraphExecutor;
+class GraphRuntimeServices;
+
+class GraphProcessor {
+private:
+  struct RuntimeGraphHandoff;
+
+  // Owned by the audio thread until a newer runtime graph is swapped in.
+  RuntimeGraphHandoff* rt_activeRuntimeGraphHandoff = nullptr;
+
+  // Graph ownership and executor-prepared state are transferred from the main
+  // thread into this queue, then picked up by the audio thread.
+  RingBuffer<RuntimeGraphHandoff*, 512> pendingRuntimeGraphHandoffsQueue;
+
+  // Replaced runtime graphs are transferred back to the main thread so their
+  // shared_ptr references and executor state are released off the audio thread.
+  RingBuffer<RuntimeGraphHandoff*, 512> retiredRuntimeGraphHandoffsQueue;
+
+  std::unique_ptr<GraphExecutor> executor;
+  std::unique_ptr<GraphRuntimeServices> rt_services;
+  juce::TimedCallback clearDeletionQueueTimedCallback;
+public:
+  GraphProcessor();
+  ~GraphProcessor();
+
+  void prepareForAudioDevice(juce::AudioIODevice* device);
+
+  // Transfers ownership of a newly built runtime graph from the main thread to
+  // the audio thread.
+  void setRuntimeGraphFromMainThread(RuntimeGraph* runtimeGraph);
+
+  // Picks up graph updates on the audio thread. This does not process audio
+  // yet; it only keeps the runtime graph in sync.
+  void rt_processGraphUpdates();
+
+  // Processes the active runtime graph on the audio thread.
+  void rt_process(int numSamples);
+
+  GraphRuntimeServices& getRtServices();
+  void resetRtServices();
+
+  // Destroys retired runtime graphs on the main thread.
+  void clearDeletionQueueFromMainThread();
+};
+
+} // namespace anthem

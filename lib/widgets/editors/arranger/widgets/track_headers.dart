@@ -261,6 +261,10 @@ class _TrackHeadersState extends State<TrackHeaders> {
             // For MobX, since we're pulling the real values from a cache
             final _ = viewModel.baseTrackHeight;
 
+            final verticalScrollDelta =
+                viewModel.verticalScrollPosition -
+                widget.verticalScrollPosition;
+
             for (final (trackIndex, (trackId, isSendTrack, trackDepth))
                 in trackController.getTracksIterable().indexed) {
               // For MobX, since we're pulling the real values from a cache
@@ -271,6 +275,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
 
               final trackPosition = viewModel.trackPositionCalculator
                   .getTrackPosition(trackIndex);
+              final renderedTrackPosition = trackPosition + verticalScrollDelta;
               final trackHeight = viewModel.trackPositionCalculator
                   .getTrackHeight(trackIndex);
 
@@ -279,9 +284,9 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 positionForAddButton = lastTrackBottom;
               }
 
-              lastTrackBottom = trackPosition + trackHeight;
+              lastTrackBottom = renderedTrackPosition + trackHeight;
 
-              if (trackPosition >= editorHeight) {
+              if (renderedTrackPosition >= editorHeight) {
                 break;
               }
 
@@ -289,7 +294,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
               // its child tracks, which gives us the greatest flexibility in
               // how we manage the look and feel.
               if (isTopLevel) {
-                var canMaybeRender = trackPosition > 0;
+                var canMaybeRender = renderedTrackPosition > 0;
 
                 if (!canMaybeRender) {
                   var subtreeTrackCount = 0;
@@ -308,14 +313,15 @@ class _TrackHeadersState extends State<TrackHeaders> {
                         .getTrackHeight(trackIndex + i);
                   }
 
-                  canMaybeRender = trackPosition + totalTrackHeight >= 0;
+                  canMaybeRender =
+                      renderedTrackPosition + totalTrackHeight >= 0;
                 }
 
                 if (canMaybeRender) {
                   headers.add(
                     Positioned(
                       key: Key(trackId.toString()),
-                      top: trackPosition,
+                      top: renderedTrackPosition,
                       left: 0,
                       right: 0,
                       child: SizedBox(child: TrackHeader(trackId: trackId)),
@@ -332,8 +338,8 @@ class _TrackHeadersState extends State<TrackHeaders> {
               // indent is consistent with the tree depth of the current track,
               // which makes this easy.
 
-              final borderPos = trackPosition - 1;
-              if (trackPosition + trackHeight > 0) {
+              final borderPos = renderedTrackPosition - 1;
+              if (renderedTrackPosition + trackHeight > 0) {
                 headers.add(
                   Positioned(
                     key: Key('$trackId-border'),
@@ -348,7 +354,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 const resizeHandleHeight = 11.0;
 
                 var resizeHandleTop =
-                    trackPosition - 1 - resizeHandleHeight / 2;
+                    renderedTrackPosition - 1 - resizeHandleHeight / 2;
                 if (!isSendTrack) {
                   resizeHandleTop += trackHeight;
                 }

@@ -64,6 +64,7 @@ export 'processing_graph/processors/sequence_note_provider.dart';
 export 'processing_graph/processors/simple_midi_generator.dart';
 export 'processing_graph/processors/simple_volume_lfo.dart';
 export 'processing_graph/processors/tone_generator.dart';
+export 'processing_graph/processors/utility.dart';
 export 'processing_graph/processors/vst3_processor.dart';
 
 export 'processing_graph/node_connection.dart';

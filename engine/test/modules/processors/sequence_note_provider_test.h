@@ -95,15 +95,14 @@ class SequenceNoteProviderTest : public juce::UnitTest {
 
   void expectEvent(EventBuffer& buffer,
       size_t index,
-      double sampleOffset,
+      int sampleOffset,
       EventType type,
       LiveNoteId liveId,
       int16_t pitch) {
     expect(buffer.getNumEvents() > index, "Expected event index should exist.");
-    auto& event = buffer.getEvent(index);
+    const auto& event = buffer.getEvent(index);
 
-    expectWithinAbsoluteError(
-        event.sampleOffset, sampleOffset, 0.0001, "Unexpected sample offset.");
+    expectEquals(event.sampleOffset, sampleOffset, "Unexpected sample offset.");
     expectEquals(
         static_cast<int>(event.event.type), static_cast<int>(type), "Unexpected event type.");
     expectEquals(event.liveId, liveId, "Unexpected live note ID.");
@@ -123,6 +122,9 @@ public:
     testInvalidationStopsTrackedNotesBeforeNewEvents();
     testLoopBoundaryStopsTrackedNotesAndAppliesLoopJump();
     testActiveTrackUsesNoTrackSequenceEvents();
+    testFractionalOffsetsAreFloored();
+    testChordEventsShareQuantizedSampleIndex();
+    testLoopBoundaryAtBlockEndUsesLastSampleIndex();
   }
 
   void testSteadyPlaybackEmitsSequenceEvents() {
@@ -143,8 +145,8 @@ public:
 
     expectEquals(
         static_cast<int>(buffer.getNumEvents()), 2, "Expected one note-on and one note-off.");
-    expectEvent(buffer, 0, 1.0, EventType::NoteOn, firstLiveId, 60);
-    expectEvent(buffer, 1, 3.0, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 0, 1, EventType::NoteOn, firstLiveId, 60);
+    expectEvent(buffer, 1, 3, EventType::NoteOff, firstLiveId, 60);
     expectEquals(static_cast<int>(state.rt_activeSequenceNotes.rt_getSize()),
         0,
         "Tracked notes should be empty after the matching note-off.");
@@ -181,8 +183,8 @@ public:
     expectEquals(static_cast<int>(buffer.getNumEvents()),
         2,
         "Stopping and jumping should emit one note-off and one restart note-on.");
-    expectEvent(buffer, 0, 0.0, EventType::NoteOff, firstLiveId, 60);
-    expectEvent(buffer, 1, 0.0, EventType::NoteOn, secondLiveId, 67);
+    expectEvent(buffer, 0, 0, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 1, 0, EventType::NoteOn, secondLiveId, 67);
     expectEquals(static_cast<int>(state.rt_activeSequenceNotes.rt_getSize()),
         1,
         "Jump-start note should remain tracked after the restart.");
@@ -214,8 +216,8 @@ public:
     expectEquals(static_cast<int>(buffer.getNumEvents()),
         2,
         "Invalidation should stop the old note and emit the replacement note.");
-    expectEvent(buffer, 0, 0.0, EventType::NoteOff, firstLiveId, 60);
-    expectEvent(buffer, 1, 1.0, EventType::NoteOn, secondLiveId, 64);
+    expectEvent(buffer, 0, 0, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 1, 1, EventType::NoteOn, secondLiveId, 64);
   }
 
   void testLoopBoundaryStopsTrackedNotesAndAppliesLoopJump() {
@@ -251,8 +253,8 @@ public:
     expectEquals(static_cast<int>(buffer.getNumEvents()),
         2,
         "Crossing the loop should stop existing notes and restart loop-start notes.");
-    expectEvent(buffer, 0, 1.0, EventType::NoteOff, firstLiveId, 60);
-    expectEvent(buffer, 1, 1.0, EventType::NoteOn, secondLiveId, 60);
+    expectEvent(buffer, 0, 1, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 1, 1, EventType::NoteOn, secondLiveId, 60);
   }
 
   void testActiveTrackUsesNoTrackSequenceEvents() {
@@ -274,7 +276,87 @@ public:
 
     expectEquals(
         static_cast<int>(buffer.getNumEvents()), 1, "Exactly one event should be emitted.");
-    expectEvent(buffer, 0, 0.0, EventType::NoteOn, firstLiveId, 60);
+    expectEvent(buffer, 0, 0, EventType::NoteOn, firstLiveId, 60);
+  }
+
+  void testFractionalOffsetsAreFloored() {
+    beginTest("Sequence provider floors fractional event offsets");
+
+    auto sequence = SequenceEventListCollection();
+    addTrack(sequence,
+        trackId,
+        {makeNoteOnEvent(1.9, firstNoteId, 60), makeNoteOffEvent(3.999, firstNoteId, 60)});
+
+    auto dependencies = buildDependencies(&sequence);
+    RuntimeState state;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
+
+    SequenceNoteProviderProcessor::rt_processBlock(
+        state, dependencies, buffer, trackId, 4, [&nextLiveId]() { return nextLiveId++; });
+
+    expectEquals(
+        static_cast<int>(buffer.getNumEvents()), 2, "Expected one note-on and one note-off.");
+    expectEvent(buffer, 0, 1, EventType::NoteOn, firstLiveId, 60);
+    expectEvent(buffer, 1, 3, EventType::NoteOff, firstLiveId, 60);
+  }
+
+  void testChordEventsShareQuantizedSampleIndex() {
+    beginTest("Chord events at the same tick share the same quantized sample index");
+
+    auto sequence = SequenceEventListCollection();
+    addTrack(sequence,
+        trackId,
+        {makeNoteOnEvent(1.75, firstNoteId, 60), makeNoteOnEvent(1.75, secondNoteId, 64)});
+
+    auto dependencies = buildDependencies(&sequence);
+    RuntimeState state;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
+
+    SequenceNoteProviderProcessor::rt_processBlock(
+        state, dependencies, buffer, trackId, 4, [&nextLiveId]() { return nextLiveId++; });
+
+    expectEquals(static_cast<int>(buffer.getNumEvents()), 2, "Expected two chord note-ons.");
+    expectEvent(buffer, 0, 1, EventType::NoteOn, firstLiveId, 60);
+    expectEvent(buffer, 1, 1, EventType::NoteOn, secondLiveId, 64);
+  }
+
+  void testLoopBoundaryAtBlockEndUsesLastSampleIndex() {
+    beginTest("Loop boundary at block end uses the last valid sample index");
+
+    auto sequence = SequenceEventListCollection();
+    addTrack(sequence, trackId, {makeNoteOnEvent(1.0, firstNoteId, 60)});
+
+    auto dependencies = buildDependencies(&sequence);
+    RuntimeState state;
+    EventBuffer buffer(8);
+    LiveNoteId nextLiveId = firstLiveId;
+
+    dependencies.rt_playhead = 1.0;
+    SequenceNoteProviderProcessor::rt_processBlock(
+        state, dependencies, buffer, trackId, 1, [&nextLiveId]() { return nextLiveId++; });
+
+    auto loopJumpEvent = buildJumpEvent(trackId,
+        {PlayheadJumpSequenceEvent{
+            .sequenceNoteId = firstNoteId,
+            .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
+        }});
+
+    buffer.clear();
+    dependencies.rt_playhead = 4.0;
+    dependencies.rt_loopStart = 2.0;
+    dependencies.rt_loopEnd = 6.0;
+    dependencies.rt_playheadJumpEventForLoop = &loopJumpEvent;
+
+    SequenceNoteProviderProcessor::rt_processBlock(
+        state, dependencies, buffer, trackId, 2, [&nextLiveId]() { return nextLiveId++; });
+
+    expectEquals(static_cast<int>(buffer.getNumEvents()),
+        2,
+        "Crossing at the block end should stop and restart on a valid sample index.");
+    expectEvent(buffer, 0, 1, EventType::NoteOff, firstLiveId, 60);
+    expectEvent(buffer, 1, 1, EventType::NoteOn, secondLiveId, 60);
   }
 };
 

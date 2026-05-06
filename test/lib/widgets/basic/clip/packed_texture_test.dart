@@ -34,25 +34,25 @@ void main() {
     test('returns empty rects and keeps atlas null for empty input', () async {
       final packedTexture = PackedTexture(maxWidth: _atlasWidth);
 
-      final rects = packedTexture.drawImages(<ui.Image>[]);
+      final entries = packedTexture.drawImages(<ui.Image>[]);
 
-      expect(rects, isEmpty);
-      expect(packedTexture.textureAtlas, isNull);
+      expect(entries, isEmpty);
+      expect(packedTexture.textureAtlases, isEmpty);
     });
 
     test('clears the previous atlas when input becomes empty', () async {
       final packedTexture = PackedTexture(maxWidth: _atlasWidth);
       final red = await _makeSolidImage(width: 10, height: 6, color: _redColor);
 
-      final initialRects = packedTexture.drawImages([red]);
+      final initialEntries = packedTexture.drawImages([red]);
 
-      expect(initialRects, isNotEmpty);
-      expect(packedTexture.textureAtlas, isNotNull);
+      expect(initialEntries, isNotEmpty);
+      expect(packedTexture.textureAtlases, hasLength(1));
 
-      final clearedRects = packedTexture.drawImages(<ui.Image>[]);
+      final clearedEntries = packedTexture.drawImages(<ui.Image>[]);
 
-      expect(clearedRects, isEmpty);
-      expect(packedTexture.textureAtlas, isNull);
+      expect(clearedEntries, isEmpty);
+      expect(packedTexture.textureAtlases, isEmpty);
 
       red.dispose();
     });
@@ -61,17 +61,17 @@ void main() {
       final packedTexture = PackedTexture(maxWidth: _atlasWidth);
       final red = await _makeSolidImage(width: 10, height: 6, color: _redColor);
 
-      final rects = packedTexture.drawImages([red]);
-      final atlas = packedTexture.textureAtlas;
+      final entries = packedTexture.drawImages([red]);
+      final atlas = packedTexture.textureAtlases.single;
 
-      expect(rects, [ui.Rect.fromLTWH(0, 0, 10, 6)]);
-      expect(atlas, isNotNull);
-      expect(atlas!.width, equals(_atlasWidth.toInt()));
+      expect(_entryRects(entries), [ui.Rect.fromLTWH(0, 0, 10, 6)]);
+      expect(_entryAtlasIndices(entries), [0]);
+      expect(atlas.width, equals(10));
       expect(atlas.height, equals(6));
       expect(await _pixelAt(atlas, 5, 3), equals(_redColor));
 
       red.dispose();
-      atlas.dispose();
+      packedTexture.dispose();
     });
 
     test('packs multiple images on one row in input order', () async {
@@ -88,16 +88,17 @@ void main() {
         color: _blueColor,
       );
 
-      final rects = packedTexture.drawImages([red, green, blue]);
-      final atlas = packedTexture.textureAtlas;
+      final entries = packedTexture.drawImages([red, green, blue]);
+      final atlas = packedTexture.textureAtlases.single;
 
-      expect(rects, [
+      expect(_entryRects(entries), [
         ui.Rect.fromLTWH(0, 0, 10, 4),
         ui.Rect.fromLTWH(10, 0, 12, 6),
         ui.Rect.fromLTWH(22, 0, 8, 5),
       ]);
-      expect(atlas, isNotNull);
-      expect(atlas!.height, equals(6));
+      expect(_entryAtlasIndices(entries), [0, 0, 0]);
+      expect(atlas.width, equals(30));
+      expect(atlas.height, equals(6));
 
       expect(await _pixelAt(atlas, 5, 2), equals(_redColor));
       expect(await _pixelAt(atlas, 16, 3), equals(_greenColor));
@@ -106,7 +107,7 @@ void main() {
       red.dispose();
       green.dispose();
       blue.dispose();
-      atlas.dispose();
+      packedTexture.dispose();
     });
 
     test('wraps to a new row when image exceeds max atlas width', () async {
@@ -127,16 +128,16 @@ void main() {
         color: _blueColor,
       );
 
-      final rects = packedTexture.drawImages([red, green, blue]);
-      final atlas = packedTexture.textureAtlas;
+      final entries = packedTexture.drawImages([red, green, blue]);
+      final atlas = packedTexture.textureAtlases.single;
 
-      expect(rects, [
+      expect(_entryRects(entries), [
         ui.Rect.fromLTWH(0, 0, 40, 10),
         ui.Rect.fromLTWH(0, 10, 30, 20),
         ui.Rect.fromLTWH(30, 10, 12, 8),
       ]);
-      expect(atlas, isNotNull);
-      expect(atlas!.width, equals(_atlasWidth.toInt()));
+      expect(_entryAtlasIndices(entries), [0, 0, 0]);
+      expect(atlas.width, equals(42));
       expect(atlas.height, equals(30));
 
       expect(await _pixelAt(atlas, 20, 5), equals(_redColor));
@@ -146,7 +147,7 @@ void main() {
       red.dispose();
       green.dispose();
       blue.dispose();
-      atlas.dispose();
+      packedTexture.dispose();
     });
 
     test('exact width boundary stays on same row', () async {
@@ -163,16 +164,17 @@ void main() {
         color: _blueColor,
       );
 
-      final rects = packedTexture.drawImages([red, green, blue]);
-      final atlas = packedTexture.textureAtlas;
+      final entries = packedTexture.drawImages([red, green, blue]);
+      final atlas = packedTexture.textureAtlases.single;
 
-      expect(rects, [
+      expect(_entryRects(entries), [
         ui.Rect.fromLTWH(0, 0, 32, 7),
         ui.Rect.fromLTWH(32, 0, 32, 9),
         ui.Rect.fromLTWH(0, 9, 1, 5),
       ]);
-      expect(atlas, isNotNull);
-      expect(atlas!.height, equals(14));
+      expect(_entryAtlasIndices(entries), [0, 0, 0]);
+      expect(atlas.width, equals(_atlasWidth.toInt()));
+      expect(atlas.height, equals(14));
 
       expect(await _pixelAt(atlas, 16, 3), equals(_redColor));
       expect(await _pixelAt(atlas, 48, 4), equals(_greenColor));
@@ -181,9 +183,98 @@ void main() {
       red.dispose();
       green.dispose();
       blue.dispose();
-      atlas.dispose();
+      packedTexture.dispose();
+    });
+
+    test('creates a new atlas page when rows exceed max height', () async {
+      final packedTexture = PackedTexture(maxWidth: 20, maxHeight: 15);
+      final red = await _makeSolidImage(width: 12, height: 7, color: _redColor);
+      final green = await _makeSolidImage(
+        width: 12,
+        height: 6,
+        color: _greenColor,
+      );
+      final blue = await _makeSolidImage(
+        width: 10,
+        height: 5,
+        color: _blueColor,
+      );
+
+      final entries = packedTexture.drawImages([red, green, blue]);
+      final atlases = packedTexture.textureAtlases;
+
+      expect(_entryRects(entries), [
+        ui.Rect.fromLTWH(0, 0, 12, 7),
+        ui.Rect.fromLTWH(0, 7, 12, 6),
+        ui.Rect.fromLTWH(0, 0, 10, 5),
+      ]);
+      expect(_entryAtlasIndices(entries), [0, 0, 1]);
+      expect(atlases, hasLength(2));
+      expect(atlases[0].width, equals(12));
+      expect(atlases[0].height, equals(13));
+      expect(atlases[1].width, equals(10));
+      expect(atlases[1].height, equals(5));
+
+      expect(await _pixelAt(atlases[0], 6, 3), equals(_redColor));
+      expect(await _pixelAt(atlases[0], 6, 10), equals(_greenColor));
+      expect(await _pixelAt(atlases[1], 5, 2), equals(_blueColor));
+
+      red.dispose();
+      green.dispose();
+      blue.dispose();
+      packedTexture.dispose();
+    });
+
+    test('applies gutter around each image', () async {
+      final packedTexture = PackedTexture(maxWidth: 30, gutter: 2);
+      final red = await _makeSolidImage(width: 10, height: 4, color: _redColor);
+      final green = await _makeSolidImage(
+        width: 8,
+        height: 6,
+        color: _greenColor,
+      );
+
+      final entries = packedTexture.drawImages([red, green]);
+      final atlas = packedTexture.textureAtlases.single;
+
+      expect(_entryRects(entries), [
+        ui.Rect.fromLTWH(2, 2, 10, 4),
+        ui.Rect.fromLTWH(16, 2, 8, 6),
+      ]);
+      expect(_entryAtlasIndices(entries), [0, 0]);
+      expect(atlas.width, equals(26));
+      expect(atlas.height, equals(10));
+
+      expect(await _pixelAt(atlas, 7, 3), equals(_redColor));
+      expect(await _pixelAt(atlas, 20, 4), equals(_greenColor));
+
+      red.dispose();
+      green.dispose();
+      packedTexture.dispose();
+    });
+
+    test('throws when an image exceeds the atlas page size', () async {
+      final packedTexture = PackedTexture(maxWidth: 10, maxHeight: 10);
+      final red = await _makeSolidImage(
+        width: 11,
+        height: 10,
+        color: _redColor,
+      );
+
+      expect(() => packedTexture.drawImages([red]), throwsStateError);
+      expect(packedTexture.textureAtlases, isEmpty);
+
+      red.dispose();
     });
   });
+}
+
+List<ui.Rect> _entryRects(List<PackedTextureEntry> entries) {
+  return entries.map((entry) => entry.rect).toList();
+}
+
+List<int> _entryAtlasIndices(List<PackedTextureEntry> entries) {
+  return entries.map((entry) => entry.atlasIndex).toList();
 }
 
 Future<ui.Image> _makeSolidImage({

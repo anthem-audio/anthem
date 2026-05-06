@@ -22,11 +22,14 @@
 #include "generated/lib/model/processing_graph/processors/sequence_note_provider.h"
 #include "modules/processing_graph/processor/event_buffer.h"
 #include "modules/processing_graph/processor/processor.h"
-#include "modules/processors/note_tracker.h"
 #include "modules/sequencer/events/event.h"
 #include "modules/sequencer/runtime/transport.h"
+#include "modules/util/note_tracker.h"
 
+#include <algorithm>
+#include <cmath>
 #include <concepts>
+#include <limits>
 #include <type_traits>
 
 namespace anthem {
@@ -75,14 +78,14 @@ private:
       const RuntimeDependencies& dependencies, int64_t trackId);
 
   static void rt_emitLiveNoteOffFromTrackedNote(
-      EventBuffer& targetBuffer, const TrackedNote& trackedNote, double sampleOffset);
+      EventBuffer& targetBuffer, const TrackedNote& trackedNote, int sampleOffset);
   static void rt_emitLiveNoteOffsForAllTrackedNotes(
-      RuntimeState& state, EventBuffer& targetBuffer, double sampleOffset);
+      RuntimeState& state, EventBuffer& targetBuffer, int sampleOffset);
   static void rt_handleSequenceNoteOff(RuntimeState& state,
       EventBuffer& targetBuffer,
       SourceNoteId sourceId,
       const NoteOffEvent& noteOffEvent,
-      double sampleOffset);
+      int sampleOffset);
 
   template <SequenceNoteLiveIdAllocator LiveNoteIdAllocator>
   static void rt_handleSequenceNoteOn(RuntimeState& state,
@@ -90,7 +93,7 @@ private:
       LiveNoteIdAllocator&& liveNoteIdAllocator,
       SourceNoteId sourceId,
       const NoteOnEvent& noteOnEvent,
-      double sampleOffset) {
+      int sampleOffset) {
     LiveNoteId liveId = liveNoteIdAllocator();
     auto didTrackNote = state.rt_activeSequenceNotes.rt_add(
         sourceId, liveId, noteOnEvent.pitch, noteOnEvent.channel);
@@ -109,7 +112,7 @@ private:
       int64_t trackId,
       const PlayheadJumpEvent& event,
       LiveNoteIdAllocator&& liveNoteIdAllocator,
-      double sampleTimeOffset = 0.0) {
+      int sampleOffset = 0) {
     auto playEventsIter = event.eventsToPlayAtJump.find(trackId);
     if (playEventsIter == event.eventsToPlayAtJump.end()) {
       return;
@@ -122,7 +125,7 @@ private:
             liveNoteIdAllocator,
             jumpEvent.sequenceNoteId,
             jumpEvent.event.noteOn,
-            sampleTimeOffset);
+            sampleOffset);
       }
     }
   }
@@ -135,7 +138,7 @@ private:
       int numSamples,
       LiveNoteIdAllocator&& liveNoteIdAllocator) {
     if (dependencies.rt_shouldStopSequenceNotes) {
-      rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, 0.0);
+      rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, 0);
     }
 
     if (dependencies.rt_playheadJumpEvent != nullptr) {
@@ -155,7 +158,7 @@ private:
     double playheadPos = dependencies.rt_playhead;
 
     if (channelEvents->rt_invalidationOccurred) {
-      rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, 0.0);
+      rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, 0);
     }
 
     double ticks = sequencer_timing::sampleCountToTickDelta(
@@ -192,9 +195,9 @@ private:
 
       for (const auto& event : channelEvents->events) {
         if (event.offset >= start && event.offset < end) {
-          auto eventSampleOffset =
+          auto eventSampleOffset = static_cast<int>(std::floor(
               sampleTimeOffset + sequencer_timing::tickDeltaToSampleOffset(
-                                     event.offset - start, dependencies.rt_timingParams);
+                                     event.offset - start, dependencies.rt_timingParams)));
 
           if (event.event.type == EventType::NoteOn) {
             rt_handleSequenceNoteOn(state,
@@ -218,15 +221,17 @@ private:
         // Loop-stop behavior must be derived from the actual RT notes owned by
         // this provider. The loop-start payload may be slightly out of date, but
         // the active tracker is the authoritative source for what needs to stop.
-        rt_emitLiveNoteOffsForAllTrackedNotes(
-            state, targetBuffer, sampleTimeOffset + sampleAdvance);
+        auto loopBoundarySampleOffset = std::min(
+            static_cast<int>(std::floor(sampleTimeOffset + sampleAdvance)), numSamples - 1);
+
+        rt_emitLiveNoteOffsForAllTrackedNotes(state, targetBuffer, loopBoundarySampleOffset);
 
         rt_addEventsForJump(state,
             targetBuffer,
             trackId,
             *dependencies.rt_playheadJumpEventForLoop,
             liveNoteIdAllocator,
-            sampleTimeOffset + sampleAdvance);
+            loopBoundarySampleOffset);
       }
 
       sampleTimeOffset += sampleAdvance;

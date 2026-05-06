@@ -250,7 +250,8 @@ void Comms::init() {
   auto spaceIndex = parameters.indexOfChar(' ');
 
   if (spaceIndex == -1) {
-    std::cerr << "Invalid command line args: " << parameters << " - Exiting..." << '\n';
+    juce::Logger::writeToLog(
+        juce::String("Invalid command line args: ") + parameters + " - Exiting...");
     juce::JUCEApplicationBase::quit();
     return;
   }
@@ -259,13 +260,15 @@ void Comms::init() {
   auto idStr = parameters.substring(spaceIndex + 1);
 
   if (portStr.length() == 0) {
-    std::cerr << "Port was not provided. Args: " << parameters << " - Exiting..." << '\n';
+    juce::Logger::writeToLog(
+        juce::String("Port was not provided. Args: ") + parameters + " - Exiting...");
     juce::JUCEApplicationBase::quit();
     return;
   }
 
   if (idStr.length() == 0) {
-    std::cerr << "Engine ID was not provided. Args: " << parameters << " - Exiting..." << '\n';
+    juce::Logger::writeToLog(
+        juce::String("Engine ID was not provided. Args: ") + parameters + " - Exiting...");
     juce::JUCEApplicationBase::quit();
     return;
   }
@@ -279,7 +282,7 @@ void Comms::init() {
   auto success = socketThread.socket.connect("::1", port);
   socketThread.socket.waitUntilReady(false, 1000); // should be unnecessary?
   if (!success) {
-    std::cerr << "Socket failed to start. Exiting..." << '\n';
+    juce::Logger::writeToLog("Socket failed to start. Exiting...");
     juce::JUCEApplicationBase::quit();
     return;
   }

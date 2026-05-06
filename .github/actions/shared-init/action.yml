@@ -59,10 +59,7 @@ runs:
 
     - name: Get Dart dependencies
       shell: bash
-      run: |
-        flutter pub get
-        (cd codegen && flutter pub get)
-        (cd tools/anthem_analyzer_plugin && dart pub get)
+      run: flutter pub get
 
     - name: Run code generation
       shell: bash

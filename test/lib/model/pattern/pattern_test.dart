@@ -26,6 +26,7 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 
@@ -402,14 +403,17 @@ void main() {
 
       await _flushMicrotasks();
 
-      project.sequence.clipTitleAtlasRectsByPatternId[pattern.id] =
-          const ui.Rect.fromLTWH(10, 20, 30, 40);
+      project.sequence.clipTitleAtlasEntriesByPatternId[pattern.id] =
+          const PackedTextureEntry(
+            atlasIndex: 0,
+            rect: ui.Rect.fromLTWH(10, 20, 30, 40),
+          );
 
       pattern.name = 'Renamed Pattern Title';
       await _flushMicrotasks();
 
       expect(
-        project.sequence.clipTitleAtlasRectsByPatternId[pattern.id],
+        project.sequence.clipTitleAtlasEntriesByPatternId[pattern.id],
         isNull,
       );
     });

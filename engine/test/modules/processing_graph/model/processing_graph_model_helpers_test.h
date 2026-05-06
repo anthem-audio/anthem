@@ -20,10 +20,11 @@
 #pragma once
 
 #include "generated/lib/engine_api/messages/messages.h"
-#include "modules/processing_graph/compiler/graph_process_context.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/model/node.h"
+#include "modules/processing_graph/runtime/graph_process_context.h"
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/processors/gain.h"
 
 #include <juce_core/juce_core.h>
@@ -153,7 +154,7 @@ public:
         });
     graphContext.reserve(1, 0, 1, 0);
 
-    auto& nodeContext = graphContext.createNodeProcessContext(node);
+    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     node->runtimeContext = std::make_optional(&nodeContext);
 
     auto& port = *node->controlInputPorts()->at(0);
@@ -186,7 +187,7 @@ public:
         });
     graphContext.reserve(1, 0, 1, 0);
 
-    auto& nodeContext = graphContext.createNodeProcessContext(node);
+    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
     auto& port = *node->controlInputPorts()->at(0);
 
     applyParameterValueUpdate(port, 0.75);

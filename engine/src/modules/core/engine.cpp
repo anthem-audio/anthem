@@ -20,7 +20,7 @@
 #include "modules/core/engine.h"
 
 #include "modules/core/adapters/transport_adapters.h"
-#include "modules/processing_graph/compiler/graph_compiler.h"
+#include "modules/processing_graph/model/runtime_graph.h"
 #include "modules/processors/db_meter.h"
 
 namespace anthem {
@@ -144,8 +144,8 @@ std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
   juce::Logger::writeToLog("Active output channels: " +
                            juce::String(device->getActiveOutputChannels().countNumberOfSetBits()));
 
+  graphProcessor->prepareForAudioDevice(device);
   transport->prepareToProcess();
-  graphProcessor->resetRtServices();
   juce::Logger::writeToLog("Transport prepared before audio callback registration.");
 
   // Set up the audio callback
@@ -180,26 +180,13 @@ void Engine::compileProcessingGraph() {
 
   auto& processingGraph = *project->processingGraph();
 
-  auto result = GraphCompiler::compile(GraphCompileRequest{
-      .rtServices = graphProcessor->getRtServices(),
-      .nodes = *processingGraph.nodes(),
-      .connections = *processingGraph.connections(),
-      .bufferLayout =
-          GraphBufferLayout{
-              .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
-              .blockSize = currentDevice->getCurrentBufferSizeSamples(),
-          },
-      .sampleRate = currentDevice->getCurrentSampleRate(),
-  });
-
-  // std::cout << "Processing steps: " << result->processContexts.size() << std::endl;
-
-  // for (auto& group : result->actionGroups) {
-  //   juce::Logger::writeToLog("ACTION GROUP");
-  //   for (auto& action : *group) {
-  //     action->debugPrint();
-  //   }
-  // }
+  auto runtimeGraph = RuntimeGraph::fromProcessingGraph(processingGraph,
+      graphProcessor->getRtServices(),
+      GraphBufferLayout{
+          .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
+          .blockSize = currentDevice->getCurrentBufferSizeSamples(),
+      },
+      currentDevice->getCurrentSampleRate());
 
   // Make sure all nodes have been prepared for processing
   for (auto& pair : *processingGraph.nodes()) {
@@ -215,10 +202,6 @@ void Engine::compileProcessingGraph() {
           // 'field' is the rfl::Field<Name, Type> wrapper.
           // We get the actual std::shared_ptr with .value().
           const auto& sharedPtr = field.value();
-
-          // sharedPtr is a std::shared_ptr<DerivedProcessor>.
-          // .get() returns a DerivedProcessor*.
-          // C++ polymorphism allows us to assign a Derived* to a Base*.
           Processor* baseProcessor = sharedPtr.get();
 
           if (!baseProcessor->isPrepared) {
@@ -229,7 +212,7 @@ void Engine::compileProcessingGraph() {
         procVariant.value());
   }
 
-  graphProcessor->setProcessingStepsFromMainThread(result);
+  graphProcessor->setRuntimeGraphFromMainThread(runtimeGraph.release());
 }
 
 } // namespace anthem

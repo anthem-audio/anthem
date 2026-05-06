@@ -19,11 +19,10 @@
 
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
-import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
-import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -114,14 +113,9 @@ abstract class _TrackModel
   bool isMasterTrack = false;
 
   @anthemObservable
-  Id? gainNodeId;
+  Id? utilityNodeId;
 
-  NodeModel? get gainNode => project.processingGraph.nodes[gainNodeId];
-
-  @anthemObservable
-  Id? balanceNodeId;
-
-  NodeModel? get balanceNode => project.processingGraph.nodes[balanceNodeId];
+  NodeModel? get utilityNode => project.processingGraph.nodes[utilityNodeId];
 
   @anthemObservable
   Id? dbMeterNodeId;
@@ -153,8 +147,8 @@ abstract class _TrackModel
   NodeModel? get liveEventProviderNode =>
       project.processingGraph.nodes[liveEventProviderNodeId];
 
-  Id get audioOutputNodeId => balanceNodeId!;
-  int get audioOutputPortId => BalanceProcessorModel.audioOutputPortId;
+  Id get audioOutputNodeId => utilityNodeId!;
+  int get audioOutputPortId => UtilityProcessorModel.audioOutputPortId;
 
   /// Returns all processing graph node IDs currently owned by this track.
   ///
@@ -162,8 +156,7 @@ abstract class _TrackModel
   /// a track for lifecycle operations such as remove/restore.
   List<Id> getOwnedNodeIds() {
     return [
-      gainNodeId,
-      balanceNodeId,
+      utilityNodeId,
       dbMeterNodeId,
       instrumentNodeId,
       sequenceNoteProviderNodeId,
@@ -183,8 +176,7 @@ abstract class _TrackModel
     required this.name,
     required this.color,
     required this.type,
-  }) : gainNodeId = null,
-       balanceNodeId = null,
+  }) : utilityNodeId = null,
        dbMeterNodeId = null,
        instrumentNodeId = null,
        sequenceNoteProviderNodeId = null,
@@ -195,17 +187,11 @@ abstract class _TrackModel
     ProjectModel project,
     ProjectEntityIdAllocator idAllocator,
   ) {
-    final gainNode = GainProcessorModel.create(
+    final utilityNode = UtilityProcessorModel.create(
       idAllocator: idAllocator,
     ).createNode();
-    gainNodeId = gainNode.id;
-    project.processingGraph.addNode(gainNode);
-
-    final balanceNode = BalanceProcessorModel.create(
-      idAllocator: idAllocator,
-    ).createNode();
-    balanceNodeId = balanceNode.id;
-    project.processingGraph.addNode(balanceNode);
+    utilityNodeId = utilityNode.id;
+    project.processingGraph.addNode(utilityNode);
 
     final dbMeterNode = DbMeterProcessorModel.create(
       idAllocator: idAllocator,
@@ -218,18 +204,8 @@ abstract class _TrackModel
     project.processingGraph.addConnection(
       NodeConnectionModel(
         idAllocator: idAllocator,
-        sourceNodeId: gainNodeId!,
-        sourcePortId: GainProcessorModel.audioOutputPortId,
-        destinationNodeId: balanceNodeId!,
-        destinationPortId: BalanceProcessorModel.audioInputPortId,
-      ),
-    );
-
-    project.processingGraph.addConnection(
-      NodeConnectionModel(
-        idAllocator: idAllocator,
-        sourceNodeId: balanceNodeId!,
-        sourcePortId: BalanceProcessorModel.audioOutputPortId,
+        sourceNodeId: utilityNodeId!,
+        sourcePortId: UtilityProcessorModel.audioOutputPortId,
         destinationNodeId: dbMeterNodeId!,
         destinationPortId: DbMeterProcessorModel.audioInputPortId,
       ),

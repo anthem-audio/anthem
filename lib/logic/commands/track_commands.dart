@@ -23,9 +23,9 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
-import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -294,15 +294,10 @@ class TrackAddRemoveCommand extends Command {
         ];
 
         for (final track in tracksToCheck) {
-          final gainNodeId = _tryGetTrackGainNodeId(track);
-          final balanceNodeId = _tryGetTrackBalanceNodeId(track);
+          final utilityNodeId = _tryGetTrackUtilityNodeId(track);
           final dbMeterNodeId = _tryGetTrackDbMeterNodeId(track);
 
-          final requiredTrackNodeIds = [
-            gainNodeId,
-            balanceNodeId,
-            dbMeterNodeId,
-          ];
+          final requiredTrackNodeIds = [utilityNodeId, dbMeterNodeId];
           final presentRequiredTrackNodeCount = requiredTrackNodeIds
               .whereType<Id>()
               .length;
@@ -315,7 +310,7 @@ class TrackAddRemoveCommand extends Command {
           } else if (!hasAllTrackNodes) {
             throw StateError(
               'TrackAddRemoveCommand._add(): Track ${track.id} has incomplete '
-              'node state. gainNodeId, balanceNodeId, and dbMeterNodeId are '
+              'node state. utilityNodeId and dbMeterNodeId are '
               'required.',
             );
           }
@@ -419,12 +414,8 @@ class TrackAddRemoveCommand extends Command {
   }
 }
 
-Id? _tryGetTrackGainNodeId(TrackModel track) {
-  return track.gainNodeId;
-}
-
-Id? _tryGetTrackBalanceNodeId(TrackModel track) {
-  return track.balanceNodeId;
+Id? _tryGetTrackUtilityNodeId(TrackModel track) {
+  return track.utilityNodeId;
 }
 
 Id? _tryGetTrackDbMeterNodeId(TrackModel track) {
@@ -510,7 +501,7 @@ class SetTrackInstrumentNodeCommand extends Command {
 
       project.processingGraph.addNode(instrumentNode);
 
-      _connectInstrumentAudioToTrackGain(project, track, instrumentNode);
+      _connectInstrumentAudioToTrackUtility(project, track, instrumentNode);
       _connectSequenceProviderToInstrument(
         project,
         sequenceNoteProviderNode,
@@ -614,7 +605,7 @@ NodeModel _getExistingLiveEventProviderNode(
   return liveEventProviderNode;
 }
 
-void _connectInstrumentAudioToTrackGain(
+void _connectInstrumentAudioToTrackUtility(
   ProjectModel project,
   TrackModel track,
   NodeModel instrumentNode,
@@ -623,13 +614,13 @@ void _connectInstrumentAudioToTrackGain(
     return;
   }
 
-  final gainNodeId = _tryGetTrackGainNodeId(track);
-  if (gainNodeId == null) {
+  final utilityNodeId = _tryGetTrackUtilityNodeId(track);
+  if (utilityNodeId == null) {
     return;
   }
 
-  final gainNode = project.processingGraph.nodes[gainNodeId];
-  if (gainNode == null || gainNode.audioInputPorts.isEmpty) {
+  final utilityNode = project.processingGraph.nodes[utilityNodeId];
+  if (utilityNode == null || utilityNode.audioInputPorts.isEmpty) {
     return;
   }
 
@@ -639,8 +630,8 @@ void _connectInstrumentAudioToTrackGain(
       idAllocator: idAllocator,
       sourceNodeId: instrumentNode.id,
       sourcePortId: instrumentNode.audioOutputPorts.first.id,
-      destinationNodeId: gainNode.id,
-      destinationPortId: GainProcessorModel.audioInputPortId,
+      destinationNodeId: utilityNode.id,
+      destinationPortId: UtilityProcessorModel.audioInputPortId,
     ),
   );
 }

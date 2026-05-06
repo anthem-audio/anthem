@@ -27,7 +27,7 @@ namespace anthem {
 class ConsoleLogger : public juce::Logger {
 public:
   void logMessage(const juce::String& message) override {
-    std::cout << message << '\n';
+    std::cout << message << std::endl;
   }
 };
 

@@ -23,7 +23,7 @@
 
 #include "generated/lib/model/model.h"
 #include "modules/core/engine.h"
-#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
 #if JUCE_WINDOWS
 // JUCE exposes the helper for matching the current thread's DPI-awareness
@@ -82,7 +82,7 @@ void VST3Processor::prepareToProcess() {
 }
 
 void VST3Processor::process(NodeProcessContext& context, int numSamples) {
-  (void)numSamples;
+  juce::ignoreUnused(numSamples);
 
   auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
   auto& eventInBuffer = context.getInputEventBuffer(VST3ProcessorModelBase::eventInputPortId);
@@ -95,28 +95,26 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
 
   jassert(numSamples == pluginInstance->getBlockSize());
 
-  for (size_t i = 0; i < eventInBuffer->getNumEvents(); ++i) {
-    auto& liveEvent = eventInBuffer->getEvent(i);
+  for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
+    const auto& liveEvent = eventInBuffer.getEvent(i);
+    jassert(juce::isPositiveAndBelow(liveEvent.sampleOffset, numSamples));
 
     if (liveEvent.event.type == EventType::NoteOn) {
       auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
           liveEvent.event.noteOn.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
 
-      rt_eventBufferForPlugin.addEvent(
-          noteOn, static_cast<int>(std::round(liveEvent.sampleOffset)));
+      rt_eventBufferForPlugin.addEvent(noteOn, liveEvent.sampleOffset);
     } else if (liveEvent.event.type == EventType::NoteOff) {
       auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
           liveEvent.event.noteOff.pitch,
           static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
 
-      rt_eventBufferForPlugin.addEvent(
-          noteOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
+      rt_eventBufferForPlugin.addEvent(noteOff, liveEvent.sampleOffset);
     } else if (liveEvent.event.type == EventType::AllVoicesOff) {
       for (int channel = 1; channel <= 16; channel++) {
         auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
-        rt_eventBufferForPlugin.addEvent(
-            allVoicesOff, static_cast<int>(std::round(liveEvent.sampleOffset)));
+        rt_eventBufferForPlugin.addEvent(allVoicesOff, liveEvent.sampleOffset);
       }
     }
   }

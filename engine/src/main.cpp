@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,15 +19,15 @@
 
 // #define JUCE_CHECK_MEMORY_LEAKS 0
 
-#include "console_logger.h"
 #include "modules/core/engine.h"
 
-#include <iostream>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
+#include <memory>
 
 #ifdef __EMSCRIPTEN__
+#include "console_logger.h"
 #include "modules/core/comms_methods_for_ui_wasm.h"
 #endif
 
@@ -35,8 +35,31 @@ namespace anthem {
 
 class EngineApplication : public juce::JUCEApplicationBase, private juce::ChangeListener {
 private:
+  std::unique_ptr<juce::Logger> logger;
+
   void changeListenerCallback(juce::ChangeBroadcaster* /*source*/) override {
     // juce::Logger::writeToLog("change detected");
+  }
+
+  void initializeLogging() {
+#ifdef __EMSCRIPTEN__
+    logger = std::make_unique<ConsoleLogger>();
+    juce::Logger::setCurrentLogger(logger.get());
+#else
+    auto fileLogger = std::unique_ptr<juce::FileLogger>(juce::FileLogger::createDefaultAppLogger(
+        "Anthem", "AnthemEngine.log", "Anthem Engine", static_cast<juce::int64>(1024) * 1024));
+
+    if (fileLogger == nullptr) {
+      juce::Logger::writeToLog("Failed to create Anthem engine file logger.");
+      return;
+    }
+
+    const auto logFilePath = fileLogger->getLogFile().getFullPathName();
+    juce::Logger::setCurrentLogger(fileLogger.get());
+    logger = std::move(fileLogger);
+
+    juce::Logger::writeToLog(juce::String("Logging to ") + logFilePath);
+#endif
   }
 public:
   EngineApplication() {}
@@ -56,11 +79,16 @@ public:
   void suspended() override {}
   void resumed() override {}
   void shutdown() override {
+    juce::Logger::writeToLog("Shutting down Anthem engine...");
+
     // Destruct Anthem instance
     if (Engine::hasInstance()) {
       Engine::getInstance().shutdown();
       Engine::cleanup();
     }
+
+    juce::Logger::setCurrentLogger(nullptr);
+    logger.reset();
   }
 
   void systemRequestedQuit() override {
@@ -75,8 +103,7 @@ public:
   }
 
   void initialise(const juce::String& /*commandLineParameters*/) override {
-    // Remove this line to disable logging
-    juce::Logger::setCurrentLogger(new ConsoleLogger());
+    initializeLogging();
 
     // wow, C++ sure is weird
     const char* anthemSplash = R"V0G0N(
@@ -95,7 +122,7 @@ public:
 
 )V0G0N";
 
-    std::cout << anthemSplash;
+    juce::Logger::writeToLog(anthemSplash);
 
     // juce::Logger::writeToLog("If you want to attach a debugger, you can do it now. Press enter to continue.");
     // std::cin.get();

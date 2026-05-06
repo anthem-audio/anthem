@@ -132,7 +132,7 @@ class EngineConnector extends EngineConnectorBase {
         developmentEnginePath ??
         mainExecutablePath.parent.uri
             .resolve(
-              './data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+              '../${Platform.isMacOS ? 'Frameworks/App.Framework/Resources' : './data'}/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
             )
             .toFilePath(windows: Platform.isWindows);
 

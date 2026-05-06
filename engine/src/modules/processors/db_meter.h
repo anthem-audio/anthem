@@ -19,10 +19,10 @@
 
 #pragma once
 
-#include "bw_math.h"
 #include "generated/lib/model/processing_graph/processors/db_meter.h"
 #include "modules/core/visualization/visualization_provider.h"
 #include "modules/processing_graph/processor/processor.h"
+#include "modules/processors/db_meter_accumulator.h"
 #include "modules/util/ring_buffer.h"
 
 #include <atomic>
@@ -52,21 +52,11 @@ class DbMeterProcessor : public Processor, public DbMeterProcessorModelBase {
 private:
   std::vector<std::shared_ptr<DbMeterVisualizationProvider>> channelProviders;
   std::vector<std::string> registeredVisualizationIds;
-  std::vector<float> rt_channelPeakLinear;
+  DbMeterAccumulator rt_accumulator;
   std::shared_ptr<std::atomic<int64_t>> rt_publishEverySamples;
-  int64_t rt_samplesSinceLastPublish = 0;
 
   void syncVisualizationProviders();
   void unregisterVisualizationProviders();
-  void rt_publishCurrentWindow(int channelCount, int64_t sampleTimestamp);
-
-  static double peakLinearToDb(float peakLinear) {
-    if (peakLinear <= 0.0f) {
-      return -600.0;
-    }
-
-    return static_cast<double>(bw_lin2dBf(peakLinear));
-  }
 public:
   DbMeterProcessor(const DbMeterProcessorModelImpl& _impl);
   ~DbMeterProcessor() override;

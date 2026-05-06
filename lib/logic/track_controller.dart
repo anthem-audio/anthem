@@ -48,20 +48,15 @@ class TrackController {
 
   /// Builds the mix fragment for a track without adding it to the graph.
   ///
-  /// This contains the gain, balance, and dB meter nodes.
+  /// This contains the utility and dB meter nodes.
   ///
   /// Parent/master routing is derived from hierarchy and should be added
   /// separately after the track is placed in its final location.
   ProcessingGraphFragment buildTrackMixFragment(TrackModel track) {
-    final gainNode = GainProcessorModel.create(
+    final utilityNode = UtilityProcessorModel.create(
       idAllocator: _idAllocator,
     ).createNode();
-    track.gainNodeId = gainNode.id;
-
-    final balanceNode = BalanceProcessorModel.create(
-      idAllocator: _idAllocator,
-    ).createNode();
-    track.balanceNodeId = balanceNode.id;
+    track.utilityNodeId = utilityNode.id;
 
     final dbMeterNode = DbMeterProcessorModel.create(
       idAllocator: _idAllocator,
@@ -71,19 +66,12 @@ class TrackController {
     track.dbMeterNodeId = dbMeterNode.id;
 
     return ProcessingGraphFragment(
-      nodes: [gainNode, balanceNode, dbMeterNode],
+      nodes: [utilityNode, dbMeterNode],
       connections: [
         NodeConnectionModel(
           idAllocator: _idAllocator,
-          sourceNodeId: gainNode.id,
-          sourcePortId: GainProcessorModel.audioOutputPortId,
-          destinationNodeId: balanceNode.id,
-          destinationPortId: BalanceProcessorModel.audioInputPortId,
-        ),
-        NodeConnectionModel(
-          idAllocator: _idAllocator,
-          sourceNodeId: balanceNode.id,
-          sourcePortId: BalanceProcessorModel.audioOutputPortId,
+          sourceNodeId: utilityNode.id,
+          sourcePortId: UtilityProcessorModel.audioOutputPortId,
           destinationNodeId: dbMeterNode.id,
           destinationPortId: DbMeterProcessorModel.audioInputPortId,
         ),
@@ -98,16 +86,20 @@ class TrackController {
   ({Id nodeId, int portId}) getTrackFxChainAudioInput(Id trackId) {
     final track = project.tracks[trackId]!;
 
-    final gainNodeId = track.gainNodeId;
-    final gainNode = project.processingGraph.nodes[gainNodeId];
-    if (gainNode == null) {
+    final utilityNodeId = track.utilityNodeId;
+    final utilityNode = project.processingGraph.nodes[utilityNodeId];
+    if (utilityNode == null) {
       throw StateError(
-        'TrackController.getTrackFxChainAudioInput(): Gain node $gainNodeId '
+        'TrackController.getTrackFxChainAudioInput(): Utility node '
+        '$utilityNodeId '
         'not found for track $trackId.',
       );
     }
 
-    return (nodeId: gainNode.id, portId: GainProcessorModel.audioInputPortId);
+    return (
+      nodeId: utilityNode.id,
+      portId: UtilityProcessorModel.audioInputPortId,
+    );
   }
 
   /// Returns the current destination for this track's main audio output.
@@ -285,7 +277,7 @@ class TrackController {
       );
     }
 
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       dialogTitle: 'Choose a plugin (VST3)',
       allowedExtensions: Platform.isMacOS ? null : ['vst3'],
       initialDirectory: initialDirectory,

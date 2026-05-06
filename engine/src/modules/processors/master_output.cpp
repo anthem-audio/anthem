@@ -20,10 +20,10 @@
 #include "master_output.h"
 
 #include "modules/core/engine.h"
-#include "modules/processing_graph/compiler/node_process_context.h"
+#include "modules/processing_graph/runtime/node_process_context.h"
 
-#include <iostream>
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <juce_core/juce_core.h>
 
 namespace anthem {
 
@@ -36,7 +36,7 @@ void MasterOutputProcessor::prepareToProcess() {
   auto* device = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
   if (device == nullptr) {
     jassertfalse;
-    std::cerr << "Error: No audio device is currently set." << '\n';
+    juce::Logger::writeToLog("Error: No audio device is currently set.");
     return;
   }
 
