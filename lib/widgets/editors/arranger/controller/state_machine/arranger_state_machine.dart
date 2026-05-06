@@ -760,7 +760,15 @@ class ArrangerIdleState extends _ArrangerLeafState {
       return;
     }
 
-    controller.openClipInPianoRoll(clipId);
+    final isPartOfMultiSelection =
+        viewModel.selectedClips.contains(clipId) &&
+        viewModel.selectedClips.length > 1;
+
+    final didOpenEditor = controller.openClipInPianoRoll(clipId);
+
+    if (didOpenEditor && !isPartOfMultiSelection) {
+      viewModel.selectedClips.remove(clipId);
+    }
   }
 
   @override

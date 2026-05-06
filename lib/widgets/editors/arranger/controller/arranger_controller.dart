@@ -162,16 +162,16 @@ abstract class _ArrangerController {
     deleteClips(viewModel.selectedClips.nonObservableInner);
   }
 
-  void openClipInPianoRoll(Id clipId) {
+  bool openClipInPianoRoll(Id clipId) {
     final arrangementId = project.sequence.activeArrangementID;
     if (arrangementId == null) {
-      return;
+      return false;
     }
 
     final arrangement = project.sequence.arrangements[arrangementId];
     final clip = arrangement?.clips[clipId];
     if (clip == null) {
-      return;
+      return false;
     }
 
     final projectController = ServiceRegistry.forProject(
@@ -182,6 +182,7 @@ abstract class _ArrangerController {
     ).trackController;
     trackController.setActiveTrack(clip.trackId);
     projectController.openPatternInPianoRoll(clip.patternId);
+    return true;
   }
 
   void deleteClips(Iterable<Id> clipIds) {

@@ -978,6 +978,72 @@ void main() {
       expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
       expect(fixture.project.sequence.activePatternID, pattern.id);
       expect(fixture.project.sequence.activeTrackID, _TrackIds.a);
+      expect(fixture.viewModel.selectedClips, isEmpty);
+    });
+
+    test('double click over multi-selected clip keeps selection', () {
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Pattern 1',
+      );
+      fixture.project.sequence.patterns[pattern.id] = pattern;
+
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(),
+        patternId: pattern.id,
+        trackId: _TrackIds.a,
+        offset: 0,
+        timeView: TimeViewModel(start: 0, end: 96),
+      );
+
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
+          clip;
+
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(240, 10, 80, 30),
+        metadata: clip.id,
+      );
+      fixture.viewModel.selectedClips.addAll({
+        clip.id,
+        _ClipIds.someOtherSelected,
+      });
+
+      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
+      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.project.sequence.activePatternID = null;
+      fixture.project.sequence.activeTrackID = null;
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(260, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+      );
+
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
+      expect(fixture.project.sequence.activePatternID, pattern.id);
+      expect(fixture.project.sequence.activeTrackID, _TrackIds.a);
+      expect(fixture.viewModel.selectedClips, {
+        clip.id,
+        _ClipIds.someOtherSelected,
+      });
     });
 
     test('double click over empty space does not change active editor', () {
