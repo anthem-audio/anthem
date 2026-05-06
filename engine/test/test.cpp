@@ -30,6 +30,7 @@
 #include "modules/processors/gain_test.h"
 #include "modules/processors/live_event_provider_test.h"
 #include "modules/processors/sequence_note_provider_test.h"
+#include "modules/processors/utility_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/events/event_test.h"
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"

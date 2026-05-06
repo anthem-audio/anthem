@@ -27,12 +27,11 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
-import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
-import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -420,17 +419,15 @@ void main() {
       }
 
       void expectTrackHasMixRouting(TrackModel track) {
-        expect(track.gainNodeId, isNotNull);
-        expect(track.balanceNodeId, isNotNull);
+        expect(track.utilityNodeId, isNotNull);
         expect(track.dbMeterNodeId, isNotNull);
 
-        final gainNodeId = track.gainNodeId!;
-        final balanceNodeId = track.balanceNodeId!;
+        final utilityNodeId = track.utilityNodeId!;
         final dbMeterNodeId = track.dbMeterNodeId!;
         final expectedDestination = track.parentTrackId != null
             ? (
-                nodeId: tracks[track.parentTrackId]!.gainNodeId!,
-                portId: GainProcessorModel.audioInputPortId,
+                nodeId: tracks[track.parentTrackId]!.utilityNodeId!,
+                portId: UtilityProcessorModel.audioInputPortId,
               )
             : track.isMasterTrack
             ? (
@@ -442,33 +439,19 @@ void main() {
                     .id,
               )
             : (
-                nodeId: masterTrack.gainNodeId!,
-                portId: GainProcessorModel.audioInputPortId,
+                nodeId: masterTrack.utilityNodeId!,
+                portId: UtilityProcessorModel.audioInputPortId,
               );
 
-        expect(processingGraph.nodes[gainNodeId], isNotNull);
-        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[utilityNodeId], isNotNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
 
         expect(
           processingGraph.connections.values.where(
             (connection) =>
-                connection.sourceNodeId == gainNodeId &&
+                connection.sourceNodeId == utilityNodeId &&
                 connection.sourcePortId ==
-                    GainProcessorModel.audioOutputPortId &&
-                connection.destinationNodeId == balanceNodeId &&
-                connection.destinationPortId ==
-                    BalanceProcessorModel.audioInputPortId,
-          ),
-          hasLength(1),
-        );
-
-        expect(
-          processingGraph.connections.values.where(
-            (connection) =>
-                connection.sourceNodeId == balanceNodeId &&
-                connection.sourcePortId ==
-                    BalanceProcessorModel.audioOutputPortId &&
+                    UtilityProcessorModel.audioOutputPortId &&
                 connection.destinationNodeId == dbMeterNodeId &&
                 connection.destinationPortId ==
                     DbMeterProcessorModel.audioInputPortId,
@@ -479,9 +462,9 @@ void main() {
         expect(
           processingGraph.connections.values.where(
             (connection) =>
-                connection.sourceNodeId == balanceNodeId &&
+                connection.sourceNodeId == utilityNodeId &&
                 connection.sourcePortId ==
-                    BalanceProcessorModel.audioOutputPortId &&
+                    UtilityProcessorModel.audioOutputPortId &&
                 connection.destinationNodeId == expectedDestination.nodeId &&
                 connection.destinationPortId == expectedDestination.portId,
           ),
@@ -513,15 +496,13 @@ void main() {
         expect(newGroupTrack.sequenceNoteProviderNodeId, isNull);
         expect(newGroupTrack.liveEventProviderNodeId, isNull);
 
-        final gainNodeId = newGroupTrack.gainNodeId!;
-        final balanceNodeId = newGroupTrack.balanceNodeId!;
+        final utilityNodeId = newGroupTrack.utilityNodeId!;
         final dbMeterNodeId = newGroupTrack.dbMeterNodeId!;
 
         command.rollback(project);
 
         expect(tracks[newGroupTrack.id], isNull);
-        expect(processingGraph.nodes[gainNodeId], isNull);
-        expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.nodes[utilityNodeId], isNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNull);
 
         command.execute(project);
@@ -530,8 +511,7 @@ void main() {
         expect(restoredGroupTrack, isNotNull);
         restoredGroupTrack!;
 
-        expect(restoredGroupTrack.gainNodeId, equals(gainNodeId));
-        expect(restoredGroupTrack.balanceNodeId, equals(balanceNodeId));
+        expect(restoredGroupTrack.utilityNodeId, equals(utilityNodeId));
         expect(restoredGroupTrack.dbMeterNodeId, equals(dbMeterNodeId));
         expectTrackHasMixRouting(restoredGroupTrack);
       });
@@ -541,8 +521,7 @@ void main() {
         () {
           expectTrackHasMixRouting(trackL);
 
-          final gainNodeId = trackL.gainNodeId!;
-          final balanceNodeId = trackL.balanceNodeId!;
+          final utilityNodeId = trackL.utilityNodeId!;
           final dbMeterNodeId = trackL.dbMeterNodeId!;
 
           final command = TrackGroupUngroupCommand.ungroup(
@@ -553,15 +532,13 @@ void main() {
           command.execute(project);
 
           expect(tracks[trackLId], isNull);
-          expect(processingGraph.nodes[gainNodeId], isNull);
-          expect(processingGraph.nodes[balanceNodeId], isNull);
+          expect(processingGraph.nodes[utilityNodeId], isNull);
           expect(processingGraph.nodes[dbMeterNodeId], isNull);
 
           command.rollback(project);
 
           expect(tracks[trackLId], isNotNull);
-          expect(trackL.gainNodeId, equals(gainNodeId));
-          expect(trackL.balanceNodeId, equals(balanceNodeId));
+          expect(trackL.utilityNodeId, equals(utilityNodeId));
           expect(trackL.dbMeterNodeId, equals(dbMeterNodeId));
           expectTrackHasMixRouting(trackL);
         },
@@ -1013,18 +990,20 @@ void main() {
               sequenceNode.processor as SequenceNoteProviderProcessorModel;
           expect(sequenceProcessor.trackId, equals(trackC.id));
 
-          final instrumentToGainConnection = processingGraph.connections.values
+          final instrumentToUtilityConnection = processingGraph
+              .connections
+              .values
               .where(
                 (connection) =>
                     connection.sourceNodeId == instrumentNode.id &&
-                    connection.destinationNodeId == trackC.gainNodeId &&
+                    connection.destinationNodeId == trackC.utilityNodeId &&
                     connection.sourcePortId ==
                         ToneGeneratorProcessorModel.audioOutputPortId &&
                     connection.destinationPortId ==
-                        GainProcessorModel.audioInputPortId,
+                        UtilityProcessorModel.audioInputPortId,
               )
               .toList();
-          expect(instrumentToGainConnection, hasLength(1));
+          expect(instrumentToUtilityConnection, hasLength(1));
 
           final sequenceToInstrumentConnection = processingGraph
               .connections
@@ -1093,97 +1072,68 @@ void main() {
 
         final newTrackId = trackA.childTracks[2];
         final newTrack = tracks[newTrackId]!;
-        final gainNodeId = newTrack.gainNodeId;
-        final balanceNodeId = newTrack.balanceNodeId;
+        final utilityNodeId = newTrack.utilityNodeId;
         final dbMeterNodeId = newTrack.dbMeterNodeId;
         final sequenceNodeId = newTrack.sequenceNoteProviderNodeId;
         final liveEventNodeId = newTrack.liveEventProviderNodeId;
-        final gainToBalanceConnectionId = processingGraph.connections.values
+        final utilityToDbMeterConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
-                  connection.sourceNodeId == gainNodeId &&
-                  connection.destinationNodeId == balanceNodeId,
-            )
-            .id;
-        final balanceToDbMeterConnectionId = processingGraph.connections.values
-            .firstWhere(
-              (connection) =>
-                  connection.sourceNodeId == balanceNodeId &&
+                  connection.sourceNodeId == utilityNodeId &&
                   connection.destinationNodeId == dbMeterNodeId &&
                   connection.sourcePortId ==
-                      BalanceProcessorModel.audioOutputPortId &&
+                      UtilityProcessorModel.audioOutputPortId &&
                   connection.destinationPortId ==
                       DbMeterProcessorModel.audioInputPortId,
             )
             .id;
 
-        expect(processingGraph.nodes[gainNodeId], isNotNull);
-        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[utilityNodeId], isNotNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(processingGraph.nodes[sequenceNodeId], isNotNull);
         expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         expect(
-          processingGraph.connections[gainToBalanceConnectionId],
-          isNotNull,
-        );
-        expect(
-          processingGraph.connections[balanceToDbMeterConnectionId],
+          processingGraph.connections[utilityToDbMeterConnectionId],
           isNotNull,
         );
 
         command.rollback(project);
 
-        expect(processingGraph.nodes[gainNodeId], isNull);
-        expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.nodes[utilityNodeId], isNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNull);
         expect(processingGraph.nodes[sequenceNodeId], isNull);
         expect(processingGraph.nodes[liveEventNodeId], isNull);
-        expect(processingGraph.connections[gainToBalanceConnectionId], isNull);
         expect(
-          processingGraph.connections[balanceToDbMeterConnectionId],
+          processingGraph.connections[utilityToDbMeterConnectionId],
           isNull,
         );
 
         command.execute(project);
 
-        expect(newTrack.gainNodeId, equals(gainNodeId));
-        expect(newTrack.balanceNodeId, equals(balanceNodeId));
+        expect(newTrack.utilityNodeId, equals(utilityNodeId));
         expect(newTrack.dbMeterNodeId, equals(dbMeterNodeId));
         expect(newTrack.sequenceNoteProviderNodeId, equals(sequenceNodeId));
         expect(newTrack.liveEventProviderNodeId, equals(liveEventNodeId));
-        expect(processingGraph.nodes[gainNodeId], isNotNull);
-        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[utilityNodeId], isNotNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(processingGraph.nodes[sequenceNodeId], isNotNull);
         expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         expect(
-          processingGraph.connections[gainToBalanceConnectionId],
-          isNotNull,
-        );
-        expect(
-          processingGraph.connections[balanceToDbMeterConnectionId],
+          processingGraph.connections[utilityToDbMeterConnectionId],
           isNotNull,
         );
       });
 
       test('Remove track undo restores captured nodes and connections', () {
-        final gainNodeId = trackC.gainNodeId;
-        final balanceNodeId = trackC.balanceNodeId;
+        final utilityNodeId = trackC.utilityNodeId;
         final dbMeterNodeId = trackC.dbMeterNodeId;
-        final gainToBalanceConnectionId = processingGraph.connections.values
+        final utilityToDbMeterConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
-                  connection.sourceNodeId == gainNodeId &&
-                  connection.destinationNodeId == balanceNodeId,
-            )
-            .id;
-        final balanceToDbMeterConnectionId = processingGraph.connections.values
-            .firstWhere(
-              (connection) =>
-                  connection.sourceNodeId == balanceNodeId &&
+                  connection.sourceNodeId == utilityNodeId &&
                   connection.destinationNodeId == dbMeterNodeId &&
                   connection.sourcePortId ==
-                      BalanceProcessorModel.audioOutputPortId &&
+                      UtilityProcessorModel.audioOutputPortId &&
                   connection.destinationPortId ==
                       DbMeterProcessorModel.audioInputPortId,
             )
@@ -1196,26 +1146,19 @@ void main() {
 
         command.execute(project);
 
-        expect(processingGraph.nodes[gainNodeId], isNull);
-        expect(processingGraph.nodes[balanceNodeId], isNull);
+        expect(processingGraph.nodes[utilityNodeId], isNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNull);
-        expect(processingGraph.connections[gainToBalanceConnectionId], isNull);
         expect(
-          processingGraph.connections[balanceToDbMeterConnectionId],
+          processingGraph.connections[utilityToDbMeterConnectionId],
           isNull,
         );
 
         command.rollback(project);
 
-        expect(processingGraph.nodes[gainNodeId], isNotNull);
-        expect(processingGraph.nodes[balanceNodeId], isNotNull);
+        expect(processingGraph.nodes[utilityNodeId], isNotNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(
-          processingGraph.connections[gainToBalanceConnectionId],
-          isNotNull,
-        );
-        expect(
-          processingGraph.connections[balanceToDbMeterConnectionId],
+          processingGraph.connections[utilityToDbMeterConnectionId],
           isNotNull,
         );
       });
@@ -1237,8 +1180,8 @@ void main() {
               idAllocator: ProjectEntityIdAllocator.test(getId),
               sourceNodeId: instrumentNode.id,
               sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
-              destinationNodeId: trackC.gainNodeId!,
-              destinationPortId: GainProcessorModel.audioInputPortId,
+              destinationNodeId: trackC.utilityNodeId!,
+              destinationPortId: UtilityProcessorModel.audioInputPortId,
             ),
           );
           processingGraph.addConnection(
@@ -1270,8 +1213,7 @@ void main() {
 
           command.execute(project);
 
-          expect(processingGraph.nodes[trackC.gainNodeId], isNull);
-          expect(processingGraph.nodes[trackC.balanceNodeId], isNull);
+          expect(processingGraph.nodes[trackC.utilityNodeId], isNull);
           expect(processingGraph.nodes[trackC.dbMeterNodeId], isNull);
           expect(processingGraph.nodes[instrumentNode.id], isNull);
           expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
@@ -1279,8 +1221,7 @@ void main() {
 
           command.rollback(project);
 
-          expect(processingGraph.nodes[trackC.gainNodeId], isNotNull);
-          expect(processingGraph.nodes[trackC.balanceNodeId], isNotNull);
+          expect(processingGraph.nodes[trackC.utilityNodeId], isNotNull);
           expect(processingGraph.nodes[trackC.dbMeterNodeId], isNotNull);
           expect(processingGraph.nodes[instrumentNode.id], isNotNull);
           expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);

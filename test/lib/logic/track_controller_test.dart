@@ -27,7 +27,7 @@ import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
-import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -99,11 +99,11 @@ void main() {
       trackController = TrackController(project);
     });
 
-    test('returns the gain node audio input pair', () {
+    test('returns the utility node audio input pair', () {
       final result = trackController.getTrackFxChainAudioInput(track.id);
 
-      expect(result.nodeId, equals(track.gainNodeId));
-      expect(result.portId, equals(GainProcessorModel.audioInputPortId));
+      expect(result.nodeId, equals(track.utilityNodeId));
+      expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
     });
   });
 
@@ -173,8 +173,8 @@ void main() {
         childTrack.id,
       );
 
-      expect(result.nodeId, equals(groupTrack.gainNodeId));
-      expect(result.portId, equals(GainProcessorModel.audioInputPortId));
+      expect(result.nodeId, equals(groupTrack.utilityNodeId));
+      expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
     });
 
     test(
@@ -184,8 +184,8 @@ void main() {
           topLevelTrack.id,
         );
 
-        expect(result.nodeId, equals(masterTrack.gainNodeId));
-        expect(result.portId, equals(GainProcessorModel.audioInputPortId));
+        expect(result.nodeId, equals(masterTrack.utilityNodeId));
+        expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
       },
     );
 

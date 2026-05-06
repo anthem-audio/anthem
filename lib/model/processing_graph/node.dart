@@ -32,6 +32,7 @@ import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/simple_midi_generator.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
@@ -252,6 +253,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     SimpleMidiGeneratorProcessorModel,
     SimpleVolumeLfoProcessorModel,
     ToneGeneratorProcessorModel,
+    UtilityProcessorModel,
     VST3ProcessorModel,
   ])
   Processor? processor;

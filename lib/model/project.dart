@@ -28,7 +28,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
-import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/visualization/visualization.dart';
@@ -105,10 +105,10 @@ class ProjectModel extends _ProjectModel
       final track = initTracks[trackId]!;
       final destinationNodeId = track.isMasterTrack
           ? processingGraph.masterOutputNodeId
-          : masterTrack.gainNodeId!;
+          : masterTrack.utilityNodeId!;
       final destinationPortId = track.isMasterTrack
           ? masterOutputPortId
-          : GainProcessorModel.audioInputPortId;
+          : UtilityProcessorModel.audioInputPortId;
 
       processingGraph.addConnection(
         NodeConnectionModel(

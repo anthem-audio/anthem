@@ -30,6 +30,7 @@
 #include "modules/processors/simple_midi_generator.h"
 #include "modules/processors/simple_volume_lfo.h"
 #include "modules/processors/tone_generator.h"
+#include "modules/processors/utility.h"
 #include "modules/processors/vst3_processor.h"
 
 #include <cstdint>

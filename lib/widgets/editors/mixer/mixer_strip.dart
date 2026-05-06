@@ -19,7 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
-import 'package:anthem/model/processing_graph/processors/gain.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
@@ -205,7 +205,9 @@ class _MeterSection extends StatelessObserverWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gainPort = track.gainNode?.getPortById(GainProcessorModel.gainPortId);
+    final gainPort = track.utilityNode?.getPortById(
+      UtilityProcessorModel.gainPortId,
+    );
 
     return Padding(
       padding: .all(4),
