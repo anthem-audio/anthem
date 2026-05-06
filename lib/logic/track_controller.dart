@@ -285,7 +285,7 @@ class TrackController {
       );
     }
 
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       dialogTitle: 'Choose a plugin (VST3)',
       allowedExtensions: Platform.isMacOS ? null : ['vst3'],
       initialDirectory: initialDirectory,

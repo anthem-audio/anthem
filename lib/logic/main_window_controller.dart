@@ -102,7 +102,7 @@ class MainWindowController {
       home = null;
     }
 
-    final result = await FilePicker.platform.pickFiles(
+    final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['anthem'],
       initialDirectory: home,
@@ -144,7 +144,7 @@ class MainWindowController {
 
     if (!kIsWeb) {
       if (alwaysUseFilePicker) {
-        path = (await FilePicker.platform.saveFile(
+        path = (await FilePicker.saveFile(
           type: FileType.custom,
           allowedExtensions: ['anthem'],
         ));
@@ -204,10 +204,7 @@ class MainWindowController {
       if (fileName == null) return false;
 
       final bytes = utf8.encode(json.encode(project.toJson()));
-      await FilePicker.platform.saveFile(
-        fileName: '$fileName.anthem',
-        bytes: bytes,
-      );
+      await FilePicker.saveFile(fileName: '$fileName.anthem', bytes: bytes);
 
       project.isDirty = false;
       return true;
