@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -209,7 +209,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
       final process = await Process.start(
         'dart',
-        ['run', 'build_runner', 'watch', '--delete-conflicting-outputs'],
+        ['run', 'build_runner', 'watch'],
         workingDirectory: packageRootPath.toFilePath(
           windows: Platform.isWindows,
         ),
@@ -251,7 +251,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
       final process = await Process.start(
         'dart',
-        ['run', 'build_runner', 'build', '--delete-conflicting-outputs'],
+        ['run', 'build_runner', 'build'],
         workingDirectory: workingDirectory.toFilePath(
           windows: Platform.isWindows,
         ),
