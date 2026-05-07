@@ -31,27 +31,74 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem/visualization/visualization.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class TrackHeader extends StatelessObserverWidget {
+class TrackHeader extends StatefulObserverWidget {
   final Id trackId;
 
   const TrackHeader({super.key, required this.trackId});
 
   @override
+  State<TrackHeader> createState() => _TrackHeaderState();
+}
+
+class _TrackHeaderState extends State<TrackHeader> {
+  static const _doubleClickThreshold = Duration(milliseconds: 500);
+  static const _maxDoubleClickDistance = 8.0;
+
+  Duration? _lastPrimaryTapTime;
+  Offset? _lastPrimaryTapPosition;
+
+  @override
+  void didUpdateWidget(covariant TrackHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.trackId != widget.trackId) {
+      _clearPrimaryTap();
+    }
+  }
+
+  bool _isDoubleClick(Offset position, Duration tapTime) {
+    final lastTapTime = _lastPrimaryTapTime;
+    final lastTapPosition = _lastPrimaryTapPosition;
+
+    if (lastTapTime == null || lastTapPosition == null) {
+      return false;
+    }
+
+    final timeDelta = tapTime - lastTapTime;
+    final distance = (position - lastTapPosition).distance;
+
+    return timeDelta <= _doubleClickThreshold &&
+        distance <= _maxDoubleClickDistance;
+  }
+
+  void _recordPrimaryTap(Offset position, Duration tapTime) {
+    _lastPrimaryTapPosition = position;
+    _lastPrimaryTapTime = tapTime;
+  }
+
+  void _clearPrimaryTap() {
+    _lastPrimaryTapPosition = null;
+    _lastPrimaryTapTime = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final projectServices = ServiceRegistry.forProject(project.id);
+    final projectController = projectServices.projectController;
     final trackController = projectServices.trackController;
-    final track = project.tracks[trackId]!;
+    final track = project.tracks[widget.trackId]!;
 
-    final projectServiceRegistry = ServiceRegistry.forProject(project.id);
-    final controller = projectServiceRegistry.arrangerController;
-    final viewModel = projectServiceRegistry.arrangerViewModel;
+    final controller = projectServices.arrangerController;
+    final viewModel = projectServices.arrangerViewModel;
 
     final trackAnthemColor = track.color;
     final colorShifter = trackAnthemColor.colorShifter;
@@ -62,7 +109,7 @@ class TrackHeader extends StatelessObserverWidget {
         : AnthemTheme.panel.main;
 
     final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(
-      viewModel.trackPositionCalculator.trackIdToIndex(trackId),
+      viewModel.trackPositionCalculator.trackIdToIndex(widget.trackId),
     );
 
     void onClick() {
@@ -79,7 +126,22 @@ class TrackHeader extends StatelessObserverWidget {
       controller.selectTrack(track.id);
     }
 
+    void onPrimaryTapUp(TapUpDetails e) {
+      onClick();
+
+      final tapTime = SchedulerBinding.instance.currentSystemFrameTimeStamp;
+      if (_isDoubleClick(e.globalPosition, tapTime)) {
+        _clearPrimaryTap();
+        projectController.setActiveEditor(editor: EditorKind.channelRack);
+        return;
+      }
+
+      _recordPrimaryTap(e.globalPosition, tapTime);
+    }
+
     void onSecondaryClick(TapUpDetails e) {
+      _clearPrimaryTap();
+
       if (!controller.isTrackSelected(track.id)) {
         controller.selectTrack(track.id);
       }
@@ -152,7 +214,7 @@ class TrackHeader extends StatelessObserverWidget {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: onClick,
+        onTapUp: onPrimaryTapUp,
         onSecondaryTapUp: onSecondaryClick,
         child: IntrinsicHeight(
           child: Row(
