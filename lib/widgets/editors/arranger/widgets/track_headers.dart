@@ -429,7 +429,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                       onPress: () {
                         menuController.open();
                       },
-                      height: 18,
+                      height: 16,
                     ),
                   ),
                 ),
