@@ -24,7 +24,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
-import '../util/misc.dart';
+import '../cli_helpers.dart';
 
 class FlutterTestCommand extends Command<dynamic> {
   @override

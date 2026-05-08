@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/util/lazy_follower.dart';
+import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

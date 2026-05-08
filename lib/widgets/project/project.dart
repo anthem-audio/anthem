@@ -36,7 +36,7 @@ import 'package:anthem/widgets/editors/attribute_editor/attribute_editor.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/editors/channel_rack/channel_rack.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
-import 'package:anthem/widgets/project_explorer/project_explorer.dart';
+import 'package:anthem/widgets/project/project_explorer.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 

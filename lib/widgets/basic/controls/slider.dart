@@ -21,7 +21,7 @@ import 'dart:math';
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
-import 'package:anthem/widgets/util/lazy_follower.dart';
+import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
 
 import 'control_mouse_handler.dart';

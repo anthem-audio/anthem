@@ -25,7 +25,7 @@ import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 import 'package:crypto/crypto.dart';
 
-import '../util/misc.dart';
+import '../cli_helpers.dart';
 
 class CodegenCommand extends Command<dynamic> {
   @override
