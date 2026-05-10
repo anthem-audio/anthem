@@ -62,6 +62,10 @@ class DeviceController {
         type: DeviceType.toneGenerator,
         index: index,
       ),
+      DeviceType.utility => DeviceDescriptorForCommand(
+        type: DeviceType.utility,
+        index: index,
+      ),
       DeviceType.vst3Plugin => await _createVst3DeviceDescriptor(index: index),
     };
 

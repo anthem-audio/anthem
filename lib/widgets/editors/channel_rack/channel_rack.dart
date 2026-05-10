@@ -135,6 +135,15 @@ Widget _buildAddDeviceButton(
           );
         },
       ),
+      AnthemMenuItem(
+        text: 'Utility',
+        onSelected: () {
+          deviceController.addDevice(
+            trackId: trackId,
+            type: DeviceType.utility,
+          );
+        },
+      ),
       if (!kIsWeb) Separator(),
       if (!kIsWeb)
         AnthemMenuItem(

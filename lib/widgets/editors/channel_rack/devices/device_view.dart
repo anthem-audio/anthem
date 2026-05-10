@@ -19,6 +19,7 @@
 
 import 'package:anthem/model/device.dart';
 import 'package:anthem/widgets/editors/channel_rack/devices/tone_generator_device.dart';
+import 'package:anthem/widgets/editors/channel_rack/devices/utility_device.dart';
 import 'package:anthem/widgets/editors/channel_rack/devices/vst3_device.dart';
 import 'package:flutter/widgets.dart';
 
@@ -31,6 +32,7 @@ class DeviceView extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (device.type) {
       DeviceType.toneGenerator => ToneGeneratorDevice(device: device),
+      DeviceType.utility => UtilityDevice(device: device),
       DeviceType.vst3Plugin => Vst3Device(device: device),
     };
   }

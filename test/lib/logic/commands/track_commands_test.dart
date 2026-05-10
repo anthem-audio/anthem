@@ -1099,6 +1099,35 @@ void main() {
         },
       );
 
+      test('Device add/remove command adds utility devices', () {
+        final command = DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: trackC.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.utility),
+        );
+
+        command.execute(project);
+
+        final device = trackC.devices.single;
+        final utilityNodeId = device.nodeIds.single;
+        final utilityNode = processingGraph.nodes[utilityNodeId]!;
+        expect(device.type, equals(DeviceType.utility));
+        expect(utilityNode.processor, isA<UtilityProcessorModel>());
+        expect(
+          device.defaultAudioInputPort?.portId,
+          equals(UtilityProcessorModel.audioInputPortId),
+        );
+        expect(
+          device.defaultAudioOutputPort?.portId,
+          equals(UtilityProcessorModel.audioOutputPortId),
+        );
+
+        command.rollback(project);
+
+        expect(trackC.devices, isEmpty);
+        expect(processingGraph.nodes[utilityNodeId], isNull);
+      });
+
       test('Add track undo/redo restores the same track nodes', () {
         final command = TrackAddRemoveCommand.add(
           project: project,

@@ -28,7 +28,7 @@ import 'package:mobx/mobx.dart';
 part 'device.g.dart';
 
 @AnthemEnum()
-enum DeviceType { toneGenerator, vst3Plugin }
+enum DeviceType { toneGenerator, utility, vst3Plugin }
 
 @AnthemModel.syncedModel()
 class DeviceModel extends _DeviceModel

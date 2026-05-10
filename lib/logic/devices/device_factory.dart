@@ -23,6 +23,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/port_ref.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:anthem_codegen/include.dart';
 
@@ -46,6 +47,7 @@ class DeviceFactories {
   }) {
     return switch (descriptor.type) {
       DeviceType.toneGenerator => toneGenerator(idAllocator: idAllocator),
+      DeviceType.utility => utility(idAllocator: idAllocator),
       DeviceType.vst3Plugin => vst3Plugin(
         idAllocator: idAllocator,
         vst3Path: _getRequiredVst3Path(descriptor),
@@ -86,6 +88,23 @@ class DeviceFactories {
       node: node,
       defaultAudioOutputPortId: VST3ProcessorModel.audioOutputPortId,
       defaultEventInputPortId: VST3ProcessorModel.eventInputPortId,
+    );
+  }
+
+  static DeviceCreateResult utility({
+    required ProjectEntityIdAllocator idAllocator,
+  }) {
+    final node = UtilityProcessorModel.create(
+      idAllocator: idAllocator,
+    ).createNode();
+
+    return _singleNodeDevice(
+      idAllocator: idAllocator,
+      name: 'Utility',
+      type: DeviceType.utility,
+      node: node,
+      defaultAudioInputPortId: UtilityProcessorModel.audioInputPortId,
+      defaultAudioOutputPortId: UtilityProcessorModel.audioOutputPortId,
     );
   }
 
