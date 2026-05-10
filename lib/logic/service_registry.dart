@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/device_controller.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/track_controller.dart';
@@ -83,6 +84,11 @@ final projectControllerService = ServiceDef<ProjectController>(
 
 final trackControllerService = ServiceDef<TrackController>(
   create: (project, _) => TrackController(project),
+  disposePriority: 100,
+);
+
+final deviceControllerService = ServiceDef<DeviceController>(
+  create: (project, _) => DeviceController(project),
   disposePriority: 100,
 );
 
@@ -227,6 +233,7 @@ class ServiceRegistry {
 
   ProjectController get projectController => use(projectControllerService);
   TrackController get trackController => use(trackControllerService);
+  DeviceController get deviceController => use(deviceControllerService);
   ProjectEntityIdAllocator get idAllocator => use(idAllocatorService);
   ArrangerController get arrangerController => use(arrangerControllerService);
   PianoRollController get pianoRollController =>

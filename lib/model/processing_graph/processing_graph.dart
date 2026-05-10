@@ -100,6 +100,12 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Captures the given nodes and any touching connections without mutating the
   /// graph.
+  ///
+  /// This is for save/restore. For example, tracks only contain references to
+  /// node IDs - they do not hold the actual node objects. When a track is
+  /// removed and we are creating the undo/redo step, we need to capture the
+  /// actual node and processor objects that are removed in that step so we can
+  /// restore them later.
   ProcessingGraphFragment captureNodes(Iterable<Id> nodeIds) {
     final capturedNodeIds = <Id>{};
     for (final nodeId in nodeIds) {

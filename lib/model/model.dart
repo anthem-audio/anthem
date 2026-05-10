@@ -72,8 +72,10 @@ export 'processing_graph/node_port_config.dart';
 export 'processing_graph/node_port.dart';
 export 'processing_graph/node.dart';
 export 'processing_graph/parameter_config.dart';
+export 'processing_graph/port_ref.dart';
 export 'processing_graph/processing_graph.dart';
 
+export 'device.dart';
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';
 export 'shared/loop_points.dart';

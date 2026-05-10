@@ -23,6 +23,7 @@ import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
+import 'package:anthem/model/device.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -122,9 +123,15 @@ abstract class _TrackModel
 
   NodeModel? get dbMeterNode => project.processingGraph.nodes[dbMeterNodeId];
 
-  /// Optional instrument node assigned to this track.
   @anthemObservable
-  Id? instrumentNodeId;
+  AnthemObservableList<DeviceModel> devices = AnthemObservableList();
+
+  /// Generated rack routing connection IDs.
+  ///
+  /// These connections are derived from [devices] and should be rebuilt rather
+  /// than edited as device-owned graph state.
+  @anthemObservable
+  AnthemObservableList<Id> deviceRoutingConnectionIds = AnthemObservableList();
 
   /// Sequence note provider node assigned to this track.
   ///
@@ -137,9 +144,6 @@ abstract class _TrackModel
   /// This node allows direct note audition for this track's instrument.
   @anthemObservable
   Id? liveEventProviderNodeId;
-
-  NodeModel? get instrumentNode =>
-      project.processingGraph.nodes[instrumentNodeId];
 
   NodeModel? get sequenceNoteProviderNode =>
       project.processingGraph.nodes[sequenceNoteProviderNodeId];
@@ -158,9 +162,9 @@ abstract class _TrackModel
     return [
       utilityNodeId,
       dbMeterNodeId,
-      instrumentNodeId,
       sequenceNoteProviderNodeId,
       liveEventProviderNodeId,
+      ...devices.expand((device) => device.nodeIds),
     ].nonNulls.toList();
   }
 
@@ -178,7 +182,6 @@ abstract class _TrackModel
     required this.type,
   }) : utilityNodeId = null,
        dbMeterNodeId = null,
-       instrumentNodeId = null,
        sequenceNoteProviderNodeId = null,
        liveEventProviderNodeId = null,
        super();

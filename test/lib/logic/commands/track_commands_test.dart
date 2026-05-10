@@ -22,10 +22,12 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/logic/commands/device_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
-import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
@@ -962,25 +964,25 @@ void main() {
 
     group('Add/remove', () {
       test(
-        'Set track instrument command adds and restores nodes on undo/redo',
+        'Device add/remove command adds and restores nodes on undo/redo',
         () {
-          final instrumentNode = ToneGeneratorProcessorModel(
-            nodeId: getId(),
-          ).createNode();
-
-          final command = SetTrackInstrumentNodeCommand(
-            track: trackC,
-            instrumentNode: instrumentNode,
+          final command = DeviceAddRemoveCommand.add(
+            project: project,
+            trackId: trackC.id,
+            device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
           );
 
           command.execute(project);
 
+          final device = trackC.devices.single;
+          final instrumentNodeId = device.nodeIds.single;
           final sequenceNodeId = trackC.sequenceNoteProviderNodeId;
           final liveEventNodeId = trackC.liveEventProviderNodeId;
-          expect(trackC.instrumentNodeId, equals(instrumentNode.id));
+          expect(trackC.devices, hasLength(1));
+          expect(trackC.devices.single.id, equals(device.id));
           expect(sequenceNodeId, isNotNull);
           expect(liveEventNodeId, isNotNull);
-          expect(processingGraph.nodes[instrumentNode.id], isNotNull);
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
           expect(processingGraph.nodes[sequenceNodeId!], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId!], isNotNull);
 
@@ -995,7 +997,7 @@ void main() {
               .values
               .where(
                 (connection) =>
-                    connection.sourceNodeId == instrumentNode.id &&
+                    connection.sourceNodeId == instrumentNodeId &&
                     connection.destinationNodeId == trackC.utilityNodeId &&
                     connection.sourcePortId ==
                         ToneGeneratorProcessorModel.audioOutputPortId &&
@@ -1011,7 +1013,7 @@ void main() {
               .where(
                 (connection) =>
                     connection.sourceNodeId == sequenceNode.id &&
-                    connection.destinationNodeId == instrumentNode.id &&
+                    connection.destinationNodeId == instrumentNodeId &&
                     connection.sourcePortId ==
                         SequenceNoteProviderProcessorModel.eventOutputPortId &&
                     connection.destinationPortId ==
@@ -1026,7 +1028,7 @@ void main() {
               .where(
                 (connection) =>
                     connection.sourceNodeId == liveEventNode.id &&
-                    connection.destinationNodeId == instrumentNode.id &&
+                    connection.destinationNodeId == instrumentNodeId &&
                     connection.sourcePortId ==
                         LiveEventProviderProcessorModel.eventOutputPortId &&
                     connection.destinationPortId ==
@@ -1037,21 +1039,63 @@ void main() {
 
           command.rollback(project);
 
-          expect(trackC.instrumentNodeId, isNull);
+          expect(trackC.devices, isEmpty);
+          expect(trackC.deviceRoutingConnectionIds, isEmpty);
           expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
           expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
-          expect(processingGraph.nodes[instrumentNode.id], isNull);
+          expect(processingGraph.nodes[instrumentNodeId], isNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId], isNotNull);
 
           command.execute(project);
 
-          expect(trackC.instrumentNodeId, equals(instrumentNode.id));
+          expect(trackC.devices, hasLength(1));
+          expect(trackC.devices.single.id, equals(device.id));
           expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
           expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
-          expect(processingGraph.nodes[instrumentNode.id], isNotNull);
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId], isNotNull);
+        },
+      );
+
+      test(
+        'Device add/remove command removes and restores nodes on undo/redo',
+        () {
+          DeviceAddRemoveCommand.add(
+            project: project,
+            trackId: trackC.id,
+            device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+          ).execute(project);
+
+          final device = trackC.devices.single;
+          final instrumentNodeId = device.nodeIds.single;
+          final initialRoutingConnectionIds = trackC.deviceRoutingConnectionIds
+              .toList(growable: false);
+          expect(trackC.devices.single.id, equals(device.id));
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
+          expect(initialRoutingConnectionIds, isNotEmpty);
+
+          final command = DeviceAddRemoveCommand.remove(
+            project: project,
+            trackId: trackC.id,
+            deviceId: device.id,
+          );
+
+          command.execute(project);
+
+          expect(trackC.devices, isEmpty);
+          expect(trackC.deviceRoutingConnectionIds, isEmpty);
+          expect(processingGraph.nodes[instrumentNodeId], isNull);
+          for (final connectionId in initialRoutingConnectionIds) {
+            expect(processingGraph.connections[connectionId], isNull);
+          }
+
+          command.rollback(project);
+
+          expect(trackC.devices.single.id, equals(device.id));
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
+          expect(trackC.deviceRoutingConnectionIds, isNotEmpty);
         },
       );
 
@@ -1163,71 +1207,47 @@ void main() {
         );
       });
 
-      test(
-        'Remove track captures optional instrument, sequence, and live nodes',
-        () {
-          final sequenceProviderNodeId = trackC.sequenceNoteProviderNodeId!;
-          final liveEventProviderNodeId = trackC.liveEventProviderNodeId!;
+      test('Remove track captures device, sequence, and live nodes', () {
+        final sequenceProviderNodeId = trackC.sequenceNoteProviderNodeId!;
+        final liveEventProviderNodeId = trackC.liveEventProviderNodeId!;
 
-          final instrumentNode = ToneGeneratorProcessorModel(
-            nodeId: getId(),
-          ).createNode();
+        DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: trackC.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+        ).execute(project);
+        final deviceNodeId = trackC.devices.single.nodeIds.single;
 
-          processingGraph.addNode(instrumentNode);
+        final deviceRoutingConnectionIds = trackC.deviceRoutingConnectionIds
+            .toList(growable: false);
 
-          processingGraph.addConnection(
-            NodeConnectionModel(
-              idAllocator: ProjectEntityIdAllocator.test(getId),
-              sourceNodeId: instrumentNode.id,
-              sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
-              destinationNodeId: trackC.utilityNodeId!,
-              destinationPortId: UtilityProcessorModel.audioInputPortId,
-            ),
-          );
-          processingGraph.addConnection(
-            NodeConnectionModel(
-              idAllocator: ProjectEntityIdAllocator.test(getId),
-              sourceNodeId: sequenceProviderNodeId,
-              sourcePortId:
-                  SequenceNoteProviderProcessorModel.eventOutputPortId,
-              destinationNodeId: instrumentNode.id,
-              destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
-            ),
-          );
-          processingGraph.addConnection(
-            NodeConnectionModel(
-              idAllocator: ProjectEntityIdAllocator.test(getId),
-              sourceNodeId: liveEventProviderNodeId,
-              sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
-              destinationNodeId: instrumentNode.id,
-              destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
-            ),
-          );
+        final command = TrackAddRemoveCommand.remove(
+          project: project,
+          ids: [trackCId],
+        );
 
-          trackC.instrumentNodeId = instrumentNode.id;
+        command.execute(project);
 
-          final command = TrackAddRemoveCommand.remove(
-            project: project,
-            ids: [trackCId],
-          );
+        expect(processingGraph.nodes[trackC.utilityNodeId], isNull);
+        expect(processingGraph.nodes[trackC.dbMeterNodeId], isNull);
+        expect(processingGraph.nodes[deviceNodeId], isNull);
+        expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
+        expect(processingGraph.nodes[liveEventProviderNodeId], isNull);
+        for (final connectionId in deviceRoutingConnectionIds) {
+          expect(processingGraph.connections[connectionId], isNull);
+        }
 
-          command.execute(project);
+        command.rollback(project);
 
-          expect(processingGraph.nodes[trackC.utilityNodeId], isNull);
-          expect(processingGraph.nodes[trackC.dbMeterNodeId], isNull);
-          expect(processingGraph.nodes[instrumentNode.id], isNull);
-          expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
-          expect(processingGraph.nodes[liveEventProviderNodeId], isNull);
-
-          command.rollback(project);
-
-          expect(processingGraph.nodes[trackC.utilityNodeId], isNotNull);
-          expect(processingGraph.nodes[trackC.dbMeterNodeId], isNotNull);
-          expect(processingGraph.nodes[instrumentNode.id], isNotNull);
-          expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);
-          expect(processingGraph.nodes[liveEventProviderNodeId], isNotNull);
-        },
-      );
+        expect(processingGraph.nodes[trackC.utilityNodeId], isNotNull);
+        expect(processingGraph.nodes[trackC.dbMeterNodeId], isNotNull);
+        expect(processingGraph.nodes[deviceNodeId], isNotNull);
+        expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);
+        expect(processingGraph.nodes[liveEventProviderNodeId], isNotNull);
+        for (final connectionId in deviceRoutingConnectionIds) {
+          expect(processingGraph.connections[connectionId], isNotNull);
+        }
+      });
 
       test('Add a track to a group parent', () {
         final originalChildCount = trackA.childTracks.length;

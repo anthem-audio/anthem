@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:io';
-
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
@@ -27,8 +25,6 @@ import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
-import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
-import 'package:file_picker/file_picker.dart';
 
 typedef _ClipRemoveTarget = ({Id arrangementId, Id clipId});
 
@@ -246,64 +242,6 @@ class TrackController {
   ) {
     return connection.destinationNodeId == track.dbMeterNodeId &&
         connection.destinationPortId == DbMeterProcessorModel.audioInputPortId;
-  }
-
-  void setTrackInstrumentNode({required Id trackId, required NodeModel node}) {
-    final track = project.tracks[trackId];
-    if (track == null) {
-      throw StateError(
-        'TrackController.setTrackInstrumentNode(): Track $trackId not found.',
-      );
-    }
-
-    project.execute(
-      SetTrackInstrumentNodeCommand(track: track, instrumentNode: node),
-    );
-  }
-
-  void setTrackVst3InstrumentNode(Id trackId) async {
-    final dialogController = ServiceRegistry.dialogController;
-    String initialDirectory;
-
-    if (Platform.isWindows) {
-      initialDirectory = 'C:\\Program Files\\Common Files\\VST3';
-    } else if (Platform.isMacOS) {
-      initialDirectory = '/Library/Audio/Plug-Ins/VST3';
-    } else if (Platform.isLinux) {
-      initialDirectory = Platform.environment['HOME'] ?? '/';
-    } else {
-      throw UnsupportedError(
-        'Unsupported platform: ${Platform.operatingSystem}',
-      );
-    }
-
-    final result = await FilePicker.pickFiles(
-      dialogTitle: 'Choose a plugin (VST3)',
-      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
-      initialDirectory: initialDirectory,
-      type: Platform.isMacOS ? FileType.custom : FileType.any,
-    );
-
-    final path = result?.files[0].path;
-
-    if (path?.toLowerCase().endsWith('.vst3') != true) {
-      dialogController.showTextDialog(
-        title: 'Error',
-        text:
-            'The selected plugin could not be loaded. It may '
-            'not be a valid VST3 plugin, or it may be incompatible.',
-        buttons: [DialogButton.ok()],
-      );
-      return;
-    }
-
-    setTrackInstrumentNode(
-      trackId: trackId,
-      node: VST3ProcessorModel.create(
-        idAllocator: _idAllocator,
-        vst3Path: path!,
-      ).createNode(),
-    );
   }
 
   void addTrack() {

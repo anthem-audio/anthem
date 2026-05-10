@@ -25,9 +25,10 @@ import 'dart:typed_data';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/commands/device_commands.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
-import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
@@ -404,19 +405,18 @@ void main() {
     //   }
     // });
 
-    test('Add a track instrument node and some notes', () async {
+    test('Add a track device and some notes', () async {
       final instrumentTrackId = project.trackOrder.first;
       final instrumentTrack = project.tracks[instrumentTrackId]!;
-      final instrumentNode = ToneGeneratorProcessorModel(
-        nodeId: getId(),
-      ).createNode();
 
       project.execute(
-        SetTrackInstrumentNodeCommand(
-          track: instrumentTrack,
-          instrumentNode: instrumentNode,
+        DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: instrumentTrack.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
         ),
       );
+      final instrumentNodeId = instrumentTrack.devices.single.nodeIds.single;
 
       final command = AddNoteCommand(
         patternID: project.sequence.patterns.keys.first,
@@ -439,10 +439,16 @@ void main() {
       final trackMap = state['tracks'] as Map<String, dynamic>;
       final syncedInstrumentTrack =
           trackMap[instrumentTrackId.toString()] as Map<String, dynamic>;
+      final syncedDevices = syncedInstrumentTrack['devices'] as List<dynamic>;
       expect(
-        syncedInstrumentTrack['instrumentNodeId'],
-        equals(instrumentNode.id),
-        reason: 'The track should reference the instrument node.',
+        syncedDevices,
+        hasLength(1),
+        reason: 'The track should reference the device.',
+      );
+      expect(
+        (syncedDevices.single as Map<String, dynamic>)['nodeIds'],
+        contains(instrumentNodeId),
+        reason: 'The device should own the tone generator node.',
       );
 
       final pattern =

@@ -19,15 +19,14 @@
 
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
+import 'package:anthem/model/device.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/instruments/tone_generator.dart';
+import 'package:anthem/widgets/editors/channel_rack/devices/device_view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -43,32 +42,18 @@ class ChannelRack extends StatefulWidget {
 class _ChannelRackState extends State<ChannelRack> {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AnthemTheme.panel.main,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: Row(
-          children: [
-            Container(width: 130, color: const Color(0x11FFFFFF)),
-            const Expanded(child: _ProcessorList()),
-          ],
-        ),
-      ),
-    );
+    return _DeviceList();
   }
 }
 
-class _ProcessorList extends StatefulObserverWidget {
-  const _ProcessorList();
+class _DeviceList extends StatefulObserverWidget {
+  const _DeviceList();
 
   @override
-  State<_ProcessorList> createState() => __ProcessorListState();
+  State<_DeviceList> createState() => __DeviceListState();
 }
 
-class __ProcessorListState extends State<_ProcessorList> {
+class __DeviceListState extends State<_DeviceList> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
@@ -82,7 +67,7 @@ class __ProcessorListState extends State<_ProcessorList> {
         color: AnthemTheme.panel.background,
         child: Center(
           child: Text(
-            'No instrument selected',
+            'No track selected',
             style: TextStyle(color: AnthemTheme.text.main),
           ),
         ),
@@ -93,27 +78,13 @@ class __ProcessorListState extends State<_ProcessorList> {
       color: AnthemTheme.panel.background,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        child: Row(
-          children: [
-            Container(
-              width: 28,
-              decoration: BoxDecoration(
-                color: AnthemTheme.panel.main,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  bottomLeft: Radius.circular(4),
-                ),
-              ),
-            ),
-            _buildChild(context, project, activeTrackId),
-          ],
-        ),
+        child: Row(children: [_buildRack(context, project, activeTrackId)]),
       ),
     );
   }
 }
 
-Widget _buildChild(
+Widget _buildRack(
   BuildContext context,
   ProjectModel project,
   Id activeTrackId,
@@ -124,78 +95,77 @@ Widget _buildChild(
     return const Text('Invalid track');
   }
 
-  final instrumentNodeId = track.instrumentNodeId;
-  if (instrumentNodeId == null) {
-    return _buildAddInstrumentButton(context, track.id);
+  if (track.devices.isEmpty) {
+    return _buildAddDeviceButton(context, track.id);
   }
 
-  final node = project.processingGraph.nodes[instrumentNodeId];
-
-  if (node == null) {
-    return const Text('Invalid instrument node');
-  }
-
-  return switch (node.processor) {
-    ToneGeneratorProcessorModel _ => ToneGenerator(node: node),
-    _ => const Text('No editor for this instrument'),
-  };
+  return Expanded(
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final device in track.devices) DeviceView(device: device),
+          const SizedBox(width: 8),
+          _buildAddDeviceButton(context, track.id, compact: true),
+        ],
+      ),
+    ),
+  );
 }
 
-Widget _buildAddInstrumentButton(BuildContext context, Id trackId) {
+Widget _buildAddDeviceButton(
+  BuildContext context,
+  Id trackId, {
+  bool compact = false,
+}) {
   final project = Provider.of<ProjectModel>(context, listen: false);
   final serviceRegistry = ServiceRegistry.forProject(project.id);
-  final trackController = serviceRegistry.trackController;
-  final idAllocator = serviceRegistry.idAllocator;
-  final addInstrumentMenuController = AnthemMenuController();
+  final deviceController = serviceRegistry.deviceController;
+  final addDeviceMenuController = AnthemMenuController();
 
   final menuDef = MenuDef(
     children: [
       AnthemMenuItem(
         text: 'Tone Generator',
         onSelected: () {
-          trackController.setTrackInstrumentNode(
+          deviceController.addDevice(
             trackId: trackId,
-            node: ToneGeneratorProcessorModel.create(
-              idAllocator: idAllocator,
-            ).createNode(),
+            type: DeviceType.toneGenerator,
           );
         },
       ),
-      Separator(),
+      if (!kIsWeb) Separator(),
       if (!kIsWeb)
         AnthemMenuItem(
           text: 'VST3...',
           onSelected: () {
-            trackController.setTrackVst3InstrumentNode(trackId);
+            deviceController.addDevice(
+              trackId: trackId,
+              type: DeviceType.vst3Plugin,
+            );
           },
         ),
-      AnthemMenuItem(
-        text: 'Blank',
-        onSelected: () {
-          trackController.setTrackInstrumentNode(
-            trackId: trackId,
-            node: NodeModel.create(idAllocator: idAllocator),
-          );
-        },
-      ),
     ],
   );
 
-  return Expanded(
-    child: Center(
-      child: Menu(
-        menuController: addInstrumentMenuController,
-        menuDef: menuDef,
-        child: Button(
-          width: 140,
-          height: 26,
-          text: 'Add Instrument',
-          hint: [HintSection('click', 'Add an instrument node to this track')],
-          onPress: () {
-            addInstrumentMenuController.open();
-          },
-        ),
-      ),
+  final button = Menu(
+    menuController: addDeviceMenuController,
+    menuDef: menuDef,
+    child: Button(
+      width: compact ? 96 : 120,
+      height: 26,
+      text: compact ? 'Add' : 'Add Device',
+      hint: [HintSection('click', 'Add a device to this track')],
+      onPress: () {
+        addDeviceMenuController.open();
+      },
     ),
   );
+
+  if (compact) {
+    return Center(child: button);
+  }
+
+  return Expanded(child: Center(child: button));
 }
