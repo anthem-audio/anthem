@@ -26,20 +26,20 @@ import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/editors/channel_rack/devices/device_view.dart';
+import 'package:anthem/widgets/editors/device_rack/devices/device_view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class ChannelRack extends StatefulWidget {
-  const ChannelRack({super.key});
+class DeviceRack extends StatefulWidget {
+  const DeviceRack({super.key});
 
   @override
-  State<ChannelRack> createState() => _ChannelRackState();
+  State<DeviceRack> createState() => _DeviceRackState();
 }
 
-class _ChannelRackState extends State<ChannelRack> {
+class _DeviceRackState extends State<DeviceRack> {
   @override
   Widget build(BuildContext context) {
     return _DeviceList();

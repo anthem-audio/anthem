@@ -22,9 +22,9 @@ import 'package:mobx/mobx.dart';
 
 part 'project_view_model.g.dart';
 
-enum EditorKind { detail, automation, channelRack, mixer }
+enum EditorKind { detail, automation, deviceRack, mixer }
 
-enum PanelKind { pianoRoll, automationEditor, channelRack, mixer, arranger }
+enum PanelKind { pianoRoll, automationEditor, deviceRack, mixer, arranger }
 
 // ignore: library_private_types_in_public_api
 class ProjectViewModel = _ProjectViewModel with _$ProjectViewModel;

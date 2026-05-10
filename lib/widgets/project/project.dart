@@ -34,7 +34,7 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger.dart';
 import 'package:anthem/widgets/editors/attribute_editor/attribute_editor.dart';
 import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
-import 'package:anthem/widgets/editors/channel_rack/channel_rack.dart';
+import 'package:anthem/widgets/editors/device_rack/device_rack.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project/project_explorer.dart';
 import 'package:anthem/widgets/project/project_footer.dart';
@@ -77,14 +77,14 @@ class _ProjectState extends State<Project> {
               child: Observer(
                 builder: (context) {
                   const automationEditor = AutomationEditor();
-                  const channelRack = ChannelRack();
+                  const deviceRack = DeviceRack();
                   const pianoRoll = PianoRoll();
                   const mixer = Mixer();
 
                   final selectedEditorIndex =
                       switch (viewModel.selectedEditor) {
                         EditorKind.automation => 0,
-                        EditorKind.channelRack => 1,
+                        EditorKind.deviceRack => 1,
                         EditorKind.detail => 2,
                         EditorKind.mixer => 3,
                         null => null,
@@ -95,7 +95,7 @@ class _ProjectState extends State<Project> {
                       : PanelBorder(
                           panelKind: switch (viewModel.selectedEditor) {
                             .automation => .automationEditor,
-                            .channelRack => .channelRack,
+                            .deviceRack => .deviceRack,
                             .detail => .pianoRoll,
                             .mixer => .mixer,
                             null => null,
@@ -104,7 +104,7 @@ class _ProjectState extends State<Project> {
                             index: selectedEditorIndex,
                             children: [
                               automationEditor,
-                              channelRack,
+                              deviceRack,
                               pianoRoll,
                               mixer,
                             ],

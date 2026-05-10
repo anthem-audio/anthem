@@ -107,16 +107,16 @@ class ProjectFooter extends StatelessWidget {
                       },
                     ),
                     Button(
-                      icon: Icons.channelRack,
-                      toggleState: viewModel.selectedEditor == .channelRack,
+                      icon: Icons.deviceRack,
+                      toggleState: viewModel.selectedEditor == .deviceRack,
                       width: 26,
                       contentPadding: contentPadding,
                       onPress: () {
-                        if (viewModel.selectedEditor == .channelRack) {
+                        if (viewModel.selectedEditor == .deviceRack) {
                           viewModel.selectedEditor = null;
                         } else {
-                          viewModel.selectedEditor = .channelRack;
-                          viewModel.activePanel = .channelRack;
+                          viewModel.selectedEditor = .deviceRack;
+                          viewModel.activePanel = .deviceRack;
                         }
                       },
                     ),

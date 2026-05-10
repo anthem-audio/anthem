@@ -113,8 +113,8 @@ void main() {
       controller.setActiveEditor(editor: EditorKind.automation);
       expect(viewModel.activePanel, equals(PanelKind.automationEditor));
 
-      controller.setActiveEditor(editor: EditorKind.channelRack);
-      expect(viewModel.activePanel, equals(PanelKind.channelRack));
+      controller.setActiveEditor(editor: EditorKind.deviceRack);
+      expect(viewModel.activePanel, equals(PanelKind.deviceRack));
 
       controller.setActiveEditor(editor: EditorKind.mixer);
       expect(viewModel.activePanel, equals(PanelKind.mixer));

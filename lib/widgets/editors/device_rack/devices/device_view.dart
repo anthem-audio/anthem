@@ -18,9 +18,9 @@
 */
 
 import 'package:anthem/model/device.dart';
-import 'package:anthem/widgets/editors/channel_rack/devices/tone_generator_device.dart';
-import 'package:anthem/widgets/editors/channel_rack/devices/utility_device.dart';
-import 'package:anthem/widgets/editors/channel_rack/devices/vst3_device.dart';
+import 'package:anthem/widgets/editors/device_rack/devices/tone_generator_device.dart';
+import 'package:anthem/widgets/editors/device_rack/devices/utility_device.dart';
+import 'package:anthem/widgets/editors/device_rack/devices/vst3_device.dart';
 import 'package:flutter/widgets.dart';
 
 class DeviceView extends StatelessWidget {

@@ -44,7 +44,7 @@ class Icons {
   static IconDef browserPanel = const IconDef(
     'assets/icons/bottom_bar/browser_panel.svg',
   );
-  static IconDef channelRack = const IconDef(
+  static IconDef deviceRack = const IconDef(
     'assets/icons/bottom_bar/instruments_effects_panel.svg',
   );
   static IconDef close = const IconDef('assets/icons/small/close.svg');

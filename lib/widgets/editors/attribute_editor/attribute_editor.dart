@@ -45,7 +45,7 @@ class AttributeEditor extends StatelessObserverWidget {
         break;
       case PanelKind.automationEditor:
         break;
-      case PanelKind.channelRack:
+      case PanelKind.deviceRack:
         break;
       case PanelKind.mixer:
         break;

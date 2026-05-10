@@ -947,8 +947,8 @@ void main() {
         metadata: clip.id,
       );
 
-      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
-      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+      fixture.projectViewModel.activePanel = PanelKind.deviceRack;
       fixture.project.sequence.activePatternID = null;
       fixture.project.sequence.activeTrackID = null;
 
@@ -1009,8 +1009,8 @@ void main() {
         _ClipIds.someOtherSelected,
       });
 
-      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
-      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+      fixture.projectViewModel.activePanel = PanelKind.deviceRack;
       fixture.project.sequence.activePatternID = null;
       fixture.project.sequence.activeTrackID = null;
 
@@ -1048,8 +1048,8 @@ void main() {
 
     test('double click over empty space does not change active editor', () {
       fixture.viewModel.tool = EditorTool.select;
-      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
-      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+      fixture.projectViewModel.activePanel = PanelKind.deviceRack;
       fixture.project.sequence.activePatternID = null;
       fixture.project.sequence.activeTrackID = null;
 
@@ -1075,8 +1075,8 @@ void main() {
         const PointerUpEvent(pointer: 1, position: Offset(400, 20)),
       );
 
-      expect(fixture.projectViewModel.selectedEditor, EditorKind.channelRack);
-      expect(fixture.projectViewModel.activePanel, PanelKind.channelRack);
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.deviceRack);
+      expect(fixture.projectViewModel.activePanel, PanelKind.deviceRack);
       expect(fixture.project.sequence.activePatternID, isNull);
       expect(fixture.project.sequence.activeTrackID, isNull);
     });
@@ -1643,8 +1643,8 @@ void main() {
       final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
-      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
-      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+      fixture.projectViewModel.activePanel = PanelKind.deviceRack;
       fixture.project.sequence.activePatternID = null;
       fixture.project.sequence.activeTrackID = null;
 
@@ -1720,8 +1720,8 @@ void main() {
       final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
-      fixture.projectViewModel.selectedEditor = EditorKind.channelRack;
-      fixture.projectViewModel.activePanel = PanelKind.channelRack;
+      fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+      fixture.projectViewModel.activePanel = PanelKind.deviceRack;
       fixture.project.sequence.activePatternID = null;
       fixture.project.sequence.activeTrackID = null;
 

@@ -50,7 +50,7 @@ void main() {
     expect(fixture.projectViewModel.activePanel, isNull);
   });
 
-  testWidgets('double-click opens the channel rack for the clicked track', (
+  testWidgets('double-click opens the device rack for the clicked track', (
     tester,
   ) async {
     final fixture = _TrackHeaderTestFixture.create();
@@ -70,8 +70,8 @@ void main() {
 
     expect(fixture.arrangerViewModel.selectedTracks, contains(fixture.trackId));
     expect(fixture.arrangerViewModel.selectedTracks, hasLength(1));
-    expect(fixture.projectViewModel.selectedEditor, EditorKind.channelRack);
-    expect(fixture.projectViewModel.activePanel, PanelKind.channelRack);
+    expect(fixture.projectViewModel.selectedEditor, EditorKind.deviceRack);
+    expect(fixture.projectViewModel.activePanel, PanelKind.deviceRack);
   });
 }
 

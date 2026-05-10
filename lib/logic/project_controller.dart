@@ -113,7 +113,7 @@ class ProjectController {
     viewModel.activePanel = switch (editor) {
       .detail => .pianoRoll,
       .automation => .automationEditor,
-      .channelRack => .channelRack,
+      .deviceRack => .deviceRack,
       .mixer => .mixer,
     };
   }

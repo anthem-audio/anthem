@@ -132,7 +132,7 @@ class _TrackHeaderState extends State<TrackHeader> {
       final tapTime = SchedulerBinding.instance.currentSystemFrameTimeStamp;
       if (_isDoubleClick(e.globalPosition, tapTime)) {
         _clearPrimaryTap();
-        projectController.setActiveEditor(editor: EditorKind.channelRack);
+        projectController.setActiveEditor(editor: EditorKind.deviceRack);
         return;
       }
 
