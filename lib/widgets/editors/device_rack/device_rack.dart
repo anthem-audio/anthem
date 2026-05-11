@@ -17,22 +17,28 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math' as math;
+
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/editors/device_rack/devices/device_view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class DeviceRack extends StatefulWidget {
+const _scrollbarShortSideLength = 17.0;
+
+class DeviceRack extends StatefulObserverWidget {
   const DeviceRack({super.key});
 
   @override
@@ -40,20 +46,6 @@ class DeviceRack extends StatefulWidget {
 }
 
 class _DeviceRackState extends State<DeviceRack> {
-  @override
-  Widget build(BuildContext context) {
-    return _DeviceList();
-  }
-}
-
-class _DeviceList extends StatefulObserverWidget {
-  const _DeviceList();
-
-  @override
-  State<_DeviceList> createState() => __DeviceListState();
-}
-
-class __DeviceListState extends State<_DeviceList> {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
@@ -76,10 +68,7 @@ class __DeviceListState extends State<_DeviceList> {
 
     return Container(
       color: AnthemTheme.panel.border,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 8, 10, 8),
-        child: Row(children: [_buildRack(context, project, activeTrackId)]),
-      ),
+      child: _buildRack(context, project, activeTrackId),
     );
   }
 }
@@ -95,38 +84,193 @@ Widget _buildRack(
     return const Text('Invalid track');
   }
 
-  if (track.devices.isEmpty) {
-    return Expanded(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [_AddButton(trackId: track.id, index: 0)],
+  return Expanded(child: _DeviceRackScrollArea(track: track));
+}
+
+class _DeviceRackScrollArea extends StatefulObserverWidget {
+  final TrackModel track;
+
+  const _DeviceRackScrollArea({required this.track});
+
+  @override
+  State<_DeviceRackScrollArea> createState() => _DeviceRackScrollAreaState();
+}
+
+class _DeviceRackScrollAreaState extends State<_DeviceRackScrollArea> {
+  late final ScrollController _scrollController;
+
+  double _viewportWidth = 0;
+  double _maxScrollExtent = 0;
+  bool _metricsSyncScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DeviceRackScrollArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.track.id != widget.track.id && _scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.minScrollExtent);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    _scheduleMetricsSync();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: (notification) {
+              _updateMetrics(notification.metrics);
+              return false;
+            },
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              scrollDirection: Axis.horizontal,
+              child: Padding(
+                padding: .symmetric(vertical: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: _buildRackChildren(),
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
+        _DeviceRackHorizontalScrollbar(
+          scrollController: _scrollController,
+          viewportWidth: _viewportWidth,
+          maxScrollExtent: _maxScrollExtent,
+        ),
+      ],
     );
   }
 
-  return Expanded(
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _AddButton(trackId: track.id, index: 0),
-          for (final (index, device) in track.devices.indexed) ...[
-            DeviceView(
-              key: ValueKey(device.id),
-              trackId: track.id,
-              device: device,
-            ),
-            _AddButton(trackId: track.id, index: index + 1),
-          ],
-          const SizedBox(width: 8),
-        ],
+  List<Widget> _buildRackChildren() {
+    if (widget.track.devices.isEmpty) {
+      return [_AddButton(trackId: widget.track.id, index: 0)];
+    }
+
+    return [
+      _AddButton(trackId: widget.track.id, index: 0),
+      for (final (index, device) in widget.track.devices.indexed) ...[
+        DeviceView(
+          key: ValueKey(device.id),
+          trackId: widget.track.id,
+          device: device,
+        ),
+        _AddButton(trackId: widget.track.id, index: index + 1),
+      ],
+      const SizedBox(width: 8),
+    ];
+  }
+
+  void _scheduleMetricsSync() {
+    if (_metricsSyncScheduled) return;
+
+    _metricsSyncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _metricsSyncScheduled = false;
+      if (!mounted || !_scrollController.hasClients) return;
+
+      final position = _scrollController.position;
+      _updateMetrics(position);
+
+      final maxScrollExtent = math.max(0.0, position.maxScrollExtent);
+      final clampedOffset = position.pixels
+          .clamp(position.minScrollExtent, maxScrollExtent)
+          .toDouble();
+
+      if (clampedOffset != position.pixels) {
+        _scrollController.jumpTo(clampedOffset);
+      }
+    });
+  }
+
+  void _updateMetrics(ScrollMetrics metrics) {
+    if (axisDirectionToAxis(metrics.axisDirection) != Axis.horizontal) {
+      return;
+    }
+
+    final nextViewportWidth = metrics.viewportDimension.isFinite
+        ? math.max(0.0, metrics.viewportDimension)
+        : 0.0;
+    final nextMaxScrollExtent = metrics.maxScrollExtent.isFinite
+        ? math.max(0.0, metrics.maxScrollExtent)
+        : 0.0;
+
+    if (nextViewportWidth == _viewportWidth &&
+        nextMaxScrollExtent == _maxScrollExtent) {
+      return;
+    }
+
+    setState(() {
+      _viewportWidth = nextViewportWidth;
+      _maxScrollExtent = nextMaxScrollExtent;
+    });
+  }
+}
+
+class _DeviceRackHorizontalScrollbar extends StatelessWidget {
+  final ScrollController scrollController;
+  final double viewportWidth;
+  final double maxScrollExtent;
+
+  const _DeviceRackHorizontalScrollbar({
+    required this.scrollController,
+    required this.viewportWidth,
+    required this.maxScrollExtent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scrollRegionEnd = viewportWidth + maxScrollExtent;
+
+    return Container(
+      height: _scrollbarShortSideLength,
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: AnthemTheme.panel.border)),
+        color: AnthemTheme.panel.background,
       ),
-    ),
-  );
+      child: AnimatedBuilder(
+        animation: scrollController,
+        builder: (context, child) {
+          final scrollOffset = scrollController.hasClients
+              ? scrollController.offset.clamp(0.0, maxScrollExtent).toDouble()
+              : 0.0;
+
+          return ScrollbarRenderer(
+            scrollRegionStart: 0,
+            scrollRegionEnd: scrollRegionEnd,
+            handleStart: scrollOffset,
+            handleEnd: scrollOffset + viewportWidth,
+            onChange: (event) {
+              if (!scrollController.hasClients) {
+                return;
+              }
+
+              scrollController.jumpTo(
+                event.handleStart.clamp(0.0, maxScrollExtent).toDouble(),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 
 MenuDef _buildAddDeviceMenuDef(BuildContext context, Id trackId, int index) {
@@ -186,12 +330,26 @@ class _AddButtonState extends State<_AddButton> {
   final AnthemMenuController _menuController = AnthemMenuController();
 
   bool _isHovered = false;
+  bool _isPressed = false;
+  bool _hoverLock = false;
 
   @override
   Widget build(BuildContext context) {
+    final backgroundBaseColor = AnthemTheme.panel.border;
+    final backgroundColor = _isPressed
+        ? _adjustGreyLightness(backgroundBaseColor, 0.015)
+        : _isHovered || _hoverLock
+        ? _adjustGreyLightness(backgroundBaseColor, 0.03)
+        : backgroundBaseColor;
+
     return Menu(
       menuController: _menuController,
       menuDef: _buildAddDeviceMenuDef(context, widget.trackId, widget.index),
+      onClose: () {
+        setState(() {
+          _hoverLock = false;
+        });
+      },
       child: Hint(
         hint: [.new('click', 'Add a device to this track')],
         child: MouseRegion(
@@ -203,21 +361,34 @@ class _AddButtonState extends State<_AddButton> {
           onExit: (e) {
             setState(() {
               _isHovered = false;
+              _isPressed = false;
             });
           },
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
+            onTapDown: (details) {
+              setState(() {
+                _isPressed = true;
+              });
+            },
             onTapUp: (details) {
+              setState(() {
+                _isPressed = false;
+                _hoverLock = true;
+              });
               _menuController.open(details.globalPosition);
+            },
+            onTapCancel: () {
+              setState(() {
+                _isPressed = false;
+              });
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3.0),
               child: Container(
                 decoration: BoxDecoration(
-                  color: _isHovered
-                      ? const Color(0x07FFFFFF)
-                      : const Color(0x00000000),
+                  color: backgroundColor,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 width: 15,
@@ -236,4 +407,12 @@ class _AddButtonState extends State<_AddButton> {
       ),
     );
   }
+}
+
+Color _adjustGreyLightness(Color color, double amount) {
+  final hsl = HSLColor.fromColor(color);
+
+  return hsl
+      .withLightness((hsl.lightness + amount).clamp(0.0, 1.0).toDouble())
+      .toColor();
 }
