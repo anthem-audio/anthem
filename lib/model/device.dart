@@ -80,6 +80,10 @@ abstract class _DeviceModel
   DeviceType type;
 
   @anthemObservable
+  @hideFromCpp
+  bool isCollapsed = false;
+
+  @anthemObservable
   AnthemObservableList<Id> nodeIds;
 
   /// Internal graph connections owned by this device.

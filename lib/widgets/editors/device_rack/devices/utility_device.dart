@@ -46,15 +46,8 @@ class UtilityDevice extends StatelessWidget {
       return _InvalidUtilityDevice(name: device.name);
     }
 
-    return Container(
+    return SizedBox(
       width: 104,
-      decoration: BoxDecoration(
-        color: AnthemTheme.panel.accent,
-        border: Border(
-          left: BorderSide(color: AnthemTheme.panel.border, width: 1),
-          right: BorderSide(color: AnthemTheme.panel.border, width: 1),
-        ),
-      ),
       child: Center(
         child: SizedBox(
           width: 88,
@@ -179,13 +172,13 @@ class _InvalidUtilityDevice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 104,
-      color: AnthemTheme.panel.accent,
-      alignment: Alignment.center,
-      child: Text(
-        name,
-        style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+      child: Center(
+        child: Text(
+          name,
+          style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+        ),
       ),
     );
   }

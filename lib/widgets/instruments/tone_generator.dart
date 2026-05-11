@@ -36,15 +36,8 @@ class ToneGenerator extends StatefulWidget {
 class _ToneGeneratorState extends State<ToneGenerator> {
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 92,
-      decoration: BoxDecoration(
-        color: AnthemTheme.panel.accent,
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(4),
-          bottomRight: Radius.circular(4),
-        ),
-      ),
       child: Center(
         child: SizedBox(
           width: 80,

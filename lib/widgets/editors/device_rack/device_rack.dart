@@ -22,8 +22,8 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/button.dart';
-import 'package:anthem/widgets/basic/hint/hint_store.dart';
+import 'package:anthem/widgets/basic/hint/hint.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/device_rack/devices/device_view.dart';
@@ -75,9 +75,9 @@ class __DeviceListState extends State<_DeviceList> {
     }
 
     return Container(
-      color: AnthemTheme.panel.background,
+      color: AnthemTheme.panel.border,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        padding: const EdgeInsets.fromLTRB(0, 8, 10, 8),
         child: Row(children: [_buildRack(context, project, activeTrackId)]),
       ),
     );
@@ -96,7 +96,15 @@ Widget _buildRack(
   }
 
   if (track.devices.isEmpty) {
-    return _buildAddDeviceButton(context, track.id);
+    return Expanded(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [_AddButton(trackId: track.id, index: 0)],
+        ),
+      ),
+    );
   }
 
   return Expanded(
@@ -105,26 +113,28 @@ Widget _buildRack(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final device in track.devices) DeviceView(device: device),
+          _AddButton(trackId: track.id, index: 0),
+          for (final (index, device) in track.devices.indexed) ...[
+            DeviceView(
+              key: ValueKey(device.id),
+              trackId: track.id,
+              device: device,
+            ),
+            _AddButton(trackId: track.id, index: index + 1),
+          ],
           const SizedBox(width: 8),
-          _buildAddDeviceButton(context, track.id, compact: true),
         ],
       ),
     ),
   );
 }
 
-Widget _buildAddDeviceButton(
-  BuildContext context,
-  Id trackId, {
-  bool compact = false,
-}) {
+MenuDef _buildAddDeviceMenuDef(BuildContext context, Id trackId, int index) {
   final project = Provider.of<ProjectModel>(context, listen: false);
   final serviceRegistry = ServiceRegistry.forProject(project.id);
   final deviceController = serviceRegistry.deviceController;
-  final addDeviceMenuController = AnthemMenuController();
 
-  final menuDef = MenuDef(
+  return MenuDef(
     children: [
       AnthemMenuItem(
         text: 'Tone Generator',
@@ -132,6 +142,7 @@ Widget _buildAddDeviceButton(
           deviceController.addDevice(
             trackId: trackId,
             type: DeviceType.toneGenerator,
+            index: index,
           );
         },
       ),
@@ -141,6 +152,7 @@ Widget _buildAddDeviceButton(
           deviceController.addDevice(
             trackId: trackId,
             type: DeviceType.utility,
+            index: index,
           );
         },
       ),
@@ -152,29 +164,76 @@ Widget _buildAddDeviceButton(
             deviceController.addDevice(
               trackId: trackId,
               type: DeviceType.vst3Plugin,
+              index: index,
             );
           },
         ),
     ],
   );
+}
 
-  final button = Menu(
-    menuController: addDeviceMenuController,
-    menuDef: menuDef,
-    child: Button(
-      width: compact ? 96 : 120,
-      height: 26,
-      text: compact ? 'Add' : 'Add Device',
-      hint: [HintSection('click', 'Add a device to this track')],
-      onPress: () {
-        addDeviceMenuController.open();
-      },
-    ),
-  );
+class _AddButton extends StatefulWidget {
+  final Id trackId;
+  final int index;
 
-  if (compact) {
-    return Center(child: button);
+  const _AddButton({required this.trackId, required this.index});
+
+  @override
+  State<_AddButton> createState() => _AddButtonState();
+}
+
+class _AddButtonState extends State<_AddButton> {
+  final AnthemMenuController _menuController = AnthemMenuController();
+
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Menu(
+      menuController: _menuController,
+      menuDef: _buildAddDeviceMenuDef(context, widget.trackId, widget.index),
+      child: Hint(
+        hint: [.new('click', 'Add a device to this track')],
+        child: MouseRegion(
+          onEnter: (e) {
+            setState(() {
+              _isHovered = true;
+            });
+          },
+          onExit: (e) {
+            setState(() {
+              _isHovered = false;
+            });
+          },
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (details) {
+              _menuController.open(details.globalPosition);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _isHovered
+                      ? const Color(0x07FFFFFF)
+                      : const Color(0x00000000),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                width: 15,
+                child: Center(
+                  child: SvgIcon(
+                    icon: Icons.add,
+                    color: _isHovered
+                        ? AnthemTheme.text.accent
+                        : AnthemTheme.text.main,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
-
-  return Expanded(child: Center(child: button));
 }

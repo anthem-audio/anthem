@@ -54,11 +54,11 @@ class _InvalidDevice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 120,
-      color: AnthemTheme.panel.accent,
-      alignment: Alignment.center,
-      child: Text(name, style: TextStyle(color: AnthemTheme.text.main)),
+      child: Center(
+        child: Text(name, style: TextStyle(color: AnthemTheme.text.main)),
+      ),
     );
   }
 }

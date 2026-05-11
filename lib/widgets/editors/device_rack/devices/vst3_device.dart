@@ -28,22 +28,18 @@ class Vst3Device extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 132,
-      decoration: BoxDecoration(
-        color: AnthemTheme.panel.accent,
-        border: Border(
-          right: BorderSide(color: AnthemTheme.panel.border, width: 1),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Center(
-        child: Text(
-          device.name,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Center(
+          child: Text(
+            device.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
+          ),
         ),
       ),
     );
