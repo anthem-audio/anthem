@@ -31,7 +31,7 @@ This system, the implementation of which lives in the `codegen` folder, has the 
 
 A great example of this system is the tone generator. This processor is defined as a model in Dart with shared configuration attributes (just a single `nodeId` field as of this writing, but this is used in both the UI and engine), and an implementation file in the engine defines the actual DSP. Everything else is handled by code generation.
 
-You can get a node with `ToneGeneratorProcessorModel.getNode()` and add it to the processing graph in Dart along with connections, and the engine will receive these updates automatically and even create an instance of the implementation class. Then you just need to tell the engine to compile the processing graph (an implementation detail, unrelated to and not a limitation of the modelling system), and the tone generator will start playing sound in the configuration specified by the UI's processing graph model.
+You can get a node with `ToneGeneratorProcessorModel.getNode()` and add it to the processing graph in Dart along with connections, and the engine will receive these updates automatically and even create an instance of the implementation class. Then you just need to tell the engine to publish the processing graph (an implementation detail, unrelated to and not a limitation of the modelling system), and the tone generator will start playing sound in the configuration specified by the UI's processing graph model.
 
 The files mentioned above are:
 - [`lib/model/processing_graph/processors/tone_generator.dart`](../lib/model/processing_graph/processors/tone_generator.dart)

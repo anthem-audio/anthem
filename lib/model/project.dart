@@ -348,9 +348,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     }
 
     // The engine will receive the processing graph when we sync the model,
-    // but it still needs to be compiled by the engine for use on the audio
-    // thread, so we do that here.
-    engine.processingGraphApi.compile();
+    // but it still needs to be published to the audio thread, so we do that
+    // here.
+    engine.processingGraphApi.publish();
 
     // We need to compile all arrangements for use in the audio thread.
     for (final arrangement in sequence.arrangements.values) {

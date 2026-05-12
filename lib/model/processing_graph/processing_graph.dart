@@ -71,7 +71,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 
   void _init() {
-    // Send a message to compile the processing graph after the model has been
+    // Send a message to publish the processing graph after the model has been
     // sent to the engine
     onModelFirstAttached(() async {
       // Forward engine state changes to all nodes

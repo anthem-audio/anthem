@@ -129,7 +129,7 @@ public:
 
   std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
 
-  void compileProcessingGraph();
+  void publishProcessingGraph();
 };
 
 } // namespace anthem

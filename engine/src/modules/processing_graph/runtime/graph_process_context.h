@@ -40,18 +40,18 @@ struct GraphBufferLayout {
   int blockSize = 0;
 };
 
-// Owns all graph-scoped runtime storage that is compiled alongside a live
+// Owns all graph-scoped runtime storage that is prepared alongside a live
 // processing graph result.
 //
-// This is the storage owner for a compiled graph's contiguous runtime state.
+// This is the storage owner for a published graph's contiguous runtime state.
 // Node contexts are created through this class and act as lightweight views
 // into the buffers and services owned here.
 class GraphProcessContext {
 private:
   JUCE_LEAK_DETECTOR(GraphProcessContext)
 
-  // Long-lived runtime services that are shared across compiled graphs and
-  // must remain stable across graph recompilation.
+  // Long-lived runtime services that are shared across published graphs and
+  // must remain stable across graph publishing.
   GraphRuntimeServices* rt_services = nullptr;
 
   // The current device layout used when allocating audio and control buffers.
@@ -74,7 +74,7 @@ public:
   ~GraphProcessContext();
 
   // Reserves capacity for all graph-owned runtime objects before node contexts
-  // are created. This keeps the backing arrays stable while compilation builds
+  // are created. This keeps the backing arrays stable while publishing builds
   // buffer bindings into node contexts.
   void reserve(size_t nodeProcessContextCount,
       size_t audioBufferCount,

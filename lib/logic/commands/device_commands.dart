@@ -117,7 +117,7 @@ class DeviceAddRemoveCommand extends Command {
       project.processingGraph.restoreGraphFragment(graphFragment);
     }
 
-    _rebuildRoutingAndCompile(project);
+    _rebuildRoutingAndPublish(project);
   }
 
   void _remove(ProjectModel project) {
@@ -143,16 +143,16 @@ class DeviceAddRemoveCommand extends Command {
       _device.nodeIds,
     );
 
-    _rebuildRoutingAndCompile(project);
+    _rebuildRoutingAndPublish(project);
   }
 
-  void _rebuildRoutingAndCompile(ProjectModel project) {
+  void _rebuildRoutingAndPublish(ProjectModel project) {
     final deviceController = ServiceRegistry.forProject(
       project.id,
     ).deviceController;
 
     deviceController.rebuildTrackDeviceRouting(trackId);
-    project.engine.processingGraphApi.compile();
+    project.engine.processingGraphApi.publish();
   }
 }
 
@@ -177,7 +177,7 @@ class MoveTrackDeviceCommand extends Command {
     ServiceRegistry.forProject(
       project.id,
     ).deviceController.rebuildTrackDeviceRouting(trackId);
-    project.engine.processingGraphApi.compile();
+    project.engine.processingGraphApi.publish();
   }
 
   @override
@@ -192,7 +192,7 @@ class MoveTrackDeviceCommand extends Command {
     ServiceRegistry.forProject(
       project.id,
     ).deviceController.rebuildTrackDeviceRouting(trackId);
-    project.engine.processingGraphApi.compile();
+    project.engine.processingGraphApi.publish();
   }
 }
 

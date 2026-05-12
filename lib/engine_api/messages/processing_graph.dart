@@ -21,21 +21,21 @@
 
 part of 'messages.dart';
 
-class CompileProcessingGraphRequest extends Request {
-  CompileProcessingGraphRequest.uninitialized();
+class PublishProcessingGraphRequest extends Request {
+  PublishProcessingGraphRequest.uninitialized();
 
-  CompileProcessingGraphRequest({required int id}) {
+  PublishProcessingGraphRequest({required int id}) {
     super.id = id;
   }
 }
 
-class CompileProcessingGraphResponse extends Response {
+class PublishProcessingGraphResponse extends Response {
   late bool success;
   String? error;
 
-  CompileProcessingGraphResponse.uninitialized();
+  PublishProcessingGraphResponse.uninitialized();
 
-  CompileProcessingGraphResponse({
+  PublishProcessingGraphResponse({
     required int id,
     required this.success,
     this.error,

@@ -35,47 +35,47 @@ std::string toIdString(int64_t id) {
 std::optional<Response> handleProcessingGraphCommand(Request& request) {
   auto& engine = Engine::getInstance();
 
-  if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
-    auto& compileProcessingGraphRequest =
-        rfl::get<CompileProcessingGraphRequest>(request.variant());
+  if (rfl::holds_alternative<PublishProcessingGraphRequest>(request.variant())) {
+    auto& publishProcessingGraphRequest =
+        rfl::get<PublishProcessingGraphRequest>(request.variant());
 
-    juce::Logger::writeToLog("Compiling from UI request...");
+    juce::Logger::writeToLog("Publishing from UI request...");
 
     if (!engine.isAudioThreadRunning()) {
       juce::Logger::writeToLog(
-          "Skipping processing graph compile because the audio thread is not running.");
+          "Skipping processing graph publish because the audio thread is not running.");
 
-      return std::optional(CompileProcessingGraphResponse{.success = true,
+      return std::optional(PublishProcessingGraphResponse{.success = true,
           .error = std::nullopt,
-          .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
     // We need a valid device in order to query the sample rate and block size
-    // used by the compiled graph.
+    // used by the published graph.
     if (engine.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
       juce::Logger::writeToLog(
-          "Cannot compile processing graph because no audio device is active.");
+          "Cannot publish processing graph because no audio device is active.");
 
-      return std::optional(CompileProcessingGraphResponse{.success = false,
+      return std::optional(PublishProcessingGraphResponse{.success = false,
           .error = std::string("No audio device is active."),
-          .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
     try {
-      engine.compileProcessingGraph();
+      engine.publishProcessingGraph();
     } catch (std::runtime_error& e) {
-      juce::Logger::writeToLog("Error compiling: " + std::string(e.what()));
+      juce::Logger::writeToLog("Error publishing: " + std::string(e.what()));
 
-      return std::optional(CompileProcessingGraphResponse{.success = false,
+      return std::optional(PublishProcessingGraphResponse{.success = false,
           .error = std::string(e.what()),
-          .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
-    juce::Logger::writeToLog("Finished compiling.");
+    juce::Logger::writeToLog("Finished publishing.");
 
-    return std::optional(CompileProcessingGraphResponse{.success = true,
+    return std::optional(PublishProcessingGraphResponse{.success = true,
         .error = std::nullopt,
-        .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+        .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
   } else if (rfl::holds_alternative<GetPluginStateRequest>(request.variant())) {
     juce::Logger::writeToLog("Handling GetPluginStateRequest...");
 

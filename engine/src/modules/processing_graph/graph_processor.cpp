@@ -114,7 +114,7 @@ void GraphProcessor::rt_processGraphUpdates() {
 void GraphProcessor::rt_process(int numSamples) {
   rt_processGraphUpdates();
 
-  // The audio thread can run before the first runtime graph has been compiled
+  // The audio thread can run before the first runtime graph has been published
   // and handed over.
   if (rt_activeRuntimeGraphHandoff == nullptr) {
     return;

@@ -267,7 +267,7 @@ void bindOutputPortBuffers(RuntimeGraph& runtimeGraph,
 
   for (auto& port : *graphNode.eventOutputPorts()) {
     // TODO: Seed initial capacities from persisted per-port runtime hints once
-    // graph recompilation can preserve processing state across compiles.
+    // graph publishing can preserve processing state across publishes.
     auto bufferIndex =
         runtimeGraph.graphProcessContext->allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
     bindings.outputEventBuffers.emplace(port->id(), bufferIndex);
@@ -445,7 +445,7 @@ void bindEventInputPort(RuntimeGraph& runtimeGraph,
   }
 
   // TODO: Seed initial capacities from persisted per-port runtime hints once
-  // graph recompilation can preserve processing state across compiles.
+  // graph publishing can preserve processing state across publishes.
   auto destinationBufferIndex =
       runtimeGraph.graphProcessContext->allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
   bindings.inputEventBuffers.emplace(inputPort.id(), destinationBufferIndex);

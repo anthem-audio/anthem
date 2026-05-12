@@ -272,7 +272,7 @@ void main() {
       },
     );
 
-    test('startup can skip audio init and graph compile', () async {
+    test('startup can skip audio init and graph publish', () async {
       final startFuture = engine.start(initializeAudio: false);
 
       connector.completeInit();
@@ -303,7 +303,7 @@ void main() {
       expect(engine.audioConfig, isNull);
       expect(connector.startHeartbeatTimerCallCount, 1);
 
-      final compileFuture = engine.processingGraphApi.compile();
+      final publishFuture = engine.processingGraphApi.publish();
       await _flushMicrotasks();
 
       expect(
@@ -311,23 +311,23 @@ void main() {
         [
           EngineReadyCheckRequest,
           ModelInitRequest,
-          CompileProcessingGraphRequest,
+          PublishProcessingGraphRequest,
         ],
       );
 
-      final compileRequest =
-          connector.sentRequests[2] as CompileProcessingGraphRequest;
+      final publishRequest =
+          connector.sentRequests[2] as PublishProcessingGraphRequest;
       connector.emitResponse(
-        CompileProcessingGraphResponse(id: compileRequest.id, success: true),
+        PublishProcessingGraphResponse(id: publishRequest.id, success: true),
       );
 
-      await compileFuture;
+      await publishFuture;
       expect(
         connector.sentRequests.map((request) => request.runtimeType).toList(),
         [
           EngineReadyCheckRequest,
           ModelInitRequest,
-          CompileProcessingGraphRequest,
+          PublishProcessingGraphRequest,
         ],
       );
       verify(project.initializeEngine()).called(1);

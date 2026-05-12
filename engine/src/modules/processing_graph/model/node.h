@@ -49,16 +49,16 @@ public:
   //
   // This doesn't risk a use-after-free as of this writing. The lifecycle of the
   // object in this pointer is as follows:
-  //    1. When the graph is compiled, contexts are generated and owned by the
-  //       compilation result object. The runtimeContext field of each
-  //       AnthemGraphNode is also set during compilation.
-  //    2. After compilation is finished, the resulting object is sent to the
+  //    1. When the graph is published, contexts are generated and owned by the
+  //       published runtime graph object. The runtimeContext field of each
+  //       AnthemGraphNode is also set during publishing.
+  //    2. After publishing is finished, the resulting object is sent to the
   //       audio thread.
-  //    3. If and when a new graph is compiled, this field is updated with a
-  //       fresh context during the compilation and before the compiled result
+  //    3. If and when a new graph is published, this field is updated with a
+  //       fresh context during publishing and before the published result
   //       is sent to the audio thread.
-  //    4. After the audio thread receives the new compilation result, it will
-  //       send back the old compilation result for the main thread to
+  //    4. After the audio thread receives the new published result, it will
+  //       send back the old published result for the main thread to
   //       deallocate.
   //
   // This field is always updated with a new pointer before the graph update is

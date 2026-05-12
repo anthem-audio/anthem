@@ -171,7 +171,7 @@ std::shared_ptr<EngineAudioConfig> Engine::getCurrentAudioConfig() const {
   return buildAudioConfig(audioDeviceManager.getCurrentAudioDevice());
 }
 
-void Engine::compileProcessingGraph() {
+void Engine::publishProcessingGraph() {
   auto* currentDevice = audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
   if (currentDevice == nullptr) {

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -27,24 +27,24 @@ class ProcessingGraphApi {
 
   ProcessingGraphApi(this._engine);
 
-  /// Compiles the processing graph, and pushes the result to the audio thread.
+  /// Publishes the processing graph to the audio thread.
   ///
   /// Any updates to the topology of the processing graph, e.g. adding or
   /// removing nodes or modifying connections, are done first by modifying the
-  /// model. When ready, this method can be called to compile an updated set of
-  /// processing instructions and push them to the audio thread.
-  Future<void> compile() async {
+  /// model. When ready, this method can be called to publish an updated set of
+  /// processing instructions to the audio thread.
+  Future<void> publish() async {
     final id = _engine._getRequestId();
 
-    final request = CompileProcessingGraphRequest(id: id);
+    final request = PublishProcessingGraphRequest(id: id);
 
     final response =
-        (await _engine._request(request)) as CompileProcessingGraphResponse;
+        (await _engine._request(request)) as PublishProcessingGraphResponse;
 
     if (response.success) {
       return;
     } else {
-      throw Exception('compile(): engine returned an error: ${response.error}');
+      throw Exception('publish(): engine returned an error: ${response.error}');
     }
   }
 
