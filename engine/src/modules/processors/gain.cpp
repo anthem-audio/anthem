@@ -28,7 +28,9 @@ GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
 
 GainProcessor::~GainProcessor() {}
 
-void GainProcessor::prepareToProcess() {}
+std::optional<std::string> GainProcessor::prepareToProcess() {
+  return std::nullopt;
+}
 
 void GainProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);

@@ -44,8 +44,9 @@ void SimpleVolumeLfoProcessor::rt_advanceState(RuntimeState& state, float rt_rat
   }
 }
 
-void SimpleVolumeLfoProcessor::prepareToProcess() {
+std::optional<std::string> SimpleVolumeLfoProcessor::prepareToProcess() {
   rt_state = RuntimeState{};
+  return std::nullopt;
 }
 
 void SimpleVolumeLfoProcessor::process(NodeProcessContext& context, int numSamples) {

@@ -280,6 +280,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void Function(ModelChangeEvent)? _fieldChangedListener;
 
   @hide
+  bool _hasPublishedProcessingGraphForCurrentAudioStart = false;
+
+  @hide
   final String? _enginePathOverride;
 
   _ProjectModel.create([this._enginePathOverride]) : super() {
@@ -308,6 +311,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       }
 
       if (state == EngineState.stopped) {
+        _hasPublishedProcessingGraphForCurrentAudioStart = false;
+
         // Make sure the engine isn't playing when it starts again
         sequence.isPlaying = false;
 
@@ -321,6 +326,11 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         _modelSyncCompleter = Completer();
       }
     });
+
+    engine.onAudioReady(
+      _publishProcessingGraphAfterAudioStart,
+      runNowIfAudioReady: false,
+    );
 
     visualizationProvider = VisualizationProvider(this as ProjectModel);
 
@@ -348,10 +358,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       _modelSyncCompleter.complete();
     }
 
-    // The engine will receive the processing graph when we sync the model,
-    // but it still needs to be published to the audio thread, so we do that
-    // here.
-    ServiceRegistry.forProject(id).projectController.publishProcessingGraph();
+    _publishProcessingGraphAfterAudioStart();
 
     // We need to compile all arrangements for use in the audio thread.
     for (final arrangement in sequence.arrangements.values) {
@@ -362,6 +369,23 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     for (final pattern in sequence.patterns.values) {
       engine.sequencerApi.compilePattern(pattern.id);
     }
+  }
+
+  void _publishProcessingGraphAfterAudioStart() {
+    if (_hasPublishedProcessingGraphForCurrentAudioStart) {
+      return;
+    }
+
+    if (engine.audioConfig == null) {
+      return;
+    }
+
+    _hasPublishedProcessingGraphForCurrentAudioStart = true;
+
+    // The engine will receive the processing graph when we sync the model,
+    // but it still needs to be initialized and published to the audio thread
+    // after the audio device is available.
+    ServiceRegistry.forProject(id).projectController.publishProcessingGraph();
   }
 
   /// Attaches a listener for model state change events, and send them to the

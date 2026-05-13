@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
@@ -27,11 +29,31 @@ import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RecordingProcessingGraphApi implements ProcessingGraphApi {
+  final calls = <String>[];
   var publishCallCount = 0;
+  var initializeNodesCallCount = 0;
+  var didInitialize = true;
+  Completer<void>? publishCompleter;
+
+  @override
+  Future<ProcessingGraphNodeInitialization> initializeNodes() async {
+    calls.add('initialize');
+    initializeNodesCallCount++;
+    return ProcessingGraphNodeInitialization(
+      didInitialize: didInitialize,
+      results: [],
+    );
+  }
 
   @override
   Future<void> publish() async {
+    calls.add('publish');
     publishCallCount++;
+
+    final completer = publishCompleter;
+    if (completer != null) {
+      await completer.future;
+    }
   }
 
   @override
@@ -168,13 +190,84 @@ void main() {
   });
 
   group('processing graph', () {
-    test('publishProcessingGraph delegates to the engine API', () async {
-      final processingGraphApi = _RecordingProcessingGraphApi();
-      project.engine.processingGraphApi = processingGraphApi;
+    test(
+      'publishProcessingGraph initializes nodes before publishing',
+      () async {
+        final processingGraphApi = _RecordingProcessingGraphApi();
+        project.engine.processingGraphApi = processingGraphApi;
 
-      await controller.publishProcessingGraph();
+        await controller.publishProcessingGraph();
 
-      expect(processingGraphApi.publishCallCount, equals(1));
-    });
+        expect(processingGraphApi.initializeNodesCallCount, equals(1));
+        expect(processingGraphApi.publishCallCount, equals(1));
+        expect(
+          processingGraphApi.calls,
+          orderedEquals(['initialize', 'publish']),
+        );
+      },
+    );
+
+    test(
+      'publishProcessingGraph skips publish when initialization did not run',
+      () async {
+        final processingGraphApi = _RecordingProcessingGraphApi()
+          ..didInitialize = false;
+        project.engine.processingGraphApi = processingGraphApi;
+
+        await controller.publishProcessingGraph();
+
+        expect(processingGraphApi.initializeNodesCallCount, equals(1));
+        expect(processingGraphApi.publishCallCount, equals(0));
+        expect(processingGraphApi.calls, orderedEquals(['initialize']));
+      },
+    );
+
+    test(
+      'publishProcessingGraph serializes queued publishes while in progress',
+      () async {
+        final processingGraphApi = _RecordingProcessingGraphApi();
+        final publishCompleter = Completer<void>();
+        processingGraphApi.publishCompleter = publishCompleter;
+        project.engine.processingGraphApi = processingGraphApi;
+
+        final firstPublish = controller.publishProcessingGraph();
+        await _flushMicrotasks();
+
+        final secondPublish = controller.publishProcessingGraph();
+        await _flushMicrotasks();
+
+        final thirdPublish = controller.publishProcessingGraph();
+        await _flushMicrotasks();
+
+        expect(
+          processingGraphApi.calls,
+          orderedEquals(['initialize', 'publish']),
+        );
+
+        publishCompleter.complete();
+        processingGraphApi.publishCompleter = null;
+
+        await firstPublish;
+        await secondPublish;
+        await thirdPublish;
+
+        expect(
+          processingGraphApi.calls,
+          orderedEquals([
+            'initialize',
+            'publish',
+            'initialize',
+            'publish',
+            'initialize',
+            'publish',
+          ]),
+        );
+      },
+    );
   });
+}
+
+Future<void> _flushMicrotasks() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
 }

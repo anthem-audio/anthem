@@ -22,7 +22,9 @@
 #include "modules/core/engine.h"
 #include "modules/processors/live_event_provider.h"
 
+#include <memory>
 #include <string>
+#include <vector>
 
 namespace anthem {
 
@@ -35,7 +37,29 @@ std::string toIdString(int64_t id) {
 std::optional<Response> handleProcessingGraphCommand(Request& request) {
   auto& engine = Engine::getInstance();
 
-  if (rfl::holds_alternative<PublishProcessingGraphRequest>(request.variant())) {
+  if (rfl::holds_alternative<InitializeProcessingGraphNodesRequest>(request.variant())) {
+    auto& initializeNodesRequest =
+        rfl::get<InitializeProcessingGraphNodesRequest>(request.variant());
+
+    juce::Logger::writeToLog("Initializing processing graph nodes from UI request...");
+
+    auto results = std::make_shared<
+        std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>>();
+    auto didInitialize = false;
+
+    if (!engine.isAudioThreadRunning()) {
+      juce::Logger::writeToLog(
+          "Skipping processing graph node initialization because the audio thread is not running.");
+    } else {
+      didInitialize = true;
+      *results = engine.initializeProcessingGraphNodes();
+    }
+
+    return std::optional(InitializeProcessingGraphNodesResponse{
+        .didInitialize = didInitialize,
+        .results = results,
+        .responseBase = ResponseBase{.id = initializeNodesRequest.requestBase.get().id}});
+  } else if (rfl::holds_alternative<PublishProcessingGraphRequest>(request.variant())) {
     auto& publishProcessingGraphRequest =
         rfl::get<PublishProcessingGraphRequest>(request.variant());
 

@@ -22,6 +22,8 @@
 #include <iostream>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 #ifndef __EMSCRIPTEN__
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -40,6 +42,8 @@
 
 namespace anthem {
 
+class Node;
+
 class Engine {
 private:
   bool isAudioCallbackRunning;
@@ -48,6 +52,13 @@ private:
   static std::unique_ptr<Engine> instance;
 
   std::unique_ptr<AudioCallback> audioCallback;
+
+  // Tracks the graph node instances that have already completed main-thread
+  // initialization for the current engine-side model state. The key is the
+  // stable node ID, while the weak pointer lets us detect undo/redo cases where
+  // a node with the same ID has been removed and later recreated as a distinct
+  // model object.
+  std::unordered_map<int64_t, std::weak_ptr<Node>> initializedProcessingGraphNodes;
 public:
   // The project model.
   //
@@ -129,6 +140,11 @@ public:
 
   std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
 
+  // Initializes the delta between the current shared model graph and
+  // initializedProcessingGraphNodes. Nodes already present in the tracker are
+  // left alone; new or replaced nodes are prepared and reported individually.
+  std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>
+  initializeProcessingGraphNodes();
   void publishProcessingGraph();
 };
 

@@ -21,6 +21,7 @@
 
 #include <juce_core/juce_core.h>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace anthem {
@@ -46,7 +47,7 @@ public:
   //
   // Note that this is called after the audio device is started, so audio device
   // information can be queried at this point.
-  virtual void prepareToProcess() = 0;
+  virtual std::optional<std::string> prepareToProcess() = 0;
 
   // This flag must be set after prepareToProcess() is called. It is set by the
   // caller, not by the processor itself.

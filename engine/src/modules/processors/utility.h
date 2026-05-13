@@ -44,7 +44,7 @@ public:
   UtilityProcessor(UtilityProcessor&&) noexcept = default;
   UtilityProcessor& operator=(UtilityProcessor&&) noexcept = default;
 
-  void prepareToProcess() override;
+  std::optional<std::string> prepareToProcess() override;
   void process(NodeProcessContext& context, int numSamples) override;
 };
 

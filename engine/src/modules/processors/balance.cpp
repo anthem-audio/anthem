@@ -30,7 +30,9 @@ BalanceProcessor::BalanceProcessor(const BalanceProcessorModelImpl& _impl)
 
 BalanceProcessor::~BalanceProcessor() {}
 
-void BalanceProcessor::prepareToProcess() {}
+std::optional<std::string> BalanceProcessor::prepareToProcess() {
+  return std::nullopt;
+}
 
 void BalanceProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);

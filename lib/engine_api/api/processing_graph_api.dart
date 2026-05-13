@@ -19,6 +19,16 @@
 
 part of 'package:anthem/engine_api/engine.dart';
 
+class ProcessingGraphNodeInitialization {
+  final bool didInitialize;
+  final List<ProcessingGraphNodeInitializationResult> results;
+
+  ProcessingGraphNodeInitialization({
+    required this.didInitialize,
+    required this.results,
+  });
+}
+
 /// This class is an API for the processing graph in the Anthem Engine. It can
 /// be used to add and remove nodes, and to connect and disconnect existing
 /// nodes.
@@ -26,6 +36,23 @@ class ProcessingGraphApi {
   final Engine _engine;
 
   ProcessingGraphApi(this._engine);
+
+  /// Initializes any processing graph nodes that have not been initialized by
+  /// the engine yet.
+  Future<ProcessingGraphNodeInitialization> initializeNodes() async {
+    final id = _engine._getRequestId();
+
+    final request = InitializeProcessingGraphNodesRequest(id: id);
+
+    final response =
+        (await _engine._request(request))
+            as InitializeProcessingGraphNodesResponse;
+
+    return ProcessingGraphNodeInitialization(
+      didInitialize: response.didInitialize,
+      results: response.results,
+    );
+  }
 
   /// Publishes the processing graph to the audio thread.
   ///

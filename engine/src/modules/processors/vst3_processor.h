@@ -165,13 +165,13 @@ public:
   VST3Processor(VST3Processor&&) noexcept = default;
   VST3Processor& operator=(VST3Processor&&) noexcept = delete;
 
-  void prepareToProcess() override;
+  std::optional<std::string> prepareToProcess() override;
   void process(NodeProcessContext& context, int numSamples) override;
 
   void initialize(
       std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 
-  void tryInitializePlugin();
+  std::optional<std::string> tryInitializePlugin();
 
   void audioProcessorParameterChanged(
       juce::AudioProcessor* processor, int parameterIndex, float newValue) override;

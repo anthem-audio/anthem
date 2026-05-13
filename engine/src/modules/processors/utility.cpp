@@ -30,7 +30,9 @@ UtilityProcessor::UtilityProcessor(const UtilityProcessorModelImpl& _impl)
 
 UtilityProcessor::~UtilityProcessor() {}
 
-void UtilityProcessor::prepareToProcess() {}
+std::optional<std::string> UtilityProcessor::prepareToProcess() {
+  return std::nullopt;
+}
 
 void UtilityProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(UtilityProcessorModelBase::audioInputPortId);

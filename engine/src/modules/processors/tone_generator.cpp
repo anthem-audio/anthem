@@ -42,10 +42,17 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
 
 ToneGeneratorProcessor::~ToneGeneratorProcessor() {}
 
-void ToneGeneratorProcessor::prepareToProcess() {
+std::optional<std::string> ToneGeneratorProcessor::prepareToProcess() {
   auto* currentDevice = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
+
+  if (currentDevice == nullptr) {
+    return std::string("No audio device is active.");
+  }
+
   sampleRate = currentDevice->getCurrentSampleRate();
+
+  return std::nullopt;
 }
 
 void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples) {

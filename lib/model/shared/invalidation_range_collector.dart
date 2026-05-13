@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,7 +20,8 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show InvalidationRange;
 import 'package:flutter/foundation.dart';
 
 /// A high-performance store for invalidation ranges.

@@ -28,9 +28,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 
-export 'package:anthem/engine_api/messages/messages.dart'
-    show InvalidationRange, FieldAccess, FieldUpdateKind;
-
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 part 'api/sequencer_api.dart';
@@ -172,9 +169,17 @@ class Engine {
   /// This will be false when the engine is first started, and the engine will
   /// set this via an event once it has initialized the audio thread.
   set isAudioReady(bool value) {
+    final wasAudioReady = _isAudioReady;
+
     _isAudioReady = value;
     if (value && !_audioReadyCompleter.isCompleted) {
       _audioReadyCompleter.complete();
+    }
+
+    if (value && !wasAudioReady) {
+      for (final callback in _audioReadyCallbacks) {
+        callback();
+      }
     }
   }
 
@@ -202,6 +207,7 @@ class Engine {
       : _readyForMessagesCompleter.future;
 
   final List<void Function()> _startupCallbacks = [];
+  final List<void Function()> _audioReadyCallbacks = [];
 
   /// Adds a callback to be called when the engine is started.
   void onStart(
@@ -212,6 +218,17 @@ class Engine {
       callback();
     }
     _startupCallbacks.add(callback);
+  }
+
+  /// Adds a callback to be called when the engine's audio thread is ready.
+  void onAudioReady(
+    void Function() callback, {
+    required bool runNowIfAudioReady,
+  }) {
+    if (_isAudioReady && runNowIfAudioReady) {
+      callback();
+    }
+    _audioReadyCallbacks.add(callback);
   }
 
   final String? enginePathOverride;

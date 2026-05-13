@@ -60,9 +60,13 @@ void DbMeterProcessor::initialize(
   syncVisualizationProviders();
 }
 
-void DbMeterProcessor::prepareToProcess() {
+std::optional<std::string> DbMeterProcessor::prepareToProcess() {
   auto* currentDevice = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
+
+  if (currentDevice == nullptr) {
+    return std::string("No audio device is active.");
+  }
 
   size_t rt_channelCount = 0;
 
@@ -75,6 +79,8 @@ void DbMeterProcessor::prepareToProcess() {
 
   rt_publishEverySamples->store(
       std::max<int64_t>(1, publishEverySamples()), std::memory_order_relaxed);
+
+  return std::nullopt;
 }
 
 void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {

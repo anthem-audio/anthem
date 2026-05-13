@@ -20,8 +20,12 @@
 #include "modules/core/engine.h"
 
 #include "modules/core/adapters/transport_adapters.h"
+#include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/runtime_graph.h"
 #include "modules/processors/db_meter.h"
+
+#include <optional>
+#include <string>
 
 namespace anthem {
 
@@ -37,6 +41,16 @@ std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device)
   audioConfig->inputChannelCount = device->getActiveInputChannels().countNumberOfSetBits();
   audioConfig->outputChannelCount = device->getActiveOutputChannels().countNumberOfSetBits();
   return audioConfig;
+}
+
+std::shared_ptr<ProcessingGraphNodeInitializationResult> makeNodeInitializationResult(
+    int64_t nodeId, bool success, std::optional<std::string> error = std::nullopt) {
+  return std::make_shared<ProcessingGraphNodeInitializationResult>(
+      ProcessingGraphNodeInitializationResult{
+          .nodeId = nodeId,
+          .success = success,
+          .error = std::move(error),
+      });
 }
 } // namespace
 
@@ -171,6 +185,95 @@ std::shared_ptr<EngineAudioConfig> Engine::getCurrentAudioConfig() const {
   return buildAudioConfig(audioDeviceManager.getCurrentAudioDevice());
 }
 
+std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>
+Engine::initializeProcessingGraphNodes() {
+  std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>> results;
+
+  if (project == nullptr || project->processingGraph() == nullptr) {
+    return results;
+  }
+
+  auto& graphNodes = *project->processingGraph()->nodes();
+
+  // First prune the initialization tracker against the current shared model
+  // graph. This handles deleted nodes, expired model objects, and undo/redo
+  // cycles where a node ID comes back with a different Node instance.
+  for (auto iter = initializedProcessingGraphNodes.begin();
+       iter != initializedProcessingGraphNodes.end();) {
+    auto graphNodeIter = graphNodes.find(iter->first);
+    auto initializedNode = iter->second.lock();
+
+    if (graphNodeIter == graphNodes.end() || initializedNode == nullptr ||
+        initializedNode != graphNodeIter->second) {
+      if (initializedNode != nullptr) {
+        auto processor = initializedNode->getProcessor();
+        if (processor.has_value()) {
+          processor.value()->isPrepared = false;
+        }
+      }
+
+      iter = initializedProcessingGraphNodes.erase(iter);
+      continue;
+    }
+
+    ++iter;
+  }
+
+  results.reserve(graphNodes.size());
+
+  // Then initialize the delta: every current node that is not already tracked
+  // as this exact Node instance. Existing tracked nodes have already completed
+  // preparation, so they are intentionally skipped.
+  for (auto& [nodeId, graphNode] : graphNodes) {
+    if (graphNode == nullptr) {
+      results.push_back(makeNodeInitializationResult(
+          nodeId, false, "Processing graph cannot initialize a null node."));
+      continue;
+    }
+
+    auto initializedNodeIter = initializedProcessingGraphNodes.find(nodeId);
+    if (initializedNodeIter != initializedProcessingGraphNodes.end() &&
+        initializedNodeIter->second.lock() == graphNode) {
+      continue;
+    }
+
+    // A graph node without a processor has no process preparation step, but it
+    // still participates in delta tracking so it won't be reported as new on
+    // every initialization request.
+    auto processor = graphNode->getProcessor();
+    if (!processor.has_value()) {
+      initializedProcessingGraphNodes[nodeId] = graphNode;
+      results.push_back(makeNodeInitializationResult(nodeId, true));
+      continue;
+    }
+
+    // Processor preparation is the initialization boundary. Successful nodes
+    // are added to the tracker; failed nodes are left untracked so a later
+    // initialize request can retry after the model or environment changes.
+    try {
+      auto prepareError = processor.value()->prepareToProcess();
+      if (prepareError.has_value()) {
+        processor.value()->isPrepared = false;
+        results.push_back(makeNodeInitializationResult(nodeId, false, prepareError.value()));
+        continue;
+      }
+
+      processor.value()->isPrepared = true;
+      initializedProcessingGraphNodes[nodeId] = graphNode;
+      results.push_back(makeNodeInitializationResult(nodeId, true));
+    } catch (const std::exception& e) {
+      processor.value()->isPrepared = false;
+      results.push_back(makeNodeInitializationResult(nodeId, false, std::string(e.what())));
+    } catch (...) {
+      processor.value()->isPrepared = false;
+      results.push_back(makeNodeInitializationResult(
+          nodeId, false, "Unknown error while initializing processing graph node."));
+    }
+  }
+
+  return results;
+}
+
 void Engine::publishProcessingGraph() {
   auto* currentDevice = audioDeviceManager.getCurrentAudioDevice();
   jassert(currentDevice != nullptr);
@@ -187,30 +290,6 @@ void Engine::publishProcessingGraph() {
           .blockSize = currentDevice->getCurrentBufferSizeSamples(),
       },
       currentDevice->getCurrentSampleRate());
-
-  // Make sure all nodes have been prepared for processing
-  for (auto& pair : *processingGraph.nodes()) {
-    auto& node = *pair.second;
-
-    auto& procVariant = node.processor();
-    if (!procVariant.has_value()) {
-      continue;
-    }
-
-    rfl::visit(
-        [&](const auto& field) {
-          // 'field' is the rfl::Field<Name, Type> wrapper.
-          // We get the actual std::shared_ptr with .value().
-          const auto& sharedPtr = field.value();
-          Processor* baseProcessor = sharedPtr.get();
-
-          if (!baseProcessor->isPrepared) {
-            baseProcessor->prepareToProcess();
-            baseProcessor->isPrepared = true;
-          }
-        },
-        procVariant.value());
-  }
 
   graphProcessor->setRuntimeGraphFromMainThread(runtimeGraph.release());
 }

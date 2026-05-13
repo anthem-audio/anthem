@@ -44,6 +44,10 @@ import 'track_controller_test.mocks.dart';
 
 class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
   @override
+  Future<ProcessingGraphNodeInitialization> initializeNodes() async =>
+      ProcessingGraphNodeInitialization(didInitialize: true, results: []);
+
+  @override
   Future<void> publish() async {}
 }
 

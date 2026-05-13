@@ -303,6 +303,36 @@ void main() {
       expect(engine.audioConfig, isNull);
       expect(connector.startHeartbeatTimerCallCount, 1);
 
+      final initializeFuture = engine.processingGraphApi.initializeNodes();
+      await _flushMicrotasks();
+
+      expect(
+        connector.sentRequests.map((request) => request.runtimeType).toList(),
+        [
+          EngineReadyCheckRequest,
+          ModelInitRequest,
+          InitializeProcessingGraphNodesRequest,
+        ],
+      );
+
+      final initializeRequest =
+          connector.sentRequests[2] as InitializeProcessingGraphNodesRequest;
+      connector.emitResponse(
+        InitializeProcessingGraphNodesResponse(
+          id: initializeRequest.id,
+          didInitialize: true,
+          results: [
+            ProcessingGraphNodeInitializationResult(nodeId: 7, success: true),
+          ],
+        ),
+      );
+
+      final initialization = await initializeFuture;
+      expect(initialization.didInitialize, isTrue);
+      expect(initialization.results, hasLength(1));
+      expect(initialization.results.single.nodeId, equals(7));
+      expect(initialization.results.single.success, isTrue);
+
       final publishFuture = engine.processingGraphApi.publish();
       await _flushMicrotasks();
 
@@ -311,12 +341,13 @@ void main() {
         [
           EngineReadyCheckRequest,
           ModelInitRequest,
+          InitializeProcessingGraphNodesRequest,
           PublishProcessingGraphRequest,
         ],
       );
 
       final publishRequest =
-          connector.sentRequests[2] as PublishProcessingGraphRequest;
+          connector.sentRequests[3] as PublishProcessingGraphRequest;
       connector.emitResponse(
         PublishProcessingGraphResponse(id: publishRequest.id, success: true),
       );
@@ -327,6 +358,7 @@ void main() {
         [
           EngineReadyCheckRequest,
           ModelInitRequest,
+          InitializeProcessingGraphNodesRequest,
           PublishProcessingGraphRequest,
         ],
       );

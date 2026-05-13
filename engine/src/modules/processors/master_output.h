@@ -45,7 +45,7 @@ public:
     return 0;
   }
 
-  void prepareToProcess() override;
+  std::optional<std::string> prepareToProcess() override;
   void process(NodeProcessContext& context, int numSamples) override;
 
   void initialize(

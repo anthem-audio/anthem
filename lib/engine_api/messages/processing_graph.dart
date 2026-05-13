@@ -21,6 +21,61 @@
 
 part of 'messages.dart';
 
+class InitializeProcessingGraphNodesRequest extends Request {
+  InitializeProcessingGraphNodesRequest.uninitialized();
+
+  InitializeProcessingGraphNodesRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+class InitializeProcessingGraphNodesResponse extends Response {
+  late bool didInitialize;
+  late List<ProcessingGraphNodeInitializationResult> results;
+
+  InitializeProcessingGraphNodesResponse.uninitialized()
+    : didInitialize = false,
+      results = [];
+
+  InitializeProcessingGraphNodesResponse({
+    required int id,
+    required this.didInitialize,
+    required this.results,
+  }) {
+    super.id = id;
+  }
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphNodeInitializationResult
+    extends _ProcessingGraphNodeInitializationResult
+    with _$ProcessingGraphNodeInitializationResultAnthemModelMixin {
+  ProcessingGraphNodeInitializationResult.uninitialized()
+    : super(nodeId: -1, success: false);
+
+  ProcessingGraphNodeInitializationResult({
+    required super.nodeId,
+    required super.success,
+    super.error,
+  });
+
+  factory ProcessingGraphNodeInitializationResult.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ProcessingGraphNodeInitializationResultAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphNodeInitializationResult {
+  Id nodeId;
+  bool success;
+  String? error;
+
+  _ProcessingGraphNodeInitializationResult({
+    required this.nodeId,
+    required this.success,
+    this.error,
+  });
+}
+
 class PublishProcessingGraphRequest extends Request {
   PublishProcessingGraphRequest.uninitialized();
 

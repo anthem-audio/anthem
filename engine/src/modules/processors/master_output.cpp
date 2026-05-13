@@ -32,18 +32,20 @@ MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImp
 
 MasterOutputProcessor::~MasterOutputProcessor() {}
 
-void MasterOutputProcessor::prepareToProcess() {
+std::optional<std::string> MasterOutputProcessor::prepareToProcess() {
   auto* device = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
   if (device == nullptr) {
     jassertfalse;
     juce::Logger::writeToLog("Error: No audio device is currently set.");
-    return;
+    return std::string("No audio device is active.");
   }
 
   auto outputChannelsMask = device->getActiveOutputChannels();
   auto outputChannels = outputChannelsMask.countNumberOfSetBits();
   auto bufferSize = device->getCurrentBufferSizeSamples();
   buffer = juce::AudioSampleBuffer(outputChannels, bufferSize);
+
+  return std::nullopt;
 }
 
 void MasterOutputProcessor::process(NodeProcessContext& context, int numSamples) {

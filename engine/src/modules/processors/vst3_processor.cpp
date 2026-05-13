@@ -74,11 +74,11 @@ void VST3Processor::rebindEditorWindowCloseCallback() {
 }
 
 // We expect that a valid device is available when this method is called
-void VST3Processor::prepareToProcess() {
+std::optional<std::string> VST3Processor::prepareToProcess() {
   writeVST3Log(*this, "prepareToProcess() called for path: " + juce::String(vst3Path()));
 
   // If the plugin is not initialized, try to initialize it
-  tryInitializePlugin();
+  return tryInitializePlugin();
 }
 
 void VST3Processor::process(NodeProcessContext& context, int numSamples) {
@@ -130,10 +130,10 @@ void VST3Processor::initialize(
   VST3ProcessorModelBase::initialize(selfModel, parentModel);
 }
 
-void VST3Processor::tryInitializePlugin() {
+std::optional<std::string> VST3Processor::tryInitializePlugin() {
   if (pluginInstance != nullptr) {
     writeVST3Log(*this, "Plugin instance already exists. Skipping initialization.");
-    return;
+    return std::nullopt;
   }
 
   auto& audioPluginFormatManager = Engine::getInstance().audioPluginFormatManager;
@@ -143,7 +143,7 @@ void VST3Processor::tryInitializePlugin() {
 
   if (device == nullptr) {
     writeVST3Log(*this, "No audio device available. Cannot initialize plugin.");
-    return;
+    return std::string("No audio device is active.");
   }
 
   writeVST3Log(*this,
@@ -158,7 +158,7 @@ void VST3Processor::tryInitializePlugin() {
 
   if (foundPlugins.isEmpty()) {
     writeVST3Log(*this, "No plugins found in VST3 file: " + juce::String(vst3Path()));
-    return;
+    return std::string("No plugins found in VST3 file: " + vst3Path());
   }
 
   writeVST3Log(
@@ -250,7 +250,9 @@ void VST3Processor::tryInitializePlugin() {
 
           processor->showPluginGUI();
         });
-      });
+        });
+
+  return std::nullopt;
 }
 
 void VST3Processor::showPluginGUI() {

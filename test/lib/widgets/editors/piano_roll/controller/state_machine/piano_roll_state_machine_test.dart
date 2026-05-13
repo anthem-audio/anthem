@@ -77,6 +77,10 @@ class _RecordingProcessingGraphApi implements ProcessingGraphApi {
   final List<_RecordedLiveEvent> liveEvents = [];
 
   @override
+  Future<ProcessingGraphNodeInitialization> initializeNodes() async =>
+      ProcessingGraphNodeInitialization(didInitialize: true, results: []);
+
+  @override
   Future<void> publish() async {}
 
   @override
