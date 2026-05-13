@@ -44,7 +44,7 @@ import 'track_controller_test.mocks.dart';
 
 class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
   @override
-  Future<void> compile() async {}
+  Future<void> publish() async {}
 }
 
 class _MockEngine extends Mock implements Engine {

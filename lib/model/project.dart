@@ -23,6 +23,7 @@ import 'dart:convert';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/commands/command_stack.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
@@ -350,7 +351,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     // The engine will receive the processing graph when we sync the model,
     // but it still needs to be published to the audio thread, so we do that
     // here.
-    engine.processingGraphApi.publish();
+    ServiceRegistry.forProject(id).projectController.publishProcessingGraph();
 
     // We need to compile all arrangements for use in the audio thread.
     for (final arrangement in sequence.arrangements.values) {

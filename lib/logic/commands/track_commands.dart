@@ -323,7 +323,9 @@ class TrackAddRemoveCommand extends Command {
       ..clear()
       ..addAll(_tracks.map((t) => t.trackModel.id));
 
-    project.engine.processingGraphApi.publish();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 
   void _remove(ProjectModel project) {
@@ -405,7 +407,9 @@ class TrackAddRemoveCommand extends Command {
       }
     }
 
-    project.engine.processingGraphApi.publish();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 }
 
@@ -813,7 +817,9 @@ class TrackGroupUngroupCommand extends Command {
       project.id,
     ).arrangerViewModel.registerTrack(_newGroupTrack.id);
 
-    project.engine.processingGraphApi.publish();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 
   void _ungroup(ProjectModel project) {
@@ -854,7 +860,9 @@ class TrackGroupUngroupCommand extends Command {
       project.id,
     ).arrangerViewModel.unregisterTrack(_newGroupTrack.id);
 
-    project.engine.processingGraphApi.publish();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 }
 

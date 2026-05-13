@@ -102,6 +102,10 @@ class ProjectController {
     }
   }
 
+  Future<void> publishProcessingGraph() {
+    return project.engine.processingGraphApi.publish();
+  }
+
   void setActiveArrangement(Id? id) {
     project.sequence.setActiveArrangement(id);
     _updateTransportSequenceID(id);
