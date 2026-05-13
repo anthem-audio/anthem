@@ -77,7 +77,7 @@ class _RecordingProcessingGraphApi implements ProcessingGraphApi {
   final List<_RecordedLiveEvent> liveEvents = [];
 
   @override
-  Future<void> compile() async {}
+  Future<void> publish() async {}
 
   @override
   Future<String> getPluginState(Id nodeId) async => '';

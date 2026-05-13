@@ -963,6 +963,23 @@ void main() {
     });
 
     group('Add/remove', () {
+      List<Object> connectionsMatching({
+        required Id sourceNodeId,
+        required int sourcePortId,
+        required Id destinationNodeId,
+        required int destinationPortId,
+      }) {
+        return processingGraph.connections.values
+            .where(
+              (connection) =>
+                  connection.sourceNodeId == sourceNodeId &&
+                  connection.sourcePortId == sourcePortId &&
+                  connection.destinationNodeId == destinationNodeId &&
+                  connection.destinationPortId == destinationPortId,
+            )
+            .toList(growable: false);
+      }
+
       test(
         'Device add/remove command adds and restores nodes on undo/redo',
         () {
@@ -1126,6 +1143,81 @@ void main() {
 
         expect(trackC.devices, isEmpty);
         expect(processingGraph.nodes[utilityNodeId], isNull);
+      });
+
+      test('Device changes reassert the track main output route', () {
+        final originalMainRoute = processingGraph.connections.values
+            .firstWhere(
+              (connection) =>
+                  connection.sourceNodeId == trackJ.utilityNodeId &&
+                  connection.sourcePortId ==
+                      UtilityProcessorModel.audioOutputPortId &&
+                  connection.destinationNodeId == masterTrack.utilityNodeId &&
+                  connection.destinationPortId ==
+                      UtilityProcessorModel.audioInputPortId,
+            )
+            .id;
+        processingGraph.removeConnection(originalMainRoute);
+
+        expect(
+          connectionsMatching(
+            sourceNodeId: trackJ.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: masterTrack.utilityNodeId!,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+          ),
+          isEmpty,
+        );
+
+        DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: trackJ.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+        ).execute(project);
+
+        final toneGeneratorNodeId = trackJ.devices.single.nodeIds.single;
+        final masterOutputPortId = processingGraph
+            .getMasterOutputNode()
+            .audioInputPorts
+            .first
+            .id;
+
+        expect(
+          connectionsMatching(
+            sourceNodeId: toneGeneratorNodeId,
+            sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
+            destinationNodeId: trackJ.utilityNodeId!,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          connectionsMatching(
+            sourceNodeId: trackJ.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: trackJ.dbMeterNodeId!,
+            destinationPortId: DbMeterProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          connectionsMatching(
+            sourceNodeId: trackJ.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: masterTrack.utilityNodeId!,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          connectionsMatching(
+            sourceNodeId: masterTrack.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: processingGraph.masterOutputNodeId,
+            destinationPortId: masterOutputPortId,
+          ),
+          hasLength(1),
+        );
       });
 
       test('Add track undo/redo restores the same track nodes', () {

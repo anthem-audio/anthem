@@ -17,12 +17,32 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _RecordingProcessingGraphApi implements ProcessingGraphApi {
+  var publishCallCount = 0;
+
+  @override
+  Future<void> publish() async {
+    publishCallCount++;
+  }
+
+  @override
+  Future<String> getPluginState(Id nodeId) async => '';
+
+  @override
+  void sendLiveEvent(Id liveEventProviderNodeId, Object event) {}
+
+  @override
+  void setPluginState(Id nodeId, String state) {}
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -144,6 +164,17 @@ void main() {
       expect(viewModel.selectedEditor, equals(EditorKind.mixer));
       expect(viewModel.activePanel, equals(PanelKind.mixer));
       expect(project.sequence.activePatternID, isNull);
+    });
+  });
+
+  group('processing graph', () {
+    test('publishProcessingGraph delegates to the engine API', () async {
+      final processingGraphApi = _RecordingProcessingGraphApi();
+      project.engine.processingGraphApi = processingGraphApi;
+
+      await controller.publishProcessingGraph();
+
+      expect(processingGraphApi.publishCallCount, equals(1));
     });
   });
 }

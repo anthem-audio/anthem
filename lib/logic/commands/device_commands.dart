@@ -117,7 +117,7 @@ class DeviceAddRemoveCommand extends Command {
       project.processingGraph.restoreGraphFragment(graphFragment);
     }
 
-    _rebuildRoutingAndPublish(project);
+    _rebuildTrackRoutingAndPublish(project, trackId);
   }
 
   void _remove(ProjectModel project) {
@@ -143,16 +143,7 @@ class DeviceAddRemoveCommand extends Command {
       _device.nodeIds,
     );
 
-    _rebuildRoutingAndPublish(project);
-  }
-
-  void _rebuildRoutingAndPublish(ProjectModel project) {
-    final deviceController = ServiceRegistry.forProject(
-      project.id,
-    ).deviceController;
-
-    deviceController.rebuildTrackDeviceRouting(trackId);
-    project.engine.processingGraphApi.publish();
+    _rebuildTrackRoutingAndPublish(project, trackId);
   }
 }
 
@@ -174,10 +165,7 @@ class MoveTrackDeviceCommand extends Command {
     final track = _getTrack(project, trackId, 'MoveTrackDeviceCommand.execute');
     _oldIndex = _moveDevice(track, deviceId, newIndex);
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).deviceController.rebuildTrackDeviceRouting(trackId);
-    project.engine.processingGraphApi.publish();
+    _rebuildTrackRoutingAndPublish(project, trackId);
   }
 
   @override
@@ -189,11 +177,16 @@ class MoveTrackDeviceCommand extends Command {
     );
     _moveDevice(track, deviceId, _oldIndex);
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).deviceController.rebuildTrackDeviceRouting(trackId);
-    project.engine.processingGraphApi.publish();
+    _rebuildTrackRoutingAndPublish(project, trackId);
   }
+}
+
+void _rebuildTrackRoutingAndPublish(ProjectModel project, Id trackId) {
+  final serviceRegistry = ServiceRegistry.forProject(project.id);
+
+  serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
+  serviceRegistry.trackController.rerouteTracks([trackId]);
+  serviceRegistry.projectController.publishProcessingGraph();
 }
 
 TrackModel _getTrack(ProjectModel project, Id trackId, String caller) {
