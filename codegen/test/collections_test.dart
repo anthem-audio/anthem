@@ -415,6 +415,64 @@ void main() {
       expect((changes[3].operation as ListInsert).value, same(newB));
       expect((changes[4].operation as ListInsert).value, same(newC));
     });
+
+    test('Clear and addAll replacement keeps nested list updates attached', () {
+      final oldPort = TestModel(
+        'old port',
+        childList: AnthemObservableList<Object?>.of([18, 19]),
+      );
+      final root = TestRoot(list: AnthemObservableList<Object?>.of([oldPort]));
+      final changes = <ModelChangeEvent>[];
+      root.addRawFieldChangedListener(changes.add);
+
+      final replacementPort = TestModel(
+        'replacement port',
+        childList: AnthemObservableList<Object?>.of([18, 19]),
+      );
+
+      root.list.clear();
+      root.list.addAll([replacementPort]);
+
+      expect(oldPort.parent, isNull);
+      expect(replacementPort.parent, same(root.list));
+      expect(replacementPort.parentListIndex, 0);
+      expect(replacementPort.childList!.parent, same(replacementPort));
+      expect(replacementPort.childList!.parentFieldName, 'childList');
+
+      expect(changes, hasLength(2));
+      _expectRootListAccessor(changes[0], 0);
+      expect(changes[0].operation, isA<ListRemove>());
+      expect((changes[0].operation as ListRemove).removedValue, same(oldPort));
+
+      _expectRootListAccessor(changes[1], 0);
+      expect(changes[1].operation, isA<ListInsert>());
+      expect((changes[1].operation as ListInsert).value, same(replacementPort));
+
+      changes.clear();
+      replacementPort.childList!.removeAt(0);
+      replacementPort.childList!.add(22);
+
+      expect(changes, hasLength(2));
+      expect(changes[0].fieldAccessors, hasLength(4));
+      expect(changes[0].fieldAccessors[0].fieldName, 'list');
+      expect(changes[0].fieldAccessors[1].fieldType, FieldType.list);
+      expect(changes[0].fieldAccessors[1].index, 0);
+      expect(changes[0].fieldAccessors[2].fieldName, 'childList');
+      expect(changes[0].fieldAccessors[3].fieldType, FieldType.list);
+      expect(changes[0].fieldAccessors[3].index, 0);
+      expect(changes[0].operation, isA<ListRemove>());
+      expect((changes[0].operation as ListRemove).removedValue, 18);
+
+      expect(changes[1].fieldAccessors, hasLength(4));
+      expect(changes[1].fieldAccessors[0].fieldName, 'list');
+      expect(changes[1].fieldAccessors[1].fieldType, FieldType.list);
+      expect(changes[1].fieldAccessors[1].index, 0);
+      expect(changes[1].fieldAccessors[2].fieldName, 'childList');
+      expect(changes[1].fieldAccessors[3].fieldType, FieldType.list);
+      expect(changes[1].fieldAccessors[3].index, 1);
+      expect(changes[1].operation, isA<ListInsert>());
+      expect((changes[1].operation as ListInsert).value, 22);
+    });
   });
 
   group('AnthemObservableMap serialization', () {
