@@ -21,13 +21,14 @@
 
 #include "modules/core/engine.h"
 
+#include "console_logger.h"
+
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 #include <memory>
 
 #ifdef __EMSCRIPTEN__
-#include "console_logger.h"
 #include "modules/core/comms_methods_for_ui_wasm.h"
 #endif
 
@@ -55,8 +56,12 @@ private:
     }
 
     const auto logFilePath = fileLogger->getLogFile().getFullPathName();
-    juce::Logger::setCurrentLogger(fileLogger.get());
+#if !defined(NDEBUG)
+    logger = std::make_unique<ConsoleLogger>();
+#else
     logger = std::move(fileLogger);
+#endif
+    juce::Logger::setCurrentLogger(logger.get());
 
     juce::Logger::writeToLog(juce::String("Logging to ") + logFilePath);
 #endif
