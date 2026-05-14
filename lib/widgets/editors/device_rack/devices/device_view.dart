@@ -46,9 +46,6 @@ class DeviceView extends StatefulObserverWidget {
 class _DeviceViewState extends State<DeviceView> {
   final _menuController = AnthemMenuController();
 
-  bool _isHeaderHovered = false;
-  bool _isHeaderPressed = false;
-
   @override
   Widget build(BuildContext context) {
     final child = switch (widget.device.type) {
@@ -63,80 +60,40 @@ class _DeviceViewState extends State<DeviceView> {
     final headerBaseColor = isCollapsed
         ? AnthemTheme.panel.accent
         : AnthemTheme.panel.background;
-    final headerBackground = _isHeaderPressed
-        ? _adjustGreyLightness(headerBaseColor, -0.02)
-        : _isHeaderHovered
-        ? _adjustGreyLightness(headerBaseColor, 0.03)
-        : headerBaseColor;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (event) {
-            setState(() {
-              _isHeaderHovered = true;
-            });
-          },
-          onExit: (event) {
-            setState(() {
-              _isHeaderHovered = false;
-              _isHeaderPressed = false;
-            });
-          },
-          child: Listener(
-            onPointerDown: (event) {
-              setState(() {
-                _isHeaderPressed = true;
-              });
-            },
-            onPointerUp: (event) {
-              setState(() {
-                _isHeaderPressed = false;
-              });
-            },
-            onPointerCancel: (event) {
-              setState(() {
-                _isHeaderPressed = false;
-              });
-            },
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                widget.device.isCollapsed = !widget.device.isCollapsed;
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: headerBackground,
-                  borderRadius: headerBorderRadius,
+        Container(
+          decoration: BoxDecoration(
+            color: headerBaseColor,
+            borderRadius: headerBorderRadius,
+          ),
+          clipBehavior: Clip.antiAlias,
+          width: 32,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
+            child: Column(
+              children: [
+                _DeviceMenuButton(
+                  menuController: _menuController,
+                  menuDef: _buildDeviceMenuDef(context),
                 ),
-                clipBehavior: Clip.antiAlias,
-                width: 32,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 7,
-                  ),
-                  child: Column(
-                    children: [
-                      _DeviceMenuButton(
-                        menuController: _menuController,
-                        menuDef: _buildDeviceMenuDef(context),
-                      ),
-                      Spacer(),
-                      RotatedBox(
-                        quarterTurns: 3,
-                        child: Text(
-                          widget.device.name,
-                          style: .new(color: AnthemTheme.text.main),
-                        ),
-                      ),
-                      Spacer(),
-                    ],
+                Spacer(),
+                RotatedBox(
+                  quarterTurns: 3,
+                  child: Text(
+                    widget.device.name,
+                    style: .new(
+                      color: AnthemTheme.text.main,
+                      height: 1,
+                      overflow: .ellipsis,
+                    ),
+                    textHeightBehavior: .new(applyHeightToLastDescent: false),
                   ),
                 ),
-              ),
+                Spacer(),
+              ],
             ),
           ),
         ),
@@ -162,6 +119,15 @@ class _DeviceViewState extends State<DeviceView> {
     return MenuDef(
       children: [
         AnthemMenuItem(
+          text: widget.device.isCollapsed ? 'Expand' : 'Collapse',
+          hint: widget.device.isCollapsed
+              ? 'Expand this device'
+              : 'Collapse this device',
+          onSelected: () {
+            widget.device.isCollapsed = !widget.device.isCollapsed;
+          },
+        ),
+        AnthemMenuItem(
           text: 'Delete',
           hint: 'Delete this device',
           onSelected: () {
@@ -174,14 +140,6 @@ class _DeviceViewState extends State<DeviceView> {
       ],
     );
   }
-}
-
-Color _adjustGreyLightness(Color color, double amount) {
-  final hsl = HSLColor.fromColor(color);
-
-  return hsl
-      .withLightness((hsl.lightness + amount).clamp(0.0, 1.0).toDouble())
-      .toColor();
 }
 
 class _DeviceMenuButton extends StatelessWidget {
