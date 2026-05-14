@@ -72,72 +72,105 @@ class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
     observe((change) {
       if (change.elementChanges != null) {
         for (final elementChange in change.elementChanges!) {
-          final accessorChain = [
-            FieldAccessor(
-              fieldType: FieldType.list,
-              index: elementChange.index,
-            ),
-          ];
+          _handleElementChange(elementChange);
+        }
+      }
 
-          if (elementChange.type == OperationType.add) {
-            final firstChangedIndex = elementChange.index;
-            for (var i = firstChangedIndex; i < length; i++) {
-              _setParentPropertiesOnIndex(i);
-            }
-
-            notifyFieldChanged(
-              operation: ListInsert(
-                value: elementChange.newValue,
-                valueSerialized: _serializeValue(
-                  elementChange.newValue,
-                  forEngine: true,
-                  forProjectFile: false,
-                ),
-              ),
-              accessorChain: accessorChain,
-            );
-          } else if (elementChange.type == OperationType.remove) {
-            final oldValue = elementChange.oldValue;
-
-            if (oldValue is AnthemModelBase) {
-              oldValue.detach();
-            }
-
-            final firstChangedIndex = elementChange.index;
-            for (var i = firstChangedIndex; i < length; i++) {
-              _setParentPropertiesOnIndex(i);
-            }
-
-            notifyFieldChanged(
-              operation: ListRemove(removedValue: oldValue),
-              accessorChain: accessorChain,
-            );
-          } else if (elementChange.type == OperationType.update) {
-            final oldValue = elementChange.oldValue;
-            final newValue = elementChange.newValue;
-
-            if (oldValue is AnthemModelBase) {
-              oldValue.parent = null;
-            }
-
-            _setParentPropertiesOnIndex(elementChange.index);
-
-            notifyFieldChanged(
-              operation: ListUpdate(
-                oldValue: oldValue,
-                newValue: newValue,
-                newValueSerialized: _serializeValue(
-                  newValue,
-                  forEngine: true,
-                  forProjectFile: false,
-                ),
-              ),
-              accessorChain: accessorChain,
-            );
-          }
+      if (change.rangeChanges != null) {
+        for (final rangeChange in change.rangeChanges!) {
+          _handleRangeChange(rangeChange);
         }
       }
     });
+  }
+
+  void _handleElementChange(dynamic elementChange) {
+    if (elementChange.type == OperationType.add) {
+      _refreshParentPropertiesFrom(elementChange.index);
+      _notifyListInsert(elementChange.index, elementChange.newValue);
+    } else if (elementChange.type == OperationType.remove) {
+      final oldValue = elementChange.oldValue;
+
+      if (oldValue is AnthemModelBase) {
+        oldValue.detach();
+      }
+
+      _refreshParentPropertiesFrom(elementChange.index);
+      _notifyListRemove(elementChange.index, oldValue);
+    } else if (elementChange.type == OperationType.update) {
+      final oldValue = elementChange.oldValue;
+      final newValue = elementChange.newValue;
+
+      if (oldValue is AnthemModelBase) {
+        oldValue.parent = null;
+      }
+
+      _setParentPropertiesOnIndex(elementChange.index);
+      _notifyListUpdate(elementChange.index, oldValue, newValue);
+    }
+  }
+
+  void _handleRangeChange(dynamic rangeChange) {
+    final oldValues = (rangeChange.oldValues as List<T>?) ?? <T>[];
+    final newValues = (rangeChange.newValues as List<T>?) ?? <T>[];
+
+    for (final oldValue in oldValues) {
+      if (oldValue is AnthemModelBase) {
+        oldValue.detach();
+      }
+    }
+
+    _refreshParentPropertiesFrom(rangeChange.index);
+
+    for (final oldValue in oldValues) {
+      _notifyListRemove(rangeChange.index, oldValue);
+    }
+
+    for (var i = 0; i < newValues.length; i++) {
+      _notifyListInsert(rangeChange.index + i, newValues[i]);
+    }
+  }
+
+  void _refreshParentPropertiesFrom(int firstChangedIndex) {
+    for (var i = firstChangedIndex; i < length; i++) {
+      _setParentPropertiesOnIndex(i);
+    }
+  }
+
+  void _notifyListInsert(int index, T? value) {
+    notifyFieldChanged(
+      operation: ListInsert(
+        value: value,
+        valueSerialized: _serializeValue(
+          value,
+          forEngine: true,
+          forProjectFile: false,
+        ),
+      ),
+      accessorChain: [FieldAccessor(fieldType: FieldType.list, index: index)],
+    );
+  }
+
+  void _notifyListRemove(int index, T? oldValue) {
+    notifyFieldChanged(
+      operation: ListRemove(removedValue: oldValue),
+      accessorChain: [FieldAccessor(fieldType: FieldType.list, index: index)],
+    );
+  }
+
+  void _notifyListUpdate(int index, T? oldValue, T? newValue) {
+    notifyFieldChanged(
+      operation: ListUpdate(
+        oldValue: oldValue,
+        newValue: newValue,
+        newValueSerialized: _serializeValue(
+          newValue,
+          forEngine: true,
+          forProjectFile: false,
+        ),
+      ),
+      accessorChain: [FieldAccessor(fieldType: FieldType.list, index: index)],
+    );
   }
 
   void _setParentPropertiesOnIndex(int index) {
