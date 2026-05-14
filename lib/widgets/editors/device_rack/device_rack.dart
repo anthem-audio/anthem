@@ -84,7 +84,7 @@ Widget _buildRack(
     return const Text('Invalid track');
   }
 
-  return Expanded(child: _DeviceRackScrollArea(track: track));
+  return _DeviceRackScrollArea(track: track);
 }
 
 class _DeviceRackScrollArea extends StatefulObserverWidget {
