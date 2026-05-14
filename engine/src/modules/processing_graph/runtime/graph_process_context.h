@@ -63,7 +63,6 @@ private:
   std::vector<juce::AudioSampleBuffer> controlBuffers;
   std::vector<std::unique_ptr<EventBuffer>> eventBuffers;
 
-  std::optional<size_t> sharedSilentAudioBufferIndex;
   std::optional<size_t> sharedEmptyEventBufferIndex;
 
   // Owns all node-scoped views into the graph-owned runtime storage above.
@@ -83,10 +82,13 @@ public:
 
   // Appends a new graph-owned buffer and returns its stable index.
   size_t allocateAudioBuffer();
+  size_t allocateAudioBuffer(int channelCount);
   size_t allocateControlBuffer();
   size_t allocateEventBuffer(size_t initialCapacity);
 
-  size_t getSharedSilentAudioBufferIndex();
+  int getDefaultAudioChannelCount() const;
+  int getBlockSize() const;
+
   size_t getSharedEmptyEventBufferIndex();
 
   // Creates a node-scoped view into this graph-owned storage.

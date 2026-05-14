@@ -96,27 +96,31 @@ void rt_applyEventConnectionTransfer(
 void rt_applyAudioConnectionTransfer(const RuntimeConnectionTransferAction& action,
     GraphProcessContext& graphProcessContext,
     int numSamples) {
-  auto& destination = graphProcessContext.getAudioBuffer(action.destinationBufferIndex);
-  jassert(!action.sourceBufferIndices.empty());
+  const auto& destinationSlice = action.destinationAudioSlice;
+  auto& destination = graphProcessContext.getAudioBuffer(destinationSlice.bufferIndex);
+  jassert(!action.sourceAudioSlices.empty());
   jassert(numSamples <= destination.getNumSamples());
+  jassert(destinationSlice.channelCount > 0);
+  jassert(destinationSlice.channelCount <= destination.getNumChannels());
 
 #if JUCE_ASSERTIONS_ENABLED
-  for (const auto sourceBufferIndex : action.sourceBufferIndices) {
-    const auto& source = graphProcessContext.getAudioBuffer(sourceBufferIndex);
-    jassert(source.getNumChannels() == destination.getNumChannels());
+  for (const auto& sourceSlice : action.sourceAudioSlices) {
+    const auto& source = graphProcessContext.getAudioBuffer(sourceSlice.bufferIndex);
     jassert(source.getNumSamples() == destination.getNumSamples());
     jassert(numSamples <= source.getNumSamples());
+    jassert(sourceSlice.channelCount == destinationSlice.channelCount);
+    jassert(sourceSlice.channelCount <= source.getNumChannels());
   }
 #endif
 
-  for (int channel = 0; channel < destination.getNumChannels(); ++channel) {
+  for (int channel = 0; channel < destinationSlice.channelCount; ++channel) {
     auto* destinationSamples = destination.getWritePointer(channel);
 
     for (int sample = 0; sample < numSamples; ++sample) {
       float sum = 0.0f;
 
-      for (const auto sourceBufferIndex : action.sourceBufferIndices) {
-        const auto& source = graphProcessContext.getAudioBuffer(sourceBufferIndex);
+      for (const auto& sourceSlice : action.sourceAudioSlices) {
+        const auto& source = graphProcessContext.getAudioBuffer(sourceSlice.bufferIndex);
         sum += source.getReadPointer(channel)[sample];
       }
 

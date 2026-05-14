@@ -25,8 +25,35 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 namespace anthem {
+
+namespace {
+
+juce::AudioSampleBuffer createAudioBufferView(
+    GraphProcessContext& graphProcessContext, const AudioBufferSlice& slice) {
+  auto& sourceBuffer = graphProcessContext.getAudioBuffer(slice.bufferIndex);
+
+  jassert(slice.channelCount > 0);
+  jassert(slice.channelCount <= sourceBuffer.getNumChannels());
+
+  if (slice.channelCount <= 0 || slice.channelCount > sourceBuffer.getNumChannels()) {
+    throw std::runtime_error("AnthemNodeProcessContext received an invalid audio buffer slice.");
+  }
+
+  std::vector<float*> channelPointers;
+  channelPointers.reserve(static_cast<size_t>(slice.channelCount));
+
+  for (int channel = 0; channel < slice.channelCount; ++channel) {
+    channelPointers.push_back(sourceBuffer.getWritePointer(channel));
+  }
+
+  return juce::AudioSampleBuffer(
+      channelPointers.data(), slice.channelCount, sourceBuffer.getNumSamples());
+}
+
+} // namespace
 
 NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
     GraphProcessContext& graphProcessContext,
@@ -36,11 +63,27 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
 
   inputAudioBuffers = std::move(bufferBindings.inputAudioBuffers);
   outputAudioBuffers = std::move(bufferBindings.outputAudioBuffers);
+  audioProcessBuffer = bufferBindings.audioProcessBuffer;
   inputControlBuffers = std::move(bufferBindings.inputControlBuffers);
   outputControlBuffers = std::move(bufferBindings.outputControlBuffers);
   inputEventBuffers = std::move(bufferBindings.inputEventBuffers);
   outputEventBuffers = std::move(bufferBindings.outputEventBuffers);
+  rt_audioBuffersToClear = std::move(bufferBindings.rt_audioBuffersToClear);
   rt_eventBuffersToClear = std::move(bufferBindings.rt_eventBuffersToClear);
+
+  inputAudioBufferViews.reserve(inputAudioBuffers.size());
+  for (const auto& [portId, slice] : inputAudioBuffers) {
+    inputAudioBufferViews.emplace(portId, createAudioBufferView(graphProcessContext, slice));
+  }
+
+  outputAudioBufferViews.reserve(outputAudioBuffers.size());
+  for (const auto& [portId, slice] : outputAudioBuffers) {
+    outputAudioBufferViews.emplace(portId, createAudioBufferView(graphProcessContext, slice));
+  }
+
+  if (audioProcessBuffer.has_value()) {
+    audioProcessBufferView = createAudioBufferView(graphProcessContext, *audioProcessBuffer);
+  }
 
   inputParameters.reserve(graphNode->controlInputPorts()->size());
 
@@ -118,6 +161,16 @@ float NodeProcessContext::getParameterValue(int64_t id) {
 void NodeProcessContext::clearBuffers() {
   jassert(graphProcessContext != nullptr);
 
+  for (const auto& slice : rt_audioBuffersToClear) {
+    auto& buffer = graphProcessContext->getAudioBuffer(slice.bufferIndex);
+    jassert(slice.channelCount >= 0);
+    jassert(slice.channelCount <= buffer.getNumChannels());
+
+    for (int channel = 0; channel < slice.channelCount; ++channel) {
+      buffer.clear(channel, 0, buffer.getNumSamples());
+    }
+  }
+
   for (const auto bufferIndex : rt_eventBuffersToClear) {
     graphProcessContext->getEventBuffer(bufferIndex)->clear();
   }
@@ -127,8 +180,8 @@ size_t NodeProcessContext::getBufferIndex(
     NodePortDataType dataType, BufferDirection direction, int64_t id) const {
   switch (dataType) {
     case NodePortDataType::audio:
-      return direction == BufferDirection::input ? inputAudioBuffers.at(id)
-                                                 : outputAudioBuffers.at(id);
+      return direction == BufferDirection::input ? inputAudioBuffers.at(id).bufferIndex
+                                                 : outputAudioBuffers.at(id).bufferIndex;
     case NodePortDataType::control:
       return direction == BufferDirection::input ? inputControlBuffers.at(id)
                                                  : outputControlBuffers.at(id);
@@ -142,12 +195,30 @@ size_t NodeProcessContext::getBufferIndex(
 
 const juce::AudioSampleBuffer& NodeProcessContext::getInputAudioBuffer(int64_t id) const {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getAudioBuffer(inputAudioBuffers.at(id));
+  return inputAudioBufferViews.at(id);
+}
+
+juce::AudioSampleBuffer& NodeProcessContext::getMutableInputAudioBuffer(int64_t id) {
+  jassert(graphProcessContext != nullptr);
+  return inputAudioBufferViews.at(id);
 }
 
 juce::AudioSampleBuffer& NodeProcessContext::getOutputAudioBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getAudioBuffer(outputAudioBuffers.at(id));
+  return outputAudioBufferViews.at(id);
+}
+
+juce::AudioSampleBuffer& NodeProcessContext::getAudioProcessBuffer() {
+  jassert(audioProcessBufferView.has_value());
+  if (!audioProcessBufferView.has_value()) {
+    throw std::runtime_error("AnthemNodeProcessContext has no audio process buffer.");
+  }
+
+  return *audioProcessBufferView;
+}
+
+bool NodeProcessContext::hasAudioProcessBuffer() const {
+  return audioProcessBufferView.has_value();
 }
 
 const juce::AudioSampleBuffer& NodeProcessContext::getInputControlBuffer(int64_t id) const {

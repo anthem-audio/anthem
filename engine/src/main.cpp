@@ -19,9 +19,8 @@
 
 // #define JUCE_CHECK_MEMORY_LEAKS 0
 
-#include "modules/core/engine.h"
-
 #include "console_logger.h"
+#include "modules/core/engine.h"
 
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_core/juce_core.h>

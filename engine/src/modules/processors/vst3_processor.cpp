@@ -166,23 +166,21 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
 
   jassert(numSamples == pluginInstance->getBlockSize());
 
-  const auto requiredProcessChannels =
-      juce::jmax(pluginInputChannelCount, pluginOutputChannelCount);
-  if (rt_pluginAudioBuffer.getNumChannels() < requiredProcessChannels ||
-      rt_pluginAudioBuffer.getNumSamples() < numSamples) {
-    jassertfalse;
-    return;
+  juce::AudioBuffer<float>* processBuffer = nullptr;
+
+  if (context.hasAudioProcessBuffer()) {
+    processBuffer = &context.getAudioProcessBuffer();
+  } else {
+    processBuffer = &rt_emptyAudioBuffer;
   }
 
-  rt_pluginAudioBuffer.clear(0, numSamples);
+  const auto requiredProcessChannels =
+      juce::jmax(pluginInputChannelCount, pluginOutputChannelCount);
 
-  if (audioInputPortIdForPlugin.has_value() && pluginInputChannelCount > 0) {
-    const auto& audioInBuffer = context.getInputAudioBuffer(*audioInputPortIdForPlugin);
-    const auto channelsToCopy = juce::jmin(pluginInputChannelCount, audioInBuffer.getNumChannels());
-
-    for (int channel = 0; channel < channelsToCopy; ++channel) {
-      rt_pluginAudioBuffer.copyFrom(channel, 0, audioInBuffer, channel, 0, numSamples);
-    }
+  if (processBuffer == nullptr || processBuffer->getNumChannels() < requiredProcessChannels ||
+      processBuffer->getNumSamples() < numSamples) {
+    jassertfalse;
+    return;
   }
 
   if (eventInputPortIdForPlugin.has_value()) {
@@ -214,18 +212,7 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
   }
 
   // Process the plugin
-  pluginInstance->processBlock(rt_pluginAudioBuffer, rt_eventBufferForPlugin);
-
-  if (audioOutputPortIdForPlugin.has_value() && pluginOutputChannelCount > 0) {
-    auto& audioOutBuffer = context.getOutputAudioBuffer(*audioOutputPortIdForPlugin);
-    const auto channelsToCopy =
-        juce::jmin(pluginOutputChannelCount, audioOutBuffer.getNumChannels());
-
-    audioOutBuffer.clear();
-    for (int channel = 0; channel < channelsToCopy; ++channel) {
-      audioOutBuffer.copyFrom(channel, 0, rt_pluginAudioBuffer, channel, 0, numSamples);
-    }
-  }
+  pluginInstance->processBlock(*processBuffer, rt_eventBufferForPlugin);
 
   if (eventOutputPortIdForPlugin.has_value()) {
     auto& eventOutBuffer = context.getOutputEventBuffer(*eventOutputPortIdForPlugin);
@@ -367,8 +354,7 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
             instance->producesMidi()
                 ? std::optional<int64_t>(VST3ProcessorModelBase::eventOutputPortId)
                 : std::nullopt;
-        selfShared->rt_pluginAudioBuffer.setSize(
-            requiredProcessChannels, bufferSize, false, true, true);
+        selfShared->rt_emptyAudioBuffer.setSize(0, bufferSize, false, true, true);
 
         selfShared->pluginInstance = std::move(instance);
         selfShared->pluginInstance->addListener(selfShared.get());

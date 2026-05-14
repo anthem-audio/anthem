@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "modules/processing_graph/runtime/audio_buffer_slice.h"
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -38,11 +40,15 @@ enum class RuntimeConnectionDataType : uint8_t {
 };
 
 struct RuntimeConnectionTransferAction {
-  // Precomputed graph-owned buffer indices for a multi-source input. The data
-  // type determines whether sources are summed, copied, or appended.
+  // Precomputed graph-owned buffer references for an input that cannot alias
+  // its source directly. Audio uses slices so transfers only touch channels
+  // that belong to the connected ports; control/event use whole buffer indices.
   RuntimeConnectionDataType dataType;
   size_t destinationBufferIndex = 0;
   std::vector<size_t> sourceBufferIndices;
+
+  AudioBufferSlice destinationAudioSlice;
+  std::vector<AudioBufferSlice> sourceAudioSlices;
 };
 
 struct RuntimeNodeState {

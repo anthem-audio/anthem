@@ -51,12 +51,14 @@ inline std::shared_ptr<NodePort> makePort(int64_t id,
     int64_t nodeId,
     NodePortDataType dataType,
     std::optional<double> parameterValue = std::nullopt,
-    std::optional<std::shared_ptr<ParameterConfigModel>> parameterConfig = std::nullopt) {
+    std::optional<std::shared_ptr<ParameterConfigModel>> parameterConfig = std::nullopt,
+    std::optional<int64_t> channelCount = std::nullopt) {
   return std::make_shared<NodePort>(NodePortModelImpl{
       .id = id,
       .nodeId = nodeId,
       .config = std::make_shared<NodePortConfigModel>(NodePortConfigModelImpl{
           .dataType = dataType,
+          .channelCount = channelCount,
           .parameterConfig = parameterConfig,
       }),
       .connections = std::make_shared<ModelVector<int64_t>>(),
@@ -144,17 +146,36 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
   bindings.outputControlBuffers.reserve(graphNode->controlOutputPorts()->size());
   bindings.inputEventBuffers.reserve(graphNode->eventInputPorts()->size());
   bindings.outputEventBuffers.reserve(graphNode->eventOutputPorts()->size());
+  bindings.rt_audioBuffersToClear.reserve(
+      graphNode->audioInputPorts()->size() + graphNode->audioOutputPorts()->size());
   bindings.rt_eventBuffersToClear.reserve(
       graphNode->eventInputPorts()->size() + graphNode->eventOutputPorts()->size());
   bindings.rt_parameterInputPortsToWrite.reserve(graphNode->controlInputPorts()->size());
 
   for (auto& port : *graphNode->audioInputPorts()) {
     auto bufferIndex = graphProcessContext.allocateAudioBuffer();
-    bindings.inputAudioBuffers.emplace(port->id(), bufferIndex);
+    bindings.inputAudioBuffers.emplace(port->id(),
+        AudioBufferSlice{
+            .bufferIndex = bufferIndex,
+            .channelCount = graphProcessContext.getAudioBuffer(bufferIndex).getNumChannels(),
+        });
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {
-    bindings.outputAudioBuffers.emplace(port->id(), graphProcessContext.allocateAudioBuffer());
+    auto bufferIndex = graphProcessContext.allocateAudioBuffer();
+    bindings.outputAudioBuffers.emplace(port->id(),
+        AudioBufferSlice{
+            .bufferIndex = bufferIndex,
+            .channelCount = graphProcessContext.getAudioBuffer(bufferIndex).getNumChannels(),
+        });
+  }
+
+  if (!graphNode->audioOutputPorts()->empty()) {
+    bindings.audioProcessBuffer =
+        bindings.outputAudioBuffers.at(graphNode->audioOutputPorts()->at(0)->id());
+  } else if (!graphNode->audioInputPorts()->empty()) {
+    bindings.audioProcessBuffer =
+        bindings.inputAudioBuffers.at(graphNode->audioInputPorts()->at(0)->id());
   }
 
   for (auto& port : *graphNode->controlInputPorts()) {

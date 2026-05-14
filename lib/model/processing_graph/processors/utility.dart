@@ -76,14 +76,20 @@ class UtilityProcessorModel extends _UtilityProcessorModel
         NodePortModel(
           nodeId: nodeId,
           id: audioInputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
+          config: NodePortConfigModel(
+            dataType: NodePortDataType.audio,
+            channelCount: 2,
+          ),
         ),
       ]),
       audioOutputPorts: AnthemObservableList.of([
         NodePortModel(
           nodeId: nodeId,
           id: audioOutputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
+          config: NodePortConfigModel(
+            dataType: NodePortDataType.audio,
+            channelCount: 2,
+          ),
         ),
       ]),
       controlInputPorts: AnthemObservableList.of([

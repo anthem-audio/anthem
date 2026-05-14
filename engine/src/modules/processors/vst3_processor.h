@@ -148,7 +148,7 @@ private:
   juce::PluginDescription pluginDescription;
 
   std::unique_ptr<juce::AudioPluginInstance> pluginInstance;
-  juce::AudioBuffer<float> rt_pluginAudioBuffer;
+  juce::AudioBuffer<float> rt_emptyAudioBuffer;
 
   juce::MidiBuffer rt_eventBufferForPlugin;
   std::optional<int64_t> audioInputPortIdForPlugin;

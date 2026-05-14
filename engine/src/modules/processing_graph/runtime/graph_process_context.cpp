@@ -24,6 +24,8 @@
 #include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
+#include <stdexcept>
+
 namespace anthem {
 
 GraphProcessContext::GraphProcessContext(
@@ -46,7 +48,17 @@ void GraphProcessContext::reserve(size_t nodeProcessContextCount,
 }
 
 size_t GraphProcessContext::allocateAudioBuffer() {
-  audioBuffers.emplace_back(numAudioChannels, blockSize);
+  return allocateAudioBuffer(numAudioChannels);
+}
+
+size_t GraphProcessContext::allocateAudioBuffer(int channelCount) {
+  jassert(channelCount >= 0);
+  if (channelCount < 0) {
+    throw std::runtime_error(
+        "GraphProcessContext cannot allocate a negative-channel audio buffer.");
+  }
+
+  audioBuffers.emplace_back(channelCount, blockSize);
   return audioBuffers.size() - 1;
 }
 
@@ -60,16 +72,12 @@ size_t GraphProcessContext::allocateEventBuffer(size_t initialCapacity) {
   return eventBuffers.size() - 1;
 }
 
-size_t GraphProcessContext::getSharedSilentAudioBufferIndex() {
-  if (sharedSilentAudioBufferIndex.has_value()) {
-    return *sharedSilentAudioBufferIndex;
-  }
+int GraphProcessContext::getDefaultAudioChannelCount() const {
+  return numAudioChannels;
+}
 
-  auto bufferIndex = allocateAudioBuffer();
-  getAudioBuffer(bufferIndex).clear();
-  sharedSilentAudioBufferIndex = bufferIndex;
-
-  return bufferIndex;
+int GraphProcessContext::getBlockSize() const {
+  return blockSize;
 }
 
 size_t GraphProcessContext::getSharedEmptyEventBufferIndex() {
