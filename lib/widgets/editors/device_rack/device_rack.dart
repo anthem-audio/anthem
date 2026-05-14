@@ -367,11 +367,6 @@ class _AddButtonState extends State<_AddButton> {
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTapDown: (details) {
-              setState(() {
-                _isPressed = true;
-              });
-            },
             onTapUp: (details) {
               setState(() {
                 _isPressed = false;
@@ -384,20 +379,37 @@ class _AddButtonState extends State<_AddButton> {
                 _isPressed = false;
               });
             },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: backgroundColor,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                width: 15,
-                child: Center(
-                  child: SvgIcon(
-                    icon: Icons.add,
-                    color: _isHovered
-                        ? AnthemTheme.text.accent
-                        : AnthemTheme.text.main,
+            child: Listener(
+              onPointerDown: (event) {
+                setState(() {
+                  _isPressed = true;
+                });
+              },
+              onPointerUp: (event) {
+                setState(() {
+                  _isPressed = false;
+                });
+              },
+              onPointerCancel: (event) {
+                setState(() {
+                  _isPressed = false;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  width: 15,
+                  child: Center(
+                    child: SvgIcon(
+                      icon: Icons.add,
+                      color: _isHovered
+                          ? AnthemTheme.text.accent
+                          : AnthemTheme.text.main,
+                    ),
                   ),
                 ),
               ),
