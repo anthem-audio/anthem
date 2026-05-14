@@ -81,19 +81,19 @@ class _ProjectState extends State<Project> {
                   const pianoRoll = PianoRoll();
                   const mixer = Mixer();
 
-                  final selectedEditorIndex =
-                      switch (viewModel.selectedEditor) {
-                        EditorKind.automation => 0,
-                        EditorKind.deviceRack => 1,
-                        EditorKind.detail => 2,
-                        EditorKind.mixer => 3,
-                        null => null,
-                      };
+                  final selectedEditorKind = viewModel.selectedEditor;
+                  final selectedEditorIndex = switch (selectedEditorKind) {
+                    EditorKind.automation => 0,
+                    EditorKind.deviceRack => 1,
+                    EditorKind.detail => 2,
+                    EditorKind.mixer => 3,
+                    null => null,
+                  };
 
                   final selectedEditor = selectedEditorIndex == null
                       ? const SizedBox.shrink()
                       : PanelBorder(
-                          panelKind: switch (viewModel.selectedEditor) {
+                          panelKind: switch (selectedEditorKind) {
                             .automation => .automationEditor,
                             .deviceRack => .deviceRack,
                             .detail => .pianoRoll,
@@ -132,9 +132,13 @@ class _ProjectState extends State<Project> {
 
                       child: Panel(
                         orientation: .bottom,
+                        panelFixedSize:
+                            selectedEditorKind == EditorKind.deviceRack
+                            ? DeviceRack.fixedPanelHeight
+                            : null,
                         panelMinSize: 200,
                         contentMinSize: 150,
-                        hidden: viewModel.selectedEditor == null,
+                        hidden: selectedEditorKind == null,
                         // Bottom panel content (selected editor)
                         panelContent: RepaintBoundary(child: selectedEditor),
                         child: _PanelOverlay(

@@ -37,8 +37,17 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 const _scrollbarShortSideLength = 17.0;
+const _deviceRackVerticalPadding = 8.0;
+const _deviceRackItemHeight = 207.0;
+const _deviceRackPanelBorderHeight = 10.0;
 
 class DeviceRack extends StatefulObserverWidget {
+  static const fixedPanelHeight =
+      _deviceRackItemHeight +
+      _deviceRackVerticalPadding * 2 +
+      _scrollbarShortSideLength +
+      _deviceRackPanelBorderHeight;
+
   const DeviceRack({super.key});
 
   @override
@@ -141,10 +150,16 @@ class _DeviceRackScrollAreaState extends State<_DeviceRackScrollArea> {
               controller: _scrollController,
               scrollDirection: Axis.horizontal,
               child: Padding(
-                padding: .symmetric(vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: _buildRackChildren(),
+                padding: .symmetric(vertical: _deviceRackVerticalPadding),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    height: _deviceRackItemHeight,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _buildRackChildren(),
+                    ),
+                  ),
                 ),
               ),
             ),

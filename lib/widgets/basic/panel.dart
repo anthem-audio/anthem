@@ -45,6 +45,10 @@ class Panel extends StatefulWidget {
   final PanelOrientation orientation;
   final bool? hidden;
   final double? panelStartSize;
+
+  /// Overrides the rendered panel size without replacing the remembered size
+  /// used when this value is removed.
+  final double? panelFixedSize;
   final double? separatorSize;
   final PanelSizeBehavior sizeBehavior;
 
@@ -61,6 +65,7 @@ class Panel extends StatefulWidget {
     this.sizeBehavior = PanelSizeBehavior.flex,
     this.hidden,
     this.panelStartSize,
+    this.panelFixedSize,
     this.separatorSize,
     this.panelMinSize = 0,
     this.panelMaxSize = double.infinity,
@@ -77,6 +82,9 @@ const defaultPanelSize = 300.0;
 class _PanelState extends State<Panel> {
   double flexPanelSize = -1;
   double pixelPanelSize = -1;
+  double? panelSizeBeforeFixed;
+  double? pendingPanelSizeRestore;
+  double lastRenderedPanelSize = -1;
 
   // event variables, not used during render
   bool resizeActive = false;
@@ -85,8 +93,31 @@ class _PanelState extends State<Panel> {
 
   MouseCursor cursorFromBuild = MouseCursor.defer;
 
+  @override
+  void didUpdateWidget(covariant Panel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final fixedSizeWasSet =
+        oldWidget.panelFixedSize == null && widget.panelFixedSize != null;
+    final fixedSizeWasRemoved =
+        oldWidget.panelFixedSize != null && widget.panelFixedSize == null;
+
+    if (fixedSizeWasSet && lastRenderedPanelSize >= 0) {
+      panelSizeBeforeFixed = lastRenderedPanelSize;
+    } else if (fixedSizeWasRemoved) {
+      pendingPanelSizeRestore = panelSizeBeforeFixed;
+      panelSizeBeforeFixed = null;
+    }
+
+    if (widget.panelFixedSize != null && resizeActive) {
+      resizeActive = false;
+      isResizeActive = false;
+      ServiceRegistry.mainWindowController.clearCursorOverride();
+    }
+  }
+
   void onResizePointerDown(PointerDownEvent e, double panelSize) {
-    if (isResizeActive) return;
+    if (widget.panelFixedSize != null || isResizeActive) return;
 
     isResizeActive = true;
     resizeActive = true;
@@ -115,7 +146,7 @@ class _PanelState extends State<Panel> {
     BoxConstraints constraints,
     double mainAxisSize,
   ) {
-    if (!resizeActive) return;
+    if (widget.panelFixedSize != null || !resizeActive) return;
 
     final isHorizontal = _isLeftOrRight(widget.orientation);
     final isPanelFirst = _isPanelFirst(widget.orientation);
@@ -168,15 +199,32 @@ class _PanelState extends State<Panel> {
           }
         }
 
-        var panelSize = widget.sizeBehavior == PanelSizeBehavior.flex
-            ? flexPanelSize * mainAxisSize
-            : pixelPanelSize;
+        final panelSizeToRestore = pendingPanelSizeRestore;
+        if (panelSizeToRestore != null) {
+          pixelPanelSize = panelSizeToRestore;
+
+          if (mainAxisSize > 0) {
+            flexPanelSize = panelSizeToRestore / mainAxisSize;
+          }
+
+          pendingPanelSizeRestore = null;
+        }
+
+        var panelSize =
+            widget.panelFixedSize ??
+            (widget.sizeBehavior == PanelSizeBehavior.flex
+                ? flexPanelSize * mainAxisSize
+                : pixelPanelSize);
 
         // Make sure we're snapping to a pixel boundary
         final queryData = MediaQuery.of(context);
         panelSize *= queryData.devicePixelRatio;
         panelSize = panelSize.round().toDouble();
         panelSize /= queryData.devicePixelRatio;
+
+        if (widget.panelFixedSize == null) {
+          lastRenderedPanelSize = panelSize;
+        }
 
         final isPanelFirst = _isPanelFirst(widget.orientation);
 
@@ -251,7 +299,7 @@ class _PanelState extends State<Panel> {
             ),
 
             // Draggable separator
-            if (!isPanelHidden)
+            if (!isPanelHidden && widget.panelFixedSize == null)
               Positioned(
                 left: handleLeft,
                 right: handleRight,

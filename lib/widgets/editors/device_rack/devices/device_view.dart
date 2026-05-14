@@ -70,6 +70,7 @@ class _DeviceViewState extends State<DeviceView> {
         : headerBaseColor;
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         MouseRegion(
           cursor: SystemMouseCursors.click,
