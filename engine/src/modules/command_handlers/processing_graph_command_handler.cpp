@@ -23,7 +23,9 @@
 #include "modules/processors/live_event_provider.h"
 
 #include <memory>
+#include <rfl/json.hpp>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace anthem {
@@ -43,22 +45,37 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     juce::Logger::writeToLog("Initializing processing graph nodes from UI request...");
 
-    auto results = std::make_shared<
-        std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>>();
-    auto didInitialize = false;
+    auto results =
+        std::make_shared<std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>>();
+    auto requestId = initializeNodesRequest.requestBase.get().id;
 
     if (!engine.isAudioThreadRunning()) {
       juce::Logger::writeToLog(
           "Skipping processing graph node initialization because the audio thread is not running.");
-    } else {
-      didInitialize = true;
-      *results = engine.initializeProcessingGraphNodes();
+
+      return std::optional(InitializeProcessingGraphNodesResponse{.didInitialize = false,
+          .results = results,
+          .responseBase = ResponseBase{.id = requestId}});
     }
 
-    return std::optional(InitializeProcessingGraphNodesResponse{
-        .didInitialize = didInitialize,
-        .results = results,
-        .responseBase = ResponseBase{.id = initializeNodesRequest.requestBase.get().id}});
+    // Note that this is asynchronous (still single-threaded though), so when
+    // the work for this method completes, it calls the lambda we pass in here.
+    engine.initializeProcessingGraphNodes(
+        [requestId](std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>
+                initializationResults) {
+          auto results = std::make_shared<
+              std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>>(
+              std::move(initializationResults));
+
+          Response response = InitializeProcessingGraphNodesResponse{.didInitialize = true,
+              .results = results,
+              .responseBase = ResponseBase{.id = requestId}};
+
+          auto responseString = rfl::json::write(response);
+          Engine::getInstance().comms.send(responseString);
+        });
+
+    return std::nullopt;
   } else if (rfl::holds_alternative<PublishProcessingGraphRequest>(request.variant())) {
     auto& publishProcessingGraphRequest =
         rfl::get<PublishProcessingGraphRequest>(request.variant());

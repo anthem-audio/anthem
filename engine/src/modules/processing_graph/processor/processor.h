@@ -19,15 +19,44 @@
 
 #pragma once
 
+#include <cstdint>
+#include <functional>
 #include <juce_core/juce_core.h>
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace anthem {
 
 class GraphNode;
 class NodeProcessContext;
+
+struct ProcessorPortConfiguration {
+  int64_t id;
+  std::optional<std::string> name = std::nullopt;
+  std::optional<int64_t> channelCount = std::nullopt;
+};
+
+struct ProcessorNodePortConfiguration {
+  std::vector<ProcessorPortConfiguration> audioInputPorts;
+  std::vector<ProcessorPortConfiguration> audioOutputPorts;
+  std::vector<ProcessorPortConfiguration> eventInputPorts;
+  std::vector<ProcessorPortConfiguration> eventOutputPorts;
+  std::vector<ProcessorPortConfiguration> controlInputPorts;
+  std::vector<ProcessorPortConfiguration> controlOutputPorts;
+};
+
+struct ProcessorPrepareResult {
+  bool success = true;
+  std::optional<std::string> error = std::nullopt;
+  std::optional<ProcessorNodePortConfiguration> portConfiguration = std::nullopt;
+};
+
+// Processors may complete preparation synchronously or asynchronously. A
+// nullopt result means preparation succeeded and there is no engine-discovered
+// port configuration to send back to the UI.
+using ProcessorPrepareCallback = std::function<void(std::optional<ProcessorPrepareResult>)>;
 
 // This class is used to process audio, event and control data. It can produce
 // and/or consume any of these data types.
@@ -47,7 +76,7 @@ public:
   //
   // Note that this is called after the audio device is started, so audio device
   // information can be queried at this point.
-  virtual std::optional<std::string> prepareToProcess() = 0;
+  virtual void prepareToProcess(ProcessorPrepareCallback complete) = 0;
 
   // This flag must be set after prepareToProcess() is called. It is set by the
   // caller, not by the processor itself.

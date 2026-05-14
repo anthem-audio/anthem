@@ -44,7 +44,7 @@ public:
   GainProcessor(GainProcessor&&) noexcept = default;
   GainProcessor& operator=(GainProcessor&&) noexcept = default;
 
-  std::optional<std::string> prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 };
 

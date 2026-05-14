@@ -47,7 +47,7 @@ public:
   SimpleVolumeLfoProcessor(SimpleVolumeLfoProcessor&&) noexcept = default;
   SimpleVolumeLfoProcessor& operator=(SimpleVolumeLfoProcessor&&) noexcept = default;
 
-  std::optional<std::string> prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 };
 

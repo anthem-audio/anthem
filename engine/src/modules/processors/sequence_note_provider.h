@@ -251,7 +251,7 @@ public:
     return 0;
   }
 
-  std::optional<std::string> prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 };
 

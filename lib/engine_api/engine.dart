@@ -99,8 +99,13 @@ enum StartupSendBehavior {
 class _QueuedStartupRequest {
   final Request request;
   final Completer<Response>? responseCompleter;
+  final Duration timeout;
 
-  _QueuedStartupRequest(this.request, {this.responseCompleter});
+  _QueuedStartupRequest(
+    this.request, {
+    this.responseCompleter,
+    required this.timeout,
+  });
 }
 
 class _PendingReply {
@@ -520,9 +525,9 @@ class Engine {
   Future<Response> _dispatchRequestWithReply(
     Request request, {
     Completer<Response>? responseCompleter,
+    Duration timeout = const Duration(seconds: 5),
   }) {
     final completer = responseCompleter ?? Completer<Response>();
-    final timeout = Duration(seconds: 5);
     final timer = Timer(timeout, () {
       if (_replyFunctions.containsKey(request.id)) {
         completer.completeError(
@@ -559,9 +564,14 @@ class Engine {
   void _queueStartupRequest(
     Request request, {
     Completer<Response>? responseCompleter,
+    Duration timeout = const Duration(seconds: 5),
   }) {
     _startupQueue.add(
-      _QueuedStartupRequest(request, responseCompleter: responseCompleter),
+      _QueuedStartupRequest(
+        request,
+        responseCompleter: responseCompleter,
+        timeout: timeout,
+      ),
     );
 
     if (_autoFlushStartupQueue &&
@@ -588,6 +598,7 @@ class Engine {
           _dispatchRequestWithReply(
             queuedRequest.request,
             responseCompleter: queuedRequest.responseCompleter,
+            timeout: queuedRequest.timeout,
           );
         } else {
           _dispatchRequestNoReply(queuedRequest.request);
@@ -606,11 +617,16 @@ class Engine {
   Future<Response> _request(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
+    Duration timeout = const Duration(seconds: 5),
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {
       final completer = Completer<Response>();
-      _queueStartupRequest(request, responseCompleter: completer);
+      _queueStartupRequest(
+        request,
+        responseCompleter: completer,
+        timeout: timeout,
+      );
       return completer.future;
     }
 
@@ -629,14 +645,14 @@ class Engine {
           'Engine socket must be ready to send bypass requests.',
         );
       }
-      return _dispatchRequestWithReply(request);
+      return _dispatchRequestWithReply(request, timeout: timeout);
     }
 
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
     }
 
-    return _dispatchRequestWithReply(request);
+    return _dispatchRequestWithReply(request, timeout: timeout);
   }
 
   /// Sends a request to the engine, but does not wait for a response.

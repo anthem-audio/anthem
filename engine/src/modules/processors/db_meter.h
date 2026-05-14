@@ -67,7 +67,7 @@ public:
   DbMeterProcessor(DbMeterProcessor&&) noexcept = default;
   DbMeterProcessor& operator=(DbMeterProcessor&&) noexcept = default;
 
-  std::optional<std::string> prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 
   void initialize(

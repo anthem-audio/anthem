@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <functional>
 #include <iostream>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
@@ -43,9 +44,15 @@
 namespace anthem {
 
 class Node;
+class ProcessingGraphNodeInitializationSession;
+
+using InitializeProcessingGraphNodesCallback =
+    std::function<void(std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>)>;
 
 class Engine {
 private:
+  friend class ProcessingGraphNodeInitializationSession;
+
   bool isAudioCallbackRunning;
 
   // Singleton shared pointer instance
@@ -143,8 +150,7 @@ public:
   // Initializes the delta between the current shared model graph and
   // initializedProcessingGraphNodes. Nodes already present in the tracker are
   // left alone; new or replaced nodes are prepared and reported individually.
-  std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>
-  initializeProcessingGraphNodes();
+  void initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete);
   void publishProcessingGraph();
 };
 

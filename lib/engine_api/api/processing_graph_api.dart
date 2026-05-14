@@ -45,7 +45,7 @@ class ProcessingGraphApi {
     final request = InitializeProcessingGraphNodesRequest(id: id);
 
     final response =
-        (await _engine._request(request))
+        (await _engine._request(request, timeout: Duration(seconds: 30)))
             as InitializeProcessingGraphNodesResponse;
 
     return ProcessingGraphNodeInitialization(

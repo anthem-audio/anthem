@@ -31,11 +31,49 @@
 #include <juce_gui_basics/native/juce_ScopedThreadDPIAwarenessSetter_windows.h>
 #endif
 
+#include <cmath>
+#include <utility>
+
 namespace anthem {
 
 namespace {
 void writeVST3Log(VST3Processor& processor, const juce::String& message) {
   juce::Logger::writeToLog("[VST3:" + juce::String(processor.nodeId()) + "] " + message);
+}
+
+ProcessorPrepareResult makeVST3PrepareError(std::string error) {
+  return ProcessorPrepareResult{
+      .success = false,
+      .error = std::move(error),
+  };
+}
+
+void addMidiMessageToEventBuffer(
+    EventBuffer& targetBuffer, const juce::MidiMessage& message, int sampleOffset) {
+  if (message.isNoteOn()) {
+    targetBuffer.addEvent(LiveEvent{.sampleOffset = sampleOffset,
+        .liveId = invalidLiveNoteId,
+        .event = Event(NoteOnEvent(static_cast<int16_t>(message.getNoteNumber()),
+            static_cast<int16_t>(message.getChannel() - 1),
+            message.getFloatVelocity(),
+            0.0f))});
+    return;
+  }
+
+  if (message.isNoteOff()) {
+    targetBuffer.addEvent(LiveEvent{.sampleOffset = sampleOffset,
+        .liveId = invalidLiveNoteId,
+        .event = Event(NoteOffEvent(static_cast<int16_t>(message.getNoteNumber()),
+            static_cast<int16_t>(message.getChannel() - 1),
+            message.getFloatVelocity()))});
+    return;
+  }
+
+  if (message.isAllNotesOff()) {
+    targetBuffer.addEvent(LiveEvent{.sampleOffset = sampleOffset,
+        .liveId = invalidLiveNoteId,
+        .event = Event(AllVoicesOffEvent{})});
+  }
 }
 
 } // namespace
@@ -73,54 +111,129 @@ void VST3Processor::rebindEditorWindowCloseCallback() {
   });
 }
 
+ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() const {
+  ProcessorNodePortConfiguration portConfiguration;
+
+  if (audioInputPortIdForPlugin.has_value()) {
+    portConfiguration.audioInputPorts.push_back(ProcessorPortConfiguration{
+        .id = *audioInputPortIdForPlugin,
+        .name = std::string("Audio In"),
+        .channelCount = pluginInputChannelCount,
+    });
+  }
+
+  if (audioOutputPortIdForPlugin.has_value()) {
+    portConfiguration.audioOutputPorts.push_back(ProcessorPortConfiguration{
+        .id = *audioOutputPortIdForPlugin,
+        .name = std::string("Audio Out"),
+        .channelCount = pluginOutputChannelCount,
+    });
+  }
+
+  if (eventInputPortIdForPlugin.has_value()) {
+    portConfiguration.eventInputPorts.push_back(ProcessorPortConfiguration{
+        .id = *eventInputPortIdForPlugin,
+        .name = std::string("MIDI In"),
+    });
+  }
+
+  if (eventOutputPortIdForPlugin.has_value()) {
+    portConfiguration.eventOutputPorts.push_back(ProcessorPortConfiguration{
+        .id = *eventOutputPortIdForPlugin,
+        .name = std::string("MIDI Out"),
+    });
+  }
+
+  return ProcessorPrepareResult{
+      .success = true,
+      .error = std::nullopt,
+      .portConfiguration = std::move(portConfiguration),
+  };
+}
+
 // We expect that a valid device is available when this method is called
-std::optional<std::string> VST3Processor::prepareToProcess() {
+void VST3Processor::prepareToProcess(ProcessorPrepareCallback complete) {
   writeVST3Log(*this, "prepareToProcess() called for path: " + juce::String(vst3Path()));
 
   // If the plugin is not initialized, try to initialize it
-  return tryInitializePlugin();
+  tryInitializePlugin(std::move(complete));
 }
 
 void VST3Processor::process(NodeProcessContext& context, int numSamples) {
-  juce::ignoreUnused(numSamples);
-
-  auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
-  auto& eventInBuffer = context.getInputEventBuffer(VST3ProcessorModelBase::eventInputPortId);
-
-  audioOutBuffer.clear();
-
   if (this->pluginInstance == nullptr) {
     return;
   }
 
   jassert(numSamples == pluginInstance->getBlockSize());
 
-  for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
-    const auto& liveEvent = eventInBuffer.getEvent(i);
-    jassert(juce::isPositiveAndBelow(liveEvent.sampleOffset, numSamples));
+  const auto requiredProcessChannels =
+      juce::jmax(pluginInputChannelCount, pluginOutputChannelCount);
+  if (rt_pluginAudioBuffer.getNumChannels() < requiredProcessChannels ||
+      rt_pluginAudioBuffer.getNumSamples() < numSamples) {
+    jassertfalse;
+    return;
+  }
 
-    if (liveEvent.event.type == EventType::NoteOn) {
-      auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
-          liveEvent.event.noteOn.pitch,
-          static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
+  rt_pluginAudioBuffer.clear(0, numSamples);
 
-      rt_eventBufferForPlugin.addEvent(noteOn, liveEvent.sampleOffset);
-    } else if (liveEvent.event.type == EventType::NoteOff) {
-      auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
-          liveEvent.event.noteOff.pitch,
-          static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
+  if (audioInputPortIdForPlugin.has_value() && pluginInputChannelCount > 0) {
+    const auto& audioInBuffer = context.getInputAudioBuffer(*audioInputPortIdForPlugin);
+    const auto channelsToCopy = juce::jmin(pluginInputChannelCount, audioInBuffer.getNumChannels());
 
-      rt_eventBufferForPlugin.addEvent(noteOff, liveEvent.sampleOffset);
-    } else if (liveEvent.event.type == EventType::AllVoicesOff) {
-      for (int channel = 1; channel <= 16; channel++) {
-        auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
-        rt_eventBufferForPlugin.addEvent(allVoicesOff, liveEvent.sampleOffset);
+    for (int channel = 0; channel < channelsToCopy; ++channel) {
+      rt_pluginAudioBuffer.copyFrom(channel, 0, audioInBuffer, channel, 0, numSamples);
+    }
+  }
+
+  if (eventInputPortIdForPlugin.has_value()) {
+    const auto& eventInBuffer = context.getInputEventBuffer(*eventInputPortIdForPlugin);
+
+    for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
+      const auto& liveEvent = eventInBuffer.getEvent(i);
+      jassert(juce::isPositiveAndBelow(liveEvent.sampleOffset, numSamples));
+
+      if (liveEvent.event.type == EventType::NoteOn) {
+        auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
+            liveEvent.event.noteOn.pitch,
+            static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
+
+        rt_eventBufferForPlugin.addEvent(noteOn, liveEvent.sampleOffset);
+      } else if (liveEvent.event.type == EventType::NoteOff) {
+        auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
+            liveEvent.event.noteOff.pitch,
+            static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
+
+        rt_eventBufferForPlugin.addEvent(noteOff, liveEvent.sampleOffset);
+      } else if (liveEvent.event.type == EventType::AllVoicesOff) {
+        for (int channel = 1; channel <= 16; channel++) {
+          auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
+          rt_eventBufferForPlugin.addEvent(allVoicesOff, liveEvent.sampleOffset);
+        }
       }
     }
   }
 
   // Process the plugin
-  pluginInstance->processBlock(audioOutBuffer, rt_eventBufferForPlugin);
+  pluginInstance->processBlock(rt_pluginAudioBuffer, rt_eventBufferForPlugin);
+
+  if (audioOutputPortIdForPlugin.has_value() && pluginOutputChannelCount > 0) {
+    auto& audioOutBuffer = context.getOutputAudioBuffer(*audioOutputPortIdForPlugin);
+    const auto channelsToCopy =
+        juce::jmin(pluginOutputChannelCount, audioOutBuffer.getNumChannels());
+
+    audioOutBuffer.clear();
+    for (int channel = 0; channel < channelsToCopy; ++channel) {
+      audioOutBuffer.copyFrom(channel, 0, rt_pluginAudioBuffer, channel, 0, numSamples);
+    }
+  }
+
+  if (eventOutputPortIdForPlugin.has_value()) {
+    auto& eventOutBuffer = context.getOutputEventBuffer(*eventOutputPortIdForPlugin);
+
+    for (const auto metadata : rt_eventBufferForPlugin) {
+      addMidiMessageToEventBuffer(eventOutBuffer, metadata.getMessage(), metadata.samplePosition);
+    }
+  }
 
   rt_eventBufferForPlugin.clear();
 }
@@ -130,10 +243,11 @@ void VST3Processor::initialize(
   VST3ProcessorModelBase::initialize(selfModel, parentModel);
 }
 
-std::optional<std::string> VST3Processor::tryInitializePlugin() {
+void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
   if (pluginInstance != nullptr) {
     writeVST3Log(*this, "Plugin instance already exists. Skipping initialization.");
-    return std::nullopt;
+    complete(buildPrepareResultForPlugin());
+    return;
   }
 
   auto& audioPluginFormatManager = Engine::getInstance().audioPluginFormatManager;
@@ -143,7 +257,8 @@ std::optional<std::string> VST3Processor::tryInitializePlugin() {
 
   if (device == nullptr) {
     writeVST3Log(*this, "No audio device available. Cannot initialize plugin.");
-    return std::string("No audio device is active.");
+    complete(makeVST3PrepareError("No audio device is active."));
+    return;
   }
 
   writeVST3Log(*this,
@@ -158,7 +273,8 @@ std::optional<std::string> VST3Processor::tryInitializePlugin() {
 
   if (foundPlugins.isEmpty()) {
     writeVST3Log(*this, "No plugins found in VST3 file: " + juce::String(vst3Path()));
-    return std::string("No plugins found in VST3 file: " + vst3Path());
+    complete(makeVST3PrepareError("No plugins found in VST3 file: " + vst3Path()));
+    return;
   }
 
   writeVST3Log(
@@ -181,22 +297,26 @@ std::optional<std::string> VST3Processor::tryInitializePlugin() {
   audioPluginFormatManager.createPluginInstanceAsync(pluginDescription,
       sampleRate,
       bufferSize,
-      [weakSelf, sampleRate, bufferSize, hostBufferChannels](
+      [weakSelf, sampleRate, bufferSize, hostBufferChannels, complete = std::move(complete)](
           std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& error) mutable {
         auto selfShared = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
 
         if (selfShared == nullptr) {
+          complete(makeVST3PrepareError("VST3 processor was destroyed before initialization."));
           return;
         }
 
         if (error.isNotEmpty()) {
           writeVST3Log(*selfShared, "Failed to create plugin instance: " + error);
+          complete(makeVST3PrepareError(error.toStdString()));
           return;
         }
 
         if (instance == nullptr) {
           writeVST3Log(*selfShared,
               "Plugin creation callback returned a null instance without an error message.");
+          complete(makeVST3PrepareError(
+              "Plugin creation callback returned a null instance without an error message."));
           return;
         }
 
@@ -214,6 +334,8 @@ std::optional<std::string> VST3Processor::tryInitializePlugin() {
                   juce::String(hostBufferChannels) +
                   " channel(s) per plugin buffer. Refusing to load to avoid a host buffer "
                   "overrun.");
+          complete(makeVST3PrepareError(
+              "Plugin requires more process channels than Anthem can currently allocate."));
           return;
         }
 
@@ -226,6 +348,27 @@ std::optional<std::string> VST3Processor::tryInitializePlugin() {
 
         instance->prepareToPlay(sampleRate, bufferSize);
         writeVST3Log(*selfShared, "prepareToPlay() completed.");
+
+        selfShared->pluginInputChannelCount = instance->getTotalNumInputChannels();
+        selfShared->pluginOutputChannelCount = instance->getTotalNumOutputChannels();
+        selfShared->audioInputPortIdForPlugin =
+            selfShared->pluginInputChannelCount > 0
+                ? std::optional<int64_t>(VST3ProcessorModelBase::audioInputPortId)
+                : std::nullopt;
+        selfShared->audioOutputPortIdForPlugin =
+            selfShared->pluginOutputChannelCount > 0
+                ? std::optional<int64_t>(VST3ProcessorModelBase::audioOutputPortId)
+                : std::nullopt;
+        selfShared->eventInputPortIdForPlugin =
+            instance->acceptsMidi()
+                ? std::optional<int64_t>(VST3ProcessorModelBase::eventInputPortId)
+                : std::nullopt;
+        selfShared->eventOutputPortIdForPlugin =
+            instance->producesMidi()
+                ? std::optional<int64_t>(VST3ProcessorModelBase::eventOutputPortId)
+                : std::nullopt;
+        selfShared->rt_pluginAudioBuffer.setSize(
+            requiredProcessChannels, bufferSize, false, true, true);
 
         selfShared->pluginInstance = std::move(instance);
         selfShared->pluginInstance->addListener(selfShared.get());
@@ -250,9 +393,9 @@ std::optional<std::string> VST3Processor::tryInitializePlugin() {
 
           processor->showPluginGUI();
         });
-        });
 
-  return std::nullopt;
+        complete(selfShared->buildPrepareResultForPlugin());
+      });
 }
 
 void VST3Processor::showPluginGUI() {

@@ -23,11 +23,10 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/device_commands.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
+import 'package:anthem/logic/devices/device_port_defaults.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
-import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/port_ref.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
@@ -37,11 +36,6 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:file_picker/file_picker.dart';
-
-typedef _DevicePortRef = ({
-  DeviceModel device,
-  ProcessingGraphPortRefModel port,
-});
 
 class DeviceController {
   final ProjectModel project;
@@ -179,6 +173,7 @@ class DeviceController {
     disconnectTrackDeviceRouting(trackId);
 
     final generatedConnectionIds = <Id>[];
+    final devicePortDefaults = DevicePortDefaults(project.processingGraph);
 
     void addConnection({
       required Id sourceNodeId,
@@ -197,10 +192,10 @@ class DeviceController {
       generatedConnectionIds.add(connection.id);
     }
 
-    final firstEventInput = _firstExistingDefaultPort(
+    final firstEventInput = devicePortDefaults.firstExistingDefaultPort(
       track.devices,
       NodePortDataType.event,
-      _PortDirection.input,
+      DevicePortDirection.input,
     );
     if (firstEventInput != null) {
       _connectTrackEventProviders(
@@ -211,17 +206,17 @@ class DeviceController {
     }
 
     final audioConnectedDevicePairs = <(Id, Id)>{};
-    _DevicePortRef? lastAudioOutput;
+    DevicePortRef? lastAudioOutput;
 
     // First pass: build the sparse audio chain in rack order. Devices without
     // a compatible audio input are skipped, and the last chainable audio output
     // is carried forward to the next compatible device.
     for (final device in track.devices) {
       var connectedAudioIntoDevice = false;
-      final audioInput = _existingDefaultPort(
+      final audioInput = devicePortDefaults.existingDefaultPort(
         device,
         NodePortDataType.audio,
-        _PortDirection.input,
+        DevicePortDirection.input,
       );
       if (lastAudioOutput != null && audioInput != null) {
         addConnection(
@@ -234,10 +229,10 @@ class DeviceController {
         connectedAudioIntoDevice = true;
       }
 
-      final audioOutput = _existingDefaultPort(
+      final audioOutput = devicePortDefaults.existingDefaultPort(
         device,
         NodePortDataType.audio,
-        _PortDirection.output,
+        DevicePortDirection.output,
       );
       if (audioOutput != null &&
           (lastAudioOutput == null || connectedAudioIntoDevice)) {
@@ -257,15 +252,15 @@ class DeviceController {
       }
     }
 
-    _DevicePortRef? lastEventOutput;
+    DevicePortRef? lastEventOutput;
     // Second pass: build the sparse event chain, but skip device pairs that
     // were already connected by audio so audio remains the preferred path.
     for (final device in track.devices) {
       var connectedEventIntoDevice = false;
-      final eventInput = _existingDefaultPort(
+      final eventInput = devicePortDefaults.existingDefaultPort(
         device,
         NodePortDataType.event,
-        _PortDirection.input,
+        DevicePortDirection.input,
       );
       if (lastEventOutput != null &&
           eventInput != null &&
@@ -282,10 +277,10 @@ class DeviceController {
         connectedEventIntoDevice = true;
       }
 
-      final eventOutput = _existingDefaultPort(
+      final eventOutput = devicePortDefaults.existingDefaultPort(
         device,
         NodePortDataType.event,
-        _PortDirection.output,
+        DevicePortDirection.output,
       );
       if (eventOutput != null &&
           (lastEventOutput == null || connectedEventIntoDevice)) {
@@ -341,62 +336,4 @@ class DeviceController {
       portId: UtilityProcessorModel.audioInputPortId,
     );
   }
-
-  _DevicePortRef? _firstExistingDefaultPort(
-    Iterable<DeviceModel> devices,
-    NodePortDataType dataType,
-    _PortDirection direction,
-  ) {
-    for (final device in devices) {
-      final port = _existingDefaultPort(device, dataType, direction);
-      if (port != null) {
-        return (device: device, port: port);
-      }
-    }
-
-    return null;
-  }
-
-  ProcessingGraphPortRefModel? _existingDefaultPort(
-    DeviceModel device,
-    NodePortDataType dataType,
-    _PortDirection direction,
-  ) {
-    final ref = switch ((dataType, direction)) {
-      (NodePortDataType.audio, _PortDirection.input) =>
-        device.defaultAudioInputPort,
-      (NodePortDataType.audio, _PortDirection.output) =>
-        device.defaultAudioOutputPort,
-      (NodePortDataType.event, _PortDirection.input) =>
-        device.defaultEventInputPort,
-      (NodePortDataType.event, _PortDirection.output) =>
-        device.defaultEventOutputPort,
-      (NodePortDataType.control, _) => null,
-    };
-    if (ref == null) {
-      return null;
-    }
-
-    final node = project.processingGraph.nodes[ref.nodeId];
-    if (node == null) {
-      return null;
-    }
-
-    final port = _tryGetPortById(node, ref.portId);
-    if (port == null || port.type != dataType) {
-      return null;
-    }
-
-    return ref;
-  }
-
-  NodePortModel? _tryGetPortById(NodeModel node, int portId) {
-    try {
-      return node.getPortById(portId);
-    } on Exception {
-      return null;
-    }
-  }
 }
-
-enum _PortDirection { input, output }

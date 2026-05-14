@@ -91,9 +91,9 @@ void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state
   });
 }
 
-std::optional<std::string> SequenceNoteProviderProcessor::prepareToProcess() {
+void SequenceNoteProviderProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
   // Nothing to do here
-  return std::nullopt;
+  complete(std::nullopt);
 }
 
 void SequenceNoteProviderProcessor::process(NodeProcessContext& context, int numSamples) {

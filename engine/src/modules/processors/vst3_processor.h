@@ -26,6 +26,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
+#include <optional>
 
 namespace anthem {
 
@@ -147,8 +148,15 @@ private:
   juce::PluginDescription pluginDescription;
 
   std::unique_ptr<juce::AudioPluginInstance> pluginInstance;
+  juce::AudioBuffer<float> rt_pluginAudioBuffer;
 
   juce::MidiBuffer rt_eventBufferForPlugin;
+  std::optional<int64_t> audioInputPortIdForPlugin;
+  std::optional<int64_t> audioOutputPortIdForPlugin;
+  std::optional<int64_t> eventInputPortIdForPlugin;
+  std::optional<int64_t> eventOutputPortIdForPlugin;
+  int pluginInputChannelCount = 0;
+  int pluginOutputChannelCount = 0;
 
   std::unique_ptr<PluginEditorWindow> editorWindow;
 
@@ -156,6 +164,7 @@ private:
   void rebindEditorWindowCloseCallback();
   void showPluginGUI();
   void hidePluginGUI();
+  ProcessorPrepareResult buildPrepareResultForPlugin() const;
 public:
   VST3Processor(const VST3ProcessorModelImpl& _impl);
   ~VST3Processor() override;
@@ -165,13 +174,13 @@ public:
   VST3Processor(VST3Processor&&) noexcept = default;
   VST3Processor& operator=(VST3Processor&&) noexcept = delete;
 
-  std::optional<std::string> prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 
   void initialize(
       std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 
-  std::optional<std::string> tryInitializePlugin();
+  void tryInitializePlugin(ProcessorPrepareCallback complete);
 
   void audioProcessorParameterChanged(
       juce::AudioProcessor* processor, int parameterIndex, float newValue) override;

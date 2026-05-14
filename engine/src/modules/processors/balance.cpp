@@ -30,8 +30,8 @@ BalanceProcessor::BalanceProcessor(const BalanceProcessorModelImpl& _impl)
 
 BalanceProcessor::~BalanceProcessor() {}
 
-std::optional<std::string> BalanceProcessor::prepareToProcess() {
-  return std::nullopt;
+void BalanceProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  complete(std::nullopt);
 }
 
 void BalanceProcessor::process(NodeProcessContext& context, int numSamples) {

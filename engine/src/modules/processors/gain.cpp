@@ -28,8 +28,8 @@ GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
 
 GainProcessor::~GainProcessor() {}
 
-std::optional<std::string> GainProcessor::prepareToProcess() {
-  return std::nullopt;
+void GainProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  complete(std::nullopt);
 }
 
 void GainProcessor::process(NodeProcessContext& context, int numSamples) {

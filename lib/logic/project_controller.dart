@@ -20,14 +20,21 @@
 import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show
+        ProcessingGraphNodeInitializationResult,
+        ProcessingGraphNodePortConfiguration,
+        ProcessingGraphPortConfiguration;
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/devices/device_port_defaults.dart';
 import 'package:anthem/logic/live_event_manager.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -131,12 +138,219 @@ class ProjectController {
           break;
         }
 
+        _applyNodePortConfigurations(initialization.results);
+
         await project.engine.processingGraphApi.publish();
       }
     } finally {
       _isPublishingProcessingGraph = false;
       _pendingProcessingGraphPublishCount = 0;
       _processingGraphPublishFuture = null;
+    }
+  }
+
+  void _applyNodePortConfigurations(
+    List<ProcessingGraphNodeInitializationResult> results,
+  ) {
+    final affectedTrackIds = <Id>{};
+
+    for (final result in results) {
+      final portConfiguration = result.portConfiguration;
+      if (!result.success || portConfiguration == null) {
+        continue;
+      }
+
+      final didChange = _applyNodePortConfiguration(
+        result.nodeId,
+        portConfiguration,
+      );
+      if (!didChange) {
+        continue;
+      }
+
+      affectedTrackIds.addAll(_updateDeviceDefaultsForNode(result.nodeId));
+    }
+
+    if (affectedTrackIds.isEmpty) {
+      return;
+    }
+
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    for (final trackId in affectedTrackIds) {
+      serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
+      serviceRegistry.trackController.rerouteTracks([trackId]);
+    }
+  }
+
+  bool _applyNodePortConfiguration(
+    Id nodeId,
+    ProcessingGraphNodePortConfiguration portConfiguration,
+  ) {
+    final node = project.processingGraph.nodes[nodeId];
+    if (node == null) {
+      return false;
+    }
+
+    final portGroups =
+        <
+          ({
+            AnthemObservableList<NodePortModel> currentPorts,
+            List<ProcessingGraphPortConfiguration> newPortConfigurations,
+            NodePortDataType dataType,
+          })
+        >[
+          (
+            currentPorts: node.audioInputPorts,
+            newPortConfigurations: portConfiguration.audioInputPorts,
+            dataType: .audio,
+          ),
+          (
+            currentPorts: node.audioOutputPorts,
+            newPortConfigurations: portConfiguration.audioOutputPorts,
+            dataType: .audio,
+          ),
+          (
+            currentPorts: node.eventInputPorts,
+            newPortConfigurations: portConfiguration.eventInputPorts,
+            dataType: .event,
+          ),
+          (
+            currentPorts: node.eventOutputPorts,
+            newPortConfigurations: portConfiguration.eventOutputPorts,
+            dataType: .event,
+          ),
+          (
+            currentPorts: node.controlInputPorts,
+            newPortConfigurations: portConfiguration.controlInputPorts,
+            dataType: .control,
+          ),
+          (
+            currentPorts: node.controlOutputPorts,
+            newPortConfigurations: portConfiguration.controlOutputPorts,
+            dataType: .control,
+          ),
+        ];
+
+    final didChange = portGroups.any(
+      (group) => !_portListMatches(
+        group.currentPorts,
+        group.newPortConfigurations,
+        group.dataType,
+      ),
+    );
+
+    if (!didChange) {
+      return false;
+    }
+
+    for (final portGroup in portGroups) {
+      _removeConnectionsForUnconfiguredPorts(
+        portGroup.currentPorts,
+        portGroup.newPortConfigurations,
+      );
+
+      _replacePorts(
+        portGroup.currentPorts,
+        portGroup.newPortConfigurations,
+        portGroup.dataType,
+        nodeId,
+      );
+    }
+
+    return true;
+  }
+
+  bool _portListMatches(
+    AnthemObservableList<NodePortModel> currentPorts,
+    List<ProcessingGraphPortConfiguration> configuredPorts,
+    NodePortDataType dataType,
+  ) {
+    if (currentPorts.length != configuredPorts.length) {
+      return false;
+    }
+
+    for (var i = 0; i < currentPorts.length; i++) {
+      final currentPort = currentPorts[i];
+      final configuredPort = configuredPorts[i];
+      if (currentPort.id != configuredPort.id ||
+          currentPort.config.dataType != dataType ||
+          currentPort.config.name != configuredPort.name ||
+          currentPort.config.channelCount != configuredPort.channelCount) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void _removeConnectionsForPorts(Iterable<NodePortModel> ports) {
+    final connectionIds = <Id>{
+      for (final port in ports)
+        for (final connectionId in port.connections) connectionId,
+    };
+
+    for (final connectionId in connectionIds) {
+      if (project.processingGraph.connections[connectionId] != null) {
+        project.processingGraph.removeConnection(connectionId);
+      }
+    }
+  }
+
+  void _removeConnectionsForUnconfiguredPorts(
+    AnthemObservableList<NodePortModel> currentPorts,
+    List<ProcessingGraphPortConfiguration> configuredPorts,
+  ) {
+    final configuredPortIds = {for (final port in configuredPorts) port.id};
+
+    _removeConnectionsForPorts(
+      currentPorts.where((port) => !configuredPortIds.contains(port.id)),
+    );
+  }
+
+  void _replacePorts(
+    AnthemObservableList<NodePortModel> target,
+    List<ProcessingGraphPortConfiguration> configuredPorts,
+    NodePortDataType dataType,
+    Id nodeId,
+  ) {
+    final currentPortsById = {for (final port in target) port.id: port};
+
+    target
+      ..clear()
+      ..addAll(
+        configuredPorts.map((port) {
+          final replacementPort = NodePortModel(
+            nodeId: nodeId,
+            id: port.id,
+            config: NodePortConfigModel(
+              dataType: dataType,
+              name: port.name,
+              channelCount: port.channelCount,
+            ),
+          );
+
+          final currentPort = currentPortsById[port.id];
+          if (currentPort != null) {
+            replacementPort.connections.addAll(currentPort.connections);
+          }
+
+          return replacementPort;
+        }),
+      );
+  }
+
+  Iterable<Id> _updateDeviceDefaultsForNode(Id nodeId) sync* {
+    final devicePortDefaults = DevicePortDefaults(project.processingGraph);
+
+    for (final track in project.tracks.values) {
+      for (final device in track.devices) {
+        if (!device.nodeIds.contains(nodeId)) {
+          continue;
+        }
+
+        devicePortDefaults.refreshDeviceDefaultPorts(device);
+        yield track.id;
+      }
     }
   }
 

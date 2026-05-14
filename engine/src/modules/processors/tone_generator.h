@@ -43,7 +43,7 @@ public:
   ToneGeneratorProcessor(ToneGeneratorProcessor&&) noexcept = default;
   ToneGeneratorProcessor& operator=(ToneGeneratorProcessor&&) noexcept = default;
 
-  std::optional<std::string> prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 
   void initialize(

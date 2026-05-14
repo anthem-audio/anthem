@@ -57,6 +57,7 @@ class ProcessingGraphNodeInitializationResult
     required super.nodeId,
     required super.success,
     super.error,
+    super.portConfiguration,
   });
 
   factory ProcessingGraphNodeInitializationResult.fromJson(
@@ -68,11 +69,87 @@ abstract class _ProcessingGraphNodeInitializationResult {
   Id nodeId;
   bool success;
   String? error;
+  ProcessingGraphNodePortConfiguration? portConfiguration;
 
   _ProcessingGraphNodeInitializationResult({
     required this.nodeId,
     required this.success,
     this.error,
+    this.portConfiguration,
+  });
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphNodePortConfiguration
+    extends _ProcessingGraphNodePortConfiguration
+    with _$ProcessingGraphNodePortConfigurationAnthemModelMixin {
+  ProcessingGraphNodePortConfiguration.uninitialized()
+    : super(
+        audioInputPorts: [],
+        audioOutputPorts: [],
+        eventInputPorts: [],
+        eventOutputPorts: [],
+        controlInputPorts: [],
+        controlOutputPorts: [],
+      );
+
+  ProcessingGraphNodePortConfiguration({
+    required super.audioInputPorts,
+    required super.audioOutputPorts,
+    required super.eventInputPorts,
+    required super.eventOutputPorts,
+    required super.controlInputPorts,
+    required super.controlOutputPorts,
+  });
+
+  factory ProcessingGraphNodePortConfiguration.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ProcessingGraphNodePortConfigurationAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphNodePortConfiguration {
+  List<ProcessingGraphPortConfiguration> audioInputPorts;
+  List<ProcessingGraphPortConfiguration> audioOutputPorts;
+  List<ProcessingGraphPortConfiguration> eventInputPorts;
+  List<ProcessingGraphPortConfiguration> eventOutputPorts;
+  List<ProcessingGraphPortConfiguration> controlInputPorts;
+  List<ProcessingGraphPortConfiguration> controlOutputPorts;
+
+  _ProcessingGraphNodePortConfiguration({
+    required this.audioInputPorts,
+    required this.audioOutputPorts,
+    required this.eventInputPorts,
+    required this.eventOutputPorts,
+    required this.controlInputPorts,
+    required this.controlOutputPorts,
+  });
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphPortConfiguration extends _ProcessingGraphPortConfiguration
+    with _$ProcessingGraphPortConfigurationAnthemModelMixin {
+  ProcessingGraphPortConfiguration.uninitialized() : super(id: -1);
+
+  ProcessingGraphPortConfiguration({
+    required super.id,
+    super.name,
+    super.channelCount,
+  });
+
+  factory ProcessingGraphPortConfiguration.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ProcessingGraphPortConfigurationAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphPortConfiguration {
+  int id;
+  String? name;
+  int? channelCount;
+
+  _ProcessingGraphPortConfiguration({
+    required this.id,
+    this.name,
+    this.channelCount,
   });
 }
 

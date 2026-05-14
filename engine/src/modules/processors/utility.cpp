@@ -30,8 +30,8 @@ UtilityProcessor::UtilityProcessor(const UtilityProcessorModelImpl& _impl)
 
 UtilityProcessor::~UtilityProcessor() {}
 
-std::optional<std::string> UtilityProcessor::prepareToProcess() {
-  return std::nullopt;
+void UtilityProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  complete(std::nullopt);
 }
 
 void UtilityProcessor::process(NodeProcessContext& context, int numSamples) {
