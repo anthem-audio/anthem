@@ -51,26 +51,12 @@ class UtilityDevice extends StatelessWidget {
       child: Center(
         child: SizedBox(
           width: 88,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 12,
             children: [
-              Text(
-                'Utility',
-                style: TextStyle(
-                  color: AnthemTheme.text.main,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: 12,
-                children: [
-                  _GainControl(node: node),
-                  _BalanceControl(node: node),
-                ],
-              ),
+              _GainControl(node: node),
+              _BalanceControl(node: node),
             ],
           ),
         ),
