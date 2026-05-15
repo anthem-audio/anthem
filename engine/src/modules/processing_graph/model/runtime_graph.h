@@ -55,8 +55,7 @@ public:
 
   static std::unique_ptr<RuntimeGraph> fromProcessingGraph(ProcessingGraphModel& processingGraph,
       GraphRuntimeServices& rtServices,
-      const GraphBufferLayout& bufferLayout,
-      double sampleRate);
+      const GraphBufferLayout& bufferLayout);
 
   void cleanup();
 
@@ -64,7 +63,6 @@ public:
   std::vector<RuntimeNode*> inputNodes;
   AvailableTaskQueue availableTasks;
   std::unique_ptr<GraphProcessContext> graphProcessContext;
-  float sampleRate = 0.0f;
 private:
   bool hasCleanedUp = false;
 

@@ -103,8 +103,6 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
     state.rt_shouldWriteToBuffer =
         parameterInputPortsToWrite.find(port->id()) != parameterInputPortsToWrite.end();
     state.value = std::make_unique<std::atomic<float>>(parameterValue);
-    state.rt_smoother = std::make_unique<LinearParameterSmoother>(
-        parameterValue, static_cast<float>((*parameterConfig)->smoothingDurationSeconds()));
     inputParameters.push_back(std::move(state));
   }
 }

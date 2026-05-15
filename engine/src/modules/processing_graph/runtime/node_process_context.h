@@ -23,7 +23,6 @@
 #include "modules/processing_graph/processor/event_buffer.h"
 #include "modules/processing_graph/runtime/audio_buffer_slice.h"
 #include "modules/sequencer/events/note_instance_id.h"
-#include "modules/util/linear_parameter_smoother.h"
 
 #include <atomic>
 #include <cstdint>
@@ -81,7 +80,6 @@ public:
     juce::AudioSampleBuffer* rt_buffer = nullptr;
     bool rt_shouldWriteToBuffer = true;
     std::unique_ptr<std::atomic<float>> value;
-    std::unique_ptr<LinearParameterSmoother> rt_smoother;
   };
 private:
   JUCE_LEAK_DETECTOR(NodeProcessContext)

@@ -1079,15 +1079,13 @@ size_t getAndSetPriority(RuntimeNode& node) {
 std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
     ProcessingGraphModel& processingGraph,
     GraphRuntimeServices& rtServices,
-    const GraphBufferLayout& bufferLayout,
-    double sampleRate) {
+    const GraphBufferLayout& bufferLayout) {
   auto& graphNodes = *processingGraph.nodes();
   auto& graphConnections = *processingGraph.connections();
 
   auto runtimeGraphStorage = std::make_unique<RuntimeGraph>(graphNodes.size());
   auto& runtimeGraph = *runtimeGraphStorage;
 
-  runtimeGraph.sampleRate = static_cast<float>(sampleRate);
   runtimeGraph.graphProcessContext =
       std::make_unique<GraphProcessContext>(rtServices, bufferLayout);
   runtimeGraph.nodes.reserve(graphNodes.size());

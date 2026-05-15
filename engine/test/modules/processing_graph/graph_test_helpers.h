@@ -38,12 +38,10 @@ namespace graph_test_helpers {
 using NodeProcessorVariant =
     typename std::remove_cvref_t<decltype(std::declval<NodeModelImpl>().processor)>::value_type;
 
-inline std::shared_ptr<ParameterConfigModel> makeParameterConfig(
-    int64_t id, double defaultValue, double smoothingDurationSeconds = 0.0) {
+inline std::shared_ptr<ParameterConfigModel> makeParameterConfig(int64_t id, double defaultValue) {
   return std::make_shared<ParameterConfigModel>(ParameterConfigModelImpl{
       .id = id,
       .defaultValue = defaultValue,
-      .smoothingDurationSeconds = smoothingDurationSeconds,
   });
 }
 

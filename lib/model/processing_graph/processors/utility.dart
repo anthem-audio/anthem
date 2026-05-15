@@ -101,7 +101,6 @@ class UtilityProcessorModel extends _UtilityProcessorModel
             parameterConfig: ParameterConfigModel(
               id: gainPortId,
               defaultValue: gainParameterZeroDbNormalized,
-              smoothingDurationSeconds: 0.01,
             ),
           ),
         ),
@@ -113,7 +112,6 @@ class UtilityProcessorModel extends _UtilityProcessorModel
             parameterConfig: ParameterConfigModel(
               id: balancePortId,
               defaultValue: UtilityProcessorModel.panToParameterValue(0.0),
-              smoothingDurationSeconds: 0.01,
             ),
           ),
         ),

@@ -197,8 +197,7 @@ void Engine::publishProcessingGraph() {
       GraphBufferLayout{
           .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
           .blockSize = currentDevice->getCurrentBufferSizeSamples(),
-      },
-      currentDevice->getCurrentSampleRate());
+      });
 
   graphProcessor->setRuntimeGraphFromMainThread(runtimeGraph.release());
 }

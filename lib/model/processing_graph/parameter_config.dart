@@ -37,19 +37,13 @@ part 'parameter_config.g.dart';
 ///
 /// This class is responsible for storing the configuration of a parameter in
 /// the processing graph. Parameter values are always stored normalized in the
-/// range [0, 1]. This config stores the default normalized value and the
-/// duration over which the parameter value will be smoothed.
+/// range [0, 1]. This config stores the default normalized value.
 @AnthemModel.syncedModel()
 class ParameterConfigModel extends _ParameterConfigModel
     with _$ParameterConfigModel, _$ParameterConfigModelAnthemModelMixin {
-  ParameterConfigModel({
-    required super.id,
-    required super.defaultValue,
-    required super.smoothingDurationSeconds,
-  });
+  ParameterConfigModel({required super.id, required super.defaultValue});
 
-  ParameterConfigModel.uninitialized()
-    : super(id: 0, defaultValue: 0.0, smoothingDurationSeconds: 0.0);
+  ParameterConfigModel.uninitialized() : super(id: 0, defaultValue: 0.0);
 
   factory ParameterConfigModel.fromJson(Map<String, dynamic> json) =>
       _$ParameterConfigModelAnthemModelMixin.fromJson(json);
@@ -67,12 +61,5 @@ abstract class _ParameterConfigModel
   /// The default normalized value of the parameter.
   double defaultValue;
 
-  /// The duration in seconds over which the parameter value will be smoothed.
-  double smoothingDurationSeconds;
-
-  _ParameterConfigModel({
-    required this.id,
-    required this.defaultValue,
-    required this.smoothingDurationSeconds,
-  });
+  _ParameterConfigModel({required this.id, required this.defaultValue});
 }

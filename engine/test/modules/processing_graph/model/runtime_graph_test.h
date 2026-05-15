@@ -192,8 +192,7 @@ class RuntimeGraphTest : public juce::UnitTest {
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 8,
-        },
-        44100.0);
+        });
   }
 
   static bool buildThrowsRuntimeError(ProcessingGraphModel& graph) {

@@ -33,11 +33,7 @@ GraphExecutorState::GraphExecutorState(RuntimeGraph& runtimeGraph) : runtimeGrap
 
 namespace {
 
-void rt_writeParametersToControlInputs(
-    NodeProcessContext& context, float sampleRate, int numSamples) {
-  jassert(sampleRate > 0.0f);
-  const auto secondsPerSample = sampleRate > 0.0f ? 1.0f / sampleRate : 0.0f;
-
+void rt_writeParametersToControlInputs(NodeProcessContext& context, int numSamples) {
   for (auto& parameter : context.rt_getInputParameterBindings()) {
     if (!parameter.rt_shouldWriteToBuffer) {
       continue;
@@ -46,16 +42,9 @@ void rt_writeParametersToControlInputs(
     auto value = parameter.value->load();
     jassert(juce::jlimit(0.0f, 1.0f, value) == value);
 
-    if (parameter.rt_smoother->getTargetValue() != value) {
-      parameter.rt_smoother->setTargetValue(value);
-    }
-
     auto& controlBuffer = *parameter.rt_buffer;
     for (int sample = 0; sample < numSamples; ++sample) {
-      parameter.rt_smoother->process(secondsPerSample);
-      auto currentValue = parameter.rt_smoother->getCurrentValue();
-      jassert(juce::jlimit(0.0f, 1.0f, currentValue) == currentValue);
-      controlBuffer.setSample(0, sample, currentValue);
+      controlBuffer.setSample(0, sample, value);
     }
   }
 }
@@ -163,8 +152,7 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
   }
 
   node.nodeProcessContext->clearBuffers();
-  rt_writeParametersToControlInputs(
-      *node.nodeProcessContext, state.runtimeGraph.sampleRate, numSamples);
+  rt_writeParametersToControlInputs(*node.nodeProcessContext, numSamples);
 
   for (const auto& connectionTransferAction : node.connectionTransferActions) {
     rt_applyConnectionTransfer(
