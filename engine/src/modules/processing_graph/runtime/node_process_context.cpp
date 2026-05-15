@@ -69,6 +69,18 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
   rt_audioBuffersToClear = std::move(bufferBindings.rt_audioBuffersToClear);
   rt_eventBuffersToClear = std::move(bufferBindings.rt_eventBuffersToClear);
 
+  rt_connectedInputControlPorts.reserve(inputControlBuffers.size());
+  for (const auto& [portId, bufferIndex] : inputControlBuffers) {
+    if (!bufferIndex.has_value()) {
+      continue;
+    }
+
+    rt_connectedInputControlPorts.push_back(ConnectedInputControlPort{
+        .portId = portId,
+        .bufferIndex = *bufferIndex,
+    });
+  }
+
   inputAudioBufferViews.reserve(inputAudioBuffers.size());
   for (const auto& [portId, slice] : inputAudioBuffers) {
     inputAudioBufferViews.emplace(portId, createAudioBufferView(graphProcessContext, slice));
@@ -245,6 +257,12 @@ const juce::AudioSampleBuffer* NodeProcessContext::getInputControlBuffer(int64_t
   }
 
   return &graphProcessContext->getControlBuffer(*bufferIndex);
+}
+
+const juce::AudioSampleBuffer& NodeProcessContext::rt_getInputControlBufferByIndex(
+    size_t index) const {
+  jassert(graphProcessContext != nullptr);
+  return graphProcessContext->getControlBuffer(index);
 }
 
 juce::AudioSampleBuffer& NodeProcessContext::getOutputControlBuffer(int64_t id) {

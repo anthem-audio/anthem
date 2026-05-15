@@ -27,6 +27,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 
 namespace anthem {
 
@@ -157,6 +158,7 @@ private:
   std::optional<int64_t> eventOutputPortIdForPlugin;
   int pluginInputChannelCount = 0;
   int pluginOutputChannelCount = 0;
+  std::unordered_map<int64_t, juce::AudioProcessorParameter*> rt_parametersByPortId;
 
   std::unique_ptr<PluginEditorWindow> editorWindow;
 
@@ -164,7 +166,7 @@ private:
   void rebindEditorWindowCloseCallback();
   void showPluginGUI();
   void hidePluginGUI();
-  ProcessorPrepareResult buildPrepareResultForPlugin() const;
+  ProcessorPrepareResult buildPrepareResultForPlugin();
 public:
   VST3Processor(const VST3ProcessorModelImpl& _impl);
   ~VST3Processor() override;

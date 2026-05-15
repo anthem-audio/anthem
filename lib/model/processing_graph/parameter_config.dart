@@ -53,9 +53,8 @@ abstract class _ParameterConfigModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// The ID associated with this parameter.
   ///
-  /// This must be unique within a plugin. This is analogous to the VST3
-  /// parameter ID, and will be set to the value of the VST3 parameter ID if
-  /// this processor is a VST3 plugin.
+  /// This must match the control input port ID for this parameter. For plugin
+  /// parameter ports, this maps to the plugin's parameter ID.
   int id;
 
   /// The default normalized value of the parameter.

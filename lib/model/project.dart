@@ -27,8 +27,9 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
-import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -118,6 +119,7 @@ class ProjectModel extends _ProjectModel
           sourcePortId: track.audioOutputPortId,
           destinationNodeId: destinationNodeId,
           destinationPortId: destinationPortId,
+          dataType: NodePortDataType.audio,
         ),
       );
     }

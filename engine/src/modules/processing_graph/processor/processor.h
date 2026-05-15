@@ -36,6 +36,7 @@ struct ProcessorPortConfiguration {
   int64_t id;
   std::optional<std::string> name = std::nullopt;
   std::optional<int64_t> channelCount = std::nullopt;
+  std::optional<double> parameterDefaultValue = std::nullopt;
 };
 
 struct ProcessorNodePortConfiguration {

@@ -50,6 +50,7 @@ std::shared_ptr<ProcessingGraphPortConfiguration> makePortConfiguration(
       .id = portConfiguration.id,
       .name = portConfiguration.name,
       .channelCount = portConfiguration.channelCount,
+      .parameterDefaultValue = portConfiguration.parameterDefaultValue,
   });
 }
 

@@ -36,54 +36,43 @@ void NodePort::initialize(
         return;
       }
 
-      bool success = this->trySendParameterValueToAudioThread(value.value());
-      if (!success) {
-        juce::Logger::writeToLog(
-            "Warning: failed to send parameter value update to audio thread. This is a bug.");
-      }
+      this->sendParameterValueToAudioThreadIfBound(value.value());
     });
 
     std::optional<double> value = this->parameterValue();
 
     if (value.has_value()) {
-      bool success = this->trySendParameterValueToAudioThread(value.value());
-      if (!success) {
-        juce::Logger::writeToLog(
-            "Warning: failed to send initial parameter value to audio thread. This "
-            "indicates an unexpected timing issue and should be addressed.");
-      }
+      this->sendParameterValueToAudioThreadIfBound(value.value());
     }
   }
 }
 
-bool NodePort::trySendParameterValueToAudioThread(double value) {
+void NodePort::sendParameterValueToAudioThreadIfBound(double value) {
   jassert(juce::jlimit(0.0, 1.0, value) == value);
 
   std::shared_ptr<ModelBase> collectionParent = this->parent.lock();
 
   if (!collectionParent) {
-    return false;
+    return;
   }
 
   std::shared_ptr<ModelBase> nodeAsBase = collectionParent->parent.lock();
 
   if (!nodeAsBase) {
-    return false;
+    return;
   }
 
   std::shared_ptr<Node> node = std::dynamic_pointer_cast<Node>(nodeAsBase);
 
   if (!node) {
-    return false;
+    return;
   }
 
   if (!node->runtimeContext.has_value()) {
-    return false;
+    return;
   }
 
   node->runtimeContext.value()->setParameterValue(this->id(), static_cast<float>(value));
-
-  return true;
 }
 
 } // namespace anthem

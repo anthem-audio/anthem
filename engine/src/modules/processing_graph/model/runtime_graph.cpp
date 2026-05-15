@@ -305,9 +305,16 @@ void addInputPortConnectionsToRuntimeTopology(RuntimeGraph& runtimeGraph,
     UniqueDestinationMap& uniqueDestinationIdsBySource,
     GraphConnectionMap& graphConnections,
     RuntimeNode::Id inputPortNodeId,
+    NodePortDataType expectedDataType,
     ModelVector<int64_t>& inputPortConnections) {
   for (auto connectionId : inputPortConnections) {
     auto& connection = getGraphConnection(graphConnections, connectionId);
+    if (connection.dataType() != expectedDataType) {
+      throw std::runtime_error(
+          "Processing graph connection data type does not match input port type: " +
+          std::to_string(connection.id()));
+    }
+
     addConnectionToRuntimeGraph(
         runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
   }
@@ -325,6 +332,7 @@ void buildRuntimeTopology(RuntimeGraph& runtimeGraph,
           uniqueDestinationIdsBySource,
           graphConnections,
           graphNode->id(),
+          NodePortDataType::audio,
           *inputPort->connections());
     }
 
@@ -333,6 +341,7 @@ void buildRuntimeTopology(RuntimeGraph& runtimeGraph,
           uniqueDestinationIdsBySource,
           graphConnections,
           graphNode->id(),
+          NodePortDataType::control,
           *inputPort->connections());
     }
 
@@ -341,6 +350,7 @@ void buildRuntimeTopology(RuntimeGraph& runtimeGraph,
           uniqueDestinationIdsBySource,
           graphConnections,
           graphNode->id(),
+          NodePortDataType::event,
           *inputPort->connections());
     }
   }

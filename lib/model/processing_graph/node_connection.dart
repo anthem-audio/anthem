@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -38,6 +39,7 @@ class NodeConnectionModel extends _NodeConnectionModel
     required super.sourcePortId,
     required super.destinationNodeId,
     required super.destinationPortId,
+    required super.dataType,
   }) : super(id: idAllocator.allocateId());
 
   NodeConnectionModel.uninitialized()
@@ -47,6 +49,7 @@ class NodeConnectionModel extends _NodeConnectionModel
         sourcePortId: 0,
         destinationNodeId: -1,
         destinationPortId: 0,
+        dataType: NodePortDataType.audio,
       );
 
   factory NodeConnectionModel.fromJson(Map<String, dynamic> json) =>
@@ -63,11 +66,14 @@ abstract class _NodeConnectionModel
   Id destinationNodeId;
   int destinationPortId;
 
+  NodePortDataType dataType;
+
   _NodeConnectionModel({
     required this.id,
     required this.sourceNodeId,
     required this.sourcePortId,
     required this.destinationNodeId,
     required this.destinationPortId,
+    required this.dataType,
   });
 }

@@ -24,6 +24,7 @@ import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
@@ -103,6 +104,42 @@ class NodeModel extends _NodeModel
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
+
+  AnthemObservableList<NodePortModel> getInputPortsByType(
+    NodePortDataType dataType,
+  ) {
+    return switch (dataType) {
+      NodePortDataType.audio => audioInputPorts,
+      NodePortDataType.event => eventInputPorts,
+      NodePortDataType.control => controlInputPorts,
+    };
+  }
+
+  AnthemObservableList<NodePortModel> getOutputPortsByType(
+    NodePortDataType dataType,
+  ) {
+    return switch (dataType) {
+      NodePortDataType.audio => audioOutputPorts,
+      NodePortDataType.event => eventOutputPorts,
+      NodePortDataType.control => controlOutputPorts,
+    };
+  }
+
+  NodePortModel getInputPortById(NodePortDataType dataType, int portId) {
+    for (final port in getInputPortsByType(dataType)) {
+      if (port.id == portId) return port;
+    }
+
+    throw Exception('Input port with type $dataType and id $portId not found');
+  }
+
+  NodePortModel getOutputPortById(NodePortDataType dataType, int portId) {
+    for (final port in getOutputPortsByType(dataType)) {
+      if (port.id == portId) return port;
+    }
+
+    throw Exception('Output port with type $dataType and id $portId not found');
+  }
 
   NodePortModel getPortById(int portId) {
     for (final port in audioInputPorts) {

@@ -115,13 +115,15 @@ inline std::shared_ptr<NodeConnection> makeConnection(int64_t id,
     int64_t sourceNodeId,
     int64_t sourcePortId,
     int64_t destinationNodeId,
-    int64_t destinationPortId) {
+    int64_t destinationPortId,
+    NodePortDataType dataType = NodePortDataType::audio) {
   return std::make_shared<NodeConnection>(NodeConnectionModelImpl{
       .id = id,
       .sourceNodeId = sourceNodeId,
       .sourcePortId = sourcePortId,
       .destinationNodeId = destinationNodeId,
       .destinationPortId = destinationPortId,
+      .dataType = dataType,
   });
 }
 

@@ -19,6 +19,7 @@
 
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
@@ -211,6 +212,7 @@ abstract class _TrackModel
         sourcePortId: UtilityProcessorModel.audioOutputPortId,
         destinationNodeId: dbMeterNodeId!,
         destinationPortId: DbMeterProcessorModel.audioInputPortId,
+        dataType: NodePortDataType.audio,
       ),
     );
 

@@ -70,6 +70,7 @@ class TrackController {
           sourcePortId: UtilityProcessorModel.audioOutputPortId,
           destinationNodeId: dbMeterNode.id,
           destinationPortId: DbMeterProcessorModel.audioInputPortId,
+          dataType: NodePortDataType.audio,
         ),
       ],
     );
@@ -180,6 +181,7 @@ class TrackController {
           (connection) =>
               connection.sourceNodeId == track.audioOutputNodeId &&
               connection.sourcePortId == track.audioOutputPortId &&
+              connection.dataType == NodePortDataType.audio &&
               !_isTrackDbMeterConnection(track, connection),
         )
         .map((connection) => connection.id)
@@ -212,6 +214,7 @@ class TrackController {
         sourcePortId: track.audioOutputPortId,
         destinationNodeId: destination.nodeId,
         destinationPortId: destination.portId,
+        dataType: NodePortDataType.audio,
       ),
     );
   }
@@ -241,7 +244,9 @@ class TrackController {
     NodeConnectionModel connection,
   ) {
     return connection.destinationNodeId == track.dbMeterNodeId &&
-        connection.destinationPortId == DbMeterProcessorModel.audioInputPortId;
+        connection.destinationPortId ==
+            DbMeterProcessorModel.audioInputPortId &&
+        connection.dataType == NodePortDataType.audio;
   }
 
   void addTrack() {

@@ -81,6 +81,9 @@ public:
   }
 
   std::optional<std::shared_ptr<NodePort>> getPortById(int64_t id);
+  std::optional<std::shared_ptr<NodePort>> getInputPortById(NodePortDataType dataType, int64_t id);
+  std::optional<std::shared_ptr<NodePort>> getOutputPortById(
+      NodePortDataType dataType, int64_t id);
 
   std::optional<std::shared_ptr<Processor>> getProcessor();
 };

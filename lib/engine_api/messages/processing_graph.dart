@@ -134,6 +134,7 @@ class ProcessingGraphPortConfiguration extends _ProcessingGraphPortConfiguration
     required super.id,
     super.name,
     super.channelCount,
+    super.parameterDefaultValue,
   });
 
   factory ProcessingGraphPortConfiguration.fromJson(
@@ -145,11 +146,13 @@ abstract class _ProcessingGraphPortConfiguration {
   int id;
   String? name;
   int? channelCount;
+  double? parameterDefaultValue;
 
   _ProcessingGraphPortConfiguration({
     required this.id,
     this.name,
     this.channelCount,
+    this.parameterDefaultValue,
   });
 }
 

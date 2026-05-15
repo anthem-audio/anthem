@@ -24,6 +24,8 @@ import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/port_ref.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 
+// Helpers for choosing and refreshing the default ports that device routing uses.
+
 enum DevicePortDirection { input, output }
 
 typedef DevicePortRef = ({
@@ -96,10 +98,8 @@ class DevicePortDefaults {
       return null;
     }
 
-    final port = _tryGetPortById(node, ref.portId);
-    if (port == null ||
-        port.type != dataType ||
-        !_portsFor(node, dataType, direction).contains(port)) {
+    final port = _tryGetPortById(node, dataType, direction, ref.portId);
+    if (port == null) {
       return null;
     }
 
@@ -188,9 +188,17 @@ class DevicePortDefaults {
     };
   }
 
-  NodePortModel? _tryGetPortById(NodeModel node, int portId) {
+  NodePortModel? _tryGetPortById(
+    NodeModel node,
+    NodePortDataType dataType,
+    DevicePortDirection direction,
+    int portId,
+  ) {
     try {
-      return node.getPortById(portId);
+      return switch (direction) {
+        DevicePortDirection.input => node.getInputPortById(dataType, portId),
+        DevicePortDirection.output => node.getOutputPortById(dataType, portId),
+      };
     } on Exception {
       return null;
     }

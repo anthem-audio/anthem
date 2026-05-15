@@ -265,6 +265,8 @@ class ProjectController {
     List<ProcessingGraphPortConfiguration> configuredPorts,
     NodePortDataType dataType,
   ) {
+    // This compares only the processor-declared port shape. Runtime state like
+    // connections and parameter values is preserved when ports are replaced.
     if (currentPorts.length != configuredPorts.length) {
       return false;
     }
@@ -272,10 +274,15 @@ class ProjectController {
     for (var i = 0; i < currentPorts.length; i++) {
       final currentPort = currentPorts[i];
       final configuredPort = configuredPorts[i];
+      final currentParameterConfig = currentPort.config.parameterConfig;
       if (currentPort.id != configuredPort.id ||
           currentPort.config.dataType != dataType ||
           currentPort.config.name != configuredPort.name ||
-          currentPort.config.channelCount != configuredPort.channelCount) {
+          currentPort.config.channelCount != configuredPort.channelCount ||
+          currentParameterConfig?.id !=
+              _parameterConfigIdForPort(configuredPort) ||
+          currentParameterConfig?.defaultValue !=
+              configuredPort.parameterDefaultValue) {
         return false;
       }
     }
@@ -307,6 +314,21 @@ class ProjectController {
     );
   }
 
+  int? _parameterConfigIdForPort(ProcessingGraphPortConfiguration port) {
+    return port.parameterDefaultValue == null ? null : port.id;
+  }
+
+  ParameterConfigModel? _parameterConfigForPort(
+    ProcessingGraphPortConfiguration port,
+  ) {
+    final defaultValue = port.parameterDefaultValue;
+    if (defaultValue == null) {
+      return null;
+    }
+
+    return ParameterConfigModel(id: port.id, defaultValue: defaultValue);
+  }
+
   void _replacePorts(
     AnthemObservableList<NodePortModel> target,
     List<ProcessingGraphPortConfiguration> configuredPorts,
@@ -326,12 +348,17 @@ class ProjectController {
               dataType: dataType,
               name: port.name,
               channelCount: port.channelCount,
+              parameterConfig: _parameterConfigForPort(port),
             ),
           );
 
           final currentPort = currentPortsById[port.id];
           if (currentPort != null) {
             replacementPort.connections.addAll(currentPort.connections);
+            if (replacementPort.config.parameterConfig != null) {
+              replacementPort.parameterValue =
+                  currentPort.parameterValue ?? replacementPort.parameterValue;
+            }
           }
 
           return replacementPort;

@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/processing_graph/processors/master_output.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/processing_graph/processors/master_output.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -214,27 +214,45 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 
   void addConnection(NodeConnectionModel connection) {
-    connections[connection.id] = connection;
+    final sourceNode =
+        nodes[connection.sourceNodeId] ??
+        (throw StateError(
+          'Could not add connection: source node '
+          '${connection.sourceNodeId} not found.',
+        ));
+    final destinationNode =
+        nodes[connection.destinationNodeId] ??
+        (throw StateError(
+          'Could not add connection: destination node '
+          '${connection.destinationNodeId} not found.',
+        ));
 
-    final sourceNode = nodes[connection.sourceNodeId]!;
-    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
-    sourceNodePort.connections.add(connection.id);
-
-    final destinationNode = nodes[connection.destinationNodeId];
-    final destinationNodePort = destinationNode!.getPortById(
+    final sourcePort = sourceNode.getOutputPortById(
+      connection.dataType,
+      connection.sourcePortId,
+    );
+    final destinationPort = destinationNode.getInputPortById(
+      connection.dataType,
       connection.destinationPortId,
     );
-    destinationNodePort.connections.add(connection.id);
+
+    connections[connection.id] = connection;
+    sourcePort.connections.add(connection.id);
+    destinationPort.connections.add(connection.id);
   }
 
   void removeConnection(Id connectionId) {
     final connection = connections[connectionId]!;
     final sourceNode = nodes[connection.sourceNodeId]!;
-    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
+    final sourceNodePort = sourceNode.getOutputPortById(
+      connection.dataType,
+      connection.sourcePortId,
+    );
     sourceNodePort.connections.removeWhere((e) => e == connectionId);
 
     final destinationNode = nodes[connection.destinationNodeId]!;
-    final destinationNodePort = destinationNode.getPortById(
+    final destinationNodePort = destinationNode.getInputPortById(
+      connection.dataType,
       connection.destinationPortId,
     );
     destinationNodePort.connections.removeWhere((e) => e == connectionId);

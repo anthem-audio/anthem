@@ -180,6 +180,7 @@ class DeviceController {
       required int sourcePortId,
       required Id destinationNodeId,
       required int destinationPortId,
+      required NodePortDataType dataType,
     }) {
       final connection = NodeConnectionModel(
         idAllocator: _idAllocator,
@@ -187,6 +188,7 @@ class DeviceController {
         sourcePortId: sourcePortId,
         destinationNodeId: destinationNodeId,
         destinationPortId: destinationPortId,
+        dataType: dataType,
       );
       project.processingGraph.addConnection(connection);
       generatedConnectionIds.add(connection.id);
@@ -224,6 +226,7 @@ class DeviceController {
           sourcePortId: lastAudioOutput.port.portId,
           destinationNodeId: audioInput.nodeId,
           destinationPortId: audioInput.portId,
+          dataType: NodePortDataType.audio,
         );
         audioConnectedDevicePairs.add((lastAudioOutput.device.id, device.id));
         connectedAudioIntoDevice = true;
@@ -248,6 +251,7 @@ class DeviceController {
           sourcePortId: lastAudioOutput.port.portId,
           destinationNodeId: utilityInput.nodeId,
           destinationPortId: utilityInput.portId,
+          dataType: NodePortDataType.audio,
         );
       }
     }
@@ -273,6 +277,7 @@ class DeviceController {
           sourcePortId: lastEventOutput.port.portId,
           destinationNodeId: eventInput.nodeId,
           destinationPortId: eventInput.portId,
+          dataType: NodePortDataType.event,
         );
         connectedEventIntoDevice = true;
       }
@@ -299,6 +304,7 @@ class DeviceController {
       required int sourcePortId,
       required Id destinationNodeId,
       required int destinationPortId,
+      required NodePortDataType dataType,
     })
     addConnection,
   }) {
@@ -310,6 +316,7 @@ class DeviceController {
         sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
         destinationNodeId: destination.nodeId,
         destinationPortId: destination.portId,
+        dataType: NodePortDataType.event,
       );
     }
 
@@ -321,6 +328,7 @@ class DeviceController {
         sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
         destinationNodeId: destination.nodeId,
         destinationPortId: destination.portId,
+        dataType: NodePortDataType.event,
       );
     }
   }

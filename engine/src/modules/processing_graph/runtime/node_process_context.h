@@ -97,6 +97,11 @@ public:
       return rt_buffer->getReadPointer(0)[sample];
     }
   };
+
+  struct ConnectedInputControlPort {
+    int64_t portId;
+    size_t bufferIndex;
+  };
 private:
   JUCE_LEAK_DETECTOR(NodeProcessContext)
 
@@ -119,6 +124,7 @@ private:
 
   std::vector<AudioBufferSlice> rt_audioBuffersToClear;
   std::vector<size_t> rt_eventBuffersToClear;
+  std::vector<ConnectedInputControlPort> rt_connectedInputControlPorts;
 
   std::vector<InputParameterBinding> inputParameters;
 
@@ -158,6 +164,7 @@ public:
 
   InputControlSignal getInputControlSignal(int64_t id) const;
   const juce::AudioSampleBuffer* getInputControlBuffer(int64_t id) const;
+  const juce::AudioSampleBuffer& rt_getInputControlBufferByIndex(size_t index) const;
   juce::AudioSampleBuffer& getOutputControlBuffer(int64_t id);
 
   const EventBuffer& getInputEventBuffer(int64_t id) const;
@@ -165,6 +172,10 @@ public:
 
   const std::vector<InputParameterBinding>& rt_getInputParameterBindings() const {
     return inputParameters;
+  }
+
+  const std::vector<ConnectedInputControlPort>& rt_getConnectedInputControlPorts() const {
+    return rt_connectedInputControlPorts;
   }
 
   LiveNoteId rt_allocateLiveNoteId();

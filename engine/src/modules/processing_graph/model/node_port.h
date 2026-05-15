@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -37,7 +37,7 @@ public:
   void initialize(
       std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 private:
-  bool trySendParameterValueToAudioThread(double value);
+  void sendParameterValueToAudioThreadIfBound(double value);
 };
 
 } // namespace anthem

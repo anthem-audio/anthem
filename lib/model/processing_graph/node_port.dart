@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -58,8 +58,8 @@ class NodePortModel extends _NodePortModel
 
 abstract class _NodePortModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  // This will map to the 32-bit parameter ID from the VST standard if this is a
-  // control input port.
+  // Port IDs are unique within their node, data type and direction. For plugin
+  // parameter ports, this maps to the plugin's parameter ID.
   int id;
 
   Id nodeId;

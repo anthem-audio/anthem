@@ -48,6 +48,15 @@ ProcessorPrepareResult makeVST3PrepareError(std::string error) {
   };
 }
 
+std::optional<int64_t> getVST3ParameterPortId(juce::AudioProcessorParameter& parameter) {
+  auto* hostedParameter = dynamic_cast<juce::HostedAudioProcessorParameter*>(&parameter);
+  if (hostedParameter == nullptr) {
+    return std::nullopt;
+  }
+
+  return hostedParameter->getParameterID().getLargeIntValue();
+}
+
 void addMidiMessageToEventBuffer(
     EventBuffer& targetBuffer, const juce::MidiMessage& message, int sampleOffset) {
   if (message.isNoteOn()) {
@@ -111,8 +120,9 @@ void VST3Processor::rebindEditorWindowCloseCallback() {
   });
 }
 
-ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() const {
+ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
   ProcessorNodePortConfiguration portConfiguration;
+  rt_parametersByPortId.clear();
 
   if (audioInputPortIdForPlugin.has_value()) {
     portConfiguration.audioInputPorts.push_back(ProcessorPortConfiguration{
@@ -142,6 +152,39 @@ ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() const {
         .id = *eventOutputPortIdForPlugin,
         .name = std::string("MIDI Out"),
     });
+  }
+
+  // Discover VST parameters and expose them as control input ports.
+  if (pluginInstance != nullptr) {
+    const auto& parameters = pluginInstance->getParameters();
+
+    rt_parametersByPortId.reserve(static_cast<size_t>(parameters.size()));
+    portConfiguration.controlInputPorts.reserve(static_cast<size_t>(parameters.size()));
+
+    for (auto* parameter : parameters) {
+      if (parameter == nullptr) {
+        continue;
+      }
+
+      auto vst3ParameterId = getVST3ParameterPortId(*parameter);
+      if (!vst3ParameterId.has_value()) {
+        continue;
+      }
+
+      auto [_, inserted] = rt_parametersByPortId.emplace(*vst3ParameterId, parameter);
+      if (!inserted) {
+        writeVST3Log(*this,
+            "Skipping duplicate VST3 parameter ID: " + juce::String(*vst3ParameterId));
+        continue;
+      }
+
+      portConfiguration.controlInputPorts.push_back(ProcessorPortConfiguration{
+          .id = *vst3ParameterId,
+          .name = parameter->getName(128).toStdString(),
+          .channelCount = std::nullopt,
+          .parameterDefaultValue = static_cast<double>(parameter->getDefaultValue()),
+      });
+    }
   }
 
   return ProcessorPrepareResult{
@@ -208,6 +251,21 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
           rt_eventBufferForPlugin.addEvent(allVoicesOff, liveEvent.sampleOffset);
         }
       }
+    }
+  }
+
+  for (const auto& connectedPort : context.rt_getConnectedInputControlPorts()) {
+    auto parameterIter = rt_parametersByPortId.find(connectedPort.portId);
+    if (parameterIter == rt_parametersByPortId.end() || parameterIter->second == nullptr) {
+      continue;
+    }
+
+    const auto& controlBuffer = context.rt_getInputControlBufferByIndex(connectedPort.bufferIndex);
+    const auto value = juce::jlimit(0.0f, 1.0f, controlBuffer.getReadPointer(0)[0]);
+    auto* parameter = parameterIter->second;
+
+    if (parameter->getValue() != value) {
+      parameter->setValue(value);
     }
   }
 

@@ -147,7 +147,8 @@ class RuntimeGraphTest : public juce::UnitTest {
         sourceNodeId,
         controlOutputPortId(sourceNodeId),
         destinationNodeId,
-        controlInputPortId(destinationNodeId));
+        controlInputPortId(destinationNodeId),
+        NodePortDataType::control);
 
     sourceNode->controlOutputPorts()->at(0)->connections()->push_back(connectionId);
     destinationNode->controlInputPorts()->at(0)->connections()->push_back(connectionId);
@@ -167,7 +168,8 @@ class RuntimeGraphTest : public juce::UnitTest {
         sourceNodeId,
         eventOutputPortId(sourceNodeId),
         destinationNodeId,
-        eventInputPortId(destinationNodeId));
+        eventInputPortId(destinationNodeId),
+        NodePortDataType::event);
 
     sourceNode->eventOutputPorts()->at(0)->connections()->push_back(connectionId);
     destinationNode->eventInputPorts()->at(0)->connections()->push_back(connectionId);
