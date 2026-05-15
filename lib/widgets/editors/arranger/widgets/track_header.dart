@@ -212,7 +212,6 @@ class _TrackHeaderState extends State<TrackHeader> {
     }
 
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTapUp: onPrimaryTapUp,
         onSecondaryTapUp: onSecondaryClick,

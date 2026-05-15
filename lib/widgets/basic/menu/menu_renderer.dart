@@ -458,7 +458,6 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
       }
 
       return MouseRegion(
-        cursor: item.disabled ? MouseCursor.defer : SystemMouseCursors.click,
         onEnter: (e) {
           if (item.disabled) return;
 

@@ -114,7 +114,6 @@ class _DialogRendererState extends State<DialogRenderer>
     if (currentDialogContent != null) {
       blocker = Positioned.fill(
         child: MouseRegion(
-          cursor: SystemMouseCursors.click,
           child: GestureDetector(
             onTap: () {
               closeDialog();

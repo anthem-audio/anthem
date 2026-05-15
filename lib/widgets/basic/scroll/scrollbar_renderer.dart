@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/service_registry.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../../theme.dart';
@@ -91,10 +90,6 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     setState(() {
       pressed = true;
     });
-
-    ServiceRegistry.mainWindowController.setCursorOverride(
-      SystemMouseCursors.click,
-    );
   }
 
   void _handleMove(double pos, double trackSize) {
@@ -143,8 +138,6 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     setState(() {
       pressed = false;
     });
-
-    ServiceRegistry.mainWindowController.clearCursorOverride();
   }
 
   @override
@@ -221,7 +214,6 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
               top: isHorizontal ? 1 : handleStart,
               bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
               child: MouseRegion(
-                cursor: SystemMouseCursors.click,
                 onEnter: (e) {
                   setState(() {
                     hovered = true;

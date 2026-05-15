@@ -246,7 +246,6 @@ class _TabState extends State<_Tab> {
     final controller = ServiceRegistry.mainWindowController;
 
     final result = MouseRegion(
-      cursor: widget.isSelected ? MouseCursor.defer : SystemMouseCursors.click,
       onEnter: (_) {
         setState(() {
           isHovered = true;

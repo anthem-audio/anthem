@@ -379,7 +379,6 @@ class _AddButtonState extends State<_AddButton> {
               _isPressed = false;
             });
           },
-          cursor: SystemMouseCursors.click,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) {

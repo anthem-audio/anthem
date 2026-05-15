@@ -75,7 +75,6 @@ class _AttributeGroupState extends State<AttributeGroup>
       crossAxisAlignment: .stretch,
       children: [
         MouseRegion(
-          cursor: SystemMouseCursors.click,
           onEnter: (e) {
             setState(() {
               headerHovered = true;

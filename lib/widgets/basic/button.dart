@@ -290,7 +290,6 @@ class _ButtonState extends State<Button> {
         BorderRadius.circular(4);
 
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
       onEnter: (e) {
         if (!mounted) return;
         setState(() {

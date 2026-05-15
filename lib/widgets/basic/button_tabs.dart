@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -104,7 +104,6 @@ class _ButtonTabState extends State<_ButtonTab> {
         color: widget.isSelected ? AnthemTheme.control.main.darkAccent : null,
       ),
       child: MouseRegion(
-        cursor: SystemMouseCursors.click,
         onEnter: (_) {
           setState(() {
             isHovered = true;

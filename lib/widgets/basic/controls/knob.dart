@@ -158,7 +158,6 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
         }
       },
       child: ControlMouseHandler(
-        cursor: SystemMouseCursors.click,
         onStart: () {
           setState(() {
             isPressed = true;

@@ -47,7 +47,6 @@ class _ColorPickerButtonState extends State<ColorPickerButton> {
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: () {
           final contentRenderBox = context.findRenderObject() as RenderBox;
