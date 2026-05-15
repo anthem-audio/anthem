@@ -63,10 +63,10 @@ void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples
   auto& audioOutBuffer =
       context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
 
-  auto& frequencyControlBuffer =
-      context.getInputControlBuffer(ToneGeneratorProcessorModelBase::frequencyPortId);
-  auto& amplitudeControlBuffer =
-      context.getInputControlBuffer(ToneGeneratorProcessorModelBase::amplitudePortId);
+  auto frequencyControl =
+      context.getInputControlSignal(ToneGeneratorProcessorModelBase::frequencyPortId);
+  auto amplitudeControl =
+      context.getInputControlSignal(ToneGeneratorProcessorModelBase::amplitudePortId);
 
   // Process incoming events
   auto& eventInBuffer =
@@ -88,8 +88,8 @@ void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples
 
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {
-    auto normalizedFrequency = frequencyControlBuffer.getReadPointer(0)[sample];
-    auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
+    auto normalizedFrequency = frequencyControl.getSample(sample);
+    auto amplitude = amplitudeControl.getSample(sample);
     jassert(juce::jlimit(0.0f, 1.0f, normalizedFrequency) == normalizedFrequency);
     jassert(juce::jlimit(0.0f, 1.0f, amplitude) == amplitude);
 

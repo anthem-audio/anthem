@@ -33,7 +33,6 @@
 #include <optional>
 #include <stdexcept>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 // This class acts as a context for node graph processors. It is passed to the
 // `process()` method of each `AnthemProcessor`, and provides a way to query
@@ -45,6 +44,7 @@ class GraphProcessContext;
 class NodeProcessContext {
 public:
   using PortBufferIndexMap = std::unordered_map<int64_t, size_t>;
+  using OptionalPortBufferIndexMap = std::unordered_map<int64_t, std::optional<size_t>>;
   using PortAudioBufferSliceMap = std::unordered_map<int64_t, AudioBufferSlice>;
   using PortAudioBufferViewMap = std::unordered_map<int64_t, juce::AudioSampleBuffer>;
 
@@ -55,8 +55,10 @@ public:
 
   // Maps node ports to graph-owned buffers. Input bindings may refer to
   // buffers owned for this node, another node's output buffer, or a shared
-  // empty event buffer. Audio bindings expose slices so processors see only
-  // the channels that belong to a port, even when the physical graph buffer is
+  // empty event buffer. Control input bindings may be empty for disconnected
+  // parameter ports, in which case processors read the parameter value instead
+  // of a buffer. Audio bindings expose slices so processors see only the
+  // channels that belong to a port, even when the physical graph buffer is
   // wider. The rt_*BuffersToClear lists identify only the buffers or slices
   // this node should clear before processing.
   struct BufferBindings {
@@ -64,7 +66,7 @@ public:
     PortAudioBufferSliceMap outputAudioBuffers;
     std::optional<AudioBufferSlice> audioProcessBuffer;
 
-    PortBufferIndexMap inputControlBuffers;
+    OptionalPortBufferIndexMap inputControlBuffers;
     PortBufferIndexMap outputControlBuffers;
 
     PortBufferIndexMap inputEventBuffers;
@@ -72,14 +74,28 @@ public:
 
     std::vector<AudioBufferSlice> rt_audioBuffersToClear;
     std::vector<size_t> rt_eventBuffersToClear;
-    std::unordered_set<int64_t> rt_parameterInputPortsToWrite;
   };
 
   struct InputParameterBinding {
     int64_t portId;
-    juce::AudioSampleBuffer* rt_buffer = nullptr;
-    bool rt_shouldWriteToBuffer = true;
     std::unique_ptr<std::atomic<float>> value;
+  };
+
+  struct InputControlSignal {
+    const juce::AudioSampleBuffer* rt_buffer = nullptr;
+    float parameterValue = 0.0f;
+
+    bool hasBuffer() const {
+      return rt_buffer != nullptr;
+    }
+
+    float getSample(int sample) const {
+      if (rt_buffer == nullptr) {
+        return parameterValue;
+      }
+
+      return rt_buffer->getReadPointer(0)[sample];
+    }
   };
 private:
   JUCE_LEAK_DETECTOR(NodeProcessContext)
@@ -95,7 +111,7 @@ private:
   PortAudioBufferViewMap outputAudioBufferViews;
   std::optional<juce::AudioSampleBuffer> audioProcessBufferView;
 
-  PortBufferIndexMap inputControlBuffers;
+  OptionalPortBufferIndexMap inputControlBuffers;
   PortBufferIndexMap outputControlBuffers;
 
   PortBufferIndexMap inputEventBuffers;
@@ -129,7 +145,7 @@ public:
   }
 
   void setParameterValue(int64_t id, float value);
-  float getParameterValue(int64_t id);
+  float getParameterValue(int64_t id) const;
 
   void clearBuffers();
   size_t getBufferIndex(NodePortDataType dataType, BufferDirection direction, int64_t id) const;
@@ -140,7 +156,8 @@ public:
   juce::AudioSampleBuffer& getAudioProcessBuffer();
   bool hasAudioProcessBuffer() const;
 
-  const juce::AudioSampleBuffer& getInputControlBuffer(int64_t id) const;
+  InputControlSignal getInputControlSignal(int64_t id) const;
+  const juce::AudioSampleBuffer* getInputControlBuffer(int64_t id) const;
   juce::AudioSampleBuffer& getOutputControlBuffer(int64_t id);
 
   const EventBuffer& getInputEventBuffer(int64_t id) const;

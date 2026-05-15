@@ -59,8 +59,6 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
     GraphProcessContext& graphProcessContext,
     BufferBindings bufferBindings)
   : graphNode(graphNode), graphProcessContext(&graphProcessContext) {
-  auto parameterInputPortsToWrite = std::move(bufferBindings.rt_parameterInputPortsToWrite);
-
   inputAudioBuffers = std::move(bufferBindings.inputAudioBuffers);
   outputAudioBuffers = std::move(bufferBindings.outputAudioBuffers);
   audioProcessBuffer = bufferBindings.audioProcessBuffer;
@@ -88,10 +86,8 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
   inputParameters.reserve(graphNode->controlInputPorts()->size());
 
   for (auto& port : *graphNode->controlInputPorts()) {
-    const auto controlBufferIndex = inputControlBuffers.at(port->id());
     auto parameterValue = static_cast<float>(port->parameterValue().value_or(0.0));
     auto& parameterConfig = port->config()->parameterConfig();
-    auto& inputControlBuffer = graphProcessContext.getControlBuffer(controlBufferIndex);
 
     if (!parameterConfig.has_value()) {
       continue;
@@ -99,9 +95,6 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
 
     InputParameterBinding state;
     state.portId = port->id();
-    state.rt_buffer = &inputControlBuffer;
-    state.rt_shouldWriteToBuffer =
-        parameterInputPortsToWrite.find(port->id()) != parameterInputPortsToWrite.end();
     state.value = std::make_unique<std::atomic<float>>(parameterValue);
     inputParameters.push_back(std::move(state));
   }
@@ -152,7 +145,7 @@ void NodeProcessContext::setParameterValue(int64_t id, float value) {
   findInputParameterBinding(id).value->store(value);
 }
 
-float NodeProcessContext::getParameterValue(int64_t id) {
+float NodeProcessContext::getParameterValue(int64_t id) const {
   return findInputParameterBinding(id).value->load();
 }
 
@@ -180,9 +173,20 @@ size_t NodeProcessContext::getBufferIndex(
     case NodePortDataType::audio:
       return direction == BufferDirection::input ? inputAudioBuffers.at(id).bufferIndex
                                                  : outputAudioBuffers.at(id).bufferIndex;
-    case NodePortDataType::control:
-      return direction == BufferDirection::input ? inputControlBuffers.at(id)
-                                                 : outputControlBuffers.at(id);
+    case NodePortDataType::control: {
+      if (direction == BufferDirection::output) {
+        return outputControlBuffers.at(id);
+      }
+
+      auto bufferIndex = inputControlBuffers.at(id);
+      if (!bufferIndex.has_value()) {
+        throw std::runtime_error(
+            "AnthemNodeProcessContext input control port has no buffer for port ID " +
+            std::to_string(id) + ".");
+      }
+
+      return *bufferIndex;
+    }
     case NodePortDataType::event:
       return direction == BufferDirection::input ? inputEventBuffers.at(id)
                                                  : outputEventBuffers.at(id);
@@ -219,9 +223,28 @@ bool NodeProcessContext::hasAudioProcessBuffer() const {
   return audioProcessBufferView.has_value();
 }
 
-const juce::AudioSampleBuffer& NodeProcessContext::getInputControlBuffer(int64_t id) const {
+NodeProcessContext::InputControlSignal NodeProcessContext::getInputControlSignal(
+    int64_t id) const {
+  auto* buffer = getInputControlBuffer(id);
+  if (buffer != nullptr) {
+    return InputControlSignal{
+        .rt_buffer = buffer,
+    };
+  }
+
+  return InputControlSignal{
+      .parameterValue = getParameterValue(id),
+  };
+}
+
+const juce::AudioSampleBuffer* NodeProcessContext::getInputControlBuffer(int64_t id) const {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getControlBuffer(inputControlBuffers.at(id));
+  auto bufferIndex = inputControlBuffers.at(id);
+  if (!bufferIndex.has_value()) {
+    return nullptr;
+  }
+
+  return &graphProcessContext->getControlBuffer(*bufferIndex);
 }
 
 juce::AudioSampleBuffer& NodeProcessContext::getOutputControlBuffer(int64_t id) {

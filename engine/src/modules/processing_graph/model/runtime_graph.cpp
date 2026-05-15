@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -90,9 +91,17 @@ size_t getBufferIndex(const NodeProcessContext::BufferBindings& bindings,
                  ? bindings.inputAudioBuffers.at(id).bufferIndex
                  : bindings.outputAudioBuffers.at(id).bufferIndex;
     case NodePortDataType::control:
-      return direction == NodeProcessContext::BufferDirection::input
-                 ? bindings.inputControlBuffers.at(id)
-                 : bindings.outputControlBuffers.at(id);
+      if (direction == NodeProcessContext::BufferDirection::output) {
+        return bindings.outputControlBuffers.at(id);
+      } else {
+        auto bufferIndex = bindings.inputControlBuffers.at(id);
+        if (!bufferIndex.has_value()) {
+          throw std::runtime_error(
+              "Processing graph input control port has no buffer: " + std::to_string(id));
+        }
+
+        return *bufferIndex;
+      }
     case NodePortDataType::event:
       return direction == NodeProcessContext::BufferDirection::input
                  ? bindings.inputEventBuffers.at(id)
@@ -360,7 +369,6 @@ void reserveBufferBindingStorage(
       graphNode.audioInputPorts()->size() + graphNode.audioOutputPorts()->size());
   bindings.rt_eventBuffersToClear.reserve(
       graphNode.eventInputPorts()->size() + graphNode.eventOutputPorts()->size());
-  bindings.rt_parameterInputPortsToWrite.reserve(graphNode.controlInputPorts()->size());
 }
 
 void bindNonAudioOutputPortBuffers(RuntimeGraph& runtimeGraph,
@@ -866,14 +874,7 @@ void bindControlInputPort(RuntimeGraph& runtimeGraph,
   auto connectionCount = inputPort.connections()->size();
 
   if (connectionCount == 0) {
-    auto bufferIndex = runtimeGraph.graphProcessContext->allocateControlBuffer();
-    runtimeGraph.graphProcessContext->getControlBuffer(bufferIndex).clear();
-    bindings.inputControlBuffers.emplace(inputPort.id(), bufferIndex);
-
-    if (inputPort.config()->parameterConfig().has_value()) {
-      bindings.rt_parameterInputPortsToWrite.insert(inputPort.id());
-    }
-
+    bindings.inputControlBuffers.emplace(inputPort.id(), std::nullopt);
     return;
   }
 

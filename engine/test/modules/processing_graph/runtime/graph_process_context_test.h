@@ -241,7 +241,9 @@ public:
     expectEquals(nodeContext.getOutputAudioBuffer(outputPortId).getNumSamples(),
         32,
         "Output audio buffer should be allocated with the graph block size.");
-    expectEquals(nodeContext.getInputControlBuffer(gainPortId).getNumChannels(),
+    auto* inputControlBuffer = nodeContext.getInputControlBuffer(gainPortId);
+    expect(inputControlBuffer != nullptr, "Control input should have a standalone test buffer.");
+    expectEquals(inputControlBuffer->getNumChannels(),
         1,
         "Control input buffers should be mono.");
     expectEquals(static_cast<int>(nodeContext.rt_getInputParameterBindings().size()),

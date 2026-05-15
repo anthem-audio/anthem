@@ -38,15 +38,14 @@ void UtilityProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(UtilityProcessorModelBase::audioInputPortId);
   auto& audioOutBuffer = context.getOutputAudioBuffer(UtilityProcessorModelBase::audioOutputPortId);
 
-  auto& gainControlBuffer = context.getInputControlBuffer(UtilityProcessorModelBase::gainPortId);
-  auto& balanceControlBuffer =
-      context.getInputControlBuffer(UtilityProcessorModelBase::balancePortId);
+  auto gainControl = context.getInputControlSignal(UtilityProcessorModelBase::gainPortId);
+  auto balanceControl = context.getInputControlSignal(UtilityProcessorModelBase::balancePortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
-    auto gainParamValue = gainControlBuffer.getReadPointer(0)[sample];
+    auto gainParamValue = gainControl.getSample(sample);
     auto targetGain = paramValueToGainLinear(gainParamValue);
 
-    auto balanceParamValue = balanceControlBuffer.getReadPointer(0)[sample];
+    auto balanceParamValue = balanceControl.getSample(sample);
     jassert(juce::jlimit(0.0f, 1.0f, balanceParamValue) == balanceParamValue);
 
     auto pan = balanceParamValue * 2.0f - 1.0f;

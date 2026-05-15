@@ -230,6 +230,7 @@ public:
     testDecrementRemainingUpstreamNodeCounter();
     testSingleThreadedExecutorMakesAudioAvailableToReadyDownstreamNodes();
     testSingleThreadedExecutorHandlesDuplicateEdges();
+    testDisconnectedControlParameterUsesParameterSignal();
     testConnectedControlParameterDoesNotOverwriteAliasedSignal();
     testSingleThreadedExecutorHandlesControlFanIn();
     testSingleThreadedExecutorProcessesNodesWithoutProcessors();
@@ -679,10 +680,10 @@ public:
 
     auto& sourceOutputBuffer = runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
         controlOutputPortId(1));
-    auto& destinationInputBuffer =
+    auto* destinationInputBuffer =
         runtimeGraph->nodes.at(2).nodeProcessContext->getInputControlBuffer(controlInputPortId(2));
 
-    expect(&sourceOutputBuffer == &destinationInputBuffer,
+    expect(&sourceOutputBuffer == destinationInputBuffer,
         "A single control connection should alias the destination input to the source output.");
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 0);
 
@@ -693,11 +694,32 @@ public:
     processRuntimeGraph(*runtimeGraph, 4);
 
     for (int sample = 0; sample < 4; ++sample) {
-      expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
+      expectWithinAbsoluteError(destinationInputBuffer->getSample(0, sample),
           static_cast<float>(sample) * 0.2f,
           0.0001f,
           "The connected control input should keep the source output value.");
     }
+  }
+
+  void testDisconnectedControlParameterUsesParameterSignal() {
+    beginTest("Disconnected control parameter uses a parameter signal");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addControlGraphNode(*graph, 1, true);
+
+    GraphRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto* context = runtimeGraph->nodes.at(1).nodeProcessContext;
+    jassert(context != nullptr);
+
+    auto* inputBuffer = context->getInputControlBuffer(controlInputPortId(1));
+    auto inputSignal = context->getInputControlSignal(controlInputPortId(1));
+
+    expect(inputBuffer == nullptr, "Disconnected control parameters should not allocate buffers.");
+    expect(!inputSignal.hasBuffer(), "The input signal should expose the parameter value.");
+    expectWithinAbsoluteError(
+        inputSignal.getSample(0), 0.25f, 0.0001f, "The parameter value should be readable.");
   }
 
   void testSingleThreadedExecutorHandlesControlFanIn() {
@@ -719,10 +741,11 @@ public:
     auto& secondSourceOutputBuffer =
         runtimeGraph->nodes.at(2).nodeProcessContext->getOutputControlBuffer(
             controlOutputPortId(2));
-    auto& destinationInputBuffer =
+    auto* destinationInputBuffer =
         runtimeGraph->nodes.at(3).nodeProcessContext->getInputControlBuffer(controlInputPortId(3));
 
-    expect(&secondSourceOutputBuffer != &destinationInputBuffer,
+    expect(destinationInputBuffer != nullptr, "Control fan-in should have a destination buffer.");
+    expect(&secondSourceOutputBuffer != destinationInputBuffer,
         "Control fan-in should use a dedicated destination buffer.");
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()),
         1,
@@ -739,7 +762,7 @@ public:
     processRuntimeGraph(*runtimeGraph, 4);
 
     for (int sample = 0; sample < 4; ++sample) {
-      expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
+      expectWithinAbsoluteError(destinationInputBuffer->getSample(0, sample),
           0.5f + static_cast<float>(sample) * 0.1f,
           0.0001f,
           "Control fan-in should keep the most recent connection value.");

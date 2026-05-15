@@ -33,22 +33,6 @@ GraphExecutorState::GraphExecutorState(RuntimeGraph& runtimeGraph) : runtimeGrap
 
 namespace {
 
-void rt_writeParametersToControlInputs(NodeProcessContext& context, int numSamples) {
-  for (auto& parameter : context.rt_getInputParameterBindings()) {
-    if (!parameter.rt_shouldWriteToBuffer) {
-      continue;
-    }
-
-    auto value = parameter.value->load();
-    jassert(juce::jlimit(0.0f, 1.0f, value) == value);
-
-    auto& controlBuffer = *parameter.rt_buffer;
-    for (int sample = 0; sample < numSamples; ++sample) {
-      controlBuffer.setSample(0, sample, value);
-    }
-  }
-}
-
 void rt_applyControlConnectionTransfer(const RuntimeConnectionTransferAction& action,
     GraphProcessContext& graphProcessContext,
     int numSamples) {
@@ -152,7 +136,6 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
   }
 
   node.nodeProcessContext->clearBuffers();
-  rt_writeParametersToControlInputs(*node.nodeProcessContext, numSamples);
 
   for (const auto& connectionTransferAction : node.connectionTransferActions) {
     rt_applyConnectionTransfer(

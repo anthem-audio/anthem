@@ -38,11 +38,10 @@ void BalanceProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& audioInBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);
   auto& audioOutBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
 
-  auto& balanceControlBuffer =
-      context.getInputControlBuffer(BalanceProcessorModelBase::balancePortId);
+  auto balanceControl = context.getInputControlSignal(BalanceProcessorModelBase::balancePortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
-    auto normalizedValue = balanceControlBuffer.getReadPointer(0)[sample];
+    auto normalizedValue = balanceControl.getSample(sample);
     jassert(juce::jlimit(0.0f, 1.0f, normalizedValue) == normalizedValue);
     auto pan = normalizedValue * 2.0f - 1.0f;
 
