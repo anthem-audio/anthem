@@ -564,7 +564,7 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
         builder: (screenOverlayContext) {
           return MenuPositioned(
             anchorRect: anchorRect,
-            horizontalGap: _Constants.horizontalInnerPadding,
+            horizontalGap: 0,
             verticalGap: -_Constants.verticalInnerPadding,
             alignTopToAnchor: true,
             child: MenuRenderer(menu: item.submenu!),
