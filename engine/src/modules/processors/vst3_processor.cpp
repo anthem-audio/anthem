@@ -166,6 +166,10 @@ ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
         continue;
       }
 
+      if (!parameter->isAutomatable()) {
+        continue;
+      }
+
       auto vst3ParameterId = getVST3ParameterPortId(*parameter);
       if (!vst3ParameterId.has_value()) {
         continue;
