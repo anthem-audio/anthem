@@ -28,6 +28,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
+import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem_codegen/include.dart';
@@ -231,6 +232,30 @@ void main() {
 
   tearDown(() {
     fixture.dispose();
+  });
+
+  group('setBaseTrackHeight', () {
+    test(
+      'recalculates scroll extent and clamps vertical scroll immediately',
+      () {
+        const editorHeight = 300.0;
+
+        fixture.viewModel.refreshTrackLayout(editorHeight);
+        expect(fixture.viewModel.maxVerticalScrollPosition, greaterThan(0));
+
+        fixture.viewModel.verticalScrollPosition = 100;
+        fixture.viewModel.refreshTrackLayout(editorHeight);
+
+        fixture.controller.setBaseTrackHeight(0, minTrackHeight);
+
+        expect(fixture.viewModel.maxVerticalScrollPosition, 0);
+        expect(fixture.viewModel.verticalScrollPosition, 0);
+        expect(
+          fixture.viewModel.trackPositionCalculator.getTrackPosition(0),
+          0,
+        );
+      },
+    );
   });
 
   ({Id patternId, Id clipId}) createClipAndGetCreatedIds({
