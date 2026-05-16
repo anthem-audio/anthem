@@ -95,9 +95,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
               // This will be recalculated regardless on next render, but we would
               // render a single frame incorrectly which is noticeable.
               // Recalculating here means everything is correct on next render.
-              viewModel.trackPositionCalculator.invalidate(
-                viewModel.editorHeight,
-              );
+              viewModel.refreshTrackLayout(viewModel.editorHeight);
             },
             child: Listener(
               onPointerDown: (event) {
@@ -204,9 +202,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
 
                 // We also need to invalidate here (see invalidate call above for
                 // context)
-                viewModel.trackPositionCalculator.invalidate(
-                  viewModel.editorHeight,
-                );
+                viewModel.refreshTrackLayout(viewModel.editorHeight);
 
                 lastModifier = newModifier;
                 lastPixelHeight = newPixelHeight;

@@ -171,6 +171,10 @@ abstract class _ArrangerViewModel with Store {
   double get maxVerticalScrollPosition =>
       (scrollAreaHeight - editorHeight).clamp(0, double.infinity);
 
+  void refreshTrackLayout(double editorHeight) {
+    trackPositionCalculator.invalidate(editorHeight);
+  }
+
   void applyVerticalScrollDelta(double pixelDelta) {
     verticalScrollPosition =
         (verticalScrollPosition +
@@ -229,6 +233,8 @@ abstract class _ArrangerViewModel with Store {
 /// allocation and GC pressure.
 @visibleForTesting
 class TrackPositionAndSize {
+  static const _addButtonAreaHeight = 33.0;
+
   ProjectModel projectModel;
   ArrangerViewModel arrangerViewModel;
 
@@ -267,7 +273,13 @@ class TrackPositionAndSize {
   /// height of the editor and before any further build or render work is done.
   ///
   /// This is meant to be used with a MobX observer.
+  ///
+  /// This also clamps the vertical scroll position after recalculating the
+  /// scrollable height, then refreshes track positions again if the clamp
+  /// changed the scroll position.
   void invalidate(double editorHeight) {
+    arrangerViewModel.editorHeight = editorHeight;
+
     final trackCount = projectModel.tracks.length;
 
     final serviceRegistry = ServiceRegistry.forProject(projectModel.id);
@@ -281,8 +293,6 @@ class TrackPositionAndSize {
     }
 
     var totalTrackHeight = 0.0;
-    const addButtonAreaHeight = 33.0;
-
     for (final (i, (trackId, _, _)) in allTracksIterable.indexed) {
       final heightIndex = i * 2;
       final trackHeight = calculateTrackHeight(
@@ -297,11 +307,34 @@ class TrackPositionAndSize {
 
     final trackGap = max(
       0.0,
-      editorHeight - (totalTrackHeight + addButtonAreaHeight) + 1,
+      editorHeight - (totalTrackHeight + _addButtonAreaHeight) + 1,
     );
 
     arrangerViewModel.regularToSendGapHeight = trackGap;
 
+    arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
+      allTracksIterable,
+      trackGap,
+    );
+
+    final clampedVerticalScrollPosition = arrangerViewModel
+        .verticalScrollPosition
+        .clamp(0.0, arrangerViewModel.maxVerticalScrollPosition);
+
+    if (clampedVerticalScrollPosition !=
+        arrangerViewModel.verticalScrollPosition) {
+      arrangerViewModel.verticalScrollPosition = clampedVerticalScrollPosition;
+      arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
+        allTracksIterable,
+        trackGap,
+      );
+    }
+  }
+
+  double _updateCachedTrackPositions(
+    Iterable<(Id trackId, bool isSendTrack, int trackDepth)> allTracksIterable,
+    double trackGap,
+  ) {
     var lastWasSendTrack = false;
     var positionPointer = -arrangerViewModel.verticalScrollPosition;
 
@@ -311,14 +344,13 @@ class TrackPositionAndSize {
 
       if (isSendTrack && !lastWasSendTrack) {
         lastWasSendTrack = true;
-        positionPointer += trackGap + addButtonAreaHeight;
+        positionPointer += trackGap + _addButtonAreaHeight;
       }
 
       _cache[positionIndex] = positionPointer;
       positionPointer += _cache[heightIndex];
     }
 
-    arrangerViewModel.scrollAreaHeight =
-        positionPointer + arrangerViewModel.verticalScrollPosition - 1;
+    return positionPointer + arrangerViewModel.verticalScrollPosition - 1;
   }
 }

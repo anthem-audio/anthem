@@ -93,14 +93,7 @@ class _ArrangerState extends State<Arranger> {
                               constraints.maxHeight -
                               _timelineHeight -
                               _scrollbarShortSideLength;
-                          viewModel.editorHeight = editorHeight;
-                          viewModel.verticalScrollPosition = viewModel
-                              .verticalScrollPosition
-                              .clamp(0.0, viewModel.maxVerticalScrollPosition);
-
-                          viewModel.trackPositionCalculator.invalidate(
-                            editorHeight,
-                          );
+                          viewModel.refreshTrackLayout(editorHeight);
 
                           // As of writing, the main purpose of this call is to
                           // allow the state machine to react to certain edge

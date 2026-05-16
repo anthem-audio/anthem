@@ -151,6 +151,7 @@ abstract class _ArrangerController {
           0,
           double.infinity,
         );
+    viewModel.refreshTrackLayout(viewModel.editorHeight);
 
     onBaseTrackHeightChanged.add(null);
   }
