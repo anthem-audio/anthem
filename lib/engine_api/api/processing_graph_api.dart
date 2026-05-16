@@ -96,6 +96,25 @@ class ProcessingGraphApi {
     return response.state;
   }
 
+  /// Opens the native plugin editor window for the given third-party plugin
+  /// node.
+  Future<void> openPluginWindow(Id nodeId) async {
+    final id = _engine._getRequestId();
+
+    final request = OpenPluginWindowRequest(id: id, nodeId: nodeId);
+
+    final response =
+        (await _engine._request(request)) as OpenPluginWindowResponse;
+
+    if (response.success) {
+      return;
+    }
+
+    throw Exception(
+      'openPluginWindow(): engine returned an error: ${response.error}',
+    );
+  }
+
   /// Sends a live event to the given LiveEventProviderProcessor node in the
   /// engine.
   ///

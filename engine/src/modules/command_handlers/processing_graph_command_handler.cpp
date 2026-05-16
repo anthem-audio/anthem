@@ -21,6 +21,9 @@
 
 #include "modules/core/engine.h"
 #include "modules/processors/live_event_provider.h"
+#ifndef __EMSCRIPTEN__
+#include "modules/processors/vst3_processor.h"
+#endif
 
 #include <memory>
 #include <rfl/json.hpp>
@@ -195,6 +198,55 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
       juce::Logger::writeToLog("Error setting plugin state: " + std::string(e.what()));
       return std::nullopt;
     }
+  } else if (rfl::holds_alternative<OpenPluginWindowRequest>(request.variant())) {
+    juce::Logger::writeToLog("Handling OpenPluginWindowRequest...");
+
+    auto& openPluginWindowRequest = rfl::get<OpenPluginWindowRequest>(request.variant());
+    const auto requestId = openPluginWindowRequest.requestBase.get().id;
+
+    auto makeResponse = [requestId](
+                            bool success,
+                            std::optional<std::string> error = std::nullopt) {
+      return std::optional(OpenPluginWindowResponse{.success = success,
+          .error = error,
+          .responseBase = ResponseBase{.id = requestId}});
+    };
+
+#ifdef __EMSCRIPTEN__
+    return makeResponse(false, std::string("Plugin windows are not available on this platform."));
+#else
+    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
+    auto nodeIter = nodes.find(openPluginWindowRequest.nodeId);
+    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
+
+    if (node == nullptr) {
+      return makeResponse(false,
+          "Node " + toIdString(openPluginWindowRequest.nodeId) +
+              " not found in processing graph.");
+    }
+
+    auto processor = node->getProcessor();
+
+    if (!processor) {
+      return makeResponse(false,
+          "Node " + toIdString(openPluginWindowRequest.nodeId) + " does not have a processor.");
+    }
+
+    auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor.value());
+
+    if (vst3Processor == nullptr) {
+      return makeResponse(false,
+          "Node " + toIdString(openPluginWindowRequest.nodeId) + " is not a VST3 processor.");
+    }
+
+    auto error = vst3Processor->openPluginWindow();
+
+    if (error.has_value()) {
+      return makeResponse(false, std::move(error));
+    }
+
+    return makeResponse(true);
+#endif
   } else if (rfl::holds_alternative<SendLiveEventRequest>(request.variant())) {
     auto& sendLiveEventRequest = rfl::get<SendLiveEventRequest>(request.variant());
 

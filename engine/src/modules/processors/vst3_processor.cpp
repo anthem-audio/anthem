@@ -426,33 +426,21 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
         auto eventString = rfl::json::write(event);
         Engine::getInstance().comms.send(eventString);
 
-        // The plugin instance is created asynchronously. Open the editor on the message thread
-        // and only if the processor still exists by the time we get there.
-        juce::MessageManager::callAsync([weakSelf]() {
-          auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
-
-          if (processor == nullptr) {
-            return;
-          }
-
-          processor->showPluginGUI();
-        });
-
         complete(selfShared->buildPrepareResultForPlugin());
       });
 }
 
-void VST3Processor::showPluginGUI() {
+std::optional<std::string> VST3Processor::openPluginWindow() {
   if (!pluginInstance) {
-    writeVST3Log(*this, "showPluginGUI() skipped because no plugin instance exists yet.");
-    return;
+    writeVST3Log(*this, "openPluginWindow() skipped because no plugin instance exists yet.");
+    return std::string("Plugin instance is not loaded yet.");
   }
 
   if (editorWindow != nullptr) {
     // Window already exists, just bring it to front
     writeVST3Log(*this, "Plugin editor window already exists. Bringing it to front.");
-    editorWindow->toFront(true);
-    return;
+    bringPluginWindowToFront();
+    return std::nullopt;
   }
 
   // Create the host window first so the editor can inherit its actual host-window
@@ -502,7 +490,7 @@ void VST3Processor::showPluginGUI() {
 
   if (!pluginEditor) {
     writeVST3Log(*this, "createEditorIfNeeded() returned null. No plugin window will be shown.");
-    return;
+    return std::string("Plugin does not provide an editor window.");
   }
 
   auto editorIsResizable = pluginEditor->isResizable();
@@ -536,10 +524,40 @@ void VST3Processor::showPluginGUI() {
 
   editorWindow->setBoundsConstrained(initialBounds);
   editorWindow->setVisible(true);
+  bringPluginWindowToFront();
 
   writeVST3Log(*this,
       "Plugin editor window opened at " + juce::String(editorWindow->getWidth()) + "x" +
           juce::String(editorWindow->getHeight()) + ".");
+
+  return std::nullopt;
+}
+
+void VST3Processor::bringPluginWindowToFront() {
+  if (editorWindow == nullptr) {
+    return;
+  }
+
+  auto* window = editorWindow.get();
+
+  window->setVisible(true);
+  window->setAlwaysOnTop(true);
+  window->toFront(true);
+  window->grabKeyboardFocus();
+
+  juce::Component::SafePointer<PluginEditorWindow> safeWindow(window);
+
+  juce::Timer::callAfterDelay(50, [safeWindow]() mutable {
+    auto* delayedWindow = safeWindow.getComponent();
+
+    if (delayedWindow == nullptr) {
+      return;
+    }
+
+    delayedWindow->setAlwaysOnTop(true);
+    delayedWindow->toFront(true);
+    delayedWindow->grabKeyboardFocus();
+  });
 }
 
 void VST3Processor::hidePluginGUI() {

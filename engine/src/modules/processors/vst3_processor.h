@@ -164,7 +164,7 @@ private:
 
   void detachPluginListener();
   void rebindEditorWindowCloseCallback();
-  void showPluginGUI();
+  void bringPluginWindowToFront();
   void hidePluginGUI();
   ProcessorPrepareResult buildPrepareResultForPlugin();
 public:
@@ -183,6 +183,8 @@ public:
       std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 
   void tryInitializePlugin(ProcessorPrepareCallback complete);
+
+  std::optional<std::string> openPluginWindow();
 
   void audioProcessorParameterChanged(
       juce::AudioProcessor* processor, int parameterIndex, float newValue) override;

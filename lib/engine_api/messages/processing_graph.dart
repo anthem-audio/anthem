@@ -258,6 +258,31 @@ class SetPluginStateRequest extends Request {
   }
 }
 
+class OpenPluginWindowRequest extends Request {
+  late Id nodeId;
+
+  OpenPluginWindowRequest.uninitialized();
+
+  OpenPluginWindowRequest({required int id, required this.nodeId}) {
+    super.id = id;
+  }
+}
+
+class OpenPluginWindowResponse extends Response {
+  late bool success;
+  String? error;
+
+  OpenPluginWindowResponse.uninitialized();
+
+  OpenPluginWindowResponse({
+    required int id,
+    required this.success,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
 /// An event that is fired when a third-party plugin is loaded for the given
 /// node.
 ///
