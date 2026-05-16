@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -164,6 +165,20 @@ class ShortcutBehaviors {
         })
         .sorted((a, b) => a.compareTo(b))
         .join('-');
+  }
+}
+
+void registerEditorDeleteShortcut(
+  ShortcutBehaviors shortcutManager,
+  void Function() behavior,
+) {
+  shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), behavior);
+
+  if (defaultTargetPlatform == TargetPlatform.macOS) {
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.backspace),
+      behavior,
+    );
   }
 }
 

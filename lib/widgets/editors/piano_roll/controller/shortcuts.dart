@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,9 +24,7 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
 
   void registerShortcuts() {
     // Delete
-    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), () {
-      deleteSelected();
-    });
+    registerEditorDeleteShortcut(shortcutManager, deleteSelected);
 
     // Ctrl + A
     shortcutManager.register(

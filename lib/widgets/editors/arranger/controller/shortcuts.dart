@@ -49,9 +49,7 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
 
   void registerShortcuts() {
     // Delete
-    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), () {
-      deleteSelectedClips();
-    });
+    registerEditorDeleteShortcut(shortcutManager, deleteSelectedClips);
 
     // Ctrl + A
     shortcutManager.register(

@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -178,5 +179,45 @@ void main() {
         );
       },
     );
+  });
+
+  group('registerEditorDeleteShortcut', () {
+    tearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('registers Delete on non-macOS platforms', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final shortcutManager = ShortcutBehaviors();
+      var callCount = 0;
+
+      registerEditorDeleteShortcut(shortcutManager, () {
+        callCount++;
+      });
+
+      shortcutManager.handleShortcut(LogicalKeySet(LogicalKeyboardKey.delete));
+      shortcutManager.handleShortcut(
+        LogicalKeySet(LogicalKeyboardKey.backspace),
+      );
+
+      expect(callCount, equals(1));
+    });
+
+    test('registers Backspace as Delete on macOS', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final shortcutManager = ShortcutBehaviors();
+      var callCount = 0;
+
+      registerEditorDeleteShortcut(shortcutManager, () {
+        callCount++;
+      });
+
+      shortcutManager.handleShortcut(
+        LogicalKeySet(LogicalKeyboardKey.backspace),
+      );
+      shortcutManager.handleShortcut(LogicalKeySet(LogicalKeyboardKey.delete));
+
+      expect(callCount, equals(2));
+    });
   });
 }
