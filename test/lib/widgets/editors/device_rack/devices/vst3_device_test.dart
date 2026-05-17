@@ -17,7 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
@@ -46,6 +48,41 @@ void main() {
     await tester.pump();
 
     expect(find.text('Filter cutoff'), findsNWidgets(2));
+  });
+
+  testWidgets('shows engine stopped state instead of parameter controls', (
+    tester,
+  ) async {
+    await _pumpDevice(
+      tester,
+      engineState: EngineState.stopped,
+      lastChangedControlPortId: 100,
+    );
+
+    final knobs = tester.widgetList<Knob>(find.byType(Knob)).toList();
+
+    expect(find.text('Engine is not running'), findsOneWidget);
+    expect(find.text('Filter cutoff'), findsNothing);
+    expect(knobs, hasLength(1));
+    expect(knobs.single.value, 0);
+    expect(knobs.single.onValueChanged, isNull);
+  });
+
+  testWidgets('ignores parameter knob changes after the engine stops', (
+    tester,
+  ) async {
+    final result = await _pumpDevice(tester);
+    final cutoffPort = result.node.controlInputPorts.first;
+    final initialValue = cutoffPort.parameterValue;
+    final cutoffKnob = _firstInteractiveKnob(tester);
+
+    result.project.engineState = EngineState.stopped;
+    cutoffKnob.onValueChanged!(0.25);
+    await tester.pump();
+
+    expect(cutoffPort.parameterValue, initialValue);
+    expect(result.node.lastChangedControlPortId, isNull);
+    expect(find.text('Engine is not running'), findsOneWidget);
   });
 
   testWidgets('filters parameter rows while typing', (tester) async {
@@ -111,14 +148,24 @@ Knob _firstInteractiveKnob(WidgetTester tester) {
       .firstWhere((knob) => knob.onValueChanged != null);
 }
 
-Future<void> _pumpDevice(
+class _PumpedDevice {
+  final ProjectModel project;
+  final NodeModel node;
+
+  const _PumpedDevice({required this.project, required this.node});
+}
+
+Future<_PumpedDevice> _pumpDevice(
   WidgetTester tester, {
+  EngineState engineState = EngineState.running,
+  int? lastChangedControlPortId,
   ParameterDisplayMode? firstParameterDisplayMode,
   String? firstParameterUnitLabel,
   String? firstParameterDisplayText,
 }) async {
   final project = ProjectModel.create();
   addTearDown(project.dispose);
+  project.engineState = engineState;
 
   final processor = VST3ProcessorModel.create(
     idAllocator: project.idAllocator,
@@ -149,6 +196,7 @@ Future<void> _pumpDevice(
       defaultValue: 0.50,
     ),
   ]);
+  node.lastChangedControlPortId = lastChangedControlPortId;
 
   project.processingGraph.addNode(node);
   final device = DeviceModel(
@@ -169,6 +217,8 @@ Future<void> _pumpDevice(
     ),
   );
   await tester.pump(const Duration(milliseconds: 1));
+
+  return _PumpedDevice(project: project, node: node);
 }
 
 NodePortModel _createParameterPort({

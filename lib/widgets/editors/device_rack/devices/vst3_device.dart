@@ -19,6 +19,7 @@
 
 import 'dart:math' as math;
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/parameter_display.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
@@ -160,8 +161,14 @@ class _RecentParameterSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context, listen: false);
+
     return Observer(
       builder: (context) {
+        if (project.engineState != EngineState.running) {
+          return const _RecentParameterPlaceholderRow();
+        }
+
         final port = _findParameterPortById(
           node,
           node.lastChangedControlPortId,
@@ -274,10 +281,16 @@ class _ParameterListState extends State<_ParameterList> {
 
   @override
   Widget build(BuildContext context) {
-    _scheduleMetricsSync();
+    final project = Provider.of<ProjectModel>(context, listen: false);
 
     return Observer(
       builder: (context) {
+        if (project.engineState != EngineState.running) {
+          return const _EngineNotRunningParameterListMessage();
+        }
+
+        _scheduleMetricsSync();
+
         final parameterPorts =
             widget.node.controlInputPorts
                 .where((port) => port.config.parameterConfig != null)
@@ -389,6 +402,20 @@ class _ParameterListState extends State<_ParameterList> {
   }
 }
 
+class _EngineNotRunningParameterListMessage extends StatelessWidget {
+  const _EngineNotRunningParameterListMessage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        'Engine is not running',
+        style: TextStyle(color: AnthemTheme.text.disabled, fontSize: 11),
+      ),
+    );
+  }
+}
+
 class _ParameterListScrollbar extends StatelessWidget {
   final ScrollController scrollController;
   final double viewportHeight;
@@ -466,6 +493,10 @@ class _Vst3ParameterRow extends StatelessWidget {
                         _formatParameterHint(name, port, value),
                     hint: (value) => _formatParameterHint(name, port, value),
                     onValueChanged: (newValue) {
+                      if (project.engineState != EngineState.running) {
+                        return;
+                      }
+
                       final value = newValue.clamp(0.0, 1.0).toDouble();
                       port.parameterValue = value;
                       node.lastChangedControlPortId = port.id;

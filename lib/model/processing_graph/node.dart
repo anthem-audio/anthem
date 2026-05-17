@@ -273,6 +273,10 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   }
 
   void handleEngineStateChange(EngineState state) {
+    if (state == EngineState.stopped) {
+      lastChangedControlPortId = null;
+    }
+
     if (!isThirdPartyPlugin) return;
 
     if (state == EngineState.stopped) {
