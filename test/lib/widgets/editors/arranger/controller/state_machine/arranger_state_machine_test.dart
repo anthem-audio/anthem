@@ -199,6 +199,7 @@ class _ArrangerStateMachineTestFixture {
 
   void dispose() {
     controller.dispose();
+    ServiceRegistry.mainWindowController.clearAllCursorOverrides();
     AnthemStore.instance.projects.remove(project.id);
     ServiceRegistry.removeProject(project.id);
   }
@@ -2222,6 +2223,36 @@ void main() {
       expect(fixture.stateMachine.currentState, isA<ArrangerClipResizeState>());
       expect(fixture.viewModel.pressedClip, clip.id);
       expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
+    });
+
+    test('clip resize overrides the global cursor until release', () {
+      addClip(
+        offset: 100,
+        trackId: _TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 96, 40),
+        resizeHandleRect: const Rect.fromLTWH(196, 10, 14, 40),
+        resizeAreaType: ResizeAreaType.end,
+        timeView: TimeViewModel(start: 0, end: 96),
+      );
+
+      startClipResize(
+        downPos: const Offset(202, 20),
+        movePos: const Offset(220, 20),
+      );
+
+      expect(
+        ServiceRegistry.mainWindowViewModel.globalCursor,
+        SystemMouseCursors.resizeLeftRight,
+      );
+
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(220, 20)),
+      );
+
+      expect(
+        ServiceRegistry.mainWindowViewModel.globalCursor,
+        MouseCursor.defer,
+      );
     });
 
     test(

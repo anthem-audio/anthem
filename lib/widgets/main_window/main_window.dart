@@ -55,6 +55,12 @@ class _MainWindowState extends State<MainWindow> {
   }
 
   @override
+  void dispose() {
+    ServiceRegistry.mainWindowController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final viewModel = ServiceRegistry.mainWindowViewModel;
     final store = AnthemStore.instance;
@@ -188,15 +194,41 @@ class _MainWindowState extends State<MainWindow> {
         ),
 
         // Sets an override for the mouse cursor, which should be used when
-        // the mouse is pressed down during click-and-drag operations.
+        // the mouse is pressed down during click-and-drag operations. While
+        // active, this also shields underlying hover regions from layout churn
+        // during resizes.
         //
-        // See setCursorOverride() and clearCursorOverride() from
+        // See pushCursorOverride() and clearAllCursorOverrides() from
         // MainWindowController for examples on how to use this.
         Observer(
           builder: (context) {
-            return MouseRegion(
-              cursor: viewModel.globalCursor,
-              hitTestBehavior: .translucent,
+            final globalCursor = viewModel.globalCursor;
+            if (globalCursor == MouseCursor.defer) {
+              return MouseRegion(
+                cursor: globalCursor,
+                hitTestBehavior: .translucent,
+              );
+            }
+
+            return Positioned.fill(
+              child: MouseRegion(
+                key: const ValueKey('global-cursor-hover-shield'),
+                cursor: globalCursor,
+                opaque: true,
+                hitTestBehavior: .opaque,
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerUp: (_) {
+                    ServiceRegistry.mainWindowController
+                        .clearAllCursorOverrides();
+                  },
+                  onPointerCancel: (_) {
+                    ServiceRegistry.mainWindowController
+                        .clearAllCursorOverrides();
+                  },
+                  child: const SizedBox.expand(),
+                ),
+              ),
             );
           },
         ),

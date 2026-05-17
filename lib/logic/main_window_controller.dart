@@ -33,7 +33,28 @@ import 'package:anthem/model/store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' hide TextBox;
 
+class CursorOverrideHandle {
+  final MainWindowController _controller;
+  final int _id;
+
+  bool _closed = false;
+
+  CursorOverrideHandle._(this._controller, this._id);
+
+  void close() {
+    if (_closed) {
+      return;
+    }
+
+    _closed = true;
+    _controller._releaseCursorOverride(_id);
+  }
+}
+
 class MainWindowController {
+  final Map<int, MouseCursor> _cursorOverrides = {};
+  int _nextCursorOverrideId = 0;
+
   void _addProject(ProjectModel project) {
     final store = AnthemStore.instance;
 
@@ -226,12 +247,31 @@ class MainWindowController {
     }
   }
 
-  void setCursorOverride(MouseCursor cursor) {
-    ServiceRegistry.mainWindowViewModel.globalCursor = cursor;
+  CursorOverrideHandle pushCursorOverride(MouseCursor cursor) {
+    final id = _nextCursorOverrideId++;
+    _cursorOverrides[id] = cursor;
+    _syncCursorOverride();
+
+    return CursorOverrideHandle._(this, id);
   }
 
-  void clearCursorOverride() {
-    ServiceRegistry.mainWindowViewModel.globalCursor = MouseCursor.defer;
+  void _releaseCursorOverride(int id) {
+    _cursorOverrides.remove(id);
+    _syncCursorOverride();
+  }
+
+  void _syncCursorOverride() {
+    ServiceRegistry.mainWindowViewModel.globalCursor =
+        _cursorOverrides.values.lastOrNull ?? MouseCursor.defer;
+  }
+
+  void clearAllCursorOverrides() {
+    _cursorOverrides.clear();
+    _syncCursorOverride();
+  }
+
+  void dispose() {
+    clearAllCursorOverrides();
   }
 }
 

@@ -607,6 +607,7 @@ class _PianoRollStateMachineTestFixture {
 
   void dispose() {
     controller.dispose();
+    ServiceRegistry.mainWindowController.clearAllCursorOverrides();
     AnthemStore.instance.projects.remove(project.id);
     ServiceRegistry.removeProject(project.id);
   }
@@ -1748,6 +1749,30 @@ void main() {
         expect(fixture.noteById(note.id).length, equals(expectedLength));
       },
     );
+
+    test('resize notes overrides the global cursor until release', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 96);
+
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 196,
+        noteUnderCursor: note.id,
+        isResize: true,
+      );
+      fixture.pointerMove(key: 60.5, offset: 240, alt: true);
+
+      expect(
+        ServiceRegistry.mainWindowViewModel.globalCursor,
+        SystemMouseCursors.resizeLeftRight,
+      );
+
+      fixture.pointerUp(key: 60.5, offset: 240, alt: true);
+
+      expect(
+        ServiceRegistry.mainWindowViewModel.globalCursor,
+        MouseCursor.defer,
+      );
+    });
 
     test('pointer cancel still commits a resize session and can be undone', () {
       final note = fixture.addNote(key: 60, offset: 100, length: 96);

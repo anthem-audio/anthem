@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/main_window_controller.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_constants.dart';

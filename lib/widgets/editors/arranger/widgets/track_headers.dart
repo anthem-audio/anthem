@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -64,10 +65,28 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
   double lastPixelHeight = -1;
   double deadZoneAmountTraveled = -1;
   bool shouldIgnoreDeadZone = false;
+  CursorOverrideHandle? _cursorOverrideHandle;
 
   // Dead zone at a height modifier of 1.0, which makes it easier to
   // reset track height
   static const deadZoneSize = 8.0;
+
+  @override
+  void dispose() {
+    _clearResizeCursorOverride();
+    super.dispose();
+  }
+
+  void _setResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = ServiceRegistry.mainWindowController
+        .pushCursorOverride(SystemMouseCursors.resizeUpDown);
+  }
+
+  void _clearResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,9 +126,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
                 startY = event.position.dy;
                 startVerticalScrollPosition = viewModel.verticalScrollPosition;
 
-                ServiceRegistry.mainWindowController.setCursorOverride(
-                  SystemMouseCursors.resizeUpDown,
-                );
+                _setResizeCursorOverride();
               },
               onPointerMove: (event) {
                 // Compute raw delta in pixels based on pointer movement
@@ -208,7 +225,10 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
                 lastPixelHeight = newPixelHeight;
               },
               onPointerUp: (e) {
-                ServiceRegistry.mainWindowController.clearCursorOverride();
+                _clearResizeCursorOverride();
+              },
+              onPointerCancel: (e) {
+                _clearResizeCursorOverride();
               },
               // Hack: Listener callbacks do nothing unless this is here
               child: Container(color: const Color(0x00000000)),

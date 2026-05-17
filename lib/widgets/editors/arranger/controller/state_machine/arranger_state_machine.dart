@@ -20,7 +20,9 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/project.dart';

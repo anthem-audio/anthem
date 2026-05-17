@@ -47,6 +47,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
   Set<Id>? _resizingClipIds;
   final Map<Id, _ClipResizeBaseline> _resizeBaselines = {};
   ResizeAreaType? _resizeAreaType;
+  CursorOverrideHandle? _cursorOverrideHandle;
 
   /// The min/max delta that keeps every participating clip in a valid state,
   /// cached once in [_initializeResizeSession]. Baselines don't change during
@@ -89,6 +90,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
 
   @override
   void onEntry({required event, required from}) {
+    _setResizeCursorOverride();
     _initializeResizeSession();
     _syncClipOverrides();
   }
@@ -102,6 +104,23 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
   void onExit({required event, required to}) {
     _commitResizeSessionIfNeeded(event: event);
     _clearResizeSession();
+    _clearResizeCursorOverride();
+  }
+
+  @override
+  void onDispose() {
+    _clearResizeCursorOverride();
+  }
+
+  void _setResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = ServiceRegistry.mainWindowController
+        .pushCursorOverride(SystemMouseCursors.resizeLeftRight);
+  }
+
+  void _clearResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = null;
   }
 
   void _initializeResizeSession() {

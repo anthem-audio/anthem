@@ -333,6 +333,24 @@ class _NoTransitionCallbackIdleState
 class _NoTransitionCallbackActiveState
     extends EditorStateMachineState<_NoTransitionCallbackData> {}
 
+class _DisposeData {
+  final List<String> calls = [];
+}
+
+class _DisposeIdleState extends EditorStateMachineState<_DisposeData> {
+  @override
+  void onDispose() {
+    stateMachine.data.calls.add('idle');
+  }
+}
+
+class _DisposeActiveState extends EditorStateMachineState<_DisposeData> {
+  @override
+  void onDispose() {
+    stateMachine.data.calls.add('active');
+  }
+}
+
 void main() {
   late _Data data;
   late EditorStateMachine<_Data> stateMachine;
@@ -549,5 +567,22 @@ void main() {
     );
 
     noTransitionCallbackStateMachine.dispose();
+  });
+
+  test('dispose calls onDispose for every registered state once', () {
+    final disposeData = _DisposeData();
+    final disposeIdleState = _DisposeIdleState();
+    final disposeActiveState = _DisposeActiveState();
+
+    final disposeStateMachine = EditorStateMachine(
+      data: disposeData,
+      idleState: disposeIdleState,
+      states: [disposeIdleState, disposeActiveState],
+    );
+
+    disposeStateMachine.dispose();
+    disposeStateMachine.dispose();
+
+    expect(disposeData.calls, ['idle', 'active']);
   });
 }

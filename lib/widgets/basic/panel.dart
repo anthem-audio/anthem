@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:flutter/widgets.dart';
 
@@ -90,8 +91,15 @@ class _PanelState extends State<Panel> {
   bool resizeActive = false;
   double startPos = -1;
   double startSize = -1;
+  CursorOverrideHandle? _cursorOverrideHandle;
 
   MouseCursor cursorFromBuild = MouseCursor.defer;
+
+  @override
+  void dispose() {
+    _clearResizeCursorOverride();
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant Panel oldWidget) {
@@ -112,7 +120,7 @@ class _PanelState extends State<Panel> {
     if (widget.panelFixedSize != null && resizeActive) {
       resizeActive = false;
       isResizeActive = false;
-      ServiceRegistry.mainWindowController.clearCursorOverride();
+      _clearResizeCursorOverride();
     }
   }
 
@@ -126,19 +134,32 @@ class _PanelState extends State<Panel> {
     startPos = (horizontal ? e.position.dx : e.position.dy);
     startSize = panelSize;
 
-    ServiceRegistry.mainWindowController.setCursorOverride(cursorFromBuild);
+    _setResizeCursorOverride(cursorFromBuild);
   }
 
   void onResizePointerUp(PointerUpEvent e) {
     resizeActive = false;
     isResizeActive = false;
 
-    ServiceRegistry.mainWindowController.clearCursorOverride();
+    _clearResizeCursorOverride();
   }
 
   void onResizePointerCancel(PointerCancelEvent e) {
     resizeActive = false;
     isResizeActive = false;
+
+    _clearResizeCursorOverride();
+  }
+
+  void _setResizeCursorOverride(MouseCursor cursor) {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = ServiceRegistry.mainWindowController
+        .pushCursorOverride(cursor);
+  }
+
+  void _clearResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = null;
   }
 
   void onResizePointerMove(

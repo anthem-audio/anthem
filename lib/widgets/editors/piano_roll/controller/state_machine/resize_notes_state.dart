@@ -56,6 +56,7 @@ class PianoRollResizeNotesState extends PianoRollSessionLeafState
     with PianoRollSharedNoteSessionHelpers {
   PianoRollResizeNotesSessionData? _sessionData;
   Map<Id, PianoRollResizeNotePreview>? _preview;
+  CursorOverrideHandle? _cursorOverrideHandle;
 
   @visibleForTesting
   PianoRollResizeNotesSessionData? get sessionData => _sessionData;
@@ -297,6 +298,7 @@ class PianoRollResizeNotesState extends PianoRollSessionLeafState
     required EditorStateMachineEvent event,
     required EditorStateMachineState<PianoRollStateMachineData> from,
   }) {
+    _setResizeCursorOverride();
     _initializeSession();
   }
 
@@ -334,5 +336,22 @@ class PianoRollResizeNotesState extends PianoRollSessionLeafState
     viewModel.pressedNote = null;
     controller.clearPreviewState();
     _clearSession();
+    _clearResizeCursorOverride();
+  }
+
+  @override
+  void onDispose() {
+    _clearResizeCursorOverride();
+  }
+
+  void _setResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = ServiceRegistry.mainWindowController
+        .pushCursorOverride(SystemMouseCursors.resizeLeftRight);
+  }
+
+  void _clearResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = null;
   }
 }

@@ -20,7 +20,9 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
