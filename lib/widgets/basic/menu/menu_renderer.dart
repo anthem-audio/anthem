@@ -46,8 +46,8 @@ class _Constants {
   static const double separatorHeight = 13.0;
   static const double menuItemHeight = 24.0;
 
-  static const Duration hoverOpenDuration = Duration(milliseconds: 500);
-  static const Duration hoverCloseDuration = Duration(milliseconds: 500);
+  static const Duration hoverOpenDuration = Duration(milliseconds: 375);
+  static const Duration hoverCloseDuration = Duration(milliseconds: 375);
 }
 
 double _getMenuItemHeight(GenericMenuItem menuItem) {
