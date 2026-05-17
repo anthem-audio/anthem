@@ -60,7 +60,10 @@ class DeviceAddRemoveCommand extends Command {
     required Id deviceId,
   }) : _isAdd = false {
     final track = _getTrack(project, trackId, 'DeviceAddRemoveCommand.remove');
-    final index = track.devices.indexWhere((device) => device.id == deviceId);
+    final processing = track.requireProcessing;
+    final index = processing.devices.indexWhere(
+      (device) => device.id == deviceId,
+    );
     if (index == -1) {
       throw StateError(
         'DeviceAddRemoveCommand.remove(): Device $deviceId not found on '
@@ -68,7 +71,7 @@ class DeviceAddRemoveCommand extends Command {
       );
     }
 
-    _device = track.devices[index];
+    _device = processing.devices[index];
     _index = index;
   }
 
@@ -92,6 +95,7 @@ class DeviceAddRemoveCommand extends Command {
 
   void _add(ProjectModel project) {
     final track = _getTrack(project, trackId, 'DeviceAddRemoveCommand._add');
+    final processing = track.requireProcessing;
     final graphFragment = _graphFragment;
     if (graphFragment == null) {
       throw StateError(
@@ -100,7 +104,7 @@ class DeviceAddRemoveCommand extends Command {
       );
     }
 
-    if (track.devices.any((device) => device.id == _device.id)) {
+    if (processing.devices.any((device) => device.id == _device.id)) {
       throw StateError(
         'DeviceAddRemoveCommand._add(): Device ${_device.id} already '
         'exists on track $trackId.',
@@ -108,9 +112,9 @@ class DeviceAddRemoveCommand extends Command {
     }
 
     final insertIndex = _index == null
-        ? track.devices.length
-        : min(_index!, track.devices.length);
-    track.devices.insert(insertIndex, _device);
+        ? processing.devices.length
+        : min(_index!, processing.devices.length);
+    processing.devices.insert(insertIndex, _device);
     _index ??= insertIndex;
 
     if (!graphFragment.isEmpty) {
@@ -122,7 +126,10 @@ class DeviceAddRemoveCommand extends Command {
 
   void _remove(ProjectModel project) {
     final track = _getTrack(project, trackId, 'DeviceAddRemoveCommand._remove');
-    final index = track.devices.indexWhere((device) => device.id == _device.id);
+    final processing = track.requireProcessing;
+    final index = processing.devices.indexWhere(
+      (device) => device.id == _device.id,
+    );
     if (index == -1) {
       throw StateError(
         'DeviceAddRemoveCommand._remove(): Device ${_device.id} not found '
@@ -137,7 +144,7 @@ class DeviceAddRemoveCommand extends Command {
 
     deviceController.disconnectTrackDeviceRouting(trackId);
 
-    track.devices.removeAt(index);
+    processing.devices.removeAt(index);
 
     _graphFragment = project.processingGraph.removeNodesAndCapture(
       _device.nodeIds,
@@ -163,7 +170,12 @@ class MoveTrackDeviceCommand extends Command {
   @override
   void execute(ProjectModel project) {
     final track = _getTrack(project, trackId, 'MoveTrackDeviceCommand.execute');
-    _oldIndex = _moveDevice(track, deviceId, newIndex);
+    _oldIndex = _moveDevice(
+      track.requireProcessing,
+      trackId,
+      deviceId,
+      newIndex,
+    );
 
     _rebuildTrackRoutingAndPublish(project, trackId);
   }
@@ -175,7 +187,7 @@ class MoveTrackDeviceCommand extends Command {
       trackId,
       'MoveTrackDeviceCommand.rollback',
     );
-    _moveDevice(track, deviceId, _oldIndex);
+    _moveDevice(track.requireProcessing, trackId, deviceId, _oldIndex);
 
     _rebuildTrackRoutingAndPublish(project, trackId);
   }
@@ -194,22 +206,32 @@ TrackModel _getTrack(ProjectModel project, Id trackId, String caller) {
   if (track == null) {
     throw StateError('$caller(): Track $trackId not found.');
   }
+  if (!track.hasProcessing) {
+    throw StateError('$caller(): Track $trackId does not support devices.');
+  }
 
   return track;
 }
 
-int _moveDevice(TrackModel track, Id deviceId, int newIndex) {
-  final oldIndex = track.devices.indexWhere((device) => device.id == deviceId);
+int _moveDevice(
+  TrackProcessingModel processing,
+  Id trackId,
+  Id deviceId,
+  int newIndex,
+) {
+  final oldIndex = processing.devices.indexWhere(
+    (device) => device.id == deviceId,
+  );
   if (oldIndex == -1) {
     throw StateError(
       'MoveTrackDeviceCommand: Device $deviceId not found on track '
-      '${track.id}.',
+      '$trackId.',
     );
   }
 
-  final device = track.devices.removeAt(oldIndex);
-  final boundedIndex = min(newIndex, track.devices.length);
-  track.devices.insert(boundedIndex, device);
+  final device = processing.devices.removeAt(oldIndex);
+  final boundedIndex = min(newIndex, processing.devices.length);
+  processing.devices.insert(boundedIndex, device);
 
   return oldIndex;
 }

@@ -97,18 +97,25 @@ class TrackAddRemoveCommand extends Command {
         }
       }
 
+      final trackModel = TrackModel(
+        idAllocator: idAllocator,
+        name: track.isSendTrack
+            ? 'Send Track ${project.sendTrackOrder.length}'
+            : 'Track ${project.trackOrder.length + 1}',
+        color: AnthemColor.randomHue(),
+        type: track.trackType,
+      );
+      final automationLaneModels = createFakeAutomationLanesForTrack(
+        idAllocator: idAllocator,
+        track: trackModel,
+      );
+
       return _InternalTrackAddRemoveDescriptor(
         index: track.index,
         isSendTrack: track.isSendTrack,
         parentTrackId: track.parentTrackId,
-        trackModel: TrackModel(
-          idAllocator: idAllocator,
-          name: track.isSendTrack
-              ? 'Send Track ${project.sendTrackOrder.length}'
-              : 'Track ${project.trackOrder.length + 1}',
-          color: AnthemColor.randomHue(),
-          type: track.trackType,
-        ),
+        trackModel: trackModel,
+        descendantTrackModels: automationLaneModels,
       );
     }).toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
   }
@@ -139,6 +146,12 @@ class TrackAddRemoveCommand extends Command {
     // Collect all descendants of a track (recursively)
     List<TrackModel> collectDescendants(TrackModel track) {
       final result = <TrackModel>[];
+      for (final automationLaneId in track.automationLanes) {
+        final automationLane = project.tracks[automationLaneId];
+        if (automationLane != null) {
+          result.add(automationLane);
+        }
+      }
       for (final childId in track.childTracks) {
         final child = project.tracks[childId];
         if (child != null) {
@@ -289,6 +302,10 @@ class TrackAddRemoveCommand extends Command {
         ];
 
         for (final track in tracksToCheck) {
+          if (!track.hasProcessing) {
+            continue;
+          }
+
           final utilityNodeId = _tryGetTrackUtilityNodeId(track);
           final dbMeterNodeId = _tryGetTrackDbMeterNodeId(track);
 
@@ -313,7 +330,9 @@ class TrackAddRemoveCommand extends Command {
       }
     }
 
-    trackController.rerouteTracks(_collectTrackIdsForDescriptors(_tracks));
+    trackController.rerouteTracks(
+      _collectRoutableTrackIdsForDescriptors(_tracks),
+    );
 
     final arrangerViewModel = ServiceRegistry.forProject(
       project.id,
@@ -333,7 +352,9 @@ class TrackAddRemoveCommand extends Command {
       project.id,
     ).trackController;
     final removedTrackIds = <Id>{};
-    final routedTrackIdsToRemove = _collectTrackIdsForDescriptors(_tracks);
+    final routedTrackIdsToRemove = _collectRoutableTrackIdsForDescriptors(
+      _tracks,
+    );
 
     for (final trackId in routedTrackIdsToRemove) {
       if (project.tracks[trackId] != null) {
@@ -414,11 +435,11 @@ class TrackAddRemoveCommand extends Command {
 }
 
 Id? _tryGetTrackUtilityNodeId(TrackModel track) {
-  return track.utilityNodeId;
+  return track.processing?.utilityNodeId;
 }
 
 Id? _tryGetTrackDbMeterNodeId(TrackModel track) {
-  return track.dbMeterNodeId;
+  return track.processing?.dbMeterNodeId;
 }
 
 Set<Id> _collectTrackNodeIdsForDescriptors(
@@ -433,21 +454,31 @@ Set<Id> _collectTrackNodeIdsForDescriptors(
     ];
 
     for (final track in tracksToScan) {
-      nodeIds.addAll(track.getOwnedNodeIds());
+      final processing = track.processing;
+      if (processing != null) {
+        nodeIds.addAll(processing.getOwnedNodeIds());
+      }
     }
   }
 
   return nodeIds;
 }
 
-Set<Id> _collectTrackIdsForDescriptors(
+Set<Id> _collectRoutableTrackIdsForDescriptors(
   Iterable<_InternalTrackAddRemoveDescriptor> descriptors,
 ) {
   final trackIds = <Id>{};
 
   for (final descriptor in descriptors) {
-    trackIds.add(descriptor.trackModel.id);
-    trackIds.addAll(descriptor.descendantTrackModels.map((track) => track.id));
+    if (descriptor.trackModel.hasProcessing) {
+      trackIds.add(descriptor.trackModel.id);
+    }
+
+    for (final descendant in descriptor.descendantTrackModels) {
+      if (descendant.hasProcessing) {
+        trackIds.add(descendant.id);
+      }
+    }
   }
 
   return trackIds;
@@ -471,6 +502,8 @@ class TrackGroupUngroupCommand extends Command {
   /// The group track to be added, which will become the parent of
   /// [_childrenToAddToGroup].
   late final TrackModel _newGroupTrack;
+
+  late final List<TrackModel> _newGroupAutomationLanes;
 
   /// The track that should be the parent of [_newGroupTrack].
   ///
@@ -708,6 +741,10 @@ class TrackGroupUngroupCommand extends Command {
       color: AnthemColor.randomHue(),
       type: .group,
     );
+    _newGroupAutomationLanes = createFakeAutomationLanesForTrack(
+      idAllocator: idAllocator,
+      track: _newGroupTrack,
+    );
     _groupTrackGraphFragment = trackController.buildTrackMixFragment(
       _newGroupTrack,
     );
@@ -742,8 +779,12 @@ class TrackGroupUngroupCommand extends Command {
 
     _isForSendTrack = trackController.isSendTrack(groupTrack);
     _newGroupTrack = track;
+    _newGroupAutomationLanes = track.automationLanes
+        .map((laneId) => project.tracks[laneId])
+        .nonNulls
+        .toList(growable: false);
     _groupTrackGraphFragment = project.processingGraph.captureNodes(
-      _newGroupTrack.getOwnedNodeIds(),
+      _newGroupTrack.requireProcessing.getOwnedNodeIds(),
     );
     _parentTrack = track.parentTrackId;
 
@@ -801,6 +842,9 @@ class TrackGroupUngroupCommand extends Command {
       ..addAll(_childrenToAddToGroup.map((c) => c.$1));
 
     project.tracks[_newGroupTrack.id] = _newGroupTrack;
+    for (final lane in _newGroupAutomationLanes) {
+      project.tracks[lane.id] = lane;
+    }
 
     parentTrackList.insert(_indexInParent, _newGroupTrack.id);
 
@@ -816,6 +860,11 @@ class TrackGroupUngroupCommand extends Command {
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.registerTrack(_newGroupTrack.id);
+    for (final lane in _newGroupAutomationLanes) {
+      ServiceRegistry.forProject(
+        project.id,
+      ).arrangerViewModel.registerTrack(lane.id);
+    }
 
     ServiceRegistry.forProject(
       project.id,
@@ -842,6 +891,9 @@ class TrackGroupUngroupCommand extends Command {
     );
 
     project.tracks.remove(_newGroupTrack.id);
+    for (final lane in _newGroupAutomationLanes) {
+      project.tracks.remove(lane.id);
+    }
     parentTrackList.remove(_newGroupTrack.id);
 
     _newGroupTrack.childTracks.clear();
@@ -859,6 +911,11 @@ class TrackGroupUngroupCommand extends Command {
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.unregisterTrack(_newGroupTrack.id);
+    for (final lane in _newGroupAutomationLanes) {
+      ServiceRegistry.forProject(
+        project.id,
+      ).arrangerViewModel.unregisterTrack(lane.id);
+    }
 
     ServiceRegistry.forProject(
       project.id,

@@ -46,11 +46,28 @@ class DeviceController {
       ServiceRegistry.maybeForProject(project.id)?.idAllocator ??
       project.idAllocator;
 
+  TrackModel _requireDeviceTrack(Id trackId, String caller) {
+    final track = project.tracks[trackId];
+    if (track == null) {
+      throw StateError('DeviceController.$caller(): Track $trackId not found.');
+    }
+
+    if (!track.hasProcessing) {
+      throw StateError(
+        'DeviceController.$caller(): Track $trackId does not support devices.',
+      );
+    }
+
+    return track;
+  }
+
   Future<void> addDevice({
     required Id trackId,
     required DeviceType type,
     int? index,
   }) async {
+    _requireDeviceTrack(trackId, 'addDevice');
+
     final descriptor = switch (type) {
       DeviceType.toneGenerator => DeviceDescriptorForCommand(
         type: DeviceType.toneGenerator,
@@ -120,6 +137,8 @@ class DeviceController {
   }
 
   void removeDevice({required Id trackId, required Id deviceId}) {
+    _requireDeviceTrack(trackId, 'removeDevice');
+
     project.execute(
       DeviceAddRemoveCommand.remove(
         project: project,
@@ -134,6 +153,8 @@ class DeviceController {
     required Id deviceId,
     required int newIndex,
   }) {
+    _requireDeviceTrack(trackId, 'moveDevice');
+
     project.execute(
       MoveTrackDeviceCommand(
         trackId: trackId,
@@ -151,14 +172,18 @@ class DeviceController {
         'found.',
       );
     }
+    if (!track.hasProcessing) {
+      return;
+    }
+    final processing = track.requireProcessing;
 
-    for (final connectionId in track.deviceRoutingConnectionIds.toList()) {
+    for (final connectionId in processing.deviceRoutingConnectionIds.toList()) {
       if (project.processingGraph.connections[connectionId] != null) {
         project.processingGraph.removeConnection(connectionId);
       }
     }
 
-    track.deviceRoutingConnectionIds.clear();
+    processing.deviceRoutingConnectionIds.clear();
   }
 
   void rebuildTrackDeviceRouting(Id trackId) {
@@ -169,6 +194,10 @@ class DeviceController {
         'found.',
       );
     }
+    if (!track.hasProcessing) {
+      return;
+    }
+    final processing = track.requireProcessing;
 
     disconnectTrackDeviceRouting(trackId);
 
@@ -195,13 +224,13 @@ class DeviceController {
     }
 
     final firstEventInput = devicePortDefaults.firstExistingDefaultPort(
-      track.devices,
+      processing.devices,
       NodePortDataType.event,
       DevicePortDirection.input,
     );
     if (firstEventInput != null) {
       _connectTrackEventProviders(
-        track: track,
+        processing: processing,
         destination: firstEventInput.port,
         addConnection: addConnection,
       );
@@ -213,7 +242,7 @@ class DeviceController {
     // First pass: build the sparse audio chain in rack order. Devices without
     // a compatible audio input are skipped, and the last chainable audio output
     // is carried forward to the next compatible device.
-    for (final device in track.devices) {
+    for (final device in processing.devices) {
       var connectedAudioIntoDevice = false;
       final audioInput = devicePortDefaults.existingDefaultPort(
         device,
@@ -244,7 +273,7 @@ class DeviceController {
     }
 
     if (lastAudioOutput != null) {
-      final utilityInput = _trackUtilityInput(track);
+      final utilityInput = _trackUtilityInput(processing);
       if (utilityInput != null) {
         addConnection(
           sourceNodeId: lastAudioOutput.port.nodeId,
@@ -259,7 +288,7 @@ class DeviceController {
     DevicePortRef? lastEventOutput;
     // Second pass: build the sparse event chain, but skip device pairs that
     // were already connected by audio so audio remains the preferred path.
-    for (final device in track.devices) {
+    for (final device in processing.devices) {
       var connectedEventIntoDevice = false;
       final eventInput = devicePortDefaults.existingDefaultPort(
         device,
@@ -293,11 +322,11 @@ class DeviceController {
       }
     }
 
-    track.deviceRoutingConnectionIds.addAll(generatedConnectionIds);
+    processing.deviceRoutingConnectionIds.addAll(generatedConnectionIds);
   }
 
   void _connectTrackEventProviders({
-    required TrackModel track,
+    required TrackProcessingModel processing,
     required ProcessingGraphPortRefModel destination,
     required void Function({
       required Id sourceNodeId,
@@ -309,7 +338,7 @@ class DeviceController {
     addConnection,
   }) {
     final sequenceProviderNode =
-        project.processingGraph.nodes[track.sequenceNoteProviderNodeId];
+        project.processingGraph.nodes[processing.sequenceNoteProviderNodeId];
     if (sequenceProviderNode?.eventOutputPorts.isNotEmpty == true) {
       addConnection(
         sourceNodeId: sequenceProviderNode!.id,
@@ -321,7 +350,7 @@ class DeviceController {
     }
 
     final liveEventProviderNode =
-        project.processingGraph.nodes[track.liveEventProviderNodeId];
+        project.processingGraph.nodes[processing.liveEventProviderNodeId];
     if (liveEventProviderNode?.eventOutputPorts.isNotEmpty == true) {
       addConnection(
         sourceNodeId: liveEventProviderNode!.id,
@@ -333,8 +362,10 @@ class DeviceController {
     }
   }
 
-  ProcessingGraphPortRefModel? _trackUtilityInput(TrackModel track) {
-    final utilityNode = project.processingGraph.nodes[track.utilityNodeId];
+  ProcessingGraphPortRefModel? _trackUtilityInput(
+    TrackProcessingModel processing,
+  ) {
+    final utilityNode = project.processingGraph.nodes[processing.utilityNodeId];
     if (utilityNode == null || utilityNode.audioInputPorts.isEmpty) {
       return null;
     }

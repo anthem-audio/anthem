@@ -205,7 +205,7 @@ class _MeterSection extends StatelessObserverWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gainPort = track.utilityNode?.getPortById(
+    final gainPort = track.processing?.utilityNode?.getPortById(
       UtilityProcessorModel.gainPortId,
     );
 
@@ -271,7 +271,12 @@ class _TrackDbMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visualizationIds = track.dbMeterVisualizationIds.toList(
+    final processing = track.processing;
+    if (processing == null) {
+      return const SizedBox.expand();
+    }
+
+    final visualizationIds = processing.dbMeterVisualizationIds.toList(
       growable: false,
     );
     if (visualizationIds.length < 2) {

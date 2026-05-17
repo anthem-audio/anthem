@@ -215,14 +215,21 @@ class _PianoRollStateMachineTestFixture {
       _TrackIds.instrument: _makeTrack(
         _TrackIds.instrument,
         'Instrument',
-        TrackType.instrument,
+        TrackType.normal,
       ),
-      _TrackIds.master: _makeTrack(_TrackIds.master, 'Master', TrackType.audio),
+      _TrackIds.master: _makeTrack(
+        _TrackIds.master,
+        'Master',
+        TrackType.normal,
+      ),
     });
     project.trackOrder = AnthemObservableList.of([_TrackIds.instrument]);
     project.sendTrackOrder = AnthemObservableList.of([_TrackIds.master]);
     if (enableLiveEvents) {
-      project.tracks[_TrackIds.instrument]!.liveEventProviderNodeId =
+      project
+              .tracks[_TrackIds.instrument]!
+              .requireProcessing
+              .liveEventProviderNodeId =
           liveEventProviderNodeId;
     }
 

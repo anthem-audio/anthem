@@ -63,6 +63,15 @@ class _MockEngine extends Mock implements Engine {
   ProcessingGraphApi get processingGraphApi => _processingGraphApi;
 }
 
+void _createAndRegisterTrackNodes({
+  required TrackModel track,
+  required ProjectModel project,
+  required ProjectEntityIdAllocator idAllocator,
+}) {
+  track.setParentPropertiesOnChildren();
+  track.createAndRegisterNodes(project, idAllocator);
+}
+
 void main() {
   group('getTrackFxChainAudioInput()', () {
     final projectId = getProjectId();
@@ -92,9 +101,13 @@ void main() {
         idAllocator: ProjectEntityIdAllocator.test(getId),
         name: 'Track',
         color: AnthemColor.randomHue(),
-        type: .instrument,
+        type: .normal,
       );
-      track.createAndRegisterNodes(project, idAllocator);
+      _createAndRegisterTrackNodes(
+        track: track,
+        project: project,
+        idAllocator: idAllocator,
+      );
 
       when(
         project.tracks,
@@ -106,7 +119,7 @@ void main() {
     test('returns the utility node audio input pair', () {
       final result = trackController.getTrackFxChainAudioInput(track.id);
 
-      expect(result.nodeId, equals(track.utilityNodeId));
+      expect(result.nodeId, equals(track.requireProcessing.utilityNodeId));
       expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
     });
   });
@@ -148,14 +161,30 @@ void main() {
       when(project.engine).thenReturn(mockEngine);
 
       groupTrack = createTrack('Group', .group);
-      childTrack = createTrack('Child', .instrument);
-      topLevelTrack = createTrack('Top Level', .instrument);
-      masterTrack = createTrack('Master', .audio)..isMasterTrack = true;
+      childTrack = createTrack('Child', .normal);
+      topLevelTrack = createTrack('Top Level', .normal);
+      masterTrack = createTrack('Master', .normal)..isMasterTrack = true;
 
-      groupTrack.createAndRegisterNodes(project, idAllocator);
-      childTrack.createAndRegisterNodes(project, idAllocator);
-      topLevelTrack.createAndRegisterNodes(project, idAllocator);
-      masterTrack.createAndRegisterNodes(project, idAllocator);
+      _createAndRegisterTrackNodes(
+        track: groupTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
+      _createAndRegisterTrackNodes(
+        track: childTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
+      _createAndRegisterTrackNodes(
+        track: topLevelTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
+      _createAndRegisterTrackNodes(
+        track: masterTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
 
       groupTrack.childTracks.add(childTrack.id);
       childTrack.parentTrackId = groupTrack.id;
@@ -177,7 +206,7 @@ void main() {
         childTrack.id,
       );
 
-      expect(result.nodeId, equals(groupTrack.utilityNodeId));
+      expect(result.nodeId, equals(groupTrack.requireProcessing.utilityNodeId));
       expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
     });
 
@@ -188,7 +217,10 @@ void main() {
           topLevelTrack.id,
         );
 
-        expect(result.nodeId, equals(masterTrack.utilityNodeId));
+        expect(
+          result.nodeId,
+          equals(masterTrack.requireProcessing.utilityNodeId),
+        );
         expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
       },
     );
@@ -234,7 +266,7 @@ void main() {
       when(project.trackOrder).thenReturn(trackOrder);
       when(project.sendTrackOrder).thenReturn(sendTrackOrder);
 
-      // Regular tracks: A (group) -> B, C
+      // normal tracks: A (group) -> B, C
       final trackAId = getId();
       final trackBId = getId();
       final trackCId = getId();
@@ -248,8 +280,8 @@ void main() {
       when(trackC.id).thenReturn(trackCId);
 
       when(trackA.type).thenReturn(TrackType.group);
-      when(trackB.type).thenReturn(TrackType.instrument);
-      when(trackC.type).thenReturn(TrackType.instrument);
+      when(trackB.type).thenReturn(TrackType.normal);
+      when(trackC.type).thenReturn(TrackType.normal);
 
       when(
         trackA.childTracks,
@@ -283,8 +315,8 @@ void main() {
       when(masterTrack.id).thenReturn(masterTrackId);
 
       when(trackL.type).thenReturn(TrackType.group);
-      when(trackM.type).thenReturn(TrackType.instrument);
-      when(masterTrack.type).thenReturn(TrackType.instrument);
+      when(trackM.type).thenReturn(TrackType.normal);
+      when(masterTrack.type).thenReturn(TrackType.normal);
 
       when(trackL.childTracks).thenReturn(AnthemObservableList.of([trackMId]));
       when(trackM.childTracks).thenReturn(AnthemObservableList());
@@ -381,15 +413,15 @@ void main() {
       when(project.engine).thenReturn(mockEngine);
 
       regularGroup = createTrack('Regular Group', .group);
-      regularChildA = createTrack('Regular Child A', .instrument);
-      regularChildB = createTrack('Regular Child B', .instrument);
-      regularTopA = createTrack('Regular Top A', .instrument);
-      regularTopB = createTrack('Regular Top B', .instrument);
+      regularChildA = createTrack('Regular Child A', .normal);
+      regularChildB = createTrack('Regular Child B', .normal);
+      regularTopA = createTrack('Regular Top A', .normal);
+      regularTopB = createTrack('Regular Top B', .normal);
 
       sendGroup = createTrack('Send Group', .group);
-      sendChild = createTrack('Send Child', .instrument);
-      sendTop = createTrack('Send Top', .instrument);
-      masterTrack = createTrack('Master', .audio)..isMasterTrack = true;
+      sendChild = createTrack('Send Child', .normal);
+      sendTop = createTrack('Send Top', .normal);
+      masterTrack = createTrack('Master', .normal)..isMasterTrack = true;
 
       tracks.addAll({
         regularGroup.id: regularGroup,
@@ -465,7 +497,7 @@ void main() {
       final newTrack = tracks[newTrackId];
       expect(newTrack, isNotNull);
       expect(newTrack!.parentTrackId, equals(regularGroup.id));
-      expect(newTrack.type, equals(TrackType.instrument));
+      expect(newTrack.type, equals(TrackType.normal));
     });
 
     test('regular child anchor inserts below within parent group', () {
@@ -604,9 +636,9 @@ void main() {
       when(project.engine).thenReturn(mockEngine);
 
       groupTrack = createTrack('Group', .group);
-      childTrack = createTrack('Child', .instrument);
-      otherTrack = createTrack('Other', .instrument);
-      masterTrack = createTrack('Master', .instrument)..isMasterTrack = true;
+      childTrack = createTrack('Child', .normal);
+      otherTrack = createTrack('Other', .normal);
+      masterTrack = createTrack('Master', .normal)..isMasterTrack = true;
 
       groupTrack.childTracks.add(childTrack.id);
       childTrack.parentTrackId = groupTrack.id;

@@ -73,7 +73,8 @@ void main() {
       );
       project.processingGraph.addNode(gainNodeD);
 
-      track.devices.addAll([
+      final processing = track.requireProcessing;
+      processing.devices.addAll([
         toneGenerator.device,
         audioDeviceB,
         unchainableSourceC.device,
@@ -109,7 +110,7 @@ void main() {
           project,
           sourceNodeId: gainNodeD.id,
           sourcePortId: GainProcessorModel.audioOutputPortId,
-          destinationNodeId: track.utilityNodeId!,
+          destinationNodeId: processing.utilityNodeId!,
           destinationPortId: UtilityProcessorModel.audioInputPortId,
         ),
         hasLength(1),

@@ -120,6 +120,9 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     _targetTrackId = viewModel.trackPositionCalculator.trackIndexToId(
       fractionalTrackIndex.floor(),
     );
+    if (project.tracks[_targetTrackId]?.isAutomationLane ?? false) {
+      _targetTrackId = null;
+    }
   }
 
   void _handleMove() {
@@ -133,7 +136,7 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     }
 
     final track = project.tracks[trackId];
-    if (track == null) {
+    if (track == null || track.isAutomationLane) {
       viewModel.clipCreateHint = null;
       return;
     }

@@ -281,13 +281,17 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 viewModel.verticalScrollPosition -
                 widget.verticalScrollPosition;
 
+            final visibleTracks = trackController.getTracksIterable();
+
             for (final (trackIndex, (trackId, isSendTrack, trackDepth))
-                in trackController.getTracksIterable().indexed) {
+                in visibleTracks.indexed) {
               // For MobX, since we're pulling the real values from a cache
               final _ = viewModel.trackHeightModifiers[trackId];
 
               final track = project.tracks[trackId]!;
-              final isTopLevel = track.parentTrackId == null;
+              final isTopLevel =
+                  track.parentTrackId == null &&
+                  track.automationLaneParentTrackId == null;
 
               final trackPosition = viewModel.trackPositionCalculator
                   .getTrackPosition(trackIndex);
@@ -316,6 +320,10 @@ class _TrackHeadersState extends State<TrackHeaders> {
                   var subtreeTrackCount = 0;
                   void countSubtreeTracks(TrackModel track) {
                     subtreeTrackCount++;
+                    if (viewModel.automationExpandedByTrackId[track.id] ??
+                        false) {
+                      subtreeTrackCount += track.automationLanes.length;
+                    }
                     for (var id in track.childTracks) {
                       countSubtreeTracks(project.tracks[id]!);
                     }

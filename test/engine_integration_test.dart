@@ -416,7 +416,8 @@ void main() {
           device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
         ),
       );
-      final instrumentNodeId = instrumentTrack.devices.single.nodeIds.single;
+      final instrumentNodeId =
+          instrumentTrack.requireProcessing.devices.single.nodeIds.single;
 
       final command = AddNoteCommand(
         patternID: project.sequence.patterns.keys.first,

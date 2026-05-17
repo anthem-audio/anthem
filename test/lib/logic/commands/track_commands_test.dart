@@ -110,7 +110,7 @@ void main() {
         idAllocator: ProjectEntityIdAllocator.test(() => trackId),
         name: oldName,
         color: color,
-        type: .instrument,
+        type: .normal,
       );
 
       tracks = AnthemObservableMap.of({trackId: track});
@@ -152,7 +152,7 @@ void main() {
   group('Track group/ungroup and add/remove with groups', () {
     // The track hierarchy here is as follows:
     //
-    // REGULAR TRACKS:
+    // normal tracks:
     // - A (group)
     //   - B (group)
     //     - C (instrument)
@@ -279,21 +279,21 @@ void main() {
 
       final pairA = createTrack('A', .group, false);
       final pairB = createTrack('B', .group, false);
-      final pairC = createTrack('C', .instrument, false);
-      final pairD = createTrack('D', .instrument, false);
+      final pairC = createTrack('C', .normal, false);
+      final pairD = createTrack('D', .normal, false);
       final pairE = createTrack('E', .group, false);
-      final pairF = createTrack('F', .instrument, false);
-      final pairG = createTrack('G', .instrument, false);
-      final pairH = createTrack('H', .instrument, false);
-      final pairI = createTrack('I', .instrument, false);
-      final pairJ = createTrack('J', .instrument, false);
-      final pairK = createTrack('K', .instrument, false);
+      final pairF = createTrack('F', .normal, false);
+      final pairG = createTrack('G', .normal, false);
+      final pairH = createTrack('H', .normal, false);
+      final pairI = createTrack('I', .normal, false);
+      final pairJ = createTrack('J', .normal, false);
+      final pairK = createTrack('K', .normal, false);
       final pairL = createTrack('L', .group, true);
-      final pairM = createTrack('M', .instrument, true);
-      final pairN = createTrack('N', .instrument, true);
-      final pairO = createTrack('O', .instrument, true);
-      final pairP = createTrack('P', .instrument, true);
-      final pairMaster = createTrack('Master', .instrument, true);
+      final pairM = createTrack('M', .normal, true);
+      final pairN = createTrack('N', .normal, true);
+      final pairO = createTrack('O', .normal, true);
+      final pairP = createTrack('P', .normal, true);
+      final pairMaster = createTrack('Master', .normal, true);
 
       trackAId = pairA.$1;
       trackBId = pairB.$1;
@@ -388,7 +388,7 @@ void main() {
         final id1Index = trackOrderToUse.indexOf(id1);
         expect(
           tracks[trackOrderToUse[id1Index]]!.type,
-          equals(TrackType.instrument),
+          equals(TrackType.normal),
         );
 
         final command = TrackGroupUngroupCommand.group(
@@ -409,7 +409,7 @@ void main() {
         expect(tracks[id1]!.parentTrackId, equals(newGroupTrack.id));
         expect(tracks[id2]!.parentTrackId, equals(newGroupTrack.id));
 
-        verify(mockArrangerViewModel.registerTrack(any)).called(1);
+        verify(mockArrangerViewModel.registerTrack(any)).called(4);
         verifyNever(mockArrangerViewModel.unregisterTrack(any));
 
         command.rollback(project);
@@ -421,18 +421,20 @@ void main() {
         expect(tracks[id2]!.parentTrackId, isNull);
 
         verifyNever(mockArrangerViewModel.registerTrack(any));
-        verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
+        verify(mockArrangerViewModel.unregisterTrack(any)).called(4);
       }
 
       void expectTrackHasMixRouting(TrackModel track) {
-        expect(track.utilityNodeId, isNotNull);
-        expect(track.dbMeterNodeId, isNotNull);
+        expect(track.requireProcessing.utilityNodeId, isNotNull);
+        expect(track.requireProcessing.dbMeterNodeId, isNotNull);
 
-        final utilityNodeId = track.utilityNodeId!;
-        final dbMeterNodeId = track.dbMeterNodeId!;
+        final utilityNodeId = track.requireProcessing.utilityNodeId!;
+        final dbMeterNodeId = track.requireProcessing.dbMeterNodeId!;
         final expectedDestination = track.parentTrackId != null
             ? (
-                nodeId: tracks[track.parentTrackId]!.utilityNodeId!,
+                nodeId: tracks[track.parentTrackId]!
+                    .requireProcessing
+                    .utilityNodeId!,
                 portId: UtilityProcessorModel.audioInputPortId,
               )
             : track.isMasterTrack
@@ -445,7 +447,7 @@ void main() {
                     .id,
               )
             : (
-                nodeId: masterTrack.utilityNodeId!,
+                nodeId: masterTrack.requireProcessing.utilityNodeId!,
                 portId: UtilityProcessorModel.audioInputPortId,
               );
 
@@ -478,7 +480,7 @@ void main() {
         );
       }
 
-      test('Basic track grouping test, regular tracks', () {
+      test('Basic track grouping test, normal tracks', () {
         runBasicGroupTest(false, trackJId, trackKId);
       });
 
@@ -499,11 +501,14 @@ void main() {
         newGroupTrack!;
 
         expectTrackHasMixRouting(newGroupTrack);
-        expect(newGroupTrack.sequenceNoteProviderNodeId, isNull);
-        expect(newGroupTrack.liveEventProviderNodeId, isNull);
+        expect(
+          newGroupTrack.requireProcessing.sequenceNoteProviderNodeId,
+          isNull,
+        );
+        expect(newGroupTrack.requireProcessing.liveEventProviderNodeId, isNull);
 
-        final utilityNodeId = newGroupTrack.utilityNodeId!;
-        final dbMeterNodeId = newGroupTrack.dbMeterNodeId!;
+        final utilityNodeId = newGroupTrack.requireProcessing.utilityNodeId!;
+        final dbMeterNodeId = newGroupTrack.requireProcessing.dbMeterNodeId!;
 
         command.rollback(project);
 
@@ -517,8 +522,14 @@ void main() {
         expect(restoredGroupTrack, isNotNull);
         restoredGroupTrack!;
 
-        expect(restoredGroupTrack.utilityNodeId, equals(utilityNodeId));
-        expect(restoredGroupTrack.dbMeterNodeId, equals(dbMeterNodeId));
+        expect(
+          restoredGroupTrack.requireProcessing.utilityNodeId,
+          equals(utilityNodeId),
+        );
+        expect(
+          restoredGroupTrack.requireProcessing.dbMeterNodeId,
+          equals(dbMeterNodeId),
+        );
         expectTrackHasMixRouting(restoredGroupTrack);
       });
 
@@ -527,8 +538,8 @@ void main() {
         () {
           expectTrackHasMixRouting(trackL);
 
-          final utilityNodeId = trackL.utilityNodeId!;
-          final dbMeterNodeId = trackL.dbMeterNodeId!;
+          final utilityNodeId = trackL.requireProcessing.utilityNodeId!;
+          final dbMeterNodeId = trackL.requireProcessing.dbMeterNodeId!;
 
           final command = TrackGroupUngroupCommand.ungroup(
             project: project,
@@ -544,14 +555,14 @@ void main() {
           command.rollback(project);
 
           expect(tracks[trackLId], isNotNull);
-          expect(trackL.utilityNodeId, equals(utilityNodeId));
-          expect(trackL.dbMeterNodeId, equals(dbMeterNodeId));
+          expect(trackL.requireProcessing.utilityNodeId, equals(utilityNodeId));
+          expect(trackL.requireProcessing.dbMeterNodeId, equals(dbMeterNodeId));
           expectTrackHasMixRouting(trackL);
         },
       );
 
       test(
-        "Can't group tracks where some are send tracks and some are regular tracks",
+        "Can't group tracks where some are send tracks and some are normal tracks",
         () {
           expect(() {
             print('throws');
@@ -822,7 +833,7 @@ void main() {
       });
 
       test(
-        'Grouping a single top-level regular track wraps it in a new group',
+        'Grouping a single top-level normal track wraps it in a new group',
         () {
           final originalTrackOrder = List<Id>.from(trackOrder);
           final mockArrangerViewModel =
@@ -850,7 +861,7 @@ void main() {
           expect(newGroupTrack.childTracks[0], equals(trackJ.id));
           expect(trackJ.parentTrackId, equals(newGroupTrack.id));
 
-          verify(mockArrangerViewModel.registerTrack(any)).called(1);
+          verify(mockArrangerViewModel.registerTrack(any)).called(4);
           verifyNever(mockArrangerViewModel.unregisterTrack(any));
 
           command.rollback(project);
@@ -859,7 +870,7 @@ void main() {
           expect(trackJ.parentTrackId, isNull);
           expect(tracks[newGroupTrack.id], isNull);
 
-          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
+          verify(mockArrangerViewModel.unregisterTrack(any)).called(4);
         },
       );
 
@@ -893,7 +904,7 @@ void main() {
           expect(newGroupTrack.childTracks[0], equals(trackO.id));
           expect(trackO.parentTrackId, equals(newGroupTrack.id));
 
-          verify(mockArrangerViewModel.registerTrack(any)).called(1);
+          verify(mockArrangerViewModel.registerTrack(any)).called(4);
           verifyNever(mockArrangerViewModel.unregisterTrack(any));
 
           command.rollback(project);
@@ -902,7 +913,7 @@ void main() {
           expect(trackO.parentTrackId, isNull);
           expect(tracks[newGroupTrack.id], isNull);
 
-          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
+          verify(mockArrangerViewModel.unregisterTrack(any)).called(4);
         },
       );
 
@@ -917,7 +928,7 @@ void main() {
 
         command.execute(project);
 
-        // Regular track order unchanged
+        // normal track order unchanged
         expect(trackOrder, hasLength(originalTrackOrderLength));
 
         // Track L is removed from the tracks map
@@ -939,7 +950,7 @@ void main() {
 
         command.rollback(project);
 
-        // Regular track order unchanged
+        // normal track order unchanged
         expect(trackOrder, hasLength(originalTrackOrderLength));
 
         // sendTrackOrder restored to [L, O, P, Master]
@@ -995,12 +1006,14 @@ void main() {
 
           command.execute(project);
 
-          final device = trackC.devices.single;
+          final device = trackC.requireProcessing.devices.single;
           final instrumentNodeId = device.nodeIds.single;
-          final sequenceNodeId = trackC.sequenceNoteProviderNodeId;
-          final liveEventNodeId = trackC.liveEventProviderNodeId;
-          expect(trackC.devices, hasLength(1));
-          expect(trackC.devices.single.id, equals(device.id));
+          final sequenceNodeId =
+              trackC.requireProcessing.sequenceNoteProviderNodeId;
+          final liveEventNodeId =
+              trackC.requireProcessing.liveEventProviderNodeId;
+          expect(trackC.requireProcessing.devices, hasLength(1));
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
           expect(sequenceNodeId, isNotNull);
           expect(liveEventNodeId, isNotNull);
           expect(processingGraph.nodes[instrumentNodeId], isNotNull);
@@ -1019,7 +1032,8 @@ void main() {
               .where(
                 (connection) =>
                     connection.sourceNodeId == instrumentNodeId &&
-                    connection.destinationNodeId == trackC.utilityNodeId &&
+                    connection.destinationNodeId ==
+                        trackC.requireProcessing.utilityNodeId &&
                     connection.sourcePortId ==
                         ToneGeneratorProcessorModel.audioOutputPortId &&
                     connection.destinationPortId ==
@@ -1060,20 +1074,32 @@ void main() {
 
           command.rollback(project);
 
-          expect(trackC.devices, isEmpty);
-          expect(trackC.deviceRoutingConnectionIds, isEmpty);
-          expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
-          expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
+          expect(trackC.requireProcessing.devices, isEmpty);
+          expect(trackC.requireProcessing.deviceRoutingConnectionIds, isEmpty);
+          expect(
+            trackC.requireProcessing.sequenceNoteProviderNodeId,
+            equals(sequenceNodeId),
+          );
+          expect(
+            trackC.requireProcessing.liveEventProviderNodeId,
+            equals(liveEventNodeId),
+          );
           expect(processingGraph.nodes[instrumentNodeId], isNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId], isNotNull);
 
           command.execute(project);
 
-          expect(trackC.devices, hasLength(1));
-          expect(trackC.devices.single.id, equals(device.id));
-          expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
-          expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
+          expect(trackC.requireProcessing.devices, hasLength(1));
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
+          expect(
+            trackC.requireProcessing.sequenceNoteProviderNodeId,
+            equals(sequenceNodeId),
+          );
+          expect(
+            trackC.requireProcessing.liveEventProviderNodeId,
+            equals(liveEventNodeId),
+          );
           expect(processingGraph.nodes[instrumentNodeId], isNotNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId], isNotNull);
@@ -1089,11 +1115,13 @@ void main() {
             device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
           ).execute(project);
 
-          final device = trackC.devices.single;
+          final device = trackC.requireProcessing.devices.single;
           final instrumentNodeId = device.nodeIds.single;
-          final initialRoutingConnectionIds = trackC.deviceRoutingConnectionIds
+          final initialRoutingConnectionIds = trackC
+              .requireProcessing
+              .deviceRoutingConnectionIds
               .toList(growable: false);
-          expect(trackC.devices.single.id, equals(device.id));
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
           expect(processingGraph.nodes[instrumentNodeId], isNotNull);
           expect(initialRoutingConnectionIds, isNotEmpty);
 
@@ -1105,8 +1133,8 @@ void main() {
 
           command.execute(project);
 
-          expect(trackC.devices, isEmpty);
-          expect(trackC.deviceRoutingConnectionIds, isEmpty);
+          expect(trackC.requireProcessing.devices, isEmpty);
+          expect(trackC.requireProcessing.deviceRoutingConnectionIds, isEmpty);
           expect(processingGraph.nodes[instrumentNodeId], isNull);
           for (final connectionId in initialRoutingConnectionIds) {
             expect(processingGraph.connections[connectionId], isNull);
@@ -1114,9 +1142,12 @@ void main() {
 
           command.rollback(project);
 
-          expect(trackC.devices.single.id, equals(device.id));
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
           expect(processingGraph.nodes[instrumentNodeId], isNotNull);
-          expect(trackC.deviceRoutingConnectionIds, isNotEmpty);
+          expect(
+            trackC.requireProcessing.deviceRoutingConnectionIds,
+            isNotEmpty,
+          );
         },
       );
 
@@ -1129,7 +1160,7 @@ void main() {
 
         command.execute(project);
 
-        final device = trackC.devices.single;
+        final device = trackC.requireProcessing.devices.single;
         final utilityNodeId = device.nodeIds.single;
         final utilityNode = processingGraph.nodes[utilityNodeId]!;
         expect(device.type, equals(DeviceType.utility));
@@ -1145,7 +1176,7 @@ void main() {
 
         command.rollback(project);
 
-        expect(trackC.devices, isEmpty);
+        expect(trackC.requireProcessing.devices, isEmpty);
         expect(processingGraph.nodes[utilityNodeId], isNull);
       });
 
@@ -1153,10 +1184,12 @@ void main() {
         final originalMainRoute = processingGraph.connections.values
             .firstWhere(
               (connection) =>
-                  connection.sourceNodeId == trackJ.utilityNodeId &&
+                  connection.sourceNodeId ==
+                      trackJ.requireProcessing.utilityNodeId &&
                   connection.sourcePortId ==
                       UtilityProcessorModel.audioOutputPortId &&
-                  connection.destinationNodeId == masterTrack.utilityNodeId &&
+                  connection.destinationNodeId ==
+                      masterTrack.requireProcessing.utilityNodeId &&
                   connection.destinationPortId ==
                       UtilityProcessorModel.audioInputPortId,
             )
@@ -1165,9 +1198,9 @@ void main() {
 
         expect(
           connectionsMatching(
-            sourceNodeId: trackJ.utilityNodeId!,
+            sourceNodeId: trackJ.requireProcessing.utilityNodeId!,
             sourcePortId: UtilityProcessorModel.audioOutputPortId,
-            destinationNodeId: masterTrack.utilityNodeId!,
+            destinationNodeId: masterTrack.requireProcessing.utilityNodeId!,
             destinationPortId: UtilityProcessorModel.audioInputPortId,
           ),
           isEmpty,
@@ -1179,7 +1212,8 @@ void main() {
           device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
         ).execute(project);
 
-        final toneGeneratorNodeId = trackJ.devices.single.nodeIds.single;
+        final toneGeneratorNodeId =
+            trackJ.requireProcessing.devices.single.nodeIds.single;
         final masterOutputPortId = processingGraph
             .getMasterOutputNode()
             .audioInputPorts
@@ -1190,32 +1224,32 @@ void main() {
           connectionsMatching(
             sourceNodeId: toneGeneratorNodeId,
             sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
-            destinationNodeId: trackJ.utilityNodeId!,
+            destinationNodeId: trackJ.requireProcessing.utilityNodeId!,
             destinationPortId: UtilityProcessorModel.audioInputPortId,
           ),
           hasLength(1),
         );
         expect(
           connectionsMatching(
-            sourceNodeId: trackJ.utilityNodeId!,
+            sourceNodeId: trackJ.requireProcessing.utilityNodeId!,
             sourcePortId: UtilityProcessorModel.audioOutputPortId,
-            destinationNodeId: trackJ.dbMeterNodeId!,
+            destinationNodeId: trackJ.requireProcessing.dbMeterNodeId!,
             destinationPortId: DbMeterProcessorModel.audioInputPortId,
           ),
           hasLength(1),
         );
         expect(
           connectionsMatching(
-            sourceNodeId: trackJ.utilityNodeId!,
+            sourceNodeId: trackJ.requireProcessing.utilityNodeId!,
             sourcePortId: UtilityProcessorModel.audioOutputPortId,
-            destinationNodeId: masterTrack.utilityNodeId!,
+            destinationNodeId: masterTrack.requireProcessing.utilityNodeId!,
             destinationPortId: UtilityProcessorModel.audioInputPortId,
           ),
           hasLength(1),
         );
         expect(
           connectionsMatching(
-            sourceNodeId: masterTrack.utilityNodeId!,
+            sourceNodeId: masterTrack.requireProcessing.utilityNodeId!,
             sourcePortId: UtilityProcessorModel.audioOutputPortId,
             destinationNodeId: processingGraph.masterOutputNodeId,
             destinationPortId: masterOutputPortId,
@@ -1231,7 +1265,7 @@ void main() {
             TrackDescriptorForCommand(
               index: 2,
               isSendTrack: false,
-              trackType: .instrument,
+              trackType: .normal,
               parentTrackId: trackAId,
             ),
           ],
@@ -1241,10 +1275,12 @@ void main() {
 
         final newTrackId = trackA.childTracks[2];
         final newTrack = tracks[newTrackId]!;
-        final utilityNodeId = newTrack.utilityNodeId;
-        final dbMeterNodeId = newTrack.dbMeterNodeId;
-        final sequenceNodeId = newTrack.sequenceNoteProviderNodeId;
-        final liveEventNodeId = newTrack.liveEventProviderNodeId;
+        final utilityNodeId = newTrack.requireProcessing.utilityNodeId;
+        final dbMeterNodeId = newTrack.requireProcessing.dbMeterNodeId;
+        final sequenceNodeId =
+            newTrack.requireProcessing.sequenceNoteProviderNodeId;
+        final liveEventNodeId =
+            newTrack.requireProcessing.liveEventProviderNodeId;
         final utilityToDbMeterConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
@@ -1279,10 +1315,16 @@ void main() {
 
         command.execute(project);
 
-        expect(newTrack.utilityNodeId, equals(utilityNodeId));
-        expect(newTrack.dbMeterNodeId, equals(dbMeterNodeId));
-        expect(newTrack.sequenceNoteProviderNodeId, equals(sequenceNodeId));
-        expect(newTrack.liveEventProviderNodeId, equals(liveEventNodeId));
+        expect(newTrack.requireProcessing.utilityNodeId, equals(utilityNodeId));
+        expect(newTrack.requireProcessing.dbMeterNodeId, equals(dbMeterNodeId));
+        expect(
+          newTrack.requireProcessing.sequenceNoteProviderNodeId,
+          equals(sequenceNodeId),
+        );
+        expect(
+          newTrack.requireProcessing.liveEventProviderNodeId,
+          equals(liveEventNodeId),
+        );
         expect(processingGraph.nodes[utilityNodeId], isNotNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(processingGraph.nodes[sequenceNodeId], isNotNull);
@@ -1294,8 +1336,8 @@ void main() {
       });
 
       test('Remove track undo restores captured nodes and connections', () {
-        final utilityNodeId = trackC.utilityNodeId;
-        final dbMeterNodeId = trackC.dbMeterNodeId;
+        final utilityNodeId = trackC.requireProcessing.utilityNodeId;
+        final dbMeterNodeId = trackC.requireProcessing.dbMeterNodeId;
         final utilityToDbMeterConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
@@ -1333,17 +1375,22 @@ void main() {
       });
 
       test('Remove track captures device, sequence, and live nodes', () {
-        final sequenceProviderNodeId = trackC.sequenceNoteProviderNodeId!;
-        final liveEventProviderNodeId = trackC.liveEventProviderNodeId!;
+        final sequenceProviderNodeId =
+            trackC.requireProcessing.sequenceNoteProviderNodeId!;
+        final liveEventProviderNodeId =
+            trackC.requireProcessing.liveEventProviderNodeId!;
 
         DeviceAddRemoveCommand.add(
           project: project,
           trackId: trackC.id,
           device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
         ).execute(project);
-        final deviceNodeId = trackC.devices.single.nodeIds.single;
+        final deviceNodeId =
+            trackC.requireProcessing.devices.single.nodeIds.single;
 
-        final deviceRoutingConnectionIds = trackC.deviceRoutingConnectionIds
+        final deviceRoutingConnectionIds = trackC
+            .requireProcessing
+            .deviceRoutingConnectionIds
             .toList(growable: false);
 
         final command = TrackAddRemoveCommand.remove(
@@ -1353,8 +1400,14 @@ void main() {
 
         command.execute(project);
 
-        expect(processingGraph.nodes[trackC.utilityNodeId], isNull);
-        expect(processingGraph.nodes[trackC.dbMeterNodeId], isNull);
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.utilityNodeId],
+          isNull,
+        );
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.dbMeterNodeId],
+          isNull,
+        );
         expect(processingGraph.nodes[deviceNodeId], isNull);
         expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
         expect(processingGraph.nodes[liveEventProviderNodeId], isNull);
@@ -1364,8 +1417,14 @@ void main() {
 
         command.rollback(project);
 
-        expect(processingGraph.nodes[trackC.utilityNodeId], isNotNull);
-        expect(processingGraph.nodes[trackC.dbMeterNodeId], isNotNull);
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.utilityNodeId],
+          isNotNull,
+        );
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.dbMeterNodeId],
+          isNotNull,
+        );
         expect(processingGraph.nodes[deviceNodeId], isNotNull);
         expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);
         expect(processingGraph.nodes[liveEventProviderNodeId], isNotNull);
@@ -1384,7 +1443,7 @@ void main() {
             TrackDescriptorForCommand(
               index: 2,
               isSendTrack: false,
-              trackType: .instrument,
+              trackType: .normal,
               parentTrackId: trackAId,
             ),
           ],
@@ -1399,9 +1458,9 @@ void main() {
         final newTrack = tracks[newTrackId];
         expect(newTrack, isNotNull);
         expect(newTrack!.parentTrackId, equals(trackAId));
-        expect(newTrack.type, equals(TrackType.instrument));
-        // Total tracks increased by 1
-        expect(tracks, hasLength(originalTracksCount + 1));
+        expect(newTrack.type, equals(TrackType.normal));
+        // Total tracks increased by 1 track plus 3 fake automation lanes.
+        expect(tracks, hasLength(originalTracksCount + 4));
         // Top-level order unchanged
         expect(trackOrder, hasLength(3));
 
@@ -1421,7 +1480,7 @@ void main() {
           tracks: [
             TrackDescriptorForCommand(
               isSendTrack: false,
-              trackType: .instrument,
+              trackType: .normal,
               parentTrackId: trackBId,
             ),
           ],
@@ -1447,7 +1506,7 @@ void main() {
             tracks: [
               TrackDescriptorForCommand(
                 isSendTrack: false,
-                trackType: .instrument,
+                trackType: .normal,
                 parentTrackId: trackCId, // C is an instrument, not a group
               ),
             ],

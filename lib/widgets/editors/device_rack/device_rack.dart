@@ -93,6 +93,18 @@ Widget _buildRack(
     return const Text('Invalid track');
   }
 
+  if (!track.hasProcessing) {
+    return Container(
+      color: AnthemTheme.panel.background,
+      child: Center(
+        child: Text(
+          'This track does not have devices',
+          style: TextStyle(color: AnthemTheme.text.main),
+        ),
+      ),
+    );
+  }
+
   return _DeviceRackScrollArea(track: track);
 }
 
@@ -175,13 +187,14 @@ class _DeviceRackScrollAreaState extends State<_DeviceRackScrollArea> {
   }
 
   List<Widget> _buildRackChildren() {
-    if (widget.track.devices.isEmpty) {
+    final devices = widget.track.requireProcessing.devices;
+    if (devices.isEmpty) {
       return [_AddButton(trackId: widget.track.id, index: 0)];
     }
 
     return [
       _AddButton(trackId: widget.track.id, index: 0),
-      for (final (index, device) in widget.track.devices.indexed) ...[
+      for (final (index, device) in devices.indexed) ...[
         DeviceView(
           key: ValueKey(device.id),
           trackId: widget.track.id,

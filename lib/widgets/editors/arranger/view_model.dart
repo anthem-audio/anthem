@@ -254,6 +254,7 @@ class TrackPositionAndSize {
 
   TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
 
+  int? tryTrackIdToIndex(Id trackId) => _trackIdToIndex[trackId];
   int trackIdToIndex(Id trackId) => _trackIdToIndex[trackId]!;
   Id trackIndexToId(int index) => _trackIndexToId[index]!;
 
@@ -290,20 +291,21 @@ class TrackPositionAndSize {
   void invalidate(double editorHeight) {
     arrangerViewModel.editorHeight = editorHeight;
 
-    final trackCount = projectModel.tracks.length;
-
     final serviceRegistry = ServiceRegistry.forProject(projectModel.id);
     final trackController = serviceRegistry.trackController;
-    final allTracksIterable = trackController.getTracksIterable();
+    final visibleTracksIterable = trackController.getTracksIterable().toList(
+      growable: false,
+    );
+    final trackCount = visibleTracksIterable.length;
 
     if (_cache.length != trackCount * 2) {
       _cache = Float64List(trackCount * 2);
-      _trackIdToIndex.clear();
-      _trackIndexToId.clear();
     }
+    _trackIdToIndex.clear();
+    _trackIndexToId.clear();
 
     var totalTrackHeight = 0.0;
-    for (final (i, (trackId, _, _)) in allTracksIterable.indexed) {
+    for (final (i, (trackId, _, _)) in visibleTracksIterable.indexed) {
       final heightIndex = i * 2;
       final trackHeight = calculateTrackHeight(
         arrangerViewModel.baseTrackHeight,
@@ -323,7 +325,7 @@ class TrackPositionAndSize {
     arrangerViewModel.regularToSendGapHeight = trackGap;
 
     arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
-      allTracksIterable,
+      visibleTracksIterable,
       trackGap,
     );
 
@@ -335,7 +337,7 @@ class TrackPositionAndSize {
         arrangerViewModel.verticalScrollPosition) {
       arrangerViewModel.verticalScrollPosition = clampedVerticalScrollPosition;
       arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
-        allTracksIterable,
+        visibleTracksIterable,
         trackGap,
       );
     }

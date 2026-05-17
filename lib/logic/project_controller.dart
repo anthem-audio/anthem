@@ -432,7 +432,12 @@ class ProjectController {
     final devicePortDefaults = DevicePortDefaults(project.processingGraph);
 
     for (final track in project.tracks.values) {
-      for (final device in track.devices) {
+      if (!track.hasProcessing) {
+        continue;
+      }
+      final processing = track.requireProcessing;
+
+      for (final device in processing.devices) {
         if (!device.nodeIds.contains(nodeId)) {
           continue;
         }

@@ -306,9 +306,12 @@ abstract class _ArrangerController {
     required double offset,
     double? width,
   }) {
-    project.startUndoGroup();
-
     final track = project.tracks[trackId]!;
+    if (track.isAutomationLane) {
+      return;
+    }
+
+    project.startUndoGroup();
 
     final pattern = PatternModel(idAllocator: _idAllocator, name: track.name)
       ..color = track.color.clone();

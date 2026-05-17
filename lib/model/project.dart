@@ -70,44 +70,55 @@ class ProjectModel extends _ProjectModel
     final List<Id> initTrackOrder = [];
     final List<Id> initSendTrackOrder = [];
 
+    void addTrackWithFakeAutomationLanes(TrackModel track, List<Id> orderList) {
+      initTracks[track.id] = track;
+      for (final lane in createFakeAutomationLanesForTrack(
+        idAllocator: idAllocator,
+        track: track,
+      )) {
+        initTracks[lane.id] = lane;
+      }
+      orderList.add(track.id);
+    }
+
     for (var i = 1; i <= 1; i++) {
       final track = TrackModel(
         idAllocator: idAllocator,
         name: 'Track $i',
         color: AnthemColor.randomHue(),
-        type: .instrument,
+        type: .normal,
       );
-      track.createAndRegisterNodes(this, idAllocator);
-      initTracks[track.id] = track;
-      initTrackOrder.add(track.id);
+      addTrackWithFakeAutomationLanes(track, initTrackOrder);
     }
 
-    final masterTrack =
-        TrackModel(
-            idAllocator: idAllocator,
-            name: 'Master',
-            color: AnthemColor.randomHue(),
-            type: .audio,
-          )
-          ..isMasterTrack = true
-          ..createAndRegisterNodes(this, idAllocator);
-    initTracks[masterTrack.id] = masterTrack;
-    initSendTrackOrder.add(masterTrack.id);
+    final masterTrack = TrackModel(
+      idAllocator: idAllocator,
+      name: 'Master',
+      color: AnthemColor.randomHue(),
+      type: .normal,
+    )..isMasterTrack = true;
+    addTrackWithFakeAutomationLanes(masterTrack, initSendTrackOrder);
 
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);
     sendTrackOrder = AnthemObservableList.of(initSendTrackOrder);
+
+    for (final trackId in initTrackOrder.followedBy(initSendTrackOrder)) {
+      initTracks[trackId]!.createAndRegisterNodes(this, idAllocator);
+    }
 
     final masterOutputPortId = processingGraph
         .getMasterOutputNode()
         .audioInputPorts
         .first
         .id;
+    final masterTrackProcessing = masterTrack.requireProcessing;
     for (final trackId in initTrackOrder.followedBy(initSendTrackOrder)) {
       final track = initTracks[trackId]!;
+      final processing = track.requireProcessing;
       final destinationNodeId = track.isMasterTrack
           ? processingGraph.masterOutputNodeId
-          : masterTrack.utilityNodeId!;
+          : masterTrackProcessing.utilityNodeId!;
       final destinationPortId = track.isMasterTrack
           ? masterOutputPortId
           : UtilityProcessorModel.audioInputPortId;
@@ -115,8 +126,8 @@ class ProjectModel extends _ProjectModel
       processingGraph.addConnection(
         NodeConnectionModel(
           idAllocator: idAllocator,
-          sourceNodeId: track.audioOutputNodeId,
-          sourcePortId: track.audioOutputPortId,
+          sourceNodeId: processing.audioOutputNodeId,
+          sourcePortId: processing.audioOutputPortId,
           destinationNodeId: destinationNodeId,
           destinationPortId: destinationPortId,
           dataType: NodePortDataType.audio,

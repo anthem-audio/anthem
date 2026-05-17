@@ -228,7 +228,7 @@ final _automationLaneButtonBackgroundFinder = find.byKey(
 
 class _TrackHeaderTestFixture {
   static const headerKey = Key('track-header-under-test');
-  static const viewSize = Size(190, 80);
+  static const viewSize = Size(190, 260);
 
   final ProjectModel project;
 

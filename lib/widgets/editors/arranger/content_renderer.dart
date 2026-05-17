@@ -266,9 +266,13 @@ class ArrangerContentPainter extends CustomPainterObserver {
     final width = (endX - startX).abs() - 1;
 
     if (width > 0) {
-      final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
+      final trackIndex = viewModel.trackPositionCalculator.tryTrackIdToIndex(
         trackId,
       );
+      if (trackIndex == null) {
+        return;
+      }
+
       final trackPos = _getTrackPosition(trackIndex);
       final trackHeight =
           viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
@@ -304,9 +308,13 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
     final (offset, trackId) = viewModel.hoverIndicatorPosition!;
 
-    final trackIndex = viewModel.trackPositionCalculator.trackIdToIndex(
+    final trackIndex = viewModel.trackPositionCalculator.tryTrackIdToIndex(
       trackId,
     );
+    if (trackIndex == null) {
+      return;
+    }
+
     final trackPos = _getTrackPosition(trackIndex);
     final trackHeight =
         viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
@@ -394,11 +402,11 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
           if (x > size.width || x + width < 0) return null;
 
-          final y =
-              _getTrackPosition(
-                viewModel.trackPositionCalculator.trackIdToIndex(trackId),
-              ) -
-              1;
+          final trackIndex = viewModel.trackPositionCalculator
+              .tryTrackIdToIndex(trackId);
+          if (trackIndex == null) return null;
+
+          final y = _getTrackPosition(trackIndex) - 1;
           final trackHeight =
               calculateTrackHeight(
                 viewModel.baseTrackHeight,

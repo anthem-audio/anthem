@@ -59,7 +59,12 @@ class _MixerState extends State<Mixer> {
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final trackController = serviceRegistry.trackController;
 
-    final tracks = trackController.getTracksIterable().toList();
+    final tracks = trackController
+        .getTracksIterable(includeCollapsedTracks: true)
+        .where(
+          (trackInfo) => project.tracks[trackInfo.$1]?.hasProcessing ?? false,
+        )
+        .toList();
 
     final firstSendTrackIndex = () {
       for (var i = 0; i < tracks.length; i++) {

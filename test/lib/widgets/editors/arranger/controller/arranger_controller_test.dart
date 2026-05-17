@@ -44,9 +44,13 @@ class MockProjectController extends Mock implements ProjectController {
 
 class MockTrackController extends Mock implements TrackController {
   @override
-  Iterable<(Id trackId, bool isSendTrack, int trackDepth)> getTracksIterable() {
+  Iterable<(Id trackId, bool isSendTrack, int trackDepth)> getTracksIterable({
+    bool includeCollapsedTracks = false,
+  }) {
     return super.noSuchMethod(
-          Invocation.method(#getTracksIterable, []),
+          Invocation.method(#getTracksIterable, [], {
+            #includeCollapsedTracks: includeCollapsedTracks,
+          }),
           returnValue: const <(Id, bool, int)>[],
         )
         as Iterable<(Id, bool, int)>;
@@ -96,7 +100,9 @@ TrackModel _makeTrack(Id id, String name, TrackType type) {
 
 Iterable<(Id trackId, bool isSendTrack, int trackDepth)> _getTracksIterable(
   ProjectModel project,
-) sync* {
+  ArrangerViewModel viewModel, {
+  required bool includeCollapsedTracks,
+}) sync* {
   final topLevelTracks = project.trackOrder
       .map((trackId) => (trackId, false))
       .followedBy(project.sendTrackOrder.map((trackId) => (trackId, true)));
@@ -109,6 +115,14 @@ Iterable<(Id trackId, bool isSendTrack, int trackDepth)> _getTracksIterable(
     yield (trackId, isSendTrack, currentDepth);
 
     final track = project.tracks[trackId]!;
+    if (!track.isAutomationLane &&
+        (includeCollapsedTracks ||
+            (viewModel.automationExpandedByTrackId[trackId] ?? false))) {
+      for (final automationLaneId in track.automationLanes) {
+        yield (automationLaneId, isSendTrack, currentDepth + 1);
+      }
+    }
+
     for (final childTrackId in track.childTracks) {
       yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
     }
@@ -143,16 +157,16 @@ class _ArrangerControllerTestFixture {
 
     final tracks = <Id, TrackModel>{
       _TrackIds.a: _makeTrack(_TrackIds.a, 'A', TrackType.group),
-      _TrackIds.a1: _makeTrack(_TrackIds.a1, 'A1', TrackType.instrument),
+      _TrackIds.a1: _makeTrack(_TrackIds.a1, 'A1', TrackType.normal),
       _TrackIds.a2: _makeTrack(_TrackIds.a2, 'A2', TrackType.group),
-      _TrackIds.a2a: _makeTrack(_TrackIds.a2a, 'A2a', TrackType.instrument),
-      _TrackIds.b: _makeTrack(_TrackIds.b, 'B', TrackType.instrument),
+      _TrackIds.a2a: _makeTrack(_TrackIds.a2a, 'A2a', TrackType.normal),
+      _TrackIds.b: _makeTrack(_TrackIds.b, 'B', TrackType.normal),
       _TrackIds.s: _makeTrack(_TrackIds.s, 'S', TrackType.group),
-      _TrackIds.s1: _makeTrack(_TrackIds.s1, 'S1', TrackType.instrument),
+      _TrackIds.s1: _makeTrack(_TrackIds.s1, 'S1', TrackType.normal),
       _TrackIds.master: _makeTrack(
         _TrackIds.master,
         'Master',
-        TrackType.instrument,
+        TrackType.normal,
       ),
     };
 
@@ -187,9 +201,10 @@ class _ArrangerControllerTestFixture {
     );
     final mockProjectController = MockProjectController();
     final mockTrackController = MockTrackController();
-    when(
-      mockTrackController.getTracksIterable(),
-    ).thenAnswer((_) => _getTracksIterable(project));
+    when(mockTrackController.getTracksIterable()).thenAnswer(
+      (_) =>
+          _getTracksIterable(project, viewModel, includeCollapsedTracks: false),
+    );
     ServiceRegistry.initializeProject(
       project,
       overrides: ProjectServiceFactoryOverrides([
@@ -197,6 +212,7 @@ class _ArrangerControllerTestFixture {
           projectControllerService,
           (_, _) => mockProjectController,
         ),
+        overrideService(arrangerViewModelService, (_, _) => viewModel),
         overrideService(trackControllerService, (_, _) => mockTrackController),
       ]),
     );

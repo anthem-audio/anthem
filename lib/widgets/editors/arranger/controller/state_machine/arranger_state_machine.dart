@@ -574,6 +574,11 @@ class ArrangerIdleState extends _ArrangerLeafState {
     final trackId = viewModel.trackPositionCalculator.trackIndexToId(
       fractionalTrackIndex.floor(),
     );
+    final track = project.tracks[trackId];
+    if (track == null || track.isAutomationLane) {
+      viewModel.hoverIndicatorPosition = null;
+      return;
+    }
 
     final offset = pixelsToTime(
       timeViewStart: interactionState.renderedTimeViewStart,

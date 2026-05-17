@@ -97,12 +97,12 @@ class _ArrangerStateMachineTestFixture {
     project.sequence = SequencerModel(idAllocator: _testIdAllocator());
 
     project.tracks = AnthemObservableMap.of({
-      _TrackIds.a: _makeTrack(_TrackIds.a, 'A', TrackType.instrument),
-      _TrackIds.b: _makeTrack(_TrackIds.b, 'B', TrackType.instrument),
+      _TrackIds.a: _makeTrack(_TrackIds.a, 'A', TrackType.normal),
+      _TrackIds.b: _makeTrack(_TrackIds.b, 'B', TrackType.normal),
       _TrackIds.master: _makeTrack(
         _TrackIds.master,
         'Master',
-        TrackType.instrument,
+        TrackType.normal,
       ),
     });
     project.trackOrder = AnthemObservableList.of([_TrackIds.a, _TrackIds.b]);
@@ -123,6 +123,7 @@ class _ArrangerStateMachineTestFixture {
       overrides: ProjectServiceFactoryOverrides([
         overrideService(projectViewModelService, (_, _) => projectViewModel),
         overrideService(projectControllerService, (_, _) => projectController),
+        overrideService(arrangerViewModelService, (_, _) => viewModel),
       ]),
     );
 

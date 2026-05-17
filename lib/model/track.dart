@@ -37,83 +37,30 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 part 'track.g.dart';
 
 @AnthemModel.syncedModel()
-class TrackModel extends _TrackModel
-    with _$TrackModel, _$TrackModelAnthemModelMixin {
-  TrackModel({
-    required ProjectEntityIdAllocator idAllocator,
-    required super.name,
-    required super.color,
-    required super.type,
-  }) : super(id: idAllocator.allocateId());
-
-  TrackModel.uninitialized()
+class TrackProcessingModel extends _TrackProcessingModel
+    with _$TrackProcessingModel, _$TrackProcessingModelAnthemModelMixin {
+  TrackProcessingModel()
     : super(
-        id: -1,
-        name: '',
-        color: AnthemColor.uninitialized(),
-        type: .hybrid,
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
       );
 
-  factory TrackModel.fromJson(Map<String, dynamic> json) =>
-      _$TrackModelAnthemModelMixin.fromJson(json);
+  TrackProcessingModel.uninitialized()
+    : super(
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
+      );
+
+  factory TrackProcessingModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackProcessingModelAnthemModelMixin.fromJson(json);
+
+  static List<String> buildDbMeterVisualizationIds(Id trackId) {
+    return ['db-meter-$trackId-left', 'db-meter-$trackId-right'];
+  }
 }
 
-@AnthemEnum()
-enum TrackType { instrument, audio, hybrid, group }
-
-abstract class _TrackModel
+abstract class _TrackProcessingModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  /// This track's ID.
-  ///
-  /// This ID must be used to key this track in [ProjectModel.tracks].
-  Id id;
-
-  /// The human-readable name of this track.
-  ///
-  /// Defaults to something like "Track 1".
-  @anthemObservable
-  String name;
-
-  /// The color of this track.
-  @anthemObservable
-  AnthemColor color;
-
-  /// The type of this track.
-  ///
-  /// This changes the track's behavior from the UI side. For example, all
-  /// tracks can have clips with any kind of content, but:
-  /// - Audio tracks may only allow audio clips in the UI, and will certainly
-  ///   default to them
-  /// - Instrument tracks may not be able to play audio? This is undecided as of
-  ///   writing.
-  /// - When creating a clip on a group track, a group clip will be created, and
-  ///   regular clips will not be allowed here
-  @anthemObservable
-  TrackType type;
-
-  /// IDs of the child tracks of this track.
-  ///
-  /// If this track is a group track, it likely has child tracks. These tracks
-  /// are referenced here.
-  ///
-  /// Note that these will not show up in the high-level track order or send
-  /// track order. They will show up in the [ProjectModel.tracks] map.
-  @anthemObservable
-  AnthemObservableList<Id> childTracks = AnthemObservableList<Id>();
-
-  @anthemObservable
-  /// The ID of the parent of this track, if there is any.
-  ///
-  /// This is calculated automatically after tracks are added, removed, or moved
-  /// around.
-  Id? parentTrackId;
-
-  /// Whether this track is the master track.
-  ///
-  /// The master track outputs to the speakers, and cannot be removed.
-  @anthemObservable
-  bool isMasterTrack = false;
-
   @anthemObservable
   Id? utilityNodeId;
 
@@ -125,14 +72,14 @@ abstract class _TrackModel
   NodeModel? get dbMeterNode => project.processingGraph.nodes[dbMeterNodeId];
 
   @anthemObservable
-  AnthemObservableList<DeviceModel> devices = AnthemObservableList();
+  AnthemObservableList<DeviceModel> devices;
 
   /// Generated rack routing connection IDs.
   ///
   /// These connections are derived from [devices] and should be rebuilt rather
   /// than edited as device-owned graph state.
   @anthemObservable
-  AnthemObservableList<Id> deviceRoutingConnectionIds = AnthemObservableList();
+  AnthemObservableList<Id> deviceRoutingConnectionIds;
 
   /// Sequence note provider node assigned to this track.
   ///
@@ -155,10 +102,8 @@ abstract class _TrackModel
   Id get audioOutputNodeId => utilityNodeId!;
   int get audioOutputPortId => UtilityProcessorModel.audioOutputPortId;
 
-  /// Returns all processing graph node IDs currently owned by this track.
-  ///
-  /// This is the single source of truth for which nodes are considered part of
-  /// a track for lifecycle operations such as remove/restore.
+  TrackModel get track => getFirstAncestorOfType<TrackModel>();
+
   List<Id> getOwnedNodeIds() {
     return [
       utilityNodeId,
@@ -170,27 +115,15 @@ abstract class _TrackModel
   }
 
   /// Visualization IDs used for this track's stereo dB meter.
-  List<String> get dbMeterVisualizationIds => buildDbMeterVisualizationIds(id);
+  List<String> get dbMeterVisualizationIds =>
+      TrackProcessingModel.buildDbMeterVisualizationIds(track.id);
 
-  static List<String> buildDbMeterVisualizationIds(Id trackId) {
-    return ['db-meter-$trackId-left', 'db-meter-$trackId-right'];
-  }
+  void createAndRegisterNodes({
+    required ProjectModel project,
+    required ProjectEntityIdAllocator idAllocator,
+  }) {
+    final trackId = track.id;
 
-  _TrackModel({
-    required this.id,
-    required this.name,
-    required this.color,
-    required this.type,
-  }) : utilityNodeId = null,
-       dbMeterNodeId = null,
-       sequenceNoteProviderNodeId = null,
-       liveEventProviderNodeId = null,
-       super();
-
-  void createAndRegisterNodes(
-    ProjectModel project,
-    ProjectEntityIdAllocator idAllocator,
-  ) {
     final utilityNode = UtilityProcessorModel.create(
       idAllocator: idAllocator,
     ).createNode();
@@ -218,7 +151,7 @@ abstract class _TrackModel
 
     final sequenceNoteProviderNode = SequenceNoteProviderProcessorModel.create(
       idAllocator: idAllocator,
-      trackId: id,
+      trackId: trackId,
     ).createNode();
     sequenceNoteProviderNodeId = sequenceNoteProviderNode.id;
     project.processingGraph.addNode(sequenceNoteProviderNode);
@@ -229,4 +162,167 @@ abstract class _TrackModel
     liveEventProviderNodeId = liveEventProviderNode.id;
     project.processingGraph.addNode(liveEventProviderNode);
   }
+
+  _TrackProcessingModel({
+    required this.devices,
+    required this.deviceRoutingConnectionIds,
+  }) : utilityNodeId = null,
+       dbMeterNodeId = null,
+       sequenceNoteProviderNodeId = null,
+       liveEventProviderNodeId = null,
+       super();
+}
+
+@AnthemModel.syncedModel()
+class TrackModel extends _TrackModel
+    with _$TrackModel, _$TrackModelAnthemModelMixin {
+  TrackModel({
+    required ProjectEntityIdAllocator idAllocator,
+    required super.name,
+    required super.color,
+    required super.type,
+  }) : super(
+         id: idAllocator.allocateId(),
+         processing: type == TrackType.automationLane
+             ? null
+             : TrackProcessingModel(),
+       );
+
+  TrackModel.uninitialized()
+    : super(
+        id: -1,
+        name: '',
+        color: AnthemColor.uninitialized(),
+        type: .normal,
+        processing: null,
+      );
+
+  factory TrackModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackModelAnthemModelMixin.fromJson(json);
+}
+
+@AnthemEnum()
+enum TrackType { normal, group, automationLane }
+
+List<TrackModel> createFakeAutomationLanesForTrack({
+  required ProjectEntityIdAllocator idAllocator,
+  required TrackModel track,
+}) {
+  if (track.isAutomationLane) {
+    return const [];
+  }
+
+  final lanes = <TrackModel>[];
+  for (var i = 0; i < 3; i++) {
+    final lane = TrackModel(
+      idAllocator: idAllocator,
+      name: 'Automation ${i + 1}',
+      color: track.color.clone(),
+      type: TrackType.automationLane,
+    )..automationLaneParentTrackId = track.id;
+
+    lanes.add(lane);
+  }
+
+  track.automationLanes
+    ..clear()
+    ..addAll(lanes.map((lane) => lane.id));
+
+  return lanes;
+}
+
+abstract class _TrackModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
+  /// This track's ID.
+  ///
+  /// This ID must be used to key this track in [ProjectModel.tracks].
+  Id id;
+
+  /// The human-readable name of this track.
+  ///
+  /// Defaults to something like "Track 1".
+  @anthemObservable
+  String name;
+
+  /// The color of this track.
+  @anthemObservable
+  AnthemColor color;
+
+  /// The type of this track.
+  ///
+  /// Normal and group tracks participate in processing. Automation lanes are
+  /// owned by another track and do not own devices or processing graph nodes.
+  @anthemObservable
+  TrackType type;
+
+  /// IDs of the child tracks of this track.
+  ///
+  /// If this track is a group track, it likely has child tracks. These tracks
+  /// are referenced here.
+  ///
+  /// Note that these will not show up in the high-level track order or send
+  /// track order. They will show up in the [ProjectModel.tracks] map.
+  @anthemObservable
+  AnthemObservableList<Id> childTracks = AnthemObservableList<Id>();
+
+  /// IDs of automation lanes owned by this track.
+  ///
+  /// These lanes are rendered below this track when automation is expanded, but
+  /// they are not group children and do not participate in audio processing.
+  @anthemObservable
+  AnthemObservableList<Id> automationLanes = AnthemObservableList<Id>();
+
+  @anthemObservable
+  /// The ID of the parent of this track, if there is any.
+  ///
+  /// This is calculated automatically after tracks are added, removed, or moved
+  /// around.
+  Id? parentTrackId;
+
+  /// Whether this track is the master track.
+  ///
+  /// The master track outputs to the speakers, and cannot be removed.
+  @anthemObservable
+  bool isMasterTrack = false;
+
+  /// The track that owns this automation lane, if this track is an automation
+  /// lane.
+  @anthemObservable
+  Id? automationLaneParentTrackId;
+
+  /// Audio/event processing state for normal and group tracks.
+  ///
+  /// Automation lanes deliberately leave this null.
+  @anthemObservable
+  TrackProcessingModel? processing;
+
+  bool get isAutomationLane => type == TrackType.automationLane;
+  bool get hasProcessing => processing != null;
+
+  TrackProcessingModel get requireProcessing {
+    final processing = this.processing;
+    if (processing == null) {
+      throw StateError('Track $id does not have processing state.');
+    }
+
+    return processing;
+  }
+
+  void createAndRegisterNodes(
+    ProjectModel project,
+    ProjectEntityIdAllocator idAllocator,
+  ) {
+    requireProcessing.createAndRegisterNodes(
+      project: project,
+      idAllocator: idAllocator,
+    );
+  }
+
+  _TrackModel({
+    required this.id,
+    required this.name,
+    required this.color,
+    required this.type,
+    required this.processing,
+  }) : super();
 }
