@@ -60,7 +60,13 @@ class _RecordingProcessingGraphApi implements ProcessingGraphApi {
   Future<String> getPluginState(Id nodeId) async => '';
 
   @override
+  void openPluginWindow(Id nodeId) {}
+
+  @override
   void sendLiveEvent(Id liveEventProviderNodeId, Object event) {}
+
+  @override
+  void setPluginParameterValue(Id nodeId, int controlPortId, double value) {}
 
   @override
   void setPluginState(Id nodeId, String state) {}

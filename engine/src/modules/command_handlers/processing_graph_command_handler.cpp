@@ -256,8 +256,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     if (node == nullptr) {
       juce::Logger::writeToLog(
-          "Node " + toIdString(openPluginWindowRequest.nodeId) +
-              " not found in processing graph.");
+          "Node " + toIdString(openPluginWindowRequest.nodeId) + " not found in processing graph.");
       return std::nullopt;
     }
 

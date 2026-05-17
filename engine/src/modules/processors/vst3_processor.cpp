@@ -48,8 +48,7 @@ ProcessorPrepareResult makeVST3PrepareError(std::string error) {
   };
 }
 
-std::optional<int64_t> getVST3ParameterControlPortId(
-    juce::AudioProcessorParameter& parameter) {
+std::optional<int64_t> getVST3ParameterControlPortId(juce::AudioProcessorParameter& parameter) {
   auto* hostedParameter = dynamic_cast<juce::HostedAudioProcessorParameter*>(&parameter);
   if (hostedParameter == nullptr) {
     return std::nullopt;
@@ -585,8 +584,7 @@ void VST3Processor::bringPluginWindowToFront() {
 std::optional<std::string> VST3Processor::setPluginParameterValue(
     int64_t controlPortId, double value) {
   if (pluginInstance == nullptr) {
-    writeVST3Log(*this,
-        "setPluginParameterValue() skipped because no plugin instance exists yet.");
+    writeVST3Log(*this, "setPluginParameterValue() skipped because no plugin instance exists yet.");
     return std::string("Plugin instance is not loaded yet.");
   }
 

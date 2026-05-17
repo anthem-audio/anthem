@@ -528,7 +528,7 @@ private:
   }
 
   void rt_markNodeProcessed() {
-    const auto previousRemainingNodeCount =
+    [[maybe_unused]] const auto previousRemainingNodeCount =
         rt_remainingNodeCount.fetch_sub(1, std::memory_order_acq_rel);
     jassert(previousRemainingNodeCount > 0);
   }

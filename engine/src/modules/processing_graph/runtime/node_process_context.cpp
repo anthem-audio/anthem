@@ -235,8 +235,7 @@ bool NodeProcessContext::hasAudioProcessBuffer() const {
   return audioProcessBufferView.has_value();
 }
 
-NodeProcessContext::InputControlSignal NodeProcessContext::getInputControlSignal(
-    int64_t id) const {
+NodeProcessContext::InputControlSignal NodeProcessContext::getInputControlSignal(int64_t id) const {
   auto* buffer = getInputControlBuffer(id);
   if (buffer != nullptr) {
     return InputControlSignal{
