@@ -74,6 +74,9 @@ abstract class _ArrangerViewModel with Store {
   @observable
   ObservableMap<Id, double> trackHeightModifiers;
 
+  /// Whether each track's automation lanes are expanded in the arranger.
+  final ObservableMap<Id, bool> automationExpandedByTrackId;
+
   /// Vertical scroll position, in pixels.
   @observable
   double verticalScrollPosition = 0;
@@ -141,6 +144,11 @@ abstract class _ArrangerViewModel with Store {
        trackHeightModifiers = ObservableMap.of(
          project.tracks.nonObservableInner.map(
            (key, value) => MapEntry(key, 1),
+         ),
+       ),
+       automationExpandedByTrackId = ObservableMap.of(
+         project.tracks.nonObservableInner.map(
+           (key, value) => MapEntry(key, false),
          ),
        ) {
     trackPositionCalculator = TrackPositionAndSize(
@@ -212,10 +220,12 @@ abstract class _ArrangerViewModel with Store {
 
   void registerTrack(Id trackId) {
     trackHeightModifiers[trackId] = 1;
+    automationExpandedByTrackId[trackId] = false;
   }
 
   void unregisterTrack(Id trackId) {
     trackHeightModifiers.remove(trackId);
+    automationExpandedByTrackId.remove(trackId);
   }
 }
 

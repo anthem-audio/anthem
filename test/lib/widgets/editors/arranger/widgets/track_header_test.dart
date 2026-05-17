@@ -20,6 +20,8 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
@@ -30,6 +32,147 @@ import 'package:provider/provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('automation lane button', () {
+    testWidgets('appears only while the track content is hovered', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+      await fixture.pump(tester);
+
+      expect(_automationLaneButtonFinder, findsNothing);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await fixture.hoverTrackContent(tester, mouse);
+
+      expect(_automationLaneButtonFinder, findsOneWidget);
+
+      await mouse.moveTo(const Offset(400, 400));
+      await tester.pump();
+
+      expect(_automationLaneButtonFinder, findsNothing);
+    });
+
+    testWidgets('pins to the bottom-left of the track content', (tester) async {
+      final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 70);
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+      await fixture.pump(tester);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await fixture.hoverTrackContent(tester, mouse);
+
+      final contentBoxRect = fixture.trackFixedContentRect(tester);
+      final backgroundRect = tester.getRect(
+        _automationLaneButtonBackgroundFinder,
+      );
+      final buttonRect = tester.getRect(_automationLaneButtonFinder);
+      final background = tester.widget<Container>(
+        _automationLaneButtonBackgroundFinder,
+      );
+
+      expect(background.color, AnthemTheme.panel.main);
+      expect(backgroundRect.left, contentBoxRect.left - 4);
+      expect(backgroundRect.bottom, contentBoxRect.bottom + 4);
+      expect(backgroundRect.width, 28);
+      expect(backgroundRect.height, 28);
+      expect(buttonRect.left, contentBoxRect.left);
+      expect(buttonRect.bottom, contentBoxRect.bottom);
+    });
+
+    testWidgets('centers vertically in the compact track layout', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 40);
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+      await fixture.pump(tester);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await fixture.hoverTrackContent(tester, mouse);
+
+      final contentBoxRect = fixture.trackFixedContentRect(tester);
+      final buttonRect = tester.getRect(_automationLaneButtonFinder);
+
+      expect(buttonRect.left, contentBoxRect.left);
+      expect(buttonRect.center.dy, moreOrLessEquals(contentBoxRect.center.dy));
+    });
+
+    testWidgets('does not pass clicks through to the track header', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+      await fixture.pump(tester);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await fixture.hoverTrackContent(tester, mouse);
+      await mouse.down(tester.getCenter(_automationLaneButtonFinder));
+      await tester.pump();
+      await mouse.up();
+      await tester.pump();
+
+      expect(
+        fixture.arrangerViewModel.selectedTracks,
+        isNot(contains(fixture.trackId)),
+      );
+    });
+
+    testWidgets('toggles the track automation expansion state', (tester) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+      await fixture.pump(tester);
+
+      expect(
+        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
+        isFalse,
+      );
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await fixture.hoverTrackContent(tester, mouse);
+
+      expect(
+        tester.widget<Button>(_automationLaneButtonFinder).toggleState,
+        isFalse,
+      );
+
+      await fixture.clickAutomationLaneButton(tester, mouse);
+
+      expect(
+        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
+        isTrue,
+      );
+      expect(
+        tester.widget<Button>(_automationLaneButtonFinder).toggleState,
+        isTrue,
+      );
+
+      await fixture.clickAutomationLaneButton(tester, mouse);
+
+      expect(
+        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
+        isFalse,
+      );
+      expect(
+        tester.widget<Button>(_automationLaneButtonFinder).toggleState,
+        isFalse,
+      );
+    });
+  });
 
   testWidgets('single click selects the track without opening an editor', (
     tester,
@@ -75,6 +218,14 @@ void main() {
   });
 }
 
+final _automationLaneButtonFinder = find.byKey(
+  const ValueKey<String>('track-header-automation-lane-button'),
+);
+
+final _automationLaneButtonBackgroundFinder = find.byKey(
+  const ValueKey<String>('track-header-automation-lane-button-background'),
+);
+
 class _TrackHeaderTestFixture {
   static const headerKey = Key('track-header-under-test');
   static const viewSize = Size(190, 80);
@@ -83,11 +234,14 @@ class _TrackHeaderTestFixture {
 
   _TrackHeaderTestFixture._(this.project);
 
-  factory _TrackHeaderTestFixture.create() {
+  factory _TrackHeaderTestFixture.create({double? baseTrackHeight}) {
     final project = ProjectModel.create();
     ServiceRegistry.initializeProject(project);
 
     final fixture = _TrackHeaderTestFixture._(project);
+    if (baseTrackHeight != null) {
+      fixture.arrangerViewModel.baseTrackHeight = baseTrackHeight;
+    }
     fixture.arrangerViewModel.trackPositionCalculator.invalidate(
       viewSize.height,
     );
@@ -102,6 +256,11 @@ class _TrackHeaderTestFixture {
   ArrangerViewModel get arrangerViewModel => serviceRegistry.arrangerViewModel;
 
   Id get trackId => project.trackOrder.first;
+
+  double get trackHeight =>
+      arrangerViewModel.trackPositionCalculator.getTrackHeight(
+        arrangerViewModel.trackPositionCalculator.trackIdToIndex(trackId),
+      );
 
   Future<void> pump(WidgetTester tester) async {
     arrangerViewModel.trackPositionCalculator.invalidate(viewSize.height);
@@ -124,6 +283,48 @@ class _TrackHeaderTestFixture {
       ),
     );
     await tester.pump(const Duration(milliseconds: 1));
+  }
+
+  Rect trackContentRect(WidgetTester tester) {
+    final headerTopLeft = tester.getTopLeft(find.byKey(headerKey));
+
+    return Rect.fromLTWH(
+      headerTopLeft.dx + 9,
+      headerTopLeft.dy,
+      viewSize.width - 9,
+      trackHeight - 1,
+    );
+  }
+
+  Rect trackFixedContentRect(WidgetTester tester) {
+    final trackContentRect = this.trackContentRect(tester);
+    final contentHeight = switch (trackContentRect.height) {
+      >= 78 => 68.0,
+      >= 52 => 44.0,
+      _ => 20.0,
+    };
+
+    return Rect.fromLTWH(
+      trackContentRect.left + 4,
+      trackContentRect.top + (trackContentRect.height - contentHeight) / 2,
+      trackContentRect.width - 8,
+      contentHeight,
+    );
+  }
+
+  Future<void> hoverTrackContent(WidgetTester tester, TestGesture mouse) async {
+    await mouse.moveTo(trackContentRect(tester).center);
+    await tester.pump();
+  }
+
+  Future<void> clickAutomationLaneButton(
+    WidgetTester tester,
+    TestGesture mouse,
+  ) async {
+    await mouse.down(tester.getCenter(_automationLaneButtonFinder));
+    await tester.pump();
+    await mouse.up();
+    await tester.pump();
   }
 
   Future<void> clickHeader(WidgetTester tester, TestGesture mouse) async {

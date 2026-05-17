@@ -48,6 +48,25 @@ class TrackHeader extends StatefulObserverWidget {
   State<TrackHeader> createState() => _TrackHeaderState();
 }
 
+const _trackContentPadding = EdgeInsets.symmetric(horizontal: 4, vertical: 4);
+const _trackCompactHeightThreshold = 52.0;
+const _trackTallHeightThreshold = 78.0;
+const _trackCompactContentHeight = 20.0;
+const _trackMediumContentHeight = 44.0;
+const _trackTallContentHeight = 68.0;
+
+double _trackContentHeightFor(double availableHeight) {
+  if (availableHeight >= _trackTallHeightThreshold) {
+    return _trackTallContentHeight;
+  }
+
+  if (availableHeight >= _trackCompactHeightThreshold) {
+    return _trackMediumContentHeight;
+  }
+
+  return _trackCompactContentHeight;
+}
+
 class _TrackHeaderState extends State<TrackHeader> {
   static const _doubleClickThreshold = Duration(milliseconds: 500);
   static const _maxDoubleClickDistance = 8.0;
@@ -111,6 +130,13 @@ class _TrackHeaderState extends State<TrackHeader> {
     final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(
       viewModel.trackPositionCalculator.trackIdToIndex(widget.trackId),
     );
+    final isAutomationExpanded =
+        viewModel.automationExpandedByTrackId[track.id] ?? false;
+
+    void toggleAutomationExpanded() {
+      viewModel.automationExpandedByTrackId[track.id] =
+          !(viewModel.automationExpandedByTrackId[track.id] ?? false);
+    }
 
     void onClick() {
       if (HardwareKeyboard.instance.isShiftPressed) {
@@ -227,7 +253,12 @@ class _TrackHeaderState extends State<TrackHeader> {
                     Container(
                       height: trackHeight - 1,
                       color: trackBackgroundColor,
-                      child: _TrackContent(track: track),
+                      child: _TrackContent(
+                        track: track,
+                        backgroundColor: trackBackgroundColor,
+                        automationExpanded: isAutomationExpanded,
+                        onToggleAutomationExpanded: toggleAutomationExpanded,
+                      ),
                     ),
                     SizedBox(height: 1),
                     ...track.childTracks.map(
@@ -244,10 +275,25 @@ class _TrackHeaderState extends State<TrackHeader> {
   }
 }
 
-class _TrackContent extends StatelessWidget {
+class _TrackContent extends StatefulWidget {
   final TrackModel track;
+  final Color backgroundColor;
+  final bool automationExpanded;
+  final VoidCallback onToggleAutomationExpanded;
 
-  const _TrackContent({required this.track});
+  const _TrackContent({
+    required this.track,
+    required this.backgroundColor,
+    required this.automationExpanded,
+    required this.onToggleAutomationExpanded,
+  });
+
+  @override
+  State<_TrackContent> createState() => _TrackContentState();
+}
+
+class _TrackContentState extends State<_TrackContent> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -255,131 +301,201 @@ class _TrackContent extends StatelessWidget {
       builder: (context, constraints) {
         final height = constraints.maxHeight;
 
-        const heightThreshold1 = 52;
-        const heightThreshold2 = 78;
-
-        return Observer(
-          builder: (context) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Center(
-                child: Row(
-                  crossAxisAlignment: height >= heightThreshold1
-                      ? .start
-                      : .center,
-                  spacing: 4,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        track.name,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: height >= heightThreshold1 ? 2 : 1,
-                        style: TextStyle(
-                          color: AnthemTheme.text.main,
-                          fontSize: 11,
-                          fontWeight: .w500,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 70,
-                      child: Column(
-                        mainAxisSize: .min,
-                        crossAxisAlignment: .stretch,
-                        spacing: 4,
-                        children: [
-                          _TrackControlButtons(),
-                          if (height >= heightThreshold1)
-                            Slider(
-                              value:
-                                  track.utilityNode
-                                      ?.getPortById(
-                                        UtilityProcessorModel.gainPortId,
-                                      )
-                                      .parameterValue ??
-                                  gainParameterZeroDbNormalized,
-                              min: 0,
-                              max: 1,
-                              height: 20,
-                              borderRadius: 4,
-                              stickyPoints: [gainParameterZeroDbNormalized],
-                              hint: (v) =>
-                                  'Track gain: ${gainParameterValueToString(v)}',
-                              onValueChanged: (value) {
-                                final node = track.utilityNode;
-                                if (node == null) return;
-
-                                node
-                                        .getPortById(
-                                          UtilityProcessorModel.gainPortId,
-                                        )
-                                        .parameterValue =
-                                    value;
-                              },
-                            ),
-                          if (height >= heightThreshold2)
-                            Slider(
-                              value: UtilityProcessorModel.parameterValueToPan(
-                                track.utilityNode
-                                        ?.getPortById(
-                                          UtilityProcessorModel.balancePortId,
-                                        )
-                                        .parameterValue ??
-                                    UtilityProcessorModel.panToParameterValue(
-                                      0,
-                                    ),
-                              ),
-                              min: -1,
-                              max: 1,
-                              height: 20,
-                              borderRadius: 4,
-                              type: .pan,
-                              stickyPoints: [0],
-                              hint: (v) =>
-                                  'Track balance: ${UtilityProcessorModel.parameterValueToString(UtilityProcessorModel.panToParameterValue(v))}',
-                              onValueChanged: (value) {
-                                final node = track.utilityNode;
-                                if (node == null) return;
-
-                                node
-                                        .getPortById(
-                                          UtilityProcessorModel.balancePortId,
-                                        )
-                                        .parameterValue =
-                                    UtilityProcessorModel.panToParameterValue(
-                                      value,
-                                    );
-                              },
-                            ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 9,
-                      // This is a bit ugly but avoids an IntrinsicHeight, which the
-                      // docs say is slow, and I don't really want to find out why
-                      height: height >= heightThreshold2
-                          ? 68
-                          : height >= heightThreshold1
-                          ? 44
-                          : 20,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AnthemTheme.panel.border),
-                        borderRadius: .circular(2),
-                        color: AnthemTheme.control.background,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(1),
-                        child: _TrackDbMeter(track: track),
-                      ),
-                    ),
-                  ],
+        return MouseRegion(
+          onEnter: (_) {
+            setState(() {
+              _hovered = true;
+            });
+          },
+          onExit: (_) {
+            setState(() {
+              _hovered = false;
+            });
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Padding(
+                padding: _trackContentPadding,
+                child: Center(
+                  child: _TrackContentRow(track: widget.track, height: height),
                 ),
               ),
-            );
-          },
+              if (_hovered)
+                _TrackAutomationLaneButton(
+                  backgroundColor: widget.backgroundColor,
+                  contentPadding: _trackContentPadding,
+                  contentAreaHeight: height,
+                  contentHeight: _trackContentHeightFor(height),
+                  automationExpanded: widget.automationExpanded,
+                  onToggleAutomationExpanded: widget.onToggleAutomationExpanded,
+                ),
+            ],
+          ),
         );
       },
+    );
+  }
+}
+
+class _TrackAutomationLaneButton extends StatelessWidget {
+  final Color backgroundColor;
+  final EdgeInsets contentPadding;
+  final double contentAreaHeight;
+  final double contentHeight;
+  final bool automationExpanded;
+  final VoidCallback onToggleAutomationExpanded;
+
+  const _TrackAutomationLaneButton({
+    required this.backgroundColor,
+    required this.contentPadding,
+    required this.contentAreaHeight,
+    required this.contentHeight,
+    required this.automationExpanded,
+    required this.onToggleAutomationExpanded,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const buttonSize = 20.0;
+    final contentTop = (contentAreaHeight - contentHeight) / 2;
+    final contentBottom = contentTop + contentHeight;
+    final top = contentBottom - buttonSize - contentPadding.top;
+
+    final button = Container(
+      key: const ValueKey('track-header-automation-lane-button-background'),
+      color: backgroundColor,
+      padding: contentPadding,
+      child: Button(
+        key: const ValueKey('track-header-automation-lane-button'),
+        consumePress: true,
+        contentPadding: const EdgeInsets.all(2),
+        height: buttonSize,
+        width: buttonSize,
+        icon: Icons.automationEditor,
+        toggleState: automationExpanded,
+        onPress: onToggleAutomationExpanded,
+        hint: [
+          .new(
+            'click',
+            automationExpanded
+                ? 'Hide automation lanes'
+                : 'Show automation lanes',
+          ),
+        ],
+      ),
+    );
+
+    return Positioned(left: 0, top: top, child: button);
+  }
+}
+
+class _TrackContentRow extends StatelessObserverWidget {
+  final TrackModel track;
+  final double height;
+
+  const _TrackContentRow({required this.track, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: height >= _trackCompactHeightThreshold
+          ? .start
+          : .center,
+      spacing: 4,
+      children: [
+        Expanded(
+          child: Text(
+            track.name,
+            overflow: TextOverflow.ellipsis,
+            maxLines: height >= _trackCompactHeightThreshold ? 2 : 1,
+            style: TextStyle(
+              color: AnthemTheme.text.main,
+              fontSize: 11,
+              fontWeight: .w500,
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 70,
+          child: Column(
+            mainAxisSize: .min,
+            crossAxisAlignment: .stretch,
+            spacing: 4,
+            children: [
+              _TrackControlButtons(),
+              if (height >= _trackCompactHeightThreshold)
+                Slider(
+                  value:
+                      track.utilityNode
+                          ?.getPortById(UtilityProcessorModel.gainPortId)
+                          .parameterValue ??
+                      gainParameterZeroDbNormalized,
+                  min: 0,
+                  max: 1,
+                  height: 20,
+                  borderRadius: 4,
+                  stickyPoints: [gainParameterZeroDbNormalized],
+                  hint: (v) => 'Track gain: ${gainParameterValueToString(v)}',
+                  onValueChanged: (value) {
+                    final node = track.utilityNode;
+                    if (node == null) return;
+
+                    node
+                            .getPortById(UtilityProcessorModel.gainPortId)
+                            .parameterValue =
+                        value;
+                  },
+                ),
+              if (height >= _trackTallHeightThreshold)
+                Slider(
+                  value: UtilityProcessorModel.parameterValueToPan(
+                    track.utilityNode
+                            ?.getPortById(UtilityProcessorModel.balancePortId)
+                            .parameterValue ??
+                        UtilityProcessorModel.panToParameterValue(0),
+                  ),
+                  min: -1,
+                  max: 1,
+                  height: 20,
+                  borderRadius: 4,
+                  type: .pan,
+                  stickyPoints: [0],
+                  hint: (v) =>
+                      'Track balance: ${UtilityProcessorModel.parameterValueToString(UtilityProcessorModel.panToParameterValue(v))}',
+                  onValueChanged: (value) {
+                    final node = track.utilityNode;
+                    if (node == null) return;
+
+                    node
+                            .getPortById(UtilityProcessorModel.balancePortId)
+                            .parameterValue =
+                        UtilityProcessorModel.panToParameterValue(value);
+                  },
+                ),
+            ],
+          ),
+        ),
+        Container(
+          width: 9,
+          // This is a bit ugly but avoids an IntrinsicHeight, which the
+          // docs say is slow, and I don't really want to find out why
+          height: height >= _trackTallHeightThreshold
+              ? _trackTallContentHeight
+              : height >= _trackCompactHeightThreshold
+              ? _trackMediumContentHeight
+              : _trackCompactContentHeight,
+          decoration: BoxDecoration(
+            border: Border.all(color: AnthemTheme.panel.border),
+            borderRadius: .circular(2),
+            color: AnthemTheme.control.background,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(1),
+            child: _TrackDbMeter(track: track),
+          ),
+        ),
+      ],
     );
   }
 }
