@@ -48,6 +48,21 @@ ProcessorPrepareResult makeVST3PrepareError(std::string error) {
   };
 }
 
+std::optional<std::string> makeOptionalTrimmedString(const juce::String& value) {
+  const auto trimmed = value.trim();
+
+  if (trimmed.isEmpty()) {
+    return std::nullopt;
+  }
+
+  return trimmed.toStdString();
+}
+
+std::optional<std::string> getParameterDisplayText(
+    juce::AudioProcessorParameter& parameter, float value) {
+  return makeOptionalTrimmedString(parameter.getText(value, 64));
+}
+
 std::optional<int64_t> getVST3ParameterControlPortId(juce::AudioProcessorParameter& parameter) {
   auto* hostedParameter = dynamic_cast<juce::HostedAudioProcessorParameter*>(&parameter);
   if (hostedParameter == nullptr) {
@@ -55,23 +70,6 @@ std::optional<int64_t> getVST3ParameterControlPortId(juce::AudioProcessorParamet
   }
 
   return hostedParameter->getParameterID().getLargeIntValue();
-}
-
-std::optional<int64_t> getVST3ParameterControlPortIdForIndex(
-    juce::AudioPluginInstance& pluginInstance, int parameterIndex) {
-  const auto& parameters = pluginInstance.getParameters();
-
-  if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
-    return std::nullopt;
-  }
-
-  auto* parameter = parameters[parameterIndex];
-
-  if (parameter == nullptr) {
-    return std::nullopt;
-  }
-
-  return getVST3ParameterControlPortId(*parameter);
 }
 
 void addMidiMessageToEventBuffer(
@@ -139,6 +137,7 @@ void VST3Processor::rebindEditorWindowCloseCallback() {
 
 ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
   ProcessorNodePortConfiguration portConfiguration;
+  std::vector<ProcessorParameterValue> parameterValues;
   parametersByPortId.clear();
 
   if (audioInputPortIdForPlugin.has_value()) {
@@ -177,6 +176,7 @@ ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
 
     parametersByPortId.reserve(static_cast<size_t>(parameters.size()));
     portConfiguration.controlInputPorts.reserve(static_cast<size_t>(parameters.size()));
+    parameterValues.reserve(static_cast<size_t>(parameters.size()));
 
     for (auto* parameter : parameters) {
       if (parameter == nullptr) {
@@ -204,6 +204,15 @@ ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
           .name = parameter->getName(128).toStdString(),
           .channelCount = std::nullopt,
           .parameterDefaultValue = static_cast<double>(parameter->getDefaultValue()),
+          .parameterDisplayMode = std::string("pluginText"),
+          .parameterUnitLabel = makeOptionalTrimmedString(parameter->getLabel()),
+      });
+
+      const auto currentValue = parameter->getValue();
+      parameterValues.push_back(ProcessorParameterValue{
+          .controlPortId = *parameterControlPortId,
+          .value = static_cast<double>(currentValue),
+          .displayText = getParameterDisplayText(*parameter, currentValue),
       });
     }
   }
@@ -212,6 +221,7 @@ ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
       .success = true,
       .error = std::nullopt,
       .portConfiguration = std::move(portConfiguration),
+      .parameterValues = std::move(parameterValues),
   };
 }
 
@@ -437,7 +447,11 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
 
         selfShared->pluginInstance = std::move(instance);
         selfShared->pluginInstance->addListener(selfShared.get());
-        writeVST3Log(*selfShared, "Plugin listener attached. Sending PluginLoadedEvent to UI.");
+        writeVST3Log(*selfShared, "Plugin listener attached.");
+
+        complete(selfShared->buildPrepareResultForPlugin());
+
+        writeVST3Log(*selfShared, "Sending PluginLoadedEvent to UI.");
 
         Response event = PluginLoadedEvent{.nodeId = selfShared->nodeId(),
             .responseBase = ResponseBase{
@@ -446,8 +460,6 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
 
         auto eventString = rfl::json::write(event);
         Engine::getInstance().comms.send(eventString);
-
-        complete(selfShared->buildPrepareResultForPlugin());
       });
 }
 
@@ -581,6 +593,46 @@ void VST3Processor::bringPluginWindowToFront() {
   });
 }
 
+void VST3Processor::sendPluginParameterChangedEvent(
+    int64_t controlPortId, juce::AudioProcessorParameter& parameter, float value) {
+  Response event = PluginParameterChangedEvent{.nodeId = nodeId(),
+      .controlPortId = controlPortId,
+      .value = value,
+      .displayText = getParameterDisplayText(parameter, value),
+      .responseBase = ResponseBase{
+          .id = -1,
+      }};
+
+  auto eventString = rfl::json::write(event);
+  Engine::getInstance().comms.send(eventString);
+}
+
+void VST3Processor::sendPluginParameterSnapshotEvent() {
+  auto parameterValues = std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>();
+  parameterValues->reserve(parametersByPortId.size());
+
+  for (const auto& [controlPortId, parameter] : parametersByPortId) {
+    if (parameter == nullptr) {
+      continue;
+    }
+
+    const auto value = parameter->getValue();
+    parameterValues->push_back(std::make_shared<ProcessingGraphParameterValue>(
+        ProcessingGraphParameterValue{.controlPortId = controlPortId,
+            .value = static_cast<double>(value),
+            .displayText = getParameterDisplayText(*parameter, value)}));
+  }
+
+  Response event = PluginParameterSnapshotEvent{.nodeId = nodeId(),
+      .parameterValues = parameterValues,
+      .responseBase = ResponseBase{
+          .id = -1,
+      }};
+
+  auto eventString = rfl::json::write(event);
+  Engine::getInstance().comms.send(eventString);
+}
+
 std::optional<std::string> VST3Processor::setPluginParameterValue(
     int64_t controlPortId, double value) {
   if (pluginInstance == nullptr) {
@@ -602,6 +654,8 @@ std::optional<std::string> VST3Processor::setPluginParameterValue(
     // changes do not echo through AudioProcessorListener.
     parameter->setValue(clampedValue);
   }
+
+  sendPluginParameterChangedEvent(controlPortId, *parameter, clampedValue);
 
   return std::nullopt;
 }
@@ -630,22 +684,25 @@ void VST3Processor::audioProcessorParameterChanged(
       return;
     }
 
-    const auto controlPortId =
-        getVST3ParameterControlPortIdForIndex(*processor->pluginInstance, parameterIndex);
+    const auto& parameters = processor->pluginInstance->getParameters();
+
+    if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
+      return;
+    }
+
+    auto* parameter = parameters[parameterIndex];
+
+    if (parameter == nullptr) {
+      return;
+    }
+
+    const auto controlPortId = getVST3ParameterControlPortId(*parameter);
 
     if (!controlPortId.has_value()) {
       return;
     }
 
-    Response event = PluginParameterChangedEvent{.nodeId = processor->nodeId(),
-        .controlPortId = *controlPortId,
-        .value = newValue,
-        .responseBase = ResponseBase{
-            .id = -1,
-        }};
-
-    auto eventString = rfl::json::write(event);
-    Engine::getInstance().comms.send(eventString);
+    processor->sendPluginParameterChangedEvent(*controlPortId, *parameter, newValue);
   });
 }
 
@@ -686,6 +743,7 @@ void VST3Processor::setState(const juce::MemoryBlock& state) {
         "Applying plugin state block of " + juce::String(static_cast<int>(state.getSize())) +
             " bytes.");
     pluginInstance->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    sendPluginParameterSnapshotEvent();
   }
 }
 

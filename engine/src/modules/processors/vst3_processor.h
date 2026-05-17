@@ -170,6 +170,9 @@ private:
   void bringPluginWindowToFront();
   void hidePluginGUI();
   ProcessorPrepareResult buildPrepareResultForPlugin();
+  void sendPluginParameterChangedEvent(
+      int64_t controlPortId, juce::AudioProcessorParameter& parameter, float value);
+  void sendPluginParameterSnapshotEvent();
 public:
   VST3Processor(const VST3ProcessorModelImpl& _impl);
   ~VST3Processor() override;

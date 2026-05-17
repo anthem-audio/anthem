@@ -36,6 +36,7 @@ class NodePortModel extends _NodePortModel
     required super.id,
     required super.nodeId,
     required super.config,
+    super.parameterDisplayText,
   }) : super(connections: AnthemObservableList()) {
     if (config.parameterConfig != null) {
       parameterValue = config.parameterConfig!.defaultValue;
@@ -73,10 +74,17 @@ abstract class _NodePortModel
   @anthemObservable
   double? parameterValue;
 
+  /// Runtime display text for the current parameter value, usually supplied by
+  /// third-party plugins.
+  @anthemObservable
+  @hide
+  String? parameterDisplayText;
+
   _NodePortModel({
     required this.id,
     required this.nodeId,
     required this.config,
     required this.connections,
+    this.parameterDisplayText,
   });
 }

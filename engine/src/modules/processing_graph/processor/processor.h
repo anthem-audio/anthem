@@ -37,6 +37,14 @@ struct ProcessorPortConfiguration {
   std::optional<std::string> name = std::nullopt;
   std::optional<int64_t> channelCount = std::nullopt;
   std::optional<double> parameterDefaultValue = std::nullopt;
+  std::optional<std::string> parameterDisplayMode = std::nullopt;
+  std::optional<std::string> parameterUnitLabel = std::nullopt;
+};
+
+struct ProcessorParameterValue {
+  int64_t controlPortId;
+  double value;
+  std::optional<std::string> displayText = std::nullopt;
 };
 
 struct ProcessorNodePortConfiguration {
@@ -52,6 +60,7 @@ struct ProcessorPrepareResult {
   bool success = true;
   std::optional<std::string> error = std::nullopt;
   std::optional<ProcessorNodePortConfiguration> portConfiguration = std::nullopt;
+  std::vector<ProcessorParameterValue> parameterValues;
 };
 
 // Processors may complete preparation synchronously or asynchronously. A

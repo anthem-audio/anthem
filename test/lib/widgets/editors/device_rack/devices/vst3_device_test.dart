@@ -63,9 +63,28 @@ void main() {
     expect(find.text('Filter cutoff'), findsNWidgets(2));
     expect(find.text('25.0%'), findsNWidgets(2));
   });
+
+  testWidgets('shows plugin-provided parameter text with units', (
+    tester,
+  ) async {
+    await _pumpDevice(
+      tester,
+      firstParameterDisplayMode: ParameterDisplayMode.pluginText,
+      firstParameterUnitLabel: 'Hz',
+      firstParameterDisplayText: '440',
+    );
+
+    expect(find.text('440 Hz'), findsOneWidget);
+    expect(find.text('76.0%'), findsNothing);
+  });
 }
 
-Future<void> _pumpDevice(WidgetTester tester) async {
+Future<void> _pumpDevice(
+  WidgetTester tester, {
+  ParameterDisplayMode? firstParameterDisplayMode,
+  String? firstParameterUnitLabel,
+  String? firstParameterDisplayText,
+}) async {
   final project = ProjectModel.create();
   addTearDown(project.dispose);
 
@@ -81,6 +100,9 @@ Future<void> _pumpDevice(WidgetTester tester) async {
       id: 100,
       name: 'Filter cutoff',
       defaultValue: 0.76,
+      displayMode: firstParameterDisplayMode,
+      unitLabel: firstParameterUnitLabel,
+      displayText: firstParameterDisplayText,
     ),
     _createParameterPort(
       nodeId: node.id,
@@ -122,6 +144,9 @@ NodePortModel _createParameterPort({
   required int id,
   required String name,
   required double defaultValue,
+  ParameterDisplayMode? displayMode,
+  String? unitLabel,
+  String? displayText,
 }) {
   return NodePortModel(
     nodeId: nodeId,
@@ -129,7 +154,13 @@ NodePortModel _createParameterPort({
     config: NodePortConfigModel(
       dataType: NodePortDataType.control,
       name: name,
-      parameterConfig: ParameterConfigModel(id: id, defaultValue: defaultValue),
+      parameterConfig: ParameterConfigModel(
+        id: id,
+        defaultValue: defaultValue,
+        displayMode: displayMode,
+        unitLabel: unitLabel,
+      ),
     ),
+    parameterDisplayText: displayText,
   );
 }

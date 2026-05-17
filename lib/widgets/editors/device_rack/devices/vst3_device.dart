@@ -19,6 +19,7 @@
 
 import 'dart:math' as math;
 
+import 'package:anthem/helpers/parameter_display.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -422,7 +423,7 @@ class _Vst3ParameterRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      _formatParameterValue(value),
+                      formatParameterDisplayValue(port, value),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -501,8 +502,4 @@ NodePortModel? _findParameterPortById(NodeModel node, int? portId) {
   }
 
   return null;
-}
-
-String _formatParameterValue(double value) {
-  return '${(value * 100).toStringAsFixed(1)}%';
 }

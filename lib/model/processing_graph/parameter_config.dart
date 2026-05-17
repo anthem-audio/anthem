@@ -23,6 +23,9 @@ import 'package:mobx/mobx.dart';
 
 part 'parameter_config.g.dart';
 
+@AnthemEnum()
+enum ParameterDisplayMode { percent, gainDb, pan, pluginText }
+
 /// A model representing the configuration of a parameter for a node in the
 /// processing graph.
 ///
@@ -41,9 +44,19 @@ part 'parameter_config.g.dart';
 @AnthemModel.syncedModel()
 class ParameterConfigModel extends _ParameterConfigModel
     with _$ParameterConfigModel, _$ParameterConfigModelAnthemModelMixin {
-  ParameterConfigModel({required super.id, required super.defaultValue});
+  ParameterConfigModel({
+    required super.id,
+    required super.defaultValue,
+    super.displayMode = ParameterDisplayMode.percent,
+    super.unitLabel,
+  });
 
-  ParameterConfigModel.uninitialized() : super(id: 0, defaultValue: 0.0);
+  ParameterConfigModel.uninitialized()
+    : super(
+        id: 0,
+        defaultValue: 0.0,
+        displayMode: ParameterDisplayMode.percent,
+      );
 
   factory ParameterConfigModel.fromJson(Map<String, dynamic> json) =>
       _$ParameterConfigModelAnthemModelMixin.fromJson(json);
@@ -60,5 +73,16 @@ abstract class _ParameterConfigModel
   /// The default normalized value of the parameter.
   double defaultValue;
 
-  _ParameterConfigModel({required this.id, required this.defaultValue});
+  /// How normalized values should be displayed in the UI.
+  ParameterDisplayMode? displayMode;
+
+  /// Optional unit label for display text, such as "Hz" or "dB".
+  String? unitLabel;
+
+  _ParameterConfigModel({
+    required this.id,
+    required this.defaultValue,
+    this.displayMode,
+    this.unitLabel,
+  });
 }

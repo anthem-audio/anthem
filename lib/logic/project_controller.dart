@@ -24,6 +24,7 @@ import 'package:anthem/engine_api/messages/messages.dart'
     show
         ProcessingGraphNodeInitializationResult,
         ProcessingGraphNodePortConfiguration,
+        ProcessingGraphParameterValue,
         ProcessingGraphPortConfiguration;
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
@@ -155,20 +156,24 @@ class ProjectController {
     final affectedTrackIds = <Id>{};
 
     for (final result in results) {
+      if (!result.success) {
+        continue;
+      }
+
       final portConfiguration = result.portConfiguration;
-      if (!result.success || portConfiguration == null) {
-        continue;
+
+      if (portConfiguration != null) {
+        final didChange = _applyNodePortConfiguration(
+          result.nodeId,
+          portConfiguration,
+        );
+
+        if (didChange) {
+          affectedTrackIds.addAll(_updateDeviceDefaultsForNode(result.nodeId));
+        }
       }
 
-      final didChange = _applyNodePortConfiguration(
-        result.nodeId,
-        portConfiguration,
-      );
-      if (!didChange) {
-        continue;
-      }
-
-      affectedTrackIds.addAll(_updateDeviceDefaultsForNode(result.nodeId));
+      _applyNodeParameterValues(result.nodeId, result.parameterValues);
     }
 
     if (affectedTrackIds.isEmpty) {
@@ -282,7 +287,11 @@ class ProjectController {
           currentParameterConfig?.id !=
               _parameterConfigIdForPort(configuredPort) ||
           currentParameterConfig?.defaultValue !=
-              configuredPort.parameterDefaultValue) {
+              configuredPort.parameterDefaultValue ||
+          currentParameterConfig?.displayMode !=
+              _parameterDisplayModeForPort(configuredPort) ||
+          currentParameterConfig?.unitLabel !=
+              configuredPort.parameterUnitLabel) {
         return false;
       }
     }
@@ -318,6 +327,21 @@ class ProjectController {
     return port.parameterDefaultValue == null ? null : port.id;
   }
 
+  ParameterDisplayMode? _parameterDisplayModeForPort(
+    ProcessingGraphPortConfiguration port,
+  ) {
+    if (port.parameterDefaultValue == null) {
+      return null;
+    }
+
+    return switch (port.parameterDisplayMode) {
+      'gainDb' => ParameterDisplayMode.gainDb,
+      'pan' => ParameterDisplayMode.pan,
+      'pluginText' => ParameterDisplayMode.pluginText,
+      _ => ParameterDisplayMode.percent,
+    };
+  }
+
   ParameterConfigModel? _parameterConfigForPort(
     ProcessingGraphPortConfiguration port,
   ) {
@@ -326,7 +350,43 @@ class ProjectController {
       return null;
     }
 
-    return ParameterConfigModel(id: port.id, defaultValue: defaultValue);
+    return ParameterConfigModel(
+      id: port.id,
+      defaultValue: defaultValue,
+      displayMode: _parameterDisplayModeForPort(port),
+      unitLabel: port.parameterUnitLabel,
+    );
+  }
+
+  void _applyNodeParameterValues(
+    Id nodeId,
+    List<ProcessingGraphParameterValue> parameterValues,
+  ) {
+    final node = project.processingGraph.nodes[nodeId];
+    if (node == null) {
+      return;
+    }
+
+    final parameterPortsById = {
+      for (final port in node.controlInputPorts)
+        if (port.config.parameterConfig != null) port.id: port,
+    };
+
+    for (final parameterValue in parameterValues) {
+      final port = parameterPortsById[parameterValue.controlPortId];
+      if (port == null) {
+        continue;
+      }
+
+      final value = parameterValue.value.clamp(0.0, 1.0).toDouble();
+      if (port.parameterValue != value) {
+        port.parameterValue = value;
+      }
+
+      if (port.parameterDisplayText != parameterValue.displayText) {
+        port.parameterDisplayText = parameterValue.displayText;
+      }
+    }
   }
 
   void _replacePorts(
@@ -358,6 +418,8 @@ class ProjectController {
             if (replacementPort.config.parameterConfig != null) {
               replacementPort.parameterValue =
                   currentPort.parameterValue ?? replacementPort.parameterValue;
+              replacementPort.parameterDisplayText =
+                  currentPort.parameterDisplayText;
             }
           }
 

@@ -25,6 +25,7 @@ import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 
@@ -319,16 +320,16 @@ class Engine {
     project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 
-  void _handlePluginParameterChanged(PluginParameterChangedEvent event) {
-    final node = project.processingGraph.nodes[event.nodeId];
-    if (node == null) {
-      return;
-    }
-
-    final value = event.value.clamp(0.0, 1.0).toDouble();
+  void _applyPluginParameterValue(
+    NodeModel node,
+    int controlPortId,
+    double rawValue,
+    String? displayText,
+  ) {
+    final value = rawValue.clamp(0.0, 1.0).toDouble();
 
     for (final port in node.controlInputPorts) {
-      if (port.id != event.controlPortId) {
+      if (port.id != controlPortId) {
         continue;
       }
 
@@ -336,9 +337,44 @@ class Engine {
         port.parameterValue = value;
       }
 
-      node.lastChangedControlPortId = event.controlPortId;
-      _scheduleNodeStateUpdate(event.nodeId);
+      if (port.parameterDisplayText != displayText) {
+        port.parameterDisplayText = displayText;
+      }
+
       return;
+    }
+  }
+
+  void _handlePluginParameterChanged(PluginParameterChangedEvent event) {
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null) {
+      return;
+    }
+
+    _applyPluginParameterValue(
+      node,
+      event.controlPortId,
+      event.value,
+      event.displayText,
+    );
+
+    node.lastChangedControlPortId = event.controlPortId;
+    _scheduleNodeStateUpdate(event.nodeId);
+  }
+
+  void _handlePluginParameterSnapshot(PluginParameterSnapshotEvent event) {
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null) {
+      return;
+    }
+
+    for (final parameterValue in event.parameterValues) {
+      _applyPluginParameterValue(
+        node,
+        parameterValue.controlPortId,
+        parameterValue.value,
+        parameterValue.displayText,
+      );
     }
   }
 
@@ -356,6 +392,9 @@ class Engine {
         return;
       case PluginParameterChangedEvent e:
         _handlePluginParameterChanged(e);
+        return;
+      case PluginParameterSnapshotEvent e:
+        _handlePluginParameterSnapshot(e);
         return;
       case PluginLoadedEvent e:
         final node = project.processingGraph.nodes[e.nodeId];

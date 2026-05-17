@@ -87,6 +87,8 @@ class GainProcessorModel extends _GainProcessorModel
             parameterConfig: ParameterConfigModel(
               id: gainPortId,
               defaultValue: gainParameterZeroDbNormalized,
+              displayMode: ParameterDisplayMode.gainDb,
+              unitLabel: 'dB',
             ),
           ),
         ),

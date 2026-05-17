@@ -94,6 +94,7 @@ class BalanceProcessorModel extends _BalanceProcessorModel
             parameterConfig: ParameterConfigModel(
               id: balancePortId,
               defaultValue: BalanceProcessorModel.panToParameterValue(0.0),
+              displayMode: ParameterDisplayMode.pan,
             ),
           ),
         ),

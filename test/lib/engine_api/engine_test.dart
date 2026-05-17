@@ -593,6 +593,54 @@ void main() {
       verify(node.scheduleDebouncedStateUpdate()).called(2);
     });
 
+    test(
+      'plugin parameter snapshots update values without scheduling state update',
+      () async {
+        final node = MockNodeModel();
+        final port = NodePortModel(
+          nodeId: 1,
+          id: 100,
+          config: NodePortConfigModel(
+            dataType: NodePortDataType.control,
+            parameterConfig: ParameterConfigModel(
+              id: 100,
+              defaultValue: 0,
+              displayMode: ParameterDisplayMode.pluginText,
+            ),
+          ),
+        );
+
+        when(
+          node.controlInputPorts,
+        ).thenReturn(AnthemObservableList.of([port]));
+        nodes[1] = node;
+
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+
+        connector.emitResponse(
+          PluginParameterSnapshotEvent(
+            id: -1,
+            nodeId: 1,
+            parameterValues: [
+              ProcessingGraphParameterValue(
+                controlPortId: 100,
+                value: 0.25,
+                displayText: '440',
+              ),
+            ],
+          ),
+        );
+
+        expect(port.parameterValue, 0.25);
+        expect(port.parameterDisplayText, '440');
+        verifyNever(node.scheduleDebouncedStateUpdate());
+      },
+    );
+
     test('PluginLoadedEvent completes the node plugin completer', () async {
       final node = MockNodeModel();
       final pluginLoadedCompleter = Completer<void>();

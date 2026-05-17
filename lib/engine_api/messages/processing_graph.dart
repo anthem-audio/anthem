@@ -51,14 +51,15 @@ class ProcessingGraphNodeInitializationResult
     extends _ProcessingGraphNodeInitializationResult
     with _$ProcessingGraphNodeInitializationResultAnthemModelMixin {
   ProcessingGraphNodeInitializationResult.uninitialized()
-    : super(nodeId: -1, success: false);
+    : super(nodeId: -1, success: false, parameterValues: []);
 
   ProcessingGraphNodeInitializationResult({
     required super.nodeId,
     required super.success,
+    List<ProcessingGraphParameterValue>? parameterValues,
     super.error,
     super.portConfiguration,
-  });
+  }) : super(parameterValues: parameterValues ?? []);
 
   factory ProcessingGraphNodeInitializationResult.fromJson(
     Map<String, dynamic> json,
@@ -70,12 +71,42 @@ abstract class _ProcessingGraphNodeInitializationResult {
   bool success;
   String? error;
   ProcessingGraphNodePortConfiguration? portConfiguration;
+  List<ProcessingGraphParameterValue> parameterValues;
 
   _ProcessingGraphNodeInitializationResult({
     required this.nodeId,
     required this.success,
+    required this.parameterValues,
     this.error,
     this.portConfiguration,
+  });
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphParameterValue extends _ProcessingGraphParameterValue
+    with _$ProcessingGraphParameterValueAnthemModelMixin {
+  ProcessingGraphParameterValue.uninitialized()
+    : super(controlPortId: -1, value: 0.0);
+
+  ProcessingGraphParameterValue({
+    required super.controlPortId,
+    required super.value,
+    super.displayText,
+  });
+
+  factory ProcessingGraphParameterValue.fromJson(Map<String, dynamic> json) =>
+      _$ProcessingGraphParameterValueAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphParameterValue {
+  int controlPortId;
+  double value;
+  String? displayText;
+
+  _ProcessingGraphParameterValue({
+    required this.controlPortId,
+    required this.value,
+    this.displayText,
   });
 }
 
@@ -135,6 +166,8 @@ class ProcessingGraphPortConfiguration extends _ProcessingGraphPortConfiguration
     super.name,
     super.channelCount,
     super.parameterDefaultValue,
+    super.parameterDisplayMode,
+    super.parameterUnitLabel,
   });
 
   factory ProcessingGraphPortConfiguration.fromJson(
@@ -147,12 +180,16 @@ abstract class _ProcessingGraphPortConfiguration {
   String? name;
   int? channelCount;
   double? parameterDefaultValue;
+  String? parameterDisplayMode;
+  String? parameterUnitLabel;
 
   _ProcessingGraphPortConfiguration({
     required this.id,
     this.name,
     this.channelCount,
     this.parameterDefaultValue,
+    this.parameterDisplayMode,
+    this.parameterUnitLabel,
   });
 }
 
@@ -205,6 +242,7 @@ class PluginParameterChangedEvent extends Response {
   late Id nodeId;
   late int controlPortId;
   late double value;
+  String? displayText;
 
   PluginParameterChangedEvent.uninitialized();
 
@@ -213,6 +251,22 @@ class PluginParameterChangedEvent extends Response {
     required this.nodeId,
     required this.controlPortId,
     required this.value,
+    this.displayText,
+  }) {
+    super.id = id;
+  }
+}
+
+class PluginParameterSnapshotEvent extends Response {
+  late Id nodeId;
+  late List<ProcessingGraphParameterValue> parameterValues;
+
+  PluginParameterSnapshotEvent.uninitialized() : parameterValues = [];
+
+  PluginParameterSnapshotEvent({
+    required int id,
+    required this.nodeId,
+    required this.parameterValues,
   }) {
     super.id = id;
   }
