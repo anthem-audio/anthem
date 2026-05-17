@@ -1,0 +1,135 @@
+/*
+  Copyright (C) 2026 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/basic/controls/knob.dart';
+import 'package:anthem/widgets/editors/device_rack/devices/vst3_device.dart';
+import 'package:anthem_codegen/include.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+void main() {
+  testWidgets('filters parameter rows while typing', (tester) async {
+    await _pumpDevice(tester);
+
+    expect(find.text('Filter cutoff'), findsOneWidget);
+    expect(find.text('Oscillator shape'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'shape');
+    await tester.pump();
+
+    expect(find.text('Filter cutoff'), findsNothing);
+    expect(find.text('Oscillator shape'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'missing');
+    await tester.pump();
+
+    expect(find.text('Oscillator shape'), findsNothing);
+    expect(find.text('No matching parameters'), findsOneWidget);
+  });
+
+  testWidgets('shows the most recently changed parameter row', (tester) async {
+    await _pumpDevice(tester);
+
+    expect(find.text('Filter cutoff'), findsOneWidget);
+    expect(find.text('25.0%'), findsNothing);
+
+    final cutoffKnob = tester.widget<Knob>(find.byType(Knob).first);
+    cutoffKnob.onValueChanged!(0.25);
+    await tester.pump();
+
+    expect(find.text('Filter cutoff'), findsNWidgets(2));
+    expect(find.text('25.0%'), findsNWidgets(2));
+  });
+}
+
+Future<void> _pumpDevice(WidgetTester tester) async {
+  final project = ProjectModel.create();
+  addTearDown(project.dispose);
+
+  final processor = VST3ProcessorModel.create(
+    idAllocator: project.idAllocator,
+    vst3Path: r'C:\Program Files\Common Files\VST3\Test Plugin.vst3',
+  );
+  final node = processor.createNode();
+
+  node.controlInputPorts.addAll([
+    _createParameterPort(
+      nodeId: node.id,
+      id: 100,
+      name: 'Filter cutoff',
+      defaultValue: 0.76,
+    ),
+    _createParameterPort(
+      nodeId: node.id,
+      id: 101,
+      name: 'Filter resonance',
+      defaultValue: 0.38,
+    ),
+    _createParameterPort(
+      nodeId: node.id,
+      id: 102,
+      name: 'Oscillator shape',
+      defaultValue: 0.50,
+    ),
+  ]);
+
+  project.processingGraph.addNode(node);
+  final device = DeviceModel(
+    idAllocator: project.idAllocator,
+    name: 'Test Plugin',
+    type: DeviceType.vst3Plugin,
+    nodeIds: AnthemObservableList.of([node.id]),
+  );
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Provider<ProjectModel>.value(
+        value: project,
+        child: Material(
+          child: SizedBox(height: 240, child: Vst3Device(device: device)),
+        ),
+      ),
+    ),
+  );
+  await tester.pump(const Duration(milliseconds: 1));
+}
+
+NodePortModel _createParameterPort({
+  required int nodeId,
+  required int id,
+  required String name,
+  required double defaultValue,
+}) {
+  return NodePortModel(
+    nodeId: nodeId,
+    id: id,
+    config: NodePortConfigModel(
+      dataType: NodePortDataType.control,
+      name: name,
+      parameterConfig: ParameterConfigModel(id: id, defaultValue: defaultValue),
+    ),
+  );
+}

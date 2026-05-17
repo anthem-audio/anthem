@@ -246,51 +246,45 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     juce::Logger::writeToLog("Handling OpenPluginWindowRequest...");
 
     auto& openPluginWindowRequest = rfl::get<OpenPluginWindowRequest>(request.variant());
-    const auto requestId = openPluginWindowRequest.requestBase.get().id;
-
-    auto makeResponse = [requestId](
-                            bool success,
-                            std::optional<std::string> error = std::nullopt) {
-      return std::optional(OpenPluginWindowResponse{.success = success,
-          .error = error,
-          .responseBase = ResponseBase{.id = requestId}});
-    };
 
 #ifdef __EMSCRIPTEN__
-    return makeResponse(false, std::string("Plugin windows are not available on this platform."));
+    juce::Logger::writeToLog("Plugin windows are not available on this platform.");
 #else
     auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
     auto nodeIter = nodes.find(openPluginWindowRequest.nodeId);
     auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
 
     if (node == nullptr) {
-      return makeResponse(false,
+      juce::Logger::writeToLog(
           "Node " + toIdString(openPluginWindowRequest.nodeId) +
               " not found in processing graph.");
+      return std::nullopt;
     }
 
     auto processor = node->getProcessor();
 
     if (!processor) {
-      return makeResponse(false,
+      juce::Logger::writeToLog(
           "Node " + toIdString(openPluginWindowRequest.nodeId) + " does not have a processor.");
+      return std::nullopt;
     }
 
     auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor.value());
 
     if (vst3Processor == nullptr) {
-      return makeResponse(false,
+      juce::Logger::writeToLog(
           "Node " + toIdString(openPluginWindowRequest.nodeId) + " is not a VST3 processor.");
+      return std::nullopt;
     }
 
     auto error = vst3Processor->openPluginWindow();
 
     if (error.has_value()) {
-      return makeResponse(false, std::move(error));
+      juce::Logger::writeToLog("Error opening plugin window: " + error.value());
     }
-
-    return makeResponse(true);
 #endif
+
+    return std::nullopt;
   } else if (rfl::holds_alternative<SendLiveEventRequest>(request.variant())) {
     auto& sendLiveEventRequest = rfl::get<SendLiveEventRequest>(request.variant());
 

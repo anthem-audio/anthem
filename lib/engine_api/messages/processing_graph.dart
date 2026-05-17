@@ -285,21 +285,6 @@ class OpenPluginWindowRequest extends Request {
   }
 }
 
-class OpenPluginWindowResponse extends Response {
-  late bool success;
-  String? error;
-
-  OpenPluginWindowResponse.uninitialized();
-
-  OpenPluginWindowResponse({
-    required int id,
-    required this.success,
-    this.error,
-  }) {
-    super.id = id;
-  }
-}
-
 /// An event that is fired when a third-party plugin is loaded for the given
 /// node.
 ///
