@@ -392,6 +392,9 @@ class _Vst3ParameterRow extends StatelessWidget {
                     value: value,
                     width: _knobSize,
                     height: _knobSize,
+                    hoverHintOverride: (_) =>
+                        _formatParameterHint(name, port, value),
+                    hint: (value) => _formatParameterHint(name, port, value),
                     onValueChanged: (newValue) {
                       final value = newValue.clamp(0.0, 1.0).toDouble();
                       port.parameterValue = value;
@@ -502,4 +505,8 @@ NodePortModel? _findParameterPortById(NodeModel node, int? portId) {
   }
 
   return null;
+}
+
+String _formatParameterHint(String name, NodePortModel port, double value) {
+  return '$name: ${formatParameterDisplayValue(port, value)}';
 }

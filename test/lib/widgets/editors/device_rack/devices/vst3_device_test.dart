@@ -77,6 +77,15 @@ void main() {
     expect(find.text('440 Hz'), findsOneWidget);
     expect(find.text('76.0%'), findsNothing);
   });
+
+  testWidgets('adds value hints to parameter knobs', (tester) async {
+    await _pumpDevice(tester);
+
+    final cutoffKnob = tester.widget<Knob>(find.byType(Knob).first);
+
+    expect(cutoffKnob.hoverHintOverride?.call(0), 'Filter cutoff: 76.0%');
+    expect(cutoffKnob.hint?.call(0.25), 'Filter cutoff: 25.0%');
+  });
 }
 
 Future<void> _pumpDevice(
