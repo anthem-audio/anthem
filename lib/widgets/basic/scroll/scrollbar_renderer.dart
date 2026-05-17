@@ -57,6 +57,8 @@ _ScrollbarGeometry _calculateScrollbarGeometry({
   required double handleEnd,
   required double minHandlePixelSize,
   required double minHandleSize,
+  required bool canScrollPastStart,
+  required bool canScrollPastEnd,
 }) {
   final scrollRegionSize = scrollRegionEnd - scrollRegionStart;
   final handleSize = math.max(0.0, handleEnd - handleStart);
@@ -82,16 +84,64 @@ _ScrollbarGeometry _calculateScrollbarGeometry({
     trackSize,
     math.max(0.0, minHandlePixelSize),
   );
-  final visualHandleSize = math.min(
+  final minVisualHandleSize = math.min(
     trackSize,
     math.max(
       effectiveMinHandlePixelSize,
+      trackSize * effectiveMinHandleSize / scrollRegionSize,
+    ),
+  );
+  final visualHandleSize = math.min(
+    trackSize,
+    math.max(
+      minVisualHandleSize,
       trackSize * visualHandleRegionSize / scrollRegionSize,
     ),
   );
 
   final logicalTravel = math.max(0.0, scrollRegionSize - handleSize);
   final pixelTravel = math.max(0.0, trackSize - visualHandleSize);
+
+  final isPastStart = canScrollPastStart && handleStart < scrollRegionStart;
+  final isPastEnd = canScrollPastEnd && handleEnd > scrollRegionEnd;
+
+  if (isPastStart || isPastEnd) {
+    final rawHandleStart =
+        trackSize * (handleStart - scrollRegionStart) / scrollRegionSize;
+    final rawHandleEnd =
+        trackSize * (handleEnd - scrollRegionStart) / scrollRegionSize;
+    final rawHandleSize = rawHandleEnd - rawHandleStart;
+
+    var visualHandleStart = rawHandleStart;
+    var visualHandleEnd = rawHandleEnd;
+
+    if (rawHandleSize < minVisualHandleSize) {
+      final handleCenter = (rawHandleStart + rawHandleEnd) / 2;
+      visualHandleStart = handleCenter - minVisualHandleSize / 2;
+      visualHandleEnd = handleCenter + minVisualHandleSize / 2;
+    }
+
+    if (isPastStart) {
+      visualHandleStart = 0;
+      visualHandleEnd = math.max(visualHandleEnd, minVisualHandleSize);
+    }
+
+    if (isPastEnd) {
+      visualHandleEnd = trackSize;
+      visualHandleStart = math.min(
+        visualHandleStart,
+        trackSize - minVisualHandleSize,
+      );
+    }
+
+    return _ScrollbarGeometry(
+      handleStart: visualHandleStart.clamp(0.0, trackSize).toDouble(),
+      handleEnd: visualHandleEnd.clamp(0.0, trackSize).toDouble(),
+      logicalTravel: logicalTravel,
+      pixelTravel: pixelTravel,
+    );
+  }
+
   final progress = logicalTravel == 0
       ? 0.0
       : ((handleStart - scrollRegionStart) / logicalTravel)
@@ -184,6 +234,8 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
       handleEnd: startHandleEnd,
       minHandlePixelSize: widget.minHandlePixelSize,
       minHandleSize: widget.minHandleSize,
+      canScrollPastStart: widget.canScrollPastStart,
+      canScrollPastEnd: widget.canScrollPastEnd,
     );
     final handleDelta = geometry.pixelTravel == 0
         ? (pixelDelta / trackSize) * scrollRegionSize
@@ -253,6 +305,8 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
           handleEnd: widget.handleEnd,
           minHandlePixelSize: widget.minHandlePixelSize,
           minHandleSize: widget.minHandleSize,
+          canScrollPastStart: widget.canScrollPastStart,
+          canScrollPastEnd: widget.canScrollPastEnd,
         );
         final handleStart = geometry.handleStart;
         final handleEnd = geometry.handleEnd;

@@ -78,6 +78,61 @@ void main() {
     expect(changes.last.handleStart, closeTo(999000, 0.00001));
     expect(changes.last.handleEnd, closeTo(1000000, 0.00001));
   });
+
+  testWidgets('shrinks at end when scrolling past the indicated range', (
+    tester,
+  ) async {
+    await _pumpHorizontalScrollbar(
+      tester,
+      scrollRegionEnd: 1000,
+      handleStart: 700,
+      handleEnd: 1000,
+      canScrollPastEnd: true,
+    );
+
+    expect(_handleOffset(tester), closeTo(70, 0.00001));
+    expect(_handleRect(tester).width, closeTo(30, 0.00001));
+
+    await _pumpHorizontalScrollbar(
+      tester,
+      scrollRegionEnd: 1000,
+      handleStart: 710,
+      handleEnd: 1010,
+      canScrollPastEnd: true,
+    );
+
+    expect(_handleOffset(tester), closeTo(71, 0.00001));
+    expect(
+      _handleRect(tester).right,
+      closeTo(_trackRect(tester).right, 0.00001),
+    );
+
+    await _pumpHorizontalScrollbar(
+      tester,
+      scrollRegionEnd: 1000,
+      handleStart: 800,
+      handleEnd: 1100,
+      canScrollPastEnd: true,
+    );
+
+    expect(_handleOffset(tester), closeTo(76, 0.00001));
+    expect(_handleRect(tester).width, closeTo(24, 0.00001));
+  });
+
+  testWidgets(
+    'keeps full handle size at end when scrolling past end is disabled',
+    (tester) async {
+      await _pumpHorizontalScrollbar(
+        tester,
+        scrollRegionEnd: 1000,
+        handleStart: 710,
+        handleEnd: 1010,
+      );
+
+      expect(_handleOffset(tester), closeTo(70, 0.00001));
+      expect(_handleRect(tester).width, closeTo(30, 0.00001));
+    },
+  );
 }
 
 Future<void> _pumpHorizontalScrollbar(
@@ -87,6 +142,8 @@ Future<void> _pumpHorizontalScrollbar(
   required double handleEnd,
   double minHandlePixelSize = 24,
   double minHandleSize = 0,
+  bool canScrollPastStart = false,
+  bool canScrollPastEnd = false,
   void Function(ScrollbarChangeEvent event)? onChange,
 }) async {
   await tester.pumpWidget(
@@ -103,6 +160,8 @@ Future<void> _pumpHorizontalScrollbar(
             scrollRegionEnd: scrollRegionEnd,
             handleStart: handleStart,
             handleEnd: handleEnd,
+            canScrollPastStart: canScrollPastStart,
+            canScrollPastEnd: canScrollPastEnd,
             onChange: onChange,
           ),
         ),
@@ -112,11 +171,14 @@ Future<void> _pumpHorizontalScrollbar(
 }
 
 double _handleOffset(WidgetTester tester) {
-  final trackRect = tester.getRect(find.byType(ScrollbarRenderer));
+  final trackRect = _trackRect(tester);
   final handleRect = _handleRect(tester);
 
   return handleRect.left - trackRect.left;
 }
+
+Rect _trackRect(WidgetTester tester) =>
+    tester.getRect(find.byType(ScrollbarRenderer));
 
 Rect _handleRect(WidgetTester tester) =>
     tester.getRect(find.byType(MouseRegion));
