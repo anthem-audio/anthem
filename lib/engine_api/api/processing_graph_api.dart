@@ -84,6 +84,27 @@ class ProcessingGraphApi {
     _engine._requestNoReply(request);
   }
 
+  /// Sets a normalized third-party plugin parameter value immediately.
+  void setPluginParameterValue(Id nodeId, int controlPortId, double value) {
+    if (!_engine.isRunning) {
+      return;
+    }
+
+    final id = _engine._getRequestId();
+
+    final request = SetPluginParameterValueRequest(
+      id: id,
+      nodeId: nodeId,
+      controlPortId: controlPortId,
+      value: value,
+    );
+
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.dropDuringStartup,
+    );
+  }
+
   /// Reads the current serialized plugin state blob from the engine.
   Future<String> getPluginState(Id nodeId) async {
     final id = _engine._getRequestId();

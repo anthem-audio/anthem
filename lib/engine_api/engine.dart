@@ -319,6 +319,29 @@ class Engine {
     project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 
+  void _handlePluginParameterChanged(PluginParameterChangedEvent event) {
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null) {
+      return;
+    }
+
+    final value = event.value.clamp(0.0, 1.0).toDouble();
+
+    for (final port in node.controlInputPorts) {
+      if (port.id != event.controlPortId) {
+        continue;
+      }
+
+      if (port.parameterValue != value) {
+        port.parameterValue = value;
+      }
+
+      node.lastChangedControlPortId = event.controlPortId;
+      _scheduleNodeStateUpdate(event.nodeId);
+      return;
+    }
+  }
+
   void _onReply(Response response) {
     switch (response) {
       case VisualizationUpdateEvent e:
@@ -332,7 +355,7 @@ class Engine {
         _scheduleNodeStateUpdate(e.nodeId);
         return;
       case PluginParameterChangedEvent e:
-        _scheduleNodeStateUpdate(e.nodeId);
+        _handlePluginParameterChanged(e);
         return;
       case PluginLoadedEvent e:
         final node = project.processingGraph.nodes[e.nodeId];

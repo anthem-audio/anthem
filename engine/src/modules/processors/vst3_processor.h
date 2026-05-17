@@ -158,7 +158,10 @@ private:
   std::optional<int64_t> eventOutputPortIdForPlugin;
   int pluginInputChannelCount = 0;
   int pluginOutputChannelCount = 0;
-  std::unordered_map<int64_t, juce::AudioProcessorParameter*> rt_parametersByPortId;
+
+  // Built during plugin preparation, then read without mutation from both the
+  // audio thread and the message thread.
+  std::unordered_map<int64_t, juce::AudioProcessorParameter*> parametersByPortId;
 
   std::unique_ptr<PluginEditorWindow> editorWindow;
 
@@ -185,6 +188,7 @@ public:
   void tryInitializePlugin(ProcessorPrepareCallback complete);
 
   std::optional<std::string> openPluginWindow();
+  std::optional<std::string> setPluginParameterValue(int64_t controlPortId, double value);
 
   void audioProcessorParameterChanged(
       juce::AudioProcessor* processor, int parameterIndex, float newValue) override;

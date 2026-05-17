@@ -48,13 +48,31 @@ ProcessorPrepareResult makeVST3PrepareError(std::string error) {
   };
 }
 
-std::optional<int64_t> getVST3ParameterPortId(juce::AudioProcessorParameter& parameter) {
+std::optional<int64_t> getVST3ParameterControlPortId(
+    juce::AudioProcessorParameter& parameter) {
   auto* hostedParameter = dynamic_cast<juce::HostedAudioProcessorParameter*>(&parameter);
   if (hostedParameter == nullptr) {
     return std::nullopt;
   }
 
   return hostedParameter->getParameterID().getLargeIntValue();
+}
+
+std::optional<int64_t> getVST3ParameterControlPortIdForIndex(
+    juce::AudioPluginInstance& pluginInstance, int parameterIndex) {
+  const auto& parameters = pluginInstance.getParameters();
+
+  if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
+    return std::nullopt;
+  }
+
+  auto* parameter = parameters[parameterIndex];
+
+  if (parameter == nullptr) {
+    return std::nullopt;
+  }
+
+  return getVST3ParameterControlPortId(*parameter);
 }
 
 void addMidiMessageToEventBuffer(
@@ -122,7 +140,7 @@ void VST3Processor::rebindEditorWindowCloseCallback() {
 
 ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
   ProcessorNodePortConfiguration portConfiguration;
-  rt_parametersByPortId.clear();
+  parametersByPortId.clear();
 
   if (audioInputPortIdForPlugin.has_value()) {
     portConfiguration.audioInputPorts.push_back(ProcessorPortConfiguration{
@@ -158,7 +176,7 @@ ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
   if (pluginInstance != nullptr) {
     const auto& parameters = pluginInstance->getParameters();
 
-    rt_parametersByPortId.reserve(static_cast<size_t>(parameters.size()));
+    parametersByPortId.reserve(static_cast<size_t>(parameters.size()));
     portConfiguration.controlInputPorts.reserve(static_cast<size_t>(parameters.size()));
 
     for (auto* parameter : parameters) {
@@ -170,20 +188,20 @@ ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
         continue;
       }
 
-      auto vst3ParameterId = getVST3ParameterPortId(*parameter);
-      if (!vst3ParameterId.has_value()) {
+      auto parameterControlPortId = getVST3ParameterControlPortId(*parameter);
+      if (!parameterControlPortId.has_value()) {
         continue;
       }
 
-      auto [_, inserted] = rt_parametersByPortId.emplace(*vst3ParameterId, parameter);
+      auto [_, inserted] = parametersByPortId.emplace(*parameterControlPortId, parameter);
       if (!inserted) {
         writeVST3Log(*this,
-            "Skipping duplicate VST3 parameter ID: " + juce::String(*vst3ParameterId));
+            "Skipping duplicate VST3 parameter ID: " + juce::String(*parameterControlPortId));
         continue;
       }
 
       portConfiguration.controlInputPorts.push_back(ProcessorPortConfiguration{
-          .id = *vst3ParameterId,
+          .id = *parameterControlPortId,
           .name = parameter->getName(128).toStdString(),
           .channelCount = std::nullopt,
           .parameterDefaultValue = static_cast<double>(parameter->getDefaultValue()),
@@ -259,8 +277,8 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
   }
 
   for (const auto& connectedPort : context.rt_getConnectedInputControlPorts()) {
-    auto parameterIter = rt_parametersByPortId.find(connectedPort.portId);
-    if (parameterIter == rt_parametersByPortId.end() || parameterIter->second == nullptr) {
+    auto parameterIter = parametersByPortId.find(connectedPort.portId);
+    if (parameterIter == parametersByPortId.end() || parameterIter->second == nullptr) {
       continue;
     }
 
@@ -564,6 +582,32 @@ void VST3Processor::bringPluginWindowToFront() {
   });
 }
 
+std::optional<std::string> VST3Processor::setPluginParameterValue(
+    int64_t controlPortId, double value) {
+  if (pluginInstance == nullptr) {
+    writeVST3Log(*this,
+        "setPluginParameterValue() skipped because no plugin instance exists yet.");
+    return std::string("Plugin instance is not loaded yet.");
+  }
+
+  auto parameterIter = parametersByPortId.find(controlPortId);
+
+  if (parameterIter == parametersByPortId.end() || parameterIter->second == nullptr) {
+    return std::string("Plugin parameter " + std::to_string(controlPortId) + " was not found.");
+  }
+
+  auto* parameter = parameterIter->second;
+  const auto clampedValue = juce::jlimit(0.0f, 1.0f, static_cast<float>(value));
+
+  if (parameter->getValue() != clampedValue) {
+    // Use setValue() rather than setValueNotifyingHost() so Anthem-originated
+    // changes do not echo through AudioProcessorListener.
+    parameter->setValue(clampedValue);
+  }
+
+  return std::nullopt;
+}
+
 void VST3Processor::hidePluginGUI() {
   if (editorWindow) {
     writeVST3Log(*this, "Closing plugin editor window.");
@@ -584,9 +628,20 @@ void VST3Processor::audioProcessorParameterChanged(
       return;
     }
 
+    if (processor->pluginInstance == nullptr) {
+      return;
+    }
+
+    const auto controlPortId =
+        getVST3ParameterControlPortIdForIndex(*processor->pluginInstance, parameterIndex);
+
+    if (!controlPortId.has_value()) {
+      return;
+    }
+
     Response event = PluginParameterChangedEvent{.nodeId = processor->nodeId(),
-        .parameterIndex = parameterIndex,
-        .newValue = newValue,
+        .controlPortId = *controlPortId,
+        .value = newValue,
         .responseBase = ResponseBase{
             .id = -1,
         }};

@@ -198,6 +198,50 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
       juce::Logger::writeToLog("Error setting plugin state: " + std::string(e.what()));
       return std::nullopt;
     }
+  } else if (rfl::holds_alternative<SetPluginParameterValueRequest>(request.variant())) {
+    auto& setPluginParameterValueRequest =
+        rfl::get<SetPluginParameterValueRequest>(request.variant());
+
+#ifdef __EMSCRIPTEN__
+    juce::Logger::writeToLog(
+        "Ignoring SetPluginParameterValueRequest because plugins are not available on this "
+        "platform.");
+#else
+    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
+    auto nodeIter = nodes.find(setPluginParameterValueRequest.nodeId);
+    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
+
+    if (node == nullptr) {
+      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
+                               " not found in processing graph.");
+      return std::nullopt;
+    }
+
+    auto processor = node->getProcessor();
+
+    if (!processor) {
+      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
+                               " does not have a processor.");
+      return std::nullopt;
+    }
+
+    auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor.value());
+
+    if (vst3Processor == nullptr) {
+      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
+                               " is not a VST3 processor.");
+      return std::nullopt;
+    }
+
+    auto error = vst3Processor->setPluginParameterValue(
+        setPluginParameterValueRequest.controlPortId, setPluginParameterValueRequest.value);
+
+    if (error.has_value()) {
+      juce::Logger::writeToLog("Error setting plugin parameter value: " + error.value());
+    }
+#endif
+
+    return std::nullopt;
   } else if (rfl::holds_alternative<OpenPluginWindowRequest>(request.variant())) {
     juce::Logger::writeToLog("Handling OpenPluginWindowRequest...");
 

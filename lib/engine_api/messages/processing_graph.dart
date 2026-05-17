@@ -203,16 +203,16 @@ class PluginChangedEvent extends Response {
 
 class PluginParameterChangedEvent extends Response {
   late Id nodeId;
-  late int parameterIndex;
-  late double newValue;
+  late int controlPortId;
+  late double value;
 
   PluginParameterChangedEvent.uninitialized();
 
   PluginParameterChangedEvent({
     required int id,
     required this.nodeId,
-    required this.parameterIndex,
-    required this.newValue,
+    required this.controlPortId,
+    required this.value,
   }) {
     super.id = id;
   }
@@ -253,6 +253,23 @@ class SetPluginStateRequest extends Request {
     required int id,
     required this.nodeId,
     required this.state,
+  }) {
+    super.id = id;
+  }
+}
+
+class SetPluginParameterValueRequest extends Request {
+  late Id nodeId;
+  late int controlPortId;
+  late double value;
+
+  SetPluginParameterValueRequest.uninitialized();
+
+  SetPluginParameterValueRequest({
+    required int id,
+    required this.nodeId,
+    required this.controlPortId,
+    required this.value,
   }) {
     super.id = id;
   }

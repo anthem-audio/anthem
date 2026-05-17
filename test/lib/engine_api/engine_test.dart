@@ -26,10 +26,14 @@ import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
-import 'package:anthem_codegen/include.dart' show AnthemObservableMap;
+import 'package:anthem_codegen/include.dart'
+    show AnthemObservableList, AnthemObservableMap;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -547,6 +551,18 @@ void main() {
 
     test('plugin change events schedule a node state update', () async {
       final node = MockNodeModel();
+      when(node.controlInputPorts).thenReturn(
+        AnthemObservableList.of([
+          NodePortModel(
+            nodeId: 1,
+            id: 100,
+            config: NodePortConfigModel(
+              dataType: NodePortDataType.control,
+              parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0),
+            ),
+          ),
+        ]),
+      );
       nodes[1] = node;
 
       await _startEngineThroughInit(
@@ -569,8 +585,8 @@ void main() {
         PluginParameterChangedEvent(
           id: -1,
           nodeId: 1,
-          parameterIndex: 0,
-          newValue: 0.75,
+          controlPortId: 100,
+          value: 0.75,
         ),
       );
 

@@ -224,6 +224,11 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   @hide
   TimerDebouncedAction? _stateUpdateDebouncedAction;
 
+  /// The control input port ID of the most recently changed plugin parameter.
+  @anthemObservable
+  @hide
+  int? lastChangedControlPortId;
+
   /// Schedules a state update for the processor.
   ///
   /// This sends a request to the engine to get the current state of the
