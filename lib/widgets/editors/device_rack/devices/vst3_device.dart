@@ -42,6 +42,11 @@ const _controlHeight = 24.0;
 const _parameterRowHeight = 30.0;
 const _parameterScrollbarWidth = 17.0;
 const _knobSize = 22.0;
+const _recentParameterPlaceholderLineHeight = 1.0;
+const _recentParameterPlaceholderNameLineWidth = 74.0;
+const _recentParameterPlaceholderValueLineWidth = 36.0;
+const _recentParameterPlaceholderNameRowHeight = 11.0;
+const _recentParameterPlaceholderValueRowHeight = 10.0;
 
 class Vst3Device extends StatefulWidget {
   final DeviceModel device;
@@ -163,11 +168,76 @@ class _RecentParameterSlot extends StatelessWidget {
         );
 
         if (port == null) {
-          return const _ParameterRowFrame(child: SizedBox.shrink());
+          return const _RecentParameterPlaceholderRow();
         }
 
         return _Vst3ParameterRow(node: node, port: port);
       },
+    );
+  }
+}
+
+class _RecentParameterPlaceholderRow extends StatelessWidget {
+  const _RecentParameterPlaceholderRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return _ParameterRowFrame(
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 34,
+            child: Center(
+              child: IgnorePointer(
+                child: Knob(value: 0, width: _knobSize, height: _knobSize),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _RecentParameterPlaceholderLine(
+                  width: _recentParameterPlaceholderNameLineWidth,
+                  rowHeight: _recentParameterPlaceholderNameRowHeight,
+                ),
+                const SizedBox(height: 2),
+                const _RecentParameterPlaceholderLine(
+                  width: _recentParameterPlaceholderValueLineWidth,
+                  rowHeight: _recentParameterPlaceholderValueRowHeight,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentParameterPlaceholderLine extends StatelessWidget {
+  final double width;
+  final double rowHeight;
+
+  const _RecentParameterPlaceholderLine({
+    required this.width,
+    required this.rowHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: rowHeight,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: width,
+          height: _recentParameterPlaceholderLineHeight,
+          child: ColoredBox(color: AnthemTheme.text.disabled),
+        ),
+      ),
     );
   }
 }

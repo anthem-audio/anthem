@@ -31,6 +31,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  testWidgets('shows a placeholder in the recent parameter slot', (
+    tester,
+  ) async {
+    await _pumpDevice(tester);
+
+    final placeholderKnob = tester.widget<Knob>(find.byType(Knob).first);
+
+    expect(placeholderKnob.value, 0);
+    expect(placeholderKnob.onValueChanged, isNull);
+    expect(find.text('Filter cutoff'), findsOneWidget);
+
+    _firstInteractiveKnob(tester).onValueChanged!(0.25);
+    await tester.pump();
+
+    expect(find.text('Filter cutoff'), findsNWidgets(2));
+  });
+
   testWidgets('filters parameter rows while typing', (tester) async {
     await _pumpDevice(tester);
 
@@ -56,7 +73,7 @@ void main() {
     expect(find.text('Filter cutoff'), findsOneWidget);
     expect(find.text('25.0%'), findsNothing);
 
-    final cutoffKnob = tester.widget<Knob>(find.byType(Knob).first);
+    final cutoffKnob = _firstInteractiveKnob(tester);
     cutoffKnob.onValueChanged!(0.25);
     await tester.pump();
 
@@ -81,11 +98,17 @@ void main() {
   testWidgets('adds value hints to parameter knobs', (tester) async {
     await _pumpDevice(tester);
 
-    final cutoffKnob = tester.widget<Knob>(find.byType(Knob).first);
+    final cutoffKnob = _firstInteractiveKnob(tester);
 
     expect(cutoffKnob.hoverHintOverride?.call(0), 'Filter cutoff: 76.0%');
     expect(cutoffKnob.hint?.call(0.25), 'Filter cutoff: 25.0%');
   });
+}
+
+Knob _firstInteractiveKnob(WidgetTester tester) {
+  return tester
+      .widgetList<Knob>(find.byType(Knob))
+      .firstWhere((knob) => knob.onValueChanged != null);
 }
 
 Future<void> _pumpDevice(
