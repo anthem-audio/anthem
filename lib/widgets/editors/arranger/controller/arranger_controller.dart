@@ -20,6 +20,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
@@ -36,6 +37,7 @@ import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
+import 'package:anthem_codegen/include.dart';
 
 import '../helpers.dart';
 
@@ -62,6 +64,7 @@ abstract class _ArrangerController {
   bool _isDisposed = false;
 
   late final ReactionDisposer patternCursorAutorunDispose;
+  late final ModelFilterSubscription lastChangedControlPortSubscription;
 
   ProjectModel get _project =>
       AnthemStore.instance.projects[viewModel.projectId]!;
@@ -73,6 +76,24 @@ abstract class _ArrangerController {
       viewModel.cursorPattern = project.sequence.activePatternID;
       viewModel.cursorTimeRange = null;
     });
+
+    lastChangedControlPortSubscription =
+        _subscribeToLastChangedControlPortChanges();
+  }
+
+  ModelFilterSubscription _subscribeToLastChangedControlPortChanges() {
+    try {
+      return project.processingGraph.onChange(
+        (b) => b.nodes.anyValue.lastChangedControlPortId,
+        _handleLastChangedControlPortChanged,
+      );
+    } catch (error) {
+      if (!error.toString().contains('LateInitializationError')) {
+        rethrow;
+      }
+
+      return ModelFilterSubscription(cancel: () {});
+    }
   }
 
   void dispose() {
@@ -81,6 +102,7 @@ abstract class _ArrangerController {
     }
 
     _isDisposed = true;
+    lastChangedControlPortSubscription.cancel();
     patternCursorAutorunDispose();
     stateMachine.dispose();
   }
@@ -130,6 +152,147 @@ abstract class _ArrangerController {
 
   void onTrackLayoutChanged() {
     stateMachine.onTrackLayoutChanged();
+  }
+
+  void _handleLastChangedControlPortChanged(ModelChangeEvent event) {
+    Id? nodeId;
+    for (final accessor in event.fieldAccessors) {
+      if (accessor.fieldType == FieldType.map && accessor.key is Id) {
+        nodeId = accessor.key as Id;
+        break;
+      }
+    }
+
+    final portId = event.operation.newValue;
+    if (nodeId == null || portId is! int) {
+      return;
+    }
+
+    final target = resolveAutomationTarget(nodeId: nodeId, portId: portId);
+    if (target == null) {
+      return;
+    }
+
+    viewModel.lastTweakedAutomationTarget = target;
+    viewModel.refreshTrackLayout(viewModel.editorHeight);
+    onTrackLayoutChanged();
+  }
+
+  AutomationParameterTarget? resolveAutomationTarget({
+    required Id nodeId,
+    required int portId,
+  }) {
+    final node = project.processingGraph.nodes[nodeId];
+    if (node == null) {
+      return null;
+    }
+
+    NodePortModel port;
+    try {
+      port = node.getPortById(portId);
+    } catch (_) {
+      return null;
+    }
+
+    if (port.config.dataType != NodePortDataType.control ||
+        port.config.parameterConfig == null) {
+      return null;
+    }
+
+    final owner = node.owner;
+    final trackId = owner?.trackId;
+    if (trackId == null) {
+      return null;
+    }
+
+    final track = project.tracks[trackId];
+    final processing = track?.processing;
+    if (track == null || processing == null) {
+      return null;
+    }
+
+    final deviceId = owner?.deviceId;
+    if (deviceId == null) {
+      if (processing.utilityNodeId != nodeId) {
+        return null;
+      }
+
+      return AutomationParameterTarget(
+        ownerTrackId: track.id,
+        nodeId: nodeId,
+        portId: portId,
+        ownerName: 'Track',
+        parameterName: _trackUtilityAutomationParameterName(portId),
+      );
+    }
+
+    final device = _findDeviceById(processing, deviceId);
+    if (device == null || !device.nodeIds.contains(nodeId)) {
+      return null;
+    }
+
+    return AutomationParameterTarget(
+      ownerTrackId: track.id,
+      nodeId: nodeId,
+      portId: portId,
+      ownerName: device.name,
+      parameterName: _parameterNameForPort(node, port),
+    );
+  }
+
+  DeviceModel? _findDeviceById(TrackProcessingModel processing, Id deviceId) {
+    for (final device in processing.devices) {
+      if (device.id == deviceId) {
+        return device;
+      }
+    }
+
+    return null;
+  }
+
+  String _trackUtilityAutomationParameterName(int portId) {
+    if (portId == UtilityProcessorModel.gainPortId) {
+      return 'Volume';
+    }
+    if (portId == UtilityProcessorModel.balancePortId) {
+      return 'Balance';
+    }
+
+    return 'Parameter $portId';
+  }
+
+  String _parameterNameForPort(NodeModel node, NodePortModel port) {
+    final processor = node.processor;
+    if (processor is UtilityProcessorModel) {
+      if (port.id == UtilityProcessorModel.gainPortId) {
+        return 'Gain';
+      }
+      if (port.id == UtilityProcessorModel.balancePortId) {
+        return 'Balance';
+      }
+    }
+
+    return port.config.name ?? 'Parameter ${port.id}';
+  }
+
+  void createAutomationLaneForTarget(AutomationParameterTarget target) {
+    if (viewModel.hasAutomationLaneForTarget(target)) {
+      return;
+    }
+
+    project.execute(
+      AutomationLaneAddRemoveCommand.add(
+        project: project,
+        parentTrackId: target.ownerTrackId,
+        nodeId: target.nodeId,
+        portId: target.portId,
+        name: target.title,
+      ),
+    );
+
+    viewModel.automationExpandedByTrackId[target.ownerTrackId] = true;
+    viewModel.refreshTrackLayout(viewModel.editorHeight);
+    onTrackLayoutChanged();
   }
 
   void setBaseTrackHeight(double pointerY, double trackHeight) {

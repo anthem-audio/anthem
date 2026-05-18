@@ -22,7 +22,9 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,11 +32,15 @@ NodePortModel _port({
   required int nodeId,
   required int id,
   required NodePortDataType dataType,
+  ParameterConfigModel? parameterConfig,
 }) {
   return NodePortModel(
     nodeId: nodeId,
     id: id,
-    config: NodePortConfigModel(dataType: dataType),
+    config: NodePortConfigModel(
+      dataType: dataType,
+      parameterConfig: parameterConfig,
+    ),
   );
 }
 
@@ -43,6 +49,8 @@ ProjectEntityIdAllocator _idAllocatorFor(int id) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('ProcessingGraphModel.addConnection()', () {
     test('adds a valid typed connection when port IDs overlap', () {
       final graph = ProcessingGraphModel();
@@ -139,6 +147,70 @@ void main() {
       expect(graph.connections, isEmpty);
       expect(sourceControlPort.connections, isEmpty);
       expect(destinationAudioPort.connections, isEmpty);
+    });
+  });
+
+  group('NodeModel parameter touch tracking', () {
+    test('tracks the last changed control input parameter', () {
+      final project = ProjectModel.create();
+      addTearDown(project.dispose);
+      final nodeId = project.allocateId();
+      final parameterPort = _port(
+        nodeId: nodeId,
+        id: 100,
+        dataType: NodePortDataType.control,
+        parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.5),
+      );
+      final nonParameterPort = _port(
+        nodeId: nodeId,
+        id: 101,
+        dataType: NodePortDataType.control,
+      );
+      final node = NodeModel(
+        id: nodeId,
+        controlInputPorts: AnthemObservableList.of([
+          parameterPort,
+          nonParameterPort,
+        ]),
+      );
+
+      project.processingGraph.addNode(node);
+
+      parameterPort.parameterValue = 0.75;
+
+      expect(node.lastChangedControlPortId, equals(100));
+
+      nonParameterPort.parameterValue = 0.25;
+
+      expect(node.lastChangedControlPortId, equals(100));
+    });
+
+    test('can suppress parameter touch tracking for state sync', () {
+      final project = ProjectModel.create();
+      addTearDown(project.dispose);
+      final nodeId = project.allocateId();
+      final parameterPort = _port(
+        nodeId: nodeId,
+        id: 100,
+        dataType: NodePortDataType.control,
+        parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.5),
+      );
+      final node = NodeModel(
+        id: nodeId,
+        controlInputPorts: AnthemObservableList.of([parameterPort]),
+      );
+
+      project.processingGraph.addNode(node);
+
+      node.withoutParameterTouchTracking(() {
+        parameterPort.parameterValue = 0.25;
+      });
+
+      expect(node.lastChangedControlPortId, isNull);
+
+      parameterPort.parameterValue = 0.75;
+
+      expect(node.lastChangedControlPortId, equals(100));
     });
   });
 }

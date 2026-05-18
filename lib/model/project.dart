@@ -70,14 +70,8 @@ class ProjectModel extends _ProjectModel
     final List<Id> initTrackOrder = [];
     final List<Id> initSendTrackOrder = [];
 
-    void addTrackWithFakeAutomationLanes(TrackModel track, List<Id> orderList) {
+    void addTrack(TrackModel track, List<Id> orderList) {
       initTracks[track.id] = track;
-      for (final lane in createFakeAutomationLanesForTrack(
-        idAllocator: idAllocator,
-        track: track,
-      )) {
-        initTracks[lane.id] = lane;
-      }
       orderList.add(track.id);
     }
 
@@ -88,7 +82,7 @@ class ProjectModel extends _ProjectModel
         color: AnthemColor.randomHue(),
         type: .normal,
       );
-      addTrackWithFakeAutomationLanes(track, initTrackOrder);
+      addTrack(track, initTrackOrder);
     }
 
     final masterTrack = TrackModel(
@@ -97,7 +91,7 @@ class ProjectModel extends _ProjectModel
       color: AnthemColor.randomHue(),
       type: .normal,
     )..isMasterTrack = true;
-    addTrackWithFakeAutomationLanes(masterTrack, initSendTrackOrder);
+    addTrack(masterTrack, initSendTrackOrder);
 
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);

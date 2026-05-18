@@ -678,6 +678,7 @@ class _ArrangerCanvas extends StatelessWidget {
     final renderedViewRepaint = Listenable.merge([
       timeViewAnimationController,
       verticalScrollPositionAnimationController,
+      viewModel.trackPositionCalculator.layoutRevision,
     ]);
 
     return Container(

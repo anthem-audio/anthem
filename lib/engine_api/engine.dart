@@ -358,7 +358,6 @@ class Engine {
       event.displayText,
     );
 
-    node.lastChangedControlPortId = event.controlPortId;
     _scheduleNodeStateUpdate(event.nodeId);
   }
 
@@ -368,14 +367,16 @@ class Engine {
       return;
     }
 
-    for (final parameterValue in event.parameterValues) {
-      _applyPluginParameterValue(
-        node,
-        parameterValue.controlPortId,
-        parameterValue.value,
-        parameterValue.displayText,
-      );
-    }
+    node.withoutParameterTouchTracking(() {
+      for (final parameterValue in event.parameterValues) {
+        _applyPluginParameterValue(
+          node,
+          parameterValue.controlPortId,
+          parameterValue.value,
+          parameterValue.displayText,
+        );
+      }
+    });
   }
 
   void _onReply(Response response) {

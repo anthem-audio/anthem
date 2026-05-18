@@ -248,7 +248,8 @@ class _MeterSection extends StatelessObserverWidget {
                   hint: (value) =>
                       'Track gain: ${gainParameterValueToString(value)}',
                   onValueChanged: (value) {
-                    if (gainPort == null) {
+                    final node = track.processing?.utilityNode;
+                    if (gainPort == null || node == null) {
                       return;
                     }
 

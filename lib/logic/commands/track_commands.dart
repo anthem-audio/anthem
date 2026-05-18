@@ -40,6 +40,96 @@ class TrackDescriptorForCommand {
   });
 }
 
+class AutomationLaneAddRemoveCommand extends Command {
+  final bool _isAdd;
+  final Id parentTrackId;
+  final TrackModel lane;
+  final int index;
+
+  AutomationLaneAddRemoveCommand.add({
+    required ProjectModel project,
+    required this.parentTrackId,
+    required Id nodeId,
+    required int portId,
+    required String name,
+    this.index = 0,
+  }) : _isAdd = true,
+       lane = TrackModel(
+         idAllocator: ServiceRegistry.forProject(project.id).idAllocator,
+         name: name,
+         color: project.tracks[parentTrackId]!.color.clone(),
+         type: TrackType.automationLane,
+         automationTarget: TrackAutomationTargetModel(
+           nodeId: nodeId,
+           portId: portId,
+         ),
+       )..automationLaneParentTrackId = parentTrackId;
+
+  @override
+  void execute(ProjectModel project) {
+    if (_isAdd) {
+      _add(project);
+    } else {
+      _remove(project);
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    if (_isAdd) {
+      _remove(project);
+    } else {
+      _add(project);
+    }
+  }
+
+  void _add(ProjectModel project) {
+    final parentTrack = project.tracks[parentTrackId];
+    if (parentTrack == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand._add(): Parent track $parentTrackId '
+        'not found.',
+      );
+    }
+
+    if (project.tracks[lane.id] != null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand._add(): Automation lane ${lane.id} '
+        'already exists.',
+      );
+    }
+
+    lane.automationLaneParentTrackId = parentTrackId;
+    project.tracks[lane.id] = lane;
+    final insertIndex = index
+        .clamp(0, parentTrack.automationLanes.length)
+        .toInt();
+    parentTrack.automationLanes.insert(insertIndex, lane.id);
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel.registerTrack(lane.id);
+  }
+
+  void _remove(ProjectModel project) {
+    final parentTrack = project.tracks[parentTrackId];
+    if (parentTrack == null) {
+      return;
+    }
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel.unregisterTrack(lane.id);
+
+    parentTrack.automationLanes.remove(lane.id);
+    project.tracks.remove(lane.id);
+
+    if (project.engine.isRunning) {
+      project.engine.sequencerApi.cleanUpTrack(lane.id);
+    }
+  }
+}
+
 class _InternalTrackAddRemoveDescriptor {
   /// The index within the parent's child list (or top-level order list) at
   /// which to insert/remove this track.
@@ -105,17 +195,12 @@ class TrackAddRemoveCommand extends Command {
         color: AnthemColor.randomHue(),
         type: track.trackType,
       );
-      final automationLaneModels = createFakeAutomationLanesForTrack(
-        idAllocator: idAllocator,
-        track: trackModel,
-      );
 
       return _InternalTrackAddRemoveDescriptor(
         index: track.index,
         isSendTrack: track.isSendTrack,
         parentTrackId: track.parentTrackId,
         trackModel: trackModel,
-        descendantTrackModels: automationLaneModels,
       );
     }).toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
   }
@@ -741,10 +826,7 @@ class TrackGroupUngroupCommand extends Command {
       color: AnthemColor.randomHue(),
       type: .group,
     );
-    _newGroupAutomationLanes = createFakeAutomationLanesForTrack(
-      idAllocator: idAllocator,
-      track: _newGroupTrack,
-    );
+    _newGroupAutomationLanes = const [];
     _groupTrackGraphFragment = trackController.buildTrackMixFragment(
       _newGroupTrack,
     );

@@ -55,21 +55,21 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
-    final trackController = serviceRegistry.trackController;
     final renderedVerticalScrollPosition =
         verticalScrollPositionAnimation.value;
     final verticalScrollDelta =
         viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
 
     var i = 0;
-    for (final (_, isSendTrack, _) in trackController.getTracksIterable()) {
+    final visibleRows = viewModel.trackPositionCalculator.visibleRows;
+    for (final row in visibleRows) {
       final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
         i,
       );
       final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(i);
 
       var drawPosition = trackPosition + verticalScrollDelta;
-      if (!isSendTrack) {
+      if (!row.isSendTrack) {
         drawPosition += trackHeight;
       }
       drawPosition--;

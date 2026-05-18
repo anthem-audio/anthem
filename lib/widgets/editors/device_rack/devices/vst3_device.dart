@@ -499,7 +499,6 @@ class _Vst3ParameterRow extends StatelessWidget {
 
                       final value = newValue.clamp(0.0, 1.0).toDouble();
                       port.parameterValue = value;
-                      node.lastChangedControlPortId = port.id;
                       project.engine.processingGraphApi.setPluginParameterValue(
                         node.id,
                         port.id,

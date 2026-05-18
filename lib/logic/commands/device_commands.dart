@@ -24,6 +24,7 @@ import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
@@ -116,6 +117,12 @@ class DeviceAddRemoveCommand extends Command {
         : min(_index!, processing.devices.length);
     processing.devices.insert(insertIndex, _device);
     _index ??= insertIndex;
+
+    _stampDeviceNodeOwners(
+      trackId: trackId,
+      device: _device,
+      graphFragment: graphFragment,
+    );
 
     if (!graphFragment.isEmpty) {
       project.processingGraph.restoreGraphFragment(graphFragment);
@@ -211,6 +218,20 @@ TrackModel _getTrack(ProjectModel project, Id trackId, String caller) {
   }
 
   return track;
+}
+
+void _stampDeviceNodeOwners({
+  required Id trackId,
+  required DeviceModel device,
+  required ProcessingGraphFragment graphFragment,
+}) {
+  for (final node in graphFragment.nodes) {
+    if (!device.nodeIds.contains(node.id)) {
+      continue;
+    }
+
+    node.owner = NodeOwnerModel(trackId: trackId, deviceId: device.id);
+  }
 }
 
 int _moveDevice(

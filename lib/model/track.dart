@@ -36,6 +36,31 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 
 part 'track.g.dart';
 
+@AnthemModel(serializable: true, generateModelSync: true)
+class TrackAutomationTargetModel extends _TrackAutomationTargetModel
+    with
+        _$TrackAutomationTargetModel,
+        _$TrackAutomationTargetModelAnthemModelMixin {
+  TrackAutomationTargetModel({required super.nodeId, required super.portId});
+
+  TrackAutomationTargetModel.uninitialized() : super(nodeId: -1, portId: -1);
+
+  factory TrackAutomationTargetModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackAutomationTargetModelAnthemModelMixin.fromJson(json);
+}
+
+abstract class _TrackAutomationTargetModel with Store, AnthemModelBase {
+  /// The processing graph node that owns the automated parameter.
+  @anthemObservable
+  Id nodeId;
+
+  /// The control input port ID for the automated parameter.
+  @anthemObservable
+  int portId;
+
+  _TrackAutomationTargetModel({required this.nodeId, required this.portId});
+}
+
 @AnthemModel.syncedModel()
 class TrackProcessingModel extends _TrackProcessingModel
     with _$TrackProcessingModel, _$TrackProcessingModelAnthemModelMixin {
@@ -119,6 +144,7 @@ abstract class _TrackProcessingModel
       TrackProcessingModel.buildDbMeterVisualizationIds(track.id);
 
   void createAndRegisterNodes({
+    required TrackModel track,
     required ProjectModel project,
     required ProjectEntityIdAllocator idAllocator,
   }) {
@@ -127,14 +153,18 @@ abstract class _TrackProcessingModel
     final utilityNode = UtilityProcessorModel.create(
       idAllocator: idAllocator,
     ).createNode();
+    utilityNode.owner = NodeOwnerModel(trackId: trackId);
     utilityNodeId = utilityNode.id;
     project.processingGraph.addNode(utilityNode);
 
     final dbMeterNode = DbMeterProcessorModel.create(
       idAllocator: idAllocator,
       publishEverySamples: 1024,
-      visualizationIds: dbMeterVisualizationIds,
+      visualizationIds: TrackProcessingModel.buildDbMeterVisualizationIds(
+        trackId,
+      ),
     ).createNode();
+    dbMeterNode.owner = NodeOwnerModel(trackId: trackId);
     dbMeterNodeId = dbMeterNode.id;
     project.processingGraph.addNode(dbMeterNode);
 
@@ -153,12 +183,14 @@ abstract class _TrackProcessingModel
       idAllocator: idAllocator,
       trackId: trackId,
     ).createNode();
+    sequenceNoteProviderNode.owner = NodeOwnerModel(trackId: trackId);
     sequenceNoteProviderNodeId = sequenceNoteProviderNode.id;
     project.processingGraph.addNode(sequenceNoteProviderNode);
 
     final liveEventProviderNode = LiveEventProviderProcessorModel.create(
       idAllocator: idAllocator,
     ).createNode();
+    liveEventProviderNode.owner = NodeOwnerModel(trackId: trackId);
     liveEventProviderNodeId = liveEventProviderNode.id;
     project.processingGraph.addNode(liveEventProviderNode);
   }
@@ -181,6 +213,7 @@ class TrackModel extends _TrackModel
     required super.name,
     required super.color,
     required super.type,
+    super.automationTarget,
   }) : super(
          id: idAllocator.allocateId(),
          processing: type == TrackType.automationLane
@@ -194,6 +227,7 @@ class TrackModel extends _TrackModel
         name: '',
         color: AnthemColor.uninitialized(),
         type: .normal,
+        automationTarget: null,
         processing: null,
       );
 
@@ -203,33 +237,6 @@ class TrackModel extends _TrackModel
 
 @AnthemEnum()
 enum TrackType { normal, group, automationLane }
-
-List<TrackModel> createFakeAutomationLanesForTrack({
-  required ProjectEntityIdAllocator idAllocator,
-  required TrackModel track,
-}) {
-  if (track.isAutomationLane) {
-    return const [];
-  }
-
-  final lanes = <TrackModel>[];
-  for (var i = 0; i < 3; i++) {
-    final lane = TrackModel(
-      idAllocator: idAllocator,
-      name: 'Automation ${i + 1}',
-      color: track.color.clone(),
-      type: TrackType.automationLane,
-    )..automationLaneParentTrackId = track.id;
-
-    lanes.add(lane);
-  }
-
-  track.automationLanes
-    ..clear()
-    ..addAll(lanes.map((lane) => lane.id));
-
-  return lanes;
-}
 
 abstract class _TrackModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
@@ -296,6 +303,14 @@ abstract class _TrackModel
   @anthemObservable
   TrackProcessingModel? processing;
 
+  /// Parameter target represented by this automation lane.
+  ///
+  /// Only automation lanes should set this. It is UI/project data for now and
+  /// is not part of the engine-side track model.
+  @anthemObservable
+  @hideFromCpp
+  TrackAutomationTargetModel? automationTarget;
+
   bool get isAutomationLane => type == TrackType.automationLane;
   bool get hasProcessing => processing != null;
 
@@ -313,6 +328,7 @@ abstract class _TrackModel
     ProjectEntityIdAllocator idAllocator,
   ) {
     requireProcessing.createAndRegisterNodes(
+      track: this as TrackModel,
       project: project,
       idAllocator: idAllocator,
     );
@@ -323,6 +339,7 @@ abstract class _TrackModel
     required this.name,
     required this.color,
     required this.type,
+    required this.automationTarget,
     required this.processing,
   }) : super();
 }

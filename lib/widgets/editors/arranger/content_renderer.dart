@@ -246,7 +246,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
       return;
     }
 
-    final (:trackId, :startOffset, :endOffset, :color) =
+    final (:rowId, :startOffset, :endOffset, :color) =
         viewModel.clipCreateHint!;
 
     final startX = timeToPixels(
@@ -266,12 +266,8 @@ class ArrangerContentPainter extends CustomPainterObserver {
     final width = (endX - startX).abs() - 1;
 
     if (width > 0) {
-      final trackIndex = viewModel.trackPositionCalculator.tryTrackIdToIndex(
-        trackId,
-      );
-      if (trackIndex == null) {
-        return;
-      }
+      final trackIndex = _rowIdToIndex(rowId);
+      if (trackIndex == null) return;
 
       final trackPos = _getTrackPosition(trackIndex);
       final trackHeight =
@@ -298,22 +294,19 @@ class ArrangerContentPainter extends CustomPainterObserver {
     }
 
     if (viewModel.clipCreateHint != null) {
-      final (:trackId, :startOffset, :endOffset, :color) =
-          viewModel.clipCreateHint!;
+      final clipCreateHint = viewModel.clipCreateHint!;
+      final startOffset = clipCreateHint.startOffset;
+      final endOffset = clipCreateHint.endOffset;
 
       if (startOffset != endOffset) {
         return;
       }
     }
 
-    final (offset, trackId) = viewModel.hoverIndicatorPosition!;
+    final (:offset, :rowId) = viewModel.hoverIndicatorPosition!;
 
-    final trackIndex = viewModel.trackPositionCalculator.tryTrackIdToIndex(
-      trackId,
-    );
-    if (trackIndex == null) {
-      return;
-    }
+    final trackIndex = _rowIdToIndex(rowId);
+    if (trackIndex == null) return;
 
     final trackPos = _getTrackPosition(trackIndex);
     final trackHeight =
@@ -333,6 +326,10 @@ class ArrangerContentPainter extends CustomPainterObserver {
     );
 
     canvas.drawRect(rect, Paint()..color = AnthemTheme.editors.playheadLine);
+  }
+
+  int? _rowIdToIndex(Id rowId) {
+    return viewModel.trackPositionCalculator.tryRowIdToIndex(rowId);
   }
 
   /// Paints the clips onto the arranger canvas.
@@ -410,7 +407,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
           final trackHeight =
               calculateTrackHeight(
                 viewModel.baseTrackHeight,
-                viewModel.trackHeightModifiers[trackId]!,
+                viewModel.rowHeightModifier(trackId),
               ) +
               1;
 

@@ -563,19 +563,14 @@ class ArrangerIdleState extends _ArrangerLeafState {
         interactionState.renderedVerticalScrollPosition -
         viewModel.verticalScrollPosition;
 
-    final fractionalTrackIndex = viewModel.trackPositionCalculator
-        .getTrackIndexFromPosition(adjustedY);
-
-    if (fractionalTrackIndex.isInfinite) {
+    final rowHit = viewModel.trackPositionCalculator.rowAtPosition(adjustedY);
+    if (rowHit == null) {
       viewModel.hoverIndicatorPosition = null;
       return;
     }
 
-    final trackId = viewModel.trackPositionCalculator.trackIndexToId(
-      fractionalTrackIndex.floor(),
-    );
-    final track = project.tracks[trackId];
-    if (track == null || track.isAutomationLane) {
+    final rowId = _rowIdForCursor(rowHit.row);
+    if (rowId == null) {
       viewModel.hoverIndicatorPosition = null;
       return;
     }
@@ -595,7 +590,18 @@ class ArrangerIdleState extends _ArrangerLeafState {
             round: true,
           );
 
-    viewModel.hoverIndicatorPosition = (targetTime.toDouble(), trackId);
+    viewModel.hoverIndicatorPosition = (
+      offset: targetTime.toDouble(),
+      rowId: rowId,
+    );
+  }
+
+  Id? _rowIdForCursor(ArrangerRow row) {
+    return switch (row) {
+      TrackArrangerRow(:final trackId) =>
+        (project.tracks[trackId]?.isAutomationLane ?? true) ? null : trackId,
+      PhantomAutomationArrangerRow() => row.rowId,
+    };
   }
 
   void updateSystemMouseCursor((double x, double y)? coordinates) {

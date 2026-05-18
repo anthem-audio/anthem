@@ -19,9 +19,14 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/commands/device_commands.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
+import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -40,6 +45,9 @@ class MockProjectController extends Mock implements ProjectController {
   void openPatternInPianoRoll(Id patternID) {
     super.noSuchMethod(Invocation.method(#openPatternInPianoRoll, [patternID]));
   }
+
+  @override
+  Future<void> publishProcessingGraph() => Future<void>.value();
 }
 
 class MockTrackController extends Mock implements TrackController {
@@ -272,6 +280,87 @@ void main() {
         );
       },
     );
+  });
+
+  group('automation target resolution', () {
+    test('uses node owner metadata for track and device parameters', () {
+      fixture.dispose();
+
+      final project = ProjectModel.create();
+      final viewModel = ArrangerViewModel(
+        project: project,
+        baseTrackHeight: 60,
+        timeView: TimeRange(0, 960),
+      );
+      final mockProjectController = MockProjectController();
+
+      AnthemStore.instance.projects[project.id] = project;
+      ServiceRegistry.initializeProject(
+        project,
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(
+            projectControllerService,
+            (_, _) => mockProjectController,
+          ),
+          overrideService(arrangerViewModelService, (_, _) => viewModel),
+        ]),
+      );
+
+      try {
+        ServiceRegistry.forProject(project.id).arrangerController;
+        final track = project.tracks[project.trackOrder.first]!;
+        final utilityNode = track.requireProcessing.utilityNode!;
+
+        utilityNode.lastChangedControlPortId = UtilityProcessorModel.gainPortId;
+
+        var target = viewModel.lastTweakedAutomationTarget;
+        expect(target, isNotNull);
+        expect(target!.ownerTrackId, equals(track.id));
+        expect(target.nodeId, equals(utilityNode.id));
+        expect(target.portId, equals(UtilityProcessorModel.gainPortId));
+        expect(target.ownerName, equals('Track'));
+        expect(target.parameterName, equals('Volume'));
+        expect(target.title, equals('Track Volume'));
+
+        DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: track.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+        ).execute(project);
+
+        final device = track.requireProcessing.devices.single;
+        final deviceNode =
+            project.processingGraph.nodes[device.nodeIds.single]!;
+
+        deviceNode.lastChangedControlPortId =
+            ToneGeneratorProcessorModel.frequencyPortId;
+
+        target = viewModel.lastTweakedAutomationTarget;
+        expect(target, isNotNull);
+        expect(target!.ownerTrackId, equals(track.id));
+        expect(target.nodeId, equals(deviceNode.id));
+        expect(
+          target.portId,
+          equals(ToneGeneratorProcessorModel.frequencyPortId),
+        );
+        expect(target.ownerName, equals('Tone Generator'));
+        expect(
+          target.parameterName,
+          equals('Parameter ${ToneGeneratorProcessorModel.frequencyPortId}'),
+        );
+        expect(
+          target.title,
+          equals(
+            'Tone Generator '
+            'Parameter ${ToneGeneratorProcessorModel.frequencyPortId}',
+          ),
+        );
+      } finally {
+        ServiceRegistry.removeProject(project.id);
+        AnthemStore.instance.projects.remove(project.id);
+        project.dispose();
+      }
+    });
   });
 
   ({Id patternId, Id clipId}) createClipAndGetCreatedIds({

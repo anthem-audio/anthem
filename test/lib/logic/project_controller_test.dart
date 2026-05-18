@@ -20,12 +20,14 @@
 import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _RecordingProcessingGraphApi implements ProcessingGraphApi {
@@ -33,6 +35,7 @@ class _RecordingProcessingGraphApi implements ProcessingGraphApi {
   var publishCallCount = 0;
   var initializeNodesCallCount = 0;
   var didInitialize = true;
+  var results = <ProcessingGraphNodeInitializationResult>[];
   Completer<void>? publishCompleter;
 
   @override
@@ -41,7 +44,7 @@ class _RecordingProcessingGraphApi implements ProcessingGraphApi {
     initializeNodesCallCount++;
     return ProcessingGraphNodeInitialization(
       didInitialize: didInitialize,
-      results: [],
+      results: results,
     );
   }
 
@@ -268,6 +271,53 @@ void main() {
             'publish',
           ]),
         );
+      },
+    );
+
+    test(
+      'publishProcessingGraph does not mark initialized parameters as touched',
+      () async {
+        final processingGraphApi = _RecordingProcessingGraphApi();
+        final nodeId = project.allocateId();
+        final node = NodeModel(
+          id: nodeId,
+          controlInputPorts: AnthemObservableList.of([
+            NodePortModel(
+              nodeId: nodeId,
+              id: 100,
+              config: NodePortConfigModel(
+                dataType: NodePortDataType.control,
+                parameterConfig: ParameterConfigModel(
+                  id: 100,
+                  defaultValue: 0.5,
+                ),
+              ),
+            ),
+          ]),
+        );
+        final port = node.controlInputPorts.single;
+        project.processingGraph.addNode(node);
+
+        processingGraphApi.results = [
+          ProcessingGraphNodeInitializationResult(
+            nodeId: node.id,
+            success: true,
+            parameterValues: [
+              ProcessingGraphParameterValue(
+                controlPortId: port.id,
+                value: 0.25,
+                displayText: '25%',
+              ),
+            ],
+          ),
+        ];
+        project.engine.processingGraphApi = processingGraphApi;
+
+        await controller.publishProcessingGraph();
+
+        expect(port.parameterValue, equals(0.25));
+        expect(port.parameterDisplayText, equals('25%'));
+        expect(node.lastChangedControlPortId, isNull);
       },
     );
   });

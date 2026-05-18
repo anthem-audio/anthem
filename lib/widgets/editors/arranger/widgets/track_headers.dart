@@ -21,7 +21,6 @@ import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/track.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/hint/hint.dart';
@@ -39,13 +38,13 @@ import 'track_header.dart';
 
 class _TrackHeaderResizeHandle extends StatefulObserverWidget {
   final double resizeHandleHeight;
-  final Id trackId;
+  final Id rowId;
   final double trackHeight;
   final bool isSendTrack;
 
   const _TrackHeaderResizeHandle({
     required this.resizeHandleHeight,
-    required this.trackId,
+    required this.rowId,
     required this.trackHeight,
     required this.isSendTrack,
   });
@@ -92,7 +91,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    final trackHeightModifier = viewModel.trackHeightModifiers[widget.trackId]!;
+    final trackHeightModifier = viewModel.rowHeightModifier(widget.rowId);
 
     return SizedBox(
       height: widget.resizeHandleHeight,
@@ -107,7 +106,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
           child: GestureDetector(
             onDoubleTap: () {
               // On double click, this resets the track height
-              viewModel.trackHeightModifiers[widget.trackId] = 1;
+              viewModel.resetRowHeightModifier(widget.rowId);
 
               // This may require scrolling, as a shorter track may mean that the
               // bottom of the lowest track is now above the bottom of the editor.
@@ -204,7 +203,7 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
                   newModifier = rawModifier;
                 }
 
-                viewModel.trackHeightModifiers[widget.trackId] = newModifier;
+                viewModel.setRowHeightModifier(widget.rowId, newModifier);
 
                 if (widget.isSendTrack &&
                     viewModel.regularToSendGapHeight == 0) {
@@ -259,7 +258,6 @@ class _TrackHeadersState extends State<TrackHeaders> {
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
     final controller = serviceRegistry.arrangerController;
-    final trackController = serviceRegistry.trackController;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -281,15 +279,29 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 viewModel.verticalScrollPosition -
                 widget.verticalScrollPosition;
 
-            final visibleTracks = trackController.getTracksIterable();
+            final visibleRows = viewModel.getVisibleRows().toList(
+              growable: false,
+            );
 
-            for (final (trackIndex, (trackId, isSendTrack, trackDepth))
-                in visibleTracks.indexed) {
+            for (final (trackIndex, row) in visibleRows.indexed) {
+              final trackId = switch (row) {
+                TrackArrangerRow(:final trackId) => trackId,
+                PhantomAutomationArrangerRow() => null,
+              };
+              final rowKey = switch (row) {
+                TrackArrangerRow(:final trackId) => trackId.toString(),
+                PhantomAutomationArrangerRow(:final phantomLane) =>
+                  'phantom-${phantomLane.id}',
+              };
+              final isSendTrack = row.isSendTrack;
+              final trackDepth = row.trackDepth;
+
               // For MobX, since we're pulling the real values from a cache
-              final _ = viewModel.trackHeightModifiers[trackId];
+              final _ = viewModel.trackHeightModifiers[row.rowId];
 
-              final track = project.tracks[trackId]!;
+              final track = trackId == null ? null : project.tracks[trackId]!;
               final isTopLevel =
+                  track != null &&
                   track.parentTrackId == null &&
                   track.automationLaneParentTrackId == null;
 
@@ -317,19 +329,9 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 var canMaybeRender = renderedTrackPosition > 0;
 
                 if (!canMaybeRender) {
-                  var subtreeTrackCount = 0;
-                  void countSubtreeTracks(TrackModel track) {
-                    subtreeTrackCount++;
-                    if (viewModel.automationExpandedByTrackId[track.id] ??
-                        false) {
-                      subtreeTrackCount += track.automationLanes.length;
-                    }
-                    for (var id in track.childTracks) {
-                      countSubtreeTracks(project.tracks[id]!);
-                    }
-                  }
-
-                  countSubtreeTracks(track);
+                  final subtreeTrackCount = viewModel.visibleSubtreeRowCount(
+                    track.id,
+                  );
 
                   var totalTrackHeight = 0.0;
                   for (var i = 0; i < subtreeTrackCount; i++) {
@@ -344,11 +346,11 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 if (canMaybeRender) {
                   headers.add(
                     Positioned(
-                      key: Key(trackId.toString()),
+                      key: Key(track.id.toString()),
                       top: renderedTrackPosition,
                       left: 0,
                       right: 0,
-                      child: SizedBox(child: TrackHeader(trackId: trackId)),
+                      child: SizedBox(child: TrackHeader(trackId: track.id)),
                     ),
                   );
                 }
@@ -366,7 +368,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
               if (renderedTrackPosition + trackHeight > 0) {
                 headers.add(
                   Positioned(
-                    key: Key('$trackId-border'),
+                    key: Key('$rowKey-border'),
                     top: borderPos,
                     left: trackDepth * 9,
                     right: 0,
@@ -376,7 +378,6 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 );
 
                 const resizeHandleHeight = 11.0;
-
                 var resizeHandleTop =
                     renderedTrackPosition - 1 - resizeHandleHeight / 2;
                 if (!isSendTrack) {
@@ -386,7 +387,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
 
                 resizeHandles.add(
                   Positioned(
-                    key: Key('$trackId-handle'),
+                    key: Key('$rowKey-handle'),
                     left: 0,
                     right: 0,
                     top: resizeHandleTop,
@@ -394,7 +395,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                       resizeHandleHeight: resizeHandleHeight,
                       trackHeight: trackHeight,
                       isSendTrack: isSendTrack,
-                      trackId: trackId,
+                      rowId: row.rowId,
                     ),
                   ),
                 );

@@ -23,7 +23,7 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
   @override
   ArrangerDragState get parentState => super.parentState as ArrangerDragState;
 
-  Id? _targetTrackId;
+  Id? _targetRowId;
   double? _defaultStartOffset;
 
   // Local latch of parentState.hasCrossedActivationDistance. The parent drag
@@ -41,14 +41,14 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
   @override
   void onEntry({required event, required from}) {
     _didCrossActivationDistance = false;
-    _resolveTargetTrackId();
+    _resolveTargetRowId();
     _resolveDefaultHintBounds();
     _handleMove();
   }
 
   @override
   void onExit({required event, required to}) {
-    _targetTrackId = null;
+    _targetRowId = null;
     _defaultStartOffset = null;
     _didCrossActivationDistance = false;
     viewModel.clipCreateHint = null;
@@ -103,40 +103,34 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     }
   }
 
-  void _resolveTargetTrackId() {
+  void _resolveTargetRowId() {
     final start = parentState.dragStartPosition;
     if (start == null) {
-      _targetTrackId = null;
+      _targetRowId = null;
       return;
     }
 
-    final fractionalTrackIndex = viewModel.trackPositionCalculator
-        .getTrackIndexFromPosition(start.y);
-    if (fractionalTrackIndex.isInfinite) {
-      _targetTrackId = null;
+    final rowHit = viewModel.trackPositionCalculator.rowAtPosition(start.y);
+    if (rowHit == null) {
+      _targetRowId = null;
       return;
     }
 
-    _targetTrackId = viewModel.trackPositionCalculator.trackIndexToId(
-      fractionalTrackIndex.floor(),
-    );
-    if (project.tracks[_targetTrackId]?.isAutomationLane ?? false) {
-      _targetTrackId = null;
-    }
+    _targetRowId = _rowIdForCreate(rowHit.row);
   }
 
   void _handleMove() {
-    final trackId = _targetTrackId;
+    final rowId = _targetRowId;
     final startPosition = parentState.dragStartPosition;
     final currentPosition = parentState.dragCurrentPosition;
 
-    if (trackId == null || startPosition == null || currentPosition == null) {
+    if (rowId == null || startPosition == null || currentPosition == null) {
       viewModel.clipCreateHint = null;
       return;
     }
 
-    final track = project.tracks[trackId];
-    if (track == null || track.isAutomationLane) {
+    final color = _clipCreateHintColor(rowId);
+    if (color == null) {
       viewModel.clipCreateHint = null;
       return;
     }
@@ -182,10 +176,10 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
           ).toDouble();
 
     viewModel.clipCreateHint = (
-      trackId: trackId,
+      rowId: rowId,
       startOffset: startOffset,
       endOffset: endOffset,
-      color: track.color.colorShifter.clipBase.toColor().withValues(alpha: 0.5),
+      color: color,
     );
 
     // Clear the cursor once we have a real clip create hint
@@ -225,7 +219,7 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
 
   void _handleUp() {
     if (!_didCrossActivationDistance) {
-      final trackId = _targetTrackId;
+      final trackId = _realTrackIdForClipCreation(_targetRowId);
       final startOffset = _defaultStartOffset;
       if (trackId == null || startOffset == null) {
         return;
@@ -248,10 +242,49 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
       return;
     }
 
-    controller.createClip(
-      trackId: clipCreateHint.trackId,
-      offset: start,
-      width: end - start,
-    );
+    final trackId = _realTrackIdForClipCreation(clipCreateHint.rowId);
+    if (trackId == null) {
+      return;
+    }
+
+    controller.createClip(trackId: trackId, offset: start, width: end - start);
+  }
+
+  Id? _rowIdForCreate(ArrangerRow row) {
+    return switch (row) {
+      TrackArrangerRow(:final trackId) =>
+        (project.tracks[trackId]?.isAutomationLane ?? true) ? null : trackId,
+      PhantomAutomationArrangerRow() => row.rowId,
+    };
+  }
+
+  Color? _clipCreateHintColor(Id rowId) {
+    final trackId = switch (viewModel.trackPositionCalculator.tryRowIdToRow(
+      rowId,
+    )) {
+      TrackArrangerRow(:final trackId) => trackId,
+      PhantomAutomationArrangerRow(:final phantomLane) =>
+        phantomLane.parentTrackId,
+      null => null,
+    };
+    if (trackId == null) {
+      return null;
+    }
+
+    return project.tracks[trackId]?.color.colorShifter.clipBase
+        .toColor()
+        .withValues(alpha: 0.5);
+  }
+
+  Id? _realTrackIdForClipCreation(Id? rowId) {
+    if (rowId == null) {
+      return null;
+    }
+
+    return switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
+      TrackArrangerRow(:final trackId) =>
+        (project.tracks[trackId]?.isAutomationLane ?? true) ? null : trackId,
+      PhantomAutomationArrangerRow() || null => null,
+    };
   }
 }

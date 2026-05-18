@@ -18,7 +18,12 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -34,9 +39,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('automation lane button', () {
-    testWidgets('appears only while the track content is hovered', (
-      tester,
-    ) async {
+    testWidgets('appears while hovered or expanded', (tester) async {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
@@ -55,6 +58,12 @@ void main() {
       await tester.pump();
 
       expect(_automationLaneButtonFinder, findsNothing);
+
+      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
+          true;
+      await fixture.pump(tester);
+
+      expect(_automationLaneButtonFinder, findsOneWidget);
     });
 
     testWidgets('pins to the bottom-left of the track content', (tester) async {
@@ -104,6 +113,27 @@ void main() {
 
       expect(buttonRect.left, contentBoxRect.left);
       expect(buttonRect.center.dy, moreOrLessEquals(contentBoxRect.center.dy));
+    });
+
+    testWidgets('insets compact expanded title around the visible button', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 40);
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
+          true;
+      await fixture.pump(tester);
+
+      final titleRect = tester.getRect(find.text('Track 1'));
+      final buttonBackgroundRect = tester.getRect(
+        _automationLaneButtonBackgroundFinder,
+      );
+
+      expect(titleRect.left, greaterThanOrEqualTo(buttonBackgroundRect.right));
     });
 
     testWidgets('does not pass clicks through to the track header', (
@@ -171,6 +201,86 @@ void main() {
         tester.widget<Button>(_automationLaneButtonFinder).toggleState,
         isFalse,
       );
+    });
+
+    testWidgets('phantom lane shows parameter above device name', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
+          true;
+      fixture.arrangerViewModel.lastTweakedAutomationTarget =
+          AutomationParameterTarget(
+            ownerTrackId: fixture.trackId,
+            nodeId: 100,
+            portId: 1,
+            ownerName: 'Very Long Device Name That Needs More Space',
+            parameterName: 'Cutoff',
+          );
+
+      await fixture.pump(tester);
+
+      expect(find.text('Cutoff'), findsOneWidget);
+      expect(
+        find.text('Very Long Device Name That Needs More Space'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Very Long Device Name That Needs More Space Cutoff'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('real automation lane shows parameter above device name', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      final track = fixture.project.tracks[fixture.trackId]!;
+      final createResult = DeviceFactories.create(
+        idAllocator: fixture.project.idAllocator,
+        descriptor: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+      );
+      final device = createResult.device;
+      const deviceName = 'Very Long Device Name That Needs More Space';
+      device.name = deviceName;
+      track.requireProcessing.devices.add(device);
+      for (final node in createResult.graphFragment.nodes) {
+        node.owner = NodeOwnerModel(trackId: track.id, deviceId: device.id);
+      }
+      fixture.project.processingGraph.restoreGraphFragment(
+        createResult.graphFragment,
+      );
+
+      final nodeId = device.nodeIds.single;
+      final portId = ToneGeneratorProcessorModel.frequencyPortId;
+      final parameterName =
+          'Parameter ${ToneGeneratorProcessorModel.frequencyPortId}';
+
+      AutomationLaneAddRemoveCommand.add(
+        project: fixture.project,
+        parentTrackId: track.id,
+        nodeId: nodeId,
+        portId: portId,
+        name: '$deviceName $parameterName',
+      ).execute(fixture.project);
+      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
+          true;
+
+      await fixture.pump(tester);
+
+      expect(find.text(parameterName), findsOneWidget);
+      expect(find.text(deviceName), findsOneWidget);
+      expect(find.text('$deviceName $parameterName'), findsNothing);
     });
   });
 

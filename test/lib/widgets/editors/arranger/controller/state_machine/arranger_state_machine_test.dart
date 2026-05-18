@@ -64,6 +64,29 @@ ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
   return ProjectEntityIdAllocator.test(allocateId ?? getId);
 }
 
+Id? _trackIdForRowId(ArrangerViewModel viewModel, Id? rowId) {
+  if (rowId == null) {
+    return null;
+  }
+
+  return switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
+    TrackArrangerRow(:final trackId) => trackId,
+    PhantomAutomationArrangerRow() || null => null,
+  };
+}
+
+Id? _phantomParentTrackIdForRowId(ArrangerViewModel viewModel, Id? rowId) {
+  if (rowId == null) {
+    return null;
+  }
+
+  return switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
+    PhantomAutomationArrangerRow(:final phantomLane) =>
+      phantomLane.parentTrackId,
+    TrackArrangerRow() || null => null,
+  };
+}
+
 TrackModel _makeTrack(Id id, String name, TrackType type) {
   return TrackModel(
     idAllocator: ProjectEntityIdAllocator.test(() => id),
@@ -198,6 +221,12 @@ class _ArrangerStateMachineTestFixture {
     );
   }
 
+  void showPhantomAutomationLaneForTrack(Id trackId) {
+    viewModel.automationExpandedByTrackId[trackId] = true;
+    viewModel.trackPositionCalculator.invalidate(editorHeight);
+    controller.onTrackLayoutChanged();
+  }
+
   void dispose() {
     controller.dispose();
     ServiceRegistry.mainWindowController.clearAllCursorOverrides();
@@ -229,7 +258,23 @@ void main() {
 
       final cursorLocation = fixture.viewModel.hoverIndicatorPosition;
       expect(cursorLocation, isNotNull);
-      expect(cursorLocation!.$2, _TrackIds.a);
+      expect(
+        _trackIdForRowId(fixture.viewModel, cursorLocation!.rowId),
+        _TrackIds.a,
+      );
+    });
+
+    test('hover over phantom automation lane updates cursor location', () {
+      fixture.showPhantomAutomationLaneForTrack(_TrackIds.a);
+
+      fixture.hover(const Offset(120, 80));
+
+      final cursorLocation = fixture.viewModel.hoverIndicatorPosition;
+      expect(cursorLocation, isNotNull);
+      expect(
+        _phantomParentTrackIdForRowId(fixture.viewModel, cursorLocation!.rowId),
+        _TrackIds.a,
+      );
     });
 
     test('hover outside track clears cursor location', () {
@@ -347,7 +392,13 @@ void main() {
 
         fixture.hover(const Offset(200, 20));
         expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
-        expect(fixture.viewModel.hoverIndicatorPosition!.$2, _TrackIds.a);
+        expect(
+          _trackIdForRowId(
+            fixture.viewModel,
+            fixture.viewModel.hoverIndicatorPosition!.rowId,
+          ),
+          _TrackIds.a,
+        );
         expect(fixture.viewModel.hoveredClip, isNull);
       },
     );
@@ -407,15 +458,16 @@ void main() {
       ).toDouble();
 
       fixture.hover(initialPos);
-      final snappedOffset = fixture.viewModel.hoverIndicatorPosition!.$1;
+      final snappedOffset = fixture.viewModel.hoverIndicatorPosition!.offset;
 
       fixture.stateMachine.modifierPressed(ArrangerModifierKey.alt);
       fixture.hover(altTestPos);
-      final unsnappedOffset = fixture.viewModel.hoverIndicatorPosition!.$1;
+      final unsnappedOffset = fixture.viewModel.hoverIndicatorPosition!.offset;
 
       fixture.stateMachine.modifierReleased(ArrangerModifierKey.alt);
       fixture.hover(releasedPos);
-      final snappedOffsetAgain = fixture.viewModel.hoverIndicatorPosition!.$1;
+      final snappedOffsetAgain =
+          fixture.viewModel.hoverIndicatorPosition!.offset;
 
       expect(unsnappedOffset, closeTo(rawOffset, 1e-9));
       expect(unsnappedOffset, isNot(equals(snappedOffset)));
@@ -424,7 +476,7 @@ void main() {
 
     test('view transform changed recomputes cursor location', () {
       fixture.hover(const Offset(120, 20));
-      final before = fixture.viewModel.hoverIndicatorPosition!.$1;
+      final before = fixture.viewModel.hoverIndicatorPosition!.offset;
 
       fixture.controller.onRenderedViewTransformChanged(
         timeViewStart: 120,
@@ -432,13 +484,19 @@ void main() {
         verticalScrollPosition: fixture.viewModel.verticalScrollPosition,
       );
 
-      final after = fixture.viewModel.hoverIndicatorPosition!.$1;
+      final after = fixture.viewModel.hoverIndicatorPosition!.offset;
       expect(after, isNot(equals(before)));
     });
 
     test('track layout changed recomputes cursor location', () {
       fixture.hover(const Offset(120, 20));
-      expect(fixture.viewModel.hoverIndicatorPosition!.$2, _TrackIds.a);
+      expect(
+        _trackIdForRowId(
+          fixture.viewModel,
+          fixture.viewModel.hoverIndicatorPosition!.rowId,
+        ),
+        _TrackIds.a,
+      );
 
       fixture.project.trackOrder
         ..clear()
@@ -449,7 +507,13 @@ void main() {
       fixture.controller.onTrackLayoutChanged();
 
       expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
-      expect(fixture.viewModel.hoverIndicatorPosition!.$2, _TrackIds.b);
+      expect(
+        _trackIdForRowId(
+          fixture.viewModel,
+          fixture.viewModel.hoverIndicatorPosition!.rowId,
+        ),
+        _TrackIds.b,
+      );
     });
 
     test('primary pointer down transitions idle to drag', () {
@@ -1610,7 +1674,24 @@ void main() {
 
       final hint = fixture.viewModel.clipCreateHint;
       expect(hint, isNotNull);
-      expect(hint!.trackId, _TrackIds.a);
+      expect(_trackIdForRowId(fixture.viewModel, hint!.rowId), _TrackIds.a);
+    });
+
+    test('clip create hint can target a phantom automation lane', () {
+      fixture.showPhantomAutomationLaneForTrack(_TrackIds.a);
+
+      enterCreateClipState(
+        firstClickPos: const Offset(100, 80),
+        secondClickPos: const Offset(100, 80),
+        movePos: const Offset(220, 80),
+      );
+
+      final hint = fixture.viewModel.clipCreateHint;
+      expect(hint, isNotNull);
+      expect(
+        _phantomParentTrackIdForRowId(fixture.viewModel, hint!.rowId),
+        _TrackIds.a,
+      );
     });
 
     test('pointer move updates clip create hint end offset', () {
@@ -1749,7 +1830,7 @@ void main() {
       expect(arrangement.clips.length, clipCountBefore + 1);
 
       final newClip = arrangement.clips.values.last;
-      expect(newClip.trackId, hint.trackId);
+      expect(newClip.trackId, _trackIdForRowId(fixture.viewModel, hint.rowId));
       expect(newClip.offset, expectedStart.round());
       expect(newClip.timeView, isNotNull);
       expect(newClip.timeView!.start, 0);

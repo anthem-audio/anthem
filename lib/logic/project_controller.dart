@@ -248,19 +248,21 @@ class ProjectController {
       return false;
     }
 
-    for (final portGroup in portGroups) {
-      _removeConnectionsForUnconfiguredPorts(
-        portGroup.currentPorts,
-        portGroup.newPortConfigurations,
-      );
+    node.withoutParameterTouchTracking(() {
+      for (final portGroup in portGroups) {
+        _removeConnectionsForUnconfiguredPorts(
+          portGroup.currentPorts,
+          portGroup.newPortConfigurations,
+        );
 
-      _replacePorts(
-        portGroup.currentPorts,
-        portGroup.newPortConfigurations,
-        portGroup.dataType,
-        nodeId,
-      );
-    }
+        _replacePorts(
+          portGroup.currentPorts,
+          portGroup.newPortConfigurations,
+          portGroup.dataType,
+          nodeId,
+        );
+      }
+    });
 
     return true;
   }
@@ -372,21 +374,23 @@ class ProjectController {
         if (port.config.parameterConfig != null) port.id: port,
     };
 
-    for (final parameterValue in parameterValues) {
-      final port = parameterPortsById[parameterValue.controlPortId];
-      if (port == null) {
-        continue;
-      }
+    node.withoutParameterTouchTracking(() {
+      for (final parameterValue in parameterValues) {
+        final port = parameterPortsById[parameterValue.controlPortId];
+        if (port == null) {
+          continue;
+        }
 
-      final value = parameterValue.value.clamp(0.0, 1.0).toDouble();
-      if (port.parameterValue != value) {
-        port.parameterValue = value;
-      }
+        final value = parameterValue.value.clamp(0.0, 1.0).toDouble();
+        if (port.parameterValue != value) {
+          port.parameterValue = value;
+        }
 
-      if (port.parameterDisplayText != parameterValue.displayText) {
-        port.parameterDisplayText = parameterValue.displayText;
+        if (port.parameterDisplayText != parameterValue.displayText) {
+          port.parameterDisplayText = parameterValue.displayText;
+        }
       }
-    }
+    });
   }
 
   void _replacePorts(

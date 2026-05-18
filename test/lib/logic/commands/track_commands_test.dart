@@ -409,7 +409,7 @@ void main() {
         expect(tracks[id1]!.parentTrackId, equals(newGroupTrack.id));
         expect(tracks[id2]!.parentTrackId, equals(newGroupTrack.id));
 
-        verify(mockArrangerViewModel.registerTrack(any)).called(4);
+        verify(mockArrangerViewModel.registerTrack(any)).called(1);
         verifyNever(mockArrangerViewModel.unregisterTrack(any));
 
         command.rollback(project);
@@ -421,7 +421,7 @@ void main() {
         expect(tracks[id2]!.parentTrackId, isNull);
 
         verifyNever(mockArrangerViewModel.registerTrack(any));
-        verify(mockArrangerViewModel.unregisterTrack(any)).called(4);
+        verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
       }
 
       void expectTrackHasMixRouting(TrackModel track) {
@@ -861,7 +861,7 @@ void main() {
           expect(newGroupTrack.childTracks[0], equals(trackJ.id));
           expect(trackJ.parentTrackId, equals(newGroupTrack.id));
 
-          verify(mockArrangerViewModel.registerTrack(any)).called(4);
+          verify(mockArrangerViewModel.registerTrack(any)).called(1);
           verifyNever(mockArrangerViewModel.unregisterTrack(any));
 
           command.rollback(project);
@@ -870,7 +870,7 @@ void main() {
           expect(trackJ.parentTrackId, isNull);
           expect(tracks[newGroupTrack.id], isNull);
 
-          verify(mockArrangerViewModel.unregisterTrack(any)).called(4);
+          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
         },
       );
 
@@ -904,7 +904,7 @@ void main() {
           expect(newGroupTrack.childTracks[0], equals(trackO.id));
           expect(trackO.parentTrackId, equals(newGroupTrack.id));
 
-          verify(mockArrangerViewModel.registerTrack(any)).called(4);
+          verify(mockArrangerViewModel.registerTrack(any)).called(1);
           verifyNever(mockArrangerViewModel.unregisterTrack(any));
 
           command.rollback(project);
@@ -913,7 +913,7 @@ void main() {
           expect(trackO.parentTrackId, isNull);
           expect(tracks[newGroupTrack.id], isNull);
 
-          verify(mockArrangerViewModel.unregisterTrack(any)).called(4);
+          verify(mockArrangerViewModel.unregisterTrack(any)).called(1);
         },
       );
 
@@ -1020,8 +1020,17 @@ void main() {
           expect(processingGraph.nodes[sequenceNodeId!], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId!], isNotNull);
 
+          final instrumentNode = processingGraph.nodes[instrumentNodeId]!;
+          expect(instrumentNode.owner?.trackId, equals(trackC.id));
+          expect(instrumentNode.owner?.deviceId, equals(device.id));
+
           final sequenceNode = processingGraph.nodes[sequenceNodeId]!;
           final liveEventNode = processingGraph.nodes[liveEventNodeId]!;
+          expect(sequenceNode.owner?.trackId, equals(trackC.id));
+          expect(sequenceNode.owner?.deviceId, isNull);
+          expect(liveEventNode.owner?.trackId, equals(trackC.id));
+          expect(liveEventNode.owner?.deviceId, isNull);
+
           final sequenceProcessor =
               sequenceNode.processor as SequenceNoteProviderProcessorModel;
           expect(sequenceProcessor.trackId, equals(trackC.id));
@@ -1092,6 +1101,14 @@ void main() {
 
           expect(trackC.requireProcessing.devices, hasLength(1));
           expect(trackC.requireProcessing.devices.single.id, equals(device.id));
+          expect(
+            processingGraph.nodes[instrumentNodeId]?.owner?.trackId,
+            equals(trackC.id),
+          );
+          expect(
+            processingGraph.nodes[instrumentNodeId]?.owner?.deviceId,
+            equals(device.id),
+          );
           expect(
             trackC.requireProcessing.sequenceNoteProviderNodeId,
             equals(sequenceNodeId),
@@ -1459,8 +1476,8 @@ void main() {
         expect(newTrack, isNotNull);
         expect(newTrack!.parentTrackId, equals(trackAId));
         expect(newTrack.type, equals(TrackType.normal));
-        // Total tracks increased by 1 track plus 3 fake automation lanes.
-        expect(tracks, hasLength(originalTracksCount + 4));
+        // Total tracks increased by only the new track.
+        expect(tracks, hasLength(originalTracksCount + 1));
         // Top-level order unchanged
         expect(trackOrder, hasLength(3));
 

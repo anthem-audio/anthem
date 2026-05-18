@@ -44,6 +44,35 @@ import 'processors/tone_generator.dart';
 
 part 'node.g.dart';
 
+@AnthemModel(serializable: true, generateModelSync: true)
+class NodeOwnerModel extends _NodeOwnerModel
+    with _$NodeOwnerModel, _$NodeOwnerModelAnthemModelMixin {
+  NodeOwnerModel({super.trackId, super.deviceId}) {
+    if (deviceId != null && trackId == null) {
+      throw ArgumentError('NodeOwnerModel.deviceId requires trackId.');
+    }
+  }
+
+  NodeOwnerModel.uninitialized() : super();
+
+  factory NodeOwnerModel.fromJson(Map<String, dynamic> json) =>
+      _$NodeOwnerModelAnthemModelMixin.fromJson(json);
+}
+
+abstract class _NodeOwnerModel with Store, AnthemModelBase {
+  /// The track this node semantically belongs to, if any.
+  @anthemObservable
+  Id? trackId;
+
+  /// The device this node semantically belongs to, if any.
+  ///
+  /// If this is set, [trackId] must also be set.
+  @anthemObservable
+  Id? deviceId;
+
+  _NodeOwnerModel({this.trackId, this.deviceId});
+}
+
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'Node',
   cppBehaviorClassIncludePath: 'modules/processing_graph/model/node.h',
@@ -60,6 +89,7 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? eventOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
     super.isThirdPartyPlugin = false,
+    super.owner,
   }) : super(
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
          eventInputPorts: eventInputPorts ?? AnthemObservableList(),
@@ -67,7 +97,9 @@ class NodeModel extends _NodeModel
          audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
          eventOutputPorts: eventOutputPorts ?? AnthemObservableList(),
          controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
-       );
+       ) {
+    _initParameterTouchTracking();
+  }
 
   NodeModel.create({
     required ProjectEntityIdAllocator idAllocator,
@@ -79,6 +111,7 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? eventOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
     super.isThirdPartyPlugin = false,
+    super.owner,
   }) : super(
          id: idAllocator.allocateId(),
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
@@ -87,7 +120,9 @@ class NodeModel extends _NodeModel
          audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
          eventOutputPorts: eventOutputPorts ?? AnthemObservableList(),
          controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
-       );
+       ) {
+    _initParameterTouchTracking();
+  }
 
   NodeModel.uninitialized()
     : super(
@@ -100,7 +135,10 @@ class NodeModel extends _NodeModel
         controlOutputPorts: AnthemObservableList(),
         processor: null,
         isThirdPartyPlugin: false,
-      );
+        owner: null,
+      ) {
+    _initParameterTouchTracking();
+  }
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
@@ -171,6 +209,70 @@ class NodeModel extends _NodeModel
         .followedBy(controlInputPorts)
         .followedBy(controlOutputPorts);
   }
+
+  void _initParameterTouchTracking() {
+    onChange((b) => b.controlInputPorts.anyElement.parameterValue, (event) {
+      if (_isParameterTouchTrackingSuppressed(this)) {
+        return;
+      }
+
+      final changedPort = _changedControlInputPortForParameterValueEvent(event);
+      if (changedPort == null ||
+          changedPort.config.parameterConfig == null ||
+          lastChangedControlPortId == changedPort.id) {
+        return;
+      }
+
+      lastChangedControlPortId = changedPort.id;
+    });
+  }
+
+  NodePortModel? _changedControlInputPortForParameterValueEvent(
+    ModelChangeEvent event,
+  ) {
+    for (var i = 0; i < event.fieldAccessors.length - 1; i++) {
+      final accessor = event.fieldAccessors[i];
+      if (accessor.fieldType != FieldType.raw ||
+          accessor.fieldName != 'controlInputPorts') {
+        continue;
+      }
+
+      final listAccessor = event.fieldAccessors[i + 1];
+      if (listAccessor.fieldType != FieldType.list) {
+        return null;
+      }
+
+      final index = listAccessor.index;
+      if (index == null || index < 0 || index >= controlInputPorts.length) {
+        return null;
+      }
+
+      return controlInputPorts[index];
+    }
+
+    return null;
+  }
+}
+
+final Expando<int> _parameterTouchSuppressionDepths = Expando<int>(
+  'parameterTouchSuppressionDepth',
+);
+
+bool _isParameterTouchTrackingSuppressed(NodeModel node) =>
+    (_parameterTouchSuppressionDepths[node] ?? 0) > 0;
+
+extension NodeParameterTouchTracking on NodeModel {
+  T withoutParameterTouchTracking<T>(T Function() action) {
+    _parameterTouchSuppressionDepths[this] =
+        (_parameterTouchSuppressionDepths[this] ?? 0) + 1;
+
+    try {
+      return action();
+    } finally {
+      final nextDepth = (_parameterTouchSuppressionDepths[this] ?? 1) - 1;
+      _parameterTouchSuppressionDepths[this] = nextDepth > 0 ? nextDepth : null;
+    }
+  }
 }
 
 abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
@@ -226,8 +328,17 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   /// The control input port ID of the most recently changed plugin parameter.
   @anthemObservable
-  @hide
+  @hideButAllowOnChange
   int? lastChangedControlPortId;
+
+  /// Optional semantic owner information for UI/project logic.
+  ///
+  /// The processing graph remains authoritative for audio topology, while
+  /// tracks and devices remain authoritative for structural ownership. This is
+  /// denormalized metadata used for fast reverse lookups from node to owner.
+  @anthemObservable
+  @hideFromCpp
+  NodeOwnerModel? owner;
 
   /// Schedules a state update for the processor.
   ///
@@ -314,6 +425,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     required this.controlOutputPorts,
     required this.processor,
     required this.isThirdPartyPlugin,
+    required this.owner,
   }) {
     onModelFirstAttached(() {
       if (!isThirdPartyPlugin) return;

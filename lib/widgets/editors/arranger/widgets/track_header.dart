@@ -31,6 +31,7 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/scheduler.dart';
@@ -54,6 +55,7 @@ const _trackTallHeightThreshold = 78.0;
 const _trackCompactContentHeight = 20.0;
 const _trackMediumContentHeight = 44.0;
 const _trackTallContentHeight = 68.0;
+const _trackAutomationLaneButtonSize = 20.0;
 
 double _trackContentHeightFor(double availableHeight) {
   if (availableHeight >= _trackTallHeightThreshold) {
@@ -132,6 +134,9 @@ class _TrackHeaderState extends State<TrackHeader> {
     );
     final isAutomationExpanded =
         viewModel.automationExpandedByTrackId[track.id] ?? false;
+    final phantomAutomationLane = viewModel.phantomAutomationLaneForTrack(
+      track.id,
+    );
 
     void toggleAutomationExpanded() {
       if (track.isAutomationLane) {
@@ -273,6 +278,11 @@ class _TrackHeaderState extends State<TrackHeader> {
                       ),
                     ),
                     SizedBox(height: 1),
+                    if (isAutomationExpanded && phantomAutomationLane != null)
+                      _PhantomAutomationTrackHeader(
+                        phantomLane: phantomAutomationLane,
+                        color: color,
+                      ),
                     if (isAutomationExpanded)
                       ...track.automationLanes.map(
                         (trackId) => TrackHeader(trackId: trackId),
@@ -287,6 +297,139 @@ class _TrackHeaderState extends State<TrackHeader> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PhantomAutomationTrackHeader extends StatelessWidget {
+  final PhantomAutomationLaneInfo phantomLane;
+  final Color color;
+
+  const _PhantomAutomationTrackHeader({
+    required this.phantomLane,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context);
+    final projectServices = ServiceRegistry.forProject(project.id);
+    final viewModel = projectServices.arrangerViewModel;
+    final controller = projectServices.arrangerController;
+    final rowIndex = viewModel.trackPositionCalculator.tryRowIdToIndex(
+      phantomLane.id,
+    );
+    final trackHeight = rowIndex == null
+        ? 20.0
+        : viewModel.trackPositionCalculator.getTrackHeight(rowIndex);
+
+    final target = phantomLane.target;
+
+    return SizedBox(
+      height: trackHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            width: 9,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.45),
+              border: Border(
+                right: BorderSide(color: AnthemTheme.panel.border, width: 1),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: trackHeight - 1,
+              color: AnthemTheme.panel.main,
+              padding: _trackContentPadding,
+              child: Row(
+                spacing: 4,
+                children: [
+                  Expanded(
+                    child: _AutomationTargetLabel(
+                      target: target,
+                      fallbackTitle: phantomLane.title,
+                      fallbackIsPlaceholder: true,
+                    ),
+                  ),
+                  if (target != null)
+                    Button(
+                      key: ValueKey(
+                        'phantom-automation-lane-add-${phantomLane.parentTrackId}',
+                      ),
+                      consumePress: true,
+                      contentPadding: const EdgeInsets.all(2),
+                      height: 20,
+                      width: 20,
+                      icon: Icons.add,
+                      hint: [.new('click', 'Create automation lane')],
+                      onPress: () {
+                        controller.createAutomationLaneForTarget(target);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AutomationTargetLabel extends StatelessWidget {
+  final AutomationParameterTarget? target;
+  final String fallbackTitle;
+  final bool fallbackIsPlaceholder;
+
+  const _AutomationTargetLabel({
+    required this.target,
+    required this.fallbackTitle,
+    this.fallbackIsPlaceholder = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final target = this.target;
+    if (target == null) {
+      return Text(
+        fallbackTitle,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+        style: TextStyle(
+          color: fallbackIsPlaceholder
+              ? AnthemTheme.text.disabled
+              : AnthemTheme.text.main,
+          fontSize: 11,
+          fontStyle: fallbackIsPlaceholder ? FontStyle.italic : null,
+          fontWeight: .w500,
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          target.parameterName,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          style: TextStyle(
+            color: AnthemTheme.text.main,
+            fontSize: 11,
+            fontWeight: .w500,
+          ),
+        ),
+        Text(
+          target.ownerName,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          style: TextStyle(color: AnthemTheme.text.disabled, fontSize: 10),
+        ),
+      ],
     );
   }
 }
@@ -336,10 +479,17 @@ class _TrackContentState extends State<_TrackContent> {
               Padding(
                 padding: _trackContentPadding,
                 child: Center(
-                  child: _TrackContentRow(track: widget.track, height: height),
+                  child: _TrackContentRow(
+                    track: widget.track,
+                    height: height,
+                    reserveAutomationToggleSpace:
+                        widget.showAutomationToggle &&
+                        widget.automationExpanded,
+                  ),
                 ),
               ),
-              if (_hovered && widget.showAutomationToggle)
+              if (widget.showAutomationToggle &&
+                  (_hovered || widget.automationExpanded))
                 _TrackAutomationLaneButton(
                   backgroundColor: widget.backgroundColor,
                   contentPadding: _trackContentPadding,
@@ -375,10 +525,10 @@ class _TrackAutomationLaneButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const buttonSize = 20.0;
     final contentTop = (contentAreaHeight - contentHeight) / 2;
     final contentBottom = contentTop + contentHeight;
-    final top = contentBottom - buttonSize - contentPadding.top;
+    final top =
+        contentBottom - _trackAutomationLaneButtonSize - contentPadding.top;
 
     final button = Container(
       key: const ValueKey('track-header-automation-lane-button-background'),
@@ -388,8 +538,8 @@ class _TrackAutomationLaneButton extends StatelessWidget {
         key: const ValueKey('track-header-automation-lane-button'),
         consumePress: true,
         contentPadding: const EdgeInsets.all(2),
-        height: buttonSize,
-        width: buttonSize,
+        height: _trackAutomationLaneButtonSize,
+        width: _trackAutomationLaneButtonSize,
         icon: Icons.automationEditor,
         toggleState: automationExpanded,
         onPress: onToggleAutomationExpanded,
@@ -411,12 +561,33 @@ class _TrackAutomationLaneButton extends StatelessWidget {
 class _TrackContentRow extends StatelessObserverWidget {
   final TrackModel track;
   final double height;
+  final bool reserveAutomationToggleSpace;
 
-  const _TrackContentRow({required this.track, required this.height});
+  const _TrackContentRow({
+    required this.track,
+    required this.height,
+    required this.reserveAutomationToggleSpace,
+  });
 
   @override
   Widget build(BuildContext context) {
     final processing = track.processing;
+    final automationTarget = track.automationTarget;
+    final AutomationParameterTarget? resolvedAutomationTarget;
+    if (track.isAutomationLane && automationTarget != null) {
+      final project = Provider.of<ProjectModel>(context);
+      final controller = ServiceRegistry.forProject(
+        project.id,
+      ).arrangerController;
+      resolvedAutomationTarget = controller.resolveAutomationTarget(
+        nodeId: automationTarget.nodeId,
+        portId: automationTarget.portId,
+      );
+    } else {
+      resolvedAutomationTarget = null;
+    }
+    final reserveCompactAutomationToggleSpace =
+        reserveAutomationToggleSpace && height < _trackCompactHeightThreshold;
 
     return Row(
       crossAxisAlignment: height >= _trackCompactHeightThreshold
@@ -425,15 +596,27 @@ class _TrackContentRow extends StatelessObserverWidget {
       spacing: 4,
       children: [
         Expanded(
-          child: Text(
-            track.name,
-            overflow: TextOverflow.ellipsis,
-            maxLines: height >= _trackCompactHeightThreshold ? 2 : 1,
-            style: TextStyle(
-              color: AnthemTheme.text.main,
-              fontSize: 11,
-              fontWeight: .w500,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: reserveCompactAutomationToggleSpace
+                  ? _trackAutomationLaneButtonSize + _trackContentPadding.right
+                  : 0,
             ),
+            child: track.isAutomationLane
+                ? _AutomationTargetLabel(
+                    target: resolvedAutomationTarget,
+                    fallbackTitle: track.name,
+                  )
+                : Text(
+                    track.name,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: height >= _trackCompactHeightThreshold ? 2 : 1,
+                    style: TextStyle(
+                      color: AnthemTheme.text.main,
+                      fontSize: 11,
+                      fontWeight: .w500,
+                    ),
+                  ),
           ),
         ),
         if (processing != null) ...[
@@ -462,10 +645,10 @@ class _TrackContentRow extends StatelessObserverWidget {
                       final node = processing.utilityNode;
                       if (node == null) return;
 
-                      node
-                              .getPortById(UtilityProcessorModel.gainPortId)
-                              .parameterValue =
-                          value;
+                      final port = node.getPortById(
+                        UtilityProcessorModel.gainPortId,
+                      );
+                      port.parameterValue = value;
                     },
                   ),
                 if (height >= _trackTallHeightThreshold)
@@ -488,9 +671,10 @@ class _TrackContentRow extends StatelessObserverWidget {
                       final node = processing.utilityNode;
                       if (node == null) return;
 
-                      node
-                              .getPortById(UtilityProcessorModel.balancePortId)
-                              .parameterValue =
+                      final port = node.getPortById(
+                        UtilityProcessorModel.balancePortId,
+                      );
+                      port.parameterValue =
                           UtilityProcessorModel.panToParameterValue(value);
                     },
                   ),
