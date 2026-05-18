@@ -228,6 +228,22 @@ class _ArrangerStateMachineTestFixture {
     controller.onTrackLayoutChanged();
   }
 
+  AutomationParameterTarget showTargetedPhantomAutomationLaneForTrack(
+    Id trackId,
+  ) {
+    final target = AutomationParameterTarget(
+      ownerTrackId: trackId,
+      nodeId: 9001,
+      portId: 9002,
+      ownerName: 'Track',
+      parameterName: 'Volume',
+    );
+    viewModel.lastTweakedAutomationTarget = target;
+    showPhantomAutomationLaneForTrack(trackId);
+
+    return target;
+  }
+
   void showRealAutomationLaneForTrack(Id trackId) {
     final parentTrack = project.tracks[trackId]!;
     final automationLane = _makeTrack(
@@ -1867,6 +1883,74 @@ void main() {
     );
 
     test(
+      'without drag, pointer up creates a targeted phantom automation lane clip',
+      () async {
+        final target = fixture.showTargetedPhantomAutomationLaneForTrack(
+          _TrackIds.a,
+        );
+        final parentTrack = fixture.project.tracks[_TrackIds.a]!;
+
+        final arrangementId = fixture.project.sequence.activeArrangementID!;
+        final arrangement =
+            fixture.project.sequence.arrangements[arrangementId]!;
+        final patternCountBefore = fixture.project.sequence.patterns.length;
+        final clipCountBefore = arrangement.clips.length;
+        fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+        fixture.projectViewModel.activePanel = PanelKind.deviceRack;
+        fixture.project.sequence.activePatternID = null;
+        fixture.project.sequence.activeTrackID = null;
+
+        startDoubleClickHold(
+          firstClickPos: const Offset(100, 80),
+          secondClickPos: const Offset(100, 80),
+        );
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerCreateClipState>(),
+        );
+        expect(fixture.viewModel.clipCreateHint, isNull);
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(100, 80)),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+        expect(fixture.viewModel.clipCreateHint, isNull);
+        expect(parentTrack.automationLanes, hasLength(1));
+        expect(
+          fixture.project.sequence.patterns.length,
+          patternCountBefore + 1,
+        );
+        expect(arrangement.clips.length, clipCountBefore + 1);
+
+        final automationLaneId = parentTrack.automationLanes.single;
+        final automationLane = fixture.project.tracks[automationLaneId]!;
+        final newClip = arrangement.clips.values.last;
+        final pattern = fixture.project.sequence.patterns[newClip.patternId]!;
+
+        expect(automationLane.name, 'Volume');
+        expect(automationLane.automationTarget, isNotNull);
+        expect(automationLane.automationTarget!.nodeId, target.nodeId);
+        expect(automationLane.automationTarget!.portId, target.portId);
+        expect(newClip.trackId, automationLaneId);
+        expect(newClip.timeView, isNull);
+        expect(pattern.name, 'Track - Volume');
+        expect(fixture.projectViewModel.selectedEditor, EditorKind.deviceRack);
+        expect(fixture.projectViewModel.activePanel, PanelKind.deviceRack);
+        expect(fixture.project.sequence.activePatternID, isNull);
+        expect(fixture.project.sequence.activeTrackID, newClip.trackId);
+
+        await Future<void>.delayed(Duration.zero);
+        fixture.project.undo();
+
+        expect(parentTrack.automationLanes, isEmpty);
+        expect(fixture.project.tracks.containsKey(automationLaneId), isFalse);
+        expect(fixture.project.sequence.patterns.length, patternCountBefore);
+        expect(arrangement.clips.length, clipCountBefore);
+      },
+    );
+
+    test(
       'double-click hold keeps hint hidden when snap is larger than a bar',
       () {
         fixture.viewModel.timeView.end = 200000;
@@ -1983,6 +2067,68 @@ void main() {
       expect(fixture.project.sequence.activePatternID, isNull);
       expect(fixture.project.sequence.activeTrackID, newClip.trackId);
     });
+
+    test(
+      'pointer up with non-zero width creates a targeted phantom automation lane clip',
+      () {
+        fixture.showTargetedPhantomAutomationLaneForTrack(_TrackIds.a);
+        final parentTrack = fixture.project.tracks[_TrackIds.a]!;
+
+        final arrangementId = fixture.project.sequence.activeArrangementID!;
+        final arrangement =
+            fixture.project.sequence.arrangements[arrangementId]!;
+        final patternCountBefore = fixture.project.sequence.patterns.length;
+        final clipCountBefore = arrangement.clips.length;
+        fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+        fixture.projectViewModel.activePanel = PanelKind.deviceRack;
+        fixture.project.sequence.activePatternID = null;
+        fixture.project.sequence.activeTrackID = null;
+
+        enterCreateClipState(
+          firstClickPos: const Offset(100, 80),
+          secondClickPos: const Offset(100, 80),
+          movePos: const Offset(420, 80),
+        );
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerCreateClipState>(),
+        );
+        final hint = fixture.viewModel.clipCreateHint!;
+
+        final expectedStart = hint.startOffset < hint.endOffset
+            ? hint.startOffset
+            : hint.endOffset;
+        final expectedEnd = hint.startOffset > hint.endOffset
+            ? hint.startOffset
+            : hint.endOffset;
+        final expectedWidth = expectedEnd - expectedStart;
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(420, 80)),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+        expect(fixture.viewModel.clipCreateHint, isNull);
+        expect(parentTrack.automationLanes, hasLength(1));
+        expect(
+          fixture.project.sequence.patterns.length,
+          patternCountBefore + 1,
+        );
+        expect(arrangement.clips.length, clipCountBefore + 1);
+
+        final automationLaneId = parentTrack.automationLanes.single;
+        final newClip = arrangement.clips.values.last;
+        expect(newClip.trackId, automationLaneId);
+        expect(newClip.offset, expectedStart.round());
+        expect(newClip.timeView, isNotNull);
+        expect(newClip.timeView!.start, 0);
+        expect(newClip.timeView!.end, expectedWidth.round());
+        expect(fixture.projectViewModel.selectedEditor, EditorKind.deviceRack);
+        expect(fixture.projectViewModel.activePanel, PanelKind.deviceRack);
+        expect(fixture.project.sequence.activePatternID, isNull);
+        expect(fixture.project.sequence.activeTrackID, newClip.trackId);
+      },
+    );
 
     test('pointer up with zero width does not create clip or pattern', () {
       final arrangementId = fixture.project.sequence.activeArrangementID!;

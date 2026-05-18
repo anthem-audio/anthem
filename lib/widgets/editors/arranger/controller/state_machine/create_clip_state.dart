@@ -219,13 +219,12 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
 
   void _handleUp() {
     if (!_didCrossActivationDistance) {
-      final trackId = _realTrackIdForClipCreation(_targetRowId);
       final startOffset = _defaultStartOffset;
-      if (trackId == null || startOffset == null) {
+      if (startOffset == null) {
         return;
       }
 
-      controller.createClip(trackId: trackId, offset: startOffset);
+      _createClipForRow(rowId: _targetRowId, offset: startOffset);
       return;
     }
 
@@ -242,12 +241,11 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
       return;
     }
 
-    final trackId = _realTrackIdForClipCreation(clipCreateHint.rowId);
-    if (trackId == null) {
-      return;
-    }
-
-    controller.createClip(trackId: trackId, offset: start, width: end - start);
+    _createClipForRow(
+      rowId: clipCreateHint.rowId,
+      offset: start,
+      width: end - start,
+    );
   }
 
   Id? _rowIdForCreate(ArrangerRow row) {
@@ -276,15 +274,33 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
         .withValues(alpha: 0.5);
   }
 
-  Id? _realTrackIdForClipCreation(Id? rowId) {
+  void _createClipForRow({
+    required Id? rowId,
+    required double offset,
+    double? width,
+  }) {
     if (rowId == null) {
-      return null;
+      return;
     }
 
-    return switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
-      TrackArrangerRow(:final trackId) =>
-        project.tracks.containsKey(trackId) ? trackId : null,
-      PhantomAutomationArrangerRow() || null => null,
-    };
+    switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
+      case TrackArrangerRow(:final trackId):
+        if (project.tracks.containsKey(trackId)) {
+          controller.createClip(trackId: trackId, offset: offset, width: width);
+        }
+        break;
+      case PhantomAutomationArrangerRow(:final phantomLane):
+        final target = phantomLane.target;
+        if (target != null) {
+          controller.createClipForAutomationTarget(
+            target: target,
+            offset: offset,
+            width: width,
+          );
+        }
+        break;
+      case null:
+        return;
+    }
   }
 }

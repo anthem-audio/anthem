@@ -327,10 +327,10 @@ abstract class _ArrangerViewModel with Store {
     );
   }
 
-  bool hasAutomationLaneForTarget(AutomationParameterTarget target) {
+  Id? automationLaneIdForTarget(AutomationParameterTarget target) {
     final parentTrack = project.tracks[target.ownerTrackId];
     if (parentTrack == null) {
-      return false;
+      return null;
     }
 
     for (final automationLaneId in parentTrack.automationLanes) {
@@ -342,12 +342,15 @@ abstract class _ArrangerViewModel with Store {
 
       if (laneTarget.nodeId == target.nodeId &&
           laneTarget.portId == target.portId) {
-        return true;
+        return automationLaneId;
       }
     }
 
-    return false;
+    return null;
   }
+
+  bool hasAutomationLaneForTarget(AutomationParameterTarget target) =>
+      automationLaneIdForTarget(target) != null;
 
   PhantomAutomationLaneInfo? phantomAutomationLaneForTrack(Id trackId) {
     final track = project.tracks[trackId];

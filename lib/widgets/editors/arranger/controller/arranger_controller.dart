@@ -275,24 +275,89 @@ abstract class _ArrangerController {
     return port.config.name ?? 'Parameter ${port.id}';
   }
 
-  void createAutomationLaneForTarget(AutomationParameterTarget target) {
-    if (viewModel.hasAutomationLaneForTarget(target)) {
-      return;
+  Id? createAutomationLaneForTarget(AutomationParameterTarget target) {
+    final existingLaneId = viewModel.automationLaneIdForTarget(target);
+    if (existingLaneId != null) {
+      return existingLaneId;
     }
 
-    project.execute(
-      AutomationLaneAddRemoveCommand.add(
-        project: project,
-        parentTrackId: target.ownerTrackId,
-        nodeId: target.nodeId,
-        portId: target.portId,
-        name: target.parameterName,
-      ),
+    if (!project.tracks.containsKey(target.ownerTrackId)) {
+      return null;
+    }
+
+    final command = AutomationLaneAddRemoveCommand.add(
+      project: project,
+      parentTrackId: target.ownerTrackId,
+      nodeId: target.nodeId,
+      portId: target.portId,
+      name: target.parameterName,
     );
+
+    project.execute(command);
 
     viewModel.automationExpandedByTrackId[target.ownerTrackId] = true;
     viewModel.refreshTrackLayout(viewModel.editorHeight);
     onTrackLayoutChanged();
+
+    return command.lane.id;
+  }
+
+  void createClipForAutomationTarget({
+    required AutomationParameterTarget target,
+    required double offset,
+    double? width,
+  }) {
+    project.startUndoGroup();
+
+    final trackId = createAutomationLaneForTarget(target);
+    final track = trackId == null ? null : project.tracks[trackId];
+    if (track == null) {
+      project.commitUndoGroup();
+      return;
+    }
+
+    final patternId = _createClipOnTrack(
+      track: track,
+      offset: offset,
+      width: width,
+      patternName: _newClipPatternNameForTarget(target),
+    );
+
+    project.commitUndoGroup();
+
+    _openPatternForTrack(track: track, patternId: patternId);
+  }
+
+  Id _createClipOnTrack({
+    required TrackModel track,
+    required double offset,
+    double? width,
+    String? patternName,
+  }) {
+    final pattern = PatternModel(
+      idAllocator: _idAllocator,
+      name: patternName ?? _newClipPatternNameForTrack(track),
+    )..color = track.color.clone();
+
+    final clip = ClipModel(
+      idAllocator: _idAllocator,
+      patternId: pattern.id,
+      trackId: track.id,
+      offset: offset.round(),
+      timeView: width == null
+          ? null
+          : TimeViewModel(start: 0, end: width.round()),
+    );
+
+    project.execute(PatternAddRemoveCommand.add(pattern: pattern));
+    project.execute(
+      ClipAddRemoveCommand.add(
+        arrangementID: project.sequence.activeArrangementID!,
+        clip: clip,
+      ),
+    );
+
+    return pattern.id;
   }
 
   void setBaseTrackHeight(double pointerY, double trackHeight) {
@@ -477,33 +542,14 @@ abstract class _ArrangerController {
     final track = project.tracks[trackId]!;
 
     project.startUndoGroup();
-
-    final pattern = PatternModel(
-      idAllocator: _idAllocator,
-      name: _newClipPatternNameForTrack(track),
-    )..color = track.color.clone();
-
-    final clip = ClipModel(
-      idAllocator: _idAllocator,
-      patternId: pattern.id,
-      trackId: trackId,
-      offset: offset.round(),
-      timeView: width == null
-          ? null
-          : TimeViewModel(start: 0, end: width.round()),
+    final patternId = _createClipOnTrack(
+      track: track,
+      offset: offset,
+      width: width,
     );
-
-    project.execute(PatternAddRemoveCommand.add(pattern: pattern));
-    project.execute(
-      ClipAddRemoveCommand.add(
-        arrangementID: project.sequence.activeArrangementID!,
-        clip: clip,
-      ),
-    );
-
     project.commitUndoGroup();
 
-    _openPatternForTrack(track: track, patternId: pattern.id);
+    _openPatternForTrack(track: track, patternId: patternId);
   }
 
   String _newClipPatternNameForTrack(TrackModel track) {
@@ -525,6 +571,10 @@ abstract class _ArrangerController {
     }
 
     return '${resolvedTarget.ownerName} - ${resolvedTarget.parameterName}';
+  }
+
+  String _newClipPatternNameForTarget(AutomationParameterTarget target) {
+    return '${target.ownerName} - ${target.parameterName}';
   }
 
   void _openPatternForTrack({
