@@ -25,6 +25,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/parameter_commands.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
@@ -640,6 +641,61 @@ void main() {
         verifyNever(node.scheduleDebouncedStateUpdate());
       },
     );
+
+    test('plugin parameter gestures push one undo command', () async {
+      final node = MockNodeModel();
+      final port = NodePortModel(
+        nodeId: 1,
+        id: 100,
+        config: NodePortConfigModel(
+          dataType: NodePortDataType.control,
+          parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0),
+        ),
+      );
+      port.parameterValue = 0.25;
+
+      when(node.controlInputPorts).thenReturn(AnthemObservableList.of([port]));
+      nodes[1] = node;
+
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+
+      connector.emitResponse(
+        PluginParameterGestureEvent(
+          id: -1,
+          nodeId: 1,
+          controlPortId: 100,
+          isStarting: true,
+        ),
+      );
+      connector.emitResponse(
+        PluginParameterChangedEvent(
+          id: -1,
+          nodeId: 1,
+          controlPortId: 100,
+          value: 0.75,
+        ),
+      );
+      connector.emitResponse(
+        PluginParameterGestureEvent(
+          id: -1,
+          nodeId: 1,
+          controlPortId: 100,
+          isStarting: false,
+        ),
+      );
+
+      final capturedCommand =
+          verify(project.push(captureAny)).captured.single
+              as SetParameterValueCommand;
+      expect(capturedCommand.nodeId, equals(1));
+      expect(capturedCommand.controlPortId, equals(100));
+      expect(capturedCommand.oldValue, equals(0.25));
+      expect(capturedCommand.newValue, equals(0.75));
+    });
 
     test('PluginLoadedEvent completes the node plugin completer', () async {
       final node = MockNodeModel();

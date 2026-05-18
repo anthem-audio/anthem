@@ -92,8 +92,8 @@ std::shared_ptr<ProcessingGraphParameterValue> makeParameterValue(
   });
 }
 
-std::shared_ptr<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>
-makeParameterValueList(const std::vector<ProcessorParameterValue>& parameterValues) {
+std::shared_ptr<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>> makeParameterValueList(
+    const std::vector<ProcessorParameterValue>& parameterValues) {
   auto result = std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>();
   result->reserve(parameterValues.size());
 
@@ -113,8 +113,8 @@ std::shared_ptr<ProcessingGraphNodeInitializationResult> makeNodeInitializationR
     portConfiguration = makeNodePortConfiguration(*prepareResult.portConfiguration);
   }
 
-  auto result =
-      makeNodeInitializationResult(nodeId, prepareResult.success, prepareResult.error, std::move(portConfiguration));
+  auto result = makeNodeInitializationResult(
+      nodeId, prepareResult.success, prepareResult.error, std::move(portConfiguration));
   result->parameterValues = makeParameterValueList(prepareResult.parameterValues);
   return result;
 }

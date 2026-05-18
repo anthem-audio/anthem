@@ -172,6 +172,7 @@ private:
   ProcessorPrepareResult buildPrepareResultForPlugin();
   void sendPluginParameterChangedEvent(
       int64_t controlPortId, juce::AudioProcessorParameter& parameter, float value);
+  void sendPluginParameterGestureEvent(int64_t controlPortId, bool isStarting);
   void sendPluginParameterSnapshotEvent();
 public:
   VST3Processor(const VST3ProcessorModelImpl& _impl);
@@ -195,6 +196,10 @@ public:
 
   void audioProcessorParameterChanged(
       juce::AudioProcessor* processor, int parameterIndex, float newValue) override;
+  void audioProcessorParameterChangeGestureBegin(
+      juce::AudioProcessor* processor, int parameterIndex) override;
+  void audioProcessorParameterChangeGestureEnd(
+      juce::AudioProcessor* processor, int parameterIndex) override;
   void audioProcessorChanged(
       juce::AudioProcessor* processor, const juce::AudioProcessor::ChangeDetails& details) override;
 

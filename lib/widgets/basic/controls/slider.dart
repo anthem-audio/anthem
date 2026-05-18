@@ -23,9 +23,13 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 
 import 'control_mouse_handler.dart';
+import 'parameter_control_binding.dart';
 import 'sticky_drag_controller.dart';
+
+export 'parameter_control_binding.dart';
 
 const _stickyTrapSize = 0.08;
 
@@ -37,11 +41,14 @@ class Slider extends StatefulWidget {
   final double borderRadius;
   final bool noBackground;
 
-  final double value;
+  final double? value;
+  final ParameterControlBinding? parameter;
   final double min;
   final double max;
 
   final void Function(double)? onValueChanged;
+  final VoidCallback? onValueChangeStart;
+  final void Function(double)? onValueChangeEnd;
 
   final List<double> stickyPoints;
 
@@ -56,14 +63,18 @@ class Slider extends StatefulWidget {
     this.type = SliderType.normal,
     this.borderRadius = 1,
     this.noBackground = false,
-    required this.value,
+    this.value,
+    this.parameter,
     this.onValueChanged,
+    this.onValueChangeStart,
+    this.onValueChangeEnd,
     this.max = 1,
     double? min,
     this.stickyPoints = const [],
     this.hoverHintOverride,
     this.hint,
   }) : min = min ?? (type == SliderType.pan ? -1 : 0),
+       assert(value != null || parameter != null),
        assert(borderRadius >= 0);
 
   @override
@@ -85,6 +96,8 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       (value - widget.min) / (widget.max - widget.min);
   double rawToScaled(double rawValue) =>
       rawValue * (widget.max - widget.min) + widget.min;
+
+  double get currentValue => widget.parameter?.controlValue ?? widget.value!;
 
   int? currentHintId;
 
@@ -142,108 +155,125 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       pressColorHelper.setTarget(pressed ? 1 : 0);
     }
 
-    return MouseRegion(
-      onEnter: (e) {
-        setState(() {
-          isOver = true;
-        });
+    Widget buildControl() {
+      final value = currentValue;
 
-        lastValue = widget.value;
-        setHint(hover: true);
-
-        setHoverAnimationState(true);
-        animationHelper!.update();
-      },
-      onExit: (e) {
-        setState(() {
-          isOver = false;
-        });
-
-        clearHint();
-
-        if (!isPressed) {
-          setHoverAnimationState(false);
-          animationHelper!.update();
-        }
-      },
-      child: ControlMouseHandler(
-        cursor: switch (widget.axis) {
-          SliderAxis.horizontal => SystemMouseCursors.resizeLeftRight,
-          SliderAxis.vertical => SystemMouseCursors.resizeUpDown,
-        },
-        onStart: () {
+      return MouseRegion(
+        onEnter: (e) {
           setState(() {
-            isPressed = true;
+            isOver = true;
           });
 
-          dragController.reset(
-            rawValue: scaledToRaw(widget.value),
-            stickyPoints: widget.stickyPoints
-                .map(scaledToRaw)
-                .toList(growable: false),
-          );
+          lastValue = value;
+          setHint(hover: true);
 
-          lastValue = widget.value;
-          setHint(hover: false);
-
-          setPressAnimationState(true);
+          setHoverAnimationState(true);
           animationHelper!.update();
         },
-        onEnd: (e) {
+        onExit: (e) {
           setState(() {
-            isPressed = false;
+            isOver = false;
           });
 
-          setPressAnimationState(false);
+          clearHint();
 
-          if (!isOver) {
+          if (!isPressed) {
             setHoverAnimationState(false);
+            animationHelper!.update();
           }
-
-          animationHelper!.update();
         },
-        onChange: (e) {
-          if (widget.onValueChanged == null) return;
+        child: ControlMouseHandler(
+          cursor: switch (widget.axis) {
+            SliderAxis.horizontal => SystemMouseCursors.resizeLeftRight,
+            SliderAxis.vertical => SystemMouseCursors.resizeUpDown,
+          },
+          onStart: () {
+            setState(() {
+              isPressed = true;
+            });
 
-          final rawPixelChange = switch (widget.axis) {
-            SliderAxis.horizontal => e.delta.dx,
-            SliderAxis.vertical => e.delta.dy,
-          };
+            dragController.reset(
+              rawValue: scaledToRaw(value),
+              stickyPoints: widget.stickyPoints
+                  .map(scaledToRaw)
+                  .toList(growable: false),
+            );
 
-          final result = dragController.applyRawDelta(rawPixelChange / 300);
-          if (result.changed) {
-            final newValue = rawToScaled(result.rawValue);
-            widget.onValueChanged?.call(newValue);
-            lastValue = newValue;
-          }
+            lastValue = value;
+            widget.parameter?.beginChange();
+            widget.onValueChangeStart?.call();
+            setHint(hover: false);
 
-          setHint(hover: false);
-        },
-        child: SizedBox(
-          width: widget.width,
-          height: widget.height,
-          child: AnimatedBuilder(
-            animation: animationHelper!.animationController,
-            builder: (context, _) {
-              final [handleSizeHelper, pressColorHelper] =
-                  animationHelper!.items;
+            setPressAnimationState(true);
+            animationHelper!.update();
+          },
+          onEnd: (e) {
+            setState(() {
+              isPressed = false;
+            });
 
-              return CustomPaint(
-                painter: _SliderPainter(
-                  value: scaledToRaw(widget.value),
-                  axis: widget.axis,
-                  type: widget.type,
-                  handleThickness: handleSizeHelper.animation.value,
-                  handlePressAmount: pressColorHelper.animation.value,
-                  borderRadius: widget.borderRadius,
-                  noBackground: widget.noBackground,
-                ),
-              );
-            },
+            setPressAnimationState(false);
+
+            if (!isOver) {
+              setHoverAnimationState(false);
+            }
+
+            animationHelper!.update();
+            widget.parameter?.commitChange();
+            widget.onValueChangeEnd?.call(lastValue);
+          },
+          onChange: (e) {
+            if (widget.parameter == null && widget.onValueChanged == null) {
+              return;
+            }
+
+            final rawPixelChange = switch (widget.axis) {
+              SliderAxis.horizontal => e.delta.dx,
+              SliderAxis.vertical => e.delta.dy,
+            };
+
+            final result = dragController.applyRawDelta(rawPixelChange / 300);
+            if (result.changed) {
+              final newValue = rawToScaled(result.rawValue);
+              widget.parameter?.updateChange(newValue);
+              widget.onValueChanged?.call(newValue);
+              lastValue = newValue;
+            }
+
+            setHint(hover: false);
+          },
+          child: SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: AnimatedBuilder(
+              animation: animationHelper!.animationController,
+              builder: (context, _) {
+                final [handleSizeHelper, pressColorHelper] =
+                    animationHelper!.items;
+
+                return CustomPaint(
+                  painter: _SliderPainter(
+                    value: scaledToRaw(value),
+                    axis: widget.axis,
+                    type: widget.type,
+                    handleThickness: handleSizeHelper.animation.value,
+                    handlePressAmount: pressColorHelper.animation.value,
+                    borderRadius: widget.borderRadius,
+                    noBackground: widget.noBackground,
+                  ),
+                );
+              },
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
+
+    if (widget.parameter == null) {
+      return buildControl();
+    }
+
+    return Observer(builder: (_) => buildControl());
   }
 
   @override

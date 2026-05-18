@@ -257,6 +257,23 @@ class PluginParameterChangedEvent extends Response {
   }
 }
 
+class PluginParameterGestureEvent extends Response {
+  late Id nodeId;
+  late int controlPortId;
+  late bool isStarting;
+
+  PluginParameterGestureEvent.uninitialized();
+
+  PluginParameterGestureEvent({
+    required int id,
+    required this.nodeId,
+    required this.controlPortId,
+    required this.isStarting,
+  }) {
+    super.id = id;
+  }
+}
+
 class PluginParameterSnapshotEvent extends Response {
   late Id nodeId;
   late List<ProcessingGraphParameterValue> parameterValues;

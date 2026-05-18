@@ -271,13 +271,16 @@ void main() {
         parentTrackId: track.id,
         nodeId: nodeId,
         portId: portId,
-        name: '$deviceName $parameterName',
+        name: parameterName,
       ).execute(fixture.project);
       fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
           true;
 
       await fixture.pump(tester);
 
+      final automationLane =
+          fixture.project.tracks[track.automationLanes.single]!;
+      expect(automationLane.name, equals(parameterName));
       expect(find.text(parameterName), findsOneWidget);
       expect(find.text(deviceName), findsOneWidget);
       expect(find.text('$deviceName $parameterName'), findsNothing);

@@ -607,8 +607,21 @@ void VST3Processor::sendPluginParameterChangedEvent(
   Engine::getInstance().comms.send(eventString);
 }
 
+void VST3Processor::sendPluginParameterGestureEvent(int64_t controlPortId, bool isStarting) {
+  Response event = PluginParameterGestureEvent{.nodeId = nodeId(),
+      .controlPortId = controlPortId,
+      .isStarting = isStarting,
+      .responseBase = ResponseBase{
+          .id = -1,
+      }};
+
+  auto eventString = rfl::json::write(event);
+  Engine::getInstance().comms.send(eventString);
+}
+
 void VST3Processor::sendPluginParameterSnapshotEvent() {
-  auto parameterValues = std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>();
+  auto parameterValues =
+      std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>();
   parameterValues->reserve(parametersByPortId.size());
 
   for (const auto& [controlPortId, parameter] : parametersByPortId) {
@@ -703,6 +716,80 @@ void VST3Processor::audioProcessorParameterChanged(
     }
 
     processor->sendPluginParameterChangedEvent(*controlPortId, *parameter, newValue);
+  });
+}
+
+void VST3Processor::audioProcessorParameterChangeGestureBegin(
+    juce::AudioProcessor* /*processor*/, int parameterIndex) {
+  auto weakSelf = self;
+
+  juce::MessageManager::callAsync([weakSelf, parameterIndex]() {
+    auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+    if (processor == nullptr) {
+      return;
+    }
+
+    if (processor->pluginInstance == nullptr) {
+      return;
+    }
+
+    const auto& parameters = processor->pluginInstance->getParameters();
+
+    if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
+      return;
+    }
+
+    auto* parameter = parameters[parameterIndex];
+
+    if (parameter == nullptr) {
+      return;
+    }
+
+    const auto controlPortId = getVST3ParameterControlPortId(*parameter);
+
+    if (!controlPortId.has_value()) {
+      return;
+    }
+
+    processor->sendPluginParameterGestureEvent(*controlPortId, true);
+  });
+}
+
+void VST3Processor::audioProcessorParameterChangeGestureEnd(
+    juce::AudioProcessor* /*processor*/, int parameterIndex) {
+  auto weakSelf = self;
+
+  juce::MessageManager::callAsync([weakSelf, parameterIndex]() {
+    auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+    if (processor == nullptr) {
+      return;
+    }
+
+    if (processor->pluginInstance == nullptr) {
+      return;
+    }
+
+    const auto& parameters = processor->pluginInstance->getParameters();
+
+    if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
+      return;
+    }
+
+    auto* parameter = parameters[parameterIndex];
+
+    if (parameter == nullptr) {
+      return;
+    }
+
+    const auto controlPortId = getVST3ParameterControlPortId(*parameter);
+
+    if (!controlPortId.has_value()) {
+      return;
+    }
+
+    processor->sendPluginParameterGestureEvent(*controlPortId, false);
   });
 }
 

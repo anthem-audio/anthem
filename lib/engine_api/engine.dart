@@ -25,7 +25,9 @@ import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/parameter_commands.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 
@@ -121,6 +123,12 @@ class _PendingReply {
   });
 }
 
+class _PluginParameterGestureSession {
+  final double oldValue;
+
+  const _PluginParameterGestureSession({required this.oldValue});
+}
+
 /// Engine class, used for communicating with the Anthem engine process.
 ///
 /// This class manages the low-level IPC connection between the UI and engine
@@ -138,6 +146,8 @@ class Engine {
   late VisualizationApi visualizationApi;
 
   final Map<int, _PendingReply> _replyFunctions = {};
+  final Map<(Id, int), _PluginParameterGestureSession>
+  _pluginParameterGestureSessions = {};
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
@@ -286,6 +296,7 @@ class Engine {
       _failPendingReplies(
         StateError('Engine stopped while waiting for reply.'),
       );
+      _pluginParameterGestureSessions.clear();
 
       if (_readyForMessagesCompleter.isCompleted) {
         _readyForMessagesCompleter = Completer<void>();
@@ -320,6 +331,16 @@ class Engine {
     project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 
+  NodePortModel? _findPluginParameterPort(NodeModel node, int controlPortId) {
+    for (final port in node.controlInputPorts) {
+      if (port.id == controlPortId && port.config.parameterConfig != null) {
+        return port;
+      }
+    }
+
+    return null;
+  }
+
   void _applyPluginParameterValue(
     NodeModel node,
     int controlPortId,
@@ -327,21 +348,18 @@ class Engine {
     String? displayText,
   ) {
     final value = rawValue.clamp(0.0, 1.0).toDouble();
+    final port = _findPluginParameterPort(node, controlPortId);
 
-    for (final port in node.controlInputPorts) {
-      if (port.id != controlPortId) {
-        continue;
-      }
-
-      if (port.parameterValue != value) {
-        port.parameterValue = value;
-      }
-
-      if (port.parameterDisplayText != displayText) {
-        port.parameterDisplayText = displayText;
-      }
-
+    if (port == null) {
       return;
+    }
+
+    if (port.parameterValue != value) {
+      port.parameterValue = value;
+    }
+
+    if (port.parameterDisplayText != displayText) {
+      port.parameterDisplayText = displayText;
     }
   }
 
@@ -359,6 +377,46 @@ class Engine {
     );
 
     _scheduleNodeStateUpdate(event.nodeId);
+  }
+
+  void _handlePluginParameterGesture(PluginParameterGestureEvent event) {
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null) {
+      return;
+    }
+
+    final port = _findPluginParameterPort(node, event.controlPortId);
+    if (port == null) {
+      return;
+    }
+
+    final key = (event.nodeId, event.controlPortId);
+
+    if (event.isStarting) {
+      _pluginParameterGestureSessions[key] = _PluginParameterGestureSession(
+        oldValue: SetParameterValueCommand.effectiveParameterValue(port),
+      );
+      return;
+    }
+
+    final session = _pluginParameterGestureSessions.remove(key);
+    if (session == null) {
+      return;
+    }
+
+    final newValue = SetParameterValueCommand.effectiveParameterValue(port);
+    if (session.oldValue == newValue) {
+      return;
+    }
+
+    project.push(
+      SetParameterValueCommand(
+        nodeId: event.nodeId,
+        controlPortId: event.controlPortId,
+        oldValue: session.oldValue,
+        newValue: newValue,
+      ),
+    );
   }
 
   void _handlePluginParameterSnapshot(PluginParameterSnapshotEvent event) {
@@ -393,6 +451,9 @@ class Engine {
         return;
       case PluginParameterChangedEvent e:
         _handlePluginParameterChanged(e);
+        return;
+      case PluginParameterGestureEvent e:
+        _handlePluginParameterGesture(e);
         return;
       case PluginParameterSnapshotEvent e:
         _handlePluginParameterSnapshot(e);

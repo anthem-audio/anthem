@@ -25,6 +25,7 @@ import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
@@ -362,6 +363,35 @@ void main() {
         project.dispose();
       }
     });
+
+    test(
+      'createAutomationLaneForTarget stores parameter name as lane name',
+      () {
+        const target = AutomationParameterTarget(
+          ownerTrackId: _TrackIds.a,
+          nodeId: 123,
+          portId: 456,
+          ownerName: 'Filter',
+          parameterName: 'Cutoff',
+        );
+
+        fixture.controller.createAutomationLaneForTarget(target);
+
+        final parentTrack = fixture.project.tracks[_TrackIds.a]!;
+        expect(parentTrack.automationLanes, hasLength(1));
+
+        final lane =
+            fixture.project.tracks[parentTrack.automationLanes.single]!;
+        expect(lane.name, equals('Cutoff'));
+        expect(lane.automationTarget, isNotNull);
+        expect(lane.automationTarget!.nodeId, equals(target.nodeId));
+        expect(lane.automationTarget!.portId, equals(target.portId));
+        expect(
+          fixture.viewModel.automationExpandedByTrackId[target.ownerTrackId],
+          isTrue,
+        );
+      },
+    );
   });
 
   ({Id patternId, Id clipId}) createClipAndGetCreatedIds({
@@ -508,11 +538,21 @@ void main() {
     test('automation lane clips are created without opening an editor', () {
       final arrangementId = fixture.project.sequence.activeArrangementID!;
       final parentTrack = fixture.project.tracks[_TrackIds.a]!;
-      final automationLane = _makeTrack(
-        _TrackIds.automationA,
-        'A Automation',
-        TrackType.automationLane,
-      )..automationLaneParentTrackId = parentTrack.id;
+      fixture.project.processingGraph = ProcessingGraphModel.create(
+        masterOutputNodeId: getId(),
+      );
+      parentTrack.createAndRegisterNodes(
+        fixture.project,
+        fixture.project.idAllocator,
+      );
+
+      final automationLane =
+          _makeTrack(_TrackIds.automationA, 'Volume', TrackType.automationLane)
+            ..automationLaneParentTrackId = parentTrack.id
+            ..automationTarget = TrackAutomationTargetModel(
+              nodeId: parentTrack.requireProcessing.utilityNodeId!,
+              portId: UtilityProcessorModel.gainPortId,
+            );
 
       fixture.project.tracks[automationLane.id] = automationLane;
       parentTrack.automationLanes.add(automationLane.id);
@@ -531,7 +571,8 @@ void main() {
 
       expect(clip.patternId, equals(pattern.id));
       expect(clip.trackId, equals(automationLane.id));
-      expect(pattern.name, equals(automationLane.name));
+      expect(automationLane.name, equals('Volume'));
+      expect(pattern.name, equals('Track - Volume'));
     });
   });
 

@@ -25,7 +25,6 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/controls/knob.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class UtilityDevice extends StatelessWidget {
@@ -72,30 +71,22 @@ class _GainControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gainPort = node.getPortById(UtilityProcessorModel.gainPortId);
+    final gainParameter = ParameterControlBinding.byId(
+      node: node,
+      portId: UtilityProcessorModel.gainPortId,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Observer(
-          builder: (context) {
-            final value =
-                gainPort.parameterValue ?? gainParameterZeroDbNormalized;
-
-            return Knob(
-              value: value,
-              min: 0,
-              max: 1,
-              width: 26,
-              height: 26,
-              stickyPoints: [gainParameterZeroDbNormalized],
-              hint: (value) =>
-                  'Track gain: ${gainParameterValueToString(value)}',
-              onValueChanged: (value) {
-                gainPort.parameterValue = value;
-              },
-            );
-          },
+        Knob(
+          parameter: gainParameter,
+          min: 0,
+          max: 1,
+          width: 26,
+          height: 26,
+          stickyPoints: [gainParameterZeroDbNormalized],
+          hint: (value) => 'Track gain: ${gainParameterValueToString(value)}',
         ),
         Text(
           'Gain',
@@ -113,34 +104,26 @@ class _BalanceControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final balancePort = node.getPortById(UtilityProcessorModel.balancePortId);
+    final balanceParameter = ParameterControlBinding.byId(
+      node: node,
+      portId: UtilityProcessorModel.balancePortId,
+      parameterToControlValue: UtilityProcessorModel.parameterValueToPan,
+      controlToParameterValue: UtilityProcessorModel.panToParameterValue,
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Observer(
-          builder: (context) {
-            final value = UtilityProcessorModel.parameterValueToPan(
-              balancePort.parameterValue ??
-                  UtilityProcessorModel.panToParameterValue(0),
-            );
-
-            return Knob(
-              value: value,
-              min: -1,
-              max: 1,
-              width: 26,
-              height: 26,
-              type: KnobType.pan,
-              stickyPoints: [0],
-              hint: (value) =>
-                  'Track balance: ${UtilityProcessorModel.parameterValueToString(UtilityProcessorModel.panToParameterValue(value))}',
-              onValueChanged: (value) {
-                balancePort.parameterValue =
-                    UtilityProcessorModel.panToParameterValue(value);
-              },
-            );
-          },
+        Knob(
+          parameter: balanceParameter,
+          min: -1,
+          max: 1,
+          width: 26,
+          height: 26,
+          type: .pan,
+          stickyPoints: [0],
+          hint: (value) =>
+              'Track balance: ${UtilityProcessorModel.parameterValueToString(UtilityProcessorModel.panToParameterValue(value))}',
         ),
         Text(
           'Pan',

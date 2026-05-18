@@ -205,8 +205,9 @@ class _MeterSection extends StatelessObserverWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gainPort = track.processing?.utilityNode?.getPortById(
-      UtilityProcessorModel.gainPortId,
+    final gainParameter = ParameterControlBinding.byId(
+      node: track.processing!.utilityNode!,
+      portId: UtilityProcessorModel.gainPortId,
     );
 
     return Padding(
@@ -237,8 +238,7 @@ class _MeterSection extends StatelessObserverWidget {
                 Expanded(child: MeterScale()),
                 SizedBox(width: 11, child: _TrackDbMeter(track: track)),
                 Slider(
-                  value:
-                      gainPort?.parameterValue ?? gainParameterZeroDbNormalized,
+                  parameter: gainParameter,
                   width: 26,
                   axis: .vertical,
                   noBackground: true,
@@ -247,14 +247,6 @@ class _MeterSection extends StatelessObserverWidget {
                   stickyPoints: [gainParameterZeroDbNormalized],
                   hint: (value) =>
                       'Track gain: ${gainParameterValueToString(value)}',
-                  onValueChanged: (value) {
-                    final node = track.processing?.utilityNode;
-                    if (gainPort == null || node == null) {
-                      return;
-                    }
-
-                    gainPort.parameterValue = value;
-                  },
                 ),
               ],
             ),

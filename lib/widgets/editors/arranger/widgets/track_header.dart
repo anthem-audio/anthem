@@ -571,11 +571,11 @@ class _TrackContentRow extends StatelessObserverWidget {
 
   @override
   Widget build(BuildContext context) {
+    final project = Provider.of<ProjectModel>(context);
     final processing = track.processing;
     final automationTarget = track.automationTarget;
     final AutomationParameterTarget? resolvedAutomationTarget;
     if (track.isAutomationLane && automationTarget != null) {
-      final project = Provider.of<ProjectModel>(context);
       final controller = ServiceRegistry.forProject(
         project.id,
       ).arrangerController;
@@ -588,6 +588,21 @@ class _TrackContentRow extends StatelessObserverWidget {
     }
     final reserveCompactAutomationToggleSpace =
         reserveAutomationToggleSpace && height < _trackCompactHeightThreshold;
+    final utilityNode = processing?.utilityNode;
+    final gainParameter = utilityNode == null
+        ? null
+        : ParameterControlBinding.byId(
+            node: utilityNode,
+            portId: UtilityProcessorModel.gainPortId,
+          );
+    final balanceParameter = utilityNode == null
+        ? null
+        : ParameterControlBinding.byId(
+            node: utilityNode,
+            portId: UtilityProcessorModel.balancePortId,
+            parameterToControlValue: UtilityProcessorModel.parameterValueToPan,
+            controlToParameterValue: UtilityProcessorModel.panToParameterValue,
+          );
 
     return Row(
       crossAxisAlignment: height >= _trackCompactHeightThreshold
@@ -628,37 +643,21 @@ class _TrackContentRow extends StatelessObserverWidget {
               spacing: 4,
               children: [
                 _TrackControlButtons(),
-                if (height >= _trackCompactHeightThreshold)
+                if (height >= _trackCompactHeightThreshold &&
+                    gainParameter != null)
                   Slider(
-                    value:
-                        processing.utilityNode
-                            ?.getPortById(UtilityProcessorModel.gainPortId)
-                            .parameterValue ??
-                        gainParameterZeroDbNormalized,
+                    parameter: gainParameter,
                     min: 0,
                     max: 1,
                     height: 20,
                     borderRadius: 4,
                     stickyPoints: [gainParameterZeroDbNormalized],
                     hint: (v) => 'Track gain: ${gainParameterValueToString(v)}',
-                    onValueChanged: (value) {
-                      final node = processing.utilityNode;
-                      if (node == null) return;
-
-                      final port = node.getPortById(
-                        UtilityProcessorModel.gainPortId,
-                      );
-                      port.parameterValue = value;
-                    },
                   ),
-                if (height >= _trackTallHeightThreshold)
+                if (height >= _trackTallHeightThreshold &&
+                    balanceParameter != null)
                   Slider(
-                    value: UtilityProcessorModel.parameterValueToPan(
-                      processing.utilityNode
-                              ?.getPortById(UtilityProcessorModel.balancePortId)
-                              .parameterValue ??
-                          UtilityProcessorModel.panToParameterValue(0),
-                    ),
+                    parameter: balanceParameter,
                     min: -1,
                     max: 1,
                     height: 20,
@@ -667,16 +666,6 @@ class _TrackContentRow extends StatelessObserverWidget {
                     stickyPoints: [0],
                     hint: (v) =>
                         'Track balance: ${UtilityProcessorModel.parameterValueToString(UtilityProcessorModel.panToParameterValue(v))}',
-                    onValueChanged: (value) {
-                      final node = processing.utilityNode;
-                      if (node == null) return;
-
-                      final port = node.getPortById(
-                        UtilityProcessorModel.balancePortId,
-                      );
-                      port.parameterValue =
-                          UtilityProcessorModel.panToParameterValue(value);
-                    },
                   ),
               ],
             ),

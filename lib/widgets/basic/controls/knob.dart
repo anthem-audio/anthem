@@ -22,9 +22,13 @@ import 'dart:math';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 
 import 'control_mouse_handler.dart';
+import 'parameter_control_binding.dart';
 import 'sticky_drag_controller.dart';
+
+export 'parameter_control_binding.dart';
 
 const _stickyTrapSize = 0.08;
 
@@ -33,11 +37,14 @@ class Knob extends StatefulWidget {
   final double? height;
   final KnobType type;
 
-  final double value;
+  final double? value;
+  final ParameterControlBinding? parameter;
   final double min;
   final double max;
 
   final void Function(double)? onValueChanged;
+  final VoidCallback? onValueChangeStart;
+  final void Function(double)? onValueChangeEnd;
 
   final List<double> stickyPoints;
 
@@ -49,14 +56,18 @@ class Knob extends StatefulWidget {
     this.width,
     this.height,
     this.type = KnobType.normal,
-    required this.value,
+    this.value,
+    this.parameter,
     this.onValueChanged,
+    this.onValueChangeStart,
+    this.onValueChangeEnd,
     this.max = 1,
     double? min,
     this.stickyPoints = const [],
     this.hoverHintOverride,
     this.hint,
-  }) : min = min ?? (type == KnobType.pan ? -1 : 0);
+  }) : min = min ?? (type == KnobType.pan ? -1 : 0),
+       assert(value != null || parameter != null);
 
   @override
   State<Knob> createState() => _KnobState();
@@ -77,6 +88,8 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
       (value - widget.min) / (widget.max - widget.min);
   double rawToScaled(double rawValue) =>
       rawValue * (widget.max - widget.min) + widget.min;
+
+  double get currentValue => widget.parameter?.controlValue ?? widget.value!;
 
   int? currentHintId;
 
@@ -134,94 +147,112 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
       sizeMultiplierHelper.setTarget(pressed ? 0.9 : 1);
     }
 
-    return MouseRegion(
-      onEnter: (e) {
-        setState(() {
-          isOver = true;
-        });
+    Widget buildControl() {
+      final value = currentValue;
 
-        setHint(hover: true);
-
-        setHoverAnimationState(true);
-        animationHelper!.update();
-      },
-      onExit: (e) {
-        setState(() {
-          isOver = false;
-        });
-
-        clearHint();
-
-        if (!isPressed) {
-          setHoverAnimationState(false);
-          animationHelper!.update();
-        }
-      },
-      child: ControlMouseHandler(
-        onStart: () {
+      return MouseRegion(
+        onEnter: (e) {
           setState(() {
-            isPressed = true;
+            isOver = true;
           });
 
-          dragController.reset(
-            rawValue: scaledToRaw(widget.value),
-            stickyPoints: widget.stickyPoints
-                .map(scaledToRaw)
-                .toList(growable: false),
-          );
+          setHint(hover: true);
 
-          lastValue = widget.value;
-
-          setHint(hover: false);
-
-          setPressAnimationState(true);
+          setHoverAnimationState(true);
           animationHelper!.update();
         },
-        onEnd: (e) {
+        onExit: (e) {
           setState(() {
-            isPressed = false;
+            isOver = false;
           });
 
-          setPressAnimationState(false);
-          if (!isOver) {
+          clearHint();
+
+          if (!isPressed) {
             setHoverAnimationState(false);
+            animationHelper!.update();
           }
-          animationHelper!.update();
         },
-        onChange: (e) {
-          if (widget.onValueChanged == null) return;
+        child: ControlMouseHandler(
+          onStart: () {
+            setState(() {
+              isPressed = true;
+            });
 
-          final result = dragController.applyRawDelta(e.delta.dy / 300);
-          if (result.changed) {
-            final newValue = rawToScaled(result.rawValue);
-            widget.onValueChanged?.call(newValue);
-            lastValue = newValue;
-          }
+            dragController.reset(
+              rawValue: scaledToRaw(value),
+              stickyPoints: widget.stickyPoints
+                  .map(scaledToRaw)
+                  .toList(growable: false),
+            );
 
-          setHint(hover: false);
-        },
-        child: SizedBox(
-          width: widget.width,
-          height: widget.height,
-          child: AnimatedBuilder(
-            animation: animationHelper!.animationController,
-            builder: (context, _) {
-              final [sizeMultiplierHelper, trackSizeHelper] =
-                  animationHelper!.items;
+            lastValue = value;
+            widget.parameter?.beginChange();
+            widget.onValueChangeStart?.call();
 
-              return CustomPaint(
-                painter: _KnobPainter(
-                  value: scaledToRaw(widget.value),
-                  type: widget.type,
-                  sizeMultiplier: sizeMultiplierHelper.animation.value,
-                  trackSize: trackSizeHelper.animation.value,
-                ),
-              );
-            },
+            setHint(hover: false);
+
+            setPressAnimationState(true);
+            animationHelper!.update();
+          },
+          onEnd: (e) {
+            setState(() {
+              isPressed = false;
+            });
+
+            setPressAnimationState(false);
+            if (!isOver) {
+              setHoverAnimationState(false);
+            }
+            animationHelper!.update();
+
+            widget.parameter?.commitChange();
+            widget.onValueChangeEnd?.call(lastValue);
+          },
+          onChange: (e) {
+            if (widget.parameter == null && widget.onValueChanged == null) {
+              return;
+            }
+
+            final result = dragController.applyRawDelta(e.delta.dy / 300);
+            if (result.changed) {
+              final newValue = rawToScaled(result.rawValue);
+              widget.parameter?.updateChange(newValue);
+              widget.onValueChanged?.call(newValue);
+              lastValue = newValue;
+            }
+
+            setHint(hover: false);
+          },
+          child: SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: AnimatedBuilder(
+              animation: animationHelper!.animationController,
+              builder: (context, _) {
+                final [sizeMultiplierHelper, trackSizeHelper] =
+                    animationHelper!.items;
+
+                return CustomPaint(
+                  painter: _KnobPainter(
+                    value: scaledToRaw(value),
+                    type: widget.type,
+                    sizeMultiplier: sizeMultiplierHelper.animation.value,
+                    trackSize: trackSizeHelper.animation.value,
+                  ),
+                );
+              },
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
+
+    if (widget.parameter == null) {
+      return buildControl();
+    }
+
+    return Observer(builder: (_) => buildControl());
   }
 
   @override

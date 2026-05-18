@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
@@ -50,7 +51,7 @@ void main() {
     expect(find.text('Filter cutoff'), findsNWidgets(2));
   });
 
-  testWidgets('shows engine stopped state instead of parameter controls', (
+  testWidgets('shows parameter controls while the engine is stopped', (
     tester,
   ) async {
     await _pumpDevice(
@@ -61,28 +62,35 @@ void main() {
 
     final knobs = tester.widgetList<Knob>(find.byType(Knob)).toList();
 
-    expect(find.text('Engine is not running'), findsOneWidget);
-    expect(find.text('Filter cutoff'), findsNothing);
-    expect(knobs, hasLength(1));
-    expect(knobs.single.value, 0);
-    expect(knobs.single.onValueChanged, isNull);
+    expect(find.text('Engine is not running'), findsNothing);
+    expect(find.text('Filter cutoff'), findsNWidgets(2));
+    expect(knobs, hasLength(4));
+    expect(knobs.every((knob) => knob.onValueChanged != null), isTrue);
   });
 
-  testWidgets('ignores parameter knob changes after the engine stops', (
+  testWidgets('updates parameter model while the engine is stopped', (
     tester,
   ) async {
-    final result = await _pumpDevice(tester);
+    final result = await _pumpDevice(tester, engineState: EngineState.stopped);
     final cutoffPort = result.node.controlInputPorts.first;
-    final initialValue = cutoffPort.parameterValue;
     final cutoffKnob = _firstInteractiveKnob(tester);
 
-    result.project.engineState = EngineState.stopped;
+    cutoffKnob.onValueChangeStart!();
     cutoffKnob.onValueChanged!(0.25);
+    cutoffKnob.onValueChangeEnd!(0.25);
     await tester.pump();
 
-    expect(cutoffPort.parameterValue, initialValue);
-    expect(result.node.lastChangedControlPortId, isNull);
-    expect(find.text('Engine is not running'), findsOneWidget);
+    expect(cutoffPort.parameterValue, 0.25);
+    expect(result.node.lastChangedControlPortId, 100);
+    expect(find.text('Engine is not running'), findsNothing);
+
+    result.project.undo();
+    await tester.pump();
+    expect(cutoffPort.parameterValue, 0.76);
+
+    result.project.redo();
+    await tester.pump();
+    expect(cutoffPort.parameterValue, 0.25);
   });
 
   testWidgets('filters parameter rows while typing', (tester) async {
@@ -116,6 +124,27 @@ void main() {
 
     expect(find.text('Filter cutoff'), findsNWidgets(2));
     expect(find.text('25.0%'), findsNWidgets(2));
+  });
+
+  testWidgets('commits parameter knob changes to undo stack', (tester) async {
+    final result = await _pumpDevice(tester);
+    final cutoffPort = result.node.controlInputPorts.first;
+    final cutoffKnob = _firstInteractiveKnob(tester);
+
+    cutoffKnob.onValueChangeStart!();
+    cutoffKnob.onValueChanged!(0.25);
+    cutoffKnob.onValueChangeEnd!(0.25);
+    await tester.pump();
+
+    expect(cutoffPort.parameterValue, 0.25);
+
+    result.project.undo();
+    await tester.pump();
+    expect(cutoffPort.parameterValue, 0.76);
+
+    result.project.redo();
+    await tester.pump();
+    expect(cutoffPort.parameterValue, 0.25);
   });
 
   testWidgets('shows plugin-provided parameter text with units', (
@@ -164,7 +193,11 @@ Future<_PumpedDevice> _pumpDevice(
   String? firstParameterDisplayText,
 }) async {
   final project = ProjectModel.create();
-  addTearDown(project.dispose);
+  ServiceRegistry.initializeProject(project);
+  addTearDown(() {
+    ServiceRegistry.removeProject(project.id);
+    project.dispose();
+  });
   project.engineState = engineState;
 
   final processor = VST3ProcessorModel.create(

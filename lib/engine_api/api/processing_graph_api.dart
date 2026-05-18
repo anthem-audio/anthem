@@ -76,7 +76,7 @@ class ProcessingGraphApi {
   }
 
   /// Pushes a serialized plugin state blob into the engine for the given node.
-  void setPluginState(Id nodeId, String state) async {
+  void setPluginState(Id nodeId, String state) {
     final id = _engine._getRequestId();
 
     final request = SetPluginStateRequest(id: id, nodeId: nodeId, state: state);
