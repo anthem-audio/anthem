@@ -236,7 +236,7 @@ void main() {
       );
     });
 
-    testWidgets('real automation lane shows parameter above device name', (
+    testWidgets('real automation lane shows track title above target owner', (
       tester,
     ) async {
       final fixture = _TrackHeaderTestFixture.create();
@@ -245,45 +245,56 @@ void main() {
         fixture.dispose();
       });
 
-      final track = fixture.project.tracks[fixture.trackId]!;
-      final createResult = DeviceFactories.create(
-        idAllocator: fixture.project.idAllocator,
-        descriptor: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
-      );
-      final device = createResult.device;
       const deviceName = 'Very Long Device Name That Needs More Space';
-      device.name = deviceName;
-      track.requireProcessing.devices.add(device);
-      for (final node in createResult.graphFragment.nodes) {
-        node.owner = NodeOwnerModel(trackId: track.id, deviceId: device.id);
-      }
-      fixture.project.processingGraph.restoreGraphFragment(
-        createResult.graphFragment,
+      const laneName = 'Filter Sweep';
+      final automationLaneInfo = fixture.addToneGeneratorAutomationLane(
+        deviceName: deviceName,
+        laneName: laneName,
       );
-
-      final nodeId = device.nodeIds.single;
-      final portId = ToneGeneratorProcessorModel.frequencyPortId;
-      final parameterName =
-          'Parameter ${ToneGeneratorProcessorModel.frequencyPortId}';
-
-      AutomationLaneAddRemoveCommand.add(
-        project: fixture.project,
-        parentTrackId: track.id,
-        nodeId: nodeId,
-        portId: portId,
-        name: parameterName,
-      ).execute(fixture.project);
-      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
-          true;
 
       await fixture.pump(tester);
 
-      final automationLane =
-          fixture.project.tracks[track.automationLanes.single]!;
-      expect(automationLane.name, equals(parameterName));
-      expect(find.text(parameterName), findsOneWidget);
+      final automationLane = fixture.project.tracks[automationLaneInfo.laneId]!;
+      expect(automationLane.name, equals(laneName));
+      expect(find.text(laneName), findsOneWidget);
       expect(find.text(deviceName), findsOneWidget);
-      expect(find.text('$deviceName $parameterName'), findsNothing);
+      expect(find.text(automationLaneInfo.parameterName), findsNothing);
+      expect(find.text('$deviceName $laneName'), findsNothing);
+    });
+
+    testWidgets('compact automation lane label renders on one row', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 40);
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      const deviceName = 'Very Long Device Name That Needs More Space';
+      const laneName = 'Filter Sweep Automation Name That Needs Space';
+      fixture.addToneGeneratorAutomationLane(
+        deviceName: deviceName,
+        laneName: laneName,
+      );
+
+      await fixture.pump(tester);
+
+      final compactLabelText = '$laneName  $deviceName';
+      final compactLabelFinder = find.byWidgetPredicate((widget) {
+        if (widget is! Text) {
+          return false;
+        }
+
+        return widget.textSpan?.toPlainText() == compactLabelText &&
+            widget.maxLines == 1 &&
+            widget.overflow == TextOverflow.ellipsis &&
+            widget.softWrap == false;
+      });
+
+      expect(compactLabelFinder, findsOneWidget);
+      expect(find.text(laneName), findsNothing);
+      expect(find.text(deviceName), findsNothing);
     });
   });
 
@@ -374,6 +385,41 @@ class _TrackHeaderTestFixture {
       arrangerViewModel.trackPositionCalculator.getTrackHeight(
         arrangerViewModel.trackPositionCalculator.trackIdToIndex(trackId),
       );
+
+  ({Id laneId, String parameterName}) addToneGeneratorAutomationLane({
+    required String deviceName,
+    required String laneName,
+  }) {
+    final track = project.tracks[trackId]!;
+    final createResult = DeviceFactories.create(
+      idAllocator: project.idAllocator,
+      descriptor: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+    );
+    final device = createResult.device;
+    device.name = deviceName;
+    track.requireProcessing.devices.add(device);
+    for (final node in createResult.graphFragment.nodes) {
+      node.owner = NodeOwnerModel(trackId: track.id, deviceId: device.id);
+    }
+    project.processingGraph.restoreGraphFragment(createResult.graphFragment);
+
+    final parameterName =
+        'Parameter ${ToneGeneratorProcessorModel.frequencyPortId}';
+
+    AutomationLaneAddRemoveCommand.add(
+      project: project,
+      parentTrackId: track.id,
+      nodeId: device.nodeIds.single,
+      portId: ToneGeneratorProcessorModel.frequencyPortId,
+      name: parameterName,
+    ).execute(project);
+
+    final laneId = track.automationLanes.single;
+    project.tracks[laneId]!.name = laneName;
+    arrangerViewModel.automationExpandedByTrackId[trackId] = true;
+
+    return (laneId: laneId, parameterName: parameterName);
+  }
 
   Future<void> pump(WidgetTester tester) async {
     arrangerViewModel.trackPositionCalculator.invalidate(viewSize.height);

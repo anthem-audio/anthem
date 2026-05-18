@@ -349,9 +349,10 @@ class _PhantomAutomationTrackHeader extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _AutomationTargetLabel(
-                      target: target,
-                      fallbackTitle: phantomLane.title,
-                      fallbackIsPlaceholder: true,
+                      title: target?.parameterName ?? phantomLane.title,
+                      subtitle: target?.ownerName,
+                      isPlaceholder: target == null,
+                      compact: trackHeight - 1 < _trackCompactHeightThreshold,
                     ),
                   ),
                   if (target != null)
@@ -380,32 +381,58 @@ class _PhantomAutomationTrackHeader extends StatelessWidget {
 }
 
 class _AutomationTargetLabel extends StatelessWidget {
-  final AutomationParameterTarget? target;
-  final String fallbackTitle;
-  final bool fallbackIsPlaceholder;
+  final String title;
+  final String? subtitle;
+  final bool isPlaceholder;
+  final bool compact;
 
   const _AutomationTargetLabel({
-    required this.target,
-    required this.fallbackTitle,
-    this.fallbackIsPlaceholder = false,
+    required this.title,
+    this.subtitle,
+    this.isPlaceholder = false,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final target = this.target;
-    if (target == null) {
-      return Text(
-        fallbackTitle,
+    final titleStyle = TextStyle(
+      color: isPlaceholder ? AnthemTheme.text.disabled : AnthemTheme.text.main,
+      fontSize: 11,
+      fontStyle: isPlaceholder ? FontStyle.italic : null,
+      fontWeight: .w500,
+    );
+    final subtitleStyle = TextStyle(
+      color: AnthemTheme.text.disabled,
+      fontSize: compact ? 11 : 10,
+      fontStyle: isPlaceholder ? FontStyle.italic : null,
+    );
+    final subtitle = this.subtitle;
+
+    if (compact) {
+      return Text.rich(
+        TextSpan(
+          text: title,
+          style: titleStyle,
+          children: [
+            if (subtitle != null) ...[
+              const TextSpan(text: '  '),
+              TextSpan(text: subtitle, style: subtitleStyle),
+            ],
+          ],
+        ),
         overflow: TextOverflow.ellipsis,
         maxLines: 1,
-        style: TextStyle(
-          color: fallbackIsPlaceholder
-              ? AnthemTheme.text.disabled
-              : AnthemTheme.text.main,
-          fontSize: 11,
-          fontStyle: fallbackIsPlaceholder ? FontStyle.italic : null,
-          fontWeight: .w500,
-        ),
+        softWrap: false,
+      );
+    }
+
+    if (subtitle == null) {
+      return Text(
+        title,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+        softWrap: false,
+        style: titleStyle,
       );
     }
 
@@ -414,20 +441,18 @@ class _AutomationTargetLabel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          target.parameterName,
+          title,
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
-          style: TextStyle(
-            color: AnthemTheme.text.main,
-            fontSize: 11,
-            fontWeight: .w500,
-          ),
+          softWrap: false,
+          style: titleStyle,
         ),
         Text(
-          target.ownerName,
+          subtitle,
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
-          style: TextStyle(color: AnthemTheme.text.disabled, fontSize: 10),
+          softWrap: false,
+          style: subtitleStyle,
         ),
       ],
     );
@@ -619,8 +644,9 @@ class _TrackContentRow extends StatelessObserverWidget {
             ),
             child: track.isAutomationLane
                 ? _AutomationTargetLabel(
-                    target: resolvedAutomationTarget,
-                    fallbackTitle: track.name,
+                    title: track.name,
+                    subtitle: resolvedAutomationTarget?.ownerName,
+                    compact: height < _trackCompactHeightThreshold,
                   )
                 : Text(
                     track.name,
