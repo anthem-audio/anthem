@@ -95,6 +95,7 @@ class _TrackIds {
   static const s = 6;
   static const s1 = 7;
   static const master = 8;
+  static const automationA = 9;
 }
 
 TrackModel _makeTrack(Id id, String name, TrackType type) {
@@ -367,6 +368,7 @@ void main() {
     required Id trackId,
     required double offset,
     required double width,
+    bool expectPianoRollOpened = true,
   }) {
     final arrangementId = fixture.project.sequence.activeArrangementID!;
     final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
@@ -390,11 +392,19 @@ void main() {
     expect(createdPatternIds, hasLength(1));
     expect(createdClipIds, hasLength(1));
     verify(fixture.mockTrackController.setActiveTrack(trackId)).called(1);
-    verify(
-      fixture.mockProjectController.openPatternInPianoRoll(
-        createdPatternIds.single,
-      ),
-    ).called(1);
+    if (expectPianoRollOpened) {
+      verify(
+        fixture.mockProjectController.openPatternInPianoRoll(
+          createdPatternIds.single,
+        ),
+      ).called(1);
+    } else {
+      verifyNever(
+        fixture.mockProjectController.openPatternInPianoRoll(
+          createdPatternIds.single,
+        ),
+      );
+    }
 
     return (patternId: createdPatternIds.single, clipId: createdClipIds.single);
   }
@@ -493,6 +503,35 @@ void main() {
       expect(clip.timeView, isNotNull);
       expect(clip.timeView!.start, equals(0));
       expect(clip.timeView!.end, equals(1));
+    });
+
+    test('automation lane clips are created without opening an editor', () {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final parentTrack = fixture.project.tracks[_TrackIds.a]!;
+      final automationLane = _makeTrack(
+        _TrackIds.automationA,
+        'A Automation',
+        TrackType.automationLane,
+      )..automationLaneParentTrackId = parentTrack.id;
+
+      fixture.project.tracks[automationLane.id] = automationLane;
+      parentTrack.automationLanes.add(automationLane.id);
+      fixture.viewModel.registerTrack(automationLane.id);
+
+      final createdIds = createClipAndGetCreatedIds(
+        trackId: automationLane.id,
+        offset: 24,
+        width: 96,
+        expectPianoRollOpened: false,
+      );
+
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final clip = arrangement.clips[createdIds.clipId]!;
+      final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
+
+      expect(clip.patternId, equals(pattern.id));
+      expect(clip.trackId, equals(automationLane.id));
+      expect(pattern.name, equals(automationLane.name));
     });
   });
 

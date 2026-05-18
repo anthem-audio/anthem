@@ -253,7 +253,7 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
   Id? _rowIdForCreate(ArrangerRow row) {
     return switch (row) {
       TrackArrangerRow(:final trackId) =>
-        (project.tracks[trackId]?.isAutomationLane ?? true) ? null : trackId,
+        project.tracks.containsKey(trackId) ? trackId : null,
       PhantomAutomationArrangerRow() => row.rowId,
     };
   }
@@ -283,7 +283,7 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
 
     return switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
       TrackArrangerRow(:final trackId) =>
-        (project.tracks[trackId]?.isAutomationLane ?? true) ? null : trackId,
+        project.tracks.containsKey(trackId) ? trackId : null,
       PhantomAutomationArrangerRow() || null => null,
     };
   }

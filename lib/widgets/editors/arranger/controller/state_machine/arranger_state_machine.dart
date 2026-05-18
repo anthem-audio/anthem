@@ -599,7 +599,7 @@ class ArrangerIdleState extends _ArrangerLeafState {
   Id? _rowIdForCursor(ArrangerRow row) {
     return switch (row) {
       TrackArrangerRow(:final trackId) =>
-        (project.tracks[trackId]?.isAutomationLane ?? true) ? null : trackId,
+        project.tracks.containsKey(trackId) ? trackId : null,
       PhantomAutomationArrangerRow() => row.rowId,
     };
   }
@@ -777,7 +777,7 @@ class ArrangerIdleState extends _ArrangerLeafState {
         viewModel.selectedClips.contains(clipId) &&
         viewModel.selectedClips.length > 1;
 
-    final didOpenEditor = controller.openClipInPianoRoll(clipId);
+    final didOpenEditor = controller.openClipInEditor(clipId);
 
     if (didOpenEditor && !isPartOfMultiSelection) {
       viewModel.selectedClips.remove(clipId);

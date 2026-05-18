@@ -286,7 +286,7 @@ abstract class _ArrangerController {
         parentTrackId: target.ownerTrackId,
         nodeId: target.nodeId,
         portId: target.portId,
-        name: target.title,
+        name: target.parameterName,
       ),
     );
 
@@ -326,7 +326,7 @@ abstract class _ArrangerController {
     deleteClips(viewModel.selectedClips.nonObservableInner);
   }
 
-  bool openClipInPianoRoll(Id clipId) {
+  bool openClipInEditor(Id clipId) {
     final arrangementId = project.sequence.activeArrangementID;
     if (arrangementId == null) {
       return false;
@@ -338,14 +338,19 @@ abstract class _ArrangerController {
       return false;
     }
 
-    final projectController = ServiceRegistry.forProject(
-      project.id,
-    ).projectController;
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
-    trackController.setActiveTrack(clip.trackId);
-    projectController.openPatternInPianoRoll(clip.patternId);
+    final track = project.tracks[clip.trackId];
+    if (track == null) {
+      return false;
+    }
+
+    if (track.isAutomationLane) {
+      ServiceRegistry.forProject(
+        project.id,
+      ).trackController.setActiveTrack(track.id);
+      return false;
+    }
+
+    _openPatternForTrack(track: track, patternId: clip.patternId);
     return true;
   }
 
@@ -470,14 +475,13 @@ abstract class _ArrangerController {
     double? width,
   }) {
     final track = project.tracks[trackId]!;
-    if (track.isAutomationLane) {
-      return;
-    }
 
     project.startUndoGroup();
 
-    final pattern = PatternModel(idAllocator: _idAllocator, name: track.name)
-      ..color = track.color.clone();
+    final pattern = PatternModel(
+      idAllocator: _idAllocator,
+      name: _newClipPatternNameForTrack(track),
+    )..color = track.color.clone();
 
     final clip = ClipModel(
       idAllocator: _idAllocator,
@@ -499,14 +503,42 @@ abstract class _ArrangerController {
 
     project.commitUndoGroup();
 
-    final projectController = ServiceRegistry.forProject(
-      project.id,
-    ).projectController;
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
-    trackController.setActiveTrack(trackId);
-    projectController.openPatternInPianoRoll(pattern.id);
+    _openPatternForTrack(track: track, patternId: pattern.id);
+  }
+
+  String _newClipPatternNameForTrack(TrackModel track) {
+    if (!track.isAutomationLane) {
+      return track.name;
+    }
+
+    final automationTarget = track.automationTarget;
+    if (automationTarget == null) {
+      return track.name;
+    }
+
+    final resolvedTarget = resolveAutomationTarget(
+      nodeId: automationTarget.nodeId,
+      portId: automationTarget.portId,
+    );
+    if (resolvedTarget == null) {
+      return track.name;
+    }
+
+    return '${resolvedTarget.ownerName} - ${resolvedTarget.parameterName}';
+  }
+
+  void _openPatternForTrack({
+    required TrackModel track,
+    required Id patternId,
+  }) {
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    serviceRegistry.trackController.setActiveTrack(track.id);
+
+    if (track.isAutomationLane) {
+      return;
+    }
+
+    serviceRegistry.projectController.openPatternInPianoRoll(patternId);
   }
 
   /// Adds a time signature change to the active arrangement.
