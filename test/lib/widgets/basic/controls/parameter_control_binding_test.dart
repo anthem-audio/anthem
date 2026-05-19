@@ -23,74 +23,81 @@ import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/widgets/basic/controls/knob.dart';
-import 'package:anthem/widgets/basic/controls/slider.dart' as anthem;
+import 'package:anthem/widgets/basic/controls/parameter_control_binding.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Knob commits bound parameter changes to undo stack', (
-    tester,
-  ) async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('ParameterControlBinding commits parameter changes to undo stack', () {
     final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
     addTearDown(() => _disposeProject(project));
-    await tester.pump(const Duration(milliseconds: 1));
 
-    await tester.pumpWidget(
-      Knob(
-        parameter: ParameterControlBinding(node: node, port: port),
-      ),
-    );
+    final binding = ParameterControlBinding(node: node, port: port);
 
-    final knob = tester.widget<Knob>(find.byType(Knob));
-    knob.onValueChangeStart!();
-    knob.onValueChanged!(0.75);
-    knob.onValueChangeEnd!(0.75);
-    await tester.pump();
+    binding.beginChange();
+    binding.updateChange(0.75);
+    binding.commitChange();
 
     expect(port.parameterValue, 0.75);
 
     project.undo();
-    await tester.pump();
     expect(port.parameterValue, 0.5);
 
     project.redo();
-    await tester.pump();
     expect(port.parameterValue, 0.75);
   });
 
-  testWidgets('Slider maps between control and parameter values', (
-    tester,
-  ) async {
+  test('ParameterControlBinding maps between control and parameter values', () {
     final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
     addTearDown(() => _disposeProject(project));
-    await tester.pump(const Duration(milliseconds: 1));
 
-    await tester.pumpWidget(
-      anthem.Slider(
-        parameter: ParameterControlBinding(
-          node: node,
-          port: port,
-          parameterToControlValue: (double value) => value * 2 - 1,
-          controlToParameterValue: (double value) => (value + 1) * 0.5,
-        ),
-        min: -1,
-        max: 1,
-      ),
+    final binding = ParameterControlBinding(
+      node: node,
+      port: port,
+      parameterToControlValue: (double value) => value * 2 - 1,
+      controlToParameterValue: (double value) => (value + 1) * 0.5,
     );
 
-    var slider = tester.widget<anthem.Slider>(find.byType(anthem.Slider));
-    expect(slider.value, 0);
+    expect(binding.controlValue, 0);
 
-    slider.onValueChangeStart!();
-    slider.onValueChanged!(1);
-    slider.onValueChangeEnd!(1);
-    await tester.pump();
+    binding.beginChange();
+    binding.updateChange(1);
+    binding.commitChange();
 
     expect(port.parameterValue, 1);
+    expect(binding.controlValue, 1);
+  });
 
-    slider = tester.widget<anthem.Slider>(find.byType(anthem.Slider));
-    expect(slider.value, 1);
+  test('ParameterControlBinding resets mapped parameters to default', () {
+    final (:project, :node, :port) = _createParameterProject(
+      defaultValue: 0.25,
+    );
+    addTearDown(() => _disposeProject(project));
+
+    final binding = ParameterControlBinding(
+      node: node,
+      port: port,
+      parameterToControlValue: (double value) => value * 2 - 1,
+      controlToParameterValue: (double value) => (value + 1) * 0.5,
+    );
+
+    binding.beginChange();
+    binding.updateChange(1);
+    binding.commitChange();
+    expect(port.parameterValue, 1);
+
+    binding.resetToDefault();
+
+    expect(port.parameterValue, 0.25);
+    expect(binding.controlValue, -0.5);
+
+    project.undo();
+    expect(port.parameterValue, 1);
+
+    project.redo();
+    expect(port.parameterValue, 0.25);
   });
 }
 

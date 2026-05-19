@@ -99,4 +99,29 @@ void main() {
     project.undo();
     expect(port.parameterValue, equals(0.25));
   });
+
+  test('ParameterController resets to default as one undo step', () {
+    final controller = ParameterController(project);
+
+    controller.updateChange(node: node, port: port, value: 0.75);
+    controller.resetToDefault(node: node, port: port);
+
+    expect(port.parameterValue, equals(0.25));
+
+    project.undo();
+    expect(port.parameterValue, equals(0.75));
+
+    project.redo();
+    expect(port.parameterValue, equals(0.25));
+  });
+
+  test('ParameterController skips unchanged reset', () {
+    final controller = ParameterController(project);
+    project.isDirty = false;
+
+    controller.resetToDefault(node: node, port: port);
+
+    expect(port.parameterValue, equals(0.25));
+    expect(project.isDirty, isFalse);
+  });
 }

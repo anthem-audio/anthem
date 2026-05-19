@@ -158,6 +158,17 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     Widget buildControl() {
       final value = currentValue;
 
+      void resetParameterToDefault() {
+        final parameter = widget.parameter;
+        if (parameter == null) {
+          return;
+        }
+
+        parameter.resetToDefault();
+        lastValue = currentValue;
+        setHint(hover: false);
+      }
+
       return MouseRegion(
         onEnter: (e) {
           setState(() {
@@ -183,6 +194,9 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
           }
         },
         child: ControlMouseHandler(
+          onDoubleClick: widget.parameter == null
+              ? null
+              : resetParameterToDefault,
           cursor: switch (widget.axis) {
             SliderAxis.horizontal => SystemMouseCursors.resizeLeftRight,
             SliderAxis.vertical => SystemMouseCursors.resizeUpDown,

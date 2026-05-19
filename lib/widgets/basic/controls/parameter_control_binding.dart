@@ -80,4 +80,10 @@ class ParameterControlBinding {
       node.project.id,
     ).parameterController.commitChange(node: node, port: port);
   }
+
+  void resetToDefault() {
+    ServiceRegistry.forProject(
+      node.project.id,
+    ).parameterController.resetToDefault(node: node, port: port);
+  }
 }

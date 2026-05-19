@@ -150,6 +150,17 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
     Widget buildControl() {
       final value = currentValue;
 
+      void resetParameterToDefault() {
+        final parameter = widget.parameter;
+        if (parameter == null) {
+          return;
+        }
+
+        parameter.resetToDefault();
+        lastValue = currentValue;
+        setHint(hover: false);
+      }
+
       return MouseRegion(
         onEnter: (e) {
           setState(() {
@@ -174,6 +185,9 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           }
         },
         child: ControlMouseHandler(
+          onDoubleClick: widget.parameter == null
+              ? null
+              : resetParameterToDefault,
           onStart: () {
             setState(() {
               isPressed = true;

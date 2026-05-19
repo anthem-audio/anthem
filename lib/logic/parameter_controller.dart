@@ -98,6 +98,28 @@ class ParameterController {
     );
   }
 
+  void resetToDefault({required NodeModel node, required NodePortModel port}) {
+    _assertParameterPort(node: node, port: port);
+
+    final oldValue = SetParameterValueCommand.effectiveParameterValue(port);
+    final newValue = SetParameterValueCommand.normalizeValue(
+      port.config.parameterConfig!.defaultValue,
+    );
+
+    if (oldValue == newValue) {
+      return;
+    }
+
+    project.execute(
+      SetParameterValueCommand(
+        nodeId: node.id,
+        controlPortId: port.id,
+        oldValue: oldValue,
+        newValue: newValue,
+      ),
+    );
+  }
+
   void _assertParameterPort({
     required NodeModel node,
     required NodePortModel port,

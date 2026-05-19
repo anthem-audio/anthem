@@ -37,7 +37,7 @@ void main() {
   testWidgets('shows a placeholder in the recent parameter slot', (
     tester,
   ) async {
-    await _pumpDevice(tester);
+    final result = await _pumpDevice(tester);
 
     final placeholderKnob = tester.widget<Knob>(find.byType(Knob).first);
 
@@ -45,7 +45,7 @@ void main() {
     expect(placeholderKnob.onValueChanged, isNull);
     expect(find.text('Filter cutoff'), findsOneWidget);
 
-    _firstInteractiveKnob(tester).onValueChanged!(0.25);
+    _updateFirstParameterValue(result.node, 0.25);
     await tester.pump();
 
     expect(find.text('Filter cutoff'), findsNWidgets(2));
@@ -65,7 +65,7 @@ void main() {
     expect(find.text('Engine is not running'), findsNothing);
     expect(find.text('Filter cutoff'), findsNWidgets(2));
     expect(knobs, hasLength(4));
-    expect(knobs.every((knob) => knob.onValueChanged != null), isTrue);
+    expect(knobs.every((knob) => knob.parameter != null), isTrue);
   });
 
   testWidgets('updates parameter model while the engine is stopped', (
@@ -73,11 +73,11 @@ void main() {
   ) async {
     final result = await _pumpDevice(tester, engineState: EngineState.stopped);
     final cutoffPort = result.node.controlInputPorts.first;
-    final cutoffKnob = _firstInteractiveKnob(tester);
+    final cutoffParameter = _firstParameterBinding(result.node);
 
-    cutoffKnob.onValueChangeStart!();
-    cutoffKnob.onValueChanged!(0.25);
-    cutoffKnob.onValueChangeEnd!(0.25);
+    cutoffParameter.beginChange();
+    cutoffParameter.updateChange(0.25);
+    cutoffParameter.commitChange();
     await tester.pump();
 
     expect(cutoffPort.parameterValue, 0.25);
@@ -113,13 +113,12 @@ void main() {
   });
 
   testWidgets('shows the most recently changed parameter row', (tester) async {
-    await _pumpDevice(tester);
+    final result = await _pumpDevice(tester);
 
     expect(find.text('Filter cutoff'), findsOneWidget);
     expect(find.text('25.0%'), findsNothing);
 
-    final cutoffKnob = _firstInteractiveKnob(tester);
-    cutoffKnob.onValueChanged!(0.25);
+    _updateFirstParameterValue(result.node, 0.25);
     await tester.pump();
 
     expect(find.text('Filter cutoff'), findsNWidgets(2));
@@ -129,11 +128,11 @@ void main() {
   testWidgets('commits parameter knob changes to undo stack', (tester) async {
     final result = await _pumpDevice(tester);
     final cutoffPort = result.node.controlInputPorts.first;
-    final cutoffKnob = _firstInteractiveKnob(tester);
+    final cutoffParameter = _firstParameterBinding(result.node);
 
-    cutoffKnob.onValueChangeStart!();
-    cutoffKnob.onValueChanged!(0.25);
-    cutoffKnob.onValueChangeEnd!(0.25);
+    cutoffParameter.beginChange();
+    cutoffParameter.updateChange(0.25);
+    cutoffParameter.commitChange();
     await tester.pump();
 
     expect(cutoffPort.parameterValue, 0.25);
@@ -164,17 +163,28 @@ void main() {
   testWidgets('adds value hints to parameter knobs', (tester) async {
     await _pumpDevice(tester);
 
-    final cutoffKnob = _firstInteractiveKnob(tester);
+    final cutoffKnob = _firstParameterKnob(tester);
 
     expect(cutoffKnob.hoverHintOverride?.call(0), 'Filter cutoff: 76.0%');
     expect(cutoffKnob.hint?.call(0.25), 'Filter cutoff: 25.0%');
   });
 }
 
-Knob _firstInteractiveKnob(WidgetTester tester) {
+Knob _firstParameterKnob(WidgetTester tester) {
   return tester
       .widgetList<Knob>(find.byType(Knob))
-      .firstWhere((knob) => knob.onValueChanged != null);
+      .firstWhere((knob) => knob.parameter != null);
+}
+
+ParameterControlBinding _firstParameterBinding(NodeModel node) {
+  final port = node.controlInputPorts.firstWhere(
+    (port) => port.config.parameterConfig != null,
+  );
+  return ParameterControlBinding(node: node, port: port);
+}
+
+void _updateFirstParameterValue(NodeModel node, double value) {
+  _firstParameterBinding(node).updateChange(value);
 }
 
 class _PumpedDevice {
