@@ -81,6 +81,7 @@ void main() {
   createProjectWithVisualizationProvider({
     Duration Function()? wallClockNowForTest,
     VisualizationApi? visualizationApi,
+    Stream<EngineState>? engineStateStream,
   }) {
     final visualizationApiMock = visualizationApi ?? MockVisualizationApi();
 
@@ -90,7 +91,7 @@ void main() {
     when(engineMock.engineState).thenReturn(EngineState.running);
     when(
       engineMock.engineStateStream,
-    ).thenAnswer((_) => const Stream<EngineState>.empty());
+    ).thenAnswer((_) => engineStateStream ?? const Stream<EngineState>.empty());
     when(engineMock.readyForMessages).thenAnswer((_) async {});
 
     final projectMock = MockProjectModel();
@@ -307,8 +308,12 @@ void main() {
         ],
       );
 
-      expect(controller.values, [0, 0]);
-      expect(controller.engineTimes, [null, null]);
+      expect(controller.values, [2, 1]);
+      expect(controller.engineTimes, [
+        engineTimeForSampleTimestamp(240),
+        engineTimeForSampleTimestamp(120),
+      ]);
+      expect(notificationCount, 3);
 
       setup.visualizationProvider.processVisualizationUpdate(
         VisualizationUpdateEvent(
@@ -648,6 +653,124 @@ void main() {
       expect(
         () => setup.visualizationProvider.subscribe(
           VisualizationSubscriptionConfig.latestInt('subscriptionId'),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      setup.visualizationProvider.dispose();
+    },
+  );
+
+  test('VisualizationProvider seeds late subscribers from cached values', () {
+    final setup = createProjectWithVisualizationProvider();
+
+    final early = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'playhead_sequence_id',
+            values: [10, 11],
+            sampleTimestamps: [240, 480],
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      early.readTimedValue(),
+      isA<TimedVisualizationValue<int>>()
+          .having((value) => value.value, 'value', 11)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(480),
+          ),
+    );
+
+    final late = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+    );
+
+    expect(
+      late.readTimedValue(),
+      isA<TimedVisualizationValue<int>>()
+          .having((value) => value.value, 'value', 11)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(480),
+          ),
+    );
+
+    early.dispose();
+    late.dispose();
+    setup.visualizationProvider.dispose();
+  });
+
+  test(
+    'VisualizationProvider clears cached values when the engine stops',
+    () async {
+      final engineStates = StreamController<EngineState>.broadcast();
+      final setup = createProjectWithVisualizationProvider(
+        engineStateStream: engineStates.stream,
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'playhead_sequence_id',
+              values: [12],
+              sampleTimestamps: [960],
+            ),
+          ],
+        ),
+      );
+
+      final beforeStop = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+      );
+      expect(beforeStop.readValue(), 12);
+
+      engineStates.add(EngineState.stopped);
+      await Future<void>.delayed(Duration.zero);
+
+      final afterStop = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+      );
+      expect(afterStop.readTimedValue(), isNull);
+      expect(afterStop.readValue(), 0);
+
+      beforeStop.dispose();
+      afterStop.dispose();
+      setup.visualizationProvider.dispose();
+      await engineStates.close();
+    },
+  );
+
+  test(
+    'Cached visualization values reject conflicting declared value types',
+    () {
+      final setup = createProjectWithVisualizationProvider();
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'cached', values: [1]),
+          ],
+        ),
+      );
+
+      expect(
+        () => setup.visualizationProvider.subscribe(
+          VisualizationSubscriptionConfig.latestDouble('cached'),
         ),
         throwsA(isA<StateError>()),
       );

@@ -65,10 +65,13 @@ class PlayheadLine extends StatelessObserverWidget {
             'playhead_sequence_id',
           ),
           builder: (context, activeSequenceId, engineTime) {
+            final activeSequenceIdForPlayhead =
+                activeSequenceIdOverride ?? activeSequenceId;
+
             return Visibility(
               visible:
-                  (activeSequenceIdOverride ?? activeSequenceId) ==
-                  editorActiveSequenceId,
+                  activeSequenceIdForPlayhead != null &&
+                  activeSequenceIdForPlayhead == editorActiveSequenceId,
               child: VisualizationBuilder.double(
                 config: VisualizationSubscriptionConfig.latestDouble(
                   'playhead_position',
