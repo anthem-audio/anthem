@@ -181,6 +181,10 @@ class _ArrangerStateMachineTestFixture {
       stateMachine.states[ArrangerAutomationPointMoveState]!
           as ArrangerAutomationPointMoveState;
 
+  ArrangerAutomationTensionChangeState get automationTensionChangeState =>
+      stateMachine.states[ArrangerAutomationTensionChangeState]!
+          as ArrangerAutomationTensionChangeState;
+
   ArrangerCreateClipState get createClipState =>
       stateMachine.states[ArrangerCreateClipState]! as ArrangerCreateClipState;
 
@@ -519,6 +523,61 @@ void main() {
 
       expect(fixture.viewModel.selectedClips.toSet(), equals({clip.id}));
       expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
+    test('right-clicking automation tension handle resets tension', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      final previousPoint = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 0,
+        value: 0.25,
+      );
+      final point = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 96,
+        value: 0.75,
+        tension: 0.4,
+      );
+      pattern.automation.points.addAll([previousPoint, point]);
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(112, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointIndex: 1,
+          pointId: point.id,
+          center: const Offset(120, 38),
+        ),
+      );
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+
+      var openCount = 0;
+      ArrangerIdleState.openContextMenuFn = (_, _) {
+        openCount++;
+      };
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kSecondaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+
+      expect(openCount, 0);
+      expect(point.tension, 0);
+      expect(fixture.viewModel.lastInteractedAutomationTension, 0);
+      expect(
+        fixture.viewModel.selectedClips.toSet(),
+        equals({_ClipIds.someOtherSelected}),
+      );
+
+      fixture.project.undo();
+
+      expect(point.tension, 0.4);
     });
 
     test('hover over resize handle updates canvas cursor and hovered clip', () {
@@ -2075,6 +2134,7 @@ void main() {
       );
       final expectedValue = expectedPointValueForClick(clickPos);
       fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+      fixture.viewModel.lastInteractedAutomationTension = 0.35;
 
       startAutomationDoubleClickHold(clickPos);
 
@@ -2085,6 +2145,7 @@ void main() {
       expect(pattern.automation.points, hasLength(3));
       expect(pattern.automation.points[1].offset, expectedOffset);
       expect(pattern.automation.points[1].value, closeTo(expectedValue, 1e-9));
+      expect(pattern.automation.points[1].tension, 0.35);
       expect(fixture.viewModel.selectedClips.toSet(), equals({clip.id}));
 
       fixture.pointerUp(const PointerUpEvent(pointer: 1, position: clickPos));
@@ -2450,6 +2511,192 @@ void main() {
       expect(pattern.automation.points, hasLength(2));
       expect(pattern.automation.points[0].offset, 0);
       expect(pattern.automation.points[1].offset, 240);
+    });
+  });
+
+  group('ArrangerAutomationTensionChangeState', () {
+    const clipRect = Rect.fromLTWH(100, 0, 240, 60);
+    const handleCenter = Offset(180, 38);
+
+    AutomationPointModel makePoint({
+      required int offset,
+      required double value,
+      double tension = 0,
+    }) {
+      return AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: offset,
+        value: value,
+        tension: tension,
+      );
+    }
+
+    ({ClipModel clip, PatternModel pattern}) addAutomationClip({
+      required List<AutomationPointModel> points,
+    }) {
+      fixture.showRealAutomationLaneForTrack(_TrackIds.a);
+
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Automation',
+      );
+      pattern.automation.points.addAll(points);
+      fixture.project.sequence.patterns[pattern.id] = pattern;
+
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(),
+        patternId: pattern.id,
+        trackId: _TrackIds.automationA,
+        offset: 100,
+        timeView: TimeViewModel(start: 0, end: 240),
+      );
+
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      arrangement.clips[clip.id] = clip;
+      fixture.viewModel.visibleClips.add(rect: clipRect, metadata: clip.id);
+
+      return (clip: clip, pattern: pattern);
+    }
+
+    void addTensionHandleAnnotation({
+      required ClipModel clip,
+      required PatternModel pattern,
+      required int pointIndex,
+    }) {
+      final point = pattern.automation.points[pointIndex];
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: Rect.fromCenter(center: handleCenter, width: 16, height: 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointIndex: pointIndex,
+          pointId: point.id,
+          center: handleCenter,
+        ),
+      );
+    }
+
+    test('dragging tension handle changes tension and commits undo step', () {
+      final (:clip, :pattern) = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.75),
+          makePoint(offset: 96, value: 0.25, tension: 0.2),
+        ],
+      );
+      addTensionHandleAnnotation(clip: clip, pattern: pattern, pointIndex: 1);
+      final point = pattern.automation.points[1];
+      const movePos = Offset(180, -87);
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: handleCenter,
+        ),
+      );
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(point.tension, 0.2);
+
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+
+      expect(
+        fixture.stateMachine.currentState,
+        isA<ArrangerAutomationTensionChangeState>(),
+      );
+      expect(point.tension, closeTo(0.7, 1e-9));
+
+      fixture.pointerUp(const PointerUpEvent(pointer: 1, position: movePos));
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(point.tension, closeTo(0.7, 1e-9));
+      expect(
+        fixture.viewModel.lastInteractedAutomationTension,
+        closeTo(0.7, 1e-9),
+      );
+
+      fixture.project.undo();
+      expect(point.tension, 0.2);
+
+      fixture.project.redo();
+      expect(point.tension, closeTo(0.7, 1e-9));
+    });
+
+    test('tension drag inverts for rising segments', () {
+      final (:clip, :pattern) = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.25),
+          makePoint(offset: 96, value: 0.75, tension: 0.2),
+        ],
+      );
+      addTensionHandleAnnotation(clip: clip, pattern: pattern, pointIndex: 1);
+      final point = pattern.automation.points[1];
+      const movePos = Offset(180, -87);
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: handleCenter,
+        ),
+      );
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+
+      expect(
+        fixture.stateMachine.currentState,
+        isA<ArrangerAutomationTensionChangeState>(),
+      );
+      expect(point.tension, closeTo(-0.3, 1e-9));
+    });
+
+    test('canceling tension drag restores transient edit', () {
+      final (:clip, :pattern) = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.75),
+          makePoint(offset: 96, value: 0.25, tension: 0.2),
+        ],
+      );
+      addTensionHandleAnnotation(clip: clip, pattern: pattern, pointIndex: 1);
+      final point = pattern.automation.points[1];
+      const movePos = Offset(180, -87);
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: handleCenter,
+        ),
+      );
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+      expect(point.tension, isNot(0.2));
+
+      fixture.pointerUp(
+        const PointerCancelEvent(pointer: 1, position: movePos),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(point.tension, 0.2);
+
+      fixture.project.undo();
+      expect(point.tension, 0.2);
     });
   });
 

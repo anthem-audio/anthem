@@ -196,6 +196,9 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? clipWithAutomationHandles;
 
+  /// Used to preserve automation point tension when adding points inline.
+  double? lastInteractedAutomationTension;
+
   /// The position of the cursor that shows when you hover over a row.
   @observable
   ({double offset, Id rowId})? hoverIndicatorPosition;

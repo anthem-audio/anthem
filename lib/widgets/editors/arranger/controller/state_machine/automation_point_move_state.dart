@@ -204,6 +204,7 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
       idAllocator: ServiceRegistry.forProject(project.id).idAllocator,
       offset: startOffset,
       value: startValue,
+      tension: viewModel.lastInteractedAutomationTension ?? 0,
     );
 
     pattern.automation.points.insert(pointIndex, point);
@@ -247,6 +248,7 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
     }
 
     final point = points[pointIndex];
+    viewModel.lastInteractedAutomationTension = point.tension;
     _target = _AutomationPointMoveTarget(
       point: point,
       patternId: pattern.id,

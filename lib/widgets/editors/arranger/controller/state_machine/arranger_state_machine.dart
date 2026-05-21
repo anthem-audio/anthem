@@ -46,6 +46,7 @@ import 'package:flutter/widgets.dart';
 
 part 'create_clip_state.dart';
 part 'automation_point_move_state.dart';
+part 'automation_tension_change_state.dart';
 part 'clip_move_state.dart';
 part 'clip_resize_state.dart';
 part 'selection_box_state.dart';
@@ -61,6 +62,7 @@ enum ArrangerInteractionFamily {
   selectionBox,
   createClip,
   automationPointMove,
+  automationTensionChange,
   clipResize,
   clipMove,
 }
@@ -380,6 +382,9 @@ class ArrangerStateMachine
     final automationPointMoveState = ArrangerAutomationPointMoveState(
       dragState,
     );
+    final automationTensionChangeState = ArrangerAutomationTensionChangeState(
+      dragState,
+    );
     final clipMoveState = ArrangerClipMoveState(dragState);
     final clipResizeState = ArrangerClipResizeState(dragState);
     final selectionBoxState = ArrangerSelectionBoxState(dragState);
@@ -388,6 +393,7 @@ class ArrangerStateMachine
       dragState,
       createClipState,
       automationPointMoveState,
+      automationTensionChangeState,
       clipMoveState,
       clipResizeState,
       selectionBoxState,
@@ -569,6 +575,57 @@ abstract class _ArrangerLeafState
           );
 
     return (startTime: startTime, currentTime: currentTime, delta: delta);
+  }
+
+  ({
+    ClipModel clip,
+    PatternModel pattern,
+    AutomationPointModel point,
+    int pointIndex,
+  })?
+  resolveAutomationPointForHandle({
+    required Id clipId,
+    required AutomationHandleAnnotation automationHandle,
+  }) {
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
+    if (arrangementData == null) {
+      return null;
+    }
+
+    final clip = arrangementData.clips[clipId];
+    if (clip == null) {
+      return null;
+    }
+
+    final track = project.tracks[clip.trackId];
+    if (track?.isAutomationLane != true) {
+      return null;
+    }
+
+    final pattern = project.sequence.patterns[clip.patternId];
+    if (pattern == null) {
+      return null;
+    }
+
+    final points = pattern.automation.points;
+    var pointIndex = automationHandle.pointIndex;
+    if (pointIndex < 0 ||
+        pointIndex >= points.length ||
+        points[pointIndex].id != automationHandle.pointId) {
+      pointIndex = points.indexWhere(
+        (point) => point.id == automationHandle.pointId,
+      );
+      if (pointIndex == -1) {
+        return null;
+      }
+    }
+
+    return (
+      clip: clip,
+      pattern: pattern,
+      point: points[pointIndex],
+      pointIndex: pointIndex,
+    );
   }
 }
 
@@ -979,6 +1036,10 @@ class ArrangerIdleState extends _ArrangerLeafState {
     PointerEvent event,
     ArrangerPointerContext pointerContext,
   ) {
+    if (_resetAutomationTension(pointerContext)) {
+      return;
+    }
+
     if (pointerContext.target.suppressesClipLevelActions) {
       return;
     }
@@ -1028,6 +1089,43 @@ class ArrangerIdleState extends _ArrangerLeafState {
     if (didOpenEditor && !isPartOfMultiSelection) {
       viewModel.selectedClips.remove(clipId);
     }
+  }
+
+  bool _resetAutomationTension(ArrangerPointerContext pointerContext) {
+    final automationHandle = pointerContext.automationHandle;
+    if (automationHandle?.kind != AutomationHandleKind.tensionHandle) {
+      return false;
+    }
+
+    final clipId = pointerContext.automationClipContentClipId;
+    if (clipId == null) {
+      return true;
+    }
+
+    final target = resolveAutomationPointForHandle(
+      clipId: clipId,
+      automationHandle: automationHandle!,
+    );
+    if (target == null) {
+      return true;
+    }
+
+    final oldTension = target.point.tension;
+    viewModel.lastInteractedAutomationTension = 0;
+    if (oldTension == 0) {
+      return true;
+    }
+
+    project.execute(
+      SetAutomationPointTensionCommand(
+        patternID: target.pattern.id,
+        pointIndex: target.pointIndex,
+        oldTension: oldTension,
+        newTension: 0,
+      ),
+    );
+
+    return true;
   }
 
   @override
@@ -1092,6 +1190,11 @@ class ArrangerDragState extends _ArrangerLeafState {
         AutomationHandleKind.point;
   }
 
+  bool get _isDragStartOverAutomationTensionHandle {
+    return dragStartContext?.automationHandle?.kind ==
+        AutomationHandleKind.tensionHandle;
+  }
+
   bool get _doesDragStartSuppressClipLevelActions =>
       dragStartContext?.target.suppressesClipLevelActions ?? false;
 
@@ -1105,15 +1208,17 @@ class ArrangerDragState extends _ArrangerLeafState {
   /// 1. No interaction if the pointer is up or the drag has been canceled.
   /// 2. Automation point move - on an automation point handle, or on a
   ///    double-click press over automation clip content.
-  /// 3. Selection box - when Ctrl is held or the select tool is active, once
+  /// 3. Automation tension change - activation distance crossed over an
+  ///    automation tension handle.
+  /// 4. Selection box - when Ctrl is held or the select tool is active, once
   ///    the pointer has moved past the activation distance and the target does
   ///    not suppress clip-level selection behavior.
-  /// 4. Create clip - on a double-click press over empty canvas with the pencil
+  /// 5. Create clip - on a double-click press over empty canvas with the pencil
   ///    tool. Deliberately fires *before* the activation distance so a
   ///    double-click-release (no drag) can still insert at a point.
-  /// 5. Clip resize - activation distance crossed with the drag start over a
+  /// 6. Clip resize - activation distance crossed with the drag start over a
   ///    resize handle.
-  /// 6. Clip move - activation distance crossed with the drag start over a
+  /// 7. Clip move - activation distance crossed with the drag start over a
   ///    movable clip target (not on its resize handle).
   ///
   /// Anything else returns null, meaning "stay in drag-parent".
@@ -1129,6 +1234,11 @@ class ArrangerDragState extends _ArrangerLeafState {
     if (parentState.doubleClickPressed &&
         _isDragStartOverAutomationClipContent) {
       return ArrangerInteractionFamily.automationPointMove;
+    }
+
+    if (hasCrossedActivationDistance &&
+        _isDragStartOverAutomationTensionHandle) {
+      return ArrangerInteractionFamily.automationTensionChange;
     }
 
     if (hasCrossedActivationDistance &&
