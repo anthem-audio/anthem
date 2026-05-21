@@ -65,6 +65,13 @@ class PianoRollRenderedNoteRef {
   int get hashCode => Object.hash(id, isTransient);
 }
 
+class PianoRollHitTestResult {
+  final CanvasAnnotation<PianoRollRenderedNoteRef>? note;
+  final CanvasAnnotation<PianoRollRenderedNoteRef>? resizeHandle;
+
+  const PianoRollHitTestResult({this.note, this.resizeHandle});
+}
+
 // ignore: library_private_types_in_public_api
 class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
 
@@ -211,11 +218,7 @@ abstract class _PianoRollViewModel with Store {
   }
 
   /// Calculates the note and resize handle under the cursor, if there is one.
-  ({
-    CanvasAnnotation<PianoRollRenderedNoteRef>? note,
-    CanvasAnnotation<PianoRollRenderedNoteRef>? resizeHandle,
-  })
-  getContentUnderCursor(Offset pos) {
+  PianoRollHitTestResult hitTestContent(Offset pos) {
     final noteUnderCursor = visibleNotes.hitTest(pos);
     final resizeHandleUnderCursor = visibleResizeAreas
         .hitTestAll(pos)
@@ -227,8 +230,11 @@ abstract class _PianoRollViewModel with Store {
         .firstWhereOrNull(
           (element) =>
               noteUnderCursor == null ||
-              element.metadata == noteUnderCursor.metadata,
+              element.metadata == noteUnderCursor.annotation.metadata,
         );
-    return (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor);
+    return PianoRollHitTestResult(
+      note: noteUnderCursor?.annotation,
+      resizeHandle: resizeHandleUnderCursor,
+    );
   }
 }

@@ -49,15 +49,6 @@ class ArrangerSelectionBoxState extends _ArrangerLeafState {
     viewModel.selectionBox = _getSelectionBoxRect();
   }
 
-  Id? _getClipAtDragStart() {
-    final startPosition = parentState.dragStartPosition;
-    if (startPosition == null) {
-      return null;
-    }
-
-    return clipIdAtPoint(Offset(startPosition.x, startPosition.y));
-  }
-
   void _initializeSelectionSession() {
     if (!interactionState.isShiftPressed) {
       viewModel.selectedClips.clear();
@@ -70,7 +61,7 @@ class ArrangerSelectionBoxState extends _ArrangerLeafState {
       viewModel.selectedClips.nonObservableInner,
     );
 
-    final clipAtDragStart = _getClipAtDragStart();
+    final clipAtDragStart = parentState.dragStartContext?.selectableClipId;
     _isSubtractiveSelectionLatched =
         clipAtDragStart != null &&
         _originalSelectedClipsAtEntry!.contains(clipAtDragStart);

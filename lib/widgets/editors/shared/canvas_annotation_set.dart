@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -20,6 +20,10 @@
 import 'dart:ui';
 
 typedef CanvasAnnotation<T> = ({Rect rect, T metadata});
+typedef CanvasAnnotationHit<T> = ({
+  CanvasAnnotation<T> annotation,
+  Offset offset,
+});
 
 /// Describes a set of annotations for a canvas frame.
 ///
@@ -48,12 +52,15 @@ class CanvasAnnotationSet<T> {
     return _annotations.reversed;
   }
 
-  /// Returns the topmost [CanvasAnnotation] under the given point. Returns null
-  /// if there is no annotation under the point.
-  CanvasAnnotation<T>? hitTest(Offset offset) {
+  /// Returns the topmost annotation under the given point, along with the point
+  /// offset relative to the annotation's top-left corner.
+  CanvasAnnotationHit<T>? hitTest(Offset offset) {
     for (final annotation in getAnnotations()) {
       if (annotation.rect.contains(offset)) {
-        return annotation;
+        return (
+          annotation: annotation,
+          offset: offset - annotation.rect.topLeft,
+        );
       }
     }
 

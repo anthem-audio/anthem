@@ -22,6 +22,7 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
@@ -30,6 +31,7 @@ import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -175,6 +177,10 @@ class _ArrangerStateMachineTestFixture {
   ArrangerDragState get dragState =>
       stateMachine.states[ArrangerDragState]! as ArrangerDragState;
 
+  ArrangerAutomationPointMoveState get automationPointMoveState =>
+      stateMachine.states[ArrangerAutomationPointMoveState]!
+          as ArrangerAutomationPointMoveState;
+
   ArrangerCreateClipState get createClipState =>
       stateMachine.states[ArrangerCreateClipState]! as ArrangerCreateClipState;
 
@@ -286,6 +292,34 @@ void main() {
   });
 
   group('ArrangerIdleState', () {
+    ({ClipModel clip, PatternModel pattern}) addVisibleAutomationClip({
+      Id clipId = _ClipIds.underCursor,
+      Rect rect = const Rect.fromLTWH(110, 15, 40, 45),
+    }) {
+      fixture.showRealAutomationLaneForTrack(_TrackIds.a);
+
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Automation',
+      );
+      fixture.project.sequence.patterns[pattern.id] = pattern;
+
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(() => clipId),
+        patternId: pattern.id,
+        trackId: _TrackIds.automationA,
+        offset: 100,
+        timeView: TimeViewModel(start: 0, end: 96),
+      );
+
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
+          clip;
+      fixture.viewModel.visibleClips.add(rect: rect, metadata: clip.id);
+
+      return (clip: clip, pattern: pattern);
+    }
+
     test('hover over track updates cursor location', () {
       fixture.hover(const Offset(120, 20));
 
@@ -354,6 +388,139 @@ void main() {
       },
     );
 
+    test('hover over automation clip content shows automation handles', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+
+      fixture.hover(const Offset(120, 20));
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.viewModel.hoveredClip, clip.id);
+      expect(fixture.viewModel.clipWithAutomationHandles, isNull);
+
+      fixture.hover(const Offset(120, 38));
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.viewModel.hoveredClip, clip.id);
+      expect(fixture.viewModel.clipWithAutomationHandles, clip.id);
+
+      fixture.hover(const Offset(120, 20));
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(fixture.viewModel.hoveredClip, clip.id);
+      expect(fixture.viewModel.clipWithAutomationHandles, isNull);
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
+    test('clicking automation clip title selects the clip', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 20),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 20)),
+      );
+
+      expect(fixture.viewModel.selectedClips.toSet(), equals({clip.id}));
+      expect(fixture.viewModel.clipWithAutomationHandles, isNull);
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
+    test('clicking automation clip content selects the clip', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      expect(fixture.viewModel.clipWithAutomationHandles, clip.id);
+
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+
+      expect(fixture.viewModel.selectedClips.toSet(), equals({clip.id}));
+      expect(fixture.viewModel.clipWithAutomationHandles, clip.id);
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
+    test('clicking automation point handle preserves clip selection', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      final point = AutomationPointModel(
+        idAllocator: _testIdAllocator(() => 900),
+        offset: 0,
+        value: 0.5,
+      );
+      pattern.automation.points.add(point);
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(112, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.point,
+          pointIndex: 0,
+          pointId: point.id,
+          center: const Offset(120, 38),
+        ),
+      );
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+
+      fixture.hover(const Offset(120, 38));
+      expect(fixture.viewModel.hoveredClip, clip.id);
+      expect(fixture.viewModel.clipWithAutomationHandles, clip.id);
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+
+      expect(
+        fixture.viewModel.selectedClips.toSet(),
+        equals({_ClipIds.someOtherSelected}),
+      );
+      expect(fixture.viewModel.selectedClips.contains(clip.id), isFalse);
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
+    test('clicking automation tension handle selects the clip', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(112, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointIndex: 0,
+          pointId: 900,
+          center: const Offset(120, 38),
+        ),
+      );
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+
+      expect(fixture.viewModel.selectedClips.toSet(), equals({clip.id}));
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
     test('hover over resize handle updates canvas cursor and hovered clip', () {
       fixture.hover(const Offset(80, 20));
       expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
@@ -375,29 +542,24 @@ void main() {
       expect(fixture.viewModel.hoveredClip, _ClipIds.underCursor);
     });
 
-    test(
-      'getContentUnderCursor prefers end handle when start and end overlap',
-      () {
-        fixture.viewModel.visibleResizeAreas.add(
-          rect: const Rect.fromLTWH(110, 15, 20, 30),
-          metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.start),
-        );
-        fixture.viewModel.visibleResizeAreas.add(
-          rect: const Rect.fromLTWH(110, 15, 20, 30),
-          metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.end),
-        );
+    test('hitTestContent prefers end handle when start and end overlap', () {
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(110, 15, 20, 30),
+        metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.start),
+      );
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(110, 15, 20, 30),
+        metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.end),
+      );
 
-        final content = fixture.viewModel.getContentUnderCursor(
-          const Offset(120, 20),
-        );
+      final content = fixture.viewModel.hitTestContent(const Offset(120, 20));
 
-        expect(content.resizeHandle, isNotNull);
-        expect(content.resizeHandle!.metadata.type, ResizeAreaType.end);
-      },
-    );
+      expect(content.resizeHandle, isNotNull);
+      expect(content.resizeHandle!.metadata.type, ResizeAreaType.end);
+    });
 
     test(
-      'getContentUnderCursor keeps clip match priority over non-matching end handle',
+      'hitTestContent keeps clip match priority over non-matching end handle',
       () {
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(110, 15, 40, 30),
@@ -412,17 +574,97 @@ void main() {
           metadata: (id: _ClipIds.underCursor, type: ResizeAreaType.start),
         );
 
-        final content = fixture.viewModel.getContentUnderCursor(
-          const Offset(120, 20),
-        );
+        final content = fixture.viewModel.hitTestContent(const Offset(120, 20));
 
         expect(content.clip, isNotNull);
-        expect(content.clip!.metadata, _ClipIds.underCursor);
+        expect(content.clip!.annotation.metadata, _ClipIds.underCursor);
         expect(content.resizeHandle, isNotNull);
         expect(content.resizeHandle!.metadata.id, _ClipIds.underCursor);
         expect(content.resizeHandle!.metadata.type, ResizeAreaType.start);
       },
     );
+
+    test(
+      'hitTestContent prefers automation point handles over tension handles',
+      () {
+        const handleRect = Rect.fromLTWH(116, 16, 16, 16);
+        fixture.viewModel.visibleClips.add(
+          rect: const Rect.fromLTWH(110, 15, 80, 45),
+          metadata: _ClipIds.underCursor,
+        );
+        fixture.viewModel.visibleAutomationHandles.add(
+          rect: handleRect,
+          metadata: AutomationHandleAnnotation(
+            clipId: _ClipIds.underCursor,
+            kind: AutomationHandleKind.point,
+            pointIndex: 0,
+            pointId: 900,
+            center: handleRect.center,
+          ),
+        );
+        fixture.viewModel.visibleAutomationHandles.add(
+          rect: handleRect,
+          metadata: AutomationHandleAnnotation(
+            clipId: _ClipIds.underCursor,
+            kind: AutomationHandleKind.tensionHandle,
+            pointIndex: 1,
+            pointId: 901,
+            center: handleRect.center,
+          ),
+        );
+
+        final content = fixture.viewModel.hitTestContent(const Offset(120, 20));
+
+        expect(content.automationHandle, isNotNull);
+        expect(
+          content.automationHandle!.metadata.kind,
+          AutomationHandleKind.point,
+        );
+        expect(content.automationHandle!.metadata.pointId, 900);
+      },
+    );
+
+    test('state machine identifies automation clip content', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+
+      final titleContext = fixture.stateMachine.pointerContextAt(
+        const Offset(120, 20),
+      );
+      expect(titleContext.hitTestResult.clip, isNotNull);
+      expect(titleContext.hitTestResult.clip!.annotation.metadata, clip.id);
+      expect(titleContext.target.clipId, clip.id);
+      expect(titleContext.target.isAutomationClipContent, isFalse);
+
+      final bodyContext = fixture.stateMachine.pointerContextAt(
+        const Offset(120, 38),
+      );
+      expect(bodyContext.hitTestResult.clip, isNotNull);
+      expect(bodyContext.hitTestResult.clip!.annotation.metadata, clip.id);
+      expect(bodyContext.selectableClipId, clip.id);
+      expect(bodyContext.movableClipId, clip.id);
+      expect(bodyContext.target.isAutomationClipContent, isTrue);
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
+    test('state machine keeps automation resize handles selectable', () {
+      final (:clip, :pattern) = addVisibleAutomationClip(
+        rect: const Rect.fromLTWH(110, 15, 80, 45),
+      );
+      fixture.viewModel.visibleResizeAreas.add(
+        rect: const Rect.fromLTWH(184, 31, 14, 29),
+        metadata: (id: clip.id, type: ResizeAreaType.end),
+      );
+
+      final bodyResizeContext = fixture.stateMachine.pointerContextAt(
+        const Offset(188, 38),
+      );
+
+      expect(bodyResizeContext.target.isAutomationClipContent, isTrue);
+      expect(bodyResizeContext.selectableClipId, clip.id);
+      expect(bodyResizeContext.automationClipContentClipId, clip.id);
+      expect(bodyResizeContext.resizeHandleTarget?.metadata.id, clip.id);
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
 
     test(
       'hover leaving clip restores timeline cursor location and clears hovered clip',
@@ -465,6 +707,18 @@ void main() {
 
       expect(fixture.viewModel.hoverIndicatorPosition, isNull);
       expect(fixture.viewModel.hoveredClip, isNull);
+    });
+
+    test('exit clears automation handles clip', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+
+      fixture.hover(const Offset(120, 38));
+      expect(fixture.viewModel.clipWithAutomationHandles, clip.id);
+
+      fixture.exit(const Offset(120, 38));
+
+      expect(fixture.viewModel.clipWithAutomationHandles, isNull);
+      expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
     });
 
     test('exit clears canvas cursor', () {
@@ -603,6 +857,14 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(
+        fixture.stateMachine.data.activePointerButton,
+        ArrangerPointerButton.secondary,
+      );
+      expect(
+        fixture.stateMachine.data.activePointerDownContext?.position,
+        const Offset(80, 20),
+      );
     });
 
     test('right-click over clip opens context menu and selects clip', () {
@@ -1328,6 +1590,23 @@ void main() {
       expect(fixture.dragState.dragStartPosition!.y, 20);
       expect(fixture.dragState.dragCurrentPosition!.x, 80);
       expect(fixture.dragState.dragCurrentPosition!.y, 20);
+      expect(
+        fixture.stateMachine.data.activePointerButton,
+        ArrangerPointerButton.primary,
+      );
+      expect(
+        fixture.stateMachine.data.activePointerContext?.position,
+        const Offset(80, 20),
+      );
+      expect(
+        fixture.dragState.dragStartContext,
+        same(fixture.stateMachine.data.activePointerDownContext),
+      );
+      expect(
+        fixture.dragState.dragCurrentContext,
+        same(fixture.stateMachine.data.activePointerContext),
+      );
+      expect(fixture.dragState.dragCurrentContext?.target.isEmpty, isTrue);
       expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
     });
 
@@ -1551,6 +1830,14 @@ void main() {
           ),
         );
         expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
+        expect(
+          fixture.stateMachine.data.activePointerContext?.position,
+          const Offset(82, 22),
+        );
+        expect(
+          fixture.dragState.dragCurrentContext,
+          same(fixture.stateMachine.data.activePointerContext),
+        );
         expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
 
         fixture.pointerMove(
@@ -1561,6 +1848,10 @@ void main() {
           ),
         );
         expect(fixture.dragState.hasCrossedActivationDistance, isTrue);
+        expect(
+          fixture.dragState.dragCurrentContext?.position,
+          const Offset(86, 22),
+        );
         expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
       },
     );
@@ -1589,6 +1880,11 @@ void main() {
       expect(fixture.dragState.activePointerId, isNull);
       expect(fixture.dragState.dragStartPosition, isNull);
       expect(fixture.dragState.dragCurrentPosition, isNull);
+      expect(fixture.dragState.dragStartContext, isNull);
+      expect(fixture.dragState.dragCurrentContext, isNull);
+      expect(fixture.stateMachine.data.activePointerButton, isNull);
+      expect(fixture.stateMachine.data.activePointerDownContext, isNull);
+      expect(fixture.stateMachine.data.activePointerContext, isNull);
       expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
     });
 
@@ -1616,7 +1912,544 @@ void main() {
       expect(fixture.dragState.activePointerId, isNull);
       expect(fixture.dragState.dragStartPosition, isNull);
       expect(fixture.dragState.dragCurrentPosition, isNull);
+      expect(fixture.dragState.dragStartContext, isNull);
+      expect(fixture.dragState.dragCurrentContext, isNull);
+      expect(fixture.stateMachine.data.activePointerButton, isNull);
+      expect(fixture.stateMachine.data.activePointerDownContext, isNull);
+      expect(fixture.stateMachine.data.activePointerContext, isNull);
       expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
+    });
+  });
+
+  group('ArrangerAutomationPointMoveState', () {
+    const clipRect = Rect.fromLTWH(100, 0, 240, 60);
+    const contentRect = Rect.fromLTWH(100, 16, 240, 44);
+
+    AutomationPointModel makePoint({
+      required int offset,
+      required double value,
+    }) {
+      return AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: offset,
+        value: value,
+      );
+    }
+
+    ({ClipModel clip, PatternModel pattern}) addAutomationClip({
+      int clipOffset = 100,
+      TimeViewModel? timeView,
+      List<AutomationPointModel>? points,
+    }) {
+      fixture.showRealAutomationLaneForTrack(_TrackIds.a);
+
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Automation',
+      );
+      pattern.automation.points.addAll(
+        points ??
+            [
+              makePoint(offset: 0, value: 0.25),
+              makePoint(offset: 240, value: 0.75),
+            ],
+      );
+      fixture.project.sequence.patterns[pattern.id] = pattern;
+
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(),
+        patternId: pattern.id,
+        trackId: _TrackIds.automationA,
+        offset: clipOffset,
+        timeView: timeView ?? TimeViewModel(start: 0, end: 240),
+      );
+
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      arrangement.clips[clip.id] = clip;
+
+      fixture.viewModel.visibleClips.add(rect: clipRect, metadata: clip.id);
+
+      return (clip: clip, pattern: pattern);
+    }
+
+    void startAutomationDoubleClickHold(Offset pos) {
+      fixture.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: pos,
+        ),
+      );
+      fixture.pointerUp(PointerUpEvent(pointer: 1, position: pos));
+      fixture.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: pos,
+        ),
+      );
+    }
+
+    int expectedPointOffsetForClick({
+      required ClipModel clip,
+      required Offset pos,
+      required bool snap,
+    }) {
+      final rawArrangementTime = pixelsToTime(
+        timeViewStart: fixture.viewModel.timeView.start,
+        timeViewEnd: fixture.viewModel.timeView.end,
+        viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+        pixelOffsetFromLeft: pos.dx,
+      ).round();
+      final arrangementTime = snap
+          ? getSnappedTime(
+              rawTime: rawArrangementTime,
+              divisionChanges: fixture.stateMachine.divisionChanges(),
+              round: true,
+            )
+          : rawArrangementTime;
+      final clipTimeViewStart = clip.timeView?.start ?? 0;
+      final clipTimeViewEnd = clip.timeView?.end ?? clip.width;
+
+      return (arrangementTime - clip.offset + clipTimeViewStart)
+          .clamp(clipTimeViewStart, clipTimeViewEnd)
+          .toInt();
+    }
+
+    double expectedPointValueForClick(Offset pos) {
+      return (1 - (pos.dy - contentRect.top) / contentRect.height).clamp(
+        0.0,
+        1.0,
+      );
+    }
+
+    double pointCenterX({required ClipModel clip, required int pointOffset}) {
+      return timeToPixels(
+        time: (clip.offset + pointOffset - (clip.timeView?.start ?? 0))
+            .toDouble(),
+        timeViewStart: fixture.viewModel.timeView.start,
+        timeViewEnd: fixture.viewModel.timeView.end,
+        viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+      );
+    }
+
+    Offset pointCenter({
+      required ClipModel clip,
+      required AutomationPointModel point,
+    }) {
+      return Offset(
+        pointCenterX(clip: clip, pointOffset: point.offset),
+        contentRect.top + (1 - point.value) * contentRect.height,
+      );
+    }
+
+    void addHandleAnnotation({
+      required ClipModel clip,
+      required PatternModel pattern,
+      required int pointIndex,
+      AutomationHandleKind kind = AutomationHandleKind.point,
+      Rect? rect,
+    }) {
+      final point = pattern.automation.points[pointIndex];
+      final center = pointCenter(clip: clip, point: point);
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: rect ?? Rect.fromCenter(center: center, width: 16, height: 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: kind,
+          pointIndex: pointIndex,
+          pointId: point.id,
+          center: center,
+        ),
+      );
+    }
+
+    test('double-clicking automation clip content adds a snapped point', () {
+      final (:clip, :pattern) = addAutomationClip();
+      const clickPos = Offset(147, 38);
+      final expectedOffset = expectedPointOffsetForClick(
+        clip: clip,
+        pos: clickPos,
+        snap: true,
+      );
+      final expectedValue = expectedPointValueForClick(clickPos);
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+
+      startAutomationDoubleClickHold(clickPos);
+
+      expect(
+        fixture.stateMachine.currentState,
+        isA<ArrangerAutomationPointMoveState>(),
+      );
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, expectedOffset);
+      expect(pattern.automation.points[1].value, closeTo(expectedValue, 1e-9));
+      expect(fixture.viewModel.selectedClips.toSet(), equals({clip.id}));
+
+      fixture.pointerUp(const PointerUpEvent(pointer: 1, position: clickPos));
+
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, expectedOffset);
+
+      fixture.project.undo();
+      expect(pattern.automation.points, hasLength(2));
+      expect(pattern.automation.points[0].offset, 0);
+      expect(pattern.automation.points[1].offset, 240);
+    });
+
+    test('alt double-click adds an unsnapped point', () {
+      final (:clip, :pattern) = addAutomationClip();
+      const clickPos = Offset(147, 38);
+      final expectedOffset = expectedPointOffsetForClick(
+        clip: clip,
+        pos: clickPos,
+        snap: false,
+      );
+
+      fixture.stateMachine.modifierPressed(ArrangerModifierKey.alt);
+      startAutomationDoubleClickHold(clickPos);
+
+      expect(
+        fixture.stateMachine.currentState,
+        isA<ArrangerAutomationPointMoveState>(),
+      );
+      expect(pattern.automation.points[1].offset, expectedOffset);
+    });
+
+    test('double-clicking automation clip title does not add a point', () {
+      final automationClip = addAutomationClip();
+      final pattern = automationClip.pattern;
+      const titlePos = Offset(147, 8);
+
+      startAutomationDoubleClickHold(titlePos);
+
+      expect(
+        fixture.stateMachine.currentState,
+        isNot(isA<ArrangerAutomationPointMoveState>()),
+      );
+      fixture.pointerUp(const PointerUpEvent(pointer: 1, position: titlePos));
+      expect(pattern.automation.points, hasLength(2));
+    });
+
+    test('drag after add moves the new point and commits one undo step', () {
+      final automationClip = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.25),
+          makePoint(offset: 240, value: 0.75),
+        ],
+      );
+      final pattern = automationClip.pattern;
+      const clickPos = Offset(147, 38);
+      final snapSize = fixture.stateMachine
+          .divisionChanges()
+          .first
+          .divisionSnapSize;
+      final movePos = Offset(clickPos.dx + snapSize, clickPos.dy - 11);
+
+      startAutomationDoubleClickHold(clickPos);
+      final startOffset = pattern.automation.points[1].offset;
+      final startValue = pattern.automation.points[1].value;
+      final dragStartX = pointCenterX(
+        clip: automationClip.clip,
+        pointOffset: startOffset,
+      );
+      final dragDelta = getSnappedDragDelta(
+        startTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: dragStartX,
+        ).round(),
+        currentTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: movePos.dx,
+        ).round(),
+        divisionChanges: fixture.stateMachine.divisionChanges(),
+      );
+
+      fixture.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+
+      expect(pattern.automation.points[1].offset, startOffset + dragDelta);
+      expect(
+        pattern.automation.points[1].value,
+        closeTo(startValue + 0.25, 1e-9),
+      );
+      expect(pattern.automation.points[2].offset, 240 + dragDelta);
+
+      fixture.pointerUp(PointerUpEvent(pointer: 1, position: movePos));
+
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, startOffset + dragDelta);
+      expect(pattern.automation.points[2].offset, 240 + dragDelta);
+
+      fixture.project.undo();
+
+      expect(pattern.automation.points, hasLength(2));
+      expect(pattern.automation.points[0].offset, 0);
+      expect(pattern.automation.points[1].offset, 240);
+
+      fixture.project.redo();
+
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, startOffset + dragDelta);
+      expect(pattern.automation.points[2].offset, 240 + dragDelta);
+    });
+
+    test('snapped drag after add uses created point center as drag origin', () {
+      final automationClip = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.25),
+          makePoint(offset: 240, value: 0.75),
+        ],
+      );
+      final pattern = automationClip.pattern;
+      final snapSize = fixture.stateMachine
+          .divisionChanges()
+          .first
+          .divisionSnapSize;
+      const clickPos = Offset(147, 38);
+
+      startAutomationDoubleClickHold(clickPos);
+      final startOffset = pattern.automation.points[1].offset;
+      final dragStartX = pointCenterX(
+        clip: automationClip.clip,
+        pointOffset: startOffset,
+      );
+      expect(dragStartX, isNot(clickPos.dx));
+      final movePos = Offset(dragStartX + snapSize / 2, clickPos.dy);
+      final centerDragDelta = getSnappedDragDelta(
+        startTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: dragStartX,
+        ).round(),
+        currentTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: movePos.dx,
+        ).round(),
+        divisionChanges: fixture.stateMachine.divisionChanges(),
+      );
+      final rawPointerDragDelta = getSnappedDragDelta(
+        startTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: clickPos.dx,
+        ).round(),
+        currentTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: movePos.dx,
+        ).round(),
+        divisionChanges: fixture.stateMachine.divisionChanges(),
+      );
+      expect(centerDragDelta, isNot(rawPointerDragDelta));
+
+      fixture.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+
+      expect(
+        pattern.automation.points[1].offset,
+        startOffset + centerDragDelta,
+      );
+    });
+
+    test('dragging an existing point moves it and later points', () {
+      final automationClip = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.25),
+          makePoint(offset: 96, value: 0.5),
+          makePoint(offset: 240, value: 0.75),
+        ],
+      );
+      final clip = automationClip.clip;
+      final pattern = automationClip.pattern;
+      addHandleAnnotation(clip: clip, pattern: pattern, pointIndex: 1);
+
+      final point = pattern.automation.points[1];
+      final downPos = pointCenter(clip: clip, point: point);
+      final startOffset = point.offset;
+      final startValue = point.value;
+      final laterStartOffset = pattern.automation.points[2].offset;
+      final snapSize = fixture.stateMachine
+          .divisionChanges()
+          .first
+          .divisionSnapSize;
+      final movePos = Offset(
+        downPos.dx + snapSize,
+        downPos.dy - contentRect.height * 0.25,
+      );
+      final dragDelta = getSnappedDragDelta(
+        startTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: downPos.dx,
+        ).round(),
+        currentTime: pixelsToTime(
+          timeViewStart: fixture.viewModel.timeView.start,
+          timeViewEnd: fixture.viewModel.timeView.end,
+          viewPixelWidth: _ArrangerStateMachineTestFixture.viewSize.width,
+          pixelOffsetFromLeft: movePos.dx,
+        ).round(),
+        divisionChanges: fixture.stateMachine.divisionChanges(),
+      );
+
+      fixture.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: downPos,
+        ),
+      );
+      expect(
+        fixture.stateMachine.currentState,
+        isA<ArrangerAutomationPointMoveState>(),
+      );
+
+      fixture.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, startOffset + dragDelta);
+      expect(
+        pattern.automation.points[1].value,
+        closeTo(startValue + 0.25, 1e-9),
+      );
+      expect(pattern.automation.points[2].offset, laterStartOffset + dragDelta);
+
+      fixture.pointerUp(PointerUpEvent(pointer: 1, position: movePos));
+
+      fixture.project.undo();
+
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, startOffset);
+      expect(pattern.automation.points[1].value, startValue);
+      expect(pattern.automation.points[2].offset, laterStartOffset);
+
+      fixture.project.redo();
+
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, startOffset + dragDelta);
+      expect(
+        pattern.automation.points[1].value,
+        closeTo(startValue + 0.25, 1e-9),
+      );
+      expect(pattern.automation.points[2].offset, laterStartOffset + dragDelta);
+    });
+
+    test('canceling an existing point drag restores transient edits', () {
+      final automationClip = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.25),
+          makePoint(offset: 96, value: 0.5),
+          makePoint(offset: 240, value: 0.75),
+        ],
+      );
+      final clip = automationClip.clip;
+      final pattern = automationClip.pattern;
+      addHandleAnnotation(clip: clip, pattern: pattern, pointIndex: 1);
+
+      final point = pattern.automation.points[1];
+      final downPos = pointCenter(clip: clip, point: point);
+      final startOffset = point.offset;
+      final startValue = point.value;
+      final laterStartOffset = pattern.automation.points[2].offset;
+      final movePos = Offset(downPos.dx + 64, downPos.dy - 11);
+
+      fixture.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: downPos,
+        ),
+      );
+      fixture.pointerMove(
+        PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: movePos,
+        ),
+      );
+
+      expect(pattern.automation.points[1].offset, isNot(startOffset));
+      expect(pattern.automation.points[1].value, isNot(startValue));
+      expect(pattern.automation.points[2].offset, isNot(laterStartOffset));
+
+      fixture.pointerUp(PointerCancelEvent(pointer: 1, position: movePos));
+
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, startOffset);
+      expect(pattern.automation.points[1].value, startValue);
+      expect(pattern.automation.points[2].offset, laterStartOffset);
+
+      fixture.project.undo();
+
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[1].offset, startOffset);
+      expect(pattern.automation.points[1].value, startValue);
+      expect(pattern.automation.points[2].offset, laterStartOffset);
+    });
+
+    test('pointer cancel removes the transient point without undo history', () {
+      final automationClip = addAutomationClip(
+        points: [
+          makePoint(offset: 0, value: 0.25),
+          makePoint(offset: 240, value: 0.75),
+        ],
+      );
+      final pattern = automationClip.pattern;
+      const clickPos = Offset(147, 38);
+
+      startAutomationDoubleClickHold(clickPos);
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(210, 28),
+        ),
+      );
+      expect(pattern.automation.points, hasLength(3));
+      expect(pattern.automation.points[2].offset, isNot(240));
+
+      fixture.pointerUp(
+        const PointerCancelEvent(pointer: 1, position: Offset(210, 28)),
+      );
+
+      expect(fixture.stateMachine.currentState, same(fixture.idleState));
+      expect(pattern.automation.points, hasLength(2));
+      expect(pattern.automation.points[0].offset, 0);
+      expect(pattern.automation.points[1].offset, 240);
+
+      fixture.project.undo();
+
+      expect(pattern.automation.points, hasLength(2));
+      expect(pattern.automation.points[0].offset, 0);
+      expect(pattern.automation.points[1].offset, 240);
     });
   });
 
@@ -2282,6 +3115,77 @@ void main() {
       expect(clip.trackId, _TrackIds.a);
     });
 
+    test('dragging automation clip content delegates to clip move', () {
+      fixture.showRealAutomationLaneForTrack(_TrackIds.a);
+      final clip = addClip(
+        offset: 100,
+        trackId: _TrackIds.automationA,
+        rect: const Rect.fromLTWH(100, 0, 240, 60),
+      );
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(140, 38),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(fixture.viewModel.pressedClip, clip.id);
+      expect(fixture.viewModel.selectedClips, {_ClipIds.someOtherSelected});
+
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(220, 38),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+      expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
+      expect(fixture.viewModel.selectedClips.contains(clip.id), isFalse);
+    });
+
+    test('dragging automation tension handle does not move clip', () {
+      fixture.showRealAutomationLaneForTrack(_TrackIds.a);
+      final clip = addClip(
+        offset: 100,
+        trackId: _TrackIds.automationA,
+        rect: const Rect.fromLTWH(100, 0, 240, 60),
+      );
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(132, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointIndex: 0,
+          pointId: 900,
+          center: const Offset(140, 38),
+        ),
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(140, 38),
+        ),
+      );
+      fixture.pointerMove(
+        const PointerMoveEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(220, 38),
+        ),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+      expect(fixture.viewModel.clipTimingOverrides[clip.id], isNull);
+    });
+
     test('pressed clip remains set from down through clip move transition', () {
       final clip = addClip(
         offset: 100,
@@ -2595,6 +3499,82 @@ void main() {
       expect(fixture.viewModel.pressedClip, clip.id);
       expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
     });
+
+    test(
+      'dragging automation clip content resize handle delegates to resize',
+      () {
+        fixture.showRealAutomationLaneForTrack(_TrackIds.a);
+        final clip = addClip(
+          offset: 100,
+          trackId: _TrackIds.automationA,
+          rect: const Rect.fromLTWH(100, 0, 96, 60),
+          resizeHandleRect: const Rect.fromLTWH(190, 16, 14, 44),
+          resizeAreaType: ResizeAreaType.end,
+          timeView: TimeViewModel(start: 0, end: 96),
+        );
+        fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(192, 38),
+          ),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+        expect(fixture.viewModel.pressedClip, clip.id);
+        expect(fixture.viewModel.selectedClips, {_ClipIds.someOtherSelected});
+
+        fixture.pointerMove(
+          const PointerMoveEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(220, 38),
+          ),
+        );
+
+        expect(
+          fixture.stateMachine.currentState,
+          isA<ArrangerClipResizeState>(),
+        );
+        expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
+        expect(fixture.viewModel.selectedClips.contains(clip.id), isFalse);
+      },
+    );
+
+    test(
+      'dragging automation tension handle over resize handle does not resize',
+      () {
+        fixture.showRealAutomationLaneForTrack(_TrackIds.a);
+        final clip = addClip(
+          offset: 100,
+          trackId: _TrackIds.automationA,
+          rect: const Rect.fromLTWH(100, 0, 96, 60),
+          resizeHandleRect: const Rect.fromLTWH(190, 16, 14, 44),
+          resizeAreaType: ResizeAreaType.end,
+          timeView: TimeViewModel(start: 0, end: 96),
+        );
+        fixture.viewModel.visibleAutomationHandles.add(
+          rect: const Rect.fromLTWH(184, 30, 16, 16),
+          metadata: AutomationHandleAnnotation(
+            clipId: clip.id,
+            kind: AutomationHandleKind.tensionHandle,
+            pointIndex: 0,
+            pointId: 900,
+            center: const Offset(192, 38),
+          ),
+        );
+
+        startClipResize(
+          downPos: const Offset(192, 38),
+          movePos: const Offset(220, 38),
+        );
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
+        expect(fixture.viewModel.clipTimingOverrides[clip.id], isNull);
+      },
+    );
 
     test('clip resize overrides the global cursor until release', () {
       addClip(

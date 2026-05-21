@@ -131,14 +131,15 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
     final clipTimingOverrides = viewModel.clipTimingOverrides;
     clipTimingOverrides.clear();
 
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (arrangementData == null) {
       return;
     }
     final arrangementClips = arrangementData.clips;
 
-    final pressedClipId = parentState.dragStartResizeHandleClipId;
-    final resizeAreaType = parentState.dragStartResizeAreaType;
+    final resizeHandle = parentState.dragStartContext?.resizeHandleTarget;
+    final pressedClipId = resizeHandle?.metadata.id;
+    final resizeAreaType = resizeHandle?.metadata.type;
     if (pressedClipId == null || resizeAreaType == null) {
       return;
     }
@@ -210,7 +211,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
       return;
     }
 
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (arrangementData == null) {
       return;
     }
@@ -357,7 +358,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
     }
 
     final resizingClipIds = _resizingClipIds;
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (resizingClipIds == null || arrangementData == null) {
       return;
     }

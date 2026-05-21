@@ -338,6 +338,7 @@ abstract class _ArrangerController {
       idAllocator: _idAllocator,
       name: patternName ?? _newClipPatternNameForTrack(track),
     )..color = track.color.clone();
+    _seedAutomationClipPoints(track: track, pattern: pattern, width: width);
 
     final clip = ClipModel(
       idAllocator: _idAllocator,
@@ -358,6 +359,77 @@ abstract class _ArrangerController {
     );
 
     return pattern.id;
+  }
+
+  void _seedAutomationClipPoints({
+    required TrackModel track,
+    required PatternModel pattern,
+    required double? width,
+  }) {
+    if (!track.isAutomationLane) {
+      return;
+    }
+
+    final target = track.automationTarget;
+    if (target == null) {
+      return;
+    }
+
+    final node = _nodeForAutomationTarget(target);
+    if (node == null) {
+      return;
+    }
+
+    NodePortModel port;
+    try {
+      port = node.getPortById(target.portId);
+    } catch (_) {
+      return;
+    }
+
+    final parameterConfig = port.config.parameterConfig;
+    if (parameterConfig == null) {
+      return;
+    }
+
+    final value = (port.parameterValue ?? parameterConfig.defaultValue)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final endOffset = max(0, width?.round() ?? _defaultPatternWidth());
+
+    pattern.automation.points.addAll([
+      AutomationPointModel(idAllocator: _idAllocator, offset: 0, value: value),
+      AutomationPointModel(
+        idAllocator: _idAllocator,
+        offset: endOffset,
+        value: value,
+      ),
+    ]);
+  }
+
+  NodeModel? _nodeForAutomationTarget(TrackAutomationTargetModel target) {
+    try {
+      return project.processingGraph.nodes[target.nodeId];
+    } catch (error) {
+      if (!error.toString().contains('LateInitializationError')) {
+        rethrow;
+      }
+
+      return null;
+    }
+  }
+
+  int _defaultPatternWidth() {
+    final timeSignature = project.sequence.defaultTimeSignature;
+    final ticksPerBarDouble =
+        project.sequence.ticksPerQuarter /
+        (timeSignature.denominator / 4) *
+        timeSignature.numerator;
+    final ticksPerBar = ticksPerBarDouble.round();
+
+    assert(ticksPerBarDouble == ticksPerBar);
+
+    return max(ticksPerBar, 1);
   }
 
   void setBaseTrackHeight(double pointerY, double trackHeight) {

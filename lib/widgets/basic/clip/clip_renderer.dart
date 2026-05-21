@@ -26,6 +26,9 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
+import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
+import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
 import 'clip.dart';
 import 'clip_title_text.dart';
@@ -42,6 +45,12 @@ const _clipTitleHeight = 16;
 const _clipTitlePadding = clipTitlePadding;
 
 const _contentBaseColor = Color(0xFF777777);
+// Clip content is composited with BlendMode.plus, so black is a neutral fill.
+const _automationHandleFillColor = Color(0xFF000000);
+const _automationPointHandleRadius = 3.5;
+const _automationTensionHandleRadius = 2.5;
+const _automationHandleStrokeWidth = 2.0;
+const _automationHandleAnnotationMargin = 8.0;
 
 class ClipRenderInfo {
   final PatternModel pattern;
@@ -59,6 +68,7 @@ class ClipRenderInfo {
   final bool selected;
   final bool pressed;
   final bool hovered;
+  final bool showAutomationHandles;
 
   ClipRenderInfo({
     required this.pattern,
@@ -74,6 +84,7 @@ class ClipRenderInfo {
     required this.selected,
     required this.pressed,
     required this.hovered,
+    this.showAutomationHandles = false,
   }) : assert(clipTimeViewEnd > clipTimeViewStart),
        clipId = clip.id,
        trackId = clip.trackId,
@@ -86,6 +97,7 @@ void paintClipList({
   required ProjectModel project,
   required Canvas canvas,
   required Size canvasSize,
+  required AutomationHandleAnnotationSet automationHandleAnnotations,
   required List<ClipRenderInfo> clipList,
   required double devicePixelRatio,
   required double timeViewStart,
@@ -320,6 +332,24 @@ void paintClipList({
         width: clipEntry.width,
         height: clipEntry.height,
       );
+
+      if (clipEntry.showAutomationHandles) {
+        _paintAutomationHandles(
+          canvas: canvas,
+          canvasSize: canvasSize,
+          pattern: clipEntry.pattern,
+          clipId: clipEntry.clipId,
+          x: clipEntry.x,
+          y: clipEntry.y,
+          width: clipEntry.width,
+          height: clipEntry.height,
+          clipOffset: clipEntry.clipOffset.toDouble(),
+          clipTimeViewStart: clipEntry.clipTimeViewStart,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          automationHandleAnnotations: automationHandleAnnotations,
+        );
+      }
     }
   } finally {
     _automationTriCoordBuffer.clear();
@@ -484,6 +514,229 @@ void _drawClipTitleDirect({
     // a title is waiting to be packed into the shared atlas.
     overrideTextColor: _contentBaseColor,
   );
+}
+
+void _paintAutomationHandles({
+  required Canvas canvas,
+  required Size canvasSize,
+  required PatternModel pattern,
+  required Id clipId,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required AutomationHandleAnnotationSet automationHandleAnnotations,
+}) {
+  final contentRect = Rect.fromLTRB(
+    x + 1,
+    y + _clipTitleHeight + 1,
+    x + width - 1,
+    y + height - 1,
+  );
+  if (contentRect.isEmpty) {
+    return;
+  }
+
+  final points = pattern.automation.points;
+  points.observeAllChanges();
+  if (points.isEmpty) {
+    return;
+  }
+
+  final fillPaint = Paint()..color = _automationHandleFillColor;
+  final strokePaint = Paint()
+    ..color = _contentBaseColor
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = _automationHandleStrokeWidth;
+
+  canvas.save();
+  canvas.clipRect(contentRect);
+  try {
+    var previousPoint = points.first;
+    for (final (pointIndex, point) in points.indexed.skip(1)) {
+      final center = _automationTensionHandleCenter(
+        canvasSize: canvasSize,
+        contentRect: contentRect,
+        clipOffset: clipOffset,
+        clipTimeViewStart: clipTimeViewStart,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        previousPointOffset: previousPoint.offset,
+        previousPointValue: previousPoint.value,
+        pointOffset: point.offset,
+        pointValue: point.value,
+        tension: point.tension,
+      );
+      _drawAutomationHandleCircle(
+        canvas: canvas,
+        center: center,
+        radius: _automationTensionHandleRadius,
+        fillPaint: fillPaint,
+        strokePaint: strokePaint,
+      );
+      _addAutomationHandleAnnotation(
+        automationHandleAnnotations: automationHandleAnnotations,
+        clipId: clipId,
+        contentRect: contentRect,
+        center: center,
+        radius: _automationTensionHandleRadius,
+        kind: AutomationHandleKind.tensionHandle,
+        pointIndex: pointIndex,
+        pointId: point.id,
+      );
+      previousPoint = point;
+    }
+
+    for (final (pointIndex, point) in points.indexed) {
+      final center = _automationPointHandleCenter(
+        canvasSize: canvasSize,
+        contentRect: contentRect,
+        clipOffset: clipOffset,
+        clipTimeViewStart: clipTimeViewStart,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        pointOffset: point.offset,
+        pointValue: point.value,
+      );
+      _drawAutomationHandleCircle(
+        canvas: canvas,
+        center: center,
+        radius: _automationPointHandleRadius,
+        fillPaint: fillPaint,
+        strokePaint: strokePaint,
+      );
+      _addAutomationHandleAnnotation(
+        automationHandleAnnotations: automationHandleAnnotations,
+        clipId: clipId,
+        contentRect: contentRect,
+        center: center,
+        radius: _automationPointHandleRadius,
+        kind: AutomationHandleKind.point,
+        pointIndex: pointIndex,
+        pointId: point.id,
+      );
+    }
+  } finally {
+    canvas.restore();
+  }
+}
+
+void _addAutomationHandleAnnotation({
+  required AutomationHandleAnnotationSet automationHandleAnnotations,
+  required Id clipId,
+  required Rect contentRect,
+  required Offset center,
+  required double radius,
+  required AutomationHandleKind kind,
+  required int pointIndex,
+  required Id pointId,
+}) {
+  final rect = Rect.fromCenter(
+    center: center,
+    width: radius * 2 + _automationHandleAnnotationMargin,
+    height: radius * 2 + _automationHandleAnnotationMargin,
+  ).intersect(contentRect);
+  if (rect.isEmpty) {
+    return;
+  }
+
+  automationHandleAnnotations.add(
+    rect: rect,
+    metadata: AutomationHandleAnnotation(
+      clipId: clipId,
+      kind: kind,
+      pointIndex: pointIndex,
+      pointId: pointId,
+      center: center,
+    ),
+  );
+}
+
+Offset _automationPointHandleCenter({
+  required Size canvasSize,
+  required Rect contentRect,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required int pointOffset,
+  required double pointValue,
+}) {
+  return Offset(
+    _clipTimeToCanvasX(
+      canvasSize: canvasSize,
+      clipOffset: clipOffset,
+      clipTimeViewStart: clipTimeViewStart,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      clipTime: pointOffset.toDouble(),
+    ),
+    contentRect.top + (1 - pointValue) * contentRect.height,
+  );
+}
+
+Offset _automationTensionHandleCenter({
+  required Size canvasSize,
+  required Rect contentRect,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required int previousPointOffset,
+  required double previousPointValue,
+  required int pointOffset,
+  required double pointValue,
+  required double tension,
+}) {
+  const normalizedX = 0.5;
+  final normalizedY =
+      evaluateSmooth(normalizedX, tension) * (pointValue - previousPointValue) +
+      previousPointValue;
+  final pointTime =
+      normalizedX * (pointOffset - previousPointOffset) + previousPointOffset;
+
+  return Offset(
+    _clipTimeToCanvasX(
+      canvasSize: canvasSize,
+      clipOffset: clipOffset,
+      clipTimeViewStart: clipTimeViewStart,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      clipTime: pointTime,
+    ),
+    contentRect.top + (1 - normalizedY) * contentRect.height,
+  );
+}
+
+double _clipTimeToCanvasX({
+  required Size canvasSize,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required double clipTime,
+}) {
+  return timeToPixels(
+    time: clipOffset + clipTime - clipTimeViewStart,
+    timeViewStart: timeViewStart,
+    timeViewEnd: timeViewEnd,
+    viewPixelWidth: canvasSize.width,
+  );
+}
+
+void _drawAutomationHandleCircle({
+  required Canvas canvas,
+  required Offset center,
+  required double radius,
+  required Paint fillPaint,
+  required Paint strokePaint,
+}) {
+  canvas.drawCircle(center, radius, fillPaint);
+  canvas.drawCircle(center, radius, strokePaint);
 }
 
 void _paintContainer({

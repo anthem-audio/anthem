@@ -21,8 +21,9 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/arrangement/clip.dart' show TimeViewModel;
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -49,11 +50,16 @@ class ClipTimingOverride {
   }) : assert(timeViewEnd > timeViewStart);
 }
 
-class ArrangerContentUnderCursor {
-  final CanvasAnnotation<Id>? clip;
+class ArrangerHitTestResult {
+  final CanvasAnnotationHit<Id>? clip;
   final CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle;
+  final CanvasAnnotation<AutomationHandleAnnotation>? automationHandle;
 
-  const ArrangerContentUnderCursor({this.clip, this.resizeHandle});
+  const ArrangerHitTestResult({
+    this.clip,
+    this.resizeHandle,
+    this.automationHandle,
+  });
 }
 
 class AutomationParameterTarget {
@@ -186,6 +192,10 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? hoveredClip;
 
+  /// The clip that should currently display inline automation handles, if any.
+  @observable
+  Id? clipWithAutomationHandles;
+
   /// The position of the cursor that shows when you hover over a row.
   @observable
   ({double offset, Id rowId})? hoverIndicatorPosition;
@@ -206,6 +216,8 @@ abstract class _ArrangerViewModel with Store {
   final visibleClips = CanvasAnnotationSet<Id>();
   final visibleResizeAreas =
       CanvasAnnotationSet<({Id id, ResizeAreaType type})>();
+  final visibleAutomationHandles =
+      CanvasAnnotationSet<AutomationHandleAnnotation>();
 
   // Project model IDs are non-negative. Phantom rows are arranger-only view
   // state, so keep them in a separate negative ID range.
@@ -268,9 +280,18 @@ abstract class _ArrangerViewModel with Store {
             .clamp(0.0, maxVerticalScrollPosition);
   }
 
-  /// Calculates the clip and resize handle under the cursor, if there is one.
-  ArrangerContentUnderCursor getContentUnderCursor(Offset pos) {
+  /// Calculates the clip and inline handles under the cursor, if there are any.
+  ArrangerHitTestResult hitTestContent(Offset pos) {
     final clipUnderCursor = visibleClips.hitTest(pos);
+    final clipUnderCursorId = clipUnderCursor?.annotation.metadata;
+    final automationHandleCandidates = visibleAutomationHandles
+        .hitTestAll(pos)
+        .where((element) => element.metadata.clipId == clipUnderCursorId);
+    final automationHandleUnderCursor =
+        automationHandleCandidates.firstWhereOrNull(
+          (element) => element.metadata.kind == AutomationHandleKind.point,
+        ) ??
+        automationHandleCandidates.firstOrNull;
     final resizeHandleCandidates = visibleResizeAreas
         .hitTestAll(pos)
         // We only report a resize handle if the cursor is also over the
@@ -280,17 +301,18 @@ abstract class _ArrangerViewModel with Store {
         // each other.
         .where(
           (element) =>
-              clipUnderCursor == null ||
-              element.metadata.id == clipUnderCursor.metadata,
+              clipUnderCursorId == null ||
+              element.metadata.id == clipUnderCursorId,
         );
     final resizeHandleUnderCursor =
         resizeHandleCandidates.firstWhereOrNull(
           (element) => element.metadata.type == ResizeAreaType.end,
         ) ??
         resizeHandleCandidates.firstOrNull;
-    return ArrangerContentUnderCursor(
+    return ArrangerHitTestResult(
       clip: clipUnderCursor,
       resizeHandle: resizeHandleUnderCursor,
+      automationHandle: automationHandleUnderCursor,
     );
   }
 

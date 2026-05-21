@@ -336,6 +336,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
   void _paintClips(Canvas canvas, Size size) {
     viewModel.visibleClips.clear();
     viewModel.visibleResizeAreas.clear();
+    viewModel.visibleAutomationHandles.clear();
 
     // We render each clip in multiple stages to optimize draw calls. For
     // example, automation curves from all visible clips are rendered all at
@@ -427,6 +428,8 @@ class ArrangerContentPainter extends CustomPainterObserver {
             selected: viewModel.selectedClips.contains(clip.id),
             pressed: viewModel.pressedClip == clip.id,
             hovered: viewModel.hoveredClip == clip.id,
+            showAutomationHandles:
+                viewModel.clipWithAutomationHandles == clip.id,
           );
         })
         .nonNulls
@@ -439,6 +442,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
         project: project,
         canvas: canvas,
         canvasSize: size,
+        automationHandleAnnotations: viewModel.visibleAutomationHandles,
         clipList: clipList,
         devicePixelRatio: devicePixelRatio,
         timeViewStart: timeViewStart,

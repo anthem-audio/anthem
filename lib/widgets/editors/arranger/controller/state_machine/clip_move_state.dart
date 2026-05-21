@@ -98,7 +98,7 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
     }
 
     final movingClipIds = _movingClipIds;
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (movingClipIds == null || arrangementData == null) {
       return;
     }
@@ -144,13 +144,13 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
     final clipTimingOverrides = viewModel.clipTimingOverrides;
     clipTimingOverrides.clear();
 
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (arrangementData == null) {
       return;
     }
     final arrangementClips = arrangementData.clips;
 
-    final pressedClipId = parentState.dragStartClipId;
+    final pressedClipId = parentState.dragStartContext?.movableClipId;
     if (pressedClipId == null) {
       return;
     }
@@ -216,7 +216,7 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       return;
     }
 
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (arrangementData == null) {
       return;
     }

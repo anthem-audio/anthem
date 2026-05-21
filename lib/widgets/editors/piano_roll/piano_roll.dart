@@ -578,14 +578,14 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
       onHover: (e) {
         final pos = e.localPosition;
 
-        final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor = contentUnderCursor.resizeHandle != null
+        final hitTestResult = viewModel.hitTestContent(pos);
+        final newCursor = hitTestResult.resizeHandle != null
             ? SystemMouseCursors.resizeLeftRight
-            : contentUnderCursor.note != null
+            : hitTestResult.note != null
             ? SystemMouseCursors.move
             : MouseCursor.defer;
 
-        final hoveredNoteRef = contentUnderCursor.note?.metadata;
+        final hoveredNoteRef = hitTestResult.note?.metadata;
         final hoveredNoteId = hoveredNoteRef?.id;
         if (hoveredNoteId != viewModel.hoveredNote) {
           viewModel.hoveredNote = hoveredNoteId;

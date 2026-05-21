@@ -25,6 +25,7 @@ import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
@@ -397,7 +398,7 @@ void main() {
   ({Id patternId, Id clipId}) createClipAndGetCreatedIds({
     required Id trackId,
     required double offset,
-    required double width,
+    double? width,
     bool expectPianoRollOpened = true,
   }) {
     final arrangementId = fixture.project.sequence.activeArrangementID!;
@@ -439,6 +440,40 @@ void main() {
     return (patternId: createdPatternIds.single, clipId: createdClipIds.single);
   }
 
+  ({TrackModel automationLane, NodePortModel port}) addUtilityAutomationLane({
+    double? parameterValue,
+  }) {
+    final parentTrack = fixture.project.tracks[_TrackIds.a]!;
+
+    fixture.project.processingGraph = ProcessingGraphModel.create(
+      masterOutputNodeId: getId(),
+    );
+    parentTrack.createAndRegisterNodes(
+      fixture.project,
+      fixture.project.idAllocator,
+    );
+
+    final utilityNode = parentTrack.requireProcessing.utilityNode!;
+    final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
+    if (parameterValue != null) {
+      port.parameterValue = parameterValue;
+    }
+
+    final automationLane =
+        _makeTrack(_TrackIds.automationA, 'Volume', TrackType.automationLane)
+          ..automationLaneParentTrackId = parentTrack.id
+          ..automationTarget = TrackAutomationTargetModel(
+            nodeId: utilityNode.id,
+            portId: UtilityProcessorModel.gainPortId,
+          );
+
+    fixture.project.tracks[automationLane.id] = automationLane;
+    parentTrack.automationLanes.add(automationLane.id);
+    fixture.viewModel.registerTrack(automationLane.id);
+
+    return (automationLane: automationLane, port: port);
+  }
+
   group('createClip', () {
     test(
       'creates a pattern and clip in active arrangement with rounded timing',
@@ -464,6 +499,7 @@ void main() {
         expect(clip.timeView, isNotNull);
         expect(clip.timeView!.start, equals(0));
         expect(clip.timeView!.end, equals(47));
+        expect(pattern.automation.points, isEmpty);
       },
     );
 
@@ -537,26 +573,9 @@ void main() {
 
     test('automation lane clips are created without opening an editor', () {
       final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final parentTrack = fixture.project.tracks[_TrackIds.a]!;
-      fixture.project.processingGraph = ProcessingGraphModel.create(
-        masterOutputNodeId: getId(),
+      final (:automationLane, :port) = addUtilityAutomationLane(
+        parameterValue: 0.42,
       );
-      parentTrack.createAndRegisterNodes(
-        fixture.project,
-        fixture.project.idAllocator,
-      );
-
-      final automationLane =
-          _makeTrack(_TrackIds.automationA, 'Volume', TrackType.automationLane)
-            ..automationLaneParentTrackId = parentTrack.id
-            ..automationTarget = TrackAutomationTargetModel(
-              nodeId: parentTrack.requireProcessing.utilityNodeId!,
-              portId: UtilityProcessorModel.gainPortId,
-            );
-
-      fixture.project.tracks[automationLane.id] = automationLane;
-      parentTrack.automationLanes.add(automationLane.id);
-      fixture.viewModel.registerTrack(automationLane.id);
 
       final createdIds = createClipAndGetCreatedIds(
         trackId: automationLane.id,
@@ -573,6 +592,66 @@ void main() {
       expect(clip.trackId, equals(automationLane.id));
       expect(automationLane.name, equals('Volume'));
       expect(pattern.name, equals('Track - Volume'));
+      expect(pattern.automation.points, hasLength(2));
+      expect(pattern.automation.points[0].offset, equals(0));
+      expect(pattern.automation.points[1].offset, equals(96));
+      expect(
+        pattern.automation.points[0].value,
+        closeTo(port.parameterValue!, 0.000001),
+      );
+      expect(
+        pattern.automation.points[1].value,
+        closeTo(port.parameterValue!, 0.000001),
+      );
+    });
+
+    test('unbounded automation clips seed the end point at default width', () {
+      final (:automationLane, port: _) = addUtilityAutomationLane(
+        parameterValue: 0.37,
+      );
+
+      final createdIds = createClipAndGetCreatedIds(
+        trackId: automationLane.id,
+        offset: 24,
+        expectPianoRollOpened: false,
+      );
+
+      final arrangement = fixture
+          .project
+          .sequence
+          .arrangements[fixture.project.sequence.activeArrangementID!]!;
+      final clip = arrangement.clips[createdIds.clipId]!;
+      final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
+
+      expect(clip.timeView, isNull);
+      expect(pattern.automation.points, hasLength(2));
+      expect(pattern.automation.points[0].offset, equals(0));
+      expect(pattern.automation.points[1].offset, equals(clip.width));
+    });
+
+    test('automation clip seed points fall back to parameter default', () {
+      final (:automationLane, :port) = addUtilityAutomationLane();
+      port.parameterValue = null;
+      final defaultValue = port.config.parameterConfig!.defaultValue;
+
+      final createdIds = createClipAndGetCreatedIds(
+        trackId: automationLane.id,
+        offset: 24,
+        width: 96,
+        expectPianoRollOpened: false,
+      );
+
+      final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
+
+      expect(pattern.automation.points, hasLength(2));
+      expect(
+        pattern.automation.points[0].value,
+        closeTo(defaultValue, 0.000001),
+      );
+      expect(
+        pattern.automation.points[1].value,
+        closeTo(defaultValue, 0.000001),
+      );
     });
   });
 
