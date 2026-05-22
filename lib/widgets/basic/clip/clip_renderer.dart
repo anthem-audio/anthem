@@ -47,6 +47,8 @@ const _clipTitlePadding = clipTitlePadding;
 const _contentBaseColor = Color(0xFF777777);
 // Clip content is composited with BlendMode.plus, so black is a neutral fill.
 const _automationHandleFillColor = Color(0xFF000000);
+const _automationHandleHoveredStrokeColor = Color(0xFF999999);
+const _automationHandlePressedStrokeColor = Color(0xFF555555);
 const _automationPointHandleRadius = 3.5;
 const _automationTensionHandleRadius = 2.5;
 const _automationHandleStrokeWidth = 2.0;
@@ -98,6 +100,8 @@ void paintClipList({
   required Canvas canvas,
   required Size canvasSize,
   required AutomationHandleAnnotationSet automationHandleAnnotations,
+  required AutomationHandleAnnotation? hoveredAutomationHandle,
+  required AutomationHandleAnnotation? pressedAutomationHandle,
   required List<ClipRenderInfo> clipList,
   required double devicePixelRatio,
   required double timeViewStart,
@@ -348,6 +352,8 @@ void paintClipList({
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
           automationHandleAnnotations: automationHandleAnnotations,
+          hoveredAutomationHandle: hoveredAutomationHandle,
+          pressedAutomationHandle: pressedAutomationHandle,
         );
       }
     }
@@ -530,6 +536,8 @@ void _paintAutomationHandles({
   required double timeViewStart,
   required double timeViewEnd,
   required AutomationHandleAnnotationSet automationHandleAnnotations,
+  required AutomationHandleAnnotation? hoveredAutomationHandle,
+  required AutomationHandleAnnotation? pressedAutomationHandle,
 }) {
   final contentRect = Rect.fromLTRB(
     x + 1,
@@ -549,7 +557,6 @@ void _paintAutomationHandles({
 
   final fillPaint = Paint()..color = _automationHandleFillColor;
   final strokePaint = Paint()
-    ..color = _contentBaseColor
     ..style = PaintingStyle.stroke
     ..strokeWidth = _automationHandleStrokeWidth;
 
@@ -576,7 +583,14 @@ void _paintAutomationHandles({
         center: center,
         radius: _automationTensionHandleRadius,
         fillPaint: fillPaint,
-        strokePaint: strokePaint,
+        strokePaint: strokePaint
+          ..color = _automationHandleStrokeColor(
+            clipId: clipId,
+            kind: AutomationHandleKind.tensionHandle,
+            pointId: point.id,
+            hoveredAutomationHandle: hoveredAutomationHandle,
+            pressedAutomationHandle: pressedAutomationHandle,
+          ),
       );
       _addAutomationHandleAnnotation(
         automationHandleAnnotations: automationHandleAnnotations,
@@ -607,7 +621,14 @@ void _paintAutomationHandles({
         center: center,
         radius: _automationPointHandleRadius,
         fillPaint: fillPaint,
-        strokePaint: strokePaint,
+        strokePaint: strokePaint
+          ..color = _automationHandleStrokeColor(
+            clipId: clipId,
+            kind: AutomationHandleKind.point,
+            pointId: point.id,
+            hoveredAutomationHandle: hoveredAutomationHandle,
+            pressedAutomationHandle: pressedAutomationHandle,
+          ),
       );
       _addAutomationHandleAnnotation(
         automationHandleAnnotations: automationHandleAnnotations,
@@ -726,6 +747,45 @@ double _clipTimeToCanvasX({
     timeViewEnd: timeViewEnd,
     viewPixelWidth: canvasSize.width,
   );
+}
+
+Color _automationHandleStrokeColor({
+  required Id clipId,
+  required AutomationHandleKind kind,
+  required Id pointId,
+  required AutomationHandleAnnotation? hoveredAutomationHandle,
+  required AutomationHandleAnnotation? pressedAutomationHandle,
+}) {
+  if (_isAutomationHandleMatch(
+    pressedAutomationHandle,
+    clipId: clipId,
+    kind: kind,
+    pointId: pointId,
+  )) {
+    return _automationHandlePressedStrokeColor;
+  }
+
+  if (_isAutomationHandleMatch(
+    hoveredAutomationHandle,
+    clipId: clipId,
+    kind: kind,
+    pointId: pointId,
+  )) {
+    return _automationHandleHoveredStrokeColor;
+  }
+
+  return _contentBaseColor;
+}
+
+bool _isAutomationHandleMatch(
+  AutomationHandleAnnotation? handle, {
+  required Id clipId,
+  required AutomationHandleKind kind,
+  required Id pointId,
+}) {
+  return handle?.clipId == clipId &&
+      handle?.kind == kind &&
+      handle?.pointId == pointId;
 }
 
 void _drawAutomationHandleCircle({

@@ -90,6 +90,18 @@ Id? _phantomParentTrackIdForRowId(ArrangerViewModel viewModel, Id? rowId) {
   };
 }
 
+void _expectAutomationHandle(
+  AutomationHandleAnnotation? handle, {
+  required Id clipId,
+  required AutomationHandleKind kind,
+  required Id pointId,
+}) {
+  expect(handle, isNotNull);
+  expect(handle!.clipId, clipId);
+  expect(handle.kind, kind);
+  expect(handle.pointId, pointId);
+}
+
 TrackModel _makeTrack(Id id, String name, TrackType type) {
   return TrackModel(
     idAllocator: ProjectEntityIdAllocator.test(() => id),
@@ -410,6 +422,102 @@ void main() {
       expect(fixture.viewModel.hoveredClip, clip.id);
       expect(fixture.viewModel.clipWithAutomationHandles, isNull);
       expect(fixture.project.sequence.patterns[pattern.id], same(pattern));
+    });
+
+    test('hovering automation point handle updates handle visual state', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      final point = AutomationPointModel(
+        idAllocator: _testIdAllocator(() => 900),
+        offset: 0,
+        value: 0.5,
+      );
+      pattern.automation.points.add(point);
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(112, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.point,
+          pointIndex: 0,
+          pointId: point.id,
+          center: const Offset(120, 38),
+        ),
+      );
+
+      fixture.hover(const Offset(120, 38));
+
+      _expectAutomationHandle(
+        fixture.viewModel.hoveredAutomationHandle,
+        clipId: clip.id,
+        kind: AutomationHandleKind.point,
+        pointId: point.id,
+      );
+      expect(fixture.viewModel.pressedAutomationHandle, isNull);
+
+      fixture.exit(const Offset(-1, -1));
+
+      expect(fixture.viewModel.hoveredAutomationHandle, isNull);
+      expect(fixture.viewModel.pressedAutomationHandle, isNull);
+    });
+
+    test('pressing automation tension handle updates handle visual state', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      final previousPoint = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 0,
+        value: 0.25,
+      );
+      final point = AutomationPointModel(
+        idAllocator: _testIdAllocator(() => 900),
+        offset: 96,
+        value: 0.75,
+      );
+      pattern.automation.points.addAll([previousPoint, point]);
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(112, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointIndex: 1,
+          pointId: point.id,
+          center: const Offset(120, 38),
+        ),
+      );
+
+      fixture.hover(const Offset(120, 38));
+      _expectAutomationHandle(
+        fixture.viewModel.hoveredAutomationHandle,
+        clipId: clip.id,
+        kind: AutomationHandleKind.tensionHandle,
+        pointId: point.id,
+      );
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+
+      expect(fixture.viewModel.hoveredAutomationHandle, isNull);
+      _expectAutomationHandle(
+        fixture.viewModel.pressedAutomationHandle,
+        clipId: clip.id,
+        kind: AutomationHandleKind.tensionHandle,
+        pointId: point.id,
+      );
+
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+
+      _expectAutomationHandle(
+        fixture.viewModel.hoveredAutomationHandle,
+        clipId: clip.id,
+        kind: AutomationHandleKind.tensionHandle,
+        pointId: point.id,
+      );
+      expect(fixture.viewModel.pressedAutomationHandle, isNull);
     });
 
     test('clicking automation clip title selects the clip', () {

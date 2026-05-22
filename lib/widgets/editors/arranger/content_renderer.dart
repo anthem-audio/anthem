@@ -443,6 +443,8 @@ class ArrangerContentPainter extends CustomPainterObserver {
         canvas: canvas,
         canvasSize: size,
         automationHandleAnnotations: viewModel.visibleAutomationHandles,
+        hoveredAutomationHandle: viewModel.hoveredAutomationHandle,
+        pressedAutomationHandle: viewModel.pressedAutomationHandle,
         clipList: clipList,
         devicePixelRatio: devicePixelRatio,
         timeViewStart: timeViewStart,

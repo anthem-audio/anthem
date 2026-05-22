@@ -125,7 +125,7 @@ class ArrangerStateMachine
       data.activePointerContext = pointerContext;
     }
 
-    _syncClipWithAutomationHandles();
+    _syncPointerDerivedViewState();
     emitSignal(_ArrangerPointerDownSignal(event));
     notifyDataUpdated();
   }
@@ -136,7 +136,7 @@ class ArrangerStateMachine
       data.activePointerContext = pointerContextAt(event.localPosition);
     }
 
-    _syncClipWithAutomationHandles();
+    _syncPointerDerivedViewState();
     emitSignal(_ArrangerPointerMoveSignal(event));
     notifyDataUpdated();
   }
@@ -151,7 +151,7 @@ class ArrangerStateMachine
 
     data.handlePointerUp(event);
     _refreshHoverContext();
-    _syncClipWithAutomationHandles();
+    _syncPointerDerivedViewState();
     emitSignal(_ArrangerPointerUpSignal(event));
     notifyDataUpdated();
 
@@ -173,14 +173,14 @@ class ArrangerStateMachine
   void onExit(PointerExitEvent event) {
     data.handleExit(event);
     _refreshHoverContext();
-    _syncClipWithAutomationHandles();
+    _syncPointerDerivedViewState();
     notifyDataUpdated();
   }
 
   void onHover(PointerHoverEvent event) {
     data.handleHover(event);
     _refreshHoverContext();
-    _syncClipWithAutomationHandles();
+    _syncPointerDerivedViewState();
     notifyDataUpdated();
   }
 
@@ -224,7 +224,7 @@ class ArrangerStateMachine
 
     _refreshHoverContext();
     _refreshActivePointerContext();
-    _syncClipWithAutomationHandles();
+    _syncPointerDerivedViewState();
     emitSignal(const _ArrangerViewTransformChangedSignal());
     notifyDataUpdated();
   }
@@ -232,7 +232,7 @@ class ArrangerStateMachine
   void onTrackLayoutChanged() {
     _refreshHoverContext();
     _refreshActivePointerContext();
-    _syncClipWithAutomationHandles();
+    _syncPointerDerivedViewState();
     emitSignal(const _ArrangerTrackLayoutChangedSignal());
   }
 
@@ -324,6 +324,11 @@ class ArrangerStateMachine
         : pointerContextAt(Offset(activePointer.x, activePointer.y));
   }
 
+  void _syncPointerDerivedViewState() {
+    _syncClipWithAutomationHandles();
+    _syncAutomationHandleInteractionState();
+  }
+
   void _syncClipWithAutomationHandles() {
     final pointerContext = data.activePointerId != null
         ? data.activePointerDownContext
@@ -332,6 +337,22 @@ class ArrangerStateMachine
 
     if (viewModel.clipWithAutomationHandles != nextClipId) {
       viewModel.clipWithAutomationHandles = nextClipId;
+    }
+  }
+
+  void _syncAutomationHandleInteractionState() {
+    final nextPressedHandle = data.activePointerId != null
+        ? data.activePointerDownContext?.automationHandle
+        : null;
+    final nextHoveredHandle = data.activePointerId == null
+        ? data.hoverContext?.automationHandle
+        : null;
+
+    if (viewModel.pressedAutomationHandle != nextPressedHandle) {
+      viewModel.pressedAutomationHandle = nextPressedHandle;
+    }
+    if (viewModel.hoveredAutomationHandle != nextHoveredHandle) {
+      viewModel.hoveredAutomationHandle = nextHoveredHandle;
     }
   }
 

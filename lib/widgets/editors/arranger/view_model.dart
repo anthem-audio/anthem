@@ -196,6 +196,14 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? clipWithAutomationHandles;
 
+  /// The inline automation handle currently under the mouse cursor, if any.
+  @observable
+  AutomationHandleAnnotation? hoveredAutomationHandle;
+
+  /// The inline automation handle that is being pressed, if any.
+  @observable
+  AutomationHandleAnnotation? pressedAutomationHandle;
+
   /// Used to preserve automation point tension when adding points inline.
   double? lastInteractedAutomationTension;
 
