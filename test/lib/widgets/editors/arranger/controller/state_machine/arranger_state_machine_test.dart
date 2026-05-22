@@ -688,6 +688,131 @@ void main() {
       expect(point.tension, 0.4);
     });
 
+    test('double-clicking automation tension handle resets tension', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      final previousPoint = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 0,
+        value: 0.25,
+      );
+      final point = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 96,
+        value: 0.75,
+        tension: 0.4,
+      );
+      pattern.automation.points.addAll([previousPoint, point]);
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(112, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointIndex: 1,
+          pointId: point.id,
+          center: const Offset(120, 38),
+        ),
+      );
+      fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+      fixture.projectViewModel.activePanel = PanelKind.deviceRack;
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+
+      expect(point.tension, 0);
+      expect(fixture.viewModel.lastInteractedAutomationTension, 0);
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.deviceRack);
+      expect(fixture.projectViewModel.activePanel, PanelKind.deviceRack);
+
+      fixture.project.undo();
+      expect(point.tension, 0.4);
+    });
+
+    test('double-clicking automation point handle deletes the point', () {
+      final (:clip, :pattern) = addVisibleAutomationClip();
+      final firstPoint = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 0,
+        value: 0.25,
+      );
+      final deletedPoint = AutomationPointModel(
+        idAllocator: _testIdAllocator(() => 900),
+        offset: 48,
+        value: 0.5,
+        tension: 0.2,
+      );
+      final lastPoint = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 96,
+        value: 0.75,
+      );
+      pattern.automation.points.addAll([firstPoint, deletedPoint, lastPoint]);
+      fixture.viewModel.visibleAutomationHandles.add(
+        rect: const Rect.fromLTWH(112, 30, 16, 16),
+        metadata: AutomationHandleAnnotation(
+          clipId: clip.id,
+          kind: AutomationHandleKind.point,
+          pointIndex: 1,
+          pointId: deletedPoint.id,
+          center: const Offset(120, 38),
+        ),
+      );
+      fixture.viewModel.selectedClips.add(_ClipIds.someOtherSelected);
+      fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
+      fixture.projectViewModel.activePanel = PanelKind.deviceRack;
+
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+      fixture.pointerDown(
+        const PointerDownEvent(
+          pointer: 1,
+          buttons: kPrimaryMouseButton,
+          position: Offset(120, 38),
+        ),
+      );
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+      );
+
+      expect(pattern.automation.points, [firstPoint, lastPoint]);
+      expect(fixture.viewModel.selectedClips, {_ClipIds.someOtherSelected});
+      expect(fixture.viewModel.hoveredAutomationHandle, isNull);
+      expect(fixture.viewModel.pressedAutomationHandle, isNull);
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.deviceRack);
+      expect(fixture.projectViewModel.activePanel, PanelKind.deviceRack);
+
+      fixture.project.undo();
+      expect(pattern.automation.points, [firstPoint, deletedPoint, lastPoint]);
+
+      fixture.project.redo();
+      expect(pattern.automation.points, [firstPoint, lastPoint]);
+    });
+
     test('hover over resize handle updates canvas cursor and hovered clip', () {
       fixture.hover(const Offset(80, 20));
       expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);

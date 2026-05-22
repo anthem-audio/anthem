@@ -537,8 +537,6 @@ class ArrangerPointerTarget {
 
     return resizeHandle;
   }
-
-  bool get suppressesClipLevelActions => isAutomationPointHandle;
 }
 
 /// Shared base for the arranger's leaf (non-idle, non-drag-parent) states.
@@ -1024,7 +1022,7 @@ class ArrangerIdleState extends _ArrangerLeafState {
   }
 
   void handleSingleClick(ArrangerPointerContext pointerContext) {
-    if (pointerContext.target.suppressesClipLevelActions) {
+    if (pointerContext.target.isAutomationPointHandle) {
       return;
     }
 
@@ -1061,7 +1059,7 @@ class ArrangerIdleState extends _ArrangerLeafState {
       return;
     }
 
-    if (pointerContext.target.suppressesClipLevelActions) {
+    if (pointerContext.target.isAutomationPointHandle) {
       return;
     }
 
@@ -1092,7 +1090,15 @@ class ArrangerIdleState extends _ArrangerLeafState {
   }
 
   void handleDoubleClick(ArrangerPointerContext pointerContext) {
-    if (pointerContext.target.suppressesClipLevelActions) {
+    if (_resetAutomationTension(pointerContext)) {
+      return;
+    }
+
+    if (_deleteAutomationPoint(pointerContext)) {
+      return;
+    }
+
+    if (pointerContext.target.isAutomationPointHandle) {
       return;
     }
 
@@ -1145,6 +1151,39 @@ class ArrangerIdleState extends _ArrangerLeafState {
         newTension: 0,
       ),
     );
+
+    return true;
+  }
+
+  bool _deleteAutomationPoint(ArrangerPointerContext pointerContext) {
+    final automationHandle = pointerContext.automationHandle;
+    if (automationHandle?.kind != AutomationHandleKind.point) {
+      return false;
+    }
+
+    final clipId = pointerContext.automationClipContentClipId;
+    if (clipId == null) {
+      return true;
+    }
+
+    final target = resolveAutomationPointForHandle(
+      clipId: clipId,
+      automationHandle: automationHandle!,
+    );
+    if (target == null) {
+      return true;
+    }
+
+    project.execute(
+      DeleteAutomationPointCommand(
+        patternID: target.pattern.id,
+        point: target.point,
+        index: target.pointIndex,
+      ),
+    );
+
+    viewModel.hoveredAutomationHandle = null;
+    viewModel.pressedAutomationHandle = null;
 
     return true;
   }
@@ -1216,8 +1255,8 @@ class ArrangerDragState extends _ArrangerLeafState {
         AutomationHandleKind.tensionHandle;
   }
 
-  bool get _doesDragStartSuppressClipLevelActions =>
-      dragStartContext?.target.suppressesClipLevelActions ?? false;
+  bool get _isDragStartOverAutomationHandle =>
+      dragStartContext?.automationHandle != null;
 
   bool get _isSelectionModeActive =>
       interactionState.isCtrlPressed || viewModel.tool == EditorTool.select;
@@ -1228,12 +1267,12 @@ class ArrangerDragState extends _ArrangerLeafState {
   ///
   /// 1. No interaction if the pointer is up or the drag has been canceled.
   /// 2. Automation point move - on an automation point handle, or on a
-  ///    double-click press over automation clip content.
+  ///    double-click press over automation clip content that is not a handle.
   /// 3. Automation tension change - activation distance crossed over an
   ///    automation tension handle.
   /// 4. Selection box - when Ctrl is held or the select tool is active, once
-  ///    the pointer has moved past the activation distance and the target does
-  ///    not suppress clip-level selection behavior.
+  ///    the pointer has moved past the activation distance, unless the drag
+  ///    started on an automation point handle.
   /// 5. Create clip - on a double-click press over empty canvas with the pencil
   ///    tool. Deliberately fires *before* the activation distance so a
   ///    double-click-release (no drag) can still insert at a point.
@@ -1248,12 +1287,14 @@ class ArrangerDragState extends _ArrangerLeafState {
       return null;
     }
 
-    if (_isDragStartOverAutomationPointHandle) {
+    if (_isDragStartOverAutomationPointHandle &&
+        !parentState.doubleClickPressed) {
       return ArrangerInteractionFamily.automationPointMove;
     }
 
     if (parentState.doubleClickPressed &&
-        _isDragStartOverAutomationClipContent) {
+        _isDragStartOverAutomationClipContent &&
+        !_isDragStartOverAutomationHandle) {
       return ArrangerInteractionFamily.automationPointMove;
     }
 
@@ -1264,7 +1305,7 @@ class ArrangerDragState extends _ArrangerLeafState {
 
     if (hasCrossedActivationDistance &&
         _isSelectionModeActive &&
-        !_doesDragStartSuppressClipLevelActions) {
+        !_isDragStartOverAutomationPointHandle) {
       return ArrangerInteractionFamily.selectionBox;
     }
 
@@ -1291,7 +1332,7 @@ class ArrangerDragState extends _ArrangerLeafState {
       isDragPointerActive &&
       !interactionState.isCurrentInteractionCanceled &&
       !_isSelectionModeActive &&
-      !_doesDragStartSuppressClipLevelActions &&
+      !_isDragStartOverAutomationPointHandle &&
       (_isDragStartOverMovableClip || _isDragStartOverResizeHandle);
 
   void _syncPressedClip() {

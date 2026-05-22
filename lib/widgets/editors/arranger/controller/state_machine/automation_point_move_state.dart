@@ -97,8 +97,10 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
 
   @override
   void onEntry({required event, required from}) {
-    _consumeIdleClickHandling();
     _initializeMoveSession();
+    if (_target?.isInsertedPoint == true) {
+      _consumeIdleClickHandling();
+    }
     _syncPointPosition();
   }
 
