@@ -71,6 +71,11 @@ abstract class _NodePortModel
 
   /// The normalized value of the parameter, if this port is a control input
   /// port.
+  ///
+  /// For third-party plugin parameters, this mirrors the latest value known to
+  /// Anthem for UI and automation workflows. It is not restored into the plugin
+  /// on engine start; the plugin's opaque processor state is the restore
+  /// source.
   @anthemObservable
   double? parameterValue;
 

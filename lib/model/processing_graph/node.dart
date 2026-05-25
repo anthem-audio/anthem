@@ -297,7 +297,9 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// Serialized state of the processor.
   ///
   /// This is currently only used for third-party plugins, where arbitrary state
-  /// from the plugin needs to be serialized into the project model.
+  /// from the plugin needs to be serialized into the project model. For these
+  /// plugins, this opaque state is the only state restored into the plugin on
+  /// engine start; mirrored control port parameter values are not replayed.
   @hideFromCpp
   String processorState = '';
 
@@ -379,40 +381,12 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
       return;
     }
 
-    // An empty processor state only means there is no opaque plugin blob to
-    // restore. Modeled parameter values live separately on control ports, so
-    // defaults and offline edits can still be valid and should still replay.
     if (processorState.isNotEmpty) {
       project.engine.processingGraphApi.setPluginState(id, processorState);
     }
 
-    sendParameterValuesToEngine();
-
     if (!stateIsSentToEngineCompleter.isCompleted) {
       stateIsSentToEngineCompleter.complete();
-    }
-  }
-
-  void sendParameterValuesToEngine() {
-    if (!project.engine.isRunning || !isThirdPartyPlugin) {
-      return;
-    }
-
-    for (final port in controlInputPorts) {
-      if (port.config.parameterConfig == null) {
-        continue;
-      }
-
-      final value = port.parameterValue;
-      if (value == null) {
-        continue;
-      }
-
-      project.engine.processingGraphApi.setPluginParameterValue(
-        id,
-        port.id,
-        value.clamp(0.0, 1.0).toDouble(),
-      );
     }
   }
 
