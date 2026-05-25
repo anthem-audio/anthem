@@ -22,7 +22,7 @@ import 'dart:ui' as ui;
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
-import 'package:anthem/widgets/editors/automation_editor/curves/curve_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem_codegen/include/collections.dart';
 import 'package:flutter_test/flutter_test.dart';
 

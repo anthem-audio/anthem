@@ -21,8 +21,8 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
-import 'package:anthem/widgets/editors/arranger/content_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/content_renderer.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 

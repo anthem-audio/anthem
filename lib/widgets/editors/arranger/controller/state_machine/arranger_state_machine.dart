@@ -30,7 +30,7 @@ import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
-import 'package:anthem/widgets/basic/clip/clip_title_text.dart'
+import 'package:anthem/widgets/editors/arranger/rendering/clip_title_text.dart'
     show clipTitleHeight;
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';

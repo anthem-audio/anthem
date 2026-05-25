@@ -26,7 +26,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
-import 'package:anthem/widgets/basic/clip/clip_title_text.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_title_text.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter/widgets.dart' as widgets;
 import 'package:mobx/mobx.dart';
@@ -35,7 +35,7 @@ import 'arrangement/arrangement.dart';
 
 part 'sequencer.g.dart';
 
-part 'package:anthem/widgets/basic/clip/clip_title_atlas_mixin.dart';
+part 'package:anthem/widgets/editors/arranger/rendering/clip_title_atlas_mixin.dart';
 
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'Sequencer',

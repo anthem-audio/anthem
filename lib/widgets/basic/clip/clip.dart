@@ -22,7 +22,7 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
-import 'package:anthem/widgets/basic/clip/clip_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';

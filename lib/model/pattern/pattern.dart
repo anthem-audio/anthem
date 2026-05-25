@@ -29,7 +29,7 @@ import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
-import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_notes_render_cache.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
@@ -40,7 +40,7 @@ import 'note.dart';
 
 part 'pattern.g.dart';
 
-part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
+part 'package:anthem/widgets/editors/arranger/rendering/clip_notes_render_cache_mixin.dart';
 part 'pattern_compiler_mixin.dart';
 
 /// The primary container for events.

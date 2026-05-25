@@ -25,10 +25,9 @@ import 'package:anthem/helpers/fast_atan2.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/automation_editor/curves/smooth.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/automation_smooth_curve.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem_codegen/include/collections.dart';
-import 'package:flutter/rendering.dart';
 import 'package:meta/meta.dart';
 
 /// Growable packed coordinate buffer used by raw canvas APIs.
@@ -280,7 +279,7 @@ class DownsamplingCurveBuilder {
     }
   }
 
-  // Create geometry for gradient fill
+  // Create geometry for the solid fill under the curve.
   void _createTrianglesForPoints(double x1, double y1, double x2, double y2) {
     // First triangle
     triCoordBuffer.add(x1, y1);
@@ -357,30 +356,6 @@ Paint getLineJoinPaint({
     ..color = chosenColor
     ..strokeWidth = strokeWidth
     ..strokeCap = StrokeCap.round
-    ..style = PaintingStyle.fill;
-}
-
-Paint getGradientPaint({
-  required Color chosenColor,
-  required Rect drawArea,
-  required double gradientStartAlpha,
-  required double gradientEndAlpha,
-
-  /// Optional color override for gradient stops.
-  ///
-  /// If omitted, [chosenColor] is used for both gradient stops.
-  Color? overrideColor,
-}) {
-  return Paint()
-    ..shader = LinearGradient(
-      colors: [
-        (overrideColor ?? chosenColor).withValues(alpha: gradientStartAlpha),
-        (overrideColor ?? chosenColor).withValues(alpha: gradientEndAlpha),
-      ],
-      stops: const [0.0, 1.0],
-      begin: Alignment.bottomCenter,
-      end: Alignment.topCenter,
-    ).createShader(drawArea)
     ..style = PaintingStyle.fill;
 }
 
@@ -500,13 +475,13 @@ double evaluateCurveForTesting(double time, List<AutomationPoint> points) {
 
 /// Renders the automation curve given by [points] onto the provided [canvas].
 ///
-/// See usage examples in the automation editor and arranger.
+/// See usage examples in the arranger render code.
 ///
 /// This method samples the curve at one-pixel intervals (device independent),
 /// and then aggressively downsamples the resulting points, removing over 85% of
 /// the points in most common cases. It then uses these points to draw the
-/// curve, using Canvas.drawRawPoints for the line, and Canvas.drawVertices for
-/// the gradient fill below the curve.
+/// curve, using Canvas.drawRawPoints for the line. Callers may also provide a
+/// [triCoordBuffer] to batch solid fill geometry under curves.
 ///
 /// The result of rendering the downsampled points is nearly indistinguishable
 /// from rendering with all the points. The aggressiveness of the downsampling
@@ -526,8 +501,8 @@ double evaluateCurveForTesting(double time, List<AutomationPoint> points) {
 /// Buffers ([lineBuffer], [lineJoinBuffer], [triCoordBuffer]) for geometry can
 /// be provided. In the case that this will be called for many different curves
 /// in one canvas with the same color, this will allow the geometry for these
-/// multiple curves to be drawn all at once, which is usually much faster. This
-/// is done for the arranger.
+/// multiple curves to be drawn all at once, which is usually much faster. Fill
+/// geometry is generated only for callers that draw it explicitly.
 ///
 /// [correctForClipBounds] applies a one-pixel start shift used by clip
 /// rendering paths to avoid visible bleed just before clip boundaries.
@@ -747,25 +722,6 @@ void renderAutomationCurve({
     final lineJoinCirclePaint = getLineJoinPaint(
       chosenColor: color ?? AnthemTheme.primary.main,
       strokeWidth: strokeWidth,
-    );
-
-    const gradientStartAlpha = 0.05;
-    const gradientEndAlpha = 0.25;
-
-    final gradientPaint = getGradientPaint(
-      chosenColor: chosenColor,
-      drawArea: drawArea,
-      gradientStartAlpha: gradientStartAlpha,
-      gradientEndAlpha: gradientEndAlpha,
-    );
-
-    // This aliases on Skia, but we draw a line along the main boundary that would
-    // alias, so it works out well on Skia platforms (as of writing, this is
-    // Windows, Linux, and web). Also this is extremely fast.
-    canvas.drawVertices(
-      Vertices.raw(VertexMode.triangles, curveBuilder.triCoordBuffer.buffer),
-      BlendMode.srcOver,
-      gradientPaint,
     );
 
     canvas.drawRawPoints(
