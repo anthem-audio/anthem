@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -89,20 +89,6 @@ class ProjectFooter extends StatelessWidget {
                         } else {
                           viewModel.selectedEditor = .detail;
                           viewModel.activePanel = .pianoRoll;
-                        }
-                      },
-                    ),
-                    Button(
-                      icon: Icons.automationEditor,
-                      toggleState: viewModel.selectedEditor == .automation,
-                      width: 26,
-                      contentPadding: contentPadding,
-                      onPress: () {
-                        if (viewModel.selectedEditor == .automation) {
-                          viewModel.selectedEditor = null;
-                        } else {
-                          viewModel.selectedEditor = .automation;
-                          viewModel.activePanel = .automationEditor;
                         }
                       },
                     ),

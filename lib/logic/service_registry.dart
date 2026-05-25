@@ -30,8 +30,6 @@ import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
-import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -129,19 +127,6 @@ final pianoRollControllerService = ServiceDef<PianoRollController>(
   ),
   disposePriority: 100,
 );
-
-final automationEditorViewModelService = ServiceDef<AutomationEditorViewModel>(
-  create: (_, _) => AutomationEditorViewModel(timeView: TimeRange(0, 3072)),
-);
-
-final automationEditorControllerService =
-    ServiceDef<AutomationEditorController>(
-      create: (project, registry) => AutomationEditorController(
-        viewModel: registry.use(automationEditorViewModelService),
-        project: project,
-      ),
-      disposePriority: 100,
-    );
 
 class ProjectServiceFactoryOverrides {
   static const empty = ProjectServiceFactoryOverrides._(<Object, Object>{});
@@ -246,14 +231,10 @@ class ServiceRegistry {
   ArrangerController get arrangerController => use(arrangerControllerService);
   PianoRollController get pianoRollController =>
       use(pianoRollControllerService);
-  AutomationEditorController get automationEditorController =>
-      use(automationEditorControllerService);
 
   ProjectViewModel get projectViewModel => use(projectViewModelService);
   ArrangerViewModel get arrangerViewModel => use(arrangerViewModelService);
   PianoRollViewModel get pianoRollViewModel => use(pianoRollViewModelService);
-  AutomationEditorViewModel get automationEditorViewModel =>
-      use(automationEditorViewModelService);
 
   final ProjectModel project;
   final ProjectServiceFactoryOverrides _overrides;

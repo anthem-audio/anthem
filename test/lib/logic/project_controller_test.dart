@@ -161,9 +161,6 @@ void main() {
       expect(viewModel.selectedEditor, equals(EditorKind.detail));
       expect(viewModel.activePanel, equals(PanelKind.pianoRoll));
 
-      controller.setActiveEditor(editor: EditorKind.automation);
-      expect(viewModel.activePanel, equals(PanelKind.automationEditor));
-
       controller.setActiveEditor(editor: EditorKind.deviceRack);
       expect(viewModel.activePanel, equals(PanelKind.deviceRack));
 

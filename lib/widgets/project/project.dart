@@ -33,7 +33,6 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/arranger/arranger.dart';
 import 'package:anthem/widgets/editors/attribute_editor/attribute_editor.dart';
-import 'package:anthem/widgets/editors/automation_editor/automation_editor.dart';
 import 'package:anthem/widgets/editors/device_rack/device_rack.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/project/project_explorer.dart';
@@ -76,17 +75,15 @@ class _ProjectState extends State<Project> {
             Expanded(
               child: Observer(
                 builder: (context) {
-                  const automationEditor = AutomationEditor();
                   const deviceRack = DeviceRack();
                   const pianoRoll = PianoRoll();
                   const mixer = Mixer();
 
                   final selectedEditorKind = viewModel.selectedEditor;
                   final selectedEditorIndex = switch (selectedEditorKind) {
-                    EditorKind.automation => 0,
-                    EditorKind.deviceRack => 1,
-                    EditorKind.detail => 2,
-                    EditorKind.mixer => 3,
+                    EditorKind.deviceRack => 0,
+                    EditorKind.detail => 1,
+                    EditorKind.mixer => 2,
                     null => null,
                   };
 
@@ -94,7 +91,6 @@ class _ProjectState extends State<Project> {
                       ? const SizedBox.shrink()
                       : PanelBorder(
                           panelKind: switch (selectedEditorKind) {
-                            .automation => .automationEditor,
                             .deviceRack => .deviceRack,
                             .detail => .pianoRoll,
                             .mixer => .mixer,
@@ -102,12 +98,7 @@ class _ProjectState extends State<Project> {
                           },
                           child: IndexedStack(
                             index: selectedEditorIndex,
-                            children: [
-                              automationEditor,
-                              deviceRack,
-                              pianoRoll,
-                              mixer,
-                            ],
+                            children: [deviceRack, pianoRoll, mixer],
                           ),
                         );
 
