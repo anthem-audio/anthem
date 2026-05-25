@@ -60,6 +60,7 @@ export 'processing_graph/processors/balance.dart';
 export 'processing_graph/processors/gain.dart';
 export 'processing_graph/processors/live_event_provider.dart';
 export 'processing_graph/processors/master_output.dart';
+export 'processing_graph/processors/sequence_automation_provider.dart';
 export 'processing_graph/processors/sequence_note_provider.dart';
 export 'processing_graph/processors/simple_midi_generator.dart';
 export 'processing_graph/processors/simple_volume_lfo.dart';

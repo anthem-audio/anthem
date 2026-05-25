@@ -19,8 +19,8 @@
 
 #include "graph_processor.h"
 
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/executor/graph_executor.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/util/intentionally_leak.h"
 
 #include <juce_audio_devices/juce_audio_devices.h>
@@ -36,9 +36,8 @@ struct GraphProcessor::RuntimeGraphHandoff {
   std::unique_ptr<GraphExecutor::RuntimeState> executorState;
 };
 
-GraphProcessor::GraphProcessor()
-  : executor(std::make_unique<GraphExecutor>()),
-    rt_services(std::make_unique<GraphRuntimeServices>()),
+GraphProcessor::GraphProcessor(EngineRuntimeServices& engineRuntimeServices)
+  : executor(std::make_unique<GraphExecutor>()), rt_engineRuntimeServices(&engineRuntimeServices),
     clearDeletionQueueTimedCallback(
         juce::TimedCallback([this]() { this->clearDeletionQueueFromMainThread(); })) {
   executor->prepare();
@@ -132,15 +131,15 @@ void GraphProcessor::rt_process(int numSamples) {
   executor->rt_processBlock(*handoff.runtimeGraph, *handoff.executorState, numSamples);
 }
 
-GraphRuntimeServices& GraphProcessor::getRtServices() {
-  jassert(rt_services != nullptr);
-  return *rt_services;
+EngineRuntimeServices& GraphProcessor::getEngineRuntimeServices() {
+  jassert(rt_engineRuntimeServices != nullptr);
+  return *rt_engineRuntimeServices;
 }
 
 void GraphProcessor::resetRtServices() {
-  jassert(rt_services != nullptr);
-  if (rt_services != nullptr) {
-    rt_services->rt_reset();
+  jassert(rt_engineRuntimeServices != nullptr);
+  if (rt_engineRuntimeServices != nullptr) {
+    rt_engineRuntimeServices->rt_reset();
   }
 }
 

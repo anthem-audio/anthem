@@ -27,13 +27,13 @@
 namespace anthem {
 
 namespace {
-void retain(SequenceEventList* track) {
+template <typename TrackData> void retain(TrackData* track) {
   if (track != nullptr) {
     track->snapshotRefCount++;
   }
 }
 
-void release(SequenceEventList* track) {
+template <typename TrackData> void release(TrackData* track) {
   if (track == nullptr) {
     return;
   }
@@ -46,13 +46,13 @@ void release(SequenceEventList* track) {
   }
 }
 
-void retain(SequenceEventListCollection* sequence) {
+template <typename TrackData> void retain(RuntimeSequenceTrackCollection<TrackData>* sequence) {
   if (sequence != nullptr) {
     sequence->snapshotRefCount++;
   }
 }
 
-void release(SequenceEventListCollection* sequence) {
+template <typename TrackData> void release(RuntimeSequenceTrackCollection<TrackData>* sequence) {
   if (sequence == nullptr) {
     return;
   }
@@ -86,7 +86,8 @@ bool rt_hasInvalidationForCurrentBlock(
   return false;
 }
 
-void rt_applyChangedTrackInvalidation(SequenceStoreSnapshot& snapshot,
+template <typename TrackData>
+void rt_applyChangedTrackInvalidation(RuntimeSequenceStoreSnapshot<TrackData>& snapshot,
     const ChangedSequenceTrack& changedTrack,
     double playheadStart,
     double playheadEnd,
@@ -114,9 +115,10 @@ void rt_applyChangedTrackInvalidation(SequenceStoreSnapshot& snapshot,
   trackIter->second->rt_invalidationOccurred = true;
 }
 
-bool publishSnapshot(RingBuffer<SequenceStoreSnapshot*, 1024>& queue,
-    SequenceStoreSnapshot*& currentSnapshot,
-    SequenceStoreSnapshot* newSnapshot) {
+template <typename TrackData>
+bool publishSnapshot(RingBuffer<RuntimeSequenceStoreSnapshot<TrackData>*, 1024>& queue,
+    RuntimeSequenceStoreSnapshot<TrackData>*& currentSnapshot,
+    RuntimeSequenceStoreSnapshot<TrackData>* newSnapshot) {
   if (!queue.add(newSnapshot)) {
     jassertfalse;
     delete newSnapshot;
@@ -127,8 +129,9 @@ bool publishSnapshot(RingBuffer<SequenceStoreSnapshot*, 1024>& queue,
   return true;
 }
 
-void addSnapshotForDeletion(
-    std::vector<SequenceStoreSnapshot*>& snapshots, SequenceStoreSnapshot* snapshot) {
+template <typename TrackData>
+void addSnapshotForDeletion(std::vector<RuntimeSequenceStoreSnapshot<TrackData>*>& snapshots,
+    RuntimeSequenceStoreSnapshot<TrackData>* snapshot) {
   if (snapshot == nullptr) {
     return;
   }
@@ -168,16 +171,59 @@ SequenceEventList& SequenceEventList::operator=(SequenceEventList&& other) noexc
   return *this;
 }
 
-SequenceEventListCollection::SequenceEventListCollection() = default;
+AutomationSpanList::AutomationSpanList() = default;
 
-SequenceEventListCollection::~SequenceEventListCollection() {
+AutomationSpanList::AutomationSpanList(const AutomationSpanList& other)
+  : spans(other.spans), hasInitialValue(other.hasInitialValue), initialValue(other.initialValue),
+    invalidationRanges(other.invalidationRanges),
+    rt_invalidationOccurred(other.rt_invalidationOccurred) {}
+
+AutomationSpanList::AutomationSpanList(AutomationSpanList&& other) noexcept
+  : spans(std::move(other.spans)), hasInitialValue(other.hasInitialValue),
+    initialValue(other.initialValue), invalidationRanges(std::move(other.invalidationRanges)),
+    rt_invalidationOccurred(other.rt_invalidationOccurred) {
+  other.hasInitialValue = false;
+  other.initialValue = 0.0f;
+  other.rt_invalidationOccurred = false;
+}
+
+AutomationSpanList& AutomationSpanList::operator=(const AutomationSpanList& other) {
+  jassert(snapshotRefCount == 0);
+  spans = other.spans;
+  hasInitialValue = other.hasInitialValue;
+  initialValue = other.initialValue;
+  invalidationRanges = other.invalidationRanges;
+  rt_invalidationOccurred = other.rt_invalidationOccurred;
+  return *this;
+}
+
+AutomationSpanList& AutomationSpanList::operator=(AutomationSpanList&& other) noexcept {
+  jassert(snapshotRefCount == 0);
+  spans = std::move(other.spans);
+  hasInitialValue = other.hasInitialValue;
+  initialValue = other.initialValue;
+  invalidationRanges = std::move(other.invalidationRanges);
+  rt_invalidationOccurred = other.rt_invalidationOccurred;
+  other.hasInitialValue = false;
+  other.initialValue = 0.0f;
+  other.rt_invalidationOccurred = false;
+  return *this;
+}
+
+template <typename TrackData>
+RuntimeSequenceTrackCollection<TrackData>::RuntimeSequenceTrackCollection() = default;
+
+template <typename TrackData>
+RuntimeSequenceTrackCollection<TrackData>::~RuntimeSequenceTrackCollection() {
   for (auto& [trackId, track] : tracks) {
     release(track);
   }
 }
 
-SequenceEventListCollection* SequenceEventListCollection::clone() const {
-  auto* result = new SequenceEventListCollection();
+template <typename TrackData>
+RuntimeSequenceTrackCollection<TrackData>*
+RuntimeSequenceTrackCollection<TrackData>::clone() const {
+  auto* result = new RuntimeSequenceTrackCollection<TrackData>();
 
   for (auto& [trackId, track] : tracks) {
     result->setTrack(trackId, track);
@@ -186,7 +232,8 @@ SequenceEventListCollection* SequenceEventListCollection::clone() const {
   return result;
 }
 
-void SequenceEventListCollection::setTrack(EntityId trackId, SequenceEventList* track) {
+template <typename TrackData>
+void RuntimeSequenceTrackCollection<TrackData>::setTrack(EntityId trackId, TrackData* track) {
   retain(track);
 
   auto existingTrack = tracks.find(trackId);
@@ -199,7 +246,8 @@ void SequenceEventListCollection::setTrack(EntityId trackId, SequenceEventList* 
   tracks.insert_or_assign(trackId, track);
 }
 
-void SequenceEventListCollection::removeTrack(EntityId trackId) {
+template <typename TrackData>
+void RuntimeSequenceTrackCollection<TrackData>::removeTrack(EntityId trackId) {
   auto existingTrack = tracks.find(trackId);
   if (existingTrack == tracks.end()) {
     return;
@@ -209,16 +257,19 @@ void SequenceEventListCollection::removeTrack(EntityId trackId) {
   tracks.erase(existingTrack);
 }
 
-SequenceStoreSnapshot::SequenceStoreSnapshot() = default;
+template <typename TrackData>
+RuntimeSequenceStoreSnapshot<TrackData>::RuntimeSequenceStoreSnapshot() = default;
 
-SequenceStoreSnapshot::~SequenceStoreSnapshot() {
+template <typename TrackData>
+RuntimeSequenceStoreSnapshot<TrackData>::~RuntimeSequenceStoreSnapshot() {
   for (auto& [sequenceId, sequence] : sequences) {
     release(sequence);
   }
 }
 
-SequenceStoreSnapshot* SequenceStoreSnapshot::clone() const {
-  auto* result = new SequenceStoreSnapshot();
+template <typename TrackData>
+RuntimeSequenceStoreSnapshot<TrackData>* RuntimeSequenceStoreSnapshot<TrackData>::clone() const {
+  auto* result = new RuntimeSequenceStoreSnapshot<TrackData>();
 
   for (auto& [sequenceId, sequence] : sequences) {
     result->setSequence(sequenceId, sequence);
@@ -229,8 +280,9 @@ SequenceStoreSnapshot* SequenceStoreSnapshot::clone() const {
   return result;
 }
 
-void SequenceStoreSnapshot::setSequence(
-    EntityId sequenceId, SequenceEventListCollection* sequence) {
+template <typename TrackData>
+void RuntimeSequenceStoreSnapshot<TrackData>::setSequence(
+    EntityId sequenceId, RuntimeSequenceTrackCollection<TrackData>* sequence) {
   retain(sequence);
 
   auto existingSequence = sequences.find(sequenceId);
@@ -243,7 +295,8 @@ void SequenceStoreSnapshot::setSequence(
   sequences.insert_or_assign(sequenceId, sequence);
 }
 
-void SequenceStoreSnapshot::removeSequence(EntityId sequenceId) {
+template <typename TrackData>
+void RuntimeSequenceStoreSnapshot<TrackData>::removeSequence(EntityId sequenceId) {
   auto existingSequence = sequences.find(sequenceId);
   if (existingSequence == sequences.end()) {
     return;
@@ -253,7 +306,8 @@ void SequenceStoreSnapshot::removeSequence(EntityId sequenceId) {
   sequences.erase(existingSequence);
 }
 
-void RuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::rt_processSequenceChanges(int bufferSize) {
   auto result = mapUpdateQueue.read();
 
   double playheadStart = -1; // inclusive
@@ -266,10 +320,15 @@ void RuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   // The playhead will never go past loopStartRangeEnd in this block.
   double loopStartRangeBegin = -1;
   double loopStartRangeEnd = -1;
+  bool hasInvalidationWindow = false;
 
-  if (result.has_value()) {
+  auto ensureInvalidationWindow = [&]() {
+    if (hasInvalidationWindow) {
+      return;
+    }
+
     auto& transport = *Engine::getInstance().transport;
-    double advanceAmount = transport.rt_getPlayheadAdvanceAmount(bufferSize);
+    const double advanceAmount = transport.rt_getPlayheadAdvanceAmount(bufferSize);
     playheadStart = transport.rt_playhead;
     playheadEnd = playheadStart + advanceAmount;
 
@@ -277,18 +336,24 @@ void RuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
       loopStartRangeBegin = transport.rt_config->loopStart;
       loopStartRangeEnd = loopStartRangeBegin + advanceAmount;
     }
-  }
+
+    hasInvalidationWindow = true;
+  };
 
   while (result.has_value()) {
     auto* newSnapshot = result.value();
 
-    for (auto& changedTrack : newSnapshot->changedTracks) {
-      rt_applyChangedTrackInvalidation(*newSnapshot,
-          changedTrack,
-          playheadStart,
-          playheadEnd,
-          loopStartRangeBegin,
-          loopStartRangeEnd);
+    if (!newSnapshot->changedTracks.empty()) {
+      ensureInvalidationWindow();
+
+      for (auto& changedTrack : newSnapshot->changedTracks) {
+        rt_applyChangedTrackInvalidation(*newSnapshot,
+            changedTrack,
+            playheadStart,
+            playheadEnd,
+            loopStartRangeBegin,
+            loopStartRangeEnd);
+      }
     }
 
     auto* oldSnapshot = rt_eventLists;
@@ -302,35 +367,52 @@ void RuntimeSequenceStore::rt_processSequenceChanges(int bufferSize) {
   }
 }
 
-const SequenceEventListCollection* RuntimeSequenceStore::getSequenceEventList(
-    EntityId sequenceId) const {
-  auto it = eventLists->sequences.find(sequenceId);
-  if (it == eventLists->sequences.end()) {
+template <typename TrackData>
+const RuntimeSequenceTrackCollection<TrackData>*
+RuntimeCompiledSequenceStore<TrackData>::getSequenceEventList(EntityId sequenceId) const {
+  auto iter = eventLists->sequences.find(sequenceId);
+  if (iter == eventLists->sequences.end()) {
     return nullptr;
   }
 
-  return it->second;
+  return iter->second;
 }
 
-SequenceStoreSnapshot& RuntimeSequenceStore::rt_getEventLists() {
+template <typename TrackData>
+const RuntimeSequenceTrackCollection<TrackData>*
+RuntimeCompiledSequenceStore<TrackData>::getSequence(EntityId sequenceId) const {
+  return getSequenceEventList(sequenceId);
+}
+
+template <typename TrackData>
+RuntimeSequenceStoreSnapshot<TrackData>&
+RuntimeCompiledSequenceStore<TrackData>::rt_getEventLists() {
   return *rt_eventLists;
 }
 
-RuntimeSequenceStore::RuntimeSequenceStore()
+template <typename TrackData>
+RuntimeSequenceStoreSnapshot<TrackData>&
+RuntimeCompiledSequenceStore<TrackData>::rt_getSequences() {
+  return rt_getEventLists();
+}
+
+template <typename TrackData>
+RuntimeCompiledSequenceStore<TrackData>::RuntimeCompiledSequenceStore()
   : clearDeletionQueueTimedCallback(
         juce::TimedCallback([this]() { this->processDeletionQueues(); })) {
-  eventLists = new SequenceStoreSnapshot();
+  eventLists = new RuntimeSequenceStoreSnapshot<TrackData>();
   rt_eventLists = eventLists;
 }
 
 // The audio thread must be stopped before destruction. This drains handoff
 // queues and deletes both main-thread and audio-thread snapshots.
-RuntimeSequenceStore::~RuntimeSequenceStore() {
+template <typename TrackData>
+RuntimeCompiledSequenceStore<TrackData>::~RuntimeCompiledSequenceStore() {
   clearDeletionQueueTimedCallback.stopTimer();
 
   processDeletionQueues();
 
-  auto snapshotsToDelete = std::vector<SequenceStoreSnapshot*>();
+  auto snapshotsToDelete = std::vector<RuntimeSequenceStoreSnapshot<TrackData>*>();
 
   while (auto pendingSnapshot = mapUpdateQueue.read()) {
     addSnapshotForDeletion(snapshotsToDelete, pendingSnapshot.value());
@@ -351,7 +433,8 @@ RuntimeSequenceStore::~RuntimeSequenceStore() {
   rt_eventLists = nullptr;
 }
 
-void RuntimeSequenceStore::processDeletionQueues() {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::processDeletionQueues() {
   auto nextSnapshot = mapDeletionQueue.read();
 
   while (nextSnapshot.has_value()) {
@@ -360,12 +443,14 @@ void RuntimeSequenceStore::processDeletionQueues() {
   }
 }
 
-void RuntimeSequenceStore::registerDeletionTimer() {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::registerDeletionTimer() {
   clearDeletionQueueTimedCallback.startTimer(500);
 }
 
-void RuntimeSequenceStore::addOrUpdateSequence(
-    EntityId sequenceId, const SequenceEventListCollection& sequence) {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::addOrUpdateSequence(
+    EntityId sequenceId, const RuntimeSequenceTrackCollection<TrackData>& sequence) {
   auto* newSnapshot = eventLists->clone();
   auto* newSequence = sequence.clone();
 
@@ -374,7 +459,8 @@ void RuntimeSequenceStore::addOrUpdateSequence(
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void RuntimeSequenceStore::removeSequence(EntityId sequenceId) {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::removeSequence(EntityId sequenceId) {
   if (eventLists->sequences.find(sequenceId) == eventLists->sequences.end()) {
     return;
   }
@@ -385,16 +471,17 @@ void RuntimeSequenceStore::removeSequence(EntityId sequenceId) {
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void RuntimeSequenceStore::addOrUpdateTrackInSequence(
-    EntityId sequenceId, EntityId trackId, const SequenceEventList& track) {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::addOrUpdateTrackInSequence(
+    EntityId sequenceId, EntityId trackId, const TrackData& track) {
   auto* newSnapshot = eventLists->clone();
 
   auto oldSequenceIter = eventLists->sequences.find(sequenceId);
   auto* newSequence = oldSequenceIter != eventLists->sequences.end()
                           ? oldSequenceIter->second->clone()
-                          : new SequenceEventListCollection();
+                          : new RuntimeSequenceTrackCollection<TrackData>();
 
-  newSequence->setTrack(trackId, new SequenceEventList(track));
+  newSequence->setTrack(trackId, new TrackData(track));
   newSnapshot->setSequence(sequenceId, newSequence);
 
   if (!track.invalidationRanges.empty()) {
@@ -408,7 +495,9 @@ void RuntimeSequenceStore::addOrUpdateTrackInSequence(
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void RuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, EntityId trackId) {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::removeTrackFromSequence(
+    EntityId sequenceId, EntityId trackId) {
   auto sequenceIter = eventLists->sequences.find(sequenceId);
   if (sequenceIter == eventLists->sequences.end()) {
     return;
@@ -426,7 +515,8 @@ void RuntimeSequenceStore::removeTrackFromSequence(EntityId sequenceId, EntityId
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void RuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
+template <typename TrackData>
+void RuntimeCompiledSequenceStore<TrackData>::removeTrackFromAllSequences(EntityId trackId) {
   auto* newSnapshot = eventLists->clone();
 
   for (auto& [sequenceId, sequence] : eventLists->sequences) {
@@ -442,12 +532,19 @@ void RuntimeSequenceStore::removeTrackFromAllSequences(EntityId trackId) {
   publishSnapshot(mapUpdateQueue, eventLists, newSnapshot);
 }
 
-void RuntimeSequenceStore::rt_cleanupAfterBlock() {
+template <typename TrackData> void RuntimeCompiledSequenceStore<TrackData>::rt_cleanupAfterBlock() {
   for (auto& [sequenceId, sequence] : rt_eventLists->sequences) {
-    for (auto& [trackId, trackEvents] : sequence->tracks) {
-      trackEvents->rt_invalidationOccurred = false;
+    for (auto& [trackId, trackData] : sequence->tracks) {
+      trackData->rt_invalidationOccurred = false;
     }
   }
 }
+
+template class RuntimeSequenceTrackCollection<SequenceEventList>;
+template class RuntimeSequenceTrackCollection<AutomationSpanList>;
+template class RuntimeSequenceStoreSnapshot<SequenceEventList>;
+template class RuntimeSequenceStoreSnapshot<AutomationSpanList>;
+template class RuntimeCompiledSequenceStore<SequenceEventList>;
+template class RuntimeCompiledSequenceStore<AutomationSpanList>;
 
 } // namespace anthem

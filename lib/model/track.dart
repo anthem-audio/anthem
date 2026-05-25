@@ -205,6 +205,62 @@ abstract class _TrackProcessingModel
        super();
 }
 
+@AnthemModel(serializable: true, generateModelSync: true)
+class TrackAutomationProcessingModel extends _TrackAutomationProcessingModel
+    with
+        _$TrackAutomationProcessingModel,
+        _$TrackAutomationProcessingModelAnthemModelMixin {
+  TrackAutomationProcessingModel()
+    : super(
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
+      );
+
+  TrackAutomationProcessingModel.uninitialized()
+    : super(
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
+      );
+
+  factory TrackAutomationProcessingModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackAutomationProcessingModelAnthemModelMixin.fromJson(json);
+}
+
+abstract class _TrackAutomationProcessingModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
+  /// Sequence automation provider node assigned to this automation lane.
+  @anthemObservable
+  Id? sequenceAutomationProviderNodeId;
+
+  NodeModel? get sequenceAutomationProviderNode =>
+      project.processingGraph.nodes[sequenceAutomationProviderNodeId];
+
+  @anthemObservable
+  AnthemObservableList<DeviceModel> devices;
+
+  /// Generated automation device routing connection IDs.
+  ///
+  /// These connections are derived from [devices] and should be rebuilt rather
+  /// than edited as device-owned graph state.
+  @anthemObservable
+  AnthemObservableList<Id> deviceRoutingConnectionIds;
+
+  TrackModel get track => getFirstAncestorOfType<TrackModel>();
+
+  List<Id> getOwnedNodeIds() {
+    return [
+      sequenceAutomationProviderNodeId,
+      ...devices.expand((device) => device.nodeIds),
+    ].nonNulls.toList();
+  }
+
+  _TrackAutomationProcessingModel({
+    required this.devices,
+    required this.deviceRoutingConnectionIds,
+  }) : sequenceAutomationProviderNodeId = null,
+       super();
+}
+
 @AnthemModel.syncedModel()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
@@ -219,6 +275,9 @@ class TrackModel extends _TrackModel
          processing: type == TrackType.automationLane
              ? null
              : TrackProcessingModel(),
+         automationProcessing: type == TrackType.automationLane
+             ? TrackAutomationProcessingModel()
+             : null,
        );
 
   TrackModel.uninitialized()
@@ -229,6 +288,7 @@ class TrackModel extends _TrackModel
         type: .normal,
         automationTarget: null,
         processing: null,
+        automationProcessing: null,
       );
 
   factory TrackModel.fromJson(Map<String, dynamic> json) =>
@@ -257,8 +317,8 @@ abstract class _TrackModel
 
   /// The type of this track.
   ///
-  /// Normal and group tracks participate in processing. Automation lanes are
-  /// owned by another track and do not own devices or processing graph nodes.
+  /// Normal and group tracks participate in audio/event processing. Automation
+  /// lanes own automation processing instead.
   @anthemObservable
   TrackType type;
 
@@ -303,6 +363,13 @@ abstract class _TrackModel
   @anthemObservable
   TrackProcessingModel? processing;
 
+  /// Automation/control processing state for automation lanes.
+  ///
+  /// Normal and group tracks deliberately leave this null.
+  @anthemObservable
+  @hideFromCpp
+  TrackAutomationProcessingModel? automationProcessing;
+
   /// Parameter target represented by this automation lane.
   ///
   /// Only automation lanes should set this. It is UI/project data for now and
@@ -313,6 +380,7 @@ abstract class _TrackModel
 
   bool get isAutomationLane => type == TrackType.automationLane;
   bool get hasProcessing => processing != null;
+  bool get hasAutomationProcessing => automationProcessing != null;
 
   TrackProcessingModel get requireProcessing {
     final processing = this.processing;
@@ -321,6 +389,15 @@ abstract class _TrackModel
     }
 
     return processing;
+  }
+
+  TrackAutomationProcessingModel get requireAutomationProcessing {
+    final automationProcessing = this.automationProcessing;
+    if (automationProcessing == null) {
+      throw StateError('Track $id does not have automation processing state.');
+    }
+
+    return automationProcessing;
   }
 
   void createAndRegisterNodes(
@@ -341,5 +418,6 @@ abstract class _TrackModel
     required this.type,
     required this.automationTarget,
     required this.processing,
+    required this.automationProcessing,
   }) : super();
 }

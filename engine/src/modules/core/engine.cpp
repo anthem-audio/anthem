@@ -53,10 +53,13 @@ Engine::Engine() {
 }
 
 void Engine::initialize() {
-  this->graphProcessor = std::make_unique<GraphProcessor>();
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
+  this->automationSequenceStore = std::make_unique<RuntimeAutomationSequenceStore>();
   transport = std::make_unique<Transport>(
       createTransportProjectView(*this), createTransportClock(audioDeviceManager));
+  this->engineRuntimeServices =
+      std::make_unique<EngineRuntimeServices>(*transport, *sequenceStore, *automationSequenceStore);
+  this->graphProcessor = std::make_unique<GraphProcessor>(*engineRuntimeServices);
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
 
 #ifndef __EMSCRIPTEN__
@@ -193,7 +196,7 @@ void Engine::publishProcessingGraph() {
   auto& processingGraph = *project->processingGraph();
 
   auto runtimeGraph = RuntimeGraph::fromProcessingGraph(processingGraph,
-      graphProcessor->getRtServices(),
+      graphProcessor->getEngineRuntimeServices(),
       GraphBufferLayout{
           .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
           .blockSize = currentDevice->getCurrentBufferSizeSamples(),

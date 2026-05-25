@@ -20,8 +20,8 @@
 #include "graph_process_context.h"
 
 #include "modules/core/constants.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/model/node.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <stdexcept>
@@ -29,8 +29,8 @@
 namespace anthem {
 
 GraphProcessContext::GraphProcessContext(
-    GraphRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout)
-  : rt_services(&rtServices) {
+    EngineRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout)
+  : rt_engineRuntimeServices(&rtServices) {
   blockSize = bufferLayout.blockSize;
   numAudioChannels = bufferLayout.numAudioChannels;
 }
@@ -117,12 +117,17 @@ std::unique_ptr<EventBuffer>& GraphProcessContext::getEventBuffer(size_t index) 
 }
 
 LiveNoteId GraphProcessContext::rt_allocateLiveNoteId() {
-  jassert(rt_services != nullptr);
-  if (rt_services == nullptr) {
+  jassert(rt_engineRuntimeServices != nullptr);
+  if (rt_engineRuntimeServices == nullptr) {
     return invalidLiveNoteId;
   }
 
-  return rt_services->rt_allocateLiveNoteId();
+  return rt_engineRuntimeServices->rt_allocateLiveNoteId();
+}
+
+EngineRuntimeServices& GraphProcessContext::rt_getEngineRuntimeServices() {
+  jassert(rt_engineRuntimeServices != nullptr);
+  return *rt_engineRuntimeServices;
 }
 
 void GraphProcessContext::cleanup() {

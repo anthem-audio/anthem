@@ -30,6 +30,7 @@ import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/simple_midi_generator.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
@@ -438,6 +439,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     GainProcessorModel,
     LiveEventProviderProcessorModel,
     MasterOutputProcessorModel,
+    SequenceAutomationProviderProcessorModel,
     SequenceNoteProviderProcessorModel,
     SimpleMidiGeneratorProcessorModel,
     SimpleVolumeLfoProcessorModel,

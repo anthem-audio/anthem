@@ -19,9 +19,9 @@
 
 #pragma once
 
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/live_event_provider.h"
 
 #include <juce_core/juce_core.h>
@@ -151,7 +151,7 @@ public:
     beginTest("Live event provider drains queued events in FIFO order");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 0,
@@ -189,7 +189,7 @@ public:
     beginTest("Tracked live note-offs use the original live ID and note shape");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 0,
@@ -225,7 +225,7 @@ public:
     beginTest("Unmatched live note-offs pass through with an invalid live ID");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 0,
@@ -252,7 +252,7 @@ public:
     beginTest("Non-note live events pass through with invalid live IDs");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 0,
@@ -278,7 +278,7 @@ public:
     beginTest("Tracked note overflow emits note-ons with invalid live IDs");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 0,
@@ -339,7 +339,7 @@ public:
     beginTest("Input queue overflow reports rejected events");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 0,

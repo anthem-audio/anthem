@@ -20,9 +20,9 @@
 #pragma once
 
 #include "modules/core/constants.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
 
 #include <juce_core/juce_core.h>
@@ -81,7 +81,7 @@ public:
   void testBuffersUseExplicitLayout() {
     beginTest("Graph-owned buffers use the explicit compile-time layout");
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -111,7 +111,7 @@ public:
   void testBufferIndicesRemainStableAndMonotonic() {
     beginTest("Graph-owned buffer indices remain stable as buffers are appended");
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -179,7 +179,7 @@ public:
   void testReserveDoesNotAllocateBuffersEagerly() {
     beginTest("reserve only reserves capacity and does not allocate graph buffers eagerly");
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -225,7 +225,7 @@ public:
         0.25,
         graph_test_helpers::makeParameterConfig(101, 0.25)));
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -262,13 +262,13 @@ public:
   }
 
   void testMultipleNodeContextsShareGraphOwnedServices() {
-    beginTest("Multiple node contexts share the same graph-owned runtime services but not per-port "
+    beginTest("Multiple node contexts share the same engine runtime services but not per-port "
               "buffers");
 
     auto firstNode = makeFullyBoundNode(10);
     auto secondNode = makeFullyBoundNode(20);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -313,7 +313,7 @@ public:
 
     auto node = makeEventHeavyNode(10);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,

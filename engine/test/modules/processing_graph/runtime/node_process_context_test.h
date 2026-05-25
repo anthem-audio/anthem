@@ -20,9 +20,9 @@
 #pragma once
 
 #include "modules/core/constants.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 
 #include <juce_core/juce_core.h>
 
@@ -83,7 +83,7 @@ public:
 
     auto node = makeFullyBoundNode(10);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -124,7 +124,7 @@ public:
 
     auto node = makeFullyBoundNode(10);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -143,7 +143,7 @@ public:
         "One control input should create one parameter binding.");
     expectEquals(context.rt_allocateLiveNoteId(),
         0,
-        "Live note allocation should pass through the graph runtime services.");
+        "Live note allocation should pass through the engine runtime services.");
     expectEquals(context.rt_allocateLiveNoteId(),
         1,
         "Live note allocation should remain monotonic across calls.");
@@ -156,7 +156,7 @@ public:
 
     auto node = makeFullyBoundNode(10);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -211,7 +211,7 @@ public:
 
     auto node = makeFullyBoundNode(10);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,

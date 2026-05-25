@@ -25,6 +25,7 @@ import 'package:anthem/engine_api/messages/messages.dart'
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -54,6 +55,11 @@ class _RunningEngine extends Mock implements Engine {
 Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
+}
+
+Future<void> _waitForAutomationCompileDebounce() async {
+  await Future<void>.delayed(const Duration(milliseconds: 125));
+  await _flushMicrotasks();
 }
 
 ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
@@ -261,6 +267,118 @@ void main() {
             invalidationRanges: anyNamed('invalidationRanges'),
           ),
         );
+      },
+    );
+
+    test(
+      'rate-limits automation point changes and keeps trailing compile',
+      () async {
+        final sequencerApi = _MockSequencerApi();
+        final runningEngine = _RunningEngine(sequencerApi);
+        final project = ProjectModel.create()..engine = runningEngine;
+
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]!;
+
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Automation Pattern',
+        );
+        final firstPoint = AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 10,
+          value: 0.25,
+        );
+        final secondPoint = AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 30,
+          value: 0.75,
+        );
+        pattern.automation.points.addAll([firstPoint, secondPoint]);
+        project.sequence.patterns[pattern.id] = pattern;
+
+        final trackId = getId();
+        final clip = _createClipWithTimeView(
+          id: getId(),
+          patternId: pattern.id,
+          trackId: trackId,
+          offset: 100,
+          start: 0,
+          end: 96,
+        );
+        arrangement.clips[clip.id] = clip;
+
+        await _flushMicrotasks();
+        clearInteractions(sequencerApi);
+
+        firstPoint.value = 0.3;
+        firstPoint.value = 0.4;
+        firstPoint.value = 0.5;
+
+        await _flushMicrotasks();
+
+        final patternCompileVerification = verify(
+          sequencerApi.compilePattern(
+            pattern.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        patternCompileVerification.called(1);
+
+        final patternCompileCaptured = patternCompileVerification.captured;
+        final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
+
+        expect(patternTracksToRebuild, equals(<Id>[-1]));
+
+        final arrangementCompileVerification = verify(
+          sequencerApi.compileArrangement(
+            arrangement.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        arrangementCompileVerification.called(1);
+
+        final arrangementCompileCaptured =
+            arrangementCompileVerification.captured;
+        final arrangementTracksToRebuild =
+            arrangementCompileCaptured[0] as List<Id>;
+
+        expect(arrangementTracksToRebuild, equals(<Id>[trackId]));
+
+        clearInteractions(sequencerApi);
+
+        await _waitForAutomationCompileDebounce();
+
+        final trailingPatternCompileVerification = verify(
+          sequencerApi.compilePattern(
+            pattern.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        trailingPatternCompileVerification.called(1);
+
+        final trailingPatternCompileCaptured =
+            trailingPatternCompileVerification.captured;
+        final trailingPatternTracksToRebuild =
+            trailingPatternCompileCaptured[0] as List<Id>;
+
+        expect(trailingPatternTracksToRebuild, equals(<Id>[-1]));
+
+        final trailingArrangementCompileVerification = verify(
+          sequencerApi.compileArrangement(
+            arrangement.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        trailingArrangementCompileVerification.called(1);
+
+        final trailingArrangementCompileCaptured =
+            trailingArrangementCompileVerification.captured;
+        final trailingArrangementTracksToRebuild =
+            trailingArrangementCompileCaptured[0] as List<Id>;
+
+        expect(trailingArrangementTracksToRebuild, equals(<Id>[trackId]));
       },
     );
   });

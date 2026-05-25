@@ -288,4 +288,9 @@ LiveNoteId NodeProcessContext::rt_allocateLiveNoteId() {
   return graphProcessContext->rt_allocateLiveNoteId();
 }
 
+EngineRuntimeServices& NodeProcessContext::rt_getEngineRuntimeServices() {
+  jassert(graphProcessContext != nullptr);
+  return graphProcessContext->rt_getEngineRuntimeServices();
+}
+
 } // namespace anthem

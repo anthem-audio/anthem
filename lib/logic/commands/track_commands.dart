@@ -20,7 +20,11 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -45,6 +49,7 @@ class AutomationLaneAddRemoveCommand extends Command {
   final Id parentTrackId;
   final TrackModel lane;
   final int index;
+  ProcessingGraphFragment? _removedGraphFragment;
 
   AutomationLaneAddRemoveCommand.add({
     required ProjectModel project,
@@ -106,9 +111,20 @@ class AutomationLaneAddRemoveCommand extends Command {
         .toInt();
     parentTrack.automationLanes.insert(insertIndex, lane.id);
 
+    final processingGraph = _tryGetProjectProcessingGraph(project);
+    if (_removedGraphFragment != null &&
+        !_removedGraphFragment!.isEmpty &&
+        processingGraph != null) {
+      processingGraph.restoreGraphFragment(_removedGraphFragment!);
+    } else {
+      _createAutomationProviderGraph(project);
+    }
+
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.registerTrack(lane.id);
+
+    _publishProcessingGraphIfEngineRunning(project);
   }
 
   void _remove(ProjectModel project) {
@@ -122,11 +138,89 @@ class AutomationLaneAddRemoveCommand extends Command {
     ).arrangerViewModel.unregisterTrack(lane.id);
 
     parentTrack.automationLanes.remove(lane.id);
+
+    final ownedNodeIds = lane.automationProcessing?.getOwnedNodeIds() ?? [];
+    if (ownedNodeIds.isNotEmpty) {
+      final processingGraph = _tryGetProjectProcessingGraph(project);
+      if (processingGraph != null) {
+        _removedGraphFragment = processingGraph.removeNodesAndCapture(
+          ownedNodeIds,
+        );
+      }
+    }
+
     project.tracks.remove(lane.id);
 
     if (project.engine.isRunning) {
       project.engine.sequencerApi.cleanUpTrack(lane.id);
     }
+
+    _publishProcessingGraphIfEngineRunning(project);
+  }
+
+  void _createAutomationProviderGraph(ProjectModel project) {
+    final target = lane.automationTarget;
+    if (target == null) {
+      return;
+    }
+
+    final processingGraph = _tryGetProjectProcessingGraph(project);
+    if (processingGraph == null) {
+      return;
+    }
+
+    final destinationNode = processingGraph.nodes[target.nodeId];
+    if (destinationNode == null) {
+      return;
+    }
+
+    try {
+      destinationNode.getInputPortById(NodePortDataType.control, target.portId);
+    } catch (_) {
+      return;
+    }
+
+    final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+    final providerNode = SequenceAutomationProviderProcessorModel.create(
+      idAllocator: idAllocator,
+      trackId: lane.id,
+      emptyValue: _getAutomationTargetCurrentValue(
+        destinationNode: destinationNode,
+        portId: target.portId,
+      ),
+    ).createNode();
+    providerNode.owner = NodeOwnerModel(trackId: lane.id);
+    lane.requireAutomationProcessing.sequenceAutomationProviderNodeId =
+        providerNode.id;
+
+    processingGraph.addNode(providerNode);
+    processingGraph.addConnection(
+      NodeConnectionModel(
+        idAllocator: idAllocator,
+        sourceNodeId: providerNode.id,
+        sourcePortId:
+            SequenceAutomationProviderProcessorModel.controlOutputPortId,
+        destinationNodeId: target.nodeId,
+        destinationPortId: target.portId,
+        dataType: NodePortDataType.control,
+      ),
+    );
+  }
+
+  double _getAutomationTargetCurrentValue({
+    required NodeModel destinationNode,
+    required int portId,
+  }) {
+    final port = destinationNode.getInputPortById(
+      NodePortDataType.control,
+      portId,
+    );
+
+    return (port.parameterValue ??
+            port.config.parameterConfig?.defaultValue ??
+            0)
+        .clamp(0.0, 1.0)
+        .toDouble();
   }
 }
 
@@ -500,7 +594,10 @@ class TrackAddRemoveCommand extends Command {
       _tracks.map((t) => t.trackModel.id),
     );
 
-    final nodeIdsToRemove = _collectTrackNodeIdsForDescriptors(_tracks);
+    final nodeIdsToRemove = _collectTrackNodeIdsForDescriptors(
+      project,
+      _tracks,
+    );
     if (nodeIdsToRemove.isNotEmpty) {
       final removedNodesFragment = project.processingGraph
           .removeNodesAndCapture(nodeIdsToRemove);
@@ -527,7 +624,49 @@ Id? _tryGetTrackDbMeterNodeId(TrackModel track) {
   return track.processing?.dbMeterNodeId;
 }
 
+void _publishProcessingGraphIfEngineRunning(ProjectModel project) {
+  if (!project.engine.isRunning) {
+    return;
+  }
+
+  ServiceRegistry.forProject(
+    project.id,
+  ).projectController.publishProcessingGraph();
+}
+
+ProcessingGraphModel? _tryGetProjectProcessingGraph(ProjectModel project) {
+  try {
+    return project.processingGraph;
+  } on Error catch (error) {
+    if (error.toString().startsWith('LateInitializationError')) {
+      return null;
+    }
+    rethrow;
+  }
+}
+
+Set<Id> _collectAutomationLaneNodeIdsForTrack(
+  ProjectModel project,
+  TrackModel track,
+) {
+  final nodeIds = <Id>{};
+
+  for (final laneId in track.automationLanes) {
+    final lane = project.tracks[laneId];
+    if (lane != null) {
+      nodeIds.addAll(lane.automationProcessing?.getOwnedNodeIds() ?? []);
+    }
+  }
+
+  if (track.isAutomationLane) {
+    nodeIds.addAll(track.automationProcessing?.getOwnedNodeIds() ?? []);
+  }
+
+  return nodeIds;
+}
+
 Set<Id> _collectTrackNodeIdsForDescriptors(
+  ProjectModel project,
   Iterable<_InternalTrackAddRemoveDescriptor> descriptors,
 ) {
   final nodeIds = <Id>{};
@@ -543,6 +682,7 @@ Set<Id> _collectTrackNodeIdsForDescriptors(
       if (processing != null) {
         nodeIds.addAll(processing.getOwnedNodeIds());
       }
+      nodeIds.addAll(_collectAutomationLaneNodeIdsForTrack(project, track));
     }
   }
 
@@ -866,7 +1006,12 @@ class TrackGroupUngroupCommand extends Command {
         .nonNulls
         .toList(growable: false);
     _groupTrackGraphFragment = project.processingGraph.captureNodes(
-      _newGroupTrack.requireProcessing.getOwnedNodeIds(),
+      _newGroupTrack.requireProcessing.getOwnedNodeIds().followedBy(
+        _newGroupAutomationLanes.expand(
+          (lane) =>
+              lane.automationProcessing?.getOwnedNodeIds() ?? Iterable.empty(),
+        ),
+      ),
     );
     _parentTrack = track.parentTrackId;
 

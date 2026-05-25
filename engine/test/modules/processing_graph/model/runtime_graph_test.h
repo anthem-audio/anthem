@@ -19,11 +19,11 @@
 
 #pragma once
 
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/executor/graph_executor.h"
 #include "modules/processing_graph/executor/graph_executor_shared.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/model/runtime_graph.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <atomic>
@@ -188,7 +188,7 @@ class RuntimeGraphTest : public juce::UnitTest {
   }
 
   static std::unique_ptr<RuntimeGraph> buildRuntimeGraph(
-      ProcessingGraphModel& graph, GraphRuntimeServices& rtServices) {
+      ProcessingGraphModel& graph, EngineRuntimeServices& rtServices) {
     return RuntimeGraph::fromProcessingGraph(graph,
         rtServices,
         GraphBufferLayout{
@@ -198,7 +198,7 @@ class RuntimeGraphTest : public juce::UnitTest {
   }
 
   static bool buildThrowsRuntimeError(ProcessingGraphModel& graph) {
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
 
     try {
       (void)buildRuntimeGraph(graph, rtServices);
@@ -254,7 +254,7 @@ public:
     addConnection(*graph, 100, 1, 3);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.size()), 3, "All graph nodes should copy.");
@@ -313,7 +313,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceNode = runtimeGraph->nodes.at(1);
@@ -351,7 +351,7 @@ public:
     addGraphNode(*graph, 2);
     addConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
@@ -391,7 +391,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceOutputBuffer =
@@ -432,7 +432,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 1, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
@@ -461,7 +461,7 @@ public:
     addGraphNode(*graph, 1);
     addGraphNode(*graph, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& firstInputBuffer =
@@ -491,7 +491,7 @@ public:
     addEventGraphNode(*graph, 2);
     addEventConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceOutputBuffer =
@@ -526,7 +526,7 @@ public:
     addEventConnection(*graph, 100, 1, 3);
     addEventConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& destinationNode = runtimeGraph->nodes.at(3);
@@ -553,7 +553,7 @@ public:
     addConnection(*graph, 100, 1, 3);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     for (auto& [_, runtimeNode] : runtimeGraph->nodes) {
@@ -601,7 +601,7 @@ public:
     addGraphNode(*graph, 2);
     addConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceOutputBuffer =
@@ -636,7 +636,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceOutputBuffer =
@@ -677,7 +677,7 @@ public:
     addControlGraphNode(*graph, 2, true);
     addControlConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceOutputBuffer = runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
@@ -709,7 +709,7 @@ public:
     auto graph = graph_test_helpers::makeProcessingGraph();
     addControlGraphNode(*graph, 1, true);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto* context = runtimeGraph->nodes.at(1).nodeProcessContext;
@@ -734,7 +734,7 @@ public:
     addControlConnection(*graph, 100, 1, 3);
     addControlConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& firstSourceOutputBuffer =
@@ -781,7 +781,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& firstOutputBuffer =
@@ -820,7 +820,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 3);
@@ -841,7 +841,7 @@ public:
     addConnection(*graph, 102, 2, 4);
     addConnection(*graph, 103, 3, 4);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 5);
@@ -863,7 +863,7 @@ public:
     addConnection(*graph, 101, 3, 4);
     addConnection(*graph, 102, 4, 5);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 2);

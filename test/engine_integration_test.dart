@@ -440,7 +440,9 @@ void main() {
       final trackMap = state['tracks'] as Map<String, dynamic>;
       final syncedInstrumentTrack =
           trackMap[instrumentTrackId.toString()] as Map<String, dynamic>;
-      final syncedDevices = syncedInstrumentTrack['devices'] as List<dynamic>;
+      final syncedProcessing =
+          syncedInstrumentTrack['processing'] as Map<String, dynamic>;
+      final syncedDevices = syncedProcessing['devices'] as List<dynamic>;
       expect(
         syncedDevices,
         hasLength(1),

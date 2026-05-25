@@ -40,6 +40,7 @@
 namespace anthem {
 
 class GraphProcessContext;
+class EngineRuntimeServices;
 
 class NodeProcessContext {
 public:
@@ -179,6 +180,7 @@ public:
   }
 
   LiveNoteId rt_allocateLiveNoteId();
+  EngineRuntimeServices& rt_getEngineRuntimeServices();
 };
 
 } // namespace anthem

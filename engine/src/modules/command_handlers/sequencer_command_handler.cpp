@@ -20,6 +20,7 @@
 #include "sequencer_command_handler.h"
 
 #include "modules/core/engine.h"
+#include "modules/sequencer/compiler/automation_sequence_compiler.h"
 #include "modules/sequencer/compiler/sequence_compiler.h"
 
 namespace anthem {
@@ -44,9 +45,13 @@ std::optional<Response> handleSequencerCommand(Request& request) {
         SequenceCompiler::compilePattern(compileSequenceRequest.patternId.value(),
             *compileSequenceRequest.tracksToRebuild.value(),
             invalidationRanges);
+
+        AutomationSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value(),
+            *compileSequenceRequest.tracksToRebuild.value());
       } else {
         // Compile the entire pattern
         SequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
+        AutomationSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
       }
 
       if (Engine::getInstance().transport->config.activeSequenceId ==
@@ -70,9 +75,14 @@ std::optional<Response> handleSequencerCommand(Request& request) {
         SequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value(),
             *compileSequenceRequest.tracksToRebuild.value(),
             invalidationRanges);
+
+        AutomationSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value(),
+            *compileSequenceRequest.tracksToRebuild.value());
       } else {
         // Compile the entire arrangement
         SequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());
+        AutomationSequenceCompiler::compileArrangement(
+            compileSequenceRequest.arrangementId.value());
       }
 
       if (Engine::getInstance().transport->config.activeSequenceId ==
@@ -86,6 +96,7 @@ std::optional<Response> handleSequencerCommand(Request& request) {
     auto& removeTrackRequest = rfl::get<RemoveTrackRequest>(request.variant());
 
     SequenceCompiler::cleanUpTrack(removeTrackRequest.trackId);
+    AutomationSequenceCompiler::cleanUpTrack(removeTrackRequest.trackId);
   } else if (rfl::holds_alternative<PlayheadJumpRequest>(request.variant())) {
     auto& playheadJumpRequest = rfl::get<PlayheadJumpRequest>(request.variant());
 

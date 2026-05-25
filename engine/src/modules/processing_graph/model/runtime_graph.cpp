@@ -1089,7 +1089,7 @@ size_t getAndSetPriority(RuntimeNode& node) {
 
 std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
     ProcessingGraphModel& processingGraph,
-    GraphRuntimeServices& rtServices,
+    EngineRuntimeServices& rtServices,
     const GraphBufferLayout& bufferLayout) {
   auto& graphNodes = *processingGraph.nodes();
   auto& graphConnections = *processingGraph.connections();

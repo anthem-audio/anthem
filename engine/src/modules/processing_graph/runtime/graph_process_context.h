@@ -33,7 +33,7 @@
 namespace anthem {
 
 class Node;
-class GraphRuntimeServices;
+class EngineRuntimeServices;
 
 struct GraphBufferLayout {
   int numAudioChannels = 0;
@@ -45,14 +45,13 @@ struct GraphBufferLayout {
 //
 // This is the storage owner for a published graph's contiguous runtime state.
 // Node contexts are created through this class and act as lightweight views
-// into the buffers and services owned here.
+// into the buffers owned here and the engine-level services referenced here.
 class GraphProcessContext {
 private:
   JUCE_LEAK_DETECTOR(GraphProcessContext)
 
-  // Long-lived runtime services that are shared across published graphs and
-  // must remain stable across graph publishing.
-  GraphRuntimeServices* rt_services = nullptr;
+  // App-level real-time services shared across published graphs.
+  EngineRuntimeServices* rt_engineRuntimeServices = nullptr;
 
   // The current device layout used when allocating audio and control buffers.
   int numAudioChannels = 0;
@@ -69,7 +68,7 @@ private:
   std::vector<std::unique_ptr<NodeProcessContext>> nodeProcessContexts;
 public:
   explicit GraphProcessContext(
-      GraphRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout);
+      EngineRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout);
   ~GraphProcessContext();
 
   // Reserves capacity for all graph-owned runtime objects before node contexts
@@ -102,6 +101,8 @@ public:
 
   // Allocates a live note ID using the shared runtime service layer.
   LiveNoteId rt_allocateLiveNoteId();
+
+  EngineRuntimeServices& rt_getEngineRuntimeServices();
 
   // Gives owned node contexts a chance to release any non-RAII runtime state
   // before this graph context is destroyed.

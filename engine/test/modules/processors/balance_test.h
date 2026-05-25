@@ -19,9 +19,9 @@
 
 #pragma once
 
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/balance.h"
 
 #include <array>
@@ -57,7 +57,7 @@ public:
     beginTest("Balance processing applies the expected stereo gains");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = channelCount,

@@ -34,6 +34,7 @@
 #include "messages/messages.h"
 #include "modules/core/audio_callback.h"
 #include "modules/core/command_handler.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/processing_graph/graph_processor.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
@@ -81,9 +82,7 @@ public:
   // The sequence store stores the compiled sequences. It is used by the
   // sequencer to get the compiled sequences for playback.
   std::unique_ptr<RuntimeSequenceStore> sequenceStore;
-
-  // Executes the processing graph on the audio thread.
-  std::unique_ptr<GraphProcessor> graphProcessor;
+  std::unique_ptr<RuntimeAutomationSequenceStore> automationSequenceStore;
 
   // JUCE class for managing audio devices.
   //
@@ -98,6 +97,13 @@ public:
   // - The project tempo
   // - The current playhead reset point and loop points
   std::unique_ptr<Transport> transport;
+
+  // App-level services that processors may read on the audio thread without
+  // reaching through the engine singleton.
+  std::unique_ptr<EngineRuntimeServices> engineRuntimeServices;
+
+  // Executes the processing graph on the audio thread.
+  std::unique_ptr<GraphProcessor> graphProcessor;
 
   // Class for coordinating global visualization that is sent back to the UI,
   // such as CPU burden and transport location.

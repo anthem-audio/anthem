@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -45,7 +45,7 @@ class CompileSequenceRequest extends Request {
   List<Id>? tracksToRebuild;
 
   /// If specified, these are the ranges of the sequence that are no longer
-  /// valid.
+  /// valid for note playback.
   ///
   /// "Valid" in this context means that the data within this range is changed
   /// and can no longer be relied on for playback. For example, if an instrument
@@ -59,6 +59,8 @@ class CompileSequenceRequest extends Request {
   /// equivalent) to all tracks that were rebuilt.
   ///
   /// This should not be defined unless [tracksToRebuild] is also defined.
+  /// [tracksToRebuild] may be used without this when rebuilding changed data
+  /// does not require note invalidation.
   List<InvalidationRange>? invalidationRanges;
 
   /// The pattern ID to compile.

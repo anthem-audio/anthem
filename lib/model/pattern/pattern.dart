@@ -35,6 +35,7 @@ import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
 import 'automation_lane.dart';
+import 'automation_point.dart';
 import 'note.dart';
 
 part 'pattern.g.dart';
@@ -184,6 +185,17 @@ class PatternModel extends _PatternModel
 
       onChange((b) => b.automation.withDescendants, (e) {
         _clipAutoWidthUpdateAction.execute();
+      });
+
+      onChange((b) => b.automation.points.anyElement, (e) {
+        _recompileOnAutomationPointsAddedOrRemoved(
+          e.operation.oldValue as AutomationPointModel?,
+          e.operation.newValue as AutomationPointModel?,
+        );
+      });
+
+      onChange((b) => b.automation.points.anyElement.anyField, (e) {
+        _recompileOnAutomationPointFieldChanged(e);
       });
 
       // When the pattern title is changed, we need to update the clip title

@@ -26,6 +26,7 @@
 #include "modules/processors/gain.h"
 #include "modules/processors/live_event_provider.h"
 #include "modules/processors/master_output.h"
+#include "modules/processors/sequence_automation_provider.h"
 #include "modules/processors/sequence_note_provider.h"
 #include "modules/processors/simple_midi_generator.h"
 #include "modules/processors/simple_volume_lfo.h"

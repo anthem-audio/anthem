@@ -20,10 +20,10 @@
 #pragma once
 
 #include "generated/lib/engine_api/messages/messages.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/processors/gain.h"
 
@@ -146,7 +146,7 @@ public:
 
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
@@ -179,7 +179,7 @@ public:
 
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,

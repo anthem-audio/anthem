@@ -32,7 +32,7 @@ class AudioIODevice;
 namespace anthem {
 
 class GraphExecutor;
-class GraphRuntimeServices;
+class EngineRuntimeServices;
 
 class GraphProcessor {
 private:
@@ -50,10 +50,10 @@ private:
   RingBuffer<RuntimeGraphHandoff*, 512> retiredRuntimeGraphHandoffsQueue;
 
   std::unique_ptr<GraphExecutor> executor;
-  std::unique_ptr<GraphRuntimeServices> rt_services;
+  EngineRuntimeServices* rt_engineRuntimeServices = nullptr;
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
-  GraphProcessor();
+  explicit GraphProcessor(EngineRuntimeServices& engineRuntimeServices);
   ~GraphProcessor();
 
   void prepareForAudioDevice(juce::AudioIODevice* device);
@@ -69,7 +69,7 @@ public:
   // Processes the active runtime graph on the audio thread.
   void rt_process(int numSamples);
 
-  GraphRuntimeServices& getRtServices();
+  EngineRuntimeServices& getEngineRuntimeServices();
   void resetRtServices();
 
   // Destroys retired runtime graphs on the main thread.
