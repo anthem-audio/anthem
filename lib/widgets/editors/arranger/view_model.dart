@@ -539,14 +539,17 @@ class TrackPositionAndSize {
   Id? tryTrackIndexToId(int index) => _trackIndexToId[index];
   ArrangerRow rowAtIndex(int index) => _rowIndexToRow[index]!;
   ({int rowIndex, double fraction, ArrangerRow row})? rowAtPosition(
-    double yPosition,
-  ) {
+    double yPosition, {
+    bool includeBorder = false,
+  }) {
     for (int i = 0; i < _cache.length ~/ 2; i++) {
       final trackPosition = _cache[i * 2 + 1];
       final trackHeight = _cache[i * 2];
+      final trackBottom = trackPosition + trackHeight;
+      // The last pixel is the divider between rows.
+      final hitBottom = includeBorder ? trackBottom : trackBottom - 1;
 
-      if (yPosition >= trackPosition &&
-          yPosition <= trackPosition + trackHeight) {
+      if (yPosition >= trackPosition && yPosition < hitBottom) {
         return (
           rowIndex: i,
           fraction: (yPosition - trackPosition) / trackHeight,

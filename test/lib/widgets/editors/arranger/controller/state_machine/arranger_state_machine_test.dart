@@ -404,6 +404,55 @@ void main() {
       },
     );
 
+    test('hover over clip-adjacent divider does not show cursor location', () {
+      final trackPosition = fixture.viewModel.trackPositionCalculator
+          .getTrackPosition(0);
+      final trackHeight = fixture.viewModel.trackPositionCalculator
+          .getTrackHeight(0);
+      final dividerY = trackPosition + trackHeight - 1;
+
+      fixture.viewModel.visibleClips.add(
+        rect: Rect.fromLTRB(110, trackPosition, 150, dividerY),
+        metadata: _ClipIds.underCursor,
+      );
+
+      expect(
+        fixture.viewModel.trackPositionCalculator.rowAtPosition(dividerY),
+        isNull,
+      );
+      final borderIncludedHit = fixture.viewModel.trackPositionCalculator
+          .rowAtPosition(dividerY, includeBorder: true);
+      expect(borderIncludedHit, isNotNull);
+      expect(borderIncludedHit!.rowIndex, 0);
+
+      fixture.hover(Offset(120, dividerY - 1));
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
+      expect(fixture.viewModel.hoveredClip, _ClipIds.underCursor);
+
+      fixture.hover(Offset(120, dividerY));
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
+      expect(fixture.viewModel.hoveredClip, isNull);
+    });
+
+    test('hover on first pixel of next row uses next row', () {
+      final nextTrackPosition = fixture.viewModel.trackPositionCalculator
+          .getTrackPosition(1);
+
+      final borderIncludedHit = fixture.viewModel.trackPositionCalculator
+          .rowAtPosition(nextTrackPosition, includeBorder: true);
+      expect(borderIncludedHit, isNotNull);
+      expect(borderIncludedHit!.rowIndex, 1);
+
+      fixture.hover(Offset(120, nextTrackPosition));
+
+      final cursorLocation = fixture.viewModel.hoverIndicatorPosition;
+      expect(cursorLocation, isNotNull);
+      expect(
+        _trackIdForRowId(fixture.viewModel, cursorLocation!.rowId),
+        _TrackIds.b,
+      );
+    });
+
     test('hover over automation clip content shows automation handles', () {
       final (:clip, :pattern) = addVisibleAutomationClip();
 
