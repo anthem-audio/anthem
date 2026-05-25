@@ -75,21 +75,54 @@ class PianoRollPointerContext {
   final Offset localPosition;
   final double key;
   final double offset;
-  final PianoRollRenderedNoteRef? noteUnderCursor;
-  final PianoRollRenderedNoteRef? resizeHandleUnderCursor;
+  final PianoRollPointerTarget target;
 
   const PianoRollPointerContext({
     required this.localPosition,
     required this.key,
     required this.offset,
-    required this.noteUnderCursor,
-    required this.resizeHandleUnderCursor,
+    required this.target,
   });
 
-  Id? get realNoteUnderCursorId =>
-      noteUnderCursor?.realNoteId ?? resizeHandleUnderCursor?.realNoteId;
+  Id? get targetRealNoteId => target.realNoteId;
 
-  bool get isOverResizeHandle => resizeHandleUnderCursor?.realNoteId != null;
+  bool get isResizeHandleTarget => target.isResizeHandle;
+}
+
+sealed class PianoRollPointerTarget {
+  const PianoRollPointerTarget();
+
+  Id? get realNoteId => null;
+  bool get isResizeHandle => false;
+}
+
+class PianoRollEmptyPointerTarget extends PianoRollPointerTarget {
+  const PianoRollEmptyPointerTarget();
+}
+
+class PianoRollNotePointerTarget extends PianoRollPointerTarget {
+  final PianoRollRenderedNoteRef note;
+
+  const PianoRollNotePointerTarget({required this.note});
+
+  @override
+  Id? get realNoteId => note.realNoteId;
+}
+
+class PianoRollResizeHandlePointerTarget extends PianoRollPointerTarget {
+  final PianoRollRenderedNoteRef resizeHandle;
+  final PianoRollRenderedNoteRef? note;
+
+  const PianoRollResizeHandlePointerTarget({
+    required this.resizeHandle,
+    required this.note,
+  });
+
+  @override
+  Id? get realNoteId => note?.realNoteId ?? resizeHandle.realNoteId;
+
+  @override
+  bool get isResizeHandle => resizeHandle.realNoteId != null;
 }
 
 class PianoRollSessionNoteState {
@@ -235,11 +268,14 @@ class PianoRollStateMachine
         return PianoRollInteractionFamily.selectionBox;
       }
 
-      if (context.isOverResizeHandle && viewModel.tool == EditorTool.pencil) {
+      if (context.target is PianoRollResizeHandlePointerTarget &&
+          context.isResizeHandleTarget &&
+          viewModel.tool == EditorTool.pencil) {
         return PianoRollInteractionFamily.resizeNotes;
       }
 
-      if (context.realNoteUnderCursorId != null) {
+      if (context.target is PianoRollNotePointerTarget ||
+          context.targetRealNoteId != null) {
         return PianoRollInteractionFamily.moveNotes;
       }
 
@@ -253,18 +289,59 @@ class PianoRollStateMachine
     return null;
   }
 
+  PianoRollPointerContext pointerContextAt(Offset localPosition) {
+    final hitTestResult = viewModel.hitTestContent(localPosition);
+    final viewWidth = max(data.viewSize.width, 1.0);
+
+    return PianoRollPointerContext(
+      localPosition: localPosition,
+      key: pixelsToKeyValue(
+        keyHeight: data.renderedKeyHeight,
+        keyValueAtTop: data.renderedKeyValueAtTop,
+        pixelOffsetFromTop: localPosition.dy,
+      ),
+      offset: pixelsToTime(
+        timeViewStart: data.renderedTimeViewStart,
+        timeViewEnd: data.renderedTimeViewEnd,
+        viewPixelWidth: viewWidth,
+        pixelOffsetFromLeft: localPosition.dx,
+      ),
+      target: _pointerTargetForHitTestResult(hitTestResult),
+    );
+  }
+
+  PianoRollPointerTarget _pointerTargetForHitTestResult(
+    PianoRollHitTestResult hitTestResult,
+  ) {
+    final noteRef = hitTestResult.note?.metadata;
+    final resizeHandleRef = hitTestResult.resizeHandle?.metadata;
+
+    if (resizeHandleRef != null) {
+      return PianoRollResizeHandlePointerTarget(
+        resizeHandle: resizeHandleRef,
+        note: noteRef,
+      );
+    }
+
+    if (noteRef != null) {
+      return PianoRollNotePointerTarget(note: noteRef);
+    }
+
+    return const PianoRollEmptyPointerTarget();
+  }
+
   void onPointerDown(PointerDownEvent event) {
     data.handlePointerDown(event);
+    final pointerContext = pointerContextAt(event.localPosition);
+    data.activePointerDownContext = pointerContext;
     final family = _classifyPointerDownInteraction(
       buttons: event.buttons,
       ctrlPressed: data.isCtrlPressed,
-      context: data.resolvePointerContext(
-        viewModel: viewModel,
-        localPosition: event.localPosition,
-      ),
+      context: pointerContext,
     );
     if (family == null) {
       data.clearInteractionSession();
+      data.activePointerDownContext = null;
       return;
     }
 
@@ -303,6 +380,7 @@ class PianoRollStateMachineData {
   Map<int, PianoRollActivePointer> pointers = {};
   int? activePointerId;
   PianoRollActivePointer? activePointerDownPosition;
+  PianoRollPointerContext? activePointerDownContext;
 
   double renderedTimeViewStart = 0;
   double renderedTimeViewEnd = 0;
@@ -370,6 +448,7 @@ class PianoRollStateMachineData {
     if (activePointerId == pointerId) {
       activePointerId = null;
       activePointerDownPosition = null;
+      activePointerDownContext = null;
     }
   }
 
@@ -379,31 +458,6 @@ class PianoRollStateMachineData {
 
   void clearInteractionSession() {
     activeInteractionFamily = null;
-  }
-
-  PianoRollPointerContext resolvePointerContext({
-    required PianoRollViewModel viewModel,
-    required Offset localPosition,
-  }) {
-    final contentUnderCursor = viewModel.getContentUnderCursor(localPosition);
-    final viewWidth = max(viewSize.width, 1.0);
-
-    return PianoRollPointerContext(
-      localPosition: localPosition,
-      key: pixelsToKeyValue(
-        keyHeight: renderedKeyHeight,
-        keyValueAtTop: renderedKeyValueAtTop,
-        pixelOffsetFromTop: localPosition.dy,
-      ),
-      offset: pixelsToTime(
-        timeViewStart: renderedTimeViewStart,
-        timeViewEnd: renderedTimeViewEnd,
-        viewPixelWidth: viewWidth,
-        pixelOffsetFromLeft: localPosition.dx,
-      ),
-      noteUnderCursor: contentUnderCursor.note?.metadata,
-      resizeHandleUnderCursor: contentUnderCursor.resizeHandle?.metadata,
-    );
   }
 }
 
@@ -464,10 +518,10 @@ class PianoRollPointerSessionState
   @visibleForTesting
   PianoRollPointerContext? get startPointerContext => dragStartContext;
 
-  Id? get dragStartRealNoteId => dragStartContext?.realNoteUnderCursorId;
+  Id? get dragStartRealNoteId => dragStartContext?.targetRealNoteId;
 
   bool get dragStartIsResizeHandle =>
-      dragStartContext?.isOverResizeHandle ?? false;
+      dragStartContext?.isResizeHandleTarget ?? false;
 
   double? get dragStartKey => dragStartContext?.key;
   double? get dragStartOffset => dragStartContext?.offset;
@@ -489,23 +543,14 @@ class PianoRollPointerSessionState
     if (activePointerId != nextActivePointerId) {
       activePointerId = nextActivePointerId;
       dragStartPosition = interactionState.activePointerDownPosition?.clone();
-      final startPosition = dragStartPosition;
-      dragStartContext = startPosition == null
-          ? null
-          : interactionState.resolvePointerContext(
-              viewModel: viewModel,
-              localPosition: startPosition.toOffset(),
-            );
+      dragStartContext = interactionState.activePointerDownContext;
     }
 
     dragCurrentPosition = interactionState.activePointer?.clone();
     final currentPosition = dragCurrentPosition;
     dragCurrentContext = currentPosition == null
         ? null
-        : interactionState.resolvePointerContext(
-            viewModel: viewModel,
-            localPosition: currentPosition.toOffset(),
-          );
+        : pianoRollStateMachine.pointerContextAt(currentPosition.toOffset());
   }
 
   @override

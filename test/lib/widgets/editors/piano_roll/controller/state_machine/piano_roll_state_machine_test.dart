@@ -452,7 +452,7 @@ class _PianoRollStateMachineTestFixture {
     );
   }
 
-  void _seedContentUnderCursor({
+  void _seedHitTestTarget({
     required Offset localPosition,
     Id? noteUnderCursor,
     bool isResize = false,
@@ -484,7 +484,7 @@ class _PianoRollStateMachineTestFixture {
   }) {
     syncRenderedViewMetrics();
     setModifiers(ctrl: ctrl, alt: alt, shift: shift);
-    _seedContentUnderCursor(
+    _seedHitTestTarget(
       localPosition: localPosition,
       noteUnderCursor: noteUnderCursor,
       isResize: isResize,
@@ -534,7 +534,7 @@ class _PianoRollStateMachineTestFixture {
     syncRenderedViewMetrics();
     setModifiers(ctrl: ctrl, alt: alt, shift: shift);
     final localPosition = _localPositionFor(key: key, offset: offset);
-    _seedContentUnderCursor(localPosition: localPosition);
+    _seedHitTestTarget(localPosition: localPosition);
 
     controller.pointerMove(
       PointerMoveEvent(pointer: pointer, position: localPosition),
@@ -552,7 +552,7 @@ class _PianoRollStateMachineTestFixture {
     syncRenderedViewMetrics();
     setModifiers(ctrl: ctrl, alt: alt, shift: shift);
     final localPosition = _localPositionFor(key: key, offset: offset);
-    _seedContentUnderCursor(localPosition: localPosition);
+    _seedHitTestTarget(localPosition: localPosition);
 
     controller.pointerUp(
       PointerUpEvent(pointer: pointer, position: localPosition),
@@ -570,7 +570,7 @@ class _PianoRollStateMachineTestFixture {
     syncRenderedViewMetrics();
     setModifiers(ctrl: ctrl, alt: alt, shift: shift);
     final localPosition = _localPositionFor(key: key, offset: offset);
-    _seedContentUnderCursor(localPosition: localPosition);
+    _seedHitTestTarget(localPosition: localPosition);
 
     controller.pointerUp(
       PointerCancelEvent(pointer: pointer, position: localPosition),
@@ -949,8 +949,9 @@ void main() {
 
       final startContext = fixture.pointerSessionState.startPointerContext;
       expect(startContext, isNotNull);
-      expect(startContext!.realNoteUnderCursorId, equals(note.id));
-      expect(startContext.isOverResizeHandle, isTrue);
+      expect(startContext!.targetRealNoteId, equals(note.id));
+      expect(startContext.isResizeHandleTarget, isTrue);
+      expect(startContext.target, isA<PianoRollResizeHandlePointerTarget>());
       expect(startContext.key, closeTo(64.5, 0.0001));
       expect(startContext.offset, closeTo(316, 0.0001));
       expect(fixture.pointerSessionState.dragStartRealNoteId, equals(note.id));
@@ -965,7 +966,8 @@ void main() {
 
       final currentContext = fixture.pointerSessionState.currentPointerContext;
       expect(currentContext, isNotNull);
-      expect(currentContext!.key, closeTo(61.5, 0.0001));
+      expect(currentContext!.target, isA<PianoRollEmptyPointerTarget>());
+      expect(currentContext.key, closeTo(61.5, 0.0001));
       expect(currentContext.offset, closeTo(173.8, 0.0001));
       expect(fixture.pointerSessionState.dragStartKey, closeTo(60.5, 0.0001));
       expect(fixture.pointerSessionState.dragStartOffset, closeTo(100, 0.0001));
