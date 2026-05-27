@@ -43,7 +43,98 @@ sealed class ModelFilterTreeBaseNode {
   void replaceNext(ModelFilterTreeBaseNode next);
 
   /// Matches this node and its children against a given change path.
-  bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation);
+  ModelFilterMatch match(
+    Iterable<FieldAccessor> accessors,
+    FieldOperation operation,
+  );
+
+  /// Allows the terminal node in this subtree to match descendant paths.
+  void allowDescendants();
+}
+
+/// Bindings captured while matching a model filter against a model change.
+class ModelChangeBindings {
+  final Map<String, dynamic> _values;
+
+  ModelChangeBindings(Map<String, dynamic> values)
+    : _values = Map.unmodifiable(values);
+
+  T get<T>(String key) => _values[key] as T;
+
+  T? maybeGet<T>(String key) => _values[key] as T?;
+
+  bool containsKey(String key) => _values.containsKey(key);
+
+  dynamic operator [](String key) => _values[key];
+
+  Map<String, dynamic> get asMap => _values;
+}
+
+/// The result of matching a model filter against a model change.
+typedef ModelFilterMatch = ({bool matches, Map<String, dynamic> bindings});
+
+const ModelFilterMatch _noModelFilterMatch = (
+  matches: false,
+  bindings: <String, dynamic>{},
+);
+
+dynamic _changedValueForOperation(FieldOperation operation) {
+  if (operation.hasNewValue) {
+    return operation.newValue;
+  }
+
+  return operation.oldValue;
+}
+
+String? _resolveValueBindingName({
+  required String? bindTo,
+  required String? bindValueTo,
+}) {
+  if (bindTo != null && bindValueTo != null) {
+    throw ArgumentError('Specify either bindTo or bindValueTo, not both');
+  }
+
+  return bindValueTo ?? bindTo;
+}
+
+Map<String, dynamic> _mergeBindingMaps(
+  Map<String, dynamic> first,
+  Map<String, dynamic> second,
+) {
+  final result = <String, dynamic>{...first};
+
+  for (final MapEntry(key: key, value: value) in second.entries) {
+    if (result.containsKey(key)) {
+      throw StateError('Duplicate model change binding key: $key');
+    }
+
+    result[key] = value;
+  }
+
+  return result;
+}
+
+Map<String, dynamic> _operationValueBindings({
+  required FieldOperation operation,
+  required String? bindValueTo,
+  required String? bindOldValueTo,
+  required String? bindNewValueTo,
+}) {
+  final result = <String, dynamic>{};
+
+  if (bindValueTo != null) {
+    result[bindValueTo] = _changedValueForOperation(operation);
+  }
+
+  if (bindOldValueTo != null && operation.hasOldValue) {
+    result[bindOldValueTo] = operation.oldValue;
+  }
+
+  if (bindNewValueTo != null && operation.hasNewValue) {
+    result[bindNewValueTo] = operation.newValue;
+  }
+
+  return result;
 }
 
 /// A node that matches if any of its children match.
@@ -65,12 +156,30 @@ class ModelFilterOrNode extends ModelFilterTreeBaseNode {
   }
 
   @override
-  bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
+  void allowDescendants() {
+    for (final child in children) {
+      child.allowDescendants();
+    }
+  }
+
+  @override
+  ModelFilterMatch match(
+    Iterable<FieldAccessor> accessors,
+    FieldOperation operation,
+  ) {
     if (accessors.isEmpty) {
-      return false;
+      return _noModelFilterMatch;
     }
 
-    return children.any((child) => child.matches(accessors, operation));
+    for (final child in children) {
+      final match = child.match(accessors, operation);
+
+      if (match.matches) {
+        return match;
+      }
+    }
+
+    return _noModelFilterMatch;
   }
 }
 
@@ -116,9 +225,22 @@ class ModelFilterOrNode extends ModelFilterTreeBaseNode {
 /// ```
 class ModelFilterFieldNode extends ModelFilterTreeBaseNode {
   final String fieldName;
+  final String? bindValueTo;
+  final String? bindOldValueTo;
+  final String? bindNewValueTo;
+  bool includeDescendants = false;
   ModelFilterTreeBaseNode? next;
 
-  ModelFilterFieldNode({required this.fieldName});
+  ModelFilterFieldNode({
+    required this.fieldName,
+    String? bindTo,
+    String? bindValueTo,
+    this.bindOldValueTo,
+    this.bindNewValueTo,
+  }) : bindValueTo = _resolveValueBindingName(
+         bindTo: bindTo,
+         bindValueTo: bindValueTo,
+       );
 
   @override
   void chain(ModelFilterTreeBaseNode next) {
@@ -137,37 +259,84 @@ class ModelFilterFieldNode extends ModelFilterTreeBaseNode {
   }
 
   @override
-  bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
+  void allowDescendants() {
+    if (next == null) {
+      includeDescendants = true;
+      return;
+    }
+
+    next!.allowDescendants();
+  }
+
+  @override
+  ModelFilterMatch match(
+    Iterable<FieldAccessor> accessors,
+    FieldOperation operation,
+  ) {
     if (accessors.isEmpty) {
-      return false;
+      return _noModelFilterMatch;
     }
 
     // Check whether the field name matches
     final accessor = accessors.first;
-    if (accessor.fieldName != fieldName) {
-      return false;
+    if (accessor.fieldType != FieldType.raw ||
+        accessor.fieldName != fieldName) {
+      return _noModelFilterMatch;
     }
 
-    if (next == null && accessors.skip(1).isEmpty) {
+    final remainingAccessors = accessors.skip(1);
+
+    final exactMatch = remainingAccessors.isEmpty;
+    final descendantMatch = includeDescendants && remainingAccessors.isNotEmpty;
+
+    if (next == null && (exactMatch || descendantMatch)) {
       // If there's no next node, then this is a leaf node and we match
-      return true;
+      return (
+        matches: true,
+        bindings: exactMatch
+            ? _operationValueBindings(
+                operation: operation,
+                bindValueTo: bindValueTo,
+                bindOldValueTo: bindOldValueTo,
+                bindNewValueTo: bindNewValueTo,
+              )
+            : const <String, dynamic>{},
+      );
     } else if (next == null) {
       // If there's no next node but there are still accessors left, then the
       // change is for a sub-level but this filter is for this level, and so we
       // don't match.
-      return false;
+      return _noModelFilterMatch;
     }
 
     // Otherwise, we need to match the next node with the remaining accessors
-    return next!.matches(accessors.skip(1), operation);
+    return next!.match(remainingAccessors, operation);
   }
 }
 
 /// A node that matches all at the current level.
 class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
+  final FieldType? fieldType;
+  final String? bindIndexTo;
+  final String? bindKeyTo;
+  final String? bindValueTo;
+  final String? bindOldValueTo;
+  final String? bindNewValueTo;
+  bool includeDescendants = false;
   ModelFilterTreeBaseNode? next;
 
-  ModelFilterPassthroughNode();
+  ModelFilterPassthroughNode({
+    this.fieldType,
+    this.bindIndexTo,
+    this.bindKeyTo,
+    String? bindTo,
+    String? bindValueTo,
+    this.bindOldValueTo,
+    this.bindNewValueTo,
+  }) : bindValueTo = _resolveValueBindingName(
+         bindTo: bindTo,
+         bindValueTo: bindValueTo,
+       );
 
   @override
   void chain(ModelFilterTreeBaseNode next) {
@@ -186,23 +355,78 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
   }
 
   @override
-  bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
-    if (accessors.isEmpty) {
-      return false;
+  void allowDescendants() {
+    if (next == null) {
+      includeDescendants = true;
+      return;
     }
 
-    if (next == null && accessors.skip(1).isEmpty) {
+    next!.allowDescendants();
+  }
+
+  @override
+  ModelFilterMatch match(
+    Iterable<FieldAccessor> accessors,
+    FieldOperation operation,
+  ) {
+    if (accessors.isEmpty) {
+      return _noModelFilterMatch;
+    }
+
+    final accessor = accessors.first;
+    if (fieldType != null && accessor.fieldType != fieldType) {
+      return _noModelFilterMatch;
+    }
+
+    final localBindings = <String, dynamic>{};
+
+    if (bindIndexTo != null && accessor.index != null) {
+      localBindings[bindIndexTo!] = accessor.index;
+    }
+
+    if (bindKeyTo != null && accessor.key != null) {
+      localBindings[bindKeyTo!] = accessor.key;
+    }
+
+    final remainingAccessors = accessors.skip(1);
+
+    final exactMatch = remainingAccessors.isEmpty;
+    final descendantMatch = includeDescendants && remainingAccessors.isNotEmpty;
+
+    if (next == null && (exactMatch || descendantMatch)) {
       // If there's no next node, then this is a leaf node and we match
-      return true;
+      return (
+        matches: true,
+        bindings: _mergeBindingMaps(
+          localBindings,
+          exactMatch
+              ? _operationValueBindings(
+                  operation: operation,
+                  bindValueTo: bindValueTo,
+                  bindOldValueTo: bindOldValueTo,
+                  bindNewValueTo: bindNewValueTo,
+                )
+              : const <String, dynamic>{},
+        ),
+      );
     } else if (next == null) {
       // If there's no next node but there are still accessors left, then the
       // change is for a sub-level but this filter is for this level, and so we
       // don't match.
-      return false;
+      return _noModelFilterMatch;
     }
 
     // Otherwise, we need to match the next node with the remaining accessors
-    return next!.matches(accessors.skip(1), operation);
+    final childMatch = next!.match(remainingAccessors, operation);
+
+    if (!childMatch.matches) {
+      return _noModelFilterMatch;
+    }
+
+    return (
+      matches: true,
+      bindings: _mergeBindingMaps(localBindings, childMatch.bindings),
+    );
   }
 }
 
@@ -225,7 +449,15 @@ class ModelFilterChangeTypeModifierNode extends ModelFilterTreeBaseNode {
   }
 
   @override
-  bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
+  void allowDescendants() {
+    child.allowDescendants();
+  }
+
+  @override
+  ModelFilterMatch match(
+    Iterable<FieldAccessor> accessors,
+    FieldOperation operation,
+  ) {
     final operationType = switch (operation) {
       RawFieldUpdate() => ModelFilterChangeType.fieldUpdate,
       ListInsert() => ModelFilterChangeType.listInsert,
@@ -236,35 +468,10 @@ class ModelFilterChangeTypeModifierNode extends ModelFilterTreeBaseNode {
     };
 
     if (!types.contains(operationType)) {
-      return false;
+      return _noModelFilterMatch;
     }
 
-    return child.matches(accessors, operation);
-  }
-}
-
-class ModelFilterAllowDescendantsModifierNode extends ModelFilterTreeBaseNode {
-  ModelFilterTreeBaseNode child;
-
-  ModelFilterAllowDescendantsModifierNode({required this.child});
-
-  @override
-  void chain(ModelFilterTreeBaseNode next) {
-    child.chain(next);
-  }
-
-  @override
-  void replaceNext(ModelFilterTreeBaseNode next) {
-    child.replaceNext(next);
-  }
-
-  @override
-  bool matches(Iterable<FieldAccessor> accessors, FieldOperation operation) {
-    // We only give the first accessor to the child, which makes it think that
-    // the incoming change is for the current level. This means that if the
-    // child would have thrown away the change because it was for a sub-level,
-    // it will now match it.
-    return child.matches(accessors.take(1), operation);
+    return child.match(accessors, operation);
   }
 }
 
@@ -309,17 +516,16 @@ class ModelFilterBuilderContext {
 /// Example usage:
 ///
 /// ```dart
-/// myModel.onChange((b) => b.mySubModel.myField, (oldValue, newValue) {
+/// myModel.onChange((b) => b.mySubModel().myField(), (event, bindings) {
 ///   // Handle change
 /// });
 /// ```
 ///
 /// In this example, if `myModel` is an instance of `MyModel`, then:
 /// - `b` is a generated ModelFilterBuilder for `MyModel`
-/// - `b.mySubModel` returns a generated ModelFilterBuilder for `MySubModel`
-/// - `b.mySubModel.myField` returns a builder for the type of `myField`, if one
-///    exists - otherwise, it returns `void`, but still modifies the filter tree
-///    to match changes to `myField`.
+/// - `b.mySubModel()` returns a generated ModelFilterBuilder for `MySubModel`
+/// - `b.mySubModel().myField()` adds the `myField` segment to the filter tree
+///   and returns a generic builder for filter modifiers.
 class GenericModelFilterBuilder {
   final ModelFilterBuilderContext context;
 
@@ -333,9 +539,11 @@ class GenericModelFilterBuilder {
   }
 
   GenericModelFilterBuilder get withDescendants {
-    context.replaceCurrent(
-      ModelFilterAllowDescendantsModifierNode(child: context.current!),
-    );
+    if (context.current == null) {
+      throw StateError('No current node to allow descendants');
+    }
+
+    context.current!.allowDescendants();
     return this;
   }
 
@@ -351,8 +559,23 @@ class ListModelFilterBuilder<T> extends GenericModelFilterBuilder {
     required this.tGenerator,
   }) : super(context);
 
-  T get anyElement {
-    context.addNode(ModelFilterPassthroughNode());
+  T anyElement({
+    String? bindIndexTo,
+    String? bindTo,
+    String? bindValueTo,
+    String? bindOldValueTo,
+    String? bindNewValueTo,
+  }) {
+    context.addNode(
+      ModelFilterPassthroughNode(
+        fieldType: FieldType.list,
+        bindIndexTo: bindIndexTo,
+        bindTo: bindTo,
+        bindValueTo: bindValueTo,
+        bindOldValueTo: bindOldValueTo,
+        bindNewValueTo: bindNewValueTo,
+      ),
+    );
     return tGenerator(context);
   }
 }
@@ -366,8 +589,23 @@ class MapModelFilterBuilder<V> extends GenericModelFilterBuilder {
     required this.valueGenerator,
   }) : super(context);
 
-  V get anyValue {
-    context.addNode(ModelFilterPassthroughNode());
+  V anyValue({
+    String? bindKeyTo,
+    String? bindTo,
+    String? bindValueTo,
+    String? bindOldValueTo,
+    String? bindNewValueTo,
+  }) {
+    context.addNode(
+      ModelFilterPassthroughNode(
+        fieldType: FieldType.map,
+        bindKeyTo: bindKeyTo,
+        bindTo: bindTo,
+        bindValueTo: bindValueTo,
+        bindOldValueTo: bindOldValueTo,
+        bindNewValueTo: bindNewValueTo,
+      ),
+    );
     return valueGenerator(context);
   }
 }
@@ -387,7 +625,7 @@ enum ModelFilterChangeType {
 /// This listener contains a filter to be applied to incoming changes
 class ModelFilterListener {
   ModelFilterTreeBaseNode filter;
-  void Function(ModelChangeEvent event) handler;
+  void Function(ModelChangeEvent event, ModelChangeBindings bindings) handler;
 
   ModelFilterListener({required this.filter, required this.handler});
 }

@@ -45,6 +45,8 @@ import 'processors/tone_generator.dart';
 
 part 'node.g.dart';
 
+const _controlInputPortIndexBinding = 'controlInputPortIndex';
+
 @AnthemModel(serializable: true, generateModelSync: true)
 class NodeOwnerModel extends _NodeOwnerModel
     with _$NodeOwnerModel, _$NodeOwnerModelAnthemModelMixin {
@@ -212,46 +214,32 @@ class NodeModel extends _NodeModel
   }
 
   void _initParameterTouchTracking() {
-    onChange((b) => b.controlInputPorts.anyElement.parameterValue, (event) {
-      if (_isParameterTouchTrackingSuppressed(this)) {
-        return;
-      }
+    onChange(
+      (b) => b
+          .controlInputPorts()
+          .anyElement(bindIndexTo: _controlInputPortIndexBinding)
+          .parameterValue(),
+      (_, bindings) {
+        if (isParameterTouchTrackingSuppressed(this)) {
+          return;
+        }
 
-      final changedPort = _changedControlInputPortForParameterValueEvent(event);
-      if (changedPort == null ||
-          changedPort.config.parameterConfig == null ||
-          lastChangedControlPortId == changedPort.id) {
-        return;
-      }
+        final portIndex = bindings.maybeGet<int>(_controlInputPortIndexBinding);
+        if (portIndex == null ||
+            portIndex < 0 ||
+            portIndex >= controlInputPorts.length) {
+          return;
+        }
 
-      lastChangedControlPortId = changedPort.id;
-    });
-  }
+        final changedPort = controlInputPorts[portIndex];
+        if (changedPort.config.parameterConfig == null ||
+            lastChangedControlPortId == changedPort.id) {
+          return;
+        }
 
-  NodePortModel? _changedControlInputPortForParameterValueEvent(
-    ModelChangeEvent event,
-  ) {
-    for (var i = 0; i < event.fieldAccessors.length - 1; i++) {
-      final accessor = event.fieldAccessors[i];
-      if (accessor.fieldType != FieldType.raw ||
-          accessor.fieldName != 'controlInputPorts') {
-        continue;
-      }
-
-      final listAccessor = event.fieldAccessors[i + 1];
-      if (listAccessor.fieldType != FieldType.list) {
-        return null;
-      }
-
-      final index = listAccessor.index;
-      if (index == null || index < 0 || index >= controlInputPorts.length) {
-        return null;
-      }
-
-      return controlInputPorts[index];
-    }
-
-    return null;
+        lastChangedControlPortId = changedPort.id;
+      },
+    );
   }
 }
 
@@ -259,7 +247,7 @@ final Expando<int> _parameterTouchSuppressionDepths = Expando<int>(
   'parameterTouchSuppressionDepth',
 );
 
-bool _isParameterTouchTrackingSuppressed(NodeModel node) =>
+bool isParameterTouchTrackingSuppressed(NodeModel node) =>
     (_parameterTouchSuppressionDepths[node] ?? 0) > 0;
 
 extension NodeParameterTouchTracking on NodeModel {

@@ -63,11 +63,11 @@ class SequencerModel extends _SequencerModel
   void _init() {
     onModelFirstAttached(() {
       onChange(
-        (b) => b.patterns.anyValue.filterByChangeType([
+        (b) => b.patterns().anyValue().filterByChangeType([
           ModelFilterChangeType.mapPut,
           ModelFilterChangeType.mapRemove,
         ]),
-        (e) {
+        (e, _) {
           scheduleClipTitleTextureAtlasUpdate();
         },
       );

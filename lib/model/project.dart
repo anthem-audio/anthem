@@ -150,18 +150,15 @@ class ProjectModel extends _ProjectModel
     // any compiled sequences for this channel.
     onChange(
       // This filter matches against removals from the tracks map.
-      (b) => b.tracks.anyValue.filterByChangeType([
+      (b) => b.tracks().anyValue(bindKeyTo: 'trackId').filterByChangeType([
         ModelFilterChangeType.mapRemove,
       ]),
-      (e) {
+      (_, bindings) {
         if (!engine.isRunning) {
           return;
         }
 
-        // Field accessors are:
-        // 0: the tracks field
-        // 1: accessing a value in the map by key
-        final trackId = e.fieldAccessors[1].key as Id;
+        final trackId = bindings.get<Id>('trackId');
         engine.sequencerApi.cleanUpTrack(trackId);
       },
     );

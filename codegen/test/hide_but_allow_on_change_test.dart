@@ -119,7 +119,7 @@ void main() {
     test('direct field writes stay observable and suppress engine sync', () {
       final changes = <ModelChangeEvent>[];
 
-      model.onChange((b) => b.hiddenOnChangeValue, changes.add);
+      model.onChange((b) => b.hiddenOnChangeValue(), (e, _) => changes.add(e));
 
       model.hiddenOnChangeValue = 'updated hidden value';
 
@@ -189,7 +189,10 @@ void main() {
       final hiddenLeaf = model.hiddenLeaves.first;
       final changes = <ModelChangeEvent>[];
 
-      model.onChange((b) => b.hiddenLeaves.anyElement.value, changes.add);
+      model.onChange(
+        (b) => b.hiddenLeaves().anyElement().value(),
+        (e, _) => changes.add(e),
+      );
 
       hiddenLeaf.value = 'updated item';
 

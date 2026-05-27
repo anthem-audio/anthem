@@ -147,7 +147,7 @@ class PatternModel extends _PatternModel
       //   2. Tell the engine to re-compile all relevant sequences.
 
       // Notes added or removed
-      onChange((b) => b.notes.anyValue, (e) {
+      onChange((b) => b.notes().anyValue(), (e, _) {
         _recompileOnNotesAddedOrRemoved(
           e.operation.oldValue as NoteModel?,
           e.operation.newValue as NoteModel?,
@@ -155,20 +155,20 @@ class PatternModel extends _PatternModel
       });
 
       // Note attributes changed
-      onChange((b) => b.notes.anyValue.anyField, (e) {
+      onChange((b) => b.notes().anyValue().anyField(), (e, _) {
         _recompileOnNoteFieldChanged(e);
       });
 
       // When notes change, we also need to update the clip notes render cache
       // and the clip's default width.
-      onChange((b) => b.notes.withDescendants, (e) {
+      onChange((b) => b.notes().withDescendants, (e, _) {
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
 
       // Preview note overrides are Dart-only changes that should still refresh
       // local rendering and width calculations throughout the UI.
-      onChange((b) => b.noteOverrides.withDescendants, (e) {
+      onChange((b) => b.noteOverrides().withDescendants, (e, _) {
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
@@ -178,29 +178,29 @@ class PatternModel extends _PatternModel
       // These notes are not committed to the main pattern note list yet, but
       // they still need to appear everywhere that asks for the pattern's
       // effective note content.
-      onChange((b) => b.previewNotes.withDescendants, (e) {
+      onChange((b) => b.previewNotes().withDescendants, (e, _) {
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
 
-      onChange((b) => b.automation.withDescendants, (e) {
+      onChange((b) => b.automation().withDescendants, (e, _) {
         _clipAutoWidthUpdateAction.execute();
       });
 
-      onChange((b) => b.automation.points.anyElement, (e) {
+      onChange((b) => b.automation().points().anyElement(), (e, _) {
         _recompileOnAutomationPointsAddedOrRemoved(
           e.operation.oldValue as AutomationPointModel?,
           e.operation.newValue as AutomationPointModel?,
         );
       });
 
-      onChange((b) => b.automation.points.anyElement.anyField, (e) {
+      onChange((b) => b.automation().points().anyElement().anyField(), (e, _) {
         _recompileOnAutomationPointFieldChanged(e);
       });
 
       // When the pattern title is changed, we need to update the clip title
       // render cache.
-      onChange((b) => b.name, (e) {
+      onChange((b) => b.name(), (e, _) {
         invalidateClipTitleAtlasEntry();
       });
 
@@ -209,7 +209,7 @@ class PatternModel extends _PatternModel
       // We don't have a detailed model change observation system in the engine,
       // so this is a simple way to allow the engine to perform necessary
       // side-effects.
-      onChange((b) => b.loopPoints.withDescendants, (e) {
+      onChange((b) => b.loopPoints().withDescendants, (e, _) {
         _updateLoopPointsAction.execute();
       });
     });
