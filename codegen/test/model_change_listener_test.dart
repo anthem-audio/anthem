@@ -451,6 +451,40 @@ void main() {
     expect(bindings[1].containsKey('newElement'), isFalse);
   });
 
+  test('Multiple can match current path with modifiers', () {
+    final model = Model(id: 0, name: 'name');
+
+    final changes = <ModelChangeEvent>[];
+    final bindings = <ModelChangeBindings>[];
+    model.onChange(
+      (b) => b.mapOfSubElements().anyValue(bindKeyTo: 'elementKey').multiple([
+        (b) => b.filterByChangeType([
+          ModelFilterChangeType.mapPut,
+          ModelFilterChangeType.mapRemove,
+        ]),
+        (b) => b.value(),
+      ]),
+      (e, b) {
+        changes.add(e);
+        bindings.add(b);
+      },
+    );
+
+    final subElement = ModelSubElement(id: 1, value: 'value');
+    model.mapOfSubElements['one'] = subElement;
+    subElement.value = 'new value';
+    model.mapOfSubElements.remove('one');
+
+    expect(changes, hasLength(3));
+    expect(changes[0].operation, isA<MapPut>());
+    expect(changes[1].operation, isA<RawFieldUpdate>());
+    expect(changes[2].operation, isA<MapRemove>());
+    expect(
+      bindings.map((binding) => binding.get<String>('elementKey')),
+      everyElement('one'),
+    );
+  });
+
   test('Listen for nested map list model field changes', () {
     final model = Model(id: 0, name: 'name');
 

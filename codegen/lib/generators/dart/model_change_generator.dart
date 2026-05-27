@@ -115,7 +115,7 @@ String generateFilterBuilders({required ModelClassInfo context}) {
     GenericModelFilterBuilder anyField({
       $_valueBindingParams
     }) {
-      context.addNode(ModelFilterPassthroughNode(
+      context.addNode(ModelFilterWildcardNode(
         $_valueBindingArgs
       ));
       return GenericModelFilterBuilder(context);
@@ -129,7 +129,7 @@ String generateFilterBuilders({required ModelClassInfo context}) {
           final localContext = ModelFilterBuilderContext();
           final builderClass = $className(localContext);
           b(builderClass);
-          return localContext.root ?? ModelFilterPassthroughNode();
+          return localContext.root ?? ModelFilterSelfNode();
         }).toList()
       ));
 

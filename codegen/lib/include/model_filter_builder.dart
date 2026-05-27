@@ -22,25 +22,25 @@ import 'package:anthem_codegen/include.dart';
 /// This class and its subclasses are used to build filters for model change
 /// streams.
 ///
-/// The filter is represented as a tree of [ModelFilterTreeBaseNode]s. This tree can
+/// The filter is represented as a tree of [ModelFilterNode]s. This tree can
 /// be matched against a given model change to either include or exclude it from
 /// the stream.
 ///
 /// A tree is built using a [GenericModelFilterBuilder], which is surfaced to model
 /// consumers via the generated onChange method in each model class.
-sealed class ModelFilterTreeBaseNode {
+sealed class ModelFilterNode {
   /// Generically chains [next] to follow this node in the tree, as the matcher
   /// for the next level down.
   ///
   /// For nodes that can have multiple children (e.g. [ModelFilterOrNode]), this
   /// may be called multiple times to add multiple children.
-  void chain(ModelFilterTreeBaseNode next);
+  void chain(ModelFilterNode next);
 
   /// Replaces the next node in the chain with [next].
   ///
   /// This is used to wrap existing nodes with modifier nodes, such as
   /// [ModelFilterChangeTypeModifierNode].
-  void replaceNext(ModelFilterTreeBaseNode next);
+  void replaceNext(ModelFilterNode next);
 
   /// Matches this node and its children against a given change path.
   ModelFilterMatch match(
@@ -139,19 +139,19 @@ Map<String, dynamic> _operationValueBindings({
 
 /// A node that matches if any of its children match.
 ///
-/// See the documentation on [ModelFilterTreeBaseNode] for context
-class ModelFilterOrNode extends ModelFilterTreeBaseNode {
-  final List<ModelFilterTreeBaseNode> children;
+/// See the documentation on [ModelFilterNode] for context
+class ModelFilterOrNode extends ModelFilterNode {
+  final List<ModelFilterNode> children;
 
   ModelFilterOrNode(this.children);
 
   @override
-  void chain(ModelFilterTreeBaseNode next) {
+  void chain(ModelFilterNode next) {
     children.add(next);
   }
 
   @override
-  void replaceNext(ModelFilterTreeBaseNode next) {
+  void replaceNext(ModelFilterNode next) {
     throw UnimplementedError('Or nodes cannot have their next replaced');
   }
 
@@ -167,10 +167,6 @@ class ModelFilterOrNode extends ModelFilterTreeBaseNode {
     Iterable<FieldAccessor> accessors,
     FieldOperation operation,
   ) {
-    if (accessors.isEmpty) {
-      return _noModelFilterMatch;
-    }
-
     for (final child in children) {
       final match = child.match(accessors, operation);
 
@@ -183,10 +179,58 @@ class ModelFilterOrNode extends ModelFilterTreeBaseNode {
   }
 }
 
+/// A node that matches the current location without consuming an accessor.
+class ModelFilterSelfNode extends ModelFilterNode {
+  bool includeDescendants = false;
+  ModelFilterNode? next;
+
+  @override
+  void chain(ModelFilterNode next) {
+    if (this.next != null) {
+      throw StateError('This node already has a next node');
+    }
+    this.next = next;
+  }
+
+  @override
+  void replaceNext(ModelFilterNode next) {
+    if (this.next == null) {
+      throw StateError('This node does not have a next node');
+    }
+    this.next = next;
+  }
+
+  @override
+  void allowDescendants() {
+    if (next == null) {
+      includeDescendants = true;
+      return;
+    }
+
+    next!.allowDescendants();
+  }
+
+  @override
+  ModelFilterMatch match(
+    Iterable<FieldAccessor> accessors,
+    FieldOperation operation,
+  ) {
+    if (next != null) {
+      return next!.match(accessors, operation);
+    }
+
+    if (accessors.isEmpty || includeDescendants) {
+      return (matches: true, bindings: const <String, dynamic>{});
+    }
+
+    return _noModelFilterMatch;
+  }
+}
+
 /// A node that matches if the operation at the current level matches the
 /// specified field name.
 ///
-/// [next] is another [ModelFilterTreeBaseNode] that represents the next level
+/// [next] is another [ModelFilterNode] that represents the next level
 /// of the tree, and the next level to match. As an example, if the model looks
 /// like this:
 ///
@@ -223,13 +267,13 @@ class ModelFilterOrNode extends ModelFilterTreeBaseNode {
 ///   ),
 /// );
 /// ```
-class ModelFilterFieldNode extends ModelFilterTreeBaseNode {
+class ModelFilterFieldNode extends ModelFilterNode {
   final String fieldName;
   final String? bindValueTo;
   final String? bindOldValueTo;
   final String? bindNewValueTo;
   bool includeDescendants = false;
-  ModelFilterTreeBaseNode? next;
+  ModelFilterNode? next;
 
   ModelFilterFieldNode({
     required this.fieldName,
@@ -243,7 +287,7 @@ class ModelFilterFieldNode extends ModelFilterTreeBaseNode {
        );
 
   @override
-  void chain(ModelFilterTreeBaseNode next) {
+  void chain(ModelFilterNode next) {
     if (this.next != null) {
       throw StateError('This node already has a next node');
     }
@@ -251,7 +295,7 @@ class ModelFilterFieldNode extends ModelFilterTreeBaseNode {
   }
 
   @override
-  void replaceNext(ModelFilterTreeBaseNode next) {
+  void replaceNext(ModelFilterNode next) {
     if (this.next == null) {
       throw StateError('This node does not have a next node');
     }
@@ -315,7 +359,7 @@ class ModelFilterFieldNode extends ModelFilterTreeBaseNode {
 }
 
 /// A node that matches all at the current level.
-class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
+class ModelFilterWildcardNode extends ModelFilterNode {
   final FieldType? fieldType;
   final String? bindIndexTo;
   final String? bindKeyTo;
@@ -323,9 +367,9 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
   final String? bindOldValueTo;
   final String? bindNewValueTo;
   bool includeDescendants = false;
-  ModelFilterTreeBaseNode? next;
+  ModelFilterNode? next;
 
-  ModelFilterPassthroughNode({
+  ModelFilterWildcardNode({
     this.fieldType,
     this.bindIndexTo,
     this.bindKeyTo,
@@ -339,7 +383,7 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
        );
 
   @override
-  void chain(ModelFilterTreeBaseNode next) {
+  void chain(ModelFilterNode next) {
     if (this.next != null) {
       throw StateError('This node already has a next node');
     }
@@ -347,7 +391,7 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
   }
 
   @override
-  void replaceNext(ModelFilterTreeBaseNode next) {
+  void replaceNext(ModelFilterNode next) {
     if (this.next == null) {
       throw StateError('This node does not have a next node');
     }
@@ -432,19 +476,19 @@ class ModelFilterPassthroughNode extends ModelFilterTreeBaseNode {
 
 /// A node that wraps an existing node at the same level to modify it, and
 /// matches if the operation type matches one of the specified types.
-class ModelFilterChangeTypeModifierNode extends ModelFilterTreeBaseNode {
+class ModelFilterChangeTypeModifierNode extends ModelFilterNode {
   final List<ModelFilterChangeType> types;
-  ModelFilterTreeBaseNode child;
+  ModelFilterNode child;
 
   ModelFilterChangeTypeModifierNode({required this.types, required this.child});
 
   @override
-  void chain(ModelFilterTreeBaseNode next) {
+  void chain(ModelFilterNode next) {
     child.chain(next);
   }
 
   @override
-  void replaceNext(ModelFilterTreeBaseNode next) {
+  void replaceNext(ModelFilterNode next) {
     child.replaceNext(next);
   }
 
@@ -477,11 +521,11 @@ class ModelFilterChangeTypeModifierNode extends ModelFilterTreeBaseNode {
 
 /// Provides context for [GenericModelFilterBuilder]s to build a filter tree.
 class ModelFilterBuilderContext {
-  ModelFilterTreeBaseNode? root;
-  ModelFilterTreeBaseNode? previous;
-  ModelFilterTreeBaseNode? current;
+  ModelFilterNode? root;
+  ModelFilterNode? previous;
+  ModelFilterNode? current;
 
-  void addNode(ModelFilterTreeBaseNode node) {
+  void addNode(ModelFilterNode node) {
     if (root == null) {
       root = node;
       current = node;
@@ -492,7 +536,7 @@ class ModelFilterBuilderContext {
     }
   }
 
-  void replaceCurrent(ModelFilterTreeBaseNode node) {
+  void replaceCurrent(ModelFilterNode node) {
     if (current == null) {
       throw StateError('No current node to replace');
     }
@@ -503,6 +547,14 @@ class ModelFilterBuilderContext {
       previous!.replaceNext(node);
     }
     current = node;
+  }
+
+  ModelFilterNode ensureCurrent() {
+    if (current == null) {
+      addNode(ModelFilterSelfNode());
+    }
+
+    return current!;
   }
 }
 
@@ -533,17 +585,16 @@ class GenericModelFilterBuilder {
     List<ModelFilterChangeType> types,
   ) {
     context.replaceCurrent(
-      ModelFilterChangeTypeModifierNode(types: types, child: context.current!),
+      ModelFilterChangeTypeModifierNode(
+        types: types,
+        child: context.ensureCurrent(),
+      ),
     );
     return this;
   }
 
   GenericModelFilterBuilder get withDescendants {
-    if (context.current == null) {
-      throw StateError('No current node to allow descendants');
-    }
-
-    context.current!.allowDescendants();
+    context.ensureCurrent().allowDescendants();
     return this;
   }
 
@@ -567,7 +618,7 @@ class ListModelFilterBuilder<T> extends GenericModelFilterBuilder {
     String? bindNewValueTo,
   }) {
     context.addNode(
-      ModelFilterPassthroughNode(
+      ModelFilterWildcardNode(
         fieldType: FieldType.list,
         bindIndexTo: bindIndexTo,
         bindTo: bindTo,
@@ -597,7 +648,7 @@ class MapModelFilterBuilder<V> extends GenericModelFilterBuilder {
     String? bindNewValueTo,
   }) {
     context.addNode(
-      ModelFilterPassthroughNode(
+      ModelFilterWildcardNode(
         fieldType: FieldType.map,
         bindKeyTo: bindKeyTo,
         bindTo: bindTo,
@@ -624,7 +675,7 @@ enum ModelFilterChangeType {
 ///
 /// This listener contains a filter to be applied to incoming changes
 class ModelFilterListener {
-  ModelFilterTreeBaseNode filter;
+  ModelFilterNode filter;
   void Function(ModelChangeEvent event, ModelChangeBindings bindings) handler;
 
   ModelFilterListener({required this.filter, required this.handler});
