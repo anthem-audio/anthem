@@ -57,12 +57,10 @@ Object? _serializeValue(
 }
 
 class AnthemObservableList<T> extends ObservableList<T> with AnthemModelBase {
-  @override
   AnthemObservableList({super.context, super.name}) : super() {
     _init();
   }
 
-  @override
   AnthemObservableList.of(super.elements, {super.context, super.name})
     : super.of() {
     _init();

@@ -54,7 +54,6 @@ typedef PianoRollResizeNotePreview = ({Time length});
 class PianoRollController extends _PianoRollController
     with _PianoRollShortcutsMixin
     implements DisposableService {
-  @override
   PianoRollController({required super.project, required super.viewModel}) {
     // Register shortcuts for this editor
     registerShortcuts();

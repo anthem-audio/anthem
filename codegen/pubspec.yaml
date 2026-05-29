@@ -9,7 +9,7 @@ environment:
 resolution: workspace
 
 dependencies:
-  analyzer: ^10.0.1
+  analyzer: ^12.1.0
   build: ^4.0.1
   source_gen: ^4.0.1
   flutter_test:
