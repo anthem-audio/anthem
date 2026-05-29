@@ -28,6 +28,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter/widgets.dart';
@@ -233,7 +234,19 @@ class ArrangerContentPainter extends CustomPainterObserver {
     arrangement.clips.observeAllChanges();
     blockObservation(
       modelItems: [arrangement.clips],
-      block: () => _paintClips(canvas, size),
+      block: () {
+        paintAutomationHoldSegments(
+          project: project,
+          arrangement: arrangement,
+          viewModel: viewModel,
+          canvas: canvas,
+          canvasSize: size,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          renderedVerticalScrollPosition: renderedVerticalScrollPosition,
+        );
+        _paintClips(canvas, size);
+      },
     );
 
     _drawClipCreateHint(canvas, size);

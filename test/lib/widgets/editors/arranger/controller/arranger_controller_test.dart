@@ -25,7 +25,9 @@ import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
@@ -205,11 +207,6 @@ class _ArrangerControllerTestFixture {
     );
 
     AnthemStore.instance.projects[project.id] = project;
-
-    final controller = ArrangerController(
-      viewModel: viewModel,
-      project: project,
-    );
     final mockProjectController = MockProjectController();
     final mockTrackController = MockTrackController();
     when(mockTrackController.getTracksIterable()).thenAnswer(
@@ -226,6 +223,10 @@ class _ArrangerControllerTestFixture {
         overrideService(arrangerViewModelService, (_, _) => viewModel),
         overrideService(trackControllerService, (_, _) => mockTrackController),
       ]),
+    );
+    final controller = ArrangerController(
+      viewModel: viewModel,
+      project: project,
     );
 
     return _ArrangerControllerTestFixture._(
@@ -313,8 +314,11 @@ void main() {
         ServiceRegistry.forProject(project.id).arrangerController;
         final track = project.tracks[project.trackOrder.first]!;
         final utilityNode = track.requireProcessing.utilityNode!;
+        final utilityPort = utilityNode.getPortById(
+          UtilityProcessorModel.gainPortId,
+        );
 
-        utilityNode.lastChangedControlPortId = UtilityProcessorModel.gainPortId;
+        utilityPort.parameterValue = 0.42;
 
         var target = viewModel.lastTweakedAutomationTarget;
         expect(target, isNotNull);
@@ -334,9 +338,11 @@ void main() {
         final device = track.requireProcessing.devices.single;
         final deviceNode =
             project.processingGraph.nodes[device.nodeIds.single]!;
+        final frequencyPort = deviceNode.getPortById(
+          ToneGeneratorProcessorModel.frequencyPortId,
+        );
 
-        deviceNode.lastChangedControlPortId =
-            ToneGeneratorProcessorModel.frequencyPortId;
+        frequencyPort.parameterValue = 0.56;
 
         target = viewModel.lastTweakedAutomationTarget;
         expect(target, isNotNull);
@@ -391,6 +397,144 @@ void main() {
           fixture.viewModel.automationExpandedByTrackId[target.ownerTrackId],
           isTrue,
         );
+      },
+    );
+
+    test('parameter changes update last tweaked automation target', () {
+      fixture.dispose();
+
+      final project = ProjectModel.create();
+      final viewModel = ArrangerViewModel(
+        project: project,
+        baseTrackHeight: 60,
+        timeView: TimeRange(0, 960),
+      );
+
+      AnthemStore.instance.projects[project.id] = project;
+      ServiceRegistry.initializeProject(
+        project,
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(arrangerViewModelService, (_, _) => viewModel),
+        ]),
+      );
+
+      try {
+        final controller = ServiceRegistry.forProject(
+          project.id,
+        ).arrangerController;
+        final parentTrack = project.tracks[project.trackOrder.first]!;
+        final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        final utilityPort = utilityNode.getPortById(
+          UtilityProcessorModel.gainPortId,
+        );
+        final target = controller.resolveAutomationTarget(
+          nodeId: utilityNode.id,
+          portId: utilityPort.id,
+        );
+
+        expect(target, isNotNull);
+
+        expect(controller.createAutomationLaneForTarget(target!), isNotNull);
+
+        utilityPort.parameterValue = 0.41;
+
+        expect(viewModel.lastTweakedAutomationTarget, isNotNull);
+        expect(
+          viewModel.lastTweakedAutomationTarget!.ownerTrackId,
+          equals(parentTrack.id),
+        );
+        expect(
+          viewModel.lastTweakedAutomationTarget!.nodeId,
+          equals(utilityNode.id),
+        );
+        expect(
+          viewModel.lastTweakedAutomationTarget!.portId,
+          equals(UtilityProcessorModel.gainPortId),
+        );
+      } finally {
+        ServiceRegistry.removeProject(project.id);
+        AnthemStore.instance.projects.remove(project.id);
+        project.dispose();
+      }
+    });
+
+    test('suppressed parameter changes do not update automation target', () {
+      fixture.dispose();
+
+      final project = ProjectModel.create();
+      final viewModel = ArrangerViewModel(
+        project: project,
+        baseTrackHeight: 60,
+        timeView: TimeRange(0, 960),
+      );
+
+      AnthemStore.instance.projects[project.id] = project;
+      ServiceRegistry.initializeProject(
+        project,
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(arrangerViewModelService, (_, _) => viewModel),
+        ]),
+      );
+
+      try {
+        ServiceRegistry.forProject(project.id).arrangerController;
+        final parentTrack = project.tracks[project.trackOrder.first]!;
+        final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        final utilityPort = utilityNode.getPortById(
+          UtilityProcessorModel.gainPortId,
+        );
+
+        utilityNode.withoutParameterTouchTracking(() {
+          utilityPort.parameterValue = 0.41;
+        });
+
+        expect(viewModel.lastTweakedAutomationTarget, isNull);
+      } finally {
+        ServiceRegistry.removeProject(project.id);
+        AnthemStore.instance.projects.remove(project.id);
+        project.dispose();
+      }
+    });
+
+    test(
+      'non-parameter control port changes do not update automation target',
+      () {
+        fixture.dispose();
+
+        final project = ProjectModel.create();
+        final viewModel = ArrangerViewModel(
+          project: project,
+          baseTrackHeight: 60,
+          timeView: TimeRange(0, 960),
+        );
+
+        AnthemStore.instance.projects[project.id] = project;
+        ServiceRegistry.initializeProject(
+          project,
+          overrides: ProjectServiceFactoryOverrides([
+            overrideService(arrangerViewModelService, (_, _) => viewModel),
+          ]),
+        );
+
+        try {
+          ServiceRegistry.forProject(project.id).arrangerController;
+          final parentTrack = project.tracks[project.trackOrder.first]!;
+          final utilityNode = parentTrack.requireProcessing.utilityNode!;
+          final nonParameterPort = NodePortModel(
+            nodeId: utilityNode.id,
+            id: 999,
+            config: NodePortConfigModel(dataType: NodePortDataType.control),
+          );
+
+          utilityNode.controlInputPorts.add(nonParameterPort);
+          nonParameterPort.parameterValue = 0.41;
+
+          expect(viewModel.lastTweakedAutomationTarget, isNull);
+        } finally {
+          ServiceRegistry.removeProject(project.id);
+          AnthemStore.instance.projects.remove(project.id);
+          project.dispose();
+        }
       },
     );
   });

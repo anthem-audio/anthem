@@ -34,14 +34,17 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
-import 'package:anthem_codegen/include.dart';
 
 import '../helpers.dart';
 
 part 'shortcuts.dart';
+
+const _parameterNodeBinding = 'parameterNode';
+const _parameterPortBinding = 'parameterPort';
 
 class ArrangerController extends _ArrangerController
     with _ArrangerShortcutsMixin
@@ -64,7 +67,7 @@ abstract class _ArrangerController {
   bool _isDisposed = false;
 
   late final ReactionDisposer patternCursorAutorunDispose;
-  late final ModelFilterSubscription lastChangedControlPortSubscription;
+  late final ModelFilterSubscription parameterValueChangeSubscription;
 
   ProjectModel get _project =>
       AnthemStore.instance.projects[viewModel.projectId]!;
@@ -77,15 +80,19 @@ abstract class _ArrangerController {
       viewModel.cursorTimeRange = null;
     });
 
-    lastChangedControlPortSubscription =
-        _subscribeToLastChangedControlPortChanges();
+    parameterValueChangeSubscription = _subscribeToParameterValueChanges();
   }
 
-  ModelFilterSubscription _subscribeToLastChangedControlPortChanges() {
+  ModelFilterSubscription _subscribeToParameterValueChanges() {
     try {
       return project.processingGraph.onChange(
-        (b) => b.nodes.anyValue.lastChangedControlPortId,
-        _handleLastChangedControlPortChanged,
+        (b) => b
+            .nodes()
+            .anyValue(bindTo: _parameterNodeBinding)
+            .controlInputPorts()
+            .anyElement(bindTo: _parameterPortBinding)
+            .parameterValue(),
+        _handleParameterValueChanged,
       );
     } catch (error) {
       if (!error.toString().contains('LateInitializationError')) {
@@ -102,7 +109,7 @@ abstract class _ArrangerController {
     }
 
     _isDisposed = true;
-    lastChangedControlPortSubscription.cancel();
+    parameterValueChangeSubscription.cancel();
     patternCursorAutorunDispose();
     stateMachine.dispose();
   }
@@ -154,21 +161,22 @@ abstract class _ArrangerController {
     stateMachine.onTrackLayoutChanged();
   }
 
-  void _handleLastChangedControlPortChanged(ModelChangeEvent event) {
-    Id? nodeId;
-    for (final accessor in event.fieldAccessors) {
-      if (accessor.fieldType == FieldType.map && accessor.key is Id) {
-        nodeId = accessor.key as Id;
-        break;
-      }
-    }
-
-    final portId = event.operation.newValue;
-    if (nodeId == null || portId is! int) {
+  void _handleParameterValueChanged(
+    ModelChangeEvent _,
+    ModelChangeBindings bindings,
+  ) {
+    final node = bindings.maybeGet<NodeModel>(_parameterNodeBinding);
+    final port = bindings.maybeGet<NodePortModel>(_parameterPortBinding);
+    if (node == null || port == null) {
       return;
     }
 
-    final target = resolveAutomationTarget(nodeId: nodeId, portId: portId);
+    if (isParameterTouchTrackingSuppressed(node) ||
+        port.config.parameterConfig == null) {
+      return;
+    }
+
+    final target = resolveAutomationTarget(nodeId: node.id, portId: port.id);
     if (target == null) {
       return;
     }

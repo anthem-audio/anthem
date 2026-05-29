@@ -679,7 +679,6 @@ class _ArrangerCanvas extends StatelessWidget {
       timeViewAnimationController,
       verticalScrollPositionAnimationController,
       viewModel.trackPositionCalculator.layoutRevision,
-      viewModel.automationHoldRenderCache.revision,
     ]);
 
     return Container(
