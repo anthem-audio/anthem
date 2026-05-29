@@ -391,7 +391,7 @@ void main() {
     model.onChange(
       (b) => b
           .mapOfSubElements()
-          .anyValue(bindKeyTo: 'elementKey')
+          .anyValue(bindKeyTo: 'elementKey', bindTo: 'element')
           .value(
             bindTo: 'value',
             bindOldValueTo: 'oldValue',
@@ -409,12 +409,13 @@ void main() {
 
     expect(changes, hasLength(1));
     expect(bindings.single.get<String>('elementKey'), 'one');
+    expect(bindings.single.get<ModelSubElement>('element'), same(subElement));
     expect(bindings.single.get<String>('value'), 'new value');
     expect(bindings.single.get<String>('oldValue'), 'value');
     expect(bindings.single.get<String>('newValue'), 'new value');
   });
 
-  test('Descendant matches bind path values without terminal values', () {
+  test('Descendant binds path values but not terminal old/new values', () {
     final model = Model(id: 0, name: 'name');
 
     final bindings = <ModelChangeBindings>[];
@@ -446,7 +447,7 @@ void main() {
     expect(bindings[0].get<ModelSubElement>('newElement'), same(subElement));
 
     expect(bindings[1].get<String>('elementKey'), 'one');
-    expect(bindings[1].containsKey('element'), isFalse);
+    expect(bindings[1].get<ModelSubElement>('element'), same(subElement));
     expect(bindings[1].containsKey('oldElement'), isFalse);
     expect(bindings[1].containsKey('newElement'), isFalse);
   });

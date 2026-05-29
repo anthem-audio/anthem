@@ -137,6 +137,17 @@ Map<String, dynamic> _operationValueBindings({
   return result;
 }
 
+Map<String, dynamic> _accessorValueBindings({
+  required FieldAccessor accessor,
+  required String? bindValueTo,
+}) {
+  if (bindValueTo == null || !accessor.hasValue) {
+    return const <String, dynamic>{};
+  }
+
+  return {bindValueTo: accessor.value};
+}
+
 /// A node that matches if any of its children match.
 ///
 /// See the documentation on [ModelFilterNode] for context
@@ -333,18 +344,25 @@ class ModelFilterFieldNode extends ModelFilterNode {
     final exactMatch = remainingAccessors.isEmpty;
     final descendantMatch = includeDescendants && remainingAccessors.isNotEmpty;
 
-    if (next == null && (exactMatch || descendantMatch)) {
-      // If there's no next node, then this is a leaf node and we match
+    if (next == null && exactMatch) {
+      // If there's no next node and no remaining accessors, then this is the
+      // operation leaf and value bindings come from the operation.
       return (
         matches: true,
-        bindings: exactMatch
-            ? _operationValueBindings(
-                operation: operation,
-                bindValueTo: bindValueTo,
-                bindOldValueTo: bindOldValueTo,
-                bindNewValueTo: bindNewValueTo,
-              )
-            : const <String, dynamic>{},
+        bindings: _operationValueBindings(
+          operation: operation,
+          bindValueTo: bindValueTo,
+          bindOldValueTo: bindOldValueTo,
+          bindNewValueTo: bindNewValueTo,
+        ),
+      );
+    } else if (next == null && descendantMatch) {
+      return (
+        matches: true,
+        bindings: _accessorValueBindings(
+          accessor: accessor,
+          bindValueTo: bindValueTo,
+        ),
       );
     } else if (next == null) {
       // If there's no next node but there are still accessors left, then the
@@ -354,7 +372,18 @@ class ModelFilterFieldNode extends ModelFilterNode {
     }
 
     // Otherwise, we need to match the next node with the remaining accessors
-    return next!.match(remainingAccessors, operation);
+    final childMatch = next!.match(remainingAccessors, operation);
+    if (!childMatch.matches) {
+      return _noModelFilterMatch;
+    }
+
+    return (
+      matches: true,
+      bindings: _mergeBindingMaps(
+        _accessorValueBindings(accessor: accessor, bindValueTo: bindValueTo),
+        childMatch.bindings,
+      ),
+    );
   }
 }
 
@@ -437,20 +466,27 @@ class ModelFilterWildcardNode extends ModelFilterNode {
     final exactMatch = remainingAccessors.isEmpty;
     final descendantMatch = includeDescendants && remainingAccessors.isNotEmpty;
 
-    if (next == null && (exactMatch || descendantMatch)) {
-      // If there's no next node, then this is a leaf node and we match
+    if (next == null && exactMatch) {
+      // If there's no next node and no remaining accessors, then this is the
+      // operation leaf and value bindings come from the operation.
       return (
         matches: true,
         bindings: _mergeBindingMaps(
           localBindings,
-          exactMatch
-              ? _operationValueBindings(
-                  operation: operation,
-                  bindValueTo: bindValueTo,
-                  bindOldValueTo: bindOldValueTo,
-                  bindNewValueTo: bindNewValueTo,
-                )
-              : const <String, dynamic>{},
+          _operationValueBindings(
+            operation: operation,
+            bindValueTo: bindValueTo,
+            bindOldValueTo: bindOldValueTo,
+            bindNewValueTo: bindNewValueTo,
+          ),
+        ),
+      );
+    } else if (next == null && descendantMatch) {
+      return (
+        matches: true,
+        bindings: _mergeBindingMaps(
+          localBindings,
+          _accessorValueBindings(accessor: accessor, bindValueTo: bindValueTo),
         ),
       );
     } else if (next == null) {
@@ -469,7 +505,13 @@ class ModelFilterWildcardNode extends ModelFilterNode {
 
     return (
       matches: true,
-      bindings: _mergeBindingMaps(localBindings, childMatch.bindings),
+      bindings: _mergeBindingMaps(
+        _mergeBindingMaps(
+          localBindings,
+          _accessorValueBindings(accessor: accessor, bindValueTo: bindValueTo),
+        ),
+        childMatch.bindings,
+      ),
     );
   }
 }

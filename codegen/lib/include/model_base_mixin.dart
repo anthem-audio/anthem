@@ -251,23 +251,36 @@ class MapRemove extends FieldOperation {
   }
 }
 
+class _NoFieldAccessorValue {
+  const _NoFieldAccessorValue();
+}
+
+const _noFieldAccessorValue = _NoFieldAccessorValue();
+
 /// Represents a field in a model.
 class FieldAccessor {
   final FieldType fieldType;
   final String? fieldName;
   final int? index;
   final dynamic key;
+  final dynamic _value;
 
   FieldAccessor({
     required this.fieldType,
     this.fieldName,
     this.index,
     this.key,
-  });
+    dynamic value = _noFieldAccessorValue,
+  }) : _value = value;
+
+  bool get hasValue => !identical(_value, _noFieldAccessorValue);
+
+  dynamic get value => hasValue ? _value : null;
 
   @override
   String toString() {
-    return 'FieldAccessor(fieldType: $fieldType, fieldName: $fieldName, index: $index, key: $key)';
+    return 'FieldAccessor(fieldType: $fieldType, fieldName: $fieldName, '
+        'index: $index, key: $key, hasValue: $hasValue)';
   }
 }
 
@@ -549,6 +562,7 @@ mixin AnthemModelBase {
         fieldName: parentFieldName,
         index: parentListIndex,
         key: parentMapKey,
+        value: this,
       ),
     );
 
