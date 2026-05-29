@@ -270,8 +270,8 @@ class FieldAccessor {
     this.fieldName,
     this.index,
     this.key,
-    dynamic value = _noFieldAccessorValue,
-  }) : _value = value;
+    this._value = _noFieldAccessorValue,
+  });
 
   bool get hasValue => !identical(_value, _noFieldAccessorValue);
 
@@ -301,14 +301,12 @@ typedef ModelChangeDecorator = void Function(MutableModelChange change);
 class MutableModelChange {
   final FieldOperation operation;
   final List<FieldAccessor> _leafToRootAccessors;
-  bool _sendToEngine;
+  bool _sendToEngine = true;
 
   MutableModelChange._({
     required this.operation,
-    required List<FieldAccessor> leafToRootAccessors,
-    bool sendToEngine = true,
-  }) : _leafToRootAccessors = leafToRootAccessors,
-       _sendToEngine = sendToEngine;
+    required this._leafToRootAccessors,
+  });
 
   /// Whether the root model should forward this change to the engine.
   ///

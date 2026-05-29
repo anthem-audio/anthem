@@ -84,10 +84,10 @@ class EngineConnector extends EngineConnectorBase {
     this._id, {
     required super.kDebugMode,
     super.onReply,
-    void Function()? onExit,
+    this._onExit,
     super.noHeartbeat = false,
     this.enginePathOverride,
-  }) : _onExit = onExit {
+  }) {
     onInit = _init();
 
     // If any requests came in before the engine was started, send them now.

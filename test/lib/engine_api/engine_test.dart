@@ -59,8 +59,8 @@ class _TestEngineConnector extends EngineConnectorBase {
     required super.kDebugMode,
     super.noHeartbeat = false,
     super.onReply,
-    void Function()? onExit,
-  }) : _onExit = onExit {
+    this._onExit,
+  }) {
     onInit = _onInitCompleter.future;
   }
 

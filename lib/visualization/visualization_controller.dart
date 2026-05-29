@@ -47,12 +47,10 @@ class VisualizationSubscriptionController<T> extends ChangeNotifier {
   /// The controller subscribes immediately and begins caching the latest
   /// rendered value exposed by the underlying [VisualizationSubscription].
   VisualizationSubscriptionController({
-    required VisualizationProvider visualizationProvider,
-    required VisualizationSubscriptionConfig<T> config,
-    Duration? minimumUpdateInterval,
-  }) : _visualizationProvider = visualizationProvider,
-       _config = config,
-       _minimumUpdateInterval = minimumUpdateInterval {
+    required this._visualizationProvider,
+    required this._config,
+    this._minimumUpdateInterval,
+  }) {
     _attachSubscription();
   }
 
@@ -215,15 +213,13 @@ class MultiVisualizationSubscriptionController<T> extends ChangeNotifier {
   /// cached subscription data. [engineTimes] starts with `null` entries until
   /// timed values arrive from the underlying subscriptions.
   MultiVisualizationSubscriptionController({
-    required VisualizationProvider visualizationProvider,
+    required this._visualizationProvider,
     required List<VisualizationSubscriptionConfig<T>> configs,
-    Duration? minimumUpdateInterval,
-  }) : _visualizationProvider = visualizationProvider,
-       _configs = List<VisualizationSubscriptionConfig<T>>.of(
+    this._minimumUpdateInterval,
+  }) : _configs = List<VisualizationSubscriptionConfig<T>>.of(
          configs,
          growable: false,
-       ),
-       _minimumUpdateInterval = minimumUpdateInterval {
+       ) {
     _attachSubscriptions();
   }
 

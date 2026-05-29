@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -59,8 +59,8 @@ abstract class EngineConnectorBase {
   EngineConnectorBase({
     required this.kDebugMode,
     required this.noHeartbeat,
-    void Function(Response)? onReply,
-  }) : _onReply = onReply;
+    this._onReply,
+  });
 
   void startHeartbeatTimer() {
     _heartbeatCheckTimer = Timer.periodic(

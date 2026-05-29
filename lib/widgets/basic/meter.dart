@@ -241,14 +241,13 @@ class MeterPainter extends CustomPainter {
   final double peakLineThickness;
 
   MeterPainter({
-    required MeterSnapshot snapshot,
+    required MeterSnapshot this._snapshot,
     required this.gradientColors,
     required this.gradientStopPositions,
     required this.backgroundTrackColor,
     this.noBackground = false,
     this.peakLineThickness = 1.0,
-  }) : _snapshot = snapshot,
-       _snapshotListenable = null;
+  }) : _snapshotListenable = null;
 
   MeterPainter.fromListenable({
     required ValueListenable<MeterSnapshot> snapshotListenable,
@@ -389,12 +388,10 @@ class MeterValueTracker {
   );
 
   MeterValueTracker({
-    required MeterDbToNormalizedPosition dbToNormalizedPosition,
-    required Duration peakHoldDuration,
-    required double peakFallRateNormalizedPerSecond,
-  }) : _dbToNormalizedPosition = dbToNormalizedPosition,
-       _peakHoldDuration = peakHoldDuration,
-       _peakFallRateNormalizedPerSecond = peakFallRateNormalizedPerSecond;
+    required this._dbToNormalizedPosition,
+    required this._peakHoldDuration,
+    required this._peakFallRateNormalizedPerSecond,
+  });
 
   void updateConfig({
     required MeterDbToNormalizedPosition dbToNormalizedPosition,

@@ -81,8 +81,7 @@ class _TimelineTestEngine extends Mock implements Engine {
   final _RecordingSequencerApi _sequencerApi;
   bool _isRunning;
 
-  _TimelineTestEngine(this._sequencerApi, {bool isRunning = false})
-    : _isRunning = isRunning;
+  _TimelineTestEngine(this._sequencerApi, {this._isRunning = false});
 
   @override
   bool get isRunning => _isRunning;
