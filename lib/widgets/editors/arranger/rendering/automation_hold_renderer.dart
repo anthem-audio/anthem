@@ -21,6 +21,8 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/model/arrangement/arrangement.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_segments.dart';
@@ -52,58 +54,131 @@ void paintAutomationHoldSegments({
       viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
 
   for (final (rowIndex, row) in trackPositionCalculator.visibleRows.indexed) {
-    final trackId = switch (row) {
-      TrackArrangerRow(:final trackId) => trackId,
-      PhantomAutomationArrangerRow() => null,
-    };
-    if (trackId == null) {
-      continue;
-    }
-
-    final track = project.tracks[trackId];
-    if (track == null || !track.isAutomationLane) {
-      continue;
-    }
-
-    final trackY =
-        trackPositionCalculator.getTrackPosition(rowIndex) +
-        verticalScrollDelta -
-        1;
-    final trackHeight = trackPositionCalculator.getTrackHeight(rowIndex) + 1;
-
-    if (trackHeight <= _smallAutomationRowThreshold ||
-        trackY > canvasSize.height ||
-        trackY + trackHeight < 0) {
-      continue;
-    }
-
-    final contentTop = trackY + _automationTopPadding;
-    final contentBottom = trackY + trackHeight - _automationBottomPadding;
-    if (contentBottom <= contentTop) {
-      continue;
-    }
-
-    final segments = buildAutomationHoldSegmentsForTrack(
-      project: project,
-      arrangement: arrangement,
-      trackId: trackId,
-    );
-
-    if (segments.isEmpty) {
-      continue;
-    }
-
-    _paintTrackAutomationHoldSegments(
-      canvas: canvas,
+    final contentBounds = _automationContentBoundsForRow(
+      viewModel: viewModel,
+      rowIndex: rowIndex,
       canvasSize: canvasSize,
-      segments: segments,
-      color: track.color.colorShifter.clipBase.toColor(),
-      contentTop: contentTop,
-      contentBottom: contentBottom,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
+      verticalScrollDelta: verticalScrollDelta,
     );
+    if (contentBounds == null) {
+      continue;
+    }
+
+    switch (row) {
+      case TrackArrangerRow(:final trackId):
+        final track = project.tracks[trackId];
+        if (track == null || !track.isAutomationLane) {
+          continue;
+        }
+
+        final segments = buildAutomationHoldSegmentsForTrack(
+          project: project,
+          arrangement: arrangement,
+          trackId: trackId,
+        );
+
+        if (segments.isEmpty) {
+          continue;
+        }
+
+        _paintTrackAutomationHoldSegments(
+          canvas: canvas,
+          canvasSize: canvasSize,
+          segments: segments,
+          color: track.color.colorShifter.clipBase.toColor(),
+          contentTop: contentBounds.contentTop,
+          contentBottom: contentBounds.contentBottom,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+        );
+
+      case PhantomAutomationArrangerRow(:final phantomLane):
+        final target = phantomLane.target;
+        final value = target == null
+            ? null
+            : _currentAutomationTargetValue(project: project, target: target);
+        final parentTrack = project.tracks[phantomLane.parentTrackId];
+        if (value == null || parentTrack == null) {
+          continue;
+        }
+
+        _paintTrackAutomationHoldSegments(
+          canvas: canvas,
+          canvasSize: canvasSize,
+          segments: [
+            AutomationHoldSegment(
+              startTick: timeViewStart,
+              endTick: timeViewEnd,
+              value: value,
+            ),
+          ],
+          color: parentTrack.color.colorShifter.clipBase.toColor(),
+          contentTop: contentBounds.contentTop,
+          contentBottom: contentBounds.contentBottom,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+        );
+    }
   }
+}
+
+({double contentTop, double contentBottom})? _automationContentBoundsForRow({
+  required ArrangerViewModel viewModel,
+  required int rowIndex,
+  required Size canvasSize,
+  required double verticalScrollDelta,
+}) {
+  final trackPositionCalculator = viewModel.trackPositionCalculator;
+  final trackY =
+      trackPositionCalculator.getTrackPosition(rowIndex) +
+      verticalScrollDelta -
+      1;
+  final trackHeight = trackPositionCalculator.getTrackHeight(rowIndex) + 1;
+
+  if (trackHeight <= _smallAutomationRowThreshold ||
+      trackY > canvasSize.height ||
+      trackY + trackHeight < 0) {
+    return null;
+  }
+
+  final contentTop = trackY + _automationTopPadding;
+  final contentBottom = trackY + trackHeight - _automationBottomPadding;
+  if (contentBottom <= contentTop) {
+    return null;
+  }
+
+  return (contentTop: contentTop, contentBottom: contentBottom);
+}
+
+double? _currentAutomationTargetValue({
+  required ProjectModel project,
+  required AutomationParameterTarget target,
+}) {
+  final node = project.processingGraph.nodes[target.nodeId];
+  if (node == null) {
+    return null;
+  }
+
+  final port = _findControlInputPort(node: node, portId: target.portId);
+  final parameterConfig = port?.config.parameterConfig;
+  if (port == null || parameterConfig == null) {
+    return null;
+  }
+
+  return port.parameterValue ?? parameterConfig.defaultValue;
+}
+
+NodePortModel? _findControlInputPort({
+  required NodeModel node,
+  required int portId,
+}) {
+  for (final port in node.controlInputPorts) {
+    if (port.id == portId) {
+      return port;
+    }
+  }
+
+  return null;
 }
 
 void _paintTrackAutomationHoldSegments({

@@ -25,6 +25,7 @@ import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -273,7 +274,7 @@ void main() {
     });
 
     test(
-      'does not draw pixels for targeted phantom automation lanes',
+      'draws current value line for targeted phantom automation lanes',
       () async {
         final fixture = _AutomationHoldPaintFixture.create(
           withAutomationClips: false,
@@ -283,13 +284,17 @@ void main() {
         final parentTrack = fixture.project.tracks.values.firstWhere(
           (track) => !track.isAutomationLane,
         );
+        final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
+        port.parameterValue = 0.25;
+
         fixture.viewModel.lastTweakedAutomationTarget =
             AutomationParameterTarget(
               ownerTrackId: parentTrack.id,
-              nodeId: 1,
-              portId: 2,
-              ownerName: 'Device',
-              parameterName: 'Cutoff',
+              nodeId: utilityNode.id,
+              portId: UtilityProcessorModel.gainPortId,
+              ownerName: 'Track',
+              parameterName: 'Volume',
             );
         fixture.viewModel.refreshTrackLayout(160);
 
@@ -313,7 +318,7 @@ void main() {
         );
         image.dispose();
 
-        expect(nonTransparentPixelCount, equals(0));
+        expect(nonTransparentPixelCount, greaterThan(0));
       },
     );
   });
