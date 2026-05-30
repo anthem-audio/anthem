@@ -102,6 +102,13 @@ jobs:
       - name: Build Flutter
         run: flutter build windows --verbose --release
 
+      - name: Build MSIX
+        shell: pwsh
+        run: |
+          $outputPath = "build/windows/x64/msix"
+          New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
+          dart run msix:create --release --build-windows false --install-certificate false --architecture x64 --output-path $outputPath --output-name anthem-windows-x64
+
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
@@ -112,6 +119,12 @@ jobs:
           # when) this changes, the path here would look like the Linux path
           # below.
           path: build/windows/x64/runner/Release
+
+      - name: Upload MSIX artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: anthem-windows-${{ matrix.arch }}-msix
+          path: build/windows/x64/msix/*.msix
 
   build-wasm:
     runs-on: ubuntu-latest

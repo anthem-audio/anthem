@@ -56,6 +56,15 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   mobx_codegen: ^2.7.2
   source_gen: ^4.0.1
+  msix: ^3.16.13
+
+msix_config:
+  display_name: Anthem
+  publisher_display_name: Anthem authors
+  identity_name: org.anthemaudio.anthem
+  logo_path: windows/runner/resources/app_icon.ico
+  build_windows: false
+  install_certificate: false
 
 flutter:
   uses-material-design: true
