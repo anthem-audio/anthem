@@ -23,7 +23,9 @@ import 'dart:ui';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -76,15 +78,20 @@ void paintAutomationHoldSegments({
           arrangement: arrangement,
           trackId: trackId,
         );
-
-        if (segments.isEmpty) {
-          continue;
-        }
+        final paintSegments = segments.isNotEmpty
+            ? segments
+            : [
+                AutomationHoldSegment(
+                  startTick: timeViewStart,
+                  endTick: timeViewEnd,
+                  value: _automationLaneEmptyValue(track),
+                ),
+              ];
 
         _paintTrackAutomationHoldSegments(
           canvas: canvas,
           canvasSize: canvasSize,
-          segments: segments,
+          segments: paintSegments,
           color: track.color.colorShifter.clipBase.toColor(),
           contentTop: contentBounds.contentTop,
           contentBottom: contentBounds.contentBottom,
@@ -120,6 +127,17 @@ void paintAutomationHoldSegments({
         );
     }
   }
+}
+
+double _automationLaneEmptyValue(TrackModel track) {
+  final processor =
+      track
+              .requireAutomationProcessing
+              .sequenceAutomationProviderNode!
+              .processor
+          as SequenceAutomationProviderProcessorModel;
+
+  return processor.emptyValue;
 }
 
 ({double contentTop, double contentBottom})? _automationContentBoundsForRow({

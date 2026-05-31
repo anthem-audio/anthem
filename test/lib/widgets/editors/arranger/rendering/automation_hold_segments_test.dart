@@ -20,6 +20,7 @@
 import 'dart:ui' as ui;
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
@@ -270,34 +271,39 @@ void main() {
       },
     );
 
-    test('does not draw pixels for an automation lane with no clips', () async {
-      final fixture = _AutomationHoldPaintFixture.create(
-        withAutomationClips: false,
-      );
-      addTearDown(fixture.dispose);
+    test(
+      'draws provider empty value for an automation lane with no clips',
+      () async {
+        final fixture = _AutomationHoldPaintFixture.create(
+          withAutomationClips: false,
+        );
+        addTearDown(fixture.dispose);
 
-      fixture.viewModel.refreshTrackLayout(160);
+        fixture.viewModel.refreshTrackLayout(160);
 
-      final recorder = ui.PictureRecorder();
-      final canvas = ui.Canvas(recorder);
+        final recorder = ui.PictureRecorder();
+        final canvas = ui.Canvas(recorder);
 
-      paintAutomationHoldSegments(
-        project: fixture.project,
-        arrangement: fixture.arrangement,
-        viewModel: fixture.viewModel,
-        canvas: canvas,
-        canvasSize: const ui.Size(500, 160),
-        timeViewStart: 0,
-        timeViewEnd: 500,
-        renderedVerticalScrollPosition: 0,
-      );
+        paintAutomationHoldSegments(
+          project: fixture.project,
+          arrangement: fixture.arrangement,
+          viewModel: fixture.viewModel,
+          canvas: canvas,
+          canvasSize: const ui.Size(500, 160),
+          timeViewStart: 0,
+          timeViewEnd: 500,
+          renderedVerticalScrollPosition: 0,
+        );
 
-      final image = await recorder.endRecording().toImage(500, 160);
-      final nonTransparentPixelCount = await _countNonTransparentPixels(image);
-      image.dispose();
+        final image = await recorder.endRecording().toImage(500, 160);
+        final nonTransparentPixelCount = await _countNonTransparentPixels(
+          image,
+        );
+        image.dispose();
 
-      expect(nonTransparentPixelCount, equals(0));
-    });
+        expect(nonTransparentPixelCount, greaterThan(0));
+      },
+    );
 
     test(
       'draws current value line for targeted phantom automation lanes',
@@ -658,19 +664,22 @@ class _AutomationHoldPaintFixture {
     ServiceRegistry.initializeProject(project);
 
     final parentTrack = project.tracks[project.trackOrder.first]!;
-    final lane = TrackModel(
-      idAllocator: project.idAllocator,
-      name: 'Cutoff',
-      color: AnthemColor(hue: 120),
-      type: TrackType.automationLane,
-      automationTarget: TrackAutomationTargetModel.uninitialized(),
-    )..automationLaneParentTrackId = parentTrack.id;
-
-    project.tracks[lane.id] = lane;
-    parentTrack.automationLanes.add(lane.id);
-
+    final utilityNode = parentTrack.requireProcessing.utilityNode!;
+    final balancePort = utilityNode.getPortById(
+      UtilityProcessorModel.balancePortId,
+    );
+    balancePort.parameterValue = 0.35;
     final viewModel = ServiceRegistry.forProject(project.id).arrangerViewModel;
-    viewModel.registerTrack(lane.id);
+
+    AutomationLaneAddRemoveCommand.add(
+      project: project,
+      parentTrackId: parentTrack.id,
+      nodeId: utilityNode.id,
+      portId: UtilityProcessorModel.balancePortId,
+      name: 'Balance',
+    ).execute(project);
+
+    final lane = project.tracks[parentTrack.automationLanes.single]!;
     viewModel.automationExpandedByTrackId[parentTrack.id] = true;
 
     if (!withAutomationClips) {
