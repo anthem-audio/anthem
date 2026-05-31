@@ -17,16 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../helpers/test_project.dart';
+
 void main() {
   ArrangerViewModel createViewModel() {
-    final project = ProjectModel()..isHydrated = true;
+    final project = createTestProject(includeSequence: false);
 
     return ArrangerViewModel(
       project: project,

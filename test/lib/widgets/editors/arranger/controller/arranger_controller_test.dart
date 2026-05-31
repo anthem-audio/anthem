@@ -18,7 +18,6 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/device_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
@@ -32,22 +31,20 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
-import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
+
+import '../../../../helpers/test_project.dart';
 
 class MockProjectController extends Mock implements ProjectController {
   @override
@@ -106,15 +103,6 @@ class _TrackIds {
   static const master = 8;
 }
 
-TrackModel _makeTrack(Id id, String name, TrackType type) {
-  return TrackModel(
-    idAllocator: ProjectEntityIdAllocator.test(() => id),
-    name: name,
-    color: AnthemColor.randomHue(),
-    type: type,
-  );
-}
-
 Iterable<(Id trackId, bool isSendTrack, int trackDepth)> _getTracksIterable(
   ProjectModel project,
   ArrangerViewModel viewModel, {
@@ -166,47 +154,40 @@ class _ArrangerControllerTestFixture {
   });
 
   factory _ArrangerControllerTestFixture.create() {
-    final project = ProjectModel();
-    project.isHydrated = true;
-    project.idCounter = 1000;
-    project.sequence = SequencerModel(
-      idAllocator: ProjectEntityIdAllocator.test(getId),
+    final project = createTestProject(
+      idCounter: 1000,
+      tracks: const [
+        TestProjectTrack(
+          id: _TrackIds.a,
+          name: 'A',
+          type: TrackType.group,
+          childTracks: [_TrackIds.a1, _TrackIds.a2],
+        ),
+        TestProjectTrack(id: _TrackIds.a1, name: 'A1'),
+        TestProjectTrack(
+          id: _TrackIds.a2,
+          name: 'A2',
+          type: TrackType.group,
+          childTracks: [_TrackIds.a2a],
+        ),
+        TestProjectTrack(id: _TrackIds.a2a, name: 'A2a'),
+        TestProjectTrack(id: _TrackIds.b, name: 'B'),
+        TestProjectTrack(
+          id: _TrackIds.s,
+          name: 'S',
+          type: TrackType.group,
+          childTracks: [_TrackIds.s1],
+        ),
+        TestProjectTrack(id: _TrackIds.s1, name: 'S1'),
+        TestProjectTrack(
+          id: _TrackIds.master,
+          name: 'Master',
+          isMasterTrack: true,
+        ),
+      ],
+      trackOrder: const [_TrackIds.a, _TrackIds.b],
+      sendTrackOrder: const [_TrackIds.s, _TrackIds.master],
     );
-    project.processingGraph = ProcessingGraphModel.create(
-      masterOutputNodeId: project.idAllocator.allocateId(),
-    );
-
-    final tracks = <Id, TrackModel>{
-      _TrackIds.a: _makeTrack(_TrackIds.a, 'A', TrackType.group),
-      _TrackIds.a1: _makeTrack(_TrackIds.a1, 'A1', TrackType.normal),
-      _TrackIds.a2: _makeTrack(_TrackIds.a2, 'A2', TrackType.group),
-      _TrackIds.a2a: _makeTrack(_TrackIds.a2a, 'A2a', TrackType.normal),
-      _TrackIds.b: _makeTrack(_TrackIds.b, 'B', TrackType.normal),
-      _TrackIds.s: _makeTrack(_TrackIds.s, 'S', TrackType.group),
-      _TrackIds.s1: _makeTrack(_TrackIds.s1, 'S1', TrackType.normal),
-      _TrackIds.master: _makeTrack(
-        _TrackIds.master,
-        'Master',
-        TrackType.normal,
-      ),
-    };
-
-    tracks[_TrackIds.a]!.childTracks.addAll([_TrackIds.a1, _TrackIds.a2]);
-    tracks[_TrackIds.a2]!.childTracks.add(_TrackIds.a2a);
-    tracks[_TrackIds.s]!.childTracks.add(_TrackIds.s1);
-
-    for (final track in tracks.values) {
-      for (final childId in track.childTracks) {
-        tracks[childId]!.parentTrackId = track.id;
-      }
-    }
-
-    project.tracks = AnthemObservableMap.of(tracks);
-    project.trackOrder = AnthemObservableList.of([_TrackIds.a, _TrackIds.b]);
-    project.sendTrackOrder = AnthemObservableList.of([
-      _TrackIds.s,
-      _TrackIds.master,
-    ]);
     final viewModel = ArrangerViewModel(
       project: project,
       baseTrackHeight: 60,
@@ -595,7 +576,8 @@ void main() {
   configureUtilityAutomationTarget({double? parameterValue}) {
     final parentTrack = fixture.project.tracks[_TrackIds.a]!;
 
-    fixture.project.processingGraph = ProcessingGraphModel.create(
+    resetTestProjectProcessingGraph(
+      fixture.project,
       masterOutputNodeId: getId(),
     );
     parentTrack.createAndRegisterNodes(

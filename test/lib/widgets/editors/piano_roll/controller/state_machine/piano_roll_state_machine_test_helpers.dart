@@ -22,15 +22,12 @@ import 'dart:async';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
@@ -47,6 +44,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobx/mobx.dart';
 import 'package:mockito/mockito.dart';
 
+import '../../../../../helpers/test_project.dart';
+
 export 'package:anthem/engine_api/messages/messages.dart';
 export 'package:anthem/helpers/id.dart';
 export 'package:anthem/logic/service_registry.dart';
@@ -59,6 +58,7 @@ export 'package:anthem/widgets/editors/shared/helpers/types.dart';
 export 'package:flutter/gestures.dart';
 export 'package:flutter/widgets.dart';
 export 'package:flutter_test/flutter_test.dart';
+export '../../../../../helpers/test_project.dart' show testIdAllocator;
 
 class StoppedEngine extends Mock implements Engine {
   final Stream<EngineState> _engineStateStream =
@@ -69,10 +69,6 @@ class StoppedEngine extends Mock implements Engine {
 
   @override
   Stream<EngineState> get engineStateStream => _engineStateStream;
-}
-
-ProjectEntityIdAllocator testIdAllocator([Id Function()? allocateId]) {
-  return ProjectEntityIdAllocator.test(allocateId ?? getId);
 }
 
 class RecordedLiveEvent {
@@ -175,12 +171,7 @@ class TrackIds {
 }
 
 TrackModel makeTrack(Id id, String name, TrackType type) {
-  return TrackModel(
-    idAllocator: ProjectEntityIdAllocator.test(() => id),
-    name: name,
-    color: AnthemColor.randomHue(),
-    type: type,
-  );
+  return makeTestTrack(id, name, type);
 }
 
 class PianoRollStateMachineTestFixture {
@@ -212,8 +203,18 @@ class PianoRollStateMachineTestFixture {
   factory PianoRollStateMachineTestFixture.create({
     bool enableLiveEvents = false,
   }) {
-    final project = ProjectModel();
-    project.isHydrated = true;
+    final project = createTestProject(
+      tracks: const [
+        TestProjectTrack(id: TrackIds.instrument, name: 'Instrument'),
+        TestProjectTrack(
+          id: TrackIds.master,
+          name: 'Master',
+          isMasterTrack: true,
+        ),
+      ],
+      trackOrder: const [TrackIds.instrument],
+      sendTrackOrder: const [TrackIds.master],
+    );
     final recordingProcessingGraphApi = enableLiveEvents
         ? RecordingProcessingGraphApi()
         : null;
@@ -221,18 +222,6 @@ class PianoRollStateMachineTestFixture {
         ? RunningEngine(recordingProcessingGraphApi!)
         : null;
     project.engine = enableLiveEvents ? runningEngine! : StoppedEngine();
-    project.sequence = SequencerModel(idAllocator: testIdAllocator());
-
-    project.tracks = AnthemObservableMap.of({
-      TrackIds.instrument: makeTrack(
-        TrackIds.instrument,
-        'Instrument',
-        TrackType.normal,
-      ),
-      TrackIds.master: makeTrack(TrackIds.master, 'Master', TrackType.normal),
-    });
-    project.trackOrder = AnthemObservableList.of([TrackIds.instrument]);
-    project.sendTrackOrder = AnthemObservableList.of([TrackIds.master]);
     if (enableLiveEvents) {
       project
               .tracks[TrackIds.instrument]!

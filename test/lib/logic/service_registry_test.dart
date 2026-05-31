@@ -17,11 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../helpers/test_project.dart';
 
 class _DisposableTestService implements DisposableService {
   int disposeCallCount = 0;
@@ -36,9 +36,7 @@ class _NonDisposableTestService {}
 
 void main() {
   test('project-scoped factory overrides are applied on initialization', () {
-    final project = ProjectModel()
-      ..id = getProjectId()
-      ..isHydrated = true;
+    final project = createTestProject(includeSequence: false);
     final projectViewModel = ProjectViewModel();
 
     final registry = ServiceRegistry.initializeProject(
@@ -54,9 +52,7 @@ void main() {
   });
 
   test('initializeProject rejects late project-scoped overrides', () {
-    final project = ProjectModel()
-      ..id = getProjectId()
-      ..isHydrated = true;
+    final project = createTestProject(includeSequence: false);
 
     ServiceRegistry.initializeProject(project);
 
@@ -77,9 +73,7 @@ void main() {
   });
 
   test('removeProject disposes project services and removes the registry', () {
-    final project = ProjectModel()
-      ..id = getProjectId()
-      ..isHydrated = true;
+    final project = createTestProject(includeSequence: false);
     final registry = ServiceRegistry.initializeProject(project);
     final disposableService = _DisposableTestService();
 
@@ -100,9 +94,7 @@ void main() {
   });
 
   test('registry reuses the project allocator instance by default', () {
-    final project = ProjectModel()
-      ..id = getProjectId()
-      ..isHydrated = true;
+    final project = createTestProject(includeSequence: false);
 
     final registry = ServiceRegistry.initializeProject(project);
 

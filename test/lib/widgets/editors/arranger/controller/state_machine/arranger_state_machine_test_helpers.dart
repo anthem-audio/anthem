@@ -18,12 +18,13 @@
 */
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
@@ -38,6 +39,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../../../../helpers/test_project.dart';
+
 export 'package:anthem/helpers/id.dart';
 export 'package:anthem/helpers/project_entity_id_allocator.dart';
 export 'package:anthem/logic/project_controller.dart';
@@ -63,6 +67,7 @@ export 'package:flutter/gestures.dart';
 export 'package:flutter/services.dart';
 export 'package:flutter/widgets.dart';
 export 'package:flutter_test/flutter_test.dart';
+export '../../../../../helpers/test_project.dart' show testIdAllocator;
 
 class TrackIds {
   static const a = 1;
@@ -79,10 +84,6 @@ class ClipIds {
   static const someOtherSelected = 105;
   static const a = 106;
   static const b = 107;
-}
-
-ProjectEntityIdAllocator testIdAllocator([Id Function()? allocateId]) {
-  return ProjectEntityIdAllocator.test(allocateId ?? getId);
 }
 
 Id? trackIdForRowId(ArrangerViewModel viewModel, Id? rowId) {
@@ -121,12 +122,7 @@ void expectAutomationHandle(
 }
 
 TrackModel makeTrack(Id id, String name, TrackType type) {
-  return TrackModel(
-    idAllocator: ProjectEntityIdAllocator.test(() => id),
-    name: name,
-    color: AnthemColor.randomHue(),
-    type: type,
-  );
+  return makeTestTrack(id, name, type);
 }
 
 class ArrangerStateMachineTestFixture {
@@ -148,17 +144,19 @@ class ArrangerStateMachineTestFixture {
   });
 
   factory ArrangerStateMachineTestFixture.create() {
-    final project = ProjectModel();
-    project.isHydrated = true;
-    project.sequence = SequencerModel(idAllocator: testIdAllocator());
-
-    project.tracks = AnthemObservableMap.of({
-      TrackIds.a: makeTrack(TrackIds.a, 'A', TrackType.normal),
-      TrackIds.b: makeTrack(TrackIds.b, 'B', TrackType.normal),
-      TrackIds.master: makeTrack(TrackIds.master, 'Master', TrackType.normal),
-    });
-    project.trackOrder = AnthemObservableList.of([TrackIds.a, TrackIds.b]);
-    project.sendTrackOrder = AnthemObservableList.of([TrackIds.master]);
+    final project = createTestProject(
+      tracks: const [
+        TestProjectTrack(id: TrackIds.a, name: 'A'),
+        TestProjectTrack(id: TrackIds.b, name: 'B'),
+        TestProjectTrack(
+          id: TrackIds.master,
+          name: 'Master',
+          isMasterTrack: true,
+        ),
+      ],
+      trackOrder: const [TrackIds.a, TrackIds.b],
+      sendTrackOrder: const [TrackIds.master],
+    );
 
     final viewModel = ArrangerViewModel(
       project: project,
@@ -275,9 +273,37 @@ class ArrangerStateMachineTestFixture {
       parameterName: 'Volume',
     );
     viewModel.lastTweakedAutomationTarget = target;
+    _ensureAutomationTargetNode(target);
     showPhantomAutomationLaneForTrack(trackId);
 
     return target;
+  }
+
+  void _ensureAutomationTargetNode(AutomationParameterTarget target) {
+    if (project.processingGraph.nodes[target.nodeId] != null) {
+      return;
+    }
+
+    project.processingGraph.addNode(
+      NodeModel(
+        id: target.nodeId,
+        owner: NodeOwnerModel(trackId: target.ownerTrackId),
+        controlInputPorts: AnthemObservableList.of([
+          NodePortModel(
+            nodeId: target.nodeId,
+            id: target.portId,
+            config: NodePortConfigModel(
+              dataType: NodePortDataType.control,
+              name: target.parameterName,
+              parameterConfig: ParameterConfigModel(
+                id: target.portId,
+                defaultValue: 0.5,
+              ),
+            ),
+          ),
+        ]),
+      ),
+    );
   }
 
   void showRealAutomationLaneForTrack(Id trackId) {
