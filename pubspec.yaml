@@ -61,7 +61,7 @@ dev_dependencies:
 msix_config:
   display_name: Anthem
   publisher_display_name: Anthem authors
-  identity_name: org.anthemaudio.anthem
+  identity_name: org.anthem-audio.anthem
   logo_path: windows/runner/resources/app_icon.ico
   build_windows: false
   install_certificate: false
