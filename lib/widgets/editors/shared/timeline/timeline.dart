@@ -30,10 +30,8 @@ import 'package:provider/provider.dart';
 import 'controller/timeline_controller.dart';
 import 'controller/state_machine/timeline_state_machine.dart'
     show TimelineLoopHandle;
-import '../helpers/types.dart';
 import '../scroll_manager.dart';
 import '../time_range_animation.dart';
-import '../time_range_content_source.dart';
 import 'loop_indicator.dart';
 import 'playhead_handle.dart';
 import 'timeline_labels.dart';
@@ -139,15 +137,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       arrangementID: widget.arrangementID,
       patternID: widget.patternID,
     );
-  }
-
-  TimeRangeContentSource _timeRangeContentSource() {
-    final patternID = widget.patternID;
-    if (patternID != null) {
-      return TimeRangeContentSource.pattern(patternID);
-    }
-
-    return TimeRangeContentSource.arrangement(widget.arrangementID);
   }
 
   @override
@@ -272,14 +261,12 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       builder: (context, constraints) {
         _lastTimelineSize = constraints.biggest;
 
-        final timeRange = context.watch<TimeRange>();
         final project = Provider.of<ProjectModel>(context);
         final controller = _requiredController;
         _syncRenderedViewMetrics();
 
         return EditorScrollManager.timeline(
-          timeRange: timeRange,
-          timeRangeContentSource: _timeRangeContentSource(),
+          timeRangeViewport: widget.timeRangeAnimation.viewport,
           child: Listener(
             onPointerDown: handlePointerDown,
             onPointerMove: handlePointerMove,

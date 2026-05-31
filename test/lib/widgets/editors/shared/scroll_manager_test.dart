@@ -20,6 +20,7 @@
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -86,9 +87,17 @@ class _EditorScrollManagerTestFixture {
 
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
   final TimeRange timeRange = TimeRange(0, 1000);
-  final TimeRangeContentSource? timeRangeContentSource;
+  final TimeRangeContentSource timeRangeContentSource;
+  late final TimeRangeViewport timeRangeViewport = TimeRangeViewport(
+    target: timeRange,
+    contentSource: timeRangeContentSource,
+  );
 
-  _EditorScrollManagerTestFixture({this.timeRangeContentSource});
+  _EditorScrollManagerTestFixture({
+    TimeRangeContentSource? timeRangeContentSource,
+  }) : timeRangeContentSource =
+           timeRangeContentSource ??
+           const TimeRangeContentSource.fixed(end: 1000000);
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -99,8 +108,7 @@ class _EditorScrollManagerTestFixture {
           child: Align(
             alignment: Alignment.topLeft,
             child: EditorScrollManager.editor(
-              timeRange: timeRange,
-              timeRangeContentSource: timeRangeContentSource,
+              timeRangeViewport: timeRangeViewport,
               child: const ColoredBox(
                 color: Color(0xFFFFFFFF),
                 child: SizedBox(key: childKey, width: 200, height: 120),
@@ -139,9 +147,17 @@ class _TimelineScrollManagerTestFixture {
 
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
   final TimeRange timeRange = TimeRange(0, 1000);
-  final TimeRangeContentSource? timeRangeContentSource;
+  final TimeRangeContentSource timeRangeContentSource;
+  late final TimeRangeViewport timeRangeViewport = TimeRangeViewport(
+    target: timeRange,
+    contentSource: timeRangeContentSource,
+  );
 
-  _TimelineScrollManagerTestFixture({this.timeRangeContentSource});
+  _TimelineScrollManagerTestFixture({
+    TimeRangeContentSource? timeRangeContentSource,
+  }) : timeRangeContentSource =
+           timeRangeContentSource ??
+           const TimeRangeContentSource.fixed(end: 1000000);
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -152,8 +168,7 @@ class _TimelineScrollManagerTestFixture {
           child: Align(
             alignment: Alignment.topLeft,
             child: EditorScrollManager.timeline(
-              timeRange: timeRange,
-              timeRangeContentSource: timeRangeContentSource,
+              timeRangeViewport: timeRangeViewport,
               child: const ColoredBox(
                 color: Color(0xFFFFFFFF),
                 child: SizedBox(key: childKey, width: 200, height: 120),

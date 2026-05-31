@@ -27,6 +27,8 @@ import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dar
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
@@ -138,6 +140,21 @@ abstract class _ArrangerViewModel with Store {
 
   @observable
   TimeRange timeRange;
+
+  TimeRangeViewport? _timeRangeViewport;
+
+  TimeRangeViewport get timeRangeViewport {
+    final timeRangeViewport = _timeRangeViewport;
+    if (timeRangeViewport != null &&
+        identical(timeRangeViewport.target, timeRange)) {
+      return timeRangeViewport;
+    }
+
+    return _timeRangeViewport = TimeRangeViewport(
+      target: timeRange,
+      contentSource: const TimeRangeContentSource.activeArrangement(),
+    );
+  }
 
   @observable
   double baseTrackHeight;

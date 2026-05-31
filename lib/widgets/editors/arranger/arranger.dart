@@ -38,7 +38,6 @@ import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
-import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notification_handler.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -53,6 +52,8 @@ import 'view_model.dart';
 
 const _timelineHeight = 38.0;
 const _scrollbarShortSideLength = 17.0;
+const _trackHeaderWidth = 190.0;
+const _arrangerCanvasSeparatorWidth = 1.0;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -310,8 +311,8 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final project = Provider.of<ProjectModel>(context);
 
-    const contentSource = TimeRangeContentSource.activeArrangement();
-    final contentBounds = contentSource.resolve(project);
+    final timeRangeViewport = viewModel.timeRangeViewport;
+    final contentBounds = timeRangeViewport.resolveContentBounds(project);
 
     return Container(
       height: _scrollbarShortSideLength,
@@ -324,18 +325,16 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
       child: ScrollbarRenderer(
         scrollRegionStart: 0,
         scrollRegionEnd: contentBounds.end,
-        handleStart: viewModel.timeRange.start,
-        handleEnd: viewModel.timeRange.end,
+        handleStart: timeRangeViewport.target.start,
+        handleEnd: timeRangeViewport.target.end,
         canScrollPastEnd: true,
         disableAtFullSize: false,
         onChange: (event) {
-          final constrainedRange = constrainTimeRangeToContent(
+          timeRangeViewport.setFromScrollbar(
             start: event.handleStart,
             end: event.handleEnd,
-            bounds: contentBounds,
+            project: project,
           );
-          viewModel.timeRange.start = constrainedRange.start;
-          viewModel.timeRange.end = constrainedRange.end;
         },
       ),
     );
@@ -403,6 +402,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
   double? _lastSyncedTimeViewStart;
   double? _lastSyncedTimeViewEnd;
   double? _lastSyncedVerticalScrollPosition;
+  double? _lastCanvasWidth;
 
   void _handleRenderedTimeRangeChanged({
     required double timeRangeStart,
@@ -455,6 +455,28 @@ class _ArrangerContentState extends State<_ArrangerContent>
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
       verticalScrollPosition: verticalScrollPosition,
+    );
+  }
+
+  void _handleCanvasResize({
+    required ArrangerViewModel viewModel,
+    required ProjectModel project,
+    required double width,
+  }) {
+    if (!width.isFinite || width <= 0) {
+      return;
+    }
+
+    final previousWidth = _lastCanvasWidth;
+    _lastCanvasWidth = width;
+    if (previousWidth == null || previousWidth <= 0 || previousWidth == width) {
+      return;
+    }
+
+    viewModel.timeRangeViewport.resizeViewportPreservingScale(
+      oldViewportWidth: previousWidth,
+      newViewportWidth: width,
+      project: project,
     );
   }
 
@@ -537,15 +559,28 @@ class _ArrangerContentState extends State<_ArrangerContent>
       setState(() {});
     });
 
-    return TimeRangeAnimationBuilder(
-      timeRange: viewModel.timeRange,
-      onRenderedTimeRangeChanged: _handleRenderedTimeRangeChanged,
-      builder: (context, timeRangeAnimation) {
-        return _buildContentWithTimeRangeAnimation(
-          context,
-          project,
-          timeRangeAnimation,
-          verticalScrollPositionAnimItem.animation,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _handleCanvasResize(
+          viewModel: viewModel,
+          project: project,
+          width:
+              constraints.maxWidth -
+              _trackHeaderWidth -
+              _arrangerCanvasSeparatorWidth,
+        );
+
+        return TimeRangeAnimationBuilder(
+          viewport: viewModel.timeRangeViewport,
+          onRenderedTimeRangeChanged: _handleRenderedTimeRangeChanged,
+          builder: (context, timeRangeAnimation) {
+            return _buildContentWithTimeRangeAnimation(
+              context,
+              project,
+              timeRangeAnimation,
+              verticalScrollPositionAnimItem.animation,
+            );
+          },
         );
       },
     );
@@ -557,8 +592,6 @@ class _ArrangerContentState extends State<_ArrangerContent>
     TimeRangeAnimation timeRangeAnimation,
     Animation<double> verticalScrollPositionAnimation,
   ) {
-    const trackHeaderWidth = 190.0;
-
     return RepaintBoundary(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -569,7 +602,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
             child: Row(
               children: [
                 Container(
-                  width: trackHeaderWidth + 1,
+                  width: _trackHeaderWidth + _arrangerCanvasSeparatorWidth,
                   decoration: BoxDecoration(
                     border: Border(
                       right: BorderSide(color: AnthemTheme.panel.border),
@@ -599,7 +632,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  width: trackHeaderWidth,
+                  width: _trackHeaderWidth,
                   child: AnimatedBuilder(
                     animation: verticalScrollPositionAnimationHelper!
                         .animationController,
@@ -640,7 +673,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     top: BorderSide(color: AnthemTheme.panel.border, width: 1),
                   ),
                 ),
-                width: trackHeaderWidth,
+                width: _trackHeaderWidth,
                 height: _scrollbarShortSideLength,
               ),
               Expanded(child: _HorizontalScrollbar()),

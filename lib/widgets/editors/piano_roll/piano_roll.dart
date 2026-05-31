@@ -36,7 +36,6 @@ import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
-import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -58,6 +57,9 @@ const double maxKeyHeight = 40;
 
 const double minKeyValue = 0;
 const double maxKeyValue = 128;
+
+const double _pianoRollVerticalScrollbarWidth = 17;
+const double _pianoRollCanvasSeparatorWidth = 1;
 
 // Hack: We need the size of the piano roll's content area at very inconvenient
 // times and I don't feel like figuring out how to properly get it where it
@@ -217,6 +219,7 @@ class _PianoRollContent extends StatefulObserverWidget {
 class _PianoRollContentState extends State<_PianoRollContent>
     with TickerProviderStateMixin {
   double footerHeight = 61;
+  double? _lastNoteRenderAreaWidth;
 
   LazyFollowAnimationHelper? keyValueAtTopAnimationHelper;
 
@@ -231,16 +234,52 @@ class _PianoRollContentState extends State<_PianoRollContent>
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    return TimeRangeAnimationBuilder(
-      timeRange: viewModel.timeRange,
-      builder: (context, timeRangeAnimation) {
-        return _buildContentWithTimeRangeAnimation(
-          context,
-          project,
-          viewModel,
-          timeRangeAnimation,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _handleNoteRenderAreaResize(
+          viewModel: viewModel,
+          project: project,
+          width:
+              constraints.maxWidth -
+              pianoControlWidth -
+              _pianoRollCanvasSeparatorWidth -
+              _pianoRollVerticalScrollbarWidth,
+        );
+
+        return TimeRangeAnimationBuilder(
+          viewport: viewModel.timeRangeViewport,
+          builder: (context, timeRangeAnimation) {
+            return _buildContentWithTimeRangeAnimation(
+              context,
+              project,
+              viewModel,
+              timeRangeAnimation,
+            );
+          },
         );
       },
+    );
+  }
+
+  void _handleNoteRenderAreaResize({
+    required PianoRollViewModel viewModel,
+    required ProjectModel project,
+    required double width,
+  }) {
+    if (!width.isFinite || width <= 0) {
+      return;
+    }
+
+    final previousWidth = _lastNoteRenderAreaWidth;
+    _lastNoteRenderAreaWidth = width;
+    if (previousWidth == null || previousWidth <= 0 || previousWidth == width) {
+      return;
+    }
+
+    viewModel.timeRangeViewport.resizeViewportPreservingScale(
+      oldViewportWidth: previousWidth,
+      newViewportWidth: width,
+      project: project,
     );
   }
 
@@ -508,7 +547,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
               ),
             ),
             Container(
-              width: 17,
+              width: _pianoRollVerticalScrollbarWidth,
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(color: AnthemTheme.panel.border),
@@ -594,27 +633,25 @@ class PianoRollHorizontalScrollbar extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
     final project = Provider.of<ProjectModel>(context);
-    const contentSource = TimeRangeContentSource.activePattern();
-    final contentBounds = contentSource.resolve(project);
+    final timeRangeViewport = viewModel.timeRangeViewport;
+    final contentBounds = timeRangeViewport.resolveContentBounds(project);
 
     return SizedBox(
       height: 16,
       child: ScrollbarRenderer(
         scrollRegionStart: 0,
         scrollRegionEnd: contentBounds.end,
-        handleStart: viewModel.timeRange.start,
-        handleEnd: viewModel.timeRange.end,
+        handleStart: timeRangeViewport.target.start,
+        handleEnd: timeRangeViewport.target.end,
         canScrollPastEnd: true,
         minHandleSize: project.sequence.ticksPerQuarter * 4,
         disableAtFullSize: false,
         onChange: (event) {
-          final constrainedRange = constrainTimeRangeToContent(
+          timeRangeViewport.setFromScrollbar(
             start: event.handleStart,
             end: event.handleEnd,
-            bounds: contentBounds,
+            project: project,
           );
-          viewModel.timeRange.start = constrainedRange.start;
-          viewModel.timeRange.end = constrainedRange.end;
         },
       ),
     );

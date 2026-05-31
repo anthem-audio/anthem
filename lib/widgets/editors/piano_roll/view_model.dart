@@ -25,6 +25,8 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:collection/collection.dart';
 import 'package:mobx/mobx.dart';
 
@@ -100,6 +102,21 @@ abstract class _PianoRollViewModel with Store {
 
   @observable
   TimeRange timeRange;
+
+  TimeRangeViewport? _timeRangeViewport;
+
+  TimeRangeViewport get timeRangeViewport {
+    final timeRangeViewport = _timeRangeViewport;
+    if (timeRangeViewport != null &&
+        identical(timeRangeViewport.target, timeRange)) {
+      return timeRangeViewport;
+    }
+
+    return _timeRangeViewport = TimeRangeViewport(
+      target: timeRange,
+      contentSource: const TimeRangeContentSource.activePattern(),
+    );
+  }
 
   @observable
   Rectangle<double>? selectionBox;

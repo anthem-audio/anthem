@@ -30,6 +30,8 @@ import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -79,7 +81,10 @@ void main() {
       Size size = const Size(100, 160),
     }) {
       final timeRangeAnimation = TimeRangeAnimation(
-        timeRange: TimeRange(timeViewStart, timeViewEnd),
+        viewport: TimeRangeViewport(
+          target: TimeRange(timeViewStart, timeViewEnd),
+          contentSource: const TimeRangeContentSource.fixed(end: 1000000),
+        ),
         vsync: const TestVSync(),
       )..update();
       final keyValueAtTopAnimation = AlwaysStoppedAnimation(keyValueAtTop);

@@ -31,6 +31,8 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -111,6 +113,7 @@ class _TimelineTestFixture {
   final ArrangementModel arrangement;
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
   final TimeRange timeRange;
+  final TimeRangeViewport timeRangeViewport;
   final _RecordingSequencerApi sequencerApi;
   final _TimelineTestEngine engine;
 
@@ -120,6 +123,7 @@ class _TimelineTestFixture {
     required this.pattern,
     required this.arrangement,
     required this.timeRange,
+    required this.timeRangeViewport,
     required this.sequencerApi,
     required this.engine,
   });
@@ -152,6 +156,17 @@ class _TimelineTestFixture {
     project.sequence.playbackStartPosition = 0;
 
     final timeRange = TimeRange(0, 960);
+    final timeRangeViewport = TimeRangeViewport(
+      target: timeRange,
+      contentSource: switch (targetKind) {
+        _TimelineTargetKind.pattern => TimeRangeContentSource.pattern(
+          pattern.id,
+        ),
+        _TimelineTargetKind.arrangement => TimeRangeContentSource.arrangement(
+          arrangement.id,
+        ),
+      },
+    );
 
     return _TimelineTestFixture._(
       targetKind: targetKind,
@@ -159,6 +174,7 @@ class _TimelineTestFixture {
       pattern: pattern,
       arrangement: arrangement,
       timeRange: timeRange,
+      timeRangeViewport: timeRangeViewport,
       sequencerApi: sequencerApi,
       engine: engine,
     );
@@ -210,7 +226,7 @@ class _TimelineTestFixture {
               width: viewSize.width,
               height: viewSize.height,
               child: TimeRangeAnimationBuilder(
-                timeRange: timeRange,
+                viewport: timeRangeViewport,
                 builder: (context, timeRangeAnimation) {
                   return switch (targetKind) {
                     _TimelineTargetKind.pattern => Timeline.pattern(

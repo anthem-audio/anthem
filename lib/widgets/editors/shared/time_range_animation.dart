@@ -18,31 +18,36 @@
 */
 
 import 'package:anthem/widgets/basic/lazy_follower.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
-class TimeRangeAnimation {
-  final LazyFollowAnimationHelper _helper;
+import 'time_range_viewport.dart';
 
-  TimeRangeAnimation({
-    required TimeRange timeRange,
-    required TickerProvider vsync,
-  }) : _helper = LazyFollowAnimationHelper(
-         duration: 250,
-         vsync: vsync,
-         animateOnFirstUpdate: false,
-         items: [
-           LazyFollowItem(
-             initialValue: timeRange.start,
-             getTarget: () => timeRange.start,
-           ),
-           LazyFollowItem(
-             initialValue: timeRange.end,
-             getTarget: () => timeRange.end,
-           ),
-         ],
-       );
+class TimeRangeAnimation {
+  final TimeRangeViewport viewport;
+
+  late final LazyFollowAnimationHelper _helper;
+  int _lastAppliedMutationRevision = 0;
+
+  TimeRangeAnimation({required this.viewport, required TickerProvider vsync}) {
+    _helper = LazyFollowAnimationHelper(
+      duration: 250,
+      vsync: vsync,
+      animateOnFirstUpdate: false,
+      items: [
+        LazyFollowItem(
+          initialValue: viewport.target.start,
+          getTarget: () => viewport.target.start,
+          getShouldSnap: _shouldSnapToTarget,
+        ),
+        LazyFollowItem(
+          initialValue: viewport.target.end,
+          getTarget: () => viewport.target.end,
+          getShouldSnap: _shouldSnapToTarget,
+        ),
+      ],
+    );
+  }
 
   AnimationController get controller => _helper.animationController;
   Animation<double> get start => _helper.items[0].animation;
@@ -50,8 +55,16 @@ class TimeRangeAnimation {
   double get renderedStart => start.value;
   double get renderedEnd => end.value;
 
+  bool _shouldSnapToTarget() {
+    final lastMutation = viewport.lastMutation;
+    return lastMutation.revision != _lastAppliedMutationRevision &&
+        lastMutation.transition == TimeRangeTransition.immediate;
+  }
+
   void update() {
+    final latestMutationRevision = viewport.lastMutation.revision;
     _helper.update();
+    _lastAppliedMutationRevision = latestMutationRevision;
   }
 
   void dispose() {
@@ -66,7 +79,7 @@ typedef TimeRangeAnimationWidgetBuilder =
     );
 
 class TimeRangeAnimationBuilder extends StatefulObserverWidget {
-  final TimeRange timeRange;
+  final TimeRangeViewport viewport;
   final TimeRangeAnimationWidgetBuilder builder;
   final void Function({
     required double timeRangeStart,
@@ -76,7 +89,7 @@ class TimeRangeAnimationBuilder extends StatefulObserverWidget {
 
   const TimeRangeAnimationBuilder({
     super.key,
-    required this.timeRange,
+    required this.viewport,
     required this.builder,
     this.onRenderedTimeRangeChanged,
   });
@@ -100,7 +113,7 @@ class _TimeRangeAnimationBuilderState extends State<TimeRangeAnimationBuilder>
   }
 
   TimeRangeAnimation _createAnimation() {
-    return TimeRangeAnimation(timeRange: widget.timeRange, vsync: this);
+    return TimeRangeAnimation(viewport: widget.viewport, vsync: this);
   }
 
   void _notifyRenderedTimeRangeChanged() {
@@ -136,7 +149,7 @@ class _TimeRangeAnimationBuilderState extends State<TimeRangeAnimationBuilder>
       _lastNotifiedTimeRangeEnd = null;
     }
 
-    if (!identical(oldWidget.timeRange, widget.timeRange)) {
+    if (!identical(oldWidget.viewport, widget.viewport)) {
       _timeRangeAnimation.controller.removeListener(
         _notifyRenderedTimeRangeChanged,
       );
