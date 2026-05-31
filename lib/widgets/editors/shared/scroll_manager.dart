@@ -22,6 +22,7 @@ import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -29,6 +30,7 @@ import 'package:provider/provider.dart';
 
 import 'helpers/time_helpers.dart';
 import 'helpers/types.dart';
+import 'time_range_content_source.dart';
 
 // Scales raw wheel deltas before they feed the 1D wheel-scroll path.
 const _mouseWheelDeltaMultiplier = 1.0;
@@ -69,6 +71,7 @@ const _timelineTrackpadZoomMultiplier = 0.7;
 class EditorScrollManager extends StatefulWidget {
   final Widget? child;
   final TimeRange? timeRange;
+  final TimeRangeContentSource? timeRangeContentSource;
   final _EditorScrollManagerMode _mode;
 
   /// Applies a vertical scroll delta and returns the amount that was actually
@@ -88,6 +91,7 @@ class EditorScrollManager extends StatefulWidget {
     super.key,
     this.child,
     required TimeRange this.timeRange,
+    this.timeRangeContentSource,
     this.onVerticalScrollChange,
     this.onVerticalPanStart,
     this.onVerticalPanMove,
@@ -104,6 +108,7 @@ class EditorScrollManager extends StatefulWidget {
     super.key,
     this.child,
     required TimeRange this.timeRange,
+    this.timeRangeContentSource,
   }) : onVerticalScrollChange = null,
        onVerticalPanStart = null,
        onVerticalPanMove = null,
@@ -122,6 +127,7 @@ class EditorScrollManager extends StatefulWidget {
     this.onVerticalScrollChange,
     this.onVerticalZoom,
   }) : timeRange = null,
+       timeRangeContentSource = null,
        onVerticalPanStart = null,
        onVerticalPanMove = null,
        _mode = _EditorScrollManagerMode.verticalOnly;
@@ -141,6 +147,36 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     }
 
     return timeRange;
+  }
+
+  TimeRangeContentBounds? _resolveTimeRangeContentBounds() {
+    final contentSource = widget.timeRangeContentSource;
+    if (contentSource == null) {
+      return null;
+    }
+
+    final project = contentSource.requiresProject
+        ? Provider.of<ProjectModel>(context, listen: false)
+        : null;
+    return contentSource.resolve(project);
+  }
+
+  ({double start, double end}) _constrainTimeRange({
+    required double start,
+    required double end,
+    double anchorFraction = 0.5,
+  }) {
+    final bounds = _resolveTimeRangeContentBounds();
+    if (bounds == null) {
+      return (start: start, end: end);
+    }
+
+    return constrainTimeRangeToContent(
+      start: start,
+      end: end,
+      bounds: bounds,
+      anchorFraction: anchorFraction,
+    );
   }
 
   double _panInitialTimeViewStart = double.nan;
@@ -225,12 +261,13 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     final ticksPerPixel = timeRange.width / viewWidth;
     var scrollAmountInTicks = delta * ticksPerPixel;
 
-    if (originalStart + scrollAmountInTicks < 0) {
-      scrollAmountInTicks = -originalStart;
-    }
+    final constrainedRange = _constrainTimeRange(
+      start: originalStart + scrollAmountInTicks,
+      end: originalEnd + scrollAmountInTicks,
+    );
 
-    timeRange.start = originalStart + scrollAmountInTicks;
-    timeRange.end = originalEnd + scrollAmountInTicks;
+    timeRange.start = constrainedRange.start;
+    timeRange.end = constrainedRange.end;
 
     final appliedTicks = timeRange.start - originalStart;
     if (ticksPerPixel == 0) {
@@ -248,12 +285,22 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       return 0;
     }
 
+    final anchorFraction = pointerX / contentRenderBox.size.width;
+
     zoomTimeRange(
       timeRange: timeRange,
       delta: delta,
       mouseX: pointerX,
       editorWidth: contentRenderBox.size.width,
     );
+
+    final constrainedRange = _constrainTimeRange(
+      start: timeRange.start,
+      end: timeRange.end,
+      anchorFraction: anchorFraction,
+    );
+    timeRange.start = constrainedRange.start;
+    timeRange.end = constrainedRange.end;
 
     final appliedWidth = timeRange.width;
     if (appliedWidth <= 0) {
@@ -285,14 +332,10 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     var start = _panInitialTimeViewStart + deltaTimeSincePanInit;
     var end = _panInitialTimeViewEnd + deltaTimeSincePanInit;
 
-    if (start < 0) {
-      final delta = -start;
-      start += delta;
-      end += delta;
-    }
+    final constrainedRange = _constrainTimeRange(start: start, end: end);
 
-    timeRange.start = start;
-    timeRange.end = end;
+    timeRange.start = constrainedRange.start;
+    timeRange.end = constrainedRange.end;
 
     widget.onVerticalPanMove?.call(pointerPos.dy);
   }

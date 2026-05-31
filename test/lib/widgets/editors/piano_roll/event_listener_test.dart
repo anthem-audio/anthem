@@ -95,6 +95,7 @@ class _PianoRollEventListenerTestFixture {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          Provider<ProjectModel>.value(value: project),
           Provider<PianoRollViewModel>.value(value: viewModel),
           Provider<PianoRollController>.value(value: controller),
           ChangeNotifierProvider<KeyboardModifiers>.value(

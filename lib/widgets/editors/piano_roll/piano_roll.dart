@@ -36,6 +36,7 @@ import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -51,8 +52,6 @@ import 'attribute_editor.dart';
 import 'event_listener.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
-
-const noContentBars = 16;
 
 const double minKeyHeight = 6;
 const double maxKeyHeight = 40;
@@ -595,23 +594,27 @@ class PianoRollHorizontalScrollbar extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
     final project = Provider.of<ProjectModel>(context);
-    final pattern = project.sequence.patterns[project.sequence.activePatternID];
+    const contentSource = TimeRangeContentSource.activePattern();
+    final contentBounds = contentSource.resolve(project);
 
     return SizedBox(
       height: 16,
       child: ScrollbarRenderer(
         scrollRegionStart: 0,
-        scrollRegionEnd:
-            pattern?.lastContent.toDouble() ??
-            (project.sequence.ticksPerQuarter * 4 * noContentBars).toDouble(),
+        scrollRegionEnd: contentBounds.end,
         handleStart: viewModel.timeRange.start,
         handleEnd: viewModel.timeRange.end,
         canScrollPastEnd: true,
         minHandleSize: project.sequence.ticksPerQuarter * 4,
         disableAtFullSize: false,
         onChange: (event) {
-          viewModel.timeRange.start = event.handleStart;
-          viewModel.timeRange.end = event.handleEnd;
+          final constrainedRange = constrainTimeRangeToContent(
+            start: event.handleStart,
+            end: event.handleEnd,
+            bounds: contentBounds,
+          );
+          viewModel.timeRange.start = constrainedRange.start;
+          viewModel.timeRange.end = constrainedRange.end;
         },
       ),
     );

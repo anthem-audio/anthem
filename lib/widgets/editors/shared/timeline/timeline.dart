@@ -33,6 +33,7 @@ import 'controller/state_machine/timeline_state_machine.dart'
 import '../helpers/types.dart';
 import '../scroll_manager.dart';
 import '../time_range_animation.dart';
+import '../time_range_content_source.dart';
 import 'loop_indicator.dart';
 import 'playhead_handle.dart';
 import 'timeline_labels.dart';
@@ -138,6 +139,15 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       arrangementID: widget.arrangementID,
       patternID: widget.patternID,
     );
+  }
+
+  TimeRangeContentSource _timeRangeContentSource() {
+    final patternID = widget.patternID;
+    if (patternID != null) {
+      return TimeRangeContentSource.pattern(patternID);
+    }
+
+    return TimeRangeContentSource.arrangement(widget.arrangementID);
   }
 
   @override
@@ -269,6 +279,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
         return EditorScrollManager.timeline(
           timeRange: timeRange,
+          timeRangeContentSource: _timeRangeContentSource(),
           child: Listener(
             onPointerDown: handlePointerDown,
             onPointerMove: handlePointerMove,

@@ -29,6 +29,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import '../shared/scroll_manager.dart';
+import '../shared/time_range_content_source.dart';
 import 'controller/piano_roll_controller.dart';
 
 class PianoRollEventListener extends StatefulWidget {
@@ -183,6 +184,8 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
           builder: (context) {
             return EditorScrollManager.editor(
               timeRange: viewModel.timeRange,
+              timeRangeContentSource:
+                  const TimeRangeContentSource.activePattern(),
               onVerticalScrollChange: (delta) {
                 final keysPerPixel = 1 / viewModel.keyHeight;
                 final scrollAmountInKeys = -delta * 0.5 * keysPerPixel;

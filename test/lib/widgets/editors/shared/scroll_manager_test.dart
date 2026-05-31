@@ -19,6 +19,7 @@
 
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -85,6 +86,9 @@ class _EditorScrollManagerTestFixture {
 
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
   final TimeRange timeRange = TimeRange(0, 1000);
+  final TimeRangeContentSource? timeRangeContentSource;
+
+  _EditorScrollManagerTestFixture({this.timeRangeContentSource});
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -96,6 +100,7 @@ class _EditorScrollManagerTestFixture {
             alignment: Alignment.topLeft,
             child: EditorScrollManager.editor(
               timeRange: timeRange,
+              timeRangeContentSource: timeRangeContentSource,
               child: const ColoredBox(
                 color: Color(0xFFFFFFFF),
                 child: SizedBox(key: childKey, width: 200, height: 120),
@@ -134,6 +139,9 @@ class _TimelineScrollManagerTestFixture {
 
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
   final TimeRange timeRange = TimeRange(0, 1000);
+  final TimeRangeContentSource? timeRangeContentSource;
+
+  _TimelineScrollManagerTestFixture({this.timeRangeContentSource});
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -145,6 +153,7 @@ class _TimelineScrollManagerTestFixture {
             alignment: Alignment.topLeft,
             child: EditorScrollManager.timeline(
               timeRange: timeRange,
+              timeRangeContentSource: timeRangeContentSource,
               child: const ColoredBox(
                 color: Color(0xFFFFFFFF),
                 child: SizedBox(key: childKey, width: 200, height: 120),
@@ -473,6 +482,22 @@ void main() {
 
       expect(fixture.timeRange.width, closeTo(widthDuringMomentum, 0.000001));
     });
+
+    testWidgets('limits zoom out from content bounds', (tester) async {
+      fixture = _TimelineScrollManagerTestFixture(
+        timeRangeContentSource: const TimeRangeContentSource.fixed(end: 1000),
+      );
+      await fixture.pump(tester);
+
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 1000),
+      );
+
+      expect(fixture.timeRange.start, closeTo(0, 0.000001));
+      expect(fixture.timeRange.end, closeTo(2000, 0.000001));
+    });
   });
 
   group('EditorScrollManager.editor', () {
@@ -521,6 +546,24 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
 
       expect(fixture.timeRange.width, closeTo(widthAfterInput, 0.000001));
+    });
+
+    testWidgets('limits horizontal scroll past content end', (tester) async {
+      fixture = _EditorScrollManagerTestFixture(
+        timeRangeContentSource: const TimeRangeContentSource.fixed(end: 1000),
+      );
+      fixture.timeRange.end = 500;
+      await fixture.pump(tester);
+      fixture.keyboardModifiers.setShift(true);
+
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, 1000),
+      );
+
+      expect(fixture.timeRange.start, closeTo(750, 0.000001));
+      expect(fixture.timeRange.end, closeTo(1250, 0.000001));
     });
   });
 }

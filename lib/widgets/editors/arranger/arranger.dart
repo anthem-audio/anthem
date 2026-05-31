@@ -38,6 +38,7 @@ import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notification_handler.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -309,12 +310,8 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final project = Provider.of<ProjectModel>(context);
 
-    final arrangementModel =
-        project.sequence.arrangements[project.sequence.activeArrangementID];
-
-    final horizontalScrollRegionEnd =
-        arrangementModel?.viewWidth.toDouble() ??
-        project.sequence.ticksPerQuarter * 4 * 4;
+    const contentSource = TimeRangeContentSource.activeArrangement();
+    final contentBounds = contentSource.resolve(project);
 
     return Container(
       height: _scrollbarShortSideLength,
@@ -326,14 +323,19 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
       ),
       child: ScrollbarRenderer(
         scrollRegionStart: 0,
-        scrollRegionEnd: horizontalScrollRegionEnd,
+        scrollRegionEnd: contentBounds.end,
         handleStart: viewModel.timeRange.start,
         handleEnd: viewModel.timeRange.end,
         canScrollPastEnd: true,
         disableAtFullSize: false,
         onChange: (event) {
-          viewModel.timeRange.start = event.handleStart;
-          viewModel.timeRange.end = event.handleEnd;
+          final constrainedRange = constrainTimeRangeToContent(
+            start: event.handleStart,
+            end: event.handleEnd,
+            bounds: contentBounds,
+          );
+          viewModel.timeRange.start = constrainedRange.start;
+          viewModel.timeRange.end = constrainedRange.end;
         },
       ),
     );

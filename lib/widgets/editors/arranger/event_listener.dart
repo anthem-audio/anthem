@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -61,6 +62,8 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
 
             return EditorScrollManager.editor(
               timeRange: viewModel.timeRange,
+              timeRangeContentSource:
+                  const TimeRangeContentSource.activeArrangement(),
               onVerticalScrollChange: (delta) {
                 final previousVerticalScrollPosition =
                     viewModel.verticalScrollPosition;
