@@ -687,14 +687,14 @@ void main() {
       const altTestPos = Offset(17.25, 20);
       const releasedPos = Offset(21.25, 20);
       final rawOffset = pixelsToTime(
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
+        timeViewStart: fixture.viewModel.timeRange.start,
+        timeViewEnd: fixture.viewModel.timeRange.end,
         viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
         pixelOffsetFromLeft: altTestPos.dx,
       );
       final releasedRawOffset = pixelsToTime(
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
+        timeViewStart: fixture.viewModel.timeRange.start,
+        timeViewEnd: fixture.viewModel.timeRange.end,
         viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
         pixelOffsetFromLeft: releasedPos.dx,
       );

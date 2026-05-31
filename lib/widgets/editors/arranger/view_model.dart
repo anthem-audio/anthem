@@ -137,7 +137,7 @@ abstract class _ArrangerViewModel with Store {
   EditorTool tool = EditorTool.pencil;
 
   @observable
-  TimeRange timeView;
+  TimeRange timeRange;
 
   @observable
   double baseTrackHeight;
@@ -238,7 +238,7 @@ abstract class _ArrangerViewModel with Store {
   _ArrangerViewModel({
     required this.project,
     required this.baseTrackHeight,
-    required this.timeView,
+    required this.timeRange,
   }) : projectId = project.id,
        trackHeightModifiers = ObservableMap.of(
          project.tracks.nonObservableInner.map(

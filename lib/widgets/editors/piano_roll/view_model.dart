@@ -79,7 +79,7 @@ abstract class _PianoRollViewModel with Store {
   _PianoRollViewModel({
     required this.keyHeight,
     required double keyValueAtTop,
-    required this.timeView,
+    required this.timeRange,
   }) : keyValueAtTopRaw = keyValueAtTop;
 
   @observable
@@ -99,7 +99,7 @@ abstract class _PianoRollViewModel with Store {
   bool keyValueAtTopAnimationShouldSnap = false;
 
   @observable
-  TimeRange timeView;
+  TimeRange timeRange;
 
   @observable
   Rectangle<double>? selectionBox;

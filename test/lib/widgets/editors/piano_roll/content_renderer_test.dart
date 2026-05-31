@@ -68,7 +68,7 @@ void main() {
       viewModel = PianoRollViewModel(
         keyHeight: 20,
         keyValueAtTop: 64,
-        timeView: TimeRange(0, 1000),
+        timeRange: TimeRange(0, 1000),
       );
     });
 

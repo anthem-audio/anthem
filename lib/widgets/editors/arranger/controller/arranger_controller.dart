@@ -698,8 +698,8 @@ abstract class _ArrangerController {
         defaultTimeSignature: project.sequence.defaultTimeSignature,
         timeSignatureChanges: arrangement.timeSignatureChanges,
         ticksPerQuarter: project.sequence.ticksPerQuarter,
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
+        timeViewStart: viewModel.timeRange.start,
+        timeViewEnd: viewModel.timeRange.end,
       );
 
       snappedOffset = getSnappedTime(

@@ -76,7 +76,7 @@ void main() {
       viewModel = PianoRollViewModel(
         keyHeight: 14,
         keyValueAtTop: 63.95,
-        timeView: TimeRange(0, 3072),
+        timeRange: TimeRange(0, 3072),
       );
       controller = AttributeEditorController(viewModel: viewModel);
 

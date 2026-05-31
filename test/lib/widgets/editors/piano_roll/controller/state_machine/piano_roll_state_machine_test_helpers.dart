@@ -253,7 +253,7 @@ class PianoRollStateMachineTestFixture {
       keyHeight: 14.0,
       // Hack: cuts off the top horizontal line. Otherwise the default view looks off
       keyValueAtTop: 63.95,
-      timeView: TimeRange(0, 3072),
+      timeRange: TimeRange(0, 3072),
     );
     final projectViewModel = ProjectViewModel()
       ..activePanel = PanelKind.pianoRoll;
@@ -274,8 +274,8 @@ class PianoRollStateMachineTestFixture {
     );
     controller.onRenderedViewMetricsChanged(
       viewSize: pianoRollSize,
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       keyHeight: viewModel.keyHeight,
       keyValueAtTop: viewModel.keyValueAtTop,
     );
@@ -406,8 +406,8 @@ class PianoRollStateMachineTestFixture {
       defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
       ticksPerQuarter: project.sequence.ticksPerQuarter,
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
     );
   }
 
@@ -437,8 +437,8 @@ class PianoRollStateMachineTestFixture {
   void syncRenderedViewMetrics() {
     controller.onRenderedViewMetricsChanged(
       viewSize: pianoRollSize,
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       keyHeight: viewModel.keyHeight,
       keyValueAtTop: viewModel.keyValueAtTop,
     );
@@ -447,8 +447,8 @@ class PianoRollStateMachineTestFixture {
   Offset localPositionFor({required double key, required double offset}) {
     return Offset(
       timeToPixels(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
+        timeViewStart: viewModel.timeRange.start,
+        timeViewEnd: viewModel.timeRange.end,
         viewPixelWidth: pianoRollSize.width,
         time: offset,
       ),

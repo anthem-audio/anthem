@@ -100,22 +100,22 @@ class AttributeEditorController {
     }
 
     final closestOffsetBeforePixels = timeToPixels(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       viewPixelWidth: event.viewSize.width,
       time: closestOffsetBefore.toDouble(),
     );
 
     final closestOffsetAfterPixels = timeToPixels(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       viewPixelWidth: event.viewSize.width,
       time: closestOffsetAfter.toDouble(),
     );
 
     final pointerTimePixels = timeToPixels(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       viewPixelWidth: event.viewSize.width,
       time: event.offset,
     );

@@ -317,68 +317,70 @@ void main() {
     });
   });
 
-  group('zoomTimeView', () {
+  group('zoomTimeRange', () {
     test('keeps cursor anchor stable when unclamped', () {
-      final timeView = TimeRange(10000, 11000);
-      final beforeAtCursor = timeView.start + timeView.width * (250.0 / 1000.0);
+      final timeRange = TimeRange(10000, 11000);
+      final beforeAtCursor =
+          timeRange.start + timeRange.width * (250.0 / 1000.0);
 
-      zoomTimeView(
-        timeView: timeView,
+      zoomTimeRange(
+        timeRange: timeRange,
         delta: 300,
         mouseX: 250,
         editorWidth: 1000,
       );
 
-      final afterAtCursor = timeView.start + timeView.width * (250.0 / 1000.0);
+      final afterAtCursor =
+          timeRange.start + timeRange.width * (250.0 / 1000.0);
 
       expect(afterAtCursor, closeTo(beforeAtCursor, 1e-9));
     });
 
     test('enforces minimum width of 10', () {
-      final timeView = TimeRange(0, 20);
+      final timeRange = TimeRange(0, 20);
 
-      zoomTimeView(
-        timeView: timeView,
+      zoomTimeRange(
+        timeRange: timeRange,
         delta: -100000,
         mouseX: 500,
         editorWidth: 1000,
       );
 
-      expect(timeView.width, 10);
+      expect(timeRange.width, 10);
     });
 
     test('clamps start to non-negative values', () {
-      final timeView = TimeRange(5, 15);
+      final timeRange = TimeRange(5, 15);
 
-      zoomTimeView(
-        timeView: timeView,
+      zoomTimeRange(
+        timeRange: timeRange,
         delta: 4000,
         mouseX: 500,
         editorWidth: 1000,
       );
 
-      expect(timeView.start, 0);
-      expect(timeView.end, greaterThan(timeView.start));
+      expect(timeRange.start, 0);
+      expect(timeRange.end, greaterThan(timeRange.start));
     });
 
     test('zoom in then out returns to original range when unclamped', () {
-      final timeView = TimeRange(10000, 11000);
+      final timeRange = TimeRange(10000, 11000);
 
-      zoomTimeView(
-        timeView: timeView,
+      zoomTimeRange(
+        timeRange: timeRange,
         delta: 200,
         mouseX: 500,
         editorWidth: 1000,
       );
-      zoomTimeView(
-        timeView: timeView,
+      zoomTimeRange(
+        timeRange: timeRange,
         delta: -200,
         mouseX: 500,
         editorWidth: 1000,
       );
 
-      expect(timeView.start, closeTo(10000, 1e-9));
-      expect(timeView.end, closeTo(11000, 1e-9));
+      expect(timeRange.start, closeTo(10000, 1e-9));
+      expect(timeRange.end, closeTo(11000, 1e-9));
     });
   });
 }

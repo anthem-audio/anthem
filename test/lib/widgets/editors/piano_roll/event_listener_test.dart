@@ -69,7 +69,7 @@ class _PianoRollEventListenerTestFixture {
     final viewModel = PianoRollViewModel(
       keyHeight: 14,
       keyValueAtTop: 63.95,
-      timeView: TimeRange(0, 3072),
+      timeRange: TimeRange(0, 3072),
     );
     final controller = PianoRollController(
       project: project,
@@ -93,7 +93,7 @@ class _PianoRollEventListenerTestFixture {
     required double keyHeight,
     required double keyValueAtTop,
   }) async {
-    viewModel.timeView = TimeRange(timeViewStart, timeViewEnd);
+    viewModel.timeRange = TimeRange(timeViewStart, timeViewEnd);
     viewModel.keyHeight = keyHeight;
     viewModel.keyValueAtTop = keyValueAtTop;
 

@@ -73,7 +73,7 @@ class _ArrangerState extends State<Arranger> {
         Provider.value(value: viewModel),
         Provider.value(value: controller),
       ],
-      child: ArrangerTimeViewProvider(
+      child: ArrangerTimeRangeProvider(
         child: ShortcutConsumer(
           id: 'arranger',
           shortcutHandler: controller.onShortcut,
@@ -205,7 +205,7 @@ class _Header extends StatelessWidget {
                           onSelected: () {
                             controller.addTimeSignatureChange(
                               timeSignature: TimeSignatureModel(3, 4),
-                              offset: viewModel.timeView.start.floor(),
+                              offset: viewModel.timeRange.start.floor(),
                             );
                           },
                         ),
@@ -327,13 +327,13 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
       child: ScrollbarRenderer(
         scrollRegionStart: 0,
         scrollRegionEnd: horizontalScrollRegionEnd,
-        handleStart: viewModel.timeView.start,
-        handleEnd: viewModel.timeView.end,
+        handleStart: viewModel.timeRange.start,
+        handleEnd: viewModel.timeRange.end,
         canScrollPastEnd: true,
         disableAtFullSize: false,
         onChange: (event) {
-          viewModel.timeView.start = event.handleStart;
-          viewModel.timeView.end = event.handleEnd;
+          viewModel.timeRange.start = event.handleStart;
+          viewModel.timeRange.end = event.handleEnd;
         },
       ),
     );
@@ -365,16 +365,16 @@ class _VerticalScrollbar extends StatelessObserverWidget {
 /// We provide the [TimeRange] to the tree because some widgets, such as
 /// [Timeline], are shared between editors, and they need to access the
 /// [TimeRange] without knowing which editor they're associated with.
-class ArrangerTimeViewProvider extends StatelessObserverWidget {
+class ArrangerTimeRangeProvider extends StatelessObserverWidget {
   final Widget? child;
 
-  const ArrangerTimeViewProvider({super.key, this.child});
+  const ArrangerTimeRangeProvider({super.key, this.child});
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    return Provider.value(value: viewModel.timeView, child: child);
+    return Provider.value(value: viewModel.timeRange, child: child);
   }
 }
 
@@ -536,7 +536,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
     });
 
     return TimeRangeAnimationBuilder(
-      timeRange: viewModel.timeView,
+      timeRange: viewModel.timeRange,
       onRenderedTimeRangeChanged: _handleRenderedTimeRangeChanged,
       builder: (context, timeRangeAnimation) {
         return _buildContentWithTimeRangeAnimation(

@@ -163,7 +163,7 @@ class ArrangerStateMachineTestFixture {
     final viewModel = ArrangerViewModel(
       project: project,
       baseTrackHeight: 60,
-      timeView: TimeRange(0, 960),
+      timeRange: TimeRange(0, 960),
     );
     final projectViewModel = ProjectViewModel()
       ..activePanel = PanelKind.arranger;

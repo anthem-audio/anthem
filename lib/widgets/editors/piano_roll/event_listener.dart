@@ -182,7 +182,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
         return Observer(
           builder: (context) {
             return EditorScrollManager.editor(
-              timeView: viewModel.timeView,
+              timeRange: viewModel.timeRange,
               onVerticalScrollChange: (delta) {
                 final keysPerPixel = 1 / viewModel.keyHeight;
                 final scrollAmountInKeys = -delta * 0.5 * keysPerPixel;

@@ -326,14 +326,14 @@ void main() {
 
       const downX = 358.0;
       int timeAtX(double x) => pixelsToTime(
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
+        timeViewStart: fixture.viewModel.timeRange.start,
+        timeViewEnd: fixture.viewModel.timeRange.end,
         viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
         pixelOffsetFromLeft: x,
       ).round();
       double xForTime(int time) => timeToPixels(
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
+        timeViewStart: fixture.viewModel.timeRange.start,
+        timeViewEnd: fixture.viewModel.timeRange.end,
         viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
         time: time.toDouble(),
       );

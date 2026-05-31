@@ -262,13 +262,13 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       builder: (context, constraints) {
         _lastTimelineSize = constraints.biggest;
 
-        final timeView = context.watch<TimeRange>();
+        final timeRange = context.watch<TimeRange>();
         final project = Provider.of<ProjectModel>(context);
         final controller = _requiredController;
         _syncRenderedViewMetrics();
 
         return EditorScrollManager.timeline(
-          timeView: timeView,
+          timeRange: timeRange,
           child: Listener(
             onPointerDown: handlePointerDown,
             onPointerMove: handlePointerMove,

@@ -394,8 +394,8 @@ class ArrangerStateMachine
     required ArrangerController controller,
   }) {
     final data = ArrangerStateMachineData()
-      ..renderedTimeViewStart = viewModel.timeView.start
-      ..renderedTimeViewEnd = viewModel.timeView.end
+      ..renderedTimeViewStart = viewModel.timeRange.start
+      ..renderedTimeViewEnd = viewModel.timeRange.end
       ..renderedVerticalScrollPosition = viewModel.verticalScrollPosition;
     final idleState = ArrangerIdleState();
     final dragState = ArrangerDragState(idleState);

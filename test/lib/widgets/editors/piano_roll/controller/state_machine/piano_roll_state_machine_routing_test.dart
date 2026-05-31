@@ -226,7 +226,7 @@ void main() {
     });
 
     test('raw controller input uses the latest rendered view metrics', () {
-      fixture.viewModel.timeView = TimeRange(480, 960);
+      fixture.viewModel.timeRange = TimeRange(480, 960);
       fixture.viewModel.keyHeight = 20;
       fixture.viewModel.keyValueAtTop = 72;
       fixture.syncRenderedViewMetrics();

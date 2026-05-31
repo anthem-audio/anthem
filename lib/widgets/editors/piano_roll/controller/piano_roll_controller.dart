@@ -185,8 +185,8 @@ class _PianoRollController {
       defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
       ticksPerQuarter: project.sequence.ticksPerQuarter,
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
     );
   }
 

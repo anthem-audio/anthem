@@ -68,7 +68,7 @@ const _timelineTrackpadZoomMultiplier = 0.7;
 /// react to changes.
 class EditorScrollManager extends StatefulWidget {
   final Widget? child;
-  final TimeRange? timeView;
+  final TimeRange? timeRange;
   final _EditorScrollManagerMode _mode;
 
   /// Applies a vertical scroll delta and returns the amount that was actually
@@ -82,12 +82,12 @@ class EditorScrollManager extends StatefulWidget {
 
   /// Creates a scroll surface for timeline-based editor canvases.
   ///
-  /// Horizontal motion and zoom are mapped onto [timeView], while vertical
+  /// Horizontal motion and zoom are mapped onto [timeRange], while vertical
   /// movement is delegated to the supplied callbacks.
   const EditorScrollManager.editor({
     super.key,
     this.child,
-    required TimeRange this.timeView,
+    required TimeRange this.timeRange,
     this.onVerticalScrollChange,
     this.onVerticalPanStart,
     this.onVerticalPanMove,
@@ -98,12 +98,12 @@ class EditorScrollManager extends StatefulWidget {
   /// response to wheel and trackpad input.
   ///
   /// Unlike editor canvases, the timeline does not treat wheel input as
-  /// vertical scrolling. Instead, vertical pointer deltas zoom [timeView]
+  /// vertical scrolling. Instead, vertical pointer deltas zoom [timeRange]
   /// around the current pointer position.
   const EditorScrollManager.timeline({
     super.key,
     this.child,
-    required TimeRange this.timeView,
+    required TimeRange this.timeRange,
   }) : onVerticalScrollChange = null,
        onVerticalPanStart = null,
        onVerticalPanMove = null,
@@ -121,7 +121,7 @@ class EditorScrollManager extends StatefulWidget {
     this.child,
     this.onVerticalScrollChange,
     this.onVerticalZoom,
-  }) : timeView = null,
+  }) : timeRange = null,
        onVerticalPanStart = null,
        onVerticalPanMove = null,
        _mode = _EditorScrollManagerMode.verticalOnly;
@@ -132,15 +132,15 @@ class EditorScrollManager extends StatefulWidget {
 
 class _EditorScrollManagerState extends State<EditorScrollManager>
     with TickerProviderStateMixin {
-  TimeRange get _timeView {
-    final timeView = widget.timeView;
-    if (timeView == null) {
+  TimeRange get _timeRange {
+    final timeRange = widget.timeRange;
+    if (timeRange == null) {
       throw StateError(
         'EditorScrollManager.editor and EditorScrollManager.timeline must provide a TimeRange.',
       );
     }
 
-    return timeView;
+    return timeRange;
   }
 
   double _panInitialTimeViewStart = double.nan;
@@ -160,7 +160,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
   bool get _supportsHorizontalScroll =>
       widget._mode == _EditorScrollManagerMode.editor;
 
-  bool get _supportsHorizontalZoom => widget.timeView != null;
+  bool get _supportsHorizontalZoom => widget.timeRange != null;
 
   bool get _supportsMiddleMousePan =>
       widget._mode == _EditorScrollManagerMode.editor;
@@ -218,21 +218,21 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       return 0;
     }
 
-    final timeView = _timeView;
-    final originalStart = timeView.start;
-    final originalEnd = timeView.end;
+    final timeRange = _timeRange;
+    final originalStart = timeRange.start;
+    final originalEnd = timeRange.end;
 
-    final ticksPerPixel = timeView.width / viewWidth;
+    final ticksPerPixel = timeRange.width / viewWidth;
     var scrollAmountInTicks = delta * ticksPerPixel;
 
     if (originalStart + scrollAmountInTicks < 0) {
       scrollAmountInTicks = -originalStart;
     }
 
-    timeView.start = originalStart + scrollAmountInTicks;
-    timeView.end = originalEnd + scrollAmountInTicks;
+    timeRange.start = originalStart + scrollAmountInTicks;
+    timeRange.end = originalEnd + scrollAmountInTicks;
 
-    final appliedTicks = timeView.start - originalStart;
+    final appliedTicks = timeRange.start - originalStart;
     if (ticksPerPixel == 0) {
       return 0;
     }
@@ -242,20 +242,20 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
 
   double _applyHorizontalZoomDelta(double pointerX, double delta) {
     final contentRenderBox = context.findRenderObject() as RenderBox;
-    final timeView = _timeView;
-    final originalWidth = timeView.width;
+    final timeRange = _timeRange;
+    final originalWidth = timeRange.width;
     if (contentRenderBox.size.width <= 0 || originalWidth <= 0) {
       return 0;
     }
 
-    zoomTimeView(
-      timeView: timeView,
+    zoomTimeRange(
+      timeRange: timeRange,
       delta: delta,
       mouseX: pointerX,
       editorWidth: contentRenderBox.size.width,
     );
 
-    final appliedWidth = timeView.width;
+    final appliedWidth = timeRange.width;
     if (appliedWidth <= 0) {
       return 0;
     }
@@ -269,18 +269,18 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
   }
 
   void _handleMiddlePointerDown(Offset pointerPos) {
-    final timeView = _timeView;
-    _panInitialTimeViewStart = timeView.start;
-    _panInitialTimeViewEnd = timeView.end;
+    final timeRange = _timeRange;
+    _panInitialTimeViewStart = timeRange.start;
+    _panInitialTimeViewEnd = timeRange.end;
     _panInitialX = pointerPos.dx;
 
     widget.onVerticalPanStart?.call(pointerPos.dy);
   }
 
   void _handleMiddlePointerMove(Offset pointerPos, Size viewSize) {
-    final timeView = _timeView;
+    final timeRange = _timeRange;
     final deltaX = pointerPos.dx - _panInitialX;
-    final deltaTimeSincePanInit = (-deltaX / viewSize.width) * timeView.width;
+    final deltaTimeSincePanInit = (-deltaX / viewSize.width) * timeRange.width;
 
     var start = _panInitialTimeViewStart + deltaTimeSincePanInit;
     var end = _panInitialTimeViewEnd + deltaTimeSincePanInit;
@@ -291,8 +291,8 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       end += delta;
     }
 
-    timeView.start = start;
-    timeView.end = end;
+    timeRange.start = start;
+    timeRange.end = end;
 
     widget.onVerticalPanMove?.call(pointerPos.dy);
   }

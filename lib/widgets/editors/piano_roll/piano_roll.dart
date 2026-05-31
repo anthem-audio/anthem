@@ -90,7 +90,7 @@ class _PianoRollState extends State<PianoRoll> {
       value: controller,
       child: Provider.value(
         value: viewModel,
-        child: PianoRollTimeViewProvider(
+        child: PianoRollTimeRangeProvider(
           child: Container(
             color: AnthemTheme.panel.background,
             child: Column(
@@ -117,16 +117,16 @@ class _PianoRollState extends State<PianoRoll> {
 /// We provide the [TimeRange] to the tree because some widgets, such as
 /// [Timeline], are shared between editors, and they need to access the
 /// [TimeRange] without knowing which editor they're associated with.
-class PianoRollTimeViewProvider extends StatelessObserverWidget {
+class PianoRollTimeRangeProvider extends StatelessObserverWidget {
   final Widget? child;
 
-  const PianoRollTimeViewProvider({super.key, this.child});
+  const PianoRollTimeRangeProvider({super.key, this.child});
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    return Provider.value(value: viewModel.timeView, child: child);
+    return Provider.value(value: viewModel.timeRange, child: child);
   }
 }
 
@@ -156,14 +156,14 @@ class _PianoRollHeader extends StatelessWidget {
                             context,
                             listen: false,
                           );
-                          final timeView = Provider.of<TimeRange>(
+                          final timeRange = Provider.of<TimeRange>(
                             context,
                             listen: false,
                           );
 
                           controller.addTimeSignatureChange(
                             timeSignature: TimeSignatureModel(3, 4),
-                            offset: timeView.start.floor(),
+                            offset: timeRange.start.floor(),
                             pianoRollWidth: _pianoRollCanvasSize.width,
                           );
                         },
@@ -233,7 +233,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
     return TimeRangeAnimationBuilder(
-      timeRange: viewModel.timeView,
+      timeRange: viewModel.timeRange,
       builder: (context, timeRangeAnimation) {
         return _buildContentWithTimeRangeAnimation(
           context,
@@ -362,17 +362,17 @@ class _PianoRollContentState extends State<_PianoRollContent>
             final selectionBox = viewModel.selectionBox!;
 
             final left = timeToPixels(
-              timeViewStart: viewModel.timeView.start,
-              timeViewEnd: viewModel.timeView.end,
+              timeViewStart: viewModel.timeRange.start,
+              timeViewEnd: viewModel.timeRange.end,
               viewPixelWidth: constraints.maxWidth,
               time: selectionBox.left,
             );
 
             final width = timeToPixels(
-              timeViewStart: viewModel.timeView.start,
-              timeViewEnd: viewModel.timeView.end,
+              timeViewStart: viewModel.timeRange.start,
+              timeViewEnd: viewModel.timeRange.end,
               viewPixelWidth: constraints.maxWidth,
-              time: viewModel.timeView.start + selectionBox.width,
+              time: viewModel.timeRange.start + selectionBox.width,
             );
 
             final top = keyValueToPixels(
@@ -604,14 +604,14 @@ class PianoRollHorizontalScrollbar extends StatelessObserverWidget {
         scrollRegionEnd:
             pattern?.lastContent.toDouble() ??
             (project.sequence.ticksPerQuarter * 4 * noContentBars).toDouble(),
-        handleStart: viewModel.timeView.start,
-        handleEnd: viewModel.timeView.end,
+        handleStart: viewModel.timeRange.start,
+        handleEnd: viewModel.timeRange.end,
         canScrollPastEnd: true,
         minHandleSize: project.sequence.ticksPerQuarter * 4,
         disableAtFullSize: false,
         onChange: (event) {
-          viewModel.timeView.start = event.handleStart;
-          viewModel.timeView.end = event.handleEnd;
+          viewModel.timeRange.start = event.handleStart;
+          viewModel.timeRange.end = event.handleEnd;
         },
       ),
     );

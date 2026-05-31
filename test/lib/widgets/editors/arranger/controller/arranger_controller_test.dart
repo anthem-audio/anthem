@@ -210,7 +210,7 @@ class _ArrangerControllerTestFixture {
     final viewModel = ArrangerViewModel(
       project: project,
       baseTrackHeight: 60,
-      timeView: TimeRange(0, 960),
+      timeRange: TimeRange(0, 960),
     );
 
     AnthemStore.instance.projects[project.id] = project;
@@ -301,7 +301,7 @@ void main() {
       final viewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 60,
-        timeView: TimeRange(0, 960),
+        timeRange: TimeRange(0, 960),
       );
       final mockProjectController = MockProjectController();
 
@@ -414,7 +414,7 @@ void main() {
       final viewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 60,
-        timeView: TimeRange(0, 960),
+        timeRange: TimeRange(0, 960),
       );
 
       AnthemStore.instance.projects[project.id] = project;
@@ -472,7 +472,7 @@ void main() {
       final viewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 60,
-        timeView: TimeRange(0, 960),
+        timeRange: TimeRange(0, 960),
       );
 
       AnthemStore.instance.projects[project.id] = project;
@@ -512,7 +512,7 @@ void main() {
         final viewModel = ArrangerViewModel(
           project: project,
           baseTrackHeight: 60,
-          timeView: TimeRange(0, 960),
+          timeRange: TimeRange(0, 960),
         );
 
         AnthemStore.instance.projects[project.id] = project;

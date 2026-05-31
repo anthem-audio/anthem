@@ -100,7 +100,7 @@ final arrangerViewModelService = ServiceDef<ArrangerViewModel>(
   create: (project, _) => ArrangerViewModel(
     project: project,
     baseTrackHeight: 53,
-    timeView: TimeRange(0, 3072),
+    timeRange: TimeRange(0, 3072),
   ),
 );
 
@@ -116,7 +116,7 @@ final pianoRollViewModelService = ServiceDef<PianoRollViewModel>(
   create: (_, _) => PianoRollViewModel(
     keyHeight: 14.0,
     keyValueAtTop: 63.95,
-    timeView: TimeRange(0, 3072),
+    timeRange: TimeRange(0, 3072),
   ),
 );
 

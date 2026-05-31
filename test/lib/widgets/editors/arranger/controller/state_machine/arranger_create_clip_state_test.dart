@@ -162,8 +162,8 @@ void main() {
 
       const clickPos = Offset(100, 20);
       final rawStartOffset = pixelsToTime(
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
+        timeViewStart: fixture.viewModel.timeRange.start,
+        timeViewEnd: fixture.viewModel.timeRange.end,
         viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
         pixelOffsetFromLeft: clickPos.dx,
       );

@@ -110,7 +110,7 @@ class _TimelineTestFixture {
   final PatternModel pattern;
   final ArrangementModel arrangement;
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
-  final TimeRange timeView;
+  final TimeRange timeRange;
   final _RecordingSequencerApi sequencerApi;
   final _TimelineTestEngine engine;
 
@@ -119,7 +119,7 @@ class _TimelineTestFixture {
     required this.project,
     required this.pattern,
     required this.arrangement,
-    required this.timeView,
+    required this.timeRange,
     required this.sequencerApi,
     required this.engine,
   });
@@ -151,14 +151,14 @@ class _TimelineTestFixture {
     };
     project.sequence.playbackStartPosition = 0;
 
-    final timeView = TimeRange(0, 960);
+    final timeRange = TimeRange(0, 960);
 
     return _TimelineTestFixture._(
       targetKind: targetKind,
       project: project,
       pattern: pattern,
       arrangement: arrangement,
-      timeView: timeView,
+      timeRange: timeRange,
       sequencerApi: sequencerApi,
       engine: engine,
     );
@@ -196,7 +196,7 @@ class _TimelineTestFixture {
       MultiProvider(
         providers: [
           Provider<ProjectModel>.value(value: project),
-          Provider<TimeRange>.value(value: timeView),
+          Provider<TimeRange>.value(value: timeRange),
           ChangeNotifierProvider<KeyboardModifiers>.value(
             value: keyboardModifiers,
           ),
@@ -210,7 +210,7 @@ class _TimelineTestFixture {
               width: viewSize.width,
               height: viewSize.height,
               child: TimeRangeAnimationBuilder(
-                timeRange: timeView,
+                timeRange: timeRange,
                 builder: (context, timeRangeAnimation) {
                   return switch (targetKind) {
                     _TimelineTargetKind.pattern => Timeline.pattern(
@@ -257,8 +257,8 @@ class _TimelineTestFixture {
   Offset localPositionForTime(double time, {required double y}) {
     return Offset(
       timeToPixels(
-        timeViewStart: timeView.start,
-        timeViewEnd: timeView.end,
+        timeViewStart: timeRange.start,
+        timeViewEnd: timeRange.end,
         viewPixelWidth: viewSize.width,
         time: time,
       ),
@@ -303,8 +303,8 @@ class _TimelineTestFixture {
         defaultTimeSignature: project.sequence.defaultTimeSignature,
         timeSignatureChanges: timeSignatureChanges,
         ticksPerQuarter: project.sequence.ticksPerQuarter,
-        timeViewStart: timeView.start,
-        timeViewEnd: timeView.end,
+        timeViewStart: timeRange.start,
+        timeViewEnd: timeRange.end,
         minPixelsPerSection: minorMinPixels,
       ),
       round: round,

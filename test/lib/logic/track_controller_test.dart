@@ -448,7 +448,7 @@ void main() {
       final arrangerViewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 40,
-        timeView: TimeRange(0, 4),
+        timeRange: TimeRange(0, 4),
       );
       ServiceRegistry.initializeProject(
         project,
@@ -712,7 +712,7 @@ void main() {
       final arrangerViewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 40,
-        timeView: TimeRange(0, 4),
+        timeRange: TimeRange(0, 4),
       );
       trackController = TrackController(project);
 

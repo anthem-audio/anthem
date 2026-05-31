@@ -168,8 +168,8 @@ class _AttributeRenderArea extends StatelessWidget {
         ) {
           return AttributeEditorPointerEvent(
             offset: pixelsToTime(
-              timeViewStart: viewModel.timeView.start,
-              timeViewEnd: viewModel.timeView.end,
+              timeViewStart: viewModel.timeRange.start,
+              timeViewEnd: viewModel.timeRange.end,
               viewPixelWidth: constraints.maxWidth,
               pixelOffsetFromLeft: rawEvent.localPosition.dx,
             ),

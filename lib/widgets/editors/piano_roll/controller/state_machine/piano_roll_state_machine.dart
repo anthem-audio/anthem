@@ -176,8 +176,8 @@ class PianoRollStateMachine
     required PianoRollController controller,
   }) {
     final data = PianoRollStateMachineData()
-      ..renderedTimeViewStart = viewModel.timeView.start
-      ..renderedTimeViewEnd = viewModel.timeView.end
+      ..renderedTimeViewStart = viewModel.timeRange.start
+      ..renderedTimeViewEnd = viewModel.timeRange.end
       ..renderedKeyHeight = viewModel.keyHeight
       ..renderedKeyValueAtTop = viewModel.keyValueAtTop;
     final idleState = PianoRollIdleState();

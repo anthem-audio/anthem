@@ -144,16 +144,16 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     }
 
     final startOffsetRaw = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       viewPixelWidth: interactionState.viewSize.width,
       pixelOffsetFromLeft: startPosition.x,
     );
     final endOffsetRaw = max(
       0.0,
       pixelsToTime(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
+        timeViewStart: viewModel.timeRange.start,
+        timeViewEnd: viewModel.timeRange.end,
         viewPixelWidth: interactionState.viewSize.width,
         pixelOffsetFromLeft: currentPosition.x,
       ),
@@ -199,8 +199,8 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     }
 
     final startOffsetRaw = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       viewPixelWidth: interactionState.viewSize.width,
       pixelOffsetFromLeft: startPosition.x,
     );

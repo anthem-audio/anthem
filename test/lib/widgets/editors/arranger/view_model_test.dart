@@ -31,7 +31,7 @@ void main() {
     return ArrangerViewModel(
       project: project,
       baseTrackHeight: 60,
-      timeView: TimeRange(0, 960),
+      timeRange: TimeRange(0, 960),
     );
   }
 

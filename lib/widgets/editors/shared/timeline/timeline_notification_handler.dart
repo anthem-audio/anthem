@@ -75,7 +75,7 @@ class _TimelineNotificationHandlerState
       child: widget.child,
       onNotification: (notification) {
         if (notification is TimelineLabelPointerNotification) {
-          final timeView = Provider.of<TimeRange>(context, listen: false);
+          final timeRange = Provider.of<TimeRange>(context, listen: false);
           final timeSignatureChanges = _getTimeSignatureChanges(project);
 
           final divisionChanges = getDivisionChanges(
@@ -84,8 +84,8 @@ class _TimelineNotificationHandlerState
             defaultTimeSignature: project.sequence.defaultTimeSignature,
             timeSignatureChanges: timeSignatureChanges,
             ticksPerQuarter: project.sequence.ticksPerQuarter,
-            timeViewStart: timeView.start,
-            timeViewEnd: timeView.end,
+            timeViewStart: timeRange.start,
+            timeViewEnd: timeRange.end,
           );
 
           final snappedPos = getSnappedTime(

@@ -79,8 +79,8 @@ void main() {
       required bool snap,
     }) {
       final rawArrangementTime = pixelsToTime(
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
+        timeViewStart: fixture.viewModel.timeRange.start,
+        timeViewEnd: fixture.viewModel.timeRange.end,
         viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
         pixelOffsetFromLeft: pos.dx,
       ).round();
@@ -110,8 +110,8 @@ void main() {
       return timeToPixels(
         time: (clip.offset + pointOffset - (clip.timeView?.start ?? 0))
             .toDouble(),
-        timeViewStart: fixture.viewModel.timeView.start,
-        timeViewEnd: fixture.viewModel.timeView.end,
+        timeViewStart: fixture.viewModel.timeRange.start,
+        timeViewEnd: fixture.viewModel.timeRange.end,
         viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
       );
     }
@@ -241,14 +241,14 @@ void main() {
       );
       final dragDelta = getSnappedDragDelta(
         startTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: dragStartX,
         ).round(),
         currentTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: movePos.dx,
         ).round(),
@@ -313,14 +313,14 @@ void main() {
       final movePos = Offset(dragStartX + snapSize / 2, clickPos.dy);
       final centerDragDelta = getSnappedDragDelta(
         startTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: dragStartX,
         ).round(),
         currentTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: movePos.dx,
         ).round(),
@@ -328,14 +328,14 @@ void main() {
       );
       final rawPointerDragDelta = getSnappedDragDelta(
         startTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: clickPos.dx,
         ).round(),
         currentTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: movePos.dx,
         ).round(),
@@ -384,14 +384,14 @@ void main() {
       );
       final dragDelta = getSnappedDragDelta(
         startTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: downPos.dx,
         ).round(),
         currentTime: pixelsToTime(
-          timeViewStart: fixture.viewModel.timeView.start,
-          timeViewEnd: fixture.viewModel.timeView.end,
+          timeViewStart: fixture.viewModel.timeRange.start,
+          timeViewEnd: fixture.viewModel.timeRange.end,
           viewPixelWidth: ArrangerStateMachineTestFixture.viewSize.width,
           pixelOffsetFromLeft: movePos.dx,
         ).round(),

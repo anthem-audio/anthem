@@ -84,7 +84,7 @@ class _EditorScrollManagerTestFixture {
   static const childKey = Key('editor-scroll-manager-child');
 
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
-  final TimeRange timeView = TimeRange(0, 1000);
+  final TimeRange timeRange = TimeRange(0, 1000);
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -95,7 +95,7 @@ class _EditorScrollManagerTestFixture {
           child: Align(
             alignment: Alignment.topLeft,
             child: EditorScrollManager.editor(
-              timeView: timeView,
+              timeRange: timeRange,
               child: const ColoredBox(
                 color: Color(0xFFFFFFFF),
                 child: SizedBox(key: childKey, width: 200, height: 120),
@@ -133,7 +133,7 @@ class _TimelineScrollManagerTestFixture {
   static const _trackpadPointer = 1;
 
   final KeyboardModifiers keyboardModifiers = KeyboardModifiers();
-  final TimeRange timeView = TimeRange(0, 1000);
+  final TimeRange timeRange = TimeRange(0, 1000);
 
   Future<void> pump(WidgetTester tester) async {
     await tester.pumpWidget(
@@ -144,7 +144,7 @@ class _TimelineScrollManagerTestFixture {
           child: Align(
             alignment: Alignment.topLeft,
             child: EditorScrollManager.timeline(
-              timeView: timeView,
+              timeRange: timeRange,
               child: const ColoredBox(
                 color: Color(0xFFFFFFFF),
                 child: SizedBox(key: childKey, width: 200, height: 120),
@@ -390,7 +390,7 @@ void main() {
 
     testWidgets('routes wheel input to horizontal zoom', (tester) async {
       await fixture.pump(tester);
-      final initialWidth = fixture.timeView.width;
+      final initialWidth = fixture.timeRange.width;
 
       await fixture.sendScroll(
         tester,
@@ -398,7 +398,7 @@ void main() {
         scrollDelta: const Offset(0, 24),
       );
 
-      expect(fixture.timeView.width, greaterThan(initialWidth));
+      expect(fixture.timeRange.width, greaterThan(initialWidth));
     });
 
     testWidgets('stops zooming when wheel input stops', (tester) async {
@@ -417,12 +417,12 @@ void main() {
         timeStamp: const Duration(milliseconds: 16),
       );
 
-      final widthAfterInput = fixture.timeView.width;
+      final widthAfterInput = fixture.timeRange.width;
 
       await tester.pump(const Duration(milliseconds: 80));
       await tester.pump(const Duration(milliseconds: 120));
 
-      expect(fixture.timeView.width, closeTo(widthAfterInput, 0.000001));
+      expect(fixture.timeRange.width, closeTo(widthAfterInput, 0.000001));
     });
 
     testWidgets('stops trackpad momentum when inertia is canceled', (
@@ -456,10 +456,10 @@ void main() {
         timeStamp: const Duration(milliseconds: 48),
       );
 
-      final widthAfterInput = fixture.timeView.width;
+      final widthAfterInput = fixture.timeRange.width;
 
       await tester.pump(const Duration(milliseconds: 120));
-      final widthDuringMomentum = fixture.timeView.width;
+      final widthDuringMomentum = fixture.timeRange.width;
 
       expect(widthDuringMomentum, greaterThan(widthAfterInput));
 
@@ -471,7 +471,7 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(fixture.timeView.width, closeTo(widthDuringMomentum, 0.000001));
+      expect(fixture.timeRange.width, closeTo(widthDuringMomentum, 0.000001));
     });
   });
 
@@ -487,7 +487,7 @@ void main() {
     ) async {
       await fixture.pump(tester);
       fixture.keyboardModifiers.setCtrl(true);
-      final initialWidth = fixture.timeView.width;
+      final initialWidth = fixture.timeRange.width;
 
       await fixture.sendScroll(
         tester,
@@ -495,7 +495,7 @@ void main() {
         scrollDelta: const Offset(0, 24),
       );
 
-      expect(fixture.timeView.width, greaterThan(initialWidth));
+      expect(fixture.timeRange.width, greaterThan(initialWidth));
     });
 
     testWidgets('stops ctrl zooming when wheel input stops', (tester) async {
@@ -515,12 +515,12 @@ void main() {
         timeStamp: const Duration(milliseconds: 16),
       );
 
-      final widthAfterInput = fixture.timeView.width;
+      final widthAfterInput = fixture.timeRange.width;
 
       await tester.pump(const Duration(milliseconds: 80));
       await tester.pump(const Duration(milliseconds: 120));
 
-      expect(fixture.timeView.width, closeTo(widthAfterInput, 0.000001));
+      expect(fixture.timeRange.width, closeTo(widthAfterInput, 0.000001));
     });
   });
 }
