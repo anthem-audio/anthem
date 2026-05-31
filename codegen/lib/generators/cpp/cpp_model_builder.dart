@@ -685,7 +685,7 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
 
       final type = getCppType(field.typeInfo, modelClassInfo);
       writer.writeLine(
-        'static const $type ${field.fieldElement.name} = ${field.constantValue};',
+        'static inline const $type ${field.fieldElement.name} = ${field.constantValue};',
       );
     }
 
