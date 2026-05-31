@@ -30,7 +30,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
-import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_segments.dart';
+import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -208,6 +208,32 @@ void main() {
 
         expect(value, closeTo(0.2, 1e-9));
       }
+    });
+  });
+
+  group('automationHoldValueAtTick', () {
+    test('uses half-open segment bounds', () {
+      final segments = [
+        const AutomationHoldSegment(startTick: 0, endTick: 96, value: 0.2),
+        const AutomationHoldSegment(
+          startTick: 96,
+          endTick: double.infinity,
+          value: 0.7,
+        ),
+      ];
+
+      expect(automationHoldValueAtTick(segments, 0), closeTo(0.2, 1e-9));
+      expect(automationHoldValueAtTick(segments, 95.999), closeTo(0.2, 1e-9));
+      expect(automationHoldValueAtTick(segments, 96), closeTo(0.7, 1e-9));
+    });
+
+    test('returns null when no segment contains the tick', () {
+      final segments = [
+        const AutomationHoldSegment(startTick: 10, endTick: 20, value: 0.2),
+      ];
+
+      expect(automationHoldValueAtTick(segments, 0), isNull);
+      expect(automationHoldValueAtTick(segments, 20), isNull);
     });
   });
 

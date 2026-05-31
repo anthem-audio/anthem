@@ -25,7 +25,7 @@ import 'package:anthem/helpers/fast_atan2.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/arranger/rendering/automation_smooth_curve.dart';
+import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem_codegen/include/collections.dart';
 import 'package:meta/meta.dart';

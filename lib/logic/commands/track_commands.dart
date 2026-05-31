@@ -111,11 +111,8 @@ class AutomationLaneAddRemoveCommand extends Command {
         .toInt();
     parentTrack.automationLanes.insert(insertIndex, lane.id);
 
-    final processingGraph = _tryGetProjectProcessingGraph(project);
-    if (_removedGraphFragment != null &&
-        !_removedGraphFragment!.isEmpty &&
-        processingGraph != null) {
-      processingGraph.restoreGraphFragment(_removedGraphFragment!);
+    if (_removedGraphFragment != null && !_removedGraphFragment!.isEmpty) {
+      project.processingGraph.restoreGraphFragment(_removedGraphFragment!);
     } else {
       _createAutomationProviderGraph(project);
     }
@@ -141,12 +138,9 @@ class AutomationLaneAddRemoveCommand extends Command {
 
     final ownedNodeIds = lane.automationProcessing?.getOwnedNodeIds() ?? [];
     if (ownedNodeIds.isNotEmpty) {
-      final processingGraph = _tryGetProjectProcessingGraph(project);
-      if (processingGraph != null) {
-        _removedGraphFragment = processingGraph.removeNodesAndCapture(
-          ownedNodeIds,
-        );
-      }
+      _removedGraphFragment = project.processingGraph.removeNodesAndCapture(
+        ownedNodeIds,
+      );
     }
 
     project.tracks.remove(lane.id);
@@ -164,11 +158,7 @@ class AutomationLaneAddRemoveCommand extends Command {
       return;
     }
 
-    final processingGraph = _tryGetProjectProcessingGraph(project);
-    if (processingGraph == null) {
-      return;
-    }
-
+    final processingGraph = project.processingGraph;
     final destinationNode = processingGraph.nodes[target.nodeId];
     if (destinationNode == null) {
       return;
@@ -632,17 +622,6 @@ void _publishProcessingGraphIfEngineRunning(ProjectModel project) {
   ServiceRegistry.forProject(
     project.id,
   ).projectController.publishProcessingGraph();
-}
-
-ProcessingGraphModel? _tryGetProjectProcessingGraph(ProjectModel project) {
-  try {
-    return project.processingGraph;
-  } on Error catch (error) {
-    if (error.toString().startsWith('LateInitializationError')) {
-      return null;
-    }
-    rethrow;
-  }
 }
 
 Set<Id> _collectAutomationLaneNodeIdsForTrack(

@@ -28,6 +28,7 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/model.dart';
+import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -84,23 +85,15 @@ abstract class _ArrangerController {
   }
 
   ModelFilterSubscription _subscribeToParameterValueChanges() {
-    try {
-      return project.processingGraph.onChange(
-        (b) => b
-            .nodes()
-            .anyValue(bindTo: _parameterNodeBinding)
-            .controlInputPorts()
-            .anyElement(bindTo: _parameterPortBinding)
-            .parameterValue(),
-        _handleParameterValueChanged,
-      );
-    } catch (error) {
-      if (!error.toString().contains('LateInitializationError')) {
-        rethrow;
-      }
-
-      return ModelFilterSubscription(cancel: () {});
-    }
+    return project.processingGraph.onChange(
+      (b) => b
+          .nodes()
+          .anyValue(bindTo: _parameterNodeBinding)
+          .controlInputPorts()
+          .anyElement(bindTo: _parameterPortBinding)
+          .parameterValue(),
+      _handleParameterValueChanged,
+    );
   }
 
   void dispose() {
@@ -342,17 +335,26 @@ abstract class _ArrangerController {
     double? width,
     String? patternName,
   }) {
+    final arrangementId = project.sequence.activeArrangementID!;
+    final arrangement = project.sequence.arrangements[arrangementId]!;
+    final clipOffset = offset.round();
     final pattern = PatternModel(
       idAllocator: _idAllocator,
       name: patternName ?? _newClipPatternNameForTrack(track),
     )..color = track.color.clone();
-    _seedAutomationClipPoints(track: track, pattern: pattern, width: width);
+    _seedAutomationClipPoints(
+      track: track,
+      pattern: pattern,
+      clipOffset: clipOffset,
+      width: width,
+      arrangement: arrangement,
+    );
 
     final clip = ClipModel(
       idAllocator: _idAllocator,
       patternId: pattern.id,
       trackId: track.id,
-      offset: offset.round(),
+      offset: clipOffset,
       timeView: width == null
           ? null
           : TimeViewModel(start: 0, end: width.round()),
@@ -360,10 +362,7 @@ abstract class _ArrangerController {
 
     project.execute(PatternAddRemoveCommand.add(pattern: pattern));
     project.execute(
-      ClipAddRemoveCommand.add(
-        arrangementID: project.sequence.activeArrangementID!,
-        clip: clip,
-      ),
+      ClipAddRemoveCommand.add(arrangementID: arrangementId, clip: clip),
     );
 
     return pattern.id;
@@ -372,7 +371,9 @@ abstract class _ArrangerController {
   void _seedAutomationClipPoints({
     required TrackModel track,
     required PatternModel pattern,
+    required int clipOffset,
     required double? width,
+    required ArrangementModel arrangement,
   }) {
     if (!track.isAutomationLane) {
       return;
@@ -383,26 +384,15 @@ abstract class _ArrangerController {
       return;
     }
 
-    final node = _nodeForAutomationTarget(target);
-    if (node == null) {
+    final value = _automationClipSeedValue(
+      track: track,
+      arrangement: arrangement,
+      clipOffset: clipOffset,
+    );
+    if (value == null) {
       return;
     }
 
-    NodePortModel port;
-    try {
-      port = node.getPortById(target.portId);
-    } catch (_) {
-      return;
-    }
-
-    final parameterConfig = port.config.parameterConfig;
-    if (parameterConfig == null) {
-      return;
-    }
-
-    final value = (port.parameterValue ?? parameterConfig.defaultValue)
-        .clamp(0.0, 1.0)
-        .toDouble();
     final endOffset = max(0, width?.round() ?? _defaultPatternWidth());
 
     pattern.automation.points.addAll([
@@ -415,16 +405,29 @@ abstract class _ArrangerController {
     ]);
   }
 
-  NodeModel? _nodeForAutomationTarget(TrackAutomationTargetModel target) {
-    try {
-      return project.processingGraph.nodes[target.nodeId];
-    } catch (error) {
-      if (!error.toString().contains('LateInitializationError')) {
-        rethrow;
-      }
-
-      return null;
+  double? _automationClipSeedValue({
+    required TrackModel track,
+    required ArrangementModel arrangement,
+    required int clipOffset,
+  }) {
+    final holdValue = automationHoldValueForTrackAtTick(
+      project: project,
+      arrangement: arrangement,
+      trackId: track.id,
+      tick: clipOffset.toDouble(),
+    );
+    if (holdValue != null) {
+      return holdValue;
     }
+
+    final processor =
+        track
+                .requireAutomationProcessing
+                .sequenceAutomationProviderNode!
+                .processor
+            as SequenceAutomationProviderProcessorModel;
+
+    return processor.emptyValue;
   }
 
   int _defaultPatternWidth() {

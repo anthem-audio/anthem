@@ -27,7 +27,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
-import 'package:anthem/widgets/editors/arranger/rendering/automation_smooth_curve.dart';
+import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 

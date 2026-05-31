@@ -26,7 +26,7 @@ import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/widgets/editors/arranger/rendering/automation_smooth_curve.dart';
+import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem_codegen/include/collections.dart';
 import 'package:flutter/foundation.dart';
@@ -88,6 +88,36 @@ List<AutomationHoldSegment> buildAutomationHoldSegmentsForTrack({
     clips: clips,
     clipTimingOverrides: clipTimingOverrides,
   );
+}
+
+double? automationHoldValueForTrackAtTick({
+  required ProjectModel project,
+  required ArrangementModel arrangement,
+  required Id trackId,
+  required double tick,
+}) {
+  return automationHoldValueAtTick(
+    buildAutomationHoldSegmentsForTrack(
+      project: project,
+      arrangement: arrangement,
+      trackId: trackId,
+    ),
+    tick,
+  );
+}
+
+@visibleForTesting
+double? automationHoldValueAtTick(
+  Iterable<AutomationHoldSegment> segments,
+  double tick,
+) {
+  for (final segment in segments) {
+    if (tick >= segment.startTick && tick < segment.endTick) {
+      return segment.value;
+    }
+  }
+
+  return null;
 }
 
 @visibleForTesting

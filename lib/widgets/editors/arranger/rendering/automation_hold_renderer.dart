@@ -25,7 +25,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
-import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_segments.dart';
+import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
