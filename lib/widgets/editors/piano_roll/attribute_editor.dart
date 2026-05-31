@@ -30,21 +30,18 @@ import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class PianoRollAttributeEditor extends StatefulWidget {
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final PianoRollViewModel viewModel;
 
   const PianoRollAttributeEditor({
     super.key,
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.viewModel,
   });
 
@@ -121,10 +118,7 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                     children: [
                       Expanded(
                         child: _AttributeRenderArea(
-                          timeViewAnimationController:
-                              widget.timeViewAnimationController,
-                          timeViewStartAnimation: widget.timeViewStartAnimation,
-                          timeViewEndAnimation: widget.timeViewEndAnimation,
+                          timeRangeAnimation: widget.timeRangeAnimation,
                           controller: controller,
                         ),
                       ),
@@ -154,15 +148,11 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
 }
 
 class _AttributeRenderArea extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final AttributeEditorController controller;
 
   const _AttributeRenderArea({
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.controller,
   });
 
@@ -212,11 +202,10 @@ class _AttributeRenderArea extends StatelessWidget {
             child: ClipRect(
               child: CustomPaint(
                 painter: _PianoRollAttributePainter(
-                  repaint: timeViewAnimationController,
+                  repaint: timeRangeAnimation.controller,
                   viewModel: viewModel,
                   project: project,
-                  timeViewStartAnimation: timeViewStartAnimation,
-                  timeViewEndAnimation: timeViewEndAnimation,
+                  timeRangeAnimation: timeRangeAnimation,
                 ),
               ),
             ),
@@ -230,19 +219,17 @@ class _AttributeRenderArea extends StatelessWidget {
 class _PianoRollAttributePainter extends CustomPainterObserver {
   PianoRollViewModel viewModel;
   ProjectModel project;
-  Animation<double> timeViewStartAnimation;
-  Animation<double> timeViewEndAnimation;
+  TimeRangeAnimation timeRangeAnimation;
 
   _PianoRollAttributePainter({
     required Listenable repaint,
     required this.viewModel,
     required this.project,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
   }) : super(debugName: '_PianoRollAttributePainter', repaint: repaint);
 
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -395,7 +382,6 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
   bool shouldRepaint(covariant _PianoRollAttributePainter oldDelegate) {
     return viewModel != oldDelegate.viewModel ||
         project != oldDelegate.project ||
-        timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
-        timeViewEndAnimation != oldDelegate.timeViewEndAnimation;
+        timeRangeAnimation != oldDelegate.timeRangeAnimation;
   }
 }

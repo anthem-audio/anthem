@@ -37,6 +37,7 @@ import 'package:anthem/widgets/editors/arranger/rendering/content_renderer.dart'
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_notification_handler.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -387,7 +388,6 @@ class _ArrangerContent extends StatefulWidget {
 
 class _ArrangerContentState extends State<_ArrangerContent>
     with TickerProviderStateMixin {
-  LazyFollowAnimationHelper? timeViewAnimationHelper;
   LazyFollowAnimationHelper? verticalScrollPositionAnimationHelper;
 
   mobx.ReactionDisposer? animationTweenUpdaterDisposer;
@@ -395,9 +395,33 @@ class _ArrangerContentState extends State<_ArrangerContent>
   StreamSubscription<void>? baseTrackHeightChangedSub;
 
   ArrangerController? _renderedViewTransformController;
+  double? _renderedTimeViewStart;
+  double? _renderedTimeViewEnd;
+  double? _renderedVerticalScrollPosition;
   double? _lastSyncedTimeViewStart;
   double? _lastSyncedTimeViewEnd;
   double? _lastSyncedVerticalScrollPosition;
+
+  void _handleRenderedTimeRangeChanged({
+    required double timeRangeStart,
+    required double timeRangeEnd,
+  }) {
+    _renderedTimeViewStart = timeRangeStart;
+    _renderedTimeViewEnd = timeRangeEnd;
+    _syncRenderedViewTransform();
+  }
+
+  void _handleRenderedVerticalScrollPositionChanged() {
+    final verticalHelper = verticalScrollPositionAnimationHelper;
+    if (verticalHelper == null) {
+      return;
+    }
+
+    final [verticalScrollPositionAnimItem] = verticalHelper.items;
+    _renderedVerticalScrollPosition =
+        verticalScrollPositionAnimItem.animation.value;
+    _syncRenderedViewTransform();
+  }
 
   void _syncRenderedViewTransform() {
     if (!mounted) {
@@ -405,21 +429,15 @@ class _ArrangerContentState extends State<_ArrangerContent>
     }
 
     final controller = _renderedViewTransformController;
-    final timeViewHelper = timeViewAnimationHelper;
-    final verticalHelper = verticalScrollPositionAnimationHelper;
+    final timeViewStart = _renderedTimeViewStart;
+    final timeViewEnd = _renderedTimeViewEnd;
+    final verticalScrollPosition = _renderedVerticalScrollPosition;
     if (controller == null ||
-        timeViewHelper == null ||
-        verticalHelper == null) {
+        timeViewStart == null ||
+        timeViewEnd == null ||
+        verticalScrollPosition == null) {
       return;
     }
-
-    final [timeViewStartAnimItem, timeViewEndAnimItem] = timeViewHelper.items;
-    final [verticalScrollPositionAnimItem] = verticalHelper.items;
-
-    final timeViewStart = timeViewStartAnimItem.animation.value;
-    final timeViewEnd = timeViewEndAnimItem.animation.value;
-    final verticalScrollPosition =
-        verticalScrollPositionAnimItem.animation.value;
 
     if (_lastSyncedTimeViewStart == timeViewStart &&
         _lastSyncedTimeViewEnd == timeViewEnd &&
@@ -439,17 +457,10 @@ class _ArrangerContentState extends State<_ArrangerContent>
   }
 
   void _detachRenderedViewTransformListeners() {
-    final timeViewHelper = timeViewAnimationHelper;
-    if (timeViewHelper != null) {
-      timeViewHelper.animationController.removeListener(
-        _syncRenderedViewTransform,
-      );
-    }
-
     final verticalHelper = verticalScrollPositionAnimationHelper;
     if (verticalHelper != null) {
       verticalHelper.animationController.removeListener(
-        _syncRenderedViewTransform,
+        _handleRenderedVerticalScrollPositionChanged,
       );
     }
   }
@@ -466,20 +477,17 @@ class _ArrangerContentState extends State<_ArrangerContent>
     _lastSyncedTimeViewEnd = null;
     _lastSyncedVerticalScrollPosition = null;
 
-    timeViewAnimationHelper!.animationController.addListener(
-      _syncRenderedViewTransform,
-    );
     verticalScrollPositionAnimationHelper!.animationController.addListener(
-      _syncRenderedViewTransform,
+      _handleRenderedVerticalScrollPositionChanged,
     );
 
+    _handleRenderedVerticalScrollPositionChanged();
     _syncRenderedViewTransform();
   }
 
   @override
   void dispose() {
     _detachRenderedViewTransformListeners();
-    timeViewAnimationHelper?.dispose();
     verticalScrollPositionAnimationHelper?.dispose();
     baseTrackHeightChangedSub?.cancel();
     animationTweenUpdaterDisposer?.call();
@@ -488,33 +496,10 @@ class _ArrangerContentState extends State<_ArrangerContent>
 
   @override
   Widget build(BuildContext context) {
-    const trackHeaderWidth = 190.0;
-
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final controller = Provider.of<ArrangerController>(context);
 
     final project = Provider.of<ProjectModel>(context);
-
-    timeViewAnimationHelper ??= LazyFollowAnimationHelper(
-      duration: 250,
-      vsync: this,
-      animateOnFirstUpdate: false,
-      items: [
-        LazyFollowItem(
-          initialValue: 0,
-          getTarget: () => viewModel.timeView.start,
-        ),
-        LazyFollowItem(
-          initialValue: 1,
-          getTarget: () => viewModel.timeView.end,
-        ),
-      ],
-    );
-
-    timeViewAnimationHelper!.update();
-
-    final [timeViewStartAnimItem, timeViewEndAnimItem] =
-        timeViewAnimationHelper!.items;
 
     verticalScrollPositionAnimationHelper ??= LazyFollowAnimationHelper(
       duration: 250,
@@ -534,7 +519,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
         verticalScrollPositionAnimationHelper!.items;
 
     _attachRenderedViewTransformListeners(controller);
-    _syncRenderedViewTransform();
+    _handleRenderedVerticalScrollPositionChanged();
 
     // Snap vertical scroll position when base track height is changed
     baseTrackHeightChangedSub ??= controller.onBaseTrackHeightChanged.stream
@@ -546,11 +531,31 @@ class _ArrangerContentState extends State<_ArrangerContent>
     // Updates the animations whenever the vertical scroll position changes.
     animationTweenUpdaterDisposer ??= mobx.autorun((p0) {
       viewModel.verticalScrollPosition;
-      viewModel.timeView.start;
-      viewModel.timeView.end;
 
       setState(() {});
     });
+
+    return TimeRangeAnimationBuilder(
+      timeRange: viewModel.timeView,
+      onRenderedTimeRangeChanged: _handleRenderedTimeRangeChanged,
+      builder: (context, timeRangeAnimation) {
+        return _buildContentWithTimeRangeAnimation(
+          context,
+          project,
+          timeRangeAnimation,
+          verticalScrollPositionAnimItem.animation,
+        );
+      },
+    );
+  }
+
+  Widget _buildContentWithTimeRangeAnimation(
+    BuildContext context,
+    ProjectModel project,
+    TimeRangeAnimation timeRangeAnimation,
+    Animation<double> verticalScrollPositionAnimation,
+  ) {
+    const trackHeaderWidth = 190.0;
 
     return RepaintBoundary(
       child: Column(
@@ -577,11 +582,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                         timelineKind: TimelineKind.arrangement,
                         arrangementID: project.sequence.activeArrangementID,
                         child: Timeline.arrangement(
-                          timeViewAnimationController:
-                              timeViewEndAnimItem.animationController,
-                          timeViewStartAnimation:
-                              timeViewStartAnimItem.animation,
-                          timeViewEndAnimation: timeViewEndAnimItem.animation,
+                          timeRangeAnimation: timeRangeAnimation,
                           arrangementID: project.sequence.activeArrangementID,
                         ),
                       );
@@ -603,7 +604,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     builder: (context, child) {
                       return TrackHeaders(
                         verticalScrollPosition:
-                            verticalScrollPositionAnimItem.animation.value,
+                            verticalScrollPositionAnimation.value,
                       );
                     },
                   ),
@@ -615,13 +616,9 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     children: [
                       Expanded(
                         child: _ArrangerCanvas(
-                          timeViewStartAnimation:
-                              timeViewStartAnimItem.animation,
-                          timeViewEndAnimation: timeViewEndAnimItem.animation,
-                          timeViewAnimationController:
-                              timeViewAnimationHelper!.animationController,
+                          timeRangeAnimation: timeRangeAnimation,
                           verticalScrollPositionAnimation:
-                              verticalScrollPositionAnimItem.animation,
+                              verticalScrollPositionAnimation,
                           verticalScrollPositionAnimationController:
                               verticalScrollPositionAnimationHelper!
                                   .animationController,
@@ -656,17 +653,13 @@ class _ArrangerContentState extends State<_ArrangerContent>
 /// Renders the actual clip render area. This includes the time grid and any
 /// clips that are in the active arrangement.
 class _ArrangerCanvas extends StatelessWidget {
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
-  final AnimationController timeViewAnimationController;
+  final TimeRangeAnimation timeRangeAnimation;
 
   final Animation<double> verticalScrollPositionAnimation;
   final AnimationController verticalScrollPositionAnimationController;
 
   const _ArrangerCanvas({
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
-    required this.timeViewAnimationController,
+    required this.timeRangeAnimation,
     required this.verticalScrollPositionAnimation,
     required this.verticalScrollPositionAnimationController,
   });
@@ -676,7 +669,7 @@ class _ArrangerCanvas extends StatelessWidget {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<ArrangerViewModel>(context);
     final renderedViewRepaint = Listenable.merge([
-      timeViewAnimationController,
+      timeRangeAnimation.controller,
       verticalScrollPositionAnimationController,
       viewModel.trackPositionCalculator.layoutRevision,
     ]);
@@ -696,8 +689,7 @@ class _ArrangerCanvas extends StatelessWidget {
                 project: project,
                 verticalScrollPositionAnimation:
                     verticalScrollPositionAnimation,
-                timeViewStartAnimation: timeViewStartAnimation,
-                timeViewEndAnimation: timeViewEndAnimation,
+                timeRangeAnimation: timeRangeAnimation,
               ),
             ),
           );
@@ -707,8 +699,7 @@ class _ArrangerCanvas extends StatelessWidget {
               Widget clips() {
                 return ArrangerContentRenderer(
                   repaint: renderedViewRepaint,
-                  timeViewStartAnimation: timeViewStartAnimation,
-                  timeViewEndAnimation: timeViewEndAnimation,
+                  timeRangeAnimation: timeRangeAnimation,
                   verticalScrollPositionAnimation:
                       verticalScrollPositionAnimation,
                   viewModel: viewModel,
@@ -757,9 +748,7 @@ class _ArrangerCanvas extends StatelessWidget {
 
           final playhead = Positioned.fill(
             child: PlayheadLine(
-              timeViewAnimationController: timeViewAnimationController,
-              timeViewStartAnimation: timeViewStartAnimation,
-              timeViewEndAnimation: timeViewEndAnimation,
+              timeRangeAnimation: timeRangeAnimation,
               isVisible: true,
               editorActiveSequenceId: project.sequence.activeArrangementID,
             ),

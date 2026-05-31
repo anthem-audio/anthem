@@ -29,6 +29,7 @@ import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -77,14 +78,15 @@ void main() {
       required double keyValueAtTop,
       Size size = const Size(100, 160),
     }) {
-      final timeViewStartAnimation = AlwaysStoppedAnimation(timeViewStart);
-      final timeViewEndAnimation = AlwaysStoppedAnimation(timeViewEnd);
+      final timeRangeAnimation = TimeRangeAnimation(
+        timeRange: TimeRange(timeViewStart, timeViewEnd),
+        vsync: const TestVSync(),
+      )..update();
       final keyValueAtTopAnimation = AlwaysStoppedAnimation(keyValueAtTop);
 
       final painter = PianoRollPainter(
         repaint: ValueNotifier(null),
-        timeViewStartAnimation: timeViewStartAnimation,
-        timeViewEndAnimation: timeViewEndAnimation,
+        timeRangeAnimation: timeRangeAnimation,
         keyValueAtTopAnimation: keyValueAtTopAnimation,
         viewModel: viewModel,
         project: project,
@@ -94,8 +96,12 @@ void main() {
 
       final recorder = PictureRecorder();
       final canvas = Canvas(recorder);
-      painter.observablePaint(canvas, size);
-      recorder.endRecording();
+      try {
+        painter.observablePaint(canvas, size);
+        recorder.endRecording();
+      } finally {
+        timeRangeAnimation.dispose();
+      }
     }
 
     test('skips subpixel notes without aborting later note rendering', () {

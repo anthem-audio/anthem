@@ -31,6 +31,7 @@ import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -144,16 +145,14 @@ List<List<ClipRenderInfo>> buildClipLayersForPainting(
 
 class ArrangerContentRenderer extends StatelessObserverWidget {
   final Listenable repaint;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Animation<double> verticalScrollPositionAnimation;
   final ArrangerViewModel viewModel;
 
   const ArrangerContentRenderer({
     super.key,
     required this.repaint,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.verticalScrollPositionAnimation,
     required this.viewModel,
   });
@@ -169,8 +168,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
     return CustomPaint(
       painter: ArrangerContentPainter(
         repaint: repaint,
-        timeViewStartAnimation: timeViewStartAnimation,
-        timeViewEndAnimation: timeViewEndAnimation,
+        timeRangeAnimation: timeRangeAnimation,
         verticalScrollPositionAnimation: verticalScrollPositionAnimation,
         project: project,
         arrangement: arrangement,
@@ -183,8 +181,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 }
 
 class ArrangerContentPainter extends CustomPainterObserver {
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Animation<double> verticalScrollPositionAnimation;
   final ProjectModel project;
   final ArrangementModel arrangement;
@@ -193,8 +190,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
   ArrangerContentPainter({
     required Listenable repaint,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.verticalScrollPositionAnimation,
     required this.project,
     required this.arrangement,
@@ -202,8 +198,8 @@ class ArrangerContentPainter extends CustomPainterObserver {
     required this.devicePixelRatio,
   }) : super(debugName: 'ArrangerContentPainter', repaint: repaint);
 
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
   double get renderedVerticalScrollPosition =>
       verticalScrollPositionAnimation.value;
   double get _verticalScrollDelta =>
@@ -216,8 +212,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(ArrangerContentPainter oldDelegate) {
-    return timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
-        timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+    return timeRangeAnimation != oldDelegate.timeRangeAnimation ||
         verticalScrollPositionAnimation !=
             oldDelegate.verticalScrollPositionAnimation ||
         project != oldDelegate.project ||

@@ -30,6 +30,7 @@ import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -112,9 +113,6 @@ class _TimelineTestFixture {
   final TimeRange timeView;
   final _RecordingSequencerApi sequencerApi;
   final _TimelineTestEngine engine;
-  final AnimationController animationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
 
   _TimelineTestFixture._({
     required this.targetKind,
@@ -124,9 +122,6 @@ class _TimelineTestFixture {
     required this.timeView,
     required this.sequencerApi,
     required this.engine,
-    required this.animationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
   });
 
   factory _TimelineTestFixture.create({
@@ -157,11 +152,6 @@ class _TimelineTestFixture {
     project.sequence.playbackStartPosition = 0;
 
     final timeView = TimeRange(0, 960);
-    final animationController = AnimationController(
-      vsync: const TestVSync(),
-      duration: Duration.zero,
-      value: 1,
-    );
 
     return _TimelineTestFixture._(
       targetKind: targetKind,
@@ -171,9 +161,6 @@ class _TimelineTestFixture {
       timeView: timeView,
       sequencerApi: sequencerApi,
       engine: engine,
-      animationController: animationController,
-      timeViewStartAnimation: AlwaysStoppedAnimation(timeView.start),
-      timeViewEndAnimation: AlwaysStoppedAnimation(timeView.end),
     );
   }
 
@@ -222,20 +209,21 @@ class _TimelineTestFixture {
               key: timelineKey,
               width: viewSize.width,
               height: viewSize.height,
-              child: switch (targetKind) {
-                _TimelineTargetKind.pattern => Timeline.pattern(
-                  patternID: pattern.id,
-                  timeViewAnimationController: animationController,
-                  timeViewStartAnimation: timeViewStartAnimation,
-                  timeViewEndAnimation: timeViewEndAnimation,
-                ),
-                _TimelineTargetKind.arrangement => Timeline.arrangement(
-                  arrangementID: arrangement.id,
-                  timeViewAnimationController: animationController,
-                  timeViewStartAnimation: timeViewStartAnimation,
-                  timeViewEndAnimation: timeViewEndAnimation,
-                ),
-              },
+              child: TimeRangeAnimationBuilder(
+                timeRange: timeView,
+                builder: (context, timeRangeAnimation) {
+                  return switch (targetKind) {
+                    _TimelineTargetKind.pattern => Timeline.pattern(
+                      patternID: pattern.id,
+                      timeRangeAnimation: timeRangeAnimation,
+                    ),
+                    _TimelineTargetKind.arrangement => Timeline.arrangement(
+                      arrangementID: arrangement.id,
+                      timeRangeAnimation: timeRangeAnimation,
+                    ),
+                  };
+                },
+              ),
             ),
           ),
         ),
@@ -347,7 +335,6 @@ class _TimelineTestFixture {
   }
 
   void dispose() {
-    animationController.dispose();
     project.visualizationProvider.dispose();
   }
 }

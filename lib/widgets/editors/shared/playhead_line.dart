@@ -23,21 +23,18 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 class PlayheadLine extends StatelessObserverWidget {
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final bool isVisible;
   final Id? editorActiveSequenceId;
 
   const PlayheadLine({
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.isVisible,
     required this.editorActiveSequenceId,
     super.key,
@@ -80,9 +77,8 @@ class PlayheadLine extends StatelessObserverWidget {
                 builder: (context, transportPosition, engineTime) {
                   return CustomPaint(
                     painter: _PlayheadPainter(
-                      repaint: timeViewAnimationController,
-                      timeViewStartAnimation: timeViewStartAnimation,
-                      timeViewEndAnimation: timeViewEndAnimation,
+                      repaint: timeRangeAnimation.controller,
+                      timeRangeAnimation: timeRangeAnimation,
                       transportPosition:
                           transportPositionOverride ?? transportPosition ?? 0,
                       isVisible:
@@ -104,21 +100,19 @@ class PlayheadLine extends StatelessObserverWidget {
 /// Draws the current position of the transport as a vertical bar, to be
 /// overlayed on an editor canvas.
 class _PlayheadPainter extends CustomPainter {
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final double transportPosition;
   final bool isVisible;
 
   _PlayheadPainter({
     required Listenable repaint,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.transportPosition,
     required this.isVisible,
   }) : super(repaint: repaint);
 
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -147,8 +141,7 @@ class _PlayheadPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     if (oldDelegate is _PlayheadPainter) {
-      return timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
-          timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+      return timeRangeAnimation != oldDelegate.timeRangeAnimation ||
           transportPosition != oldDelegate.transportPosition ||
           isVisible != oldDelegate.isVisible;
     }

@@ -27,6 +27,7 @@ import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui' as ui;
@@ -42,19 +43,15 @@ const _noteResizeHandleOvershoot = 2.0;
 const _minimumClickableNoteArea = 30;
 
 class PianoRollContentRenderer extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
   final AnimationController keyValueAtTopAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Animation<double> keyValueAtTopAnimation;
   final bool shouldGreyOut;
 
   const PianoRollContentRenderer({
     super.key,
-    required this.timeViewAnimationController,
     required this.keyValueAtTopAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.keyValueAtTopAnimation,
     required this.shouldGreyOut,
   });
@@ -67,11 +64,10 @@ class PianoRollContentRenderer extends StatelessWidget {
     return CustomPaint(
       painter: PianoRollPainter(
         repaint: Listenable.merge([
-          timeViewAnimationController,
+          timeRangeAnimation.controller,
           keyValueAtTopAnimationController,
         ]),
-        timeViewStartAnimation: timeViewStartAnimation,
-        timeViewEndAnimation: timeViewEndAnimation,
+        timeRangeAnimation: timeRangeAnimation,
         keyValueAtTopAnimation: keyValueAtTopAnimation,
         project: project,
         viewModel: viewModel,
@@ -83,8 +79,7 @@ class PianoRollContentRenderer extends StatelessWidget {
 }
 
 class PianoRollPainter extends CustomPainterObserver {
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Animation<double> keyValueAtTopAnimation;
   final PianoRollViewModel viewModel;
   final ProjectModel project;
@@ -93,8 +88,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
   PianoRollPainter({
     required Listenable repaint,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.keyValueAtTopAnimation,
     required this.viewModel,
     required this.project,
@@ -102,8 +96,8 @@ class PianoRollPainter extends CustomPainterObserver {
     required this.shouldGreyOut,
   }) : super(debugName: 'PianoRollPainter', repaint: repaint);
 
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
   double get keyValueAtTop => keyValueAtTopAnimation.value;
 
   @override
@@ -297,8 +291,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(PianoRollPainter oldDelegate) =>
-      timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
-      timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+      timeRangeAnimation != oldDelegate.timeRangeAnimation ||
       keyValueAtTopAnimation != oldDelegate.keyValueAtTopAnimation ||
       viewModel != oldDelegate.viewModel ||
       project != oldDelegate.project ||

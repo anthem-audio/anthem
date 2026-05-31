@@ -35,6 +35,7 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -218,12 +219,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
     with TickerProviderStateMixin {
   double footerHeight = 61;
 
-  LazyFollowAnimationHelper? timeViewAnimationHelper;
   LazyFollowAnimationHelper? keyValueAtTopAnimationHelper;
 
   @override
   void dispose() {
-    timeViewAnimationHelper?.dispose();
     keyValueAtTopAnimationHelper?.dispose();
     super.dispose();
   }
@@ -233,26 +232,25 @@ class _PianoRollContentState extends State<_PianoRollContent>
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    timeViewAnimationHelper ??= LazyFollowAnimationHelper(
-      duration: 250,
-      vsync: this,
-      animateOnFirstUpdate: false,
-      items: [
-        LazyFollowItem(
-          initialValue: 0,
-          getTarget: () => viewModel.timeView.start,
-        ),
-        LazyFollowItem(
-          initialValue: 1,
-          getTarget: () => viewModel.timeView.end,
-        ),
-      ],
+    return TimeRangeAnimationBuilder(
+      timeRange: viewModel.timeView,
+      builder: (context, timeRangeAnimation) {
+        return _buildContentWithTimeRangeAnimation(
+          context,
+          project,
+          viewModel,
+          timeRangeAnimation,
+        );
+      },
     );
+  }
 
-    timeViewAnimationHelper!.update();
-
-    final [timeViewStartAnimItem, timeViewEndAnimItem] =
-        timeViewAnimationHelper!.items;
+  Widget _buildContentWithTimeRangeAnimation(
+    BuildContext context,
+    ProjectModel project,
+    PianoRollViewModel viewModel,
+    TimeRangeAnimation timeRangeAnimation,
+  ) {
     final shouldGreyOut = project.sequence.activePatternID == null;
 
     keyValueAtTopAnimationHelper ??= LazyFollowAnimationHelper(
@@ -304,10 +302,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                   timelineKind: TimelineKind.pattern,
                   patternID: pattern?.id,
                   child: Timeline.pattern(
-                    timeViewAnimationController:
-                        timeViewAnimationHelper!.animationController,
-                    timeViewStartAnimation: timeViewStartAnimItem.animation,
-                    timeViewEndAnimation: timeViewEndAnimItem.animation,
+                    timeRangeAnimation: timeRangeAnimation,
                     patternID: pattern?.id,
                   ),
                 ),
@@ -344,22 +339,16 @@ class _PianoRollContentState extends State<_PianoRollContent>
         _pianoRollCanvasSize = constraints.biggest;
 
         final grid = PianoRollGrid(
-          timeViewAnimationController:
-              timeViewAnimationHelper!.animationController,
-          timeViewStartAnimation: timeViewStartAnimItem.animation,
-          timeViewEndAnimation: timeViewEndAnimItem.animation,
+          timeRangeAnimation: timeRangeAnimation,
           keyValueAtTopAnimationController:
               keyValueAtTopAnimationHelper!.animationController,
           keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
         );
 
         final notes = PianoRollContentRenderer(
-          timeViewAnimationController:
-              timeViewAnimationHelper!.animationController,
           keyValueAtTopAnimationController:
               keyValueAtTopAnimationHelper!.animationController,
-          timeViewStartAnimation: timeViewStartAnimItem.animation,
-          timeViewEndAnimation: timeViewEndAnimItem.animation,
+          timeRangeAnimation: timeRangeAnimation,
           keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
           shouldGreyOut: shouldGreyOut,
         );
@@ -426,10 +415,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
           child: Observer(
             builder: (context) {
               return PlayheadLine(
-                timeViewAnimationController:
-                    timeViewAnimationHelper!.animationController,
-                timeViewStartAnimation: timeViewStartAnimItem.animation,
-                timeViewEndAnimation: timeViewEndAnimItem.animation,
+                timeRangeAnimation: timeRangeAnimation,
                 isVisible: true,
                 editorActiveSequenceId: project.sequence.activePatternID,
               );
@@ -447,7 +433,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
         );
 
         return AnimatedBuilder(
-          animation: timeViewAnimationHelper!.animationController,
+          animation: timeRangeAnimation.controller,
           child: eventListenerChild,
           builder: (context, child) {
             return AnimatedBuilder(
@@ -456,8 +442,8 @@ class _PianoRollContentState extends State<_PianoRollContent>
               builder: (context, child) {
                 return PianoRollEventListener(
                   viewSize: constraints.biggest,
-                  renderedTimeViewStart: timeViewStartAnimItem.animation.value,
-                  renderedTimeViewEnd: timeViewEndAnimItem.animation.value,
+                  renderedTimeViewStart: timeRangeAnimation.renderedStart,
+                  renderedTimeViewEnd: timeRangeAnimation.renderedEnd,
                   renderedKeyHeight: viewModel.keyHeight,
                   renderedKeyValueAtTop: keyValueAtTopAnimItem.animation.value,
                   child: child!,
@@ -483,10 +469,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
         contentMinSize: 150,
         separatorSize: 6,
         panelContent: PianoRollAttributeEditor(
-          timeViewAnimationController:
-              timeViewAnimationHelper!.animationController,
-          timeViewStartAnimation: timeViewStartAnimItem.animation,
-          timeViewEndAnimation: timeViewEndAnimItem.animation,
+          timeRangeAnimation: timeRangeAnimation,
           viewModel: viewModel,
         ),
         child: Row(

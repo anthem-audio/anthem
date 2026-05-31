@@ -21,6 +21,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
@@ -29,18 +30,14 @@ import '../../shared/helpers/types.dart';
 import '../helpers.dart';
 
 class PianoRollGrid extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
   final AnimationController keyValueAtTopAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Animation<double> keyValueAtTopAnimation;
 
   const PianoRollGrid({
     super.key,
     required this.keyValueAtTopAnimationController,
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.keyValueAtTopAnimation,
   });
 
@@ -53,14 +50,13 @@ class PianoRollGrid extends StatelessWidget {
       child: CustomPaint(
         painter: PianoRollBackgroundPainter(
           repaint: Listenable.merge([
-            timeViewAnimationController,
+            timeRangeAnimation.controller,
             keyValueAtTopAnimationController,
           ]),
           project: project,
           viewModel: viewModel,
           keyValueAtTopAnimation: keyValueAtTopAnimation,
-          timeViewStartAnimation: timeViewStartAnimation,
-          timeViewEndAnimation: timeViewEndAnimation,
+          timeRangeAnimation: timeRangeAnimation,
         ),
       ),
     );
@@ -73,19 +69,17 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
     required this.project,
     required this.viewModel,
     required this.keyValueAtTopAnimation,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
   }) : super(debugName: 'PianoRollBackgroundPainter', repaint: repaint);
 
   final ProjectModel project;
   final PianoRollViewModel viewModel;
   final Animation<double> keyValueAtTopAnimation;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
 
   double get keyValueAtTop => keyValueAtTopAnimation.value;
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -179,7 +173,6 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
     return project != oldDelegate.project ||
         viewModel != oldDelegate.viewModel ||
         keyValueAtTopAnimation != oldDelegate.keyValueAtTopAnimation ||
-        timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
-        timeViewEndAnimation != oldDelegate.timeViewEndAnimation;
+        timeRangeAnimation != oldDelegate.timeRangeAnimation;
   }
 }
