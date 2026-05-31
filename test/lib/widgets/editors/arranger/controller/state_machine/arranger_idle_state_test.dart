@@ -1,3 +1,5 @@
+import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
+
 import 'arranger_state_machine_test_helpers.dart';
 
 void main() {
@@ -593,6 +595,32 @@ void main() {
       expect(bodyContext.selectableClipId, clip.id);
       expect(bodyContext.movableClipId, clip.id);
       expect(bodyContext.target.isAutomationClipContent, isTrue);
+    });
+
+    test('collapsed automation clip body is not automation content', () {
+      final (:clip, pattern: _) = addVisibleAutomationClip(
+        rect: const Rect.fromLTWH(
+          110,
+          15,
+          40,
+          clipContentRenderHeightThreshold - 1,
+        ),
+      );
+
+      fixture.hover(const Offset(120, 38));
+
+      expect(fixture.viewModel.hoveredClip, clip.id);
+      expect(fixture.viewModel.clipWithAutomationHandles, isNull);
+
+      final bodyContext = fixture.stateMachine.pointerContextAt(
+        const Offset(120, 38),
+      );
+      expect(bodyContext.hitTestResult.clip, isNotNull);
+      expect(bodyContext.hitTestResult.clip!.annotation.metadata, clip.id);
+      expect(bodyContext.selectableClipId, clip.id);
+      expect(bodyContext.movableClipId, clip.id);
+      expect(bodyContext.target.isAutomationClipContent, isFalse);
+      expect(bodyContext.automationClipContentClipId, isNull);
     });
 
     test('state machine keeps automation resize handles selectable', () {

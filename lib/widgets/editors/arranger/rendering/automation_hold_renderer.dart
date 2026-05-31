@@ -28,10 +28,10 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
-const _smallAutomationRowThreshold = 38.0;
 const _clipTitleHeight = 16.0;
 const _automationTopPadding = _clipTitleHeight + 2.0;
 const _automationBottomPadding = 2.0;
@@ -153,7 +153,7 @@ double _automationLaneEmptyValue(TrackModel track) {
       1;
   final trackHeight = trackPositionCalculator.getTrackHeight(rowIndex) + 1;
 
-  if (trackHeight <= _smallAutomationRowThreshold ||
+  if (!shouldRenderClipContent(trackHeight) ||
       trackY > canvasSize.height ||
       trackY + trackHeight < 0) {
     return null;

@@ -30,6 +30,7 @@ import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_title_text.dart'
     show clipTitleHeight;
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
@@ -304,9 +305,10 @@ class ArrangerStateMachine
     final clip = arrangementData?.clips[clipHit.annotation.metadata];
     final isAutomationClip =
         clip != null && project.tracks[clip.trackId]?.isAutomationLane == true;
+    final clipPaintHeight = clipHit.annotation.rect.height + 1;
 
     return isAutomationClip &&
-        clipHit.annotation.rect.height > clipTitleHeight &&
+        shouldRenderClipContent(clipPaintHeight) &&
         clipHit.offset.dy >= clipTitleHeight;
   }
 

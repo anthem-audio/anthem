@@ -29,6 +29,7 @@ import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dar
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
 import 'clip_title_text.dart';
@@ -37,9 +38,6 @@ import 'clip_title_text.dart';
 final _automationLineBuffer = LineBuffer();
 final _automationLineJoinBuffer = CoordinateBuffer();
 final _automationTriCoordBuffer = CoordinateBuffer();
-
-// Clips that are shorter than this will not render content
-const _smallSizeThreshold = 38;
 
 const _clipTitleHeight = 16;
 const _clipTitlePadding = clipTitlePadding;
@@ -138,7 +136,7 @@ void paintClipList({
       final y = clipEntry.y;
       final height = clipEntry.height;
 
-      if (height <= _smallSizeThreshold) continue;
+      if (!shouldRenderClipContent(height)) continue;
 
       final lane = pattern.automation;
       renderAutomationCurve(
@@ -262,7 +260,7 @@ void paintClipList({
             translateX: clipEntry.x,
             translateY:
                 clipEntry.y +
-                (clipEntry.height > _smallSizeThreshold
+                (shouldRenderClipContent(clipEntry.height)
                     ? 0
                     : (clipEntry.height / 2) - (textHeight / 2)),
           );
@@ -337,7 +335,8 @@ void paintClipList({
         height: clipEntry.height,
       );
 
-      if (clipEntry.showAutomationHandles) {
+      if (clipEntry.showAutomationHandles &&
+          shouldRenderClipContent(clipEntry.height)) {
         _paintAutomationHandles(
           canvas: canvas,
           canvasSize: canvasSize,
@@ -430,7 +429,7 @@ void paintClip({
 
     // Automation
 
-    if (height > _smallSizeThreshold) {
+    if (shouldRenderClipContent(height)) {
       renderAutomationCurve(
         canvas: canvas,
         canvasSize: canvasSize,
@@ -448,7 +447,7 @@ void paintClip({
 
     // Notes
 
-    if (height > _smallSizeThreshold) {
+    if (shouldRenderClipContent(height)) {
       _paintClipNotes(
         canvas: canvas,
         notePaint: Paint()..color = _contentBaseColor,
@@ -493,7 +492,7 @@ void _drawClipTitleDirect({
   final y = clipEntry.y;
   final height = clipEntry.height;
 
-  final textY = height > _smallSizeThreshold
+  final textY = shouldRenderClipContent(height)
       ? y
       : y + (height / 2) - (textHeight / 2);
   final rect = Rect.fromLTWH(clipEntry.x, textY, clipEntry.width, textHeight);
@@ -920,7 +919,7 @@ void _paintClipNotes({
   required double width,
   required double height,
 }) {
-  if (height <= _smallSizeThreshold) return;
+  if (!shouldRenderClipContent(height)) return;
 
   final clipNotesEntry = pattern.clipNotesRenderCache;
   if (clipNotesEntry.renderedVertices == null) return;
