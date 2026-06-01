@@ -28,7 +28,6 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
-import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
@@ -765,14 +764,11 @@ mixin PianoRollMoveSessionHelpers
       timeOffsetFromEventStart = -sessionData.startOfFirstNote;
     }
 
-    if (sessionData.keyOfTopNote + keyOffsetFromEventStart > maxKeyValue) {
-      keyOffsetFromEventStart = maxKeyValue.round() - sessionData.keyOfTopNote;
-    }
-
-    if (sessionData.keyOfBottomNote + keyOffsetFromEventStart < minKeyValue) {
-      keyOffsetFromEventStart =
-          minKeyValue.round() - sessionData.keyOfBottomNote;
-    }
+    keyOffsetFromEventStart = resolvePianoRollKeyDelta(
+      requestedDelta: keyOffsetFromEventStart,
+      keyOfTopNote: sessionData.keyOfTopNote,
+      keyOfBottomNote: sessionData.keyOfBottomNote,
+    );
 
     return Map<Id, PianoRollMoveNotePreview>.fromEntries(
       sessionData.noteIds.map((noteId) {

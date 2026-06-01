@@ -27,6 +27,7 @@ import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_live_notes.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -37,6 +38,34 @@ import 'package:mobx/mobx.dart';
 part 'shortcuts.dart';
 
 const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
+
+/// Resolves a requested vertical note move against the piano-roll key range.
+///
+/// Drag moves use the clamped result so notes move as far as possible. Step
+/// moves that must preserve pitch class, such as octave transposition, can set
+/// [requireExactDelta] so an out-of-range request becomes a no-op.
+int resolvePianoRollKeyDelta({
+  required int requestedDelta,
+  required int keyOfTopNote,
+  required int keyOfBottomNote,
+  bool requireExactDelta = false,
+}) {
+  var resolvedDelta = requestedDelta;
+
+  if (keyOfTopNote + resolvedDelta > maxKeyValue) {
+    resolvedDelta = maxKeyValue.round() - keyOfTopNote;
+  }
+
+  if (keyOfBottomNote + resolvedDelta < minKeyValue) {
+    resolvedDelta = minKeyValue.round() - keyOfBottomNote;
+  }
+
+  if (requireExactDelta && resolvedDelta != requestedDelta) {
+    return 0;
+  }
+
+  return resolvedDelta;
+}
 
 enum PianoRollInteractionFamily {
   selectionBox,
@@ -257,6 +286,71 @@ class _PianoRollController {
     project.execute(command);
 
     viewModel.selectedNotes.clear();
+  }
+
+  /// Moves selected notes vertically by [requestedDelta] keys.
+  void transposeSelectedNotes(
+    int requestedDelta, {
+    bool requireExactDelta = false,
+  }) {
+    final pattern = activePatternOrNull;
+    if (activeInteractionFamily != null ||
+        requestedDelta == 0 ||
+        viewModel.selectedNotes.isEmpty ||
+        pattern == null) {
+      return;
+    }
+
+    final selectedNoteIds = viewModel.selectedNotes.nonObservableInner;
+    final selectedNotes = pattern.notes.values
+        .where((note) => selectedNoteIds.contains(note.id))
+        .toList(growable: false);
+
+    if (selectedNotes.isEmpty) {
+      return;
+    }
+
+    var keyOfTopNote = selectedNotes.first.key;
+    var keyOfBottomNote = selectedNotes.first.key;
+    for (final note in selectedNotes.skip(1)) {
+      if (note.key > keyOfTopNote) {
+        keyOfTopNote = note.key;
+      }
+
+      if (note.key < keyOfBottomNote) {
+        keyOfBottomNote = note.key;
+      }
+    }
+
+    final keyDelta = resolvePianoRollKeyDelta(
+      requestedDelta: requestedDelta,
+      keyOfTopNote: keyOfTopNote,
+      keyOfBottomNote: keyOfBottomNote,
+      requireExactDelta: requireExactDelta,
+    );
+
+    if (keyDelta == 0) {
+      return;
+    }
+
+    clearPreviewState();
+
+    project.execute(
+      MoveNotesCommand(
+        patternID: pattern.id,
+        noteMoves: selectedNotes
+            .map((note) {
+              return (
+                noteID: note.id,
+                oldOffset: note.offset,
+                newOffset: note.offset,
+                oldKey: note.key,
+                newKey: note.key + keyDelta,
+              );
+            })
+            .toList(growable: false),
+      ),
+    );
   }
 
   /// Adds all notes to the selection set in the view model.

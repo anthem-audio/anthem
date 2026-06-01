@@ -34,6 +34,34 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
       },
     );
 
+    // Shift + Up/Down - transpose selected notes by semitone
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowUp),
+      () {
+        transposeSelectedNotes(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowDown),
+      () {
+        transposeSelectedNotes(-1);
+      },
+    );
+
+    // Ctrl + Up/Down - transpose selected notes by octave
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowUp),
+      () {
+        transposeSelectedNotes(12, requireExactDelta: true);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowDown),
+      () {
+        transposeSelectedNotes(-12, requireExactDelta: true);
+      },
+    );
+
     // P - pencil
     shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.keyP), () {
       viewModel.tool = EditorTool.pencil;
