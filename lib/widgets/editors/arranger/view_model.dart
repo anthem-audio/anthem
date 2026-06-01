@@ -93,7 +93,7 @@ class PhantomAutomationLaneInfo {
     required this.target,
   });
 
-  String get title => target?.title ?? 'No automation selected';
+  String get title => target?.title ?? 'No parameter selected';
 }
 
 sealed class ArrangerRow {
