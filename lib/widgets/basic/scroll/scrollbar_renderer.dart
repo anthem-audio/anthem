@@ -25,6 +25,8 @@ import '../../../theme.dart';
 
 enum ScrollbarDirection { horizontal, vertical }
 
+const _disabledLogicalTravelEpsilon = 1e-9;
+
 class ScrollbarChangeEvent {
   final double handleStart;
   final double handleEnd;
@@ -177,8 +179,8 @@ class ScrollbarRenderer extends StatefulWidget {
 
   final void Function(ScrollbarChangeEvent event)? onChange;
 
-  /// If true, the scrollbar will show as disabled when the start is 0 and the
-  /// end is 1.
+  /// If true, the scrollbar will show as disabled when the handle is at least
+  /// as large as the scroll region.
   final bool disableAtFullSize;
 
   const ScrollbarRenderer({
@@ -313,8 +315,7 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
 
         final isDisabled =
             widget.disableAtFullSize &&
-            (widget.handleStart <= widget.scrollRegionStart &&
-                widget.handleEnd >= widget.scrollRegionEnd);
+            geometry.logicalTravel <= _disabledLogicalTravelEpsilon;
 
         var handleColor = AnthemTheme.panel.scrollbar;
         if (isDisabled) {

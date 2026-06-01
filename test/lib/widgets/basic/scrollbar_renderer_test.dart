@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
+import 'package:anthem/theme.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -133,6 +134,22 @@ void main() {
       expect(_handleRect(tester).width, closeTo(30, 0.00001));
     },
   );
+
+  testWidgets('disables full-size handle with transient offset', (
+    tester,
+  ) async {
+    await _pumpHorizontalScrollbar(
+      tester,
+      scrollRegionEnd: 100,
+      handleStart: 10,
+      handleEnd: 110,
+    );
+
+    expect(
+      _handleColor(tester),
+      AnthemTheme.panel.scrollbar.withValues(alpha: 0.5),
+    );
+  });
 }
 
 Future<void> _pumpHorizontalScrollbar(
@@ -182,3 +199,21 @@ Rect _trackRect(WidgetTester tester) =>
 
 Rect _handleRect(WidgetTester tester) =>
     tester.getRect(find.byType(MouseRegion));
+
+Color _handleColor(WidgetTester tester) {
+  final handleContainers = tester.widgetList<Container>(
+    find.descendant(
+      of: find.byType(MouseRegion),
+      matching: find.byType(Container),
+    ),
+  );
+
+  for (final container in handleContainers) {
+    final decoration = container.decoration;
+    if (decoration is BoxDecoration && decoration.color != null) {
+      return decoration.color!;
+    }
+  }
+
+  throw StateError('Could not find scrollbar handle color.');
+}
