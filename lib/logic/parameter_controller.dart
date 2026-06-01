@@ -33,6 +33,8 @@ class ParameterController {
   void beginChange({required NodeModel node, required NodePortModel port}) {
     _assertParameterPort(node: node, port: port);
 
+    node.touchControlInputParameter(port);
+
     final key = (node.id, port.id);
 
     if (_activeChanges.containsKey(key)) {
@@ -100,6 +102,8 @@ class ParameterController {
 
   void resetToDefault({required NodeModel node, required NodePortModel port}) {
     _assertParameterPort(node: node, port: port);
+
+    node.touchControlInputParameter(port);
 
     final oldValue = SetParameterValueCommand.effectiveParameterValue(port);
     final newValue = SetParameterValueCommand.normalizeValue(

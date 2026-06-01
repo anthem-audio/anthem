@@ -354,6 +354,8 @@ class Engine {
       return;
     }
 
+    node.touchControlInputParameter(port);
+
     if (port.parameterValue != value) {
       port.parameterValue = value;
     }
@@ -393,6 +395,7 @@ class Engine {
     final key = (event.nodeId, event.controlPortId);
 
     if (event.isStarting) {
+      node.touchControlInputParameter(port);
       _pluginParameterGestureSessions[key] = _PluginParameterGestureSession(
         oldValue: SetParameterValueCommand.effectiveParameterValue(port),
       );

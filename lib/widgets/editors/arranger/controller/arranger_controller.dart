@@ -45,7 +45,6 @@ import '../helpers.dart';
 part 'shortcuts.dart';
 
 const _parameterNodeBinding = 'parameterNode';
-const _parameterPortBinding = 'parameterPort';
 
 class ArrangerController extends _ArrangerController
     with _ArrangerShortcutsMixin
@@ -68,7 +67,7 @@ abstract class _ArrangerController {
   bool _isDisposed = false;
 
   late final ReactionDisposer patternCursorAutorunDispose;
-  late final ModelFilterSubscription parameterValueChangeSubscription;
+  late final ModelFilterSubscription parameterTouchSubscription;
 
   ProjectModel get _project =>
       AnthemStore.instance.projects[viewModel.projectId]!;
@@ -81,18 +80,16 @@ abstract class _ArrangerController {
       viewModel.cursorTimeRange = null;
     });
 
-    parameterValueChangeSubscription = _subscribeToParameterValueChanges();
+    parameterTouchSubscription = _subscribeToParameterTouches();
   }
 
-  ModelFilterSubscription _subscribeToParameterValueChanges() {
+  ModelFilterSubscription _subscribeToParameterTouches() {
     return project.processingGraph.onChange(
       (b) => b
           .nodes()
           .anyValue(bindTo: _parameterNodeBinding)
-          .controlInputPorts()
-          .anyElement(bindTo: _parameterPortBinding)
-          .parameterValue(),
-      _handleParameterValueChanged,
+          .lastChangedControlPortId(),
+      _handleParameterTouched,
     );
   }
 
@@ -102,7 +99,7 @@ abstract class _ArrangerController {
     }
 
     _isDisposed = true;
-    parameterValueChangeSubscription.cancel();
+    parameterTouchSubscription.cancel();
     patternCursorAutorunDispose();
     stateMachine.dispose();
   }
@@ -154,22 +151,21 @@ abstract class _ArrangerController {
     stateMachine.onTrackLayoutChanged();
   }
 
-  void _handleParameterValueChanged(
+  void _handleParameterTouched(
     ModelChangeEvent _,
     ModelChangeBindings bindings,
   ) {
     final node = bindings.maybeGet<NodeModel>(_parameterNodeBinding);
-    final port = bindings.maybeGet<NodePortModel>(_parameterPortBinding);
-    if (node == null || port == null) {
+    final portId = node?.lastChangedControlPortId;
+    if (node == null || portId == null) {
       return;
     }
 
-    if (isParameterTouchTrackingSuppressed(node) ||
-        port.config.parameterConfig == null) {
+    if (isParameterTouchTrackingSuppressed(node)) {
       return;
     }
 
-    final target = resolveAutomationTarget(nodeId: node.id, portId: port.id);
+    final target = resolveAutomationTarget(nodeId: node.id, portId: portId);
     if (target == null) {
       return;
     }

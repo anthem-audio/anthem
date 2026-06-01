@@ -125,6 +125,24 @@ void main() {
     expect(find.text('25.0%'), findsNWidgets(2));
   });
 
+  testWidgets('shows a touched parameter row without changing its value', (
+    tester,
+  ) async {
+    final result = await _pumpDevice(tester);
+    final cutoffPort = result.node.controlInputPorts.first;
+    final cutoffParameter = _firstParameterBinding(result.node);
+
+    expect(find.text('Filter cutoff'), findsOneWidget);
+
+    cutoffParameter.beginChange();
+    cutoffParameter.commitChange();
+    await tester.pump();
+
+    expect(cutoffPort.parameterValue, 0.76);
+    expect(result.node.lastChangedControlPortId, 100);
+    expect(find.text('Filter cutoff'), findsNWidgets(2));
+  });
+
   testWidgets('commits parameter knob changes to undo stack', (tester) async {
     final result = await _pumpDevice(tester);
     final cutoffPort = result.node.controlInputPorts.first;

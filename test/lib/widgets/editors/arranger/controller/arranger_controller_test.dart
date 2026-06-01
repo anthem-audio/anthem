@@ -446,6 +446,63 @@ void main() {
       }
     });
 
+    test('parameter touches update last tweaked automation target', () {
+      fixture.dispose();
+
+      final project = ProjectModel.create();
+      final viewModel = ArrangerViewModel(
+        project: project,
+        baseTrackHeight: 60,
+        timeRange: TimeRange(0, 960),
+      );
+
+      AnthemStore.instance.projects[project.id] = project;
+      ServiceRegistry.initializeProject(
+        project,
+        overrides: ProjectServiceFactoryOverrides([
+          overrideService(arrangerViewModelService, (_, _) => viewModel),
+        ]),
+      );
+
+      try {
+        final services = ServiceRegistry.forProject(project.id);
+        final controller = services.arrangerController;
+        final parameterController = services.parameterController;
+        final parentTrack = project.tracks[project.trackOrder.first]!;
+        final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        final utilityPort = utilityNode.getPortById(
+          UtilityProcessorModel.gainPortId,
+        );
+        final target = controller.resolveAutomationTarget(
+          nodeId: utilityNode.id,
+          portId: utilityPort.id,
+        );
+
+        expect(target, isNotNull);
+
+        parameterController.beginChange(node: utilityNode, port: utilityPort);
+        parameterController.commitChange(node: utilityNode, port: utilityPort);
+
+        expect(viewModel.lastTweakedAutomationTarget, isNotNull);
+        expect(
+          viewModel.lastTweakedAutomationTarget!.ownerTrackId,
+          equals(parentTrack.id),
+        );
+        expect(
+          viewModel.lastTweakedAutomationTarget!.nodeId,
+          equals(utilityNode.id),
+        );
+        expect(
+          viewModel.lastTweakedAutomationTarget!.portId,
+          equals(UtilityProcessorModel.gainPortId),
+        );
+      } finally {
+        ServiceRegistry.removeProject(project.id);
+        AnthemStore.instance.projects.remove(project.id);
+        project.dispose();
+      }
+    });
+
     test('suppressed parameter changes do not update automation target', () {
       fixture.dispose();
 

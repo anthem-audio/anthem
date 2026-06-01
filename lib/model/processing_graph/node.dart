@@ -232,14 +232,25 @@ class NodeModel extends _NodeModel
         }
 
         final changedPort = controlInputPorts[portIndex];
-        if (changedPort.config.parameterConfig == null ||
-            lastChangedControlPortId == changedPort.id) {
-          return;
-        }
-
-        lastChangedControlPortId = changedPort.id;
+        touchControlInputParameter(changedPort);
       },
     );
+  }
+
+  void touchControlInputParameter(NodePortModel port) {
+    if (isParameterTouchTrackingSuppressed(this)) {
+      return;
+    }
+
+    if (port.nodeId != id ||
+        !controlInputPorts.contains(port) ||
+        port.config.dataType != NodePortDataType.control ||
+        port.config.parameterConfig == null ||
+        lastChangedControlPortId == port.id) {
+      return;
+    }
+
+    lastChangedControlPortId = port.id;
   }
 }
 
@@ -317,7 +328,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   @hide
   TimerDebouncedAction? _stateUpdateDebouncedAction;
 
-  /// The control input port ID of the most recently changed plugin parameter.
+  /// The control input port ID of the most recently touched parameter.
   @anthemObservable
   @hideButAllowOnChange
   int? lastChangedControlPortId;

@@ -697,6 +697,48 @@ void main() {
       expect(capturedCommand.newValue, equals(0.75));
     });
 
+    test('plugin parameter gesture start touches parameter', () async {
+      final port = NodePortModel(
+        nodeId: 1,
+        id: 100,
+        config: NodePortConfigModel(
+          dataType: NodePortDataType.control,
+          parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0),
+        ),
+      );
+      final node = NodeModel(
+        id: 1,
+        controlInputPorts: AnthemObservableList.of([port]),
+      );
+      nodes[1] = node;
+
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+
+      connector.emitResponse(
+        PluginParameterGestureEvent(
+          id: -1,
+          nodeId: 1,
+          controlPortId: 100,
+          isStarting: true,
+        ),
+      );
+      connector.emitResponse(
+        PluginParameterGestureEvent(
+          id: -1,
+          nodeId: 1,
+          controlPortId: 100,
+          isStarting: false,
+        ),
+      );
+
+      expect(node.lastChangedControlPortId, equals(100));
+      verifyNever(project.push(any));
+    });
+
     test('PluginLoadedEvent completes the node plugin completer', () async {
       final node = MockNodeModel();
       final pluginLoadedCompleter = Completer<void>();

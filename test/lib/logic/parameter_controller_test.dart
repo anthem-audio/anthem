@@ -96,9 +96,26 @@ void main() {
     controller.beginChange(node: node, port: port);
     controller.commitChange(node: node, port: port);
 
+    expect(node.lastChangedControlPortId, equals(port.id));
+
     project.undo();
     expect(port.parameterValue, equals(0.25));
   });
+
+  test(
+    'ParameterController marks a gesture as touched before value changes',
+    () {
+      final controller = ParameterController(project);
+      project.isDirty = false;
+
+      controller.beginChange(node: node, port: port);
+
+      expect(node.lastChangedControlPortId, equals(port.id));
+      expect(project.isDirty, isFalse);
+
+      controller.commitChange(node: node, port: port);
+    },
+  );
 
   test('ParameterController resets to default as one undo step', () {
     final controller = ParameterController(project);
@@ -121,6 +138,7 @@ void main() {
 
     controller.resetToDefault(node: node, port: port);
 
+    expect(node.lastChangedControlPortId, equals(port.id));
     expect(port.parameterValue, equals(0.25));
     expect(project.isDirty, isFalse);
   });
