@@ -205,12 +205,15 @@ class _PianoRollController {
 
   List<DivisionChange> divisionChangesForPatternView({
     required double viewWidthInPixels,
+    Snap? snap,
+    double minPixelsPerSection = minorMinPixels,
   }) {
     final pattern = requireActivePattern();
 
     return getDivisionChanges(
       viewWidthInPixels: viewWidthInPixels,
-      snap: AutoSnap(),
+      minPixelsPerSection: minPixelsPerSection,
+      snap: snap ?? AutoSnap(),
       defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
       ticksPerQuarter: project.sequence.ticksPerQuarter,
@@ -349,6 +352,106 @@ class _PianoRollController {
               );
             })
             .toList(growable: false),
+      ),
+    );
+  }
+
+  void _nudgeSelectedNotesInTime({
+    required int direction,
+    required List<DivisionChange> divisionChanges,
+  }) {
+    int resolveNudgeDelta({required int startOfFirstNote}) {
+      assert(direction == -1 || direction == 1);
+      if (direction != -1 && direction != 1) {
+        return 0;
+      }
+
+      final step = getSnapSizeAtAbsoluteTime(
+        absoluteTime: direction > 0 ? startOfFirstNote : startOfFirstNote - 1,
+        divisionChanges: divisionChanges,
+      );
+      final requestedDelta = direction * step;
+
+      if (startOfFirstNote + requestedDelta < 0) {
+        return -startOfFirstNote;
+      }
+
+      return requestedDelta;
+    }
+
+    final pattern = activePatternOrNull;
+    if (activeInteractionFamily != null ||
+        viewModel.selectedNotes.isEmpty ||
+        pattern == null) {
+      return;
+    }
+
+    final selectedNoteIds = viewModel.selectedNotes.nonObservableInner;
+    final selectedNotes = pattern.notes.values
+        .where((note) => selectedNoteIds.contains(note.id))
+        .toList(growable: false);
+
+    if (selectedNotes.isEmpty) {
+      return;
+    }
+
+    var startOfFirstNote = selectedNotes.first.offset;
+    for (final note in selectedNotes.skip(1)) {
+      if (note.offset < startOfFirstNote) {
+        startOfFirstNote = note.offset;
+      }
+    }
+
+    final timeDelta = resolveNudgeDelta(startOfFirstNote: startOfFirstNote);
+
+    if (timeDelta == 0) {
+      return;
+    }
+
+    clearPreviewState();
+
+    project.execute(
+      MoveNotesCommand(
+        patternID: pattern.id,
+        noteMoves: selectedNotes
+            .map((note) {
+              return (
+                noteID: note.id,
+                oldOffset: note.offset,
+                newOffset: note.offset + timeDelta,
+                oldKey: note.key,
+                newKey: note.key,
+              );
+            })
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void nudgeSelectedNotesByCurrentSnap(int direction) {
+    if (activePatternOrNull == null) {
+      return;
+    }
+
+    _nudgeSelectedNotesInTime(
+      direction: direction,
+      divisionChanges: divisionChangesForPatternView(
+        viewWidthInPixels: stateMachine.data.viewSize.width,
+      ),
+    );
+  }
+
+  void nudgeSelectedNotesByBar(int direction) {
+    if (activePatternOrNull == null) {
+      return;
+    }
+
+    _nudgeSelectedNotesInTime(
+      direction: direction,
+      divisionChanges: divisionChangesForPatternView(
+        viewWidthInPixels: stateMachine.data.viewSize.width,
+        snap: BarSnap(),
+        minPixelsPerSection: 0,
       ),
     );
   }

@@ -19,6 +19,8 @@
 
 import 'package:flutter/services.dart';
 
+import 'package:anthem/model/shared/time_signature.dart';
+
 import 'piano_roll_state_machine_test_helpers.dart';
 
 void main() {
@@ -151,5 +153,128 @@ void main() {
 
       expect(fixture.noteById(bottomNote.id).key, equals(5));
     });
+
+    test('shortcut snap nudge moves selected notes in time and undoes', () {
+      final noteA = fixture.addNote(key: 60, offset: 96, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 192, length: 48);
+      final noteC = fixture.addNote(key: 67, offset: 288, length: 48);
+      fixture.selectNotes([noteA.id, noteB.id]);
+
+      final snapSize = fixture.snapSizeAt(noteA.offset);
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight),
+      );
+
+      expect(fixture.noteById(noteA.id).offset, equals(96 + snapSize));
+      expect(fixture.noteById(noteB.id).offset, equals(192 + snapSize));
+      expect(fixture.noteById(noteC.id).offset, equals(288));
+      expect(fixture.noteById(noteA.id).key, equals(60));
+      expect(fixture.noteById(noteB.id).key, equals(64));
+      fixture.expectSelection([noteA.id, noteB.id]);
+
+      fixture.project.undo();
+      expect(fixture.noteById(noteA.id).offset, equals(96));
+      expect(fixture.noteById(noteB.id).offset, equals(192));
+
+      fixture.project.redo();
+      expect(fixture.noteById(noteA.id).offset, equals(96 + snapSize));
+      expect(fixture.noteById(noteB.id).offset, equals(192 + snapSize));
+    });
+
+    test('shortcut snap nudge clamps selected notes at pattern start', () {
+      final noteA = fixture.addNote(key: 60, offset: 20, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 80, length: 48);
+      fixture.selectNotes([noteA.id, noteB.id]);
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft),
+      );
+
+      expect(fixture.noteById(noteA.id).offset, equals(0));
+      expect(fixture.noteById(noteB.id).offset, equals(60));
+    });
+
+    test('shortcut bar nudge moves selected notes by one default bar', () {
+      final noteA = fixture.addNote(key: 60, offset: 96, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 192, length: 48);
+      fixture.selectNotes([noteA.id, noteB.id]);
+
+      final barLength = getBarLength(
+        fixture.project.sequence.ticksPerQuarter,
+        fixture.project.sequence.defaultTimeSignature,
+      );
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(
+          LogicalKeyboardKey.control,
+          LogicalKeyboardKey.arrowRight,
+        ),
+      );
+
+      expect(fixture.noteById(noteA.id).offset, equals(96 + barLength));
+      expect(fixture.noteById(noteB.id).offset, equals(192 + barLength));
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      );
+
+      expect(fixture.noteById(noteA.id).offset, equals(96));
+      expect(fixture.noteById(noteB.id).offset, equals(192));
+    });
+
+    test('shortcut bar nudge uses the active time signature', () {
+      fixture.pattern.timeSignatureChanges.add(
+        TimeSignatureChangeModel(
+          idAllocator: testIdAllocator(),
+          offset: 384,
+          timeSignature: TimeSignatureModel(3, 4),
+        ),
+      );
+      final noteA = fixture.addNote(key: 60, offset: 384, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 480, length: 48);
+      fixture.selectNotes([noteA.id, noteB.id]);
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(
+          LogicalKeyboardKey.control,
+          LogicalKeyboardKey.arrowRight,
+        ),
+      );
+
+      expect(fixture.noteById(noteA.id).offset, equals(672));
+      expect(fixture.noteById(noteB.id).offset, equals(768));
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      );
+
+      expect(fixture.noteById(noteA.id).offset, equals(384));
+      expect(fixture.noteById(noteB.id).offset, equals(480));
+    });
+
+    test(
+      'shortcut bar nudge left uses the previous time signature at a change',
+      () {
+        fixture.pattern.timeSignatureChanges.add(
+          TimeSignatureChangeModel(
+            idAllocator: testIdAllocator(),
+            offset: 384,
+            timeSignature: TimeSignatureModel(3, 4),
+          ),
+        );
+        final note = fixture.addNote(key: 60, offset: 384, length: 48);
+        fixture.selectNotes([note.id]);
+
+        fixture.controller.onShortcut(
+          LogicalKeySet(
+            LogicalKeyboardKey.control,
+            LogicalKeyboardKey.arrowLeft,
+          ),
+        );
+
+        expect(fixture.noteById(note.id).offset, equals(0));
+      },
+    );
   });
 }

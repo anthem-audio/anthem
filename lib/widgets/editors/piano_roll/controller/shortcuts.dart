@@ -47,6 +47,18 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
         transposeSelectedNotes(-1);
       },
     );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedNotesByCurrentSnap(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedNotesByCurrentSnap(-1);
+      },
+    );
 
     // Ctrl + Up/Down - transpose selected notes by octave
     shortcutManager.register(
@@ -59,6 +71,18 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowDown),
       () {
         transposeSelectedNotes(-12, requireExactDelta: true);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedNotesByBar(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedNotesByBar(-1);
       },
     );
 
