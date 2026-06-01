@@ -557,7 +557,32 @@ abstract class VisualizationSubscription<T>
 
     if (_isUpdateStale || shouldEmit) {
       _isUpdateStale = false;
-      _updateController.add(null);
+      _emitUpdate();
+    }
+  }
+
+  void _emitUpdate() {
+    if (_updateController.isClosed) {
+      return;
+    }
+
+    _updateController.add(null);
+  }
+
+  void _resetEngineBackedState() {
+    _sourceValue = null;
+    _sourceEngineTime = null;
+    _value = null;
+    _engineTime = null;
+    _overrideValue = null;
+    _overrideSetTime = null;
+    _overrideDuration = null;
+    _shouldReset = false;
+    _isUpdateStale = false;
+    _clearConsumedEngineTimeAnchor();
+
+    if (_hasAdaptiveBuffering) {
+      _resetAdaptiveState();
     }
   }
 
@@ -632,12 +657,13 @@ abstract class VisualizationSubscription<T>
   @override
   void _engineStopped() {
     _lastTickElapsed = null;
+    _resetEngineBackedState();
 
-    if (!_ticker.isActive) {
-      return;
+    if (_ticker.isActive) {
+      _ticker.stop();
     }
 
-    _ticker.stop();
+    scheduleMicrotask(_emitUpdate);
   }
 
   @override

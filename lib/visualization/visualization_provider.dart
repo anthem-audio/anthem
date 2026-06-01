@@ -49,7 +49,7 @@ class VisualizationProvider {
       _transportStats = VisualizationTransportStats(
         (clock ?? VisualizationClock.system).now,
       ) {
-    if (_project.engine.engineState == EngineState.running) {
+    if (isEngineRunning) {
       _sendUpdateIntervalToEngine();
     }
 
@@ -78,6 +78,9 @@ class VisualizationProvider {
       }
     });
   }
+
+  bool get isEngineRunning =>
+      _project.engine.engineState == EngineState.running;
 
   void _sendUpdateIntervalToEngine() {
     // For the refresh rate, we get the maximum refresh rate of all displays.

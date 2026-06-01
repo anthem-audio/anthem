@@ -132,7 +132,9 @@ class VisualizationSubscriptionController<T> extends ChangeNotifier {
     _subscription = subscription;
 
     _updateSubscription = subscription.onUpdate.listen((_) {
-      if (_shouldSkipUpdate()) {
+      if (!_visualizationProvider.isEngineRunning) {
+        _lastUpdateWallTime = null;
+      } else if (_shouldSkipUpdate()) {
         return;
       }
 
@@ -337,7 +339,9 @@ class MultiVisualizationSubscriptionController<T> extends ChangeNotifier {
 
       _updateSubscriptions.add(
         subscription.onUpdate.listen((_) {
-          if (_shouldSkipUpdate(i)) {
+          if (!_visualizationProvider.isEngineRunning) {
+            _lastUpdateWallTimes[i] = null;
+          } else if (_shouldSkipUpdate(i)) {
             return;
           }
 
