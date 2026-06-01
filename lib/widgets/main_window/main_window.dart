@@ -157,38 +157,32 @@ class _MainWindowState extends State<MainWindow> {
       children: [
         DialogRenderer(
           child: ScreenOverlay(
-            child: Container(
-              color: AnthemTheme.panel.border,
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: Observer(
-                  builder: (context) {
-                    final tabs = store.projectOrder.map<TabDef>((projectId) {
-                      return TabDef(
-                        id: projectId,
-                        title: store.projects[projectId]?.name ?? '',
-                      );
-                    }).toList();
+            child: Observer(
+              builder: (context) {
+                final tabs = store.projectOrder.map<TabDef>((projectId) {
+                  return TabDef(
+                    id: projectId,
+                    title: store.projects[projectId]?.name ?? '',
+                  );
+                }).toList();
 
-                    return Column(
-                      children: [
-                        RepaintBoundary(
-                          child: WindowHeader(
-                            selectedTabId: store.activeProjectId,
-                            tabs: tabs,
-                          ),
-                        ),
-                        Expanded(
-                          child: TabContentSwitcher(
-                            tabs: tabs,
-                            selectedTabId: store.activeProjectId,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
+                return Column(
+                  children: [
+                    RepaintBoundary(
+                      child: WindowHeader(
+                        selectedTabId: store.activeProjectId,
+                        tabs: tabs,
+                      ),
+                    ),
+                    Expanded(
+                      child: TabContentSwitcher(
+                        tabs: tabs,
+                        selectedTabId: store.activeProjectId,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
