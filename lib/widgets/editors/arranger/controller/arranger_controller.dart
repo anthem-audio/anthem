@@ -529,6 +529,98 @@ abstract class _ArrangerController {
     }
   }
 
+  void _nudgeSelectedClipsInTime({
+    required int direction,
+    required List<DivisionChange> divisionChanges,
+  }) {
+    int resolveNudgeDelta({required int startOfFirstClip}) {
+      assert(direction == -1 || direction == 1);
+      if (direction != -1 && direction != 1) {
+        return 0;
+      }
+
+      final step = getSnapSizeAtAbsoluteTime(
+        absoluteTime: direction > 0 ? startOfFirstClip : startOfFirstClip - 1,
+        divisionChanges: divisionChanges,
+      );
+      final requestedDelta = direction * step;
+
+      if (startOfFirstClip + requestedDelta < 0) {
+        return -startOfFirstClip;
+      }
+
+      return requestedDelta;
+    }
+
+    if (stateMachine.currentState is! ArrangerIdleState) {
+      return;
+    }
+
+    final arrangementId = project.sequence.activeArrangementID;
+    final arrangement = arrangementId == null
+        ? null
+        : project.sequence.arrangements[arrangementId];
+    if (arrangement == null || viewModel.selectedClips.isEmpty) {
+      return;
+    }
+
+    final selectedClipIds = viewModel.selectedClips.nonObservableInner;
+    final selectedClips = arrangement.clips.nonObservableInner.values
+        .where((clip) => selectedClipIds.contains(clip.id))
+        .toList(growable: false);
+
+    if (selectedClips.isEmpty) {
+      return;
+    }
+
+    var startOfFirstClip = selectedClips.first.offset;
+    for (final clip in selectedClips.skip(1)) {
+      if (clip.offset < startOfFirstClip) {
+        startOfFirstClip = clip.offset;
+      }
+    }
+
+    final timeDelta = resolveNudgeDelta(startOfFirstClip: startOfFirstClip);
+
+    if (timeDelta == 0) {
+      return;
+    }
+
+    viewModel.clipTimingOverrides.clear();
+
+    project.execute(
+      MoveClipsCommand(
+        arrangementID: arrangement.id,
+        clipMoves: selectedClips
+            .map((clip) {
+              return (
+                clipID: clip.id,
+                oldOffset: clip.offset,
+                newOffset: clip.offset + timeDelta,
+              );
+            })
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void nudgeSelectedClipsByCurrentSnap(int direction) {
+    _nudgeSelectedClipsInTime(
+      direction: direction,
+      divisionChanges: stateMachine.divisionChanges(),
+    );
+  }
+
+  void nudgeSelectedClipsByBar(int direction) {
+    _nudgeSelectedClipsInTime(
+      direction: direction,
+      divisionChanges: stateMachine.divisionChanges(
+        snap: BarSnap(),
+        minPixelsPerSection: 0,
+      ),
+    );
+  }
+
   void selectTrack(Id trackId) {
     viewModel.selectedTracks.clear();
     viewModel.selectedTracks.add(trackId);

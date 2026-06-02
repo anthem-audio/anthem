@@ -59,6 +59,34 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
       },
     );
 
+    // Shift + Left/Right - move selected clips by current snap
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedClipsByCurrentSnap(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedClipsByCurrentSnap(-1);
+      },
+    );
+
+    // Ctrl + Left/Right - move selected clips by one bar
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedClipsByBar(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedClipsByBar(-1);
+      },
+    );
+
     // P - pencil
     shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.keyP), () {
       viewModel.tool = EditorTool.pencil;

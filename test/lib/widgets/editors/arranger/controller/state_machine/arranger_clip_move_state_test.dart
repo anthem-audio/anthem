@@ -1,3 +1,5 @@
+import 'package:anthem/model/shared/time_signature.dart';
+
 import 'arranger_state_machine_test_helpers.dart';
 
 void main() {
@@ -264,6 +266,183 @@ void main() {
         300 + snapSize,
       );
     });
+
+    test('shortcut snap nudge moves selected clips in time and undoes', () {
+      final firstClip = addClip(
+        offset: 100,
+        trackId: TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+      );
+      final secondClip = addClip(
+        offset: 240,
+        trackId: TrackIds.b,
+        rect: const Rect.fromLTWH(260, 70, 80, 40),
+      );
+      final unselectedClip = addClip(
+        offset: 360,
+        trackId: TrackIds.a,
+        rect: const Rect.fromLTWH(380, 10, 80, 40),
+      );
+      fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+
+      final snapSize = fixture.stateMachine
+          .divisionChanges()
+          .first
+          .divisionSnapSize;
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight),
+      );
+
+      expect(firstClip.offset, 100 + snapSize);
+      expect(secondClip.offset, 240 + snapSize);
+      expect(unselectedClip.offset, 360);
+      expect(firstClip.trackId, TrackIds.a);
+      expect(secondClip.trackId, TrackIds.b);
+      expect(
+        fixture.viewModel.selectedClips.toSet(),
+        equals({firstClip.id, secondClip.id}),
+      );
+
+      fixture.project.undo();
+      expect(firstClip.offset, 100);
+      expect(secondClip.offset, 240);
+
+      fixture.project.redo();
+      expect(firstClip.offset, 100 + snapSize);
+      expect(secondClip.offset, 240 + snapSize);
+    });
+
+    test('shortcut snap nudge clamps selected clips at arrangement start', () {
+      final firstClip = addClip(
+        offset: 10,
+        trackId: TrackIds.a,
+        rect: const Rect.fromLTWH(10, 10, 80, 40),
+      );
+      final secondClip = addClip(
+        offset: 80,
+        trackId: TrackIds.b,
+        rect: const Rect.fromLTWH(80, 70, 80, 40),
+      );
+      fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft),
+      );
+
+      expect(firstClip.offset, 0);
+      expect(secondClip.offset, 70);
+    });
+
+    test('shortcut bar nudge moves selected clips by one default bar', () {
+      final firstClip = addClip(
+        offset: 96,
+        trackId: TrackIds.a,
+        rect: const Rect.fromLTWH(96, 10, 80, 40),
+      );
+      final secondClip = addClip(
+        offset: 192,
+        trackId: TrackIds.b,
+        rect: const Rect.fromLTWH(192, 70, 80, 40),
+      );
+      fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+
+      final barLength = getBarLength(
+        fixture.project.sequence.ticksPerQuarter,
+        fixture.project.sequence.defaultTimeSignature,
+      );
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(
+          LogicalKeyboardKey.control,
+          LogicalKeyboardKey.arrowRight,
+        ),
+      );
+
+      expect(firstClip.offset, 96 + barLength);
+      expect(secondClip.offset, 192 + barLength);
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      );
+
+      expect(firstClip.offset, 96);
+      expect(secondClip.offset, 192);
+    });
+
+    test('shortcut bar nudge uses the active time signature', () {
+      final arrangement = fixture
+          .project
+          .sequence
+          .arrangements[fixture.project.sequence.activeArrangementID]!;
+      arrangement.timeSignatureChanges.add(
+        TimeSignatureChangeModel(
+          idAllocator: testIdAllocator(),
+          offset: 384,
+          timeSignature: TimeSignatureModel(3, 4),
+        ),
+      );
+      final firstClip = addClip(
+        offset: 384,
+        trackId: TrackIds.a,
+        rect: const Rect.fromLTWH(384, 10, 80, 40),
+      );
+      final secondClip = addClip(
+        offset: 480,
+        trackId: TrackIds.b,
+        rect: const Rect.fromLTWH(480, 70, 80, 40),
+      );
+      fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(
+          LogicalKeyboardKey.control,
+          LogicalKeyboardKey.arrowRight,
+        ),
+      );
+
+      expect(firstClip.offset, 672);
+      expect(secondClip.offset, 768);
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      );
+
+      expect(firstClip.offset, 384);
+      expect(secondClip.offset, 480);
+    });
+
+    test(
+      'shortcut bar nudge left uses the previous time signature at a change',
+      () {
+        final arrangement = fixture
+            .project
+            .sequence
+            .arrangements[fixture.project.sequence.activeArrangementID]!;
+        arrangement.timeSignatureChanges.add(
+          TimeSignatureChangeModel(
+            idAllocator: testIdAllocator(),
+            offset: 384,
+            timeSignature: TimeSignatureModel(3, 4),
+          ),
+        );
+        final clip = addClip(
+          offset: 384,
+          trackId: TrackIds.a,
+          rect: const Rect.fromLTWH(384, 10, 80, 40),
+        );
+        fixture.viewModel.selectedClips.add(clip.id);
+
+        fixture.controller.onShortcut(
+          LogicalKeySet(
+            LogicalKeyboardKey.control,
+            LogicalKeyboardKey.arrowLeft,
+          ),
+        );
+
+        expect(clip.offset, 0);
+      },
+    );
 
     test('pointer cancel does not commit clip move', () {
       final clip = addClip(

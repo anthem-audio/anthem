@@ -263,10 +263,14 @@ class ArrangerStateMachine
     return timeSignature;
   }
 
-  List<DivisionChange> divisionChanges() {
+  List<DivisionChange> divisionChanges({
+    Snap? snap,
+    double minPixelsPerSection = minorMinPixels,
+  }) {
     return getDivisionChanges(
       viewWidthInPixels: data.viewSize.width,
-      snap: AutoSnap(),
+      minPixelsPerSection: minPixelsPerSection,
+      snap: snap ?? AutoSnap(),
       defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: arrangementTimeSignatureChanges(),
       ticksPerQuarter: project.sequence.ticksPerQuarter,
