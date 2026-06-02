@@ -26,7 +26,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('setRange clamps to content bounds and records transition intent', () {
+  test('setRange allows scrolling past content end', () {
     final viewport = TimeRangeViewport(
       target: TimeRange(0, 500),
       contentSource: const TimeRangeContentSource.fixed(end: 1000),
@@ -34,10 +34,34 @@ void main() {
 
     viewport.setRange(start: 900, end: 1400);
 
-    expect(viewport.target.start, closeTo(750, 0.000001));
-    expect(viewport.target.end, closeTo(1250, 0.000001));
+    expect(viewport.target.start, closeTo(900, 0.000001));
+    expect(viewport.target.end, closeTo(1400, 0.000001));
     expect(viewport.lastMutation.revision, equals(1));
     expect(viewport.lastMutation.transition, TimeRangeTransition.animated);
+  });
+
+  test('setRange keeps the rendered time range at or after tick zero', () {
+    final viewport = TimeRangeViewport(
+      target: TimeRange(200, 700),
+      contentSource: const TimeRangeContentSource.fixed(end: 1000),
+    );
+
+    viewport.setRange(start: -300, end: 200);
+
+    expect(viewport.target.start, closeTo(0, 0.000001));
+    expect(viewport.target.end, closeTo(500, 0.000001));
+  });
+
+  test('zoomAt limits zoom out from content bounds', () {
+    final viewport = TimeRangeViewport(
+      target: TimeRange(0, 500),
+      contentSource: const TimeRangeContentSource.fixed(end: 1000),
+    );
+
+    viewport.zoomAt(delta: 1000, pointerX: 100, viewportWidth: 200);
+
+    expect(viewport.target.start, closeTo(0, 0.000001));
+    expect(viewport.target.end, closeTo(2000, 0.000001));
   });
 
   test('resizeViewportPreservingScale keeps ticks per pixel fixed', () {

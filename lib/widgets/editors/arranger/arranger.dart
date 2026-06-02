@@ -333,7 +333,6 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
           timeRangeViewport.setFromScrollbar(
             start: event.handleStart,
             end: event.handleEnd,
-            project: project,
           );
         },
       ),

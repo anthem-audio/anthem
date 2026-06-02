@@ -234,10 +234,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     final ticksPerPixel = timeRange.width / viewWidth;
     final scrollAmountInTicks = delta * ticksPerPixel;
 
-    timeRangeViewport.panByTicks(
-      delta: scrollAmountInTicks,
-      project: _projectForTimeRangeViewport(),
-    );
+    timeRangeViewport.panByTicks(delta: scrollAmountInTicks);
 
     final appliedTicks = timeRange.start - originalStart;
     if (ticksPerPixel == 0) {
@@ -298,11 +295,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
     final start = _panInitialTimeViewStart + deltaTimeSincePanInit;
     final end = _panInitialTimeViewEnd + deltaTimeSincePanInit;
 
-    timeRangeViewport.setRange(
-      start: start,
-      end: end,
-      project: _projectForTimeRangeViewport(),
-    );
+    timeRangeViewport.setRange(start: start, end: end);
 
     widget.onVerticalPanMove?.call(pointerPos.dy);
   }
@@ -650,7 +643,7 @@ class _AnchoredScrollAxisController {
 /// This helper owns immediate delta application, recent input sampling, fling
 /// scheduling, and ballistic simulation. The caller supplies an [applyDelta]
 /// callback that mutates the real editor state and reports how much movement
-/// was actually consumed after clamping.
+/// was actually consumed after any viewport constraints.
 class _ScrollAxisController {
   // Wait this long after the last user delta before converting the recent
   // input history into a fling.

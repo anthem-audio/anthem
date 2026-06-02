@@ -36,8 +36,9 @@ class TimeRangeMutation {
 
 /// Owns the editable target time range for an editor viewport.
 ///
-/// All horizontal viewport changes should go through this class so clamping,
-/// content bounds, and animation intent stay attached to the same mutation.
+/// All horizontal viewport changes should go through this class so origin
+/// clamping, content-sized zoom bounds, and animation intent stay attached to
+/// the same mutation.
 class TimeRangeViewport {
   final TimeRange target;
   final TimeRangeContentSource contentSource;
@@ -59,34 +60,39 @@ class TimeRangeViewport {
   void setRange({
     required double start,
     required double end,
-    ProjectModel? project,
     TimeRangeTransition transition = TimeRangeTransition.animated,
-    double anchorFraction = 0.5,
   }) {
     if (!start.isFinite || !end.isFinite) {
       return;
     }
 
-    final constrainedRange = constrainTimeRangeToContent(
+    final constrainedRange = constrainTimeRangeStartToZero(
       start: start,
       end: end,
-      bounds: resolveContentBounds(project),
-      anchorFraction: anchorFraction,
     );
 
-    if (target.start == constrainedRange.start &&
-        target.end == constrainedRange.end) {
+    _setConstrainedRange(constrainedRange, transition);
+  }
+
+  void _setConstrainedRange(
+    ({double start, double end}) range,
+    TimeRangeTransition transition,
+  ) {
+    if (range.end <= range.start) {
+      return;
+    }
+
+    if (target.start == range.start && target.end == range.end) {
       return;
     }
 
     _recordMutation(transition);
-    target.start = constrainedRange.start;
-    target.end = constrainedRange.end;
+    target.start = range.start;
+    target.end = range.end;
   }
 
   void panByTicks({
     required double delta,
-    ProjectModel? project,
     TimeRangeTransition transition = TimeRangeTransition.animated,
   }) {
     if (delta == 0) {
@@ -96,7 +102,6 @@ class TimeRangeViewport {
     setRange(
       start: target.start + delta,
       end: target.end + delta,
-      project: project,
       transition: transition,
     );
   }
@@ -116,15 +121,19 @@ class TimeRangeViewport {
     final nextWidth = math.exp(
       math.log(currentWidth) + delta * _timeRangeZoomScale,
     );
-    final widthDelta = nextWidth - currentWidth;
-    final anchorFraction = pointerX / viewportWidth;
+    final width = constrainTimeRangeWidthToContent(
+      width: nextWidth,
+      bounds: resolveContentBounds(project),
+    );
+    final anchorFraction = (pointerX / viewportWidth)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final anchorTime = target.start + currentWidth * anchorFraction;
 
     setRange(
-      start: target.start - widthDelta * anchorFraction,
-      end: target.end + widthDelta * (1 - anchorFraction),
-      project: project,
+      start: anchorTime - width * anchorFraction,
+      end: anchorTime + width * (1 - anchorFraction),
       transition: transition,
-      anchorFraction: anchorFraction,
     );
   }
 
@@ -139,28 +148,20 @@ class TimeRangeViewport {
       return;
     }
 
-    final nextWidth = currentWidth * (newViewportWidth / oldViewportWidth);
+    final nextWidth = constrainTimeRangeWidthToContent(
+      width: currentWidth * (newViewportWidth / oldViewportWidth),
+      bounds: resolveContentBounds(project),
+    );
 
     setRange(
       start: target.start,
       end: target.start + nextWidth,
-      project: project,
       transition: transition,
-      anchorFraction: 0,
     );
   }
 
-  void setFromScrollbar({
-    required double start,
-    required double end,
-    ProjectModel? project,
-  }) {
-    setRange(
-      start: start,
-      end: end,
-      project: project,
-      transition: TimeRangeTransition.immediate,
-    );
+  void setFromScrollbar({required double start, required double end}) {
+    setRange(start: start, end: end, transition: TimeRangeTransition.immediate);
   }
 
   void _recordMutation(TimeRangeTransition transition) {

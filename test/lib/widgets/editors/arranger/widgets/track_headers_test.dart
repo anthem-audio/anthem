@@ -22,6 +22,7 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:flutter/gestures.dart';
@@ -111,6 +112,9 @@ class _TrackHeadersTestFixture {
         providers: [
           Provider<ProjectModel>.value(value: project),
           Provider<ArrangerViewModel>.value(value: arrangerViewModel),
+          Provider<ArrangerController>.value(
+            value: serviceRegistry.arrangerController,
+          ),
           Provider<ScreenOverlayController>(
             create: (_) =>
                 ScreenOverlayController(viewModel: ScreenOverlayViewModel()),

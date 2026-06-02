@@ -563,7 +563,7 @@ void main() {
       expect(fixture.timeRange.width, closeTo(widthAfterInput, 0.000001));
     });
 
-    testWidgets('limits horizontal scroll past content end', (tester) async {
+    testWidgets('allows horizontal scroll past content end', (tester) async {
       fixture = _EditorScrollManagerTestFixture(
         timeRangeContentSource: const TimeRangeContentSource.fixed(end: 1000),
       );
@@ -577,8 +577,27 @@ void main() {
         scrollDelta: const Offset(0, 1000),
       );
 
-      expect(fixture.timeRange.start, closeTo(750, 0.000001));
-      expect(fixture.timeRange.end, closeTo(1250, 0.000001));
+      expect(fixture.timeRange.start, closeTo(2500, 0.000001));
+      expect(fixture.timeRange.end, closeTo(3000, 0.000001));
+    });
+
+    testWidgets('limits horizontal scroll before tick zero', (tester) async {
+      fixture = _EditorScrollManagerTestFixture(
+        timeRangeContentSource: const TimeRangeContentSource.fixed(end: 1000),
+      );
+      fixture.timeRange.start = 100;
+      fixture.timeRange.end = 600;
+      await fixture.pump(tester);
+      fixture.keyboardModifiers.setShift(true);
+
+      await fixture.sendScroll(
+        tester,
+        position: fixture.center(tester),
+        scrollDelta: const Offset(0, -1000),
+      );
+
+      expect(fixture.timeRange.start, closeTo(0, 0.000001));
+      expect(fixture.timeRange.end, closeTo(500, 0.000001));
     });
   });
 }

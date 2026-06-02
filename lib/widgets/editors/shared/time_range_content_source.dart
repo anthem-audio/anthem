@@ -176,45 +176,28 @@ class TimeRangeContentSource {
   }
 }
 
-({double start, double end}) constrainTimeRangeToContent({
-  required double start,
-  required double end,
+double constrainTimeRangeWidthToContent({
+  required double width,
   required TimeRangeContentBounds bounds,
-  double anchorFraction = 0.5,
 }) {
   final overscrollFraction = bounds.endOverscrollFraction.clamp(0.0, 0.999999);
-  final anchor = anchorFraction.clamp(0.0, 1.0);
-  final proposedWidth = math.max(bounds.minWidth, end - start);
-  final anchorTime = start + proposedWidth * anchor;
-
+  final proposedWidth = math.max(bounds.minWidth, width);
   final contentWidth = math.max(bounds.minWidth, bounds.width);
   final maxWidth = math.max(
     bounds.minWidth,
     contentWidth / (1 - overscrollFraction),
   );
-  final width = proposedWidth.clamp(bounds.minWidth, maxWidth).toDouble();
 
-  var constrainedStart = anchorTime - width * anchor;
-  var constrainedEnd = constrainedStart + width;
+  return proposedWidth.clamp(bounds.minWidth, maxWidth).toDouble();
+}
 
-  if (constrainedStart < bounds.start) {
-    final correction = bounds.start - constrainedStart;
-    constrainedStart += correction;
-    constrainedEnd += correction;
+({double start, double end}) constrainTimeRangeStartToZero({
+  required double start,
+  required double end,
+}) {
+  if (start >= 0) {
+    return (start: start, end: end);
   }
 
-  final maxEnd = bounds.end + width * overscrollFraction;
-  if (constrainedEnd > maxEnd) {
-    final correction = constrainedEnd - maxEnd;
-    constrainedStart -= correction;
-    constrainedEnd -= correction;
-  }
-
-  if (constrainedStart < bounds.start) {
-    final correction = bounds.start - constrainedStart;
-    constrainedStart += correction;
-    constrainedEnd += correction;
-  }
-
-  return (start: constrainedStart, end: constrainedEnd);
+  return (start: 0, end: end - start);
 }
