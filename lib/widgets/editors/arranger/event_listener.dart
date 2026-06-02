@@ -17,14 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-import 'helpers.dart';
-import 'view_model.dart';
 import 'controller/arranger_controller.dart';
+import 'scroll_manager.dart';
+import 'view_model.dart';
 
 class ArrangerEventListener extends StatefulWidget {
   final Widget? child;
@@ -36,8 +35,6 @@ class ArrangerEventListener extends StatefulWidget {
 }
 
 class _ArrangerEventListenerState extends State<ArrangerEventListener> {
-  var _panYStart = double.nan;
-  var _panScrollPosStart = double.nan;
   Size? _lastViewSize;
 
   @override
@@ -55,49 +52,12 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
           controller.onViewSizeChanged(viewSize);
         }
 
-        return Observer(
-          builder: (context) {
-            final viewModel = Provider.of<ArrangerViewModel>(context);
+        return ArrangerScrollManager.editor(
+          child: Observer(
+            builder: (context) {
+              final viewModel = Provider.of<ArrangerViewModel>(context);
 
-            return EditorScrollManager.editor(
-              timeRangeViewport: viewModel.timeRangeViewport,
-              onVerticalScrollChange: (delta) {
-                final previousVerticalScrollPosition =
-                    viewModel.verticalScrollPosition;
-
-                viewModel.applyVerticalScrollDelta(delta);
-
-                final appliedVerticalScrollDelta =
-                    viewModel.verticalScrollPosition -
-                    previousVerticalScrollPosition;
-                final deltaScale =
-                    0.01 *
-                    viewModel.baseTrackHeight.clamp(
-                      minTrackHeight,
-                      maxTrackHeight,
-                    );
-                if (deltaScale == 0) {
-                  return 0;
-                }
-
-                return appliedVerticalScrollDelta / deltaScale;
-              },
-              onVerticalPanStart: (y) {
-                _panYStart = y;
-                _panScrollPosStart = viewModel.verticalScrollPosition;
-              },
-              onVerticalPanMove: (y) {
-                final delta = -(y - _panYStart);
-                viewModel.verticalScrollPosition = (_panScrollPosStart + delta)
-                    .clamp(0, double.infinity);
-              },
-              onVerticalZoom: (pointerY, delta) {
-                controller.setBaseTrackHeight(
-                  pointerY,
-                  viewModel.baseTrackHeight + delta * 15,
-                );
-              },
-              child: MouseRegion(
+              return MouseRegion(
                 cursor: viewModel.mouseCursor,
                 onEnter: controller.onEnter,
                 onExit: controller.onExit,
@@ -117,9 +77,9 @@ class _ArrangerEventListenerState extends State<ArrangerEventListener> {
                   },
                   child: widget.child,
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );

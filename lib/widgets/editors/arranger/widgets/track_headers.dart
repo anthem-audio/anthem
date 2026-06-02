@@ -28,8 +28,8 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
+import 'package:anthem/widgets/editors/arranger/scroll_manager.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -257,7 +257,6 @@ class _TrackHeadersState extends State<TrackHeaders> {
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
-    final controller = serviceRegistry.arrangerController;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -461,34 +460,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
               );
             }
 
-            return EditorScrollManager.verticalOnly(
-              onVerticalScrollChange: (delta) {
-                final previousVerticalScrollPosition =
-                    viewModel.verticalScrollPosition;
-
-                viewModel.applyVerticalScrollDelta(delta);
-
-                final appliedVerticalScrollDelta =
-                    viewModel.verticalScrollPosition -
-                    previousVerticalScrollPosition;
-                final deltaScale =
-                    0.01 *
-                    viewModel.baseTrackHeight.clamp(
-                      minTrackHeight,
-                      maxTrackHeight,
-                    );
-                if (deltaScale == 0) {
-                  return 0;
-                }
-
-                return appliedVerticalScrollDelta / deltaScale;
-              },
-              onVerticalZoom: (pointerY, delta) {
-                controller.setBaseTrackHeight(
-                  pointerY,
-                  viewModel.baseTrackHeight + delta * 15,
-                );
-              },
+            return ArrangerScrollManager.verticalOnly(
               child: ClipRect(child: Stack(children: headers + resizeHandles)),
             );
           },
