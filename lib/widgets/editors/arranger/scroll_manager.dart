@@ -19,7 +19,6 @@
 
 import 'package:anthem/widgets/editors/shared/scroll_manager.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import 'controller/arranger_controller.dart';
@@ -105,43 +104,37 @@ class _ArrangerScrollManagerState extends State<ArrangerScrollManager> {
   @override
   Widget build(BuildContext context) {
     final controller = Provider.of<ArrangerController>(context, listen: false);
+    final viewModel = Provider.of<ArrangerViewModel>(context);
 
-    return Observer(
-      builder: (context) {
-        final viewModel = Provider.of<ArrangerViewModel>(context);
+    double onVerticalScrollChange(double delta) =>
+        _applyVerticalScrollDelta(viewModel: viewModel, delta: delta);
 
-        double onVerticalScrollChange(double delta) =>
-            _applyVerticalScrollDelta(viewModel: viewModel, delta: delta);
+    void onVerticalZoom(double pointerY, double delta) => _handleVerticalZoom(
+      controller: controller,
+      viewModel: viewModel,
+      pointerY: pointerY,
+      delta: delta,
+    );
 
-        void onVerticalZoom(double pointerY, double delta) =>
-            _handleVerticalZoom(
-              controller: controller,
-              viewModel: viewModel,
-              pointerY: pointerY,
-              delta: delta,
-            );
+    if (widget._mode == _ArrangerScrollManagerMode.verticalOnly) {
+      return EditorScrollManager.verticalOnly(
+        onVerticalScrollChange: onVerticalScrollChange,
+        onVerticalZoom: onVerticalZoom,
+        child: widget.child,
+      );
+    }
 
-        if (widget._mode == _ArrangerScrollManagerMode.verticalOnly) {
-          return EditorScrollManager.verticalOnly(
-            onVerticalScrollChange: onVerticalScrollChange,
-            onVerticalZoom: onVerticalZoom,
-            child: widget.child,
-          );
-        }
-
-        return EditorScrollManager.editor(
-          timeRangeViewport: viewModel.timeRangeViewport,
-          onVerticalScrollChange: onVerticalScrollChange,
-          onVerticalPanStart: (y) {
-            _handleVerticalPanStart(viewModel: viewModel, y: y);
-          },
-          onVerticalPanMove: (y) {
-            _handleVerticalPanMove(viewModel: viewModel, y: y);
-          },
-          onVerticalZoom: onVerticalZoom,
-          child: widget.child,
-        );
+    return EditorScrollManager.editor(
+      timeRangeViewport: viewModel.timeRangeViewport,
+      onVerticalScrollChange: onVerticalScrollChange,
+      onVerticalPanStart: (y) {
+        _handleVerticalPanStart(viewModel: viewModel, y: y);
       },
+      onVerticalPanMove: (y) {
+        _handleVerticalPanMove(viewModel: viewModel, y: y);
+      },
+      onVerticalZoom: onVerticalZoom,
+      child: widget.child,
     );
   }
 }
