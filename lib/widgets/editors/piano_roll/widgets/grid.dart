@@ -115,6 +115,19 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
       keyNum--;
     }
 
+    final activePattern =
+        project.sequence.patterns[project.sequence.activePatternID];
+
+    paintTimeGridPhraseShading(
+      canvas: canvas,
+      size: size,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      baseTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: activePattern?.timeSignatureChanges ?? [],
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
     // Horizontal lines
 
     var linePointer =
@@ -130,10 +143,7 @@ class PianoRollBackgroundPainter extends CustomPainterObserver {
 
     // Vertical lines
 
-    final activePattern =
-        project.sequence.patterns[project.sequence.activePatternID];
-
-    paintTimeGrid(
+    paintTimeGridLines(
       canvas: canvas,
       size: size,
       ticksPerQuarter: project.sequence.ticksPerQuarter,

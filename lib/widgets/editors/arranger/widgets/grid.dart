@@ -50,6 +50,16 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     final majorLinePaint = Paint()..color = AnthemTheme.grid.major;
     // final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
+    paintTimeGridPhraseShading(
+      canvas: canvas,
+      size: size,
+      baseTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: activeArrangement?.timeSignatureChanges ?? [],
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
     // Horizontal lines
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
@@ -83,7 +93,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     // Vertical lines
 
-    paintTimeGrid(
+    paintTimeGridLines(
       canvas: canvas,
       size: size,
       snap: AutoSnap(),

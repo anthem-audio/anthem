@@ -268,6 +268,16 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
         break;
     }
 
+    paintTimeGridPhraseShading(
+      canvas: canvas,
+      size: size,
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      baseTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: activePattern?.timeSignatureChanges ?? [],
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
     // No vertical zoom for now
 
     const verticalDivisionCount = 4;
@@ -281,7 +291,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
       canvas.drawRect(rect, minorLinePaint);
     }
 
-    paintTimeGrid(
+    paintTimeGridLines(
       canvas: canvas,
       size: size,
       ticksPerQuarter: project.sequence.ticksPerQuarter,
