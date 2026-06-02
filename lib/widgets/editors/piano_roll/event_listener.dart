@@ -163,12 +163,8 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     controller.pointerUp(e);
   }
 
-  var _panPointerYStart = double.nan;
-  var _panKeyAtTopStart = double.nan;
-
   @override
   Widget build(BuildContext context) {
-    final viewModel = Provider.of<PianoRollViewModel>(context);
     final controller = Provider.of<PianoRollController>(context);
     controller.onRenderedViewMetricsChanged(
       viewSize: widget.viewSize,
@@ -177,115 +173,193 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       keyHeight: widget.renderedKeyHeight,
       keyValueAtTop: widget.renderedKeyValueAtTop,
     );
+
+    return PianoRollScrollManager.editor(
+      child: Listener(
+        onPointerDown: (e) {
+          handlePointerDown(context, e);
+        },
+        onPointerMove: (e) {
+          handlePointerMove(context, e);
+        },
+        onPointerUp: (e) {
+          handlePointerUp(context, e);
+        },
+
+        // If a middle-click or right-click drag goes out of the window, Flutter
+        // will temporarily stop receiving move events. If the button is released
+        // while the pointer is outside the window in one of these cases, Flutter
+        // will call onPointerCancel instead of onPointerUp.
+        //
+        // We send this to the controller as a pointer up event. If
+        // onPointerCancel is called, we will not receive a pointer up event. An
+        // event cycle must always contain down, then zero or more moves, then
+        // up, and always in that order. We must always finalize the drag and
+        // create any necessary undo steps for whatever action has been
+        // performed, and we must always do this before starting another drag.
+        onPointerCancel: (e) {
+          handlePointerUp(context, e);
+        },
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Adapts [EditorScrollManager] to the piano roll's vertical key-space.
+///
+/// The note canvas uses [PianoRollScrollManager.editor] to get full editor
+/// scrolling, including horizontal timeline movement and middle-mouse panning.
+/// Non-canvas piano-roll surfaces, such as the keyboard control, use
+/// [PianoRollScrollManager.verticalOnly] so wheel and Alt-wheel input share the
+/// same vertical scroll and key-height zoom behavior without enabling
+/// horizontal timeline movement there.
+class PianoRollScrollManager extends StatefulWidget {
+  final Widget child;
+  final _PianoRollScrollManagerMode _mode;
+
+  const PianoRollScrollManager.editor({super.key, required this.child})
+    : _mode = _PianoRollScrollManagerMode.editor;
+
+  const PianoRollScrollManager.verticalOnly({super.key, required this.child})
+    : _mode = _PianoRollScrollManagerMode.verticalOnly;
+
+  @override
+  State<PianoRollScrollManager> createState() => _PianoRollScrollManagerState();
+}
+
+class _PianoRollScrollManagerState extends State<PianoRollScrollManager> {
+  var _panPointerYStart = double.nan;
+  var _panKeyAtTopStart = double.nan;
+
+  double _applyVerticalScrollDelta({
+    required PianoRollViewModel viewModel,
+    required double viewHeight,
+    required double delta,
+  }) {
+    final keysPerPixel = 1 / viewModel.keyHeight;
+    final scrollAmountInKeys = -delta * 0.5 * keysPerPixel;
+    final previousKeyValueAtTop = viewModel.keyValueAtTop;
+    final nextKeyValueAtTop = clampDouble(
+      previousKeyValueAtTop + scrollAmountInKeys,
+      minKeyValue + (viewHeight / viewModel.keyHeight),
+      maxKeyValue,
+    );
+
+    viewModel.keyValueAtTop = nextKeyValueAtTop;
+
+    final appliedScrollAmountInKeys = nextKeyValueAtTop - previousKeyValueAtTop;
+    if (keysPerPixel == 0) {
+      return 0;
+    }
+
+    return -appliedScrollAmountInKeys / (0.5 * keysPerPixel);
+  }
+
+  void _handleVerticalPanStart({
+    required PianoRollViewModel viewModel,
+    required double y,
+  }) {
+    _panPointerYStart = y;
+    _panKeyAtTopStart = viewModel.keyValueAtTop;
+  }
+
+  void _handleVerticalPanMove({
+    required PianoRollViewModel viewModel,
+    required double viewHeight,
+    required double y,
+  }) {
+    final deltaY = y - _panPointerYStart;
+    final deltaKeySincePanInit = (deltaY / viewModel.keyHeight);
+
+    viewModel.keyValueAtTop = (_panKeyAtTopStart + deltaKeySincePanInit)
+        .clamp(minKeyValue + (viewHeight / viewModel.keyHeight), maxKeyValue)
+        .toDouble();
+  }
+
+  void _handleVerticalZoom({
+    required PianoRollViewModel viewModel,
+    required double viewHeight,
+    required double pointerY,
+    required double delta,
+  }) {
+    // Current state
+    final oldKeyHeight = viewModel.keyHeight;
+    final oldTop = viewModel.keyValueAtTop;
+
+    // Key under the pointer before zoom
+    final keyAtPointerBefore = oldTop - (pointerY / oldKeyHeight);
+
+    // Compute new key height
+    final keyHeightLog = log(oldKeyHeight);
+    final newKeyHeight = exp(keyHeightLog + delta * 0.4);
+
+    // Apply clamped key height
+    viewModel.keyHeight = clampDouble(newKeyHeight, minKeyHeight, maxKeyHeight);
+
+    final h = viewModel.keyHeight;
+    if (h == oldKeyHeight) return;
+
+    // Compute the new top so that the same key stays under the pointer
+    final newTopUnclamped = keyAtPointerBefore + (pointerY / h);
+
+    // Clamp top so the bottom doesn't go past min and the top past max
+    final minTop = minKeyValue + (viewHeight / h);
+    final maxTop = maxKeyValue;
+
+    viewModel.keyValueAtTop = clampDouble(newTopUnclamped, minTop, maxTop);
+    viewModel.keyValueAtTopAnimationShouldSnap = true;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, boxConstraints) {
+        final viewModel = Provider.of<PianoRollViewModel>(
+          context,
+          listen: false,
+        );
+
+        double onVerticalScrollChange(double delta) =>
+            _applyVerticalScrollDelta(
+              viewModel: viewModel,
+              viewHeight: boxConstraints.maxHeight,
+              delta: delta,
+            );
+
+        void onVerticalZoom(double pointerY, double delta) =>
+            _handleVerticalZoom(
+              viewModel: viewModel,
+              viewHeight: boxConstraints.maxHeight,
+              pointerY: pointerY,
+              delta: delta,
+            );
+
+        if (widget._mode == _PianoRollScrollManagerMode.verticalOnly) {
+          return EditorScrollManager.verticalOnly(
+            onVerticalScrollChange: onVerticalScrollChange,
+            onVerticalZoom: onVerticalZoom,
+            child: widget.child,
+          );
+        }
+
         return Observer(
           builder: (context) {
             return EditorScrollManager.editor(
               timeRangeViewport: viewModel.timeRangeViewport,
-              onVerticalScrollChange: (delta) {
-                final keysPerPixel = 1 / viewModel.keyHeight;
-                final scrollAmountInKeys = -delta * 0.5 * keysPerPixel;
-                final previousKeyValueAtTop = viewModel.keyValueAtTop;
-                final nextKeyValueAtTop = clampDouble(
-                  previousKeyValueAtTop + scrollAmountInKeys,
-                  minKeyValue +
-                      (boxConstraints.maxHeight / viewModel.keyHeight),
-                  maxKeyValue,
-                );
-
-                viewModel.keyValueAtTop = nextKeyValueAtTop;
-
-                final appliedScrollAmountInKeys =
-                    nextKeyValueAtTop - previousKeyValueAtTop;
-                if (keysPerPixel == 0) {
-                  return 0;
-                }
-
-                return -appliedScrollAmountInKeys / (0.5 * keysPerPixel);
-              },
+              onVerticalScrollChange: onVerticalScrollChange,
               onVerticalPanStart: (y) {
-                _panPointerYStart = y;
-                _panKeyAtTopStart = viewModel.keyValueAtTop;
+                _handleVerticalPanStart(viewModel: viewModel, y: y);
               },
               onVerticalPanMove: (y) {
-                final deltaY = y - _panPointerYStart;
-                final deltaKeySincePanInit = (deltaY / viewModel.keyHeight);
-
-                viewModel.keyValueAtTop =
-                    (_panKeyAtTopStart + deltaKeySincePanInit)
-                        .clamp(
-                          minKeyValue +
-                              (boxConstraints.maxHeight / viewModel.keyHeight),
-                          maxKeyValue,
-                        )
-                        .toDouble();
-              },
-              onVerticalZoom: (pointerY, delta) {
-                final viewHeight = boxConstraints.maxHeight;
-
-                // Current state
-                final oldKeyHeight = viewModel.keyHeight;
-                final oldTop = viewModel.keyValueAtTop;
-
-                // Key under the pointer before zoom
-                final keyAtPointerBefore = oldTop - (pointerY / oldKeyHeight);
-
-                // Compute new key height
-                final keyHeightLog = log(oldKeyHeight);
-                final newKeyHeight = exp(keyHeightLog + delta * 0.4);
-
-                // Apply clamped key height
-                viewModel.keyHeight = clampDouble(
-                  newKeyHeight,
-                  minKeyHeight,
-                  maxKeyHeight,
+                _handleVerticalPanMove(
+                  viewModel: viewModel,
+                  viewHeight: boxConstraints.maxHeight,
+                  y: y,
                 );
-
-                final h = viewModel.keyHeight;
-                if (h == oldKeyHeight) return;
-
-                // Compute the new top so that the same key stays under the pointer
-                final newTopUnclamped = keyAtPointerBefore + (pointerY / h);
-
-                // Clamp top so the bottom doesn't go past min and the top past max
-                final minTop = minKeyValue + (viewHeight / h);
-                final maxTop = maxKeyValue;
-
-                viewModel.keyValueAtTop = clampDouble(
-                  newTopUnclamped,
-                  minTop,
-                  maxTop,
-                );
-                viewModel.keyValueAtTopAnimationShouldSnap = true;
               },
-              child: Listener(
-                onPointerDown: (e) {
-                  handlePointerDown(context, e);
-                },
-                onPointerMove: (e) {
-                  handlePointerMove(context, e);
-                },
-                onPointerUp: (e) {
-                  handlePointerUp(context, e);
-                },
-
-                // If a middle-click or right-click drag goes out of the window, Flutter
-                // will temporarily stop receiving move events. If the button is released
-                // while the pointer is outside the window in one of these cases, Flutter
-                // will call onPointerCancel instead of onPointerUp.
-                //
-                // We send this to the controller as a pointer up event. If
-                // onPointerCancel is called, we will not receive a pointer up event. An
-                // event cycle must always contain down, then zero or more moves, then
-                // up, and always in that order. We must always finalize the drag and
-                // create any necessary undo steps for whatever action has been
-                // performed, and we must always do this before starting another drag.
-                onPointerCancel: (e) {
-                  handlePointerUp(context, e);
-                },
-                child: widget.child,
-              ),
+              onVerticalZoom: onVerticalZoom,
+              child: widget.child,
             );
           },
         );
@@ -293,3 +367,5 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     );
   }
 }
+
+enum _PianoRollScrollManagerMode { editor, verticalOnly }

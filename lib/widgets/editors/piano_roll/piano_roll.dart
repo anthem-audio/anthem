@@ -353,22 +353,24 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     final pianoControl = SizedBox(
       width: pianoControlWidth,
-      child: AnimatedBuilder(
-        animation: keyValueAtTopAnimationHelper!.animationController,
-        builder: (context, child) {
-          return Observer(
-            builder: (context) {
-              return PianoControl(
-                keyValueAtTop: keyValueAtTopAnimItem.animation.value,
-                keyHeight: viewModel.keyHeight,
-                shouldGreyOut: shouldGreyOut,
-                setKeyValueAtTop: (value) {
-                  viewModel.keyValueAtTop = value;
-                },
-              );
-            },
-          );
-        },
+      child: PianoRollScrollManager.verticalOnly(
+        child: AnimatedBuilder(
+          animation: keyValueAtTopAnimationHelper!.animationController,
+          builder: (context, child) {
+            return Observer(
+              builder: (context) {
+                return PianoControl(
+                  keyValueAtTop: keyValueAtTopAnimItem.animation.value,
+                  keyHeight: viewModel.keyHeight,
+                  shouldGreyOut: shouldGreyOut,
+                  setKeyValueAtTop: (value) {
+                    viewModel.keyValueAtTop = value;
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
 
