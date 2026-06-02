@@ -148,7 +148,7 @@ class _MainWindowState extends State<MainWindow> {
       }
     }
 
-    if (!noteLabelImageCache.initialized) {
+    if (!noteLabelImageCache.isInitializedFor(devicePixelRatio)) {
       noteLabelImageCache.init(devicePixelRatio);
     }
 

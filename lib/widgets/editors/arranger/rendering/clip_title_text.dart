@@ -28,13 +28,12 @@ void drawClipTitleText({
   required double x,
   required double y,
   required double width,
-  required double devicePixelRatio,
   required Color textColor,
 }) {
   final paragraphStyle = ParagraphStyle(textAlign: TextAlign.left, maxLines: 1);
 
   final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(color: textColor, fontSize: 11 * devicePixelRatio))
+    ..pushStyle(TextStyle(color: textColor, fontSize: 11))
     ..addText(title);
 
   final paragraph = paragraphBuilder.build();
@@ -46,10 +45,7 @@ void drawClipTitleText({
   canvas.drawParagraph(paragraph, Offset(x + clipTitlePadding + 1, y));
 }
 
-(double, double) getClipTitleTextSize({
-  required double devicePixelRatio,
-  required String title,
-}) {
+(double, double) getClipTitleTextSize({required String title}) {
   final paragraphStyle = ParagraphStyle(
     textAlign: TextAlign.left,
     ellipsis: '...',
@@ -57,14 +53,14 @@ void drawClipTitleText({
   );
 
   final paragraphBuilder = ParagraphBuilder(paragraphStyle)
-    ..pushStyle(TextStyle(fontSize: 11 * devicePixelRatio))
+    ..pushStyle(TextStyle(fontSize: 11))
     ..addText(title);
 
   final paragraph = paragraphBuilder.build();
   const constraints = ParagraphConstraints(width: double.infinity);
   paragraph.layout(constraints);
 
-  final width = paragraph.maxIntrinsicWidth / devicePixelRatio + 6;
+  final width = paragraph.maxIntrinsicWidth + 6;
 
   return (width, clipTitleHeight);
 }
@@ -74,25 +70,21 @@ Future<Image> renderClipTitleImage({
   required double devicePixelRatio,
 }) async {
   final recorder = PictureRecorder();
-  final canvas = Canvas(recorder);
+  final canvas = Canvas(recorder)..scale(devicePixelRatio);
 
-  final inputWidth = 250.0 * devicePixelRatio;
+  const inputWidth = 250.0;
 
   drawClipTitleText(
     canvas: canvas,
     title: title,
-    x: 3,
+    x: 0,
     y: 0,
     width: inputWidth,
-    devicePixelRatio: devicePixelRatio,
     textColor: const Color(0xFFFFFFFF),
   );
 
   final picture = recorder.endRecording();
-  final (width, height) = getClipTitleTextSize(
-    devicePixelRatio: devicePixelRatio,
-    title: title,
-  );
+  final (width, height) = getClipTitleTextSize(title: title);
 
   return picture.toImage(
     (width * devicePixelRatio).ceil(),

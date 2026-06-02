@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,41 +26,103 @@ const noteLabelWidth = 32;
 
 class NoteLabelImageCache {
   List<Image>? _cache;
-  bool initialized = false;
+  double? _devicePixelRatio;
+  double? _initializingDevicePixelRatio;
+  int _initGeneration = 0;
 
-  void init(double devicePixelRatio) async {
-    initialized = true;
+  bool get initialized =>
+      _cache != null || _initializingDevicePixelRatio != null;
+
+  bool isInitializedFor(double devicePixelRatio) {
+    return _devicePixelRatio == devicePixelRatio ||
+        _initializingDevicePixelRatio == devicePixelRatio;
+  }
+
+  Future<void> init(double devicePixelRatio) async {
+    assert(devicePixelRatio > 0);
+
+    if (isInitializedFor(devicePixelRatio)) {
+      return;
+    }
+
+    final generation = ++_initGeneration;
+    _initializingDevicePixelRatio = devicePixelRatio;
+    _devicePixelRatio = null;
+    _disposeCache();
+
     final cache = <Image>[];
 
-    for (var i = 0; i < 128; i++) {
-      final string = keyToString(i);
+    try {
+      for (var i = 0; i < 128; i++) {
+        final string = keyToString(i);
 
-      final recorder = PictureRecorder();
+        final recorder = PictureRecorder();
 
-      final builder = ParagraphBuilder(
-        ParagraphStyle(
-          fontWeight: FontWeight.w400,
-          fontSize: noteLabelHeight * 0.75 * devicePixelRatio,
-        ),
-      )..addText(string);
-      final paragraph = builder.build()
-        ..layout(const ParagraphConstraints(width: 1000));
+        final builder = ParagraphBuilder(
+          ParagraphStyle(
+            fontWeight: FontWeight.w400,
+            fontSize: noteLabelHeight * 0.75,
+          ),
+        )..addText(string);
+        final paragraph = builder.build()
+          ..layout(const ParagraphConstraints(width: 1000));
 
-      final canvas = Canvas(recorder);
+        final canvas = Canvas(recorder)..scale(devicePixelRatio);
 
-      canvas.drawParagraph(paragraph, const Offset(0, 0));
+        canvas.drawParagraph(paragraph, Offset.zero);
 
-      final image = await recorder.endRecording().toImage(
-        (noteLabelWidth * devicePixelRatio).toInt(),
-        (noteLabelHeight * devicePixelRatio).toInt(),
-      );
-      cache.add(image);
+        final image = await recorder.endRecording().toImage(
+          (noteLabelWidth * devicePixelRatio).ceil(),
+          (noteLabelHeight * devicePixelRatio).ceil(),
+        );
+        cache.add(image);
+      }
+    } catch (_) {
+      for (final image in cache) {
+        image.dispose();
+      }
+
+      if (generation == _initGeneration) {
+        _initializingDevicePixelRatio = null;
+      }
+
+      rethrow;
+    }
+
+    if (generation != _initGeneration) {
+      for (final image in cache) {
+        image.dispose();
+      }
+
+      return;
     }
 
     _cache = cache;
+    _devicePixelRatio = devicePixelRatio;
+    _initializingDevicePixelRatio = null;
   }
 
   Image? get(int midiNote) => _cache?.elementAtOrNull(midiNote);
+
+  void dispose() {
+    _initGeneration++;
+    _devicePixelRatio = null;
+    _initializingDevicePixelRatio = null;
+    _disposeCache();
+  }
+
+  void _disposeCache() {
+    final cache = _cache;
+    if (cache == null) {
+      return;
+    }
+
+    for (final image in cache) {
+      image.dispose();
+    }
+
+    _cache = null;
+  }
 }
 
 NoteLabelImageCache noteLabelImageCache = NoteLabelImageCache();

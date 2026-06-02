@@ -390,7 +390,6 @@ void paintClip({
   required bool selected,
   required bool pressed,
   bool hovered = false,
-  required double devicePixelRatio,
   required double timeViewStart,
   required double timeViewEnd,
   bool hideBorder = false,
@@ -423,7 +422,6 @@ void paintClip({
       height: height,
       selected: selected,
       pressed: pressed,
-      devicePixelRatio: 1,
       overrideTextColor: _contentBaseColor,
     );
 
@@ -512,9 +510,6 @@ void _drawClipTitleDirect({
     height: height,
     selected: selected,
     pressed: pressed,
-    // We don't need to manually handle device pixel ratio here since we're
-    // drawing directly to the canvas, which already accounts for it.
-    devicePixelRatio: 1,
     // Match the atlas render path tint to avoid visible color shifts while
     // a title is waiting to be packed into the shared atlas.
     overrideTextColor: _contentBaseColor,
@@ -869,7 +864,6 @@ void drawPatternTitle({
   required double y,
   required double width,
   required double height,
-  required double devicePixelRatio,
   Color? overrideTextColor,
   bool selected = false,
   bool pressed = false,
@@ -893,19 +887,12 @@ void drawPatternTitle({
     x: x,
     y: y,
     width: width,
-    devicePixelRatio: devicePixelRatio,
     textColor: textColor,
   );
 }
 
-(double, double) getClipTitleSize({
-  required double devicePixelRatio,
-  required PatternModel pattern,
-}) {
-  return getClipTitleTextSize(
-    devicePixelRatio: devicePixelRatio,
-    title: pattern.name,
-  );
+(double, double) getClipTitleSize({required PatternModel pattern}) {
+  return getClipTitleTextSize(title: pattern.name);
 }
 
 void _paintClipNotes({

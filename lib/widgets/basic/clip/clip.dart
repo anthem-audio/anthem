@@ -70,27 +70,18 @@ class Clip extends StatelessWidget {
         projectModel.sequence.patterns[clipModel?.patternId ?? patternId!]!;
 
     return CustomPaint(
-      painter: ClipPainter(
-        devicePixelRatio: View.of(context).devicePixelRatio,
-        pattern: patternModel,
-        hideBorder: hideBorder,
-      ),
+      painter: ClipPainter(pattern: patternModel, hideBorder: hideBorder),
     );
   }
 }
 
 class ClipPainter extends CustomPainterObserver {
-  final double devicePixelRatio;
   final PatternModel pattern;
   final ClipModel? clip;
   final bool hideBorder;
 
-  ClipPainter({
-    required this.devicePixelRatio,
-    required this.pattern,
-    this.clip,
-    this.hideBorder = false,
-  }) : super(debugName: 'ClipPainter');
+  ClipPainter({required this.pattern, this.clip, this.hideBorder = false})
+    : super(debugName: 'ClipPainter');
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -104,7 +95,6 @@ class ClipPainter extends CustomPainterObserver {
       height: size.height,
       selected: false,
       pressed: false,
-      devicePixelRatio: devicePixelRatio,
       hideBorder: hideBorder,
       timeViewStart: 0,
       timeViewEnd: pattern.getWidth().toDouble(),
@@ -113,7 +103,6 @@ class ClipPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(ClipPainter oldDelegate) =>
-      devicePixelRatio != oldDelegate.devicePixelRatio ||
       pattern != oldDelegate.pattern ||
       clip != oldDelegate.clip ||
       hideBorder != oldDelegate.hideBorder;
