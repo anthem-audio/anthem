@@ -117,6 +117,7 @@ class _TrackHeaderState extends State<TrackHeader> {
     final projectController = projectServices.projectController;
     final trackController = projectServices.trackController;
     final track = project.tracks[widget.trackId]!;
+    final isSendTrack = trackController.isSendTrack(track.id);
 
     final controller = projectServices.arrangerController;
     final viewModel = projectServices.arrangerViewModel;
@@ -193,6 +194,8 @@ class _TrackHeaderState extends State<TrackHeader> {
               text: 'Insert track',
               hint: track.type == .group
                   ? 'Add a track at the end of this group'
+                  : isSendTrack
+                  ? 'Insert a track above this track'
                   : 'Insert a track below this track',
               disabled: track.isAutomationLane,
               onSelected: () {

@@ -294,7 +294,7 @@ class TrackController {
     project.execute(
       TrackAddRemoveCommand.add(
         project: project,
-        tracks: [.new(isSendTrack: true, trackType: .normal)],
+        tracks: [.new(index: 0, isSendTrack: true, trackType: .normal)],
       ),
     );
   }
@@ -341,7 +341,7 @@ class TrackController {
         );
       }
 
-      index = anchorIndex + 1;
+      index = anchorIsSendTrack ? anchorIndex : anchorIndex + 1;
     } else {
       final topLevelOrder = anchorIsSendTrack
           ? project.sendTrackOrder
@@ -355,7 +355,7 @@ class TrackController {
         );
       }
 
-      index = anchorIndex + 1;
+      index = anchorIsSendTrack ? anchorIndex : anchorIndex + 1;
     }
 
     project.execute(

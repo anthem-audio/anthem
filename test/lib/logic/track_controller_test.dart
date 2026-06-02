@@ -537,7 +537,38 @@ void main() {
       expect(trackOrder[anchorIndex + 2], equals(regularTopB.id));
     });
 
-    test('top-level send anchor inserts below in sendTrackOrder', () {
+    test('addSendTrack inserts new send tracks at the start', () {
+      final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
+
+      trackController.addSendTrack();
+      final firstNewTrackId = sendTrackOrder.first;
+
+      trackController.addSendTrack();
+      final secondNewTrackId = sendTrackOrder.first;
+
+      trackController.addSendTrack();
+      final thirdNewTrackId = sendTrackOrder.first;
+
+      expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 3));
+      expect(
+        sendTrackOrder.take(3),
+        equals([thirdNewTrackId, secondNewTrackId, firstNewTrackId]),
+      );
+      expect(sendTrackOrder.skip(3), equals(oldSendTrackOrder));
+      expect(sendTrackOrder.last, equals(masterTrack.id));
+
+      for (final trackId in [
+        firstNewTrackId,
+        secondNewTrackId,
+        thirdNewTrackId,
+      ]) {
+        final track = tracks[trackId];
+        expect(track, isNotNull);
+        expect(track!.parentTrackId, isNull);
+      }
+    });
+
+    test('top-level send anchor inserts above in sendTrackOrder', () {
       final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
       final anchorIndex = oldSendTrackOrder.indexOf(sendTop.id);
 
@@ -545,13 +576,45 @@ void main() {
 
       expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 1));
 
-      final newTrackId = sendTrackOrder[anchorIndex + 1];
+      final newTrackId = sendTrackOrder[anchorIndex];
       final newTrack = tracks[newTrackId];
       expect(newTrack, isNotNull);
       expect(newTrack!.parentTrackId, isNull);
 
-      expect(sendTrackOrder[anchorIndex], equals(sendTop.id));
-      expect(sendTrackOrder[anchorIndex + 2], equals(masterTrack.id));
+      expect(sendTrackOrder[anchorIndex + 1], equals(sendTop.id));
+      expect(sendTrackOrder.last, equals(masterTrack.id));
+    });
+
+    test('master track anchor inserts above master in sendTrackOrder', () {
+      final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
+      final masterIndex = oldSendTrackOrder.indexOf(masterTrack.id);
+
+      trackController.insertTrackAt(masterTrack.id);
+
+      expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 1));
+
+      final newTrackId = sendTrackOrder[masterIndex];
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, isNull);
+
+      expect(sendTrackOrder[masterIndex + 1], equals(masterTrack.id));
+    });
+
+    test('send child anchor inserts above within parent group', () {
+      final oldChildren = List<Id>.from(sendGroup.childTracks);
+      final anchorIndex = oldChildren.indexOf(sendChild.id);
+
+      trackController.insertTrackAt(sendChild.id);
+
+      expect(sendGroup.childTracks.length, equals(oldChildren.length + 1));
+
+      final newTrackId = sendGroup.childTracks[anchorIndex];
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, equals(sendGroup.id));
+
+      expect(sendGroup.childTracks[anchorIndex + 1], equals(sendChild.id));
     });
   });
 
