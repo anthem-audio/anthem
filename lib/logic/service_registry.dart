@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/clipboard/clipboard_service.dart';
 import 'package:anthem/logic/device_controller.dart';
 import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/main_window_controller.dart';
@@ -163,6 +164,7 @@ class ServiceRegistry {
       MainWindowController();
   static final MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
   static final DialogController dialogController = DialogController();
+  static final ClipboardService clipboard = ClipboardService();
   static late final ScreenOverlayController screenOverlayController;
 
   static final Map<ProjectId, ServiceRegistry> _serviceRegistriesByProjectId =
