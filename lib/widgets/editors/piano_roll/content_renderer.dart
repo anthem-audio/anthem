@@ -138,6 +138,7 @@ class PianoRollPainter extends CustomPainterObserver {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
+    final noteOutsetBorderPaint = Paint()..color = AnthemTheme.grid.minor;
     final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
 
     for (final note in resolvedNotes) {
@@ -195,9 +196,8 @@ class PianoRollPainter extends CustomPainterObserver {
 
       final noteRect = Rect.fromLTWH(x, y, width, height);
       final rect = RRect.fromRectAndRadius(noteRect, const Radius.circular(1));
-      // Borders are drawn along the edge of the shape, with half the border
-      // inside and half outside. We want all of it to be inside, and this
-      // rectangle accounts for this issue.
+      final borderRect = noteRect.inflate(1);
+      canvas.drawRect(borderRect, noteOutsetBorderPaint);
       canvas.drawRRect(rect, Paint()..color = color);
 
       if (isSelected && width > 1 && height > 1) {
