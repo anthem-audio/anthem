@@ -36,11 +36,10 @@ class TeeLogger : public juce::Logger {
 private:
   std::unique_ptr<juce::FileLogger> fileLogger;
   std::unique_ptr<ConsoleLogger> consoleLogger;
-
 public:
-  TeeLogger(std::unique_ptr<juce::FileLogger> fileLogger,
-      std::unique_ptr<ConsoleLogger> consoleLogger)
-      : fileLogger(std::move(fileLogger)), consoleLogger(std::move(consoleLogger)) {}
+  TeeLogger(
+      std::unique_ptr<juce::FileLogger> fileLogger, std::unique_ptr<ConsoleLogger> consoleLogger)
+    : fileLogger(std::move(fileLogger)), consoleLogger(std::move(consoleLogger)) {}
 
   void logMessage(const juce::String& message) override {
     if (fileLogger != nullptr) {

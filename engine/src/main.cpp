@@ -57,8 +57,7 @@ private:
   }
 
   std::unique_ptr<juce::FileLogger> createFileLogger(const juce::String& engineId) {
-    auto logSessionDir =
-        juce::SystemStats::getEnvironmentVariable("ANTHEM_LOG_SESSION_DIR", "");
+    auto logSessionDir = juce::SystemStats::getEnvironmentVariable("ANTHEM_LOG_SESSION_DIR", "");
 
     if (logSessionDir.isNotEmpty()) {
       auto logFile = juce::File(logSessionDir).getChildFile("engine-" + engineId + ".log");
@@ -83,8 +82,7 @@ private:
 
     const auto logFilePath = fileLogger->getLogFile().getFullPathName();
 #if !defined(NDEBUG)
-    logger = std::make_unique<TeeLogger>(
-        std::move(fileLogger), std::make_unique<ConsoleLogger>());
+    logger = std::make_unique<TeeLogger>(std::move(fileLogger), std::make_unique<ConsoleLogger>());
 #else
     logger = std::move(fileLogger);
 #endif
