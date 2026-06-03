@@ -102,7 +102,7 @@ enum StartupSendBehavior {
 class _QueuedStartupRequest {
   final Request request;
   final Completer<Response>? responseCompleter;
-  final Duration timeout;
+  final Duration? timeout;
 
   _QueuedStartupRequest(
     this.request, {
@@ -114,7 +114,7 @@ class _QueuedStartupRequest {
 class _PendingReply {
   final void Function(Response response) onReply;
   final void Function(Object error) onError;
-  final Timer timeoutTimer;
+  final Timer? timeoutTimer;
 
   _PendingReply({
     required this.onReply,
@@ -262,7 +262,7 @@ class Engine {
 
   void _failPendingReplies(Object error) {
     for (final pendingReply in _replyFunctions.values) {
-      pendingReply.timeoutTimer.cancel();
+      pendingReply.timeoutTimer?.cancel();
       pendingReply.onError(error);
     }
     _replyFunctions.clear();
@@ -481,7 +481,7 @@ class Engine {
     final pendingReply = _replyFunctions.remove(response.id);
     if (pendingReply != null) {
       pendingReply.onReply(response);
-      pendingReply.timeoutTimer.cancel();
+      pendingReply.timeoutTimer?.cancel();
     }
   }
 
@@ -589,6 +589,10 @@ class Engine {
             await _request(
                   StartAudioRequest(id: _getRequestId()),
                   startupBehavior: StartupSendBehavior.bypassStartupQueue,
+                  // Audio device initialization can block behind OS permission
+                  // prompts, such as the first-run microphone access prompt on
+                  // macOS.
+                  timeout: null,
                 )
                 as StartAudioResponse;
         if (!audioStartReply.success) {
@@ -652,20 +656,22 @@ class Engine {
   Future<Response> _dispatchRequestWithReply(
     Request request, {
     Completer<Response>? responseCompleter,
-    Duration timeout = const Duration(seconds: 5),
+    Duration? timeout = const Duration(seconds: 5),
   }) {
     final completer = responseCompleter ?? Completer<Response>();
-    final timer = Timer(timeout, () {
-      if (_replyFunctions.containsKey(request.id)) {
-        completer.completeError(
-          TimeoutException(
-            'Request ${request.id} of type ${request.runtimeType} timed out after ${timeout.inSeconds} seconds.',
-            timeout,
-          ),
-        );
-        _replyFunctions.remove(request.id);
-      }
-    });
+    final timer = timeout == null
+        ? null
+        : Timer(timeout, () {
+            if (_replyFunctions.containsKey(request.id)) {
+              completer.completeError(
+                TimeoutException(
+                  'Request ${request.id} of type ${request.runtimeType} timed out after ${timeout.inSeconds} seconds.',
+                  timeout,
+                ),
+              );
+              _replyFunctions.remove(request.id);
+            }
+          });
 
     _replyFunctions[request.id] = _PendingReply(
       onReply: (response) {
@@ -691,7 +697,7 @@ class Engine {
   void _queueStartupRequest(
     Request request, {
     Completer<Response>? responseCompleter,
-    Duration timeout = const Duration(seconds: 5),
+    Duration? timeout = const Duration(seconds: 5),
   }) {
     _startupQueue.add(
       _QueuedStartupRequest(
@@ -744,7 +750,7 @@ class Engine {
   Future<Response> _request(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
-    Duration timeout = const Duration(seconds: 5),
+    Duration? timeout = const Duration(seconds: 5),
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {

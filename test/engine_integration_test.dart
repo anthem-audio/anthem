@@ -55,6 +55,19 @@ Future<T> _sendRequestAndWaitForReply<T extends Response>({
   return (await replyFuture) as T;
 }
 
+Future<void> _sendExitAndWaitForProcess({
+  required EngineConnector engineConnector,
+  required Stream<void> exitStream,
+}) async {
+  final exitFuture = exitStream.first.timeout(Duration(seconds: 5));
+  final encoder = JsonUtf8Encoder();
+  final request = Exit(id: engineConnector.getRequestId());
+
+  engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+  await exitFuture;
+  engineConnector.dispose();
+}
+
 void main() {
   var path = Platform.script;
   while (path.pathSegments.length > 1 &&
@@ -93,56 +106,68 @@ void main() {
   }
 
   group('Heartbeat tests', () {
-    test('No heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
-      final exitStreamController = StreamController<void>.broadcast();
+    test(
+      'Engine does not exit before heartbeat starts',
+      timeout: Timeout(Duration(seconds: 120)),
+      () async {
+        final exitStreamController = StreamController<void>.broadcast();
 
-      var exitCalled = false;
-      exitStreamController.stream.first.then((_) => exitCalled = true);
+        var exitCalled = false;
 
-      var heartbeatWaitCompleter = Completer<void>();
+        final engineConnector = EngineConnector(
+          12345678, // Can't collide with any other tests
+          enginePathOverride: enginePath!.toFilePath(
+            windows: Platform.isWindows,
+          ),
+          kDebugMode: true,
+          noHeartbeat: true,
+          onExit: () {
+            exitCalled = true;
+            exitStreamController.add(null);
+          },
+        );
 
-      final _ = EngineConnector(
-        12345678, // Can't collide with any other tests
-        enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
-        kDebugMode: true,
-        noHeartbeat: true,
-        onExit: () => exitStreamController.add(null),
-      );
+        expect(
+          await engineConnector.onInit,
+          isTrue,
+          reason: 'The engine connector should initialize successfully.',
+        );
 
-      expect(
-        exitCalled,
-        isFalse,
-        reason: 'The engine should not crash when it first starts.',
-      );
+        expect(
+          exitCalled,
+          isFalse,
+          reason: 'The engine should not crash when it first starts.',
+        );
 
-      final startTime = DateTime.now();
+        await Future.any<void>([
+          exitStreamController.stream.first,
+          Future<void>.delayed(Duration(seconds: 15)),
+        ]);
 
-      Timer.periodic(Duration(milliseconds: 500), (timer) {
-        if (exitCalled) {
-          heartbeatWaitCompleter.complete();
-          timer.cancel();
-        }
+        expect(
+          exitCalled,
+          isFalse,
+          reason:
+              'The engine should not exit before the heartbeat watchdog starts.',
+        );
 
-        if (DateTime.now().difference(startTime).inSeconds > 30) {
-          heartbeatWaitCompleter.complete();
-          timer.cancel();
-        }
-      });
+        await _sendExitAndWaitForProcess(
+          engineConnector: engineConnector,
+          exitStream: exitStreamController.stream,
+        );
 
-      await heartbeatWaitCompleter.future;
-
-      expect(
-        exitCalled,
-        isTrue,
-        reason: 'The engine should exit if it does not receive a heartbeat.',
-      );
-    });
+        expect(
+          exitCalled,
+          isTrue,
+          reason: 'The engine should exit when disposed.',
+        );
+      },
+    );
 
     test('Heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
-      exitStreamController.stream.first.then((_) => exitCalled = true);
 
       var heartbeatWaitCompleter = Completer<void>();
 
@@ -150,7 +175,10 @@ void main() {
         12345678 + 1, // Can't collide with any other tests
         enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
         kDebugMode: true,
-        onExit: () => exitStreamController.add(null),
+        onExit: () {
+          exitCalled = true;
+          exitStreamController.add(null);
+        },
       );
 
       expect(
@@ -165,8 +193,6 @@ void main() {
       engineConnector.startHeartbeatTimer();
 
       exitCalled = false;
-
-      exitStreamController.stream.first.then((_) => exitCalled = true);
 
       expect(
         exitCalled,
@@ -188,8 +214,10 @@ void main() {
         reason: 'The engine should not exit if it receives a heartbeat.',
       );
 
-      engineConnector.dispose();
-      await exitStreamController.stream.first;
+      await _sendExitAndWaitForProcess(
+        engineConnector: engineConnector,
+        exitStream: exitStreamController.stream,
+      );
 
       expect(
         exitCalled,
