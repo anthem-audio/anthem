@@ -40,6 +40,7 @@ import 'web_init_stub.dart' if (dart.library.js_interop) 'web_init.dart';
 
 GlobalKey mainWindowKey = GlobalKey();
 final _log = Logger('app');
+final _pointerLockLog = Logger('pointer_lock');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,7 +57,21 @@ void main() async {
   };
 
   _log.info('Starting Anthem app.');
-  await pointerLock.ensureInitialized();
+  _pointerLockLog.info(
+    'Initializing pointer lock. '
+    'targetPlatform=$defaultTargetPlatform, kIsWeb=$kIsWeb',
+  );
+  try {
+    await pointerLock.ensureInitialized();
+    _pointerLockLog.info('Pointer lock initialized.');
+  } catch (error, stackTrace) {
+    _pointerLockLog.severe(
+      'Pointer lock initialization failed.',
+      error,
+      stackTrace,
+    );
+    rethrow;
+  }
 
   addLicenses();
 

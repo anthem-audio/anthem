@@ -20,14 +20,26 @@
 import 'package:anthem/helpers/window_utils.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
+import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:pointer_lock/pointer_lock.dart';
 
 const _doubleClickThreshold = Duration(milliseconds: 500);
 const _maxDoubleClickDistance = 8.0;
+const _pointerLockWindowsMode = PointerLockWindowsMode.capture;
+const _initialPointerLockMoveLogCount = 5;
+const _pointerLockMoveLogInterval = 50;
+
+final _pointerLockLog = Logger(
+  'ui.controls.control_mouse_handler.pointer_lock',
+);
+
+int _nextControlMouseHandlerId = 1;
+int _nextPointerLockSessionId = 1;
 
 class ControlMouseEvent {
   Offset delta;
@@ -80,6 +92,8 @@ class ControlMouseHandler extends StatefulWidget {
 }
 
 class _ControlMouseHandlerState extends State<ControlMouseHandler> {
+  final int _handlerId = _nextControlMouseHandlerId++;
+
   Rect windowRect = Rect.zero;
 
   double devicePixelRatio = -1;
@@ -105,6 +119,14 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   Duration? _activeClickTimestamp;
   Offset? _activeClickPosition;
   bool _activeClickMoved = false;
+
+  int? _activePointerLockSessionId;
+  DateTime? _activePointerLockSessionStartedAt;
+  bool _activePointerLockMetricsReady = false;
+  bool _loggedMoveBeforeMetrics = false;
+  int _pointerLockMoveCount = 0;
+  int _pointerLockNonZeroMoveCount = 0;
+  Offset _pointerLockTotalRawDelta = Offset.zero;
 
   bool _isPrimaryButton(PointerDownEvent event) {
     return event.buttons & kPrimaryButton > 0;
@@ -142,14 +164,37 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   bool _acceptPointerLock(PointerLockDragAcceptDetails details) {
     final event = details.trigger;
+    final reportsPointerUpDownEventsReliably = pointerLock
+        .reportsPointerUpDownEventsReliably(
+          windowsMode: _pointerLockWindowsMode,
+        );
+
+    _pointerLockLog.info(
+      'Checking pointer lock accept. '
+      'handler=$_handlerId, '
+      'event=${_describePointerEvent(event)}, '
+      'targetPlatform=$defaultTargetPlatform, '
+      'kIsWeb=$kIsWeb, '
+      'windowsMode=$_pointerLockWindowsMode, '
+      'reportsPointerUpDownEventsReliably=$reportsPointerUpDownEventsReliably, '
+      'unlockOnPointerUp=${!reportsPointerUpDownEventsReliably}',
+    );
 
     if (!_isPrimaryButton(event)) {
+      _pointerLockLog.info(
+        'Rejected pointer lock because the primary button is not pressed. '
+        'handler=$_handlerId, event=${_describePointerEvent(event)}',
+      );
       _clearPendingClick();
       _clearActiveClick();
       return false;
     }
 
     if (_qualifiesAsDoubleClick(event)) {
+      _pointerLockLog.info(
+        'Rejected pointer lock because the event is a double click. '
+        'handler=$_handlerId, event=${_describePointerEvent(event)}',
+      );
       _clearPendingClick();
       _clearActiveClick();
       widget.onDoubleClick?.call();
@@ -159,6 +204,11 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     _activeClickTimestamp = event.timeStamp;
     _activeClickPosition = event.position;
     _activeClickMoved = false;
+
+    _pointerLockLog.info(
+      'Accepted pointer lock. '
+      'handler=$_handlerId, event=${_describePointerEvent(event)}',
+    );
 
     return true;
   }
@@ -179,8 +229,144 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     _clearActiveClick();
   }
 
+  void _beginPointerLockSession(PointerDownEvent trigger) {
+    final existingSessionId = _activePointerLockSessionId;
+    if (existingSessionId != null) {
+      _pointerLockLog.warning(
+        'Starting a pointer lock session while another session is active. '
+        'handler=$_handlerId, existingSession=$existingSessionId, '
+        'trigger=${_describePointerEvent(trigger)}',
+      );
+    }
+
+    final reportsPointerUpDownEventsReliably = pointerLock
+        .reportsPointerUpDownEventsReliably(
+          windowsMode: _pointerLockWindowsMode,
+        );
+
+    _activePointerLockSessionId = _nextPointerLockSessionId++;
+    _activePointerLockSessionStartedAt = DateTime.now();
+    _activePointerLockMetricsReady = false;
+    _loggedMoveBeforeMetrics = false;
+    _pointerLockMoveCount = 0;
+    _pointerLockNonZeroMoveCount = 0;
+    _pointerLockTotalRawDelta = Offset.zero;
+
+    _pointerLockLog.info(
+      'PointerLockDragArea emitted onLock. '
+      'handler=$_handlerId, '
+      'session=$_activePointerLockSessionId, '
+      'trigger=${_describePointerEvent(trigger)}, '
+      'cursor=${PointerLockCursor.hidden}, '
+      'windowsMode=$_pointerLockWindowsMode, '
+      'targetPlatform=$defaultTargetPlatform, '
+      'kIsWeb=$kIsWeb, '
+      'reportsPointerUpDownEventsReliably=$reportsPointerUpDownEventsReliably, '
+      'unlockOnPointerUp=${!reportsPointerUpDownEventsReliably}',
+    );
+  }
+
+  void _recordPointerLockMove(PointerLockMoveEvent event, Offset controlDelta) {
+    final sessionId = _activePointerLockSessionId;
+    _pointerLockMoveCount++;
+    _pointerLockTotalRawDelta += event.delta;
+
+    if (event.delta.dx != 0 || event.delta.dy != 0) {
+      _pointerLockNonZeroMoveCount++;
+    }
+
+    if (!_activePointerLockMetricsReady && !_loggedMoveBeforeMetrics) {
+      _loggedMoveBeforeMetrics = true;
+      _pointerLockLog.warning(
+        'Received pointer lock move before window metrics were ready. '
+        'handler=$_handlerId, session=$sessionId, '
+        'move=$_pointerLockMoveCount, rawDelta=${_formatOffset(event.delta)}',
+      );
+    }
+
+    if (_pointerLockMoveCount <= _initialPointerLockMoveLogCount ||
+        _pointerLockMoveCount % _pointerLockMoveLogInterval == 0) {
+      _pointerLockLog.fine(
+        'Pointer lock move. '
+        'handler=$_handlerId, '
+        'session=$sessionId, '
+        'move=$_pointerLockMoveCount, '
+        'nonZeroMoves=$_pointerLockNonZeroMoveCount, '
+        'rawDelta=${_formatOffset(event.delta)}, '
+        'controlDelta=${_formatOffset(controlDelta)}, '
+        'rawTotal=${_formatOffset(_pointerLockTotalRawDelta)}, '
+        'controlAbsolute=${_formatOffset(Offset(accumulatorX, -accumulatorY))}, '
+        'metricsReady=$_activePointerLockMetricsReady',
+      );
+    }
+  }
+
+  void _finishPointerLockSession(PointerEvent trigger) {
+    final sessionId = _activePointerLockSessionId;
+    if (sessionId == null) {
+      _pointerLockLog.warning(
+        'PointerLockDragArea emitted onUnlock with no active session. '
+        'handler=$_handlerId, trigger=${_describePointerEvent(trigger)}',
+      );
+      return;
+    }
+
+    final startedAt = _activePointerLockSessionStartedAt;
+    final durationMs = startedAt == null
+        ? null
+        : DateTime.now().difference(startedAt).inMilliseconds;
+
+    _pointerLockLog.info(
+      'PointerLockDragArea emitted onUnlock. '
+      'handler=$_handlerId, '
+      'session=$sessionId, '
+      'durationMs=$durationMs, '
+      'moves=$_pointerLockMoveCount, '
+      'nonZeroMoves=$_pointerLockNonZeroMoveCount, '
+      'rawTotal=${_formatOffset(_pointerLockTotalRawDelta)}, '
+      'controlAbsolute=${_formatOffset(Offset(accumulatorX, -accumulatorY))}, '
+      'metricsReady=$_activePointerLockMetricsReady, '
+      'activeClickMoved=$_activeClickMoved, '
+      'trigger=${_describePointerEvent(trigger)}',
+    );
+
+    _activePointerLockSessionId = null;
+    _activePointerLockSessionStartedAt = null;
+    _activePointerLockMetricsReady = false;
+    _loggedMoveBeforeMetrics = false;
+    _pointerLockMoveCount = 0;
+    _pointerLockNonZeroMoveCount = 0;
+    _pointerLockTotalRawDelta = Offset.zero;
+  }
+
+  String _describePointerEvent(PointerEvent event) {
+    return 'pointer=${event.pointer}, '
+        'kind=${event.kind.name}, '
+        'buttons=${event.buttons}, '
+        'position=${_formatOffset(event.position)}, '
+        'localPosition=${_formatOffset(event.localPosition)}, '
+        'timeStampMs=${event.timeStamp.inMilliseconds}';
+  }
+
+  String _formatOffset(Offset offset) {
+    return '(${offset.dx.toStringAsFixed(3)}, '
+        '${offset.dy.toStringAsFixed(3)})';
+  }
+
+  String _formatSize(Size size) {
+    return '(${size.width.toStringAsFixed(3)}, '
+        '${size.height.toStringAsFixed(3)})';
+  }
+
   void onPointerDown(PointerEvent e) async {
     pointerDeviceKind = e.kind;
+
+    _pointerLockLog.info(
+      'Handling pointer lock trigger. '
+      'handler=$_handlerId, '
+      'session=$_activePointerLockSessionId, '
+      'trigger=${_describePointerEvent(e)}',
+    );
 
     widget.onStart?.call();
 
@@ -196,9 +382,28 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     final mediaQuery = MediaQuery.of(context);
     devicePixelRatio = mediaQuery.devicePixelRatio;
 
-    final windowPos = await getWindowPosition();
-    final windowSize = await getWindowSize();
+    late final Offset windowPos;
+    late final Size windowSize;
+
+    try {
+      windowPos = await getWindowPosition();
+      windowSize = await getWindowSize();
+    } catch (error, stackTrace) {
+      _pointerLockLog.severe(
+        'Failed to read window metrics for pointer lock session. '
+        'handler=$_handlerId, session=$_activePointerLockSessionId, '
+        'devicePixelRatio=$devicePixelRatio',
+        error,
+        stackTrace,
+      );
+      rethrow;
+    }
+
     if (!mounted) {
+      _pointerLockLog.warning(
+        'ControlMouseHandler unmounted while reading pointer lock metrics. '
+        'handler=$_handlerId, session=$_activePointerLockSessionId',
+      );
       return;
     }
 
@@ -217,18 +422,42 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     originalMouseY = mousePos.dy;
     mostRecentMouseX = mousePos.dx;
     mostRecentMouseY = mousePos.dy;
+    _activePointerLockMetricsReady = true;
+
+    _pointerLockLog.info(
+      'Pointer lock window metrics ready. '
+      'handler=$_handlerId, '
+      'session=$_activePointerLockSessionId, '
+      'devicePixelRatio=$devicePixelRatio, '
+      'windowPosition=${_formatOffset(windowPos)}, '
+      'windowSize=${_formatSize(windowSize)}, '
+      'windowRect=$windowRect, '
+      'triggerPosition=${_formatOffset(e.position)}, '
+      'absoluteMouse=${_formatOffset(mousePos)}',
+    );
   }
 
   void onPointerMove(PointerLockMoveEvent e) {
-    if (pointerDeviceKind == null) return;
+    if (pointerDeviceKind == null) {
+      _pointerLockLog.warning(
+        'Ignored pointer lock move because pointerDeviceKind is null. '
+        'handler=$_handlerId, '
+        'session=$_activePointerLockSessionId, '
+        'rawDelta=${_formatOffset(e.delta)}',
+      );
+      return;
+    }
 
     accumulatorX += e.delta.dx;
     accumulatorY += e.delta.dy;
     _activeClickMoved = _activeClickMoved || e.delta.dx != 0 || e.delta.dy != 0;
+    final controlDelta = Offset(e.delta.dx, -e.delta.dy);
+
+    _recordPointerLockMove(e, controlDelta);
 
     widget.onChange?.call(
       ControlMouseEvent(
-        delta: Offset(e.delta.dx, -e.delta.dy),
+        delta: controlDelta,
         absolute: Offset(accumulatorX, -accumulatorY),
         kind: pointerDeviceKind!,
         isScroll: false,
@@ -244,6 +473,13 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
   void onPointerUp(PointerEvent e) {
     if (pointerDeviceKind == null) {
+      _pointerLockLog.warning(
+        'Handling pointer lock unlock with no pointerDeviceKind. '
+        'handler=$_handlerId, '
+        'session=$_activePointerLockSessionId, '
+        'trigger=${_describePointerEvent(e)}',
+      );
+      _finishPointerLockSession(e);
       _recordActiveClick();
       return;
     }
@@ -257,6 +493,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       ),
     );
 
+    _finishPointerLockSession(e);
     _recordActiveClick();
 
     accumulatorX = 0;
@@ -296,6 +533,22 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   }
 
   @override
+  void dispose() {
+    final sessionId = _activePointerLockSessionId;
+    if (sessionId != null) {
+      _pointerLockLog.warning(
+        'ControlMouseHandler disposed with an active pointer lock session. '
+        'handler=$_handlerId, '
+        'session=$sessionId, '
+        'moves=$_pointerLockMoveCount, '
+        'rawTotal=${_formatOffset(_pointerLockTotalRawDelta)}',
+      );
+    }
+
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final listener = Listener(
       behavior: HitTestBehavior.translucent,
@@ -304,9 +557,10 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     );
 
     final lock = PointerLockDragArea(
-      windowsMode: PointerLockWindowsMode.capture,
+      windowsMode: _pointerLockWindowsMode,
       accept: _acceptPointerLock,
       onLock: (e) {
+        _beginPointerLockSession(e.trigger);
         onPointerDown(e.trigger);
       },
       onMove: (e) {
@@ -314,7 +568,9 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       },
       onUnlock: (e) {
         onPointerUp(e.trigger);
-        setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       },
       cursor: PointerLockCursor.hidden,
       child: listener,
