@@ -60,18 +60,22 @@ class PianoRollContentRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
+    final devicePixelRatio = View.of(context).devicePixelRatio;
+
+    viewModel.ensureRenderCachesForDevicePixelRatio(devicePixelRatio);
 
     return CustomPaint(
       painter: PianoRollPainter(
         repaint: Listenable.merge([
           timeRangeAnimation.controller,
           keyValueAtTopAnimationController,
+          viewModel.noteLabelImageCache.repaintSignal,
         ]),
         timeRangeAnimation: timeRangeAnimation,
         keyValueAtTopAnimation: keyValueAtTopAnimation,
         project: project,
         viewModel: viewModel,
-        devicePixelRatio: View.of(context).devicePixelRatio,
+        devicePixelRatio: devicePixelRatio,
         shouldGreyOut: shouldGreyOut,
       ),
     );
@@ -211,7 +215,7 @@ class PianoRollPainter extends CustomPainterObserver {
       }
 
       if (keyHeight > 25 && width > 2 && height > 2) {
-        final cachedLabel = noteLabelImageCache.get(key);
+        final cachedLabel = viewModel.noteLabelImageCache.get(key);
         if (cachedLabel != null) {
           canvas.save();
           final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);

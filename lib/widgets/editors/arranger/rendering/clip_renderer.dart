@@ -25,6 +25,7 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
@@ -41,6 +42,7 @@ final _automationTriCoordBuffer = CoordinateBuffer();
 
 const _clipTitleHeight = 16;
 const _clipTitlePadding = clipTitlePadding;
+const _clipTitleEllipsisCropPadding = -1.0;
 
 const _contentBaseColor = Color(0xFF777777);
 // Clip content is composited with BlendMode.plus, so black is a neutral fill.
@@ -225,64 +227,47 @@ void paintClipList({
     final spriteSheet = sequence.patternTitleTexture;
     final textureAtlases = spriteSheet.textureAtlases;
     final atlasEntriesByPatternId = sequence.clipTitleAtlasEntriesByPatternId;
+    final ellipsisAtlasEntry = sequence.clipTitleEllipsisAtlasEntry;
 
     final isTextureAtlasDevicePixelRatioMatch =
         textureAtlases.isNotEmpty &&
         sequence.clipTitleTextureAtlasDevicePixelRatio == devicePixelRatio;
 
     if (isTextureAtlasDevicePixelRatioMatch) {
-      final clipEntriesByAtlasIndex = <int, List<ClipRenderInfo>>{};
+      final drawRecordsByAtlasIndex = <int, _ClipTitleAtlasDrawRecords>{};
       var hasClipEntriesWithoutAtlasEntry = false;
+      final hasUsableEllipsisAtlasEntry =
+          ellipsisAtlasEntry != null &&
+          ellipsisAtlasEntry.atlasIndex < textureAtlases.length;
 
       for (final clipEntry in clipList) {
         final atlasEntry = atlasEntriesByPatternId[clipEntry.pattern.id];
 
         if (atlasEntry != null &&
             atlasEntry.atlasIndex < textureAtlases.length) {
-          clipEntriesByAtlasIndex
-              .putIfAbsent(atlasEntry.atlasIndex, () => <ClipRenderInfo>[])
-              .add(clipEntry);
+          _addClipTitleAtlasDrawRecords(
+            recordsByAtlasIndex: drawRecordsByAtlasIndex,
+            clipEntry: clipEntry,
+            titleAtlasEntry: atlasEntry,
+            ellipsisAtlasEntry: hasUsableEllipsisAtlasEntry
+                ? ellipsisAtlasEntry
+                : null,
+            devicePixelRatio: devicePixelRatio,
+            textHeight: textHeight,
+          );
         } else {
           hasClipEntriesWithoutAtlasEntry = true;
         }
       }
 
-      for (final entry in clipEntriesByAtlasIndex.entries) {
+      for (final entry in drawRecordsByAtlasIndex.entries) {
         final textureAtlas = textureAtlases[entry.key];
-        final clipEntries = entry.value;
-        final transforms = List.generate(clipEntries.length, (i) {
-          final clipEntry = clipEntries[i];
-          return RSTransform.fromComponents(
-            rotation: 0,
-            scale: 1 / devicePixelRatio,
-            anchorX: 0,
-            anchorY: 0,
-            translateX: clipEntry.x,
-            translateY:
-                clipEntry.y +
-                (shouldRenderClipContent(clipEntry.height)
-                    ? 0
-                    : (clipEntry.height / 2) - (textHeight / 2)),
-          );
-        }, growable: false);
-        final rects = List.generate(clipEntries.length, (i) {
-          final clipEntry = clipEntries[i];
-          final atlasEntry = atlasEntriesByPatternId[clipEntry.pattern.id]!;
-          return Rect.fromLTWH(
-            atlasEntry.rect.left,
-            atlasEntry.rect.top,
-            min(
-              atlasEntry.rect.width,
-              (clipEntry.width - _clipTitlePadding * 2) * devicePixelRatio,
-            ),
-            atlasEntry.rect.height,
-          );
-        }, growable: false);
+        final records = entry.value;
         canvas.drawAtlas(
           textureAtlas,
-          transforms,
-          rects,
-          List.generate(clipEntries.length, (i) {
+          records.transforms,
+          records.rects,
+          List.generate(records.length, (i) {
             return _contentBaseColor;
           }, growable: false),
           BlendMode.dstIn,
@@ -462,6 +447,105 @@ void paintClip({
   } finally {
     canvas.restore();
   }
+}
+
+class _ClipTitleAtlasDrawRecords {
+  final transforms = <RSTransform>[];
+  final rects = <Rect>[];
+
+  int get length => transforms.length;
+
+  void add({required RSTransform transform, required Rect rect}) {
+    transforms.add(transform);
+    rects.add(rect);
+  }
+}
+
+void _addClipTitleAtlasDrawRecords({
+  required Map<int, _ClipTitleAtlasDrawRecords> recordsByAtlasIndex,
+  required ClipRenderInfo clipEntry,
+  required PackedTextureEntry titleAtlasEntry,
+  required PackedTextureEntry? ellipsisAtlasEntry,
+  required double devicePixelRatio,
+  required double textHeight,
+}) {
+  final horizontalInset = _clipTitlePadding + 1;
+  final ellipsisEntry = ellipsisAtlasEntry;
+  final availableWidth = max(0.0, clipEntry.width - _clipTitlePadding * 2);
+  final availableSourceWidth = availableWidth * devicePixelRatio;
+  final titleOverflows = titleAtlasEntry.rect.width > availableSourceWidth;
+  final canDrawEllipsis =
+      ellipsisEntry != null && titleOverflows && availableSourceWidth > 0;
+  final ellipsisSourceWidth = canDrawEllipsis
+      ? min(ellipsisEntry.rect.width, availableSourceWidth)
+      : 0.0;
+  final titleCropPaddingSourceWidth = canDrawEllipsis
+      ? _clipTitleEllipsisCropPadding * devicePixelRatio
+      : 0.0;
+  final titleSourceWidth = min(
+    titleAtlasEntry.rect.width,
+    max(
+      0.0,
+      availableSourceWidth - ellipsisSourceWidth - titleCropPaddingSourceWidth,
+    ),
+  );
+  final y = _clipTitleY(clipEntry: clipEntry, textHeight: textHeight);
+
+  void addRecord({
+    required PackedTextureEntry atlasEntry,
+    required double sourceWidth,
+    required double translateX,
+  }) {
+    if (sourceWidth <= 0) {
+      return;
+    }
+
+    recordsByAtlasIndex
+        .putIfAbsent(atlasEntry.atlasIndex, () => _ClipTitleAtlasDrawRecords())
+        .add(
+          transform: RSTransform.fromComponents(
+            rotation: 0,
+            scale: 1 / devicePixelRatio,
+            anchorX: 0,
+            anchorY: 0,
+            translateX: translateX,
+            translateY: y,
+          ),
+          rect: Rect.fromLTWH(
+            atlasEntry.rect.left,
+            atlasEntry.rect.top,
+            sourceWidth,
+            atlasEntry.rect.height,
+          ),
+        );
+  }
+
+  addRecord(
+    atlasEntry: titleAtlasEntry,
+    sourceWidth: titleSourceWidth,
+    translateX: clipEntry.x,
+  );
+
+  if (canDrawEllipsis) {
+    addRecord(
+      atlasEntry: ellipsisEntry,
+      sourceWidth: ellipsisSourceWidth,
+      translateX:
+          clipEntry.x +
+          clipEntry.width -
+          horizontalInset -
+          ellipsisSourceWidth / devicePixelRatio,
+    );
+  }
+}
+
+double _clipTitleY({
+  required ClipRenderInfo clipEntry,
+  required double textHeight,
+}) {
+  return shouldRenderClipContent(clipEntry.height)
+      ? clipEntry.y
+      : clipEntry.y + (clipEntry.height / 2) - (textHeight / 2);
 }
 
 void _drawClipTitlesDirect({

@@ -22,7 +22,6 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_renderer.dart';
-import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
@@ -47,7 +46,6 @@ class _MainWindowState extends State<MainWindow> {
   AnthemMenuController menuController = AnthemMenuController();
 
   bool firstBuild = true;
-  double? lastDevicePixelRatio;
 
   @override
   void initState() {
@@ -136,20 +134,6 @@ class _MainWindowState extends State<MainWindow> {
           );
         });
       }
-    }
-
-    final devicePixelRatio = View.of(context).devicePixelRatio;
-
-    if (lastDevicePixelRatio != devicePixelRatio) {
-      lastDevicePixelRatio = devicePixelRatio;
-
-      for (final project in store.projects.values) {
-        project.sequence.scheduleClipTitleTextureAtlasUpdate();
-      }
-    }
-
-    if (!noteLabelImageCache.isInitializedFor(devicePixelRatio)) {
-      noteLabelImageCache.init(devicePixelRatio);
     }
 
     return Stack(

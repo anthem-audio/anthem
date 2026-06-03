@@ -19,6 +19,8 @@
 
 part of 'package:anthem/model/sequencer.dart';
 
+const _clipTitleEllipsisText = '...';
+
 class _ClipTitleCacheKey {
   final String title;
   final double devicePixelRatio;
@@ -57,6 +59,9 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
 
   @hide
   final Map<Id, PackedTextureEntry> clipTitleAtlasEntriesByPatternId = {};
+
+  @hide
+  PackedTextureEntry? clipTitleEllipsisAtlasEntry;
 
   @hide
   final Map<_ClipTitleCacheKey, Image> renderedClipTitleCache = {};
@@ -109,6 +114,13 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
     final devicePixelRatio = widgets.View.of(context).devicePixelRatio;
     final patternIdsByCacheKey = <_ClipTitleCacheKey, List<Id>>{};
     final activeTitles = <String>{};
+    final ellipsisCacheKey = _ClipTitleCacheKey(
+      title: _clipTitleEllipsisText,
+      devicePixelRatio: devicePixelRatio,
+    );
+
+    patternIdsByCacheKey.putIfAbsent(ellipsisCacheKey, () => []);
+    activeTitles.add(_clipTitleEllipsisText);
 
     for (final entry in patterns.entries) {
       activeTitles.add(entry.value.name);
@@ -161,10 +173,16 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
         : devicePixelRatio;
 
     clipTitleAtlasEntriesByPatternId.clear();
+    clipTitleEllipsisAtlasEntry = null;
 
     for (var i = 0; i < orderedKeys.length; i++) {
+      final key = orderedKeys[i];
       final entry = entries[i];
-      final patternIds = patternIdsByCacheKey[orderedKeys[i]]!;
+      final patternIds = patternIdsByCacheKey[key]!;
+
+      if (key == ellipsisCacheKey) {
+        clipTitleEllipsisAtlasEntry = entry;
+      }
 
       for (final patternId in patternIds) {
         clipTitleAtlasEntriesByPatternId[patternId] = entry;
@@ -188,6 +206,7 @@ mixin _ClipTitleAtlasMixin on _SequencerModel {
     patternTitleTexture.dispose();
     clipTitleTextureAtlasDevicePixelRatio = null;
     clipTitleAtlasEntriesByPatternId.clear();
+    clipTitleEllipsisAtlasEntry = null;
 
     for (final image in renderedClipTitleCache.values) {
       image.dispose();

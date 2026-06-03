@@ -21,12 +21,14 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
 import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
+import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:collection/collection.dart';
 import 'package:mobx/mobx.dart';
 
@@ -77,7 +79,7 @@ class PianoRollHitTestResult {
 // ignore: library_private_types_in_public_api
 class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
 
-abstract class _PianoRollViewModel with Store {
+abstract class _PianoRollViewModel with Store implements DisposableService {
   _PianoRollViewModel({
     required this.keyHeight,
     required double keyValueAtTop,
@@ -146,12 +148,24 @@ abstract class _PianoRollViewModel with Store {
 
   final visibleNotes = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
   final visibleResizeAreas = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
+  final noteLabelImageCache = NoteLabelImageCache();
 
   // These don't need to be observable, since they're just used during event
   // handling.
   Time cursorNoteLength = 96;
   double cursorNoteVelocity = 0.75;
   double cursorNotePan = 0;
+
+  void ensureRenderCachesForDevicePixelRatio(double devicePixelRatio) {
+    if (!noteLabelImageCache.isInitializedFor(devicePixelRatio)) {
+      noteLabelImageCache.init(devicePixelRatio);
+    }
+  }
+
+  @override
+  void dispose() {
+    noteLabelImageCache.dispose();
+  }
 
   void clearTransientNoteState() {
     pressedNote = null;

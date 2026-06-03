@@ -26,7 +26,6 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
-import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
@@ -60,8 +59,6 @@ void main() {
     late PianoRollViewModel viewModel;
 
     setUp(() {
-      noteLabelImageCache = NoteLabelImageCache();
-
       project = ProjectModel.create()..engine = _StoppedEngine();
       pattern = PatternModel(idAllocator: _testIdAllocator(), name: 'Pattern');
       project.sequence.patterns[pattern.id] = pattern;

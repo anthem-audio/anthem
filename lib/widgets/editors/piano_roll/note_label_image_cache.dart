@@ -19,6 +19,8 @@
 
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
+
 import 'helpers.dart';
 
 const noteLabelHeight = 20;
@@ -29,6 +31,10 @@ class NoteLabelImageCache {
   double? _devicePixelRatio;
   double? _initializingDevicePixelRatio;
   int _initGeneration = 0;
+  bool _isDisposed = false;
+  final ValueNotifier<int> _repaintSignal = ValueNotifier(0);
+
+  Listenable get repaintSignal => _repaintSignal;
 
   bool get initialized =>
       _cache != null || _initializingDevicePixelRatio != null;
@@ -39,7 +45,12 @@ class NoteLabelImageCache {
   }
 
   Future<void> init(double devicePixelRatio) async {
+    if (_isDisposed) {
+      return;
+    }
+
     assert(devicePixelRatio > 0);
+    assert(!_isDisposed);
 
     if (isInitializedFor(devicePixelRatio)) {
       return;
@@ -100,15 +111,22 @@ class NoteLabelImageCache {
     _cache = cache;
     _devicePixelRatio = devicePixelRatio;
     _initializingDevicePixelRatio = null;
+    _repaintSignal.value++;
   }
 
   Image? get(int midiNote) => _cache?.elementAtOrNull(midiNote);
 
   void dispose() {
+    if (_isDisposed) {
+      return;
+    }
+
+    _isDisposed = true;
     _initGeneration++;
     _devicePixelRatio = null;
     _initializingDevicePixelRatio = null;
     _disposeCache();
+    _repaintSignal.dispose();
   }
 
   void _disposeCache() {
@@ -124,5 +142,3 @@ class NoteLabelImageCache {
     _cache = null;
   }
 }
-
-NoteLabelImageCache noteLabelImageCache = NoteLabelImageCache();

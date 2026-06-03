@@ -20,6 +20,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/device_controller.dart';
+import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
@@ -36,15 +37,13 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/main_window/main_window_view_model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 
+export 'package:anthem/logic/disposable_service.dart';
+
 /// A registry for storing and retrieving services by key.
 ///
 /// Project-scoped controllers and view models are owned here and created lazily
 /// on first access. Widgets should consume them from this registry rather than
 /// constructing or disposing them directly.
-abstract interface class DisposableService {
-  void dispose();
-}
-
 typedef ServiceFactory<T extends Object> =
     T Function(ProjectModel project, ServiceRegistry registry);
 

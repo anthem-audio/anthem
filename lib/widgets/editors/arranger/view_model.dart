@@ -247,6 +247,8 @@ abstract class _ArrangerViewModel with Store {
   final visibleAutomationHandles =
       CanvasAnnotationSet<AutomationHandleAnnotation>();
 
+  double? _renderCacheDevicePixelRatio;
+
   // Project model IDs are non-negative. Phantom rows are arranger-only view
   // state, so keep them in a separate negative ID range.
   final _phantomAutomationLaneIdByParentTrackId = <Id, Id>{};
@@ -271,6 +273,13 @@ abstract class _ArrangerViewModel with Store {
       project,
       this as ArrangerViewModel,
     );
+  }
+
+  void ensureRenderCachesForDevicePixelRatio(double devicePixelRatio) {
+    if (_renderCacheDevicePixelRatio != devicePixelRatio) {
+      _renderCacheDevicePixelRatio = devicePixelRatio;
+      project.sequence.scheduleClipTitleTextureAtlasUpdate();
+    }
   }
 
   /// Total height of the entire scrollable region

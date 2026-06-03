@@ -165,6 +165,9 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
 
     if (arrangement == null) return const SizedBox();
 
+    final devicePixelRatio = View.of(context).devicePixelRatio;
+    viewModel.ensureRenderCachesForDevicePixelRatio(devicePixelRatio);
+
     return CustomPaint(
       painter: ArrangerContentPainter(
         repaint: repaint,
@@ -173,7 +176,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
         project: project,
         arrangement: arrangement,
         viewModel: viewModel,
-        devicePixelRatio: View.of(context).devicePixelRatio,
+        devicePixelRatio: devicePixelRatio,
       ),
       isComplex: true,
     );
