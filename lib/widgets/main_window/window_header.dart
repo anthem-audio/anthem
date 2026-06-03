@@ -492,6 +492,16 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
     );
     final helpMenuDef = MenuDef(
       children: [
+        if (!kIsWeb)
+          AnthemMenuItem(
+            text: 'Export logs...',
+            onSelected: () {
+              mainWindowController.exportLogs(
+                dialogController: dialogController,
+              );
+            },
+          ),
+        if (!kIsWeb) Separator(),
         AnthemMenuItem(
           text: 'About...',
           onSelected: () {

@@ -18,7 +18,9 @@
 */
 
 import 'dart:async';
+import 'dart:ui';
 
+import 'package:anthem/helpers/logging/anthem_logging.dart';
 import 'package:anthem/licenses.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
@@ -30,15 +32,30 @@ import 'package:flutter/material.dart';
 import 'package:pointer_lock/pointer_lock.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:logging/logging.dart';
 
 import 'model/store.dart';
 import 'widgets/main_window/main_window.dart';
 import 'web_init_stub.dart' if (dart.library.js_interop) 'web_init.dart';
 
 GlobalKey mainWindowKey = GlobalKey();
+final _log = Logger('app');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AnthemLogManager.instance.initialize();
+
+  FlutterError.onError = (details) {
+    _log.severe(details.exceptionAsString(), details.exception, details.stack);
+    FlutterError.presentError(details);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stackTrace) {
+    _log.severe('Unhandled platform error', error, stackTrace);
+    return false;
+  };
+
+  _log.info('Starting Anthem app.');
   await pointerLock.ensureInitialized();
 
   addLicenses();

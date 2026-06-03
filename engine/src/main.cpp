@@ -41,13 +41,40 @@ private:
     // juce::Logger::writeToLog("change detected");
   }
 
-  void initializeLogging() {
+  juce::String getEngineIdForLogging(const juce::String& commandLineParameters) {
+    auto spaceIndex = commandLineParameters.indexOfChar(' ');
+    if (spaceIndex == -1) {
+      return "unknown";
+    }
+
+    auto engineId = commandLineParameters.substring(spaceIndex + 1).trim();
+    auto trailingSpaceIndex = engineId.indexOfChar(' ');
+    if (trailingSpaceIndex != -1) {
+      engineId = engineId.substring(0, trailingSpaceIndex);
+    }
+
+    return engineId.isEmpty() ? "unknown" : engineId;
+  }
+
+  std::unique_ptr<juce::FileLogger> createFileLogger(const juce::String& engineId) {
+    auto logSessionDir =
+        juce::SystemStats::getEnvironmentVariable("ANTHEM_LOG_SESSION_DIR", "");
+
+    if (logSessionDir.isNotEmpty()) {
+      auto logFile = juce::File(logSessionDir).getChildFile("engine-" + engineId + ".log");
+      return std::make_unique<juce::FileLogger>(logFile, "Anthem Engine", 0);
+    }
+
+    return std::unique_ptr<juce::FileLogger>(juce::FileLogger::createDefaultAppLogger(
+        "Anthem", "AnthemEngine.log", "Anthem Engine", static_cast<juce::int64>(1024) * 1024));
+  }
+
+  void initializeLogging(const juce::String& commandLineParameters) {
 #ifdef __EMSCRIPTEN__
     logger = std::make_unique<ConsoleLogger>();
     juce::Logger::setCurrentLogger(logger.get());
 #else
-    auto fileLogger = std::unique_ptr<juce::FileLogger>(juce::FileLogger::createDefaultAppLogger(
-        "Anthem", "AnthemEngine.log", "Anthem Engine", static_cast<juce::int64>(1024) * 1024));
+    auto fileLogger = createFileLogger(getEngineIdForLogging(commandLineParameters));
 
     if (fileLogger == nullptr) {
       juce::Logger::writeToLog("Failed to create Anthem engine file logger.");
@@ -56,7 +83,8 @@ private:
 
     const auto logFilePath = fileLogger->getLogFile().getFullPathName();
 #if !defined(NDEBUG)
-    logger = std::make_unique<ConsoleLogger>();
+    logger = std::make_unique<TeeLogger>(
+        std::move(fileLogger), std::make_unique<ConsoleLogger>());
 #else
     logger = std::move(fileLogger);
 #endif
@@ -106,8 +134,8 @@ public:
     // This might not work
   }
 
-  void initialise(const juce::String& /*commandLineParameters*/) override {
-    initializeLogging();
+  void initialise(const juce::String& commandLineParameters) override {
+    initializeLogging(commandLineParameters);
 
     // wow, C++ sure is weird
     const char* anthemSplash = R"V0G0N(

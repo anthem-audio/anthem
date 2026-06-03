@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/helpers/logging/anthem_logging.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -32,6 +33,9 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' hide TextBox;
+import 'package:logging/logging.dart';
+
+final _log = Logger('main_window_controller');
 
 class CursorOverrideHandle {
   final MainWindowController _controller;
@@ -244,6 +248,57 @@ class MainWindowController {
       project.isDirty = false;
       project.filePath = path;
       return true;
+    }
+  }
+
+  Future<bool> exportLogs({required DialogController dialogController}) async {
+    if (kIsWeb) {
+      return false;
+    }
+
+    final timestamp = DateTime.now()
+        .toUtc()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .replaceAll('.', '-');
+
+    var path = await FilePicker.saveFile(
+      dialogTitle: 'Export Anthem logs',
+      fileName: 'anthem-logs-$timestamp.zip',
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+    );
+
+    if (path == null) {
+      return false;
+    }
+
+    if (!path.toLowerCase().endsWith('.zip')) {
+      path = '$path.zip';
+    }
+
+    try {
+      final exportedPath = await AnthemLogManager.instance.exportLogs(
+        outputPath: path,
+      );
+
+      dialogController.showTextDialog(
+        title: 'Export logs',
+        text: 'Saved logs to:\n\n$exportedPath',
+        buttons: [DialogButton.ok()],
+      );
+
+      return true;
+    } catch (error, stackTrace) {
+      _log.warning('Could not export logs.', error, stackTrace);
+
+      dialogController.showTextDialog(
+        title: 'Export logs',
+        text: 'Could not export logs:\n\n$error',
+        buttons: [DialogButton.ok()],
+      );
+
+      return false;
     }
   }
 

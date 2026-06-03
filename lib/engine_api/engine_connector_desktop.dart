@@ -23,6 +23,7 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_socket_server.dart';
+import 'package:anthem/helpers/logging/anthem_logging.dart';
 
 part 'engine_connector_desktop.debug_engine_path.g.dart';
 
@@ -140,6 +141,8 @@ class EngineConnector extends EngineConnectorBase {
       return false;
     }
 
+    final engineEnvironment = AnthemLogManager.instance.childProcessEnvironment;
+
     // If we're in debug mode, start with a command line window so we can see logging
     if (kDebugMode) {
       if (Platform.isWindows) {
@@ -147,7 +150,7 @@ class EngineConnector extends EngineConnectorBase {
           await Process.start('powershell', [
             '-Command',
             '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}',
-          ]),
+          ], environment: engineEnvironment),
         );
       } else {
         _setEngineProcess(
@@ -157,6 +160,7 @@ class EngineConnector extends EngineConnectorBase {
             // There's no singular way to start in a shell window on Linux, so
             // this mirrors the engine output to our standard out.
             mode: ProcessStartMode.inheritStdio,
+            environment: engineEnvironment,
           ),
         );
       }
@@ -171,6 +175,7 @@ class EngineConnector extends EngineConnectorBase {
           mode: Platform.isWindows
               ? ProcessStartMode.inheritStdio
               : ProcessStartMode.normal,
+          environment: engineEnvironment,
         ),
       );
     }
