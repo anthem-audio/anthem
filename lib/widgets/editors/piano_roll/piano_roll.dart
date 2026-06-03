@@ -209,7 +209,7 @@ class _PianoRollHeader extends StatelessWidget {
   }
 }
 
-class _PianoRollContent extends StatefulObserverWidget {
+class _PianoRollContent extends StatefulWidget {
   const _PianoRollContent();
 
   @override
@@ -246,14 +246,18 @@ class _PianoRollContentState extends State<_PianoRollContent>
               _pianoRollVerticalScrollbarWidth,
         );
 
-        return TimeRangeAnimationBuilder(
-          viewport: viewModel.timeRangeViewport,
-          builder: (context, timeRangeAnimation) {
-            return _buildContentWithTimeRangeAnimation(
-              context,
-              project,
-              viewModel,
-              timeRangeAnimation,
+        return Observer(
+          builder: (context) {
+            return TimeRangeAnimationBuilder(
+              viewport: viewModel.timeRangeViewport,
+              builder: (context, timeRangeAnimation) {
+                return _buildContentWithTimeRangeAnimation(
+                  context,
+                  project,
+                  viewModel,
+                  timeRangeAnimation,
+                );
+              },
             );
           },
         );

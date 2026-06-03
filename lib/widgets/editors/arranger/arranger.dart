@@ -569,15 +569,19 @@ class _ArrangerContentState extends State<_ArrangerContent>
               _arrangerCanvasSeparatorWidth,
         );
 
-        return TimeRangeAnimationBuilder(
-          viewport: viewModel.timeRangeViewport,
-          onRenderedTimeRangeChanged: _handleRenderedTimeRangeChanged,
-          builder: (context, timeRangeAnimation) {
-            return _buildContentWithTimeRangeAnimation(
-              context,
-              project,
-              timeRangeAnimation,
-              verticalScrollPositionAnimItem.animation,
+        return Observer(
+          builder: (context) {
+            return TimeRangeAnimationBuilder(
+              viewport: viewModel.timeRangeViewport,
+              onRenderedTimeRangeChanged: _handleRenderedTimeRangeChanged,
+              builder: (context, timeRangeAnimation) {
+                return _buildContentWithTimeRangeAnimation(
+                  context,
+                  project,
+                  timeRangeAnimation,
+                  verticalScrollPositionAnimItem.animation,
+                );
+              },
             );
           },
         );
@@ -713,19 +717,23 @@ class _ArrangerCanvas extends StatelessWidget {
       decoration: BoxDecoration(color: AnthemTheme.grid.backgroundLight),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final grid = Positioned.fill(
-            child: CustomPaint(
-              painter: ArrangerBackgroundPainter(
-                repaint: renderedViewRepaint,
-                activeArrangement: project
-                    .sequence
-                    .arrangements[project.sequence.activeArrangementID],
-                project: project,
-                verticalScrollPositionAnimation:
-                    verticalScrollPositionAnimation,
-                timeRangeAnimation: timeRangeAnimation,
-              ),
-            ),
+          final grid = Observer(
+            builder: (context) {
+              return Positioned.fill(
+                child: CustomPaint(
+                  painter: ArrangerBackgroundPainter(
+                    repaint: renderedViewRepaint,
+                    activeArrangement: project
+                        .sequence
+                        .arrangements[project.sequence.activeArrangementID],
+                    project: project,
+                    verticalScrollPositionAnimation:
+                        verticalScrollPositionAnimation,
+                    timeRangeAnimation: timeRangeAnimation,
+                  ),
+                ),
+              );
+            },
           );
 
           final clipsContainer = Observer(
@@ -780,12 +788,16 @@ class _ArrangerCanvas extends StatelessWidget {
             },
           );
 
-          final playhead = Positioned.fill(
-            child: PlayheadLine(
-              timeRangeAnimation: timeRangeAnimation,
-              isVisible: true,
-              editorActiveSequenceId: project.sequence.activeArrangementID,
-            ),
+          final playhead = Observer(
+            builder: (context) {
+              return Positioned.fill(
+                child: PlayheadLine(
+                  timeRangeAnimation: timeRangeAnimation,
+                  isVisible: true,
+                  editorActiveSequenceId: project.sequence.activeArrangementID,
+                ),
+              );
+            },
           );
 
           return ArrangerEventListener(
