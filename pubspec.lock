@@ -619,8 +619,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "282596d"
-      resolved-ref: "282596d3a3cf53b464b80ce7c12b6984cf51615c"
+      ref: fix-macos-event-deltas
+      resolved-ref: c8a30731040cd67830b51952f23df0992bb6513b
       url: "https://github.com/josh-audio/pointer_lock.git"
     source: git
     version: "0.0.2"
