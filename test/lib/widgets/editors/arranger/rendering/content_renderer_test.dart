@@ -19,7 +19,6 @@
 
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/content_renderer.dart';
@@ -37,17 +36,10 @@ ClipRenderInfo _makeClip({
     idAllocator: ProjectEntityIdAllocator.test(() => id + 1000),
     name: '$id',
   );
-  final clip = ClipModel(
-    idAllocator: ProjectEntityIdAllocator.test(() => id),
-    patternId: pattern.id,
-    trackId: trackId,
-    offset: offset,
-    timeView: TimeViewModel(start: 0, end: width),
-  );
-
   return ClipRenderInfo(
     pattern: pattern,
-    clip: clip,
+    clipId: id,
+    trackId: trackId,
     hasTimingOverride: hasTimingOverride,
     clipOffset: offset,
     clipTimeViewStart: 0,

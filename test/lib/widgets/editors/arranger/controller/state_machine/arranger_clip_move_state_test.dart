@@ -1,3 +1,4 @@
+import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 
 import 'arranger_state_machine_test_helpers.dart';
@@ -23,6 +24,40 @@ void main() {
       arrangement.clips[clip.id] = clip;
       fixture.viewModel.visibleClips.add(rect: rect, metadata: clip.id);
       return clip;
+    }
+
+    PatternModel addPattern({required String name}) {
+      final pattern = PatternModel(
+        idAllocator: fixture.project.idAllocator,
+        name: name,
+      );
+      fixture.project.sequence.patterns[pattern.id] = pattern;
+      return pattern;
+    }
+
+    ClipModel addClipForPattern({
+      required PatternModel pattern,
+      required int offset,
+      required Id trackId,
+      required Rect rect,
+      TimeViewModel? timeView,
+    }) {
+      final arrangementId = fixture.project.sequence.activeArrangementID!;
+      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final clip = ClipModel(
+        idAllocator: fixture.project.idAllocator,
+        patternId: pattern.id,
+        trackId: trackId,
+        offset: offset,
+        timeView: timeView ?? TimeViewModel(start: 0, end: 96),
+      );
+      arrangement.clips[clip.id] = clip;
+      fixture.viewModel.visibleClips.add(rect: rect, metadata: clip.id);
+      return clip;
+    }
+
+    void pressShift() {
+      fixture.stateMachine.modifierPressed(ArrangerModifierKey.shift);
     }
 
     void startClipMove({
@@ -444,6 +479,193 @@ void main() {
       },
     );
 
+    test(
+      'shift-dragging selected linked clips duplicates them with a shared cloned pattern',
+      () async {
+        final pattern = addPattern(name: 'Linked');
+        final firstClip = addClipForPattern(
+          pattern: pattern,
+          offset: 100,
+          trackId: TrackIds.a,
+          rect: const Rect.fromLTWH(100, 10, 80, 40),
+        );
+        final secondClip = addClipForPattern(
+          pattern: pattern,
+          offset: 240,
+          trackId: TrackIds.b,
+          rect: const Rect.fromLTWH(260, 70, 80, 40),
+        );
+        final originalPatternIds = fixture.project.sequence.patterns.keys
+            .toSet();
+
+        fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+        pressShift();
+        startClipMove(movePos: const Offset(260, 20));
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+        expect(fixture.viewModel.previewClips, hasLength(2));
+        expect(
+          fixture.project.sequence.patterns.keys.toSet(),
+          equals(originalPatternIds),
+        );
+
+        final previewClipIds = fixture.viewModel.previewClips.keys.toSet();
+        expect(fixture.viewModel.selectedClips.toSet(), equals(previewClipIds));
+
+        final previewPatternIds = fixture.viewModel.previewClips.values
+            .map((preview) => preview.pattern.id)
+            .toSet();
+        expect(previewPatternIds, hasLength(1));
+        expect(previewPatternIds.single, isNot(pattern.id));
+        expect(fixture.viewModel.clipTimingOverrides, isEmpty);
+
+        final expectedOffsetsByClipId = {
+          for (final entry in fixture.viewModel.previewClips.entries)
+            entry.key: entry.value.offset,
+        };
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect(fixture.viewModel.previewClips, isEmpty);
+        expect(fixture.viewModel.selectedClips.toSet(), equals(previewClipIds));
+        expect(firstClip.offset, 100);
+        expect(secondClip.offset, 240);
+        expect(firstClip.patternId, pattern.id);
+        expect(secondClip.patternId, pattern.id);
+
+        final clonedClips = previewClipIds
+            .map((clipId) => fixture.arrangement.clips[clipId]!)
+            .toList(growable: false);
+        final clonedPatternIds = clonedClips
+            .map((clip) => clip.patternId)
+            .toSet();
+        expect(clonedPatternIds, hasLength(1));
+        expect(clonedPatternIds.single, isNot(pattern.id));
+        expect(
+          fixture.project.sequence.patterns.keys.toSet().difference(
+            originalPatternIds,
+          ),
+          equals(clonedPatternIds),
+        );
+        for (final clonedClip in clonedClips) {
+          expect(clonedClip.offset, expectedOffsetsByClipId[clonedClip.id]);
+        }
+
+        fixture.project.undo();
+
+        expect(
+          fixture.arrangement.clips.keys.toSet(),
+          equals({firstClip.id, secondClip.id}),
+        );
+        expect(
+          fixture.project.sequence.patterns.keys.toSet(),
+          equals(originalPatternIds),
+        );
+        expect(firstClip.offset, 100);
+        expect(secondClip.offset, 240);
+      },
+    );
+
+    test(
+      'shift-dragging one linked clip clones only that clip into a new pattern',
+      () async {
+        final pattern = addPattern(name: 'Linked');
+        final draggedClip = addClipForPattern(
+          pattern: pattern,
+          offset: 100,
+          trackId: TrackIds.a,
+          rect: const Rect.fromLTWH(100, 10, 80, 40),
+        );
+        final linkedClip = addClipForPattern(
+          pattern: pattern,
+          offset: 240,
+          trackId: TrackIds.b,
+          rect: const Rect.fromLTWH(260, 70, 80, 40),
+        );
+        final originalPatternIds = fixture.project.sequence.patterns.keys
+            .toSet();
+
+        pressShift();
+        startClipMove(movePos: const Offset(260, 20));
+
+        expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+        expect(fixture.viewModel.previewClips, hasLength(1));
+        final previewClipId = fixture.viewModel.previewClips.keys.single;
+        final expectedOffset =
+            fixture.viewModel.previewClips[previewClipId]!.offset;
+        expect(fixture.viewModel.clipTimingOverrides, isEmpty);
+
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final clonedClip = fixture.arrangement.clips[previewClipId]!;
+        expect(draggedClip.offset, 100);
+        expect(linkedClip.offset, 240);
+        expect(draggedClip.patternId, pattern.id);
+        expect(linkedClip.patternId, pattern.id);
+        expect(clonedClip.offset, expectedOffset);
+        expect(clonedClip.patternId, isNot(pattern.id));
+        expect(
+          fixture.viewModel.selectedClips.toSet(),
+          equals({clonedClip.id}),
+        );
+        expect(
+          fixture.project.sequence.patterns.keys.toSet().difference(
+            originalPatternIds,
+          ),
+          equals({clonedClip.patternId}),
+        );
+
+        fixture.project.undo();
+
+        expect(
+          fixture.arrangement.clips.keys.toSet(),
+          equals({draggedClip.id, linkedClip.id}),
+        );
+        expect(
+          fixture.project.sequence.patterns.keys.toSet(),
+          equals(originalPatternIds),
+        );
+      },
+    );
+
+    test('pointer cancel does not commit shift-drag duplicated clips', () {
+      final pattern = addPattern(name: 'Pattern');
+      final clip = addClipForPattern(
+        pattern: pattern,
+        offset: 100,
+        trackId: TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+      );
+      final originalClipIds = fixture.arrangement.clips.keys.toSet();
+      final originalPatternIds = fixture.project.sequence.patterns.keys.toSet();
+
+      pressShift();
+      startClipMove();
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+      expect(fixture.viewModel.previewClips, isNotEmpty);
+
+      fixture.pointerUp(
+        const PointerCancelEvent(pointer: 1, position: Offset(220, 100)),
+      );
+
+      expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
+      expect(clip.offset, 100);
+      expect(clip.patternId, pattern.id);
+      expect(fixture.viewModel.previewClips, isEmpty);
+      expect(fixture.viewModel.clipTimingOverrides, isEmpty);
+      expect(fixture.arrangement.clips.keys.toSet(), equals(originalClipIds));
+      expect(
+        fixture.project.sequence.patterns.keys.toSet(),
+        equals(originalPatternIds),
+      );
+    });
+
     test('pointer cancel does not commit clip move', () {
       final clip = addClip(
         offset: 100,
@@ -469,4 +691,10 @@ void main() {
       expect(clip.trackId, TrackIds.a);
     });
   });
+}
+
+extension on ArrangerStateMachineTestFixture {
+  ArrangementModel get arrangement {
+    return project.sequence.arrangements[project.sequence.activeArrangementID]!;
+  }
 }

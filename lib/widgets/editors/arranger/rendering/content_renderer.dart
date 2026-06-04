@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/theme.dart';
@@ -343,6 +344,74 @@ class ArrangerContentPainter extends CustomPainterObserver {
     return viewModel.trackPositionCalculator.tryRowIdToIndex(rowId);
   }
 
+  ClipRenderInfo? _buildClipRenderInfo({
+    required Id clipId,
+    required Id trackId,
+    required PatternModel pattern,
+    required bool hasTimingOverride,
+    required int clipOffset,
+    required int clipTimeViewStart,
+    required int clipTimeViewEnd,
+    required Size size,
+  }) {
+    if (clipTimeViewEnd <= clipTimeViewStart) {
+      return null;
+    }
+
+    final clipWidth = clipTimeViewEnd - clipTimeViewStart;
+
+    final x = timeToPixels(
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      viewPixelWidth: size.width,
+      time: clipOffset.toDouble(),
+    );
+    final width =
+        timeToPixels(
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          viewPixelWidth: size.width,
+          time: clipOffset.toDouble() + clipWidth,
+        ) -
+        x +
+        1;
+
+    if (x > size.width || x + width < 0) return null;
+
+    final trackIndex = viewModel.trackPositionCalculator.tryTrackIdToIndex(
+      trackId,
+    );
+    if (trackIndex == null) return null;
+
+    final y = _getTrackPosition(trackIndex) - 1;
+    final trackHeight =
+        calculateTrackHeight(
+          viewModel.baseTrackHeight,
+          viewModel.rowHeightModifier(trackId),
+        ) +
+        1;
+
+    if (y > size.height || y + trackHeight < 0) return null;
+
+    return ClipRenderInfo(
+      pattern: pattern,
+      clipId: clipId,
+      trackId: trackId,
+      hasTimingOverride: hasTimingOverride,
+      clipOffset: clipOffset,
+      clipTimeViewStart: clipTimeViewStart,
+      clipTimeViewEnd: clipTimeViewEnd,
+      x: x,
+      y: y,
+      width: width,
+      height: trackHeight,
+      selected: viewModel.selectedClips.contains(clipId),
+      pressed: viewModel.pressedClip == clipId,
+      hovered: viewModel.hoveredClip == clipId,
+      showAutomationHandles: viewModel.clipWithAutomationHandles == clipId,
+    );
+  }
+
   /// Paints the clips onto the arranger canvas.
   void _paintClips(Canvas canvas, Size size) {
     viewModel.visibleClips.clear();
@@ -370,81 +439,45 @@ class ArrangerContentPainter extends CustomPainterObserver {
     // Note that if we ever disallow overlapping clips in the arranger, then we
     // could simplify this logic.
 
-    final allClips = arrangement.clips.values
-        .map<ClipRenderInfo?>((clip) {
-          final trackId = clip.trackId;
+    final realClips = arrangement.clips.values.map<ClipRenderInfo?>((clip) {
+      final pattern = project.sequence.patterns[clip.patternId];
+      if (pattern == null) {
+        return null;
+      }
 
-          final pattern = project.sequence.patterns[clip.patternId]!;
+      final baseClipTimeViewStart = clip.timeView?.start ?? 0;
+      final baseClipTimeViewEnd = baseClipTimeViewStart + clip.width;
+      final clipTimingOverride = viewModel.clipTimingOverrides[clip.id];
 
-          final baseClipTimeViewStart = clip.timeView?.start ?? 0;
-          final baseClipTimeViewEnd = baseClipTimeViewStart + clip.width;
+      return _buildClipRenderInfo(
+        clipId: clip.id,
+        trackId: clip.trackId,
+        pattern: pattern,
+        hasTimingOverride: clipTimingOverride != null,
+        clipOffset: clipTimingOverride?.offset ?? clip.offset,
+        clipTimeViewStart:
+            clipTimingOverride?.timeViewStart ?? baseClipTimeViewStart,
+        clipTimeViewEnd: clipTimingOverride?.timeViewEnd ?? baseClipTimeViewEnd,
+        size: size,
+      );
+    }).nonNulls;
 
-          // These are overrides for user interaction. When dragging to move or
-          // resize a clip or group of clips, the clip timing overrides will be
-          // set. This allows us to move the clips around in just the view
-          // layer, and only mutate the actual project model once we have
-          // "committed" the change.
-          final clipTimingOverride = viewModel.clipTimingOverrides[clip.id];
+    final previewClips = viewModel.previewClips.values.map<ClipRenderInfo?>((
+      preview,
+    ) {
+      return _buildClipRenderInfo(
+        clipId: preview.clipId,
+        trackId: preview.trackId,
+        pattern: preview.pattern,
+        hasTimingOverride: true,
+        clipOffset: preview.offset,
+        clipTimeViewStart: preview.timeViewStart,
+        clipTimeViewEnd: preview.timeViewEnd,
+        size: size,
+      );
+    }).nonNulls;
 
-          final clipOffset = clipTimingOverride?.offset ?? clip.offset;
-          final clipTimeViewStart =
-              clipTimingOverride?.timeViewStart ?? baseClipTimeViewStart;
-          final clipTimeViewEnd =
-              clipTimingOverride?.timeViewEnd ?? baseClipTimeViewEnd;
-          final clipWidth = clipTimeViewEnd - clipTimeViewStart;
-
-          final x = timeToPixels(
-            timeViewStart: timeViewStart,
-            timeViewEnd: timeViewEnd,
-            viewPixelWidth: size.width,
-            time: clipOffset.toDouble(),
-          );
-          final width =
-              timeToPixels(
-                timeViewStart: timeViewStart,
-                timeViewEnd: timeViewEnd,
-                viewPixelWidth: size.width,
-                time: clipOffset.toDouble() + clipWidth,
-              ) -
-              x +
-              1;
-
-          if (x > size.width || x + width < 0) return null;
-
-          final trackIndex = viewModel.trackPositionCalculator
-              .tryTrackIdToIndex(trackId);
-          if (trackIndex == null) return null;
-
-          final y = _getTrackPosition(trackIndex) - 1;
-          final trackHeight =
-              calculateTrackHeight(
-                viewModel.baseTrackHeight,
-                viewModel.rowHeightModifier(trackId),
-              ) +
-              1;
-
-          if (y > size.height || y + trackHeight < 0) return null;
-
-          return ClipRenderInfo(
-            pattern: pattern,
-            clip: clip,
-            hasTimingOverride: clipTimingOverride != null,
-            clipOffset: clipOffset,
-            clipTimeViewStart: clipTimeViewStart,
-            clipTimeViewEnd: clipTimeViewEnd,
-            x: x,
-            y: y,
-            width: width,
-            height: trackHeight,
-            selected: viewModel.selectedClips.contains(clip.id),
-            pressed: viewModel.pressedClip == clip.id,
-            hovered: viewModel.hoveredClip == clip.id,
-            showAutomationHandles:
-                viewModel.clipWithAutomationHandles == clip.id,
-          );
-        })
-        .nonNulls
-        .toList();
+    final allClips = realClips.followedBy(previewClips).toList();
 
     final clipLayers = buildClipLayersForPainting(allClips);
 

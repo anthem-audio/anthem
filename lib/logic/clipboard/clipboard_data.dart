@@ -19,10 +19,10 @@
 
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/arranger_clip_clone.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
-import 'package:anthem_codegen/include.dart';
 
 part 'arranger_clipboard_content.dart';
 part 'notes_clipboard_content.dart';

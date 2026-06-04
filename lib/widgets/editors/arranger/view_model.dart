@@ -22,6 +22,7 @@ import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart' show TimeViewModel;
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
@@ -50,6 +51,38 @@ class ClipTimingOverride {
     required this.timeViewStart,
     required this.timeViewEnd,
   }) : assert(timeViewEnd > timeViewStart);
+}
+
+class ArrangerClipPreview {
+  final Id clipId;
+  final Id sourceClipId;
+  final Id trackId;
+  final int offset;
+  final PatternModel pattern;
+  final int timeViewStart;
+  final int timeViewEnd;
+
+  const ArrangerClipPreview({
+    required this.clipId,
+    required this.sourceClipId,
+    required this.trackId,
+    required this.offset,
+    required this.pattern,
+    required this.timeViewStart,
+    required this.timeViewEnd,
+  }) : assert(timeViewEnd > timeViewStart);
+
+  ArrangerClipPreview copyWith({int? offset}) {
+    return ArrangerClipPreview(
+      clipId: clipId,
+      sourceClipId: sourceClipId,
+      trackId: trackId,
+      offset: offset ?? this.offset,
+      pattern: pattern,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+  }
 }
 
 class ArrangerHitTestResult {
@@ -200,6 +233,8 @@ abstract class _ArrangerViewModel with Store {
 
   final ObservableMap<Id, ClipTimingOverride> clipTimingOverrides =
       ObservableMap();
+
+  final ObservableMap<Id, ArrangerClipPreview> previewClips = ObservableMap();
 
   /// The clip that is currently being pressed, if any.
   @observable

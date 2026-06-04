@@ -19,94 +19,35 @@
 
 part of 'clipboard_data.dart';
 
-typedef ReconstructedArrangerClipboardContent = ({
-  List<PatternModel> patterns,
-  List<ClipModel> clips,
-});
+typedef ReconstructedArrangerClipboardContent = ReconstructedArrangerClipBatch;
 
 final class ArrangerClipboardContent extends ClipboardContent {
-  final int anchorOffset;
-  final List<Map<String, dynamic>> serializedClips;
-  final Map<Id, Map<String, dynamic>> serializedPatternsBySourceId;
+  final SerializedArrangerClipBatch _clipBatch;
+
+  int get anchorOffset => _clipBatch.anchorOffset;
+  List<Map<String, dynamic>> get serializedClips => _clipBatch.serializedClips;
+  Map<Id, Map<String, dynamic>> get serializedPatternsBySourceId =>
+      _clipBatch.serializedPatternsBySourceId;
 
   ArrangerClipboardContent({
-    required this.anchorOffset,
+    required int anchorOffset,
     required Iterable<ClipModel> clips,
     required Iterable<PatternModel> patterns,
-  }) : serializedClips = clips.map((clip) => clip.toJson()).toList(),
-       serializedPatternsBySourceId = {
-         for (final pattern in patterns) pattern.id: pattern.toJson(),
-       };
+  }) : _clipBatch = SerializedArrangerClipBatch(
+         anchorOffset: anchorOffset,
+         clips: clips,
+         patterns: patterns,
+       );
 
   ReconstructedArrangerClipboardContent reconstruct({
     required ProjectEntityIdAllocator idAllocator,
     required int newAnchorOffset,
     required Set<Id> availableTrackIds,
   }) {
-    final patternIdBySourceId = <Id, Id>{};
-    final reconstructedPatternsBySourceId = <Id, PatternModel>{};
-
-    for (final entry in serializedPatternsBySourceId.entries) {
-      final pattern = PatternModel.fromJson(entry.value);
-      pattern.id = idAllocator.allocateId();
-      _remapPatternIds(pattern, idAllocator);
-
-      patternIdBySourceId[entry.key] = pattern.id;
-      reconstructedPatternsBySourceId[entry.key] = pattern;
-    }
-
-    final usedPatternIds = <Id>{};
-    final clips = <ClipModel>[];
-
-    for (final clipJson in serializedClips) {
-      final clip = ClipModel.fromJson(clipJson);
-      if (!availableTrackIds.contains(clip.trackId)) {
-        continue;
-      }
-
-      final sourcePatternId = clip.patternId;
-      final newPatternId = patternIdBySourceId[sourcePatternId];
-      if (newPatternId == null) {
-        continue;
-      }
-
-      clip.id = idAllocator.allocateSequenceClipId();
-      clip.patternId = newPatternId;
-      clip.offset = clip.offset - anchorOffset + newAnchorOffset;
-
-      usedPatternIds.add(newPatternId);
-      clips.add(clip);
-    }
-
-    final patterns = reconstructedPatternsBySourceId.values
-        .where((pattern) => usedPatternIds.contains(pattern.id))
-        .toList(growable: false);
-
-    return (patterns: patterns, clips: clips);
-  }
-
-  void _remapPatternIds(
-    PatternModel pattern,
-    ProjectEntityIdAllocator idAllocator,
-  ) {
-    final notes = pattern.notes.values.toList(growable: false);
-    final remappedNotes = AnthemObservableMap<Id, NoteModel>();
-    for (final note in notes) {
-      note.id = idAllocator.allocateSequenceNoteId();
-      remappedNotes[note.id] = note;
-    }
-    pattern.notes = remappedNotes;
-
-    pattern.noteOverrides = AnthemObservableMap<Id, PatternNoteOverrideModel>();
-    pattern.previewNotes = AnthemObservableMap<Id, NoteModel>();
-    pattern.loopPoints = null;
-
-    for (final point in pattern.automation.points) {
-      point.id = idAllocator.allocateId();
-    }
-
-    for (final change in pattern.timeSignatureChanges) {
-      change.id = idAllocator.allocateId();
-    }
+    return _clipBatch.reconstruct(
+      idAllocator: idAllocator,
+      newAnchorOffset: newAnchorOffset,
+      availableTrackIds: availableTrackIds,
+    );
   }
 }

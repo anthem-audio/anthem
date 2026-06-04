@@ -146,7 +146,7 @@ class ArrangerAutomationTensionChangeState extends _ArrangerLeafState {
       return;
     }
 
-    final resolved = _resolveCurrentPoint(target);
+    final resolved = _resolveCurrentPoint();
     if (resolved == null) {
       return;
     }
@@ -161,9 +161,12 @@ class ArrangerAutomationTensionChangeState extends _ArrangerLeafState {
         );
   }
 
-  ({AutomationPointModel point, int pointIndex})? _resolveCurrentPoint(
-    _AutomationTensionChangeTarget target,
-  ) {
+  ({AutomationPointModel point, int pointIndex})? _resolveCurrentPoint() {
+    final target = _target;
+    if (target == null) {
+      return null;
+    }
+
     final pattern = project.sequence.patterns[target.patternId];
     if (pattern == null) {
       return null;
@@ -203,7 +206,7 @@ class ArrangerAutomationTensionChangeState extends _ArrangerLeafState {
       return;
     }
 
-    final resolved = _resolveCurrentPoint(target);
+    final resolved = _resolveCurrentPoint();
     if (resolved == null) {
       return;
     }
@@ -230,7 +233,7 @@ class ArrangerAutomationTensionChangeState extends _ArrangerLeafState {
       return;
     }
 
-    final resolved = _resolveCurrentPoint(target);
+    final resolved = _resolveCurrentPoint();
     if (resolved == null) {
       return;
     }

@@ -20,8 +20,10 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/arranger_clip_clone.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_automation_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';

@@ -74,7 +74,8 @@ class ClipRenderInfo {
 
   ClipRenderInfo({
     required this.pattern,
-    required ClipModel clip,
+    required this.clipId,
+    required this.trackId,
     required this.hasTimingOverride,
     required this.clipOffset,
     required int clipTimeViewStart,
@@ -88,8 +89,6 @@ class ClipRenderInfo {
     required this.hovered,
     this.showAutomationHandles = false,
   }) : assert(clipTimeViewEnd > clipTimeViewStart),
-       clipId = clip.id,
-       trackId = clip.trackId,
        clipWidth = clipTimeViewEnd - clipTimeViewStart,
        clipTimeViewStart = clipTimeViewStart.toDouble(),
        clipTimeViewEnd = clipTimeViewEnd.toDouble();

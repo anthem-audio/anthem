@@ -26,6 +26,8 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
   /// The IDs of clips that are being moved by this operation.
   Set<Id>? _movingClipIds;
 
+  ReconstructedArrangerClipBatch? _duplicatedClipBatch;
+
   /// At the start of the drag, this represents the distance between the
   /// left-most selected clip and the start of the arrangement.
   ///
@@ -98,8 +100,17 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
     }
 
     final movingClipIds = _movingClipIds;
+    if (movingClipIds == null) {
+      return;
+    }
+
+    if (_duplicatedClipBatch != null) {
+      _commitDuplicatedMoveSession();
+      return;
+    }
+
     final arrangementData = arrangerStateMachine.activeArrangementWithClips();
-    if (movingClipIds == null || arrangementData == null) {
+    if (arrangementData == null) {
       return;
     }
 
@@ -138,11 +149,204 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
     );
   }
 
+  void _commitDuplicatedMoveSession() {
+    final duplicatedClipBatch = _duplicatedClipBatch;
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
+    if (duplicatedClipBatch == null || arrangementData == null) {
+      return;
+    }
+
+    final arrangement = arrangementData.arrangement;
+    final previewClips = viewModel.previewClips.nonObservableInner;
+    final clipsToCommit = duplicatedClipBatch.clips
+        .where((clip) => previewClips.containsKey(clip.id))
+        .toList(growable: false);
+
+    if (clipsToCommit.isEmpty) {
+      return;
+    }
+
+    for (final clip in clipsToCommit) {
+      clip.offset = previewClips[clip.id]!.offset;
+    }
+
+    final usedPatternIds = clipsToCommit.map((clip) => clip.patternId).toSet();
+    final patternsToCommit = duplicatedClipBatch.patterns
+        .where((pattern) => usedPatternIds.contains(pattern.id))
+        .toList(growable: false);
+
+    project.startUndoGroup();
+    for (final pattern in patternsToCommit) {
+      project.execute(PatternAddRemoveCommand.add(pattern: pattern));
+    }
+    for (final clip in clipsToCommit) {
+      project.execute(
+        ClipAddRemoveCommand.add(arrangementID: arrangement.id, clip: clip),
+      );
+    }
+    project.commitUndoGroup();
+  }
+
+  ({int start, int end}) _timeViewBoundsForClip(ClipModel clip) {
+    final timeViewStart = clip.timeView?.start ?? 0;
+    final timeViewEnd = clip.timeView?.end ?? clip.width;
+    assert(timeViewEnd > timeViewStart);
+
+    return (start: timeViewStart, end: timeViewEnd);
+  }
+
+  bool _initializeTimingOverridesForMovingClips() {
+    final movingClipIds = _movingClipIds;
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
+    if (movingClipIds == null || arrangementData == null) {
+      return false;
+    }
+
+    final arrangementClips = arrangementData.clips;
+    int? smallestStartOffset;
+    var hasAnyOverrides = false;
+
+    for (final clipId in movingClipIds) {
+      final clip = arrangementClips[clipId];
+      if (clip == null) {
+        continue;
+      }
+
+      hasAnyOverrides = true;
+      final timeViewBounds = _timeViewBoundsForClip(clip);
+
+      viewModel.clipTimingOverrides[clip.id] = ClipTimingOverride(
+        offset: clip.offset,
+        timeViewStart: timeViewBounds.start,
+        timeViewEnd: timeViewBounds.end,
+      );
+
+      if (smallestStartOffset == null || clip.offset < smallestStartOffset) {
+        smallestStartOffset = clip.offset;
+      }
+    }
+
+    if (!hasAnyOverrides) {
+      return false;
+    }
+
+    _minimumMoveDelta = -(smallestStartOffset ?? 0);
+    return true;
+  }
+
+  bool _initializeDuplicatedMoveSession({
+    required Map<Id, ClipModel> arrangementClips,
+    required Set<Id> sourceMovingClipIds,
+    required Id pressedClipId,
+  }) {
+    final sourceClips = <ClipModel>[];
+    final patternsById = <Id, PatternModel>{};
+
+    for (final clipId in sourceMovingClipIds) {
+      final clip = arrangementClips[clipId];
+      if (clip == null) {
+        continue;
+      }
+
+      final pattern = project.sequence.patterns[clip.patternId];
+      if (pattern == null) {
+        continue;
+      }
+
+      sourceClips.add(clip);
+      patternsById[pattern.id] = pattern;
+    }
+
+    if (sourceClips.isEmpty) {
+      return false;
+    }
+
+    var anchorOffset = sourceClips.first.offset;
+    for (final clip in sourceClips.skip(1)) {
+      if (clip.offset < anchorOffset) {
+        anchorOffset = clip.offset;
+      }
+    }
+
+    final duplicatedClipBatch =
+        SerializedArrangerClipBatch(
+          anchorOffset: anchorOffset,
+          clips: sourceClips,
+          patterns: patternsById.values,
+        ).reconstruct(
+          idAllocator: ServiceRegistry.forProject(project.id).idAllocator,
+          newAnchorOffset: anchorOffset,
+          availableTrackIds: project.tracks.keys.toSet(),
+        );
+
+    if (duplicatedClipBatch.clips.isEmpty) {
+      return false;
+    }
+
+    final patternById = {
+      for (final pattern in duplicatedClipBatch.patterns) pattern.id: pattern,
+    };
+    final previewPatternById = {
+      for (final entry in patternById.entries)
+        entry.key: PatternModel.fromJson(entry.value.toJson()),
+    };
+    final sourceClipById = {for (final clip in sourceClips) clip.id: clip};
+    final sourceClipIdByCloneId = {
+      for (final entry in duplicatedClipBatch.clipIdBySourceId.entries)
+        entry.value: entry.key,
+    };
+    final previewClipIds = <Id>{};
+
+    for (final clip in duplicatedClipBatch.clips) {
+      final pattern = previewPatternById[clip.patternId];
+      final sourceClip = sourceClipById[sourceClipIdByCloneId[clip.id]];
+      if (pattern == null || sourceClip == null) {
+        continue;
+      }
+
+      final timeViewBounds = _timeViewBoundsForClip(sourceClip);
+      viewModel.previewClips[clip.id] = ArrangerClipPreview(
+        clipId: clip.id,
+        sourceClipId: sourceClip.id,
+        trackId: clip.trackId,
+        offset: clip.offset,
+        pattern: pattern,
+        timeViewStart: timeViewBounds.start,
+        timeViewEnd: timeViewBounds.end,
+      );
+      previewClipIds.add(clip.id);
+    }
+
+    if (previewClipIds.isEmpty) {
+      viewModel.previewClips.clear();
+      return false;
+    }
+
+    _duplicatedClipBatch = duplicatedClipBatch;
+    _movingClipIds = Set<Id>.unmodifiable(previewClipIds);
+    _minimumMoveDelta = -duplicatedClipBatch.clips
+        .where((clip) => previewClipIds.contains(clip.id))
+        .map((clip) => clip.offset)
+        .reduce(min);
+
+    viewModel.selectedClips
+      ..clear()
+      ..addAll(previewClipIds);
+
+    viewModel.pressedClip =
+        duplicatedClipBatch.clipIdBySourceId[pressedClipId] ??
+        previewClipIds.first;
+
+    return true;
+  }
+
   void _initializeMoveSession() {
     _movingClipIds = null;
+    _duplicatedClipBatch = null;
     _minimumMoveDelta = 0;
     final clipTimingOverrides = viewModel.clipTimingOverrides;
     clipTimingOverrides.clear();
+    viewModel.previewClips.clear();
 
     final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (arrangementData == null) {
@@ -172,38 +376,21 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
     final movingClipIds = selectedClipIds.contains(pressedClip.id)
         ? selectedClipIds.toSet()
         : <Id>{pressedClip.id};
-    _movingClipIds = Set<Id>.unmodifiable(movingClipIds);
 
-    int? smallestStartOffset;
-    var hasAnyOverrides = false;
-
-    for (final clipId in _movingClipIds!) {
-      final clip = arrangementClips[clipId];
-      if (clip == null) {
-        continue;
-      }
-      hasAnyOverrides = true;
-
-      final timeViewStart = clip.timeView?.start ?? 0;
-      final timeViewEnd = clip.timeView?.end ?? clip.width;
-
-      clipTimingOverrides[clip.id] = ClipTimingOverride(
-        offset: clip.offset,
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
+    if (interactionState.isShiftPressed) {
+      _initializeDuplicatedMoveSession(
+        arrangementClips: arrangementClips,
+        sourceMovingClipIds: movingClipIds,
+        pressedClipId: pressedClip.id,
       );
-
-      if (smallestStartOffset == null || clip.offset < smallestStartOffset) {
-        smallestStartOffset = clip.offset;
-      }
-    }
-
-    if (!hasAnyOverrides) {
-      _movingClipIds = null;
       return;
     }
 
-    _minimumMoveDelta = -(smallestStartOffset ?? 0);
+    _movingClipIds = Set<Id>.unmodifiable(movingClipIds);
+
+    if (!_initializeTimingOverridesForMovingClips()) {
+      _movingClipIds = null;
+    }
   }
 
   void _syncClipOverrides() {
@@ -216,12 +403,6 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       return;
     }
 
-    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
-    if (arrangementData == null) {
-      return;
-    }
-    final arrangementClips = arrangementData.clips;
-
     var movedDistance = resolveSnappedDragDelta(
       startPx: dragStartPosition.x,
       currentPx: dragCurrentPosition.x,
@@ -232,6 +413,16 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       movedDistance = _minimumMoveDelta;
     }
 
+    if (_duplicatedClipBatch != null) {
+      _syncDuplicatedClipPreviews(movedDistance: movedDistance);
+      return;
+    }
+
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
+    if (arrangementData == null) {
+      return;
+    }
+    final arrangementClips = arrangementData.clips;
     final clipTimingOverrides = viewModel.clipTimingOverrides;
 
     for (final clipId in movingClipIds) {
@@ -241,30 +432,60 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
         continue;
       }
 
-      final timeViewStart = clip.timeView?.start ?? 0;
-      final timeViewEnd = clip.timeView?.end ?? clip.width;
+      final timeViewBounds = _timeViewBoundsForClip(clip);
       final nextOffset = clip.offset + movedDistance;
 
       final currentOverride = clipTimingOverrides.nonObservableInner[clip.id];
       if (currentOverride != null &&
           currentOverride.offset == nextOffset &&
-          currentOverride.timeViewStart == timeViewStart &&
-          currentOverride.timeViewEnd == timeViewEnd) {
+          currentOverride.timeViewStart == timeViewBounds.start &&
+          currentOverride.timeViewEnd == timeViewBounds.end) {
         continue;
       }
 
       clipTimingOverrides[clip.id] = ClipTimingOverride(
         offset: nextOffset,
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
+        timeViewStart: timeViewBounds.start,
+        timeViewEnd: timeViewBounds.end,
       );
+    }
+  }
+
+  void _syncDuplicatedClipPreviews({required int movedDistance}) {
+    final movingClipIds = _movingClipIds;
+    final duplicatedClipBatch = _duplicatedClipBatch;
+    if (movingClipIds == null || duplicatedClipBatch == null) {
+      return;
+    }
+
+    final previewClips = viewModel.previewClips;
+    final duplicatedClipsById = {
+      for (final clip in duplicatedClipBatch.clips) clip.id: clip,
+    };
+
+    for (final clipId in movingClipIds) {
+      final preview = previewClips.nonObservableInner[clipId];
+      final duplicatedClip = duplicatedClipsById[clipId];
+      if (preview == null || duplicatedClip == null) {
+        previewClips.remove(clipId);
+        continue;
+      }
+
+      final nextOffset = duplicatedClip.offset + movedDistance;
+      if (preview.offset == nextOffset) {
+        continue;
+      }
+
+      previewClips[clipId] = preview.copyWith(offset: nextOffset);
     }
   }
 
   void _clearMoveSession() {
     _movingClipIds = null;
+    _duplicatedClipBatch = null;
     _minimumMoveDelta = 0;
     viewModel.clipTimingOverrides.clear();
+    viewModel.previewClips.clear();
     viewModel.pressedClip = null;
   }
 }
