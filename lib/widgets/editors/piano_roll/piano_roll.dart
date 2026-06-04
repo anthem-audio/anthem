@@ -599,10 +599,14 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
+    final controller = Provider.of<PianoRollController>(context, listen: false);
 
     return MouseRegion(
       cursor: cursor,
+      onEnter: controller.onEnter,
       onHover: (e) {
+        controller.onHover(e);
+
         final pos = e.localPosition;
 
         final hitTestResult = viewModel.hitTestContent(pos);
@@ -612,12 +616,6 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
             ? SystemMouseCursors.move
             : MouseCursor.defer;
 
-        final hoveredNoteRef = hitTestResult.note?.metadata;
-        final hoveredNoteId = hoveredNoteRef?.id;
-        if (hoveredNoteId != viewModel.hoveredNote) {
-          viewModel.hoveredNote = hoveredNoteId;
-        }
-
         if (cursor == newCursor) return;
 
         setState(() {
@@ -625,7 +623,14 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
         });
       },
       onExit: (e) {
-        viewModel.hoveredNote = null;
+        controller.onExit(e);
+        if (cursor == MouseCursor.defer) {
+          return;
+        }
+
+        setState(() {
+          cursor = MouseCursor.defer;
+        });
       },
       child: widget.child,
     );

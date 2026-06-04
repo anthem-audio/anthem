@@ -19,6 +19,7 @@
 
 import 'package:flutter/services.dart';
 
+import 'package:anthem/logic/clipboard/clipboard_data.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 
 import 'piano_roll_state_machine_test_helpers.dart';
@@ -67,6 +68,181 @@ void main() {
         fixture.expectSelection(const []);
       },
     );
+
+    test('shortcut copy stores selected notes in the clipboard', () {
+      final noteA = fixture.addNote(key: 60, offset: 96, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 192, length: 48);
+      final noteC = fixture.addNote(key: 67, offset: 288, length: 96);
+      fixture.selectNotes([noteA.id, noteC.id]);
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+      );
+
+      final content = ServiceRegistry.clipboard.get<NotesClipboardContent>();
+
+      expect(content, isNotNull);
+      expect(content!.anchorOffset, equals(96));
+      expect(content.serializedNotes, hasLength(2));
+      expect(
+        content.serializedNotes.map((noteJson) => noteJson['id']).toSet(),
+        equals({noteA.id, noteC.id}),
+      );
+      expect(fixture.notes.map((note) => note.id), contains(noteB.id));
+      fixture.expectSelection([noteA.id, noteC.id]);
+    });
+
+    test('shortcut cut copies and deletes selected notes', () {
+      final noteA = fixture.addNote(key: 60, offset: 96, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 192, length: 48);
+      fixture.selectNotes([noteA.id]);
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyX),
+      );
+
+      final content = ServiceRegistry.clipboard.get<NotesClipboardContent>();
+
+      expect(content, isNotNull);
+      expect(content!.serializedNotes.single['id'], equals(noteA.id));
+      expect(fixture.notes.map((note) => note.id).toList(), [noteB.id]);
+      fixture.expectSelection(const []);
+
+      fixture.project.undo();
+      expect(
+        fixture.notes.map((note) => note.id).toSet(),
+        equals({noteA.id, noteB.id}),
+      );
+    });
+
+    test('shortcut paste uses the playback start for the active pattern', () {
+      final noteA = fixture.addNote(key: 60, offset: 96, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 192, length: 96);
+      fixture.selectNotes([noteA.id, noteB.id]);
+      fixture.project.sequence.activeTransportSequenceID = fixture.pattern.id;
+      fixture.project.sequence.playbackStartPosition = 384;
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+      );
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+      );
+
+      final pastedNotes =
+          fixture.viewModel.selectedNotes
+              .map(fixture.noteById)
+              .toList(growable: false)
+            ..sort((a, b) => a.offset.compareTo(b.offset));
+      final pastedNoteIds = pastedNotes.map((note) => note.id).toSet();
+
+      expect(pastedNotes, hasLength(2));
+      expect(pastedNoteIds, isNot(contains(noteA.id)));
+      expect(pastedNoteIds, isNot(contains(noteB.id)));
+      expect(pastedNotes[0].key, equals(60));
+      expect(pastedNotes[0].offset, equals(384));
+      expect(pastedNotes[0].length, equals(48));
+      expect(pastedNotes[1].key, equals(64));
+      expect(pastedNotes[1].offset, equals(480));
+      expect(pastedNotes[1].length, equals(96));
+
+      fixture.project.undo();
+      expect(
+        fixture.notes.map((note) => note.id).toSet(),
+        equals({noteA.id, noteB.id}),
+      );
+    });
+
+    test(
+      'shortcut paste uses the visible start snap for another transport',
+      () {
+        final noteA = fixture.addNote(key: 60, offset: 96, length: 48);
+        final noteB = fixture.addNote(key: 64, offset: 192, length: 96);
+        fixture.selectNotes([noteA.id, noteB.id]);
+        fixture.project.sequence.playbackStartPosition = 384;
+
+        fixture.controller.onShortcut(
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        );
+        fixture.controller.onShortcut(
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+        );
+
+        final pastedNotes =
+            fixture.viewModel.selectedNotes
+                .map(fixture.noteById)
+                .toList(growable: false)
+              ..sort((a, b) => a.offset.compareTo(b.offset));
+        final pastedNoteIds = pastedNotes.map((note) => note.id).toSet();
+
+        expect(pastedNotes, hasLength(2));
+        expect(pastedNoteIds, isNot(contains(noteA.id)));
+        expect(pastedNoteIds, isNot(contains(noteB.id)));
+        expect(pastedNotes[0].key, equals(60));
+        expect(pastedNotes[0].offset, equals(fixture.ceilingSnappedTime(0)));
+        expect(pastedNotes[0].length, equals(48));
+        expect(pastedNotes[1].key, equals(64));
+        expect(
+          pastedNotes[1].offset,
+          equals(fixture.ceilingSnappedTime(0) + 96),
+        );
+        expect(pastedNotes[1].length, equals(96));
+      },
+    );
+
+    test('shortcut paste falls back when the playback start is off screen', () {
+      final note = fixture.addNote(key: 60, offset: 96, length: 48);
+      fixture.selectNotes([note.id]);
+      fixture.project.sequence.activeTransportSequenceID = fixture.pattern.id;
+      fixture.project.sequence.playbackStartPosition = 384;
+      fixture.viewModel.timeRange = TimeRange(1000, 4072);
+      fixture.syncRenderedViewMetrics();
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+      );
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+      );
+
+      final pastedNote = fixture.viewModel.selectedNotes
+          .map(fixture.noteById)
+          .single;
+
+      expect(pastedNote.id, isNot(note.id));
+      expect(
+        pastedNote.offset,
+        equals(
+          fixture.ceilingSnappedTime(fixture.viewModel.timeRange.start.ceil()),
+        ),
+      );
+    });
+
+    test('shortcut paste uses next snap after visible start', () {
+      final note = fixture.addNote(key: 60, offset: 96, length: 48);
+      fixture.selectNotes([note.id]);
+      fixture.viewModel.timeRange = TimeRange(10, 3082);
+      fixture.syncRenderedViewMetrics();
+
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+      );
+      fixture.controller.onShortcut(
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+      );
+
+      final pastedNote = fixture.viewModel.selectedNotes
+          .map(fixture.noteById)
+          .single;
+
+      expect(pastedNote.id, isNot(note.id));
+      expect(
+        pastedNote.offset,
+        equals(
+          fixture.ceilingSnappedTime(fixture.viewModel.timeRange.start.ceil()),
+        ),
+      );
+    });
 
     test('shortcut semitone transpose moves selected notes and undoes', () {
       final noteA = fixture.addNote(key: 60, offset: 96, length: 48);

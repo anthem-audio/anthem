@@ -20,7 +20,9 @@
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/clipboard/clipboard_data.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
@@ -142,6 +144,18 @@ class _PianoRollController {
 
   void pointerUp(PointerEvent event) {
     stateMachine.onPointerUp(event);
+  }
+
+  void onEnter(PointerEnterEvent event) {
+    stateMachine.onEnter(event);
+  }
+
+  void onExit(PointerExitEvent event) {
+    stateMachine.onExit(event);
+  }
+
+  void onHover(PointerHoverEvent event) {
+    stateMachine.onHover(event);
   }
 
   void onRenderedViewMetricsChanged({
@@ -289,6 +303,118 @@ class _PianoRollController {
     project.execute(command);
 
     viewModel.selectedNotes.clear();
+  }
+
+  List<NoteModel> _getSelectedNotes(PatternModel pattern) {
+    final selectedNoteIds = viewModel.selectedNotes.nonObservableInner;
+
+    return pattern.notes.values
+        .where((note) => selectedNoteIds.contains(note.id))
+        .toList(growable: false);
+  }
+
+  int _copyAnchorOffset(List<NoteModel> notes) {
+    var anchorOffset = notes.first.offset;
+
+    for (final note in notes.skip(1)) {
+      if (note.offset < anchorOffset) {
+        anchorOffset = note.offset;
+      }
+    }
+
+    return anchorOffset;
+  }
+
+  int? _playbackStartPasteAnchorOffset() {
+    if (project.sequence.activeTransportSequenceID !=
+        project.sequence.activePatternID) {
+      return null;
+    }
+
+    final playbackStartPosition = project.sequence.playbackStartPosition;
+    if (playbackStartPosition < viewModel.timeRange.start ||
+        playbackStartPosition >= viewModel.timeRange.end) {
+      return null;
+    }
+
+    return playbackStartPosition < 0 ? 0 : playbackStartPosition;
+  }
+
+  int _visibleStartPasteAnchorOffset() {
+    final visibleStart = viewModel.timeRange.start;
+    final rawTime = visibleStart <= 0 ? 0 : visibleStart.ceil();
+    final viewWidth = stateMachine.data.viewSize.width;
+
+    return snapTimeInActivePattern(
+      rawTime: rawTime,
+      viewWidthInPixels: viewWidth < 1 ? 1 : viewWidth,
+      ceil: true,
+    );
+  }
+
+  int _pasteAnchorOffset() {
+    return _playbackStartPasteAnchorOffset() ??
+        _visibleStartPasteAnchorOffset();
+  }
+
+  bool copySelected() {
+    final pattern = activePatternOrNull;
+    if (viewModel.selectedNotes.isEmpty || pattern == null) {
+      return false;
+    }
+
+    final selectedNotes = _getSelectedNotes(pattern);
+    if (selectedNotes.isEmpty) {
+      return false;
+    }
+
+    ServiceRegistry.clipboard.set(
+      NotesClipboardContent(
+        anchorOffset: _copyAnchorOffset(selectedNotes),
+        notes: selectedNotes,
+      ),
+    );
+
+    return true;
+  }
+
+  void cutSelected() {
+    if (!copySelected()) {
+      return;
+    }
+
+    deleteSelected();
+  }
+
+  void pasteNotes() {
+    final pattern = activePatternOrNull;
+    final content = ServiceRegistry.clipboard.get<NotesClipboardContent>();
+    if (pattern == null || content == null) {
+      return;
+    }
+
+    final newAnchorOffset = _pasteAnchorOffset();
+
+    clearPreviewState();
+
+    final notes = content.reconstruct(
+      idAllocator: idAllocator,
+      newAnchorOffset: newAnchorOffset,
+    );
+
+    if (notes.isEmpty) {
+      return;
+    }
+
+    project.startUndoGroup();
+    for (final note in notes) {
+      project.execute(AddNoteCommand(patternID: pattern.id, note: note));
+    }
+    project.commitUndoGroup();
+
+    viewModel.selectedNotes = ObservableSet.of(
+      notes.map((note) => note.id).toSet(),
+    );
   }
 
   /// Moves selected notes vertically by [requestedDelta] keys.

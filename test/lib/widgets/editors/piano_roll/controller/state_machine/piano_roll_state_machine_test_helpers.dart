@@ -404,8 +404,17 @@ class PianoRollStateMachineTestFixture {
     return getSnappedTime(
       rawTime: rawTime,
       divisionChanges: divisionChanges(),
+      ceil: false,
       round: round,
       startTime: startTime,
+    );
+  }
+
+  int ceilingSnappedTime(int rawTime) {
+    return getSnappedTime(
+      rawTime: rawTime,
+      divisionChanges: divisionChanges(),
+      ceil: true,
     );
   }
 
@@ -520,6 +529,51 @@ class PianoRollStateMachineTestFixture {
     );
   }
 
+  void rawHover({
+    required Offset localPosition,
+    Id? noteUnderCursor,
+    bool isResize = false,
+    bool ctrl = false,
+    bool alt = false,
+    bool shift = false,
+  }) {
+    syncRenderedViewMetrics();
+    setModifiers(ctrl: ctrl, alt: alt, shift: shift);
+    _seedHitTestTarget(
+      localPosition: localPosition,
+      noteUnderCursor: noteUnderCursor,
+      isResize: isResize,
+    );
+
+    controller.onHover(PointerHoverEvent(position: localPosition));
+  }
+
+  void hover({
+    required double key,
+    required double offset,
+    Id? noteUnderCursor,
+    bool isResize = false,
+    bool ctrl = false,
+    bool alt = false,
+    bool shift = false,
+  }) {
+    rawHover(
+      localPosition: localPositionFor(key: key, offset: offset),
+      noteUnderCursor: noteUnderCursor,
+      isResize: isResize,
+      ctrl: ctrl,
+      alt: alt,
+      shift: shift,
+    );
+  }
+
+  void exit({double key = 60, double offset = 0}) {
+    syncRenderedViewMetrics();
+    final localPosition = localPositionFor(key: key, offset: offset);
+
+    controller.onExit(PointerExitEvent(position: localPosition));
+  }
+
   void pointerMove({
     required double key,
     required double offset,
@@ -611,6 +665,7 @@ class PianoRollStateMachineTestFixture {
 
   void dispose() {
     controller.dispose();
+    ServiceRegistry.clipboard.clear();
     ServiceRegistry.mainWindowController.clearAllCursorOverrides();
     AnthemStore.instance.projects.remove(project.id);
     ServiceRegistry.removeProject(project.id);

@@ -85,6 +85,14 @@ class PianoRollPointerContext {
 
   Id? get targetRealNoteId => target.realNoteId;
 
+  Id? get hoveredNoteId {
+    return switch (target) {
+      PianoRollNotePointerTarget(:final note) => note.id,
+      PianoRollResizeHandlePointerTarget(:final note) => note?.id,
+      PianoRollEmptyPointerTarget() => null,
+    };
+  }
+
   bool get isResizeHandleTarget => target.isResizeHandle;
 }
 
@@ -228,6 +236,8 @@ class PianoRollStateMachine
     data.renderedTimeViewEnd = timeViewEnd;
     data.renderedKeyHeight = keyHeight;
     data.renderedKeyValueAtTop = keyValueAtTop;
+    _refreshHoverContext();
+    _syncHoverDerivedViewState();
     notifyDataUpdated();
   }
 
@@ -237,6 +247,7 @@ class PianoRollStateMachine
     }
 
     data.setModifier(modifier, true);
+    _syncHoverDerivedViewState();
     notifyDataUpdated();
   }
 
@@ -246,6 +257,26 @@ class PianoRollStateMachine
     }
 
     data.setModifier(modifier, false);
+    _syncHoverDerivedViewState();
+    notifyDataUpdated();
+  }
+
+  void onEnter(PointerEnterEvent event) {
+    data.handleEnter(event);
+    notifyDataUpdated();
+  }
+
+  void onExit(PointerExitEvent event) {
+    data.handleExit(event);
+    _refreshHoverContext();
+    _syncHoverDerivedViewState();
+    notifyDataUpdated();
+  }
+
+  void onHover(PointerHoverEvent event) {
+    data.handleHover(event);
+    _refreshHoverContext();
+    _syncHoverDerivedViewState();
     notifyDataUpdated();
   }
 
@@ -329,8 +360,30 @@ class PianoRollStateMachine
     return const PianoRollEmptyPointerTarget();
   }
 
+  void _refreshHoverContext() {
+    final hoveredPointer = data.hoveredPointer;
+    data.hoverContext = hoveredPointer == null
+        ? null
+        : pointerContextAt(hoveredPointer.toOffset());
+  }
+
+  void _syncHoverDerivedViewState() {
+    _syncHoveredNote();
+  }
+
+  void _syncHoveredNote() {
+    final nextHoveredNote = data.activePointerId == null
+        ? data.hoverContext?.hoveredNoteId
+        : null;
+    if (viewModel.hoveredNote != nextHoveredNote) {
+      viewModel.hoveredNote = nextHoveredNote;
+    }
+  }
+
   void onPointerDown(PointerDownEvent event) {
     data.handlePointerDown(event);
+    _refreshHoverContext();
+    _syncHoverDerivedViewState();
     final pointerContext = pointerContextAt(event.localPosition);
     data.activePointerDownContext = pointerContext;
     final family = _classifyPointerDownInteraction(
@@ -341,6 +394,7 @@ class PianoRollStateMachine
     if (family == null) {
       data.clearInteractionSession();
       data.activePointerDownContext = null;
+      notifyDataUpdated();
       return;
     }
 
@@ -350,6 +404,8 @@ class PianoRollStateMachine
 
   void onPointerMove(PointerMoveEvent event) {
     data.handlePointerMove(event);
+    _refreshHoverContext();
+    _syncHoverDerivedViewState();
     if (!data.hasActiveInteractionSession) {
       return;
     }
@@ -360,7 +416,10 @@ class PianoRollStateMachine
   void onPointerUp(PointerEvent event) {
     final hadActiveInteractionSession = data.hasActiveInteractionSession;
     data.handlePointerUp(event);
+    _refreshHoverContext();
+    _syncHoverDerivedViewState();
     if (!hadActiveInteractionSession) {
+      notifyDataUpdated();
       return;
     }
 
@@ -377,6 +436,8 @@ class PianoRollStateMachineData {
 
   Size viewSize = Size.zero;
   Map<int, PianoRollActivePointer> pointers = {};
+  PianoRollActivePointer? hoveredPointer;
+  PianoRollPointerContext? hoverContext;
   int? activePointerId;
   PianoRollActivePointer? activePointerDownPosition;
   PianoRollPointerContext? activePointerDownContext;
@@ -441,6 +502,18 @@ class PianoRollStateMachineData {
   }
 
   void handlePointerUp(PointerEvent event) {
+    if (event is! PointerCancelEvent) {
+      final position = event.localPosition;
+      final isInView =
+          position.dx >= 0 &&
+          position.dy >= 0 &&
+          position.dx <= viewSize.width &&
+          position.dy <= viewSize.height;
+      if (isInView) {
+        hoveredPointer = PianoRollActivePointer(position.dx, position.dy);
+      }
+    }
+
     final pointerId = event.pointer;
     pointers.remove(pointerId);
 
@@ -449,6 +522,20 @@ class PianoRollStateMachineData {
       activePointerDownPosition = null;
       activePointerDownContext = null;
     }
+  }
+
+  void handleEnter(PointerEnterEvent event) {}
+
+  void handleExit(PointerExitEvent event) {
+    hoveredPointer = null;
+    hoverContext = null;
+  }
+
+  void handleHover(PointerHoverEvent event) {
+    hoveredPointer = PianoRollActivePointer(
+      event.localPosition.dx,
+      event.localPosition.dy,
+    );
   }
 
   void beginInteractionSession({required PianoRollInteractionFamily family}) {

@@ -34,6 +34,30 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
       },
     );
 
+    // Ctrl + C
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+      () {
+        copySelected();
+      },
+    );
+
+    // Ctrl + X
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyX),
+      () {
+        cutSelected();
+      },
+    );
+
+    // Ctrl + V
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+      () {
+        pasteNotes();
+      },
+    );
+
     // Shift + Up/Down - transpose selected notes by semitone
     shortcutManager.register(
       LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowUp),

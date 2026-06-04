@@ -17,6 +17,11 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/model/pattern/note.dart';
+
+part 'notes_clipboard_content.dart';
+
 sealed class ClipboardContent {
   const ClipboardContent();
 }

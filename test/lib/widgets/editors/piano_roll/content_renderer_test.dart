@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
@@ -71,7 +71,7 @@ void main() {
       );
     });
 
-    void paintCurrentFrame({
+    ui.Picture paintFrame({
       required double timeViewStart,
       required double timeViewEnd,
       required double keyValueAtTop,
@@ -96,14 +96,28 @@ void main() {
         shouldGreyOut: false,
       );
 
-      final recorder = PictureRecorder();
-      final canvas = Canvas(recorder);
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
       try {
         painter.observablePaint(canvas, size);
-        recorder.endRecording();
+        return recorder.endRecording();
       } finally {
         timeRangeAnimation.dispose();
       }
+    }
+
+    void paintCurrentFrame({
+      required double timeViewStart,
+      required double timeViewEnd,
+      required double keyValueAtTop,
+      Size size = const Size(100, 160),
+    }) {
+      paintFrame(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        keyValueAtTop: keyValueAtTop,
+        size: size,
+      ).dispose();
     }
 
     test('skips subpixel notes without aborting later note rendering', () {
