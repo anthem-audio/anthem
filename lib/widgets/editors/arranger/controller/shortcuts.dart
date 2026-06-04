@@ -51,9 +51,9 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
     // Delete
     registerEditorDeleteShortcut(shortcutManager, deleteSelectedClips);
 
-    // Ctrl + A
+    // Primary + A
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyA),
       () {
         selectAllClips();
       },
@@ -73,15 +73,15 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
       },
     );
 
-    // Ctrl + Left/Right - move selected clips by one bar
+    // Primary + Left/Right - move selected clips by one bar
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
       () {
         nudgeSelectedClipsByBar(1);
       },
     );
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
       () {
         nudgeSelectedClipsByBar(-1);
       },
@@ -126,21 +126,15 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
   }
 
   ArrangerModifierKey? _getModifierKey(LogicalKeyboardKey key) {
-    if (key == LogicalKeyboardKey.control ||
-        key == LogicalKeyboardKey.controlLeft ||
-        key == LogicalKeyboardKey.controlRight) {
+    if (isPrimaryModifierKey(key)) {
       return ArrangerModifierKey.ctrl;
     }
 
-    if (key == LogicalKeyboardKey.alt ||
-        key == LogicalKeyboardKey.altLeft ||
-        key == LogicalKeyboardKey.altRight) {
+    if (isAltModifierKey(key)) {
       return ArrangerModifierKey.alt;
     }
 
-    if (key == LogicalKeyboardKey.shift ||
-        key == LogicalKeyboardKey.shiftLeft ||
-        key == LogicalKeyboardKey.shiftRight) {
+    if (isShiftModifierKey(key)) {
       return ArrangerModifierKey.shift;
     }
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -28,18 +28,32 @@ import 'raw_key_event_singleton.dart';
 /// This class describes which modifier keys are currently pressed. It is
 /// provided by [ShortcutProvider].
 class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
-  bool _ctrl = false;
+  bool _control = false;
+  bool _meta = false;
   bool _alt = false;
   bool _shift = false;
 
   KeyboardModifiers();
 
-  bool get ctrl => _ctrl;
+  bool get ctrl => _control;
+  bool get control => _control;
+  bool get meta => _meta;
   bool get alt => _alt;
   bool get shift => _shift;
+  bool get primary =>
+      defaultTargetPlatform == TargetPlatform.macOS ? _meta : _control;
 
   void setCtrl(bool value) {
-    _ctrl = value;
+    setControl(value);
+  }
+
+  void setControl(bool value) {
+    _control = value;
+    notifyListeners();
+  }
+
+  void setMeta(bool value) {
+    _meta = value;
     notifyListeners();
   }
 
@@ -64,7 +78,7 @@ class KeyboardModifiers with ChangeNotifier, DiagnosticableTreeMixin {
 /// shortcuts like copy and paste.
 ///
 /// This class also provides an object to descendants which tells which modifier
-/// keys (control, alt, shift) are currently pressed.
+/// keys (control, meta, alt, shift) are currently pressed.
 class ShortcutProvider extends StatefulWidget {
   final Widget child;
 
@@ -100,10 +114,11 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     final keyRepeat = e is KeyRepeatEvent;
     final key = e.logicalKey;
 
-    final ctrl = _isCtrlKey(key);
-    final alt = _isAltKey(key);
-    final shift = _isShiftKey(key);
-    final isModifier = ctrl || alt || shift;
+    final control = isControlModifierKey(key);
+    final meta = isMetaModifierKey(key);
+    final alt = isAltModifierKey(key);
+    final shift = isShiftModifierKey(key);
+    final isModifier = control || meta || alt || shift;
     final isEditableTextFocused = _isEditableTextFocused();
     // Let text inputs own non-modifier keys while still allowing modifier
     // press/release events to reach editor state machines.
@@ -115,8 +130,10 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
       listen: false,
     );
 
-    if (ctrl && keyDown) keyboardModifiers.setCtrl(true);
-    if (ctrl && keyUp) keyboardModifiers.setCtrl(false);
+    if (control && keyDown) keyboardModifiers.setControl(true);
+    if (control && keyUp) keyboardModifiers.setControl(false);
+    if (meta && keyDown) keyboardModifiers.setMeta(true);
+    if (meta && keyUp) keyboardModifiers.setMeta(false);
     if (alt && keyDown) keyboardModifiers.setAlt(true);
     if (alt && keyUp) keyboardModifiers.setAlt(false);
     if (shift && keyDown) keyboardModifiers.setShift(true);
@@ -132,24 +149,6 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     if (keyUp) controller.handleKeyUp(e, dispatchRaw: shouldDispatchRaw);
 
     return false;
-  }
-
-  bool _isCtrlKey(LogicalKeyboardKey key) {
-    return key == LogicalKeyboardKey.control ||
-        key == LogicalKeyboardKey.controlLeft ||
-        key == LogicalKeyboardKey.controlRight;
-  }
-
-  bool _isAltKey(LogicalKeyboardKey key) {
-    return key == LogicalKeyboardKey.alt ||
-        key == LogicalKeyboardKey.altLeft ||
-        key == LogicalKeyboardKey.altRight;
-  }
-
-  bool _isShiftKey(LogicalKeyboardKey key) {
-    return key == LogicalKeyboardKey.shift ||
-        key == LogicalKeyboardKey.shiftLeft ||
-        key == LogicalKeyboardKey.shiftRight;
   }
 
   bool _isEditableTextFocused() {

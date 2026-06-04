@@ -374,7 +374,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
 
     final modifiers = Provider.of<KeyboardModifiers>(context, listen: false);
 
-    if (modifiers.ctrl) {
+    if (modifiers.primary) {
       _endPanZoomGesture();
       _horizontalAxisController.stop(clearSamples: true);
       _verticalAxisController.stop(clearSamples: true);
@@ -467,7 +467,7 @@ class _EditorScrollManagerState extends State<EditorScrollManager>
       return;
     }
 
-    if (modifiers.ctrl) {
+    if (modifiers.primary) {
       _horizontalAxisController.stop(clearSamples: true);
       _verticalAxisController.stop(clearSamples: true);
       _verticalZoomController.stop(clearSamples: true);

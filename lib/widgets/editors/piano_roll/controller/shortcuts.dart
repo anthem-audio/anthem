@@ -26,33 +26,33 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
     // Delete
     registerEditorDeleteShortcut(shortcutManager, deleteSelected);
 
-    // Ctrl + A
+    // Primary + A
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyA),
       () {
         selectAll();
       },
     );
 
-    // Ctrl + C
+    // Primary + C
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       () {
         copySelected();
       },
     );
 
-    // Ctrl + X
+    // Primary + X
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyX),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyX),
       () {
         cutSelected();
       },
     );
 
-    // Ctrl + V
+    // Primary + V
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
       () {
         pasteNotes();
       },
@@ -84,27 +84,27 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
       },
     );
 
-    // Ctrl + Up/Down - transpose selected notes by octave
+    // Primary + Up/Down - transpose selected notes by octave
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowUp),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowUp),
       () {
         transposeSelectedNotes(12, requireExactDelta: true);
       },
     );
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowDown),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowDown),
       () {
         transposeSelectedNotes(-12, requireExactDelta: true);
       },
     );
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowRight),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
       () {
         nudgeSelectedNotesByBar(1);
       },
     );
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
       () {
         nudgeSelectedNotesByBar(-1);
       },

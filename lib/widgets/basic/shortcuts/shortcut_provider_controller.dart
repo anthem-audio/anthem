@@ -25,6 +25,68 @@ import 'package:flutter/widgets.dart';
 typedef RawKeyHandler = bool Function(KeyEvent keyEvent);
 typedef ShortcutHandler = void Function(LogicalKeySet shortcut);
 
+bool isControlModifierKey(LogicalKeyboardKey key) {
+  return key == LogicalKeyboardKey.control ||
+      key == LogicalKeyboardKey.controlLeft ||
+      key == LogicalKeyboardKey.controlRight;
+}
+
+bool isAltModifierKey(LogicalKeyboardKey key) {
+  return key == LogicalKeyboardKey.alt ||
+      key == LogicalKeyboardKey.altLeft ||
+      key == LogicalKeyboardKey.altRight;
+}
+
+bool isShiftModifierKey(LogicalKeyboardKey key) {
+  return key == LogicalKeyboardKey.shift ||
+      key == LogicalKeyboardKey.shiftLeft ||
+      key == LogicalKeyboardKey.shiftRight;
+}
+
+bool isMetaModifierKey(LogicalKeyboardKey key) {
+  return key == LogicalKeyboardKey.meta ||
+      key == LogicalKeyboardKey.metaLeft ||
+      key == LogicalKeyboardKey.metaRight;
+}
+
+LogicalKeyboardKey normalizeShortcutKey(LogicalKeyboardKey key) {
+  if (isControlModifierKey(key)) {
+    return LogicalKeyboardKey.control;
+  }
+
+  if (isAltModifierKey(key)) {
+    return LogicalKeyboardKey.alt;
+  }
+
+  if (isShiftModifierKey(key)) {
+    return LogicalKeyboardKey.shift;
+  }
+
+  if (isMetaModifierKey(key)) {
+    return LogicalKeyboardKey.meta;
+  }
+
+  return key;
+}
+
+LogicalKeyboardKey get primaryModifierKey {
+  return defaultTargetPlatform == TargetPlatform.macOS
+      ? LogicalKeyboardKey.meta
+      : LogicalKeyboardKey.control;
+}
+
+bool isPrimaryModifierKey(LogicalKeyboardKey key) {
+  return defaultTargetPlatform == TargetPlatform.macOS
+      ? isMetaModifierKey(key)
+      : isControlModifierKey(key);
+}
+
+bool isPrimaryModifierPressed(HardwareKeyboard keyboard) {
+  return defaultTargetPlatform == TargetPlatform.macOS
+      ? keyboard.isMetaPressed
+      : keyboard.isControlPressed;
+}
+
 /// Controller for a [ShortcutProvider]. [ShortcutProvider] is rendered at the
 /// root of every project, and a controller instance is provided to the tree via
 /// [Provider]. [ShortcutConsumer] widgets can then access this provider to
@@ -146,23 +208,7 @@ class ShortcutBehaviors {
 
   String _getShortcutID(LogicalKeySet shortcut) {
     return shortcut.keys
-        .map((key) {
-          if (key == LogicalKeyboardKey.control ||
-              key == LogicalKeyboardKey.controlLeft ||
-              key == LogicalKeyboardKey.controlRight) {
-            return LogicalKeyboardKey.control.toString();
-          } else if (key == LogicalKeyboardKey.alt ||
-              key == LogicalKeyboardKey.altLeft ||
-              key == LogicalKeyboardKey.altRight) {
-            return LogicalKeyboardKey.alt.toString();
-          } else if (key == LogicalKeyboardKey.shift ||
-              key == LogicalKeyboardKey.shiftLeft ||
-              key == LogicalKeyboardKey.shiftRight) {
-            return LogicalKeyboardKey.shift.toString();
-          } else {
-            return key.toString();
-          }
-        })
+        .map((key) => normalizeShortcutKey(key).toString())
         .sorted((a, b) => a.compareTo(b))
         .join('-');
   }
@@ -188,42 +234,14 @@ extension ShortcutMatchesMixin on LogicalKeySet {
   ///
   /// [LogicalKeySet] has an equality check, but two shortcuts will not be equal
   /// if they specify different keys that should be equivalent, such as
-  /// controlLeft and controlRight.
+  /// controlLeft/controlRight or metaLeft/metaRight.
   bool matches(LogicalKeySet other) {
     final normalizedThis = <LogicalKeyboardKey>{};
     final normalizedOther = <LogicalKeyboardKey>{};
 
     void add(LogicalKeySet source, Set<LogicalKeyboardKey> container) {
       for (final key in source.keys) {
-        if (key == LogicalKeyboardKey.control ||
-            key == LogicalKeyboardKey.controlLeft ||
-            key == LogicalKeyboardKey.controlRight) {
-          container.add(LogicalKeyboardKey.control);
-          continue;
-        }
-
-        if (key == LogicalKeyboardKey.alt ||
-            key == LogicalKeyboardKey.altLeft ||
-            key == LogicalKeyboardKey.altRight) {
-          container.add(LogicalKeyboardKey.alt);
-          continue;
-        }
-
-        if (key == LogicalKeyboardKey.shift ||
-            key == LogicalKeyboardKey.shiftLeft ||
-            key == LogicalKeyboardKey.shiftRight) {
-          container.add(LogicalKeyboardKey.shift);
-          continue;
-        }
-
-        if (key == LogicalKeyboardKey.meta ||
-            key == LogicalKeyboardKey.metaLeft ||
-            key == LogicalKeyboardKey.metaRight) {
-          container.add(LogicalKeyboardKey.meta);
-          continue;
-        }
-
-        container.add(key);
+        container.add(normalizeShortcutKey(key));
       }
     }
 

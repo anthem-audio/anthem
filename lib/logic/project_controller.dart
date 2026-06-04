@@ -85,17 +85,17 @@ class ProjectController {
   void onShortcut(LogicalKeySet shortcut) {
     // Undo
     if (shortcut.matches(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyZ),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyZ),
     )) {
       undo();
     }
     // Redo
     else if (shortcut.matches(
-          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyY),
+          LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyY),
         ) ||
         shortcut.matches(
           LogicalKeySet(
-            LogicalKeyboardKey.control,
+            primaryModifierKey,
             LogicalKeyboardKey.shift,
             LogicalKeyboardKey.keyZ,
           ),

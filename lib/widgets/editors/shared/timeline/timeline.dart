@@ -75,7 +75,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     }
 
     controller.syncModifierState(
-      ctrlPressed: keyboardModifiers.ctrl,
+      ctrlPressed: keyboardModifiers.primary,
       altPressed: keyboardModifiers.alt,
       shiftPressed: keyboardModifiers.shift,
     );

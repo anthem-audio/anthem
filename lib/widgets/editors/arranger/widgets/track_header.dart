@@ -31,6 +31,7 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem/visualization/visualization.dart';
@@ -156,7 +157,7 @@ class _TrackHeaderState extends State<TrackHeader> {
         return;
       }
 
-      if (HardwareKeyboard.instance.isControlPressed) {
+      if (isPrimaryModifierPressed(HardwareKeyboard.instance)) {
         controller.toggleTrackSelection(track.id);
         return;
       }

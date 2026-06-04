@@ -56,7 +56,7 @@ class PianoRollEventListener extends StatefulWidget {
 class _PianoRollEventListenerState extends State<PianoRollEventListener> {
   KeyboardModifiers? _keyboardModifiers;
   PianoRollController? _controller;
-  bool _ctrlPressed = false;
+  bool _primaryPressed = false;
   bool _altPressed = false;
   bool _shiftPressed = false;
 
@@ -82,7 +82,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
     _controller = nextController;
 
     if (didControllerChange) {
-      _ctrlPressed = false;
+      _primaryPressed = false;
       _altPressed = false;
       _shiftPressed = false;
     }
@@ -121,8 +121,8 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
 
     _syncModifier(
       modifier: PianoRollModifierKey.ctrl,
-      isPressed: keyboardModifiers.ctrl,
-      wasPressed: _ctrlPressed,
+      isPressed: keyboardModifiers.primary,
+      wasPressed: _primaryPressed,
     );
     _syncModifier(
       modifier: PianoRollModifierKey.alt,
@@ -135,7 +135,7 @@ class _PianoRollEventListenerState extends State<PianoRollEventListener> {
       wasPressed: _shiftPressed,
     );
 
-    _ctrlPressed = keyboardModifiers.ctrl;
+    _primaryPressed = keyboardModifiers.primary;
     _altPressed = keyboardModifiers.alt;
     _shiftPressed = keyboardModifiers.shift;
   }
