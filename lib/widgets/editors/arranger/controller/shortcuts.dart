@@ -59,6 +59,26 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
       },
     );
 
+    // Primary + C/X/V - copy, cut, paste
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
+      () {
+        copySelectedClips();
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyX),
+      () {
+        cutSelectedClips();
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
+      () {
+        pasteClips();
+      },
+    );
+
     // Shift + Left/Right - move selected clips by current snap
     shortcutManager.register(
       LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight),

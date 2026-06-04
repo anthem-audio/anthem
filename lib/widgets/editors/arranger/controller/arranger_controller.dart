@@ -20,6 +20,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:anthem/logic/clipboard/clipboard_data.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
@@ -470,6 +471,15 @@ abstract class _ArrangerController {
     deleteClips(viewModel.selectedClips.nonObservableInner);
   }
 
+  ArrangementModel? get _activeArrangementOrNull {
+    final arrangementId = project.sequence.activeArrangementID;
+    if (arrangementId == null) {
+      return null;
+    }
+
+    return project.sequence.arrangements[arrangementId];
+  }
+
   bool openClipInEditor(Id clipId) {
     final arrangementId = project.sequence.activeArrangementID;
     if (arrangementId == null) {
@@ -514,6 +524,154 @@ abstract class _ArrangerController {
     );
 
     viewModel.selectedClips.removeAll(deletionResult.deletedClipIds);
+  }
+
+  List<ClipModel> _getSelectedClips(ArrangementModel arrangement) {
+    final selectedClipIds = viewModel.selectedClips.nonObservableInner;
+
+    return arrangement.clips.values
+        .where((clip) => selectedClipIds.contains(clip.id))
+        .toList(growable: false);
+  }
+
+  int _copyAnchorOffset(List<ClipModel> clips) {
+    var anchorOffset = clips.first.offset;
+
+    for (final clip in clips.skip(1)) {
+      if (clip.offset < anchorOffset) {
+        anchorOffset = clip.offset;
+      }
+    }
+
+    return anchorOffset;
+  }
+
+  bool copySelectedClips() {
+    final arrangement = _activeArrangementOrNull;
+    if (arrangement == null || viewModel.selectedClips.isEmpty) {
+      return false;
+    }
+
+    final selectedClips = _getSelectedClips(arrangement);
+    if (selectedClips.isEmpty) {
+      return false;
+    }
+
+    final patternsById = <Id, PatternModel>{};
+    final copyableClips = <ClipModel>[];
+    for (final clip in selectedClips) {
+      final pattern = project.sequence.patterns[clip.patternId];
+      if (pattern == null) {
+        continue;
+      }
+
+      patternsById[pattern.id] = pattern;
+      copyableClips.add(clip);
+    }
+
+    if (copyableClips.isEmpty) {
+      return false;
+    }
+
+    ServiceRegistry.clipboard.set(
+      ArrangerClipboardContent(
+        anchorOffset: _copyAnchorOffset(copyableClips),
+        clips: copyableClips,
+        patterns: patternsById.values,
+      ),
+    );
+
+    return true;
+  }
+
+  void cutSelectedClips() {
+    if (!copySelectedClips()) {
+      return;
+    }
+
+    deleteSelectedClips();
+  }
+
+  int? _playbackStartPasteAnchorOffset() {
+    final arrangementId = project.sequence.activeArrangementID;
+    if (arrangementId == null ||
+        project.sequence.activeTransportSequenceID != arrangementId) {
+      return null;
+    }
+
+    final playbackStartPosition = project.sequence.playbackStartPosition;
+    if (playbackStartPosition < viewModel.timeRange.start ||
+        playbackStartPosition >= viewModel.timeRange.end) {
+      return null;
+    }
+
+    return playbackStartPosition < 0 ? 0 : playbackStartPosition;
+  }
+
+  List<DivisionChange> _pasteDivisionChanges() {
+    final viewWidth = max(stateMachine.data.viewSize.width, 1).toDouble();
+
+    return getDivisionChanges(
+      viewWidthInPixels: viewWidth,
+      snap: AutoSnap(),
+      defaultTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: stateMachine.arrangementTimeSignatureChanges(),
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
+    );
+  }
+
+  int _visibleStartPasteAnchorOffset() {
+    final visibleStart = viewModel.timeRange.start;
+    final rawTime = visibleStart <= 0 ? 0 : visibleStart.ceil();
+
+    return getSnappedTime(
+      rawTime: rawTime,
+      divisionChanges: _pasteDivisionChanges(),
+      ceil: true,
+    );
+  }
+
+  int _pasteAnchorOffset() {
+    return _playbackStartPasteAnchorOffset() ??
+        _visibleStartPasteAnchorOffset();
+  }
+
+  void pasteClips() {
+    final arrangement = _activeArrangementOrNull;
+    final content = ServiceRegistry.clipboard.get<ArrangerClipboardContent>();
+    if (arrangement == null || content == null) {
+      return;
+    }
+
+    final reconstructedContent = content.reconstruct(
+      idAllocator: _idAllocator,
+      newAnchorOffset: _pasteAnchorOffset(),
+      availableTrackIds: project.tracks.keys.toSet(),
+    );
+    final patterns = reconstructedContent.patterns;
+    final clips = reconstructedContent.clips;
+    if (clips.isEmpty) {
+      return;
+    }
+
+    viewModel.clipTimingOverrides.clear();
+
+    project.startUndoGroup();
+    for (final pattern in patterns) {
+      project.execute(PatternAddRemoveCommand.add(pattern: pattern));
+    }
+    for (final clip in clips) {
+      project.execute(
+        ClipAddRemoveCommand.add(arrangementID: arrangement.id, clip: clip),
+      );
+    }
+    project.commitUndoGroup();
+
+    viewModel.selectedClips = ObservableSet.of(
+      clips.map((clip) => clip.id).toSet(),
+    );
   }
 
   void selectAllClips() {
