@@ -67,21 +67,11 @@ class DialogController {
     MarkdownTapLinkCallback? onTapLink,
   }) {
     _impl?.showDialog(
-      ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: _textDialogMaxWidth,
-          maxHeight: _textDialogMaxHeight,
-        ),
-        child: Scrollbar(
-          child: SingleChildScrollView(
-            child: MarkdownBody(
-              data: markdown,
-              onTapLink: onTapLink,
-              styleSheet: _dialogMarkdownStyleSheet(),
-              softLineBreak: true,
-            ),
-          ),
-        ),
+      _MarkdownDialogContent(
+        markdown: markdown,
+        onTapLink: onTapLink,
+        maxWidth: _textDialogMaxWidth,
+        maxHeight: _textDialogMaxHeight,
       ),
       title: title,
       buttons: buttons,
@@ -91,6 +81,57 @@ class DialogController {
 
   void closeDialog() {
     _impl?.closeDialog();
+  }
+}
+
+class _MarkdownDialogContent extends StatefulWidget {
+  final String markdown;
+  final MarkdownTapLinkCallback? onTapLink;
+  final double maxWidth;
+  final double maxHeight;
+
+  const _MarkdownDialogContent({
+    required this.markdown,
+    required this.onTapLink,
+    required this.maxWidth,
+    required this.maxHeight,
+  });
+
+  @override
+  State<_MarkdownDialogContent> createState() => _MarkdownDialogContentState();
+}
+
+class _MarkdownDialogContentState extends State<_MarkdownDialogContent> {
+  late final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: widget.maxWidth,
+        maxHeight: widget.maxHeight,
+      ),
+      child: Scrollbar(
+        controller: _scrollController,
+        thumbVisibility: true,
+        interactive: true,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          child: MarkdownBody(
+            data: widget.markdown,
+            onTapLink: widget.onTapLink,
+            styleSheet: _dialogMarkdownStyleSheet(),
+            softLineBreak: true,
+          ),
+        ),
+      ),
+    );
   }
 }
 

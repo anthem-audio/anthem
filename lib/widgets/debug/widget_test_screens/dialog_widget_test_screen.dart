@@ -52,7 +52,19 @@ class _DialogWidgetTestScreenState extends State<DialogWidgetTestScreen> {
             '**Strong text**, *emphasis*, [links](https://anthem-audio.org), '
             'and `inline code` all render inside the standard dialog shell.\n\n'
             '- First list item\n'
-            '- Second list item',
+            '- Second list item\n'
+            '- Third list item\n'
+            '- Fourth list item\n'
+            '- Fifth list item\n'
+            '- Sixth list item\n'
+            '- Seventh list item\n'
+            '- Eighth list item\n'
+            '- Ninth list item\n'
+            '- Tenth list item\n'
+            '- Eleventh list item\n'
+            '- Twelfth list item\n'
+            '- Thirteenth list item\n'
+            '- Fourteenth list item',
         buttons: [DialogButton.ok()],
       );
     });
