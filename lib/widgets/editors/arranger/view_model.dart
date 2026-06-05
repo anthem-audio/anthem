@@ -236,10 +236,6 @@ abstract class _ArrangerViewModel with Store {
 
   final ObservableMap<Id, ArrangerClipPreview> previewClips = ObservableMap();
 
-  /// The clip that is currently being pressed, if any.
-  @observable
-  Id? pressedClip;
-
   /// The clip currently under the mouse cursor, if any.
   @observable
   Id? hoveredClip;
@@ -251,10 +247,6 @@ abstract class _ArrangerViewModel with Store {
   /// The inline automation handle currently under the mouse cursor, if any.
   @observable
   AutomationHandleAnnotation? hoveredAutomationHandle;
-
-  /// The inline automation handle that is being pressed, if any.
-  @observable
-  AutomationHandleAnnotation? pressedAutomationHandle;
 
   /// Used to preserve automation point tension when adding points inline.
   double? lastInteractedAutomationTension;

@@ -237,7 +237,6 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
   bool _initializeDuplicatedMoveSession({
     required Map<Id, ClipModel> arrangementClips,
     required Set<Id> sourceMovingClipIds,
-    required Id pressedClipId,
   }) {
     final sourceClips = <ClipModel>[];
     final patternsById = <Id, PatternModel>{};
@@ -333,10 +332,6 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
       ..clear()
       ..addAll(previewClipIds);
 
-    viewModel.pressedClip =
-        duplicatedClipBatch.clipIdBySourceId[pressedClipId] ??
-        previewClipIds.first;
-
     return true;
   }
 
@@ -354,34 +349,31 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
     }
     final arrangementClips = arrangementData.clips;
 
-    final pressedClipId = parentState.dragStartContext?.movableClipId;
-    if (pressedClipId == null) {
+    final dragStartClipId = parentState.dragStartContext?.movableClipId;
+    if (dragStartClipId == null) {
       return;
     }
 
-    final pressedClip = arrangementClips[pressedClipId];
-    if (pressedClip == null) {
+    final dragStartClip = arrangementClips[dragStartClipId];
+    if (dragStartClip == null) {
       return;
     }
-
-    viewModel.pressedClip = pressedClip.id;
 
     final selectedClips = viewModel.selectedClips;
     var selectedClipIds = selectedClips.nonObservableInner;
-    if (!selectedClipIds.contains(pressedClip.id)) {
+    if (!selectedClipIds.contains(dragStartClip.id)) {
       selectedClips.clear();
       selectedClipIds = selectedClips.nonObservableInner;
     }
 
-    final movingClipIds = selectedClipIds.contains(pressedClip.id)
+    final movingClipIds = selectedClipIds.contains(dragStartClip.id)
         ? selectedClipIds.toSet()
-        : <Id>{pressedClip.id};
+        : <Id>{dragStartClip.id};
 
     if (interactionState.isShiftPressed) {
       _initializeDuplicatedMoveSession(
         arrangementClips: arrangementClips,
         sourceMovingClipIds: movingClipIds,
-        pressedClipId: pressedClip.id,
       );
       return;
     }
@@ -486,6 +478,5 @@ class ArrangerClipMoveState extends _ArrangerLeafState {
     _minimumMoveDelta = 0;
     viewModel.clipTimingOverrides.clear();
     viewModel.previewClips.clear();
-    viewModel.pressedClip = null;
   }
 }

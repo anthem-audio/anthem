@@ -49,7 +49,6 @@ ClipRenderInfo _makeClip({
     width: width.toDouble(),
     height: 48,
     selected: false,
-    pressed: false,
     hovered: false,
   );
 }

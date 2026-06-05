@@ -169,6 +169,12 @@ void main() {
       expect(pattern.automation.points[1].offset, expectedOffset);
       expect(pattern.automation.points[1].value, closeTo(expectedValue, 1e-9));
       expect(pattern.automation.points[1].tension, 0.35);
+      expectAutomationHandle(
+        fixture.viewModel.hoveredAutomationHandle,
+        clipId: clip.id,
+        kind: AutomationHandleKind.point,
+        pointId: pattern.automation.points[1].id,
+      );
       expect(fixture.viewModel.selectedClips.toSet(), equals({clip.id}));
 
       fixture.pointerUp(const PointerUpEvent(pointer: 1, position: clickPos));
@@ -264,6 +270,12 @@ void main() {
       );
 
       expect(pattern.automation.points[1].offset, startOffset + dragDelta);
+      expectAutomationHandle(
+        fixture.viewModel.hoveredAutomationHandle,
+        clipId: automationClip.clip.id,
+        kind: AutomationHandleKind.point,
+        pointId: pattern.automation.points[1].id,
+      );
       expect(
         pattern.automation.points[1].value,
         closeTo(startValue + 0.25, 1e-9),
@@ -528,6 +540,7 @@ void main() {
       expect(pattern.automation.points, hasLength(2));
       expect(pattern.automation.points[0].offset, 0);
       expect(pattern.automation.points[1].offset, 240);
+      expect(fixture.viewModel.hoveredAutomationHandle, isNull);
 
       fixture.project.undo();
 

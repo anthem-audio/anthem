@@ -34,7 +34,6 @@ class Clip extends StatelessWidget {
   final double ticksPerPixel;
   final bool selected;
   final bool hasResizeHandles;
-  final bool pressed;
   final bool hideBorder;
 
   /// Creates a Clip widget tied to a ClipModel
@@ -45,7 +44,6 @@ class Clip extends StatelessWidget {
     required this.ticksPerPixel,
     this.selected = false,
     this.hasResizeHandles = true,
-    this.pressed = false,
     this.hideBorder = false,
   }) : patternId = null;
 
@@ -55,7 +53,6 @@ class Clip extends StatelessWidget {
     required this.patternId,
     required this.ticksPerPixel,
     this.hasResizeHandles = false,
-    this.pressed = false,
     this.hideBorder = false,
   }) : selected = false,
        clipId = null,
@@ -94,7 +91,6 @@ class ClipPainter extends CustomPainterObserver {
       width: size.width,
       height: size.height,
       selected: false,
-      pressed: false,
       hideBorder: hideBorder,
       timeViewStart: 0,
       timeViewEnd: pattern.getWidth().toDouble(),
@@ -111,32 +107,21 @@ class ClipPainter extends CustomPainterObserver {
 Color getBaseColor({
   required AnthemColor color,
   required bool selected,
-  required bool pressed,
   bool hovered = false,
 }) {
   final shifter = color.colorShifter;
   var okColor = shifter.clipBase;
 
-  if (pressed) {
-    okColor = okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0);
-  } else if (hovered) {
+  if (hovered) {
     okColor = okColor.lighter(0.15);
   }
 
   return okColor.darker(selected ? 0.23 : 0).toColor();
 }
 
-Color getContentColor({
-  required AnthemColor color,
-  required bool selected,
-  required bool pressed,
-}) {
+Color getContentColor({required AnthemColor color, required bool selected}) {
   final shifter = color.colorShifter;
   var okColor = shifter.clipText;
-
-  if (pressed) {
-    okColor = okColor.darker(0.15).saturate(okColor.s > 0 ? 0.1 : 0);
-  }
 
   return okColor.darker(selected ? 0.1 : 0).toColor();
 }

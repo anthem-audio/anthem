@@ -41,7 +41,7 @@ void main() {
       expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
     });
 
-    test('pointer down over clip sets pressed clip immediately', () {
+    test('pointer down over clip captures drag start clip', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(100, 10, 80, 40),
         metadata: ClipIds.underCursor,
@@ -57,11 +57,14 @@ void main() {
 
       expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
       expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
-      expect(fixture.viewModel.pressedClip, ClipIds.underCursor);
+      expect(
+        fixture.dragState.dragStartContext?.movableClipId,
+        ClipIds.underCursor,
+      );
     });
 
     test(
-      'pointer down over resize handle sets pressed clip immediately even without clip hit',
+      'pointer down over resize handle captures drag start resize handle',
       () {
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(96, 10, 14, 40),
@@ -78,12 +81,15 @@ void main() {
 
         expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
         expect(fixture.dragState.hasCrossedActivationDistance, isFalse);
-        expect(fixture.viewModel.pressedClip, ClipIds.underResizeHandle);
+        expect(
+          fixture.dragState.dragStartContext?.resizeHandleTarget?.metadata.id,
+          ClipIds.underResizeHandle,
+        );
       },
     );
 
     test(
-      'pointer up clears pressed clip without crossing activation distance',
+      'pointer up clears drag parameters without crossing activation distance',
       () {
         fixture.viewModel.visibleClips.add(
           rect: const Rect.fromLTWH(100, 10, 80, 40),
@@ -97,19 +103,22 @@ void main() {
             position: Offset(120, 20),
           ),
         );
-        expect(fixture.viewModel.pressedClip, ClipIds.underCursor);
+        expect(
+          fixture.dragState.dragStartContext?.movableClipId,
+          ClipIds.underCursor,
+        );
 
         fixture.pointerUp(
           const PointerUpEvent(pointer: 1, position: Offset(120, 20)),
         );
 
         expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-        expect(fixture.viewModel.pressedClip, isNull);
+        expect(fixture.dragState.dragStartContext, isNull);
       },
     );
 
     test(
-      'pointer up clears pressed clip from resize-handle press without crossing activation distance',
+      'pointer up clears resize-handle drag parameters without crossing activation distance',
       () {
         fixture.viewModel.visibleResizeAreas.add(
           rect: const Rect.fromLTWH(96, 10, 14, 40),
@@ -123,18 +132,21 @@ void main() {
             position: Offset(100, 20),
           ),
         );
-        expect(fixture.viewModel.pressedClip, ClipIds.underResizeHandle);
+        expect(
+          fixture.dragState.dragStartContext?.resizeHandleTarget?.metadata.id,
+          ClipIds.underResizeHandle,
+        );
 
         fixture.pointerUp(
           const PointerUpEvent(pointer: 1, position: Offset(100, 20)),
         );
 
         expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-        expect(fixture.viewModel.pressedClip, isNull);
+        expect(fixture.dragState.dragStartContext, isNull);
       },
     );
 
-    test('pointer cancel clears pressed clip', () {
+    test('pointer cancel clears drag parameters', () {
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(100, 10, 80, 40),
         metadata: ClipIds.underCursor,
@@ -147,17 +159,20 @@ void main() {
           position: Offset(120, 20),
         ),
       );
-      expect(fixture.viewModel.pressedClip, ClipIds.underCursor);
+      expect(
+        fixture.dragState.dragStartContext?.movableClipId,
+        ClipIds.underCursor,
+      );
 
       fixture.pointerUp(
         const PointerCancelEvent(pointer: 1, position: Offset(120, 20)),
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-      expect(fixture.viewModel.pressedClip, isNull);
+      expect(fixture.dragState.dragStartContext, isNull);
     });
 
-    test('selection-mode presses do not set pressed clip', () {
+    test('selection-mode presses stay in drag parent before activation', () {
       final testCases = [
         (
           description: 'select tool over resize handle',
@@ -221,7 +236,7 @@ void main() {
           reason: testCase.description,
         );
         expect(
-          fixture.viewModel.pressedClip,
+          fixture.dragState.interactionFamily,
           isNull,
           reason: testCase.description,
         );

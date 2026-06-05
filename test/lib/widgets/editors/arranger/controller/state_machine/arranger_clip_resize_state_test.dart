@@ -74,7 +74,6 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerClipResizeState>());
-      expect(fixture.viewModel.pressedClip, clip.id);
       expect(fixture.viewModel.clipTimingOverrides[clip.id], isNotNull);
     });
 
@@ -101,7 +100,6 @@ void main() {
         );
 
         expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
-        expect(fixture.viewModel.pressedClip, clip.id);
         expect(fixture.viewModel.selectedClips, {ClipIds.someOtherSelected});
 
         fixture.pointerMove(

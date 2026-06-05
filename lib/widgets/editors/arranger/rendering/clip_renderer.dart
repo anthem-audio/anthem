@@ -48,7 +48,6 @@ const _contentBaseColor = Color(0xFF777777);
 // Clip content is composited with BlendMode.plus, so black is a neutral fill.
 const _automationHandleFillColor = Color(0xFF000000);
 const _automationHandleHoveredStrokeColor = Color(0xFF999999);
-const _automationHandlePressedStrokeColor = Color(0xFF555555);
 const _automationPointHandleRadius = 3.5;
 const _automationTensionHandleRadius = 2.5;
 const _automationHandleStrokeWidth = 2.0;
@@ -68,7 +67,6 @@ class ClipRenderInfo {
   final double width;
   final double height;
   final bool selected;
-  final bool pressed;
   final bool hovered;
   final bool showAutomationHandles;
 
@@ -85,7 +83,6 @@ class ClipRenderInfo {
     required this.width,
     required this.height,
     required this.selected,
-    required this.pressed,
     required this.hovered,
     this.showAutomationHandles = false,
   }) : assert(clipTimeViewEnd > clipTimeViewStart),
@@ -100,7 +97,6 @@ void paintClipList({
   required Size canvasSize,
   required AutomationHandleAnnotationSet automationHandleAnnotations,
   required AutomationHandleAnnotation? hoveredAutomationHandle,
-  required AutomationHandleAnnotation? pressedAutomationHandle,
   required List<ClipRenderInfo> clipList,
   required double devicePixelRatio,
   required double timeViewStart,
@@ -116,7 +112,6 @@ void paintClipList({
       width: clipEntry.width,
       height: clipEntry.height,
       selected: clipEntry.selected,
-      pressed: clipEntry.pressed,
       hovered: clipEntry.hovered,
       hideBorder: hideBorder,
     );
@@ -336,7 +331,6 @@ void paintClipList({
           timeViewEnd: timeViewEnd,
           automationHandleAnnotations: automationHandleAnnotations,
           hoveredAutomationHandle: hoveredAutomationHandle,
-          pressedAutomationHandle: pressedAutomationHandle,
         );
       }
     }
@@ -372,7 +366,6 @@ void paintClip({
   required double width,
   required double height,
   required bool selected,
-  required bool pressed,
   bool hovered = false,
   required double timeViewStart,
   required double timeViewEnd,
@@ -386,7 +379,6 @@ void paintClip({
     width: width,
     height: height,
     selected: selected,
-    pressed: pressed,
     hovered: hovered,
     hideBorder: hideBorder,
   );
@@ -405,7 +397,6 @@ void paintClip({
       width: width,
       height: height,
       selected: selected,
-      pressed: pressed,
       overrideTextColor: _contentBaseColor,
     );
 
@@ -581,7 +572,6 @@ void _drawClipTitleDirect({
   final x = clipEntry.x;
   final width = clipEntry.width;
   final selected = clipEntry.selected;
-  final pressed = clipEntry.pressed;
   drawPatternTitle(
     canvas: canvas,
     size: canvasSize,
@@ -592,7 +582,6 @@ void _drawClipTitleDirect({
     width: width,
     height: height,
     selected: selected,
-    pressed: pressed,
     // Match the atlas render path tint to avoid visible color shifts while
     // a title is waiting to be packed into the shared atlas.
     overrideTextColor: _contentBaseColor,
@@ -614,7 +603,6 @@ void _paintAutomationHandles({
   required double timeViewEnd,
   required AutomationHandleAnnotationSet automationHandleAnnotations,
   required AutomationHandleAnnotation? hoveredAutomationHandle,
-  required AutomationHandleAnnotation? pressedAutomationHandle,
 }) {
   final contentRect = Rect.fromLTRB(
     x + 1,
@@ -666,7 +654,6 @@ void _paintAutomationHandles({
             kind: AutomationHandleKind.tensionHandle,
             pointId: point.id,
             hoveredAutomationHandle: hoveredAutomationHandle,
-            pressedAutomationHandle: pressedAutomationHandle,
           ),
       );
       _addAutomationHandleAnnotation(
@@ -704,7 +691,6 @@ void _paintAutomationHandles({
             kind: AutomationHandleKind.point,
             pointId: point.id,
             hoveredAutomationHandle: hoveredAutomationHandle,
-            pressedAutomationHandle: pressedAutomationHandle,
           ),
       );
       _addAutomationHandleAnnotation(
@@ -831,17 +817,7 @@ Color _automationHandleStrokeColor({
   required AutomationHandleKind kind,
   required Id pointId,
   required AutomationHandleAnnotation? hoveredAutomationHandle,
-  required AutomationHandleAnnotation? pressedAutomationHandle,
 }) {
-  if (_isAutomationHandleMatch(
-    pressedAutomationHandle,
-    clipId: clipId,
-    kind: kind,
-    pointId: pointId,
-  )) {
-    return _automationHandlePressedStrokeColor;
-  }
-
   if (_isAutomationHandleMatch(
     hoveredAutomationHandle,
     clipId: clipId,
@@ -884,14 +860,12 @@ void _paintContainer({
   required double width,
   required double height,
   required bool selected,
-  required bool pressed,
   required bool hovered,
   bool hideBorder = false,
 }) {
   final baseColor = getBaseColor(
     color: pattern.color,
     selected: selected,
-    pressed: pressed,
     hovered: hovered,
   );
 
@@ -949,7 +923,6 @@ void drawPatternTitle({
   required double height,
   Color? overrideTextColor,
   bool selected = false,
-  bool pressed = false,
   bool saveLayer = true,
 }) {
   final Color textColor;
@@ -957,11 +930,7 @@ void drawPatternTitle({
   if (overrideTextColor != null) {
     textColor = overrideTextColor;
   } else {
-    textColor = getContentColor(
-      color: pattern.color,
-      selected: selected,
-      pressed: pressed,
-    );
+    textColor = getContentColor(color: pattern.color, selected: selected);
   }
 
   drawClipTitleText(

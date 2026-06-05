@@ -170,101 +170,129 @@ void main() {
       expect(fixture.viewModel.clipWithAutomationHandles, isNull);
     });
 
-    test('hovering automation point handle updates handle visual state', () {
-      final (:clip, :pattern) = addVisibleAutomationClip();
-      final point = AutomationPointModel(
-        idAllocator: testIdAllocator(() => 900),
-        offset: 0,
-        value: 0.5,
-      );
-      pattern.automation.points.add(point);
-      fixture.viewModel.visibleAutomationHandles.add(
-        rect: const Rect.fromLTWH(112, 30, 16, 16),
-        metadata: AutomationHandleAnnotation(
+    test(
+      'pressing automation point handle keeps handle hover visual state',
+      () {
+        final (:clip, :pattern) = addVisibleAutomationClip();
+        final point = AutomationPointModel(
+          idAllocator: testIdAllocator(() => 900),
+          offset: 0,
+          value: 0.5,
+        );
+        pattern.automation.points.add(point);
+        fixture.viewModel.visibleAutomationHandles.add(
+          rect: const Rect.fromLTWH(112, 30, 16, 16),
+          metadata: AutomationHandleAnnotation(
+            clipId: clip.id,
+            kind: AutomationHandleKind.point,
+            pointIndex: 0,
+            pointId: point.id,
+            center: const Offset(120, 38),
+          ),
+        );
+
+        fixture.hover(const Offset(120, 38));
+
+        expectAutomationHandle(
+          fixture.viewModel.hoveredAutomationHandle,
           clipId: clip.id,
           kind: AutomationHandleKind.point,
-          pointIndex: 0,
           pointId: point.id,
-          center: const Offset(120, 38),
-        ),
-      );
+        );
 
-      fixture.hover(const Offset(120, 38));
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(120, 38),
+          ),
+        );
 
-      expectAutomationHandle(
-        fixture.viewModel.hoveredAutomationHandle,
-        clipId: clip.id,
-        kind: AutomationHandleKind.point,
-        pointId: point.id,
-      );
-      expect(fixture.viewModel.pressedAutomationHandle, isNull);
+        expectAutomationHandle(
+          fixture.viewModel.hoveredAutomationHandle,
+          clipId: clip.id,
+          kind: AutomationHandleKind.point,
+          pointId: point.id,
+        );
 
-      fixture.exit(const Offset(-1, -1));
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+        );
 
-      expect(fixture.viewModel.hoveredAutomationHandle, isNull);
-      expect(fixture.viewModel.pressedAutomationHandle, isNull);
-    });
+        expectAutomationHandle(
+          fixture.viewModel.hoveredAutomationHandle,
+          clipId: clip.id,
+          kind: AutomationHandleKind.point,
+          pointId: point.id,
+        );
 
-    test('pressing automation tension handle updates handle visual state', () {
-      final (:clip, :pattern) = addVisibleAutomationClip();
-      final previousPoint = AutomationPointModel(
-        idAllocator: testIdAllocator(),
-        offset: 0,
-        value: 0.25,
-      );
-      final point = AutomationPointModel(
-        idAllocator: testIdAllocator(() => 900),
-        offset: 96,
-        value: 0.75,
-      );
-      pattern.automation.points.addAll([previousPoint, point]);
-      fixture.viewModel.visibleAutomationHandles.add(
-        rect: const Rect.fromLTWH(112, 30, 16, 16),
-        metadata: AutomationHandleAnnotation(
+        fixture.exit(const Offset(-1, -1));
+
+        expect(fixture.viewModel.hoveredAutomationHandle, isNull);
+      },
+    );
+
+    test(
+      'pressing automation tension handle keeps handle hover visual state',
+      () {
+        final (:clip, :pattern) = addVisibleAutomationClip();
+        final previousPoint = AutomationPointModel(
+          idAllocator: testIdAllocator(),
+          offset: 0,
+          value: 0.25,
+        );
+        final point = AutomationPointModel(
+          idAllocator: testIdAllocator(() => 900),
+          offset: 96,
+          value: 0.75,
+        );
+        pattern.automation.points.addAll([previousPoint, point]);
+        fixture.viewModel.visibleAutomationHandles.add(
+          rect: const Rect.fromLTWH(112, 30, 16, 16),
+          metadata: AutomationHandleAnnotation(
+            clipId: clip.id,
+            kind: AutomationHandleKind.tensionHandle,
+            pointIndex: 1,
+            pointId: point.id,
+            center: const Offset(120, 38),
+          ),
+        );
+
+        fixture.hover(const Offset(120, 38));
+        expectAutomationHandle(
+          fixture.viewModel.hoveredAutomationHandle,
           clipId: clip.id,
           kind: AutomationHandleKind.tensionHandle,
-          pointIndex: 1,
           pointId: point.id,
-          center: const Offset(120, 38),
-        ),
-      );
+        );
 
-      fixture.hover(const Offset(120, 38));
-      expectAutomationHandle(
-        fixture.viewModel.hoveredAutomationHandle,
-        clipId: clip.id,
-        kind: AutomationHandleKind.tensionHandle,
-        pointId: point.id,
-      );
+        fixture.pointerDown(
+          const PointerDownEvent(
+            pointer: 1,
+            buttons: kPrimaryMouseButton,
+            position: Offset(120, 38),
+          ),
+        );
 
-      fixture.pointerDown(
-        const PointerDownEvent(
-          pointer: 1,
-          buttons: kPrimaryMouseButton,
-          position: Offset(120, 38),
-        ),
-      );
+        expectAutomationHandle(
+          fixture.viewModel.hoveredAutomationHandle,
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointId: point.id,
+        );
 
-      expect(fixture.viewModel.hoveredAutomationHandle, isNull);
-      expectAutomationHandle(
-        fixture.viewModel.pressedAutomationHandle,
-        clipId: clip.id,
-        kind: AutomationHandleKind.tensionHandle,
-        pointId: point.id,
-      );
+        fixture.pointerUp(
+          const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
+        );
 
-      fixture.pointerUp(
-        const PointerUpEvent(pointer: 1, position: Offset(120, 38)),
-      );
-
-      expectAutomationHandle(
-        fixture.viewModel.hoveredAutomationHandle,
-        clipId: clip.id,
-        kind: AutomationHandleKind.tensionHandle,
-        pointId: point.id,
-      );
-      expect(fixture.viewModel.pressedAutomationHandle, isNull);
-    });
+        expectAutomationHandle(
+          fixture.viewModel.hoveredAutomationHandle,
+          clipId: clip.id,
+          kind: AutomationHandleKind.tensionHandle,
+          pointId: point.id,
+        );
+      },
+    );
 
     test('clicking automation clip title selects the clip', () {
       final (:clip, pattern: _) = addVisibleAutomationClip();
@@ -544,7 +572,6 @@ void main() {
       expect(pattern.automation.points, [firstPoint, lastPoint]);
       expect(fixture.viewModel.selectedClips, {ClipIds.someOtherSelected});
       expect(fixture.viewModel.hoveredAutomationHandle, isNull);
-      expect(fixture.viewModel.pressedAutomationHandle, isNull);
       expect(fixture.projectViewModel.selectedEditor, EditorKind.deviceRack);
       expect(fixture.projectViewModel.activePanel, PanelKind.deviceRack);
 

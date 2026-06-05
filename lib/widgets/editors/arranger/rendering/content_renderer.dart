@@ -406,7 +406,6 @@ class ArrangerContentPainter extends CustomPainterObserver {
       width: width,
       height: trackHeight,
       selected: viewModel.selectedClips.contains(clipId),
-      pressed: viewModel.pressedClip == clipId,
       hovered: viewModel.hoveredClip == clipId,
       showAutomationHandles: viewModel.clipWithAutomationHandles == clipId,
     );
@@ -488,7 +487,6 @@ class ArrangerContentPainter extends CustomPainterObserver {
         canvasSize: size,
         automationHandleAnnotations: viewModel.visibleAutomationHandles,
         hoveredAutomationHandle: viewModel.hoveredAutomationHandle,
-        pressedAutomationHandle: viewModel.pressedAutomationHandle,
         clipList: clipList,
         devicePixelRatio: devicePixelRatio,
         timeViewStart: timeViewStart,

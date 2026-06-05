@@ -27,15 +27,10 @@ void main() {
     final color = AnthemColor(hue: 120);
 
     test('hovered clip color is lighter than base clip color', () {
-      final baseColor = getBaseColor(
-        color: color,
-        selected: false,
-        pressed: false,
-      );
+      final baseColor = getBaseColor(color: color, selected: false);
       final hoveredColor = getBaseColor(
         color: color,
         selected: false,
-        pressed: false,
         hovered: true,
       );
 
@@ -43,22 +38,6 @@ void main() {
         HSLColor.fromColor(hoveredColor).lightness,
         greaterThan(HSLColor.fromColor(baseColor).lightness),
       );
-    });
-
-    test('pressed clip color takes precedence over hovered clip color', () {
-      final pressedColor = getBaseColor(
-        color: color,
-        selected: false,
-        pressed: true,
-      );
-      final pressedHoveredColor = getBaseColor(
-        color: color,
-        selected: false,
-        pressed: true,
-        hovered: true,
-      );
-
-      expect(pressedHoveredColor, pressedColor);
     });
   });
 }

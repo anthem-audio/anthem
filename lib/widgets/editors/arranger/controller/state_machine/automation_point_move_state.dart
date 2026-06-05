@@ -21,6 +21,7 @@ part of 'arranger_state_machine.dart';
 
 class _AutomationPointMoveTarget {
   final AutomationPointModel point;
+  final Id clipId;
   final Id patternId;
   final Rect contentRect;
   final int pointIndex;
@@ -36,6 +37,7 @@ class _AutomationPointMoveTarget {
 
   const _AutomationPointMoveTarget({
     required this.point,
+    required this.clipId,
     required this.patternId,
     required this.contentRect,
     required this.pointIndex,
@@ -102,19 +104,23 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
       _consumeIdleClickHandling();
     }
     _syncPointPosition();
+    _syncHoveredPointHandle();
   }
 
   @override
   void onActive({required event}) {
     _syncPointPosition();
+    _syncHoveredPointHandle();
   }
 
   @override
   void onExit({required event, required to}) {
-    if (_shouldCommit(event)) {
+    final shouldCommit = _shouldCommit(event);
+    if (shouldCommit) {
       _commitMoveSession();
     } else {
       _rollbackMoveSession();
+      _clearHoveredPointHandle();
     }
 
     _idleState.doubleClickPressed = false;
@@ -170,6 +176,7 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
     if (automationHandle?.kind == AutomationHandleKind.point) {
       _initializeExistingPointMoveSession(
         pattern: pattern,
+        clipId: targetClipId,
         automationHandle: automationHandle!,
         contentRect: contentRect,
         startPointer: startPointer,
@@ -213,6 +220,7 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
 
     _target = _AutomationPointMoveTarget(
       point: point,
+      clipId: targetClipId,
       patternId: pattern.id,
       contentRect: contentRect,
       pointIndex: pointIndex,
@@ -232,6 +240,7 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
 
   void _initializeExistingPointMoveSession({
     required PatternModel pattern,
+    required Id clipId,
     required AutomationHandleAnnotation automationHandle,
     required Rect contentRect,
     required ActivePointer startPointer,
@@ -253,6 +262,7 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
     viewModel.lastInteractedAutomationTension = point.tension;
     _target = _AutomationPointMoveTarget(
       point: point,
+      clipId: clipId,
       patternId: pattern.id,
       contentRect: contentRect,
       pointIndex: pointIndex,
@@ -265,6 +275,34 @@ class ArrangerAutomationPointMoveState extends _ArrangerLeafState {
         return (index: pointIndex + index, startTime: pointToMove.offset);
       }),
     );
+  }
+
+  void _syncHoveredPointHandle() {
+    final target = _target;
+    if (target == null) {
+      return;
+    }
+
+    viewModel.hoveredAutomationHandle = AutomationHandleAnnotation(
+      clipId: target.clipId,
+      kind: AutomationHandleKind.point,
+      pointIndex: target.pointIndex,
+      pointId: target.point.id,
+      center: target.dragStartAnchor,
+    );
+  }
+
+  void _clearHoveredPointHandle() {
+    final target = _target;
+    final hoveredHandle = viewModel.hoveredAutomationHandle;
+    if (target == null ||
+        hoveredHandle?.clipId != target.clipId ||
+        hoveredHandle?.kind != AutomationHandleKind.point ||
+        hoveredHandle?.pointId != target.point.id) {
+      return;
+    }
+
+    viewModel.hoveredAutomationHandle = null;
   }
 
   Offset _pointCenterForAutomationPoint({

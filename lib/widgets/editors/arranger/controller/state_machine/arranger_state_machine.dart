@@ -334,7 +334,7 @@ class ArrangerStateMachine
 
   void _syncPointerDerivedViewState() {
     _syncClipWithAutomationHandles();
-    _syncAutomationHandleInteractionState();
+    _syncAutomationHandleHoverState();
   }
 
   void _syncClipWithAutomationHandles() {
@@ -348,17 +348,12 @@ class ArrangerStateMachine
     }
   }
 
-  void _syncAutomationHandleInteractionState() {
-    final nextPressedHandle = data.activePointerId != null
-        ? data.activePointerDownContext?.automationHandle
-        : null;
-    final nextHoveredHandle = data.activePointerId == null
-        ? data.hoverContext?.automationHandle
-        : null;
+  void _syncAutomationHandleHoverState() {
+    final pointerContext = data.activePointerId != null
+        ? data.activePointerDownContext
+        : data.hoverContext;
+    final nextHoveredHandle = pointerContext?.automationHandle;
 
-    if (viewModel.pressedAutomationHandle != nextPressedHandle) {
-      viewModel.pressedAutomationHandle = nextPressedHandle;
-    }
     if (viewModel.hoveredAutomationHandle != nextHoveredHandle) {
       viewModel.hoveredAutomationHandle = nextHoveredHandle;
     }
@@ -1191,7 +1186,6 @@ class ArrangerIdleState extends _ArrangerLeafState {
     );
 
     viewModel.hoveredAutomationHandle = null;
-    viewModel.pressedAutomationHandle = null;
 
     return true;
   }
@@ -1336,22 +1330,6 @@ class ArrangerDragState extends _ArrangerLeafState {
     return null;
   }
 
-  bool get _isClipPressEligible =>
-      isDragPointerActive &&
-      !interactionState.isCurrentInteractionCanceled &&
-      !_isSelectionModeActive &&
-      !_isDragStartOverAutomationPointHandle &&
-      (_isDragStartOverMovableClip || _isDragStartOverResizeHandle);
-
-  void _syncPressedClip() {
-    final nextPressedClip = _isClipPressEligible
-        ? dragStartContext?.selectableClipId
-        : null;
-    if (viewModel.pressedClip != nextPressedClip) {
-      viewModel.pressedClip = nextPressedClip;
-    }
-  }
-
   void _syncDragParameters() {
     final nextActivePointerId = interactionState.isPrimaryPointerActive
         ? interactionState.activePointerId
@@ -1364,7 +1342,6 @@ class ArrangerDragState extends _ArrangerLeafState {
       dragStartContext = null;
       dragCurrentContext = null;
       hasCrossedActivationDistance = false;
-      _syncPressedClip();
       return;
     }
 
@@ -1387,7 +1364,6 @@ class ArrangerDragState extends _ArrangerLeafState {
     final start = dragStartPosition;
     final current = dragCurrentPosition;
     if (start == null || current == null) {
-      _syncPressedClip();
       return;
     }
 
@@ -1403,8 +1379,6 @@ class ArrangerDragState extends _ArrangerLeafState {
       hasCrossedActivationDistance =
           distanceSquared >= _dragActivationDistance * _dragActivationDistance;
     }
-
-    _syncPressedClip();
   }
 
   @override

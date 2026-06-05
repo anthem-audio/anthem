@@ -138,30 +138,29 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
     final arrangementClips = arrangementData.clips;
 
     final resizeHandle = parentState.dragStartContext?.resizeHandleTarget;
-    final pressedClipId = resizeHandle?.metadata.id;
+    final dragStartClipId = resizeHandle?.metadata.id;
     final resizeAreaType = resizeHandle?.metadata.type;
-    if (pressedClipId == null || resizeAreaType == null) {
+    if (dragStartClipId == null || resizeAreaType == null) {
       return;
     }
 
-    final pressedClip = arrangementClips[pressedClipId];
-    if (pressedClip == null) {
+    final dragStartClip = arrangementClips[dragStartClipId];
+    if (dragStartClip == null) {
       return;
     }
 
     _resizeAreaType = resizeAreaType;
-    viewModel.pressedClip = pressedClip.id;
 
     final selectedClips = viewModel.selectedClips;
     var selectedClipIds = selectedClips.nonObservableInner;
-    if (!selectedClipIds.contains(pressedClip.id)) {
+    if (!selectedClipIds.contains(dragStartClip.id)) {
       selectedClips.clear();
       selectedClipIds = selectedClips.nonObservableInner;
     }
 
-    final resizingClipIds = selectedClipIds.contains(pressedClip.id)
+    final resizingClipIds = selectedClipIds.contains(dragStartClip.id)
         ? selectedClipIds.toSet()
-        : <Id>{pressedClip.id};
+        : <Id>{dragStartClip.id};
     _resizingClipIds = Set<Id>.unmodifiable(resizingClipIds);
 
     var hasAnyOverrides = false;
@@ -429,6 +428,5 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
     _resizeAreaType = null;
     _validResizeDeltaRange = (minDelta: 0, maxDelta: 0);
     viewModel.clipTimingOverrides.clear();
-    viewModel.pressedClip = null;
   }
 }

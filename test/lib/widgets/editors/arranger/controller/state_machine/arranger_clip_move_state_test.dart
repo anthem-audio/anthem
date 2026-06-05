@@ -124,7 +124,6 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
-      expect(fixture.viewModel.pressedClip, clip.id);
       expect(fixture.viewModel.selectedClips, {ClipIds.someOtherSelected});
 
       fixture.pointerMove(
@@ -177,7 +176,7 @@ void main() {
       expect(fixture.viewModel.clipTimingOverrides[clip.id], isNull);
     });
 
-    test('pressed clip remains set from down through clip move transition', () {
+    test('drag start clip remains available through clip move transition', () {
       final clip = addClip(
         offset: 100,
         trackId: TrackIds.a,
@@ -193,7 +192,7 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerDragState>());
-      expect(fixture.viewModel.pressedClip, clip.id);
+      expect(fixture.dragState.dragStartContext?.movableClipId, clip.id);
 
       fixture.pointerMove(
         const PointerMoveEvent(
@@ -204,14 +203,14 @@ void main() {
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
-      expect(fixture.viewModel.pressedClip, clip.id);
+      expect(fixture.dragState.dragStartContext?.movableClipId, clip.id);
 
       fixture.pointerUp(
         const PointerUpEvent(pointer: 1, position: Offset(220, 100)),
       );
 
       expect(fixture.stateMachine.currentState, isA<ArrangerIdleState>());
-      expect(fixture.viewModel.pressedClip, isNull);
+      expect(fixture.dragState.dragStartContext, isNull);
     });
 
     test('moving selected clips is one undoable action', () {
