@@ -506,11 +506,12 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
           text: 'About...',
           onSelected: () {
             final dialogController = ServiceRegistry.dialogController;
-            dialogController.showTextDialog(
-              text:
-                  'Version: Pre-alpha\n\n'
-                  'UI design and icons copyright (C) 2021 - 2026 Budislav Stepanov\n'
-                  'Code copyright (C) 2021 - 2026 Joshua Wade',
+            dialogController.showMarkdownDialog(
+              markdown:
+                  '**Version:** Pre-alpha\n\n'
+                  '**UI design and icons:** Copyright (C) 2021 - 2026 '
+                  'Budislav Stepanov\n\n'
+                  '**Code:** Copyright (C) 2021 - 2026 Joshua Wade',
               title: 'About Anthem',
               buttons: [
                 DialogButton(
@@ -526,9 +527,9 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                   text: 'License',
                   shouldCloseDialog: false,
                   onPress: () {
-                    dialogController.showTextDialog(
+                    dialogController.showMarkdownDialog(
                       title: 'License',
-                      text: agpl,
+                      markdown: escapeDialogMarkdown(agpl),
                       buttons: [DialogButton.ok()],
                     );
                   },

@@ -19,12 +19,10 @@
 
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_renderer.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 
@@ -76,60 +74,24 @@ class _MainWindowState extends State<MainWindow> {
       // a user gesture.
       if (kIsWeb) {
         Future(() {
-          ServiceRegistry.dialogController.showTextDialog(
+          ServiceRegistry.dialogController.showMarkdownDialog(
             title: 'Welcome',
-            textSpan: TextSpan(
-              style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
-              children: [
-                TextSpan(
-                  text:
-                      'This is an early preview of Anthem, a free and open-source digital audio workstation.\n\nAnthem is still ',
-                ),
-                TextSpan(
-                  text: 'in early development',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(text: ', and so '),
-                TextSpan(
-                  text: 'does not work',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(
-                  text: ' for most uses.\n\nFeel free to explore, and please ',
-                ),
-                TextSpan(
-                  text: 'report any bugs on GitHub',
-                  style: TextStyle(
-                    decoration: TextDecoration.underline,
-                    color: AnthemTheme.primary.main,
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {
-                      launchUrl(
-                        Uri.parse('https://github.com/anthem-audio/anthem'),
-                      );
-                    },
-                ),
-                TextSpan(
-                  text:
-                      '. For better performance, lower latency, and third-party plugin support, try ',
-                ),
-                TextSpan(
-                  text: 'the desktop version',
-                  style: TextStyle(
-                    decoration: TextDecoration.underline,
-                    color: AnthemTheme.primary.main,
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {
-                      launchUrl(
-                        Uri.parse('https://github.com/anthem-audio/anthem'),
-                      );
-                    },
-                ),
-                TextSpan(text: ', available for Windows, macOS, and Linux.'),
-              ],
-            ),
+            markdown:
+                'This is an early preview of Anthem, a free and open-source '
+                'digital audio workstation.\n\n'
+                'Anthem is still **in early development**, and so '
+                '**does not work** for most uses.\n\n'
+                'Feel free to explore, and please '
+                '[report any bugs on GitHub](https://github.com/anthem-audio/anthem). '
+                'For better performance, lower latency, and third-party plugin '
+                'support, try '
+                '[the desktop version](https://github.com/anthem-audio/anthem), '
+                'available for Windows, macOS, and Linux.',
+            onTapLink: (_, href, _) {
+              if (href != null) {
+                launchUrl(Uri.parse(href));
+              }
+            },
             buttons: [DialogButton.ok()],
           );
         });

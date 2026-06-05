@@ -119,9 +119,9 @@ class DeviceController {
     final path = result?.files[0].path;
 
     if (path?.toLowerCase().endsWith('.vst3') != true) {
-      dialogController.showTextDialog(
+      dialogController.showMarkdownDialog(
         title: 'Error',
-        text:
+        markdown:
             'The selected plugin could not be loaded. It may '
             'not be a valid VST3 plugin, or it may be incompatible.',
         buttons: [DialogButton.ok()],

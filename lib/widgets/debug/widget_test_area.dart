@@ -21,6 +21,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/slider_widget_test_screen.dart';
@@ -31,6 +32,11 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-button',
     title: 'Button',
     description: 'Tests for lib/widgets/basic/button.dart',
+  ),
+  dialog(
+    key: 'widget-test-screen-dialog',
+    title: 'Dialog',
+    description: 'Tests for lib/widgets/basic/dialog',
   ),
   meter(
     key: 'widget-test-screen-meter',
@@ -113,6 +119,15 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             },
           ),
           TreeViewItemModel(
+            key: WidgetTestScreenId.dialog.key,
+            label: labelForScreen(WidgetTestScreenId.dialog),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.dialog;
+              });
+            },
+          ),
+          TreeViewItemModel(
             key: 'widget-test-category-basic-controls',
             label: 'Controls',
             children: [
@@ -144,6 +159,7 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
   Widget _getScreenWidget() {
     return switch (selectedScreen) {
       WidgetTestScreenId.button => const ButtonWidgetTestScreen(),
+      WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
       WidgetTestScreenId.slider => const SliderWidgetTestScreen(),

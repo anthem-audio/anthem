@@ -502,10 +502,11 @@ class ProjectController {
     final completer = Completer<bool>();
 
     if (project.isDirty) {
-      dialogController.showTextDialog(
+      dialogController.showMarkdownDialog(
         title: 'Unsaved Changes',
-        text:
-            'The project "${project.name}" has unsaved changes.\n\n'
+        markdown:
+            'The project "${escapeDialogMarkdown(project.name)}" has unsaved '
+            'changes.\n\n'
             'Do you want to save before closing?',
         onDismiss: () {
           completer.complete(false);

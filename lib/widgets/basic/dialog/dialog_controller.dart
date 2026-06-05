@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,7 @@
 
 import 'package:anthem/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 abstract class DialogControllerImpl {
   void showDialog(
@@ -32,6 +33,9 @@ abstract class DialogControllerImpl {
 
 class DialogController {
   DialogControllerImpl? _impl;
+
+  static const _textDialogMaxWidth = 450.0;
+  static const _textDialogMaxHeight = 250.0;
 
   void initialize(DialogControllerImpl impl) {
     _impl = impl;
@@ -55,43 +59,26 @@ class DialogController {
     );
   }
 
-  void showTextDialog({
+  void showMarkdownDialog({
     String? title,
-    String? text,
-    TextSpan? textSpan,
+    required String markdown,
     List<DialogButton>? buttons,
     void Function()? onDismiss,
+    MarkdownTapLinkCallback? onTapLink,
   }) {
-    if (text == null && textSpan == null) {
-      throw ArgumentError('Either text or textSpan must be provided.');
-    }
-
-    const maxWidth = 450.0;
-    const maxHeight = 250.0;
-
-    if (textSpan != null) {
-      _impl?.showDialog(
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: maxWidth),
-          child: RichText(text: textSpan),
-        ),
-        title: title,
-        buttons: buttons,
-      );
-      return;
-    }
-
     _impl?.showDialog(
       ConstrainedBox(
         constraints: const BoxConstraints(
-          maxWidth: maxWidth,
-          maxHeight: maxHeight,
+          maxWidth: _textDialogMaxWidth,
+          maxHeight: _textDialogMaxHeight,
         ),
         child: Scrollbar(
           child: SingleChildScrollView(
-            child: Text(
-              text!,
-              style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
+            child: MarkdownBody(
+              data: markdown,
+              onTapLink: onTapLink,
+              styleSheet: _dialogMarkdownStyleSheet(),
+              softLineBreak: true,
             ),
           ),
         ),
@@ -105,6 +92,77 @@ class DialogController {
   void closeDialog() {
     _impl?.closeDialog();
   }
+}
+
+String escapeDialogMarkdown(String text) {
+  final buffer = StringBuffer();
+  final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
+  for (final rune in normalized.runes) {
+    final character = String.fromCharCode(rune);
+    if (r'\`*_{}[]()#+-.!|<>'.contains(character)) {
+      buffer.write(r'\');
+    }
+    buffer.write(character);
+  }
+
+  return buffer.toString();
+}
+
+MarkdownStyleSheet _dialogMarkdownStyleSheet() {
+  final bodyStyle = TextStyle(
+    color: AnthemTheme.text.main,
+    fontSize: 13,
+    height: 1.25,
+  );
+
+  return MarkdownStyleSheet(
+    a: bodyStyle.copyWith(
+      color: AnthemTheme.primary.main,
+      decoration: TextDecoration.underline,
+      decorationColor: AnthemTheme.primary.main,
+    ),
+    p: bodyStyle,
+    pPadding: EdgeInsets.zero,
+    code: bodyStyle.copyWith(
+      backgroundColor: AnthemTheme.panel.backgroundDark,
+      fontFamily: 'RobotoMono',
+      fontSize: 12,
+    ),
+    h1: bodyStyle.copyWith(fontSize: 17, fontWeight: FontWeight.w600),
+    h1Padding: const EdgeInsets.only(bottom: 2),
+    h2: bodyStyle.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
+    h2Padding: const EdgeInsets.only(bottom: 2),
+    h3: bodyStyle.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+    h3Padding: const EdgeInsets.only(bottom: 2),
+    h4: bodyStyle.copyWith(fontWeight: FontWeight.w600),
+    h4Padding: EdgeInsets.zero,
+    h5: bodyStyle.copyWith(fontWeight: FontWeight.w600),
+    h5Padding: EdgeInsets.zero,
+    h6: bodyStyle.copyWith(fontWeight: FontWeight.w600),
+    h6Padding: EdgeInsets.zero,
+    em: const TextStyle(fontStyle: FontStyle.italic),
+    strong: const TextStyle(fontWeight: FontWeight.bold),
+    del: const TextStyle(decoration: TextDecoration.lineThrough),
+    blockquote: bodyStyle.copyWith(color: AnthemTheme.text.accent),
+    blockSpacing: 6,
+    listIndent: 18,
+    listBullet: bodyStyle,
+    listBulletPadding: const EdgeInsets.only(right: 4),
+    blockquotePadding: const EdgeInsets.only(left: 8),
+    blockquoteDecoration: BoxDecoration(
+      border: Border(left: BorderSide(color: AnthemTheme.overlay.border)),
+    ),
+    codeblockPadding: const EdgeInsets.all(8),
+    codeblockDecoration: BoxDecoration(
+      color: AnthemTheme.panel.backgroundDark,
+      border: Border.all(color: AnthemTheme.panel.border),
+      borderRadius: BorderRadius.circular(3),
+    ),
+    horizontalRuleDecoration: BoxDecoration(
+      border: Border(top: BorderSide(color: AnthemTheme.overlay.border)),
+    ),
+  );
 }
 
 class DialogButton {

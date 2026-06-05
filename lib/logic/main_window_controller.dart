@@ -282,9 +282,9 @@ class MainWindowController {
         outputPath: path,
       );
 
-      dialogController.showTextDialog(
+      dialogController.showMarkdownDialog(
         title: 'Export logs',
-        text: 'Saved logs to:\n\n$exportedPath',
+        markdown: 'Saved logs to:\n\n${escapeDialogMarkdown(exportedPath)}',
         buttons: [DialogButton.ok()],
       );
 
@@ -292,9 +292,10 @@ class MainWindowController {
     } catch (error, stackTrace) {
       _log.warning('Could not export logs.', error, stackTrace);
 
-      dialogController.showTextDialog(
+      dialogController.showMarkdownDialog(
         title: 'Export logs',
-        text: 'Could not export logs:\n\n$error',
+        markdown:
+            'Could not export logs:\n\n${escapeDialogMarkdown(error.toString())}',
         buttons: [DialogButton.ok()],
       );
 
