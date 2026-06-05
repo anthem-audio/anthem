@@ -529,7 +529,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                   onPress: () {
                     dialogController.showMarkdownDialog(
                       title: 'License',
-                      markdown: escapeDialogMarkdown(agpl),
+                      markdown: escapeDialogMarkdownPreformattedText(agpl),
                       buttons: [DialogButton.ok()],
                     );
                   },

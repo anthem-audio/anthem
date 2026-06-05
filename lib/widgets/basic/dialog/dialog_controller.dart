@@ -150,6 +150,52 @@ String escapeDialogMarkdown(String text) {
   return buffer.toString();
 }
 
+String escapeDialogMarkdownPreformattedText(String text) {
+  const space = 0x20;
+  const lineFeed = 0x0A;
+
+  final escaped = escapeDialogMarkdown(text);
+  final buffer = StringBuffer();
+  final runes = escaped.runes.toList();
+
+  var atLineStart = true;
+
+  for (var i = 0; i < runes.length; i++) {
+    if (atLineStart && runes[i] == space) {
+      final firstSpaceIndex = i;
+      while (i < runes.length && runes[i] == space) {
+        i++;
+      }
+
+      if (i < runes.length && runes[i] != lineFeed) {
+        for (var j = firstSpaceIndex; j < i; j++) {
+          buffer.write('&nbsp;');
+        }
+      } else {
+        for (var j = firstSpaceIndex; j < i; j++) {
+          buffer.write(' ');
+        }
+      }
+
+      if (i == runes.length) {
+        break;
+      }
+    }
+
+    final currentRune = runes[i];
+    if (currentRune == lineFeed) {
+      buffer.write('\n');
+      atLineStart = true;
+      continue;
+    }
+
+    buffer.write(String.fromCharCode(currentRune));
+    atLineStart = false;
+  }
+
+  return buffer.toString();
+}
+
 MarkdownStyleSheet _dialogMarkdownStyleSheet() {
   final bodyStyle = TextStyle(
     color: AnthemTheme.text.main,
