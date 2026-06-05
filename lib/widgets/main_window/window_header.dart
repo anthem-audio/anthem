@@ -26,6 +26,7 @@ import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/version.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/icon.dart';
@@ -508,7 +509,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
             final dialogController = ServiceRegistry.dialogController;
             dialogController.showMarkdownDialog(
               markdown:
-                  '**Version:** Pre-alpha\n\n'
+                  '**Version:** $anthemVersion\n\n'
                   '**UI design and icons:** Copyright (C) 2021 - 2026 '
                   'Budislav Stepanov\n\n'
                   '**Code:** Copyright (C) 2021 - 2026 Joshua Wade',
@@ -541,7 +542,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                     showLicensePage(
                       context: context,
                       applicationName: 'Anthem',
-                      applicationVersion: 'Pre-alpha',
+                      applicationVersion: anthemVersion,
                     );
                   },
                 ),

@@ -98,7 +98,7 @@ public:
     return "JUCE_APPLICATION_NAME_STRING";
   }
   const juce::String getApplicationVersion() override {
-    return "0.0.1";
+    return ANTHEM_VERSION_STRING;
   }
 
   bool moreThanOneInstanceAllowed() override {

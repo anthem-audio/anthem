@@ -1,9 +1,12 @@
-# cspell:ignore strequal pluginhost
+# cspell:ignore pluginhost prealpha strequal
 
 cmake_minimum_required(VERSION 3.23)
 
+set(ANTHEM_VERSION "0.0.0-prealpha.1")
+set(ANTHEM_VERSION_CORE "0.0.0")
+
 project(AnthemEngine
-  VERSION 0.0.1
+  VERSION ${ANTHEM_VERSION_CORE}
   LANGUAGES C CXX
 )
 
@@ -219,6 +222,8 @@ else()
 
   target_sources(AnthemEngine PRIVATE ${APP_MAIN})
 endif()
+
+target_compile_definitions(AnthemEngine PRIVATE ANTHEM_VERSION_STRING="${ANTHEM_VERSION}")
 
 # Temporarily link WASM build to custom JUCE lib for testing
 if (IS_WASM)
