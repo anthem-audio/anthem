@@ -20,6 +20,7 @@
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
@@ -235,6 +236,23 @@ abstract class _TrackAutomationProcessingModel
   NodeModel? get sequenceAutomationProviderNode =>
       project.processingGraph.nodes[sequenceAutomationProviderNodeId];
 
+  /// Control-value visualization sink assigned to this automation lane.
+  @anthemObservable
+  Id? controlValueVisualizationNodeId;
+
+  NodeModel? get controlValueVisualizationNode =>
+      project.processingGraph.nodes[controlValueVisualizationNodeId];
+
+  ControlValueVisualizationProcessorModel?
+  get controlValueVisualizationProcessor {
+    final processor = controlValueVisualizationNode?.processor;
+    if (processor is ControlValueVisualizationProcessorModel) {
+      return processor;
+    }
+
+    return null;
+  }
+
   @anthemObservable
   AnthemObservableList<DeviceModel> devices;
 
@@ -250,6 +268,7 @@ abstract class _TrackAutomationProcessingModel
   List<Id> getOwnedNodeIds() {
     return [
       sequenceAutomationProviderNodeId,
+      controlValueVisualizationNodeId,
       ...devices.expand((device) => device.nodeIds),
     ].nonNulls.toList();
   }
@@ -258,6 +277,7 @@ abstract class _TrackAutomationProcessingModel
     required this.devices,
     required this.deviceRoutingConnectionIds,
   }) : sequenceAutomationProviderNodeId = null,
+       controlValueVisualizationNodeId = null,
        super();
 }
 

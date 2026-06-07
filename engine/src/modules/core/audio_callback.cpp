@@ -60,11 +60,12 @@ AudioCallback::AudioCallback(Engine* engine) {
 
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
-  cpuBurdenProvider = Engine::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
+  cpuBurdenProvider =
+      Engine::getInstance().globalVisualizationSources->cpuBurdenProvider.rt_getProvider();
   playheadPositionProvider =
-      Engine::getInstance().globalVisualizationSources->playheadPositionProvider.get();
+      Engine::getInstance().globalVisualizationSources->playheadPositionProvider.rt_getProvider();
   playheadSequenceIdProvider =
-      Engine::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
+      Engine::getInstance().globalVisualizationSources->playheadSequenceIdProvider.rt_getProvider();
 
   juce::Logger::writeToLog("AnthemAudioCallback: constructed successfully.");
 }

@@ -162,10 +162,6 @@ abstract class _ArrangerController {
       return;
     }
 
-    if (isParameterTouchTrackingSuppressed(node)) {
-      return;
-    }
-
     final target = resolveAutomationTarget(nodeId: node.id, portId: portId);
     if (target == null) {
       return;

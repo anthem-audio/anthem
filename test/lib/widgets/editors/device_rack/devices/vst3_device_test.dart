@@ -194,11 +194,11 @@ Knob _firstParameterKnob(WidgetTester tester) {
       .firstWhere((knob) => knob.parameter != null);
 }
 
-ParameterControlBinding _firstParameterBinding(NodeModel node) {
+ParameterUiBinding _firstParameterBinding(NodeModel node) {
   final port = node.controlInputPorts.firstWhere(
     (port) => port.config.parameterConfig != null,
   );
-  return ParameterControlBinding(node: node, port: port);
+  return ParameterUiBinding(node: node, port: port);
 }
 
 void _updateFirstParameterValue(NodeModel node, double value) {

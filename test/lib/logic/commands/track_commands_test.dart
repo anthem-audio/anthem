@@ -29,8 +29,11 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
@@ -268,7 +271,7 @@ void main() {
         final track = TrackModel(
           idAllocator: ProjectEntityIdAllocator.test(() => id),
           name: name,
-          color: MockAnthemColor(),
+          color: AnthemColor(hue: 0),
           type: type,
         );
 
@@ -974,6 +977,148 @@ void main() {
         // M and N point back to L as their parent
         expect(trackM.parentTrackId, equals(trackL.id));
         expect(trackN.parentTrackId, equals(trackL.id));
+      });
+    });
+
+    group('AutomationLaneAddRemoveCommand', () {
+      ({TrackModel automationLane, TrackModel parentTrack})
+      addUtilityAutomationLane() {
+        final utilityNodeId = trackJ.requireProcessing.utilityNodeId!;
+
+        final command = AutomationLaneAddRemoveCommand.add(
+          project: project,
+          parentTrackId: trackJ.id,
+          nodeId: utilityNodeId,
+          portId: UtilityProcessorModel.gainPortId,
+          name: 'Volume',
+        );
+
+        command.execute(project);
+
+        return (
+          automationLane: tracks[trackJ.automationLanes.single]!,
+          parentTrack: trackJ,
+        );
+      }
+
+      test(
+        'automation lane graph includes control value visualization sink',
+        () {
+          final utilityNode =
+              processingGraph.nodes[trackJ.requireProcessing.utilityNodeId!]!;
+          final port = utilityNode.getPortById(
+            UtilityProcessorModel.gainPortId,
+          );
+          port.parameterValue = 0.42;
+
+          final (:automationLane, :parentTrack) = addUtilityAutomationLane();
+
+          final automationProcessing =
+              automationLane.requireAutomationProcessing;
+          final providerNode = processingGraph
+              .nodes[automationProcessing.sequenceAutomationProviderNodeId];
+          final visualizationNode = processingGraph
+              .nodes[automationProcessing.controlValueVisualizationNodeId];
+
+          expect(providerNode, isNotNull);
+          expect(visualizationNode, isNotNull);
+
+          final visualizationProcessor =
+              visualizationNode!.processor
+                  as ControlValueVisualizationProcessorModel;
+          final expectedVisualizationId =
+              ControlValueVisualizationProcessorModel.buildVisualizationId(
+                nodeId: port.nodeId,
+                portId: port.id,
+              );
+
+          expect(
+            visualizationProcessor.visualizationId,
+            equals(expectedVisualizationId),
+          );
+          expect(
+            automationProcessing.getOwnedNodeIds(),
+            containsAll([providerNode!.id, visualizationNode.id]),
+          );
+          expect(parentTrack.automationLanes, contains(automationLane.id));
+
+          final connections = processingGraph.connections.values;
+          expect(
+            connections.any(
+              (connection) =>
+                  connection.sourceNodeId == providerNode.id &&
+                  connection.sourcePortId ==
+                      SequenceAutomationProviderProcessorModel
+                          .controlOutputPortId &&
+                  connection.destinationNodeId == port.nodeId &&
+                  connection.destinationPortId == port.id &&
+                  connection.dataType == NodePortDataType.control,
+            ),
+            isTrue,
+          );
+          expect(
+            connections.any(
+              (connection) =>
+                  connection.sourceNodeId == providerNode.id &&
+                  connection.sourcePortId ==
+                      SequenceAutomationProviderProcessorModel
+                          .controlOutputPortId &&
+                  connection.destinationNodeId == visualizationNode.id &&
+                  connection.destinationPortId ==
+                      ControlValueVisualizationProcessorModel
+                          .controlInputPortId &&
+                  connection.dataType == NodePortDataType.control,
+            ),
+            isTrue,
+          );
+        },
+      );
+
+      test('automation visualization node clears and restores with lane', () {
+        final utilityNode =
+            processingGraph.nodes[trackJ.requireProcessing.utilityNodeId!]!;
+        final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
+        port.parameterValue = 0.42;
+
+        final command = AutomationLaneAddRemoveCommand.add(
+          project: project,
+          parentTrackId: trackJ.id,
+          nodeId: utilityNode.id,
+          portId: UtilityProcessorModel.gainPortId,
+          name: 'Volume',
+        );
+
+        command.execute(project);
+
+        final automationLane = tracks[trackJ.automationLanes.single]!;
+        final visualizationNodeId = automationLane
+            .requireAutomationProcessing
+            .controlValueVisualizationNodeId;
+        final visualizationProcessor =
+            processingGraph.nodes[visualizationNodeId]!.processor
+                as ControlValueVisualizationProcessorModel;
+        final visualizationId = visualizationProcessor.visualizationId;
+
+        expect(visualizationNodeId, isNotNull);
+        expect(visualizationId, isNotNull);
+
+        command.rollback(project);
+
+        expect(trackJ.automationLanes, isEmpty);
+        expect(processingGraph.nodes[visualizationNodeId], isNull);
+
+        command.execute(project);
+
+        expect(trackJ.automationLanes, hasLength(1));
+        final restoredVisualizationNode =
+            processingGraph.nodes[visualizationNodeId];
+        expect(restoredVisualizationNode, isNotNull);
+        expect(
+          (restoredVisualizationNode!.processor
+                  as ControlValueVisualizationProcessorModel)
+              .visualizationId,
+          equals(visualizationId),
+        );
       });
     });
 

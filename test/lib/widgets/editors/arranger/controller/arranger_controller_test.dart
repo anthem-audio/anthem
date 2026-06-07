@@ -306,7 +306,7 @@ void main() {
           UtilityProcessorModel.gainPortId,
         );
 
-        utilityPort.parameterValue = 0.42;
+        utilityNode.touchControlInputParameter(utilityPort);
 
         var target = viewModel.lastTweakedAutomationTarget;
         expect(target, isNotNull);
@@ -330,7 +330,7 @@ void main() {
           ToneGeneratorProcessorModel.frequencyPortId,
         );
 
-        frequencyPort.parameterValue = 0.56;
+        deviceNode.touchControlInputParameter(frequencyPort);
 
         target = viewModel.lastTweakedAutomationTarget;
         expect(target, isNotNull);
@@ -388,7 +388,7 @@ void main() {
       },
     );
 
-    test('parameter changes update last tweaked automation target', () {
+    test('parameter touches update existing automation target', () {
       fixture.dispose();
 
       final project = ProjectModel.create();
@@ -424,7 +424,7 @@ void main() {
 
         expect(controller.createAutomationLaneForTarget(target!), isNotNull);
 
-        utilityPort.parameterValue = 0.41;
+        utilityNode.touchControlInputParameter(utilityPort);
 
         expect(viewModel.lastTweakedAutomationTarget, isNotNull);
         expect(
@@ -503,7 +503,7 @@ void main() {
       }
     });
 
-    test('suppressed parameter changes do not update automation target', () {
+    test('direct parameter changes do not update automation target', () {
       fixture.dispose();
 
       final project = ProjectModel.create();
@@ -529,9 +529,7 @@ void main() {
           UtilityProcessorModel.gainPortId,
         );
 
-        utilityNode.withoutParameterTouchTracking(() {
-          utilityPort.parameterValue = 0.41;
-        });
+        utilityPort.parameterValue = 0.41;
 
         expect(viewModel.lastTweakedAutomationTarget, isNull);
       } finally {

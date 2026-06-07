@@ -26,6 +26,7 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
@@ -44,8 +45,6 @@ import 'processors/master_output.dart';
 import 'processors/tone_generator.dart';
 
 part 'node.g.dart';
-
-const _controlInputPortIndexBinding = 'controlInputPortIndex';
 
 @AnthemModel(serializable: true, generateModelSync: true)
 class NodeOwnerModel extends _NodeOwnerModel
@@ -100,9 +99,7 @@ class NodeModel extends _NodeModel
          audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
          eventOutputPorts: eventOutputPorts ?? AnthemObservableList(),
          controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
-       ) {
-    _initParameterTouchTracking();
-  }
+       );
 
   NodeModel.create({
     required ProjectEntityIdAllocator idAllocator,
@@ -123,9 +120,7 @@ class NodeModel extends _NodeModel
          audioOutputPorts: audioOutputPorts ?? AnthemObservableList(),
          eventOutputPorts: eventOutputPorts ?? AnthemObservableList(),
          controlOutputPorts: controlOutputPorts ?? AnthemObservableList(),
-       ) {
-    _initParameterTouchTracking();
-  }
+       );
 
   NodeModel.uninitialized()
     : super(
@@ -139,9 +134,7 @@ class NodeModel extends _NodeModel
         processor: null,
         isThirdPartyPlugin: false,
         owner: null,
-      ) {
-    _initParameterTouchTracking();
-  }
+      );
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
@@ -213,35 +206,7 @@ class NodeModel extends _NodeModel
         .followedBy(controlOutputPorts);
   }
 
-  void _initParameterTouchTracking() {
-    onChange(
-      (b) => b
-          .controlInputPorts()
-          .anyElement(bindIndexTo: _controlInputPortIndexBinding)
-          .parameterValue(),
-      (_, bindings) {
-        if (isParameterTouchTrackingSuppressed(this)) {
-          return;
-        }
-
-        final portIndex = bindings.maybeGet<int>(_controlInputPortIndexBinding);
-        if (portIndex == null ||
-            portIndex < 0 ||
-            portIndex >= controlInputPorts.length) {
-          return;
-        }
-
-        final changedPort = controlInputPorts[portIndex];
-        touchControlInputParameter(changedPort);
-      },
-    );
-  }
-
   void touchControlInputParameter(NodePortModel port) {
-    if (isParameterTouchTrackingSuppressed(this)) {
-      return;
-    }
-
     if (port.nodeId != id ||
         !controlInputPorts.contains(port) ||
         port.config.dataType != NodePortDataType.control ||
@@ -251,27 +216,6 @@ class NodeModel extends _NodeModel
     }
 
     lastChangedControlPortId = port.id;
-  }
-}
-
-final Expando<int> _parameterTouchSuppressionDepths = Expando<int>(
-  'parameterTouchSuppressionDepth',
-);
-
-bool isParameterTouchTrackingSuppressed(NodeModel node) =>
-    (_parameterTouchSuppressionDepths[node] ?? 0) > 0;
-
-extension NodeParameterTouchTracking on NodeModel {
-  T withoutParameterTouchTracking<T>(T Function() action) {
-    _parameterTouchSuppressionDepths[this] =
-        (_parameterTouchSuppressionDepths[this] ?? 0) + 1;
-
-    try {
-      return action();
-    } finally {
-      final nextDepth = (_parameterTouchSuppressionDepths[this] ?? 1) - 1;
-      _parameterTouchSuppressionDepths[this] = nextDepth > 0 ? nextDepth : null;
-    }
   }
 }
 
@@ -408,6 +352,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   @Union([
     BalanceProcessorModel,
+    ControlValueVisualizationProcessorModel,
     DbMeterProcessorModel,
     GainProcessorModel,
     LiveEventProviderProcessorModel,

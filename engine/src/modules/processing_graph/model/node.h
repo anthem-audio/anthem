@@ -22,6 +22,7 @@
 #include "generated/lib/model/processing_graph/node.h"
 #include "modules/processing_graph/model/node_port.h"
 #include "modules/processors/balance.h"
+#include "modules/processors/control_value_visualization.h"
 #include "modules/processors/db_meter.h"
 #include "modules/processors/gain.h"
 #include "modules/processors/live_event_provider.h"

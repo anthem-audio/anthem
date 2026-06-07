@@ -24,6 +24,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -183,7 +184,21 @@ class AutomationLaneAddRemoveCommand extends Command {
     lane.requireAutomationProcessing.sequenceAutomationProviderNodeId =
         providerNode.id;
 
+    final visualizationId =
+        ControlValueVisualizationProcessorModel.buildVisualizationId(
+          nodeId: target.nodeId,
+          portId: target.portId,
+        );
+    final visualizationNode = ControlValueVisualizationProcessorModel.create(
+      idAllocator: idAllocator,
+      visualizationId: visualizationId,
+    ).createNode();
+    visualizationNode.owner = NodeOwnerModel(trackId: lane.id);
+    lane.requireAutomationProcessing.controlValueVisualizationNodeId =
+        visualizationNode.id;
+
     processingGraph.addNode(providerNode);
+    processingGraph.addNode(visualizationNode);
     processingGraph.addConnection(
       NodeConnectionModel(
         idAllocator: idAllocator,
@@ -192,6 +207,18 @@ class AutomationLaneAddRemoveCommand extends Command {
             SequenceAutomationProviderProcessorModel.controlOutputPortId,
         destinationNodeId: target.nodeId,
         destinationPortId: target.portId,
+        dataType: NodePortDataType.control,
+      ),
+    );
+    processingGraph.addConnection(
+      NodeConnectionModel(
+        idAllocator: idAllocator,
+        sourceNodeId: providerNode.id,
+        sourcePortId:
+            SequenceAutomationProviderProcessorModel.controlOutputPortId,
+        destinationNodeId: visualizationNode.id,
+        destinationPortId:
+            ControlValueVisualizationProcessorModel.controlInputPortId,
         dataType: NodePortDataType.control,
       ),
     );

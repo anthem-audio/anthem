@@ -151,7 +151,7 @@ void main() {
   });
 
   group('NodeModel parameter touch tracking', () {
-    test('tracks the last changed control input parameter', () {
+    test('does not track direct control input parameter value changes', () {
       final project = ProjectModel.create();
       addTearDown(project.dispose);
       final nodeId = project.allocateId();
@@ -178,11 +178,11 @@ void main() {
 
       parameterPort.parameterValue = 0.75;
 
-      expect(node.lastChangedControlPortId, equals(100));
+      expect(node.lastChangedControlPortId, isNull);
 
       nonParameterPort.parameterValue = 0.25;
 
-      expect(node.lastChangedControlPortId, equals(100));
+      expect(node.lastChangedControlPortId, isNull);
     });
 
     test('tracks explicit control input parameter touches', () {
@@ -215,35 +215,6 @@ void main() {
       expect(node.lastChangedControlPortId, equals(100));
 
       node.touchControlInputParameter(nonParameterPort);
-
-      expect(node.lastChangedControlPortId, equals(100));
-    });
-
-    test('can suppress parameter touch tracking for state sync', () {
-      final project = ProjectModel.create();
-      addTearDown(project.dispose);
-      final nodeId = project.allocateId();
-      final parameterPort = _port(
-        nodeId: nodeId,
-        id: 100,
-        dataType: NodePortDataType.control,
-        parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.5),
-      );
-      final node = NodeModel(
-        id: nodeId,
-        controlInputPorts: AnthemObservableList.of([parameterPort]),
-      );
-
-      project.processingGraph.addNode(node);
-
-      node.withoutParameterTouchTracking(() {
-        node.touchControlInputParameter(parameterPort);
-        parameterPort.parameterValue = 0.25;
-      });
-
-      expect(node.lastChangedControlPortId, isNull);
-
-      parameterPort.parameterValue = 0.75;
 
       expect(node.lastChangedControlPortId, equals(100));
     });

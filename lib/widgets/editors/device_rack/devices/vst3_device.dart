@@ -445,7 +445,7 @@ class _Vst3ParameterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final parameter = ParameterControlBinding(node: node, port: port);
+    final parameter = ParameterUiBinding(node: node, port: port);
     final name = port.config.name ?? 'Parameter ${port.id}';
 
     return _ParameterRowFrame(

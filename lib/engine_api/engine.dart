@@ -345,8 +345,9 @@ class Engine {
     NodeModel node,
     int controlPortId,
     double rawValue,
-    String? displayText,
-  ) {
+    String? displayText, {
+    required bool markTouched,
+  }) {
     final value = rawValue.clamp(0.0, 1.0).toDouble();
     final port = _findPluginParameterPort(node, controlPortId);
 
@@ -354,7 +355,9 @@ class Engine {
       return;
     }
 
-    node.touchControlInputParameter(port);
+    if (markTouched) {
+      node.touchControlInputParameter(port);
+    }
 
     if (port.parameterValue != value) {
       port.parameterValue = value;
@@ -376,6 +379,7 @@ class Engine {
       event.controlPortId,
       event.value,
       event.displayText,
+      markTouched: true,
     );
 
     _scheduleNodeStateUpdate(event.nodeId);
@@ -428,16 +432,15 @@ class Engine {
       return;
     }
 
-    node.withoutParameterTouchTracking(() {
-      for (final parameterValue in event.parameterValues) {
-        _applyPluginParameterValue(
-          node,
-          parameterValue.controlPortId,
-          parameterValue.value,
-          parameterValue.displayText,
-        );
-      }
-    });
+    for (final parameterValue in event.parameterValues) {
+      _applyPluginParameterValue(
+        node,
+        parameterValue.controlPortId,
+        parameterValue.value,
+        parameterValue.displayText,
+        markTouched: false,
+      );
+    }
   }
 
   void _onReply(Response response) {

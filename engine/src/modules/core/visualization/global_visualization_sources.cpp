@@ -170,16 +170,17 @@ void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(
 }
 
 GlobalVisualizationSources::GlobalVisualizationSources() {
-  cpuBurdenProvider = std::make_shared<CpuVisualizationProvider>();
-  playheadPositionProvider = std::make_shared<PlayheadPositionVisualizationProvider>();
-  playheadSequenceIdProvider = std::make_shared<PlayheadSequenceIdVisualizationProvider>();
+  cpuBurdenProvider =
+      RegisteredVisualizationProvider<CpuVisualizationProvider>::registerDataProvider(
+          "cpu", std::make_unique<CpuVisualizationProvider>());
 
-  // Register global sources with the visualization broker
-  VisualizationBroker::getInstance().registerDataProvider("cpu", cpuBurdenProvider);
-  VisualizationBroker::getInstance().registerDataProvider(
-      "playhead_position", playheadPositionProvider);
-  VisualizationBroker::getInstance().registerDataProvider(
-      "playhead_sequence_id", playheadSequenceIdProvider);
+  playheadPositionProvider =
+      RegisteredVisualizationProvider<PlayheadPositionVisualizationProvider>::registerDataProvider(
+          "playhead_position", std::make_unique<PlayheadPositionVisualizationProvider>());
+
+  playheadSequenceIdProvider = RegisteredVisualizationProvider<
+      PlayheadSequenceIdVisualizationProvider>::registerDataProvider("playhead_sequence_id",
+      std::make_unique<PlayheadSequenceIdVisualizationProvider>());
 }
 
 } // namespace anthem

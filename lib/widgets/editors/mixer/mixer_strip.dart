@@ -205,7 +205,7 @@ class _MeterSection extends StatelessObserverWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gainParameter = ParameterControlBinding.byId(
+    final gainParameter = ParameterUiBinding.byId(
       node: track.processing!.utilityNode!,
       portId: UtilityProcessorModel.gainPortId,
     );

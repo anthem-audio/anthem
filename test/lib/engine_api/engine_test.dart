@@ -591,6 +591,7 @@ void main() {
         ),
       );
 
+      verify(node.touchControlInputParameter(any)).called(1);
       verify(node.scheduleDebouncedStateUpdate()).called(2);
     });
 
@@ -638,6 +639,7 @@ void main() {
 
         expect(port.parameterValue, 0.25);
         expect(port.parameterDisplayText, '440');
+        verifyNever(node.touchControlInputParameter(any));
         verifyNever(node.scheduleDebouncedStateUpdate());
       },
     );

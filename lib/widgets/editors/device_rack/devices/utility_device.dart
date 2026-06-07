@@ -71,7 +71,7 @@ class _GainControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gainParameter = ParameterControlBinding.byId(
+    final gainParameter = ParameterUiBinding.byId(
       node: node,
       portId: UtilityProcessorModel.gainPortId,
     );
@@ -104,11 +104,11 @@ class _BalanceControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final balanceParameter = ParameterControlBinding.byId(
+    final balanceParameter = ParameterUiBinding.byId(
       node: node,
       portId: UtilityProcessorModel.balancePortId,
-      parameterToControlValue: UtilityProcessorModel.parameterValueToPan,
-      controlToParameterValue: UtilityProcessorModel.panToParameterValue,
+      parameterToUiValue: UtilityProcessorModel.parameterValueToPan,
+      uiToParameterValue: UtilityProcessorModel.panToParameterValue,
     );
 
     return Column(

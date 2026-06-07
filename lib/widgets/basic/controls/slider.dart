@@ -20,8 +20,10 @@
 import 'dart:math';
 
 import 'package:anthem/theme.dart';
+import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
+import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
@@ -42,7 +44,7 @@ class Slider extends StatefulWidget {
   final bool noBackground;
 
   final double? value;
-  final ParameterControlBinding? parameter;
+  final ParameterUiBinding? parameter;
   final double min;
   final double max;
 
@@ -97,7 +99,20 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
   double rawToScaled(double rawValue) =>
       rawValue * (widget.max - widget.min) + widget.min;
 
-  double get currentValue => widget.parameter?.controlValue ?? widget.value!;
+  double currentValue([double? automationParameterValue]) {
+    final parameter = widget.parameter;
+    if (parameter == null) {
+      return widget.value!;
+    }
+
+    if (automationParameterValue != null) {
+      return parameter.uiValueForNormalizedParameterValue(
+        automationParameterValue,
+      );
+    }
+
+    return parameter.uiValue;
+  }
 
   int? currentHintId;
 
@@ -155,8 +170,8 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       pressColorHelper.setTarget(pressed ? 1 : 0);
     }
 
-    Widget buildControl() {
-      final value = currentValue;
+    Widget buildControl({double? automationParameterValue}) {
+      final value = currentValue(automationParameterValue);
 
       void resetParameterToDefault() {
         final parameter = widget.parameter;
@@ -165,7 +180,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
         }
 
         parameter.resetToDefault();
-        lastValue = currentValue;
+        lastValue = currentValue(automationParameterValue);
         setHint(hover: false);
       }
 
@@ -287,7 +302,26 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       return buildControl();
     }
 
-    return Observer(builder: (_) => buildControl());
+    return Observer(
+      builder: (_) {
+        final automationVisualizationId =
+            widget.parameter!.automationVisualizationId;
+        if (automationVisualizationId == null) {
+          return buildControl();
+        }
+
+        return VisualizationBuilder.double(
+          config: VisualizationSubscriptionConfig.latestDouble(
+            automationVisualizationId,
+          ),
+          builder: (context, value, engineTime) {
+            return buildControl(
+              automationParameterValue: engineTime == null ? null : value,
+            );
+          },
+        );
+      },
+    );
   }
 
   @override

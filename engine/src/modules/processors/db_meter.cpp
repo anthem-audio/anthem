@@ -40,7 +40,8 @@ void DbMeterVisualizationProvider::rt_pushValue(double value, int64_t sampleTime
 
 DbMeterProcessor::DbMeterProcessor(const DbMeterProcessorModelImpl& _impl)
   : Processor("DbMeter"), DbMeterProcessorModelBase(_impl),
-    rt_publishEverySamples(std::make_shared<std::atomic<int64_t>>(1)) {}
+    publishEverySamplesStorage(std::make_unique<std::atomic<int64_t>>(1)),
+    rt_publishEverySamples(publishEverySamplesStorage.get()) {}
 
 DbMeterProcessor::~DbMeterProcessor() {
   unregisterVisualizationProviders();
@@ -57,7 +58,7 @@ void DbMeterProcessor::initialize(
     rt_publishEverySamples->store(std::max<int64_t>(1, newValue), std::memory_order_relaxed);
   });
 
-  syncVisualizationProviders();
+  registerVisualizationProviders();
 }
 
 void DbMeterProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
@@ -88,7 +89,7 @@ void DbMeterProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
 }
 
 void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {
-  if (channelProviders.empty() || numSamples <= 0) {
+  if (visualizationProviders.empty() || numSamples <= 0) {
     return;
   }
 
@@ -101,11 +102,11 @@ void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {
       blockStartSample,
       publishEverySamples,
       [this](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
-        if (channelIndex >= channelProviders.size()) {
+        if (channelIndex >= visualizationProviders.size()) {
           return;
         }
 
-        auto& provider = channelProviders[channelIndex];
+        auto* provider = visualizationProviders[channelIndex].rt_getProvider();
         if (provider == nullptr) {
           return;
         }
@@ -114,30 +115,24 @@ void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {
       });
 }
 
-void DbMeterProcessor::syncVisualizationProviders() {
-  unregisterVisualizationProviders();
+void DbMeterProcessor::registerVisualizationProviders() {
+  jassert(visualizationProviders.empty());
+  visualizationProviders.clear();
 
-  channelProviders.clear();
-  registeredVisualizationIds.clear();
-
-  channelProviders.reserve(visualizationIds()->size());
-  registeredVisualizationIds.reserve(visualizationIds()->size());
+  visualizationProviders.reserve(visualizationIds()->size());
 
   for (const auto& visualizationId : *visualizationIds()) {
-    auto provider = std::make_shared<DbMeterVisualizationProvider>();
-    VisualizationBroker::getInstance().registerDataProvider(visualizationId, provider);
-
-    channelProviders.push_back(provider);
-    registeredVisualizationIds.push_back(visualizationId);
+    visualizationProviders.push_back(
+        RegisteredVisualizationProvider<DbMeterVisualizationProvider>::registerDataProvider(
+            visualizationId, std::make_unique<DbMeterVisualizationProvider>()));
   }
 }
 
 void DbMeterProcessor::unregisterVisualizationProviders() {
-  for (const auto& visualizationId : registeredVisualizationIds) {
-    VisualizationBroker::getInstance().unregisterDataProvider(visualizationId);
+  for (auto& provider : visualizationProviders) {
+    provider.release();
   }
 
-  registeredVisualizationIds.clear();
-  channelProviders.clear();
+  visualizationProviders.clear();
 }
 } // namespace anthem

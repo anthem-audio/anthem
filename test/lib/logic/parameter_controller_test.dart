@@ -68,9 +68,11 @@ void main() {
 
     command.execute(project);
     expect(port.parameterValue, equals(0.75));
+    expect(node.lastChangedControlPortId, isNull);
 
     command.rollback(project);
     expect(port.parameterValue, equals(0.25));
+    expect(node.lastChangedControlPortId, isNull);
   });
 
   test('ParameterController commits a gesture as one undo step', () {
@@ -132,14 +134,17 @@ void main() {
     expect(port.parameterValue, equals(0.25));
   });
 
-  test('ParameterController skips unchanged reset', () {
-    final controller = ParameterController(project);
-    project.isDirty = false;
+  test(
+    'ParameterController skips unchanged reset but still touches parameter',
+    () {
+      final controller = ParameterController(project);
+      project.isDirty = false;
 
-    controller.resetToDefault(node: node, port: port);
+      controller.resetToDefault(node: node, port: port);
 
-    expect(node.lastChangedControlPortId, equals(port.id));
-    expect(port.parameterValue, equals(0.25));
-    expect(project.isDirty, isFalse);
-  });
+      expect(node.lastChangedControlPortId, equals(port.id));
+      expect(port.parameterValue, equals(0.25));
+      expect(project.isDirty, isFalse);
+    },
+  );
 }

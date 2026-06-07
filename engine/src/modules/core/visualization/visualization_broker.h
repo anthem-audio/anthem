@@ -24,7 +24,9 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 // This class coordinates visualization subscriptions.
@@ -47,8 +49,45 @@
 // queried and sent to the UI.
 namespace anthem {
 
+class VisualizationBroker;
+
+class VisualizationProviderRegistration {
+private:
+  VisualizationBroker* broker = nullptr;
+  std::string id;
+  VisualizationDataProvider* provider = nullptr;
+
+  VisualizationProviderRegistration(
+      VisualizationBroker& broker, std::string id, VisualizationDataProvider* provider);
+public:
+  VisualizationProviderRegistration() = default;
+  ~VisualizationProviderRegistration();
+
+  VisualizationProviderRegistration(const VisualizationProviderRegistration&) = delete;
+  VisualizationProviderRegistration& operator=(const VisualizationProviderRegistration&) = delete;
+
+  VisualizationProviderRegistration(VisualizationProviderRegistration&& other) noexcept;
+  VisualizationProviderRegistration& operator=(VisualizationProviderRegistration&& other) noexcept;
+
+  VisualizationDataProvider* get() const {
+    return provider;
+  }
+
+  void release();
+
+  friend class VisualizationBroker;
+};
+
 class VisualizationBroker : private juce::Timer {
 private:
+  friend class VisualizationProviderRegistration;
+  friend class VisualizationBrokerTest;
+
+  struct ProviderEntry {
+    std::string id;
+    std::unique_ptr<VisualizationDataProvider> provider;
+  };
+
   // Private constructor for singleton pattern
   VisualizationBroker();
 
@@ -63,7 +102,12 @@ private:
   VisualizationBroker(VisualizationBroker&&) = delete;
   VisualizationBroker& operator=(VisualizationBroker&&) = delete;
 
-  std::unordered_map<std::string, std::shared_ptr<VisualizationDataProvider>> dataProviders;
+  // The UI can remove and add back a graph node with the same visualization ID
+  // before the audio thread retires the old graph. Keep stale providers owned
+  // until their registrations are released, while routing reads to the newest
+  // provider for each ID.
+  std::vector<std::unique_ptr<ProviderEntry>> dataProviders;
+  std::unordered_map<std::string, ProviderEntry*> currentDataProviders;
   std::vector<std::shared_ptr<VisualizationSubscriptionSpec>> subscriptions;
 
   // The interval at which the visualization broker updates the UI, in
@@ -73,7 +117,11 @@ private:
   // refresh rate, this will be set to a lower value.
   double updateIntervalMs;
 
+  void releaseDataProvider(const std::string& name, VisualizationDataProvider* provider);
   void timerCallback() override;
+
+  VisualizationDataProvider* getCurrentDataProviderForTesting(const std::string& name) const;
+  size_t getDataProviderCountForTesting(const std::string& name) const;
 public:
   static VisualizationBroker& getInstance() {
     static VisualizationBroker instance;
@@ -83,15 +131,63 @@ public:
   void setSubscriptions(
       const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions);
   void setUpdateInterval(double updateIntervalMs);
-  void registerDataProvider(
-      const std::string& name, std::shared_ptr<VisualizationDataProvider> provider) {
-    dataProviders[name] = provider;
-  }
-  void unregisterDataProvider(const std::string& name) {
-    dataProviders.erase(name);
-  }
+  VisualizationProviderRegistration registerDataProvider(
+      const std::string& name, std::unique_ptr<VisualizationDataProvider> provider);
 
   void dispose();
+};
+
+template <typename Provider> class RegisteredVisualizationProvider {
+private:
+  static_assert(std::is_base_of_v<VisualizationDataProvider, Provider>);
+
+  Provider* rt_providerPtr = nullptr;
+  VisualizationProviderRegistration registration;
+
+  RegisteredVisualizationProvider(
+      Provider* rt_providerPtr, VisualizationProviderRegistration registration)
+    : rt_providerPtr(rt_providerPtr), registration(std::move(registration)) {}
+public:
+  RegisteredVisualizationProvider() = default;
+
+  RegisteredVisualizationProvider(const RegisteredVisualizationProvider&) = delete;
+  RegisteredVisualizationProvider& operator=(const RegisteredVisualizationProvider&) = delete;
+
+  RegisteredVisualizationProvider(RegisteredVisualizationProvider&& other) noexcept
+    : rt_providerPtr(other.rt_providerPtr), registration(std::move(other.registration)) {
+    other.rt_providerPtr = nullptr;
+  }
+
+  RegisteredVisualizationProvider& operator=(RegisteredVisualizationProvider&& other) noexcept {
+    if (this != &other) {
+      release();
+
+      rt_providerPtr = other.rt_providerPtr;
+      registration = std::move(other.registration);
+
+      other.rt_providerPtr = nullptr;
+    }
+
+    return *this;
+  }
+
+  static RegisteredVisualizationProvider registerDataProvider(
+      const std::string& name, std::unique_ptr<Provider> provider) {
+    auto* rt_providerPtr = provider.get();
+    auto registration =
+        VisualizationBroker::getInstance().registerDataProvider(name, std::move(provider));
+
+    return RegisteredVisualizationProvider(rt_providerPtr, std::move(registration));
+  }
+
+  Provider* rt_getProvider() const {
+    return rt_providerPtr;
+  }
+
+  void release() {
+    registration.release();
+    rt_providerPtr = nullptr;
+  }
 };
 
 } // namespace anthem

@@ -620,17 +620,17 @@ class _TrackContentRow extends StatelessObserverWidget {
     final utilityNode = processing?.utilityNode;
     final gainParameter = utilityNode == null
         ? null
-        : ParameterControlBinding.byId(
+        : ParameterUiBinding.byId(
             node: utilityNode,
             portId: UtilityProcessorModel.gainPortId,
           );
     final balanceParameter = utilityNode == null
         ? null
-        : ParameterControlBinding.byId(
+        : ParameterUiBinding.byId(
             node: utilityNode,
             portId: UtilityProcessorModel.balancePortId,
-            parameterToControlValue: UtilityProcessorModel.parameterValueToPan,
-            controlToParameterValue: UtilityProcessorModel.panToParameterValue,
+            parameterToUiValue: UtilityProcessorModel.parameterValueToPan,
+            uiToParameterValue: UtilityProcessorModel.panToParameterValue,
           );
 
     return Row(

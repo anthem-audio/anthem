@@ -18,10 +18,13 @@
 */
 
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/controls/parameter_control_binding.dart';
 import 'package:anthem_codegen/include.dart';
@@ -30,11 +33,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('ParameterControlBinding commits parameter changes to undo stack', () {
+  test('ParameterUiBinding commits parameter changes to undo stack', () {
     final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
     addTearDown(() => _disposeProject(project));
 
-    final binding = ParameterControlBinding(node: node, port: port);
+    final binding = ParameterUiBinding(node: node, port: port);
 
     binding.beginChange();
     binding.updateChange(0.75);
@@ -49,38 +52,39 @@ void main() {
     expect(port.parameterValue, 0.75);
   });
 
-  test('ParameterControlBinding maps between control and parameter values', () {
+  test('ParameterUiBinding maps between UI and parameter values', () {
     final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
     addTearDown(() => _disposeProject(project));
 
-    final binding = ParameterControlBinding(
+    final binding = ParameterUiBinding(
       node: node,
       port: port,
-      parameterToControlValue: (double value) => value * 2 - 1,
-      controlToParameterValue: (double value) => (value + 1) * 0.5,
+      parameterToUiValue: (double value) => value * 2 - 1,
+      uiToParameterValue: (double value) => (value + 1) * 0.5,
     );
 
-    expect(binding.controlValue, 0);
+    expect(binding.uiValue, 0);
+    expect(binding.uiValueForNormalizedParameterValue(0.75), 0.5);
 
     binding.beginChange();
     binding.updateChange(1);
     binding.commitChange();
 
     expect(port.parameterValue, 1);
-    expect(binding.controlValue, 1);
+    expect(binding.uiValue, 1);
   });
 
-  test('ParameterControlBinding resets mapped parameters to default', () {
+  test('ParameterUiBinding resets mapped parameters to default', () {
     final (:project, :node, :port) = _createParameterProject(
       defaultValue: 0.25,
     );
     addTearDown(() => _disposeProject(project));
 
-    final binding = ParameterControlBinding(
+    final binding = ParameterUiBinding(
       node: node,
       port: port,
-      parameterToControlValue: (double value) => value * 2 - 1,
-      controlToParameterValue: (double value) => (value + 1) * 0.5,
+      parameterToUiValue: (double value) => value * 2 - 1,
+      uiToParameterValue: (double value) => (value + 1) * 0.5,
     );
 
     binding.beginChange();
@@ -91,13 +95,51 @@ void main() {
     binding.resetToDefault();
 
     expect(port.parameterValue, 0.25);
-    expect(binding.controlValue, -0.5);
+    expect(binding.uiValue, -0.5);
 
     project.undo();
     expect(port.parameterValue, 1);
 
     project.redo();
     expect(port.parameterValue, 0.25);
+  });
+
+  test('ParameterUiBinding resolves automation visualization from lane', () {
+    final project = ProjectModel.create();
+    ServiceRegistry.initializeProject(project);
+    addTearDown(() => _disposeProject(project));
+
+    final track = project.tracks[project.trackOrder.single]!;
+    final utilityNode = track.requireProcessing.utilityNode!;
+    final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
+    final binding = ParameterUiBinding(node: utilityNode, port: port);
+
+    expect(binding.automationVisualizationId, isNull);
+
+    final command = AutomationLaneAddRemoveCommand.add(
+      project: project,
+      parentTrackId: track.id,
+      nodeId: utilityNode.id,
+      portId: port.id,
+      name: 'Volume',
+    );
+    command.execute(project);
+
+    final expectedVisualizationId =
+        ControlValueVisualizationProcessorModel.buildVisualizationId(
+          nodeId: utilityNode.id,
+          portId: port.id,
+        );
+
+    expect(binding.automationVisualizationId, equals(expectedVisualizationId));
+
+    command.rollback(project);
+
+    expect(binding.automationVisualizationId, isNull);
+
+    command.execute(project);
+
+    expect(binding.automationVisualizationId, equals(expectedVisualizationId));
   });
 }
 

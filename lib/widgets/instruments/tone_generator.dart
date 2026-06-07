@@ -35,15 +35,13 @@ class ToneGenerator extends StatefulWidget {
 class _ToneGeneratorState extends State<ToneGenerator> {
   @override
   Widget build(BuildContext context) {
-    final frequencyParameter = ParameterControlBinding.byId(
+    final frequencyParameter = ParameterUiBinding.byId(
       node: widget.node,
       portId: ToneGeneratorProcessorModel.frequencyPortId,
-      parameterToControlValue:
-          ToneGeneratorProcessorModel.parameterValueToFrequency,
-      controlToParameterValue:
-          ToneGeneratorProcessorModel.frequencyToParameterValue,
+      parameterToUiValue: ToneGeneratorProcessorModel.parameterValueToFrequency,
+      uiToParameterValue: ToneGeneratorProcessorModel.frequencyToParameterValue,
     );
-    final amplitudeParameter = ParameterControlBinding.byId(
+    final amplitudeParameter = ParameterUiBinding.byId(
       node: widget.node,
       portId: ToneGeneratorProcessorModel.amplitudePortId,
     );

@@ -57,6 +57,7 @@ export 'pattern/note.dart';
 export 'pattern/pattern.dart';
 
 export 'processing_graph/processors/balance.dart';
+export 'processing_graph/processors/control_value_visualization.dart';
 export 'processing_graph/processors/gain.dart';
 export 'processing_graph/processors/live_event_provider.dart';
 export 'processing_graph/processors/master_output.dart';
