@@ -27,10 +27,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
 import 'control_mouse_handler.dart';
-import 'parameter_control_binding.dart';
+import 'parameter_ui_binding.dart';
 import 'sticky_drag_controller.dart';
 
-export 'parameter_control_binding.dart';
+export 'parameter_ui_binding.dart';
 
 const _stickyTrapSize = 0.08;
 

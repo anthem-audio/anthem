@@ -26,7 +26,7 @@ import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/widgets/basic/controls/parameter_control_binding.dart';
+import 'package:anthem/widgets/basic/controls/parameter_ui_binding.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
