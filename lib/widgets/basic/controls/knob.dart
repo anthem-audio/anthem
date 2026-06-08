@@ -295,8 +295,11 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             automationVisualizationId,
           ),
           builder: (context, value, engineTime) {
-            return buildControl(
-              automationParameterValue: engineTime == null ? null : value,
+            return Observer(
+              warnWhenNoObservables: false,
+              builder: (_) => buildControl(
+                automationParameterValue: engineTime == null ? null : value,
+              ),
             );
           },
         );
