@@ -33,6 +33,7 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
@@ -59,7 +60,6 @@ const double minKeyValue = 0;
 const double maxKeyValue = 128;
 
 const double _pianoRollVerticalScrollbarWidth = 17;
-const double _pianoRollCanvasSeparatorWidth = 1;
 
 // Hack: We need the size of the piano roll's content area at very inconvenient
 // times and I don't feel like figuring out how to properly get it where it
@@ -239,10 +239,11 @@ class _PianoRollContentState extends State<_PianoRollContent>
         _handleNoteRenderAreaResize(
           viewModel: viewModel,
           project: project,
+          // The left editor border is drawn inside the editor stack so it can
+          // overlay notes/grid content instead of consuming layout width.
           width:
               constraints.maxWidth -
               pianoControlWidth -
-              _pianoRollCanvasSeparatorWidth -
               _pianoRollVerticalScrollbarWidth,
         );
 
@@ -331,10 +332,9 @@ class _PianoRollContentState extends State<_PianoRollContent>
           child: Row(
             children: [
               Container(
-                width: pianoControlWidth + 1,
+                width: pianoControlWidth,
                 decoration: BoxDecoration(
                   border: Border(
-                    right: BorderSide(color: AnthemTheme.panel.border),
                     bottom: BorderSide(color: AnthemTheme.panel.border),
                   ),
                 ),
@@ -471,7 +471,13 @@ class _PianoRollContentState extends State<_PianoRollContent>
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
-              children: [grid, notes, selectionBox, playhead],
+              children: [
+                grid,
+                notes,
+                selectionBox,
+                const Positioned.fill(child: EditorLeftEdgeBorder()),
+                playhead,
+              ],
             ),
           ),
         );
@@ -528,7 +534,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         pianoControl,
-                        Container(color: AnthemTheme.panel.border, width: 1),
                         Expanded(
                           child: Column(
                             children: [

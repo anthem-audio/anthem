@@ -154,10 +154,7 @@ class TimelinePainter extends CustomPainter {
 
         // Don't draw numbers that are off-screen
         if (x >= -50) {
-          // Vertical line for bar - skip bar 1, because it looks weird
-          if (barNumber > 1) {
-            canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), markerPaint);
-          }
+          canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), markerPaint);
 
           // Bar number
           TextSpan span = TextSpan(

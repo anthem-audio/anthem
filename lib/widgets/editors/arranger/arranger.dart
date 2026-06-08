@@ -35,6 +35,7 @@ import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/content_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
@@ -53,7 +54,6 @@ import 'view_model.dart';
 const _timelineHeight = 38.0;
 const _scrollbarShortSideLength = 17.0;
 const _trackHeaderWidth = 190.0;
-const _arrangerCanvasSeparatorWidth = 1.0;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -563,10 +563,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
         _handleCanvasResize(
           viewModel: viewModel,
           project: project,
-          width:
-              constraints.maxWidth -
-              _trackHeaderWidth -
-              _arrangerCanvasSeparatorWidth,
+          width: constraints.maxWidth - _trackHeaderWidth,
         );
 
         return Observer(
@@ -605,10 +602,9 @@ class _ArrangerContentState extends State<_ArrangerContent>
             child: Row(
               children: [
                 Container(
-                  width: _trackHeaderWidth + _arrangerCanvasSeparatorWidth,
+                  width: _trackHeaderWidth,
                   decoration: BoxDecoration(
                     border: Border(
-                      right: BorderSide(color: AnthemTheme.panel.border),
                       bottom: BorderSide(color: AnthemTheme.panel.border),
                     ),
                   ),
@@ -647,7 +643,6 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     },
                   ),
                 ),
-                Container(width: 1, color: AnthemTheme.panel.border),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -800,9 +795,17 @@ class _ArrangerCanvas extends StatelessWidget {
             },
           );
 
+          const leftEdgeBorder = Positioned.fill(child: EditorLeftEdgeBorder());
+
           return ArrangerEventListener(
             child: Stack(
-              children: [grid, clipsContainer, selectionBox, playhead],
+              children: [
+                grid,
+                clipsContainer,
+                selectionBox,
+                leftEdgeBorder,
+                playhead,
+              ],
             ),
           );
         },

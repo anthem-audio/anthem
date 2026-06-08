@@ -27,6 +27,7 @@ import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/attribute_editor_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -112,7 +113,6 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                     ),
                   ),
                 ),
-                Container(width: 1, color: AnthemTheme.panel.border),
                 Expanded(
                   child: Column(
                     children: [
@@ -200,13 +200,21 @@ class _AttributeRenderArea extends StatelessWidget {
               controller.pointerUp(createEditorPointerEvent(e));
             },
             child: ClipRect(
-              child: CustomPaint(
-                painter: _PianoRollAttributePainter(
-                  repaint: timeRangeAnimation.controller,
-                  viewModel: viewModel,
-                  project: project,
-                  timeRangeAnimation: timeRangeAnimation,
-                ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  CustomPaint(
+                    painter: _PianoRollAttributePainter(
+                      repaint: timeRangeAnimation.controller,
+                      viewModel: viewModel,
+                      project: project,
+                      timeRangeAnimation: timeRangeAnimation,
+                    ),
+                  ),
+                  // The attribute editor shares the piano roll's time canvas,
+                  // so the left boundary is painted over its content too.
+                  const Positioned.fill(child: EditorLeftEdgeBorder()),
+                ],
               ),
             ),
           ),

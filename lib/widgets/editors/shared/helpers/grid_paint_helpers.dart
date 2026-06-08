@@ -184,22 +184,14 @@ void paintVerticalLines({
     }
 
     while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-      // We skip the line if it's at the very start of the sequence, because
-      // otherwise it looks like a double line when the view is scrolled all the
-      // way to the left.
-      if (timePtr > 0) {
-        final x = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: timePtr.toDouble(),
-        );
+      final x = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: timePtr.toDouble(),
+      );
 
-        canvas.drawRect(
-          Rect.fromLTWH(x, size.height - height, 1, height),
-          paint,
-        );
-      }
+      canvas.drawRect(Rect.fromLTWH(x, size.height - height, 1, height), paint);
 
       timePtr += thisDivision.divisionRenderSize;
 
