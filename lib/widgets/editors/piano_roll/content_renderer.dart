@@ -26,6 +26,7 @@ import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
@@ -115,6 +116,7 @@ class PianoRollPainter extends CustomPainterObserver {
         Rect.fromLTWH(0, 0, size.width, size.height),
         Paint()..color = const Color(0x88404040),
       );
+      paintEditorLeftEdgeBorder(canvas, size);
       return;
     }
 
@@ -132,6 +134,8 @@ class PianoRollPainter extends CustomPainterObserver {
         _drawNotes(canvas, size, pattern);
       },
     );
+
+    paintEditorLeftEdgeBorder(canvas, size);
   }
 
   void _drawNotes(Canvas canvas, Size size, PatternModel pattern) {

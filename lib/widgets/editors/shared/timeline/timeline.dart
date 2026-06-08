@@ -30,7 +30,6 @@ import 'package:provider/provider.dart';
 import 'controller/timeline_controller.dart';
 import 'controller/state_machine/timeline_state_machine.dart'
     show TimelineLoopHandle;
-import '../editor_left_edge_border.dart';
 import '../scroll_manager.dart';
 import '../time_range_animation.dart';
 import 'loop_indicator.dart';
@@ -364,8 +363,6 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                       );
                     },
                   ),
-
-                  const Positioned.fill(child: EditorLeftEdgeBorder()),
 
                   // Playhead positioner for the playback start position
                   VisualizationBuilder.int(

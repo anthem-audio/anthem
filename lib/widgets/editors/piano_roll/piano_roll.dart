@@ -33,7 +33,6 @@ import 'package:anthem/widgets/basic/panel.dart';
 import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
-import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
@@ -471,13 +470,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
           child: ClipRect(
             child: Stack(
               fit: StackFit.expand,
-              children: [
-                grid,
-                notes,
-                selectionBox,
-                const Positioned.fill(child: EditorLeftEdgeBorder()),
-                playhead,
-              ],
+              children: [grid, notes, selectionBox, playhead],
             ),
           ),
         );

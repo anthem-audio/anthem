@@ -27,38 +27,11 @@ import 'package:flutter/widgets.dart';
 /// looks odd.
 ///
 /// As a solution, we draw the left border of the editor inside the editor area,
-/// above the content (and below the playhead). This makes everything look
-/// better when scrolled all the way to the left.
-class EditorLeftEdgeBorder extends StatelessWidget {
-  const EditorLeftEdgeBorder({super.key});
+/// with each renderer choosing the correct paint layer for its dynamic overlays.
+void paintEditorLeftEdgeBorder(Canvas canvas, Size size) {
+  final paint = Paint()
+    ..color = AnthemTheme.panel.border
+    ..style = PaintingStyle.fill;
 
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: CustomPaint(painter: _EditorLeftEdgeBorderPainter()),
-    );
-  }
-}
-
-class _EditorLeftEdgeBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AnthemTheme.panel.border
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(Rect.fromLTWH(0, 0, 1, size.height), paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _EditorLeftEdgeBorderPainter oldDelegate) {
-    return false;
-  }
-
-  @override
-  bool shouldRebuildSemantics(
-    covariant _EditorLeftEdgeBorderPainter oldDelegate,
-  ) {
-    return false;
-  }
+  canvas.drawRect(Rect.fromLTWH(0, 0, 1, size.height), paint);
 }

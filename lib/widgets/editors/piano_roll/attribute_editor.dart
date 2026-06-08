@@ -200,21 +200,13 @@ class _AttributeRenderArea extends StatelessWidget {
               controller.pointerUp(createEditorPointerEvent(e));
             },
             child: ClipRect(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CustomPaint(
-                    painter: _PianoRollAttributePainter(
-                      repaint: timeRangeAnimation.controller,
-                      viewModel: viewModel,
-                      project: project,
-                      timeRangeAnimation: timeRangeAnimation,
-                    ),
-                  ),
-                  // The attribute editor shares the piano roll's time canvas,
-                  // so the left boundary is painted over its content too.
-                  const Positioned.fill(child: EditorLeftEdgeBorder()),
-                ],
+              child: CustomPaint(
+                painter: _PianoRollAttributePainter(
+                  repaint: timeRangeAnimation.controller,
+                  viewModel: viewModel,
+                  project: project,
+                  timeRangeAnimation: timeRangeAnimation,
+                ),
               ),
             ),
           ),
@@ -315,6 +307,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
         Rect.fromLTWH(0, 0, size.width, size.height),
         Paint()..color = const Color(0x88404040),
       );
+      paintEditorLeftEdgeBorder(canvas, size);
       return;
     }
 
@@ -394,6 +387,8 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
         }
       },
     );
+
+    paintEditorLeftEdgeBorder(canvas, size);
   }
 
   @override

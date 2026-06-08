@@ -35,7 +35,6 @@ import 'package:anthem/widgets/editors/arranger/event_listener.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/content_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
-import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
@@ -795,17 +794,9 @@ class _ArrangerCanvas extends StatelessWidget {
             },
           );
 
-          const leftEdgeBorder = Positioned.fill(child: EditorLeftEdgeBorder());
-
           return ArrangerEventListener(
             child: Stack(
-              children: [
-                grid,
-                clipsContainer,
-                selectionBox,
-                leftEdgeBorder,
-                playhead,
-              ],
+              children: [grid, clipsContainer, selectionBox, playhead],
             ),
           );
         },

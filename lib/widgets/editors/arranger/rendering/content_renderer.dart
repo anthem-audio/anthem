@@ -31,6 +31,7 @@ import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
@@ -248,8 +249,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
       },
     );
 
-    _drawClipCreateHint(canvas, size);
+    paintEditorLeftEdgeBorder(canvas, size);
 
+    _drawClipCreateHint(canvas, size);
     _drawCursor(canvas, size);
   }
 

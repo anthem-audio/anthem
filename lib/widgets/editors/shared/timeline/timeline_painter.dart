@@ -22,6 +22,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_constants.dart';
 import 'package:flutter/widgets.dart';
@@ -186,6 +187,8 @@ class TimelinePainter extends CustomPainter {
 
       i++;
     }
+
+    paintEditorLeftEdgeBorder(canvas, size);
   }
 
   @override
