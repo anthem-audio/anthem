@@ -32,7 +32,7 @@ class PianoRollResizeNotesSessionData {
 
   PianoRollSessionNoteState get pressedNote => requireNote(pressedNoteId);
 
-  Time get smallestStartLength => smallestNote.length;
+  Time get smallestOriginalLength => smallestNote.length;
 
   PianoRollSessionNoteState requireNote(Id noteId) {
     final note = notesById[noteId];
@@ -116,49 +116,27 @@ class PianoRollResizeNotesState extends PianoRollSessionLeafState
     required double currentOffset,
     required PianoRollResizeNotesSessionData sessionData,
   }) {
-    var snappedOriginalTime = sessionData.pointerStartOffset.floor();
-    var snappedEventTime = currentOffset.floor();
-
+    final startTime = sessionData.pointerStartOffset.floor();
+    final currentTime = currentOffset.floor();
     final divisionChanges = controller.divisionChangesForPatternView(
       viewWidthInPixels: interactionState.viewSize.width,
     );
 
-    if (!interactionState.isAltPressed) {
-      snappedOriginalTime = snapTimeInActivePattern(
-        rawTime: sessionData.pointerStartOffset.floor(),
-        round: true,
-      );
-
-      snappedEventTime = snapTimeInActivePattern(
-        rawTime: currentOffset.floor(),
-        round: true,
-      );
-    }
-
-    final offsetOfSmallestNoteAtStart = sessionData.smallestStartLength;
-    final snapAtSmallestNoteStart = getSnapSizeAtAbsoluteTime(
-      absoluteTime: offsetOfSmallestNoteAtStart,
-      divisionChanges: divisionChanges,
-    );
-
-    var diff = snappedEventTime - snappedOriginalTime;
-
-    if (!interactionState.isAltPressed &&
-        sessionData.smallestStartLength + diff < snapAtSmallestNoteStart) {
-      final snapCount =
-          ((snapAtSmallestNoteStart -
-                      (sessionData.smallestStartLength + diff)) /
-                  snapAtSmallestNoteStart)
-              .ceil();
-      diff += snapCount * snapAtSmallestNoteStart;
-    }
-
-    if (interactionState.isAltPressed) {
-      final newSmallestNoteSize = sessionData.smallestStartLength + diff;
-      if (newSmallestNoteSize < 1) {
-        diff += 1 - newSmallestNoteSize;
-      }
-    }
+    var diff = interactionState.isAltPressed
+        ? currentTime - startTime
+        : getSnappedDragDelta(
+            startTime: startTime,
+            currentTime: currentTime,
+            divisionChanges: divisionChanges,
+          );
+    diff = interactionState.isAltPressed
+        ? _clampDeltaToValidRange(resizeDelta: diff, sessionData: sessionData)
+        : _clampSnappedDeltaToValidRange(
+            startTime: startTime,
+            resizeDelta: diff,
+            divisionChanges: divisionChanges,
+            sessionData: sessionData,
+          );
 
     return Map<Id, PianoRollResizeNotePreview>.fromEntries(
       sessionData.noteIds.map((noteId) {
@@ -168,22 +146,63 @@ class PianoRollResizeNotesState extends PianoRollSessionLeafState
     );
   }
 
-  ResizeNotesCommand _buildResizeNotesCommand({
+  int _minimumResizeDelta(PianoRollResizeNotesSessionData sessionData) {
+    return 1 - sessionData.smallestOriginalLength;
+  }
+
+  int _clampSnappedDeltaToValidRange({
+    required int startTime,
+    required int resizeDelta,
+    required List<DivisionChange> divisionChanges,
+    required PianoRollResizeNotesSessionData sessionData,
+  }) {
+    final minDelta = _minimumResizeDelta(sessionData);
+    var guardedDelta = resizeDelta;
+    while (guardedDelta < minDelta) {
+      final nextDelta = stepSnappedDragDeltaTowardZero(
+        startTime: startTime,
+        snappedDelta: guardedDelta,
+        divisionChanges: divisionChanges,
+      );
+      if (nextDelta == guardedDelta) {
+        return max(guardedDelta, minDelta);
+      }
+      guardedDelta = nextDelta;
+    }
+
+    return guardedDelta;
+  }
+
+  int _clampDeltaToValidRange({
+    required int resizeDelta,
+    required PianoRollResizeNotesSessionData sessionData,
+  }) {
+    return max(resizeDelta, _minimumResizeDelta(sessionData));
+  }
+
+  ResizeNotesCommand? _buildResizeNotesCommand({
     required PianoRollResizeNotesSessionData sessionData,
     required Map<Id, PianoRollResizeNotePreview> preview,
   }) {
+    final noteResizes = preview.entries
+        .map((entry) {
+          final note = sessionData.requireNote(entry.key);
+          return (
+            noteID: entry.key,
+            oldLength: note.length,
+            newLength: entry.value.length,
+          );
+        })
+        .where((resize) => resize.oldLength != resize.newLength)
+        .toList(growable: false);
+
+    if (noteResizes.isEmpty) {
+      return null;
+    }
+
     return ResizeNotesCommand(
       patternID: parentState.activePattern.id,
-      noteResizes: preview.entries
-          .map((entry) {
-            final note = sessionData.requireNote(entry.key);
-            return (
-              noteID: entry.key,
-              oldLength: note.length,
-              newLength: entry.value.length,
-            );
-          })
-          .toList(growable: false),
+      noteResizes: noteResizes,
     );
   }
 
@@ -327,10 +346,13 @@ class PianoRollResizeNotesState extends PianoRollSessionLeafState
     final sessionData = _sessionData;
     final preview = _preview;
     if (sessionData != null && preview != null) {
-      project.push(
-        _buildResizeNotesCommand(sessionData: sessionData, preview: preview),
-        execute: true,
+      final command = _buildResizeNotesCommand(
+        sessionData: sessionData,
+        preview: preview,
       );
+      if (command != null) {
+        project.push(command, execute: true);
+      }
     }
 
     viewModel.pressedNote = null;

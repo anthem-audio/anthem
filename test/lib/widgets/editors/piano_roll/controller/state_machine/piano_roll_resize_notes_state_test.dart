@@ -182,26 +182,86 @@ void main() {
       expect(fixture.noteById(note.id).length, equals(1));
     });
 
+    test('snapped resize retreats to the nearest valid snap interval', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 192);
+
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 292,
+        noteUnderCursor: note.id,
+        isResize: true,
+      );
+      fixture.pointerMove(key: 60.5, offset: 96);
+      fixture.pointerUp(key: 60.5, offset: 96);
+
+      expect(fixture.noteById(note.id).length, equals(fixture.snapSizeAt(100)));
+    });
+
     test(
-      'snapped resize clamps the minimum note length to the current snap size',
+      'snapped resize does not immediately grow notes smaller than the snap size',
       () {
-        final note = fixture.addNote(key: 60, offset: 100, length: 192);
+        final snapSize = fixture.snapSizeAt(100);
+        expect(snapSize, greaterThan(1));
+        final originalLength = snapSize ~/ 2;
+        final note = fixture.addNote(
+          key: 60,
+          offset: 100,
+          length: originalLength,
+        );
+        final resizeOffset = note.offset + originalLength;
 
         fixture.pointerDown(
           key: 60.5,
-          offset: 292,
+          offset: resizeOffset.toDouble(),
           noteUnderCursor: note.id,
           isResize: true,
         );
-        fixture.pointerMove(key: 60.5, offset: 96);
-        fixture.pointerUp(key: 60.5, offset: 96);
+        fixture.pointerMove(key: 60.5, offset: resizeOffset.toDouble());
 
-        expect(
-          fixture.noteById(note.id).length,
-          equals(fixture.snapSizeAt(100)),
-        );
+        expect(fixture.noteOverrideById(note.id), isNull);
+        expect(fixture.viewModel.cursorNoteLength, equals(originalLength));
+
+        fixture.pointerUp(key: 60.5, offset: resizeOffset.toDouble());
+
+        expect(fixture.noteById(note.id).length, equals(originalLength));
       },
     );
+
+    test('snapped resize can return a small note to its original length', () {
+      final snapSize = fixture.snapSizeAt(100);
+      expect(snapSize, greaterThan(1));
+      final originalLength = snapSize ~/ 2;
+      final note = fixture.addNote(
+        key: 60,
+        offset: 100,
+        length: originalLength,
+      );
+      final resizeOffset = note.offset + originalLength;
+
+      fixture.pointerDown(
+        key: 60.5,
+        offset: resizeOffset.toDouble(),
+        noteUnderCursor: note.id,
+        isResize: true,
+      );
+      fixture.pointerMove(
+        key: 60.5,
+        offset: (resizeOffset + snapSize).toDouble(),
+      );
+
+      expect(
+        fixture.noteOverrideById(note.id)?.length,
+        equals(originalLength + snapSize),
+      );
+
+      fixture.pointerMove(key: 60.5, offset: resizeOffset.toDouble());
+
+      expect(fixture.noteOverrideById(note.id), isNull);
+
+      fixture.pointerUp(key: 60.5, offset: resizeOffset.toDouble());
+
+      expect(fixture.noteById(note.id).length, equals(originalLength));
+    });
 
     test(
       'synthetic resize hints without a rendered resize hit are ignored',

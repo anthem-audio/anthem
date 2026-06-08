@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
+import 'package:anthem/widgets/editors/shared/helpers/snap_delta.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:flutter_test/flutter_test.dart';
 

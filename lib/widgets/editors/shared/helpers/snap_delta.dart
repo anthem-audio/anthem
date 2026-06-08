@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-part of 'arranger_state_machine.dart';
+import 'time_helpers.dart';
 
 /// Computes a snapped drag delta measured from [startTime].
 ///

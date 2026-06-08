@@ -42,6 +42,7 @@ import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
+import 'package:anthem/widgets/editors/shared/helpers/snap_delta.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/gestures.dart';
@@ -53,7 +54,6 @@ part 'automation_tension_change_state.dart';
 part 'clip_move_state.dart';
 part 'clip_resize_state.dart';
 part 'selection_box_state.dart';
-part 'snap_delta.dart';
 
 enum ArrangerModifierKey { ctrl, alt, shift }
 

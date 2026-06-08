@@ -1,5 +1,6 @@
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 
 import 'arranger_state_machine_test_helpers.dart';
 
@@ -387,17 +388,14 @@ void main() {
       );
 
       fixture.controller.onShortcut(
-        LogicalKeySet(
-          LogicalKeyboardKey.control,
-          LogicalKeyboardKey.arrowRight,
-        ),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
       );
 
       expect(firstClip.offset, 96 + barLength);
       expect(secondClip.offset, 192 + barLength);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
       );
 
       expect(firstClip.offset, 96);
@@ -429,17 +427,14 @@ void main() {
       fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
 
       fixture.controller.onShortcut(
-        LogicalKeySet(
-          LogicalKeyboardKey.control,
-          LogicalKeyboardKey.arrowRight,
-        ),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
       );
 
       expect(firstClip.offset, 672);
       expect(secondClip.offset, 768);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
       );
 
       expect(firstClip.offset, 384);
@@ -468,10 +463,7 @@ void main() {
         fixture.viewModel.selectedClips.add(clip.id);
 
         fixture.controller.onShortcut(
-          LogicalKeySet(
-            LogicalKeyboardKey.control,
-            LogicalKeyboardKey.arrowLeft,
-          ),
+          LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
         );
 
         expect(clip.offset, 0);

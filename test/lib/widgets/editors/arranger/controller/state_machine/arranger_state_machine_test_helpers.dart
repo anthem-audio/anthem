@@ -59,6 +59,7 @@ export 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dar
 export 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 export 'package:anthem/widgets/editors/arranger/controller/state_machine/arranger_state_machine.dart';
 export 'package:anthem/widgets/editors/arranger/view_model.dart';
+export 'package:anthem/widgets/editors/shared/helpers/snap_delta.dart';
 export 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 export 'package:anthem/widgets/editors/shared/helpers/types.dart';
 export 'package:anthem/widgets/project/project_view_model.dart';

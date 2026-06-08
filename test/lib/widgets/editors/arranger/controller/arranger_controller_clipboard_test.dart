@@ -20,6 +20,7 @@
 import 'package:anthem/logic/clipboard/clipboard_data.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/pattern/note.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 
 import 'state_machine/arranger_state_machine_test_helpers.dart';
 
@@ -94,7 +95,7 @@ void main() {
       fixture.viewModel.selectedClips.addAll({clipA.id, clipB.id});
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       );
 
       final content = ServiceRegistry.clipboard.get<ArrangerClipboardContent>();
@@ -138,10 +139,10 @@ void main() {
           .toSet();
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       );
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
       );
 
       final pastedClips =
@@ -200,10 +201,10 @@ void main() {
       fixture.project.sequence.playbackStartPosition = 1000;
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       );
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
       );
 
       final pastedClipId = fixture.viewModel.selectedClips.single;
@@ -224,7 +225,7 @@ void main() {
       fixture.viewModel.selectedClips.add(clip.id);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyX),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyX),
       );
 
       final content = ServiceRegistry.clipboard.get<ArrangerClipboardContent>();

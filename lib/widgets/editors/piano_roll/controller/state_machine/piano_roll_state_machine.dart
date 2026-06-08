@@ -31,6 +31,7 @@ import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';
+import 'package:anthem/widgets/editors/shared/helpers/snap_delta.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/gestures.dart';

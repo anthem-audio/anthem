@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 
 import 'package:anthem/logic/clipboard/clipboard_data.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 
 import 'piano_roll_state_machine_test_helpers.dart';
 
@@ -76,7 +77,7 @@ void main() {
       fixture.selectNotes([noteA.id, noteC.id]);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       );
 
       final content = ServiceRegistry.clipboard.get<NotesClipboardContent>();
@@ -98,7 +99,7 @@ void main() {
       fixture.selectNotes([noteA.id]);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyX),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyX),
       );
 
       final content = ServiceRegistry.clipboard.get<NotesClipboardContent>();
@@ -123,10 +124,10 @@ void main() {
       fixture.project.sequence.playbackStartPosition = 384;
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       );
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
       );
 
       final pastedNotes =
@@ -162,10 +163,10 @@ void main() {
         fixture.project.sequence.playbackStartPosition = 384;
 
         fixture.controller.onShortcut(
-          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+          LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
         );
         fixture.controller.onShortcut(
-          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+          LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
         );
 
         final pastedNotes =
@@ -199,10 +200,10 @@ void main() {
       fixture.syncRenderedViewMetrics();
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       );
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
       );
 
       final pastedNote = fixture.viewModel.selectedNotes
@@ -225,10 +226,10 @@ void main() {
       fixture.syncRenderedViewMetrics();
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
       );
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyV),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
       );
 
       final pastedNote = fixture.viewModel.selectedNotes
@@ -296,14 +297,14 @@ void main() {
       fixture.selectNotes([noteA.id, noteB.id]);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowUp),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowUp),
       );
 
       expect(fixture.noteById(noteA.id).key, equals(72));
       expect(fixture.noteById(noteB.id).key, equals(76));
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowDown),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowDown),
       );
 
       expect(fixture.noteById(noteA.id).key, equals(60));
@@ -315,7 +316,7 @@ void main() {
       fixture.selectNotes([topNote.id]);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowUp),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowUp),
       );
 
       expect(fixture.noteById(topNote.id).key, equals(120));
@@ -324,7 +325,7 @@ void main() {
       fixture.selectNotes([bottomNote.id]);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowDown),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowDown),
       );
 
       expect(fixture.noteById(bottomNote.id).key, equals(5));
@@ -382,17 +383,14 @@ void main() {
       );
 
       fixture.controller.onShortcut(
-        LogicalKeySet(
-          LogicalKeyboardKey.control,
-          LogicalKeyboardKey.arrowRight,
-        ),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
       );
 
       expect(fixture.noteById(noteA.id).offset, equals(96 + barLength));
       expect(fixture.noteById(noteB.id).offset, equals(192 + barLength));
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
       );
 
       expect(fixture.noteById(noteA.id).offset, equals(96));
@@ -412,17 +410,14 @@ void main() {
       fixture.selectNotes([noteA.id, noteB.id]);
 
       fixture.controller.onShortcut(
-        LogicalKeySet(
-          LogicalKeyboardKey.control,
-          LogicalKeyboardKey.arrowRight,
-        ),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
       );
 
       expect(fixture.noteById(noteA.id).offset, equals(672));
       expect(fixture.noteById(noteB.id).offset, equals(768));
 
       fixture.controller.onShortcut(
-        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.arrowLeft),
+        LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
       );
 
       expect(fixture.noteById(noteA.id).offset, equals(384));
@@ -443,10 +438,7 @@ void main() {
         fixture.selectNotes([note.id]);
 
         fixture.controller.onShortcut(
-          LogicalKeySet(
-            LogicalKeyboardKey.control,
-            LogicalKeyboardKey.arrowLeft,
-          ),
+          LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
         );
 
         expect(fixture.noteById(note.id).offset, equals(0));
