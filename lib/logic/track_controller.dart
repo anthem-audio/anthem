@@ -377,6 +377,27 @@ class TrackController {
     removeTracks([trackId]);
   }
 
+  /// Removes an automation lane and any sequencer content that points to it.
+  void removeAutomationLane(Id laneId) {
+    final removeCommand = AutomationLaneAddRemoveCommand.remove(
+      project: project,
+      laneId: laneId,
+    );
+
+    final clipDeleteTargets = _collectClipDeleteTargetsForTracks([laneId]);
+    final clipAndPatternDeletionPlan = _buildClipAndPatternDeletionPlan(
+      clipDeleteTargets,
+    );
+
+    project.startUndoGroup();
+
+    _executeClipAndPatternDeletionPlan(clipAndPatternDeletionPlan);
+
+    project.execute(removeCommand);
+
+    project.commitUndoGroup();
+  }
+
   /// Removes tracks and any sequencer content that points to them.
   ///
   /// Clips are conceptually owned by tracks, but all clips are truly owned by a

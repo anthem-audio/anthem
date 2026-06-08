@@ -187,62 +187,68 @@ class _TrackHeaderState extends State<TrackHeader> {
         controller.selectTrack(track.id);
       }
 
-      openContextMenu(
-        e.globalPosition,
-        MenuDef(
-          children: [
-            AnthemMenuItem(
-              text: 'Insert track',
-              hint: track.type == .group
-                  ? 'Add a track at the end of this group'
-                  : isSendTrack
-                  ? 'Insert a track above this track'
-                  : 'Insert a track below this track',
-              disabled: track.isAutomationLane,
-              onSelected: () {
-                trackController.insertTrackAt(track.id);
-              },
-            ),
-            if (viewModel.selectedTracks.length == 1)
+      final menuItems = track.isAutomationLane
+          ? [
               AnthemMenuItem(
                 text: 'Delete',
-                hint: 'Delete this track',
-                disabled: track.isMasterTrack || track.isAutomationLane,
+                hint: 'Delete this automation lane',
                 onSelected: () {
-                  trackController.removeTrack(track.id);
+                  trackController.removeAutomationLane(track.id);
                 },
               ),
-            if (viewModel.selectedTracks.length > 1)
+            ]
+          : [
               AnthemMenuItem(
-                text: 'Delete selected',
-                hint: 'Delete the selected tracks',
-                disabled: viewModel.selectedTracks.any(
-                  (t) =>
-                      project.tracks[t]?.isMasterTrack == true ||
-                      project.tracks[t]?.isAutomationLane == true,
+                text: 'Insert track',
+                hint: track.type == .group
+                    ? 'Add a track at the end of this group'
+                    : isSendTrack
+                    ? 'Insert a track above this track'
+                    : 'Insert a track below this track',
+                onSelected: () {
+                  trackController.insertTrackAt(track.id);
+                },
+              ),
+              if (viewModel.selectedTracks.length == 1)
+                AnthemMenuItem(
+                  text: 'Delete',
+                  hint: 'Delete this track',
+                  disabled: track.isMasterTrack,
+                  onSelected: () {
+                    trackController.removeTrack(track.id);
+                  },
+                ),
+              if (viewModel.selectedTracks.length > 1)
+                AnthemMenuItem(
+                  text: 'Delete selected',
+                  hint: 'Delete the selected tracks',
+                  disabled: viewModel.selectedTracks.any(
+                    (t) =>
+                        project.tracks[t]?.isMasterTrack == true ||
+                        project.tracks[t]?.isAutomationLane == true,
+                  ),
+                  onSelected: () {
+                    trackController.removeTracks(
+                      viewModel.selectedTracks.nonObservableInner,
+                    );
+                  },
+                ),
+              AnthemMenuItem(
+                text: 'Group',
+                hint:
+                    'Add the selected track${viewModel.selectedTracks.length == 1 ? 's' : ''} to a new track group',
+                disabled: !trackController.canGroupTracks(
+                  viewModel.selectedTracks.nonObservableInner,
                 ),
                 onSelected: () {
-                  trackController.removeTracks(
-                    viewModel.selectedTracks.nonObservableInner,
+                  trackController.groupTracks(
+                    viewModel.selectedTracks.nonObservableInner.toList(),
                   );
                 },
               ),
-            AnthemMenuItem(
-              text: 'Group',
-              hint:
-                  'Add the selected track${viewModel.selectedTracks.length == 1 ? 's' : ''} to a new track group',
-              disabled: !trackController.canGroupTracks(
-                viewModel.selectedTracks.nonObservableInner,
-              ),
-              onSelected: () {
-                trackController.groupTracks(
-                  viewModel.selectedTracks.nonObservableInner.toList(),
-                );
-              },
-            ),
-          ],
-        ),
-      );
+            ];
+
+      openContextMenu(e.globalPosition, MenuDef(children: menuItems));
     }
 
     Widget colorIndicator(Color colorToUse, [bool isGroup = false]) {

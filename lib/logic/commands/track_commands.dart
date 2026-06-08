@@ -71,6 +71,62 @@ class AutomationLaneAddRemoveCommand extends Command {
          ),
        )..automationLaneParentTrackId = parentTrackId;
 
+  factory AutomationLaneAddRemoveCommand.remove({
+    required ProjectModel project,
+    required Id laneId,
+  }) {
+    final lane = project.tracks[laneId];
+    if (lane == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Automation lane $laneId '
+        'not found.',
+      );
+    }
+
+    if (!lane.isAutomationLane) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Track $laneId is not an '
+        'automation lane.',
+      );
+    }
+
+    final parentTrackId = lane.automationLaneParentTrackId;
+    if (parentTrackId == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Automation lane $laneId has '
+        'no parent track.',
+      );
+    }
+
+    final parentTrack = project.tracks[parentTrackId];
+    if (parentTrack == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Parent track $parentTrackId '
+        'not found for automation lane $laneId.',
+      );
+    }
+
+    final index = parentTrack.automationLanes.indexOf(laneId);
+    if (index == -1) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Automation lane $laneId not '
+        'found in parent track $parentTrackId.',
+      );
+    }
+
+    return AutomationLaneAddRemoveCommand._remove(
+      parentTrackId: parentTrackId,
+      lane: lane,
+      index: index,
+    );
+  }
+
+  AutomationLaneAddRemoveCommand._remove({
+    required this.parentTrackId,
+    required this.lane,
+    required this.index,
+  }) : _isAdd = false;
+
   @override
   void execute(ProjectModel project) {
     if (_isAdd) {
@@ -131,9 +187,11 @@ class AutomationLaneAddRemoveCommand extends Command {
       return;
     }
 
-    ServiceRegistry.forProject(
+    final arrangerViewModel = ServiceRegistry.forProject(
       project.id,
-    ).arrangerViewModel.unregisterTrack(lane.id);
+    ).arrangerViewModel;
+    arrangerViewModel.unregisterTrack(lane.id);
+    arrangerViewModel.selectedTracks.remove(lane.id);
 
     parentTrack.automationLanes.remove(lane.id);
 

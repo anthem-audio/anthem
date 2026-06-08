@@ -1120,6 +1120,66 @@ void main() {
           equals(visualizationId),
         );
       });
+
+      test(
+        'remove clears lane graph and rollback restores it at same index',
+        () {
+          final utilityNode =
+              processingGraph.nodes[trackJ.requireProcessing.utilityNodeId!]!;
+
+          final gainCommand = AutomationLaneAddRemoveCommand.add(
+            project: project,
+            parentTrackId: trackJ.id,
+            nodeId: utilityNode.id,
+            portId: UtilityProcessorModel.gainPortId,
+            name: 'Gain',
+          );
+          final balanceCommand = AutomationLaneAddRemoveCommand.add(
+            project: project,
+            parentTrackId: trackJ.id,
+            nodeId: utilityNode.id,
+            portId: UtilityProcessorModel.balancePortId,
+            name: 'Balance',
+            index: 1,
+          );
+
+          gainCommand.execute(project);
+          balanceCommand.execute(project);
+
+          final gainLane = gainCommand.lane;
+          final balanceLane = balanceCommand.lane;
+          final gainProcessing = gainLane.requireAutomationProcessing;
+          final providerNodeId =
+              gainProcessing.sequenceAutomationProviderNodeId;
+          final visualizationNodeId =
+              gainProcessing.controlValueVisualizationNodeId;
+
+          expect(trackJ.automationLanes, [gainLane.id, balanceLane.id]);
+          expect(tracks[gainLane.id], same(gainLane));
+          expect(processingGraph.nodes[providerNodeId], isNotNull);
+          expect(processingGraph.nodes[visualizationNodeId], isNotNull);
+
+          final removeCommand = AutomationLaneAddRemoveCommand.remove(
+            project: project,
+            laneId: gainLane.id,
+          );
+
+          removeCommand.execute(project);
+
+          expect(trackJ.automationLanes, [balanceLane.id]);
+          expect(tracks[gainLane.id], isNull);
+          expect(processingGraph.nodes[providerNodeId], isNull);
+          expect(processingGraph.nodes[visualizationNodeId], isNull);
+
+          removeCommand.rollback(project);
+
+          expect(trackJ.automationLanes, [gainLane.id, balanceLane.id]);
+          expect(tracks[gainLane.id], same(gainLane));
+          expect(gainLane.automationLaneParentTrackId, trackJ.id);
+          expect(processingGraph.nodes[providerNodeId], isNotNull);
+          expect(processingGraph.nodes[visualizationNodeId], isNotNull);
+        },
+      );
     });
 
     group('Add/remove', () {

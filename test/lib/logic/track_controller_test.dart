@@ -635,6 +635,7 @@ void main() {
     late TrackModel groupTrack;
     late TrackModel childTrack;
     late TrackModel otherTrack;
+    late TrackModel automationLane;
     late TrackModel masterTrack;
 
     late ArrangementModel arrangementA;
@@ -642,12 +643,14 @@ void main() {
 
     late PatternModel orphanPatternA;
     late PatternModel orphanPatternB;
+    late PatternModel automationLanePattern;
     late PatternModel sharedPattern;
 
     late ClipModel clipOnGroupOrphan;
     late ClipModel clipOnGroupShared;
     late ClipModel clipOnOtherShared;
     late ClipModel clipOnChildOrphan;
+    late ClipModel clipOnAutomationLane;
 
     TrackModel createTrack(String name, TrackType type) {
       return TrackModel(
@@ -732,6 +735,10 @@ void main() {
         idAllocator: ProjectEntityIdAllocator.test(getId),
         name: 'Orphan B',
       );
+      automationLanePattern = PatternModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: 'Automation Lane Orphan',
+      );
       sharedPattern = PatternModel(
         idAllocator: ProjectEntityIdAllocator.test(getId),
         name: 'Shared',
@@ -739,6 +746,7 @@ void main() {
 
       sequence.patterns[orphanPatternA.id] = orphanPatternA;
       sequence.patterns[orphanPatternB.id] = orphanPatternB;
+      sequence.patterns[automationLanePattern.id] = automationLanePattern;
       sequence.patterns[sharedPattern.id] = sharedPattern;
 
       clipOnGroupOrphan = createClip(
@@ -802,6 +810,18 @@ void main() {
       }
 
       trackController.rerouteTracks(tracks.keys);
+
+      automationLane = createTrack('Automation Lane', .automationLane)
+        ..automationLaneParentTrackId = otherTrack.id;
+      tracks[automationLane.id] = automationLane;
+      otherTrack.automationLanes.add(automationLane.id);
+
+      clipOnAutomationLane = createClip(
+        patternId: automationLanePattern.id,
+        trackId: automationLane.id,
+        offset: 64,
+      );
+      arrangementA.clips[clipOnAutomationLane.id] = clipOnAutomationLane;
     });
 
     tearDown(() {
@@ -849,6 +869,18 @@ void main() {
       expect(tracks[childTrack.id], isNull);
       expect(tracks[otherTrack.id], isNotNull);
       expect(tracks[masterTrack.id], isNotNull);
+
+      verify(project.startUndoGroup()).called(1);
+      verify(project.commitUndoGroup()).called(1);
+    });
+
+    test('removeAutomationLane removes lane clips and orphan patterns', () {
+      trackController.removeAutomationLane(automationLane.id);
+
+      expect(arrangementA.clips[clipOnAutomationLane.id], isNull);
+      expect(sequence.patterns[automationLanePattern.id], isNull);
+      expect(otherTrack.automationLanes, isEmpty);
+      expect(tracks[automationLane.id], isNull);
 
       verify(project.startUndoGroup()).called(1);
       verify(project.commitUndoGroup()).called(1);

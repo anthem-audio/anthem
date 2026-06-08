@@ -27,16 +27,20 @@ import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  ServiceRegistry.screenOverlayController = _screenOverlayController;
 
   group('automation lane button', () {
     testWidgets('appears while hovered or expanded', (tester) async {
@@ -262,6 +266,42 @@ void main() {
       expect(find.text('$deviceName $laneName'), findsNothing);
     });
 
+    testWidgets('automation lane context menu only shows delete', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      const deviceName = 'Tone Generator';
+      const laneName = 'Filter Sweep';
+      final automationLaneInfo = fixture.addToneGeneratorAutomationLane(
+        deviceName: deviceName,
+        laneName: laneName,
+      );
+
+      await fixture.pump(tester);
+
+      await tester.tapAt(
+        tester.getCenter(find.text(laneName)),
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pump();
+
+      expect(find.text('Delete'), findsOneWidget);
+      expect(find.text('Insert track'), findsNothing);
+      expect(find.text('Group'), findsNothing);
+
+      await tester.tap(find.text('Delete'));
+      await tester.pump();
+
+      expect(fixture.project.tracks[automationLaneInfo.laneId], isNull);
+      expect(fixture.project.tracks[fixture.trackId]!.automationLanes, isEmpty);
+      expect(find.text(laneName), findsNothing);
+    });
+
     testWidgets('compact automation lane label renders on one row', (
       tester,
     ) async {
@@ -350,6 +390,11 @@ final _automationLaneButtonBackgroundFinder = find.byKey(
   const ValueKey<String>('track-header-automation-lane-button-background'),
 );
 
+final _screenOverlayViewModel = ScreenOverlayViewModel();
+final _screenOverlayController = ScreenOverlayController(
+  viewModel: _screenOverlayViewModel,
+);
+
 class _TrackHeaderTestFixture {
   static const headerKey = Key('track-header-under-test');
   static const viewSize = Size(190, 260);
@@ -425,18 +470,51 @@ class _TrackHeaderTestFixture {
     arrangerViewModel.trackPositionCalculator.invalidate(viewSize.height);
 
     await tester.pumpWidget(
-      Provider<ProjectModel>.value(
-        value: project,
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: SizedBox(
-              key: headerKey,
-              width: viewSize.width,
-              height: viewSize.height,
-              child: TrackHeader(trackId: trackId),
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: MultiProvider(
+          providers: [
+            Provider<ProjectModel>.value(value: project),
+            Provider<ScreenOverlayController>.value(
+              value: _screenOverlayController,
             ),
+            Provider<ScreenOverlayViewModel>.value(
+              value: _screenOverlayViewModel,
+            ),
+          ],
+          child: Observer(
+            builder: (context) {
+              final overlayEntries = _screenOverlayViewModel.entries.entries
+                  .toList(growable: false);
+
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(
+                        key: headerKey,
+                        width: viewSize.width,
+                        height: viewSize.height,
+                        child: TrackHeader(trackId: trackId),
+                      ),
+                    ),
+                  ),
+                  if (overlayEntries.isNotEmpty)
+                    Positioned.fill(
+                      child: Listener(
+                        onPointerUp: (_) => _screenOverlayController.clear(),
+                        onPointerCancel: (_) =>
+                            _screenOverlayController.clear(),
+                        child: Container(color: const Color(0x00000000)),
+                      ),
+                    ),
+                  ...overlayEntries.map(
+                    (entry) => entry.value.builder(context),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -497,6 +575,7 @@ class _TrackHeaderTestFixture {
   }
 
   void dispose() {
+    _screenOverlayController.clear();
     ServiceRegistry.removeProject(project.id);
     project.dispose();
   }
