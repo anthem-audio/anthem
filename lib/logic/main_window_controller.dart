@@ -168,7 +168,7 @@ class MainWindowController {
     String? path;
 
     if (!kIsWeb) {
-      if (alwaysUseFilePicker) {
+      if (alwaysUseFilePicker || project.filePath == null) {
         path = (await FilePicker.saveFile(
           type: FileType.custom,
           allowedExtensions: ['anthem'],
