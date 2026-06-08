@@ -28,6 +28,8 @@ import 'package:anthem/helpers/logging/anthem_logging.dart';
 part 'engine_connector_desktop.debug_engine_path.g.dart';
 
 final mainExecutablePath = File(Platform.resolvedExecutable);
+const _engineIdEnvironmentKey = 'ANTHEM_ENGINE_ID';
+const _enginePortEnvironmentKey = 'ANTHEM_ENGINE_PORT';
 
 /// Provides a way to communicate with the engine process.
 ///
@@ -58,10 +60,10 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 /// engineConnector.send(requestBytes);
 /// ```
 class EngineConnector extends EngineConnectorBase {
-  /// This ID is sent to the engine as an argument on launch. The engine will
-  /// send this ID back as the first message to the socket when it connects,
-  /// which allows us to figure out which engine is associated with a given
-  /// socket connection.
+  /// This ID is sent to the engine in its environment on launch. The engine
+  /// will send this ID back as the first message to the socket when it
+  /// connects, which allows us to figure out which engine is associated with a
+  /// given socket connection.
   final int _id;
 
   Process? _engineProcess;
@@ -141,7 +143,11 @@ class EngineConnector extends EngineConnectorBase {
       return false;
     }
 
-    final engineEnvironment = AnthemLogManager.instance.childProcessEnvironment;
+    final engineEnvironment = {
+      ...AnthemLogManager.instance.childProcessEnvironment,
+      _engineIdEnvironmentKey: _id.toString(),
+      _enginePortEnvironmentKey: EngineSocketServer.instance.port.toString(),
+    };
 
     // If we're in debug mode, start with a command line window so we can see logging
     if (kDebugMode) {
@@ -149,14 +155,14 @@ class EngineConnector extends EngineConnectorBase {
         _setEngineProcess(
           await Process.start('powershell', [
             '-Command',
-            '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}',
+            '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
           ], environment: engineEnvironment),
         );
       } else {
         _setEngineProcess(
           await Process.start(
             anthemPathStr,
-            [EngineSocketServer.instance.port.toString(), _id.toString()],
+            [],
             // There's no singular way to start in a shell window on Linux, so
             // this mirrors the engine output to our standard out.
             mode: ProcessStartMode.inheritStdio,
@@ -168,7 +174,7 @@ class EngineConnector extends EngineConnectorBase {
       _setEngineProcess(
         await Process.start(
           anthemPathStr,
-          [EngineSocketServer.instance.port.toString(), _id.toString()],
+          [],
 
           // I'm not sure why this is necessary, but the process doesn't start
           // correctly without it on Windows without this.

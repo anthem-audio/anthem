@@ -41,18 +41,8 @@ private:
     // juce::Logger::writeToLog("change detected");
   }
 
-  juce::String getEngineIdForLogging(const juce::String& commandLineParameters) {
-    auto spaceIndex = commandLineParameters.indexOfChar(' ');
-    if (spaceIndex == -1) {
-      return "unknown";
-    }
-
-    auto engineId = commandLineParameters.substring(spaceIndex + 1).trim();
-    auto trailingSpaceIndex = engineId.indexOfChar(' ');
-    if (trailingSpaceIndex != -1) {
-      engineId = engineId.substring(0, trailingSpaceIndex);
-    }
-
+  juce::String getEngineIdForLogging() {
+    auto engineId = juce::SystemStats::getEnvironmentVariable("ANTHEM_ENGINE_ID", "unknown").trim();
     return engineId.isEmpty() ? "unknown" : engineId;
   }
 
@@ -68,12 +58,12 @@ private:
         "Anthem", "AnthemEngine.log", "Anthem Engine", static_cast<juce::int64>(1024) * 1024));
   }
 
-  void initializeLogging(const juce::String& commandLineParameters) {
+  void initializeLogging() {
 #ifdef __EMSCRIPTEN__
     logger = std::make_unique<ConsoleLogger>();
     juce::Logger::setCurrentLogger(logger.get());
 #else
-    auto fileLogger = createFileLogger(getEngineIdForLogging(commandLineParameters));
+    auto fileLogger = createFileLogger(getEngineIdForLogging());
 
     if (fileLogger == nullptr) {
       juce::Logger::writeToLog("Failed to create Anthem engine file logger.");
@@ -132,8 +122,8 @@ public:
     // This might not work
   }
 
-  void initialise(const juce::String& commandLineParameters) override {
-    initializeLogging(commandLineParameters);
+  void initialise(const juce::String& /*commandLineParameters*/) override {
+    initializeLogging();
 
     // wow, C++ sure is weird
     const char* anthemSplash = R"V0G0N(
