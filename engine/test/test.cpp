@@ -40,6 +40,7 @@
 #include "modules/sequencer/runtime/runtime_sequence_store_test.h"
 #include "modules/sequencer/runtime/sequencer_timing_test.h"
 #include "modules/sequencer/runtime/transport_test.h"
+#include "modules/util/arena_allocator_test.h"
 #include "modules/util/note_tracker_test.h"
 #include "modules/util/ring_buffer_test.h"
 
