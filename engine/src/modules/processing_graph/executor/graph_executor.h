@@ -62,7 +62,7 @@ public:
   private:
     class Impl;
 
-    RuntimeState(size_t readyNodeQueueCount, size_t readyNodeQueueCapacity);
+    RuntimeState(size_t nodeQueueCount, size_t nodeQueueCapacity);
 
     friend class GraphExecutor::Impl;
     friend class GraphExecutor;

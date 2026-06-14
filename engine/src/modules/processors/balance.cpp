@@ -35,8 +35,8 @@ void BalanceProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
 }
 
 void BalanceProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& audioInBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);
-  auto& audioOutBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
 
   auto balanceControl = context.getInputControlSignal(BalanceProcessorModelBase::balancePortId);
 

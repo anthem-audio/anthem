@@ -93,7 +93,7 @@ void DbMeterProcessor::process(NodeProcessContext& context, int numSamples) {
     return;
   }
 
-  auto& audioInBuffer = context.getInputAudioBuffer(DbMeterProcessorModelBase::audioInputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(DbMeterProcessorModelBase::audioInputPortId);
   const int64_t publishEverySamples =
       std::max<int64_t>(1, rt_publishEverySamples->load(std::memory_order_relaxed));
   const int64_t blockStartSample = Engine::getInstance().transport->rt_sampleCounter;

@@ -148,9 +148,7 @@ private:
   size_t freeAllocationIndexCount = 0;
   size_t activeAllocationCount = 0;
 public:
-  Impl(size_t blockQuantumSizeBytes,
-      size_t maxAllocationBlockCount,
-      size_t maxLiveAllocationCount)
+  Impl(size_t blockQuantumSizeBytes, size_t maxAllocationBlockCount, size_t maxLiveAllocationCount)
     : blockQuantumSizeBytes(blockQuantumSizeBytes),
       maxAllocationBlockCount(maxAllocationBlockCount),
       maxLiveAllocationCount(maxLiveAllocationCount) {
@@ -168,10 +166,9 @@ public:
           "ArenaAllocator max live allocation count must be greater than zero.");
     }
 
-    totalBlockCount = checkedMultiply(
-        checkedMultiply(maxAllocationBlockCount,
-            maxLiveAllocationCount,
-            "ArenaAllocator total block count overflowed."),
+    totalBlockCount = checkedMultiply(checkedMultiply(maxAllocationBlockCount,
+                                          maxLiveAllocationCount,
+                                          "ArenaAllocator total block count overflowed."),
         static_cast<size_t>(2),
         "ArenaAllocator total block count overflowed.");
     const auto storageByteCount = checkedMultiply(
@@ -186,8 +183,7 @@ public:
   }
 
   std::optional<Handle> allocate(size_t blockCount) {
-    if (blockCount == 0 || blockCount > maxAllocationBlockCount ||
-        freeAllocationIndexCount == 0) {
+    if (blockCount == 0 || blockCount > maxAllocationBlockCount || freeAllocationIndexCount == 0) {
       return std::nullopt;
     }
 
@@ -343,9 +339,8 @@ public:
   }
 };
 
-ArenaAllocator::ArenaAllocator(size_t blockQuantumSizeBytes,
-    size_t maxAllocationBlockCount,
-    size_t maxLiveAllocationCount)
+ArenaAllocator::ArenaAllocator(
+    size_t blockQuantumSizeBytes, size_t maxAllocationBlockCount, size_t maxLiveAllocationCount)
   : impl(std::make_unique<Impl>(
         blockQuantumSizeBytes, maxAllocationBlockCount, maxLiveAllocationCount)) {}
 

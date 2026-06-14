@@ -69,16 +69,16 @@ void rt_applyEventConnectionTransfer(
 void rt_applyAudioConnectionTransfer(const RuntimeConnectionTransferAction& action,
     GraphProcessContext& graphProcessContext,
     int numSamples) {
-  const auto& destinationSlice = action.destinationAudioSlice;
-  auto& destination = graphProcessContext.getAudioBuffer(destinationSlice.bufferIndex);
-  jassert(!action.sourceAudioSlices.empty());
+  const auto& destinationSlice = action.destinationAudioSlotSlice;
+  auto destination = graphProcessContext.rt_getAudioBufferView(destinationSlice);
+  jassert(!action.sourceAudioSlotSlices.empty());
   jassert(numSamples <= destination.getNumSamples());
   jassert(destinationSlice.channelCount > 0);
   jassert(destinationSlice.channelCount <= destination.getNumChannels());
 
 #if JUCE_ASSERTIONS_ENABLED
-  for (const auto& sourceSlice : action.sourceAudioSlices) {
-    const auto& source = graphProcessContext.getAudioBuffer(sourceSlice.bufferIndex);
+  for (const auto& sourceSlice : action.sourceAudioSlotSlices) {
+    const auto source = graphProcessContext.rt_getAudioBufferView(sourceSlice);
     jassert(source.getNumSamples() == destination.getNumSamples());
     jassert(numSamples <= source.getNumSamples());
     jassert(sourceSlice.channelCount == destinationSlice.channelCount);
@@ -92,8 +92,8 @@ void rt_applyAudioConnectionTransfer(const RuntimeConnectionTransferAction& acti
     for (int sample = 0; sample < numSamples; ++sample) {
       float sum = 0.0f;
 
-      for (const auto& sourceSlice : action.sourceAudioSlices) {
-        const auto& source = graphProcessContext.getAudioBuffer(sourceSlice.bufferIndex);
+      for (const auto& sourceSlice : action.sourceAudioSlotSlices) {
+        const auto source = graphProcessContext.rt_getAudioBufferView(sourceSlice);
         sum += source.getReadPointer(channel)[sample];
       }
 
@@ -125,6 +125,19 @@ void rt_prepareGraphForBlock(GraphExecutorState& state) {
     runtimeNode.rt_state.rt_remainingUpstreamNodes.store(
         runtimeNode.upstreamNodeCount, std::memory_order_relaxed);
   }
+
+  if (state.runtimeGraph.graphProcessContext != nullptr) {
+    state.runtimeGraph.graphProcessContext->rt_prepareAudioArenaForBlock();
+  }
+}
+
+void rt_prepareNodeForProcessing(GraphExecutorState& state, RuntimeNode& node) {
+  if (state.runtimeGraph.graphProcessContext == nullptr) {
+    return;
+  }
+
+  state.runtimeGraph.graphProcessContext->rt_allocateAudioBufferSlotsForNode(
+      node.audioBufferSlotIndices);
 }
 
 void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples) {
@@ -145,6 +158,15 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
   if (node.processor != nullptr) {
     node.processor->process(*node.nodeProcessContext, numSamples);
   }
+}
+
+void rt_finishNodeProcessing(GraphExecutorState& state, RuntimeNode& node) {
+  if (state.runtimeGraph.graphProcessContext == nullptr) {
+    return;
+  }
+
+  state.runtimeGraph.graphProcessContext->rt_releaseAudioBufferSlotUsesForNode(
+      node.audioBufferSlotIndices);
 }
 
 bool rt_decrementRemainingUpstreamNodes(RuntimeNode& node) {

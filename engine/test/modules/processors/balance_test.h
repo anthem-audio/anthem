@@ -63,13 +63,16 @@ public:
             .numAudioChannels = channelCount,
             .blockSize = blockSize,
         });
-    graphContext.reserve(1, 2, 1, 0);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 2, 1, 0);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
-    auto& outputBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
-    auto& inputBuffer = graphContext.getAudioBuffer(context.getBufferIndex(NodePortDataType::audio,
-        NodeProcessContext::BufferDirection::input,
-        BalanceProcessorModelBase::audioInputPortId));
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
+    auto outputBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
+    auto inputBuffer =
+        graphContext.rt_getAudioBufferView(context.getBufferIndex(NodePortDataType::audio,
+            NodeProcessContext::BufferDirection::input,
+            BalanceProcessorModelBase::audioInputPortId));
     auto& balanceBuffer =
         graphContext.getControlBuffer(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,

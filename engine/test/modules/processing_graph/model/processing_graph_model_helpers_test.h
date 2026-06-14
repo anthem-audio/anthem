@@ -152,9 +152,11 @@ public:
             .numAudioChannels = 2,
             .blockSize = 16,
         });
-    graphContext.reserve(1, 0, 1, 0);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 1, 0);
 
-    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& nodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     node->runtimeContext = std::make_optional(&nodeContext);
 
     auto& port = *node->controlInputPorts()->at(0);
@@ -185,9 +187,11 @@ public:
             .numAudioChannels = 2,
             .blockSize = 16,
         });
-    graphContext.reserve(1, 0, 1, 0);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 1, 0);
 
-    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& nodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto& port = *node->controlInputPorts()->at(0);
 
     applyParameterValueUpdate(port, 0.75);

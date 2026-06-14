@@ -27,9 +27,11 @@
 #include "modules/processing_graph/runtime/graph_process_context.h"
 #include "modules/processors/gain.h"
 #include "modules/processors/master_output.h"
+#include "modules/processors/tone_generator.h"
 
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace anthem {
 
@@ -77,6 +79,23 @@ inline std::shared_ptr<Node> makeGainNode(int64_t nodeId) {
       .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .isThirdPartyPlugin = false,
       .processor = NodeProcessorVariant(rfl::make_field<"GainProcessorModel">(gainProcessor)),
+  });
+}
+
+inline std::shared_ptr<Node> makeToneGeneratorNode(int64_t nodeId) {
+  auto processor =
+      std::make_shared<ToneGeneratorProcessor>(ToneGeneratorProcessorModelImpl{.nodeId = nodeId});
+
+  return std::make_shared<Node>(NodeModelImpl{
+      .id = nodeId,
+      .audioInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
+      .isThirdPartyPlugin = false,
+      .processor = NodeProcessorVariant(rfl::make_field<"ToneGeneratorProcessorModel">(processor)),
   });
 }
 
@@ -137,8 +156,11 @@ inline std::shared_ptr<ProcessingGraphModel> makeProcessingGraph() {
 }
 
 inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
-    std::shared_ptr<Node>& graphNode, GraphProcessContext& graphProcessContext) {
+    std::shared_ptr<Node>& graphNode,
+    GraphProcessContext& graphProcessContext,
+    GraphProcessContext::Builder& contextBuilder) {
   NodeProcessContext::BufferBindings bindings;
+  std::vector<size_t> audioBufferSlotIndices;
 
   bindings.inputAudioBuffers.reserve(graphNode->audioInputPorts()->size());
   bindings.outputAudioBuffers.reserve(graphNode->audioOutputPorts()->size());
@@ -152,20 +174,22 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
       graphNode->eventInputPorts()->size() + graphNode->eventOutputPorts()->size());
 
   for (auto& port : *graphNode->audioInputPorts()) {
-    auto bufferIndex = graphProcessContext.allocateAudioBuffer();
+    auto slotIndex = contextBuilder.declareAudioBufferSlot();
+    audioBufferSlotIndices.push_back(slotIndex);
     bindings.inputAudioBuffers.emplace(port->id(),
-        AudioBufferSlice{
-            .bufferIndex = bufferIndex,
-            .channelCount = graphProcessContext.getAudioBuffer(bufferIndex).getNumChannels(),
+        AudioBufferSlotSlice{
+            .slotIndex = slotIndex,
+            .channelCount = graphProcessContext.getAudioBufferSlotChannelCount(slotIndex),
         });
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {
-    auto bufferIndex = graphProcessContext.allocateAudioBuffer();
+    auto slotIndex = contextBuilder.declareAudioBufferSlot();
+    audioBufferSlotIndices.push_back(slotIndex);
     bindings.outputAudioBuffers.emplace(port->id(),
-        AudioBufferSlice{
-            .bufferIndex = bufferIndex,
-            .channelCount = graphProcessContext.getAudioBuffer(bufferIndex).getNumChannels(),
+        AudioBufferSlotSlice{
+            .slotIndex = slotIndex,
+            .channelCount = graphProcessContext.getAudioBufferSlotChannelCount(slotIndex),
         });
   }
 
@@ -178,32 +202,39 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
   }
 
   for (auto& port : *graphNode->controlInputPorts()) {
-    bindings.inputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
+    bindings.inputControlBuffers.emplace(port->id(), contextBuilder.allocateControlBuffer());
   }
 
   for (auto& port : *graphNode->controlOutputPorts()) {
-    bindings.outputControlBuffers.emplace(port->id(), graphProcessContext.allocateControlBuffer());
+    bindings.outputControlBuffers.emplace(port->id(), contextBuilder.allocateControlBuffer());
   }
 
   for (auto& port : *graphNode->eventInputPorts()) {
-    auto bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+    auto bufferIndex = contextBuilder.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
     bindings.inputEventBuffers.emplace(port->id(), bufferIndex);
     bindings.rt_eventBuffersToClear.push_back(bufferIndex);
   }
 
   for (auto& port : *graphNode->eventOutputPorts()) {
-    auto bufferIndex = graphProcessContext.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+    auto bufferIndex = contextBuilder.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
     bindings.outputEventBuffers.emplace(port->id(), bufferIndex);
     bindings.rt_eventBuffersToClear.push_back(bufferIndex);
   }
+
+  contextBuilder.registerAudioBufferSlotsUsedByNode(audioBufferSlotIndices);
+  contextBuilder.finalizeAudioArena();
+  graphProcessContext.rt_prepareAudioArenaForBlock();
+  graphProcessContext.rt_allocateAllAudioBufferSlots();
 
   return bindings;
 }
 
 inline NodeProcessContext& createStandaloneNodeProcessContext(
-    GraphProcessContext& graphProcessContext, std::shared_ptr<Node>& graphNode) {
-  return graphProcessContext.createNodeProcessContext(
-      graphNode, createStandaloneBufferBindings(graphNode, graphProcessContext));
+    GraphProcessContext& graphProcessContext,
+    GraphProcessContext::Builder& contextBuilder,
+    std::shared_ptr<Node>& graphNode) {
+  return contextBuilder.createNodeProcessContext(
+      graphNode, createStandaloneBufferBindings(graphNode, graphProcessContext, contextBuilder));
 }
 
 } // namespace graph_test_helpers

@@ -33,8 +33,8 @@ void GainProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
 }
 
 void GainProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
-  auto& audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
 
   auto amplitudeControl = context.getInputControlSignal(GainProcessorModelBase::gainPortId);
 

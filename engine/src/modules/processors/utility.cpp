@@ -35,8 +35,8 @@ void UtilityProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
 }
 
 void UtilityProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& audioInBuffer = context.getInputAudioBuffer(UtilityProcessorModelBase::audioInputPortId);
-  auto& audioOutBuffer = context.getOutputAudioBuffer(UtilityProcessorModelBase::audioOutputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(UtilityProcessorModelBase::audioInputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(UtilityProcessorModelBase::audioOutputPortId);
 
   auto gainControl = context.getInputControlSignal(UtilityProcessorModelBase::gainPortId);
   auto balanceControl = context.getInputControlSignal(UtilityProcessorModelBase::balancePortId);

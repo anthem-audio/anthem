@@ -157,9 +157,11 @@ public:
             .numAudioChannels = 0,
             .blockSize = 1,
         });
-    graphContext.reserve(1, 0, 0, 1);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 0, 1);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
 
@@ -195,9 +197,11 @@ public:
             .numAudioChannels = 0,
             .blockSize = 1,
         });
-    graphContext.reserve(1, 0, 0, 1);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 0, 1);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -231,9 +235,11 @@ public:
             .numAudioChannels = 0,
             .blockSize = 1,
         });
-    graphContext.reserve(1, 0, 0, 1);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 0, 1);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -258,9 +264,11 @@ public:
             .numAudioChannels = 0,
             .blockSize = 1,
         });
-    graphContext.reserve(1, 0, 0, 1);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 0, 1);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -284,9 +292,11 @@ public:
             .numAudioChannels = 0,
             .blockSize = 1,
         });
-    graphContext.reserve(1, 0, 0, 1);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 0, 1);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);
@@ -345,9 +355,11 @@ public:
             .numAudioChannels = 0,
             .blockSize = 1,
         });
-    graphContext.reserve(1, 0, 0, 1);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 0, 1);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto processor =
         LiveEventProviderProcessor(LiveEventProviderProcessorModelImpl{.nodeId = nodeId});
     auto& outputBuffer = getOutputBuffer(context);

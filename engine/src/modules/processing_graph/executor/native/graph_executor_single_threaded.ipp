@@ -21,8 +21,8 @@ namespace anthem {
 
 class GraphExecutor::RuntimeState::Impl final {
 public:
-  Impl(size_t readyNodeQueueCount, size_t readyNodeQueueCapacity) {
-    juce::ignoreUnused(readyNodeQueueCount, readyNodeQueueCapacity);
+  Impl(size_t nodeQueueCount, size_t nodeQueueCapacity) {
+    juce::ignoreUnused(nodeQueueCount, nodeQueueCapacity);
   }
 };
 
@@ -41,7 +41,9 @@ void rt_processSingleThreaded(GraphExecutorState& state, int numSamples) {
     auto* runtimeNode = runtimeGraph.availableTasks.top();
     runtimeGraph.availableTasks.pop();
 
+    rt_prepareNodeForProcessing(state, *runtimeNode);
     rt_processNode(state, *runtimeNode, numSamples);
+    rt_finishNodeProcessing(state, *runtimeNode);
 
     for (auto* downstreamNode : runtimeNode->outgoingConnections) {
       if (rt_decrementRemainingUpstreamNodes(*downstreamNode)) {
@@ -61,7 +63,7 @@ public:
     juce::ignoreUnused(threadConfig);
   }
 
-  size_t getReadyNodeQueueCount() const {
+  size_t getRuntimeQueueCount() const {
     return 1;
   }
 

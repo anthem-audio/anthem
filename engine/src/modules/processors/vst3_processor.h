@@ -28,6 +28,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 namespace anthem {
 
@@ -150,6 +151,8 @@ private:
 
   std::unique_ptr<juce::AudioPluginInstance> pluginInstance;
   juce::AudioBuffer<float> rt_emptyAudioBuffer;
+  juce::AudioBuffer<float> rt_pluginAudioBufferView;
+  std::vector<float*> rt_pluginAudioChannelPointers;
 
   juce::MidiBuffer rt_eventBufferForPlugin;
   std::optional<int64_t> audioInputPortIdForPlugin;

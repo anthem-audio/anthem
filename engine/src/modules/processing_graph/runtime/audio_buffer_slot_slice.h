@@ -23,8 +23,9 @@
 
 namespace anthem {
 
-struct AudioBufferSlice {
-  size_t bufferIndex = 0;
+// References the first channelCount channels of a logical audio buffer slot.
+struct AudioBufferSlotSlice {
+  size_t slotIndex = 0;
   int channelCount = 0;
 };
 

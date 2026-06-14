@@ -60,7 +60,7 @@ void ToneGeneratorProcessor::prepareToProcess(ProcessorPrepareCallback complete)
 }
 
 void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& audioOutBuffer =
+  auto audioOutBuffer =
       context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
 
   auto frequencyControl =

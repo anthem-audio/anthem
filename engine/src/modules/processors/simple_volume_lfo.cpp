@@ -50,9 +50,9 @@ void SimpleVolumeLfoProcessor::prepareToProcess(ProcessorPrepareCallback complet
 }
 
 void SimpleVolumeLfoProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& inputBuffer =
+  auto inputBuffer =
       context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
-  auto& outputBuffer =
+  auto outputBuffer =
       context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);
 
   // Generate a sine wave

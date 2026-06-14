@@ -22,6 +22,7 @@
 #include "modules/core/engine.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
+#include <algorithm>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_core/juce_core.h>
 
@@ -53,10 +54,17 @@ void MasterOutputProcessor::prepareToProcess(ProcessorPrepareCallback complete) 
 }
 
 void MasterOutputProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
+  auto inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {
-    this->buffer.copyFrom(channel, 0, inputBuffer, channel, 0, numSamples);
+    auto* outputSamples = buffer.getWritePointer(channel);
+    const auto* inputSamples = inputBuffer.getReadPointer(channel);
+
+    if (outputSamples == nullptr || inputSamples == nullptr) {
+      continue;
+    }
+
+    std::copy(inputSamples, inputSamples + numSamples, outputSamples);
   }
 }
 

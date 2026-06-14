@@ -21,9 +21,8 @@
 
 #include "modules/util/arena_allocator.h"
 
-#include <stdexcept>
-
 #include <juce_core/juce_core.h>
+#include <stdexcept>
 
 namespace anthem {
 
@@ -56,9 +55,21 @@ public:
   void testRejectsInvalidSizing() {
     beginTest("ArenaAllocator rejects invalid sizing parameters");
 
-    expectThrowsType([]() { ArenaAllocator allocator(0, 4, 3); }(), std::invalid_argument);
-    expectThrowsType([]() { ArenaAllocator allocator(16, 0, 3); }(), std::invalid_argument);
-    expectThrowsType([]() { ArenaAllocator allocator(16, 4, 0); }(), std::invalid_argument);
+    expectThrowsType(
+        []() {
+          ArenaAllocator allocator(0, 4, 3);
+        }(),
+        std::invalid_argument);
+    expectThrowsType(
+        []() {
+          ArenaAllocator allocator(16, 0, 3);
+        }(),
+        std::invalid_argument);
+    expectThrowsType(
+        []() {
+          ArenaAllocator allocator(16, 4, 0);
+        }(),
+        std::invalid_argument);
   }
 
   void testComputesStorageFromSizingParameters() {
@@ -150,9 +161,8 @@ public:
         "Freeing the middle block should create a second free span.");
 
     expect(allocator.free(first), "Freeing the previous block should coalesce with the middle.");
-    expectEquals(static_cast<int>(allocator.getFreeBlockCount()),
-        2,
-        "Adjacent free spans should coalesce.");
+    expectEquals(
+        static_cast<int>(allocator.getFreeBlockCount()), 2, "Adjacent free spans should coalesce.");
 
     auto merged = expectAllocate(allocator, 4, "Merged allocation");
     expectEquals(static_cast<int>(allocator.getOffsetBlocks(merged)),

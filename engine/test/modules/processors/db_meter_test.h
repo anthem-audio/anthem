@@ -44,6 +44,13 @@ class DbMeterAccumulatorTest : public juce::UnitTest {
     return static_cast<double>(bw_lin2dBf(linearValue));
   }
 
+  static AudioBufferView makeView(juce::AudioBuffer<float>& buffer) {
+    return AudioBufferView(buffer.getWritePointer(0),
+        buffer.getNumChannels(),
+        buffer.getNumSamples(),
+        buffer.getNumSamples());
+  }
+
   void expectPublishedValue(const PublishedValue& value,
       size_t expectedChannelIndex,
       double expectedValueDb,
@@ -83,8 +90,11 @@ public:
     buffer.setSample(1, 3, 0.20f);
 
     std::vector<PublishedValue> published;
-    accumulator.rt_processBlock(
-        buffer, 4, 100, 2, [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
+    accumulator.rt_processBlock(makeView(buffer),
+        4,
+        100,
+        2,
+        [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
           published.push_back(PublishedValue{
               .channelIndex = channelIndex,
               .valueDb = valueDb,
@@ -109,8 +119,11 @@ public:
     firstBlock.setSample(0, 0, 0.70f);
 
     std::vector<PublishedValue> published;
-    accumulator.rt_processBlock(
-        firstBlock, 1, 10, 3, [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
+    accumulator.rt_processBlock(makeView(firstBlock),
+        1,
+        10,
+        3,
+        [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
           published.push_back(PublishedValue{
               .channelIndex = channelIndex,
               .valueDb = valueDb,
@@ -124,8 +137,11 @@ public:
     secondBlock.setSample(0, 0, 0.20f);
     secondBlock.setSample(0, 1, 0.30f);
 
-    accumulator.rt_processBlock(
-        secondBlock, 2, 11, 3, [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
+    accumulator.rt_processBlock(makeView(secondBlock),
+        2,
+        11,
+        3,
+        [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
           published.push_back(PublishedValue{
               .channelIndex = channelIndex,
               .valueDb = valueDb,
@@ -149,8 +165,11 @@ public:
     buffer.setSample(0, 1, 0.5f);
 
     std::vector<PublishedValue> published;
-    accumulator.rt_processBlock(
-        buffer, 2, 40, 0, [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
+    accumulator.rt_processBlock(makeView(buffer),
+        2,
+        40,
+        0,
+        [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
           published.push_back(PublishedValue{
               .channelIndex = channelIndex,
               .valueDb = valueDb,
@@ -174,8 +193,11 @@ public:
     firstBlock.setSample(0, 0, 1.0f);
 
     std::vector<PublishedValue> published;
-    accumulator.rt_processBlock(
-        firstBlock, 1, 0, 3, [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
+    accumulator.rt_processBlock(makeView(firstBlock),
+        1,
+        0,
+        3,
+        [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
           published.push_back(PublishedValue{
               .channelIndex = channelIndex,
               .valueDb = valueDb,
@@ -190,8 +212,11 @@ public:
     juce::AudioBuffer<float> secondBlock(1, 1);
     secondBlock.setSample(0, 0, 0.25f);
 
-    accumulator.rt_processBlock(
-        secondBlock, 1, 20, 1, [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
+    accumulator.rt_processBlock(makeView(secondBlock),
+        1,
+        20,
+        1,
+        [&](size_t channelIndex, double valueDb, int64_t sampleTimestamp) {
           published.push_back(PublishedValue{
               .channelIndex = channelIndex,
               .valueDb = valueDb,

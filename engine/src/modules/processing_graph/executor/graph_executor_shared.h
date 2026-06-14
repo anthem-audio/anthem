@@ -33,9 +33,18 @@ struct GraphExecutorState {
 // Resets per-block runtime counters before scheduling starts.
 void rt_prepareGraphForBlock(GraphExecutorState& state);
 
+// Allocates arena-backed audio slots needed by this node. The threaded
+// executor must call this from its scheduler-gated section.
+void rt_prepareNodeForProcessing(GraphExecutorState& state, RuntimeNode& node);
+
 // Merges/copies this node's incoming connection data, then invokes the node's
 // processor if it has one.
 void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples);
+
+// Releases this node's uses of arena-backed audio slots, freeing only slots
+// whose last remaining use is released. The threaded executor must call this
+// from its scheduler-gated section.
+void rt_finishNodeProcessing(GraphExecutorState& state, RuntimeNode& node);
 
 // Marks one upstream node as processed and returns true if this node is now
 // ready to run.

@@ -45,7 +45,9 @@ namespace {
 constexpr int minimumCoreCount = 1;
 constexpr int threadStopTimeoutMs = 5000;
 constexpr int workerGateSpinAttempts = 100;
-constexpr size_t audioThreadReadyQueueIndex = 0;
+// Queue slot reserved for the one audio thread participating in this executor
+// block. Worker thread queue slots start at 1.
+constexpr size_t audioThreadQueueIndex = 0;
 
 enum class ExecutorThreadRole {
   audioThread,
@@ -121,18 +123,18 @@ bool threadConfigsMatch(
 
 // This is a ring buffer, but it has a dynamic size so that it can be sized to
 // the total node count. Our standard ring buffer has a compile-time size.
-class RuntimeReadyNodeQueue {
+class RuntimeNodeQueue {
 public:
-  explicit RuntimeReadyNodeQueue(size_t capacity)
+  explicit RuntimeNodeQueue(size_t capacity)
     : fifo(static_cast<int>(capacity + 1)), buffer(capacity + 1, nullptr) {
     jassert(capacity < static_cast<size_t>(std::numeric_limits<int>::max()));
   }
 
-  RuntimeReadyNodeQueue(const RuntimeReadyNodeQueue&) = delete;
-  RuntimeReadyNodeQueue& operator=(const RuntimeReadyNodeQueue&) = delete;
+  RuntimeNodeQueue(const RuntimeNodeQueue&) = delete;
+  RuntimeNodeQueue& operator=(const RuntimeNodeQueue&) = delete;
 
-  RuntimeReadyNodeQueue(RuntimeReadyNodeQueue&&) = delete;
-  RuntimeReadyNodeQueue& operator=(RuntimeReadyNodeQueue&&) = delete;
+  RuntimeNodeQueue(RuntimeNodeQueue&&) = delete;
+  RuntimeNodeQueue& operator=(RuntimeNodeQueue&&) = delete;
 
   bool add(RuntimeNode* node) {
     int start1 = 0;
@@ -181,13 +183,16 @@ class GraphExecutor::RuntimeState::Impl final {
 public:
   Impl(size_t queueCount, size_t queueCapacity) {
     readyNodeQueues.reserve(queueCount);
+    completedNodeQueues.reserve(queueCount);
 
     for (size_t queueIndex = 0; queueIndex < queueCount; ++queueIndex) {
-      readyNodeQueues.push_back(std::make_unique<RuntimeReadyNodeQueue>(queueCapacity));
+      readyNodeQueues.push_back(std::make_unique<RuntimeNodeQueue>(queueCapacity));
+      completedNodeQueues.push_back(std::make_unique<RuntimeNodeQueue>(queueCapacity));
     }
   }
 
-  std::vector<std::unique_ptr<RuntimeReadyNodeQueue>> readyNodeQueues;
+  std::vector<std::unique_ptr<RuntimeNodeQueue>> readyNodeQueues;
+  std::vector<std::unique_ptr<RuntimeNodeQueue>> completedNodeQueues;
 };
 
 class GraphExecutor::Impl final {
@@ -224,7 +229,7 @@ public:
     }
   }
 
-  size_t getReadyNodeQueueCount() const {
+  size_t getRuntimeQueueCount() const {
     return workerThreads.size() + 1;
   }
 
@@ -245,10 +250,10 @@ public:
     rt_currentNumSamples.store(numSamples, std::memory_order_release);
     rt_workerThreadsMayRun.store(true, std::memory_order_release);
 
-    rt_doWork(state,
+    rt_processNodesForThreadRole(state,
         runtimeState,
         ExecutorThreadRole::audioThread,
-        audioThreadReadyQueueIndex,
+        audioThreadQueueIndex,
         numSamples);
 
     rt_workerThreadsMayRun.store(false, std::memory_order_release);
@@ -265,7 +270,7 @@ private:
         const GraphExecutor::ThreadConfig& threadConfig)
       : juce::Thread("Anthem Graph Worker " + juce::String(workerIndex)), owner(owner),
         threadConfig(threadConfig), index(workerIndex),
-        readyQueueIndex(static_cast<size_t>(workerIndex) + 1) {}
+        nodeQueueIndex(static_cast<size_t>(workerIndex) + 1) {}
 
     ~GraphWorkerThread() override {
       stop();
@@ -306,14 +311,14 @@ private:
           break;
         }
 
-        owner.rt_doWorkerWork(index, readyQueueIndex);
+        owner.rt_tryProcessCurrentBlockOnWorkerThread(index, nodeQueueIndex);
       }
     }
   private:
     Impl& owner;
     GraphExecutor::ThreadConfig threadConfig;
     int index;
-    size_t readyQueueIndex;
+    size_t nodeQueueIndex;
     std::atomic<bool> isSleeping{false};
   };
 
@@ -327,12 +332,18 @@ private:
 
   void rt_prepareQueuesForBlock(RuntimeGraph& runtimeGraph, RuntimeState& runtimeState) {
     auto& readyNodeQueues = runtimeState.impl->readyNodeQueues;
+    auto& completedNodeQueues = runtimeState.impl->completedNodeQueues;
 
-    jassert(readyNodeQueues.size() == getReadyNodeQueueCount());
+    jassert(readyNodeQueues.size() == getRuntimeQueueCount());
+    jassert(completedNodeQueues.size() == getRuntimeQueueCount());
     jassert(runtimeGraph.availableTasks.empty());
 
     for (auto& readyNodeQueue : readyNodeQueues) {
       readyNodeQueue->clear();
+    }
+
+    for (auto& completedNodeQueue : completedNodeQueues) {
+      completedNodeQueue->clear();
     }
 
     if (readyNodeQueues.empty()) {
@@ -340,7 +351,7 @@ private:
     }
 
     for (auto* inputNode : runtimeGraph.inputNodes) {
-      if (!readyNodeQueues[audioThreadReadyQueueIndex]->add(inputNode)) {
+      if (!readyNodeQueues[audioThreadQueueIndex]->add(inputNode)) {
         jassertfalse;
       }
     }
@@ -351,7 +362,10 @@ private:
            static_cast<size_t>(workerIndex) < currentThreadConfig.activeWorkerThreadCount;
   }
 
-  void rt_doWorkerWork(int workerIndex, size_t readyQueueIndex) {
+  // Worker-thread wake handler for the current audio block. This only joins the
+  // block if the worker is active and the audio thread has published block
+  // state.
+  void rt_tryProcessCurrentBlockOnWorkerThread(int workerIndex, size_t nodeQueueIndex) {
     if (!rt_isWorkerThreadActive(workerIndex)) {
       return;
     }
@@ -372,7 +386,8 @@ private:
     }
 
     const auto numSamples = rt_currentNumSamples.load(std::memory_order_acquire);
-    rt_doWork(*state, *runtimeState, ExecutorThreadRole::workerThread, readyQueueIndex, numSamples);
+    rt_processNodesForThreadRole(
+        *state, *runtimeState, ExecutorThreadRole::workerThread, nodeQueueIndex, numSamples);
   }
 
   void rt_waitForActiveWorkerThreadsToFinish() {
@@ -383,13 +398,16 @@ private:
     jassert(rt_activeWorkerThreadCount.load(std::memory_order_acquire) == 0);
   }
 
-  void rt_doWork(GraphExecutorState& state,
+  // Shared node-processing loop used by both the audio thread and workers.
+  // Workers return when no node is immediately claimable; the audio thread
+  // waits until the whole block is complete.
+  void rt_processNodesForThreadRole(GraphExecutorState& state,
       RuntimeState& runtimeState,
       ExecutorThreadRole role,
-      size_t readyQueueIndex,
+      size_t nodeQueueIndex,
       int numSamples) {
     while (true) {
-      auto* runtimeNode = rt_getNextNodeToProcess(state.runtimeGraph, runtimeState, role);
+      auto* runtimeNode = rt_getNextNodeToProcess(state, runtimeState, role);
 
       if (runtimeNode == nullptr) {
         if (rt_hasFinishedBlock()) {
@@ -405,19 +423,24 @@ private:
       }
 
       rt_processNode(state, *runtimeNode, numSamples);
-      rt_enqueueReadyDownstreamNodes(*runtimeNode, runtimeState, readyQueueIndex);
-      rt_markNodeProcessed();
+      rt_enqueueCompletedNode(*runtimeNode, runtimeState, nodeQueueIndex);
+      rt_enqueueReadyDownstreamNodes(*runtimeNode, runtimeState, nodeQueueIndex);
     }
   }
 
   RuntimeNode* rt_getNextNodeToProcess(
-      RuntimeGraph& runtimeGraph, RuntimeState& runtimeState, ExecutorThreadRole role) {
+      GraphExecutorState& state, RuntimeState& runtimeState, ExecutorThreadRole role) {
     if (!rt_acquireSchedulerGate(role)) {
       return nullptr;
     }
 
-    rt_drainReadyNodeQueues(runtimeGraph, runtimeState);
+    auto& runtimeGraph = state.runtimeGraph;
+    rt_drainCompletedNodeQueues(state, runtimeState);
+    rt_drainReadyNodeQueues(state, runtimeState);
     auto* nextNode = rt_popNextAvailableNode(runtimeGraph, role);
+    if (nextNode != nullptr) {
+      rt_prepareNodeForProcessing(state, *nextNode);
+    }
     rt_wakeWorkerBeforeReleasingSchedulerGate(runtimeGraph);
     rt_releaseSchedulerGate();
 
@@ -464,6 +487,20 @@ private:
     schedulerGate.store(false, std::memory_order_release);
   }
 
+  // As threads finish processing nodes, they enqueue those nodes here. This is
+  // drained inside schedulerGate so arena slot-use counts are decremented
+  // serially before the next node is allocated.
+  void rt_drainCompletedNodeQueues(GraphExecutorState& state, RuntimeState& runtimeState) {
+    for (auto& completedNodeQueue : runtimeState.impl->completedNodeQueues) {
+      while (auto completedNode = completedNodeQueue->read()) {
+        if (completedNode.value() != nullptr) {
+          rt_finishNodeProcessing(state, *completedNode.value());
+          rt_markNodeProcessed();
+        }
+      }
+    }
+  }
+
   // As worker threads complete tasks, they may unlock downstream nodes for
   // processing. Each thread has a ring buffer that it pushes node pointers to
   // when they are unlocked.
@@ -473,11 +510,11 @@ private:
   // Reading from these ring buffers and reading/writing from/to the main task
   // queue are NOT inherently thread-safe operations, and must be gated by
   // schedulerGate.
-  void rt_drainReadyNodeQueues(RuntimeGraph& runtimeGraph, RuntimeState& runtimeState) {
+  void rt_drainReadyNodeQueues(GraphExecutorState& state, RuntimeState& runtimeState) {
     for (auto& readyNodeQueue : runtimeState.impl->readyNodeQueues) {
       while (auto readyNode = readyNodeQueue->read()) {
         if (readyNode.value() != nullptr) {
-          runtimeGraph.availableTasks.push(readyNode.value());
+          state.runtimeGraph.availableTasks.push(readyNode.value());
         }
       }
     }
@@ -500,17 +537,32 @@ private:
     return nextNode;
   }
 
-  void rt_enqueueReadyDownstreamNodes(
-      RuntimeNode& runtimeNode, RuntimeState& runtimeState, size_t readyQueueIndex) {
-    auto& readyNodeQueues = runtimeState.impl->readyNodeQueues;
+  void rt_enqueueCompletedNode(
+      RuntimeNode& runtimeNode, RuntimeState& runtimeState, size_t nodeQueueIndex) {
+    auto& completedNodeQueues = runtimeState.impl->completedNodeQueues;
 
-    jassert(readyQueueIndex < readyNodeQueues.size());
+    jassert(nodeQueueIndex < completedNodeQueues.size());
 
-    if (readyQueueIndex >= readyNodeQueues.size()) {
+    if (nodeQueueIndex >= completedNodeQueues.size()) {
       return;
     }
 
-    auto& readyNodeQueue = *readyNodeQueues[readyQueueIndex];
+    if (!completedNodeQueues[nodeQueueIndex]->add(&runtimeNode)) {
+      jassertfalse;
+    }
+  }
+
+  void rt_enqueueReadyDownstreamNodes(
+      RuntimeNode& runtimeNode, RuntimeState& runtimeState, size_t nodeQueueIndex) {
+    auto& readyNodeQueues = runtimeState.impl->readyNodeQueues;
+
+    jassert(nodeQueueIndex < readyNodeQueues.size());
+
+    if (nodeQueueIndex >= readyNodeQueues.size()) {
+      return;
+    }
+
+    auto& readyNodeQueue = *readyNodeQueues[nodeQueueIndex];
 
     for (auto* downstreamNode : runtimeNode.outgoingConnections) {
       if (!rt_decrementRemainingUpstreamNodes(*downstreamNode)) {

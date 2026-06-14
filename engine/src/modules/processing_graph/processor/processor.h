@@ -93,7 +93,8 @@ public:
   bool isPrepared = false;
 
   // This method is called by the processing graph to process audio, event and
-  // control data. It is called once per processing block.
+  // control data. It is called once per processing block. Processors with audio
+  // output ports must fully replace every sample in each output buffer.
   virtual void process(NodeProcessContext& context, int numSamples) = 0;
 
   // Gets the state of the processor

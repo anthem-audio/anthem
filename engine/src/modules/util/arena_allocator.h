@@ -21,11 +21,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <juce_core/juce_core.h>
 #include <limits>
 #include <memory>
 #include <optional>
-
-#include <juce_core/juce_core.h>
 
 namespace anthem {
 
@@ -49,9 +48,8 @@ private:
   class Impl;
   std::unique_ptr<Impl> impl;
 public:
-  ArenaAllocator(size_t blockQuantumSizeBytes,
-      size_t maxAllocationBlockCount,
-      size_t maxLiveAllocationCount);
+  ArenaAllocator(
+      size_t blockQuantumSizeBytes, size_t maxAllocationBlockCount, size_t maxLiveAllocationCount);
   ~ArenaAllocator();
 
   ArenaAllocator(const ArenaAllocator&) = delete;

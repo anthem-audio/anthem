@@ -21,7 +21,8 @@
 
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/processor/event_buffer.h"
-#include "modules/processing_graph/runtime/audio_buffer_slice.h"
+#include "modules/processing_graph/runtime/audio_buffer_slot_slice.h"
+#include "modules/processing_graph/runtime/audio_buffer_view.h"
 #include "modules/sequencer/events/note_instance_id.h"
 
 #include <atomic>
@@ -46,8 +47,7 @@ class NodeProcessContext {
 public:
   using PortBufferIndexMap = std::unordered_map<int64_t, size_t>;
   using OptionalPortBufferIndexMap = std::unordered_map<int64_t, std::optional<size_t>>;
-  using PortAudioBufferSliceMap = std::unordered_map<int64_t, AudioBufferSlice>;
-  using PortAudioBufferViewMap = std::unordered_map<int64_t, juce::AudioSampleBuffer>;
+  using PortAudioBufferSlotSliceMap = std::unordered_map<int64_t, AudioBufferSlotSlice>;
 
   enum class BufferDirection : uint8_t {
     input,
@@ -58,14 +58,14 @@ public:
   // buffers owned for this node, another node's output buffer, or a shared
   // empty event buffer. Control input bindings may be empty for disconnected
   // parameter ports, in which case processors read the parameter value instead
-  // of a buffer. Audio bindings expose slices so processors see only the
+  // of a buffer. Audio bindings expose slot slices so processors see only the
   // channels that belong to a port, even when the physical graph buffer is
-  // wider. The rt_*BuffersToClear lists identify only the buffers or slices
-  // this node should clear before processing.
+  // wider. The rt_*BuffersToClear lists identify only the buffers or slot
+  // slices this node should clear before processing.
   struct BufferBindings {
-    PortAudioBufferSliceMap inputAudioBuffers;
-    PortAudioBufferSliceMap outputAudioBuffers;
-    std::optional<AudioBufferSlice> audioProcessBuffer;
+    PortAudioBufferSlotSliceMap inputAudioBuffers;
+    PortAudioBufferSlotSliceMap outputAudioBuffers;
+    std::optional<AudioBufferSlotSlice> audioProcessBuffer;
 
     OptionalPortBufferIndexMap inputControlBuffers;
     PortBufferIndexMap outputControlBuffers;
@@ -73,7 +73,7 @@ public:
     PortBufferIndexMap inputEventBuffers;
     PortBufferIndexMap outputEventBuffers;
 
-    std::vector<AudioBufferSlice> rt_audioBuffersToClear;
+    std::vector<AudioBufferSlotSlice> rt_audioBuffersToClear;
     std::vector<size_t> rt_eventBuffersToClear;
   };
 
@@ -109,13 +109,9 @@ private:
   InputParameterBinding& findInputParameterBinding(int64_t id);
   const InputParameterBinding& findInputParameterBinding(int64_t id) const;
 
-  PortAudioBufferSliceMap inputAudioBuffers;
-  PortAudioBufferSliceMap outputAudioBuffers;
-  std::optional<AudioBufferSlice> audioProcessBuffer;
-
-  PortAudioBufferViewMap inputAudioBufferViews;
-  PortAudioBufferViewMap outputAudioBufferViews;
-  std::optional<juce::AudioSampleBuffer> audioProcessBufferView;
+  PortAudioBufferSlotSliceMap inputAudioBuffers;
+  PortAudioBufferSlotSliceMap outputAudioBuffers;
+  std::optional<AudioBufferSlotSlice> audioProcessBuffer;
 
   OptionalPortBufferIndexMap inputControlBuffers;
   PortBufferIndexMap outputControlBuffers;
@@ -123,7 +119,7 @@ private:
   PortBufferIndexMap inputEventBuffers;
   PortBufferIndexMap outputEventBuffers;
 
-  std::vector<AudioBufferSlice> rt_audioBuffersToClear;
+  std::vector<AudioBufferSlotSlice> rt_audioBuffersToClear;
   std::vector<size_t> rt_eventBuffersToClear;
   std::vector<ConnectedInputControlPort> rt_connectedInputControlPorts;
 
@@ -157,10 +153,10 @@ public:
   void clearBuffers();
   size_t getBufferIndex(NodePortDataType dataType, BufferDirection direction, int64_t id) const;
 
-  const juce::AudioSampleBuffer& getInputAudioBuffer(int64_t id) const;
-  juce::AudioSampleBuffer& getMutableInputAudioBuffer(int64_t id);
-  juce::AudioSampleBuffer& getOutputAudioBuffer(int64_t id);
-  juce::AudioSampleBuffer& getAudioProcessBuffer();
+  AudioBufferView getInputAudioBuffer(int64_t id) const;
+  AudioBufferView getMutableInputAudioBuffer(int64_t id);
+  AudioBufferView getOutputAudioBuffer(int64_t id);
+  AudioBufferView getAudioProcessBuffer();
   bool hasAudioProcessBuffer() const;
 
   InputControlSignal getInputControlSignal(int64_t id) const;

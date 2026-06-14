@@ -64,9 +64,11 @@ class NodeProcessContextTest : public juce::UnitTest {
     return node;
   }
 
-  static NodeProcessContext& createNodeContext(
-      std::shared_ptr<Node>& node, GraphProcessContext& graphContext) {
-    return graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+  static NodeProcessContext& createNodeContext(std::shared_ptr<Node>& node,
+      GraphProcessContext& graphContext,
+      GraphProcessContext::Builder& contextBuilder) {
+    return graph_test_helpers::createStandaloneNodeProcessContext(
+        graphContext, contextBuilder, node);
   }
 public:
   NodeProcessContextTest() : juce::UnitTest("AnthemNodeProcessContextTest", "Anthem") {}
@@ -89,12 +91,13 @@ public:
             .numAudioChannels = 2,
             .blockSize = 32,
         });
-    graphContext.reserve(1, 2, 2, 2);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 2, 2, 2);
 
-    auto& context = createNodeContext(node, graphContext);
+    auto& context = createNodeContext(node, graphContext, contextBuilder);
 
-    auto& inputAudioBuffer = context.getInputAudioBuffer(1);
-    auto& outputAudioBuffer = context.getOutputAudioBuffer(2);
+    auto inputAudioBuffer = context.getInputAudioBuffer(1);
+    auto outputAudioBuffer = context.getOutputAudioBuffer(2);
     auto* inputControlBuffer = context.getInputControlBuffer(3);
     auto& outputControlBuffer = context.getOutputControlBuffer(4);
     auto& inputEventBuffer = context.getInputEventBuffer(5);
@@ -104,7 +107,7 @@ public:
         inputAudioBuffer.getNumChannels(), 2, "Input audio should use the graph channel count.");
     expectEquals(
         outputAudioBuffer.getNumSamples(), 32, "Output audio should use the graph block size.");
-    expect(&inputAudioBuffer != &outputAudioBuffer,
+    expect(inputAudioBuffer.getWritePointer(0) != outputAudioBuffer.getWritePointer(0),
         "Input and output audio ports should bind to different buffers.");
     expect(inputControlBuffer != nullptr, "Input control should have a buffer.");
     expectEquals(inputControlBuffer->getNumChannels(), 1, "Input control should be mono.");
@@ -130,9 +133,10 @@ public:
             .numAudioChannels = 2,
             .blockSize = 32,
         });
-    graphContext.reserve(1, 2, 2, 2);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 2, 2, 2);
 
-    auto& context = createNodeContext(node, graphContext);
+    auto& context = createNodeContext(node, graphContext, contextBuilder);
 
     expectWithinAbsoluteError(context.getParameterValue(3),
         0.25f,
@@ -162,13 +166,14 @@ public:
             .numAudioChannels = 2,
             .blockSize = 16,
         });
-    graphContext.reserve(1, 2, 2, 2);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 2, 2, 2);
 
-    auto& context = createNodeContext(node, graphContext);
+    auto& context = createNodeContext(node, graphContext, contextBuilder);
 
-    auto& inputAudioBuffer = graphContext.getAudioBuffer(context.getBufferIndex(
+    auto inputAudioBuffer = graphContext.rt_getAudioBufferView(context.getBufferIndex(
         NodePortDataType::audio, NodeProcessContext::BufferDirection::input, 1));
-    auto& outputAudioBuffer = context.getOutputAudioBuffer(2);
+    auto outputAudioBuffer = context.getOutputAudioBuffer(2);
     auto& inputEventBuffer = *graphContext.getEventBuffer(context.getBufferIndex(
         NodePortDataType::event, NodeProcessContext::BufferDirection::input, 5));
     auto& outputEventBuffer = context.getOutputEventBuffer(6);
@@ -217,9 +222,10 @@ public:
             .numAudioChannels = 2,
             .blockSize = 32,
         });
-    graphContext.reserve(1, 2, 2, 2);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 2, 2, 2);
 
-    auto& context = createNodeContext(node, graphContext);
+    auto& context = createNodeContext(node, graphContext, contextBuilder);
 
     expectThrowsStdException(
         [&]() { (void)context.getInputAudioBuffer(9999); }, "Missing audio ports should throw.");

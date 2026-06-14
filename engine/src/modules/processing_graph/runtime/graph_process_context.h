@@ -20,8 +20,11 @@
 #pragma once
 
 #include "modules/processing_graph/processor/event_buffer.h"
+#include "modules/processing_graph/runtime/audio_buffer_slot_slice.h"
+#include "modules/processing_graph/runtime/audio_buffer_view.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/sequencer/events/note_instance_id.h"
+#include "modules/util/arena_allocator.h"
 
 #include <cstddef>
 #include <juce_audio_basics/juce_audio_basics.h>
@@ -34,6 +37,7 @@ namespace anthem {
 
 class Node;
 class EngineRuntimeServices;
+class RuntimeGraph;
 
 struct GraphBufferLayout {
   int numAudioChannels = 0;
@@ -47,6 +51,48 @@ struct GraphBufferLayout {
 // Node contexts are created through this class and act as lightweight views
 // into the buffers owned here and the engine-level services referenced here.
 class GraphProcessContext {
+public:
+  // Scoped graph-publishing interface. Runtime code can keep and use a
+  // GraphProcessContext without being able to mutate its storage layout.
+  class Builder {
+  public:
+    Builder(const Builder&) = delete;
+    Builder& operator=(const Builder&) = delete;
+
+    Builder(Builder&&) noexcept = default;
+    Builder& operator=(Builder&&) noexcept = default;
+
+    void reserve(size_t nodeProcessContextCount,
+        size_t audioBufferCount,
+        size_t controlBufferCount,
+        size_t eventBufferCount);
+
+    size_t declareAudioBufferSlot();
+    size_t declareAudioBufferSlot(int channelCount);
+    size_t allocateControlBuffer();
+    size_t allocateEventBuffer(size_t initialCapacity);
+    size_t getSharedEmptyEventBufferIndex();
+
+    NodeProcessContext& createNodeProcessContext(
+        std::shared_ptr<Node>& graphNode, NodeProcessContext::BufferBindings bufferBindings);
+
+    void registerAudioBufferSlotsUsedByNode(const std::vector<size_t>& slotIndices);
+    void setAudioBufferSlotClearOnAllocate(size_t index, bool clearOnAllocate);
+    void finalizeAudioArena();
+  private:
+    friend class RuntimeGraph;
+    friend class BalanceProcessorTest;
+    friend class GainProcessorTest;
+    friend class GraphProcessContextTest;
+    friend class LiveEventProviderProcessorTest;
+    friend class NodeProcessContextTest;
+    friend class ProcessingGraphModelHelpersTest;
+    friend class UtilityProcessorTest;
+
+    explicit Builder(GraphProcessContext& context) : context(&context) {}
+
+    GraphProcessContext* context = nullptr;
+  };
 private:
   JUCE_LEAK_DETECTOR(GraphProcessContext)
 
@@ -57,8 +103,21 @@ private:
   int numAudioChannels = 0;
   int blockSize = 0;
 
-  // Backing storage for graph-owned per-port buffers.
-  std::vector<juce::AudioSampleBuffer> audioBuffers;
+  struct AudioBufferSlot {
+    int channelCount = 0;
+    bool clearOnAllocate = true;
+    std::optional<ArenaAllocator::Handle> rt_arenaHandle;
+    size_t nodeUseCount = 0;
+    size_t rt_remainingNodeUseCount = 0;
+  };
+
+  // Logical graph-owned audio buffers. Sample memory is assigned from
+  // audioArena while processing a block.
+  std::vector<AudioBufferSlot> audioBufferSlots;
+  std::unique_ptr<ArenaAllocator> audioArena;
+
+  // Backing storage for graph-owned per-port buffers that remain statically
+  // allocated for now.
   std::vector<juce::AudioSampleBuffer> controlBuffers;
   std::vector<std::unique_ptr<EventBuffer>> eventBuffers;
 
@@ -71,31 +130,24 @@ public:
       EngineRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout);
   ~GraphProcessContext();
 
-  // Reserves capacity for all graph-owned runtime objects before node contexts
-  // are created. This keeps the backing arrays stable while publishing builds
-  // buffer bindings into node contexts.
-  void reserve(size_t nodeProcessContextCount,
-      size_t audioBufferCount,
-      size_t controlBufferCount,
-      size_t eventBufferCount);
-
-  // Appends a new graph-owned buffer and returns its stable index.
-  size_t allocateAudioBuffer();
-  size_t allocateAudioBuffer(int channelCount);
-  size_t allocateControlBuffer();
-  size_t allocateEventBuffer(size_t initialCapacity);
-
   int getDefaultAudioChannelCount() const;
   int getBlockSize() const;
+  size_t getAudioBufferSlotCount() const;
+  int getAudioBufferSlotChannelCount(size_t index) const;
+  bool getAudioBufferSlotClearOnAllocate(size_t index) const;
 
-  size_t getSharedEmptyEventBufferIndex();
+  // Audio-thread operations used by the graph executor. Slot allocation and
+  // release must be serialized by the executor.
+  void rt_prepareAudioArenaForBlock();
+  void rt_allocateAudioBufferSlotsForNode(const std::vector<size_t>& slotIndices);
+  // Decrements this node's slot-use counts and frees only slots whose final
+  // remaining use was released.
+  void rt_releaseAudioBufferSlotUsesForNode(const std::vector<size_t>& slotIndices);
+  void rt_allocateAllAudioBufferSlots();
+  AudioBufferView rt_getAudioBufferView(size_t index);
+  AudioBufferView rt_getAudioBufferView(const AudioBufferSlotSlice& slice);
 
-  // Creates a node-scoped view into this graph-owned storage.
-  NodeProcessContext& createNodeProcessContext(
-      std::shared_ptr<Node>& graphNode, NodeProcessContext::BufferBindings bufferBindings);
-
-  // Access graph-owned buffers by the indices stored in node contexts.
-  juce::AudioSampleBuffer& getAudioBuffer(size_t index);
+  // Access graph-owned static buffers by the indices stored in node contexts.
   juce::AudioSampleBuffer& getControlBuffer(size_t index);
   std::unique_ptr<EventBuffer>& getEventBuffer(size_t index);
 

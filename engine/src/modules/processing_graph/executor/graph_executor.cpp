@@ -32,8 +32,8 @@
 
 namespace anthem {
 
-GraphExecutor::RuntimeState::RuntimeState(size_t readyNodeQueueCount, size_t readyNodeQueueCapacity)
-  : impl(std::make_unique<Impl>(readyNodeQueueCount, readyNodeQueueCapacity)) {}
+GraphExecutor::RuntimeState::RuntimeState(size_t nodeQueueCount, size_t nodeQueueCapacity)
+  : impl(std::make_unique<Impl>(nodeQueueCount, nodeQueueCapacity)) {}
 
 GraphExecutor::RuntimeState::~RuntimeState() = default;
 
@@ -51,10 +51,11 @@ void GraphExecutor::prepare(const ThreadConfig& threadConfig) {
 
 std::unique_ptr<GraphExecutor::RuntimeState> GraphExecutor::createRuntimeStateForGraph(
     RuntimeGraph& runtimeGraph) {
-  // Ready-node queues are pre-sized to the graph's node count, so this state
-  // must be rebuilt whenever a new runtime graph may have a different shape.
+  // Per-thread node queues are pre-sized to the graph's node count, so this
+  // state must be rebuilt whenever a new runtime graph may have a different
+  // shape.
   return std::unique_ptr<RuntimeState>(
-      new RuntimeState(impl->getReadyNodeQueueCount(), runtimeGraph.nodes.size()));
+      new RuntimeState(impl->getRuntimeQueueCount(), runtimeGraph.nodes.size()));
 }
 
 void GraphExecutor::rt_processBlock(

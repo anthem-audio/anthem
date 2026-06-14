@@ -241,15 +241,39 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
   jassert(numSamples == pluginInstance->getBlockSize());
 
   juce::AudioBuffer<float>* processBuffer = nullptr;
-
-  if (context.hasAudioProcessBuffer()) {
-    processBuffer = &context.getAudioProcessBuffer();
-  } else {
-    processBuffer = &rt_emptyAudioBuffer;
-  }
+  AudioBufferView processBufferView;
 
   const auto requiredProcessChannels =
       juce::jmax(pluginInputChannelCount, pluginOutputChannelCount);
+
+  if (context.hasAudioProcessBuffer()) {
+    processBufferView = context.getAudioProcessBuffer();
+
+    if (processBufferView.getNumChannels() < requiredProcessChannels ||
+        processBufferView.getNumSamples() < numSamples ||
+        rt_pluginAudioChannelPointers.size() < static_cast<size_t>(requiredProcessChannels)) {
+      jassertfalse;
+      return;
+    }
+
+    for (int channel = 0; channel < requiredProcessChannels; ++channel) {
+      rt_pluginAudioChannelPointers[static_cast<size_t>(channel)] =
+          processBufferView.getWritePointer(channel);
+    }
+
+    // Wrap our arena-allocated buffer in the form expected by JUCE. This must
+    // be done on each process call because the buffer position in memory can
+    // change each time the graph is processed.
+    if (requiredProcessChannels > 0) {
+      rt_pluginAudioBufferView.setDataToReferTo(
+          rt_pluginAudioChannelPointers.data(), requiredProcessChannels, numSamples);
+    }
+
+    processBuffer = &rt_pluginAudioBufferView;
+  } else {
+    processBuffer = &rt_emptyAudioBuffer;
+    processBuffer->clear();
+  }
 
   if (processBuffer == nullptr || processBuffer->getNumChannels() < requiredProcessChannels ||
       processBuffer->getNumSamples() < numSamples) {
@@ -443,7 +467,22 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
             instance->producesMidi()
                 ? std::optional<int64_t>(VST3ProcessorModelBase::eventOutputPortId)
                 : std::nullopt;
-        selfShared->rt_emptyAudioBuffer.setSize(0, bufferSize, false, true, true);
+        selfShared->rt_emptyAudioBuffer.setSize(
+            requiredProcessChannels, bufferSize, false, true, true);
+        selfShared->rt_pluginAudioChannelPointers.resize(
+            static_cast<size_t>(requiredProcessChannels));
+
+        if (requiredProcessChannels > 0) {
+          for (int channel = 0; channel < requiredProcessChannels; ++channel) {
+            selfShared->rt_pluginAudioChannelPointers[static_cast<size_t>(channel)] =
+                selfShared->rt_emptyAudioBuffer.getWritePointer(channel);
+          }
+
+          selfShared->rt_pluginAudioBufferView.setDataToReferTo(
+              selfShared->rt_pluginAudioChannelPointers.data(),
+              requiredProcessChannels,
+              bufferSize);
+        }
 
         selfShared->pluginInstance = std::move(instance);
         selfShared->pluginInstance->addListener(selfShared.get());
