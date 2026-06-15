@@ -19,6 +19,7 @@
 
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/store.dart';
+import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_renderer.dart';
 import 'package:anthem/logic/main_window_controller.dart';
@@ -103,32 +104,38 @@ class _MainWindowState extends State<MainWindow> {
       children: [
         DialogRenderer(
           child: ScreenOverlay(
-            child: Observer(
-              builder: (context) {
-                final tabs = store.projectOrder.map<TabDef>((projectId) {
-                  return TabDef(
-                    id: projectId,
-                    title: store.projects[projectId]?.name ?? '',
-                  );
-                }).toList();
+            child: Container(
+              color: AnthemTheme.panel.border,
+              child: Padding(
+                padding: const EdgeInsets.all(1),
+                child: Observer(
+                  builder: (context) {
+                    final tabs = store.projectOrder.map<TabDef>((projectId) {
+                      return TabDef(
+                        id: projectId,
+                        title: store.projects[projectId]?.name ?? '',
+                      );
+                    }).toList();
 
-                return Column(
-                  children: [
-                    RepaintBoundary(
-                      child: WindowHeader(
-                        selectedTabId: store.activeProjectId,
-                        tabs: tabs,
-                      ),
-                    ),
-                    Expanded(
-                      child: TabContentSwitcher(
-                        tabs: tabs,
-                        selectedTabId: store.activeProjectId,
-                      ),
-                    ),
-                  ],
-                );
-              },
+                    return Column(
+                      children: [
+                        RepaintBoundary(
+                          child: WindowHeader(
+                            selectedTabId: store.activeProjectId,
+                            tabs: tabs,
+                          ),
+                        ),
+                        Expanded(
+                          child: TabContentSwitcher(
+                            tabs: tabs,
+                            selectedTabId: store.activeProjectId,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),
