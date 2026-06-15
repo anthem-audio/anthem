@@ -42,7 +42,7 @@ final _automationTriCoordBuffer = CoordinateBuffer();
 
 const _clipTitleHeight = 16;
 const _clipTitlePadding = clipTitlePadding;
-const _clipTitleEllipsisCropPadding = -1.0;
+const _clipTitleEllipsisCropPadding = -3.0;
 
 const _contentBaseColor = Color(0xFF777777);
 // Clip content is composited with BlendMode.plus, so black is a neutral fill.
