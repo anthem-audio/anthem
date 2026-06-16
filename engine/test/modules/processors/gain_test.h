@@ -73,8 +73,8 @@ public:
         graphContext.rt_getAudioBufferView(context.getBufferIndex(NodePortDataType::audio,
             NodeProcessContext::BufferDirection::input,
             GainProcessorModelBase::audioInputPortId));
-    auto& gainBuffer =
-        graphContext.getControlBuffer(context.getBufferIndex(NodePortDataType::control,
+    auto gainBuffer =
+        graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
             GainProcessorModelBase::gainPortId));
 

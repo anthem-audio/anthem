@@ -73,8 +73,8 @@ public:
         graphContext.rt_getAudioBufferView(context.getBufferIndex(NodePortDataType::audio,
             NodeProcessContext::BufferDirection::input,
             BalanceProcessorModelBase::audioInputPortId));
-    auto& balanceBuffer =
-        graphContext.getControlBuffer(context.getBufferIndex(NodePortDataType::control,
+    auto balanceBuffer =
+        graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
             BalanceProcessorModelBase::balancePortId));
 

@@ -255,7 +255,7 @@ float SequenceAutomationProviderProcessor::rt_evaluateTrackAtTick(
 }
 
 void SequenceAutomationProviderProcessor::rt_fillOutput(
-    juce::AudioSampleBuffer& targetBuffer, int sample, int numChannels, float value) {
+    AudioBufferView targetBuffer, int sample, int numChannels, float value) {
   for (int channel = 0; channel < numChannels; channel++) {
     targetBuffer.setSample(channel, sample, value);
   }
@@ -263,7 +263,7 @@ void SequenceAutomationProviderProcessor::rt_fillOutput(
 
 void SequenceAutomationProviderProcessor::rt_processBlock(RuntimeState& state,
     const RuntimeDependencies& dependencies,
-    juce::AudioSampleBuffer& targetBuffer,
+    AudioBufferView targetBuffer,
     int64_t trackId,
     float emptyValue,
     int numSamples) {
@@ -296,7 +296,7 @@ void SequenceAutomationProviderProcessor::prepareToProcess(ProcessorPrepareCallb
 }
 
 void SequenceAutomationProviderProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& outputControlBuffer = context.getOutputControlBuffer(
+  auto outputControlBuffer = context.getOutputControlBuffer(
       SequenceAutomationProviderProcessorModelBase::controlOutputPortId);
 
   auto& engineRuntimeServices = context.rt_getEngineRuntimeServices();

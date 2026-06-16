@@ -315,7 +315,7 @@ void VST3Processor::process(NodeProcessContext& context, int numSamples) {
       continue;
     }
 
-    const auto& controlBuffer = context.rt_getInputControlBufferByIndex(connectedPort.bufferIndex);
+    const auto controlBuffer = context.rt_getInputControlBufferByIndex(connectedPort.bufferIndex);
     const auto value = juce::jlimit(0.0f, 1.0f, controlBuffer.getReadPointer(0)[0]);
     auto* parameter = parameterIter->second;
 

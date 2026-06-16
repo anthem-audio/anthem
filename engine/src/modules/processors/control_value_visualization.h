@@ -23,9 +23,9 @@
 #include "modules/core/visualization/visualization_broker.h"
 #include "modules/core/visualization/visualization_provider.h"
 #include "modules/processing_graph/processor/processor.h"
+#include "modules/processing_graph/runtime/audio_buffer_view.h"
 
 #include <cstdint>
-#include <juce_audio_basics/juce_audio_basics.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -65,7 +65,7 @@ public:
       ControlValueVisualizationProcessor&&) noexcept = default;
 
   static std::optional<TimestampedVisualizationValue<double>> rt_getBlockValue(
-      const juce::AudioSampleBuffer* inputBuffer, int numSamples, int64_t blockStartSample);
+      AudioBufferView inputBuffer, int numSamples, int64_t blockStartSample);
 
   void initialize(
       std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;

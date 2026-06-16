@@ -48,8 +48,7 @@ private:
   class Impl;
   std::unique_ptr<Impl> impl;
 public:
-  ArenaAllocator(
-      size_t blockQuantumSizeBytes, size_t maxAllocationBlockCount, size_t maxLiveAllocationCount);
+  ArenaAllocator(size_t blockQuantumSizeBytes, size_t totalBlockCount);
   ~ArenaAllocator();
 
   ArenaAllocator(const ArenaAllocator&) = delete;
@@ -69,8 +68,6 @@ public:
   size_t getOffsetBlocks(Handle handle) const;
 
   size_t getBlockQuantumSizeBytes() const;
-  size_t getMaxAllocationBlockCount() const;
-  size_t getMaxLiveAllocationCount() const;
   size_t getTotalBlockCount() const;
   size_t getStorageSizeBytes() const;
   size_t getFreeBlockCount() const;

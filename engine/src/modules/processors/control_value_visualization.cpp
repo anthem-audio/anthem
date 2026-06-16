@@ -57,18 +57,18 @@ void ControlValueVisualizationProcessor::prepareToProcess(ProcessorPrepareCallba
 
 std::optional<TimestampedVisualizationValue<double>>
 ControlValueVisualizationProcessor::rt_getBlockValue(
-    const juce::AudioSampleBuffer* inputBuffer, int numSamples, int64_t blockStartSample) {
-  if (inputBuffer == nullptr || numSamples <= 0 || inputBuffer->getNumChannels() <= 0) {
+    AudioBufferView inputBuffer, int numSamples, int64_t blockStartSample) {
+  if (!inputBuffer.isValid() || numSamples <= 0 || inputBuffer.getNumChannels() <= 0) {
     return std::nullopt;
   }
 
-  const int availableSamples = std::min(numSamples, inputBuffer->getNumSamples());
+  const int availableSamples = std::min(numSamples, inputBuffer.getNumSamples());
   if (availableSamples <= 0) {
     return std::nullopt;
   }
 
   const int latestSampleIndex = availableSamples - 1;
-  const double rawValue = static_cast<double>(inputBuffer->getReadPointer(0)[latestSampleIndex]);
+  const double rawValue = static_cast<double>(inputBuffer.getReadPointer(0)[latestSampleIndex]);
   if (!std::isfinite(rawValue)) {
     return std::nullopt;
   }
@@ -80,7 +80,7 @@ ControlValueVisualizationProcessor::rt_getBlockValue(
 }
 
 void ControlValueVisualizationProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto* inputBuffer = context.getInputControlBuffer(
+  auto inputBuffer = context.getInputControlBuffer(
       ControlValueVisualizationProcessorModelBase::controlInputPortId);
   const int64_t blockStartSample = Engine::getInstance().transport->rt_sampleCounter;
   auto value = rt_getBlockValue(inputBuffer, numSamples, blockStartSample);

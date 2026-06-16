@@ -48,7 +48,7 @@ public:
     testRejectsOversizedAndExcessAllocations();
     testFreeReusesStorageAndInvalidatesHandle();
     testAdjacentFreesCoalesce();
-    testFragmentationCushionAllowsMaxAllocationWithMaxLiveCount();
+    testExplicitFragmentationCushionAllowsLargerAllocations();
     testResetRestoresInitialStateAndInvalidatesHandles();
   }
 
@@ -57,17 +57,12 @@ public:
 
     expectThrowsType(
         []() {
-          ArenaAllocator allocator(0, 4, 3);
+          ArenaAllocator allocator(0, 4);
         }(),
         std::invalid_argument);
     expectThrowsType(
         []() {
-          ArenaAllocator allocator(16, 0, 3);
-        }(),
-        std::invalid_argument);
-    expectThrowsType(
-        []() {
-          ArenaAllocator allocator(16, 4, 0);
+          ArenaAllocator allocator(16, 0);
         }(),
         std::invalid_argument);
   }
@@ -75,22 +70,20 @@ public:
   void testComputesStorageFromSizingParameters() {
     beginTest("ArenaAllocator computes storage from sizing parameters");
 
-    ArenaAllocator allocator(32, 4, 3);
+    ArenaAllocator allocator(32, 24);
 
     expectEquals(static_cast<int>(allocator.getBlockQuantumSizeBytes()), 32);
-    expectEquals(static_cast<int>(allocator.getMaxAllocationBlockCount()), 4);
-    expectEquals(static_cast<int>(allocator.getMaxLiveAllocationCount()), 3);
     expectEquals(static_cast<int>(allocator.getTotalBlockCount()), 24);
     expectEquals(static_cast<int>(allocator.getStorageSizeBytes()), 768);
-    expectEquals(static_cast<int>(allocator.getFreeBlockCapacity()), 4);
-    expectEquals(static_cast<int>(allocator.getAllocationRecordCapacity()), 3);
+    expectEquals(static_cast<int>(allocator.getFreeBlockCapacity()), 25);
+    expectEquals(static_cast<int>(allocator.getAllocationRecordCapacity()), 24);
     expectEquals(static_cast<int>(allocator.getFreeBlockCount()), 1);
   }
 
   void testAllocatesNonOverlappingQuantizedBlocks() {
     beginTest("ArenaAllocator allocates non-overlapping quantized blocks");
 
-    ArenaAllocator allocator(16, 4, 3);
+    ArenaAllocator allocator(16, 8);
 
     auto first = expectAllocate(allocator, 1, "First allocation");
     auto second = expectAllocate(allocator, 3, "Second allocation");
@@ -107,27 +100,27 @@ public:
   }
 
   void testRejectsOversizedAndExcessAllocations() {
-    beginTest("ArenaAllocator rejects oversized allocations and exhausted records");
+    beginTest("ArenaAllocator rejects oversized allocations and exhausted storage");
 
-    ArenaAllocator allocator(16, 4, 2);
+    ArenaAllocator allocator(16, 2);
 
     expect(!allocator.allocate(0).has_value(), "Zero-block allocations should be rejected.");
-    expect(!allocator.allocate(5).has_value(),
-        "Allocations larger than the configured max should be rejected.");
+    expect(!allocator.allocate(3).has_value(),
+        "Allocations larger than the arena should be rejected.");
 
-    auto first = allocator.allocate(4);
-    auto second = allocator.allocate(4);
+    auto first = allocator.allocate(1);
+    auto second = allocator.allocate(1);
     auto third = allocator.allocate(1);
 
-    expect(first.has_value(), "First max-sized allocation should fit.");
-    expect(second.has_value(), "Second max-sized allocation should fit.");
-    expect(!third.has_value(), "Allocations beyond max live count should fail.");
+    expect(first.has_value(), "First single-block allocation should fit.");
+    expect(second.has_value(), "Second single-block allocation should fit.");
+    expect(!third.has_value(), "Allocations beyond arena capacity should fail.");
   }
 
   void testFreeReusesStorageAndInvalidatesHandle() {
     beginTest("ArenaAllocator frees, reuses storage, and invalidates old handles");
 
-    ArenaAllocator allocator(16, 4, 2);
+    ArenaAllocator allocator(16, 4);
 
     auto first = expectAllocate(allocator, 2, "First allocation");
     auto second = expectAllocate(allocator, 2, "Second allocation");
@@ -149,7 +142,7 @@ public:
   void testAdjacentFreesCoalesce() {
     beginTest("ArenaAllocator coalesces adjacent freed blocks");
 
-    ArenaAllocator allocator(16, 4, 3);
+    ArenaAllocator allocator(16, 8);
 
     auto first = expectAllocate(allocator, 2, "First allocation");
     auto second = expectAllocate(allocator, 2, "Second allocation");
@@ -176,10 +169,10 @@ public:
         "Freeing all allocations should restore one free span.");
   }
 
-  void testFragmentationCushionAllowsMaxAllocationWithMaxLiveCount() {
-    beginTest("ArenaAllocator has a fragmentation cushion for max-sized allocations");
+  void testExplicitFragmentationCushionAllowsLargerAllocations() {
+    beginTest("ArenaAllocator uses explicit capacity for fragmentation cushions");
 
-    ArenaAllocator allocator(16, 4, 3);
+    ArenaAllocator allocator(16, 24);
 
     auto first = expectAllocate(allocator, 3, "First allocation");
     auto second = expectAllocate(allocator, 3, "Second allocation");
@@ -190,10 +183,8 @@ public:
     auto maxAllocation = allocator.allocate(4);
 
     expect(maxAllocation.has_value(),
-        "The 2x sizing cushion should leave room for a max-sized allocation.");
-    expectEquals(static_cast<int>(allocator.getActiveAllocationCount()),
-        3,
-        "The allocator should still honor max live allocation count.");
+        "The caller-provided sizing cushion should leave room for a max-sized allocation.");
+    expectEquals(static_cast<int>(allocator.getActiveAllocationCount()), 3);
 
     expect(allocator.free(first), "First allocation should free.");
     expect(allocator.free(third), "Third allocation should free.");
@@ -203,7 +194,7 @@ public:
   void testResetRestoresInitialStateAndInvalidatesHandles() {
     beginTest("ArenaAllocator reset restores the initial state and invalidates handles");
 
-    ArenaAllocator allocator(16, 4, 2);
+    ArenaAllocator allocator(16, 8);
 
     auto first = expectAllocate(allocator, 2, "First allocation");
     auto second = expectAllocate(allocator, 2, "Second allocation");

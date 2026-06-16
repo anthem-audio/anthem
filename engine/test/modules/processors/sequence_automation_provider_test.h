@@ -88,6 +88,11 @@ class SequenceAutomationProviderTest : public juce::UnitTest {
     return buffer.getReadPointer(0)[sample];
   }
 
+  static AudioBufferView viewFor(juce::AudioSampleBuffer& buffer) {
+    return AudioBufferView(
+        buffer.getWritePointer(0), 1, buffer.getNumSamples(), buffer.getNumSamples());
+  }
+
   void expectSample(
       const juce::AudioSampleBuffer& buffer, int sample, float expected, const juce::String& text) {
     expect(std::fabs(sampleAt(buffer, sample) - expected) < 0.0001f, text);
@@ -114,7 +119,7 @@ public:
     juce::AudioSampleBuffer buffer(1, 4);
 
     SequenceAutomationProviderProcessor::rt_processBlock(
-        state, dependencies, buffer, trackId, 0.0f, 4);
+        state, dependencies, viewFor(buffer), trackId, 0.0f, 4);
 
     expectSample(buffer, 0, 0.1f, "Sample 0 should use span start");
     expectSample(buffer, 1, 0.2f, "Sample 1 should interpolate");
@@ -135,7 +140,7 @@ public:
     juce::AudioSampleBuffer buffer(1, 4);
 
     SequenceAutomationProviderProcessor::rt_processBlock(
-        state, dependencies, buffer, trackId, 0.0f, 4);
+        state, dependencies, viewFor(buffer), trackId, 0.0f, 4);
 
     for (int sample = 0; sample < 4; sample++) {
       expectSample(buffer, sample, 0.3f, "Stopped output should be constant");
@@ -155,7 +160,7 @@ public:
     juce::AudioSampleBuffer buffer(1, 1);
 
     SequenceAutomationProviderProcessor::rt_processBlock(
-        state, dependencies, buffer, trackId, 0.0f, 1);
+        state, dependencies, viewFor(buffer), trackId, 0.0f, 1);
 
     expectSample(buffer, 0, 0.7f, "No-track automation should override track automation");
   }
@@ -171,7 +176,7 @@ public:
     juce::AudioSampleBuffer buffer(1, 2);
 
     SequenceAutomationProviderProcessor::rt_processBlock(
-        state, dependencies, buffer, trackId, 0.42f, 2);
+        state, dependencies, viewFor(buffer), trackId, 0.42f, 2);
 
     expectSample(buffer, 0, 0.42f, "Missing track should use empty value");
     expectSample(buffer, 1, 0.42f, "Missing track should use empty value");
@@ -188,7 +193,7 @@ public:
     juce::AudioSampleBuffer buffer(1, 2);
 
     SequenceAutomationProviderProcessor::rt_processBlock(
-        state, dependencies, buffer, trackId, 0.0f, 2);
+        state, dependencies, viewFor(buffer), trackId, 0.0f, 2);
 
     expectSample(buffer, 0, 0.5f, "First sample should start halfway through source curve");
     expectSample(buffer, 1, 0.75f, "Second sample should continue through source curve");

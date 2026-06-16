@@ -306,7 +306,7 @@ public:
 
     auto thirdInputBufferIndex = thirdNode.nodeProcessContext->getBufferIndex(
         NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(3));
-    expect(!runtimeGraph->graphProcessContext->getAudioBufferSlotClearOnAllocate(
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                thirdInputBufferIndex),
         "A full-width fan-in transfer destination should not need allocation-time clearing.");
   }
@@ -389,7 +389,7 @@ public:
     auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
         NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
 
-    expect(!runtimeGraph->graphProcessContext->getAudioBufferSlotClearOnAllocate(
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                sourceOutputBufferIndex),
         "A full-output-writing source should not need allocation-time audio clearing.");
   }
@@ -450,10 +450,10 @@ public:
     expect(sourceOutputBufferIndex == wideningInputBufferIndex);
     expect(wideningInputBufferIndex == wideningOutputBufferIndex);
     expectEquals(
-        runtimeGraph->graphProcessContext->getAudioBufferSlotChannelCount(sourceOutputBufferIndex),
+        runtimeGraph->graphProcessContext->getSampleBufferSlotChannelCount(sourceOutputBufferIndex),
         2,
         "The shared physical buffer should be wide enough for the widest aliased view.");
-    expect(runtimeGraph->graphProcessContext->getAudioBufferSlotClearOnAllocate(
+    expect(runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                sourceOutputBufferIndex),
         "A widened physical slot should keep allocation-time clearing for unwritten channels.");
   }
@@ -488,10 +488,10 @@ public:
         "Fan-out destinations should not share mutable branch buffers.");
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 1);
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()), 1);
-    expect(!runtimeGraph->graphProcessContext->getAudioBufferSlotClearOnAllocate(
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                firstDestinationInputBufferIndex),
         "A full-width fan-out transfer destination should not need allocation-time clearing.");
-    expect(!runtimeGraph->graphProcessContext->getAudioBufferSlotClearOnAllocate(
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                secondDestinationInputBufferIndex),
         "A full-width fan-out transfer destination should not need allocation-time clearing.");
   }
@@ -525,10 +525,10 @@ public:
 
     expect(firstInputBufferIndex != secondInputBufferIndex,
         "Disconnected audio inputs should not share mutable input buffers.");
-    expect(!runtimeGraph->graphProcessContext->getAudioBufferSlotClearOnAllocate(
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                firstInputBufferIndex),
         "A full-width disconnected input clear should replace allocation-time clearing.");
-    expect(!runtimeGraph->graphProcessContext->getAudioBufferSlotClearOnAllocate(
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                secondInputBufferIndex),
         "A full-width disconnected input clear should replace allocation-time clearing.");
     expectWithinAbsoluteError(
@@ -748,23 +748,32 @@ public:
     EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& sourceOutputBuffer = runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
-        controlOutputPortId(1));
-    auto* destinationInputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getInputControlBuffer(controlInputPortId(2));
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
 
-    expect(&sourceOutputBuffer == destinationInputBuffer,
-        "A single control connection should alias the destination input to the source output.");
+    auto sourceOutputBuffer = runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
+        controlOutputPortId(1));
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 0);
 
     for (int sample = 0; sample < 4; ++sample) {
       sourceOutputBuffer.setSample(0, sample, static_cast<float>(sample) * 0.2f);
     }
 
-    processRuntimeGraph(*runtimeGraph, 4);
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+
+    auto destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputControlBuffer(controlInputPortId(2));
+
+    expect(sourceOutputBuffer.getReadPointer(0) == destinationInputBuffer.getReadPointer(0),
+        "A single control connection should alias the destination input to the source output.");
 
     for (int sample = 0; sample < 4; ++sample) {
-      expectWithinAbsoluteError(destinationInputBuffer->getSample(0, sample),
+      expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
           static_cast<float>(sample) * 0.2f,
           0.0001f,
           "The connected control input should keep the source output value.");
@@ -783,10 +792,10 @@ public:
     auto* context = runtimeGraph->nodes.at(1).nodeProcessContext;
     jassert(context != nullptr);
 
-    auto* inputBuffer = context->getInputControlBuffer(controlInputPortId(1));
+    auto inputBuffer = context->getInputControlBuffer(controlInputPortId(1));
     auto inputSignal = context->getInputControlSignal(controlInputPortId(1));
 
-    expect(inputBuffer == nullptr, "Disconnected control parameters should not allocate buffers.");
+    expect(!inputBuffer.isValid(), "Disconnected control parameters should not allocate buffers.");
     expect(!inputSignal.hasBuffer(), "The input signal should expose the parameter value.");
     expectWithinAbsoluteError(
         inputSignal.getSample(0), 0.25f, 0.0001f, "The parameter value should be readable.");
@@ -805,18 +814,6 @@ public:
     EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& firstSourceOutputBuffer =
-        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
-            controlOutputPortId(1));
-    auto& secondSourceOutputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputControlBuffer(
-            controlOutputPortId(2));
-    auto* destinationInputBuffer =
-        runtimeGraph->nodes.at(3).nodeProcessContext->getInputControlBuffer(controlInputPortId(3));
-
-    expect(destinationInputBuffer != nullptr, "Control fan-in should have a destination buffer.");
-    expect(&secondSourceOutputBuffer != destinationInputBuffer,
-        "Control fan-in should use a dedicated destination buffer.");
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()),
         1,
         "Control fan-in should create one grouped transfer action.");
@@ -824,15 +821,41 @@ public:
                RuntimeConnectionDataType::control,
         "The transfer action should preserve its control data type.");
 
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
+    auto firstSourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
+            controlOutputPortId(1));
     for (int sample = 0; sample < 4; ++sample) {
       firstSourceOutputBuffer.setSample(0, sample, static_cast<float>(sample) * 0.1f);
+    }
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    auto secondSourceOutputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputControlBuffer(
+            controlOutputPortId(2));
+    for (int sample = 0; sample < 4; ++sample) {
       secondSourceOutputBuffer.setSample(0, sample, 0.5f + static_cast<float>(sample) * 0.1f);
     }
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(2));
 
-    processRuntimeGraph(*runtimeGraph, 4);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(3));
+    rt_processNode(state, runtimeGraph->nodes.at(3), 4);
+
+    auto destinationInputBuffer =
+        runtimeGraph->nodes.at(3).nodeProcessContext->getInputControlBuffer(controlInputPortId(3));
+
+    expect(destinationInputBuffer.isValid(), "Control fan-in should have a destination buffer.");
+    expect(secondSourceOutputBuffer.getReadPointer(0) != destinationInputBuffer.getReadPointer(0),
+        "Control fan-in should use a dedicated destination buffer.");
 
     for (int sample = 0; sample < 4; ++sample) {
-      expectWithinAbsoluteError(destinationInputBuffer->getSample(0, sample),
+      expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
           0.5f + static_cast<float>(sample) * 0.1f,
           0.0001f,
           "Control fan-in should keep the most recent connection value.");

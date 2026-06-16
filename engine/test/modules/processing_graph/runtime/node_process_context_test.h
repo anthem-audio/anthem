@@ -98,8 +98,8 @@ public:
 
     auto inputAudioBuffer = context.getInputAudioBuffer(1);
     auto outputAudioBuffer = context.getOutputAudioBuffer(2);
-    auto* inputControlBuffer = context.getInputControlBuffer(3);
-    auto& outputControlBuffer = context.getOutputControlBuffer(4);
+    auto inputControlBuffer = context.getInputControlBuffer(3);
+    auto outputControlBuffer = context.getOutputControlBuffer(4);
     auto& inputEventBuffer = context.getInputEventBuffer(5);
     auto& outputEventBuffer = context.getOutputEventBuffer(6);
 
@@ -109,8 +109,8 @@ public:
         outputAudioBuffer.getNumSamples(), 32, "Output audio should use the graph block size.");
     expect(inputAudioBuffer.getWritePointer(0) != outputAudioBuffer.getWritePointer(0),
         "Input and output audio ports should bind to different buffers.");
-    expect(inputControlBuffer != nullptr, "Input control should have a buffer.");
-    expectEquals(inputControlBuffer->getNumChannels(), 1, "Input control should be mono.");
+    expect(inputControlBuffer.isValid(), "Input control should have a buffer.");
+    expectEquals(inputControlBuffer.getNumChannels(), 1, "Input control should be mono.");
     expectEquals(outputControlBuffer.getNumChannels(), 1, "Output control should be mono.");
     expectEquals(static_cast<int>(inputEventBuffer.getSize()),
         DEFAULT_EVENT_BUFFER_SIZE,

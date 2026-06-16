@@ -26,9 +26,32 @@
 
 #include <algorithm>
 #include <cstring>
+#include <limits>
 #include <stdexcept>
 
 namespace anthem {
+
+namespace {
+
+// wasm is 32-bit, so we need these to make sure the arena won't try to
+// allocate larger than 4GB and subsequently overflow to a much smaller arena.
+size_t checkedAdd(size_t a, size_t b, const char* context) {
+  if (b > std::numeric_limits<size_t>::max() - a) {
+    throw std::overflow_error(context);
+  }
+
+  return a + b;
+}
+
+size_t checkedMultiply(size_t a, size_t b, const char* context) {
+  if (a != 0 && b > std::numeric_limits<size_t>::max() / a) {
+    throw std::overflow_error(context);
+  }
+
+  return a * b;
+}
+
+} // namespace
 
 GraphProcessContext::GraphProcessContext(
     EngineRuntimeServices& rtServices, const GraphBufferLayout& bufferLayout)
@@ -45,8 +68,7 @@ void GraphProcessContext::Builder::reserve(size_t nodeProcessContextCount,
     size_t eventBufferCount) {
   jassert(context != nullptr);
   context->nodeProcessContexts.reserve(nodeProcessContextCount);
-  context->audioBufferSlots.reserve(audioBufferCount);
-  context->controlBuffers.reserve(controlBufferCount);
+  context->sampleBufferSlots.reserve(audioBufferCount + controlBufferCount);
   context->eventBuffers.reserve(eventBufferCount);
 }
 
@@ -63,17 +85,22 @@ size_t GraphProcessContext::Builder::declareAudioBufferSlot(int channelCount) {
         "GraphProcessContext cannot declare a negative-channel audio buffer slot.");
   }
 
-  context->audioArena.reset();
-  context->audioBufferSlots.push_back(GraphProcessContext::AudioBufferSlot{
+  context->sampleArena.reset();
+  context->sampleBufferSlots.push_back(GraphProcessContext::SampleBufferSlot{
+      .kind = GraphProcessContext::SampleBufferSlotKind::audio,
       .channelCount = channelCount,
   });
-  return context->audioBufferSlots.size() - 1;
+  return context->sampleBufferSlots.size() - 1;
 }
 
 size_t GraphProcessContext::Builder::allocateControlBuffer() {
   jassert(context != nullptr);
-  context->controlBuffers.emplace_back(1, context->blockSize);
-  return context->controlBuffers.size() - 1;
+  context->sampleArena.reset();
+  context->sampleBufferSlots.push_back(GraphProcessContext::SampleBufferSlot{
+      .kind = GraphProcessContext::SampleBufferSlotKind::control,
+      .channelCount = 1,
+  });
+  return context->sampleBufferSlots.size() - 1;
 }
 
 size_t GraphProcessContext::Builder::allocateEventBuffer(size_t initialCapacity) {
@@ -106,52 +133,77 @@ NodeProcessContext& GraphProcessContext::Builder::createNodeProcessContext(
   return *nodeContextPtr;
 }
 
-void GraphProcessContext::Builder::registerAudioBufferSlotsUsedByNode(
+void GraphProcessContext::Builder::registerSampleBufferSlotsUsedByNode(
     const std::vector<size_t>& slotIndices) {
   jassert(context != nullptr);
   for (const auto slotIndex : slotIndices) {
-    jassert(slotIndex < context->audioBufferSlots.size());
-    if (slotIndex >= context->audioBufferSlots.size()) {
+    jassert(slotIndex < context->sampleBufferSlots.size());
+    if (slotIndex >= context->sampleBufferSlots.size()) {
       continue;
     }
 
-    context->audioBufferSlots[slotIndex].nodeUseCount++;
+    context->sampleBufferSlots[slotIndex].nodeUseCount++;
   }
 }
 
-void GraphProcessContext::Builder::setAudioBufferSlotClearOnAllocate(
+void GraphProcessContext::Builder::setSampleBufferSlotClearOnAllocate(
     size_t index, bool clearOnAllocate) {
   jassert(context != nullptr);
-  jassert(index < context->audioBufferSlots.size());
-  if (index >= context->audioBufferSlots.size()) {
+  jassert(index < context->sampleBufferSlots.size());
+  if (index >= context->sampleBufferSlots.size()) {
     return;
   }
 
-  context->audioBufferSlots[index].clearOnAllocate = clearOnAllocate;
+  context->sampleBufferSlots[index].clearOnAllocate = clearOnAllocate;
 }
 
-void GraphProcessContext::Builder::finalizeAudioArena() {
+void GraphProcessContext::Builder::finalizeSampleArena() {
   jassert(context != nullptr);
-  int maxChannelCount = 0;
+  int maxAudioChannelCount = 0;
+  size_t audioSlotCount = 0;
+  size_t controlSlotCount = 0;
 
-  for (const auto& slot : context->audioBufferSlots) {
-    maxChannelCount = std::max(maxChannelCount, slot.channelCount);
+  for (const auto& slot : context->sampleBufferSlots) {
+    switch (slot.kind) {
+      case GraphProcessContext::SampleBufferSlotKind::audio:
+        maxAudioChannelCount = std::max(maxAudioChannelCount, slot.channelCount);
+        audioSlotCount++;
+        break;
+      case GraphProcessContext::SampleBufferSlotKind::control:
+        controlSlotCount++;
+        break;
+    }
   }
 
-  if (context->audioBufferSlots.empty() || maxChannelCount <= 0) {
-    context->audioArena.reset();
+  if (context->sampleBufferSlots.empty() || (maxAudioChannelCount <= 0 && controlSlotCount == 0)) {
+    context->sampleArena.reset();
     return;
   }
 
   if (context->blockSize <= 0) {
     throw std::runtime_error(
-        "GraphProcessContext cannot create an audio arena for a non-positive block size.");
+        "GraphProcessContext cannot create a sample arena for a non-positive block size.");
   }
 
-  context->audioArena =
-      std::make_unique<ArenaAllocator>(static_cast<size_t>(context->blockSize) * sizeof(float),
-          static_cast<size_t>(maxChannelCount),
-          context->audioBufferSlots.size());
+  const auto audioBlockCount =
+      checkedMultiply(checkedMultiply(static_cast<size_t>(std::max(0, maxAudioChannelCount)),
+                          audioSlotCount,
+                          "GraphProcessContext sample arena size overflowed."),
+          static_cast<size_t>(2),
+          "GraphProcessContext sample arena size overflowed.");
+  const auto controlBlockCount = checkedMultiply(controlSlotCount,
+      static_cast<size_t>(2),
+      "GraphProcessContext sample arena size overflowed.");
+  const auto totalBlockCount = checkedAdd(
+      audioBlockCount, controlBlockCount, "GraphProcessContext sample arena size overflowed.");
+
+  if (totalBlockCount == 0) {
+    context->sampleArena.reset();
+    return;
+  }
+
+  context->sampleArena = std::make_unique<ArenaAllocator>(
+      static_cast<size_t>(context->blockSize) * sizeof(float), totalBlockCount);
 }
 
 int GraphProcessContext::getDefaultAudioChannelCount() const {
@@ -162,66 +214,66 @@ int GraphProcessContext::getBlockSize() const {
   return blockSize;
 }
 
-size_t GraphProcessContext::getAudioBufferSlotCount() const {
-  return audioBufferSlots.size();
+size_t GraphProcessContext::getSampleBufferSlotCount() const {
+  return sampleBufferSlots.size();
 }
 
-int GraphProcessContext::getAudioBufferSlotChannelCount(size_t index) const {
-  jassert(index < audioBufferSlots.size());
-  if (index >= audioBufferSlots.size()) {
+int GraphProcessContext::getSampleBufferSlotChannelCount(size_t index) const {
+  jassert(index < sampleBufferSlots.size());
+  if (index >= sampleBufferSlots.size()) {
     return 0;
   }
 
-  return audioBufferSlots[index].channelCount;
+  return sampleBufferSlots[index].channelCount;
 }
 
-bool GraphProcessContext::getAudioBufferSlotClearOnAllocate(size_t index) const {
-  jassert(index < audioBufferSlots.size());
-  if (index >= audioBufferSlots.size()) {
+bool GraphProcessContext::getSampleBufferSlotClearOnAllocate(size_t index) const {
+  jassert(index < sampleBufferSlots.size());
+  if (index >= sampleBufferSlots.size()) {
     return true;
   }
 
-  return audioBufferSlots[index].clearOnAllocate;
+  return sampleBufferSlots[index].clearOnAllocate;
 }
 
-void GraphProcessContext::rt_prepareAudioArenaForBlock() {
-  if (audioArena != nullptr) {
-    audioArena->reset();
+void GraphProcessContext::rt_prepareSampleArenaForBlock() {
+  if (sampleArena != nullptr) {
+    sampleArena->reset();
   }
 
-  for (auto& slot : audioBufferSlots) {
+  for (auto& slot : sampleBufferSlots) {
     slot.rt_arenaHandle = std::nullopt;
     slot.rt_remainingNodeUseCount = slot.nodeUseCount;
   }
 }
 
-void GraphProcessContext::rt_allocateAudioBufferSlotsForNode(
+void GraphProcessContext::rt_allocateSampleBufferSlotsForNode(
     const std::vector<size_t>& slotIndices) {
-  if (audioArena == nullptr) {
+  if (sampleArena == nullptr) {
     return;
   }
 
   for (const auto slotIndex : slotIndices) {
-    jassert(slotIndex < audioBufferSlots.size());
-    if (slotIndex >= audioBufferSlots.size()) {
+    jassert(slotIndex < sampleBufferSlots.size());
+    if (slotIndex >= sampleBufferSlots.size()) {
       continue;
     }
 
-    auto& slot = audioBufferSlots[slotIndex];
+    auto& slot = sampleBufferSlots[slotIndex];
     jassert(slot.channelCount > 0);
 
     if (slot.rt_arenaHandle.has_value()) {
       continue;
     }
 
-    slot.rt_arenaHandle = audioArena->allocate(static_cast<size_t>(slot.channelCount));
+    slot.rt_arenaHandle = sampleArena->allocate(static_cast<size_t>(slot.channelCount));
     jassert(slot.rt_arenaHandle.has_value());
 
     if (!slot.rt_arenaHandle.has_value()) {
       continue;
     }
 
-    auto* slotData = audioArena->getPointer(*slot.rt_arenaHandle);
+    auto* slotData = sampleArena->getPointer(*slot.rt_arenaHandle);
     jassert(slotData != nullptr);
 
     if (slot.clearOnAllocate && slotData != nullptr) {
@@ -232,19 +284,19 @@ void GraphProcessContext::rt_allocateAudioBufferSlotsForNode(
   }
 }
 
-void GraphProcessContext::rt_releaseAudioBufferSlotUsesForNode(
+void GraphProcessContext::rt_releaseSampleBufferSlotUsesForNode(
     const std::vector<size_t>& slotIndices) {
-  if (audioArena == nullptr) {
+  if (sampleArena == nullptr) {
     return;
   }
 
   for (const auto slotIndex : slotIndices) {
-    jassert(slotIndex < audioBufferSlots.size());
-    if (slotIndex >= audioBufferSlots.size()) {
+    jassert(slotIndex < sampleBufferSlots.size());
+    if (slotIndex >= sampleBufferSlots.size()) {
       continue;
     }
 
-    auto& slot = audioBufferSlots[slotIndex];
+    auto& slot = sampleBufferSlots[slotIndex];
     jassert(slot.rt_remainingNodeUseCount > 0);
 
     if (slot.rt_remainingNodeUseCount == 0) {
@@ -258,53 +310,53 @@ void GraphProcessContext::rt_releaseAudioBufferSlotUsesForNode(
     }
 
     if (slot.rt_arenaHandle.has_value()) {
-      [[maybe_unused]] const auto didFree = audioArena->free(*slot.rt_arenaHandle);
+      [[maybe_unused]] const auto didFree = sampleArena->free(*slot.rt_arenaHandle);
       jassert(didFree);
       slot.rt_arenaHandle = std::nullopt;
     }
   }
 }
 
-void GraphProcessContext::rt_allocateAllAudioBufferSlots() {
+void GraphProcessContext::rt_allocateAllSampleBufferSlots() {
   std::vector<size_t> slotIndices;
-  slotIndices.reserve(audioBufferSlots.size());
+  slotIndices.reserve(sampleBufferSlots.size());
 
-  for (size_t slotIndex = 0; slotIndex < audioBufferSlots.size(); ++slotIndex) {
+  for (size_t slotIndex = 0; slotIndex < sampleBufferSlots.size(); ++slotIndex) {
     slotIndices.push_back(slotIndex);
   }
 
-  rt_allocateAudioBufferSlotsForNode(slotIndices);
+  rt_allocateSampleBufferSlotsForNode(slotIndices);
 }
 
 AudioBufferView GraphProcessContext::rt_getAudioBufferView(size_t index) {
-  jassert(index < audioBufferSlots.size());
-  if (index >= audioBufferSlots.size()) {
+  jassert(index < sampleBufferSlots.size());
+  if (index >= sampleBufferSlots.size()) {
     return {};
   }
 
   return rt_getAudioBufferView(AudioBufferSlotSlice{
       .slotIndex = index,
-      .channelCount = audioBufferSlots[index].channelCount,
+      .channelCount = sampleBufferSlots[index].channelCount,
   });
 }
 
 AudioBufferView GraphProcessContext::rt_getAudioBufferView(const AudioBufferSlotSlice& slice) {
-  jassert(slice.slotIndex < audioBufferSlots.size());
-  if (slice.slotIndex >= audioBufferSlots.size()) {
+  jassert(slice.slotIndex < sampleBufferSlots.size());
+  if (slice.slotIndex >= sampleBufferSlots.size()) {
     return {};
   }
 
-  auto& slot = audioBufferSlots[slice.slotIndex];
+  auto& slot = sampleBufferSlots[slice.slotIndex];
   jassert(slice.channelCount >= 0);
   jassert(slice.channelCount <= slot.channelCount);
   jassert(slot.rt_arenaHandle.has_value());
 
-  if (audioArena == nullptr || !slot.rt_arenaHandle.has_value() || slice.channelCount < 0 ||
+  if (sampleArena == nullptr || !slot.rt_arenaHandle.has_value() || slice.channelCount < 0 ||
       slice.channelCount > slot.channelCount) {
     return {};
   }
 
-  auto* slotData = audioArena->getPointer(*slot.rt_arenaHandle);
+  auto* slotData = sampleArena->getPointer(*slot.rt_arenaHandle);
   jassert(slotData != nullptr);
 
   if (slotData == nullptr) {
@@ -315,9 +367,22 @@ AudioBufferView GraphProcessContext::rt_getAudioBufferView(const AudioBufferSlot
       reinterpret_cast<float*>(slotData), slice.channelCount, blockSize, blockSize);
 }
 
-juce::AudioSampleBuffer& GraphProcessContext::getControlBuffer(size_t index) {
-  jassert(index < controlBuffers.size());
-  return controlBuffers[index];
+AudioBufferView GraphProcessContext::rt_getControlBufferView(size_t index) {
+  jassert(index < sampleBufferSlots.size());
+  if (index >= sampleBufferSlots.size()) {
+    return {};
+  }
+
+  auto& slot = sampleBufferSlots[index];
+  jassert(slot.kind == SampleBufferSlotKind::control);
+  if (slot.kind != SampleBufferSlotKind::control) {
+    return {};
+  }
+
+  return rt_getAudioBufferView(AudioBufferSlotSlice{
+      .slotIndex = index,
+      .channelCount = 1,
+  });
 }
 
 std::unique_ptr<EventBuffer>& GraphProcessContext::getEventBuffer(size_t index) {

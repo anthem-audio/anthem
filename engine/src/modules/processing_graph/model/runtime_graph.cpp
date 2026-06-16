@@ -249,7 +249,7 @@ void createNodeProcessContexts(RuntimeGraph& runtimeGraph,
   }
 }
 
-void addAudioBufferSlotIndex(std::vector<size_t>& slotIndices, size_t slotIndex) {
+void addSampleBufferSlotIndex(std::vector<size_t>& slotIndices, size_t slotIndex) {
   if (std::find(slotIndices.begin(), slotIndices.end(), slotIndex) != slotIndices.end()) {
     return;
   }
@@ -257,16 +257,16 @@ void addAudioBufferSlotIndex(std::vector<size_t>& slotIndices, size_t slotIndex)
   slotIndices.push_back(slotIndex);
 }
 
-void addAudioBufferSlotSliceIndex(
+void addSampleBufferSlotSliceIndex(
     std::vector<size_t>& slotIndices, const AudioBufferSlotSlice& slice) {
-  addAudioBufferSlotIndex(slotIndices, slice.slotIndex);
+  addSampleBufferSlotIndex(slotIndices, slice.slotIndex);
 }
 
-bool audioBufferSlotSliceCoversFullSlot(
+bool sampleBufferSlotSliceCoversFullSlot(
     RuntimeGraph& runtimeGraph, const AudioBufferSlotSlice& slice) {
   jassert(runtimeGraph.graphProcessContext != nullptr);
   return slice.channelCount ==
-         runtimeGraph.graphProcessContext->getAudioBufferSlotChannelCount(slice.slotIndex);
+         runtimeGraph.graphProcessContext->getSampleBufferSlotChannelCount(slice.slotIndex);
 }
 
 void markFullSlotInitializer(RuntimeGraph& runtimeGraph,
@@ -277,7 +277,7 @@ void markFullSlotInitializer(RuntimeGraph& runtimeGraph,
     return;
   }
 
-  if (audioBufferSlotSliceCoversFullSlot(runtimeGraph, slice)) {
+  if (sampleBufferSlotSliceCoversFullSlot(runtimeGraph, slice)) {
     slotHasFullInitializer[slice.slotIndex] = true;
   }
 }
@@ -293,62 +293,82 @@ bool nodeUsesAudioSlotAsInput(
   return false;
 }
 
-void buildAudioBufferSlotUsage(RuntimeGraph& runtimeGraph,
+void buildSampleBufferSlotUsage(RuntimeGraph& runtimeGraph,
     GraphProcessContext::Builder& contextBuilder,
     BufferBindingsByNodeId& bufferBindingsByNodeId) {
   jassert(runtimeGraph.graphProcessContext != nullptr);
 
   for (auto& [nodeId, bindings] : bufferBindingsByNodeId) {
     auto& runtimeNode = runtimeGraph.nodes.at(nodeId);
-    auto& slotIndices = runtimeNode.audioBufferSlotIndices;
+    auto& slotIndices = runtimeNode.sampleBufferSlotIndices;
 
     slotIndices.reserve(bindings.inputAudioBuffers.size() + bindings.outputAudioBuffers.size() +
+                        bindings.inputControlBuffers.size() + bindings.outputControlBuffers.size() +
                         bindings.rt_audioBuffersToClear.size() +
                         runtimeNode.connectionTransferActions.size());
 
     for (const auto& [_, slice] : bindings.inputAudioBuffers) {
-      addAudioBufferSlotSliceIndex(slotIndices, slice);
+      addSampleBufferSlotSliceIndex(slotIndices, slice);
     }
 
     for (const auto& [_, slice] : bindings.outputAudioBuffers) {
-      addAudioBufferSlotSliceIndex(slotIndices, slice);
+      addSampleBufferSlotSliceIndex(slotIndices, slice);
     }
 
     if (bindings.audioProcessBuffer.has_value()) {
-      addAudioBufferSlotSliceIndex(slotIndices, *bindings.audioProcessBuffer);
+      addSampleBufferSlotSliceIndex(slotIndices, *bindings.audioProcessBuffer);
     }
 
     for (const auto& slice : bindings.rt_audioBuffersToClear) {
-      addAudioBufferSlotSliceIndex(slotIndices, slice);
+      addSampleBufferSlotSliceIndex(slotIndices, slice);
+    }
+
+    for (const auto& [_, bufferIndex] : bindings.inputControlBuffers) {
+      if (bufferIndex.has_value()) {
+        addSampleBufferSlotIndex(slotIndices, *bufferIndex);
+      }
+    }
+
+    for (const auto& [_, bufferIndex] : bindings.outputControlBuffers) {
+      addSampleBufferSlotIndex(slotIndices, bufferIndex);
     }
 
     for (const auto& action : runtimeNode.connectionTransferActions) {
-      if (action.dataType != RuntimeConnectionDataType::audio) {
+      if (action.dataType == RuntimeConnectionDataType::audio) {
+        addSampleBufferSlotSliceIndex(slotIndices, action.destinationAudioSlotSlice);
+
+        for (const auto& sourceSlice : action.sourceAudioSlotSlices) {
+          addSampleBufferSlotSliceIndex(slotIndices, sourceSlice);
+        }
+
         continue;
       }
 
-      addAudioBufferSlotSliceIndex(slotIndices, action.destinationAudioSlotSlice);
+      if (action.dataType == RuntimeConnectionDataType::control) {
+        addSampleBufferSlotIndex(slotIndices, action.destinationBufferIndex);
 
-      for (const auto& sourceSlice : action.sourceAudioSlotSlices) {
-        addAudioBufferSlotSliceIndex(slotIndices, sourceSlice);
+        for (const auto sourceBufferIndex : action.sourceBufferIndices) {
+          addSampleBufferSlotIndex(slotIndices, sourceBufferIndex);
+        }
       }
     }
 
-    contextBuilder.registerAudioBufferSlotsUsedByNode(slotIndices);
+    contextBuilder.registerSampleBufferSlotsUsedByNode(slotIndices);
   }
 }
 
 // Decide which slots must be cleared when arena memory is assigned. A slot can
 // skip allocation-time clearing if graph execution will fully initialize it
-// first, either by clearing a disconnected input, writing a transfer
-// destination, or writing a processor output that does not alias an input.
-void buildAudioBufferSlotInitialization(RuntimeGraph& runtimeGraph,
+// first, either by clearing a disconnected audio input, writing a transfer
+// destination, or writing an audio processor output that does not alias an
+// input.
+void buildSampleBufferSlotInitialization(RuntimeGraph& runtimeGraph,
     GraphProcessContext::Builder& contextBuilder,
     BufferBindingsByNodeId& bufferBindingsByNodeId) {
   jassert(runtimeGraph.graphProcessContext != nullptr);
 
   std::vector<bool> slotHasFullInitializer(
-      runtimeGraph.graphProcessContext->getAudioBufferSlotCount(), false);
+      runtimeGraph.graphProcessContext->getSampleBufferSlotCount(), false);
 
   for (auto& [nodeId, bindings] : bufferBindingsByNodeId) {
     auto& runtimeNode = runtimeGraph.nodes.at(nodeId);
@@ -361,6 +381,10 @@ void buildAudioBufferSlotInitialization(RuntimeGraph& runtimeGraph,
       if (action.dataType == RuntimeConnectionDataType::audio) {
         markFullSlotInitializer(
             runtimeGraph, slotHasFullInitializer, action.destinationAudioSlotSlice);
+      } else if (action.dataType == RuntimeConnectionDataType::control) {
+        if (action.destinationBufferIndex < slotHasFullInitializer.size()) {
+          slotHasFullInitializer[action.destinationBufferIndex] = true;
+        }
       }
     }
 
@@ -383,7 +407,8 @@ void buildAudioBufferSlotInitialization(RuntimeGraph& runtimeGraph,
   }
 
   for (size_t slotIndex = 0; slotIndex < slotHasFullInitializer.size(); ++slotIndex) {
-    contextBuilder.setAudioBufferSlotClearOnAllocate(slotIndex, !slotHasFullInitializer[slotIndex]);
+    contextBuilder.setSampleBufferSlotClearOnAllocate(
+        slotIndex, !slotHasFullInitializer[slotIndex]);
   }
 }
 
@@ -1299,9 +1324,9 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
   reserveRuntimeGraphStorage(runtimeGraph, contextBuilder, graphNodes);
   auto bufferBindingsByNodeId =
       createBufferBindings(runtimeGraph, contextBuilder, graphNodes, graphConnections);
-  buildAudioBufferSlotUsage(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
-  buildAudioBufferSlotInitialization(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
-  contextBuilder.finalizeAudioArena();
+  buildSampleBufferSlotUsage(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
+  buildSampleBufferSlotInitialization(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
+  contextBuilder.finalizeSampleArena();
   createNodeProcessContexts(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
 
   for (auto* inputNode : runtimeGraph.inputNodes) {

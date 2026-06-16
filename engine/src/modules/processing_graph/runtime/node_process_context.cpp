@@ -191,10 +191,11 @@ bool NodeProcessContext::hasAudioProcessBuffer() const {
 }
 
 NodeProcessContext::InputControlSignal NodeProcessContext::getInputControlSignal(int64_t id) const {
-  auto* buffer = getInputControlBuffer(id);
-  if (buffer != nullptr) {
+  auto bufferIndex = inputControlBuffers.at(id);
+  if (bufferIndex.has_value()) {
     return InputControlSignal{
-        .rt_buffer = buffer,
+        .rt_buffer = graphProcessContext->rt_getControlBufferView(*bufferIndex),
+        .rt_hasBuffer = true,
     };
   }
 
@@ -203,25 +204,24 @@ NodeProcessContext::InputControlSignal NodeProcessContext::getInputControlSignal
   };
 }
 
-const juce::AudioSampleBuffer* NodeProcessContext::getInputControlBuffer(int64_t id) const {
+AudioBufferView NodeProcessContext::getInputControlBuffer(int64_t id) const {
   jassert(graphProcessContext != nullptr);
   auto bufferIndex = inputControlBuffers.at(id);
   if (!bufferIndex.has_value()) {
-    return nullptr;
+    return {};
   }
 
-  return &graphProcessContext->getControlBuffer(*bufferIndex);
+  return graphProcessContext->rt_getControlBufferView(*bufferIndex);
 }
 
-const juce::AudioSampleBuffer& NodeProcessContext::rt_getInputControlBufferByIndex(
-    size_t index) const {
+AudioBufferView NodeProcessContext::rt_getInputControlBufferByIndex(size_t index) const {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getControlBuffer(index);
+  return graphProcessContext->rt_getControlBufferView(index);
 }
 
-juce::AudioSampleBuffer& NodeProcessContext::getOutputControlBuffer(int64_t id) {
+AudioBufferView NodeProcessContext::getOutputControlBuffer(int64_t id) {
   jassert(graphProcessContext != nullptr);
-  return graphProcessContext->getControlBuffer(outputControlBuffers.at(id));
+  return graphProcessContext->rt_getControlBufferView(outputControlBuffers.at(id));
 }
 
 const EventBuffer& NodeProcessContext::getInputEventBuffer(int64_t id) const {

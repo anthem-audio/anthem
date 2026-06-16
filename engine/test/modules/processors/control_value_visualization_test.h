@@ -68,7 +68,9 @@ public:
     buffer.setSample(0, 2, 0.3f);
     buffer.setSample(0, 3, 0.6f);
 
-    auto value = ControlValueVisualizationProcessor::rt_getBlockValue(&buffer, 4, 50);
+    auto bufferView = AudioBufferView(
+        buffer.getWritePointer(0), 1, buffer.getNumSamples(), buffer.getNumSamples());
+    auto value = ControlValueVisualizationProcessor::rt_getBlockValue(bufferView, 4, 50);
 
     expect(value.has_value(), "A non-empty control buffer should produce a value");
     if (value.has_value()) {
@@ -77,22 +79,22 @@ public:
     }
 
     buffer.setSample(0, 3, 1.3f);
-    value = ControlValueVisualizationProcessor::rt_getBlockValue(&buffer, 4, 50);
+    value = ControlValueVisualizationProcessor::rt_getBlockValue(bufferView, 4, 50);
     expect(value.has_value(), "Out-of-range values should still produce a clamped value");
     if (value.has_value()) {
       expectWithinAbsoluteError(value->value, 1.0, 0.0001, "Upper clamp");
     }
 
     buffer.setSample(0, 3, -0.3f);
-    value = ControlValueVisualizationProcessor::rt_getBlockValue(&buffer, 4, 50);
+    value = ControlValueVisualizationProcessor::rt_getBlockValue(bufferView, 4, 50);
     expect(value.has_value(), "Out-of-range values should still produce a clamped value");
     if (value.has_value()) {
       expectWithinAbsoluteError(value->value, 0.0, 0.0001, "Lower clamp");
     }
 
-    expect(!ControlValueVisualizationProcessor::rt_getBlockValue(nullptr, 4, 50).has_value(),
-        "Null buffers should not produce values");
-    expect(!ControlValueVisualizationProcessor::rt_getBlockValue(&buffer, 0, 50).has_value(),
+    expect(!ControlValueVisualizationProcessor::rt_getBlockValue({}, 4, 50).has_value(),
+        "Invalid buffers should not produce values");
+    expect(!ControlValueVisualizationProcessor::rt_getBlockValue(bufferView, 0, 50).has_value(),
         "Empty blocks should not produce values");
   }
 };

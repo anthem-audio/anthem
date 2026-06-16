@@ -21,12 +21,12 @@
 
 #include "generated/lib/model/processing_graph/processors/sequence_automation_provider.h"
 #include "modules/processing_graph/processor/processor.h"
+#include "modules/processing_graph/runtime/audio_buffer_view.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
 
 #include <cmath>
 #include <cstddef>
-#include <juce_audio_basics/juce_audio_basics.h>
 #include <limits>
 #include <optional>
 
@@ -82,12 +82,11 @@ private:
       RuntimeState& state, const AutomationSpanList* track, double tick);
   static float rt_evaluateTrackAtTick(
       RuntimeState& state, const AutomationSpanList* track, double tick, float emptyValue);
-  static void rt_fillOutput(
-      juce::AudioSampleBuffer& targetBuffer, int sample, int numChannels, float value);
+  static void rt_fillOutput(AudioBufferView targetBuffer, int sample, int numChannels, float value);
 
   static void rt_processBlock(RuntimeState& state,
       const RuntimeDependencies& dependencies,
-      juce::AudioSampleBuffer& targetBuffer,
+      AudioBufferView targetBuffer,
       int64_t trackId,
       float emptyValue,
       int numSamples);

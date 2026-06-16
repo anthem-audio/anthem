@@ -160,7 +160,7 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
     GraphProcessContext& graphProcessContext,
     GraphProcessContext::Builder& contextBuilder) {
   NodeProcessContext::BufferBindings bindings;
-  std::vector<size_t> audioBufferSlotIndices;
+  std::vector<size_t> sampleBufferSlotIndices;
 
   bindings.inputAudioBuffers.reserve(graphNode->audioInputPorts()->size());
   bindings.outputAudioBuffers.reserve(graphNode->audioOutputPorts()->size());
@@ -175,21 +175,21 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
 
   for (auto& port : *graphNode->audioInputPorts()) {
     auto slotIndex = contextBuilder.declareAudioBufferSlot();
-    audioBufferSlotIndices.push_back(slotIndex);
+    sampleBufferSlotIndices.push_back(slotIndex);
     bindings.inputAudioBuffers.emplace(port->id(),
         AudioBufferSlotSlice{
             .slotIndex = slotIndex,
-            .channelCount = graphProcessContext.getAudioBufferSlotChannelCount(slotIndex),
+            .channelCount = graphProcessContext.getSampleBufferSlotChannelCount(slotIndex),
         });
   }
 
   for (auto& port : *graphNode->audioOutputPorts()) {
     auto slotIndex = contextBuilder.declareAudioBufferSlot();
-    audioBufferSlotIndices.push_back(slotIndex);
+    sampleBufferSlotIndices.push_back(slotIndex);
     bindings.outputAudioBuffers.emplace(port->id(),
         AudioBufferSlotSlice{
             .slotIndex = slotIndex,
-            .channelCount = graphProcessContext.getAudioBufferSlotChannelCount(slotIndex),
+            .channelCount = graphProcessContext.getSampleBufferSlotChannelCount(slotIndex),
         });
   }
 
@@ -202,11 +202,15 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
   }
 
   for (auto& port : *graphNode->controlInputPorts()) {
-    bindings.inputControlBuffers.emplace(port->id(), contextBuilder.allocateControlBuffer());
+    auto slotIndex = contextBuilder.allocateControlBuffer();
+    sampleBufferSlotIndices.push_back(slotIndex);
+    bindings.inputControlBuffers.emplace(port->id(), slotIndex);
   }
 
   for (auto& port : *graphNode->controlOutputPorts()) {
-    bindings.outputControlBuffers.emplace(port->id(), contextBuilder.allocateControlBuffer());
+    auto slotIndex = contextBuilder.allocateControlBuffer();
+    sampleBufferSlotIndices.push_back(slotIndex);
+    bindings.outputControlBuffers.emplace(port->id(), slotIndex);
   }
 
   for (auto& port : *graphNode->eventInputPorts()) {
@@ -221,10 +225,10 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
     bindings.rt_eventBuffersToClear.push_back(bufferIndex);
   }
 
-  contextBuilder.registerAudioBufferSlotsUsedByNode(audioBufferSlotIndices);
-  contextBuilder.finalizeAudioArena();
-  graphProcessContext.rt_prepareAudioArenaForBlock();
-  graphProcessContext.rt_allocateAllAudioBufferSlots();
+  contextBuilder.registerSampleBufferSlotsUsedByNode(sampleBufferSlotIndices);
+  contextBuilder.finalizeSampleArena();
+  graphProcessContext.rt_prepareSampleArenaForBlock();
+  graphProcessContext.rt_allocateAllSampleBufferSlots();
 
   return bindings;
 }

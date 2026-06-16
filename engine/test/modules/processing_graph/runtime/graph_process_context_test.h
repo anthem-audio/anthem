@@ -93,13 +93,14 @@ public:
     auto audioIndex = contextBuilder.declareAudioBufferSlot();
     auto controlIndex = contextBuilder.allocateControlBuffer();
     auto eventIndex = contextBuilder.allocateEventBuffer(4);
-    contextBuilder.registerAudioBufferSlotsUsedByNode(std::vector<size_t>{audioIndex});
-    contextBuilder.finalizeAudioArena();
-    context.rt_prepareAudioArenaForBlock();
-    context.rt_allocateAllAudioBufferSlots();
+    contextBuilder.registerSampleBufferSlotsUsedByNode(
+        std::vector<size_t>{audioIndex, controlIndex});
+    contextBuilder.finalizeSampleArena();
+    context.rt_prepareSampleArenaForBlock();
+    context.rt_allocateAllSampleBufferSlots();
 
     auto audioBuffer = context.rt_getAudioBufferView(audioIndex);
-    auto& controlBuffer = context.getControlBuffer(controlIndex);
+    auto controlBuffer = context.rt_getControlBufferView(controlIndex);
     auto& eventBuffer = context.getEventBuffer(eventIndex);
 
     expectEquals(
@@ -136,14 +137,18 @@ public:
     auto thirdControlIndex = contextBuilder.allocateControlBuffer();
     auto thirdEventIndex = contextBuilder.allocateEventBuffer(4);
 
-    contextBuilder.registerAudioBufferSlotsUsedByNode(
-        std::vector<size_t>{firstAudioIndex, secondAudioIndex, thirdAudioIndex});
-    contextBuilder.finalizeAudioArena();
-    context.rt_prepareAudioArenaForBlock();
-    context.rt_allocateAllAudioBufferSlots();
+    contextBuilder.registerSampleBufferSlotsUsedByNode(std::vector<size_t>{firstAudioIndex,
+        secondAudioIndex,
+        thirdAudioIndex,
+        firstControlIndex,
+        secondControlIndex,
+        thirdControlIndex});
+    contextBuilder.finalizeSampleArena();
+    context.rt_prepareSampleArenaForBlock();
+    context.rt_allocateAllSampleBufferSlots();
 
     context.rt_getAudioBufferView(firstAudioIndex).setSample(0, 0, 0.5f);
-    context.getControlBuffer(firstControlIndex).setSample(0, 0, 0.25f);
+    context.rt_getControlBufferView(firstControlIndex).setSample(0, 0, 0.25f);
     context.getEventBuffer(firstEventIndex)
         ->addEvent(LiveEvent{
             .sampleOffset = 0,
@@ -157,15 +162,16 @@ public:
         1,
         "Audio buffer indices should increment monotonically.");
     expectEquals(static_cast<int>(thirdAudioIndex),
-        2,
+        4,
         "Appended audio buffers should keep stable earlier indices.");
-    expectEquals(
-        static_cast<int>(firstControlIndex), 0, "First control buffer index should start at zero.");
+    expectEquals(static_cast<int>(firstControlIndex),
+        2,
+        "First control buffer index should follow audio sample slots.");
     expectEquals(static_cast<int>(secondControlIndex),
-        1,
+        3,
         "Control buffer indices should increment monotonically.");
     expectEquals(static_cast<int>(thirdControlIndex),
-        2,
+        5,
         "Appended control buffers should keep stable earlier indices.");
     expectEquals(
         static_cast<int>(firstEventIndex), 0, "First event buffer index should start at zero.");
@@ -180,7 +186,7 @@ public:
         0.5f,
         0.0001f,
         "Earlier audio buffers should remain reachable by their original index.");
-    expectWithinAbsoluteError(context.getControlBuffer(firstControlIndex).getSample(0, 0),
+    expectWithinAbsoluteError(context.rt_getControlBufferView(firstControlIndex).getSample(0, 0),
         0.25f,
         0.0001f,
         "Earlier control buffers should remain reachable by their original index.");
@@ -205,15 +211,16 @@ public:
     auto audioIndex = contextBuilder.declareAudioBufferSlot();
     auto controlIndex = contextBuilder.allocateControlBuffer();
     auto eventIndex = contextBuilder.allocateEventBuffer(6);
-    contextBuilder.registerAudioBufferSlotsUsedByNode(std::vector<size_t>{audioIndex});
-    contextBuilder.finalizeAudioArena();
-    context.rt_prepareAudioArenaForBlock();
-    context.rt_allocateAllAudioBufferSlots();
+    contextBuilder.registerSampleBufferSlotsUsedByNode(
+        std::vector<size_t>{audioIndex, controlIndex});
+    contextBuilder.finalizeSampleArena();
+    context.rt_prepareSampleArenaForBlock();
+    context.rt_allocateAllSampleBufferSlots();
 
     expectEquals(
         static_cast<int>(audioIndex), 0, "reserve should not consume audio buffer indices.");
     expectEquals(
-        static_cast<int>(controlIndex), 0, "reserve should not consume control buffer indices.");
+        static_cast<int>(controlIndex), 1, "Control slots should share sample buffer indices.");
     expectEquals(
         static_cast<int>(eventIndex), 0, "reserve should not consume event buffer indices.");
     expectEquals(context.rt_getAudioBufferView(audioIndex).getNumSamples(),
@@ -261,9 +268,9 @@ public:
     expectEquals(nodeContext.getOutputAudioBuffer(outputPortId).getNumSamples(),
         32,
         "Output audio buffer should be allocated with the graph block size.");
-    auto* inputControlBuffer = nodeContext.getInputControlBuffer(gainPortId);
-    expect(inputControlBuffer != nullptr, "Control input should have a standalone test buffer.");
-    expectEquals(inputControlBuffer->getNumChannels(), 1, "Control input buffers should be mono.");
+    auto inputControlBuffer = nodeContext.getInputControlBuffer(gainPortId);
+    expect(inputControlBuffer.isValid(), "Control input should have a standalone test buffer.");
+    expectEquals(inputControlBuffer.getNumChannels(), 1, "Control input buffers should be mono.");
     expectEquals(static_cast<int>(nodeContext.rt_getInputParameterBindings().size()),
         1,
         "A single control input should create one parameter binding.");

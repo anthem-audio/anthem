@@ -27,7 +27,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 #include <memory>
@@ -83,19 +82,20 @@ public:
   };
 
   struct InputControlSignal {
-    const juce::AudioSampleBuffer* rt_buffer = nullptr;
+    AudioBufferView rt_buffer;
+    bool rt_hasBuffer = false;
     float parameterValue = 0.0f;
 
     bool hasBuffer() const {
-      return rt_buffer != nullptr;
+      return rt_hasBuffer;
     }
 
     float getSample(int sample) const {
-      if (rt_buffer == nullptr) {
+      if (!rt_hasBuffer) {
         return parameterValue;
       }
 
-      return rt_buffer->getReadPointer(0)[sample];
+      return rt_buffer.getReadPointer(0)[sample];
     }
   };
 
@@ -160,9 +160,9 @@ public:
   bool hasAudioProcessBuffer() const;
 
   InputControlSignal getInputControlSignal(int64_t id) const;
-  const juce::AudioSampleBuffer* getInputControlBuffer(int64_t id) const;
-  const juce::AudioSampleBuffer& rt_getInputControlBufferByIndex(size_t index) const;
-  juce::AudioSampleBuffer& getOutputControlBuffer(int64_t id);
+  AudioBufferView getInputControlBuffer(int64_t id) const;
+  AudioBufferView rt_getInputControlBufferByIndex(size_t index) const;
+  AudioBufferView getOutputControlBuffer(int64_t id);
 
   const EventBuffer& getInputEventBuffer(int64_t id) const;
   EventBuffer& getOutputEventBuffer(int64_t id);

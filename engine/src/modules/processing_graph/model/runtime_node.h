@@ -103,10 +103,10 @@ struct RuntimeNode {
   // processes.
   std::vector<RuntimeConnectionTransferAction> connectionTransferActions;
 
-  // Deduplicated logical audio buffer slots touched by this node while it runs.
-  // The executor allocates these slots before processing the node and releases
-  // one node-use after processing completes.
-  std::vector<size_t> audioBufferSlotIndices;
+  // Deduplicated logical sample buffer slots touched by this node while it
+  // runs. The executor allocates these slots before processing the node and
+  // releases one node-use after processing completes.
+  std::vector<size_t> sampleBufferSlotIndices;
 
   // Non-owning pointers to nodes owned by the RuntimeGraph.
   std::vector<RuntimeNode*> outgoingConnections;

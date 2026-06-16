@@ -27,7 +27,7 @@
 #include "modules/util/arena_allocator.h"
 
 #include <cstddef>
-#include <juce_audio_basics/juce_audio_basics.h>
+#include <cstdint>
 #include <juce_core/juce_core.h>
 #include <memory>
 #include <optional>
@@ -76,9 +76,9 @@ public:
     NodeProcessContext& createNodeProcessContext(
         std::shared_ptr<Node>& graphNode, NodeProcessContext::BufferBindings bufferBindings);
 
-    void registerAudioBufferSlotsUsedByNode(const std::vector<size_t>& slotIndices);
-    void setAudioBufferSlotClearOnAllocate(size_t index, bool clearOnAllocate);
-    void finalizeAudioArena();
+    void registerSampleBufferSlotsUsedByNode(const std::vector<size_t>& slotIndices);
+    void setSampleBufferSlotClearOnAllocate(size_t index, bool clearOnAllocate);
+    void finalizeSampleArena();
   private:
     friend class RuntimeGraph;
     friend class BalanceProcessorTest;
@@ -103,7 +103,13 @@ private:
   int numAudioChannels = 0;
   int blockSize = 0;
 
-  struct AudioBufferSlot {
+  enum class SampleBufferSlotKind : uint8_t {
+    audio,
+    control,
+  };
+
+  struct SampleBufferSlot {
+    SampleBufferSlotKind kind = SampleBufferSlotKind::audio;
     int channelCount = 0;
     bool clearOnAllocate = true;
     std::optional<ArenaAllocator::Handle> rt_arenaHandle;
@@ -111,14 +117,12 @@ private:
     size_t rt_remainingNodeUseCount = 0;
   };
 
-  // Logical graph-owned audio buffers. Sample memory is assigned from
-  // audioArena while processing a block.
-  std::vector<AudioBufferSlot> audioBufferSlots;
-  std::unique_ptr<ArenaAllocator> audioArena;
+  // Logical graph-owned sample buffers. Audio buffers use one arena block per
+  // channel; control buffers are one-channel sample buffers in the same arena.
+  std::vector<SampleBufferSlot> sampleBufferSlots;
+  std::unique_ptr<ArenaAllocator> sampleArena;
 
-  // Backing storage for graph-owned per-port buffers that remain statically
-  // allocated for now.
-  std::vector<juce::AudioSampleBuffer> controlBuffers;
+  // Event buffers remain statically allocated for now.
   std::vector<std::unique_ptr<EventBuffer>> eventBuffers;
 
   std::optional<size_t> sharedEmptyEventBufferIndex;
@@ -132,23 +136,24 @@ public:
 
   int getDefaultAudioChannelCount() const;
   int getBlockSize() const;
-  size_t getAudioBufferSlotCount() const;
-  int getAudioBufferSlotChannelCount(size_t index) const;
-  bool getAudioBufferSlotClearOnAllocate(size_t index) const;
+  size_t getSampleBufferSlotCount() const;
+  int getSampleBufferSlotChannelCount(size_t index) const;
+  bool getSampleBufferSlotClearOnAllocate(size_t index) const;
 
-  // Audio-thread operations used by the graph executor. Slot allocation and
-  // release must be serialized by the executor.
-  void rt_prepareAudioArenaForBlock();
-  void rt_allocateAudioBufferSlotsForNode(const std::vector<size_t>& slotIndices);
+  // Audio-thread operations used by the graph executor. Sample slot allocation
+  // and release must be serialized by the executor.
+  void rt_prepareSampleArenaForBlock();
+  void rt_allocateSampleBufferSlotsForNode(const std::vector<size_t>& slotIndices);
   // Decrements this node's slot-use counts and frees only slots whose final
   // remaining use was released.
-  void rt_releaseAudioBufferSlotUsesForNode(const std::vector<size_t>& slotIndices);
-  void rt_allocateAllAudioBufferSlots();
+  void rt_releaseSampleBufferSlotUsesForNode(const std::vector<size_t>& slotIndices);
+  void rt_allocateAllSampleBufferSlots();
   AudioBufferView rt_getAudioBufferView(size_t index);
   AudioBufferView rt_getAudioBufferView(const AudioBufferSlotSlice& slice);
+  AudioBufferView rt_getControlBufferView(size_t index);
 
-  // Access graph-owned static buffers by the indices stored in node contexts.
-  juce::AudioSampleBuffer& getControlBuffer(size_t index);
+  // Access graph-owned static event buffers by the indices stored in node
+  // contexts.
   std::unique_ptr<EventBuffer>& getEventBuffer(size_t index);
 
   // Allocates a live note ID using the shared runtime service layer.

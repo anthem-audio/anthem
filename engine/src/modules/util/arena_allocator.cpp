@@ -135,8 +135,6 @@ private:
   }
 
   size_t blockQuantumSizeBytes = 0;
-  size_t maxAllocationBlockCount = 0;
-  size_t maxLiveAllocationCount = 0;
   size_t totalBlockCount = 0;
 
   std::vector<std::byte> storage;
@@ -148,42 +146,29 @@ private:
   size_t freeAllocationIndexCount = 0;
   size_t activeAllocationCount = 0;
 public:
-  Impl(size_t blockQuantumSizeBytes, size_t maxAllocationBlockCount, size_t maxLiveAllocationCount)
-    : blockQuantumSizeBytes(blockQuantumSizeBytes),
-      maxAllocationBlockCount(maxAllocationBlockCount),
-      maxLiveAllocationCount(maxLiveAllocationCount) {
+  Impl(size_t blockQuantumSizeBytes, size_t totalBlockCount)
+    : blockQuantumSizeBytes(blockQuantumSizeBytes), totalBlockCount(totalBlockCount) {
     if (blockQuantumSizeBytes == 0) {
       throw std::invalid_argument("ArenaAllocator block quantum size must be greater than zero.");
     }
 
-    if (maxAllocationBlockCount == 0) {
-      throw std::invalid_argument(
-          "ArenaAllocator max allocation block count must be greater than zero.");
+    if (totalBlockCount == 0) {
+      throw std::invalid_argument("ArenaAllocator total block count must be greater than zero.");
     }
 
-    if (maxLiveAllocationCount == 0) {
-      throw std::invalid_argument(
-          "ArenaAllocator max live allocation count must be greater than zero.");
-    }
-
-    totalBlockCount = checkedMultiply(checkedMultiply(maxAllocationBlockCount,
-                                          maxLiveAllocationCount,
-                                          "ArenaAllocator total block count overflowed."),
-        static_cast<size_t>(2),
-        "ArenaAllocator total block count overflowed.");
     const auto storageByteCount = checkedMultiply(
         totalBlockCount, blockQuantumSizeBytes, "ArenaAllocator storage size overflowed.");
 
     storage.resize(storageByteCount);
-    freeBlocks.resize(maxLiveAllocationCount + 1);
-    allocationRecords.resize(maxLiveAllocationCount);
-    freeAllocationIndices.resize(maxLiveAllocationCount);
+    freeBlocks.resize(totalBlockCount + 1);
+    allocationRecords.resize(totalBlockCount);
+    freeAllocationIndices.resize(totalBlockCount);
 
     reset();
   }
 
   std::optional<Handle> allocate(size_t blockCount) {
-    if (blockCount == 0 || blockCount > maxAllocationBlockCount || freeAllocationIndexCount == 0) {
+    if (blockCount == 0 || blockCount > totalBlockCount || freeAllocationIndexCount == 0) {
       return std::nullopt;
     }
 
@@ -306,14 +291,6 @@ public:
     return blockQuantumSizeBytes;
   }
 
-  size_t getMaxAllocationBlockCount() const {
-    return maxAllocationBlockCount;
-  }
-
-  size_t getMaxLiveAllocationCount() const {
-    return maxLiveAllocationCount;
-  }
-
   size_t getTotalBlockCount() const {
     return totalBlockCount;
   }
@@ -339,10 +316,8 @@ public:
   }
 };
 
-ArenaAllocator::ArenaAllocator(
-    size_t blockQuantumSizeBytes, size_t maxAllocationBlockCount, size_t maxLiveAllocationCount)
-  : impl(std::make_unique<Impl>(
-        blockQuantumSizeBytes, maxAllocationBlockCount, maxLiveAllocationCount)) {}
+ArenaAllocator::ArenaAllocator(size_t blockQuantumSizeBytes, size_t totalBlockCount)
+  : impl(std::make_unique<Impl>(blockQuantumSizeBytes, totalBlockCount)) {}
 
 ArenaAllocator::~ArenaAllocator() = default;
 
@@ -380,14 +355,6 @@ size_t ArenaAllocator::getOffsetBlocks(Handle handle) const {
 
 size_t ArenaAllocator::getBlockQuantumSizeBytes() const {
   return impl->getBlockQuantumSizeBytes();
-}
-
-size_t ArenaAllocator::getMaxAllocationBlockCount() const {
-  return impl->getMaxAllocationBlockCount();
-}
-
-size_t ArenaAllocator::getMaxLiveAllocationCount() const {
-  return impl->getMaxLiveAllocationCount();
 }
 
 size_t ArenaAllocator::getTotalBlockCount() const {

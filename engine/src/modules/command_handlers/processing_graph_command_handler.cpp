@@ -25,6 +25,7 @@
 #include "modules/processors/vst3_processor.h"
 #endif
 
+#include <exception>
 #include <memory>
 #include <rfl/json.hpp>
 #include <string>
@@ -107,11 +108,18 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     try {
       engine.publishProcessingGraph();
-    } catch (std::runtime_error& e) {
+    } catch (const std::exception& e) {
       juce::Logger::writeToLog("Error publishing: " + std::string(e.what()));
 
       return std::optional(PublishProcessingGraphResponse{.success = false,
           .error = std::string(e.what()),
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
+    } catch (...) {
+      constexpr auto unknownError = "Unknown error while publishing processing graph.";
+      juce::Logger::writeToLog(unknownError);
+
+      return std::optional(PublishProcessingGraphResponse{.success = false,
+          .error = std::string(unknownError),
           .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
