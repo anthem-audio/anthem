@@ -37,18 +37,13 @@ void main() {
   testWidgets('shows a placeholder in the recent parameter slot', (
     tester,
   ) async {
-    final result = await _pumpDevice(tester);
+    await _pumpDevice(tester);
 
     final placeholderKnob = tester.widget<Knob>(find.byType(Knob).first);
 
     expect(placeholderKnob.value, 0);
     expect(placeholderKnob.onValueChanged, isNull);
     expect(find.text('Filter cutoff'), findsOneWidget);
-
-    _updateFirstParameterValue(result.node, 0.25);
-    await tester.pump();
-
-    expect(find.text('Filter cutoff'), findsNWidgets(2));
   });
 
   testWidgets('shows parameter controls while the engine is stopped', (
@@ -118,7 +113,7 @@ void main() {
     expect(find.text('Filter cutoff'), findsOneWidget);
     expect(find.text('25.0%'), findsNothing);
 
-    _updateFirstParameterValue(result.node, 0.25);
+    _changeFirstParameterValue(result.node, 0.25);
     await tester.pump();
 
     expect(find.text('Filter cutoff'), findsNWidgets(2));
@@ -201,8 +196,12 @@ ParameterUiBinding _firstParameterBinding(NodeModel node) {
   return ParameterUiBinding(node: node, port: port);
 }
 
-void _updateFirstParameterValue(NodeModel node, double value) {
-  _firstParameterBinding(node).updateChange(value);
+void _changeFirstParameterValue(NodeModel node, double value) {
+  final parameter = _firstParameterBinding(node);
+
+  parameter.beginChange();
+  parameter.updateChange(value);
+  parameter.commitChange();
 }
 
 class _PumpedDevice {
