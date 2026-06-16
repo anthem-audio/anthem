@@ -34,11 +34,11 @@ import 'package:mobx/mobx.dart';
 
 part 'view_model.g.dart';
 
-enum ActiveNoteAttribute {
+enum PianoRollStem {
   velocity(bottom: 0, baseline: 0, top: 1),
   pan(bottom: -1, baseline: 0, top: 1);
 
-  const ActiveNoteAttribute({
+  const PianoRollStem({
     required this.bottom,
     required this.baseline,
     required this.top,
@@ -138,13 +138,13 @@ abstract class _PianoRollViewModel with Store implements DisposableService {
   Id? hoveredNote;
 
   @observable
-  ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
+  PianoRollStem activeStem = PianoRollStem.velocity;
 
   @observable
   EditorTool tool = EditorTool.pencil;
 
   @observable
-  bool noteAttributeEditorOpen = true;
+  bool stemEditorOpen = true;
 
   final visibleNotes = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
   final visibleResizeAreas = CanvasAnnotationSet<PianoRollRenderedNoteRef>();

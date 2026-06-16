@@ -22,7 +22,7 @@ import 'package:mobx/mobx.dart';
 
 part 'project_view_model.g.dart';
 
-enum EditorKind { detail, deviceRack, mixer }
+enum EditorKind { pianoRoll, deviceRack, mixer }
 
 enum PanelKind { pianoRoll, deviceRack, mixer, arranger }
 

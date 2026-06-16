@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2025 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,33 +29,33 @@ import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
 import '../shared/helpers/types.dart';
 
-// Pixel range where mouse events will affect attributes
-const attributeEditableSize = 80;
+// Pixel range where mouse events will affect stems.
+const stemEditableSize = 80;
 
-class AttributeEditorPointerEvent {
+class PianoRollStemEditorPointerEvent {
   final double offset;
   final double normalizedY;
   final Size viewSize;
 
-  const AttributeEditorPointerEvent({
+  const PianoRollStemEditorPointerEvent({
     required this.offset,
     required this.normalizedY,
     required this.viewSize,
   });
 }
 
-class AttributeEditorController {
+class PianoRollStemEditorController {
   PianoRollViewModel viewModel;
   final oldValues = <Id, double>{};
   final newValues = <Id, double>{};
 
-  AttributeEditorController({required this.viewModel});
+  PianoRollStemEditorController({required this.viewModel});
 
-  void pointerDown(AttributeEditorPointerEvent event) {
+  void pointerDown(PianoRollStemEditorPointerEvent event) {
     pointerMove(event);
   }
 
-  void pointerMove(AttributeEditorPointerEvent event) {
+  void pointerMove(PianoRollStemEditorPointerEvent event) {
     // This would all be faster if the note list was sorted, because we could
     // binary search. I don't want to assume that it's worth it though since it
     // requires overhead elsewhere, but I'm leaving this note in case someone
@@ -123,9 +123,9 @@ class AttributeEditorController {
     var targetOffset = closestOffsetBefore;
 
     if ((closestOffsetBeforePixels - pointerTimePixels).abs() >
-        attributeEditableSize / 2) {
+        stemEditableSize / 2) {
       if ((closestOffsetAfterPixels - pointerTimePixels).abs() >
-          attributeEditableSize / 2) {
+          stemEditableSize / 2) {
         return;
       }
 
@@ -139,28 +139,28 @@ class AttributeEditorController {
     late final int bottom;
     late final int top;
 
-    switch (viewModel.activeNoteAttribute) {
-      case ActiveNoteAttribute.velocity:
-        bottom = ActiveNoteAttribute.velocity.bottom;
-        top = ActiveNoteAttribute.velocity.top;
+    switch (viewModel.activeStem) {
+      case PianoRollStem.velocity:
+        bottom = PianoRollStem.velocity.bottom;
+        top = PianoRollStem.velocity.top;
         break;
-      case ActiveNoteAttribute.pan:
-        bottom = ActiveNoteAttribute.pan.bottom;
-        top = ActiveNoteAttribute.pan.top;
+      case PianoRollStem.pan:
+        bottom = PianoRollStem.pan.bottom;
+        top = PianoRollStem.pan.top;
         break;
     }
 
     final newValue = (top - bottom) * event.normalizedY + bottom;
 
     for (final note in affectedNotes) {
-      switch (viewModel.activeNoteAttribute) {
-        case ActiveNoteAttribute.velocity:
+      switch (viewModel.activeStem) {
+        case PianoRollStem.velocity:
           oldValues[note.id] ??= note.velocity;
           newValues[note.id] = newValue;
           viewModel.cursorNoteVelocity = newValue;
           pattern.setResolvedNotePreview(noteId: note.id, velocity: newValue);
           break;
-        case ActiveNoteAttribute.pan:
+        case PianoRollStem.pan:
           oldValues[note.id] ??= note.pan;
           newValues[note.id] = newValue;
           viewModel.cursorNotePan = newValue;
@@ -170,7 +170,7 @@ class AttributeEditorController {
     }
   }
 
-  void pointerUp(AttributeEditorPointerEvent event) {
+  void pointerUp(PianoRollStemEditorPointerEvent event) {
     if (oldValues.isEmpty && newValues.isEmpty) return;
 
     final store = AnthemStore.instance;
@@ -181,11 +181,11 @@ class AttributeEditorController {
 
     late NoteAttribute attribute;
 
-    switch (viewModel.activeNoteAttribute) {
-      case ActiveNoteAttribute.velocity:
+    switch (viewModel.activeStem) {
+      case PianoRollStem.velocity:
         attribute = NoteAttribute.velocity;
         break;
-      case ActiveNoteAttribute.pan:
+      case PianoRollStem.pan:
         attribute = NoteAttribute.pan;
         break;
     }

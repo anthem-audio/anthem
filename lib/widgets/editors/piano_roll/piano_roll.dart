@@ -47,7 +47,7 @@ import '../shared/timeline/timeline.dart';
 import 'controller/piano_roll_controller.dart';
 import 'helpers.dart';
 import 'widgets/piano_control.dart';
-import 'attribute_editor.dart';
+import 'stem_editor.dart';
 import 'event_listener.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
@@ -187,17 +187,16 @@ class _PianoRollHeader extends StatelessWidget {
             builder: (context) {
               return Button(
                 width: 24,
-                icon: Icons.pianoRollAttributes,
-                toggleState: viewModel.noteAttributeEditorOpen,
+                icon: Icons.pianoRollStems,
+                toggleState: viewModel.stemEditorOpen,
                 hint: [
                   HintSection(
                     'click',
-                    '${viewModel.noteAttributeEditorOpen ? 'Close' : 'Open'} the note attribute editor',
+                    '${viewModel.stemEditorOpen ? 'Close' : 'Open'} the stem editor',
                   ),
                 ],
                 onPress: () {
-                  viewModel.noteAttributeEditorOpen =
-                      !viewModel.noteAttributeEditorOpen;
+                  viewModel.stemEditorOpen = !viewModel.stemEditorOpen;
                 },
               );
             },
@@ -504,14 +503,14 @@ class _PianoRollContentState extends State<_PianoRollContent>
       id: 'piano-roll',
       shortcutHandler: controller.onShortcut,
       child: Panel(
-        hidden: !viewModel.noteAttributeEditorOpen,
+        hidden: !viewModel.stemEditorOpen,
         orientation: PanelOrientation.bottom,
         sizeBehavior: PanelSizeBehavior.pixels,
         panelStartSize: 89,
         panelMinSize: 89,
         contentMinSize: 150,
         separatorSize: 6,
-        panelContent: PianoRollAttributeEditor(
+        panelContent: PianoRollStemEditor(
           timeRangeAnimation: timeRangeAnimation,
           viewModel: viewModel,
         ),
@@ -536,10 +535,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                 color: AnthemTheme.panel.border,
                               ),
                               // The scrollbar is always inset in the bottom. If
-                              // the note attribute editor is open, it will be
+                              // the stem editor is open, it will be
                               // rendered in there; otherwise, it will be
                               // rendered here, beneath the main canvas.
-                              if (!viewModel.noteAttributeEditorOpen)
+                              if (!viewModel.stemEditorOpen)
                                 PianoRollHorizontalScrollbar(),
                             ],
                           ),
@@ -570,7 +569,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                     ),
                   ),
                   Expanded(child: PianoRollVerticalScrollbar()),
-                  if (viewModel.noteAttributeEditorOpen)
+                  if (viewModel.stemEditorOpen)
                     Container(height: 1, color: AnthemTheme.panel.border),
                 ],
               ),

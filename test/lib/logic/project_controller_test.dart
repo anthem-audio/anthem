@@ -157,8 +157,8 @@ void main() {
     });
 
     test('setActiveEditor maps editor selection to panel selection', () {
-      controller.setActiveEditor(editor: EditorKind.detail);
-      expect(viewModel.selectedEditor, equals(EditorKind.detail));
+      controller.setActiveEditor(editor: EditorKind.pianoRoll);
+      expect(viewModel.selectedEditor, equals(EditorKind.pianoRoll));
       expect(viewModel.activePanel, equals(PanelKind.pianoRoll));
 
       controller.setActiveEditor(editor: EditorKind.deviceRack);
@@ -177,7 +177,7 @@ void main() {
 
       controller.openPatternInPianoRoll(pattern.id);
 
-      expect(viewModel.selectedEditor, equals(EditorKind.detail));
+      expect(viewModel.selectedEditor, equals(EditorKind.pianoRoll));
       expect(viewModel.activePanel, equals(PanelKind.pianoRoll));
       expect(project.sequence.activePatternID, equals(pattern.id));
     });

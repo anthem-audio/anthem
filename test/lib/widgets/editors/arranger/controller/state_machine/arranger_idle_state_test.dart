@@ -1200,7 +1200,7 @@ void main() {
         const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
       );
 
-      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.pianoRoll);
       expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
       expect(fixture.project.sequence.activePatternID, pattern.id);
       expect(fixture.project.sequence.activeTrackID, TrackIds.a);
@@ -1262,7 +1262,7 @@ void main() {
         const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
       );
 
-      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.pianoRoll);
       expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
       expect(fixture.project.sequence.activePatternID, pattern.id);
       expect(fixture.project.sequence.activeTrackID, TrackIds.a);

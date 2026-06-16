@@ -82,7 +82,7 @@ class _ProjectState extends State<Project> {
                   final selectedEditorKind = viewModel.selectedEditor;
                   final selectedEditorIndex = switch (selectedEditorKind) {
                     EditorKind.deviceRack => 0,
-                    EditorKind.detail => 1,
+                    EditorKind.pianoRoll => 1,
                     EditorKind.mixer => 2,
                     null => null,
                   };
@@ -92,7 +92,7 @@ class _ProjectState extends State<Project> {
                       : PanelBorder(
                           panelKind: switch (selectedEditorKind) {
                             .deviceRack => .deviceRack,
-                            .detail => .pianoRoll,
+                            .pianoRoll => .pianoRoll,
                             .mixer => .mixer,
                             null => null,
                           },

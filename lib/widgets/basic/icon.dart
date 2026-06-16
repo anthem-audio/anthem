@@ -48,7 +48,7 @@ class Icons {
     'assets/icons/bottom_bar/instruments_effects_panel.svg',
   );
   static IconDef close = const IconDef('assets/icons/small/close.svg');
-  static IconDef detailEditor = const IconDef(
+  static IconDef pianoRoll = const IconDef(
     'assets/icons/bottom_bar/detail_editor.svg',
   );
   static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
@@ -76,7 +76,7 @@ class Icons {
   static IconDef patternPickerMidi = const IconDef(
     'assets/icons/arranger/clip/note.svg',
   );
-  static IconDef pianoRollAttributes = const IconDef(
+  static IconDef pianoRollStems = const IconDef(
     'assets/icons/note_editor/control.svg',
   );
   static IconDef play = const IconDef('assets/icons/main_toolbar/play.svg');

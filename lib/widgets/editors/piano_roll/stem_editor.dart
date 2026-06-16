@@ -24,7 +24,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
-import 'package:anthem/widgets/editors/piano_roll/attribute_editor_controller.dart';
+import 'package:anthem/widgets/editors/piano_roll/stem_editor_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
@@ -36,28 +36,27 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
-class PianoRollAttributeEditor extends StatefulWidget {
+class PianoRollStemEditor extends StatefulWidget {
   final TimeRangeAnimation timeRangeAnimation;
   final PianoRollViewModel viewModel;
 
-  const PianoRollAttributeEditor({
+  const PianoRollStemEditor({
     super.key,
     required this.timeRangeAnimation,
     required this.viewModel,
   });
 
   @override
-  State<PianoRollAttributeEditor> createState() =>
-      _PianoRollAttributeEditorState();
+  State<PianoRollStemEditor> createState() => _PianoRollStemEditorState();
 }
 
-class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
-  late AttributeEditorController controller;
+class _PianoRollStemEditorState extends State<PianoRollStemEditor> {
+  late PianoRollStemEditorController controller;
 
   @override
   void initState() {
     super.initState();
-    controller = AttributeEditorController(viewModel: widget.viewModel);
+    controller = PianoRollStemEditorController(viewModel: widget.viewModel);
   }
 
   @override
@@ -91,20 +90,18 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                               allowNoSelection: false,
                               items: [
                                 DropdownItem(
-                                  id: ActiveNoteAttribute.velocity.name,
+                                  id: PianoRollStem.velocity.name,
                                   name: 'Velocity',
                                 ),
                                 DropdownItem(
-                                  id: ActiveNoteAttribute.pan.name,
+                                  id: PianoRollStem.pan.name,
                                   name: 'Pan',
                                 ),
                               ],
-                              selectedID: viewModel.activeNoteAttribute.name,
+                              selectedID: viewModel.activeStem.name,
                               onChanged: (id) {
-                                viewModel.activeNoteAttribute =
-                                    ActiveNoteAttribute.values.firstWhere(
-                                      (attribute) => attribute.name == id,
-                                    );
+                                viewModel.activeStem = PianoRollStem.values
+                                    .firstWhere((stem) => stem.name == id);
                               },
                             );
                           },
@@ -117,12 +114,12 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
                   child: Column(
                     children: [
                       Expanded(
-                        child: _AttributeRenderArea(
+                        child: _StemRenderArea(
                           timeRangeAnimation: widget.timeRangeAnimation,
                           controller: controller,
                         ),
                       ),
-                      // If the attribute editor is open, then it should always
+                      // If the stem editor is open, then it should always
                       // show the scrollbar, since it's the item on the bottom
                       // of the view
                       Container(height: 1, color: AnthemTheme.panel.border),
@@ -147,11 +144,11 @@ class _PianoRollAttributeEditorState extends State<PianoRollAttributeEditor> {
   }
 }
 
-class _AttributeRenderArea extends StatelessWidget {
+class _StemRenderArea extends StatelessWidget {
   final TimeRangeAnimation timeRangeAnimation;
-  final AttributeEditorController controller;
+  final PianoRollStemEditorController controller;
 
-  const _AttributeRenderArea({
+  const _StemRenderArea({
     required this.timeRangeAnimation,
     required this.controller,
   });
@@ -163,10 +160,10 @@ class _AttributeRenderArea extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        AttributeEditorPointerEvent createEditorPointerEvent(
+        PianoRollStemEditorPointerEvent createEditorPointerEvent(
           PointerEvent rawEvent,
         ) {
-          return AttributeEditorPointerEvent(
+          return PianoRollStemEditorPointerEvent(
             offset: pixelsToTime(
               timeViewStart: viewModel.timeRange.start,
               timeViewEnd: viewModel.timeRange.end,
@@ -201,7 +198,7 @@ class _AttributeRenderArea extends StatelessWidget {
             },
             child: ClipRect(
               child: CustomPaint(
-                painter: _PianoRollAttributePainter(
+                painter: _PianoRollStemPainter(
                   repaint: timeRangeAnimation.controller,
                   viewModel: viewModel,
                   project: project,
@@ -216,17 +213,17 @@ class _AttributeRenderArea extends StatelessWidget {
   }
 }
 
-class _PianoRollAttributePainter extends CustomPainterObserver {
+class _PianoRollStemPainter extends CustomPainterObserver {
   PianoRollViewModel viewModel;
   ProjectModel project;
   TimeRangeAnimation timeRangeAnimation;
 
-  _PianoRollAttributePainter({
+  _PianoRollStemPainter({
     required Listenable repaint,
     required this.viewModel,
     required this.project,
     required this.timeRangeAnimation,
-  }) : super(debugName: '_PianoRollAttributePainter', repaint: repaint);
+  }) : super(debugName: '_PianoRollStemPainter', repaint: repaint);
 
   double get timeViewStart => timeRangeAnimation.renderedStart;
   double get timeViewEnd => timeRangeAnimation.renderedEnd;
@@ -249,22 +246,22 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
 
     final activePattern =
         project.sequence.patterns[project.sequence.activePatternID];
-    final selectedAttribute = viewModel.activeNoteAttribute;
+    final selectedStem = viewModel.activeStem;
 
     int bottom;
     int baseline;
     int top;
 
-    switch (selectedAttribute) {
-      case ActiveNoteAttribute.velocity:
-        bottom = ActiveNoteAttribute.velocity.bottom;
-        baseline = ActiveNoteAttribute.velocity.baseline;
-        top = ActiveNoteAttribute.velocity.top;
+    switch (selectedStem) {
+      case PianoRollStem.velocity:
+        bottom = PianoRollStem.velocity.bottom;
+        baseline = PianoRollStem.velocity.baseline;
+        top = PianoRollStem.velocity.top;
         break;
-      case ActiveNoteAttribute.pan:
-        bottom = ActiveNoteAttribute.pan.bottom;
-        baseline = ActiveNoteAttribute.pan.baseline;
-        top = ActiveNoteAttribute.pan.top;
+      case PianoRollStem.pan:
+        bottom = PianoRollStem.pan.bottom;
+        baseline = PianoRollStem.pan.baseline;
+        top = PianoRollStem.pan.top;
         break;
     }
 
@@ -319,21 +316,21 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
     noteOverrides.observeAllChanges();
     previewNotes.observeAllChanges();
 
-    // Redrawing the attribute editor on any note change is cheaper than
+    // Redrawing the stem editor on any note change is cheaper than
     // observing every resolved note field individually while traversing the
     // full note set.
     blockObservation(
       modelItems: [notes, noteOverrides, previewNotes],
       block: () {
         for (final note in activePattern.getResolvedNotes()) {
-          double attribute;
+          double stemValue;
 
-          switch (selectedAttribute) {
-            case ActiveNoteAttribute.velocity:
-              attribute = note.velocity;
+          switch (selectedStem) {
+            case PianoRollStem.velocity:
+              stemValue = note.velocity;
               break;
-            case ActiveNoteAttribute.pan:
-              attribute = note.pan;
+            case PianoRollStem.pan:
+              stemValue = note.pan;
               break;
           }
 
@@ -365,7 +362,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
                   .round()
                   .toDouble();
 
-          final barTop = valueToPixels(attribute);
+          final barTop = valueToPixels(stemValue);
           final barBottom = valueToPixels(baseline);
 
           canvas.drawRect(
@@ -392,7 +389,7 @@ class _PianoRollAttributePainter extends CustomPainterObserver {
   }
 
   @override
-  bool shouldRepaint(covariant _PianoRollAttributePainter oldDelegate) {
+  bool shouldRepaint(covariant _PianoRollStemPainter oldDelegate) {
     return viewModel != oldDelegate.viewModel ||
         project != oldDelegate.project ||
         timeRangeAnimation != oldDelegate.timeRangeAnimation;

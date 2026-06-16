@@ -79,15 +79,15 @@ class ProjectFooter extends StatelessWidget {
                 return ButtonGroup(
                   children: [
                     Button(
-                      icon: Icons.detailEditor,
-                      toggleState: viewModel.selectedEditor == .detail,
+                      icon: Icons.pianoRoll,
+                      toggleState: viewModel.selectedEditor == .pianoRoll,
                       width: 26,
                       contentPadding: contentPadding,
                       onPress: () {
-                        if (viewModel.selectedEditor == .detail) {
+                        if (viewModel.selectedEditor == .pianoRoll) {
                           viewModel.selectedEditor = null;
                         } else {
-                          viewModel.selectedEditor = .detail;
+                          viewModel.selectedEditor = .pianoRoll;
                           viewModel.activePanel = .pianoRoll;
                         }
                       },

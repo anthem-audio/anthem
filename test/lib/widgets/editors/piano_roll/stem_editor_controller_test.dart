@@ -24,7 +24,7 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/widgets/editors/piano_roll/attribute_editor_controller.dart';
+import 'package:anthem/widgets/editors/piano_roll/stem_editor_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
@@ -49,11 +49,11 @@ ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('AttributeEditorController', () {
+  group('PianoRollStemEditorController', () {
     late ProjectModel project;
     late PatternModel pattern;
     late PianoRollViewModel viewModel;
-    late AttributeEditorController controller;
+    late PianoRollStemEditorController controller;
     late NoteModel note;
 
     setUp(() {
@@ -78,7 +78,7 @@ void main() {
         keyValueAtTop: 63.95,
         timeRange: TimeRange(0, 3072),
       );
-      controller = AttributeEditorController(viewModel: viewModel);
+      controller = PianoRollStemEditorController(viewModel: viewModel);
 
       final store = AnthemStore.instance;
       store.projects[project.id] = project;
@@ -96,7 +96,7 @@ void main() {
     });
 
     test('uses pattern overrides until pointerUp commits the command', () {
-      const event = AttributeEditorPointerEvent(
+      const event = PianoRollStemEditorPointerEvent(
         offset: 120,
         normalizedY: 0.25,
         viewSize: Size(960, 120),

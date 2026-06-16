@@ -191,7 +191,7 @@ void main() {
       expect(newClip.offset, expectedStartOffset);
       expect(newClip.timeView, isNull);
       expect(newClip.width, expectedWidth);
-      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.pianoRoll);
       expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
       expect(fixture.project.sequence.activePatternID, newClip.patternId);
       expect(fixture.project.sequence.activeTrackID, newClip.trackId);
@@ -349,7 +349,7 @@ void main() {
       expect(newClip.timeView, isNotNull);
       expect(newClip.timeView!.start, 0);
       expect(newClip.timeView!.end, expectedWidth.round());
-      expect(fixture.projectViewModel.selectedEditor, EditorKind.detail);
+      expect(fixture.projectViewModel.selectedEditor, EditorKind.pianoRoll);
       expect(fixture.projectViewModel.activePanel, PanelKind.pianoRoll);
       expect(fixture.project.sequence.activePatternID, newClip.patternId);
       expect(fixture.project.sequence.activeTrackID, newClip.trackId);

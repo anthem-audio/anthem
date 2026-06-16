@@ -457,7 +457,7 @@ class ProjectController {
     viewModel.selectedEditor = editor;
 
     viewModel.activePanel = switch (editor) {
-      .detail => .pianoRoll,
+      .pianoRoll => .pianoRoll,
       .deviceRack => .deviceRack,
       .mixer => .mixer,
     };
@@ -473,7 +473,7 @@ class ProjectController {
       return;
     }
 
-    setActiveEditor(editor: EditorKind.detail);
+    setActiveEditor(editor: EditorKind.pianoRoll);
     project.sequence.setActivePattern(patternID);
   }
 

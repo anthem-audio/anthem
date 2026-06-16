@@ -44,7 +44,7 @@ part 'note.g.dart';
 /// a given note to downstream consumers that want to render notes. These
 /// consumers include:
 /// - The main piano roll note area
-/// - The piano roll attribute editor
+/// - The piano roll stem editor
 /// - Clips, which render a preview of the notes contained in their associated
 ///   pattern
 class ResolvedPatternNote {
