@@ -17,197 +17,46 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
-
-import 'package:anthem/logic/commands/journal_commands.dart';
-import 'package:anthem/logic/commands/pattern_note_commands.dart';
-import 'package:anthem/helpers/id.dart';
-import 'package:anthem/model/pattern/note.dart';
-import 'package:anthem/model/store.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/stem_editor_state_machine.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
-import '../shared/helpers/types.dart';
-
-// Pixel range where mouse events will affect stems.
-const stemEditableSize = 80;
-
-class PianoRollStemEditorPointerEvent {
-  final double offset;
-  final double normalizedY;
-  final Size viewSize;
-
-  const PianoRollStemEditorPointerEvent({
-    required this.offset,
-    required this.normalizedY,
-    required this.viewSize,
-  });
-}
+export 'package:anthem/widgets/editors/piano_roll/controller/state_machine/stem_editor_state_machine.dart'
+    show PianoRollStemEditorPointerEvent, stemEditableSize;
 
 class PianoRollStemEditorController {
-  PianoRollViewModel viewModel;
-  final oldValues = <Id, double>{};
-  final newValues = <Id, double>{};
+  final ProjectModel project;
+  final PianoRollViewModel viewModel;
+  late final PianoRollStemEditorStateMachine stateMachine =
+      PianoRollStemEditorStateMachine.create(
+        project: project,
+        viewModel: viewModel,
+      );
+  bool _isDisposed = false;
 
-  PianoRollStemEditorController({required this.viewModel});
+  PianoRollStemEditorController({
+    required this.project,
+    required this.viewModel,
+  });
 
   void pointerDown(PianoRollStemEditorPointerEvent event) {
-    pointerMove(event);
+    stateMachine.onPointerDown(event);
   }
 
   void pointerMove(PianoRollStemEditorPointerEvent event) {
-    // This would all be faster if the note list was sorted, because we could
-    // binary search. I don't want to assume that it's worth it though since it
-    // requires overhead elsewhere, but I'm leaving this note in case someone
-    // decides it's worth looking into later.
-
-    final store = AnthemStore.instance;
-    final project = store.projects[store.activeProjectId]!;
-    final pattern = project.sequence.patterns[project.sequence.activePatternID];
-
-    if (pattern == null) return;
-
-    final notes = pattern.getResolvedNotes().toList(growable: false);
-    if (notes.isEmpty) {
-      return;
-    }
-
-    bool isNoteSelected(ResolvedPatternNote note) {
-      return viewModel.selectedNotes.contains(note.id);
-    }
-
-    final hasSelectedNotes = viewModel.selectedNotes.isNotEmpty;
-
-    Time closestOffsetBefore = notes.first.offset;
-    Time closestOffsetAfter = notes.first.offset;
-
-    for (final note in notes) {
-      if (hasSelectedNotes && !isNoteSelected(note)) {
-        continue;
-      }
-
-      if (note.offset < event.offset) {
-        if ((note.offset - event.offset).abs() <
-            (closestOffsetBefore - event.offset).abs()) {
-          closestOffsetBefore = note.offset;
-        }
-      } else {
-        if ((note.offset - event.offset).abs() <
-            (closestOffsetAfter - event.offset).abs()) {
-          closestOffsetAfter = note.offset;
-        }
-      }
-    }
-
-    final closestOffsetBeforePixels = timeToPixels(
-      timeViewStart: viewModel.timeRange.start,
-      timeViewEnd: viewModel.timeRange.end,
-      viewPixelWidth: event.viewSize.width,
-      time: closestOffsetBefore.toDouble(),
-    );
-
-    final closestOffsetAfterPixels = timeToPixels(
-      timeViewStart: viewModel.timeRange.start,
-      timeViewEnd: viewModel.timeRange.end,
-      viewPixelWidth: event.viewSize.width,
-      time: closestOffsetAfter.toDouble(),
-    );
-
-    final pointerTimePixels = timeToPixels(
-      timeViewStart: viewModel.timeRange.start,
-      timeViewEnd: viewModel.timeRange.end,
-      viewPixelWidth: event.viewSize.width,
-      time: event.offset,
-    );
-
-    var targetOffset = closestOffsetBefore;
-
-    if ((closestOffsetBeforePixels - pointerTimePixels).abs() >
-        stemEditableSize / 2) {
-      if ((closestOffsetAfterPixels - pointerTimePixels).abs() >
-          stemEditableSize / 2) {
-        return;
-      }
-
-      targetOffset = closestOffsetAfter;
-    }
-
-    final affectedNotes =
-        (hasSelectedNotes ? notes.where((note) => isNoteSelected(note)) : notes)
-            .where((note) => note.offset == targetOffset);
-
-    late final int bottom;
-    late final int top;
-
-    switch (viewModel.activeStem) {
-      case PianoRollStem.velocity:
-        bottom = PianoRollStem.velocity.bottom;
-        top = PianoRollStem.velocity.top;
-        break;
-      case PianoRollStem.pan:
-        bottom = PianoRollStem.pan.bottom;
-        top = PianoRollStem.pan.top;
-        break;
-    }
-
-    final newValue = (top - bottom) * event.normalizedY + bottom;
-
-    for (final note in affectedNotes) {
-      switch (viewModel.activeStem) {
-        case PianoRollStem.velocity:
-          oldValues[note.id] ??= note.velocity;
-          newValues[note.id] = newValue;
-          viewModel.cursorNoteVelocity = newValue;
-          pattern.setResolvedNotePreview(noteId: note.id, velocity: newValue);
-          break;
-        case PianoRollStem.pan:
-          oldValues[note.id] ??= note.pan;
-          newValues[note.id] = newValue;
-          viewModel.cursorNotePan = newValue;
-          pattern.setResolvedNotePreview(noteId: note.id, pan: newValue);
-          break;
-      }
-    }
+    stateMachine.onPointerMove(event);
   }
 
   void pointerUp(PianoRollStemEditorPointerEvent event) {
-    if (oldValues.isEmpty && newValues.isEmpty) return;
+    stateMachine.onPointerUp(event);
+  }
 
-    final store = AnthemStore.instance;
-    final project = store.projects[store.activeProjectId]!;
-    final pattern = project.sequence.patterns[project.sequence.activePatternID];
-
-    if (pattern == null) return;
-
-    late NoteAttribute attribute;
-
-    switch (viewModel.activeStem) {
-      case PianoRollStem.velocity:
-        attribute = NoteAttribute.velocity;
-        break;
-      case PianoRollStem.pan:
-        attribute = NoteAttribute.pan;
-        break;
+  void dispose() {
+    if (_isDisposed) {
+      return;
     }
 
-    final commands = oldValues.keys
-        .map(
-          (noteID) => SetNoteAttributeCommand(
-            patternID: pattern.id,
-            noteID: noteID,
-            attribute: attribute,
-            oldValue: oldValues[noteID]!,
-            newValue: newValues[noteID]!,
-          ),
-        )
-        .toList();
-
-    final journalPageCommand = JournalPageCommand(commands);
-
-    project.push(journalPageCommand, execute: true);
-    pattern.clearNoteOverrides();
-
-    oldValues.clear();
-    newValues.clear();
+    _isDisposed = true;
+    stateMachine.dispose();
   }
 }

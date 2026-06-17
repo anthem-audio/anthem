@@ -52,11 +52,27 @@ class PianoRollStemEditor extends StatefulWidget {
 
 class _PianoRollStemEditorState extends State<PianoRollStemEditor> {
   late PianoRollStemEditorController controller;
+  bool _controllerInitialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    controller = PianoRollStemEditorController(viewModel: widget.viewModel);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_controllerInitialized) {
+      return;
+    }
+
+    controller = PianoRollStemEditorController(
+      project: Provider.of<ProjectModel>(context, listen: false),
+      viewModel: widget.viewModel,
+    );
+    _controllerInitialized = true;
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -176,6 +192,7 @@ class _StemRenderArea extends StatelessWidget {
                   1,
                 ),
             viewSize: constraints.biggest,
+            pointer: rawEvent.pointer,
           );
         }
 
