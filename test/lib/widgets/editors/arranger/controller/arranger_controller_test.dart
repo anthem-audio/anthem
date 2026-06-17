@@ -735,6 +735,7 @@ void main() {
         expect(clip.timeView, isNotNull);
         expect(clip.timeView!.start, equals(0));
         expect(clip.timeView!.end, equals(47));
+        expect(pattern.clipAutoSizeMode, PatternClipAutoSizeMode.nextBar);
         expect(pattern.automation.points, isEmpty);
       },
     );
@@ -828,6 +829,7 @@ void main() {
       expect(clip.trackId, equals(automationLane.id));
       expect(automationLane.name, equals('Volume'));
       expect(pattern.name, equals('Track - Volume'));
+      expect(pattern.clipAutoSizeMode, PatternClipAutoSizeMode.content);
       expect(pattern.automation.points, hasLength(2));
       expect(pattern.automation.points[0].offset, equals(0));
       expect(pattern.automation.points[1].offset, equals(96));
@@ -887,6 +889,7 @@ void main() {
       final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
 
       expect(clip.timeView, isNull);
+      expect(pattern.clipAutoSizeMode, PatternClipAutoSizeMode.content);
       expect(pattern.automation.points, hasLength(2));
       expect(pattern.automation.points[0].offset, equals(0));
       expect(pattern.automation.points[1].offset, equals(clip.width));
@@ -975,6 +978,7 @@ void main() {
 
         expect(parentTrack.automationLanes.single, equals(automationLane.id));
         expect(provider.emptyValue, closeTo(port.parameterValue!, 0.000001));
+        expect(pattern.clipAutoSizeMode, PatternClipAutoSizeMode.content);
         expect(pattern.automation.points, hasLength(2));
         expect(pattern.automation.points[0].value, closeTo(0.64, 0.000001));
         expect(pattern.automation.points[1].value, closeTo(0.64, 0.000001));

@@ -449,12 +449,16 @@ double _evaluateCurve(double time, List<AutomationPoint> points) {
 
   final firstPoint = points[firstIndex];
   final secondPoint = points[secondIndex];
+  final segmentLength = secondPoint.offset - firstPoint.offset;
 
   switch (secondPoint.curve) {
     case AutomationCurveType.smooth:
+      if (segmentLength <= 0.0) {
+        return secondPoint.value;
+      }
+
       return evaluateSmooth(
-                (time - firstPoint.offset) /
-                    (secondPoint.offset - firstPoint.offset),
+                (time - firstPoint.offset) / segmentLength,
                 secondPoint.tension,
               ) *
               (secondPoint.value - firstPoint.value) +

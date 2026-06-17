@@ -29,6 +29,7 @@ import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -66,6 +67,28 @@ ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
   return ProjectEntityIdAllocator.test(allocateId ?? getId);
 }
 
+int _ticksPerBar(ProjectModel project) {
+  final timeSignature = project.sequence.defaultTimeSignature;
+  final ticksPerBarDouble =
+      project.sequence.ticksPerQuarter /
+      (timeSignature.denominator / 4) *
+      timeSignature.numerator;
+  final ticksPerBar = ticksPerBarDouble.round();
+
+  assert(ticksPerBarDouble == ticksPerBar);
+
+  return ticksPerBar;
+}
+
+int _sixteenthNote(ProjectModel project) {
+  final sixteenthNoteDouble = project.sequence.ticksPerQuarter / 4;
+  final sixteenthNote = sixteenthNoteDouble.round();
+
+  assert(sixteenthNoteDouble == sixteenthNote);
+
+  return sixteenthNote;
+}
+
 ClipModel _createClipWithTimeView({
   required Id id,
   required Id patternId,
@@ -85,6 +108,138 @@ ClipModel _createClipWithTimeView({
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('Pattern clip auto width', () {
+    test('defaults to the next bar after content', () async {
+      final project = ProjectModel.create();
+      final ticksPerBar = _ticksPerBar(project);
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Bar-sized Pattern',
+      );
+      final note = NoteModel(
+        idAllocator: _testIdAllocator(),
+        key: 60,
+        velocity: 0.8,
+        length: 17,
+        offset: ticksPerBar,
+        pan: 0,
+      );
+      pattern.notes[note.id] = note;
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(pattern.clipAutoSizeMode, PatternClipAutoSizeMode.nextBar);
+      expect(pattern.getContentWidth(), equals(ticksPerBar + 17));
+      expect(pattern.clipAutoWidth, equals(ticksPerBar * 2));
+    });
+
+    test('content mode uses the exact content end', () async {
+      final project = ProjectModel.create();
+      final ticksPerBar = _ticksPerBar(project);
+      final contentEnd = ticksPerBar + 17;
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Content-sized Pattern',
+      )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
+      pattern.automation.points.addAll([
+        AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 0,
+          value: 0.25,
+        ),
+        AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: contentEnd,
+          value: 0.75,
+        ),
+      ]);
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(pattern.getWidth(), equals(ticksPerBar * 2));
+      expect(pattern.clipAutoWidth, equals(contentEnd));
+    });
+
+    test('content mode uses a sixteenth-note minimum width', () async {
+      final project = ProjectModel.create();
+      final sixteenthNote = _sixteenthNote(project);
+      project.sequence.defaultTimeSignature = TimeSignatureModel(7, 8);
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Minimum Content Pattern',
+      )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
+      pattern.automation.points.add(
+        AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 0,
+          value: 0.25,
+        ),
+      );
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(_ticksPerBar(project), isNot(equals(sixteenthNote)));
+      expect(pattern.getContentWidth(), equals(sixteenthNote));
+      expect(pattern.clipAutoWidth, equals(sixteenthNote));
+    });
+
+    test(
+      'content mode updates arrangement width when content changes within one bar',
+      () async {
+        final project = ProjectModel.create();
+        final ticksPerBar = _ticksPerBar(project);
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID!]!;
+        final arrangementWidthStep = ticksPerBar * 4;
+        final initialArrangementWidth = arrangementWidthStep * 4;
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Content-sized Automation',
+        )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
+        final endPoint = AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 100,
+          value: 0.75,
+        );
+        pattern.automation.points.addAll([
+          AutomationPointModel(
+            idAllocator: _testIdAllocator(),
+            offset: 0,
+            value: 0.25,
+          ),
+          endPoint,
+        ]);
+        project.sequence.patterns[pattern.id] = pattern;
+
+        final clip = ClipModel(
+          idAllocator: _testIdAllocator(),
+          patternId: pattern.id,
+          trackId: getId(),
+          offset: initialArrangementWidth - 150,
+        );
+        arrangement.clips[clip.id] = clip;
+
+        await _flushMicrotasks();
+
+        expect(pattern.clipAutoWidth, equals(100));
+        expect(arrangement.viewWidth, equals(initialArrangementWidth));
+
+        endPoint.offset = 200;
+        await _flushMicrotasks();
+
+        expect(pattern.clipAutoWidth, equals(200));
+        expect(
+          arrangement.viewWidth,
+          equals(initialArrangementWidth + arrangementWidthStep),
+        );
+      },
+    );
+  });
 
   group('Pattern compiler invalidation', () {
     test(

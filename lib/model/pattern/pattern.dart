@@ -43,6 +43,9 @@ part 'pattern.g.dart';
 part 'package:anthem/widgets/editors/arranger/rendering/clip_notes_render_cache_mixin.dart';
 part 'pattern_compiler_mixin.dart';
 
+@AnthemEnum()
+enum PatternClipAutoSizeMode { nextBar, content }
+
 /// The primary container for events.
 ///
 /// From a user-facing perspective, events in the arranger live inside clips.
@@ -187,6 +190,10 @@ class PatternModel extends _PatternModel
         _clipAutoWidthUpdateAction.execute();
       });
 
+      onChange((b) => b.clipAutoSizeMode(), (e, _) {
+        _clipAutoWidthUpdateAction.execute();
+      });
+
       onChange((b) => b.automation().points().anyElement(), (e, _) {
         _recompileOnAutomationPointsAddedOrRemoved(
           e.operation.oldValue as AutomationPointModel?,
@@ -227,6 +234,12 @@ abstract class _PatternModel
 
   @anthemObservable
   AnthemColor color = AnthemColor(hue: 0);
+
+  /// Controls how [clipAutoWidth] is calculated for clips with no explicit
+  /// time view.
+  @anthemObservable
+  @hideFromCpp
+  PatternClipAutoSizeMode clipAutoSizeMode = PatternClipAutoSizeMode.nextBar;
 
   @anthemObservable
   AnthemObservableMap<Id, NoteModel> notes = AnthemObservableMap();
@@ -444,10 +457,27 @@ abstract class _PatternModel
     previewNotes.clear();
   }
 
-  /// Gets the time position of the end of the last item in this pattern
-  /// (note, audio clip, automation point), rounded upward to the nearest
-  /// `barMultiple` bars.
-  int getWidth({int barMultiple = 1, int minPaddingInBarMultiples = 1}) {
+  int getContentWidth() {
+    final lastNoteContent = getResolvedNotes().fold<int>(
+      0,
+      (previousValue, note) => max(previousValue, note.offset + note.length),
+    );
+
+    final lastAutomationContent = automation.points.lastOrNull?.offset ?? 0;
+
+    return max(max(lastNoteContent, lastAutomationContent), _sixteenthNote());
+  }
+
+  int _sixteenthNote() {
+    final sixteenthNoteDouble = project.sequence.ticksPerQuarter / 4;
+    final sixteenthNote = sixteenthNoteDouble.round();
+
+    assert(sixteenthNoteDouble == sixteenthNote);
+
+    return max(sixteenthNote, 1);
+  }
+
+  int _ticksPerBar() {
     final ticksPerBarDouble =
         project.sequence.ticksPerQuarter /
         (project.sequence.defaultTimeSignature.denominator / 4) *
@@ -460,21 +490,27 @@ abstract class _PatternModel
     // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
     assert(ticksPerBarDouble == ticksPerBar);
 
-    final lastNoteContent = getResolvedNotes().fold<int>(
-      ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, note) => max(previousValue, note.offset + note.length),
-    );
+    return ticksPerBar;
+  }
 
-    final lastAutomationContent = max(
-      ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      automation.points.lastOrNull?.offset ?? 0,
-    );
+  /// Gets the time position of the end of the last item in this pattern
+  /// (note, audio clip, automation point), rounded upward to the nearest
+  /// `barMultiple` bars.
+  int getWidth({int barMultiple = 1, int minPaddingInBarMultiples = 1}) {
+    final ticksPerBar = _ticksPerBar();
+    final minWidth = ticksPerBar * barMultiple * minPaddingInBarMultiples;
+    final contentWidth = max(getContentWidth(), minWidth);
 
-    final lastContent = max(lastNoteContent, lastAutomationContent);
-
-    return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
+    return (contentWidth / (ticksPerBar * barMultiple)).ceil() *
         ticksPerBar *
         barMultiple;
+  }
+
+  int getClipAutoWidth() {
+    return switch (clipAutoSizeMode) {
+      PatternClipAutoSizeMode.nextBar => getWidth(),
+      PatternClipAutoSizeMode.content => getContentWidth(),
+    };
   }
 
   @computed
@@ -506,12 +542,12 @@ abstract class _PatternModel
   /// clip on every edit.
   @anthemObservable
   @hide
-  late int clipAutoWidth = getWidth();
+  late int clipAutoWidth = getClipAutoWidth();
 
   @hide
   late final MicrotaskDebouncedAction _clipAutoWidthUpdateAction =
       MicrotaskDebouncedAction(() {
-        final newClipAutoWidth = getWidth();
+        final newClipAutoWidth = getClipAutoWidth();
 
         final arrangements = project.sequence.arrangements.values.toList();
 

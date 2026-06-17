@@ -35,7 +35,7 @@ void main() {
     final sourcePattern = PatternModel(
       idAllocator: sourceIdAllocator,
       name: 'Source pattern',
-    );
+    )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
     final sourceNote = NoteModel(
       idAllocator: sourceIdAllocator,
       key: 60,
@@ -93,6 +93,10 @@ void main() {
     final clonedPattern = reconstructed.patterns.single;
     expect(clonedPattern.id, isNot(sourcePattern.id));
     expect(clonedPattern.name, equals(sourcePattern.name));
+    expect(
+      clonedPattern.clipAutoSizeMode,
+      equals(sourcePattern.clipAutoSizeMode),
+    );
 
     final clonedNote = clonedPattern.notes.values.single;
     expect(clonedNote.id, isNot(sourceNote.id));

@@ -335,6 +335,9 @@ abstract class _ArrangerController {
       idAllocator: _idAllocator,
       name: patternName ?? _newClipPatternNameForTrack(track),
     )..color = track.color.clone();
+    if (track.isAutomationLane) {
+      pattern.clipAutoSizeMode = PatternClipAutoSizeMode.content;
+    }
     _seedAutomationClipPoints(
       track: track,
       pattern: pattern,

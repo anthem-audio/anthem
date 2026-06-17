@@ -168,6 +168,25 @@ void main() {
       expect(mid, lessThanOrEqualTo(0.75));
     });
 
+    test('same-offset smooth segment returns the second point value', () {
+      final points = <AutomationPoint>[
+        (
+          offset: 0.0,
+          value: 0.25,
+          tension: 0.0,
+          curve: AutomationCurveType.smooth,
+        ),
+        (
+          offset: 0.0,
+          value: 0.75,
+          tension: 0.0,
+          curve: AutomationCurveType.smooth,
+        ),
+      ];
+
+      expect(evaluateCurveForTesting(0.0, points), closeTo(0.75, 1e-12));
+    });
+
     test('stairs and wave curve types currently throw unimplemented', () {
       final basePoints = <AutomationPoint>[
         (
@@ -399,6 +418,36 @@ void main() {
         expect(points.observationBlockDepth, equals(0));
       },
     );
+
+    test('handles same-offset smooth points', () {
+      final points = _makePointModelList([
+        (offset: 0, value: 0.2, curve: AutomationCurveType.smooth),
+        (offset: 0, value: 0.8, curve: AutomationCurveType.smooth),
+      ]);
+
+      final lineBuffer = LineBuffer();
+      final lineJoinBuffer = CoordinateBuffer();
+      final triCoordBuffer = CoordinateBuffer();
+
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: const ui.Size(100, 40),
+        xDrawPositionTime: (0.0, 24.0),
+        yDrawPositionPixels: (0.0, 40.0),
+        points: points,
+        strokeWidth: 2.0,
+        timeViewStart: 0.0,
+        timeViewEnd: 24.0,
+        lineBuffer: lineBuffer,
+        lineJoinBuffer: lineJoinBuffer,
+        triCoordBuffer: triCoordBuffer,
+      );
+
+      expect(points.observationBlockDepth, equals(0));
+    });
 
     test('clips sampled x positions to viewport boundaries', () {
       final points = _makePointModelList([
