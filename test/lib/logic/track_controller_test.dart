@@ -359,6 +359,101 @@ void main() {
     });
   });
 
+  group('getTrackColorTargetIds()', () {
+    late MockProjectModel project;
+    late TrackController trackController;
+    late AnthemObservableMap<Id, TrackModel> tracks;
+
+    late TrackModel parentTrack;
+    late TrackModel automationLaneA;
+    late TrackModel automationLaneB;
+    late TrackModel normalTrack;
+
+    TrackModel createTrack(String name, TrackType type) {
+      return TrackModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: name,
+        color: AnthemColor.randomHue(),
+        type: type,
+      );
+    }
+
+    setUp(() {
+      project = MockProjectModel();
+      tracks = AnthemObservableMap();
+      when(project.tracks).thenReturn(tracks);
+
+      parentTrack = createTrack('Parent', .normal);
+      automationLaneA = createTrack('Automation A', .automationLane)
+        ..automationLaneParentTrackId = parentTrack.id;
+      automationLaneB = createTrack('Automation B', .automationLane)
+        ..automationLaneParentTrackId = parentTrack.id;
+      normalTrack = createTrack('Normal', .normal);
+
+      parentTrack.automationLanes.addAll([
+        automationLaneA.id,
+        automationLaneB.id,
+      ]);
+
+      tracks.addAll({
+        parentTrack.id: parentTrack,
+        automationLaneA.id: automationLaneA,
+        automationLaneB.id: automationLaneB,
+        normalTrack.id: normalTrack,
+      });
+
+      trackController = TrackController(project);
+    });
+
+    test('expands a parent track to include its automation lanes', () {
+      expect(trackController.getTrackColorTargetIds([parentTrack.id]), [
+        parentTrack.id,
+        automationLaneA.id,
+        automationLaneB.id,
+      ]);
+    });
+
+    test(
+      'expands an automation lane to include its parent and sibling lanes',
+      () {
+        expect(trackController.getTrackColorTargetIds([automationLaneB.id]), [
+          parentTrack.id,
+          automationLaneA.id,
+          automationLaneB.id,
+        ]);
+      },
+    );
+
+    test(
+      'deduplicates tracks when parent and automation lanes are selected',
+      () {
+        expect(
+          trackController.getTrackColorTargetIds([
+            automationLaneA.id,
+            parentTrack.id,
+            automationLaneB.id,
+          ]),
+          [parentTrack.id, automationLaneA.id, automationLaneB.id],
+        );
+      },
+    );
+
+    test('keeps unrelated selected tracks in the color target list', () {
+      expect(
+        trackController.getTrackColorTargetIds([
+          normalTrack.id,
+          automationLaneA.id,
+        ]),
+        [
+          normalTrack.id,
+          parentTrack.id,
+          automationLaneA.id,
+          automationLaneB.id,
+        ],
+      );
+    });
+  });
+
   group('insertTrackAt()', () {
     final projectId = getProjectId();
 

@@ -72,7 +72,9 @@ class _TrackAttributesState extends State<TrackAttributes> {
 
     void setTrackColor(double hue, AnthemColorPaletteKind palette) {
       project.startUndoGroup();
-      for (final id in selectedTrackIds) {
+      for (final id in trackController.getTrackColorTargetIds(
+        selectedTrackIds,
+      )) {
         trackController.setTrackColor(id, hue, palette);
       }
       project.commitUndoGroup();
@@ -93,7 +95,9 @@ class _TrackAttributesState extends State<TrackAttributes> {
                 hint: [.new('click', 'Change the track color')],
                 child: ColorPickerButton(
                   getValues: () => getColorAttributeValue(
-                    selectedTrackIds.map((id) => project.tracks[id]!.color),
+                    trackController
+                        .getTrackColorTargetIds(selectedTrackIds)
+                        .map((id) => project.tracks[id]!.color),
                   ),
                   onChange: setTrackColor,
                 ),

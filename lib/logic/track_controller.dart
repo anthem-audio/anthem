@@ -588,6 +588,51 @@ class TrackController {
     );
   }
 
+  /// Returns the tracks whose colors should change for a track color edit.
+  ///
+  /// Automation lanes derive their color from their parent track, so selecting
+  /// either a parent track or one of its automation lanes targets the full
+  /// parent-plus-automation-lanes group. Duplicate targets are removed so a
+  /// single color picker action only enqueues one color command per track.
+  List<Id> getTrackColorTargetIds(Iterable<Id> trackIds) {
+    final targetIds = <Id>{};
+
+    void addTrackAndAutomationLanes(TrackModel track) {
+      targetIds.add(track.id);
+
+      for (final automationLaneId in track.automationLanes) {
+        if (project.tracks.containsKey(automationLaneId)) {
+          targetIds.add(automationLaneId);
+        }
+      }
+    }
+
+    for (final trackId in trackIds) {
+      final track = project.tracks[trackId];
+      if (track == null) {
+        continue;
+      }
+
+      if (!track.isAutomationLane) {
+        addTrackAndAutomationLanes(track);
+        continue;
+      }
+
+      final parentTrackId = track.automationLaneParentTrackId;
+      final parentTrack = parentTrackId == null
+          ? null
+          : project.tracks[parentTrackId];
+
+      if (parentTrack != null) {
+        addTrackAndAutomationLanes(parentTrack);
+      }
+
+      targetIds.add(track.id);
+    }
+
+    return targetIds.toList(growable: false);
+  }
+
   void setTrackColor(Id trackId, double hue, AnthemColorPaletteKind palette) {
     project.execute(
       SetTrackColorCommand(
