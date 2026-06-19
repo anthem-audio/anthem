@@ -109,6 +109,53 @@ ClipModel _createClipWithTimeView({
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  group('Pattern resolved note render cache', () {
+    test('invalidates after attached note changes', () async {
+      final project = ProjectModel.create();
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(() => 1000),
+        name: 'Cached Pattern',
+      );
+      final firstNote = NoteModel(
+        idAllocator: _testIdAllocator(() => 1001),
+        key: 60,
+        velocity: 0.8,
+        length: 96,
+        offset: 0,
+        pan: 0,
+      );
+      final secondNote = NoteModel(
+        idAllocator: _testIdAllocator(() => 1002),
+        key: 60,
+        velocity: 0.8,
+        length: 96,
+        offset: 120,
+        pan: 0,
+      );
+      pattern.notes[firstNote.id] = firstNote;
+      pattern.notes[secondNote.id] = secondNote;
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(
+        pattern.renderOrderedResolvedNotes
+            .map((note) => note.id)
+            .toList(growable: false),
+        equals([firstNote.id, secondNote.id]),
+      );
+
+      firstNote.offset = 240;
+
+      expect(
+        pattern.renderOrderedResolvedNotes
+            .map((note) => note.id)
+            .toList(growable: false),
+        equals([secondNote.id, firstNote.id]),
+      );
+    });
+  });
+
   group('Pattern clip auto width', () {
     test('defaults to the next bar after content', () async {
       final project = ProjectModel.create();

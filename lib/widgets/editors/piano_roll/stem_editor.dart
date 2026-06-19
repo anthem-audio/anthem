@@ -339,7 +339,7 @@ class _PianoRollStemPainter extends CustomPainterObserver {
     blockObservation(
       modelItems: [notes, noteOverrides, previewNotes],
       block: () {
-        for (final note in activePattern.getResolvedNotes()) {
+        for (final note in activePattern.renderOrderedResolvedNotes) {
           double stemValue;
 
           switch (selectedStem) {

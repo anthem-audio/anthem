@@ -136,6 +136,8 @@ class PatternModel extends _PatternModel
             (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
       });
 
+      _enableResolvedNoteCache();
+
       // Initialize render caches
       updateClipNotesRenderCache();
 
@@ -165,6 +167,7 @@ class PatternModel extends _PatternModel
       // When notes change, we also need to update the clip notes render cache
       // and the clip's default width.
       onChange((b) => b.notes().withDescendants, (e, _) {
+        _invalidateResolvedNoteCache();
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
@@ -172,6 +175,7 @@ class PatternModel extends _PatternModel
       // Preview note overrides are Dart-only changes that should still refresh
       // local rendering and width calculations throughout the UI.
       onChange((b) => b.noteOverrides().withDescendants, (e, _) {
+        _invalidateResolvedNoteCache();
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
@@ -182,6 +186,7 @@ class PatternModel extends _PatternModel
       // they still need to appear everywhere that asks for the pattern's
       // effective note content.
       onChange((b) => b.previewNotes().withDescendants, (e, _) {
+        _invalidateResolvedNoteCache();
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
@@ -220,6 +225,12 @@ class PatternModel extends _PatternModel
         _updateLoopPointsAction.execute();
       });
     });
+  }
+
+  @override
+  void detach() {
+    _invalidateResolvedNoteCache();
+    super.detach();
   }
 
   Iterable<Id> get channelsWithContent => project.tracks.keys;
@@ -335,6 +346,34 @@ abstract class _PatternModel
     for (final note in previewNotes.values) {
       yield resolveNote(note, isPreviewOnly: true);
     }
+  }
+
+  bool _resolvedNoteCacheEnabled = false;
+  List<ResolvedPatternNote>? _renderOrderedResolvedNotesCache;
+
+  void _enableResolvedNoteCache() {
+    _resolvedNoteCacheEnabled = true;
+    _invalidateResolvedNoteCache();
+  }
+
+  void _invalidateResolvedNoteCache() {
+    _renderOrderedResolvedNotesCache = null;
+  }
+
+  List<ResolvedPatternNote> get renderOrderedResolvedNotes {
+    if (!_resolvedNoteCacheEnabled) {
+      return _buildRenderOrderedResolvedNotes();
+    }
+
+    return _renderOrderedResolvedNotesCache ??=
+        _buildRenderOrderedResolvedNotes();
+  }
+
+  List<ResolvedPatternNote> _buildRenderOrderedResolvedNotes() {
+    final resolvedNotes = getResolvedNotes().toList(growable: false)
+      ..sort(compareResolvedPatternNotesForRendering);
+
+    return List.unmodifiable(resolvedNotes);
   }
 
   /// Merges preview override values into the existing override for [noteId].

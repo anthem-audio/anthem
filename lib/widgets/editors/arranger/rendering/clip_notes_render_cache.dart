@@ -83,7 +83,7 @@ class ClipNotesRenderCache {
   }
 
   void update() {
-    final notes = pattern.getResolvedNotes().toList(growable: false);
+    final notes = pattern.renderOrderedResolvedNotes;
 
     rawVertices = Float32List(notes.length * 3 * 2 * 2);
 

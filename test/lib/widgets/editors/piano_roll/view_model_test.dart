@@ -49,7 +49,7 @@ void main() {
     return pattern;
   }
 
-  NoteModel createPreviewNote({
+  NoteModel createNote({
     required Id id,
     required int key,
     required double velocity,
@@ -59,6 +59,24 @@ void main() {
   }) {
     return NoteModel(
       idAllocator: testIdAllocator(() => id),
+      key: key,
+      velocity: velocity,
+      length: length,
+      offset: offset,
+      pan: pan,
+    );
+  }
+
+  NoteModel createPreviewNote({
+    required Id id,
+    required int key,
+    required double velocity,
+    required int length,
+    required int offset,
+    required double pan,
+  }) {
+    return createNote(
+      id: id,
       key: key,
       velocity: velocity,
       length: length,
@@ -158,6 +176,105 @@ void main() {
         expect(viewModel.isNoteSelected(resolvedNotes[2]), isTrue);
       },
     );
+
+    test('sorts notes by resolved render order within render groups', () {
+      final viewModel = createViewModel();
+      final plainShort = createNote(
+        id: 1001,
+        key: 60,
+        velocity: 0.75,
+        length: 96,
+        offset: 120,
+        pan: 0,
+      );
+      final plainLater = createNote(
+        id: 1002,
+        key: 60,
+        velocity: 0.75,
+        length: 96,
+        offset: 240,
+        pan: 0,
+      );
+      final plainEarlier = createNote(
+        id: 1003,
+        key: 60,
+        velocity: 0.75,
+        length: 96,
+        offset: 0,
+        pan: 0,
+      );
+      final plainLong = createNote(
+        id: 1004,
+        key: 60,
+        velocity: 0.75,
+        length: 192,
+        offset: 120,
+        pan: 0,
+      );
+      final overriddenLater = createNote(
+        id: 1005,
+        key: 60,
+        velocity: 0.75,
+        length: 96,
+        offset: 900,
+        pan: 0,
+      );
+      final overriddenEarlier = createNote(
+        id: 1006,
+        key: 60,
+        velocity: 0.75,
+        length: 96,
+        offset: 900,
+        pan: 0,
+      );
+      final pattern = createPattern([
+        plainShort,
+        plainLater,
+        plainEarlier,
+        plainLong,
+        overriddenLater,
+        overriddenEarlier,
+      ]);
+
+      pattern.setNoteOverride(noteId: overriddenLater.id, offset: 500);
+      pattern.setNoteOverride(noteId: overriddenEarlier.id, offset: 300);
+      pattern.addPreviewNote(
+        createPreviewNote(
+          id: 1007,
+          key: 60,
+          velocity: 0.75,
+          length: 96,
+          offset: 700,
+          pan: 0,
+        ),
+      );
+      pattern.addPreviewNote(
+        createPreviewNote(
+          id: 1008,
+          key: 60,
+          velocity: 0.75,
+          length: 96,
+          offset: 600,
+          pan: 0,
+        ),
+      );
+
+      final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
+
+      expect(
+        resolvedNotes.map((note) => note.id).toList(growable: false),
+        equals([
+          plainEarlier.id,
+          plainLong.id,
+          plainShort.id,
+          plainLater.id,
+          overriddenEarlier.id,
+          overriddenLater.id,
+          1008,
+          1007,
+        ]),
+      );
+    });
 
     test('resolveRenderedNoteByRef returns real and transient notes', () {
       final viewModel = createViewModel();

@@ -69,6 +69,39 @@ class ResolvedPatternNote {
   });
 }
 
+/// Compares notes by render order.
+///
+/// Lower values are painted first. Preview notes are above overridden
+/// committed notes, which are above plain committed notes. Within each layer,
+/// this puts later-starting notes and shorter notes at the same start position
+/// above earlier/longer notes when they overlap in the piano roll.
+int compareResolvedPatternNotesForRendering(
+  ResolvedPatternNote a,
+  ResolvedPatternNote b,
+) {
+  final layerCompare = _resolvedPatternNoteRenderLayer(
+    a,
+  ).compareTo(_resolvedPatternNoteRenderLayer(b));
+  if (layerCompare != 0) return layerCompare;
+
+  final offsetCompare = a.offset.compareTo(b.offset);
+  if (offsetCompare != 0) return offsetCompare;
+
+  final keyCompare = a.key.compareTo(b.key);
+  if (keyCompare != 0) return keyCompare;
+
+  final lengthCompare = b.length.compareTo(a.length);
+  if (lengthCompare != 0) return lengthCompare;
+
+  return a.id.compareTo(b.id);
+}
+
+int _resolvedPatternNoteRenderLayer(ResolvedPatternNote note) {
+  if (note.isPreviewOnly) return 2;
+  if (note.hasOverride) return 1;
+  return 0;
+}
+
 @AnthemModel.syncedModel()
 class NoteModel extends _NoteModel
     with _$NoteModel, _$NoteModelAnthemModelMixin {

@@ -225,27 +225,7 @@ abstract class _PianoRollViewModel with Store implements DisposableService {
   }
 
   List<ResolvedPatternNote> resolveRenderedNotes(PatternModel pattern) {
-    final resolvedNotes = <ResolvedPatternNote>[];
-    final overriddenNotes = <ResolvedPatternNote>[];
-    final previewOnlyNotes = <ResolvedPatternNote>[];
-
-    for (final note in pattern.getResolvedNotes()) {
-      if (note.isPreviewOnly) {
-        previewOnlyNotes.add(note);
-      } else if (note.hasOverride) {
-        overriddenNotes.add(note);
-      } else {
-        resolvedNotes.add(note);
-      }
-    }
-
-    // Notes painted later appear above earlier notes and win hit tests. Preview
-    // notes should therefore sit on top, with overridden committed notes above
-    // plain committed notes.
-    resolvedNotes.addAll(overriddenNotes);
-    resolvedNotes.addAll(previewOnlyNotes);
-
-    return resolvedNotes;
+    return pattern.renderOrderedResolvedNotes;
   }
 
   /// Calculates the note and resize handle under the cursor, if there is one.
