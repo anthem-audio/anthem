@@ -740,7 +740,7 @@ void main() {
       },
     );
 
-    test('copies track metadata onto created pattern', () {
+    test('uses track name for created pattern', () {
       final track = fixture.project.tracks[_TrackIds.b]!;
 
       final createdIds = createClipAndGetCreatedIds(
@@ -752,9 +752,6 @@ void main() {
       final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
 
       expect(pattern.name, equals(track.name));
-      expect(pattern.color.hue, equals(track.color.hue));
-      expect(pattern.color.palette, equals(track.color.palette));
-      expect(identical(pattern.color, track.color), isFalse);
     });
 
     test('is a single undo/redo action', () {

@@ -20,7 +20,6 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 
 import 'command.dart';
 
@@ -123,29 +122,5 @@ class SetPatternNameCommand extends Command {
   void rollback(ProjectModel project) {
     final pattern = project.sequence.patterns[patternID]!;
     pattern.name = oldName;
-  }
-}
-
-class SetPatternColorCommand extends Command {
-  Id patternID;
-  late AnthemColor oldColor;
-  AnthemColor newColor;
-
-  SetPatternColorCommand({
-    required ProjectModel project,
-    required this.patternID,
-    required this.newColor,
-  }) {
-    oldColor = project.sequence.patterns[patternID]!.color;
-  }
-
-  @override
-  void execute(ProjectModel project) {
-    project.sequence.patterns[patternID]!.color = newColor;
-  }
-
-  @override
-  void rollback(ProjectModel project) {
-    project.sequence.patterns[patternID]!.color = oldColor;
   }
 }

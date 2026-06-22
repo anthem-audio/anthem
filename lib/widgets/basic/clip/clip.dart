@@ -28,9 +28,8 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 class Clip extends StatelessWidget {
-  final Id? clipId;
-  final Id? patternId;
-  final Id? arrangementId;
+  final Id clipId;
+  final Id arrangementId;
   final double ticksPerPixel;
   final bool selected;
   final bool hasResizeHandles;
@@ -45,40 +44,39 @@ class Clip extends StatelessWidget {
     this.selected = false,
     this.hasResizeHandles = true,
     this.hideBorder = false,
-  }) : patternId = null;
-
-  /// Creates a Clip widget tied to a PatternModel
-  const Clip.fromPattern({
-    super.key,
-    required this.patternId,
-    required this.ticksPerPixel,
-    this.hasResizeHandles = false,
-    this.hideBorder = false,
-  }) : selected = false,
-       clipId = null,
-       arrangementId = null;
+  });
 
   @override
   Widget build(BuildContext context) {
     final projectModel = Provider.of<ProjectModel>(context);
     final clipModel =
-        projectModel.sequence.arrangements[arrangementId]?.clips[clipId];
-    final patternModel =
-        projectModel.sequence.patterns[clipModel?.patternId ?? patternId!]!;
+        projectModel.sequence.arrangements[arrangementId]!.clips[clipId]!;
+    final patternModel = projectModel.sequence.patterns[clipModel.patternId]!;
+    final color = projectModel.tracks[clipModel.trackId]!.color;
 
     return CustomPaint(
-      painter: ClipPainter(pattern: patternModel, hideBorder: hideBorder),
+      painter: ClipPainter(
+        pattern: patternModel,
+        color: color,
+        clip: clipModel,
+        hideBorder: hideBorder,
+      ),
     );
   }
 }
 
 class ClipPainter extends CustomPainterObserver {
   final PatternModel pattern;
+  final AnthemColor color;
   final ClipModel? clip;
   final bool hideBorder;
 
-  ClipPainter({required this.pattern, this.clip, this.hideBorder = false})
-    : super(debugName: 'ClipPainter');
+  ClipPainter({
+    required this.pattern,
+    required this.color,
+    this.clip,
+    this.hideBorder = false,
+  }) : super(debugName: 'ClipPainter');
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -86,6 +84,8 @@ class ClipPainter extends CustomPainterObserver {
       canvas: canvas,
       canvasSize: size,
       pattern: pattern,
+      color: color,
+      clip: clip,
       x: 0,
       y: 0,
       width: size.width,
@@ -100,6 +100,7 @@ class ClipPainter extends CustomPainterObserver {
   @override
   bool shouldRepaint(ClipPainter oldDelegate) =>
       pattern != oldDelegate.pattern ||
+      color != oldDelegate.color ||
       clip != oldDelegate.clip ||
       hideBorder != oldDelegate.hideBorder;
 }

@@ -334,7 +334,7 @@ abstract class _ArrangerController {
     final pattern = PatternModel(
       idAllocator: _idAllocator,
       name: patternName ?? _newClipPatternNameForTrack(track),
-    )..color = track.color.clone();
+    );
     if (track.isAutomationLane) {
       pattern.clipAutoSizeMode = PatternClipAutoSizeMode.content;
     }

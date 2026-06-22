@@ -26,7 +26,6 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_notes_render_cache.dart';
@@ -243,9 +242,6 @@ abstract class _PatternModel
   @anthemObservable
   String name = '';
 
-  @anthemObservable
-  AnthemColor color = AnthemColor(hue: 0);
-
   /// Controls how [clipAutoWidth] is calculated for clips with no explicit
   /// time view.
   @anthemObservable
@@ -288,7 +284,6 @@ abstract class _PatternModel
   _PatternModel() : id = -1;
 
   _PatternModel.create({required this.id, required this.name}) {
-    color = AnthemColor.randomHue();
     timeSignatureChanges = AnthemObservableList();
   }
 
@@ -348,7 +343,10 @@ abstract class _PatternModel
     }
   }
 
+  @hide
   bool _resolvedNoteCacheEnabled = false;
+
+  @hide
   List<ResolvedPatternNote>? _renderOrderedResolvedNotesCache;
 
   void _enableResolvedNoteCache() {

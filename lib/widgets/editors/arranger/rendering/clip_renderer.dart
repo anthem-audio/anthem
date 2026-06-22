@@ -24,6 +24,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
@@ -55,6 +56,7 @@ const _automationHandleAnnotationMargin = 8.0;
 
 class ClipRenderInfo {
   final PatternModel pattern;
+  final AnthemColor color;
   final Id clipId;
   final Id trackId;
   final bool hasTimingOverride;
@@ -72,6 +74,7 @@ class ClipRenderInfo {
 
   ClipRenderInfo({
     required this.pattern,
+    required this.color,
     required this.clipId,
     required this.trackId,
     required this.hasTimingOverride,
@@ -106,7 +109,7 @@ void paintClipList({
   for (final clipEntry in clipList) {
     _paintContainer(
       canvas: canvas,
-      pattern: clipEntry.pattern,
+      color: clipEntry.color,
       x: clipEntry.x,
       y: clipEntry.y,
       width: clipEntry.width,
@@ -345,7 +348,6 @@ void paintClipList({
     for (final clipEntry in clipList) {
       _paintContainerBorder(
         canvas: canvas,
-        pattern: clipEntry.pattern,
         x: clipEntry.x,
         y: clipEntry.y,
         width: clipEntry.width,
@@ -360,6 +362,7 @@ void paintClip({
   required Canvas canvas,
   required Size canvasSize,
   required PatternModel pattern,
+  required AnthemColor color,
   ClipModel? clip,
   required double x,
   required double y,
@@ -373,7 +376,7 @@ void paintClip({
 }) {
   _paintContainer(
     canvas: canvas,
-    pattern: pattern,
+    color: color,
     x: x,
     y: y,
     width: width,
@@ -392,6 +395,7 @@ void paintClip({
       size: canvasSize,
       clipRect: Rect.fromLTWH(x, y, width, height),
       pattern: pattern,
+      color: color,
       x: x,
       y: y,
       width: width,
@@ -577,6 +581,7 @@ void _drawClipTitleDirect({
     size: canvasSize,
     clipRect: rect,
     pattern: pattern,
+    color: clipEntry.color,
     x: x,
     y: textY,
     width: width,
@@ -854,7 +859,7 @@ void _drawAutomationHandleCircle({
 
 void _paintContainer({
   required Canvas canvas,
-  required PatternModel pattern,
+  required AnthemColor color,
   required double x,
   required double y,
   required double width,
@@ -864,7 +869,7 @@ void _paintContainer({
   bool hideBorder = false,
 }) {
   final baseColor = getBaseColor(
-    color: pattern.color,
+    color: color,
     selected: selected,
     hovered: hovered,
   );
@@ -881,7 +886,7 @@ void _paintContainer({
   canvas.drawRect(rect, rectPaint);
 
   if (selected) {
-    final strokeColor = getSelectedBorderColor(color: pattern.color);
+    final strokeColor = getSelectedBorderColor(color: color);
 
     final selectedRectPaint = Paint()
       ..color = strokeColor
@@ -896,7 +901,6 @@ void _paintContainer({
 
 void _paintContainerBorder({
   required Canvas canvas,
-  required PatternModel pattern,
   required double x,
   required double y,
   required double width,
@@ -917,6 +921,7 @@ void drawPatternTitle({
   required Size size,
   required Rect clipRect,
   required PatternModel pattern,
+  required AnthemColor color,
   required double x,
   required double y,
   required double width,
@@ -930,7 +935,7 @@ void drawPatternTitle({
   if (overrideTextColor != null) {
     textColor = overrideTextColor;
   } else {
-    textColor = getContentColor(color: pattern.color, selected: selected);
+    textColor = getContentColor(color: color, selected: selected);
   }
 
   drawClipTitleText(

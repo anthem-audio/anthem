@@ -23,7 +23,6 @@ import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -137,27 +136,6 @@ void main() {
 
       command.rollback(project);
       expect(pattern.name, equals('Old Name'));
-    });
-  });
-
-  group('SetPatternColorCommand', () {
-    test('execute and rollback update color', () {
-      final oldColor = AnthemColor(hue: 10, palette: .normal);
-      final newColor = AnthemColor(hue: 120, palette: .bright);
-      final pattern = createPattern('Pattern 1')..color = oldColor;
-      patterns[pattern.id] = pattern;
-
-      final command = SetPatternColorCommand(
-        project: project,
-        patternID: pattern.id,
-        newColor: newColor,
-      );
-
-      command.execute(project);
-      expect(pattern.color, same(newColor));
-
-      command.rollback(project);
-      expect(pattern.color, same(oldColor));
     });
   });
 }

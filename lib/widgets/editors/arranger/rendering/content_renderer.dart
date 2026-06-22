@@ -395,8 +395,12 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
     if (y > size.height || y + trackHeight < 0) return null;
 
+    final track = project.tracks[trackId];
+    if (track == null) return null;
+
     return ClipRenderInfo(
       pattern: pattern,
+      color: track.color,
       clipId: clipId,
       trackId: trackId,
       hasTimingOverride: hasTimingOverride,

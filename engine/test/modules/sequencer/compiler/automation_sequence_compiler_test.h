@@ -65,7 +65,6 @@ class AutomationSequenceCompilerTest : public juce::UnitTest {
     return std::make_shared<PatternModel>(PatternModelImpl{
         .id = id,
         .name = "Pattern",
-        .color = nullptr,
         .notes = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<NoteModel>>>(),
         .automation = std::make_shared<AutomationLaneModel>(AutomationLaneModelImpl{
             .points = pointList,
