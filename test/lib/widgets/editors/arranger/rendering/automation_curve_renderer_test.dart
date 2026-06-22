@@ -515,6 +515,41 @@ void main() {
       },
     );
 
+    test('extends clipped renders to the clip end after the last point', () {
+      final points = _makePointModelList([
+        (offset: 10, value: 0.2, curve: AutomationCurveType.smooth),
+        (offset: 90, value: 0.8, curve: AutomationCurveType.smooth),
+      ]);
+
+      final lineBuffer = LineBuffer();
+      final lineJoinBuffer = CoordinateBuffer();
+      final triCoordBuffer = CoordinateBuffer();
+
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: const ui.Size(100, 40),
+        xDrawPositionTime: (0.0, 100.0),
+        yDrawPositionPixels: (0.0, 40.0),
+        points: points,
+        strokeWidth: 2.0,
+        timeViewStart: 0.0,
+        timeViewEnd: 100.0,
+        clipStart: 0.0,
+        clipEnd: 100.0,
+        clipOffset: 0.0,
+        lineBuffer: lineBuffer,
+        lineJoinBuffer: lineJoinBuffer,
+        triCoordBuffer: triCoordBuffer,
+      );
+
+      final xExtents = _lineBufferXExtents(lineBuffer);
+      expect(xExtents.min, closeTo(0.0, 1e-6));
+      expect(xExtents.max, closeTo(100.0, 1e-6));
+    });
+
     test(
       'adds join points for internal handles when crossing curve segments',
       () {
@@ -726,6 +761,26 @@ void _expectLineBufferXWithin(
     expect(x2, greaterThanOrEqualTo(minX - 1e-6));
     expect(x2, lessThanOrEqualTo(maxX + 1e-6));
   }
+}
+
+({double min, double max}) _lineBufferXExtents(LineBuffer lineBuffer) {
+  expect(lineBuffer.lineCount, greaterThan(0));
+
+  final values = lineBuffer.buffer;
+  var minX = double.infinity;
+  var maxX = double.negativeInfinity;
+
+  for (var i = 0; i < values.length; i += 4) {
+    final x1 = values[i];
+    final x2 = values[i + 2];
+
+    minX = x1 < minX ? x1 : minX;
+    minX = x2 < minX ? x2 : minX;
+    maxX = x1 > maxX ? x1 : maxX;
+    maxX = x2 > maxX ? x2 : maxX;
+  }
+
+  return (min: minX, max: maxX);
 }
 
 void _expectCoordinateInBuffer(

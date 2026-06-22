@@ -601,9 +601,10 @@ void renderAutomationCurve({
     startTime = clipOffset;
   }
 
-  endTime = points.last.offset.toDouble() + clipOffset - (clipStart ?? 0.0);
   if (clipStart != null && clipEnd != null) {
-    endTime = min(endTime, clipEnd + clipOffset - clipStart);
+    endTime = clipEnd + clipOffset - clipStart;
+  } else {
+    endTime = points.last.offset.toDouble() + clipOffset - (clipStart ?? 0.0);
   }
 
   // This prevents the curve from rendering slightly before the start of the
