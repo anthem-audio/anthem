@@ -266,12 +266,8 @@ void GraphProcessContext::rt_allocateSampleBufferSlotsForNode(
       continue;
     }
 
-    slot.rt_arenaHandle = sampleArena->allocate(static_cast<size_t>(slot.channelCount));
-    jassert(slot.rt_arenaHandle.has_value());
-
-    if (!slot.rt_arenaHandle.has_value()) {
-      continue;
-    }
+    slot.rt_arenaHandle = sampleArena->allocateOrAbort(static_cast<size_t>(slot.channelCount),
+        "GraphProcessContext::rt_allocateSampleBufferSlotsForNode");
 
     auto* slotData = sampleArena->getPointer(*slot.rt_arenaHandle);
     jassert(slotData != nullptr);

@@ -44,6 +44,7 @@ public:
   void runTest() override {
     testRejectsInvalidSizing();
     testComputesStorageFromSizingParameters();
+    testReportsFreeSpaceDiagnostics();
     testAllocatesNonOverlappingQuantizedBlocks();
     testRejectsOversizedAndExcessAllocations();
     testFreeReusesStorageAndInvalidatesHandle();
@@ -78,6 +79,43 @@ public:
     expectEquals(static_cast<int>(allocator.getFreeBlockCapacity()), 25);
     expectEquals(static_cast<int>(allocator.getAllocationRecordCapacity()), 24);
     expectEquals(static_cast<int>(allocator.getFreeBlockCount()), 1);
+  }
+
+  void testReportsFreeSpaceDiagnostics() {
+    beginTest("ArenaAllocator reports free-space diagnostics");
+
+    ArenaAllocator allocator(16, 8);
+
+    expectEquals(static_cast<int>(allocator.getTotalFreeBlockCount()), 8);
+    expectEquals(static_cast<int>(allocator.getLargestFreeBlockCount()), 8);
+
+    auto first = expectAllocate(allocator, 2, "First allocation");
+    auto second = expectAllocate(allocator, 2, "Second allocation");
+    auto third = expectAllocate(allocator, 2, "Third allocation");
+
+    expectEquals(static_cast<int>(allocator.getTotalFreeBlockCount()), 2);
+    expectEquals(static_cast<int>(allocator.getLargestFreeBlockCount()), 2);
+
+    expect(allocator.free(second), "Freeing the middle allocation should fragment the arena.");
+    expectEquals(static_cast<int>(allocator.getFreeBlockCount()), 2);
+    expectEquals(static_cast<int>(allocator.getTotalFreeBlockCount()), 4);
+    expectEquals(static_cast<int>(allocator.getLargestFreeBlockCount()), 2);
+
+    expect(allocator.free(first), "Freeing the first allocation should coalesce with the middle.");
+    expectEquals(static_cast<int>(allocator.getFreeBlockCount()), 2);
+    expectEquals(static_cast<int>(allocator.getTotalFreeBlockCount()), 6);
+    expectEquals(static_cast<int>(allocator.getLargestFreeBlockCount()), 4);
+
+    auto merged = expectAllocate(allocator, 4, "Merged allocation");
+
+    expectEquals(static_cast<int>(allocator.getTotalFreeBlockCount()), 2);
+    expectEquals(static_cast<int>(allocator.getLargestFreeBlockCount()), 2);
+
+    expect(allocator.free(third), "Remaining original allocation should free.");
+    expect(allocator.free(merged), "Merged allocation should free.");
+    expectEquals(static_cast<int>(allocator.getFreeBlockCount()), 1);
+    expectEquals(static_cast<int>(allocator.getTotalFreeBlockCount()), 8);
+    expectEquals(static_cast<int>(allocator.getLargestFreeBlockCount()), 8);
   }
 
   void testAllocatesNonOverlappingQuantizedBlocks() {

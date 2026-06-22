@@ -58,6 +58,7 @@ public:
   ArenaAllocator& operator=(ArenaAllocator&&) = delete;
 
   std::optional<Handle> allocate(size_t blockCount);
+  Handle allocateOrAbort(size_t blockCount, const char* context);
   bool free(Handle handle);
   void reset();
 
@@ -71,6 +72,8 @@ public:
   size_t getTotalBlockCount() const;
   size_t getStorageSizeBytes() const;
   size_t getFreeBlockCount() const;
+  size_t getTotalFreeBlockCount() const;
+  size_t getLargestFreeBlockCount() const;
   size_t getFreeBlockCapacity() const;
   size_t getAllocationRecordCapacity() const;
   size_t getActiveAllocationCount() const;

@@ -19,7 +19,10 @@
 
 #include "arena_allocator.h"
 
+#include <algorithm>
+#include <cstdlib>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace anthem {
@@ -56,6 +59,28 @@ private:
     }
 
     return generation;
+  }
+
+  [[noreturn]] void abortAfterAllocationFailure(size_t blockCount, const char* context) const {
+    std::string message = "Fatal error: ArenaAllocator allocation failed";
+
+    if (context != nullptr && context[0] != '\0') {
+      message += " in ";
+      message += context;
+    }
+
+    message += ". requestedBlocks=" + std::to_string(blockCount);
+    message += ", totalBlocks=" + std::to_string(totalBlockCount);
+    message += ", totalFreeBlocks=" + std::to_string(getTotalFreeBlockCount());
+    message += ", largestFreeBlock=" + std::to_string(getLargestFreeBlockCount());
+    message += ", freeBlockSpans=" + std::to_string(freeBlockCount);
+    message += ", activeAllocations=" + std::to_string(activeAllocationCount);
+    message += ", allocationRecordCapacity=" + std::to_string(allocationRecords.size());
+    message += ", blockQuantumSizeBytes=" + std::to_string(blockQuantumSizeBytes);
+
+    juce::Logger::writeToLog(juce::String(message.c_str()));
+    jassertfalse;
+    std::abort();
   }
 
   bool isHandleValid(Handle handle) const {
@@ -206,6 +231,16 @@ public:
     return std::nullopt;
   }
 
+  Handle allocateOrAbort(size_t blockCount, const char* context) {
+    auto handle = allocate(blockCount);
+
+    if (handle.has_value()) {
+      return *handle;
+    }
+
+    abortAfterAllocationFailure(blockCount, context);
+  }
+
   bool free(Handle handle) {
     if (!isHandleValid(handle)) {
       return false;
@@ -303,6 +338,26 @@ public:
     return freeBlockCount;
   }
 
+  size_t getTotalFreeBlockCount() const {
+    size_t result = 0;
+
+    for (size_t i = 0; i < freeBlockCount; ++i) {
+      result += freeBlocks[i].blockCount;
+    }
+
+    return result;
+  }
+
+  size_t getLargestFreeBlockCount() const {
+    size_t result = 0;
+
+    for (size_t i = 0; i < freeBlockCount; ++i) {
+      result = std::max(result, freeBlocks[i].blockCount);
+    }
+
+    return result;
+  }
+
   size_t getFreeBlockCapacity() const {
     return freeBlocks.size();
   }
@@ -323,6 +378,10 @@ ArenaAllocator::~ArenaAllocator() = default;
 
 std::optional<ArenaAllocator::Handle> ArenaAllocator::allocate(size_t blockCount) {
   return impl->allocate(blockCount);
+}
+
+ArenaAllocator::Handle ArenaAllocator::allocateOrAbort(size_t blockCount, const char* context) {
+  return impl->allocateOrAbort(blockCount, context);
 }
 
 bool ArenaAllocator::free(Handle handle) {
@@ -367,6 +426,14 @@ size_t ArenaAllocator::getStorageSizeBytes() const {
 
 size_t ArenaAllocator::getFreeBlockCount() const {
   return impl->getFreeBlockCount();
+}
+
+size_t ArenaAllocator::getTotalFreeBlockCount() const {
+  return impl->getTotalFreeBlockCount();
+}
+
+size_t ArenaAllocator::getLargestFreeBlockCount() const {
+  return impl->getLargestFreeBlockCount();
 }
 
 size_t ArenaAllocator::getFreeBlockCapacity() const {
