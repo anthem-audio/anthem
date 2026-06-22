@@ -17,21 +17,83 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
-import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
-import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 
-// Pixel range where mouse events will affect stems.
-const stemEditableSize = 80;
+const _stemNearestHitRadiusPixels = 40.0;
+
+class _PianoRollStemEditNoteSnapshot {
+  final Id id;
+  final Time offset;
+  final double oldValue;
+
+  const _PianoRollStemEditNoteSnapshot({
+    required this.id,
+    required this.offset,
+    required this.oldValue,
+  });
+}
+
+int _lowerBoundByOffset(
+  List<_PianoRollStemEditNoteSnapshot> notes,
+  double offset,
+) {
+  var low = 0;
+  var high = notes.length;
+
+  while (low < high) {
+    final mid = low + ((high - low) >> 1);
+    if (notes[mid].offset < offset) {
+      low = mid + 1;
+    } else {
+      high = mid;
+    }
+  }
+
+  return low;
+}
+
+Time? _nearestStemOffset(
+  List<_PianoRollStemEditNoteSnapshot> notes,
+  double offset, {
+  required double maxDistance,
+}) {
+  if (notes.isEmpty) {
+    return null;
+  }
+
+  final nextIndex = _lowerBoundByOffset(notes, offset);
+  final previousNote = nextIndex > 0 ? notes[nextIndex - 1] : null;
+  final nextNote = nextIndex < notes.length ? notes[nextIndex] : null;
+
+  final Time nearestOffset;
+  if (previousNote == null) {
+    nearestOffset = nextNote!.offset;
+  } else if (nextNote == null) {
+    nearestOffset = previousNote.offset;
+  } else {
+    final previousDistance = (previousNote.offset - offset).abs();
+    final nextDistance = (nextNote.offset - offset).abs();
+    nearestOffset = previousDistance <= nextDistance
+        ? previousNote.offset
+        : nextNote.offset;
+  }
+
+  if ((nearestOffset - offset).abs() > maxDistance) {
+    return null;
+  }
+
+  return nearestOffset;
+}
 
 class PianoRollStemEditorPointerEvent {
   final double offset;
@@ -161,32 +223,78 @@ class PianoRollStemPointerSessionState extends _PianoRollStemMachineState {
 
   int? activePointerId;
   PianoRollStemEditorPointerEvent? pointerDownEvent;
+  PianoRollStemEditorPointerEvent? previousEvent;
   PianoRollStemEditorPointerEvent? currentEvent;
   PianoRollStem? activeStem;
   PatternModel? pattern;
+  List<_PianoRollStemEditNoteSnapshot> _noteSnapshots = const [];
 
   void _initializeSession() {
     activePointerId = interactionState.activePointerId;
     pointerDownEvent = interactionState.pointerDownEvent;
+    previousEvent = interactionState.currentEvent;
     currentEvent = interactionState.currentEvent;
     activeStem = viewModel.activeStem;
     pattern = activePatternOrNull;
+    _noteSnapshots = _createNoteSnapshot();
   }
 
   void _syncCurrentEvent() {
-    if (!interactionState.isPointerActive) {
+    final nextEvent = interactionState.currentEvent;
+    if (nextEvent == null || identical(nextEvent, currentEvent)) {
       return;
     }
 
-    currentEvent = interactionState.currentEvent;
+    previousEvent = currentEvent ?? nextEvent;
+    currentEvent = nextEvent;
+  }
+
+  List<_PianoRollStemEditNoteSnapshot> _createNoteSnapshot() {
+    final stem = activeStem;
+    final targetPattern = pattern;
+    if (stem == null || targetPattern == null) {
+      return const [];
+    }
+
+    final hasSelectedNotes = viewModel.selectedNotes.isNotEmpty;
+    final notes =
+        targetPattern.notes.values
+            .where(
+              (note) =>
+                  !hasSelectedNotes ||
+                  viewModel.selectedNotes.contains(note.id),
+            )
+            .map(
+              (note) => _PianoRollStemEditNoteSnapshot(
+                id: note.id,
+                offset: note.offset,
+                oldValue: switch (stem) {
+                  PianoRollStem.velocity => note.velocity,
+                  PianoRollStem.pan => note.pan,
+                },
+              ),
+            )
+            .toList(growable: false)
+          ..sort((a, b) {
+            final offsetCompare = a.offset.compareTo(b.offset);
+            if (offsetCompare != 0) {
+              return offsetCompare;
+            }
+
+            return a.id.compareTo(b.id);
+          });
+
+    return List.unmodifiable(notes);
   }
 
   void _clearSession() {
     activePointerId = null;
     pointerDownEvent = null;
+    previousEvent = null;
     currentEvent = null;
     activeStem = null;
     pattern = null;
+    _noteSnapshots = const [];
   }
 
   @override
@@ -252,120 +360,132 @@ class PianoRollStemEditState extends _PianoRollStemMachineState {
     };
   }
 
-  double _stemValueForNote({
-    required NoteModel note,
-    required PianoRollStem stem,
+  List<_PianoRollStemEditNoteSnapshot> _notesInOffsetRange({
+    required List<_PianoRollStemEditNoteSnapshot> notes,
+    required double startOffset,
+    required double endOffset,
   }) {
-    return switch (stem) {
-      PianoRollStem.velocity => note.velocity,
-      PianoRollStem.pan => note.pan,
-    };
-  }
+    final firstIndex = _lowerBoundByOffset(notes, startOffset);
+    final result = <_PianoRollStemEditNoteSnapshot>[];
 
-  Iterable<NoteModel> _candidateNotes(PatternModel pattern) {
-    final notes = pattern.notes.values.toList(growable: false);
-    if (viewModel.selectedNotes.isEmpty) {
-      return notes;
-    }
-
-    return notes.where((note) => viewModel.selectedNotes.contains(note.id));
-  }
-
-  List<NoteModel> _affectedNotes({
-    required PatternModel pattern,
-    required PianoRollStemEditorPointerEvent event,
-  }) {
-    final notes = _candidateNotes(pattern).toList(growable: false);
-    if (notes.isEmpty) {
-      return const [];
-    }
-
-    Time? closestOffsetBefore;
-    Time? closestOffsetAfter;
-
-    for (final note in notes) {
-      if (note.offset < event.offset) {
-        if (closestOffsetBefore == null ||
-            (note.offset - event.offset).abs() <
-                (closestOffsetBefore - event.offset).abs()) {
-          closestOffsetBefore = note.offset;
-        }
-        continue;
+    for (var i = firstIndex; i < notes.length; i++) {
+      final note = notes[i];
+      if (note.offset > endOffset) {
+        break;
       }
 
-      if (closestOffsetAfter == null ||
-          (note.offset - event.offset).abs() <
-              (closestOffsetAfter - event.offset).abs()) {
-        closestOffsetAfter = note.offset;
-      }
+      result.add(note);
     }
 
-    double offsetToPixels(Time offset) {
-      return timeToPixels(
-        timeViewStart: viewModel.timeRange.start,
-        timeViewEnd: viewModel.timeRange.end,
-        viewPixelWidth: event.viewSize.width,
-        time: offset.toDouble(),
-      );
-    }
-
-    final pointerTimePixels = timeToPixels(
-      timeViewStart: viewModel.timeRange.start,
-      timeViewEnd: viewModel.timeRange.end,
-      viewPixelWidth: event.viewSize.width,
-      time: event.offset,
-    );
-
-    final closestBeforeDistance = closestOffsetBefore == null
-        ? double.infinity
-        : (offsetToPixels(closestOffsetBefore) - pointerTimePixels).abs();
-    final closestAfterDistance = closestOffsetAfter == null
-        ? double.infinity
-        : (offsetToPixels(closestOffsetAfter) - pointerTimePixels).abs();
-
-    final targetOffset = closestBeforeDistance <= closestAfterDistance
-        ? closestOffsetBefore
-        : closestOffsetAfter;
-    final targetDistance = closestBeforeDistance <= closestAfterDistance
-        ? closestBeforeDistance
-        : closestAfterDistance;
-
-    if (targetOffset == null || targetDistance > stemEditableSize / 2) {
-      return const [];
-    }
-
-    return notes.where((note) => note.offset == targetOffset).toList();
+    return result;
   }
 
-  double _valueFromEvent({
-    required PianoRollStem stem,
-    required PianoRollStemEditorPointerEvent event,
+  double _normalizedYForOffset({
+    required double startOffset,
+    required double startY,
+    required double endOffset,
+    required double endY,
+    required double offset,
   }) {
-    return (stem.top - stem.bottom) * event.normalizedY + stem.bottom;
+    final offsetDelta = endOffset - startOffset;
+    if (offsetDelta == 0) {
+      return endY;
+    }
+
+    final t = ((offset - startOffset) / offsetDelta).clamp(0.0, 1.0);
+    return startY + (endY - startY) * t;
+  }
+
+  double _valueFromNormalizedY({
+    required PianoRollStem stem,
+    required double normalizedY,
+  }) {
+    return (stem.top - stem.bottom) * normalizedY + stem.bottom;
+  }
+
+  double _nearestStemHitRadiusTime(PianoRollStemEditorPointerEvent event) {
+    final viewWidth = event.viewSize.width;
+    if (viewWidth <= 0) {
+      return 0;
+    }
+
+    return viewModel.timeRange.width.abs() /
+        viewWidth *
+        _stemNearestHitRadiusPixels;
   }
 
   void _applyPreview() {
     final stem = activeStem;
     final targetPattern = pattern;
-    final event = parentState.currentEvent;
-    if (stem == null || targetPattern == null || event == null) {
+    final endEvent = parentState.currentEvent;
+    final noteSnapshots = parentState._noteSnapshots;
+    if (stem == null || targetPattern == null || endEvent == null) {
       return;
     }
 
-    final newValue = _valueFromEvent(stem: stem, event: event);
-    final affectedNotes = _affectedNotes(pattern: targetPattern, event: event);
+    final startEvent = parentState.previousEvent ?? endEvent;
+    final startEdgeOffset = _nearestStemOffset(
+      noteSnapshots,
+      startEvent.offset,
+      maxDistance: _nearestStemHitRadiusTime(startEvent),
+    );
+    final endEdgeOffset = _nearestStemOffset(
+      noteSnapshots,
+      endEvent.offset,
+      maxDistance: _nearestStemHitRadiusTime(endEvent),
+    );
+    if (startEdgeOffset == null || endEdgeOffset == null) {
+      return;
+    }
+
+    final rangeStart = min(startEdgeOffset, endEdgeOffset).toDouble();
+    final rangeEnd = max(startEdgeOffset, endEdgeOffset).toDouble();
+    final affectedNotes = _notesInOffsetRange(
+      notes: noteSnapshots,
+      startOffset: rangeStart,
+      endOffset: rangeEnd,
+    );
+
+    if (affectedNotes.isEmpty) {
+      return;
+    }
+
+    final cursorValue = _valueFromNormalizedY(
+      stem: stem,
+      normalizedY: endEvent.normalizedY,
+    );
+    switch (stem) {
+      case PianoRollStem.velocity:
+        viewModel.cursorNoteVelocity = cursorValue;
+        break;
+      case PianoRollStem.pan:
+        viewModel.cursorNotePan = cursorValue;
+        break;
+    }
 
     for (final note in affectedNotes) {
-      oldValues[note.id] ??= _stemValueForNote(note: note, stem: stem);
+      if (!targetPattern.notes.containsKey(note.id)) {
+        continue;
+      }
+
+      final newValue = _valueFromNormalizedY(
+        stem: stem,
+        normalizedY: _normalizedYForOffset(
+          startOffset: startEdgeOffset.toDouble(),
+          startY: startEvent.normalizedY,
+          endOffset: endEdgeOffset.toDouble(),
+          endY: endEvent.normalizedY,
+          offset: note.offset.toDouble(),
+        ),
+      );
+      oldValues[note.id] ??= note.oldValue;
       newValues[note.id] = newValue;
 
       switch (stem) {
         case PianoRollStem.velocity:
-          viewModel.cursorNoteVelocity = newValue;
           targetPattern.setNoteOverride(noteId: note.id, velocity: newValue);
           break;
         case PianoRollStem.pan:
-          viewModel.cursorNotePan = newValue;
           targetPattern.setNoteOverride(noteId: note.id, pan: newValue);
           break;
       }

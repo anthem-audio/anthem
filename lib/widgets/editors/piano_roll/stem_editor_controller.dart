@@ -22,7 +22,7 @@ import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/stem_
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 
 export 'package:anthem/widgets/editors/piano_roll/controller/state_machine/stem_editor_state_machine.dart'
-    show PianoRollStemEditorPointerEvent, stemEditableSize;
+    show PianoRollStemEditorPointerEvent;
 
 class PianoRollStemEditorController {
   final ProjectModel project;

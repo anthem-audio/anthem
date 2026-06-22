@@ -143,7 +143,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
     final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
     final noteOutsetBorderPaint = Paint()..color = AnthemTheme.grid.minor;
-    final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
+    final resolvedNotes = pattern.renderOrderedResolvedNotes;
 
     for (final note in resolvedNotes) {
       final noteRef = viewModel.renderedRefFor(note);

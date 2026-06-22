@@ -162,7 +162,7 @@ void main() {
         );
         viewModel.selectedNotes.add(transientNoteId);
 
-        final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
+        final resolvedNotes = pattern.renderOrderedResolvedNotes;
 
         expect(
           resolvedNotes.map(viewModel.renderedRefFor).toList(growable: false),
@@ -178,7 +178,6 @@ void main() {
     );
 
     test('sorts notes by resolved render order within render groups', () {
-      final viewModel = createViewModel();
       final plainShort = createNote(
         id: 1001,
         key: 60,
@@ -259,7 +258,7 @@ void main() {
         ),
       );
 
-      final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
+      final resolvedNotes = pattern.renderOrderedResolvedNotes;
 
       expect(
         resolvedNotes.map((note) => note.id).toList(growable: false),

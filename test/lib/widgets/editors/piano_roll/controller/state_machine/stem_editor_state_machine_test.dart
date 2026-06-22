@@ -113,7 +113,7 @@ void main() {
       expect(unselectedNote.velocity, equals(0.6));
     });
 
-    test('does not edit when no stem is close enough', () {
+    test('does not edit when the nearest stem is outside the hit radius', () {
       final note = fixture.addNote();
 
       fixture.pointerDown(offset: 1000);
@@ -133,6 +133,87 @@ void main() {
 
       expect(note.velocity, equals(0.75));
       expect(note.pan, equals(0));
+    });
+
+    test('interpolates stem values across fast drags', () {
+      final startNote = fixture.addNote(offset: 120);
+      final middleNote = fixture.addNote(offset: 240);
+      final endNote = fixture.addNote(offset: 360);
+      final afterEndNote = fixture.addNote(offset: 480);
+      final outsideNote = fixture.addNote(offset: 600);
+
+      fixture.pointerDown(offset: 120, normalizedY: 0);
+      fixture.pointerMove(offset: 360, normalizedY: 1);
+      fixture.pointerUp(offset: 360, normalizedY: 1);
+
+      expect(startNote.velocity, equals(0));
+      expect(middleNote.velocity, closeTo(0.5, 1e-9));
+      expect(endNote.velocity, equals(1));
+      expect(afterEndNote.velocity, equals(0.8));
+      expect(outsideNote.velocity, equals(0.8));
+    });
+
+    test('uses nearest stem edges as the drag range', () {
+      final beforeStartNote = fixture.addNote(offset: 0);
+      final startNote = fixture.addNote(offset: 120);
+      final middleNote = fixture.addNote(offset: 240);
+      final endNote = fixture.addNote(offset: 360);
+      final afterEndNote = fixture.addNote(offset: 480);
+
+      fixture.pointerDown(offset: 120, normalizedY: 0);
+      fixture.pointerMove(offset: 360, normalizedY: 1);
+      fixture.pointerUp(offset: 360, normalizedY: 1);
+
+      expect(beforeStartNote.velocity, equals(0.8));
+      expect(startNote.velocity, equals(0));
+      expect(middleNote.velocity, closeTo(0.5, 1e-9));
+      expect(endNote.velocity, equals(1));
+      expect(afterEndNote.velocity, equals(0.8));
+    });
+
+    test('interpolates nearest stem edges in reverse drag direction', () {
+      final outsideNote = fixture.addNote(offset: 0);
+      final endNote = fixture.addNote(offset: 120);
+      final middleNote = fixture.addNote(offset: 240);
+      final startNote = fixture.addNote(offset: 360);
+
+      fixture.pointerDown(offset: 360, normalizedY: 0);
+      fixture.pointerMove(offset: 120, normalizedY: 1);
+      fixture.pointerUp(offset: 120, normalizedY: 1);
+
+      expect(outsideNote.velocity, equals(0.8));
+      expect(endNote.velocity, equals(1));
+      expect(middleNote.velocity, closeTo(0.5, 1e-9));
+      expect(startNote.velocity, equals(0));
+    });
+
+    test('point edits only the nearest stem offset', () {
+      final firstNote = fixture.addNote(offset: 120);
+      final sameStemNote = fixture.addNote(offset: 120, velocity: 0.6);
+      final secondNote = fixture.addNote(offset: 200);
+      final outsideNote = fixture.addNote(offset: 300);
+
+      fixture.pointerDown(offset: 150, normalizedY: 0.3);
+      fixture.pointerUp(offset: 150, normalizedY: 0.3);
+
+      expect(firstNote.velocity, equals(0.3));
+      expect(sameStemNote.velocity, equals(0.3));
+      expect(secondNote.velocity, equals(0.8));
+      expect(outsideNote.velocity, equals(0.8));
+    });
+
+    test('latches selected candidates for the pointer session', () {
+      final selectedNote = fixture.addNote(offset: 0);
+      final laterSelectedNote = fixture.addNote(offset: 240);
+      fixture.selectNotes([selectedNote.id]);
+
+      fixture.pointerDown(offset: 0, normalizedY: 0);
+      fixture.selectNotes([selectedNote.id, laterSelectedNote.id]);
+      fixture.pointerMove(offset: 240, normalizedY: 1);
+      fixture.pointerUp(offset: 240, normalizedY: 1);
+
+      expect(selectedNote.velocity, equals(0));
+      expect(laterSelectedNote.velocity, equals(0.8));
     });
 
     test('clears previews without committing if the pattern disappears', () {

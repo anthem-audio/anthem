@@ -224,10 +224,6 @@ abstract class _PianoRollViewModel with Store implements DisposableService {
     return note;
   }
 
-  List<ResolvedPatternNote> resolveRenderedNotes(PatternModel pattern) {
-    return pattern.renderOrderedResolvedNotes;
-  }
-
   /// Calculates the note and resize handle under the cursor, if there is one.
   PianoRollHitTestResult hitTestContent(Offset pos) {
     final noteUnderCursor = visibleNotes.hitTest(pos);
