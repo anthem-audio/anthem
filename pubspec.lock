@@ -636,7 +636,7 @@ packages:
     description:
       path: "."
       ref: staging-spm-event-deltas
-      resolved-ref: "5c799422a146685fa1ff63b580671948c69e4bbc"
+      resolved-ref: "1386f1664e5d6c83cc5694ad05729fcb1f5da33a"
       url: "https://github.com/josh-audio/pointer_lock.git"
     source: git
     version: "0.0.2"
