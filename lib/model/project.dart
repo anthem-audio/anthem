@@ -31,7 +31,6 @@ import 'package:anthem/model/processing_graph/node_connection.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';
@@ -79,7 +78,7 @@ class ProjectModel extends _ProjectModel
       final track = TrackModel(
         idAllocator: idAllocator,
         name: 'Track $i',
-        color: AnthemColor.randomHue(),
+        color: .new(hue: 0, palette: .grayscale),
         type: .normal,
       );
       addTrack(track, initTrackOrder);
@@ -88,7 +87,7 @@ class ProjectModel extends _ProjectModel
     final masterTrack = TrackModel(
       idAllocator: idAllocator,
       name: 'Master',
-      color: AnthemColor.randomHue(),
+      color: .new(hue: 0, palette: .grayscale),
       type: .normal,
     )..isMasterTrack = true;
     addTrack(masterTrack, initSendTrackOrder);

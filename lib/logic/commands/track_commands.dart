@@ -361,7 +361,7 @@ class TrackAddRemoveCommand extends Command {
         name: track.isSendTrack
             ? 'Send Track ${project.sendTrackOrder.length}'
             : 'Track ${project.trackOrder.length + 1}',
-        color: AnthemColor.randomHue(),
+        color: AnthemColor(hue: 0, palette: .grayscale),
         type: track.trackType,
       );
 
@@ -1027,7 +1027,7 @@ class TrackGroupUngroupCommand extends Command {
     _newGroupTrack = TrackModel(
       idAllocator: idAllocator,
       name: 'New Group',
-      color: AnthemColor.randomHue(),
+      color: .new(hue: 0, palette: .grayscale),
       type: .group,
     );
     _newGroupAutomationLanes = const [];
