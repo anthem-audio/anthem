@@ -24,9 +24,11 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:logging/logging.dart';
 
 part 'engine_connector_desktop.debug_engine_path.g.dart';
 
+final _log = Logger('engine_connector');
 final mainExecutablePath = File(Platform.resolvedExecutable);
 const _engineIdEnvironmentKey = 'ANTHEM_ENGINE_ID';
 const _enginePortEnvironmentKey = 'ANTHEM_ENGINE_PORT';
@@ -130,18 +132,25 @@ class EngineConnector extends EngineConnectorBase {
       developmentEnginePath = debugEnginePath;
     }
 
+    final releaseEngineUri = Platform.isMacOS
+        ? mainExecutablePath.parent.uri.resolve(
+            '../Frameworks/App.Framework/Resources/flutter_assets/assets/engine/AnthemEngine',
+          )
+        : mainExecutablePath.parent.uri.resolve(
+            'data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+          );
+
     final anthemPathStr =
         enginePathOverride ??
         developmentEnginePath ??
-        mainExecutablePath.parent.uri
-            .resolve(
-              '../${Platform.isMacOS ? 'Frameworks/App.Framework/Resources' : './data'}/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-            )
-            .toFilePath(windows: Platform.isWindows);
+        releaseEngineUri.toFilePath(windows: Platform.isWindows);
 
     if (!await File(anthemPathStr).exists()) {
+      _log.severe('Could not start engine. File not found: $anthemPathStr');
       return false;
     }
+
+    _log.info('Starting engine from $anthemPathStr');
 
     final engineEnvironment = {
       ...AnthemLogManager.instance.childProcessEnvironment,
@@ -149,41 +158,50 @@ class EngineConnector extends EngineConnectorBase {
       _enginePortEnvironmentKey: EngineSocketServer.instance.port.toString(),
     };
 
-    // If we're in debug mode, start with a command line window so we can see logging
-    if (kDebugMode) {
-      if (Platform.isWindows) {
-        _setEngineProcess(
-          await Process.start('powershell', [
-            '-Command',
-            '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
-          ], environment: engineEnvironment),
-        );
+    try {
+      // If we're in debug mode, start with a command line window so we can see logging
+      if (kDebugMode) {
+        if (Platform.isWindows) {
+          _setEngineProcess(
+            await Process.start('powershell', [
+              '-Command',
+              '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
+            ], environment: engineEnvironment),
+          );
+        } else {
+          _setEngineProcess(
+            await Process.start(
+              anthemPathStr,
+              [],
+              // There's no singular way to start in a shell window on Linux, so
+              // this mirrors the engine output to our standard out.
+              mode: ProcessStartMode.inheritStdio,
+              environment: engineEnvironment,
+            ),
+          );
+        }
       } else {
         _setEngineProcess(
           await Process.start(
             anthemPathStr,
             [],
-            // There's no singular way to start in a shell window on Linux, so
-            // this mirrors the engine output to our standard out.
-            mode: ProcessStartMode.inheritStdio,
+
+            // I'm not sure why this is necessary, but the process doesn't start
+            // correctly without it on Windows without this.
+            mode: Platform.isWindows
+                ? ProcessStartMode.inheritStdio
+                : ProcessStartMode.normal,
             environment: engineEnvironment,
           ),
         );
       }
-    } else {
-      _setEngineProcess(
-        await Process.start(
-          anthemPathStr,
-          [],
-
-          // I'm not sure why this is necessary, but the process doesn't start
-          // correctly without it on Windows without this.
-          mode: Platform.isWindows
-              ? ProcessStartMode.inheritStdio
-              : ProcessStartMode.normal,
-          environment: engineEnvironment,
-        ),
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Could not start engine process from $anthemPathStr',
+        error,
+        stackTrace,
       );
+      return false;
     }
 
     // Wait for the engine to connect before setting our initialized state to

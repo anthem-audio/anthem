@@ -21,10 +21,40 @@ import 'dart:io';
 
 Uri getPackageRootPath() {
   final scriptPath = Platform.script;
+
+  final dartToolIndex = scriptPath.pathSegments.indexOf('.dart_tool');
+  if (dartToolIndex != -1) {
+    return Uri.directory(
+      (Platform.isWindows ? '' : '/') +
+          scriptPath.pathSegments.take(dartToolIndex).join('/'),
+    );
+  }
+
+  final scriptDirectory = File.fromUri(scriptPath).parent;
+  final packageRoot =
+      _findNearestPackageRoot(scriptDirectory) ??
+      _findNearestPackageRoot(Directory.current);
+
+  if (packageRoot != null) return packageRoot.uri;
+
   return Uri.directory(
     (Platform.isWindows ? '' : '/') +
         scriptPath.pathSegments.takeWhile((s) => s != '.dart_tool').join('/'),
   );
+}
+
+Directory? _findNearestPackageRoot(Directory startDirectory) {
+  var directory = startDirectory.absolute;
+
+  while (true) {
+    final pubspecFile = File(_joinPath(directory.path, 'pubspec.yaml'));
+    if (pubspecFile.existsSync()) return directory;
+
+    final parent = directory.parent;
+    if (parent.path == directory.path) return null;
+
+    directory = parent;
+  }
 }
 
 String? findExecutable(

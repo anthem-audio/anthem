@@ -51,6 +51,24 @@ String _cmakeSetValue(String cmake, String variableName) {
   return match.group(1)!;
 }
 
+String _xmlAttributeValue(
+  String xml, {
+  required String elementName,
+  required String attributeName,
+}) {
+  final pattern = RegExp(
+    '<${RegExp.escape(elementName)}\\b[^>]*\\b'
+    '${RegExp.escape(attributeName)}\\s*=\\s*["\']([^"\']+)["\']',
+  );
+  final match = pattern.firstMatch(xml);
+
+  if (match == null) {
+    fail('Expected XML to contain <$elementName> with $attributeName.');
+  }
+
+  return match.group(1)!;
+}
+
 void main() {
   final repoRoot = Directory.current.uri;
   final pubspec = _loadPubspec(repoRoot);
@@ -100,5 +118,21 @@ void main() {
     final mainCpp = _readRepoFile(repoRoot, 'engine/src/main.cpp');
 
     expect(mainCpp, contains('return ANTHEM_VERSION_STRING;'));
+  });
+
+  test('Flatpak AppStream release version matches pubspec version', () {
+    final metainfo = _readRepoFile(
+      repoRoot,
+      'packaging/flatpak/io.github.anthem_audio.Anthem.metainfo.xml',
+    );
+
+    expect(
+      _xmlAttributeValue(
+        metainfo,
+        elementName: 'release',
+        attributeName: 'version',
+      ),
+      pubspecVersion,
+    );
   });
 }

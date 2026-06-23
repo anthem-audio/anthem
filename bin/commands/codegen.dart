@@ -19,6 +19,7 @@
 
 // ignore_for_file: avoid_print
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -26,6 +27,59 @@ import 'package:colorize/colorize.dart';
 import 'package:crypto/crypto.dart';
 
 import '../cli_helpers.dart';
+
+class _BuildRunnerCommand {
+  final String executable;
+  final List<String> arguments;
+
+  const _BuildRunnerCommand(this.executable, this.arguments);
+}
+
+_BuildRunnerCommand _getBuildRunnerCommand(
+  Uri packageRootPath,
+  List<String> arguments,
+) {
+  // Flatpak builds run this CLI directly in an offline source checkout. Invoking
+  // `dart run build_runner` can re-enter pub package resolution there, so use
+  // the build_runner entrypoint from the existing package config when possible.
+  final packageConfigUri = packageRootPath.resolve(
+    '.dart_tool/package_config.json',
+  );
+  final packageConfigFile = File.fromUri(packageConfigUri);
+
+  if (!packageConfigFile.existsSync()) {
+    return _BuildRunnerCommand('dart', ['run', 'build_runner', ...arguments]);
+  }
+
+  final packageConfig =
+      jsonDecode(packageConfigFile.readAsStringSync()) as Map<String, dynamic>;
+  final packages = packageConfig['packages'] as List<dynamic>;
+  final buildRunnerPackage = packages.cast<Map<String, dynamic>>().firstWhere(
+    (package) => package['name'] == 'build_runner',
+  );
+
+  final buildRunnerRoot = Uri.parse(buildRunnerPackage['rootUri'] as String);
+  final resolvedBuildRunnerRoot = _asDirectoryUri(
+    buildRunnerRoot.hasScheme
+        ? buildRunnerRoot
+        : packageConfigUri.resolveUri(buildRunnerRoot),
+  );
+  final buildRunnerEntrypoint = resolvedBuildRunnerRoot.resolve(
+    'bin/build_runner.dart',
+  );
+
+  return _BuildRunnerCommand(Platform.resolvedExecutable, [
+    '--packages=${packageConfigUri.toFilePath(windows: Platform.isWindows)}',
+    buildRunnerEntrypoint.toFilePath(windows: Platform.isWindows),
+    ...arguments,
+  ]);
+}
+
+Uri _asDirectoryUri(Uri uri) {
+  if (uri.path.endsWith('/')) return uri;
+
+  return uri.replace(path: '${uri.path}/');
+}
 
 class CodegenCommand extends Command<dynamic> {
   @override
@@ -126,13 +180,15 @@ class _CodegenCleanCommand extends Command<dynamic> {
 
     print('Deleted $deleteCount files.');
 
-    print('Running dart run build_runner clean...');
+    print('Running build_runner clean...');
+    final packageRootPath = getPackageRootPath();
+    final buildRunnerCleanCommand = _getBuildRunnerCommand(packageRootPath, [
+      'clean',
+    ]);
     final processInRoot = await Process.start(
-      'dart',
-      ['run', 'build_runner', 'clean'],
-      workingDirectory: getPackageRootPath().toFilePath(
-        windows: Platform.isWindows,
-      ),
+      buildRunnerCleanCommand.executable,
+      buildRunnerCleanCommand.arguments,
+      workingDirectory: packageRootPath.toFilePath(windows: Platform.isWindows),
       mode: ProcessStartMode.inheritStdio,
     );
 
@@ -149,9 +205,9 @@ class _CodegenCleanCommand extends Command<dynamic> {
 
     if (!argResults!['root-only']) {
       final processInCodegen = await Process.start(
-        'dart',
-        ['run', 'build_runner', 'clean'],
-        workingDirectory: getPackageRootPath()
+        buildRunnerCleanCommand.executable,
+        buildRunnerCleanCommand.arguments,
+        workingDirectory: packageRootPath
             .resolve('codegen/')
             .toFilePath(windows: Platform.isWindows),
         mode: ProcessStartMode.inheritStdio,
@@ -207,9 +263,12 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     if (argResults!['watch']) {
       print('Watching for changes in root package...');
 
+      final buildRunnerWatchCommand = _getBuildRunnerCommand(packageRootPath, [
+        'watch',
+      ]);
       final process = await Process.start(
-        'dart',
-        ['run', 'build_runner', 'watch'],
+        buildRunnerWatchCommand.executable,
+        buildRunnerWatchCommand.arguments,
         workingDirectory: packageRootPath.toFilePath(
           windows: Platform.isWindows,
         ),
@@ -249,9 +308,12 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
       await diffChecker?.save();
 
+      final buildRunnerBuildCommand = _getBuildRunnerCommand(packageRootPath, [
+        'build',
+      ]);
       final process = await Process.start(
-        'dart',
-        ['run', 'build_runner', 'build'],
+        buildRunnerBuildCommand.executable,
+        buildRunnerBuildCommand.arguments,
         workingDirectory: workingDirectory.toFilePath(
           windows: Platform.isWindows,
         ),
@@ -278,11 +340,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     // the time of writing.
     if (argResults!['explicit-format-for-ci']) {
       print('Formatting generated code...');
-      final files = Directory.fromUri(packageRootPath)
-          .listSync(recursive: true)
-          .where((f) {
-            return f.path.endsWith('.g.dart') || f.path.endsWith('.mocks.dart');
-          });
+      final files = _listGeneratedDartFiles(Directory.fromUri(packageRootPath));
 
       for (final file in files) {
         final process = await Process.start(
@@ -305,6 +363,45 @@ class _CodegenGenerateCommand extends Command<dynamic> {
 
     print(Colorize('\n\nCode generation complete.').lightGreen());
   }
+}
+
+Iterable<File> _listGeneratedDartFiles(Directory directory) sync* {
+  // Flatpak's build-time PUB_CACHE lives inside the source checkout. A blind
+  // recursive scan can format generated files from dependencies or build
+  // outputs, so only walk source-like directories owned by this package.
+  for (final entity in directory.listSync(followLinks: false)) {
+    if (entity is Directory) {
+      if (_shouldSkipGeneratedFileSearchDirectory(entity)) continue;
+      yield* _listGeneratedDartFiles(entity);
+      continue;
+    }
+
+    if (entity is! File) continue;
+    if (!entity.path.endsWith('.g.dart') &&
+        !entity.path.endsWith('.mocks.dart')) {
+      continue;
+    }
+
+    yield entity;
+  }
+}
+
+bool _shouldSkipGeneratedFileSearchDirectory(Directory directory) {
+  final name = _basename(directory.path);
+
+  return name.startsWith('.') || name == 'build';
+}
+
+String _basename(String path) {
+  var normalizedPath = path;
+  if (normalizedPath.endsWith(Platform.pathSeparator)) {
+    normalizedPath = normalizedPath.substring(0, normalizedPath.length - 1);
+  }
+
+  final separatorIndex = normalizedPath.lastIndexOf(Platform.pathSeparator);
+  if (separatorIndex == -1) return normalizedPath;
+
+  return normalizedPath.substring(separatorIndex + 1);
 }
 
 /// Backs up an existing folder with generated files, and replaces new generated

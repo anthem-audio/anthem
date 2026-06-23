@@ -1,0 +1,54 @@
+id: io.github.anthem_audio.Anthem
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.llvm22
+command: anthem
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --device=dri
+  - --filesystem=home
+modules:
+  - name: anthem
+    buildsystem: simple
+    build-options:
+      arch:
+        x86_64:
+          env:
+            BUNDLE_PATH: build/linux/x64/release/bundle
+        aarch64:
+          env:
+            BUNDLE_PATH: build/linux/arm64/release/bundle
+      append-path: /usr/lib/sdk/llvm22/bin:/run/build/anthem/flutter/bin
+      prepend-ld-library-path: /usr/lib/sdk/llvm22/lib
+      env:
+        ANTHEM_LLVM_BIN: /usr/lib/sdk/llvm22/bin
+        PUB_CACHE: /run/build/anthem/.pub-cache
+    build-commands:
+      - /var/lib/flutter/bin/cache/dart-sdk/bin/dart bin/cli.dart codegen generate --explicit-format-for-ci
+      - /var/lib/flutter/bin/cache/dart-sdk/bin/dart bin/cli.dart engine build --release
+      - flutter build linux --release --no-pub
+      - chmod 755 "$BUNDLE_PATH/data/flutter_assets/assets/engine/AnthemEngine"
+      - cp -r "$BUNDLE_PATH" /app/io.github.anthem_audio.Anthem
+      - mkdir -p /app/bin
+      - ln -s /app/io.github.anthem_audio.Anthem/anthem /app/bin/anthem
+      - install -Dm644 packaging/flatpak/io.github.anthem_audio.Anthem.desktop /app/share/applications/io.github.anthem_audio.Anthem.desktop
+      - install -Dm644 packaging/flatpak/io.github.anthem_audio.Anthem.metainfo.xml /app/share/metainfo/io.github.anthem_audio.Anthem.metainfo.xml
+      - install -Dm644 assets/anthem-icon.svg /app/share/icons/hicolor/scalable/apps/io.github.anthem_audio.Anthem.svg
+      - install -Dm644 COPYING /app/share/licenses/io.github.anthem_audio.Anthem/COPYING
+    sources:
+      - type: git
+        url: https://github.com/anthem-audio/anthem.git
+        # The CI workflow replaces this branch with the exact GitHub SHA before
+        # preprocessing. flatpak-flutter does not use branch-only git refs when
+        # resolving sources for the generated offline manifest.
+        branch: automation
+      - type: git
+        url: https://github.com/flutter/flutter.git
+        tag: 3.44.3
+        dest: flutter

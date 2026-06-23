@@ -1,0 +1,90 @@
+name: Build Flatpak
+
+on:
+  push:
+    branches:
+      - main
+      - automation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-flatpak:
+    if: github.repository == 'anthem-audio/anthem'
+    name: Flatpak (${{ matrix.variant.arch }})
+    runs-on: ${{ matrix.variant.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Check preprocessor dependencies
+        run: |
+          python3 - <<'PY'
+          import packaging
+          import tomlkit
+          import yaml
+          PY
+
+      - name: Check out flatpak-flutter
+        run: git clone --depth 1 https://github.com/TheAppgineer/flatpak-flutter.git /tmp/flatpak-flutter
+
+      - name: Pin app source to this commit
+        env:
+          APP_COMMIT: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import yaml
+
+          manifest_path = Path('packaging/flatpak/flatpak-flutter.yml')
+          manifest = yaml.safe_load(manifest_path.read_text())
+
+          for module in manifest['modules']:
+              if module.get('name') != 'anthem':
+                  continue
+              for source in module['sources']:
+                  if source.get('type') == 'git' and source.get('url') == 'https://github.com/anthem-audio/anthem.git':
+                      source.pop('branch', None)
+                      source['commit'] = os.environ['APP_COMMIT']
+                      break
+              else:
+                  raise RuntimeError('Could not find Anthem git source')
+              break
+          else:
+              raise RuntimeError('Could not find Anthem module')
+
+          manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False))
+          PY
+
+      - name: Generate offline Flatpak manifest
+        working-directory: packaging/flatpak
+        env:
+          FLATPAK_FLUTTER_ROOT: /tmp/flatpak-flutter
+        run: /tmp/flatpak-flutter/flatpak-flutter.py flatpak-flutter.yml
+
+      - name: Build Flatpak bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: anthem-${{ matrix.variant.arch }}.flatpak
+          manifest-path: packaging/flatpak/io.github.anthem_audio.Anthem.yml
+          cache-key: flatpak-builder-${{ github.workflow }}-${{ github.ref_name }}
+          arch: ${{ matrix.variant.arch }}
+          upload-artifact: true
+          verbose: true

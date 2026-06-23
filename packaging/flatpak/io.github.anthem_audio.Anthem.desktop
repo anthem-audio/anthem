@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Anthem
+Comment=Create and edit music in a digital audio workstation
+Exec=anthem %U
+Icon=io.github.anthem_audio.Anthem
+Terminal=false
+Categories=AudioVideo;Audio;Music;Midi;Sequencer;
+Keywords=DAW;audio;music;MIDI;sequencer;
+StartupNotify=true
