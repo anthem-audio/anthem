@@ -220,6 +220,16 @@ if (IS_WASM)
 else()
   juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "${PROJECT_VERSION}")
 
+  if(WIN32)
+    # This prevents a console window from showing up in release builds on Windows
+    set_target_properties(AnthemEngine PROPERTIES
+      WIN32_EXECUTABLE "$<NOT:$<CONFIG:Debug>>"
+    )
+    target_link_options(AnthemEngine PRIVATE
+      "$<$<NOT:$<CONFIG:Debug>>:/ENTRY:mainCRTStartup>"
+    )
+  endif()
+
   target_sources(AnthemEngine PRIVATE ${APP_MAIN})
 endif()
 
