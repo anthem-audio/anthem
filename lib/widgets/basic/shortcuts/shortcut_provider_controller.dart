@@ -208,7 +208,7 @@ class ShortcutBehaviors {
 
   String _getShortcutID(LogicalKeySet shortcut) {
     return shortcut.keys
-        .map((key) => normalizeShortcutKey(key).toString())
+        .map((key) => normalizeShortcutKey(key).keyId.toString())
         .sorted((a, b) => a.compareTo(b))
         .join('-');
   }
