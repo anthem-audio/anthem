@@ -102,13 +102,9 @@ jobs:
       - name: Build Flutter
         run: flutter build windows --verbose --release
 
-      - name: Build MSIX
+      - name: Build installer
         shell: pwsh
-        run: |
-          $arch = "${{ matrix.arch }}"
-          $outputPath = "build/windows/$arch/msix"
-          New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
-          dart run msix:create --release --build-windows false --install-certificate false --architecture $arch --output-path $outputPath --output-name anthem-windows-$arch
+        run: iscc /DMyArch=${{ matrix.arch }} packaging/windows/anthem.iss
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -116,11 +112,11 @@ jobs:
           name: anthem-windows-${{ matrix.arch }}
           path: build/windows/${{ matrix.arch }}/runner/Release
 
-      - name: Upload MSIX artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v7
         with:
-          name: anthem-windows-${{ matrix.arch }}-msix
-          path: build/windows/${{ matrix.arch }}/msix/*.msix
+          name: anthem-windows-${{ matrix.arch }}-installer
+          path: build/windows/${{ matrix.arch }}/installer/*.exe
 
   build-wasm:
     runs-on: ubuntu-latest

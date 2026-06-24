@@ -51,6 +51,19 @@ String _cmakeSetValue(String cmake, String variableName) {
   return match.group(1)!;
 }
 
+String _issDefineValue(String iss, String defineName) {
+  final pattern = RegExp(
+    '#define\\s+${RegExp.escape(defineName)}\\s+"([^"]+)"',
+  );
+  final match = pattern.firstMatch(iss);
+
+  if (match == null) {
+    fail('Expected .iss to define $defineName with #define ...');
+  }
+
+  return match.group(1)!;
+}
+
 String _xmlAttributeValue(
   String xml, {
   required String elementName,
@@ -83,16 +96,18 @@ void main() {
     expect(anthemVersion, pubspecVersion);
   });
 
-  test('MSIX version is numeric and derived from the pubspec version', () {
-    final msixConfig = pubspec['msix_config'] as YamlMap;
-    final msixVersion = _readYamlString(msixConfig, 'msix_version');
-    final msixVersionParts = msixVersion
+  test('Inno Setup versions are derived from the pubspec version', () {
+    final iss = _readRepoFile(repoRoot, 'packaging/windows/anthem.iss');
+    final appVersion = _issDefineValue(iss, 'MyAppVersion');
+    final numericVersion = _issDefineValue(iss, 'MyAppVersionNumeric');
+    final numericVersionParts = numericVersion
         .split('.')
         .map(int.parse)
         .toList(growable: false);
 
-    expect(msixVersion, matches(RegExp(r'^\d+\.\d+\.\d+\.\d+$')));
-    expect(msixVersionParts.take(3).join('.'), pubspecVersionCore);
+    expect(appVersion, pubspecVersion);
+    expect(numericVersion, matches(RegExp(r'^\d+\.\d+\.\d+\.\d+$')));
+    expect(numericVersionParts.take(3).join('.'), pubspecVersionCore);
   });
 
   test('CMake engine versions are derived from the pubspec version', () {
