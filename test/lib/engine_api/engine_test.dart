@@ -495,8 +495,30 @@ void main() {
       },
     );
 
+    test('AudioReadyEvent updates audio state', () async {
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+
+      final restartedAudioConfig = EngineAudioConfig(
+        sampleRate: 44100,
+        blockSize: 512,
+        inputChannelCount: 0,
+        outputChannelCount: 2,
+      );
+      connector.emitResponse(
+        AudioReadyEvent(id: -1, audioConfig: restartedAudioConfig),
+      );
+
+      expect(engine.isAudioReady, isTrue);
+      expect(engine.audioConfig?.sampleRate, restartedAudioConfig.sampleRate);
+      expect(engine.audioConfig?.blockSize, restartedAudioConfig.blockSize);
+    });
+
     test(
-      'AudioReadyEvent updates audio state and completes audioReadyFuture',
+      'stopAudio sends StopAudioRequest and clears audio state without stopping engine',
       () async {
         await _startEngineThroughInit(
           engine,
@@ -504,22 +526,74 @@ void main() {
           audioConfig: startupAudioConfig,
         );
 
-        final audioReadyFuture = engine.audioReadyFuture;
-        final restartedAudioConfig = EngineAudioConfig(
-          sampleRate: 44100,
-          blockSize: 512,
-          inputChannelCount: 0,
-          outputChannelCount: 2,
-        );
-        connector.emitResponse(
-          AudioReadyEvent(id: -1, audioConfig: restartedAudioConfig),
-        );
-
-        await audioReadyFuture;
-
         expect(engine.isAudioReady, isTrue);
-        expect(engine.audioConfig?.sampleRate, restartedAudioConfig.sampleRate);
-        expect(engine.audioConfig?.blockSize, restartedAudioConfig.blockSize);
+
+        final stopAudioFuture = engine.stopAudio();
+        await _flushMicrotasks();
+
+        expect(connector.sentRequests.last, isA<StopAudioRequest>());
+
+        final stopAudioRequest =
+            connector.sentRequests.last as StopAudioRequest;
+        connector.emitResponse(
+          StopAudioResponse(id: stopAudioRequest.id, success: true),
+        );
+
+        await stopAudioFuture;
+
+        expect(engine.engineState, EngineState.running);
+        expect(engine.isAudioReady, isFalse);
+        expect(engine.audioConfig, isNull);
+        expect(connector.startHeartbeatTimerCallCount, 1);
+      },
+    );
+
+    test(
+      'startAudio can start audio after startup skipped audio init',
+      () async {
+        final startFuture = engine.start(initializeAudio: false);
+
+        connector.completeInit();
+        await _flushMicrotasks();
+
+        final readyCheckRequest =
+            connector.sentRequests.single as EngineReadyCheckRequest;
+        connector.emitResponse(
+          EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+        );
+        await _flushMicrotasks();
+
+        final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
+        connector.emitResponse(
+          ModelInitResponse(id: modelInitRequest.id, success: true),
+        );
+
+        await startFuture;
+        await _flushMicrotasks();
+
+        expect(engine.engineState, EngineState.running);
+        expect(engine.audioConfig, isNull);
+
+        final startAudioFuture = engine.startAudio();
+        await _flushMicrotasks();
+
+        expect(connector.sentRequests.last, isA<StartAudioRequest>());
+
+        final startAudioRequest =
+            connector.sentRequests.last as StartAudioRequest;
+        connector.emitResponse(
+          StartAudioResponse(
+            id: startAudioRequest.id,
+            success: true,
+            audioConfig: startupAudioConfig,
+          ),
+        );
+
+        final audioConfig = await startAudioFuture;
+
+        expect(audioConfig.sampleRate, startupAudioConfig.sampleRate);
+        expect(engine.audioConfig?.sampleRate, startupAudioConfig.sampleRate);
+        expect(engine.isAudioReady, isTrue);
       },
     );
 

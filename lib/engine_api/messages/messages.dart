@@ -113,6 +113,14 @@ class StartAudioRequest extends Request {
   }
 }
 
+class StopAudioRequest extends Request {
+  StopAudioRequest.uninitialized();
+
+  StopAudioRequest({required int id}) {
+    super.id = id;
+  }
+}
+
 class EngineReadyCheckResponse extends Response {
   bool success = false;
   String? error;
@@ -141,6 +149,17 @@ class StartAudioResponse extends Response {
     this.error,
     this.audioConfig,
   }) {
+    super.id = id;
+  }
+}
+
+class StopAudioResponse extends Response {
+  bool success = false;
+  String? error;
+
+  StopAudioResponse.uninitialized();
+
+  StopAudioResponse({required int id, required this.success, this.error}) {
     super.id = id;
   }
 }

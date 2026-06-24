@@ -59,21 +59,21 @@ class MainWindowController {
   final Map<int, MouseCursor> _cursorOverrides = {};
   int _nextCursorOverrideId = 0;
 
-  void _addProject(ProjectModel project) {
+  ServiceRegistry _addProject(ProjectModel project) {
     final store = AnthemStore.instance;
 
     store.projects[project.id] = project;
     store.projectOrder.add(project.id);
     store.activeProjectId = project.id;
-    ServiceRegistry.initializeProject(project);
+    return ServiceRegistry.initializeProject(project);
   }
 
   // Returns the ID of the new tab
   Future<ProjectId> newProject() async {
     ProjectModel project = ProjectModel.create();
 
-    _addProject(project);
-    await project.engine.start();
+    final serviceRegistry = _addProject(project);
+    await serviceRegistry.projectEngineController.start();
 
     return project.id;
   }
@@ -149,12 +149,12 @@ class MainWindowController {
     final project = ProjectModel.fromJson(
       json.decode(file) as Map<String, dynamic>,
     );
-    _addProject(project);
+    final serviceRegistry = _addProject(project);
 
     project.filePath = path;
     project.isDirty = false;
 
-    await project.engine.start();
+    await serviceRegistry.projectEngineController.start();
     return project.id;
   }
 

@@ -166,6 +166,20 @@ void CommandHandler::processNextCommand() {
     response = std::optional(std::move(startAudioReply));
   }
 
+  else if (rfl::holds_alternative<StopAudioRequest>(request.variant())) {
+    auto& requestAsStopAudio = rfl::get<StopAudioRequest>(request.variant());
+
+    juce::Logger::writeToLog("Stopping audio callback...");
+    Engine::getInstance().stopAudioCallback();
+    juce::Logger::writeToLog("stopAudioCallback() returned.");
+
+    auto stopAudioReply = StopAudioResponse{.success = true,
+        .error = std::nullopt,
+        .responseBase = ResponseBase{.id = requestAsStopAudio.requestBase.get().id}};
+
+    response = std::optional(std::move(stopAudioReply));
+  }
+
   // Forward request to handlers
 
   bool didOverwriteResponse = false;

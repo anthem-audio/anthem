@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 - 2024 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -42,10 +43,19 @@ class EngineIndicator extends StatelessObserverWidget {
       variant: ButtonVariant.ghost,
       borderRadius: BorderRadius.zero,
       onPress: () async {
+        final project = activeProject;
+        if (project == null) {
+          return;
+        }
+
+        final engineController = ServiceRegistry.forProject(
+          project.id,
+        ).projectEngineController;
+
         if (engineState != EngineState.stopped) {
-          activeProject?.engine.stop();
+          await engineController.stop();
         } else {
-          await activeProject?.engine.start();
+          await engineController.start();
         }
       },
       contentBuilder: (context, color) {

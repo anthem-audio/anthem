@@ -23,7 +23,6 @@ import 'dart:convert';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/commands/command_stack.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
-import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
@@ -283,9 +282,6 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void Function(ModelChangeEvent)? _fieldChangedListener;
 
   @hide
-  bool _hasPublishedProcessingGraphForCurrentAudioStart = false;
-
-  @hide
   final String? _enginePathOverride;
 
   _ProjectModel.create([this._enginePathOverride]) : super() {
@@ -309,31 +305,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
 
-      if (state == EngineState.running) {
-        _finishEngineStartup();
-      }
-
       if (state == EngineState.stopped) {
-        _hasPublishedProcessingGraphForCurrentAudioStart = false;
-
-        // Make sure the engine isn't playing when it starts again
-        sequence.isPlaying = false;
-
-        if (_fieldChangedListener != null) {
-          // Unhook the model change stream from the engine
-          (this as AnthemModelBase).removeRawFieldChangedListener(
-            _fieldChangedListener!,
-          );
-          _fieldChangedListener = null;
-        }
-        _modelSyncCompleter = Completer();
+        handleEngineStopped();
       }
     });
-
-    engine.onAudioReady(
-      _publishProcessingGraphAfterAudioStart,
-      runNowIfAudioReady: false,
-    );
 
     visualizationProvider = VisualizationProvider(this as ProjectModel);
 
@@ -355,40 +330,33 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     );
   }
 
-  /// Finishes startup work after the engine has acknowledged the initial model.
-  void _finishEngineStartup() {
+  /// Completes the first-sync future after the engine has acknowledged the
+  /// initial model.
+  void completeFirstEngineSync() {
     if (!_modelSyncCompleter.isCompleted) {
       _modelSyncCompleter.complete();
     }
-
-    _publishProcessingGraphAfterAudioStart();
-
-    // We need to compile all arrangements for use in the audio thread.
-    for (final arrangement in sequence.arrangements.values) {
-      engine.sequencerApi.compileArrangement(arrangement.id);
-    }
-
-    // And same for patterns.
-    for (final pattern in sequence.patterns.values) {
-      engine.sequencerApi.compilePattern(pattern.id);
-    }
   }
 
-  void _publishProcessingGraphAfterAudioStart() {
-    if (_hasPublishedProcessingGraphForCurrentAudioStart) {
-      return;
+  /// Cleans up model-side engine sync state after the engine process stops.
+  void handleEngineStopped() {
+    final hadSyncState =
+        _fieldChangedListener != null || _modelSyncCompleter.isCompleted;
+
+    // Make sure the engine isn't playing when it starts again.
+    sequence.isPlaying = false;
+
+    if (_fieldChangedListener != null) {
+      // Unhook the model change stream from the engine.
+      (this as AnthemModelBase).removeRawFieldChangedListener(
+        _fieldChangedListener!,
+      );
+      _fieldChangedListener = null;
     }
 
-    if (engine.audioConfig == null) {
-      return;
+    if (hadSyncState) {
+      _modelSyncCompleter = Completer();
     }
-
-    _hasPublishedProcessingGraphForCurrentAudioStart = true;
-
-    // The engine will receive the processing graph when we sync the model,
-    // but it still needs to be initialized and published to the audio thread
-    // after the audio device is available.
-    ServiceRegistry.forProject(id).projectController.publishProcessingGraph();
   }
 
   /// Attaches a listener for model state change events, and send them to the

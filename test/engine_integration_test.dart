@@ -313,8 +313,8 @@ void main() {
       project = ProjectModel.create(
         enginePath!.toFilePath(windows: Platform.isWindows),
       );
-      ServiceRegistry.initializeProject(project);
-      await project.engine.start(initializeAudio: false);
+      final serviceRegistry = ServiceRegistry.initializeProject(project);
+      await serviceRegistry.projectEngineController.start(startAudio: false);
       expect(
         project.engine.engineState,
         EngineState.running,
@@ -324,7 +324,8 @@ void main() {
     });
 
     tearDownAll(() async {
-      await project.engine.stop();
+      final serviceRegistry = ServiceRegistry.forProject(project.id);
+      await serviceRegistry.projectEngineController.stop();
       ServiceRegistry.removeProject(project.id);
     });
 

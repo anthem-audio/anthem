@@ -25,6 +25,7 @@ import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -79,6 +80,12 @@ final projectControllerService = ServiceDef<ProjectController>(
   create: (project, registry) =>
       ProjectController(project, registry.use(projectViewModelService)),
   disposePriority: 100,
+);
+
+final projectEngineControllerService = ServiceDef<ProjectEngineController>(
+  create: (project, registry) =>
+      ProjectEngineController(project, registry.use(projectControllerService)),
+  disposePriority: 110,
 );
 
 final trackControllerService = ServiceDef<TrackController>(
@@ -224,6 +231,8 @@ class ServiceRegistry {
   }
 
   ProjectController get projectController => use(projectControllerService);
+  ProjectEngineController get projectEngineController =>
+      use(projectEngineControllerService);
   TrackController get trackController => use(trackControllerService);
   DeviceController get deviceController => use(deviceControllerService);
   ParameterController get parameterController =>

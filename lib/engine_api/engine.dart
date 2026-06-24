@@ -173,32 +173,6 @@ class Engine {
   bool _isAudioReady = false;
   EngineAudioConfig? _audioConfig;
 
-  /// Completer that completes when the audio thread is ready.
-  Completer<void> _audioReadyCompleter = Completer<void>();
-
-  /// Completes when the engine's audio thread is ready for audio-dependent
-  /// work.
-  Future<void> get audioReadyFuture => _audioReadyCompleter.future;
-
-  /// Indicates that the audio thread is active.
-  ///
-  /// This will be false when the engine is first started, and the engine will
-  /// set this via an event once it has initialized the audio thread.
-  set isAudioReady(bool value) {
-    final wasAudioReady = _isAudioReady;
-
-    _isAudioReady = value;
-    if (value && !_audioReadyCompleter.isCompleted) {
-      _audioReadyCompleter.complete();
-    }
-
-    if (value && !wasAudioReady) {
-      for (final callback in _audioReadyCallbacks) {
-        callback();
-      }
-    }
-  }
-
   /// Returns whether the engine's audio thread has finished starting.
   bool get isAudioReady => _isAudioReady;
 
@@ -223,7 +197,6 @@ class Engine {
       : _readyForMessagesCompleter.future;
 
   final List<void Function()> _startupCallbacks = [];
-  final List<void Function()> _audioReadyCallbacks = [];
 
   /// Adds a callback to be called when the engine is started.
   void onStart(
@@ -234,17 +207,6 @@ class Engine {
       callback();
     }
     _startupCallbacks.add(callback);
-  }
-
-  /// Adds a callback to be called when the engine's audio thread is ready.
-  void onAudioReady(
-    void Function() callback, {
-    required bool runNowIfAudioReady,
-  }) {
-    if (_isAudioReady && runNowIfAudioReady) {
-      callback();
-    }
-    _audioReadyCallbacks.add(callback);
   }
 
   final String? enginePathOverride;
@@ -301,15 +263,21 @@ class Engine {
       if (_readyForMessagesCompleter.isCompleted) {
         _readyForMessagesCompleter = Completer<void>();
       }
-
-      if (_audioReadyCompleter.isCompleted) {
-        _audioReadyCompleter = Completer<void>();
-      }
     }
 
     if (!_engineStateStreamController.isClosed) {
       _engineStateStreamController.add(state);
     }
+  }
+
+  void _setAudioReady(EngineAudioConfig audioConfig) {
+    _audioConfig = audioConfig;
+    _isAudioReady = true;
+  }
+
+  void _markAudioStopped() {
+    _audioConfig = null;
+    _isAudioReady = false;
   }
 
   Engine(
@@ -449,8 +417,7 @@ class Engine {
         project.visualizationProvider.processVisualizationUpdate(e);
         return;
       case AudioReadyEvent e:
-        _audioConfig = e.audioConfig;
-        isAudioReady = true;
+        _setAudioReady(e.audioConfig);
         return;
       case PluginChangedEvent e:
         _scheduleNodeStateUpdate(e.nodeId);
@@ -520,6 +487,71 @@ class Engine {
     }
   }
 
+  Future<EngineAudioConfig> _startAudio({
+    required StartupSendBehavior startupBehavior,
+  }) async {
+    final audioStartReply =
+        await _request(
+              StartAudioRequest(id: _getRequestId()),
+              startupBehavior: startupBehavior,
+              // Audio device initialization can block behind OS permission
+              // prompts, such as the first-run microphone access prompt on
+              // macOS.
+              timeout: null,
+            )
+            as StartAudioResponse;
+    if (!audioStartReply.success) {
+      throw StateError(
+        'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
+      );
+    }
+    if (audioStartReply.audioConfig == null) {
+      throw StateError(
+        'Engine audio startup failed: audio config was not provided.',
+      );
+    }
+
+    final audioConfig = audioStartReply.audioConfig!;
+    _setAudioReady(audioConfig);
+    return audioConfig;
+  }
+
+  /// Starts the audio thread without restarting the engine process.
+  Future<EngineAudioConfig> startAudio() async {
+    if (_engineState != EngineState.running) {
+      throw StateError('Engine must be running to start audio.');
+    }
+
+    if (_audioConfig != null) {
+      return _audioConfig!;
+    }
+
+    return _startAudio(startupBehavior: StartupSendBehavior.requireRunning);
+  }
+
+  /// Stops the audio thread without stopping the engine process.
+  Future<void> stopAudio() async {
+    if (_engineState != EngineState.running) {
+      return;
+    }
+
+    if (_audioConfig == null && !_isAudioReady) {
+      return;
+    }
+
+    final stopAudioReply =
+        await _request(StopAudioRequest(id: _getRequestId()))
+            as StopAudioResponse;
+
+    if (!stopAudioReply.success) {
+      throw StateError(
+        'Engine audio shutdown failed: ${stopAudioReply.error ?? 'Unknown error.'}',
+      );
+    }
+
+    _markAudioStopped();
+  }
+
   /// Starts the engine process, and attaches to it.
   Future<void> start({bool initializeAudio = true}) async {
     if (_engineState != EngineState.stopped) {
@@ -528,9 +560,6 @@ class Engine {
 
     _audioConfig = null;
     _isAudioReady = false;
-    if (_audioReadyCompleter.isCompleted) {
-      _audioReadyCompleter = Completer<void>();
-    }
 
     _setEngineState(EngineState.starting);
 
@@ -588,28 +617,9 @@ class Engine {
       }
 
       if (initializeAudio) {
-        final audioStartReply =
-            await _request(
-                  StartAudioRequest(id: _getRequestId()),
-                  startupBehavior: StartupSendBehavior.bypassStartupQueue,
-                  // Audio device initialization can block behind OS permission
-                  // prompts, such as the first-run microphone access prompt on
-                  // macOS.
-                  timeout: null,
-                )
-                as StartAudioResponse;
-        if (!audioStartReply.success) {
-          throw StateError(
-            'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
-          );
-        }
-        if (audioStartReply.audioConfig == null) {
-          throw StateError(
-            'Engine audio startup failed: audio config was not provided.',
-          );
-        }
-
-        _audioConfig = audioStartReply.audioConfig;
+        await _startAudio(
+          startupBehavior: StartupSendBehavior.bypassStartupQueue,
+        );
       }
 
       _autoFlushStartupQueue = true;

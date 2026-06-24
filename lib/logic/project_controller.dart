@@ -109,7 +109,8 @@ class ProjectController {
   }
 
   void togglePlayback() {
-    if (project.engineState == EngineState.running) {
+    if (project.engineState == EngineState.running &&
+        project.engine.isAudioReady) {
       project.sequence.isPlaying = !project.sequence.isPlaying;
     }
   }
