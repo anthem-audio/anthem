@@ -31,6 +31,7 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_title_text.dart'

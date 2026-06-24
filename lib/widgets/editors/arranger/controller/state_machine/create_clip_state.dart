@@ -269,9 +269,22 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
       return null;
     }
 
-    return project.tracks[trackId]?.color.colorShifter.clipBase
-        .toColor()
-        .withValues(alpha: 0.5);
+    final trackColor = project.tracks[trackId]?.color;
+    if (trackColor == null) {
+      return null;
+    }
+
+    // Grayscale tracks carry no hue, so the clip-create hint would be a flat
+    // gray. Use a fixed color (default palette, hue 161) instead so the hint
+    // remains readable.
+    final effectiveColor =
+        trackColor.palette == AnthemColorPaletteKind.grayscale
+        ? AnthemColor(hue: 161, palette: .normal)
+        : trackColor;
+
+    return effectiveColor.colorShifter.clipBase.toColor().withValues(
+      alpha: 0.5,
+    );
   }
 
   void _createClipForRow({

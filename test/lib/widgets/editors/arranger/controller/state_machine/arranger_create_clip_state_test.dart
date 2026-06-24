@@ -119,6 +119,44 @@ void main() {
       );
     });
 
+    group('clip create hint color', () {
+      test('grayscale track uses hue 161 default-palette override', () {
+        fixture.project.tracks[TrackIds.a]!.color = AnthemColor(
+          hue: 0,
+          palette: AnthemColorPaletteKind.grayscale,
+        );
+
+        enterCreateClipState();
+
+        final hint = fixture.viewModel.clipCreateHint;
+        expect(hint, isNotNull);
+
+        final expected = AnthemColor(
+          hue: 161,
+          palette: .normal,
+        ).colorShifter.clipBase.toColor().withValues(alpha: 0.5);
+        expect(hint!.color, expected);
+      });
+
+      test('non-grayscale track uses the track color', () {
+        fixture.project.tracks[TrackIds.a]!.color = AnthemColor(
+          hue: 60,
+          palette: AnthemColorPaletteKind.normal,
+        );
+
+        enterCreateClipState();
+
+        final hint = fixture.viewModel.clipCreateHint;
+        expect(hint, isNotNull);
+
+        final expected = AnthemColor(
+          hue: 60,
+          palette: .normal,
+        ).colorShifter.clipBase.toColor().withValues(alpha: 0.5);
+        expect(hint!.color, expected);
+      });
+    });
+
     test('pointer move updates clip create hint end offset', () {
       startDoubleClickHold();
       expect(fixture.stateMachine.currentState, isA<ArrangerCreateClipState>());

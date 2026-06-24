@@ -58,6 +58,7 @@ class TestProjectTrack {
   final Id? automationLaneParentTrackId;
   final bool isMasterTrack;
   final TrackAutomationTargetModel? automationTarget;
+  final AnthemColor? color;
 
   const TestProjectTrack({
     required this.id,
@@ -69,6 +70,7 @@ class TestProjectTrack {
     this.automationLaneParentTrackId,
     this.isMasterTrack = false,
     this.automationTarget,
+    this.color,
   });
 }
 
@@ -104,13 +106,19 @@ ProjectModel createTestProject({
 
   final trackMap = {
     for (final trackConfig in trackConfigs)
-      trackConfig
-          .id: makeTestTrack(trackConfig.id, trackConfig.name, trackConfig.type)
-        ..childTracks.addAll(trackConfig.childTracks)
-        ..automationLanes.addAll(trackConfig.automationLanes)
-        ..parentTrackId = trackConfig.parentTrackId
-        ..automationLaneParentTrackId = trackConfig.automationLaneParentTrackId
-        ..isMasterTrack = trackConfig.isMasterTrack,
+      trackConfig.id:
+          TrackModel(
+              idAllocator: ProjectEntityIdAllocator.test(() => trackConfig.id),
+              name: trackConfig.name,
+              color: trackConfig.color ?? AnthemColor.randomHue(),
+              type: trackConfig.type,
+            )
+            ..childTracks.addAll(trackConfig.childTracks)
+            ..automationLanes.addAll(trackConfig.automationLanes)
+            ..parentTrackId = trackConfig.parentTrackId
+            ..automationLaneParentTrackId =
+                trackConfig.automationLaneParentTrackId
+            ..isMasterTrack = trackConfig.isMasterTrack,
   };
 
   for (final trackConfig in trackConfigs) {
