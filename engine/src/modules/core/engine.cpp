@@ -26,22 +26,43 @@
 
 #include <exception>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 namespace anthem {
 
 namespace {
-std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device) {
+std::optional<AudioProcessingConfig> buildAudioProcessingConfig(juce::AudioIODevice* device) {
   if (device == nullptr) {
-    return nullptr;
+    return std::nullopt;
   }
 
+  auto audioProcessingConfig = AudioProcessingConfig{
+      .sampleRate = device->getCurrentSampleRate(),
+      .blockSize = device->getCurrentBufferSizeSamples(),
+      .inputChannelCount = device->getActiveInputChannels().countNumberOfSetBits(),
+      .outputChannelCount = device->getActiveOutputChannels().countNumberOfSetBits(),
+  };
+
+#if JUCE_MAC
+  audioProcessingConfig.macAudioWorkgroup = device->getWorkgroup();
+#endif
+
+  if (!audioProcessingConfig.isValid()) {
+    return std::nullopt;
+  }
+
+  return audioProcessingConfig;
+}
+
+std::shared_ptr<EngineAudioConfig> buildAudioConfig(
+    const AudioProcessingConfig& audioProcessingConfig) {
   auto audioConfig = std::make_shared<EngineAudioConfig>();
-  audioConfig->sampleRate = device->getCurrentSampleRate();
-  audioConfig->blockSize = device->getCurrentBufferSizeSamples();
-  audioConfig->inputChannelCount = device->getActiveInputChannels().countNumberOfSetBits();
-  audioConfig->outputChannelCount = device->getActiveOutputChannels().countNumberOfSetBits();
+  audioConfig->sampleRate = audioProcessingConfig.sampleRate;
+  audioConfig->blockSize = audioProcessingConfig.blockSize;
+  audioConfig->inputChannelCount = audioProcessingConfig.inputChannelCount;
+  audioConfig->outputChannelCount = audioProcessingConfig.outputChannelCount;
   return audioConfig;
 }
 } // namespace
@@ -55,8 +76,8 @@ Engine::Engine() {
 void Engine::initialize() {
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
   this->automationSequenceStore = std::make_unique<RuntimeAutomationSequenceStore>();
-  transport = std::make_unique<Transport>(
-      createTransportProjectView(*this), createTransportClock(audioDeviceManager));
+  transport =
+      std::make_unique<Transport>(createTransportProjectView(*this), createTransportClock(*this));
   this->engineRuntimeServices =
       std::make_unique<EngineRuntimeServices>(*transport, *sequenceStore, *automationSequenceStore);
   this->graphProcessor = std::make_unique<GraphProcessor>(*engineRuntimeServices);
@@ -122,19 +143,22 @@ std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
     return nullptr;
   }
 
-  auto audioConfig = buildAudioConfig(device);
-  if (audioConfig == nullptr) {
-    juce::Logger::writeToLog("Failed to build audio config for current device.");
+  auto audioProcessingConfig = buildAudioProcessingConfig(device);
+  if (!audioProcessingConfig.has_value()) {
+    juce::Logger::writeToLog("Failed to build processing config for current device.");
     return nullptr;
   }
 
-  juce::Logger::writeToLog("Selected audio device: " + device->getName());
-  juce::Logger::writeToLog("Sample rate: " + juce::String(device->getCurrentSampleRate()));
-  juce::Logger::writeToLog("Buffer size: " + juce::String(device->getCurrentBufferSizeSamples()));
-  juce::Logger::writeToLog("Active output channels: " +
-                           juce::String(device->getActiveOutputChannels().countNumberOfSetBits()));
+  setCurrentAudioProcessingConfig(audioProcessingConfig.value());
+  auto audioConfig = buildAudioConfig(*currentAudioProcessingConfig);
 
-  graphProcessor->prepareForAudioDevice(device);
+  juce::Logger::writeToLog("Selected audio device: " + device->getName());
+  juce::Logger::writeToLog("Sample rate: " + juce::String(audioProcessingConfig->sampleRate));
+  juce::Logger::writeToLog("Buffer size: " + juce::String(audioProcessingConfig->blockSize));
+  juce::Logger::writeToLog(
+      "Active output channels: " + juce::String(audioProcessingConfig->outputChannelCount));
+
+  graphProcessor->prepareForAudioProcessingConfig(*currentAudioProcessingConfig);
   transport->prepareToProcess();
   juce::Logger::writeToLog("Transport prepared before audio callback registration.");
 
@@ -155,10 +179,33 @@ void Engine::stopAudioCallback() {
   }
 
   audioCallback.reset();
+  clearCurrentAudioProcessingConfig();
+}
+
+void Engine::setCurrentAudioProcessingConfig(AudioProcessingConfig audioProcessingConfig) {
+  jassert(audioProcessingConfig.isValid());
+  if (!audioProcessingConfig.isValid()) {
+    currentAudioProcessingConfig = std::nullopt;
+    return;
+  }
+
+  currentAudioProcessingConfig = audioProcessingConfig;
+}
+
+void Engine::clearCurrentAudioProcessingConfig() {
+  currentAudioProcessingConfig = std::nullopt;
+}
+
+std::optional<AudioProcessingConfig> Engine::getCurrentAudioProcessingConfig() const {
+  return currentAudioProcessingConfig;
 }
 
 std::shared_ptr<EngineAudioConfig> Engine::getCurrentAudioConfig() const {
-  return buildAudioConfig(audioDeviceManager.getCurrentAudioDevice());
+  if (!currentAudioProcessingConfig.has_value()) {
+    return nullptr;
+  }
+
+  return buildAudioConfig(currentAudioProcessingConfig.value());
 }
 
 void Engine::initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete) {
@@ -168,9 +215,9 @@ void Engine::initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallba
 }
 
 void Engine::publishProcessingGraph() {
-  auto* currentDevice = audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
-  if (currentDevice == nullptr) {
+  auto audioProcessingConfig = getCurrentAudioProcessingConfig();
+  jassert(audioProcessingConfig.has_value());
+  if (!audioProcessingConfig.has_value()) {
     return;
   }
 
@@ -179,8 +226,8 @@ void Engine::publishProcessingGraph() {
   auto runtimeGraph = RuntimeGraph::fromProcessingGraph(processingGraph,
       graphProcessor->getEngineRuntimeServices(),
       GraphBufferLayout{
-          .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
-          .blockSize = currentDevice->getCurrentBufferSizeSamples(),
+          .numAudioChannels = audioProcessingConfig->outputChannelCount,
+          .blockSize = audioProcessingConfig->blockSize,
       });
 
   graphProcessor->setRuntimeGraphFromMainThread(runtimeGraph.release());

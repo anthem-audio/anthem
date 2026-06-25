@@ -351,19 +351,17 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
   }
 
   auto& audioPluginFormatManager = Engine::getInstance().audioPluginFormatManager;
-  auto& audioDeviceManager = Engine::getInstance().audioDeviceManager;
+  auto audioProcessingConfig = Engine::getInstance().getCurrentAudioProcessingConfig();
 
-  auto* device = audioDeviceManager.getCurrentAudioDevice();
-
-  if (device == nullptr) {
-    writeVST3Log(*this, "No audio device available. Cannot initialize plugin.");
-    complete(makeVST3PrepareError("No audio device is active."));
+  if (!audioProcessingConfig.has_value()) {
+    writeVST3Log(*this, "No audio processing config available. Cannot initialize plugin.");
+    complete(makeVST3PrepareError("No audio processing config is active."));
     return;
   }
 
   writeVST3Log(*this,
-      "Initializing plugin. Sample rate: " + juce::String(device->getCurrentSampleRate()) +
-          ", buffer size: " + juce::String(device->getCurrentBufferSizeSamples()));
+      "Initializing plugin. Sample rate: " + juce::String(audioProcessingConfig->sampleRate) +
+          ", buffer size: " + juce::String(audioProcessingConfig->blockSize));
 
   // First, scan the VST3 file to get proper plugin descriptions
   juce::VST3PluginFormat vst3Format;
@@ -389,9 +387,9 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
   // Use the first plugin found (not the proper way to do this)
   pluginDescription = *foundPlugins[0];
 
-  auto sampleRate = device->getCurrentSampleRate();
-  auto bufferSize = device->getCurrentBufferSizeSamples();
-  auto hostBufferChannels = device->getActiveOutputChannels().countNumberOfSetBits();
+  auto sampleRate = audioProcessingConfig->sampleRate;
+  auto bufferSize = audioProcessingConfig->blockSize;
+  auto hostBufferChannels = audioProcessingConfig->outputChannelCount;
   auto weakSelf = self;
 
   audioPluginFormatManager.createPluginInstanceAsync(pluginDescription,

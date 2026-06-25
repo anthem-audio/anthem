@@ -82,21 +82,20 @@ public:
   }
 };
 
-class AudioDeviceTransportClock : public TransportClock {
+class EngineTransportClock : public TransportClock {
 private:
-  juce::AudioDeviceManager& audioDeviceManager;
+  Engine& engine;
 public:
-  explicit AudioDeviceTransportClock(juce::AudioDeviceManager& audioDeviceManager)
-    : audioDeviceManager(audioDeviceManager) {}
+  explicit EngineTransportClock(Engine& engine) : engine(engine) {}
 
   double currentSampleRate() const override {
-    auto* device = audioDeviceManager.getCurrentAudioDevice();
-    jassert(device != nullptr);
-    if (device == nullptr) {
+    auto audioProcessingConfig = engine.getCurrentAudioProcessingConfig();
+    jassert(audioProcessingConfig.has_value());
+    if (!audioProcessingConfig.has_value()) {
       return 0.0;
     }
 
-    return device->getCurrentSampleRate();
+    return audioProcessingConfig->sampleRate;
   }
 };
 } // namespace
@@ -105,8 +104,8 @@ std::unique_ptr<TransportProjectView> createTransportProjectView(Engine& engine)
   return std::make_unique<EngineTransportProjectView>(engine);
 }
 
-std::unique_ptr<TransportClock> createTransportClock(juce::AudioDeviceManager& audioDeviceManager) {
-  return std::make_unique<AudioDeviceTransportClock>(audioDeviceManager);
+std::unique_ptr<TransportClock> createTransportClock(Engine& engine) {
+  return std::make_unique<EngineTransportClock>(engine);
 }
 
 } // namespace anthem

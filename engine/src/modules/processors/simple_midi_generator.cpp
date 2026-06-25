@@ -40,18 +40,18 @@ SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(
 SimpleMidiGeneratorProcessor::~SimpleMidiGeneratorProcessor() {}
 
 void SimpleMidiGeneratorProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  auto* currentDevice = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
+  auto audioProcessingConfig = Engine::getInstance().getCurrentAudioProcessingConfig();
+  jassert(audioProcessingConfig.has_value());
 
-  if (currentDevice == nullptr) {
+  if (!audioProcessingConfig.has_value()) {
     complete(ProcessorPrepareResult{
         .success = false,
-        .error = std::string("No audio device is active."),
+        .error = std::string("No audio processing config is active."),
     });
     return;
   }
 
-  sampleRate = currentDevice->getCurrentSampleRate();
+  sampleRate = audioProcessingConfig->sampleRate;
 
   complete(std::nullopt);
 }

@@ -62,23 +62,18 @@ void DbMeterProcessor::initialize(
 }
 
 void DbMeterProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  auto* currentDevice = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
+  auto audioProcessingConfig = Engine::getInstance().getCurrentAudioProcessingConfig();
+  jassert(audioProcessingConfig.has_value());
 
-  if (currentDevice == nullptr) {
+  if (!audioProcessingConfig.has_value()) {
     complete(ProcessorPrepareResult{
         .success = false,
-        .error = std::string("No audio device is active."),
+        .error = std::string("No audio processing config is active."),
     });
     return;
   }
 
-  size_t rt_channelCount = 0;
-
-  if (currentDevice != nullptr) {
-    rt_channelCount =
-        static_cast<size_t>(currentDevice->getActiveOutputChannels().countNumberOfSetBits());
-  }
+  const auto rt_channelCount = static_cast<size_t>(audioProcessingConfig->outputChannelCount);
 
   rt_accumulator.rt_prepare(rt_channelCount);
 

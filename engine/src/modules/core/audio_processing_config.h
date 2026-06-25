@@ -19,16 +19,27 @@
 
 #pragma once
 
-#include "modules/sequencer/runtime/transport.h"
+#include <juce_core/juce_core.h>
 
-#include <memory>
+#if JUCE_MAC
+#include <juce_audio_basics/juce_audio_basics.h>
+#endif
 
 namespace anthem {
 
-class Engine;
+struct AudioProcessingConfig {
+  double sampleRate = 0.0;
+  int blockSize = 0;
+  int inputChannelCount = 0;
+  int outputChannelCount = 0;
 
-std::unique_ptr<TransportProjectView> createTransportProjectView(Engine& engine);
+#if JUCE_MAC
+  juce::AudioWorkgroup macAudioWorkgroup;
+#endif
 
-std::unique_ptr<TransportClock> createTransportClock(Engine& engine);
+  bool isValid() const {
+    return sampleRate > 0.0 && blockSize > 0 && outputChannelCount > 0;
+  }
+};
 
 } // namespace anthem

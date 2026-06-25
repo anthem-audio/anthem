@@ -19,15 +19,12 @@
 
 #pragma once
 
+#include "modules/core/audio_processing_config.h"
 #include "modules/processing_graph/model/runtime_graph.h"
 #include "modules/util/ring_buffer.h"
 
 #include <juce_events/juce_events.h>
 #include <memory>
-
-namespace juce {
-class AudioIODevice;
-}
 
 namespace anthem {
 
@@ -56,7 +53,7 @@ public:
   explicit GraphProcessor(EngineRuntimeServices& engineRuntimeServices);
   ~GraphProcessor();
 
-  void prepareForAudioDevice(juce::AudioIODevice* device);
+  void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig);
 
   // Transfers ownership of a newly built runtime graph from the main thread to
   // the audio thread.

@@ -84,8 +84,8 @@ public:
 
   // Called on the JUCE message thread to initialize the processor.
   //
-  // Note that this is called after the audio device is started, so audio device
-  // information can be queried at this point.
+  // Note that this is called after a processing config is active, so timing and
+  // buffer layout information can be queried at this point.
   virtual void prepareToProcess(ProcessorPrepareCallback complete) = 0;
 
   // This flag must be set after prepareToProcess() is called. It is set by the

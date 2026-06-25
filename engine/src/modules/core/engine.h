@@ -23,6 +23,7 @@
 #include <iostream>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -33,6 +34,7 @@
 #include "comms.h"
 #include "messages/messages.h"
 #include "modules/core/audio_callback.h"
+#include "modules/core/audio_processing_config.h"
 #include "modules/core/command_handler.h"
 #include "modules/core/engine_runtime_services.h"
 #include "modules/core/visualization/global_visualization_sources.h"
@@ -60,6 +62,11 @@ private:
   static std::unique_ptr<Engine> instance;
 
   std::unique_ptr<AudioCallback> audioCallback;
+
+  std::optional<AudioProcessingConfig> currentAudioProcessingConfig;
+
+  void setCurrentAudioProcessingConfig(AudioProcessingConfig audioProcessingConfig);
+  void clearCurrentAudioProcessingConfig();
 
   // Tracks the graph node instances that have already completed main-thread
   // initialization for the current engine-side model state. The key is the
@@ -151,6 +158,7 @@ public:
     return isAudioCallbackRunning;
   }
 
+  std::optional<AudioProcessingConfig> getCurrentAudioProcessingConfig() const;
   std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
 
   // Initializes the delta between the current shared model graph and

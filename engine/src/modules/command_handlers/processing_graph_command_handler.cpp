@@ -95,14 +95,14 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
           .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
-    // We need a valid device in order to query the sample rate and block size
+    // We need a valid processing config in order to allocate the graph buffers
     // used by the published graph.
-    if (engine.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
+    if (!engine.getCurrentAudioProcessingConfig().has_value()) {
       juce::Logger::writeToLog(
-          "Cannot publish processing graph because no audio device is active.");
+          "Cannot publish processing graph because no audio processing config is active.");
 
       return std::optional(PublishProcessingGraphResponse{.success = false,
-          .error = std::string("No audio device is active."),
+          .error = std::string("No audio processing config is active."),
           .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
