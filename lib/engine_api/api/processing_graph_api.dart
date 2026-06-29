@@ -48,6 +48,12 @@ class ProcessingGraphApi {
         (await _engine._request(request, timeout: Duration(seconds: 30)))
             as InitializeProcessingGraphNodesResponse;
 
+    if (response.error != null) {
+      throw Exception(
+        'initializeNodes(): engine returned an error: ${response.error}',
+      );
+    }
+
     return ProcessingGraphNodeInitialization(
       didInitialize: response.didInitialize,
       results: response.results,

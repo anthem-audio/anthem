@@ -21,7 +21,10 @@
 
 #include "modules/core/engine.h"
 
+#include <algorithm>
+#include <chrono>
 #include <stdexcept>
+#include <string>
 
 namespace anthem {
 
@@ -89,44 +92,32 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
   engine->sequenceStore->rt_processSequenceChanges(numSamples);
   engine->automationSequenceStore->rt_processSequenceChanges(numSamples);
 
-  engine->graphProcessor->rt_process(numSamples);
+  const auto didProcessGraph =
+      engine->graphProcessor->rt_process(numSamples, engine->getAudioProcessingConfigGeneration());
 
   auto& outputBuffer = masterOutputProcessor->buffer;
 
-  bool badValue = false;
-  float lastBadValue = 0.0f;
+  // A processed graph must provide a master output buffer that matches the
+  // callback block shape.
+  if (didProcessGraph) {
+    jassert(outputBuffer.getNumChannels() >= numOutputChannels);
+    jassert(outputBuffer.getNumSamples() >= numSamples);
 
-  // The master output node may have an empty buffer if it hasn't been initialized yet
-  if (outputBuffer.getNumChannels() > 0 && outputBuffer.getNumSamples() > 0) {
     for (int channel = 0; channel < numOutputChannels; ++channel) {
       if (outputChannelData[channel] == nullptr) {
         continue;
       }
 
       for (int sample = 0; sample < numSamples; ++sample) {
-        auto sampleValue = outputBuffer.getSample(channel, sample);
-        if (std::isnan(sampleValue) || std::isinf(sampleValue) || sampleValue > 100.0f ||
-            sampleValue < -100.0f) {
-          badValue = true;
-          lastBadValue = sampleValue;
-          sampleValue = 0.0f;
-        }
-        outputChannelData[channel][sample] = sampleValue;
+        outputChannelData[channel][sample] = outputBuffer.getSample(channel, sample);
       }
     }
-  }
-
-  // Get ms since epoch
-  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::system_clock::now().time_since_epoch())
-                 .count();
-
-  if (now - lastDebugOutputTime > 2000) {
-    if (badValue) {
-      juce::Logger::writeToLog(
-          "Bad value detected in audio callback. Last bad value: " + juce::String(lastBadValue));
+  } else {
+    for (int channel = 0; channel < numOutputChannels; ++channel) {
+      if (outputChannelData[channel] != nullptr) {
+        std::fill_n(outputChannelData[channel], numSamples, 0.0f);
+      }
     }
-    lastDebugOutputTime = now;
   }
 
   auto endTime = std::chrono::high_resolution_clock::now();
@@ -134,12 +125,14 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
   auto durationInSeconds = static_cast<double>(duration) / 1e6;
-  auto cpuBurden = durationInSeconds * this->sampleRate /
+  jassert(rt_sampleRate >= 0.0);
+  const auto sampleRate = rt_sampleRate;
+  auto cpuBurden = durationInSeconds * sampleRate /
                    static_cast<double>(numSamples); // actual time / total buffer time
-  cpuBurdenProvider->rt_updateCpuBurden(cpuBurden, blockStartSample, numSamples, this->sampleRate);
+  cpuBurdenProvider->rt_updateCpuBurden(cpuBurden, blockStartSample, numSamples, sampleRate);
 
   playheadPositionProvider->rt_updatePlayheadPosition(
-      *transport, blockStartSample, numSamples, this->sampleRate);
+      *transport, blockStartSample, numSamples, sampleRate);
 
   auto& activeSequenceId = transport->rt_config->activeSequenceId;
   if (activeSequenceId.has_value()) {
@@ -151,10 +144,11 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
 }
 
 void AudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {
-  // According to this:
-  //    https://forum.juce.com/t/which-thread-calls-audiodeviceabouttostart-stopped/6594
-  // -- we don't have any guarantees about which thread this will be called on, so we
-  // schedule this update to run on the message thread.
+  // JUCE does not guarantee which thread calls this. During initial startup,
+  // engine preparation has already happened on the message thread before the
+  // callback is registered. During a runtime device restart, keep this path
+  // minimal and request an invalidation so the UI can perform a normal
+  // stop/start cycle.
 
   if (device == nullptr) {
     juce::Logger::writeToLog("audioDeviceAboutToStart() received a null device.");
@@ -169,32 +163,10 @@ void AudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice
                            ", sampleRate=" + juce::String(deviceSampleRate) +
                            ", bufferSize=" + juce::String(bufferSize));
 
-  this->sampleRate = deviceSampleRate;
+  rt_sampleRate = deviceSampleRate;
 
-  juce::MessageManager::callAsync([deviceName, deviceSampleRate, this]() {
-    auto& engine = Engine::getInstance();
-
-    engine.transport->prepareToProcess();
-    juce::Logger::writeToLog(
-        "audioDeviceAboutToStart(): transport prepared for device " + deviceName);
-
-    auto audioConfig = engine.getCurrentAudioConfig();
-    if (audioConfig == nullptr) {
-      juce::Logger::writeToLog(
-          "audioDeviceAboutToStart(): Failed to build audio config for current device.");
-      return;
-    }
-
-    // This notifies the UI that the engine has started
-    Response response = AudioReadyEvent{
-        .audioConfig = audioConfig,
-        .responseBase = ResponseBase{.id = -1},
-    };
-
-    auto responseText = rfl::json::write(response);
-    Engine::getInstance().comms.send(responseText);
-    juce::Logger::writeToLog("audioDeviceAboutToStart(): AudioReadyEvent sent to UI.");
-  });
+  engine->requestAudioSessionInvalidation(
+      std::string("The audio device restarted while the audio session was running."));
 }
 
 void AudioCallback::audioDeviceStopped() {

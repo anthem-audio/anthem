@@ -518,6 +518,56 @@ void main() {
     });
 
     test(
+      'AudioSessionInvalidatedEvent clears audio state and allows stop',
+      () async {
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+
+        final invalidationReasons = <String?>[];
+        final subscription = engine.audioSessionInvalidatedStream.listen(
+          invalidationReasons.add,
+        );
+
+        connector.emitResponse(
+          AudioSessionInvalidatedEvent(
+            id: -1,
+            reason: 'The audio device restarted.',
+          ),
+        );
+
+        await _flushMicrotasks();
+
+        expect(engine.isAudioReady, isFalse);
+        expect(engine.audioConfig, isNull);
+        expect(
+          invalidationReasons,
+          orderedEquals(['The audio device restarted.']),
+        );
+
+        final stopAudioFuture = engine.stopAudio();
+        await _flushMicrotasks();
+
+        expect(connector.sentRequests.last, isA<StopAudioRequest>());
+
+        final stopAudioRequest =
+            connector.sentRequests.last as StopAudioRequest;
+        connector.emitResponse(
+          StopAudioResponse(id: stopAudioRequest.id, success: true),
+        );
+
+        await stopAudioFuture;
+        await subscription.cancel();
+
+        expect(engine.engineState, EngineState.running);
+        expect(engine.isAudioReady, isFalse);
+        expect(engine.audioConfig, isNull);
+      },
+    );
+
+    test(
       'stopAudio sends StopAudioRequest and clears audio state without stopping engine',
       () async {
         await _startEngineThroughInit(

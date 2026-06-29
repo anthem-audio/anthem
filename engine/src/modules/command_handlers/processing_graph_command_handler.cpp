@@ -59,6 +59,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
       return std::optional(InitializeProcessingGraphNodesResponse{.didInitialize = false,
           .results = results,
+          .error = std::nullopt,
           .responseBase = ResponseBase{.id = requestId}});
     }
 
@@ -73,6 +74,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
           Response response = InitializeProcessingGraphNodesResponse{.didInitialize = true,
               .results = results,
+              .error = std::nullopt,
               .responseBase = ResponseBase{.id = requestId}};
 
           auto responseString = rfl::json::write(response);
@@ -87,11 +89,12 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     juce::Logger::writeToLog("Publishing from UI request...");
 
     if (!engine.isAudioThreadRunning()) {
-      juce::Logger::writeToLog(
-          "Skipping processing graph publish because the audio thread is not running.");
+      constexpr auto error =
+          "Cannot publish processing graph because the audio thread is not running.";
+      juce::Logger::writeToLog(error);
 
-      return std::optional(PublishProcessingGraphResponse{.success = true,
-          .error = std::nullopt,
+      return std::optional(PublishProcessingGraphResponse{.success = false,
+          .error = std::string(error),
           .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 

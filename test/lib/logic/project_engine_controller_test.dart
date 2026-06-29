@@ -239,6 +239,93 @@ void main() {
     await project.waitForFirstSync().timeout(const Duration(seconds: 1));
   });
 
+  test(
+    'audio session invalidation restarts audio and republishes graph',
+    () async {
+      final startFuture = projectEngineController.start();
+
+      connector.completeInit();
+      await _flushMicrotasks();
+
+      final readyCheckRequest = _latestRequest<EngineReadyCheckRequest>(
+        connector,
+      )!;
+      connector.emitResponse(
+        EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+      );
+      await _flushMicrotasks();
+
+      final modelInitRequest = _latestRequest<ModelInitRequest>(connector)!;
+      connector.emitResponse(
+        ModelInitResponse(id: modelInitRequest.id, success: true),
+      );
+
+      final startAudioRequest = await _waitForRequest<StartAudioRequest>(
+        connector,
+      );
+      connector.emitResponse(
+        StartAudioResponse(
+          id: startAudioRequest.id,
+          success: true,
+          audioConfig: EngineAudioConfig(
+            sampleRate: 48000,
+            blockSize: 256,
+            inputChannelCount: 2,
+            outputChannelCount: 2,
+          ),
+        ),
+      );
+
+      await startFuture;
+
+      final previousStartAudioRequestCount = connector.sentRequests
+          .whereType<StartAudioRequest>()
+          .length;
+
+      connector.emitResponse(
+        AudioSessionInvalidatedEvent(
+          id: -1,
+          reason: 'The audio device restarted.',
+        ),
+      );
+
+      final stopAudioRequest = await _waitForRequest<StopAudioRequest>(
+        connector,
+      );
+      connector.emitResponse(
+        StopAudioResponse(id: stopAudioRequest.id, success: true),
+      );
+
+      final restartedStartAudioRequest =
+          await _waitForNewRequest<StartAudioRequest>(
+            connector,
+            previousStartAudioRequestCount,
+          );
+      connector.emitResponse(
+        StartAudioResponse(
+          id: restartedStartAudioRequest.id,
+          success: true,
+          audioConfig: EngineAudioConfig(
+            sampleRate: 44100,
+            blockSize: 512,
+            inputChannelCount: 0,
+            outputChannelCount: 2,
+          ),
+        ),
+      );
+
+      await _flushMicrotasks();
+
+      expect(project.engine.isAudioReady, isTrue);
+      expect(project.engine.audioConfig?.sampleRate, equals(44100));
+      expect(project.engine.audioConfig?.blockSize, equals(512));
+      expect(
+        processingGraphApi.calls,
+        orderedEquals(['initialize', 'publish', 'initialize', 'publish']),
+      );
+    },
+  );
+
   test('start completes when startup audio fails', () async {
     final startFuture = projectEngineController.start();
 
@@ -341,6 +428,22 @@ Future<T> _waitForRequest<T extends Request>(
   }
 
   fail('Timed out waiting for ${T.toString()}.');
+}
+
+Future<T> _waitForNewRequest<T extends Request>(
+  _TestEngineConnector connector,
+  int previousCount,
+) async {
+  for (var i = 0; i < 20; i++) {
+    final requests = connector.sentRequests.whereType<T>().toList();
+    if (requests.length > previousCount) {
+      return requests.last;
+    }
+
+    await _flushMicrotasks();
+  }
+
+  fail('Timed out waiting for new ${T.toString()}.');
 }
 
 Future<void> _flushMicrotasks() async {

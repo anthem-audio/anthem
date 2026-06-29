@@ -32,6 +32,7 @@ class InitializeProcessingGraphNodesRequest extends Request {
 class InitializeProcessingGraphNodesResponse extends Response {
   late bool didInitialize;
   late List<ProcessingGraphNodeInitializationResult> results;
+  String? error;
 
   InitializeProcessingGraphNodesResponse.uninitialized()
     : didInitialize = false,
@@ -41,6 +42,7 @@ class InitializeProcessingGraphNodesResponse extends Response {
     required int id,
     required this.didInitialize,
     required this.results,
+    this.error,
   }) {
     super.id = id;
   }

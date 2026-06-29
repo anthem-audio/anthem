@@ -201,6 +201,18 @@ class AudioReadyEvent extends Response {
   }
 }
 
+/// Unsolicited response sent when the engine detects that the current audio
+/// session can no longer be used.
+class AudioSessionInvalidatedEvent extends Response {
+  String? reason;
+
+  AudioSessionInvalidatedEvent.uninitialized();
+
+  AudioSessionInvalidatedEvent({required int id, this.reason}) {
+    super.id = id;
+  }
+}
+
 @AnthemModel.ipc()
 sealed class Request extends _Request with _$RequestAnthemModelMixin {
   Request();

@@ -224,6 +224,7 @@ public:
     testDeduplicatesNodeConnections();
     testAliasesSingleAudioConnection();
     testFullyReplacingAudioSourceSkipsArenaClear();
+    testOnlyPreparedProcessorsAreInstalled();
     testAudioViewsUsePortChannelCountsAndSharedBuffersUseMaxWidth();
     testCopiesAudioFanOutConnections();
     testDisconnectedAudioInputsUseWritableClearedBuffers();
@@ -381,6 +382,7 @@ public:
     auto sourceNode = graph_test_helpers::makeToneGeneratorNode(1);
     sourceNode->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(outputPortId(1), 1, NodePortDataType::audio));
+    sourceNode->getProcessor().value()->isPrepared = true;
     graph->nodes()->insert_or_assign(1, sourceNode);
 
     EngineRuntimeServices rtServices;
@@ -392,6 +394,48 @@ public:
     expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                sourceOutputBufferIndex),
         "A full-output-writing source should not need allocation-time audio clearing.");
+  }
+
+  void testOnlyPreparedProcessorsAreInstalled() {
+    beginTest("RuntimeGraph only installs prepared processors");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+
+    auto sourceNode = graph_test_helpers::makeToneGeneratorNode(1);
+    sourceNode->audioOutputPorts()->push_back(
+        graph_test_helpers::makePort(outputPortId(1), 1, NodePortDataType::audio));
+    graph->nodes()->insert_or_assign(1, sourceNode);
+
+    auto processor = sourceNode->getProcessor();
+    expect(processor.has_value(), "The test node should have a processor.");
+
+    processor.value()->isPrepared = false;
+
+    EngineRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+
+    expect(runtimeGraph->nodes.at(1).processor == nullptr,
+        "Unprepared processors should not be installed in the runtime graph.");
+    expect(runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               sourceOutputBufferIndex),
+        "Unprepared processor outputs should keep allocation-time clearing.");
+
+    runtimeGraph.reset();
+    processor.value()->isPrepared = true;
+
+    auto preparedRuntimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    sourceOutputBufferIndex = preparedRuntimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+
+    expect(preparedRuntimeGraph->nodes.at(1).processor == processor.value().get(),
+        "Prepared processors should be installed in the runtime graph.");
+    expect(!preparedRuntimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               sourceOutputBufferIndex),
+        "Prepared full-output-writing processors can skip allocation-time clearing.");
   }
 
   void testAudioViewsUsePortChannelCountsAndSharedBuffersUseMaxWidth() {

@@ -229,7 +229,7 @@ void main() {
     );
 
     test(
-      'publishProcessingGraph serializes queued publishes while in progress',
+      'publishProcessingGraph coalesces queued publishes while in progress',
       () async {
         final processingGraphApi = _RecordingProcessingGraphApi();
         final publishCompleter = Completer<void>();
@@ -259,14 +259,7 @@ void main() {
 
         expect(
           processingGraphApi.calls,
-          orderedEquals([
-            'initialize',
-            'publish',
-            'initialize',
-            'publish',
-            'initialize',
-            'publish',
-          ]),
+          orderedEquals(['initialize', 'publish', 'initialize', 'publish']),
         );
       },
     );

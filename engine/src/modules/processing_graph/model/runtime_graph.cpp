@@ -24,6 +24,7 @@
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 #include "modules/processing_graph/model/node_port.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <algorithm>
@@ -185,6 +186,15 @@ bool hasSingleAudioInputAndOutput(anthem::Node& graphNode) {
   return graphNode.audioInputPorts()->size() == 1 && graphNode.audioOutputPorts()->size() == 1;
 }
 
+std::optional<std::shared_ptr<Processor>> getPreparedProcessor(anthem::Node& graphNode) {
+  auto processor = graphNode.getProcessor();
+  if (!processor.has_value() || processor.value() == nullptr || !processor.value()->isPrepared) {
+    return std::nullopt;
+  }
+
+  return processor;
+}
+
 void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
     GraphProcessContext::Builder& contextBuilder,
     ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes) {
@@ -242,7 +252,7 @@ void createNodeProcessContexts(RuntimeGraph& runtimeGraph,
         runtimeNode.sourceNode, std::move(bufferBindingsIter->second));
     runtimeNode.nodeProcessContext = &nodeProcessContext;
 
-    auto processor = runtimeNode.sourceNode->getProcessor();
+    auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
     if (processor.has_value()) {
       runtimeNode.processor = processor.value().get();
     }
@@ -392,8 +402,8 @@ void buildSampleBufferSlotInitialization(RuntimeGraph& runtimeGraph,
       continue;
     }
 
-    const auto processor = runtimeNode.sourceNode->getProcessor();
-    if (!processor.has_value() || processor.value() == nullptr) {
+    const auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
+    if (!processor.has_value()) {
       continue;
     }
 

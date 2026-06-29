@@ -19,10 +19,13 @@
 
 #pragma once
 
+#include <atomic>
+#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -52,21 +55,33 @@ class ProcessingGraphNodeInitializationSession;
 using InitializeProcessingGraphNodesCallback =
     std::function<void(std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>)>;
 
+struct AudioProcessingConfigSnapshot {
+  AudioProcessingConfig config;
+  uint64_t generation;
+};
+
 class Engine {
 private:
   friend class ProcessingGraphNodeInitializationSession;
 
-  bool isAudioCallbackRunning;
+  std::atomic_bool isAudioCallbackRunning{false};
 
   // Singleton shared pointer instance
   static std::unique_ptr<Engine> instance;
 
   std::unique_ptr<AudioCallback> audioCallback;
 
+  mutable std::mutex audioProcessingConfigMutex;
   std::optional<AudioProcessingConfig> currentAudioProcessingConfig;
+  std::atomic<uint64_t> audioProcessingConfigGeneration{0};
 
-  void setCurrentAudioProcessingConfig(AudioProcessingConfig audioProcessingConfig);
+  uint64_t setCurrentAudioProcessingConfig(AudioProcessingConfig audioProcessingConfig);
   void clearCurrentAudioProcessingConfig();
+  void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig);
+  void sendAudioSessionInvalidatedEvent(std::optional<std::string> reason);
+  void notifyAudioSessionInvalidatedOnMessageThread(
+      std::optional<std::string> reason, uint64_t invalidatedGeneration);
+  void resetInitializedProcessingGraphNodes();
 
   // Tracks the graph node instances that have already completed main-thread
   // initialization for the current engine-side model state. The key is the
@@ -153,13 +168,18 @@ public:
   // Sets up the audio callback
   std::shared_ptr<EngineAudioConfig> startAudioCallback();
   void stopAudioCallback();
+  void requestAudioSessionInvalidation(std::optional<std::string> reason);
+  std::shared_ptr<EngineAudioConfig> refreshAudioProcessingConfigForDevice(
+      juce::AudioIODevice& device);
 
   bool isAudioThreadRunning() const {
-    return isAudioCallbackRunning;
+    return isAudioCallbackRunning.load(std::memory_order_acquire);
   }
 
   std::optional<AudioProcessingConfig> getCurrentAudioProcessingConfig() const;
+  std::optional<AudioProcessingConfigSnapshot> getCurrentAudioProcessingConfigSnapshot() const;
   std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
+  uint64_t getAudioProcessingConfigGeneration() const;
 
   // Initializes the delta between the current shared model graph and
   // initializedProcessingGraphNodes. Nodes already present in the tracker are

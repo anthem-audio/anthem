@@ -32,14 +32,15 @@ class ProjectEngineController implements DisposableService {
   final ProjectController projectController;
 
   late final StreamSubscription<EngineState> _engineStateSubscription;
+  late final StreamSubscription<String?> _audioSessionInvalidatedSubscription;
 
   Future<void>? _processStartFuture;
   Future<void>? _processStopFuture;
   Future<void>? _audioStartFuture;
   Future<void>? _audioStopFuture;
+  Future<void>? _audioSessionInvalidationFuture;
 
   bool _didFinishStartupForCurrentProcess = false;
-  bool _hasPublishedProcessingGraphForCurrentAudioStart = false;
 
   ProjectEngineController(this.project, this.projectController) {
     _engineStateSubscription = project.engine.engineStateStream.listen((state) {
@@ -47,6 +48,11 @@ class ProjectEngineController implements DisposableService {
         _handleProcessStopped();
       }
     });
+
+    _audioSessionInvalidatedSubscription = project
+        .engine
+        .audioSessionInvalidatedStream
+        .listen(_handleAudioSessionInvalidated);
   }
 
   Future<void> start({bool startAudio = true}) async {
@@ -69,9 +75,10 @@ class ProjectEngineController implements DisposableService {
     if (startAudio) {
       try {
         await this.startAudio();
+        await projectController.publishProcessingGraph();
       } catch (error, stackTrace) {
         _log.warning(
-          'Could not start audio for project ${project.id} during engine startup.',
+          'Could not start audio session for project ${project.id} during engine startup.',
           error,
           stackTrace,
         );
@@ -146,15 +153,7 @@ class ProjectEngineController implements DisposableService {
 
     if (project.engine.audioConfig == null) {
       await project.engine.startAudio();
-      _hasPublishedProcessingGraphForCurrentAudioStart = false;
     }
-
-    if (_hasPublishedProcessingGraphForCurrentAudioStart) {
-      return;
-    }
-
-    await projectController.publishProcessingGraph();
-    _hasPublishedProcessingGraphForCurrentAudioStart = true;
   }
 
   Future<void> stopAudio() async {
@@ -178,7 +177,44 @@ class ProjectEngineController implements DisposableService {
   Future<void> _stopAudio() async {
     project.sequence.isPlaying = false;
     await project.engine.stopAudio();
-    _hasPublishedProcessingGraphForCurrentAudioStart = false;
+  }
+
+  void _handleAudioSessionInvalidated(String? reason) {
+    if (_audioSessionInvalidationFuture != null) {
+      return;
+    }
+
+    final restartFuture = _restartAudioSessionAfterInvalidation(reason);
+    _audioSessionInvalidationFuture = restartFuture;
+
+    unawaited(
+      restartFuture.whenComplete(() {
+        if (identical(_audioSessionInvalidationFuture, restartFuture)) {
+          _audioSessionInvalidationFuture = null;
+        }
+      }),
+    );
+  }
+
+  Future<void> _restartAudioSessionAfterInvalidation(String? reason) async {
+    if (project.engine.engineState != EngineState.running) {
+      return;
+    }
+
+    project.sequence.isPlaying = false;
+
+    try {
+      await stopAudio();
+      await startAudio();
+      await projectController.publishProcessingGraph();
+    } catch (error, stackTrace) {
+      _log.warning(
+        'Could not restart audio session for project ${project.id}'
+        '${reason == null ? '' : ' after invalidation: $reason'}.',
+        error,
+        stackTrace,
+      );
+    }
   }
 
   void _finishStartupForCurrentProcess() {
@@ -201,12 +237,12 @@ class ProjectEngineController implements DisposableService {
 
   void _handleProcessStopped() {
     _didFinishStartupForCurrentProcess = false;
-    _hasPublishedProcessingGraphForCurrentAudioStart = false;
     project.handleEngineStopped();
   }
 
   @override
   void dispose() {
     _engineStateSubscription.cancel();
+    _audioSessionInvalidatedSubscription.cancel();
   }
 }

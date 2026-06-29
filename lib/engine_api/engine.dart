@@ -153,7 +153,10 @@ class Engine {
 
   final StreamController<EngineState> _engineStateStreamController =
       StreamController.broadcast();
+  final StreamController<String?> _audioSessionInvalidatedStreamController =
+      StreamController.broadcast();
   late final Stream<EngineState> engineStateStream;
+  late final Stream<String?> audioSessionInvalidatedStream;
   Completer<void> _readyForMessagesCompleter = Completer<void>();
 
   EngineState _engineState = EngineState.stopped;
@@ -280,6 +283,15 @@ class Engine {
     _isAudioReady = false;
   }
 
+  void _markAudioSessionInvalidated(String? reason) {
+    _audioConfig = null;
+    _isAudioReady = false;
+
+    if (!_audioSessionInvalidatedStreamController.isClosed) {
+      _audioSessionInvalidatedStreamController.add(reason);
+    }
+  }
+
   Engine(
     this.id,
     this.project, {
@@ -288,6 +300,8 @@ class Engine {
   }) : _engineConnectorFactory =
            engineConnectorFactory ?? _defaultEngineConnectorFactory {
     engineStateStream = _engineStateStreamController.stream;
+    audioSessionInvalidatedStream =
+        _audioSessionInvalidatedStreamController.stream;
 
     modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
@@ -419,6 +433,9 @@ class Engine {
       case AudioReadyEvent e:
         _setAudioReady(e.audioConfig);
         return;
+      case AudioSessionInvalidatedEvent e:
+        _markAudioSessionInvalidated(e.reason);
+        return;
       case PluginChangedEvent e:
         _scheduleNodeStateUpdate(e.nodeId);
         return;
@@ -472,6 +489,7 @@ class Engine {
     await stop();
 
     _engineStateStreamController.close();
+    _audioSessionInvalidatedStreamController.close();
   }
 
   /// Stops the engine process, if it is running.
@@ -532,10 +550,6 @@ class Engine {
   /// Stops the audio thread without stopping the engine process.
   Future<void> stopAudio() async {
     if (_engineState != EngineState.running) {
-      return;
-    }
-
-    if (_audioConfig == null && !_isAudioReady) {
       return;
     }
 

@@ -44,8 +44,7 @@ class ProjectController {
   ProjectViewModel viewModel;
   late final LiveEventManager liveEventManager = LiveEventManager(project);
 
-  bool _isPublishingProcessingGraph = false;
-  int _pendingProcessingGraphPublishCount = 0;
+  bool _needsProcessingGraphPublish = false;
   Future<void>? _processingGraphPublishFuture;
 
   ProjectController(this.project, this.viewModel);
@@ -116,22 +115,14 @@ class ProjectController {
   }
 
   Future<void> publishProcessingGraph() {
-    if (_isPublishingProcessingGraph) {
-      _pendingProcessingGraphPublishCount++;
-      return _processingGraphPublishFuture ?? Future<void>.value();
-    }
-
-    _pendingProcessingGraphPublishCount = 1;
-    _processingGraphPublishFuture = _runProcessingGraphPublishQueue();
-    return _processingGraphPublishFuture!;
+    _needsProcessingGraphPublish = true;
+    return _processingGraphPublishFuture ??= _runProcessingGraphPublishQueue();
   }
 
   Future<void> _runProcessingGraphPublishQueue() async {
-    _isPublishingProcessingGraph = true;
-
     try {
-      while (_pendingProcessingGraphPublishCount > 0) {
-        _pendingProcessingGraphPublishCount--;
+      while (_needsProcessingGraphPublish) {
+        _needsProcessingGraphPublish = false;
 
         final initialization = await project.engine.processingGraphApi
             .initializeNodes();
@@ -145,8 +136,7 @@ class ProjectController {
         await project.engine.processingGraphApi.publish();
       }
     } finally {
-      _isPublishingProcessingGraph = false;
-      _pendingProcessingGraphPublishCount = 0;
+      _needsProcessingGraphPublish = false;
       _processingGraphPublishFuture = null;
     }
   }

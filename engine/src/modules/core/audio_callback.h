@@ -23,7 +23,6 @@
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/processors/master_output.h"
 
-#include <chrono>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
 
@@ -33,9 +32,7 @@ class Engine;
 
 class AudioCallback : public juce::AudioIODeviceCallback {
 private:
-  double sampleRate = -1.0;
-
-  int64_t lastDebugOutputTime;
+  double rt_sampleRate = 0.0;
 
   // There is a shared_ptr reference to the processor here to ensure that it is
   // not deleted, but it should never be accessed from the callback, since

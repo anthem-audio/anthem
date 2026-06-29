@@ -35,7 +35,7 @@ namespace anthem {
 //
 // "Publishing" the live processing graph has two steps. First, we initialize
 // all new nodes. Then, we send a condensed version of the graph to the audio
-// node. This class takes care of the first step.
+// thread. This class takes care of the first step.
 //
 // The reason a separate class is necessary is that node initialization
 // sometimes happens asynchronously, and so we need to store state to track the

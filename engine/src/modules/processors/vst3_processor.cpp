@@ -344,13 +344,6 @@ void VST3Processor::initialize(
 }
 
 void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
-  if (pluginInstance != nullptr) {
-    writeVST3Log(*this, "Plugin instance already exists. Skipping initialization.");
-    complete(buildPrepareResultForPlugin());
-    return;
-  }
-
-  auto& audioPluginFormatManager = Engine::getInstance().audioPluginFormatManager;
   auto audioProcessingConfig = Engine::getInstance().getCurrentAudioProcessingConfig();
 
   if (!audioProcessingConfig.has_value()) {
@@ -358,6 +351,72 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
     complete(makeVST3PrepareError("No audio processing config is active."));
     return;
   }
+
+  auto sampleRate = audioProcessingConfig->sampleRate;
+  auto bufferSize = audioProcessingConfig->blockSize;
+  auto hostBufferChannels = audioProcessingConfig->outputChannelCount;
+
+  if (pluginInstance != nullptr) {
+    writeVST3Log(*this,
+        "Plugin instance already exists. Repreparing plugin. Sample rate: " +
+            juce::String(sampleRate) + ", buffer size: " + juce::String(bufferSize));
+
+    pluginInstance->disableNonMainBuses();
+
+    const auto requiredProcessChannels = juce::jmax(
+        pluginInstance->getTotalNumInputChannels(), pluginInstance->getTotalNumOutputChannels());
+
+    if (requiredProcessChannels > hostBufferChannels) {
+      writeVST3Log(*this,
+          "Plugin requires " + juce::String(requiredProcessChannels) +
+              " process channel(s), but Anthem currently allocates " +
+              juce::String(hostBufferChannels) +
+              " channel(s) per plugin buffer. Refusing to prepare to avoid a host buffer "
+              "overrun.");
+      complete(
+          makeVST3PrepareError("Plugin requires more process channels than Anthem can allocate."));
+      return;
+    }
+
+    pluginInstance->prepareToPlay(sampleRate, bufferSize);
+    writeVST3Log(*this, "prepareToPlay() completed for existing plugin instance.");
+
+    pluginInputChannelCount = pluginInstance->getTotalNumInputChannels();
+    pluginOutputChannelCount = pluginInstance->getTotalNumOutputChannels();
+    audioInputPortIdForPlugin =
+        pluginInputChannelCount > 0
+            ? std::optional<int64_t>(VST3ProcessorModelBase::audioInputPortId)
+            : std::nullopt;
+    audioOutputPortIdForPlugin =
+        pluginOutputChannelCount > 0
+            ? std::optional<int64_t>(VST3ProcessorModelBase::audioOutputPortId)
+            : std::nullopt;
+    eventInputPortIdForPlugin =
+        pluginInstance->acceptsMidi()
+            ? std::optional<int64_t>(VST3ProcessorModelBase::eventInputPortId)
+            : std::nullopt;
+    eventOutputPortIdForPlugin =
+        pluginInstance->producesMidi()
+            ? std::optional<int64_t>(VST3ProcessorModelBase::eventOutputPortId)
+            : std::nullopt;
+    rt_emptyAudioBuffer.setSize(requiredProcessChannels, bufferSize, false, true, true);
+    rt_pluginAudioChannelPointers.resize(static_cast<size_t>(requiredProcessChannels));
+
+    if (requiredProcessChannels > 0) {
+      for (int channel = 0; channel < requiredProcessChannels; ++channel) {
+        rt_pluginAudioChannelPointers[static_cast<size_t>(channel)] =
+            rt_emptyAudioBuffer.getWritePointer(channel);
+      }
+
+      rt_pluginAudioBufferView.setDataToReferTo(
+          rt_pluginAudioChannelPointers.data(), requiredProcessChannels, bufferSize);
+    }
+
+    complete(buildPrepareResultForPlugin());
+    return;
+  }
+
+  auto& audioPluginFormatManager = Engine::getInstance().audioPluginFormatManager;
 
   writeVST3Log(*this,
       "Initializing plugin. Sample rate: " + juce::String(audioProcessingConfig->sampleRate) +
@@ -387,9 +446,6 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
   // Use the first plugin found (not the proper way to do this)
   pluginDescription = *foundPlugins[0];
 
-  auto sampleRate = audioProcessingConfig->sampleRate;
-  auto bufferSize = audioProcessingConfig->blockSize;
-  auto hostBufferChannels = audioProcessingConfig->outputChannelCount;
   auto weakSelf = self;
 
   audioPluginFormatManager.createPluginInstanceAsync(pluginDescription,

@@ -27,6 +27,7 @@
 #include <exception>
 #include <memory>
 #include <optional>
+#include <rfl/json.hpp>
 #include <string>
 #include <utility>
 
@@ -65,13 +66,12 @@ std::shared_ptr<EngineAudioConfig> buildAudioConfig(
   audioConfig->outputChannelCount = audioProcessingConfig.outputChannelCount;
   return audioConfig;
 }
+
 } // namespace
 
 std::unique_ptr<Engine> Engine::instance = nullptr;
 
-Engine::Engine() {
-  isAudioCallbackRunning = false;
-}
+Engine::Engine() = default;
 
 void Engine::initialize() {
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
@@ -97,7 +97,7 @@ void Engine::shutdown() {
 }
 
 std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
-  if (isAudioCallbackRunning) {
+  if (isAudioThreadRunning()) {
     juce::Logger::writeToLog("Tried to start audio callback when it was already running. This "
                              "probably doesn't break anything, but it's definitely a bug.");
     return getCurrentAudioConfig();
@@ -143,69 +143,170 @@ std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
     return nullptr;
   }
 
-  auto audioProcessingConfig = buildAudioProcessingConfig(device);
-  if (!audioProcessingConfig.has_value()) {
-    juce::Logger::writeToLog("Failed to build processing config for current device.");
+  auto audioConfig = refreshAudioProcessingConfigForDevice(*device);
+  if (audioConfig == nullptr) {
+    juce::Logger::writeToLog("Failed to refresh processing config for current device.");
     return nullptr;
   }
 
-  setCurrentAudioProcessingConfig(audioProcessingConfig.value());
-  auto audioConfig = buildAudioConfig(*currentAudioProcessingConfig);
-
   juce::Logger::writeToLog("Selected audio device: " + device->getName());
-  juce::Logger::writeToLog("Sample rate: " + juce::String(audioProcessingConfig->sampleRate));
-  juce::Logger::writeToLog("Buffer size: " + juce::String(audioProcessingConfig->blockSize));
+  juce::Logger::writeToLog("Sample rate: " + juce::String(audioConfig->sampleRate));
+  juce::Logger::writeToLog("Buffer size: " + juce::String(audioConfig->blockSize));
   juce::Logger::writeToLog(
-      "Active output channels: " + juce::String(audioProcessingConfig->outputChannelCount));
-
-  graphProcessor->prepareForAudioProcessingConfig(*currentAudioProcessingConfig);
-  transport->prepareToProcess();
-  juce::Logger::writeToLog("Transport prepared before audio callback registration.");
+      "Active output channels: " + juce::String(audioConfig->outputChannelCount));
 
   // Set up the audio callback
   this->audioDeviceManager.addAudioCallback(this->audioCallback.get());
   juce::Logger::writeToLog("Audio callback registered with device manager.");
 
-  isAudioCallbackRunning = true;
+  isAudioCallbackRunning.store(true, std::memory_order_release);
 
   return audioConfig;
 }
 
 void Engine::stopAudioCallback() {
-  if (isAudioCallbackRunning) {
+  if (isAudioCallbackRunning.exchange(false, std::memory_order_acq_rel)) {
     audioDeviceManager.removeAudioCallback(audioCallback.get());
     audioDeviceManager.closeAudioDevice();
-    isAudioCallbackRunning = false;
   }
 
   audioCallback.reset();
+  graphProcessor->clearRuntimeGraph();
+  resetInitializedProcessingGraphNodes();
   clearCurrentAudioProcessingConfig();
 }
 
-void Engine::setCurrentAudioProcessingConfig(AudioProcessingConfig audioProcessingConfig) {
+uint64_t Engine::setCurrentAudioProcessingConfig(AudioProcessingConfig audioProcessingConfig) {
   jassert(audioProcessingConfig.isValid());
   if (!audioProcessingConfig.isValid()) {
-    currentAudioProcessingConfig = std::nullopt;
-    return;
+    clearCurrentAudioProcessingConfig();
+    return getAudioProcessingConfigGeneration();
   }
 
+  std::scoped_lock lock(audioProcessingConfigMutex);
+
   currentAudioProcessingConfig = audioProcessingConfig;
+  return audioProcessingConfigGeneration.fetch_add(1, std::memory_order_acq_rel) + 1;
 }
 
 void Engine::clearCurrentAudioProcessingConfig() {
+  std::scoped_lock lock(audioProcessingConfigMutex);
   currentAudioProcessingConfig = std::nullopt;
+  audioProcessingConfigGeneration.fetch_add(1, std::memory_order_acq_rel);
 }
 
-std::optional<AudioProcessingConfig> Engine::getCurrentAudioProcessingConfig() const {
-  return currentAudioProcessingConfig;
+void Engine::prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig) {
+  graphProcessor->prepareForAudioProcessingConfig(audioProcessingConfig);
+  transport->prepareToProcess();
+  juce::Logger::writeToLog("Prepared engine for audio processing config.");
 }
 
-std::shared_ptr<EngineAudioConfig> Engine::getCurrentAudioConfig() const {
-  if (!currentAudioProcessingConfig.has_value()) {
+void Engine::sendAudioSessionInvalidatedEvent(std::optional<std::string> reason) {
+  Response response = AudioSessionInvalidatedEvent{
+      .reason = std::move(reason),
+      .responseBase = ResponseBase{.id = -1},
+  };
+
+  auto responseText = rfl::json::write(response);
+  comms.send(responseText);
+  juce::Logger::writeToLog("AudioSessionInvalidatedEvent sent to UI.");
+}
+
+void Engine::notifyAudioSessionInvalidatedOnMessageThread(
+    std::optional<std::string> reason, uint64_t invalidatedGeneration) {
+  jassert(juce::MessageManager::getInstance()->isThisTheMessageThread());
+
+  if (!isAudioThreadRunning()) {
+    return;
+  }
+
+  if (getAudioProcessingConfigGeneration() != invalidatedGeneration) {
+    return;
+  }
+
+  sendAudioSessionInvalidatedEvent(std::move(reason));
+}
+
+void Engine::requestAudioSessionInvalidation(std::optional<std::string> reason) {
+  if (!isAudioThreadRunning()) {
+    return;
+  }
+
+  clearCurrentAudioProcessingConfig();
+  const auto invalidatedGeneration = getAudioProcessingConfigGeneration();
+
+  if (juce::MessageManager::getInstance()->isThisTheMessageThread()) {
+    notifyAudioSessionInvalidatedOnMessageThread(std::move(reason), invalidatedGeneration);
+    return;
+  }
+
+  juce::MessageManager::callAsync([reason = std::move(reason), invalidatedGeneration]() mutable {
+    auto& engine = Engine::getInstance();
+    engine.notifyAudioSessionInvalidatedOnMessageThread(std::move(reason), invalidatedGeneration);
+  });
+}
+
+std::shared_ptr<EngineAudioConfig> Engine::refreshAudioProcessingConfigForDevice(
+    juce::AudioIODevice& device) {
+  auto audioProcessingConfig = buildAudioProcessingConfig(&device);
+  if (!audioProcessingConfig.has_value()) {
+    juce::Logger::writeToLog("Failed to build processing config for audio device.");
+    clearCurrentAudioProcessingConfig();
     return nullptr;
   }
 
-  return buildAudioConfig(currentAudioProcessingConfig.value());
+  setCurrentAudioProcessingConfig(audioProcessingConfig.value());
+  auto audioConfig = buildAudioConfig(audioProcessingConfig.value());
+
+  prepareForAudioProcessingConfig(audioProcessingConfig.value());
+  return audioConfig;
+}
+
+std::optional<AudioProcessingConfig> Engine::getCurrentAudioProcessingConfig() const {
+  std::scoped_lock lock(audioProcessingConfigMutex);
+  return currentAudioProcessingConfig;
+}
+
+std::optional<AudioProcessingConfigSnapshot>
+Engine::getCurrentAudioProcessingConfigSnapshot() const {
+  std::scoped_lock lock(audioProcessingConfigMutex);
+  if (!currentAudioProcessingConfig.has_value()) {
+    return std::nullopt;
+  }
+
+  return AudioProcessingConfigSnapshot{
+      .config = currentAudioProcessingConfig.value(),
+      .generation = audioProcessingConfigGeneration.load(std::memory_order_acquire),
+  };
+}
+
+std::shared_ptr<EngineAudioConfig> Engine::getCurrentAudioConfig() const {
+  auto audioProcessingConfig = getCurrentAudioProcessingConfig();
+  if (!audioProcessingConfig.has_value()) {
+    return nullptr;
+  }
+
+  return buildAudioConfig(audioProcessingConfig.value());
+}
+
+uint64_t Engine::getAudioProcessingConfigGeneration() const {
+  return audioProcessingConfigGeneration.load(std::memory_order_acquire);
+}
+
+void Engine::resetInitializedProcessingGraphNodes() {
+  for (auto& [_, initializedNodeWeakPtr] : initializedProcessingGraphNodes) {
+    auto initializedNode = initializedNodeWeakPtr.lock();
+    if (initializedNode == nullptr) {
+      continue;
+    }
+
+    auto processor = initializedNode->getProcessor();
+    if (processor.has_value()) {
+      processor.value()->isPrepared = false;
+    }
+  }
+
+  initializedProcessingGraphNodes.clear();
 }
 
 void Engine::initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete) {
@@ -215,22 +316,25 @@ void Engine::initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallba
 }
 
 void Engine::publishProcessingGraph() {
-  auto audioProcessingConfig = getCurrentAudioProcessingConfig();
-  jassert(audioProcessingConfig.has_value());
-  if (!audioProcessingConfig.has_value()) {
+  auto audioProcessingConfigSnapshot = getCurrentAudioProcessingConfigSnapshot();
+  jassert(audioProcessingConfigSnapshot.has_value());
+  if (!audioProcessingConfigSnapshot.has_value()) {
     return;
   }
+
+  const auto& audioProcessingConfig = audioProcessingConfigSnapshot->config;
 
   auto& processingGraph = *project->processingGraph();
 
   auto runtimeGraph = RuntimeGraph::fromProcessingGraph(processingGraph,
       graphProcessor->getEngineRuntimeServices(),
       GraphBufferLayout{
-          .numAudioChannels = audioProcessingConfig->outputChannelCount,
-          .blockSize = audioProcessingConfig->blockSize,
+          .numAudioChannels = audioProcessingConfig.outputChannelCount,
+          .blockSize = audioProcessingConfig.blockSize,
       });
 
-  graphProcessor->setRuntimeGraphFromMainThread(runtimeGraph.release());
+  graphProcessor->publishRuntimeGraph(
+      runtimeGraph.release(), audioProcessingConfigSnapshot->generation);
 }
 
 } // namespace anthem
