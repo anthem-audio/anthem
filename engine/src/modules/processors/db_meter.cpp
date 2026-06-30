@@ -62,7 +62,8 @@ void DbMeterProcessor::initialize(
 }
 
 void DbMeterProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  auto audioProcessingConfig = Engine::getInstance().getCurrentAudioProcessingConfig();
+  auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
   jassert(audioProcessingConfig.has_value());
 
   if (!audioProcessingConfig.has_value()) {

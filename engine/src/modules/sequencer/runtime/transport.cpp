@@ -252,7 +252,13 @@ void Transport::rt_prepareForProcessingBlock() {
       rt_shouldStopSequenceNotes = true;
     }
 
-    if (newConfig->isPlaying && !rt_config->isPlaying) {
+    if (newConfig->isPlaying && (!rt_config->isPlaying || newConfig->forcePlayheadStartOnPlay)) {
+      if (newConfig->forcePlayheadStartOnPlay) {
+        rt_playhead = newConfig->playheadStart;
+        rt_playheadJumpOrPauseOccurred = true;
+        rt_shouldStopSequenceNotes = true;
+      }
+
       rt_playheadJumpEventForStart = &newConfig->playheadJumpEventForStart;
     }
 
@@ -377,6 +383,42 @@ void Transport::jumpTo(double playheadPosition) {
     jassertfalse;
     delete eventPtr;
   }
+}
+
+void Transport::beginRenderPlayback(int64_t activeSequenceId, double startTick) {
+  if (!configBeforeRenderPlayback.has_value()) {
+    configBeforeRenderPlayback = config;
+  }
+
+  config.activeSequenceId = activeSequenceId;
+  config.isPlaying = true;
+  config.playheadStart = startTick;
+  config.forcePlayheadStartOnPlay = true;
+  config.playheadJumpEventForStart = createPlayheadJumpEvent(startTick);
+  clearLoopPoints();
+  sendConfigToAudioThread();
+}
+
+void Transport::stopRenderPlaybackForTail(double endTick) {
+  if (!configBeforeRenderPlayback.has_value()) {
+    return;
+  }
+
+  config.isPlaying = false;
+  config.playheadStart = endTick;
+  config.forcePlayheadStartOnPlay = false;
+  config.playheadJumpEventForStart = createPlayheadJumpEvent(endTick);
+  sendConfigToAudioThread();
+}
+
+void Transport::endRenderPlayback() {
+  if (!configBeforeRenderPlayback.has_value()) {
+    return;
+  }
+
+  config = std::move(configBeforeRenderPlayback.value());
+  configBeforeRenderPlayback = std::nullopt;
+  sendConfigToAudioThread();
 }
 
 void Transport::clearLoopPoints() {

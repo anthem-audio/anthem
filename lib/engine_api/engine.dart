@@ -33,6 +33,7 @@ import 'package:flutter/foundation.dart';
 
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
+part 'api/render_api.dart';
 part 'api/sequencer_api.dart';
 part 'api/visualization_api.dart';
 
@@ -99,12 +100,14 @@ enum StartupSendBehavior {
   bypassStartupQueue,
 }
 
-class _QueuedStartupRequest {
+enum _RenderSendBehavior { queueDuringRender, bypassRenderQueue }
+
+class _QueuedEngineRequest {
   final Request request;
   final Completer<Response>? responseCompleter;
   final Duration? timeout;
 
-  _QueuedStartupRequest(
+  _QueuedEngineRequest(
     this.request, {
     this.responseCompleter,
     required this.timeout,
@@ -142,6 +145,7 @@ class Engine {
 
   late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
+  late RenderApi renderApi;
   late SequencerApi sequencerApi;
   late VisualizationApi visualizationApi;
 
@@ -155,8 +159,11 @@ class Engine {
       StreamController.broadcast();
   final StreamController<String?> _audioSessionInvalidatedStreamController =
       StreamController.broadcast();
+  final StreamController<Response> _renderEventStreamController =
+      StreamController.broadcast();
   late final Stream<EngineState> engineStateStream;
   late final Stream<String?> audioSessionInvalidatedStream;
+  late final Stream<Response> renderEventStream;
   Completer<void> _readyForMessagesCompleter = Completer<void>();
 
   EngineState _engineState = EngineState.stopped;
@@ -171,10 +178,21 @@ class Engine {
   bool _canFlushStartupQueue = false;
   bool _autoFlushStartupQueue = false;
   bool _isFlushingStartupQueue = false;
-  final ListQueue<_QueuedStartupRequest> _startupQueue = ListQueue();
+  final ListQueue<_QueuedEngineRequest> _startupQueue = ListQueue();
+
+  bool _isRenderingAudio = false;
+  bool _isFlushingRenderQueue = false;
+  int? _activeRenderId;
+
+  // Timeouts are stored with queued render requests and only start when the
+  // request is actually dispatched to the engine.
+  final ListQueue<_QueuedEngineRequest> _renderQueue = ListQueue();
+
+  /// Returns whether an offline render is active or starting.
+  bool get isRenderingAudio => _isRenderingAudio;
 
   bool _isAudioReady = false;
-  EngineAudioConfig? _audioConfig;
+  AudioProcessingConfigDto? _audioConfig;
 
   /// Returns whether the engine's audio thread has finished starting.
   bool get isAudioReady => _isAudioReady;
@@ -184,7 +202,7 @@ class Engine {
   /// Returns `null` whenever the current config is not valid, including while
   /// the engine is stopped, while startup is still in progress, or after the
   /// audio device has been torn down.
-  EngineAudioConfig? get audioConfig =>
+  AudioProcessingConfigDto? get audioConfig =>
       _engineState == EngineState.running ? _audioConfig : null;
 
   /// Returns a [Future] that completes when the engine is ready to receive
@@ -243,6 +261,87 @@ class Engine {
     _canFlushStartupQueue = false;
   }
 
+  void _clearRenderQueue(Object error) {
+    while (_renderQueue.isNotEmpty) {
+      final queuedRequest = _renderQueue.removeFirst();
+      queuedRequest.responseCompleter?.completeError(error);
+    }
+
+    _isRenderingAudio = false;
+    _activeRenderId = null;
+    _isFlushingRenderQueue = false;
+  }
+
+  void _beginRenderingAudio(int renderId) {
+    if (_isRenderingAudio) {
+      return;
+    }
+
+    _isRenderingAudio = true;
+    _activeRenderId = renderId;
+  }
+
+  void _finishRenderingAudio({int? renderId}) {
+    if (!_isRenderingAudio) {
+      return;
+    }
+
+    final activeRenderId = _activeRenderId;
+    if (renderId != null &&
+        activeRenderId != null &&
+        renderId != activeRenderId) {
+      return;
+    }
+
+    _isRenderingAudio = false;
+    _activeRenderId = null;
+    _flushRenderQueue();
+  }
+
+  void _queueRenderRequest(
+    Request request, {
+    Completer<Response>? responseCompleter,
+    Duration? timeout = const Duration(seconds: 5),
+  }) {
+    _renderQueue.add(
+      _QueuedEngineRequest(
+        request,
+        responseCompleter: responseCompleter,
+        timeout: timeout,
+      ),
+    );
+  }
+
+  void _flushRenderQueue() {
+    if (_isFlushingRenderQueue ||
+        _isRenderingAudio ||
+        _engineState != EngineState.running) {
+      return;
+    }
+
+    _isFlushingRenderQueue = true;
+
+    try {
+      while (_renderQueue.isNotEmpty &&
+          _engineState == EngineState.running &&
+          !_isRenderingAudio) {
+        final queuedRequest = _renderQueue.removeFirst();
+
+        if (queuedRequest.responseCompleter != null) {
+          _dispatchRequestWithReply(
+            queuedRequest.request,
+            responseCompleter: queuedRequest.responseCompleter,
+            timeout: queuedRequest.timeout,
+          );
+        } else {
+          _dispatchRequestNoReply(queuedRequest.request);
+        }
+      }
+    } finally {
+      _isFlushingRenderQueue = false;
+    }
+  }
+
   void _setEngineState(EngineState state) {
     _engineState = state;
 
@@ -257,6 +356,9 @@ class Engine {
       _audioConfig = null;
       _clearStartupQueue(
         StateError('Engine stopped before startup completed.'),
+      );
+      _clearRenderQueue(
+        StateError('Engine stopped while render requests were queued.'),
       );
       _failPendingReplies(
         StateError('Engine stopped while waiting for reply.'),
@@ -273,7 +375,7 @@ class Engine {
     }
   }
 
-  void _setAudioReady(EngineAudioConfig audioConfig) {
+  void _setAudioReady(AudioProcessingConfigDto audioConfig) {
     _audioConfig = audioConfig;
     _isAudioReady = true;
   }
@@ -302,9 +404,11 @@ class Engine {
     engineStateStream = _engineStateStreamController.stream;
     audioSessionInvalidatedStream =
         _audioSessionInvalidatedStreamController.stream;
+    renderEventStream = _renderEventStreamController.stream;
 
     modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
+    renderApi = RenderApi(this);
     sequencerApi = SequencerApi(this);
     visualizationApi = VisualizationApi(this);
   }
@@ -436,6 +540,29 @@ class Engine {
       case AudioSessionInvalidatedEvent e:
         _markAudioSessionInvalidated(e.reason);
         return;
+      case RenderStartedEvent e:
+        _beginRenderingAudio(e.renderId);
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
+        return;
+      case RenderProgressEvent e:
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
+        return;
+      case RenderCompletedEvent e:
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
+        _finishRenderingAudio(renderId: e.renderId);
+        return;
+      case RenderFailedEvent e:
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
+        _finishRenderingAudio(renderId: e.renderId);
+        return;
       case PluginChangedEvent e:
         _scheduleNodeStateUpdate(e.nodeId);
         return;
@@ -478,7 +605,10 @@ class Engine {
 
   Future<void> _exit() async {
     final request = Exit(id: _getRequestId());
-    await _request(request);
+    await _request(
+      request,
+      renderBehavior: _RenderSendBehavior.bypassRenderQueue,
+    );
 
     _engineConnector.dispose();
 
@@ -490,6 +620,7 @@ class Engine {
 
     _engineStateStreamController.close();
     _audioSessionInvalidatedStreamController.close();
+    _renderEventStreamController.close();
   }
 
   /// Stops the engine process, if it is running.
@@ -505,7 +636,7 @@ class Engine {
     }
   }
 
-  Future<EngineAudioConfig> _startAudio({
+  Future<AudioProcessingConfigDto> _startAudio({
     required StartupSendBehavior startupBehavior,
   }) async {
     final audioStartReply =
@@ -535,7 +666,7 @@ class Engine {
   }
 
   /// Starts the audio thread without restarting the engine process.
-  Future<EngineAudioConfig> startAudio() async {
+  Future<AudioProcessingConfigDto> startAudio() async {
     if (_engineState != EngineState.running) {
       throw StateError('Engine must be running to start audio.');
     }
@@ -727,7 +858,7 @@ class Engine {
     Duration? timeout = const Duration(seconds: 5),
   }) {
     _startupQueue.add(
-      _QueuedStartupRequest(
+      _QueuedEngineRequest(
         request,
         responseCompleter: responseCompleter,
         timeout: timeout,
@@ -777,6 +908,7 @@ class Engine {
   Future<Response> _request(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
+    _RenderSendBehavior renderBehavior = _RenderSendBehavior.queueDuringRender,
     Duration? timeout = const Duration(seconds: 5),
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
@@ -812,6 +944,17 @@ class Engine {
       throw AssertionError('Engine must be running to send commands.');
     }
 
+    if (renderBehavior == _RenderSendBehavior.queueDuringRender &&
+        _isRenderingAudio) {
+      final completer = Completer<Response>();
+      _queueRenderRequest(
+        request,
+        responseCompleter: completer,
+        timeout: timeout,
+      );
+      return completer.future;
+    }
+
     return _dispatchRequestWithReply(request, timeout: timeout);
   }
 
@@ -819,6 +962,7 @@ class Engine {
   void _requestNoReply(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
+    _RenderSendBehavior renderBehavior = _RenderSendBehavior.queueDuringRender,
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {
@@ -843,6 +987,12 @@ class Engine {
 
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
+    }
+
+    if (renderBehavior == _RenderSendBehavior.queueDuringRender &&
+        _isRenderingAudio) {
+      _queueRenderRequest(request);
+      return;
     }
 
     _dispatchRequestNoReply(request);

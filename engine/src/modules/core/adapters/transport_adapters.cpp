@@ -89,7 +89,11 @@ public:
   explicit EngineTransportClock(Engine& engine) : engine(engine) {}
 
   double currentSampleRate() const override {
-    auto audioProcessingConfig = engine.getCurrentAudioProcessingConfig();
+    if (engine.audioSessionController == nullptr) {
+      return 0.0;
+    }
+
+    auto audioProcessingConfig = engine.audioSessionController->getCurrentAudioProcessingConfig();
     jassert(audioProcessingConfig.has_value());
     if (!audioProcessingConfig.has_value()) {
       return 0.0;

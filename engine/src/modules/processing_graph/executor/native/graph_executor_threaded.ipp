@@ -102,7 +102,9 @@ GraphExecutor::ThreadConfig buildPreparedThreadConfig(
       getActiveWorkerThreadCount(workerThreadCount, requestedConfig);
 
   preparedConfig.platformRealtimeWorkerThreadCount =
-      canUsePlatformRealtimeThreading(preparedConfig) ? preparedConfig.activeWorkerThreadCount : 0;
+      preparedConfig.useRealtimeWorkerScheduling && canUsePlatformRealtimeThreading(preparedConfig)
+          ? preparedConfig.activeWorkerThreadCount
+          : 0;
 
   return preparedConfig;
 }
@@ -111,6 +113,7 @@ bool threadConfigsMatch(
     const GraphExecutor::ThreadConfig& a, const GraphExecutor::ThreadConfig& b) {
   auto matches = a.audioBlockSize == b.audioBlockSize && a.sampleRate == b.sampleRate &&
                  a.maxActiveWorkerThreadCount == b.maxActiveWorkerThreadCount &&
+                 a.useRealtimeWorkerScheduling == b.useRealtimeWorkerScheduling &&
                  a.activeWorkerThreadCount == b.activeWorkerThreadCount &&
                  a.platformRealtimeWorkerThreadCount == b.platformRealtimeWorkerThreadCount;
 

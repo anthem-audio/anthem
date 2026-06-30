@@ -206,12 +206,10 @@ abstract class VisualizationSubscription<T>
     return _config.toSubscriptionSpec();
   }
 
-  Duration _sampleTimestampToEngineTime(int sampleTimestamp) {
+  Duration? _sampleTimestampToEngineTime(int sampleTimestamp) {
     final sampleRate = _parent._project.engine.audioConfig?.sampleRate;
     if (sampleRate == null || sampleRate <= 0) {
-      throw StateError(
-        'Cannot convert visualization sample timestamp to engine time for ${_config.id} because the engine audio config is unavailable.',
-      );
+      return null;
     }
 
     final microseconds =
@@ -631,6 +629,10 @@ abstract class VisualizationSubscription<T>
   @override
   void _addValueFromEngine(Object value, int sampleTimestamp) {
     final engineTime = _sampleTimestampToEngineTime(sampleTimestamp);
+    if (engineTime == null) {
+      return;
+    }
+
     final typedValue = _config.visualizationType.cast(value);
 
     if (_hasAdaptiveBuffering) {

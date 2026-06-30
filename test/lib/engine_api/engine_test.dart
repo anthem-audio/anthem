@@ -71,12 +71,7 @@ class _TestEngineConnector extends EngineConnectorBase {
   }
 
   void emitResponse(Response response) {
-    final payload = utf8.encode(jsonEncode(response.toJson()));
-    final framedResponse = Uint8List(payload.length + 8);
-    final header = ByteData.sublistView(framedResponse, 0, 8);
-    header.setUint64(0, payload.length, Endian.host);
-    framedResponse.setRange(8, framedResponse.length, payload);
-    onReceive(framedResponse);
+    onReceive(_frameResponse(response));
   }
 
   void emitExit() {
@@ -102,6 +97,23 @@ class _TestEngineConnector extends EngineConnectorBase {
   }
 }
 
+Uint8List _frameResponse(Response response) {
+  final payload = utf8.encode(jsonEncode(response.toJson()));
+  final framedResponse = Uint8List(payload.length + 8);
+  final header = ByteData.sublistView(framedResponse, 0, 8);
+  header.setUint64(0, payload.length, Endian.host);
+  framedResponse.setRange(8, framedResponse.length, payload);
+  return framedResponse;
+}
+
+Uint8List _frameResponses(Iterable<Response> responses) {
+  final builder = BytesBuilder();
+  for (final response in responses) {
+    builder.add(_frameResponse(response));
+  }
+  return builder.toBytes();
+}
+
 Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
@@ -110,7 +122,7 @@ Future<void> _flushMicrotasks() async {
 Future<void> _startEngineThroughInit(
   Engine engine,
   _TestEngineConnector Function() getConnector, {
-  required EngineAudioConfig audioConfig,
+  required AudioProcessingConfigDto audioConfig,
 }) async {
   final startFuture = engine.start();
   final connector = getConnector();
@@ -153,7 +165,7 @@ void main() {
     late AnthemObservableMap<Id, NodeModel> nodes;
     late _TestEngineConnector connector;
     late Engine engine;
-    late EngineAudioConfig startupAudioConfig;
+    late AudioProcessingConfigDto startupAudioConfig;
 
     setUp(() {
       project = MockProjectModel();
@@ -164,7 +176,7 @@ void main() {
       when(project.visualizationProvider).thenReturn(visualizationProvider);
       when(project.processingGraph).thenReturn(processingGraph);
       when(processingGraph.nodes).thenReturn(nodes);
-      startupAudioConfig = EngineAudioConfig(
+      startupAudioConfig = AudioProcessingConfigDto(
         sampleRate: 48000,
         blockSize: 256,
         inputChannelCount: 2,
@@ -198,7 +210,7 @@ void main() {
     test(
       'start sends a ready check first, then flushes model init, then starts heartbeat',
       () async {
-        EngineAudioConfig? audioConfigWhenRunning;
+        AudioProcessingConfigDto? audioConfigWhenRunning;
         engine.engineStateStream.listen((state) {
           if (state == EngineState.running) {
             audioConfigWhenRunning = engine.audioConfig;
@@ -502,7 +514,7 @@ void main() {
         audioConfig: startupAudioConfig,
       );
 
-      final restartedAudioConfig = EngineAudioConfig(
+      final restartedAudioConfig = AudioProcessingConfigDto(
         sampleRate: 44100,
         blockSize: 512,
         inputChannelCount: 0,
@@ -647,6 +659,217 @@ void main() {
       },
     );
 
+    test('render API starts a render session and forwards progress', () async {
+      final startFuture = engine.start(initializeAudio: false);
+
+      connector.completeInit();
+      await _flushMicrotasks();
+
+      final readyCheckRequest =
+          connector.sentRequests.single as EngineReadyCheckRequest;
+      connector.emitResponse(
+        EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+      );
+      await _flushMicrotasks();
+
+      final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
+      connector.emitResponse(
+        ModelInitResponse(id: modelInitRequest.id, success: true),
+      );
+
+      await startFuture;
+      await _flushMicrotasks();
+
+      final renderEvents = <Response>[];
+      final subscription = engine.renderEventStream.listen(renderEvents.add);
+
+      final startRenderFuture = engine.renderApi.startRenderAudioSession(
+        sampleRate: 48000,
+        blockSize: 256,
+        outputChannelCount: 2,
+      );
+      await _flushMicrotasks();
+
+      final startRenderRequest =
+          connector.sentRequests.last as StartRenderAudioSessionRequest;
+      connector.emitResponse(
+        StartRenderAudioSessionResponse(
+          id: startRenderRequest.id,
+          success: true,
+          audioConfig: AudioProcessingConfigDto(
+            sampleRate: 48000,
+            blockSize: 256,
+            inputChannelCount: 0,
+            outputChannelCount: 2,
+          ),
+        ),
+      );
+
+      final audioConfig = await startRenderFuture;
+
+      expect(audioConfig.sampleRate, equals(48000));
+      expect(engine.isAudioReady, isTrue);
+      expect(engine.audioConfig?.blockSize, equals(256));
+
+      final renderFuture = engine.renderApi.renderAudio(
+        renderId: 42,
+        outputPath: r'C:\renders\test.wav',
+        format: RenderAudioFormat.wav,
+        startTick: 0,
+        endTick: 384,
+        includeTail: false,
+      );
+      await _flushMicrotasks();
+
+      final renderRequest = connector.sentRequests.last as RenderAudioRequest;
+      expect(renderRequest.renderId, equals(42));
+      expect(renderRequest.outputPath, equals(r'C:\renders\test.wav'));
+      expect(renderRequest.format, equals(RenderAudioFormat.wav));
+      expect(renderRequest.startTick, equals(0));
+      expect(renderRequest.endTick, equals(384));
+      expect(renderRequest.includeTail, isFalse);
+
+      connector.emitResponse(
+        RenderStartedEvent(id: -1, renderId: 42, totalSamples: 1024),
+      );
+      connector.emitResponse(
+        RenderProgressEvent(
+          id: -1,
+          renderId: 42,
+          progress: 0.5,
+          renderedSamples: 512,
+          totalSamples: 1024,
+        ),
+      );
+      connector.emitResponse(
+        RenderCompletedEvent(
+          id: -1,
+          renderId: 42,
+          renderedSamples: 1024,
+          totalSamples: 1024,
+        ),
+      );
+      connector.emitResponse(
+        RenderAudioResponse(id: renderRequest.id, success: true, renderId: 42),
+      );
+
+      final renderStartResult = await renderFuture;
+      await _flushMicrotasks();
+      await subscription.cancel();
+
+      expect(renderStartResult.renderId, equals(42));
+      expect(renderEvents, hasLength(3));
+      expect(renderEvents[0], isA<RenderStartedEvent>());
+      expect(renderEvents[1], isA<RenderProgressEvent>());
+      expect(renderEvents[2], isA<RenderCompletedEvent>());
+      expect((renderEvents[1] as RenderProgressEvent).progress, equals(0.5));
+      expect(
+        (renderEvents[1] as RenderProgressEvent).renderedSamples,
+        equals(512),
+      );
+    });
+
+    test('requests queue during render and flush in order afterward', () async {
+      final startFuture = engine.start(initializeAudio: false);
+
+      connector.completeInit();
+      await _flushMicrotasks();
+
+      final readyCheckRequest =
+          connector.sentRequests.single as EngineReadyCheckRequest;
+      connector.emitResponse(
+        EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
+      );
+      await _flushMicrotasks();
+
+      final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
+      connector.emitResponse(
+        ModelInitResponse(id: modelInitRequest.id, success: true),
+      );
+
+      await startFuture;
+      await _flushMicrotasks();
+
+      final startRenderFuture = engine.renderApi.startRenderAudioSession(
+        sampleRate: 48000,
+        blockSize: 256,
+        outputChannelCount: 2,
+      );
+      await _flushMicrotasks();
+
+      final startRenderRequest =
+          connector.sentRequests.last as StartRenderAudioSessionRequest;
+      connector.emitResponse(
+        StartRenderAudioSessionResponse(
+          id: startRenderRequest.id,
+          success: true,
+          audioConfig: AudioProcessingConfigDto(
+            sampleRate: 48000,
+            blockSize: 256,
+            inputChannelCount: 0,
+            outputChannelCount: 2,
+          ),
+        ),
+      );
+      await startRenderFuture;
+
+      final renderFuture = engine.renderApi.renderAudio(
+        renderId: 43,
+        outputPath: r'C:\renders\queued.wav',
+        format: RenderAudioFormat.wav,
+        startTick: 0,
+        endTick: 384,
+        includeTail: false,
+      );
+      await _flushMicrotasks();
+
+      final renderRequest = connector.sentRequests.last as RenderAudioRequest;
+      connector.emitResponse(
+        RenderAudioResponse(id: renderRequest.id, success: true, renderId: 43),
+      );
+      await renderFuture;
+
+      expect(engine.isRenderingAudio, isTrue);
+
+      engine.modelSyncApi.updateModel(
+        updateKind: FieldUpdateKind.set,
+        fieldAccesses: [
+          FieldAccess(fieldType: FieldType.raw, fieldName: 'name'),
+        ],
+        serializedValue: '"Queued during render"',
+      );
+      final publishFuture = engine.processingGraphApi.publish();
+      await _flushMicrotasks();
+
+      expect(connector.sentRequests.whereType<ModelUpdateRequest>(), isEmpty);
+      expect(
+        connector.sentRequests.whereType<PublishProcessingGraphRequest>(),
+        isEmpty,
+      );
+
+      connector.emitResponse(
+        RenderCompletedEvent(
+          id: -1,
+          renderId: 43,
+          renderedSamples: 1024,
+          totalSamples: 1024,
+        ),
+      );
+      await _flushMicrotasks();
+
+      expect(engine.isRenderingAudio, isFalse);
+      expect(connector.sentRequests[4], isA<ModelUpdateRequest>());
+      expect(connector.sentRequests[5], isA<PublishProcessingGraphRequest>());
+
+      final publishRequest =
+          connector.sentRequests[5] as PublishProcessingGraphRequest;
+      connector.emitResponse(
+        PublishProcessingGraphResponse(id: publishRequest.id, success: true),
+      );
+
+      await publishFuture;
+    });
+
     test(
       'VisualizationUpdateEvent is forwarded to the project visualization provider',
       () async {
@@ -671,6 +894,43 @@ void main() {
         connector.emitResponse(update);
 
         verify(visualizationProvider.processVisualizationUpdate(any)).called(1);
+      },
+    );
+
+    test(
+      'connector continues processing later responses after a handler exception',
+      () {
+        final receivedResponses = <Response>[];
+        final connector = _TestEngineConnector(
+          kDebugMode: false,
+          onReply: (response) {
+            if (response is VisualizationUpdateEvent) {
+              throw StateError('Synthetic visualization failure.');
+            }
+
+            receivedResponses.add(response);
+          },
+        );
+
+        connector.onReceive(
+          _frameResponses([
+            VisualizationUpdateEvent(
+              id: -1,
+              items: [
+                VisualizationItem(
+                  id: 'cpu',
+                  valueType: VisualizationValueType.doubleValue,
+                  values: [0.5],
+                  sampleTimestamps: [1],
+                ),
+              ],
+            ),
+            StopAudioResponse(id: 7, success: true),
+          ]),
+        );
+
+        expect(receivedResponses, hasLength(1));
+        expect(receivedResponses.single, isA<StopAudioResponse>());
       },
     );
 

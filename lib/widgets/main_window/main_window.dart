@@ -102,8 +102,8 @@ class _MainWindowState extends State<MainWindow> {
     return Stack(
       fit: .expand,
       children: [
-        DialogRenderer(
-          child: ScreenOverlay(
+        ScreenOverlay(
+          child: DialogRenderer(
             child: Container(
               color: AnthemTheme.panel.border,
               child: Padding(

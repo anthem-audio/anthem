@@ -34,7 +34,8 @@ MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImp
 MasterOutputProcessor::~MasterOutputProcessor() {}
 
 void MasterOutputProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  auto audioProcessingConfig = Engine::getInstance().getCurrentAudioProcessingConfig();
+  auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
   if (!audioProcessingConfig.has_value()) {
     jassertfalse;
     juce::Logger::writeToLog("Error: No audio processing config is currently set.");

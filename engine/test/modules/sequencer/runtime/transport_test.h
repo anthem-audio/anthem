@@ -131,6 +131,8 @@ public:
     testLoopStartJumpPayloadUsesCompiledSequence();
     testClearingActiveSequenceClearsLoopPoints();
     testConfigQueueReplacementUsesLatestConfig();
+    testRenderPlaybackForcesStartTickDisablesLoopAndRestoresConfig();
+    testRenderTailStopPreservesEndPlayheadBeforeRestoringConfig();
     testTimingParamsReflectTransportConfig();
     testJumpToWrapsSeekTargetIntoLoop();
     testActiveTrackChangeRebuildsJumpPayloadOnlyForPatterns();
@@ -453,6 +455,77 @@ public:
     expectEquals(drainRetiredConfigCount(transport),
         3,
         "Superseded pending configs and the old RT config should be retired.");
+  }
+
+  void testRenderPlaybackForcesStartTickDisablesLoopAndRestoresConfig() {
+    beginTest("Render playback forces start tick, disables loop, and restores config");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    projectView->loopPoints.insert_or_assign(
+        sequenceId, LoopPointsSnapshot{.start = 10.0, .end = 14.0});
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+
+    std::optional<int64_t> activeSequenceId = sequenceId;
+    transport.setActiveSequenceId(activeSequenceId);
+    transport.setPlayheadStart(2.0);
+
+    transport.rt_playhead = 99.0;
+    transport.beginRenderPlayback(sequenceId, 32.0);
+
+    expect(transport.config.isPlaying, "Render playback should start immediately.");
+    expect(!transport.config.hasLoop, "Render playback should ignore loop points.");
+    expect(transport.config.forcePlayheadStartOnPlay,
+        "Render playback should force the first RT playhead position.");
+
+    transport.rt_prepareForProcessingBlock();
+
+    expectEquals(transport.rt_playhead, 32.0, "RT playhead should jump to the render start.");
+    expect(transport.rt_config->isPlaying, "RT config should be playing during render.");
+    expect(!transport.rt_config->hasLoop, "RT config should not contain loop points for render.");
+
+    transport.endRenderPlayback();
+
+    expect(!transport.config.isPlaying, "Restored transport config should not be playing.");
+    expectEquals(transport.config.playheadStart, 2.0, "Restored playhead start should be kept.");
+    expect(transport.config.hasLoop, "Restored transport config should include loop points.");
+    expect(!transport.config.forcePlayheadStartOnPlay,
+        "Restored transport config should clear the render-only force flag.");
+
+    transport.rt_prepareForProcessingBlock();
+
+    expect(!transport.rt_config->isPlaying, "Restored RT config should not be playing.");
+    expect(transport.rt_config->hasLoop, "Restored RT config should include loop points.");
+  }
+
+  void testRenderTailStopPreservesEndPlayheadBeforeRestoringConfig() {
+    beginTest("Render tail stop preserves end playhead before restoring config");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+    transport.prepareToProcess();
+
+    transport.setPlayheadStart(2.0);
+    transport.beginRenderPlayback(sequenceId, 32.0);
+    transport.rt_prepareForProcessingBlock();
+    transport.rt_advancePlayhead(48000);
+
+    transport.stopRenderPlaybackForTail(96.0);
+    transport.rt_prepareForProcessingBlock();
+
+    expect(!transport.rt_config->isPlaying, "RT config should be stopped for render tail.");
+    expectEquals(transport.rt_playhead, 96.0, "Render tail should start at the render end.");
+    expect(transport.rt_playheadJumpOrPauseOccurred, "Tail stop should flag a pause.");
+    expect(transport.rt_shouldStopSequenceNotes, "Tail stop should release sequence notes.");
+
+    transport.endRenderPlayback();
+    transport.rt_prepareForProcessingBlock();
+
+    expect(!transport.rt_config->isPlaying, "Restored RT config should not be playing.");
+    expectEquals(transport.rt_config->playheadStart,
+        2.0,
+        "Restored RT config should keep the pre-render playhead start.");
   }
 
   void testTimingParamsReflectTransportConfig() {

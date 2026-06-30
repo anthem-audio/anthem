@@ -59,12 +59,15 @@ GraphProcessor::~GraphProcessor() {
 }
 
 void GraphProcessor::prepareForAudioProcessingConfig(
-    const AudioProcessingConfig& audioProcessingConfig) {
+    const AudioProcessingConfig& audioProcessingConfig,
+    GraphWorkerSchedulingMode workerSchedulingMode) {
   GraphExecutor::ThreadConfig threadConfig;
 
   if (audioProcessingConfig.isValid()) {
     threadConfig.audioBlockSize = audioProcessingConfig.blockSize;
     threadConfig.sampleRate = audioProcessingConfig.sampleRate;
+    threadConfig.useRealtimeWorkerScheduling =
+        workerSchedulingMode == GraphWorkerSchedulingMode::realtime;
 
 #if JUCE_MAC
     threadConfig.macAudioWorkgroup = audioProcessingConfig.macAudioWorkgroup;

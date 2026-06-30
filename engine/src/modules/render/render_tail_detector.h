@@ -19,33 +19,31 @@
 
 #pragma once
 
-#include <juce_core/juce_core.h>
-#include <memory>
-
-#if JUCE_MAC
+#include <cstdint>
 #include <juce_audio_basics/juce_audio_basics.h>
-#endif
 
 namespace anthem {
 
-struct AudioProcessingConfigDto;
+class RenderTailDetector {
+private:
+  int64_t requiredSilentSamples = 0;
+  float silenceThreshold = 0.0f;
+  int64_t consecutiveSilentSamples = 0;
+public:
+  static constexpr auto defaultSilenceThreshold = 0.0001f;
+  static constexpr auto defaultRequiredSilenceSeconds = 1.0;
+  static constexpr auto maximumTailSeconds = 5.0 * 60.0;
 
-struct AudioProcessingConfig {
-  double sampleRate = 0.0;
-  int blockSize = 0;
-  int inputChannelCount = 0;
-  int outputChannelCount = 0;
+  RenderTailDetector(
+      int64_t requiredSilentSamples, float silenceThreshold = defaultSilenceThreshold);
 
-#if JUCE_MAC
-  juce::AudioWorkgroup macAudioWorkgroup;
-#endif
+  static int64_t secondsToSamples(double seconds, double sampleRate);
 
-  bool isValid() const {
-    return sampleRate > 0.0 && blockSize > 0 && outputChannelCount > 0;
+  bool processBlock(const juce::AudioSampleBuffer& buffer, int outputChannelCount, int numSamples);
+
+  int64_t getConsecutiveSilentSamples() const {
+    return consecutiveSilentSamples;
   }
-
-  std::shared_ptr<AudioProcessingConfigDto> toDto() const;
-  static AudioProcessingConfig fromDto(const AudioProcessingConfigDto& dto);
 };
 
 } // namespace anthem

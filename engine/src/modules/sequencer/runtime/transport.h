@@ -103,6 +103,10 @@ public:
   bool isPlaying = false;
   double playheadStart = 0.0;
 
+  // Used by render playback, where the play command itself must define the
+  // exact first tick even if prior stopped-position updates were coalesced.
+  bool forcePlayheadStartOnPlay = false;
+
   PlayheadJumpEvent playheadJumpEventForStart;
 
   bool hasLoop = false;
@@ -150,6 +154,7 @@ private:
   void sendConfigToAudioThread();
 
   double sampleRate;
+  std::optional<TransportConfig> configBeforeRenderPlayback;
 public:
   // The transport config.
   //
@@ -213,6 +218,17 @@ public:
   void updateLoopPoints() {
     updateLoopPoints(true);
   }
+
+  // Temporarily replaces normal transport playback state with a render range
+  // start. Render playback intentionally ignores loop points and must be paired
+  // with endRenderPlayback().
+  void beginRenderPlayback(int64_t activeSequenceId, double startTick);
+
+  // Stops render playback at the requested range end before processing tail
+  // samples. This preserves the render end as the stopped playhead for
+  // automation providers while tail audio decays.
+  void stopRenderPlaybackForTail(double endTick);
+  void endRenderPlayback();
 
   // Analogous to `prepareToProcess()` in AnthemProcessor, this must be called
   // before the transport is used for processing.

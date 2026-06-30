@@ -19,15 +19,18 @@
 
 #include "command_handler.h"
 
+#include "modules/command_handlers/audio_session_command_handler.h"
 #include "modules/command_handlers/model_sync_command_handler.h"
 #include "modules/command_handlers/processing_graph_command_handler.h"
 #include "modules/command_handlers/sequencer_command_handler.h"
 #include "modules/command_handlers/test_command_handler.h"
 #include "modules/command_handlers/visualization_command_handler.h"
+#include "modules/core/engine.h"
 #include "modules/core/visualization/visualization_broker.h"
 
 #include <rfl.hpp>
 #include <rfl/json.hpp>
+#include <string>
 
 namespace anthem {
 
@@ -90,7 +93,8 @@ void CommandHandler::processNextCommand() {
   auto requestWrapped = rfl::json::read<Request>(commandStr);
 
   if (!requestWrapped.has_value()) {
-    juce::Logger::writeToLog("Failed to parse command: " + commandStr);
+    juce::Logger::writeToLog(
+        "Failed to parse command: " + requestWrapped.error().what() + "\nCommand: " + commandStr);
     return;
   }
 
@@ -149,40 +153,17 @@ void CommandHandler::processNextCommand() {
     response = std::optional(std::move(readyCheckReply));
   }
 
-  else if (rfl::holds_alternative<StartAudioRequest>(request.variant())) {
-    auto& requestAsStartAudio = rfl::get<StartAudioRequest>(request.variant());
-
-    juce::Logger::writeToLog("Starting audio callback after model init...");
-    auto audioConfig = Engine::getInstance().startAudioCallback();
-    juce::Logger::writeToLog("startAudioCallback() returned.");
-
-    auto startAudioReply = StartAudioResponse{.success = audioConfig != nullptr,
-        .error = audioConfig != nullptr
-                     ? std::nullopt
-                     : std::optional<std::string>("Failed to initialize audio device."),
-        .audioConfig = audioConfig != nullptr ? std::optional(audioConfig) : std::nullopt,
-        .responseBase = ResponseBase{.id = requestAsStartAudio.requestBase.get().id}};
-
-    response = std::optional(std::move(startAudioReply));
-  }
-
-  else if (rfl::holds_alternative<StopAudioRequest>(request.variant())) {
-    auto& requestAsStopAudio = rfl::get<StopAudioRequest>(request.variant());
-
-    juce::Logger::writeToLog("Stopping audio callback...");
-    Engine::getInstance().stopAudioCallback();
-    juce::Logger::writeToLog("stopAudioCallback() returned.");
-
-    auto stopAudioReply = StopAudioResponse{.success = true,
-        .error = std::nullopt,
-        .responseBase = ResponseBase{.id = requestAsStopAudio.requestBase.get().id}};
-
-    response = std::optional(std::move(stopAudioReply));
-  }
-
   // Forward request to handlers
 
   bool didOverwriteResponse = false;
+
+  auto handleAudioSessionCommandResponse = handleAudioSessionCommand(request);
+  if (handleAudioSessionCommandResponse.has_value()) {
+    if (response.has_value()) {
+      didOverwriteResponse = true;
+    }
+    response = std::move(handleAudioSessionCommandResponse);
+  }
 
   auto handleModelSyncCommandResponse = handleModelSyncCommand(request);
   if (handleModelSyncCommandResponse.has_value()) {

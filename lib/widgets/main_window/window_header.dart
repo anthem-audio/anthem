@@ -33,6 +33,7 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
+import 'package:anthem/widgets/main_window/render_dialog.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show showLicensePage;
@@ -420,6 +421,18 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
             );
           },
         ),
+        if (!kIsWeb)
+          AnthemMenuItem(
+            text: 'Render...',
+            hint: 'Render the active project',
+            onSelected: () {
+              dialogController.showDialog(
+                title: 'Render',
+                content: RenderDialog(projectId: activeProjectId),
+                buttons: [DialogButton.cancel()],
+              );
+            },
+          ),
         if (kDebugMode) Separator(),
         if (kDebugMode)
           AnthemMenuItem(

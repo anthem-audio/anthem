@@ -126,6 +126,12 @@ class VisualizationProvider {
   }
 
   void processVisualizationUpdate(VisualizationUpdateEvent update) {
+    final audioConfig = _project.engine.audioConfig;
+    if (audioConfig == null || audioConfig.sampleRate <= 0) {
+      _transportStats.recordArrival(null);
+      return;
+    }
+
     _transportStats.recordArrival(_latestVisibleEventEngineTime(update));
 
     for (final item in update.items) {

@@ -54,7 +54,7 @@ if (IS_WASM)
     -pthread
     # The value 3 here maps to 3 threads in the engine:
     # - Message thread
-    # - Audio thread
+    # - Audio thread (or render thread)
     # - Comms thread
     "SHELL:-sPTHREAD_POOL_SIZE=3"
     "SHELL:-sPROXY_TO_PTHREAD=1"
@@ -163,6 +163,7 @@ else()
       juce::juce_core
       juce::juce_events
       juce::juce_audio_basics
+      juce::juce_audio_formats
       juce::juce_audio_processors
       juce::juce_audio_devices
 

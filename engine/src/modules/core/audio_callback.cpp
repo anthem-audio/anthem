@@ -19,25 +19,23 @@
 
 #include "audio_callback.h"
 
-#include "modules/core/engine.h"
+#include "modules/audio/audio_block_processor.h"
+#include "modules/audio/audio_session_controller.h"
+#include "project.h"
 
 #include <algorithm>
-#include <chrono>
 #include <stdexcept>
 #include <string>
 
 namespace anthem {
 
-AudioCallback::AudioCallback(Engine* engine) {
-  this->engine = engine;
-
+AudioCallback::AudioCallback(Project& project,
+    AudioBlockProcessor& audioBlockProcessor,
+    AudioSessionController& audioSessionController)
+  : audioBlockProcessor(audioBlockProcessor), audioSessionController(audioSessionController) {
   juce::Logger::writeToLog("AnthemAudioCallback: constructing...");
 
-  if (Engine::getInstance().project == nullptr) {
-    throw std::runtime_error("project model is null");
-  }
-
-  auto& processingGraph = Engine::getInstance().project->processingGraph();
+  auto& processingGraph = project.processingGraph();
   auto masterOutputNodeId = processingGraph->masterOutputNodeId();
 
   juce::Logger::writeToLog(
@@ -63,13 +61,6 @@ AudioCallback::AudioCallback(Engine* engine) {
 
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
-  cpuBurdenProvider =
-      Engine::getInstance().globalVisualizationSources->cpuBurdenProvider.rt_getProvider();
-  playheadPositionProvider =
-      Engine::getInstance().globalVisualizationSources->playheadPositionProvider.rt_getProvider();
-  playheadSequenceIdProvider =
-      Engine::getInstance().globalVisualizationSources->playheadSequenceIdProvider.rt_getProvider();
-
   juce::Logger::writeToLog("AnthemAudioCallback: constructed successfully.");
 }
 
@@ -80,20 +71,8 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
     int numOutputChannels,
     int numSamples,
     [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context) {
-  auto startTime = std::chrono::high_resolution_clock::now();
-
-  auto transport = engine->transport.get();
-
-  // Set up the transport for this processing block
-  transport->rt_prepareForProcessingBlock();
-  const auto blockStartSample = transport->rt_sampleCounter;
-
-  // Tell the sequence store to pick up any sequence updates.
-  engine->sequenceStore->rt_processSequenceChanges(numSamples);
-  engine->automationSequenceStore->rt_processSequenceChanges(numSamples);
-
-  const auto didProcessGraph =
-      engine->graphProcessor->rt_process(numSamples, engine->getAudioProcessingConfigGeneration());
+  const auto didProcessGraph = audioBlockProcessor.processAudioBlock(
+      numSamples, rt_sampleRate, audioSessionController.getAudioProcessingConfigGeneration());
 
   auto& outputBuffer = masterOutputProcessor->buffer;
 
@@ -119,28 +98,6 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
       }
     }
   }
-
-  auto endTime = std::chrono::high_resolution_clock::now();
-
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
-  auto durationInSeconds = static_cast<double>(duration) / 1e6;
-  jassert(rt_sampleRate >= 0.0);
-  const auto sampleRate = rt_sampleRate;
-  auto cpuBurden = durationInSeconds * sampleRate /
-                   static_cast<double>(numSamples); // actual time / total buffer time
-  cpuBurdenProvider->rt_updateCpuBurden(cpuBurden, blockStartSample, numSamples, sampleRate);
-
-  playheadPositionProvider->rt_updatePlayheadPosition(
-      *transport, blockStartSample, numSamples, sampleRate);
-
-  auto& activeSequenceId = transport->rt_config->activeSequenceId;
-  if (activeSequenceId.has_value()) {
-    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(*activeSequenceId, blockStartSample);
-  }
-
-  transport->rt_advancePlayhead(numSamples);
-  engine->sequenceStore->rt_cleanupAfterBlock();
 }
 
 void AudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {
@@ -165,7 +122,7 @@ void AudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice
 
   rt_sampleRate = deviceSampleRate;
 
-  engine->requestAudioSessionInvalidation(
+  audioSessionController.requestAudioSessionInvalidation(
       std::string("The audio device restarted while the audio session was running."));
 }
 

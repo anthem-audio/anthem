@@ -22,6 +22,7 @@ import 'dart:ui' as ui;
 
 import 'package:args/args.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/overlay/screen_overlay.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:flutter/foundation.dart';
@@ -285,7 +286,9 @@ class _WidgetTestbedAppState extends State<WidgetTestbedApp> {
           create: (_) => KeyboardModifiers(),
           child: RepaintBoundary(
             key: _screenshotBoundaryKey,
-            child: WidgetTestArea(initialScreen: widget.initialScreen),
+            child: ScreenOverlay(
+              child: WidgetTestArea(initialScreen: widget.initialScreen),
+            ),
           ),
         ),
       ),

@@ -53,9 +53,9 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
         std::make_shared<std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>>();
     auto requestId = initializeNodesRequest.requestBase.get().id;
 
-    if (!engine.isAudioThreadRunning()) {
+    if (!engine.audioSessionController->hasActiveAudioSession()) {
       juce::Logger::writeToLog(
-          "Skipping processing graph node initialization because the audio thread is not running.");
+          "Skipping processing graph node initialization because no audio session is active.");
 
       return std::optional(InitializeProcessingGraphNodesResponse{.didInitialize = false,
           .results = results,
@@ -88,9 +88,8 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     juce::Logger::writeToLog("Publishing from UI request...");
 
-    if (!engine.isAudioThreadRunning()) {
-      constexpr auto error =
-          "Cannot publish processing graph because the audio thread is not running.";
+    if (!engine.audioSessionController->hasActiveAudioSession()) {
+      constexpr auto error = "Cannot publish processing graph because no audio session is active.";
       juce::Logger::writeToLog(error);
 
       return std::optional(PublishProcessingGraphResponse{.success = false,
@@ -100,7 +99,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     // We need a valid processing config in order to allocate the graph buffers
     // used by the published graph.
-    if (!engine.getCurrentAudioProcessingConfig().has_value()) {
+    if (!engine.audioSessionController->getCurrentAudioProcessingConfig().has_value()) {
       juce::Logger::writeToLog(
           "Cannot publish processing graph because no audio processing config is active.");
 

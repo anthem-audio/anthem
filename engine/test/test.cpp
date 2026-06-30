@@ -18,6 +18,7 @@
 */
 
 #include "console_logger.h"
+#include "modules/core/engine_api_message_test.h"
 #include "modules/core/sequencer_test.h"
 #include "modules/core/visualization_broker_test.h"
 #include "modules/processing_graph/model/processing_graph_model_helpers_test.h"
@@ -34,6 +35,7 @@
 #include "modules/processors/sequence_automation_provider_test.h"
 #include "modules/processors/sequence_note_provider_test.h"
 #include "modules/processors/utility_test.h"
+#include "modules/render/render_tail_detector_test.h"
 #include "modules/sequencer/compiler/automation_sequence_compiler_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
 #include "modules/sequencer/events/event_test.h"

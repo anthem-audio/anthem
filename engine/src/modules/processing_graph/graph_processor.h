@@ -32,6 +32,11 @@ namespace anthem {
 class GraphExecutor;
 class EngineRuntimeServices;
 
+enum class GraphWorkerSchedulingMode {
+  realtime,
+  normal,
+};
+
 class GraphProcessor {
 private:
   struct RuntimeGraphHandoff;
@@ -54,7 +59,8 @@ public:
   explicit GraphProcessor(EngineRuntimeServices& engineRuntimeServices);
   ~GraphProcessor();
 
-  void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig);
+  void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig,
+      GraphWorkerSchedulingMode workerSchedulingMode = GraphWorkerSchedulingMode::realtime);
 
   // Transfers ownership of a newly built runtime graph from the main thread to
   // the audio thread.

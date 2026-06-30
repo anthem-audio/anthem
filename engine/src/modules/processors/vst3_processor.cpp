@@ -344,7 +344,8 @@ void VST3Processor::initialize(
 }
 
 void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
-  auto audioProcessingConfig = Engine::getInstance().getCurrentAudioProcessingConfig();
+  auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
 
   if (!audioProcessingConfig.has_value()) {
     writeVST3Log(*this, "No audio processing config available. Cannot initialize plugin.");

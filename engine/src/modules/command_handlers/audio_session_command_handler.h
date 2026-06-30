@@ -19,33 +19,12 @@
 
 #pragma once
 
-#include <juce_core/juce_core.h>
-#include <memory>
+#include "messages/messages.h"
 
-#if JUCE_MAC
-#include <juce_audio_basics/juce_audio_basics.h>
-#endif
+#include <optional>
 
 namespace anthem {
 
-struct AudioProcessingConfigDto;
-
-struct AudioProcessingConfig {
-  double sampleRate = 0.0;
-  int blockSize = 0;
-  int inputChannelCount = 0;
-  int outputChannelCount = 0;
-
-#if JUCE_MAC
-  juce::AudioWorkgroup macAudioWorkgroup;
-#endif
-
-  bool isValid() const {
-    return sampleRate > 0.0 && blockSize > 0 && outputChannelCount > 0;
-  }
-
-  std::shared_ptr<AudioProcessingConfigDto> toDto() const;
-  static AudioProcessingConfig fromDto(const AudioProcessingConfigDto& dto);
-};
+std::optional<Response> handleAudioSessionCommand(Request& request);
 
 } // namespace anthem

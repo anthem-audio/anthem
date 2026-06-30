@@ -57,8 +57,8 @@ class RecordingVisualizationApi extends Fake implements VisualizationApi {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  EngineAudioConfig testAudioConfig() {
-    return EngineAudioConfig(
+  AudioProcessingConfigDto testAudioConfig() {
+    return AudioProcessingConfigDto(
       sampleRate: 48000,
       blockSize: 512,
       inputChannelCount: 2,
@@ -691,6 +691,33 @@ void main() {
       setup.visualizationProvider.dispose();
     },
   );
+
+  test('Visualization updates are ignored without an active audio config', () {
+    final setup = createProjectWithVisualizationProvider();
+    when(setup.engine.audioConfig).thenReturn(null);
+
+    final subscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId'),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'subscriptionId',
+            valueType: VisualizationValueType.doubleValue,
+            values: [1.0],
+            sampleTimestamps: [10],
+          ),
+        ],
+      ),
+    );
+
+    expect(subscription.readValue(), equals(0.0));
+
+    setup.visualizationProvider.dispose();
+  });
 
   test('Visualization updates reject mismatched declared value types', () {
     final setup = createProjectWithVisualizationProvider();

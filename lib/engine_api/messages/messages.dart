@@ -30,9 +30,9 @@ part 'visualization.dart';
 part 'messages.g.dart';
 
 @AnthemModel(serializable: true, generateCpp: true)
-class EngineAudioConfig extends _EngineAudioConfig
-    with _$EngineAudioConfigAnthemModelMixin {
-  EngineAudioConfig.uninitialized()
+class AudioProcessingConfigDto extends _AudioProcessingConfigDto
+    with _$AudioProcessingConfigDtoAnthemModelMixin {
+  AudioProcessingConfigDto.uninitialized()
     : super(
         sampleRate: 0.0,
         blockSize: 0,
@@ -40,30 +40,33 @@ class EngineAudioConfig extends _EngineAudioConfig
         outputChannelCount: 0,
       );
 
-  EngineAudioConfig({
+  AudioProcessingConfigDto({
     required super.sampleRate,
     required super.blockSize,
     required super.inputChannelCount,
     required super.outputChannelCount,
   });
 
-  factory EngineAudioConfig.fromJson(Map<String, dynamic> json) =>
-      _$EngineAudioConfigAnthemModelMixin.fromJson(json);
+  factory AudioProcessingConfigDto.fromJson(Map<String, dynamic> json) =>
+      _$AudioProcessingConfigDtoAnthemModelMixin.fromJson(json);
 }
 
-abstract class _EngineAudioConfig {
+abstract class _AudioProcessingConfigDto {
   double sampleRate;
   int blockSize;
   int inputChannelCount;
   int outputChannelCount;
 
-  _EngineAudioConfig({
+  _AudioProcessingConfigDto({
     required this.sampleRate,
     required this.blockSize,
     required this.inputChannelCount,
     required this.outputChannelCount,
   });
 }
+
+@AnthemEnum()
+enum RenderAudioFormat { wav, aiff, flac, oggVorbis }
 
 class Exit extends Request {
   Exit.uninitialized();
@@ -113,6 +116,23 @@ class StartAudioRequest extends Request {
   }
 }
 
+class StartRenderAudioSessionRequest extends Request {
+  late double sampleRate;
+  late int blockSize;
+  late int outputChannelCount;
+
+  StartRenderAudioSessionRequest.uninitialized();
+
+  StartRenderAudioSessionRequest({
+    required int id,
+    required this.sampleRate,
+    required this.blockSize,
+    required this.outputChannelCount,
+  }) {
+    super.id = id;
+  }
+}
+
 class StopAudioRequest extends Request {
   StopAudioRequest.uninitialized();
 
@@ -139,11 +159,28 @@ class EngineReadyCheckResponse extends Response {
 class StartAudioResponse extends Response {
   bool success = false;
   String? error;
-  EngineAudioConfig? audioConfig;
+  AudioProcessingConfigDto? audioConfig;
 
   StartAudioResponse.uninitialized();
 
   StartAudioResponse({
+    required int id,
+    required this.success,
+    this.error,
+    this.audioConfig,
+  }) {
+    super.id = id;
+  }
+}
+
+class StartRenderAudioSessionResponse extends Response {
+  bool success = false;
+  String? error;
+  AudioProcessingConfigDto? audioConfig;
+
+  StartRenderAudioSessionResponse.uninitialized();
+
+  StartRenderAudioSessionResponse({
     required int id,
     required this.success,
     this.error,
@@ -160,6 +197,116 @@ class StopAudioResponse extends Response {
   StopAudioResponse.uninitialized();
 
   StopAudioResponse({required int id, required this.success, this.error}) {
+    super.id = id;
+  }
+}
+
+class RenderAudioRequest extends Request {
+  late int renderId;
+  late String outputPath;
+  late RenderAudioFormat format;
+  late int startTick;
+  late int endTick;
+  late bool includeTail;
+
+  RenderAudioRequest.uninitialized();
+
+  RenderAudioRequest({
+    required int id,
+    required this.renderId,
+    required this.outputPath,
+    required this.format,
+    required this.startTick,
+    required this.endTick,
+    required this.includeTail,
+  }) {
+    super.id = id;
+  }
+}
+
+class RenderAudioResponse extends Response {
+  bool success = false;
+  String? error;
+  late int renderId;
+
+  RenderAudioResponse.uninitialized();
+
+  RenderAudioResponse({
+    required int id,
+    required this.success,
+    this.error,
+    required this.renderId,
+  }) {
+    super.id = id;
+  }
+}
+
+class RenderStartedEvent extends Response {
+  late int renderId;
+  late int totalSamples;
+
+  RenderStartedEvent.uninitialized();
+
+  RenderStartedEvent({
+    required int id,
+    required this.renderId,
+    required this.totalSamples,
+  }) {
+    super.id = id;
+  }
+}
+
+class RenderProgressEvent extends Response {
+  late int renderId;
+  late double progress;
+  late int renderedSamples;
+  late int totalSamples;
+
+  RenderProgressEvent.uninitialized();
+
+  RenderProgressEvent({
+    required int id,
+    required this.renderId,
+    required this.progress,
+    required this.renderedSamples,
+    required this.totalSamples,
+  }) {
+    super.id = id;
+  }
+}
+
+class RenderCompletedEvent extends Response {
+  late int renderId;
+  late int renderedSamples;
+  late int totalSamples;
+
+  RenderCompletedEvent.uninitialized();
+
+  RenderCompletedEvent({
+    required int id,
+    required this.renderId,
+    required this.renderedSamples,
+    required this.totalSamples,
+  }) {
+    super.id = id;
+  }
+}
+
+class RenderFailedEvent extends Response {
+  late int renderId;
+  late String error;
+  late int renderedSamples;
+  late int totalSamples;
+
+  RenderFailedEvent.uninitialized();
+
+  RenderFailedEvent({
+    required int id,
+    required this.renderId,
+    required this.error,
+    required this.renderedSamples,
+    required this.totalSamples,
+  }) {
     super.id = id;
   }
 }
@@ -192,7 +339,7 @@ class TestSampleGainCurveResponse extends Response {
 /// Unsolicited response that is sent back one time, when the audio device has
 /// initialized.
 class AudioReadyEvent extends Response {
-  late EngineAudioConfig audioConfig;
+  late AudioProcessingConfigDto audioConfig;
 
   AudioReadyEvent.uninitialized();
 
