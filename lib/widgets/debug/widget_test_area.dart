@@ -21,6 +21,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
@@ -33,6 +34,11 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-button',
     title: 'Button',
     description: 'Tests for lib/widgets/basic/button.dart',
+  ),
+  checkbox(
+    key: 'widget-test-screen-checkbox',
+    title: 'Checkbox',
+    description: 'Tests for lib/widgets/basic/checkbox.dart',
   ),
   dialog(
     key: 'widget-test-screen-dialog',
@@ -116,6 +122,15 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             },
           ),
           TreeViewItemModel(
+            key: WidgetTestScreenId.checkbox.key,
+            label: labelForScreen(WidgetTestScreenId.checkbox),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.checkbox;
+              });
+            },
+          ),
+          TreeViewItemModel(
             key: WidgetTestScreenId.meter.key,
             label: labelForScreen(WidgetTestScreenId.meter),
             onClick: () {
@@ -180,6 +195,7 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
   Widget _getScreenWidget() {
     return switch (selectedScreen) {
       WidgetTestScreenId.button => const ButtonWidgetTestScreen(),
+      WidgetTestScreenId.checkbox => const CheckboxWidgetTestScreen(),
       WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
