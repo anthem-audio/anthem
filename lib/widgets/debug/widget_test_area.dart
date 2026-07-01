@@ -25,6 +25,7 @@ import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_sc
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/radio_button_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/render_dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/slider_widget_test_screen.dart';
 import 'package:flutter/widgets.dart';
@@ -39,6 +40,11 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-checkbox',
     title: 'Checkbox',
     description: 'Tests for lib/widgets/basic/checkbox.dart',
+  ),
+  radioButton(
+    key: 'widget-test-screen-radio-button',
+    title: 'Radio button',
+    description: 'Tests for lib/widgets/basic/radio_button.dart',
   ),
   dialog(
     key: 'widget-test-screen-dialog',
@@ -131,6 +137,15 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             },
           ),
           TreeViewItemModel(
+            key: WidgetTestScreenId.radioButton.key,
+            label: labelForScreen(WidgetTestScreenId.radioButton),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.radioButton;
+              });
+            },
+          ),
+          TreeViewItemModel(
             key: WidgetTestScreenId.meter.key,
             label: labelForScreen(WidgetTestScreenId.meter),
             onClick: () {
@@ -196,6 +211,7 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
     return switch (selectedScreen) {
       WidgetTestScreenId.button => const ButtonWidgetTestScreen(),
       WidgetTestScreenId.checkbox => const CheckboxWidgetTestScreen(),
+      WidgetTestScreenId.radioButton => const RadioButtonWidgetTestScreen(),
       WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
