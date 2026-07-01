@@ -23,8 +23,8 @@ UninstallDisplayIcon={app}\Anthem.exe
 OutputDir=..\..\build\windows\{#MyArch}\installer
 OutputBaseFilename=anthem-windows-{#MyArch}
 #if MyArch == "arm64"
-ArchitecturesAllowed=arm64os
-ArchitecturesInstallIn64BitMode=arm64os
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
 #else
 ArchitecturesAllowed=x64os
 ArchitecturesInstallIn64BitMode=x64os
