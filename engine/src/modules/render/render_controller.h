@@ -58,7 +58,7 @@ private:
   void sendRenderCompletedEvent(int64_t renderId, int64_t renderedSamples, int64_t totalSamples);
   void sendRenderFailedEvent(
       int64_t renderId, const std::string& error, int64_t renderedSamples, int64_t totalSamples);
-  void runRender(RenderJob renderJob, RenderThread& thread);
+  void runRender(const RenderJob& renderJob, RenderThread& thread);
   void finishRenderThreadState();
 public:
   RenderController(AudioSessionController& audioSessionController,

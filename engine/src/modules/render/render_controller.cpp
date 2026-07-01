@@ -378,7 +378,7 @@ void RenderController::finishRenderThreadState() {
   transport.endRenderPlayback();
 }
 
-void RenderController::runRender(RenderJob renderJob, RenderThread& thread) {
+void RenderController::runRender(const RenderJob& renderJob, RenderThread& thread) {
 #ifdef __EMSCRIPTEN__
   sendRenderFailedEvent(
       renderJob.renderId, "File render is not available on web yet.", 0, renderJob.totalSamples);
