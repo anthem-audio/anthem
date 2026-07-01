@@ -26,6 +26,7 @@ abstract class DialogControllerImpl {
     Widget content, {
     String? title,
     List<DialogButton>? buttons,
+    bool dismissible = true,
     void Function()? onDismiss,
   });
   void closeDialog();
@@ -49,12 +50,14 @@ class DialogController {
     String? title,
     required Widget content,
     List<DialogButton>? buttons,
+    bool dismissible = true,
     void Function()? onDismiss,
   }) {
     _impl?.showDialog(
       content,
       title: title,
       buttons: buttons,
+      dismissible: dismissible,
       onDismiss: onDismiss,
     );
   }
@@ -63,6 +66,7 @@ class DialogController {
     String? title,
     required String markdown,
     List<DialogButton>? buttons,
+    bool dismissible = true,
     void Function()? onDismiss,
     MarkdownTapLinkCallback? onTapLink,
   }) {
@@ -75,6 +79,7 @@ class DialogController {
       ),
       title: title,
       buttons: buttons,
+      dismissible: dismissible,
       onDismiss: onDismiss,
     );
   }
