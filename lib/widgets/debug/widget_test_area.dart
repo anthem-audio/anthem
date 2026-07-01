@@ -26,7 +26,6 @@ import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_scre
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/radio_button_widget_test_screen.dart';
-import 'package:anthem/widgets/debug/widget_test_screens/render_dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/slider_widget_test_screen.dart';
 import 'package:flutter/widgets.dart';
 
@@ -65,11 +64,6 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-slider',
     title: 'Slider',
     description: 'Tests for lib/widgets/basic/controls/slider.dart',
-  ),
-  renderDialog(
-    key: 'widget-test-screen-render-dialog',
-    title: 'Render dialog',
-    description: 'Tests for lib/widgets/main_window/render_dialog.dart',
   );
 
   final String key;
@@ -189,21 +183,6 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
           ),
         ],
       ),
-      TreeViewItemModel(
-        key: 'widget-test-category-main-window',
-        label: 'Main window',
-        children: [
-          TreeViewItemModel(
-            key: WidgetTestScreenId.renderDialog.key,
-            label: labelForScreen(WidgetTestScreenId.renderDialog),
-            onClick: () {
-              setState(() {
-                selectedScreen = WidgetTestScreenId.renderDialog;
-              });
-            },
-          ),
-        ],
-      ),
     ];
   }
 
@@ -216,7 +195,6 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
       WidgetTestScreenId.slider => const SliderWidgetTestScreen(),
-      WidgetTestScreenId.renderDialog => const RenderDialogWidgetTestScreen(),
     };
   }
 
