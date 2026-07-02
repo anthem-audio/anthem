@@ -19,6 +19,7 @@
 
 import 'dart:convert';
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/license_text.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -34,6 +35,7 @@ import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:anthem/widgets/main_window/render_dialog.dart';
+import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show showLicensePage;
@@ -425,11 +427,30 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
           AnthemMenuItem(
             text: 'Render...',
             hint: 'Render the active project',
-            onSelected: () {
+            disabled: activeProject.engineState != EngineState.running,
+            onSelected: () async {
+              if (activeProject.engineState != EngineState.running) return;
+
+              final renderDialogController = RenderDialogController.forProject(
+                activeProject,
+              );
+              final pickedFile = await renderDialogController.chooseFile();
+              if (!pickedFile) {
+                return;
+              }
+
+              if (activeProject.engineState != EngineState.running) return;
+
               dialogController.showDialog(
                 title: 'Render',
-                content: RenderDialog(projectId: activeProjectId),
-                buttons: [DialogButton.cancel()],
+                content: RenderDialog(controller: renderDialogController),
+                buttons: [
+                  DialogButton(
+                    text: 'Render',
+                    shouldCloseDialog: false,
+                    onPress: renderDialogController.render,
+                  ),
+                ],
               );
             },
           ),

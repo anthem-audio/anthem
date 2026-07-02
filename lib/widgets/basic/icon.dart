@@ -53,6 +53,7 @@ class Icons {
   );
   static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
   static IconDef file = const IconDef('assets/icons_old/file.svg');
+  static IconDef folder = const IconDef('assets/icons/icon/folder.svg');
   static IconDef kebab = const IconDef('assets/icons/misc.svg');
   static IconDef maximize = const IconDef('assets/icons/small/maximize.svg');
   static IconDef midi = const IconDef(
