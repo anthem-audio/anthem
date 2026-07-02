@@ -49,6 +49,38 @@ void main() {
     expect(text.style?.fontSize, equals(12));
   });
 
+  testWidgets('renders disabled label with themed disabled text', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHarness(
+      tester,
+      const AnthemRadioButton(selected: true, label: 'Stereo', disabled: true),
+    );
+
+    final text = tester.widget<Text>(find.text('Stereo'));
+
+    expect(text.style?.color, equals(AnthemTheme.text.disabled));
+    expect(text.style?.fontSize, equals(12));
+  });
+
+  testWidgets('disabled selected radio button paints disabled palette', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHarness(
+      tester,
+      const AnthemRadioButton(selected: true, disabled: true),
+    );
+
+    expect(
+      find.byType(CustomPaint),
+      paints
+        ..circle(color: AnthemTheme.panel.border)
+        ..circle(color: AnthemTheme.text.disabled)
+        ..circle(color: AnthemTheme.panel.backgroundLight)
+        ..circle(color: AnthemTheme.text.disabled),
+    );
+  });
+
   testWidgets('tap calls onSelected', (WidgetTester tester) async {
     var selectedCalls = 0;
 
@@ -67,6 +99,29 @@ void main() {
     await tester.pump();
 
     expect(selectedCalls, equals(1));
+  });
+
+  testWidgets('disabled radio button does not call onSelected', (
+    WidgetTester tester,
+  ) async {
+    var selectedCalls = 0;
+
+    await _pumpHarness(
+      tester,
+      AnthemRadioButton(
+        selected: false,
+        label: 'Stereo',
+        disabled: true,
+        onSelected: () {
+          selectedCalls += 1;
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Stereo'));
+    await tester.pump();
+
+    expect(selectedCalls, equals(0));
   });
 
   testWidgets('read-only radio button does not consume parent taps', (

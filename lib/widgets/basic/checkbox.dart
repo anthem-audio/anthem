@@ -33,12 +33,14 @@ class AnthemCheckbox extends StatefulWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
   final String? label;
+  final bool disabled;
 
   const AnthemCheckbox({
     super.key,
     required this.value,
     this.onChanged,
     this.label,
+    this.disabled = false,
   });
 
   @override
@@ -51,8 +53,9 @@ class _AnthemCheckboxState extends State<AnthemCheckbox> {
 
   @override
   Widget build(BuildContext context) {
-    final interactive = widget.onChanged != null;
+    final interactive = !widget.disabled && widget.onChanged != null;
     final colors = _resolveColors(
+      disabled: widget.disabled,
       hovered: interactive && hovered,
       pressed: interactive && pressed,
     );
@@ -75,7 +78,9 @@ class _AnthemCheckboxState extends State<AnthemCheckbox> {
               Text(
                 widget.label!,
                 style: TextStyle(
-                  color: AnthemTheme.text.main,
+                  color: widget.disabled
+                      ? AnthemTheme.text.disabled
+                      : AnthemTheme.text.main,
                   fontSize: _checkboxLabelFontSize,
                 ),
                 textHeightBehavior: const TextHeightBehavior(
@@ -86,7 +91,7 @@ class _AnthemCheckboxState extends State<AnthemCheckbox> {
           );
 
     final onChanged = widget.onChanged;
-    if (onChanged == null) {
+    if (!interactive || onChanged == null) {
       return content;
     }
 
@@ -185,12 +190,24 @@ class _CheckboxPainter extends CustomPainter {
   }
 }
 
-_CheckboxColors _resolveColors({required bool hovered, required bool pressed}) {
+_CheckboxColors _resolveColors({
+  required bool disabled,
+  required bool hovered,
+  required bool pressed,
+}) {
   final idleColors = (
     fill: AnthemTheme.panel.backgroundDark,
     border: AnthemTheme.panel.border,
     checkmark: AnthemTheme.primary.main,
   );
+
+  if (disabled) {
+    return (
+      fill: AnthemTheme.panel.backgroundLight,
+      border: AnthemTheme.panel.border,
+      checkmark: AnthemTheme.text.disabled,
+    );
+  }
 
   if (pressed) {
     return _lightenColors(idleColors, _checkboxPressLightenAmount);

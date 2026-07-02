@@ -32,12 +32,14 @@ class AnthemRadioButton extends StatefulWidget {
   final bool selected;
   final VoidCallback? onSelected;
   final String? label;
+  final bool disabled;
 
   const AnthemRadioButton({
     super.key,
     required this.selected,
     this.onSelected,
     this.label,
+    this.disabled = false,
   });
 
   @override
@@ -50,8 +52,9 @@ class _AnthemRadioButtonState extends State<AnthemRadioButton> {
 
   @override
   Widget build(BuildContext context) {
-    final interactive = widget.onSelected != null;
+    final interactive = !widget.disabled && widget.onSelected != null;
     final colors = _resolveColors(
+      disabled: widget.disabled,
       hovered: interactive && hovered,
       pressed: interactive && pressed,
     );
@@ -74,7 +77,9 @@ class _AnthemRadioButtonState extends State<AnthemRadioButton> {
               Text(
                 widget.label!,
                 style: TextStyle(
-                  color: AnthemTheme.text.main,
+                  color: widget.disabled
+                      ? AnthemTheme.text.disabled
+                      : AnthemTheme.text.main,
                   fontSize: _radioButtonLabelFontSize,
                 ),
                 textHeightBehavior: const TextHeightBehavior(
@@ -85,7 +90,7 @@ class _AnthemRadioButtonState extends State<AnthemRadioButton> {
           );
 
     final onSelected = widget.onSelected;
-    if (onSelected == null) {
+    if (!interactive || onSelected == null) {
       return content;
     }
 
@@ -165,6 +170,7 @@ class _RadioButtonPainter extends CustomPainter {
 }
 
 _RadioButtonColors _resolveColors({
+  required bool disabled,
   required bool hovered,
   required bool pressed,
 }) {
@@ -173,6 +179,14 @@ _RadioButtonColors _resolveColors({
     border: AnthemTheme.panel.border,
     primary: AnthemTheme.primary.main,
   );
+
+  if (disabled) {
+    return (
+      background: AnthemTheme.panel.backgroundLight,
+      border: AnthemTheme.panel.border,
+      primary: AnthemTheme.text.disabled,
+    );
+  }
 
   if (pressed) {
     return _lightenColors(idleColors, _radioButtonPressLightenAmount);

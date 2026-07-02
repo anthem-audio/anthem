@@ -49,6 +49,37 @@ void main() {
     expect(text.style?.fontSize, equals(12));
   });
 
+  testWidgets('renders disabled label with themed disabled text', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHarness(
+      tester,
+      const AnthemCheckbox(value: true, label: 'Snap to grid', disabled: true),
+    );
+
+    final text = tester.widget<Text>(find.text('Snap to grid'));
+
+    expect(text.style?.color, equals(AnthemTheme.text.disabled));
+    expect(text.style?.fontSize, equals(12));
+  });
+
+  testWidgets('disabled checked checkbox paints disabled palette', (
+    WidgetTester tester,
+  ) async {
+    await _pumpHarness(
+      tester,
+      const AnthemCheckbox(value: true, disabled: true),
+    );
+
+    expect(
+      find.byType(CustomPaint),
+      paints
+        ..rrect(color: AnthemTheme.panel.backgroundLight)
+        ..rrect(color: AnthemTheme.panel.border)
+        ..path(color: AnthemTheme.text.disabled),
+    );
+  });
+
   testWidgets('tap reports the inverted value', (WidgetTester tester) async {
     final values = <bool>[];
 
@@ -61,6 +92,27 @@ void main() {
     await tester.pump();
 
     expect(values, equals([true]));
+  });
+
+  testWidgets('disabled checkbox does not report changes', (
+    WidgetTester tester,
+  ) async {
+    final values = <bool>[];
+
+    await _pumpHarness(
+      tester,
+      AnthemCheckbox(
+        value: false,
+        label: 'Enabled',
+        disabled: true,
+        onChanged: values.add,
+      ),
+    );
+
+    await tester.tap(find.text('Enabled'));
+    await tester.pump();
+
+    expect(values, isEmpty);
   });
 
   testWidgets('read-only checkbox does not consume parent taps', (
