@@ -18,10 +18,10 @@
 */
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -133,22 +133,27 @@ class MainWindowController {
       initialDirectory: home,
     );
 
-    final String file;
+    final ProjectModel project;
     String? path;
 
-    if (kIsWeb) {
-      final bytes = result?.files.firstOrNull?.bytes;
-      if (bytes == null) return null;
-      file = utf8.decode(bytes);
-    } else {
-      path = result?.files.firstOrNull?.path;
-      if (path == null) return null;
-      file = await File(path).readAsString();
+    try {
+      final Map<String, dynamic> projectJson;
+      if (kIsWeb) {
+        final bytes = result?.files.firstOrNull?.bytes;
+        if (bytes == null) return null;
+        projectJson = await decodeProjectFileBytes(bytes);
+      } else {
+        path = result?.files.firstOrNull?.path;
+        if (path == null) return null;
+        projectJson = await readProjectFile(path);
+      }
+
+      project = ProjectModel.fromJson(projectJson);
+    } catch (error, stackTrace) {
+      _log.warning('Could not load project file.', error, stackTrace);
+      return null;
     }
 
-    final project = ProjectModel.fromJson(
-      json.decode(file) as Map<String, dynamic>,
-    );
     final serviceRegistry = _addProject(project);
 
     project.filePath = path;
@@ -228,8 +233,22 @@ class MainWindowController {
       final fileName = await completer.future;
       if (fileName == null) return false;
 
-      final bytes = utf8.encode(json.encode(project.toJson()));
-      await FilePicker.saveFile(fileName: '$fileName.anthem', bytes: bytes);
+      try {
+        final bytes = await encodeProjectFile(project);
+        await FilePicker.saveFile(fileName: '$fileName.anthem', bytes: bytes);
+      } catch (error, stackTrace) {
+        _log.warning('Could not save project file.', error, stackTrace);
+
+        dialogController.showMarkdownDialog(
+          title: 'Save',
+          markdown:
+              'Could not save project:\n\n'
+              '${escapeDialogMarkdown(error.toString())}',
+          buttons: [DialogButton.ok()],
+        );
+
+        return false;
+      }
 
       project.isDirty = false;
       return true;
@@ -241,9 +260,7 @@ class MainWindowController {
         }),
       );
 
-      await File(
-        path!,
-      ).writeAsString(json.encode(project.toJson()), flush: true);
+      await writeProjectFile(path!, project);
 
       project.isDirty = false;
       project.filePath = path;
