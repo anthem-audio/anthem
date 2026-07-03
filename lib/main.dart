@@ -66,7 +66,15 @@ void main() async {
 
   if (!kIsWeb) {
     await windowManager.ensureInitialized();
-    await windowManager.setAsFrameless();
+
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      await windowManager.setTitleBarStyle(
+        TitleBarStyle.hidden,
+        windowButtonVisibility: true,
+      );
+    } else {
+      await windowManager.setAsFrameless();
+    }
   }
 
   // Only defined on web
@@ -206,7 +214,10 @@ class _AppState extends State<App> with WindowListener {
       ],
     );
 
-    final windowResizeAreaWithContent = kIsWeb
+    final shouldUseNativeWindowResize =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+
+    final windowResizeAreaWithContent = kIsWeb || shouldUseNativeWindowResize
         ? contentStack
         : DragToResizeArea(
             enableResizeEdges: isMaximized ? [] : null,

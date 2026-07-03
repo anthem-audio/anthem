@@ -61,6 +61,8 @@ class _MainWindowState extends State<MainWindow> {
   Widget build(BuildContext context) {
     final viewModel = ServiceRegistry.mainWindowViewModel;
     final store = AnthemStore.instance;
+    final shouldUseNativeWindowBorder =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
     if (firstBuild) {
       firstBuild = false;
@@ -99,46 +101,50 @@ class _MainWindowState extends State<MainWindow> {
       }
     }
 
+    Widget buildContent() {
+      return Observer(
+        builder: (context) {
+          final tabs = store.projectOrder.map<TabDef>((projectId) {
+            return TabDef(
+              id: projectId,
+              title: store.projects[projectId]?.name ?? '',
+            );
+          }).toList();
+
+          return Column(
+            children: [
+              RepaintBoundary(
+                child: WindowHeader(
+                  selectedTabId: store.activeProjectId,
+                  tabs: tabs,
+                ),
+              ),
+              Expanded(
+                child: TabContentSwitcher(
+                  tabs: tabs,
+                  selectedTabId: store.activeProjectId,
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
+    final windowContent = shouldUseNativeWindowBorder
+        ? buildContent()
+        : Container(
+            color: AnthemTheme.panel.border,
+            child: Padding(
+              padding: const EdgeInsets.all(1),
+              child: buildContent(),
+            ),
+          );
+
     return Stack(
       fit: .expand,
       children: [
-        ScreenOverlay(
-          child: DialogRenderer(
-            child: Container(
-              color: AnthemTheme.panel.border,
-              child: Padding(
-                padding: const EdgeInsets.all(1),
-                child: Observer(
-                  builder: (context) {
-                    final tabs = store.projectOrder.map<TabDef>((projectId) {
-                      return TabDef(
-                        id: projectId,
-                        title: store.projects[projectId]?.name ?? '',
-                      );
-                    }).toList();
-
-                    return Column(
-                      children: [
-                        RepaintBoundary(
-                          child: WindowHeader(
-                            selectedTabId: store.activeProjectId,
-                            tabs: tabs,
-                          ),
-                        ),
-                        Expanded(
-                          child: TabContentSwitcher(
-                            tabs: tabs,
-                            selectedTabId: store.activeProjectId,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
+        ScreenOverlay(child: DialogRenderer(child: windowContent)),
 
         // Sets an override for the mouse cursor, which should be used when
         // the mouse is pressed down during click-and-drag operations. While

@@ -44,6 +44,8 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
+const _macOSWindowControlPadding = 86.0;
+
 class WindowHeader extends StatefulWidget {
   final ProjectId selectedTabId;
   final List<TabDef> tabs;
@@ -61,6 +63,7 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
+    final isMacOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
     final Widget windowHandleAndControls;
 
     if (kIsWeb) {
@@ -68,7 +71,9 @@ class _WindowHeaderState extends State<WindowHeader> {
         color: AnthemTheme.panel.backgroundLight,
       );
     } else {
-      windowHandleAndControls = _WindowHandleAndControls();
+      windowHandleAndControls = _WindowHandleAndControls(
+        showWindowButtons: !isMacOS,
+      );
     }
 
     return SizedBox(
@@ -76,6 +81,7 @@ class _WindowHeaderState extends State<WindowHeader> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          if (isMacOS) const SizedBox(width: _macOSWindowControlPadding),
           Padding(
             padding: const EdgeInsets.only(bottom: 1),
             child: Row(children: [const EngineIndicator(), _ApplicationMenu()]),
@@ -102,7 +108,9 @@ class _WindowHeaderState extends State<WindowHeader> {
 }
 
 class _WindowHandleAndControls extends StatelessWidget {
-  const _WindowHandleAndControls();
+  final bool showWindowButtons;
+
+  const _WindowHandleAndControls({required this.showWindowButtons});
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +121,7 @@ class _WindowHandleAndControls extends StatelessWidget {
           color: AnthemTheme.panel.backgroundLight,
           child: Align(
             alignment: Alignment.centerRight,
-            child: _WindowButtons(),
+            child: showWindowButtons ? _WindowButtons() : null,
           ),
         ),
       ),
