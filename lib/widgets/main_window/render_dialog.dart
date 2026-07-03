@@ -106,100 +106,103 @@ class _RenderDialogState extends State<RenderDialog> {
         final loopRangeEnabled =
             activeArrangementLoopRenderRange(project) != null;
 
+        final outputSection = Row(
+          children: [
+            Button(
+              width: 24,
+              height: 24,
+              contentPadding: const EdgeInsets.all(4),
+              icon: Icons.folder,
+              onPress: widget.controller.chooseFile,
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: _OutputPathDisplay(path: viewModel.filePath)),
+          ],
+        );
+
+        final rangeSection = SizedBox(
+          height: 26,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AnthemRadioButton(
+                label: 'Full project',
+                selected: viewModel.rangeMode == RenderDialogRangeMode.project,
+                onSelected: () => widget.controller.setRangeMode(
+                  RenderDialogRangeMode.project,
+                ),
+              ),
+              const SizedBox(width: 14),
+              AnthemRadioButton(
+                label: 'Loop range',
+                selected: viewModel.rangeMode == RenderDialogRangeMode.loop,
+                disabled: !loopRangeEnabled,
+                onSelected: () =>
+                    widget.controller.setRangeMode(RenderDialogRangeMode.loop),
+              ),
+              const SizedBox(width: 14),
+              Container(
+                width: 1,
+                height: 16,
+                color: AnthemTheme.overlay.border,
+              ),
+              const SizedBox(width: 14),
+              AnthemCheckbox(
+                label: 'Include tail',
+                value: viewModel.includeTail,
+                onChanged: widget.controller.setIncludeTail,
+              ),
+            ],
+          ),
+        );
+
+        final formatSection = SizedBox(
+          height: 26,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AnthemRadioButton(
+                label: 'WAV',
+                selected: viewModel.format == RenderAudioFormat.wav,
+                onSelected: () =>
+                    widget.controller.setFormat(RenderAudioFormat.wav),
+              ),
+              const SizedBox(width: 14),
+              AnthemRadioButton(
+                label: 'AIFF',
+                selected: viewModel.format == RenderAudioFormat.aiff,
+                onSelected: () =>
+                    widget.controller.setFormat(RenderAudioFormat.aiff),
+              ),
+              const SizedBox(width: 14),
+              AnthemRadioButton(
+                label: 'FLAC',
+                selected: viewModel.format == RenderAudioFormat.flac,
+                onSelected: () =>
+                    widget.controller.setFormat(RenderAudioFormat.flac),
+              ),
+              const SizedBox(width: 14),
+              AnthemRadioButton(
+                label: 'Ogg',
+                selected: viewModel.format == RenderAudioFormat.oggVorbis,
+                onSelected: () =>
+                    widget.controller.setFormat(RenderAudioFormat.oggVorbis),
+              ),
+            ],
+          ),
+        );
+
         return SizedBox(
-          width: 500,
+          width: 400,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            spacing: 12,
             children: [
-              Row(
-                children: [
-                  Button(
-                    width: 24,
-                    height: 24,
-                    contentPadding: const EdgeInsets.all(4),
-                    icon: Icons.folder,
-                    onPress: widget.controller.chooseFile,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: _OutputPathDisplay(path: viewModel.filePath)),
-                ],
-              ),
-              SizedBox(
-                height: 26,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    AnthemRadioButton(
-                      label: 'WAV',
-                      selected: viewModel.format == RenderAudioFormat.wav,
-                      onSelected: () =>
-                          widget.controller.setFormat(RenderAudioFormat.wav),
-                    ),
-                    const SizedBox(width: 14),
-                    AnthemRadioButton(
-                      label: 'AIFF',
-                      selected: viewModel.format == RenderAudioFormat.aiff,
-                      onSelected: () =>
-                          widget.controller.setFormat(RenderAudioFormat.aiff),
-                    ),
-                    const SizedBox(width: 14),
-                    AnthemRadioButton(
-                      label: 'FLAC',
-                      selected: viewModel.format == RenderAudioFormat.flac,
-                      onSelected: () =>
-                          widget.controller.setFormat(RenderAudioFormat.flac),
-                    ),
-                    const SizedBox(width: 14),
-                    AnthemRadioButton(
-                      label: 'Ogg',
-                      selected: viewModel.format == RenderAudioFormat.oggVorbis,
-                      onSelected: () => widget.controller.setFormat(
-                        RenderAudioFormat.oggVorbis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 26,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    AnthemRadioButton(
-                      label: 'Full project',
-                      selected:
-                          viewModel.rangeMode == RenderDialogRangeMode.project,
-                      onSelected: () => widget.controller.setRangeMode(
-                        RenderDialogRangeMode.project,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    AnthemRadioButton(
-                      label: 'Loop range',
-                      selected:
-                          viewModel.rangeMode == RenderDialogRangeMode.loop,
-                      disabled: !loopRangeEnabled,
-                      onSelected: () => widget.controller.setRangeMode(
-                        RenderDialogRangeMode.loop,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Container(
-                      width: 1,
-                      height: 16,
-                      color: AnthemTheme.panel.border,
-                    ),
-                    const SizedBox(width: 14),
-                    AnthemCheckbox(
-                      label: 'Include tail',
-                      value: viewModel.includeTail,
-                      onChanged: widget.controller.setIncludeTail,
-                    ),
-                  ],
-                ),
-              ),
+              outputSection,
+              const SizedBox(height: 12),
+              rangeSection,
+              const SizedBox(height: 20),
+              formatSection,
               if (viewModel.statusText.isNotEmpty)
                 Text(
                   viewModel.statusText,
