@@ -40,12 +40,23 @@ const _stickyTrapSize = 0.08;
 const _directHandleHitThickness = 8.0;
 const _doubleClickThreshold = Duration(milliseconds: 500);
 const _maxDoubleClickDistance = 8.0;
+const _compactTrackShortAxisSize = 4.0;
+const _circleHandleSize = 14.0;
+const _splitRectHandleMainAxisSize = 19.0;
+const _splitRectHandleShortAxisSize = 14.0;
+const _splitRectHandleRadius = 2.0;
+const _circleHandleFill = Color(0xFF9D9D9D);
+const _splitRectHandleFill = Color(0xFF9D9D9D);
+const _splitRectHandleAccentFill = Color(0xFFA7A7A7);
+const _splitRectHandleInsetFill = Color(0xFF909090);
+const _splitRectHandleDivider = Color(0xFF6C6C6C);
 
 class Slider extends StatefulWidget {
   final double? width;
   final double? height;
   final SliderAxis axis;
   final SliderType type;
+  final SliderHandleType handleType;
   final double borderRadius;
   final bool noBackground;
   final bool usePointerLock;
@@ -70,6 +81,7 @@ class Slider extends StatefulWidget {
     this.height,
     this.axis = SliderAxis.horizontal,
     this.type = SliderType.normal,
+    this.handleType = SliderHandleType.line,
     this.borderRadius = 1,
     this.noBackground = false,
     this.usePointerLock = true,
@@ -241,6 +253,21 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     required Offset localPosition,
     required Size size,
   }) {
+    if (widget.handleType != SliderHandleType.line) {
+      final handleMainAxisSize = _mainAxisSizeForHandleType(widget.handleType);
+
+      return switch (widget.axis) {
+        SliderAxis.horizontal when size.width > handleMainAxisSize =>
+          (localPosition.dx - handleMainAxisSize / 2) /
+              (size.width - handleMainAxisSize),
+        SliderAxis.vertical when size.height > handleMainAxisSize =>
+          1 -
+              (localPosition.dy - handleMainAxisSize / 2) /
+                  (size.height - handleMainAxisSize),
+        _ => 0,
+      };
+    }
+
     return switch (widget.axis) {
       SliderAxis.horizontal when size.width > 0 =>
         localPosition.dx / size.width,
@@ -256,14 +283,18 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     required double rawValue,
   }) {
     final clampedRawValue = rawValue.clamp(0.0, 1.0).toDouble();
+    final hitThickness = max(
+      _directHandleHitThickness,
+      _mainAxisSizeForHandleType(widget.handleType),
+    );
 
     return switch (widget.axis) {
       SliderAxis.horizontal =>
         (localPosition.dx - size.width * clampedRawValue).abs() <=
-            _directHandleHitThickness / 2,
+            hitThickness / 2,
       SliderAxis.vertical =>
         (localPosition.dy - size.height * (1 - clampedRawValue)).abs() <=
-            _directHandleHitThickness / 2,
+            hitThickness / 2,
     };
   }
 
@@ -340,6 +371,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
                 value: scaledToRaw(value),
                 axis: widget.axis,
                 type: widget.type,
+                handleType: widget.handleType,
                 handleThickness: handleSizeHelper.animation.value,
                 handlePressAmount: pressColorHelper.animation.value,
                 borderRadius: widget.borderRadius,
@@ -713,6 +745,7 @@ class _SliderPainter extends CustomPainter {
   final double value;
   final SliderAxis axis;
   final SliderType type;
+  final SliderHandleType handleType;
   final double handleThickness;
   final double handlePressAmount;
   final double borderRadius;
@@ -722,6 +755,7 @@ class _SliderPainter extends CustomPainter {
     required this.value,
     required this.axis,
     required this.type,
+    required this.handleType,
     required this.handleThickness,
     required this.handlePressAmount,
     required this.borderRadius,
@@ -734,6 +768,16 @@ class _SliderPainter extends CustomPainter {
       return;
     }
 
+    switch (handleType) {
+      case SliderHandleType.line:
+        _paintLineHandleSlider(canvas, size);
+      case SliderHandleType.circle:
+      case SliderHandleType.splitRect:
+        _paintCompactHandleSlider(canvas, size);
+    }
+  }
+
+  void _paintLineHandleSlider(Canvas canvas, Size size) {
     final clampedValue = value.clamp(0.0, 1.0).toDouble();
 
     final handlePaint = Paint()
@@ -888,11 +932,252 @@ class _SliderPainter extends CustomPainter {
     }
   }
 
+  void _paintCompactHandleSlider(Canvas canvas, Size size) {
+    final clampedValue = value.clamp(0.0, 1.0).toDouble();
+    final handleMainAxisSize = _mainAxisSizeForHandleType(handleType);
+    final trackRect = switch (axis) {
+      SliderAxis.horizontal => Rect.fromLTWH(
+        handleMainAxisSize / 2,
+        (size.height - _compactTrackShortAxisSize) / 2,
+        max(0, size.width - handleMainAxisSize),
+        _compactTrackShortAxisSize,
+      ),
+      SliderAxis.vertical => Rect.fromLTWH(
+        (size.width - _compactTrackShortAxisSize) / 2,
+        handleMainAxisSize / 2,
+        _compactTrackShortAxisSize,
+        max(0, size.height - handleMainAxisSize),
+      ),
+    };
+
+    final trackBackgroundPaint = Paint()
+      ..color = AnthemTheme.control.background
+      ..style = PaintingStyle.fill;
+    final trackBorderPaint = Paint()
+      ..color = AnthemTheme.panel.border
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final activeFillPaint = Paint()
+      ..color = AnthemTheme.control.activeBackground
+      ..style = PaintingStyle.fill;
+
+    final handleCenter = switch (axis) {
+      SliderAxis.horizontal => Offset(
+        trackRect.left + trackRect.width * clampedValue,
+        trackRect.center.dy,
+      ),
+      SliderAxis.vertical => Offset(
+        trackRect.center.dx,
+        trackRect.bottom - trackRect.height * clampedValue,
+      ),
+    };
+
+    canvas.save();
+    if (!noBackground) {
+      canvas.drawRect(trackRect, trackBackgroundPaint);
+    }
+
+    final activeTrackRect = switch (axis) {
+      SliderAxis.horizontal when type == SliderType.normal => Rect.fromLTRB(
+        trackRect.left,
+        trackRect.top,
+        handleCenter.dx.clamp(trackRect.left, trackRect.right),
+        trackRect.bottom,
+      ),
+      SliderAxis.horizontal => Rect.fromLTRB(
+        min(
+          trackRect.center.dx,
+          handleCenter.dx,
+        ).clamp(trackRect.left, trackRect.right),
+        trackRect.top,
+        max(
+          trackRect.center.dx,
+          handleCenter.dx,
+        ).clamp(trackRect.left, trackRect.right),
+        trackRect.bottom,
+      ),
+      SliderAxis.vertical when type == SliderType.normal => Rect.fromLTRB(
+        trackRect.left,
+        handleCenter.dy.clamp(trackRect.top, trackRect.bottom),
+        trackRect.right,
+        trackRect.bottom,
+      ),
+      SliderAxis.vertical => Rect.fromLTRB(
+        trackRect.left,
+        min(
+          trackRect.center.dy,
+          handleCenter.dy,
+        ).clamp(trackRect.top, trackRect.bottom),
+        trackRect.right,
+        max(
+          trackRect.center.dy,
+          handleCenter.dy,
+        ).clamp(trackRect.top, trackRect.bottom),
+      ),
+    };
+
+    if (!activeTrackRect.isEmpty) {
+      canvas.drawRect(activeTrackRect, activeFillPaint);
+    }
+
+    if (!noBackground) {
+      canvas.drawRect(trackRect, trackBorderPaint);
+    }
+
+    switch (handleType) {
+      case SliderHandleType.line:
+        break;
+      case SliderHandleType.circle:
+        _paintCircleHandle(canvas, handleCenter);
+      case SliderHandleType.splitRect:
+        _paintSplitRectHandle(canvas, handleCenter);
+    }
+    canvas.restore();
+  }
+
+  double get _handleInteractionAmount {
+    final hoverAmount = ((handleThickness - 1) / 2).clamp(0.0, 1.0).toDouble();
+    final pressAmount = handlePressAmount.clamp(0.0, 1.0).toDouble();
+
+    return max(hoverAmount, pressAmount);
+  }
+
+  Color _interactiveColor(Color color) {
+    return Color.lerp(
+      color,
+      const Color(0xFFFFFFFF),
+      _handleInteractionAmount * 0.2,
+    )!;
+  }
+
+  void _paintCircleHandle(Canvas canvas, Offset handleCenter) {
+    final handleRect = Rect.fromCenter(
+      center: handleCenter,
+      width: _circleHandleSize,
+      height: _circleHandleSize,
+    );
+    final handleOvalRect = handleRect.deflate(0.5);
+    final fillPaint = Paint()
+      ..color = _interactiveColor(_circleHandleFill)
+      ..style = PaintingStyle.fill;
+    final borderPaint = Paint()
+      ..color = AnthemTheme.panel.border
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    canvas.drawOval(handleOvalRect, fillPaint);
+    canvas.drawOval(handleOvalRect, borderPaint);
+  }
+
+  void _paintSplitRectHandle(Canvas canvas, Offset handleCenter) {
+    final handleSize = switch (axis) {
+      SliderAxis.horizontal => const Size(
+        _splitRectHandleMainAxisSize,
+        _splitRectHandleShortAxisSize,
+      ),
+      SliderAxis.vertical => const Size(
+        _splitRectHandleShortAxisSize,
+        _splitRectHandleMainAxisSize,
+      ),
+    };
+    final handleRect = Rect.fromCenter(
+      center: handleCenter,
+      width: handleSize.width,
+      height: handleSize.height,
+    );
+    final outerRRect = RRect.fromRectAndRadius(
+      handleRect.deflate(0.5),
+      const Radius.circular(_splitRectHandleRadius),
+    );
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+    final borderPaint = Paint()
+      ..color = AnthemTheme.panel.border
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final dividerPaint = Paint()
+      ..color = _interactiveColor(_splitRectHandleDivider)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    final (accentRect, baseRect) = switch (axis) {
+      SliderAxis.horizontal => (
+        Rect.fromLTRB(
+          handleRect.left,
+          handleRect.top,
+          handleRect.center.dx,
+          handleRect.bottom,
+        ),
+        Rect.fromLTRB(
+          handleRect.center.dx,
+          handleRect.top,
+          handleRect.right,
+          handleRect.bottom,
+        ),
+      ),
+      SliderAxis.vertical => (
+        Rect.fromLTRB(
+          handleRect.left,
+          handleRect.top,
+          handleRect.right,
+          handleRect.center.dy,
+        ),
+        Rect.fromLTRB(
+          handleRect.left,
+          handleRect.center.dy,
+          handleRect.right,
+          handleRect.bottom,
+        ),
+      ),
+    };
+
+    canvas.save();
+    canvas.clipRRect(outerRRect);
+
+    fillPaint.color = _interactiveColor(_splitRectHandleAccentFill);
+    canvas.drawRect(accentRect, fillPaint);
+    fillPaint.color = _interactiveColor(_splitRectHandleFill);
+    canvas.drawRect(baseRect, fillPaint);
+
+    final insetRect = switch (axis) {
+      SliderAxis.horizontal => Rect.fromCenter(
+        center: accentRect.center,
+        width: 4,
+        height: 8,
+      ),
+      SliderAxis.vertical => Rect.fromCenter(
+        center: accentRect.center,
+        width: 8,
+        height: 4,
+      ),
+    };
+    fillPaint.color = _interactiveColor(_splitRectHandleInsetFill);
+    canvas.drawRect(insetRect, fillPaint);
+
+    switch (axis) {
+      case SliderAxis.horizontal:
+        canvas.drawLine(
+          Offset(handleRect.center.dx, handleRect.top),
+          Offset(handleRect.center.dx, handleRect.bottom),
+          dividerPaint,
+        );
+      case SliderAxis.vertical:
+        canvas.drawLine(
+          Offset(handleRect.left, handleRect.center.dy),
+          Offset(handleRect.right, handleRect.center.dy),
+          dividerPaint,
+        );
+    }
+
+    canvas.restore();
+    canvas.drawRRect(outerRRect, borderPaint);
+  }
+
   @override
   bool shouldRepaint(covariant _SliderPainter oldDelegate) {
     return oldDelegate.value != value ||
         oldDelegate.axis != axis ||
         oldDelegate.type != type ||
+        oldDelegate.handleType != handleType ||
         oldDelegate.handleThickness != handleThickness ||
         oldDelegate.handlePressAmount != handlePressAmount ||
         oldDelegate.borderRadius != borderRadius ||
@@ -901,5 +1186,15 @@ class _SliderPainter extends CustomPainter {
 }
 
 enum SliderType { normal, pan }
+
+enum SliderHandleType { line, circle, splitRect }
+
+double _mainAxisSizeForHandleType(SliderHandleType handleType) {
+  return switch (handleType) {
+    SliderHandleType.line => _directHandleHitThickness,
+    SliderHandleType.circle => _circleHandleSize,
+    SliderHandleType.splitRect => _splitRectHandleMainAxisSize,
+  };
+}
 
 enum SliderAxis { horizontal, vertical }

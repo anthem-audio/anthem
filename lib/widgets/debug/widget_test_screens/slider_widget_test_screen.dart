@@ -39,6 +39,14 @@ class _SliderWidgetTestScreenState extends State<SliderWidgetTestScreen> {
   double noLockBackgroundlessValue = 0.56;
   double noLockBackgroundlessVerticalValue = 0.72;
   double noLockPanValue = 0.0;
+  double circleHandleValue = 0.34;
+  double circleHandleVerticalValue = 0.66;
+  double splitRectHandleValue = 0.58;
+  double splitRectHandleVerticalValue = 0.42;
+  double noLockCircleHandleValue = 0.25;
+  double noLockSplitRectHandleValue = 0.75;
+  double noLockCircleHandleVerticalValue = 0.3;
+  double noLockSplitRectHandleVerticalValue = 0.7;
 
   String _formatPercent(double value) => '${(value * 100).toStringAsFixed(1)}%';
 
@@ -328,6 +336,189 @@ class _SliderWidgetTestScreenState extends State<SliderWidgetTestScreen> {
                 ],
               ),
             ),
+            _buildGroup(
+              title: 'Handle styles',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                spacing: 12,
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 10,
+                    children: [
+                      SizedBox(
+                        width: 150,
+                        height: 24,
+                        child: Slider(
+                          width: 150,
+                          height: 24,
+                          axis: SliderAxis.horizontal,
+                          handleType: SliderHandleType.circle,
+                          value: circleHandleValue,
+                          min: 0,
+                          max: 1,
+                          hoverHintOverride: _formatPercent,
+                          hint: _formatPercent,
+                          onValueChanged: (value) {
+                            setState(() {
+                              circleHandleValue = value.clamp(0, 1);
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 150,
+                        height: 24,
+                        child: Slider(
+                          width: 150,
+                          height: 24,
+                          axis: SliderAxis.horizontal,
+                          handleType: SliderHandleType.splitRect,
+                          value: splitRectHandleValue,
+                          min: 0,
+                          max: 1,
+                          hoverHintOverride: _formatPercent,
+                          hint: _formatPercent,
+                          onValueChanged: (value) {
+                            setState(() {
+                              splitRectHandleValue = value.clamp(0, 1);
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 150,
+                        height: 24,
+                        child: Slider(
+                          width: 150,
+                          height: 24,
+                          axis: SliderAxis.horizontal,
+                          handleType: SliderHandleType.circle,
+                          value: noLockCircleHandleValue,
+                          min: 0,
+                          max: 1,
+                          usePointerLock: false,
+                          hoverHintOverride: _formatPercent,
+                          hint: _formatPercent,
+                          onValueChanged: (value) {
+                            setState(() {
+                              noLockCircleHandleValue = value.clamp(0, 1);
+                            });
+                          },
+                        ),
+                      ),
+                      SizedBox(
+                        width: 150,
+                        height: 24,
+                        child: Slider(
+                          width: 150,
+                          height: 24,
+                          axis: SliderAxis.horizontal,
+                          handleType: SliderHandleType.splitRect,
+                          value: noLockSplitRectHandleValue,
+                          min: 0,
+                          max: 1,
+                          usePointerLock: false,
+                          hoverHintOverride: _formatPercent,
+                          hint: _formatPercent,
+                          onValueChanged: (value) {
+                            setState(() {
+                              noLockSplitRectHandleValue = value.clamp(0, 1);
+                            });
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(
+                    width: 28,
+                    height: 106,
+                    child: Slider(
+                      width: 28,
+                      height: 106,
+                      axis: SliderAxis.vertical,
+                      handleType: SliderHandleType.circle,
+                      value: circleHandleVerticalValue,
+                      min: 0,
+                      max: 1,
+                      hoverHintOverride: _formatPercent,
+                      hint: _formatPercent,
+                      onValueChanged: (value) {
+                        setState(() {
+                          circleHandleVerticalValue = value.clamp(0, 1);
+                        });
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28,
+                    height: 106,
+                    child: Slider(
+                      width: 28,
+                      height: 106,
+                      axis: SliderAxis.vertical,
+                      handleType: SliderHandleType.splitRect,
+                      value: splitRectHandleVerticalValue,
+                      min: 0,
+                      max: 1,
+                      hoverHintOverride: _formatPercent,
+                      hint: _formatPercent,
+                      onValueChanged: (value) {
+                        setState(() {
+                          splitRectHandleVerticalValue = value.clamp(0, 1);
+                        });
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28,
+                    height: 106,
+                    child: Slider(
+                      width: 28,
+                      height: 106,
+                      axis: SliderAxis.vertical,
+                      handleType: SliderHandleType.circle,
+                      value: noLockCircleHandleVerticalValue,
+                      min: 0,
+                      max: 1,
+                      usePointerLock: false,
+                      hoverHintOverride: _formatPercent,
+                      hint: _formatPercent,
+                      onValueChanged: (value) {
+                        setState(() {
+                          noLockCircleHandleVerticalValue = value.clamp(0, 1);
+                        });
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28,
+                    height: 106,
+                    child: Slider(
+                      width: 28,
+                      height: 106,
+                      axis: SliderAxis.vertical,
+                      handleType: SliderHandleType.splitRect,
+                      value: noLockSplitRectHandleVerticalValue,
+                      min: 0,
+                      max: 1,
+                      usePointerLock: false,
+                      hoverHintOverride: _formatPercent,
+                      hint: _formatPercent,
+                      onValueChanged: (value) {
+                        setState(() {
+                          noLockSplitRectHandleVerticalValue = value.clamp(
+                            0,
+                            1,
+                          );
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
         SizedBox(
@@ -354,6 +545,14 @@ class _SliderWidgetTestScreenState extends State<SliderWidgetTestScreen> {
                 noLockBackgroundlessValue = 0.56;
                 noLockBackgroundlessVerticalValue = 0.72;
                 noLockPanValue = 0.0;
+                circleHandleValue = 0.34;
+                circleHandleVerticalValue = 0.66;
+                splitRectHandleValue = 0.58;
+                splitRectHandleVerticalValue = 0.42;
+                noLockCircleHandleValue = 0.25;
+                noLockSplitRectHandleValue = 0.75;
+                noLockCircleHandleVerticalValue = 0.3;
+                noLockSplitRectHandleVerticalValue = 0.7;
               });
             },
           ),
