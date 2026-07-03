@@ -786,7 +786,7 @@ class _SliderPainter extends CustomPainter {
       ),
       SliderAxis.vertical => Offset(
         borderRect.center.dx,
-        (borderRect.bottom + 1) - (borderRect.height - 2) * clampedValue,
+        (borderRect.bottom - 1) - (borderRect.height - 2) * clampedValue,
       ),
     };
 
