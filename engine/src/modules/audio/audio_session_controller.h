@@ -75,7 +75,7 @@ private:
   // and render silence until the graph is rebuilt with an updated config.
   std::atomic<uint64_t> audioProcessingConfigGeneration{0};
 
-  uint64_t setCurrentAudioProcessingConfig(AudioProcessingConfig audioProcessingConfig);
+  uint64_t setCurrentAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig);
   void clearCurrentAudioProcessingConfig();
   void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig,
       GraphWorkerSchedulingMode workerSchedulingMode);

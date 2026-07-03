@@ -172,7 +172,7 @@ void AudioSessionController::stopAudio() {
 }
 
 uint64_t AudioSessionController::setCurrentAudioProcessingConfig(
-    AudioProcessingConfig audioProcessingConfig) {
+    const AudioProcessingConfig& audioProcessingConfig) {
   jassert(audioProcessingConfig.isValid());
   if (!audioProcessingConfig.isValid()) {
     clearCurrentAudioProcessingConfig();
