@@ -68,6 +68,9 @@ abstract class _AudioProcessingConfigDto {
 @AnthemEnum()
 enum RenderAudioFormat { wav, aiff, flac, oggVorbis }
 
+@AnthemEnum()
+enum RenderAudioSampleFormat { integer, floatingPoint }
+
 class Exit extends Request {
   Exit.uninitialized();
 
@@ -208,6 +211,9 @@ class RenderAudioRequest extends Request {
   late int startTick;
   late int endTick;
   late bool includeTail;
+  late int bitDepth;
+  late int qualityOptionIndex;
+  late RenderAudioSampleFormat sampleFormat;
 
   RenderAudioRequest.uninitialized();
 
@@ -219,6 +225,9 @@ class RenderAudioRequest extends Request {
     required this.startTick,
     required this.endTick,
     required this.includeTail,
+    required this.bitDepth,
+    required this.qualityOptionIndex,
+    required this.sampleFormat,
   }) {
     super.id = id;
   }

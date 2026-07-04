@@ -49,7 +49,8 @@ public:
       const std::string& formatJsonValue, RenderAudioFormat expectedFormat) {
     const auto requestJson =
         R"JSON({"id":982,"__type":"RenderAudioRequest","renderId":0,"outputPath":"C:\\Users\\qbgee\\Documents\\Renders\\first ever.wav","format":")JSON" +
-        formatJsonValue + R"JSON(","startTick":0,"endTick":768,"includeTail":true})JSON";
+        formatJsonValue +
+        R"JSON(","startTick":0,"endTick":768,"includeTail":true,"bitDepth":32,"qualityOptionIndex":9,"sampleFormat":"floatingPoint"})JSON";
 
     auto requestWrapped = rfl::json::read<Request>(requestJson);
 
@@ -71,6 +72,10 @@ public:
     expectEquals(renderAudioRequest.startTick, static_cast<int64_t>(0));
     expectEquals(renderAudioRequest.endTick, static_cast<int64_t>(768));
     expect(renderAudioRequest.includeTail, "includeTail should parse as true.");
+    expectEquals(renderAudioRequest.bitDepth, static_cast<int64_t>(32));
+    expectEquals(renderAudioRequest.qualityOptionIndex, static_cast<int64_t>(9));
+    expect(renderAudioRequest.sampleFormat == RenderAudioSampleFormat::floatingPoint,
+        "sampleFormat should parse as floatingPoint.");
   }
 };
 

@@ -39,6 +39,28 @@ abstract class _RenderDialogViewModel with Store {
   RenderAudioFormat format;
 
   @observable
+  int sampleRate;
+
+  @observable
+  int wavBitDepth = 32;
+
+  @observable
+  RenderAudioSampleFormat wavSampleFormat =
+      RenderAudioSampleFormat.floatingPoint;
+
+  @observable
+  int aiffBitDepth = 24;
+
+  @observable
+  int flacBitDepth = 24;
+
+  @observable
+  int flacCompressionLevel = 5;
+
+  @observable
+  int oggQualityOptionIndex = 9;
+
+  @observable
   RenderDialogRangeMode rangeMode = RenderDialogRangeMode.project;
 
   @observable
@@ -51,6 +73,7 @@ abstract class _RenderDialogViewModel with Store {
     required this.projectId,
     required this.filePath,
     required this.format,
+    required this.sampleRate,
   });
 
   bool get hasFilePath => filePath.trim().isNotEmpty;

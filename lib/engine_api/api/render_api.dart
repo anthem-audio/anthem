@@ -77,6 +77,9 @@ class RenderApi {
     required int startTick,
     required int endTick,
     required bool includeTail,
+    required int bitDepth,
+    required int qualityOptionIndex,
+    required RenderAudioSampleFormat sampleFormat,
   }) async {
     final didOpenRenderQueue = !_engine._isRenderingAudio;
     if (didOpenRenderQueue) {
@@ -95,6 +98,9 @@ class RenderApi {
                   startTick: startTick,
                   endTick: endTick,
                   includeTail: includeTail,
+                  bitDepth: bitDepth,
+                  qualityOptionIndex: qualityOptionIndex,
+                  sampleFormat: sampleFormat,
                 ),
                 startupBehavior: StartupSendBehavior.requireRunning,
                 renderBehavior: _RenderSendBehavior.bypassRenderQueue,

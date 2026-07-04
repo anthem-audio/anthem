@@ -419,6 +419,9 @@ void main() {
       sampleRate: 48000,
       blockSize: 512,
       outputChannelCount: 2,
+      bitDepth: 32,
+      qualityOptionIndex: 0,
+      sampleFormat: RenderAudioSampleFormat.floatingPoint,
     );
 
     final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
@@ -452,6 +455,12 @@ void main() {
     expect(renderAudioRequest.startTick, equals(0));
     expect(renderAudioRequest.endTick, equals(384));
     expect(renderAudioRequest.includeTail, isFalse);
+    expect(renderAudioRequest.bitDepth, equals(32));
+    expect(renderAudioRequest.qualityOptionIndex, equals(0));
+    expect(
+      renderAudioRequest.sampleFormat,
+      equals(RenderAudioSampleFormat.floatingPoint),
+    );
     connector.emitResponse(
       RenderAudioResponse(
         id: renderAudioRequest.id,
@@ -536,6 +545,9 @@ void main() {
         sampleRate: 48000,
         blockSize: 512,
         outputChannelCount: 2,
+        bitDepth: 32,
+        qualityOptionIndex: 0,
+        sampleFormat: RenderAudioSampleFormat.floatingPoint,
       );
 
       final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
@@ -650,6 +662,9 @@ void main() {
         sampleRate: 48000,
         blockSize: 512,
         outputChannelCount: 2,
+        bitDepth: 32,
+        qualityOptionIndex: 0,
+        sampleFormat: RenderAudioSampleFormat.floatingPoint,
       );
 
       final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
@@ -768,6 +783,9 @@ void main() {
         sampleRate: 48000,
         blockSize: 512,
         outputChannelCount: 2,
+        bitDepth: 32,
+        qualityOptionIndex: 0,
+        sampleFormat: RenderAudioSampleFormat.floatingPoint,
       );
 
       final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(

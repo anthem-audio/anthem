@@ -190,6 +190,9 @@ class ProjectEngineController implements DisposableService {
     required double sampleRate,
     required int blockSize,
     required int outputChannelCount,
+    required int bitDepth,
+    required int qualityOptionIndex,
+    required RenderAudioSampleFormat sampleFormat,
   }) async {
     final shouldRestoreRealtimeAudio = project.engine.isAudioReady;
 
@@ -229,6 +232,9 @@ class ProjectEngineController implements DisposableService {
           startTick: startTick,
           endTick: endTick,
           includeTail: includeTail,
+          bitDepth: bitDepth,
+          qualityOptionIndex: qualityOptionIndex,
+          sampleFormat: sampleFormat,
         );
 
         if (startResult.renderId != renderId) {

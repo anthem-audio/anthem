@@ -36,12 +36,94 @@ import 'package:path/path.dart' as path;
 
 final _log = Logger('render_dialog_controller');
 
+const _defaultRenderSampleRate = 48000;
 const _renderAudioFormatExtensions = ['wav', 'aiff', 'flac', 'ogg'];
+const _wavSampleRates = [
+  8000,
+  11025,
+  12000,
+  16000,
+  22050,
+  32000,
+  44100,
+  48000,
+  88200,
+  96000,
+  176400,
+  192000,
+  352800,
+  384000,
+];
+const _aiffSampleRates = [
+  22050,
+  32000,
+  44100,
+  48000,
+  88200,
+  96000,
+  176400,
+  192000,
+];
+const _oggSampleRates = [
+  8000,
+  11025,
+  12000,
+  16000,
+  22050,
+  32000,
+  44100,
+  48000,
+  88200,
+  96000,
+  176400,
+  192000,
+];
+const _wavBitDepths = [8, 16, 24, 32];
+const _aiffBitDepths = [8, 16, 24];
+const _flacBitDepths = [16, 24];
+const _flacCompressionLevelMin = 0;
+const _flacCompressionLevelMax = 8;
+const _oggQualityOptionLabels = [
+  '64 kbps',
+  '80 kbps',
+  '96 kbps',
+  '112 kbps',
+  '128 kbps',
+  '160 kbps',
+  '192 kbps',
+  '224 kbps',
+  '256 kbps',
+  '320 kbps',
+  '500 kbps',
+];
 
 class RenderDialogController {
   final RenderDialogViewModel viewModel;
 
   RenderDialogController({required this.viewModel});
+
+  List<int> get sampleRateOptions => _sampleRatesForFormat(viewModel.format);
+
+  List<int> get bitDepthOptions => _bitDepthsForFormat(viewModel.format);
+
+  int get selectedBitDepth => _activeBitDepth;
+
+  bool get showBitDepthOption => bitDepthOptions.isNotEmpty;
+
+  bool get showWavSampleFormatOption =>
+      viewModel.format == RenderAudioFormat.wav && viewModel.wavBitDepth == 32;
+
+  bool get showFlacCompressionOption =>
+      viewModel.format == RenderAudioFormat.flac;
+
+  bool get showOggBitrateOption =>
+      viewModel.format == RenderAudioFormat.oggVorbis;
+
+  List<String> get oggQualityOptionLabels => _oggQualityOptionLabels;
+
+  int get flacCompressionLevelMin => _flacCompressionLevelMin;
+
+  int get flacCompressionLevelMax => _flacCompressionLevelMax;
 
   factory RenderDialogController.forProject(ProjectModel project) {
     const format = RenderAudioFormat.wav;
@@ -51,6 +133,7 @@ class RenderDialogController {
         projectId: project.id,
         filePath: _defaultRenderFilePath(project, format: format),
         format: format,
+        sampleRate: _defaultSampleRateForProject(project, format),
       ),
     );
   }
@@ -59,7 +142,7 @@ class RenderDialogController {
     final pathFormat = _renderAudioFormatForPath(value);
 
     if (pathFormat != null) {
-      viewModel.format = pathFormat;
+      _setFormat(pathFormat);
       viewModel.filePath = value.trim();
       return;
     }
@@ -68,11 +151,52 @@ class RenderDialogController {
   }
 
   void setFormat(RenderAudioFormat value) {
-    viewModel.format = value;
+    _setFormat(value);
 
     if (viewModel.hasFilePath) {
       viewModel.filePath = _withRenderAudioExtension(viewModel.filePath, value);
     }
+  }
+
+  void setSampleRate(int value) {
+    viewModel.sampleRate = _coerceSampleRateForFormat(value, viewModel.format);
+  }
+
+  void setBitDepth(int value) {
+    switch (viewModel.format) {
+      case RenderAudioFormat.wav:
+        if (_wavBitDepths.contains(value)) {
+          viewModel.wavBitDepth = value;
+        }
+      case RenderAudioFormat.aiff:
+        if (_aiffBitDepths.contains(value)) {
+          viewModel.aiffBitDepth = value;
+        }
+      case RenderAudioFormat.flac:
+        if (_flacBitDepths.contains(value)) {
+          viewModel.flacBitDepth = value;
+        }
+      case RenderAudioFormat.oggVorbis:
+        break;
+    }
+  }
+
+  void setWavSampleFormat(RenderAudioSampleFormat value) {
+    viewModel.wavSampleFormat = value;
+  }
+
+  void setFlacCompressionLevel(int value) {
+    viewModel.flacCompressionLevel = value.clamp(
+      _flacCompressionLevelMin,
+      _flacCompressionLevelMax,
+    );
+  }
+
+  void setOggQualityOptionIndex(int value) {
+    viewModel.oggQualityOptionIndex = value.clamp(
+      0,
+      _oggQualityOptionLabels.length - 1,
+    );
   }
 
   void setRangeMode(RenderDialogRangeMode value) {
@@ -157,6 +281,10 @@ class RenderDialogController {
       format: viewModel.format,
       range: range,
       includeTail: viewModel.includeTail,
+      sampleRate: viewModel.sampleRate,
+      bitDepth: _activeBitDepth,
+      qualityOptionIndex: _activeQualityOptionIndex,
+      sampleFormat: _activeSampleFormat,
     );
   }
 
@@ -197,6 +325,37 @@ class RenderDialogController {
   void _clearStatusText() {
     viewModel.statusText = '';
   }
+
+  int get _activeBitDepth {
+    return switch (viewModel.format) {
+      RenderAudioFormat.wav => viewModel.wavBitDepth,
+      RenderAudioFormat.aiff => viewModel.aiffBitDepth,
+      RenderAudioFormat.flac => viewModel.flacBitDepth,
+      RenderAudioFormat.oggVorbis => 32,
+    };
+  }
+
+  int get _activeQualityOptionIndex {
+    return switch (viewModel.format) {
+      RenderAudioFormat.flac => viewModel.flacCompressionLevel,
+      RenderAudioFormat.oggVorbis => viewModel.oggQualityOptionIndex,
+      RenderAudioFormat.wav || RenderAudioFormat.aiff => 0,
+    };
+  }
+
+  RenderAudioSampleFormat get _activeSampleFormat {
+    return viewModel.format == RenderAudioFormat.wav
+        ? viewModel.wavSampleFormat
+        : RenderAudioSampleFormat.floatingPoint;
+  }
+
+  void _setFormat(RenderAudioFormat value) {
+    viewModel.format = value;
+    viewModel.sampleRate = _coerceSampleRateForFormat(
+      viewModel.sampleRate,
+      value,
+    );
+  }
 }
 
 class _RenderConfig {
@@ -205,6 +364,10 @@ class _RenderConfig {
   final RenderAudioFormat format;
   final RenderTickRange range;
   final bool includeTail;
+  final int sampleRate;
+  final int bitDepth;
+  final int qualityOptionIndex;
+  final RenderAudioSampleFormat sampleFormat;
 
   const _RenderConfig({
     required this.projectId,
@@ -212,6 +375,10 @@ class _RenderConfig {
     required this.format,
     required this.range,
     required this.includeTail,
+    required this.sampleRate,
+    required this.bitDepth,
+    required this.qualityOptionIndex,
+    required this.sampleFormat,
   });
 }
 
@@ -225,7 +392,6 @@ class _RenderProgressDialog extends StatefulWidget {
 }
 
 class _RenderProgressDialogState extends State<_RenderProgressDialog> {
-  static const _defaultRenderSampleRate = 48000.0;
   static const _defaultRenderBlockSize = 512;
   static const _defaultRenderOutputChannelCount = 2;
 
@@ -304,11 +470,14 @@ class _RenderProgressDialogState extends State<_RenderProgressDialog> {
             startTick: widget.config.range.startTick,
             endTick: widget.config.range.endTick,
             includeTail: widget.config.includeTail,
-            sampleRate: audioConfig?.sampleRate ?? _defaultRenderSampleRate,
+            sampleRate: widget.config.sampleRate.toDouble(),
             blockSize: audioConfig?.blockSize ?? _defaultRenderBlockSize,
             outputChannelCount:
                 audioConfig?.outputChannelCount ??
                 _defaultRenderOutputChannelCount,
+            bitDepth: widget.config.bitDepth,
+            qualityOptionIndex: widget.config.qualityOptionIndex,
+            sampleFormat: widget.config.sampleFormat,
           );
 
       if (!mounted) {
@@ -407,6 +576,54 @@ double _sanitizeProgress(double progress) {
   }
 
   return progress.clamp(0.0, 1.0).toDouble();
+}
+
+int _defaultSampleRateForProject(
+  ProjectModel project,
+  RenderAudioFormat format,
+) {
+  final projectSampleRate =
+      project.engine.audioConfig?.sampleRate.round() ??
+      _defaultRenderSampleRate;
+
+  return _coerceSampleRateForFormat(projectSampleRate, format);
+}
+
+List<int> _sampleRatesForFormat(RenderAudioFormat format) {
+  return switch (format) {
+    RenderAudioFormat.wav => _wavSampleRates,
+    RenderAudioFormat.aiff => _aiffSampleRates,
+    RenderAudioFormat.flac => _wavSampleRates,
+    RenderAudioFormat.oggVorbis => _oggSampleRates,
+  };
+}
+
+List<int> _bitDepthsForFormat(RenderAudioFormat format) {
+  return switch (format) {
+    RenderAudioFormat.wav => _wavBitDepths,
+    RenderAudioFormat.aiff => _aiffBitDepths,
+    RenderAudioFormat.flac => _flacBitDepths,
+    RenderAudioFormat.oggVorbis => const [],
+  };
+}
+
+int _coerceSampleRateForFormat(int sampleRate, RenderAudioFormat format) {
+  final sampleRates = _sampleRatesForFormat(format);
+
+  if (sampleRates.contains(sampleRate)) {
+    return sampleRate;
+  }
+
+  return sampleRates.reduce((nearest, candidate) {
+    final nearestDistance = (nearest - sampleRate).abs();
+    final candidateDistance = (candidate - sampleRate).abs();
+
+    if (candidateDistance < nearestDistance) {
+      return candidate;
+    }
+
+    return nearest;
+  });
 }
 
 String _defaultRenderFilePath(

@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <initializer_list>
 #include <memory>
 #include <rfl/json.hpp>
 #include <utility>
@@ -50,6 +51,9 @@ struct RenderController::RenderJob {
   int64_t startTick = 0;
   int64_t endTick = 0;
   bool includeTail = false;
+  int bitDepth = 32;
+  int qualityOptionIndex = 0;
+  RenderAudioSampleFormat sampleFormat = RenderAudioSampleFormat::floatingPoint;
   int64_t sourceSamples = 0;
   int64_t totalSamples = 0;
   int blockSize = 0;
@@ -118,11 +122,68 @@ int64_t getRenderSampleCount(
   return static_cast<int64_t>(std::ceil(sampleOffset));
 }
 
+bool containsInt(std::initializer_list<int64_t> values, int64_t value) {
+  return std::find(values.begin(), values.end(), value) != values.end();
+}
+
+std::optional<std::string> validateRenderExportOptions(
+    RenderAudioFormat format, int64_t bitDepth, int64_t qualityOptionIndex) {
+  switch (format) {
+    case RenderAudioFormat::wav:
+      if (!containsInt({8, 16, 24, 32}, bitDepth)) {
+        return "WAV render bit depth must be 8, 16, 24, or 32.";
+      }
+      return std::nullopt;
+
+    case RenderAudioFormat::aiff:
+      if (!containsInt({8, 16, 24}, bitDepth)) {
+        return "AIFF render bit depth must be 8, 16, or 24.";
+      }
+      return std::nullopt;
+
+    case RenderAudioFormat::flac:
+      if (!containsInt({16, 24}, bitDepth)) {
+        return "FLAC render bit depth must be 16 or 24.";
+      }
+      if (qualityOptionIndex < 0 || qualityOptionIndex > 8) {
+        return "FLAC render compression level must be between 0 and 8.";
+      }
+      return std::nullopt;
+
+    case RenderAudioFormat::oggVorbis:
+      if (bitDepth != 32) {
+        return "Ogg Vorbis render bit depth must be 32.";
+      }
+      if (qualityOptionIndex < 0 || qualityOptionIndex > 10) {
+        return "Ogg Vorbis render bitrate option must be between 0 and 10.";
+      }
+      return std::nullopt;
+  }
+
+  return "Unsupported render audio format.";
+}
+
 #ifndef __EMSCRIPTEN__
+juce::AudioFormatWriter::Options::SampleFormat toJuceWavSampleFormat(
+    RenderAudioSampleFormat sampleFormat) {
+  switch (sampleFormat) {
+    case RenderAudioSampleFormat::integer:
+      return juce::AudioFormatWriter::Options::SampleFormat::integral;
+
+    case RenderAudioSampleFormat::floatingPoint:
+      return juce::AudioFormatWriter::Options::SampleFormat::floatingPoint;
+  }
+
+  return juce::AudioFormatWriter::Options::SampleFormat::floatingPoint;
+}
+
 std::unique_ptr<juce::AudioFormatWriter> createRenderWriter(RenderAudioFormat format,
     const std::string& outputPath,
     double sampleRate,
-    int outputChannelCount) {
+    int outputChannelCount,
+    int bitDepth,
+    int qualityOptionIndex,
+    RenderAudioSampleFormat sampleFormat) {
   auto outputFile = juce::File(outputPath);
   if (outputFile.existsAsFile() && !outputFile.deleteFile()) {
     return nullptr;
@@ -145,26 +206,30 @@ std::unique_ptr<juce::AudioFormatWriter> createRenderWriter(RenderAudioFormat fo
   switch (format) {
     case RenderAudioFormat::wav: {
       auto wavFormat = juce::WavAudioFormat();
-      return wavFormat.createWriterFor(outputStream,
-          options.withBitsPerSample(32).withSampleFormat(
-              juce::AudioFormatWriter::Options::SampleFormat::floatingPoint));
+      auto wavOptions = options.withBitsPerSample(bitDepth);
+
+      if (bitDepth == 32) {
+        wavOptions = wavOptions.withSampleFormat(toJuceWavSampleFormat(sampleFormat));
+      }
+
+      return wavFormat.createWriterFor(outputStream, wavOptions);
     }
 
     case RenderAudioFormat::aiff: {
       auto aiffFormat = juce::AiffAudioFormat();
-      return aiffFormat.createWriterFor(outputStream, options.withBitsPerSample(24));
+      return aiffFormat.createWriterFor(outputStream, options.withBitsPerSample(bitDepth));
     }
 
     case RenderAudioFormat::flac: {
       auto flacFormat = juce::FlacAudioFormat();
-      return flacFormat.createWriterFor(
-          outputStream, options.withBitsPerSample(24).withQualityOptionIndex(5));
+      return flacFormat.createWriterFor(outputStream,
+          options.withBitsPerSample(bitDepth).withQualityOptionIndex(qualityOptionIndex));
     }
 
     case RenderAudioFormat::oggVorbis: {
       auto oggFormat = juce::OggVorbisAudioFormat();
-      return oggFormat.createWriterFor(
-          outputStream, options.withBitsPerSample(32).withQualityOptionIndex(9));
+      return oggFormat.createWriterFor(outputStream,
+          options.withBitsPerSample(bitDepth).withQualityOptionIndex(qualityOptionIndex));
     }
   }
 
@@ -247,12 +312,7 @@ void RenderController::sendRenderFailedEvent(
   comms.send(responseText);
 }
 
-RenderStartResult RenderController::startRender(int64_t renderId,
-    const std::string& outputPath,
-    RenderAudioFormat format,
-    int64_t startTick,
-    int64_t endTick,
-    bool includeTail) {
+RenderStartResult RenderController::startRender(const RenderStartOptions& options) {
   if (isRenderingFlag.exchange(true, std::memory_order_acq_rel)) {
     return renderStartFailure("Render is already running.");
   }
@@ -262,9 +322,16 @@ RenderStartResult RenderController::startRender(int64_t renderId,
     return renderStartFailure("Render audio session is not active.");
   }
 
-  if (outputPath.empty()) {
+  if (options.outputPath.empty()) {
     isRenderingFlag.store(false, std::memory_order_release);
     return renderStartFailure("Render output path must not be empty.");
+  }
+
+  const auto exportOptionsError =
+      validateRenderExportOptions(options.format, options.bitDepth, options.qualityOptionIndex);
+  if (exportOptionsError.has_value()) {
+    isRenderingFlag.store(false, std::memory_order_release);
+    return renderStartFailure(exportOptionsError.value());
   }
 
 #ifdef __EMSCRIPTEN__
@@ -272,7 +339,7 @@ RenderStartResult RenderController::startRender(int64_t renderId,
   return renderStartFailure("File render is not available on web yet.");
 #endif
 
-  if (startTick < 0 || endTick <= startTick) {
+  if (options.startTick < 0 || options.endTick <= options.startTick) {
     isRenderingFlag.store(false, std::memory_order_release);
     return renderStartFailure(
         "Render tick range must have a non-negative start and positive length.");
@@ -296,26 +363,30 @@ RenderStartResult RenderController::startRender(int64_t renderId,
     return renderStartFailure("Master output processor is not available for render.");
   }
 
-  const auto sourceSamples =
-      getRenderSampleCount(startTick, endTick, transport, audioProcessingConfig->config.sampleRate);
+  const auto sourceSamples = getRenderSampleCount(
+      options.startTick, options.endTick, transport, audioProcessingConfig->config.sampleRate);
   if (sourceSamples <= 0) {
     isRenderingFlag.store(false, std::memory_order_release);
     return renderStartFailure("Render sample count must be greater than zero.");
   }
 
   const auto maximumTailSamples =
-      includeTail ? RenderTailDetector::secondsToSamples(RenderTailDetector::maximumTailSeconds,
-                        audioProcessingConfig->config.sampleRate)
-                  : 0;
+      options.includeTail
+          ? RenderTailDetector::secondsToSamples(
+                RenderTailDetector::maximumTailSeconds, audioProcessingConfig->config.sampleRate)
+          : 0;
   const auto totalSamples = sourceSamples + maximumTailSamples;
 
-  auto renderJob = RenderJob{.renderId = renderId,
-      .outputPath = outputPath,
-      .format = format,
+  auto renderJob = RenderJob{.renderId = options.renderId,
+      .outputPath = options.outputPath,
+      .format = options.format,
       .activeSequenceId = activeArrangementId.value(),
-      .startTick = startTick,
-      .endTick = endTick,
-      .includeTail = includeTail,
+      .startTick = options.startTick,
+      .endTick = options.endTick,
+      .includeTail = options.includeTail,
+      .bitDepth = static_cast<int>(options.bitDepth),
+      .qualityOptionIndex = static_cast<int>(options.qualityOptionIndex),
+      .sampleFormat = options.sampleFormat,
       .sourceSamples = sourceSamples,
       .totalSamples = totalSamples,
       .blockSize = audioProcessingConfig->config.blockSize,
@@ -385,8 +456,13 @@ void RenderController::runRender(const RenderJob& renderJob, RenderThread& threa
   isRenderingFlag.store(false, std::memory_order_release);
   return;
 #else
-  auto writer = createRenderWriter(
-      renderJob.format, renderJob.outputPath, renderJob.sampleRate, renderJob.outputChannelCount);
+  auto writer = createRenderWriter(renderJob.format,
+      renderJob.outputPath,
+      renderJob.sampleRate,
+      renderJob.outputChannelCount,
+      renderJob.bitDepth,
+      renderJob.qualityOptionIndex,
+      renderJob.sampleFormat);
   if (writer == nullptr) {
     sendRenderFailedEvent(
         renderJob.renderId, "Failed to create render output file.", 0, renderJob.totalSamples);

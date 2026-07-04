@@ -718,6 +718,9 @@ void main() {
         startTick: 0,
         endTick: 384,
         includeTail: false,
+        bitDepth: 32,
+        qualityOptionIndex: 0,
+        sampleFormat: RenderAudioSampleFormat.floatingPoint,
       );
       await _flushMicrotasks();
 
@@ -728,6 +731,12 @@ void main() {
       expect(renderRequest.startTick, equals(0));
       expect(renderRequest.endTick, equals(384));
       expect(renderRequest.includeTail, isFalse);
+      expect(renderRequest.bitDepth, equals(32));
+      expect(renderRequest.qualityOptionIndex, equals(0));
+      expect(
+        renderRequest.sampleFormat,
+        equals(RenderAudioSampleFormat.floatingPoint),
+      );
 
       connector.emitResponse(
         RenderStartedEvent(id: -1, renderId: 42, totalSamples: 1024),
@@ -820,6 +829,9 @@ void main() {
         startTick: 0,
         endTick: 384,
         includeTail: false,
+        bitDepth: 32,
+        qualityOptionIndex: 0,
+        sampleFormat: RenderAudioSampleFormat.floatingPoint,
       );
       await _flushMicrotasks();
 

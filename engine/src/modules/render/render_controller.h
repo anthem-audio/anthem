@@ -32,11 +32,24 @@ class AudioBlockProcessor;
 class AudioSessionController;
 class Comms;
 enum class RenderAudioFormat;
+enum class RenderAudioSampleFormat;
 class Transport;
 
 struct RenderStartResult {
   bool success = false;
   std::optional<std::string> error = std::nullopt;
+};
+
+struct RenderStartOptions {
+  int64_t renderId = 0;
+  std::string outputPath;
+  RenderAudioFormat format;
+  int64_t startTick = 0;
+  int64_t endTick = 0;
+  bool includeTail = false;
+  int64_t bitDepth = 0;
+  int64_t qualityOptionIndex = 0;
+  RenderAudioSampleFormat sampleFormat;
 };
 
 class RenderController {
@@ -67,12 +80,7 @@ public:
       Comms& comms);
   ~RenderController();
 
-  RenderStartResult startRender(int64_t renderId,
-      const std::string& outputPath,
-      RenderAudioFormat format,
-      int64_t startTick,
-      int64_t endTick,
-      bool includeTail);
+  RenderStartResult startRender(const RenderStartOptions& options);
   void stopRenderThread();
 
   bool isRendering() const {

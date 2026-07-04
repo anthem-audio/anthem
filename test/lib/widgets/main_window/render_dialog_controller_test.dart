@@ -61,17 +61,47 @@ void main() {
     expect(controller.viewModel.filePath, equals(r'C:\renders\mix.ogg'));
     expect(controller.viewModel.format, equals(RenderAudioFormat.oggVorbis));
   });
+
+  test('setFormat coerces sample rate to the selected format', () {
+    final controller = _createController(
+      filePath: r'C:\renders\mix.wav',
+      sampleRate: 384000,
+    );
+
+    controller.setFormat(RenderAudioFormat.oggVorbis);
+
+    expect(controller.viewModel.sampleRate, equals(192000));
+  });
+
+  test(
+    'format-specific export options are preserved when switching formats',
+    () {
+      final controller = _createController(filePath: r'C:\renders\mix.wav');
+
+      controller.setBitDepth(16);
+      controller.setFormat(RenderAudioFormat.flac);
+      controller.setBitDepth(24);
+      controller.setFlacCompressionLevel(8);
+      controller.setFormat(RenderAudioFormat.wav);
+
+      expect(controller.viewModel.wavBitDepth, equals(16));
+      expect(controller.viewModel.flacBitDepth, equals(24));
+      expect(controller.viewModel.flacCompressionLevel, equals(8));
+    },
+  );
 }
 
 RenderDialogController _createController({
   required String filePath,
   RenderAudioFormat format = RenderAudioFormat.wav,
+  int sampleRate = 48000,
 }) {
   return RenderDialogController(
     viewModel: RenderDialogViewModel(
       projectId: 'project',
       filePath: filePath,
       format: format,
+      sampleRate: sampleRate,
     ),
   );
 }

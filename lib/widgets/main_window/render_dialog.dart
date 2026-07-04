@@ -23,6 +23,8 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/checkbox.dart';
+import 'package:anthem/widgets/basic/controls/slider.dart';
+import 'package:anthem/widgets/basic/dropdown.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/radio_button.dart';
 import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
@@ -192,6 +194,128 @@ class _RenderDialogState extends State<RenderDialog> {
           ),
         );
 
+        final exportOptionRows = [
+          if (widget.controller.showBitDepthOption)
+            Row(
+              children: [
+                _DropdownOptionRow(
+                  title: 'Sample rate',
+                  selectedID: viewModel.sampleRate.toString(),
+                  items: widget.controller.sampleRateOptions
+                      .map(
+                        (sampleRate) => DropdownItem(
+                          id: sampleRate.toString(),
+                          name: '$sampleRate Hz',
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (id) {
+                    final sampleRate = int.tryParse(id ?? '');
+                    if (sampleRate != null) {
+                      widget.controller.setSampleRate(sampleRate);
+                    }
+                  },
+                ),
+                const SizedBox(width: 14),
+                _DropdownOptionRow(
+                  title: 'Bit depth',
+                  titleWidth: 58,
+                  selectedID: widget.controller.selectedBitDepth.toString(),
+                  items: widget.controller.bitDepthOptions
+                      .map(
+                        (bitDepth) => DropdownItem(
+                          id: bitDepth.toString(),
+                          name: '$bitDepth-bit',
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (id) {
+                    final bitDepth = int.tryParse(id ?? '');
+                    if (bitDepth != null) {
+                      widget.controller.setBitDepth(bitDepth);
+                    }
+                  },
+                ),
+              ],
+            )
+          else
+            _DropdownOptionRow(
+              title: 'Sample rate',
+              selectedID: viewModel.sampleRate.toString(),
+              items: widget.controller.sampleRateOptions
+                  .map(
+                    (sampleRate) => DropdownItem(
+                      id: sampleRate.toString(),
+                      name: '$sampleRate Hz',
+                    ),
+                  )
+                  .toList(),
+              onChanged: (id) {
+                final sampleRate = int.tryParse(id ?? '');
+                if (sampleRate != null) {
+                  widget.controller.setSampleRate(sampleRate);
+                }
+              },
+            ),
+          if (widget.controller.showWavSampleFormatOption)
+            _DropdownOptionRow(
+              title: 'Sample format',
+              selectedID: viewModel.wavSampleFormat.name,
+              items: const [
+                DropdownItem(id: 'floatingPoint', name: 'Float'),
+                DropdownItem(id: 'integer', name: 'Integer'),
+              ],
+              onChanged: (id) {
+                final sampleFormat = switch (id) {
+                  'floatingPoint' => RenderAudioSampleFormat.floatingPoint,
+                  'integer' => RenderAudioSampleFormat.integer,
+                  _ => null,
+                };
+
+                if (sampleFormat != null) {
+                  widget.controller.setWavSampleFormat(sampleFormat);
+                }
+              },
+            ),
+          if (widget.controller.showFlacCompressionOption)
+            _SliderOptionRow(
+              title: 'Compression',
+              value: viewModel.flacCompressionLevel.toDouble(),
+              min: widget.controller.flacCompressionLevelMin.toDouble(),
+              max: widget.controller.flacCompressionLevelMax.toDouble(),
+              valueText: viewModel.flacCompressionLevel.toString(),
+              onChanged: (value) =>
+                  widget.controller.setFlacCompressionLevel(value.round()),
+            ),
+          if (widget.controller.showOggBitrateOption)
+            _SliderOptionRow(
+              title: 'Bitrate',
+              value: viewModel.oggQualityOptionIndex.toDouble(),
+              min: 0,
+              max: (widget.controller.oggQualityOptionLabels.length - 1)
+                  .toDouble(),
+              valueText: widget
+                  .controller
+                  .oggQualityOptionLabels[viewModel.oggQualityOptionIndex],
+              onChanged: (value) =>
+                  widget.controller.setOggQualityOptionIndex(value.round()),
+            ),
+        ];
+
+        final exportOptionsSection = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var index = 0; index < 2; index++) ...[
+              if (index > 0) const SizedBox(height: 8),
+              if (index < exportOptionRows.length)
+                exportOptionRows[index]
+              else
+                const SizedBox(height: 24),
+            ],
+          ],
+        );
+
         return SizedBox(
           width: 400,
           child: Column(
@@ -201,19 +325,154 @@ class _RenderDialogState extends State<RenderDialog> {
               outputSection,
               const SizedBox(height: 12),
               rangeSection,
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
+              Container(height: 1, color: AnthemTheme.overlay.border),
+              const SizedBox(height: 9),
               formatSection,
+              const SizedBox(height: 12),
+              exportOptionsSection,
               if (viewModel.statusText.isNotEmpty)
-                Text(
-                  viewModel.statusText,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    viewModel.statusText,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AnthemTheme.text.main,
+                      fontSize: 11,
+                    ),
+                  ),
                 ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+class _DropdownOptionRow extends StatelessWidget {
+  final String title;
+  final double titleWidth;
+  final String selectedID;
+  final List<DropdownItem> items;
+  final void Function(String?) onChanged;
+
+  const _DropdownOptionRow({
+    required this.title,
+    this.titleWidth = 82,
+    required this.selectedID,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 24,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _OptionTitle(title: title, width: titleWidth),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 112,
+            child: Dropdown(
+              height: 24,
+              selectedID: selectedID,
+              items: items,
+              onChanged: onChanged,
+              allowNoSelection: false,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SliderOptionRow extends StatelessWidget {
+  final String title;
+  final double value;
+  final double min;
+  final double max;
+  final String valueText;
+  final void Function(double) onChanged;
+
+  const _SliderOptionRow({
+    required this.title,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.valueText,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 24,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _OptionTitle(title: title),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SizedBox(
+              height: 16,
+              child: Slider(
+                value: value,
+                min: min,
+                max: max,
+                axis: SliderAxis.horizontal,
+                handleType: SliderHandleType.circle,
+                usePointerLock: false,
+                onValueChanged: onChanged,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 56,
+            child: Text(
+              valueText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.left,
+              textHeightBehavior: const TextHeightBehavior(
+                applyHeightToLastDescent: false,
+              ),
+              style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OptionTitle extends StatelessWidget {
+  final String title;
+  final double width;
+
+  const _OptionTitle({required this.title, this.width = 82});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textHeightBehavior: const TextHeightBehavior(
+          applyHeightToLastDescent: false,
+        ),
+        style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
+      ),
     );
   }
 }

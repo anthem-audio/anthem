@@ -97,12 +97,17 @@ std::optional<Response> handleAudioSessionCommand(Request& request) {
     auto& requestAsRenderAudio = rfl::get<RenderAudioRequest>(request.variant());
 
     juce::Logger::writeToLog("Starting render...");
-    auto renderResult = engine.renderController->startRender(requestAsRenderAudio.renderId,
-        requestAsRenderAudio.outputPath,
-        requestAsRenderAudio.format,
-        requestAsRenderAudio.startTick,
-        requestAsRenderAudio.endTick,
-        requestAsRenderAudio.includeTail);
+    auto renderResult = engine.renderController->startRender(RenderStartOptions{
+        .renderId = requestAsRenderAudio.renderId,
+        .outputPath = requestAsRenderAudio.outputPath,
+        .format = requestAsRenderAudio.format,
+        .startTick = requestAsRenderAudio.startTick,
+        .endTick = requestAsRenderAudio.endTick,
+        .includeTail = requestAsRenderAudio.includeTail,
+        .bitDepth = requestAsRenderAudio.bitDepth,
+        .qualityOptionIndex = requestAsRenderAudio.qualityOptionIndex,
+        .sampleFormat = requestAsRenderAudio.sampleFormat,
+    });
     juce::Logger::writeToLog("startRender() returned.");
 
     auto renderAudioReply = RenderAudioResponse{.success = renderResult.success,
