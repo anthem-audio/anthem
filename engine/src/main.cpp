@@ -50,8 +50,12 @@ private:
     auto logSessionDir = juce::SystemStats::getEnvironmentVariable("ANTHEM_LOG_SESSION_DIR", "");
 
     if (logSessionDir.isNotEmpty()) {
-      auto logFile = juce::File(logSessionDir).getChildFile("engine-" + engineId + ".log");
-      return std::make_unique<juce::FileLogger>(logFile, "Anthem Engine", 0);
+      auto logFile =
+          juce::File(logSessionDir)
+              .getChildFile("engine-" + engineId + "-" +
+                            juce::String(juce::Time::getCurrentTime().toMilliseconds()) + ".log")
+              .getNonexistentSibling(false);
+      return std::make_unique<juce::FileLogger>(logFile, "Anthem Engine", -1);
     }
 
     return std::unique_ptr<juce::FileLogger>(juce::FileLogger::createDefaultAppLogger(
