@@ -34,9 +34,14 @@ void main() {
 
       final projectJson = project.toJson();
       final bytes = await encodeProjectFile(project);
+      final decodedJson = await decodeProjectFileBytes(bytes);
 
       expect(bytes.first, isNot(equals('{'.codeUnitAt(0))));
-      expect(await decodeProjectFileBytes(bytes), equals(projectJson));
+      expect(
+        decodedJson['savedInSoftwareVersion'],
+        currentProjectFileSoftwareVersion,
+      );
+      expect(decodedJson, equals(projectJson));
     });
 
     test('writes and reads a project file', () async {

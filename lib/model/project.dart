@@ -41,6 +41,8 @@ import 'shared/hydratable.dart';
 
 part 'project.g.dart';
 
+const String currentProjectFileSoftwareVersion = '0.0.0-prealpha.1';
+
 enum ProjectLayoutKind { arrange, edit, mix }
 
 @AnthemModel.syncedModel(
@@ -172,6 +174,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// audio, control and notes between processors, and to eventually route the
   /// resulting audio to the audio output device.
   late ProcessingGraphModel processingGraph;
+
+  /// The version of Anthem that last saved this project file.
+  @hideFromCpp
+  String savedInSoftwareVersion = currentProjectFileSoftwareVersion;
 
   /// ID of the master output node in the processing graph. Audio that is routed
   /// to this node is sent to the audio output device.
