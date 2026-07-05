@@ -34,14 +34,15 @@ ArchitecturesInstallIn64BitMode=x64os
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
+Name: "startmenuicon"; Description: "Create a &Start Menu shortcut"; GroupDescription: "{cm:AdditionalIcons}"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "..\..\build\windows\{#MyArch}\runner\Release\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
-Name: "{group}\Anthem"; Filename: "{app}\Anthem.exe"
-Name: "{group}\{cm:UninstallProgram,Anthem}"; Filename: "{uninstallexe}"
+Name: "{group}\Anthem"; Filename: "{app}\Anthem.exe"; Tasks: startmenuicon
+Name: "{group}\{cm:UninstallProgram,Anthem}"; Filename: "{uninstallexe}"; Tasks: startmenuicon
 Name: "{commondesktop}\Anthem"; Filename: "{app}\Anthem.exe"; Tasks: desktopicon
 
 [Run]
