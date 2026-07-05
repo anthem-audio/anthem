@@ -66,7 +66,7 @@ abstract class _AudioProcessingConfigDto {
 }
 
 @AnthemEnum()
-enum RenderAudioFormat { wav, aiff, flac, oggVorbis }
+enum RenderAudioFormat { wav, aiff, flac, oggVorbis, mp3 }
 
 @AnthemEnum()
 enum RenderAudioSampleFormat { integer, floatingPoint }

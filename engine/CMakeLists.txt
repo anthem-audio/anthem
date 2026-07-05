@@ -177,6 +177,7 @@ else()
     # via DBG -> Logger::outputDebugString, which our unit-test runner treats as
     # a failure signal.
     JUCE_DISABLE_JUCE_VERSION_PRINTING=1
+    JUCE_USE_LAME_AUDIO_FORMAT=1
   )
 
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")

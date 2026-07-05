@@ -43,6 +43,7 @@ public:
     expectRenderAudioRequestParsesFormat("aiff", RenderAudioFormat::aiff);
     expectRenderAudioRequestParsesFormat("flac", RenderAudioFormat::flac);
     expectRenderAudioRequestParsesFormat("oggVorbis", RenderAudioFormat::oggVorbis);
+    expectRenderAudioRequestParsesFormat("mp3", RenderAudioFormat::mp3);
   }
 
   void expectRenderAudioRequestParsesFormat(

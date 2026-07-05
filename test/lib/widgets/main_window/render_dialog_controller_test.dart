@@ -35,10 +35,10 @@ void main() {
   test('setFilePath updates format from supported extension', () {
     final controller = _createController(filePath: r'C:\renders\mix.wav');
 
-    controller.setFilePath(r'C:\renders\mix.flac');
+    controller.setFilePath(r'C:\renders\mix.mp3');
 
-    expect(controller.viewModel.filePath, equals(r'C:\renders\mix.flac'));
-    expect(controller.viewModel.format, equals(RenderAudioFormat.flac));
+    expect(controller.viewModel.filePath, equals(r'C:\renders\mix.mp3'));
+    expect(controller.viewModel.format, equals(RenderAudioFormat.mp3));
   });
 
   test('setFilePath adds the current format extension when missing', () {
@@ -82,13 +82,36 @@ void main() {
       controller.setFormat(RenderAudioFormat.flac);
       controller.setBitDepth(24);
       controller.setFlacCompressionLevel(8);
+      controller.setFormat(RenderAudioFormat.mp3);
+      controller.setMp3BitrateOptionIndex(6);
       controller.setFormat(RenderAudioFormat.wav);
 
       expect(controller.viewModel.wavBitDepth, equals(16));
       expect(controller.viewModel.flacBitDepth, equals(24));
       expect(controller.viewModel.flacCompressionLevel, equals(8));
+      expect(controller.viewModel.mp3BitrateOptionIndex, equals(6));
     },
   );
+
+  test('MP3 bitrate slider uses constant bitrate labels', () {
+    final controller = _createController(
+      filePath: r'C:\renders\mix.mp3',
+      format: RenderAudioFormat.mp3,
+    );
+
+    expect(controller.mp3BitrateOptionLabels.first, equals('32 kbps'));
+    expect(controller.mp3BitrateOptionLabels[6], equals('96 kbps'));
+    expect(controller.mp3BitrateOptionLabels.last, equals('320 kbps'));
+    expect(controller.viewModel.mp3BitrateOptionIndex, equals(13));
+
+    controller.setMp3BitrateOptionIndex(6);
+
+    expect(controller.viewModel.mp3BitrateOptionIndex, equals(6));
+
+    controller.setMp3BitrateOptionIndex(999);
+
+    expect(controller.viewModel.mp3BitrateOptionIndex, equals(13));
+  });
 }
 
 RenderDialogController _createController({

@@ -37,7 +37,7 @@ import 'package:path/path.dart' as path;
 final _log = Logger('render_dialog_controller');
 
 const _defaultRenderSampleRate = 48000;
-const _renderAudioFormatExtensions = ['wav', 'aiff', 'flac', 'ogg'];
+const _renderAudioFormatExtensions = ['wav', 'aiff', 'flac', 'ogg', 'mp3'];
 const _wavSampleRates = [
   8000,
   11025,
@@ -78,6 +78,7 @@ const _oggSampleRates = [
   176400,
   192000,
 ];
+const _mp3SampleRates = [32000, 44100, 48000];
 const _wavBitDepths = [8, 16, 24, 32];
 const _aiffBitDepths = [8, 16, 24];
 const _flacBitDepths = [16, 24];
@@ -95,6 +96,23 @@ const _oggQualityOptionLabels = [
   '256 kbps',
   '320 kbps',
   '500 kbps',
+];
+const _mp3BitrateOptionIndexOffset = 10;
+const _mp3BitrateOptionLabels = [
+  '32 kbps',
+  '40 kbps',
+  '48 kbps',
+  '56 kbps',
+  '64 kbps',
+  '80 kbps',
+  '96 kbps',
+  '112 kbps',
+  '128 kbps',
+  '160 kbps',
+  '192 kbps',
+  '224 kbps',
+  '256 kbps',
+  '320 kbps',
 ];
 
 class RenderDialogController {
@@ -119,7 +137,11 @@ class RenderDialogController {
   bool get showOggBitrateOption =>
       viewModel.format == RenderAudioFormat.oggVorbis;
 
+  bool get showMp3BitrateOption => viewModel.format == RenderAudioFormat.mp3;
+
   List<String> get oggQualityOptionLabels => _oggQualityOptionLabels;
+
+  List<String> get mp3BitrateOptionLabels => _mp3BitrateOptionLabels;
 
   int get flacCompressionLevelMin => _flacCompressionLevelMin;
 
@@ -178,6 +200,8 @@ class RenderDialogController {
         }
       case RenderAudioFormat.oggVorbis:
         break;
+      case RenderAudioFormat.mp3:
+        break;
     }
   }
 
@@ -196,6 +220,13 @@ class RenderDialogController {
     viewModel.oggQualityOptionIndex = value.clamp(
       0,
       _oggQualityOptionLabels.length - 1,
+    );
+  }
+
+  void setMp3BitrateOptionIndex(int value) {
+    viewModel.mp3BitrateOptionIndex = value.clamp(
+      0,
+      _mp3BitrateOptionLabels.length - 1,
     );
   }
 
@@ -332,6 +363,7 @@ class RenderDialogController {
       RenderAudioFormat.aiff => viewModel.aiffBitDepth,
       RenderAudioFormat.flac => viewModel.flacBitDepth,
       RenderAudioFormat.oggVorbis => 32,
+      RenderAudioFormat.mp3 => 16,
     };
   }
 
@@ -339,6 +371,8 @@ class RenderDialogController {
     return switch (viewModel.format) {
       RenderAudioFormat.flac => viewModel.flacCompressionLevel,
       RenderAudioFormat.oggVorbis => viewModel.oggQualityOptionIndex,
+      RenderAudioFormat.mp3 =>
+        viewModel.mp3BitrateOptionIndex + _mp3BitrateOptionIndexOffset,
       RenderAudioFormat.wav || RenderAudioFormat.aiff => 0,
     };
   }
@@ -595,6 +629,7 @@ List<int> _sampleRatesForFormat(RenderAudioFormat format) {
     RenderAudioFormat.aiff => _aiffSampleRates,
     RenderAudioFormat.flac => _wavSampleRates,
     RenderAudioFormat.oggVorbis => _oggSampleRates,
+    RenderAudioFormat.mp3 => _mp3SampleRates,
   };
 }
 
@@ -604,6 +639,7 @@ List<int> _bitDepthsForFormat(RenderAudioFormat format) {
     RenderAudioFormat.aiff => _aiffBitDepths,
     RenderAudioFormat.flac => _flacBitDepths,
     RenderAudioFormat.oggVorbis => const [],
+    RenderAudioFormat.mp3 => const [],
   };
 }
 
@@ -699,6 +735,7 @@ RenderAudioFormat? _renderAudioFormatForPath(String filePath) {
     'aif' => RenderAudioFormat.aiff,
     'flac' => RenderAudioFormat.flac,
     'ogg' => RenderAudioFormat.oggVorbis,
+    'mp3' => RenderAudioFormat.mp3,
     _ => null,
   };
 }
@@ -718,6 +755,7 @@ String _extensionForRenderAudioFormat(RenderAudioFormat format) {
     RenderAudioFormat.aiff => 'aiff',
     RenderAudioFormat.flac => 'flac',
     RenderAudioFormat.oggVorbis => 'ogg',
+    RenderAudioFormat.mp3 => 'mp3',
   };
 }
 

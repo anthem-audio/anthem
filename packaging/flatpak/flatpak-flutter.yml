@@ -32,8 +32,10 @@ modules:
     build-commands:
       - /var/lib/flutter/bin/cache/dart-sdk/bin/dart bin/cli.dart codegen generate --explicit-format-for-ci
       - /var/lib/flutter/bin/cache/dart-sdk/bin/dart bin/cli.dart engine build --release
+      - /var/lib/flutter/bin/cache/dart-sdk/bin/dart bin/cli.dart engine build-lame
       - flutter build linux --release --no-pub
       - chmod 755 "$BUNDLE_PATH/data/flutter_assets/assets/engine/AnthemEngine"
+      - chmod 755 "$BUNDLE_PATH/data/flutter_assets/assets/engine/lame"
       - cp -r "$BUNDLE_PATH" /app/io.github.anthem_audio.Anthem
       - mkdir -p /app/bin
       - ln -s /app/io.github.anthem_audio.Anthem/anthem /app/bin/anthem

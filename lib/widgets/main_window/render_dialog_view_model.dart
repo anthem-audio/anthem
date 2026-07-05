@@ -61,6 +61,9 @@ abstract class _RenderDialogViewModel with Store {
   int oggQualityOptionIndex = 9;
 
   @observable
+  int mp3BitrateOptionIndex = 13;
+
+  @observable
   RenderDialogRangeMode rangeMode = RenderDialogRangeMode.project;
 
   @observable

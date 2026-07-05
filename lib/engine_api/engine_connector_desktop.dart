@@ -154,6 +154,7 @@ class EngineConnector extends EngineConnectorBase {
 
     final engineEnvironment = {
       ...AnthemLogManager.instance.childProcessEnvironment,
+      ...?_debugLameEnvironment(),
       _engineIdEnvironmentKey: _id.toString(),
       _enginePortEnvironmentKey: EngineSocketServer.instance.port.toString(),
     };
@@ -213,6 +214,43 @@ class EngineConnector extends EngineConnectorBase {
     _initialized = true;
 
     return true;
+  }
+
+  Map<String, String>? _debugLameEnvironment() {
+    final lamePath = _debugLamePath();
+    if (lamePath == null) {
+      return null;
+    }
+
+    return {'ANTHEM_LAME_PATH': lamePath};
+  }
+
+  String? _debugLamePath() {
+    if (!kDebugMode) {
+      return null;
+    }
+
+    final configuredLamePath = Platform.environment['ANTHEM_LAME_PATH'];
+    if (configuredLamePath != null && configuredLamePath.isNotEmpty) {
+      return configuredLamePath;
+    }
+
+    final lameFileName = 'lame${Platform.isWindows ? '.exe' : ''}';
+    final candidatePaths = [
+      Uri.base.resolve('assets/engine/$lameFileName'),
+      mainExecutablePath.parent.uri.resolve(
+        'data/flutter_assets/assets/engine/$lameFileName',
+      ),
+    ];
+
+    for (final candidatePath in candidatePaths) {
+      final candidateFile = File.fromUri(candidatePath);
+      if (candidateFile.existsSync()) {
+        return candidateFile.absolute.path;
+      }
+    }
+
+    return null;
   }
 
   /// Sends the given bytes to the engine.

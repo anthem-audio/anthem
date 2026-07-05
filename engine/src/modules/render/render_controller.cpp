@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <initializer_list>
 #include <memory>
 #include <rfl/json.hpp>
@@ -158,6 +159,15 @@ std::optional<std::string> validateRenderExportOptions(
         return "Ogg Vorbis render bitrate option must be between 0 and 10.";
       }
       return std::nullopt;
+
+    case RenderAudioFormat::mp3:
+      if (bitDepth != 16) {
+        return "MP3 render bit depth must be 16.";
+      }
+      if (qualityOptionIndex < 10 || qualityOptionIndex > 23) {
+        return "MP3 render bitrate option must be between 10 and 23.";
+      }
+      return std::nullopt;
   }
 
   return "Unsupported render audio format.";
@@ -175,6 +185,27 @@ juce::AudioFormatWriter::Options::SampleFormat toJuceWavSampleFormat(
   }
 
   return juce::AudioFormatWriter::Options::SampleFormat::floatingPoint;
+}
+
+juce::File getBundledLameExecutable() {
+  auto engineExecutable = juce::File::getSpecialLocation(juce::File::currentExecutableFile);
+
+#if JUCE_WINDOWS
+  return engineExecutable.getSiblingFile("lame.exe");
+#else
+  return engineExecutable.getSiblingFile("lame");
+#endif
+}
+
+juce::File resolveLameExecutable() {
+#ifndef NDEBUG
+  if (const auto* lamePathOverride = std::getenv("ANTHEM_LAME_PATH");
+      lamePathOverride != nullptr && lamePathOverride[0] != '\0') {
+    return juce::File(lamePathOverride);
+  }
+#endif
+
+  return getBundledLameExecutable();
 }
 
 std::unique_ptr<juce::AudioFormatWriter> createRenderWriter(RenderAudioFormat format,
@@ -229,6 +260,12 @@ std::unique_ptr<juce::AudioFormatWriter> createRenderWriter(RenderAudioFormat fo
     case RenderAudioFormat::oggVorbis: {
       auto oggFormat = juce::OggVorbisAudioFormat();
       return oggFormat.createWriterFor(outputStream,
+          options.withBitsPerSample(bitDepth).withQualityOptionIndex(qualityOptionIndex));
+    }
+
+    case RenderAudioFormat::mp3: {
+      auto mp3Format = juce::LAMEEncoderAudioFormat(resolveLameExecutable());
+      return mp3Format.createWriterFor(outputStream,
           options.withBitsPerSample(bitDepth).withQualityOptionIndex(qualityOptionIndex));
     }
   }
@@ -337,6 +374,15 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
 #ifdef __EMSCRIPTEN__
   isRenderingFlag.store(false, std::memory_order_release);
   return renderStartFailure("File render is not available on web yet.");
+#else
+  if (options.format == RenderAudioFormat::mp3) {
+    const auto lameExecutable = resolveLameExecutable();
+    if (!lameExecutable.existsAsFile()) {
+      isRenderingFlag.store(false, std::memory_order_release);
+      return renderStartFailure("LAME executable was not found at " +
+                                lameExecutable.getFullPathName().toStdString() + ".");
+    }
+  }
 #endif
 
   if (options.startTick < 0 || options.endTick <= options.startTick) {
@@ -555,6 +601,17 @@ void RenderController::runRender(const RenderJob& renderJob, RenderThread& threa
 
   finishRenderThreadState();
   writer.reset();
+
+  const auto outputFile = juce::File(renderJob.outputPath);
+  if (!outputFile.existsAsFile() || outputFile.getSize() <= 0) {
+    sendRenderFailedEvent(renderJob.renderId,
+        "Render output file was not created.",
+        renderedSamples,
+        renderJob.totalSamples);
+    isRenderingFlag.store(false, std::memory_order_release);
+    return;
+  }
+
   sendRenderCompletedEvent(renderJob.renderId, renderedSamples, renderJob.totalSamples);
   isRenderingFlag.store(false, std::memory_order_release);
 #endif

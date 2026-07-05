@@ -190,32 +190,42 @@ class _RenderDialogState extends State<RenderDialog> {
                 onSelected: () =>
                     widget.controller.setFormat(RenderAudioFormat.oggVorbis),
               ),
+              const SizedBox(width: 14),
+              AnthemRadioButton(
+                label: 'MP3',
+                selected: viewModel.format == RenderAudioFormat.mp3,
+                onSelected: () =>
+                    widget.controller.setFormat(RenderAudioFormat.mp3),
+              ),
             ],
           ),
         );
+
+        final sampleRateDropdown = _DropdownOptionRow(
+          title: 'Sample rate',
+          selectedID: viewModel.sampleRate.toString(),
+          items: widget.controller.sampleRateOptions
+              .map(
+                (sampleRate) => DropdownItem(
+                  id: sampleRate.toString(),
+                  name: '$sampleRate Hz',
+                ),
+              )
+              .toList(),
+          onChanged: (id) {
+            final sampleRate = int.tryParse(id ?? '');
+            if (sampleRate != null) {
+              widget.controller.setSampleRate(sampleRate);
+            }
+          },
+        );
+        final mp3BitrateOptionLabels = widget.controller.mp3BitrateOptionLabels;
 
         final exportOptionRows = [
           if (widget.controller.showBitDepthOption)
             Row(
               children: [
-                _DropdownOptionRow(
-                  title: 'Sample rate',
-                  selectedID: viewModel.sampleRate.toString(),
-                  items: widget.controller.sampleRateOptions
-                      .map(
-                        (sampleRate) => DropdownItem(
-                          id: sampleRate.toString(),
-                          name: '$sampleRate Hz',
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (id) {
-                    final sampleRate = int.tryParse(id ?? '');
-                    if (sampleRate != null) {
-                      widget.controller.setSampleRate(sampleRate);
-                    }
-                  },
-                ),
+                sampleRateDropdown,
                 const SizedBox(width: 14),
                 _DropdownOptionRow(
                   title: 'Bit depth',
@@ -239,24 +249,7 @@ class _RenderDialogState extends State<RenderDialog> {
               ],
             )
           else
-            _DropdownOptionRow(
-              title: 'Sample rate',
-              selectedID: viewModel.sampleRate.toString(),
-              items: widget.controller.sampleRateOptions
-                  .map(
-                    (sampleRate) => DropdownItem(
-                      id: sampleRate.toString(),
-                      name: '$sampleRate Hz',
-                    ),
-                  )
-                  .toList(),
-              onChanged: (id) {
-                final sampleRate = int.tryParse(id ?? '');
-                if (sampleRate != null) {
-                  widget.controller.setSampleRate(sampleRate);
-                }
-              },
-            ),
+            sampleRateDropdown,
           if (widget.controller.showWavSampleFormatOption)
             _DropdownOptionRow(
               title: 'Sample format',
@@ -299,6 +292,17 @@ class _RenderDialogState extends State<RenderDialog> {
                   .oggQualityOptionLabels[viewModel.oggQualityOptionIndex],
               onChanged: (value) =>
                   widget.controller.setOggQualityOptionIndex(value.round()),
+            ),
+          if (widget.controller.showMp3BitrateOption)
+            _SliderOptionRow(
+              title: 'Bitrate',
+              value: viewModel.mp3BitrateOptionIndex.toDouble(),
+              min: 0,
+              max: (mp3BitrateOptionLabels.length - 1).toDouble(),
+              valueText:
+                  mp3BitrateOptionLabels[viewModel.mp3BitrateOptionIndex],
+              onChanged: (value) =>
+                  widget.controller.setMp3BitrateOptionIndex(value.round()),
             ),
         ];
 
