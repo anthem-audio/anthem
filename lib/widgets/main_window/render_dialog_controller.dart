@@ -20,6 +20,7 @@
 import 'dart:async';
 
 import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:anthem/helpers/file_exists.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/render/render_range.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -146,6 +147,11 @@ class RenderDialogController {
   int get flacCompressionLevelMin => _flacCompressionLevelMin;
 
   int get flacCompressionLevelMax => _flacCompressionLevelMax;
+
+  bool get outputWillOverwrite {
+    final outputPath = viewModel.filePath.trim();
+    return outputPath.isNotEmpty && fileExists(outputPath);
+  }
 
   factory RenderDialogController.forProject(ProjectModel project) {
     const format = RenderAudioFormat.wav;

@@ -17,10 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:io';
+
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
 import 'package:anthem/widgets/main_window/render_dialog_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
 
 void main() {
   test('setFilePath adds the fallback format extension', () {
@@ -60,6 +63,51 @@ void main() {
 
     expect(controller.viewModel.filePath, equals(r'C:\renders\mix.ogg'));
     expect(controller.viewModel.format, equals(RenderAudioFormat.oggVorbis));
+  });
+
+  test('outputWillOverwrite reflects the current file path', () {
+    final tempDirectory = Directory.systemTemp.createTempSync(
+      'anthem_render_dialog_controller_test_',
+    );
+
+    try {
+      final filePath = path.join(tempDirectory.path, 'mix.wav');
+      final alternateFilePath = path.join(tempDirectory.path, 'alternate.wav');
+      File(filePath).writeAsStringSync('');
+
+      final controller = _createController(filePath: filePath);
+
+      expect(controller.outputWillOverwrite, isTrue);
+
+      controller.setFilePath(alternateFilePath);
+
+      expect(controller.outputWillOverwrite, isFalse);
+    } finally {
+      tempDirectory.deleteSync(recursive: true);
+    }
+  });
+
+  test('outputWillOverwrite updates when format changes the file path', () {
+    final tempDirectory = Directory.systemTemp.createTempSync(
+      'anthem_render_dialog_controller_test_',
+    );
+
+    try {
+      final wavPath = path.join(tempDirectory.path, 'mix.wav');
+      final mp3Path = path.join(tempDirectory.path, 'mix.mp3');
+      File(mp3Path).writeAsStringSync('');
+
+      final controller = _createController(filePath: wavPath);
+
+      expect(controller.outputWillOverwrite, isFalse);
+
+      controller.setFormat(RenderAudioFormat.mp3);
+
+      expect(controller.viewModel.filePath, equals(mp3Path));
+      expect(controller.outputWillOverwrite, isTrue);
+    } finally {
+      tempDirectory.deleteSync(recursive: true);
+    }
   });
 
   test('setFormat coerces sample rate to the selected format', () {

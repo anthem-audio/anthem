@@ -33,6 +33,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:mobx/mobx.dart';
 
+const _outputOverwriteWarningColor = Color(0xFFE6A23C);
+
 class RenderDialog extends StatefulWidget {
   final RenderDialogController controller;
 
@@ -108,17 +110,36 @@ class _RenderDialogState extends State<RenderDialog> {
         final loopRangeEnabled =
             activeArrangementLoopRenderRange(project) != null;
 
-        final outputSection = Row(
+        final outputSection = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Button(
-              width: 24,
-              height: 24,
-              contentPadding: const EdgeInsets.all(4),
-              icon: Icons.folder,
-              onPress: widget.controller.chooseFile,
+            Row(
+              children: [
+                Button(
+                  width: 24,
+                  height: 24,
+                  contentPadding: const EdgeInsets.all(4),
+                  icon: Icons.folder,
+                  onPress: widget.controller.chooseFile,
+                ),
+                const SizedBox(width: 8),
+                Expanded(child: _OutputPathDisplay(path: viewModel.filePath)),
+              ],
             ),
-            const SizedBox(width: 8),
-            Expanded(child: _OutputPathDisplay(path: viewModel.filePath)),
+            if (widget.controller.outputWillOverwrite)
+              const Padding(
+                padding: EdgeInsets.only(left: 32, top: 4),
+                child: Text(
+                  'The selected file will be overwritten.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _outputOverwriteWarningColor,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
           ],
         );
 
