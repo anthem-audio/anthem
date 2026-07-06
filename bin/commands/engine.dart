@@ -1096,10 +1096,19 @@ void _normalizeLameBuildLineEndings(Uri sourceBuildPath) {
 
 Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
   final workingDirectory = sourceBuildPath.toFilePath(windows: false);
-  final environment = {
+  final environment = <String, String>{
     if (Platform.isLinux && Platform.environment['CC'] == null)
       'CC': _requireLlvmExecutable('clang'),
   };
+
+  // LAME checks ncurses with initscr(), but the frontend uses tget* symbols
+  // that some Linux SDKs split into libtinfo.
+  if (Platform.isLinux && await _canLinkLameWithTInfo(environment)) {
+    environment['LIBS'] = _appendBuildFlag(
+      Platform.environment['LIBS'],
+      '-ltinfo',
+    );
+  }
 
   await _runInheritedProcess(
     'sh',
@@ -1113,6 +1122,62 @@ Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
     workingDirectory: workingDirectory,
     environment: environment,
   );
+}
+
+Future<bool> _canLinkLameWithTInfo(Map<String, String> environment) async {
+  final compiler = environment['CC'] ?? Platform.environment['CC'] ?? 'cc';
+  final tempDir = Directory.systemTemp.createTempSync(
+    'anthem_lame_tinfo_check_',
+  );
+
+  try {
+    final sourcePath = _joinFileSystemPath(tempDir.path, 'conftest.c');
+    final outputPath = _joinFileSystemPath(tempDir.path, 'conftest');
+
+    File(sourcePath).writeAsStringSync('''
+int tgetent(char*, const char*);
+
+int main(void) {
+  return tgetent(0, "dumb");
+}
+''');
+
+    final result = await Process.run(compiler, [
+      ..._splitBuildFlags(
+        environment['CFLAGS'] ?? Platform.environment['CFLAGS'],
+      ),
+      sourcePath,
+      ..._splitBuildFlags(
+        environment['LDFLAGS'] ?? Platform.environment['LDFLAGS'],
+      ),
+      '-ltinfo',
+      '-o',
+      outputPath,
+    ], environment: environment.isEmpty ? null : environment);
+
+    return result.exitCode == 0;
+  } on ProcessException {
+    return false;
+  } finally {
+    tempDir.deleteSync(recursive: true);
+  }
+}
+
+String _appendBuildFlag(String? existingValue, String flag) {
+  final trimmedValue = existingValue?.trim();
+  if (trimmedValue == null || trimmedValue.isEmpty) return flag;
+
+  final existingFlags = _splitBuildFlags(trimmedValue);
+  if (existingFlags.contains(flag)) return trimmedValue;
+
+  return '$trimmedValue $flag';
+}
+
+List<String> _splitBuildFlags(String? value) {
+  final trimmedValue = value?.trim();
+  if (trimmedValue == null || trimmedValue.isEmpty) return const [];
+
+  return trimmedValue.split(RegExp(r'\s+'));
 }
 
 Future<void> _buildLameOnWindows(
@@ -1132,7 +1197,6 @@ Future<void> _buildLameOnWindows(
       '''
 set -euo pipefail
 export MSYSTEM=${_bashQuote(msystem)}
-source /etc/profile
 mingw_prefix=${_bashQuote(_getMsys2MingwPrefix(msystem))}
 export PATH="\$mingw_prefix/bin:/usr/bin:\$PATH"
 cd "\$(cygpath -u ${_bashQuote(sourceBuildPathWindows)})"
