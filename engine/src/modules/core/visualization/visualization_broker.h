@@ -88,6 +88,8 @@ private:
     std::unique_ptr<VisualizationDataProvider> provider;
   };
 
+  enum class OutboundUpdateBehavior { sending, suppressed, discardThenResume };
+
   // Private constructor for singleton pattern
   VisualizationBroker();
 
@@ -117,7 +119,10 @@ private:
   // refresh rate, this will be set to a lower value.
   double updateIntervalMs;
 
+  OutboundUpdateBehavior outboundUpdateBehavior = OutboundUpdateBehavior::sending;
+
   void releaseDataProvider(const std::string& name, VisualizationDataProvider* provider);
+  void discardPendingProviderData();
   void timerCallback() override;
 
   VisualizationDataProvider* getCurrentDataProviderForTesting(const std::string& name) const;
@@ -131,6 +136,8 @@ public:
   void setSubscriptions(
       const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions);
   void setUpdateInterval(double updateIntervalMs);
+  void suppressOutboundUpdates();
+  void discardPendingUpdatesThenResume();
   VisualizationProviderRegistration registerDataProvider(
       const std::string& name, std::unique_ptr<VisualizationDataProvider> provider);
 

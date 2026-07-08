@@ -81,21 +81,8 @@ class RecordedLiveEvent {
   });
 }
 
-class RecordingProcessingGraphApi implements ProcessingGraphApi {
+class RecordingProcessingGraphApi extends Fake implements ProcessingGraphApi {
   final List<RecordedLiveEvent> liveEvents = [];
-
-  @override
-  Future<ProcessingGraphNodeInitialization> initializeNodes() async =>
-      ProcessingGraphNodeInitialization(didInitialize: true, results: []);
-
-  @override
-  Future<void> publish() async {}
-
-  @override
-  Future<String> getPluginState(Id nodeId) async => '';
-
-  @override
-  void openPluginWindow(Id nodeId) {}
 
   @override
   void sendLiveEvent(Id liveEventProviderNodeId, Object event) {
@@ -106,12 +93,6 @@ class RecordingProcessingGraphApi implements ProcessingGraphApi {
       ),
     );
   }
-
-  @override
-  void setPluginParameterValue(Id nodeId, int controlPortId, double value) {}
-
-  @override
-  void setPluginState(Id nodeId, String state) {}
 }
 
 class NoopSequencerApi implements SequencerApi {

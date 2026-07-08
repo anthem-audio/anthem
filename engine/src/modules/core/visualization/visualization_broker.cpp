@@ -92,6 +92,14 @@ void VisualizationBroker::setUpdateInterval(double newUpdateIntervalMs) {
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
 }
 
+void VisualizationBroker::suppressOutboundUpdates() {
+  outboundUpdateBehavior = OutboundUpdateBehavior::suppressed;
+}
+
+void VisualizationBroker::discardPendingUpdatesThenResume() {
+  outboundUpdateBehavior = OutboundUpdateBehavior::discardThenResume;
+}
+
 VisualizationProviderRegistration VisualizationBroker::registerDataProvider(
     const std::string& name, std::unique_ptr<VisualizationDataProvider> provider) {
   if (provider == nullptr) {
@@ -176,7 +184,27 @@ size_t VisualizationBroker::getDataProviderCountForTesting(const std::string& na
       }));
 }
 
+void VisualizationBroker::discardPendingProviderData() {
+  for (const auto& entry : dataProviders) {
+    if (entry == nullptr || entry->provider == nullptr) {
+      continue;
+    }
+
+    entry->provider->getData();
+  }
+}
+
 void VisualizationBroker::timerCallback() {
+  if (outboundUpdateBehavior == OutboundUpdateBehavior::suppressed) {
+    return;
+  }
+
+  if (outboundUpdateBehavior == OutboundUpdateBehavior::discardThenResume) {
+    discardPendingProviderData();
+    outboundUpdateBehavior = OutboundUpdateBehavior::sending;
+    return;
+  }
+
   if (this->subscriptions.empty()) {
     return;
   }
@@ -276,6 +304,7 @@ void VisualizationBroker::dispose() {
   this->dataProviders.clear();
   this->currentDataProviders.clear();
   this->subscriptions.clear();
+  this->outboundUpdateBehavior = OutboundUpdateBehavior::sending;
 }
 
 } // namespace anthem

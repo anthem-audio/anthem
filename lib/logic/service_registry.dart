@@ -26,6 +26,7 @@ import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
+import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -86,6 +87,12 @@ final projectEngineControllerService = ServiceDef<ProjectEngineController>(
   create: (project, registry) =>
       ProjectEngineController(project, registry.use(projectControllerService)),
   disposePriority: 110,
+);
+
+final projectRenderControllerService = ServiceDef<ProjectRenderController>(
+  create: (project, registry) =>
+      ProjectRenderController(project, registry.use(projectControllerService)),
+  disposePriority: 100,
 );
 
 final trackControllerService = ServiceDef<TrackController>(
@@ -233,6 +240,8 @@ class ServiceRegistry {
   ProjectController get projectController => use(projectControllerService);
   ProjectEngineController get projectEngineController =>
       use(projectEngineControllerService);
+  ProjectRenderController get projectRenderController =>
+      use(projectRenderControllerService);
   TrackController get trackController => use(trackControllerService);
   DeviceController get deviceController => use(deviceControllerService);
   ParameterController get parameterController =>

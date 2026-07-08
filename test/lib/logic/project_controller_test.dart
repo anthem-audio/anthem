@@ -21,7 +21,6 @@ import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -30,7 +29,7 @@ import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-class _RecordingProcessingGraphApi implements ProcessingGraphApi {
+class _RecordingProcessingGraphApi extends Fake implements ProcessingGraphApi {
   final calls = <String>[];
   var publishCallCount = 0;
   var initializeNodesCallCount = 0;
@@ -58,21 +57,6 @@ class _RecordingProcessingGraphApi implements ProcessingGraphApi {
       await completer.future;
     }
   }
-
-  @override
-  Future<String> getPluginState(Id nodeId) async => '';
-
-  @override
-  void openPluginWindow(Id nodeId) {}
-
-  @override
-  void sendLiveEvent(Id liveEventProviderNodeId, Object event) {}
-
-  @override
-  void setPluginParameterValue(Id nodeId, int controlPortId, double value) {}
-
-  @override
-  void setPluginState(Id nodeId, String state) {}
 }
 
 void main() {

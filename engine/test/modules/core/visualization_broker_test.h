@@ -36,6 +36,22 @@ public:
   }
 };
 
+class VisualizationBrokerDrainCountingProvider
+  : public TypedVisualizationDataProvider<double, VisualizationValueType::doubleValue> {
+public:
+  int drainCount = 0;
+
+  std::optional<NumericVisualizationData> getTypedData() override {
+    drainCount++;
+
+    NumericVisualizationData data;
+    data.sampleTimestamps.push_back(1);
+    data.values.push_back(0.5);
+
+    return data;
+  }
+};
+
 class VisualizationBrokerTest : public juce::UnitTest {
 public:
   VisualizationBrokerTest() : juce::UnitTest("VisualizationBrokerTest", "Anthem") {}
@@ -43,6 +59,7 @@ public:
   void runTest() override {
     testDuplicateIdReleaseKeepsNewestProvider();
     testCurrentDuplicateReleaseFallsBackToPreviousProvider();
+    testOutboundSuppressionSkipsThenDiscardsUpdates();
   }
 
   void testDuplicateIdReleaseKeepsNewestProvider() {
@@ -117,6 +134,29 @@ public:
         static_cast<int>(broker.getDataProviderCountForTesting(id)), 0, "All providers released");
     expect(broker.getCurrentDataProviderForTesting(id) == nullptr,
         "No provider should remain current after releasing the last provider");
+  }
+
+  void testOutboundSuppressionSkipsThenDiscardsUpdates() {
+    beginTest("Outbound suppression skips then discards visualization updates");
+
+    auto& broker = VisualizationBroker::getInstance();
+    const std::string id = "visualization-broker-test-suppression-id";
+
+    auto provider = std::make_unique<VisualizationBrokerDrainCountingProvider>();
+    auto* providerPtr = provider.get();
+    auto registration = broker.registerDataProvider(id, std::move(provider));
+
+    broker.suppressOutboundUpdates();
+    broker.timerCallback();
+
+    expectEquals(providerPtr->drainCount, 0, "Suppressed updates should not drain providers");
+
+    broker.discardPendingUpdatesThenResume();
+    broker.timerCallback();
+
+    expectEquals(providerPtr->drainCount, 1, "Discarding pending updates should drain providers");
+
+    registration.release();
   }
 };
 

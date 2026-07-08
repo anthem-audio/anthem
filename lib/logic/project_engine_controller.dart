@@ -20,7 +20,6 @@
 import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/project.dart';
@@ -178,109 +177,6 @@ class ProjectEngineController implements DisposableService {
   Future<void> _stopAudio() async {
     project.sequence.isPlaying = false;
     await project.engine.stopAudio();
-  }
-
-  Future<RenderAudioResult> renderAudio({
-    required int renderId,
-    required String outputPath,
-    required RenderAudioFormat format,
-    required int startTick,
-    required int endTick,
-    required bool includeTail,
-    required double sampleRate,
-    required int blockSize,
-    required int outputChannelCount,
-    required int bitDepth,
-    required int qualityOptionIndex,
-    required RenderAudioSampleFormat sampleFormat,
-  }) async {
-    final shouldRestoreRealtimeAudio = project.engine.isAudioReady;
-
-    await stopAudio();
-
-    try {
-      await project.engine.renderApi.startRenderAudioSession(
-        sampleRate: sampleRate,
-        blockSize: blockSize,
-        outputChannelCount: outputChannelCount,
-      );
-      await projectController.publishProcessingGraph();
-
-      final renderCompletion = Completer<Response>();
-      final renderEventSubscription = project.engine.renderEventStream.listen((
-        event,
-      ) {
-        switch (event) {
-          case RenderCompletedEvent e when e.renderId == renderId:
-            if (!renderCompletion.isCompleted) {
-              renderCompletion.complete(e);
-            }
-          case RenderFailedEvent e when e.renderId == renderId:
-            if (!renderCompletion.isCompleted) {
-              renderCompletion.complete(e);
-            }
-          default:
-            break;
-        }
-      });
-
-      try {
-        final startResult = await project.engine.renderApi.renderAudio(
-          renderId: renderId,
-          outputPath: outputPath,
-          format: format,
-          startTick: startTick,
-          endTick: endTick,
-          includeTail: includeTail,
-          bitDepth: bitDepth,
-          qualityOptionIndex: qualityOptionIndex,
-          sampleFormat: sampleFormat,
-        );
-
-        if (startResult.renderId != renderId) {
-          throw StateError(
-            'Engine accepted render with unexpected render ID ${startResult.renderId}.',
-          );
-        }
-
-        final completionEvent = await renderCompletion.future;
-        switch (completionEvent) {
-          case RenderCompletedEvent e:
-            return RenderAudioResult(renderedSamples: e.renderedSamples);
-          case RenderFailedEvent e:
-            throw StateError('Engine render failed: ${e.error}');
-          default:
-            throw StateError(
-              'Engine render completed with unexpected event ${completionEvent.runtimeType}.',
-            );
-        }
-      } finally {
-        await renderEventSubscription.cancel();
-      }
-    } finally {
-      try {
-        await project.engine.stopAudio();
-      } catch (error, stackTrace) {
-        _log.warning(
-          'Could not stop render audio session for project ${project.id}.',
-          error,
-          stackTrace,
-        );
-      }
-
-      if (shouldRestoreRealtimeAudio) {
-        try {
-          await startAudio();
-          await projectController.publishProcessingGraph();
-        } catch (error, stackTrace) {
-          _log.warning(
-            'Could not restore realtime audio for project ${project.id} after render.',
-            error,
-            stackTrace,
-          );
-        }
-      }
-    }
   }
 
   void _handleAudioSessionInvalidated(String? reason) {

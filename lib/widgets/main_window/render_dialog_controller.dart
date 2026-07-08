@@ -17,25 +17,18 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
-
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/file_exists.dart';
-import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/render/render_range.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
-import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/main_window/render_dialog_view_model.dart';
+import 'package:anthem/widgets/main_window/render_progress_dialog.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/widgets.dart';
-import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
-
-final _log = Logger('render_dialog_controller');
 
 const _defaultRenderSampleRate = 48000;
 const _renderAudioFormatExtensions = ['wav', 'aiff', 'flac', 'ogg', 'mp3'];
@@ -271,21 +264,36 @@ class RenderDialogController {
   }
 
   Future<void> render() async {
-    final renderConfig = await _createRenderConfig();
-    if (renderConfig == null) {
+    final request = await createRenderRequest();
+    if (request == null) {
       return;
     }
+
+    final project = AnthemStore.instance.projects[viewModel.projectId];
+    if (project == null) {
+      _setStatusText('Project is no longer available.');
+      return;
+    }
+
+    if (project.engineState != EngineState.running) {
+      _setStatusText('Engine is not running.');
+      return;
+    }
+
+    final task = ServiceRegistry.forProject(
+      viewModel.projectId,
+    ).projectRenderController.startRender(request);
 
     final dialogController = ServiceRegistry.dialogController;
     dialogController.closeDialog();
     dialogController.showDialog(
       title: 'Rendering',
-      content: _RenderProgressDialog(config: renderConfig),
+      content: RenderProgressDialog(task: task),
       dismissible: false,
     );
   }
 
-  Future<_RenderConfig?> _createRenderConfig() async {
+  Future<ProjectRenderRequest?> createRenderRequest() async {
     final project = AnthemStore.instance.projects[viewModel.projectId];
     if (project == null) {
       _setStatusText('Project is no longer available.');
@@ -312,8 +320,7 @@ class RenderDialogController {
 
     _clearStatusText();
 
-    return _RenderConfig(
-      projectId: viewModel.projectId,
+    return ProjectRenderRequest(
       outputPath: viewModel.filePath.trim(),
       format: viewModel.format,
       range: range,
@@ -396,226 +403,6 @@ class RenderDialogController {
       value,
     );
   }
-}
-
-class _RenderConfig {
-  final ProjectId projectId;
-  final String outputPath;
-  final RenderAudioFormat format;
-  final RenderTickRange range;
-  final bool includeTail;
-  final int sampleRate;
-  final int bitDepth;
-  final int qualityOptionIndex;
-  final RenderAudioSampleFormat sampleFormat;
-
-  const _RenderConfig({
-    required this.projectId,
-    required this.outputPath,
-    required this.format,
-    required this.range,
-    required this.includeTail,
-    required this.sampleRate,
-    required this.bitDepth,
-    required this.qualityOptionIndex,
-    required this.sampleFormat,
-  });
-}
-
-class _RenderProgressDialog extends StatefulWidget {
-  final _RenderConfig config;
-
-  const _RenderProgressDialog({required this.config});
-
-  @override
-  State<_RenderProgressDialog> createState() => _RenderProgressDialogState();
-}
-
-class _RenderProgressDialogState extends State<_RenderProgressDialog> {
-  static const _defaultRenderBlockSize = 512;
-  static const _defaultRenderOutputChannelCount = 2;
-
-  StreamSubscription<Response>? _renderEventSubscription;
-  double _progress = 0;
-  String _statusText = 'Preparing render...';
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_render());
-  }
-
-  @override
-  void dispose() {
-    unawaited(_renderEventSubscription?.cancel());
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 500,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: 12,
-        children: [
-          SizedBox(
-            height: 24,
-            child: HorizontalMeterSimple(
-              width: 500,
-              value: _progress,
-              label: _progressLabel,
-            ),
-          ),
-          Text(
-            _statusText,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: AnthemTheme.text.main, fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _render() async {
-    final project = AnthemStore.instance.projects[widget.config.projectId];
-    if (project == null) {
-      _showRenderFailedDialog('Project is no longer available.');
-      return;
-    }
-
-    final renderId = getId();
-    await _renderEventSubscription?.cancel();
-
-    _renderEventSubscription = project.engine.renderEventStream.listen((event) {
-      _handleRenderEvent(event, renderId);
-    });
-
-    final audioConfig = project.engine.audioConfig;
-
-    setState(() {
-      _progress = 0;
-      _statusText = 'Preparing render...';
-    });
-
-    try {
-      final result = await ServiceRegistry.forProject(widget.config.projectId)
-          .projectEngineController
-          .renderAudio(
-            renderId: renderId,
-            outputPath: widget.config.outputPath,
-            format: widget.config.format,
-            startTick: widget.config.range.startTick,
-            endTick: widget.config.range.endTick,
-            includeTail: widget.config.includeTail,
-            sampleRate: widget.config.sampleRate.toDouble(),
-            blockSize: audioConfig?.blockSize ?? _defaultRenderBlockSize,
-            outputChannelCount:
-                audioConfig?.outputChannelCount ??
-                _defaultRenderOutputChannelCount,
-            bitDepth: widget.config.bitDepth,
-            qualityOptionIndex: widget.config.qualityOptionIndex,
-            sampleFormat: widget.config.sampleFormat,
-          );
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _progress = 1;
-        _statusText = 'Rendered ${result.renderedSamples} samples.';
-      });
-
-      ServiceRegistry.dialogController.closeDialog();
-    } catch (error, stackTrace) {
-      _log.warning(
-        'Could not render project ${widget.config.projectId}.',
-        error,
-        stackTrace,
-      );
-
-      if (!mounted) {
-        return;
-      }
-
-      _showRenderFailedDialog('Render failed: $error');
-    } finally {
-      final subscription = _renderEventSubscription;
-      _renderEventSubscription = null;
-      await subscription?.cancel();
-    }
-  }
-
-  void _handleRenderEvent(Response event, int renderId) {
-    if (!mounted) {
-      return;
-    }
-
-    switch (event) {
-      case RenderStartedEvent e when e.renderId == renderId:
-        setState(() {
-          _progress = 0;
-          _statusText = e.totalSamples > 0
-              ? 'Rendering 0 of ${e.totalSamples} samples...'
-              : 'Rendering...';
-        });
-      case RenderProgressEvent e when e.renderId == renderId:
-        setState(() {
-          _progress = _sanitizeProgress(e.progress);
-          _statusText =
-              'Rendering ${e.renderedSamples} of ${e.totalSamples} samples...';
-        });
-      case RenderCompletedEvent e when e.renderId == renderId:
-        setState(() {
-          _progress = 1;
-          _statusText = 'Rendered ${e.renderedSamples} samples.';
-        });
-      case RenderFailedEvent e when e.renderId == renderId:
-        setState(() {
-          _progress = _sanitizeProgress(
-            e.totalSamples == 0 ? 0 : e.renderedSamples / e.totalSamples,
-          );
-          _statusText = 'Render failed: ${e.error}';
-        });
-      default:
-        break;
-    }
-  }
-
-  void _showRenderFailedDialog(String message) {
-    final dialogController = ServiceRegistry.dialogController;
-    dialogController.closeDialog();
-    dialogController.showDialog(
-      title: 'Render Failed',
-      content: SizedBox(
-        width: 500,
-        child: Text(
-          message,
-          style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
-        ),
-      ),
-      buttons: [DialogButton.ok()],
-    );
-  }
-
-  String get _progressLabel {
-    if (_progress <= 0) {
-      return '';
-    }
-
-    return '${(_progress * 100).round()}%';
-  }
-}
-
-double _sanitizeProgress(double progress) {
-  if (!progress.isFinite) {
-    return 0;
-  }
-
-  return progress.clamp(0.0, 1.0).toDouble();
 }
 
 int _defaultSampleRateForProject(

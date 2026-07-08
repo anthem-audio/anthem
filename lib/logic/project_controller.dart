@@ -116,16 +116,29 @@ class ProjectController {
 
   Future<void> publishProcessingGraph() {
     _needsProcessingGraphPublish = true;
-    return _processingGraphPublishFuture ??= _runProcessingGraphPublishQueue();
+
+    return _processingGraphPublishFuture ??=
+        _runProcessingGraphPublishQueue(forRender: false).whenComplete(() {
+          _processingGraphPublishFuture = null;
+        });
   }
 
-  Future<void> _runProcessingGraphPublishQueue() async {
+  Future<void> publishProcessingGraphForRender() async {
+    _needsProcessingGraphPublish = true;
+
+    await _runProcessingGraphPublishQueue(forRender: true);
+  }
+
+  Future<void> _runProcessingGraphPublishQueue({
+    required bool forRender,
+  }) async {
     try {
       while (_needsProcessingGraphPublish) {
         _needsProcessingGraphPublish = false;
 
-        final initialization = await project.engine.processingGraphApi
-            .initializeNodes();
+        final initialization = forRender
+            ? await project.engine.processingGraphApi.initializeNodesForRender()
+            : await project.engine.processingGraphApi.initializeNodes();
 
         if (!initialization.didInitialize) {
           break;
@@ -133,11 +146,14 @@ class ProjectController {
 
         _applyNodePortConfigurations(initialization.results);
 
-        await project.engine.processingGraphApi.publish();
+        if (forRender) {
+          await project.engine.processingGraphApi.publishForRender();
+        } else {
+          await project.engine.processingGraphApi.publish();
+        }
       }
     } finally {
       _needsProcessingGraphPublish = false;
-      _processingGraphPublishFuture = null;
     }
   }
 

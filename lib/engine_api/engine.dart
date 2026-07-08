@@ -100,8 +100,6 @@ enum StartupSendBehavior {
   bypassStartupQueue,
 }
 
-enum _RenderSendBehavior { queueDuringRender, bypassRenderQueue }
-
 class _QueuedEngineRequest {
   final Request request;
   final Completer<Response>? responseCompleter;
@@ -171,8 +169,8 @@ class Engine {
   /// The engine's current lifecycle state.
   EngineState get engineState => _engineState;
 
-  /// Returns whether the engine has completed startup and is ready for normal
-  /// request traffic.
+  /// Returns whether the engine has completed startup and is ready for request
+  /// traffic.
   bool get isRunning => _engineState == EngineState.running;
   bool _socketReady = false;
   bool _canFlushStartupQueue = false;
@@ -180,16 +178,15 @@ class Engine {
   bool _isFlushingStartupQueue = false;
   final ListQueue<_QueuedEngineRequest> _startupQueue = ListQueue();
 
-  bool _isRenderingAudio = false;
-  bool _isFlushingRenderQueue = false;
-  int? _activeRenderId;
+  int _renderRequestHoldCount = 0;
+  bool _isFlushingRenderHeldRequests = false;
 
-  // Timeouts are stored with queued render requests and only start when the
-  // request is actually dispatched to the engine.
-  final ListQueue<_QueuedEngineRequest> _renderQueue = ListQueue();
+  // Timeouts are stored with requests held during render and only start when
+  // the request is actually dispatched to the engine.
+  final ListQueue<_QueuedEngineRequest> _renderHeldRequestQueue = ListQueue();
 
-  /// Returns whether an offline render is active or starting.
-  bool get isRenderingAudio => _isRenderingAudio;
+  /// Returns whether request traffic is currently held during render.
+  bool get areRequestsHeldForRender => _renderRequestHoldCount > 0;
 
   bool _isAudioReady = false;
   AudioProcessingConfigDto? _audioConfig;
@@ -261,49 +258,41 @@ class Engine {
     _canFlushStartupQueue = false;
   }
 
-  void _clearRenderQueue(Object error) {
-    while (_renderQueue.isNotEmpty) {
-      final queuedRequest = _renderQueue.removeFirst();
+  void _clearRenderHeldRequests(Object error) {
+    while (_renderHeldRequestQueue.isNotEmpty) {
+      final queuedRequest = _renderHeldRequestQueue.removeFirst();
       queuedRequest.responseCompleter?.completeError(error);
     }
 
-    _isRenderingAudio = false;
-    _activeRenderId = null;
-    _isFlushingRenderQueue = false;
+    _renderRequestHoldCount = 0;
+    _isFlushingRenderHeldRequests = false;
   }
 
-  void _beginRenderingAudio(int renderId) {
-    if (_isRenderingAudio) {
+  void holdRequestsForRender() {
+    if (_engineState != EngineState.running) {
+      throw StateError('Engine must be running to hold requests for render.');
+    }
+
+    _renderRequestHoldCount++;
+  }
+
+  void releaseRequestsHeldForRender() {
+    if (_renderRequestHoldCount == 0) {
       return;
     }
 
-    _isRenderingAudio = true;
-    _activeRenderId = renderId;
+    _renderRequestHoldCount--;
+    if (_renderRequestHoldCount == 0) {
+      _flushRenderHeldRequests();
+    }
   }
 
-  void _finishRenderingAudio({int? renderId}) {
-    if (!_isRenderingAudio) {
-      return;
-    }
-
-    final activeRenderId = _activeRenderId;
-    if (renderId != null &&
-        activeRenderId != null &&
-        renderId != activeRenderId) {
-      return;
-    }
-
-    _isRenderingAudio = false;
-    _activeRenderId = null;
-    _flushRenderQueue();
-  }
-
-  void _queueRenderRequest(
+  void _queueRenderHeldRequest(
     Request request, {
     Completer<Response>? responseCompleter,
     Duration? timeout = const Duration(seconds: 5),
   }) {
-    _renderQueue.add(
+    _renderHeldRequestQueue.add(
       _QueuedEngineRequest(
         request,
         responseCompleter: responseCompleter,
@@ -312,20 +301,20 @@ class Engine {
     );
   }
 
-  void _flushRenderQueue() {
-    if (_isFlushingRenderQueue ||
-        _isRenderingAudio ||
+  void _flushRenderHeldRequests() {
+    if (_isFlushingRenderHeldRequests ||
+        areRequestsHeldForRender ||
         _engineState != EngineState.running) {
       return;
     }
 
-    _isFlushingRenderQueue = true;
+    _isFlushingRenderHeldRequests = true;
 
     try {
-      while (_renderQueue.isNotEmpty &&
+      while (_renderHeldRequestQueue.isNotEmpty &&
           _engineState == EngineState.running &&
-          !_isRenderingAudio) {
-        final queuedRequest = _renderQueue.removeFirst();
+          !areRequestsHeldForRender) {
+        final queuedRequest = _renderHeldRequestQueue.removeFirst();
 
         if (queuedRequest.responseCompleter != null) {
           _dispatchRequestWithReply(
@@ -338,7 +327,7 @@ class Engine {
         }
       }
     } finally {
-      _isFlushingRenderQueue = false;
+      _isFlushingRenderHeldRequests = false;
     }
   }
 
@@ -357,8 +346,8 @@ class Engine {
       _clearStartupQueue(
         StateError('Engine stopped before startup completed.'),
       );
-      _clearRenderQueue(
-        StateError('Engine stopped while render requests were queued.'),
+      _clearRenderHeldRequests(
+        StateError('Engine stopped while requests were held for render.'),
       );
       _failPendingReplies(
         StateError('Engine stopped while waiting for reply.'),
@@ -529,6 +518,23 @@ class Engine {
     }
   }
 
+  void _applyResponseState(Response response) {
+    switch (response) {
+      case StartAudioResponse e when e.success && e.audioConfig != null:
+        _setAudioReady(e.audioConfig!);
+        return;
+      case StartRenderAudioSessionResponse e
+          when e.success && e.audioConfig != null:
+        _setAudioReady(e.audioConfig!);
+        return;
+      case StopAudioResponse e when e.success:
+        _markAudioStopped();
+        return;
+      default:
+        return;
+    }
+  }
+
   void _onReply(Response response) {
     switch (response) {
       case VisualizationUpdateEvent e:
@@ -541,7 +547,6 @@ class Engine {
         _markAudioSessionInvalidated(e.reason);
         return;
       case RenderStartedEvent e:
-        _beginRenderingAudio(e.renderId);
         if (!_renderEventStreamController.isClosed) {
           _renderEventStreamController.add(e);
         }
@@ -555,13 +560,11 @@ class Engine {
         if (!_renderEventStreamController.isClosed) {
           _renderEventStreamController.add(e);
         }
-        _finishRenderingAudio(renderId: e.renderId);
         return;
       case RenderFailedEvent e:
         if (!_renderEventStreamController.isClosed) {
           _renderEventStreamController.add(e);
         }
-        _finishRenderingAudio(renderId: e.renderId);
         return;
       case PluginChangedEvent e:
         _scheduleNodeStateUpdate(e.nodeId);
@@ -594,6 +597,7 @@ class Engine {
 
     final pendingReply = _replyFunctions.remove(response.id);
     if (pendingReply != null) {
+      _applyResponseState(response);
       pendingReply.onReply(response);
       pendingReply.timeoutTimer?.cancel();
     }
@@ -605,10 +609,7 @@ class Engine {
 
   Future<void> _exit() async {
     final request = Exit(id: _getRequestId());
-    await _request(
-      request,
-      renderBehavior: _RenderSendBehavior.bypassRenderQueue,
-    );
+    await _request(request, bypassRenderRequestHold: true);
 
     _engineConnector.dispose();
 
@@ -638,11 +639,13 @@ class Engine {
 
   Future<AudioProcessingConfigDto> _startAudio({
     required StartupSendBehavior startupBehavior,
+    bool bypassRenderRequestHold = false,
   }) async {
     final audioStartReply =
         await _request(
               StartAudioRequest(id: _getRequestId()),
               startupBehavior: startupBehavior,
+              bypassRenderRequestHold: bypassRenderRequestHold,
               // Audio device initialization can block behind OS permission
               // prompts, such as the first-run microphone access prompt on
               // macOS.
@@ -660,9 +663,7 @@ class Engine {
       );
     }
 
-    final audioConfig = audioStartReply.audioConfig!;
-    _setAudioReady(audioConfig);
-    return audioConfig;
+    return audioStartReply.audioConfig!;
   }
 
   /// Starts the audio thread without restarting the engine process.
@@ -678,14 +679,40 @@ class Engine {
     return _startAudio(startupBehavior: StartupSendBehavior.requireRunning);
   }
 
+  Future<AudioProcessingConfigDto> startAudioForRender() async {
+    if (_engineState != EngineState.running) {
+      throw StateError('Engine must be running to start audio.');
+    }
+
+    if (_audioConfig != null) {
+      return _audioConfig!;
+    }
+
+    return _startAudio(
+      startupBehavior: StartupSendBehavior.requireRunning,
+      bypassRenderRequestHold: true,
+    );
+  }
+
   /// Stops the audio thread without stopping the engine process.
   Future<void> stopAudio() async {
+    await _stopAudio();
+  }
+
+  Future<void> stopAudioForRender() async {
+    await _stopAudio(bypassRenderRequestHold: true);
+  }
+
+  Future<void> _stopAudio({bool bypassRenderRequestHold = false}) async {
     if (_engineState != EngineState.running) {
       return;
     }
 
     final stopAudioReply =
-        await _request(StopAudioRequest(id: _getRequestId()))
+        await _request(
+              StopAudioRequest(id: _getRequestId()),
+              bypassRenderRequestHold: bypassRenderRequestHold,
+            )
             as StopAudioResponse;
 
     if (!stopAudioReply.success) {
@@ -693,8 +720,6 @@ class Engine {
         'Engine audio shutdown failed: ${stopAudioReply.error ?? 'Unknown error.'}',
       );
     }
-
-    _markAudioStopped();
   }
 
   /// Starts the engine process, and attaches to it.
@@ -908,7 +933,7 @@ class Engine {
   Future<Response> _request(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
-    _RenderSendBehavior renderBehavior = _RenderSendBehavior.queueDuringRender,
+    bool bypassRenderRequestHold = false,
     Duration? timeout = const Duration(seconds: 5),
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
@@ -944,10 +969,9 @@ class Engine {
       throw AssertionError('Engine must be running to send commands.');
     }
 
-    if (renderBehavior == _RenderSendBehavior.queueDuringRender &&
-        _isRenderingAudio) {
+    if (!bypassRenderRequestHold && areRequestsHeldForRender) {
       final completer = Completer<Response>();
-      _queueRenderRequest(
+      _queueRenderHeldRequest(
         request,
         responseCompleter: completer,
         timeout: timeout,
@@ -962,7 +986,7 @@ class Engine {
   void _requestNoReply(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
-    _RenderSendBehavior renderBehavior = _RenderSendBehavior.queueDuringRender,
+    bool bypassRenderRequestHold = false,
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {
@@ -989,9 +1013,8 @@ class Engine {
       throw AssertionError('Engine must be running to send commands.');
     }
 
-    if (renderBehavior == _RenderSendBehavior.queueDuringRender &&
-        _isRenderingAudio) {
-      _queueRenderRequest(request);
+    if (!bypassRenderRequestHold && areRequestsHeldForRender) {
+      _queueRenderHeldRequest(request);
       return;
     }
 

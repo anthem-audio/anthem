@@ -764,6 +764,7 @@ void main() {
 
       final renderStartResult = await renderFuture;
       await _flushMicrotasks();
+
       await subscription.cancel();
 
       expect(renderStartResult.renderId, equals(42));
@@ -778,109 +779,96 @@ void main() {
       );
     });
 
-    test('requests queue during render and flush in order afterward', () async {
-      final startFuture = engine.start(initializeAudio: false);
+    test(
+      'render hold queues ordinary requests while render API requests continue',
+      () async {
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
 
-      connector.completeInit();
-      await _flushMicrotasks();
+        engine.holdRequestsForRender();
+        expect(engine.areRequestsHeldForRender, isTrue);
 
-      final readyCheckRequest =
-          connector.sentRequests.single as EngineReadyCheckRequest;
-      connector.emitResponse(
-        EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
-      );
-      await _flushMicrotasks();
+        final previousModelUpdateCount = connector.sentRequests
+            .whereType<ModelUpdateRequest>()
+            .length;
+        final previousPublishCount = connector.sentRequests
+            .whereType<PublishProcessingGraphRequest>()
+            .length;
 
-      final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-      connector.emitResponse(
-        ModelInitResponse(id: modelInitRequest.id, success: true),
-      );
+        engine.modelSyncApi.updateModel(
+          updateKind: FieldUpdateKind.set,
+          fieldAccesses: [
+            FieldAccess(fieldType: FieldType.raw, fieldName: 'name'),
+          ],
+          serializedValue: '"Queued during render"',
+        );
+        final publishFuture = engine.processingGraphApi.publish();
+        await _flushMicrotasks();
 
-      await startFuture;
-      await _flushMicrotasks();
+        expect(
+          connector.sentRequests.whereType<ModelUpdateRequest>(),
+          hasLength(previousModelUpdateCount),
+        );
+        expect(
+          connector.sentRequests.whereType<PublishProcessingGraphRequest>(),
+          hasLength(previousPublishCount),
+        );
 
-      final startRenderFuture = engine.renderApi.startRenderAudioSession(
-        sampleRate: 48000,
-        blockSize: 256,
-        outputChannelCount: 2,
-      );
-      await _flushMicrotasks();
+        final renderPublishFuture = engine.processingGraphApi
+            .publishForRender();
+        await _flushMicrotasks();
 
-      final startRenderRequest =
-          connector.sentRequests.last as StartRenderAudioSessionRequest;
-      connector.emitResponse(
-        StartRenderAudioSessionResponse(
-          id: startRenderRequest.id,
-          success: true,
-          audioConfig: AudioProcessingConfigDto(
-            sampleRate: 48000,
-            blockSize: 256,
-            inputChannelCount: 0,
-            outputChannelCount: 2,
+        expect(
+          connector.sentRequests.whereType<PublishProcessingGraphRequest>(),
+          hasLength(previousPublishCount + 1),
+        );
+        final renderPublishRequest = connector.sentRequests
+            .whereType<PublishProcessingGraphRequest>()
+            .last;
+        connector.emitResponse(
+          PublishProcessingGraphResponse(
+            id: renderPublishRequest.id,
+            success: true,
           ),
-        ),
-      );
-      await startRenderFuture;
+        );
+        await renderPublishFuture;
 
-      final renderFuture = engine.renderApi.renderAudio(
-        renderId: 43,
-        outputPath: r'C:\renders\queued.wav',
-        format: RenderAudioFormat.wav,
-        startTick: 0,
-        endTick: 384,
-        includeTail: false,
-        bitDepth: 32,
-        qualityOptionIndex: 0,
-        sampleFormat: RenderAudioSampleFormat.floatingPoint,
-      );
-      await _flushMicrotasks();
+        await _flushMicrotasks();
+        expect(
+          connector.sentRequests.whereType<ModelUpdateRequest>(),
+          hasLength(previousModelUpdateCount),
+        );
+        expect(
+          connector.sentRequests.whereType<PublishProcessingGraphRequest>(),
+          hasLength(previousPublishCount + 1),
+        );
 
-      final renderRequest = connector.sentRequests.last as RenderAudioRequest;
-      connector.emitResponse(
-        RenderAudioResponse(id: renderRequest.id, success: true, renderId: 43),
-      );
-      await renderFuture;
+        engine.releaseRequestsHeldForRender();
+        await _flushMicrotasks();
 
-      expect(engine.isRenderingAudio, isTrue);
+        expect(engine.areRequestsHeldForRender, isFalse);
+        expect(
+          connector.sentRequests.whereType<ModelUpdateRequest>(),
+          hasLength(previousModelUpdateCount + 1),
+        );
+        expect(
+          connector.sentRequests.whereType<PublishProcessingGraphRequest>(),
+          hasLength(previousPublishCount + 2),
+        );
 
-      engine.modelSyncApi.updateModel(
-        updateKind: FieldUpdateKind.set,
-        fieldAccesses: [
-          FieldAccess(fieldType: FieldType.raw, fieldName: 'name'),
-        ],
-        serializedValue: '"Queued during render"',
-      );
-      final publishFuture = engine.processingGraphApi.publish();
-      await _flushMicrotasks();
+        final publishRequest = connector.sentRequests
+            .whereType<PublishProcessingGraphRequest>()
+            .last;
+        connector.emitResponse(
+          PublishProcessingGraphResponse(id: publishRequest.id, success: true),
+        );
 
-      expect(connector.sentRequests.whereType<ModelUpdateRequest>(), isEmpty);
-      expect(
-        connector.sentRequests.whereType<PublishProcessingGraphRequest>(),
-        isEmpty,
-      );
-
-      connector.emitResponse(
-        RenderCompletedEvent(
-          id: -1,
-          renderId: 43,
-          renderedSamples: 1024,
-          totalSamples: 1024,
-        ),
-      );
-      await _flushMicrotasks();
-
-      expect(engine.isRenderingAudio, isFalse);
-      expect(connector.sentRequests[4], isA<ModelUpdateRequest>());
-      expect(connector.sentRequests[5], isA<PublishProcessingGraphRequest>());
-
-      final publishRequest =
-          connector.sentRequests[5] as PublishProcessingGraphRequest;
-      connector.emitResponse(
-        PublishProcessingGraphResponse(id: publishRequest.id, success: true),
-      );
-
-      await publishFuture;
-    });
+        await publishFuture;
+      },
+    );
 
     test(
       'VisualizationUpdateEvent is forwarded to the project visualization provider',

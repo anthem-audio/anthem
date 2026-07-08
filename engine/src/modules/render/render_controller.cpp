@@ -24,6 +24,7 @@
 #include "modules/audio/audio_session_controller.h"
 #include "modules/core/comms.h"
 #include "modules/core/engine.h"
+#include "modules/core/visualization/visualization_broker.h"
 #include "modules/processors/master_output.h"
 #include "modules/render/render_tail_detector.h"
 #include "modules/sequencer/runtime/sequencer_timing.h"
@@ -34,6 +35,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <initializer_list>
+#include <juce_events/juce_events.h>
 #include <memory>
 #include <rfl/json.hpp>
 #include <utility>
@@ -454,9 +456,11 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
     }
 
     renderThread = std::make_unique<RenderThread>(*this, renderJob);
+    VisualizationBroker::getInstance().suppressOutboundUpdates();
 
     if (!renderThread->startThread()) {
       renderThread.reset();
+      VisualizationBroker::getInstance().discardPendingUpdatesThenResume();
       isRenderingFlag.store(false, std::memory_order_release);
       return renderStartFailure("Failed to start render thread.");
     }
@@ -493,6 +497,8 @@ void RenderController::stopRenderThread() {
 void RenderController::finishRenderThreadState() {
   transport.setIsPlaying(false);
   transport.endRenderPlayback();
+  juce::MessageManager::callAsync(
+      []() { VisualizationBroker::getInstance().discardPendingUpdatesThenResume(); });
 }
 
 void RenderController::runRender(const RenderJob& renderJob, RenderThread& thread) {
@@ -510,6 +516,8 @@ void RenderController::runRender(const RenderJob& renderJob, RenderThread& threa
       renderJob.qualityOptionIndex,
       renderJob.sampleFormat);
   if (writer == nullptr) {
+    juce::MessageManager::callAsync(
+        []() { VisualizationBroker::getInstance().discardPendingUpdatesThenResume(); });
     sendRenderFailedEvent(
         renderJob.renderId, "Failed to create render output file.", 0, renderJob.totalSamples);
     isRenderingFlag.store(false, std::memory_order_release);

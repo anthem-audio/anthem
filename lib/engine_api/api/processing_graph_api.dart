@@ -39,13 +39,27 @@ class ProcessingGraphApi {
 
   /// Initializes any processing graph nodes that have not been initialized by
   /// the engine yet.
-  Future<ProcessingGraphNodeInitialization> initializeNodes() async {
+  Future<ProcessingGraphNodeInitialization> initializeNodes() {
+    return _initializeNodes(bypassRenderRequestHold: false);
+  }
+
+  Future<ProcessingGraphNodeInitialization> initializeNodesForRender() {
+    return _initializeNodes(bypassRenderRequestHold: true);
+  }
+
+  Future<ProcessingGraphNodeInitialization> _initializeNodes({
+    required bool bypassRenderRequestHold,
+  }) async {
     final id = _engine._getRequestId();
 
     final request = InitializeProcessingGraphNodesRequest(id: id);
 
     final response =
-        (await _engine._request(request, timeout: Duration(seconds: 30)))
+        (await _engine._request(
+              request,
+              bypassRenderRequestHold: bypassRenderRequestHold,
+              timeout: Duration(seconds: 30),
+            ))
             as InitializeProcessingGraphNodesResponse;
 
     if (response.error != null) {
@@ -66,13 +80,25 @@ class ProcessingGraphApi {
   /// removing nodes or modifying connections, are done first by modifying the
   /// model. When ready, this method can be called to publish an updated set of
   /// processing instructions to the audio thread.
-  Future<void> publish() async {
+  Future<void> publish() {
+    return _publish(bypassRenderRequestHold: false);
+  }
+
+  Future<void> publishForRender() {
+    return _publish(bypassRenderRequestHold: true);
+  }
+
+  Future<void> _publish({required bool bypassRenderRequestHold}) async {
     final id = _engine._getRequestId();
 
     final request = PublishProcessingGraphRequest(id: id);
 
     final response =
-        (await _engine._request(request)) as PublishProcessingGraphResponse;
+        (await _engine._request(
+              request,
+              bypassRenderRequestHold: bypassRenderRequestHold,
+            ))
+            as PublishProcessingGraphResponse;
 
     if (response.success) {
       return;

@@ -50,6 +50,7 @@ class RenderApi {
                 outputChannelCount: outputChannelCount,
               ),
               startupBehavior: StartupSendBehavior.requireRunning,
+              bypassRenderRequestHold: true,
             )
             as StartRenderAudioSessionResponse;
 
@@ -65,9 +66,7 @@ class RenderApi {
       );
     }
 
-    final audioConfig = response.audioConfig!;
-    _engine._setAudioReady(audioConfig);
-    return audioConfig;
+    return response.audioConfig!;
   }
 
   Future<RenderAudioStartResult> renderAudio({
@@ -81,42 +80,26 @@ class RenderApi {
     required int qualityOptionIndex,
     required RenderAudioSampleFormat sampleFormat,
   }) async {
-    final didOpenRenderQueue = !_engine._isRenderingAudio;
-    if (didOpenRenderQueue) {
-      _engine._beginRenderingAudio(renderId);
-    }
-
-    RenderAudioResponse response;
-    try {
-      response =
-          await _engine._request(
-                RenderAudioRequest(
-                  id: _engine._getRequestId(),
-                  renderId: renderId,
-                  outputPath: outputPath,
-                  format: format,
-                  startTick: startTick,
-                  endTick: endTick,
-                  includeTail: includeTail,
-                  bitDepth: bitDepth,
-                  qualityOptionIndex: qualityOptionIndex,
-                  sampleFormat: sampleFormat,
-                ),
-                startupBehavior: StartupSendBehavior.requireRunning,
-                renderBehavior: _RenderSendBehavior.bypassRenderQueue,
-              )
-              as RenderAudioResponse;
-    } catch (_) {
-      if (didOpenRenderQueue) {
-        _engine._finishRenderingAudio(renderId: renderId);
-      }
-      rethrow;
-    }
+    final response =
+        await _engine._request(
+              RenderAudioRequest(
+                id: _engine._getRequestId(),
+                renderId: renderId,
+                outputPath: outputPath,
+                format: format,
+                startTick: startTick,
+                endTick: endTick,
+                includeTail: includeTail,
+                bitDepth: bitDepth,
+                qualityOptionIndex: qualityOptionIndex,
+                sampleFormat: sampleFormat,
+              ),
+              startupBehavior: StartupSendBehavior.requireRunning,
+              bypassRenderRequestHold: true,
+            )
+            as RenderAudioResponse;
 
     if (!response.success) {
-      if (didOpenRenderQueue) {
-        _engine._finishRenderingAudio(renderId: renderId);
-      }
       throw StateError(
         'Engine render failed: ${response.error ?? 'Unknown error.'}',
       );
