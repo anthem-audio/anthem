@@ -39,6 +39,7 @@ import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/main_window/main_window_view_model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 export 'package:anthem/logic/disposable_service.dart';
 
@@ -180,6 +181,11 @@ class ServiceRegistry {
   static final DialogController dialogController = DialogController();
   static final ClipboardService clipboard = ClipboardService();
   static late final ScreenOverlayController screenOverlayController;
+  static SharedPreferencesAsync? _preferences;
+
+  static SharedPreferencesAsync get preferences {
+    return _preferences ??= SharedPreferencesAsync();
+  }
 
   static final Map<ProjectId, ServiceRegistry> _serviceRegistriesByProjectId =
       {};

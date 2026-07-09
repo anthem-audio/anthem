@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/file_exists.dart';
@@ -28,56 +30,13 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/main_window/render_dialog_view_model.dart';
 import 'package:anthem/widgets/main_window/render_progress_dialog.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
 
-const _defaultRenderSampleRate = 48000;
+final _log = Logger('render_dialog_controller');
+
 const _renderAudioFormatExtensions = ['wav', 'aiff', 'flac', 'ogg', 'mp3'];
-const _wavSampleRates = [
-  8000,
-  11025,
-  12000,
-  16000,
-  22050,
-  32000,
-  44100,
-  48000,
-  88200,
-  96000,
-  176400,
-  192000,
-  352800,
-  384000,
-];
-const _aiffSampleRates = [
-  22050,
-  32000,
-  44100,
-  48000,
-  88200,
-  96000,
-  176400,
-  192000,
-];
-const _oggSampleRates = [
-  8000,
-  11025,
-  12000,
-  16000,
-  22050,
-  32000,
-  44100,
-  48000,
-  88200,
-  96000,
-  176400,
-  192000,
-];
-const _mp3SampleRates = [32000, 44100, 48000];
-const _wavBitDepths = [8, 16, 24, 32];
-const _aiffBitDepths = [8, 16, 24];
-const _flacBitDepths = [16, 24];
-const _flacCompressionLevelMin = 0;
-const _flacCompressionLevelMax = 8;
 const _oggQualityOptionLabels = [
   '64 kbps',
   '80 kbps',
@@ -111,8 +70,12 @@ const _mp3BitrateOptionLabels = [
 
 class RenderDialogController {
   final RenderDialogViewModel viewModel;
+  final SharedPreferencesAsync preferences;
 
-  RenderDialogController({required this.viewModel});
+  RenderDialogController({
+    required this.viewModel,
+    SharedPreferencesAsync? preferences,
+  }) : preferences = preferences ?? ServiceRegistry.preferences;
 
   List<int> get sampleRateOptions => _sampleRatesForFormat(viewModel.format);
 
@@ -137,9 +100,9 @@ class RenderDialogController {
 
   List<String> get mp3BitrateOptionLabels => _mp3BitrateOptionLabels;
 
-  int get flacCompressionLevelMin => _flacCompressionLevelMin;
+  int get flacCompressionLevelMin => renderDialogFlacCompressionLevelMin;
 
-  int get flacCompressionLevelMax => _flacCompressionLevelMax;
+  int get flacCompressionLevelMax => renderDialogFlacCompressionLevelMax;
 
   bool get outputWillOverwrite {
     final outputPath = viewModel.filePath.trim();
@@ -186,15 +149,15 @@ class RenderDialogController {
   void setBitDepth(int value) {
     switch (viewModel.format) {
       case RenderAudioFormat.wav:
-        if (_wavBitDepths.contains(value)) {
+        if (renderDialogWavBitDepths.contains(value)) {
           viewModel.wavBitDepth = value;
         }
       case RenderAudioFormat.aiff:
-        if (_aiffBitDepths.contains(value)) {
+        if (renderDialogAiffBitDepths.contains(value)) {
           viewModel.aiffBitDepth = value;
         }
       case RenderAudioFormat.flac:
-        if (_flacBitDepths.contains(value)) {
+        if (renderDialogFlacBitDepths.contains(value)) {
           viewModel.flacBitDepth = value;
         }
       case RenderAudioFormat.oggVorbis:
@@ -210,22 +173,22 @@ class RenderDialogController {
 
   void setFlacCompressionLevel(int value) {
     viewModel.flacCompressionLevel = value.clamp(
-      _flacCompressionLevelMin,
-      _flacCompressionLevelMax,
+      renderDialogFlacCompressionLevelMin,
+      renderDialogFlacCompressionLevelMax,
     );
   }
 
   void setOggQualityOptionIndex(int value) {
     viewModel.oggQualityOptionIndex = value.clamp(
-      0,
-      _oggQualityOptionLabels.length - 1,
+      renderDialogOggQualityOptionIndexMin,
+      renderDialogOggQualityOptionIndexMax,
     );
   }
 
   void setMp3BitrateOptionIndex(int value) {
     viewModel.mp3BitrateOptionIndex = value.clamp(
-      0,
-      _mp3BitrateOptionLabels.length - 1,
+      renderDialogMp3BitrateOptionIndexMin,
+      renderDialogMp3BitrateOptionIndexMax,
     );
   }
 
@@ -235,6 +198,26 @@ class RenderDialogController {
 
   void setIncludeTail(bool value) {
     viewModel.includeTail = value;
+  }
+
+  Future<void> loadSavedState() async {
+    try {
+      await viewModel.loadPreferences(preferences);
+    } catch (error, stackTrace) {
+      _log.warning(
+        'Could not load saved render dialog state.',
+        error,
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> saveState() async {
+    try {
+      await viewModel.savePreferences(preferences);
+    } catch (error, stackTrace) {
+      _log.warning('Could not save render dialog state.', error, stackTrace);
+    }
   }
 
   Future<bool> chooseFile() async {
@@ -279,6 +262,8 @@ class RenderDialogController {
       _setStatusText('Engine is not running.');
       return;
     }
+
+    unawaited(saveState());
 
     final task = ServiceRegistry.forProject(
       viewModel.projectId,
@@ -411,26 +396,26 @@ int _defaultSampleRateForProject(
 ) {
   final projectSampleRate =
       project.engine.audioConfig?.sampleRate.round() ??
-      _defaultRenderSampleRate;
+      renderDialogDefaultSampleRate;
 
   return _coerceSampleRateForFormat(projectSampleRate, format);
 }
 
 List<int> _sampleRatesForFormat(RenderAudioFormat format) {
   return switch (format) {
-    RenderAudioFormat.wav => _wavSampleRates,
-    RenderAudioFormat.aiff => _aiffSampleRates,
-    RenderAudioFormat.flac => _wavSampleRates,
-    RenderAudioFormat.oggVorbis => _oggSampleRates,
-    RenderAudioFormat.mp3 => _mp3SampleRates,
+    RenderAudioFormat.wav => renderDialogWavSampleRates,
+    RenderAudioFormat.aiff => renderDialogAiffSampleRates,
+    RenderAudioFormat.flac => renderDialogWavSampleRates,
+    RenderAudioFormat.oggVorbis => renderDialogOggSampleRates,
+    RenderAudioFormat.mp3 => renderDialogMp3SampleRates,
   };
 }
 
 List<int> _bitDepthsForFormat(RenderAudioFormat format) {
   return switch (format) {
-    RenderAudioFormat.wav => _wavBitDepths,
-    RenderAudioFormat.aiff => _aiffBitDepths,
-    RenderAudioFormat.flac => _flacBitDepths,
+    RenderAudioFormat.wav => renderDialogWavBitDepths,
+    RenderAudioFormat.aiff => renderDialogAiffBitDepths,
+    RenderAudioFormat.flac => renderDialogFlacBitDepths,
     RenderAudioFormat.oggVorbis => const [],
     RenderAudioFormat.mp3 => const [],
   };

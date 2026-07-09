@@ -442,6 +442,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
               final renderDialogController = RenderDialogController.forProject(
                 activeProject,
               );
+              await renderDialogController.loadSavedState();
               final pickedFile = await renderDialogController.chooseFile();
               if (!pickedFile) {
                 return;

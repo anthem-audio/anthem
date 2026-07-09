@@ -24,6 +24,9 @@ import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
 import 'package:anthem/widgets/main_window/render_dialog_view_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
   test('setFilePath adds the fallback format extension', () {
@@ -160,19 +163,184 @@ void main() {
 
     expect(controller.viewModel.mp3BitrateOptionIndex, equals(13));
   });
+
+  test(
+    'savePreferences writes render fields using view model field names',
+    () async {
+      final preferences = _createPreferences();
+      final viewModel =
+          _createViewModel(
+              filePath: r'C:\renders\mix.mp3',
+              format: RenderAudioFormat.mp3,
+            )
+            ..sampleRate = 96000
+            ..wavBitDepth = 16
+            ..wavSampleFormat = RenderAudioSampleFormat.integer
+            ..aiffBitDepth = 8
+            ..flacBitDepth = 16
+            ..flacCompressionLevel = 2
+            ..oggQualityOptionIndex = 4
+            ..mp3BitrateOptionIndex = 6
+            ..rangeMode = RenderDialogRangeMode.loop
+            ..includeTail = false
+            ..statusText = 'Ready';
+
+      await viewModel.savePreferences(preferences);
+
+      final values = await preferences.getAll();
+      expect(
+        values.keys,
+        unorderedEquals([
+          'render.sampleRate',
+          'render.wavBitDepth',
+          'render.wavSampleFormat',
+          'render.aiffBitDepth',
+          'render.flacBitDepth',
+          'render.flacCompressionLevel',
+          'render.oggQualityOptionIndex',
+          'render.mp3BitrateOptionIndex',
+          'render.rangeMode',
+          'render.includeTail',
+        ]),
+      );
+      expect(values['render.sampleRate'], equals(96000));
+      expect(values['render.wavBitDepth'], equals(16));
+      expect(values['render.wavSampleFormat'], equals('integer'));
+      expect(values['render.aiffBitDepth'], equals(8));
+      expect(values['render.flacBitDepth'], equals(16));
+      expect(values['render.flacCompressionLevel'], equals(2));
+      expect(values['render.oggQualityOptionIndex'], equals(4));
+      expect(values['render.mp3BitrateOptionIndex'], equals(6));
+      expect(values['render.rangeMode'], equals('loop'));
+      expect(values['render.includeTail'], isFalse);
+      expect(values, isNot(contains('render.filePath')));
+      expect(values, isNot(contains('render.format')));
+      expect(values, isNot(contains('render.statusText')));
+    },
+  );
+
+  test('loadPreferences restores saved render fields', () async {
+    final preferences = _createPreferences({
+      'render.sampleRate': 44100,
+      'render.wavBitDepth': 24,
+      'render.wavSampleFormat': 'integer',
+      'render.aiffBitDepth': 16,
+      'render.flacBitDepth': 16,
+      'render.flacCompressionLevel': 7,
+      'render.oggQualityOptionIndex': 3,
+      'render.mp3BitrateOptionIndex': 5,
+      'render.rangeMode': 'loop',
+      'render.includeTail': false,
+      'render.filePath': r'C:\renders\ignored.mp3',
+      'render.format': 'mp3',
+    });
+    final viewModel = _createViewModel(filePath: r'C:\renders\mix.wav');
+
+    await viewModel.loadPreferences(preferences);
+
+    expect(viewModel.filePath, equals(r'C:\renders\mix.wav'));
+    expect(viewModel.format, equals(RenderAudioFormat.wav));
+    expect(viewModel.sampleRate, equals(44100));
+    expect(viewModel.wavBitDepth, equals(24));
+    expect(viewModel.wavSampleFormat, equals(RenderAudioSampleFormat.integer));
+    expect(viewModel.aiffBitDepth, equals(16));
+    expect(viewModel.flacBitDepth, equals(16));
+    expect(viewModel.flacCompressionLevel, equals(7));
+    expect(viewModel.oggQualityOptionIndex, equals(3));
+    expect(viewModel.mp3BitrateOptionIndex, equals(5));
+    expect(viewModel.rangeMode, equals(RenderDialogRangeMode.loop));
+    expect(viewModel.includeTail, isFalse);
+  });
+
+  test(
+    'loadPreferences keeps defaults for missing saved render fields',
+    () async {
+      final preferences = _createPreferences({'render.includeTail': false});
+      final viewModel = _createViewModel(filePath: r'C:\renders\mix.wav');
+
+      await viewModel.loadPreferences(preferences);
+
+      expect(viewModel.sampleRate, equals(48000));
+      expect(viewModel.wavBitDepth, equals(32));
+      expect(
+        viewModel.wavSampleFormat,
+        equals(RenderAudioSampleFormat.floatingPoint),
+      );
+      expect(viewModel.aiffBitDepth, equals(24));
+      expect(viewModel.flacBitDepth, equals(24));
+      expect(viewModel.flacCompressionLevel, equals(5));
+      expect(viewModel.oggQualityOptionIndex, equals(9));
+      expect(viewModel.mp3BitrateOptionIndex, equals(13));
+      expect(viewModel.rangeMode, equals(RenderDialogRangeMode.project));
+      expect(viewModel.includeTail, isFalse);
+    },
+  );
+
+  test('loadPreferences ignores invalid saved render fields', () async {
+    final preferences = _createPreferences({
+      'render.sampleRate': 12345,
+      'render.wavBitDepth': 12,
+      'render.wavSampleFormat': 'notAFormat',
+      'render.aiffBitDepth': 32,
+      'render.flacBitDepth': 8,
+      'render.flacCompressionLevel': 9,
+      'render.oggQualityOptionIndex': 11,
+      'render.mp3BitrateOptionIndex': 14,
+      'render.rangeMode': 'selection',
+      'render.includeTail': 'false',
+    });
+    final viewModel = _createViewModel(filePath: r'C:\renders\mix.wav');
+
+    await viewModel.loadPreferences(preferences);
+
+    expect(viewModel.sampleRate, equals(48000));
+    expect(viewModel.wavBitDepth, equals(32));
+    expect(
+      viewModel.wavSampleFormat,
+      equals(RenderAudioSampleFormat.floatingPoint),
+    );
+    expect(viewModel.aiffBitDepth, equals(24));
+    expect(viewModel.flacBitDepth, equals(24));
+    expect(viewModel.flacCompressionLevel, equals(5));
+    expect(viewModel.oggQualityOptionIndex, equals(9));
+    expect(viewModel.mp3BitrateOptionIndex, equals(13));
+    expect(viewModel.rangeMode, equals(RenderDialogRangeMode.project));
+    expect(viewModel.includeTail, isTrue);
+  });
 }
 
 RenderDialogController _createController({
   required String filePath,
   RenderAudioFormat format = RenderAudioFormat.wav,
   int sampleRate = 48000,
+  SharedPreferencesAsync? preferences,
 }) {
   return RenderDialogController(
-    viewModel: RenderDialogViewModel(
-      projectId: 'project',
+    viewModel: _createViewModel(
       filePath: filePath,
       format: format,
       sampleRate: sampleRate,
     ),
+    preferences: preferences ?? _createPreferences(),
   );
+}
+
+RenderDialogViewModel _createViewModel({
+  required String filePath,
+  RenderAudioFormat format = RenderAudioFormat.wav,
+  int sampleRate = 48000,
+}) {
+  return RenderDialogViewModel(
+    projectId: 'project',
+    filePath: filePath,
+    format: format,
+    sampleRate: sampleRate,
+  );
+}
+
+SharedPreferencesAsync _createPreferences([Map<String, Object>? values]) {
+  SharedPreferencesAsyncPlatform.instance = values == null
+      ? InMemorySharedPreferencesAsync.empty()
+      : InMemorySharedPreferencesAsync.withData(values);
+  return SharedPreferencesAsync();
 }
