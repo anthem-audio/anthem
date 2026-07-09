@@ -103,6 +103,7 @@ jobs:
         uses: ./.github/actions/shared-init
 
       - name: Set up MSYS2
+        id: msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.arch == 'arm64' && 'CLANGARM64' || 'CLANG64' }}
@@ -117,6 +118,7 @@ jobs:
       - name: Build LAME
         run: dart run anthem:cli engine build-lame
         env:
+          ANTHEM_MSYS2_BASH: ${{ steps.msys2.outputs.msys2-location }}\usr\bin\bash.exe
           ANTHEM_MSYS2_SYSTEM: ${{ matrix.arch == 'arm64' && 'CLANGARM64' || 'CLANG64' }}
 
       - name: Build Flutter

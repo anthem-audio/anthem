@@ -1218,6 +1218,13 @@ String _requireMsys2BashExecutable() {
   final configuredBash = Platform.environment['ANTHEM_MSYS2_BASH'];
   if (configuredBash != null && configuredBash.isNotEmpty) {
     if (File(configuredBash).existsSync()) return configuredBash;
+
+    print(
+      Colorize(
+        'Error: ANTHEM_MSYS2_BASH is set, but no file exists at $configuredBash.',
+      ).red(),
+    );
+    exit(1);
   }
 
   const candidatePaths = [
