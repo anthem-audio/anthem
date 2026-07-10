@@ -399,7 +399,7 @@ class _AddButtonState extends State<_AddButton> {
                 _isPressed = false;
                 _hoverLock = true;
               });
-              _menuController.open(details.globalPosition);
+              _menuController.toggle(details.globalPosition);
             },
             onTapCancel: () {
               setState(() {

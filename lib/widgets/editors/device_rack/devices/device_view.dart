@@ -162,7 +162,7 @@ class _DeviceMenuButton extends StatelessWidget {
         width: 24,
         height: 24,
         onPress: () {
-          menuController.open();
+          menuController.toggle();
         },
       ),
     );

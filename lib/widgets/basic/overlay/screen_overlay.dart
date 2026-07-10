@@ -53,22 +53,7 @@ class _ScreenOverlayState extends State<ScreenOverlay> {
   @override
   Widget build(BuildContext context) {
     final stackChildren =
-        <Widget?>[
-          Positioned.fill(child: widget.child),
-          viewModel.entries.isNotEmpty
-              ? Positioned.fill(
-                  child: Listener(
-                    onPointerUp: (event) {
-                      controller.clear();
-                    },
-                    onPointerCancel: (event) {
-                      controller.clear();
-                    },
-                    child: Container(color: const Color(0x00000000)),
-                  ),
-                )
-              : null,
-        ].nonNulls.toList() +
+        <Widget>[Positioned.fill(child: widget.child)] +
         // state.entries is a Map<Id, ScreenOverlayEntry>
         viewModel.entries.entries
             .map<Widget>((mapEntry) => mapEntry.value.builder(context))

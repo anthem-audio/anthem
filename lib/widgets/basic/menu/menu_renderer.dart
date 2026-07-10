@@ -234,8 +234,15 @@ _MenuLayoutMetrics _computeMenuLayoutMetrics({
 
 class MenuRenderer extends StatefulWidget {
   final MenuDef menu;
+  final Object tapRegionGroupId;
+  final VoidCallback? onTapOutside;
 
-  const MenuRenderer({super.key, required this.menu});
+  const MenuRenderer({
+    super.key,
+    required this.menu,
+    required this.tapRegionGroupId,
+    this.onTapOutside,
+  });
 
   @override
   State<MenuRenderer> createState() => _MenuRendererState();
@@ -248,76 +255,83 @@ class _MenuRendererState extends State<MenuRenderer> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final layoutMetrics = _computeMenuLayoutMetrics(
-          context: context,
-          children: widget.menu.children,
-          constraints: constraints,
-        );
+    return TapRegion(
+      groupId: widget.tapRegionGroupId,
+      // The underlying control should receive the same tap that dismisses this
+      // menu.
+      onTapOutside: (_) => widget.onTapOutside?.call(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final layoutMetrics = _computeMenuLayoutMetrics(
+            context: context,
+            children: widget.menu.children,
+            constraints: constraints,
+          );
 
-        return MouseRegion(
-          onEnter: (event) {
-            setState(() {
-              isMouseInside = true;
-            });
-          },
-          onExit: (event) {
-            setState(() {
-              isMouseInside = false;
-            });
-            if (hintId != null) {
-              HintStore.instance.removeHint(hintId!);
-              hintId = null;
-            }
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              color: AnthemTheme.overlay.background,
-              border: Border.all(
-                color: AnthemTheme.overlay.border,
-                width: _Constants.menuBorderWidth,
-              ),
-              borderRadius: const BorderRadius.all(Radius.circular(4)),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF000000).withValues(alpha: 0.25),
-                  blurRadius: 14,
+          return MouseRegion(
+            onEnter: (event) {
+              setState(() {
+                isMouseInside = true;
+              });
+            },
+            onExit: (event) {
+              setState(() {
+                isMouseInside = false;
+              });
+              if (hintId != null) {
+                HintStore.instance.removeHint(hintId!);
+                hintId = null;
+              }
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: AnthemTheme.overlay.background,
+                border: Border.all(
+                  color: AnthemTheme.overlay.border,
+                  width: _Constants.menuBorderWidth,
                 ),
-              ],
-            ),
-            width: layoutMetrics.menuWidth,
-            child: Padding(
-              padding: const EdgeInsets.all(_Constants.outerPadding),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: widget.menu.children
-                    .map(
-                      (child) => _MenuItemRenderer(
-                        menuItem: child,
-                        layoutMetrics: layoutMetrics,
-                        isMouseInMenu: isMouseInside,
-                        updateHintId: (id) {
-                          if (hintId != null) {
-                            HintStore.instance.removeHint(hintId!);
-                          }
-                          hintId = id;
-                        },
-                        removeHint: () {
-                          if (hintId != null) {
-                            HintStore.instance.removeHint(hintId!);
-                            hintId = null;
-                          }
-                        },
-                      ),
-                    )
-                    .toList(),
+                borderRadius: const BorderRadius.all(Radius.circular(4)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF000000).withValues(alpha: 0.25),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+              width: layoutMetrics.menuWidth,
+              child: Padding(
+                padding: const EdgeInsets.all(_Constants.outerPadding),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: widget.menu.children
+                      .map(
+                        (child) => _MenuItemRenderer(
+                          menuItem: child,
+                          layoutMetrics: layoutMetrics,
+                          isMouseInMenu: isMouseInside,
+                          tapRegionGroupId: widget.tapRegionGroupId,
+                          updateHintId: (id) {
+                            if (hintId != null) {
+                              HintStore.instance.removeHint(hintId!);
+                            }
+                            hintId = id;
+                          },
+                          removeHint: () {
+                            if (hintId != null) {
+                              HintStore.instance.removeHint(hintId!);
+                              hintId = null;
+                            }
+                          },
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -326,6 +340,7 @@ class _MenuItemRenderer extends StatefulWidget {
   final GenericMenuItem menuItem;
   final _MenuLayoutMetrics layoutMetrics;
   final bool isMouseInMenu;
+  final Object tapRegionGroupId;
 
   final void Function(int) updateHintId;
   final void Function() removeHint;
@@ -334,6 +349,7 @@ class _MenuItemRenderer extends StatefulWidget {
     required this.menuItem,
     required this.layoutMetrics,
     required this.isMouseInMenu,
+    required this.tapRegionGroupId,
     required this.updateHintId,
     required this.removeHint,
   });
@@ -567,7 +583,10 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
             horizontalGap: 0,
             verticalGap: -_Constants.verticalInnerPadding,
             alignTopToAnchor: true,
-            child: MenuRenderer(menu: item.submenu!),
+            child: MenuRenderer(
+              menu: item.submenu!,
+              tapRegionGroupId: widget.tapRegionGroupId,
+            ),
           );
         },
       ),

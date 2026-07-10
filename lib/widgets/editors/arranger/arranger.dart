@@ -220,7 +220,7 @@ class _Header extends StatelessWidget {
                 width: 20,
                 contentPadding: EdgeInsets.all(2),
                 icon: Icons.kebab,
-                onPress: () => menuController.open(),
+                onPress: () => menuController.toggle(),
               ),
             ),
             const SizedBox(width: 4),

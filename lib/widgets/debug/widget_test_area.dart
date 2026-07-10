@@ -24,6 +24,7 @@ import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_scre
 import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/menu_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/radio_button_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/slider_widget_test_screen.dart';
@@ -34,6 +35,11 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-button',
     title: 'Button',
     description: 'Tests for lib/widgets/basic/button.dart',
+  ),
+  menu(
+    key: 'widget-test-screen-menu',
+    title: 'Menu',
+    description: 'Tests for lib/widgets/basic/menu',
   ),
   checkbox(
     key: 'widget-test-screen-checkbox',
@@ -122,6 +128,15 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             },
           ),
           TreeViewItemModel(
+            key: WidgetTestScreenId.menu.key,
+            label: labelForScreen(WidgetTestScreenId.menu),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.menu;
+              });
+            },
+          ),
+          TreeViewItemModel(
             key: WidgetTestScreenId.checkbox.key,
             label: labelForScreen(WidgetTestScreenId.checkbox),
             onClick: () {
@@ -189,6 +204,7 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
   Widget _getScreenWidget() {
     return switch (selectedScreen) {
       WidgetTestScreenId.button => const ButtonWidgetTestScreen(),
+      WidgetTestScreenId.menu => const MenuWidgetTestScreen(),
       WidgetTestScreenId.checkbox => const CheckboxWidgetTestScreen(),
       WidgetTestScreenId.radioButton => const RadioButtonWidgetTestScreen(),
       WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),

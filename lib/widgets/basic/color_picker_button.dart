@@ -44,74 +44,98 @@ class ColorPickerButton extends StatefulWidget {
 }
 
 class _ColorPickerButtonState extends State<ColorPickerButton> {
+  final Object tapRegionGroupId = Object();
+  ScreenOverlayHandle? overlayHandle;
+
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      child: GestureDetector(
-        onTap: () {
-          final contentRenderBox = context.findRenderObject() as RenderBox;
-          final overlayPosition = contentRenderBox.localToGlobal(
-            Offset(contentRenderBox.size.width, 0),
-          );
+    return TapRegion(
+      groupId: tapRegionGroupId,
+      child: MouseRegion(
+        child: GestureDetector(
+          onTap: () {
+            if (overlayHandle != null) {
+              overlayHandle!.close();
+              return;
+            }
 
-          final screenOverlayController = Provider.of<ScreenOverlayController>(
-            context,
-            listen: false,
-          );
+            final contentRenderBox = context.findRenderObject() as RenderBox;
+            final overlayPosition = contentRenderBox.localToGlobal(
+              Offset(contentRenderBox.size.width, 0),
+            );
 
-          screenOverlayController.show(
-            ScreenOverlayEntry(
-              builder: (context) {
-                return Positioned(
-                  left: overlayPosition.dx,
-                  top: overlayPosition.dy,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AnthemTheme.overlay.background,
-                      border: Border.all(color: AnthemTheme.overlay.border),
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(
-                            0xFF000000,
-                          ).withValues(alpha: 0.25),
-                          blurRadius: 14,
+            final screenOverlayController =
+                Provider.of<ScreenOverlayController>(context, listen: false);
+
+            late final ScreenOverlayHandle handle;
+            handle = screenOverlayController.show(
+              ScreenOverlayEntry(
+                builder: (context) {
+                  return Positioned(
+                    left: overlayPosition.dx,
+                    top: overlayPosition.dy,
+                    child: TapRegion(
+                      groupId: tapRegionGroupId,
+                      onTapOutside: (_) => screenOverlayController.clear(),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AnthemTheme.overlay.background,
+                          border: Border.all(color: AnthemTheme.overlay.border),
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(4),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(
+                                0xFF000000,
+                              ).withValues(alpha: 0.25),
+                              blurRadius: 14,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Observer(
-                      builder: (context) {
-                        final (hue, palette) = widget.getValues();
+                        child: Observer(
+                          builder: (context) {
+                            final (hue, palette) = widget.getValues();
 
-                        return ColorPicker(
-                          hue: hue,
-                          palette: palette == .grayscale ? .normal : palette,
-                          onChange: (e) {
-                            widget.onChange?.call(e.hue, e.palette);
+                            return ColorPicker(
+                              hue: hue,
+                              palette: palette == .grayscale
+                                  ? .normal
+                                  : palette,
+                              onChange: (e) {
+                                widget.onChange?.call(e.hue, e.palette);
+                              },
+                            );
                           },
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-        child: Observer(
-          builder: (context) {
-            final (hue, palette) = widget.getValues();
-
-            return Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: getColor(hue, palette),
-                border: .all(color: AnthemTheme.panel.border),
-                borderRadius: .circular(4),
+                  );
+                },
+                onClose: () {
+                  if (overlayHandle == handle) {
+                    overlayHandle = null;
+                  }
+                },
               ),
             );
+            overlayHandle = handle;
           },
+          child: Observer(
+            builder: (context) {
+              final (hue, palette) = widget.getValues();
+
+              return Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: getColor(hue, palette),
+                  border: .all(color: AnthemTheme.panel.border),
+                  borderRadius: .circular(4),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

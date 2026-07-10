@@ -451,7 +451,7 @@ class _TrackHeadersState extends State<TrackHeaders> {
                       icon: Icons.add,
                       hint: [.new('click', 'Add a new track...')],
                       onPress: () {
-                        menuController.open();
+                        menuController.toggle();
                       },
                       height: 16,
                     ),

@@ -26,7 +26,11 @@ void main() {
   testWidgets('dismissible dialog closes when backdrop is tapped', (
     tester,
   ) async {
-    await _pumpDialogRenderer(tester);
+    var backgroundTapCalls = 0;
+    await _pumpDialogRenderer(
+      tester,
+      onBackgroundTap: () => backgroundTapCalls += 1,
+    );
 
     ServiceRegistry.dialogController.showDialog(
       title: 'Dismissible',
@@ -40,6 +44,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Dismissible content'), findsNothing);
+    expect(backgroundTapCalls, equals(0));
   });
 
   testWidgets('non-dismissible dialog ignores backdrop taps', (tester) async {
@@ -61,13 +66,22 @@ void main() {
   });
 }
 
-Future<void> _pumpDialogRenderer(WidgetTester tester) async {
+Future<void> _pumpDialogRenderer(
+  WidgetTester tester, {
+  VoidCallback? onBackgroundTap,
+}) async {
   await tester.pumpWidget(
-    const Directionality(
+    Directionality(
       textDirection: TextDirection.ltr,
       child: DefaultTextStyle(
         style: TextStyle(fontSize: 12),
-        child: DialogRenderer(child: SizedBox.expand()),
+        child: DialogRenderer(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onBackgroundTap,
+            child: const SizedBox.expand(),
+          ),
+        ),
       ),
     ),
   );

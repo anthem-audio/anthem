@@ -618,34 +618,34 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                   text: 'File',
                   isFirst: true,
                   onPress: () {
-                    fileMenuController.open();
+                    fileMenuController.toggle();
                   },
                 ),
               ),
+              Container(width: 1, color: AnthemTheme.panel.border),
               Menu(
                 menuController: editMenuController,
                 menuDef: editMenuDef,
                 offset: const Offset(0, 1),
-                child: Container(width: 1, color: AnthemTheme.panel.border),
+                child: _ApplicationMenuButton(
+                  text: 'Edit',
+                  onPress: () {
+                    editMenuController.toggle();
+                  },
+                ),
               ),
-              _ApplicationMenuButton(
-                text: 'Edit',
-                onPress: () {
-                  editMenuController.open();
-                },
-              ),
+              Container(width: 1, color: AnthemTheme.panel.border),
               Menu(
                 menuController: helpMenuController,
                 menuDef: helpMenuDef,
                 offset: const Offset(0, 1),
-                child: Container(width: 1, color: AnthemTheme.panel.border),
-              ),
-              _ApplicationMenuButton(
-                text: 'Help',
-                isLast: true,
-                onPress: () {
-                  helpMenuController.open();
-                },
+                child: _ApplicationMenuButton(
+                  text: 'Help',
+                  isLast: true,
+                  onPress: () {
+                    helpMenuController.toggle();
+                  },
+                ),
               ),
             ],
           ),

@@ -36,6 +36,7 @@ import 'package:flutter/widgets.dart';
 /// [closeContextMenu].
 ScreenOverlayHandle openContextMenu(Offset globalPosition, MenuDef menu) {
   final anchorRect = Rect.fromLTWH(globalPosition.dx, globalPosition.dy, 0, 0);
+  final tapRegionGroupId = Object();
 
   final screenOverlayController = ServiceRegistry.screenOverlayController;
   return screenOverlayController.show(
@@ -43,7 +44,11 @@ ScreenOverlayHandle openContextMenu(Offset globalPosition, MenuDef menu) {
       builder: (context) {
         return MenuPositioned(
           anchorRect: anchorRect,
-          child: MenuRenderer(menu: menu),
+          child: MenuRenderer(
+            menu: menu,
+            tapRegionGroupId: tapRegionGroupId,
+            onTapOutside: screenOverlayController.clear,
+          ),
         );
       },
     ),

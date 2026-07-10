@@ -51,8 +51,8 @@ class Menu extends StatefulWidget {
 }
 
 class _MenuState extends State<Menu> {
-  int openMenuID = -1;
-  List<ScreenOverlayHandle> openMenus = [];
+  final Object tapRegionGroupId = Object();
+  ScreenOverlayHandle? openMenuHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -61,13 +61,21 @@ class _MenuState extends State<Menu> {
     );
     widget.menuController.open = ([pos]) =>
         openMenu(screenOverlayController, pos);
-    return widget.child ?? const SizedBox();
+    widget.menuController.close = screenOverlayController.clear;
+    widget.menuController.getIsOpen = () => openMenuHandle != null;
+
+    return TapRegion(
+      groupId: tapRegionGroupId,
+      child: widget.child ?? const SizedBox(),
+    );
   }
 
   void openMenu(
     ScreenOverlayController screenOverlayController,
     Offset? incomingPos,
   ) {
+    if (openMenuHandle != null) return;
+
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final anchorPos =
         incomingPos ??
@@ -86,28 +94,43 @@ class _MenuState extends State<Menu> {
         );
     final anchorRect = Rect.fromLTWH(anchorPos.dx, anchorPos.dy, 0, 0);
 
-    final handle = screenOverlayController.show(
+    late final ScreenOverlayHandle handle;
+    handle = screenOverlayController.show(
       ScreenOverlayEntry(
         builder: (context) {
           return MenuPositioned(
             anchorRect: anchorRect,
-            child: MenuRenderer(menu: widget.menuDef),
+            child: MenuRenderer(
+              menu: widget.menuDef,
+              tapRegionGroupId: tapRegionGroupId,
+              onTapOutside: screenOverlayController.clear,
+            ),
           );
         },
-        onClose: widget.onClose,
+        onClose: () {
+          if (openMenuHandle == handle) {
+            openMenuHandle = null;
+          }
+          widget.onClose?.call();
+        },
       ),
     );
-    openMenus.add(handle);
-  }
-
-  void closeMenu() {
-    for (var menu in openMenus) {
-      menu.close();
-    }
-    openMenus.clear();
+    openMenuHandle = handle;
   }
 }
 
 class AnthemMenuController {
   late void Function([Offset? pos]) open;
+  late void Function() close;
+  late bool Function() getIsOpen;
+
+  bool get isOpen => getIsOpen();
+
+  void toggle([Offset? pos]) {
+    if (isOpen) {
+      close();
+    } else {
+      open(pos);
+    }
+  }
 }
