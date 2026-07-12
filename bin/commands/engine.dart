@@ -1056,6 +1056,11 @@ const _lameConfigureArguments = [
   '--with-fileio=lame',
 ];
 
+// Anthem uses LAME only for audio encoding, without command-line ID3 metadata.
+// Disabling its optional iconv path also avoids an invalid langinfo.h assumption
+// in the bundled LAME version when building with MinGW.
+const _lameConfigureEnvironment = {'am_cv_func_iconv': 'no'};
+
 String get _lameExecutableName => Platform.isWindows ? 'lame.exe' : 'lame';
 
 void _normalizeLameBuildLineEndings(Uri sourceBuildPath) {
@@ -1097,6 +1102,7 @@ void _normalizeLameBuildLineEndings(Uri sourceBuildPath) {
 Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
   final workingDirectory = sourceBuildPath.toFilePath(windows: false);
   final environment = <String, String>{
+    ..._lameConfigureEnvironment,
     if (Platform.isLinux && Platform.environment['CC'] == null)
       'CC': _requireLlvmExecutable('clang'),
   };
@@ -1210,7 +1216,11 @@ make -j$jobs
   await _runInheritedProcess(
     msys2Bash,
     ['-lc', script],
-    environment: {'MSYSTEM': msystem, 'CHERE_INVOKING': '1'},
+    environment: {
+      ..._lameConfigureEnvironment,
+      'MSYSTEM': msystem,
+      'CHERE_INVOKING': '1',
+    },
   );
 }
 
