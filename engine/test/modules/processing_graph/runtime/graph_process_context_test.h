@@ -20,12 +20,13 @@
 #pragma once
 
 #include "modules/core/constants.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain.h"
 
 #include <juce_core/juce_core.h>
+#include <vector>
 
 namespace anthem {
 
@@ -81,19 +82,25 @@ public:
   void testBuffersUseExplicitLayout() {
     beginTest("Graph-owned buffers use the explicit compile-time layout");
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 64,
         });
+    GraphProcessContext::Builder contextBuilder(context);
 
-    auto audioIndex = context.allocateAudioBuffer();
-    auto controlIndex = context.allocateControlBuffer();
-    auto eventIndex = context.allocateEventBuffer(4);
+    auto audioIndex = contextBuilder.declareAudioBufferSlot();
+    auto controlIndex = contextBuilder.allocateControlBuffer();
+    auto eventIndex = contextBuilder.allocateEventBuffer(4);
+    contextBuilder.registerSampleBufferSlotsUsedByNode(
+        std::vector<size_t>{audioIndex, controlIndex});
+    contextBuilder.finalizeSampleArena();
+    context.rt_prepareSampleArenaForBlock();
+    context.rt_allocateAllSampleBufferSlots();
 
-    auto& audioBuffer = context.getAudioBuffer(audioIndex);
-    auto& controlBuffer = context.getControlBuffer(controlIndex);
+    auto audioBuffer = context.rt_getAudioBufferView(audioIndex);
+    auto controlBuffer = context.rt_getControlBufferView(controlIndex);
     auto& eventBuffer = context.getEventBuffer(eventIndex);
 
     expectEquals(
@@ -111,22 +118,37 @@ public:
   void testBufferIndicesRemainStableAndMonotonic() {
     beginTest("Graph-owned buffer indices remain stable as buffers are appended");
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
+    GraphProcessContext::Builder contextBuilder(context);
 
-    auto firstAudioIndex = context.allocateAudioBuffer();
-    auto secondAudioIndex = context.allocateAudioBuffer();
-    auto firstControlIndex = context.allocateControlBuffer();
-    auto secondControlIndex = context.allocateControlBuffer();
-    auto firstEventIndex = context.allocateEventBuffer(2);
-    auto secondEventIndex = context.allocateEventBuffer(3);
+    auto firstAudioIndex = contextBuilder.declareAudioBufferSlot();
+    auto secondAudioIndex = contextBuilder.declareAudioBufferSlot();
+    auto firstControlIndex = contextBuilder.allocateControlBuffer();
+    auto secondControlIndex = contextBuilder.allocateControlBuffer();
+    auto firstEventIndex = contextBuilder.allocateEventBuffer(2);
+    auto secondEventIndex = contextBuilder.allocateEventBuffer(3);
 
-    context.getAudioBuffer(firstAudioIndex).setSample(0, 0, 0.5f);
-    context.getControlBuffer(firstControlIndex).setSample(0, 0, 0.25f);
+    auto thirdAudioIndex = contextBuilder.declareAudioBufferSlot();
+    auto thirdControlIndex = contextBuilder.allocateControlBuffer();
+    auto thirdEventIndex = contextBuilder.allocateEventBuffer(4);
+
+    contextBuilder.registerSampleBufferSlotsUsedByNode(std::vector<size_t>{firstAudioIndex,
+        secondAudioIndex,
+        thirdAudioIndex,
+        firstControlIndex,
+        secondControlIndex,
+        thirdControlIndex});
+    contextBuilder.finalizeSampleArena();
+    context.rt_prepareSampleArenaForBlock();
+    context.rt_allocateAllSampleBufferSlots();
+
+    context.rt_getAudioBufferView(firstAudioIndex).setSample(0, 0, 0.5f);
+    context.rt_getControlBufferView(firstControlIndex).setSample(0, 0, 0.25f);
     context.getEventBuffer(firstEventIndex)
         ->addEvent(LiveEvent{
             .sampleOffset = 0,
@@ -134,25 +156,22 @@ public:
             .event = Event(NoteOnEvent(60, 0, 1.0f, 0.0f)),
         });
 
-    auto thirdAudioIndex = context.allocateAudioBuffer();
-    auto thirdControlIndex = context.allocateControlBuffer();
-    auto thirdEventIndex = context.allocateEventBuffer(4);
-
     expectEquals(
         static_cast<int>(firstAudioIndex), 0, "First audio buffer index should start at zero.");
     expectEquals(static_cast<int>(secondAudioIndex),
         1,
         "Audio buffer indices should increment monotonically.");
     expectEquals(static_cast<int>(thirdAudioIndex),
-        2,
+        4,
         "Appended audio buffers should keep stable earlier indices.");
-    expectEquals(
-        static_cast<int>(firstControlIndex), 0, "First control buffer index should start at zero.");
+    expectEquals(static_cast<int>(firstControlIndex),
+        2,
+        "First control buffer index should follow audio sample slots.");
     expectEquals(static_cast<int>(secondControlIndex),
-        1,
+        3,
         "Control buffer indices should increment monotonically.");
     expectEquals(static_cast<int>(thirdControlIndex),
-        2,
+        5,
         "Appended control buffers should keep stable earlier indices.");
     expectEquals(
         static_cast<int>(firstEventIndex), 0, "First event buffer index should start at zero.");
@@ -163,11 +182,11 @@ public:
         2,
         "Appended event buffers should keep stable earlier indices.");
 
-    expectWithinAbsoluteError(context.getAudioBuffer(firstAudioIndex).getSample(0, 0),
+    expectWithinAbsoluteError(context.rt_getAudioBufferView(firstAudioIndex).getSample(0, 0),
         0.5f,
         0.0001f,
         "Earlier audio buffers should remain reachable by their original index.");
-    expectWithinAbsoluteError(context.getControlBuffer(firstControlIndex).getSample(0, 0),
+    expectWithinAbsoluteError(context.rt_getControlBufferView(firstControlIndex).getSample(0, 0),
         0.25f,
         0.0001f,
         "Earlier control buffers should remain reachable by their original index.");
@@ -179,26 +198,32 @@ public:
   void testReserveDoesNotAllocateBuffersEagerly() {
     beginTest("reserve only reserves capacity and does not allocate graph buffers eagerly");
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 32,
         });
+    GraphProcessContext::Builder contextBuilder(context);
 
-    context.reserve(2, 4, 3, 5);
+    contextBuilder.reserve(2, 4, 3, 5);
 
-    auto audioIndex = context.allocateAudioBuffer();
-    auto controlIndex = context.allocateControlBuffer();
-    auto eventIndex = context.allocateEventBuffer(6);
+    auto audioIndex = contextBuilder.declareAudioBufferSlot();
+    auto controlIndex = contextBuilder.allocateControlBuffer();
+    auto eventIndex = contextBuilder.allocateEventBuffer(6);
+    contextBuilder.registerSampleBufferSlotsUsedByNode(
+        std::vector<size_t>{audioIndex, controlIndex});
+    contextBuilder.finalizeSampleArena();
+    context.rt_prepareSampleArenaForBlock();
+    context.rt_allocateAllSampleBufferSlots();
 
     expectEquals(
         static_cast<int>(audioIndex), 0, "reserve should not consume audio buffer indices.");
     expectEquals(
-        static_cast<int>(controlIndex), 0, "reserve should not consume control buffer indices.");
+        static_cast<int>(controlIndex), 1, "Control slots should share sample buffer indices.");
     expectEquals(
         static_cast<int>(eventIndex), 0, "reserve should not consume event buffer indices.");
-    expectEquals(context.getAudioBuffer(audioIndex).getNumSamples(),
+    expectEquals(context.rt_getAudioBufferView(audioIndex).getNumSamples(),
         32,
         "Buffers allocated after reserve should still use the configured block size.");
     expectEquals(static_cast<int>(context.getEventBuffer(eventIndex)->getSize()),
@@ -225,15 +250,17 @@ public:
         0.25,
         graph_test_helpers::makeParameterConfig(101, 0.25)));
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 32,
         });
-    context.reserve(1, 2, 1, 0);
+    GraphProcessContext::Builder contextBuilder(context);
+    contextBuilder.reserve(1, 2, 1, 0);
 
-    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(context, node);
+    auto& nodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(context, contextBuilder, node);
 
     expectEquals(nodeContext.getInputAudioBuffer(inputPortId).getNumChannels(),
         2,
@@ -241,9 +268,9 @@ public:
     expectEquals(nodeContext.getOutputAudioBuffer(outputPortId).getNumSamples(),
         32,
         "Output audio buffer should be allocated with the graph block size.");
-    expectEquals(nodeContext.getInputControlBuffer(gainPortId).getNumChannels(),
-        1,
-        "Control input buffers should be mono.");
+    auto inputControlBuffer = nodeContext.getInputControlBuffer(gainPortId);
+    expect(inputControlBuffer.isValid(), "Control input should have a standalone test buffer.");
+    expectEquals(inputControlBuffer.getNumChannels(), 1, "Control input buffers should be mono.");
     expectEquals(static_cast<int>(nodeContext.rt_getInputParameterBindings().size()),
         1,
         "A single control input should create one parameter binding.");
@@ -262,37 +289,38 @@ public:
   }
 
   void testMultipleNodeContextsShareGraphOwnedServices() {
-    beginTest("Multiple node contexts share the same graph-owned runtime services but not per-port "
+    beginTest("Multiple node contexts share the same engine runtime services but not per-port "
               "buffers");
 
     auto firstNode = makeFullyBoundNode(10);
     auto secondNode = makeFullyBoundNode(20);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 24,
         });
-    context.reserve(2, 4, 4, 4);
+    GraphProcessContext::Builder contextBuilder(context);
+    contextBuilder.reserve(2, 4, 4, 4);
 
     auto& firstNodeContext =
-        graph_test_helpers::createStandaloneNodeProcessContext(context, firstNode);
+        graph_test_helpers::createStandaloneNodeProcessContext(context, contextBuilder, firstNode);
     auto& secondNodeContext =
-        graph_test_helpers::createStandaloneNodeProcessContext(context, secondNode);
+        graph_test_helpers::createStandaloneNodeProcessContext(context, contextBuilder, secondNode);
 
-    auto& firstInputAudio = firstNodeContext.getInputAudioBuffer(1);
-    auto& secondInputAudio = secondNodeContext.getInputAudioBuffer(1);
+    auto firstInputAudio = firstNodeContext.getInputAudioBuffer(1);
+    auto secondInputAudio = secondNodeContext.getInputAudioBuffer(1);
     context
-        .getAudioBuffer(firstNodeContext.getBufferIndex(
+        .rt_getAudioBufferView(firstNodeContext.getBufferIndex(
             NodePortDataType::audio, NodeProcessContext::BufferDirection::input, 1))
         .setSample(0, 0, 0.5f);
     context
-        .getAudioBuffer(secondNodeContext.getBufferIndex(
+        .rt_getAudioBufferView(secondNodeContext.getBufferIndex(
             NodePortDataType::audio, NodeProcessContext::BufferDirection::input, 1))
         .setSample(0, 0, 0.25f);
 
-    expect(&firstInputAudio != &secondInputAudio,
+    expect(firstInputAudio.getWritePointer(0) != secondInputAudio.getWritePointer(0),
         "Each node context should get distinct graph-owned buffers for matching port shapes.");
     expectWithinAbsoluteError(secondInputAudio.getSample(0, 0),
         0.25f,
@@ -313,15 +341,17 @@ public:
 
     auto node = makeEventHeavyNode(10);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext context(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
-    context.reserve(1, 0, 0, 4);
+    GraphProcessContext::Builder contextBuilder(context);
+    contextBuilder.reserve(1, 0, 0, 4);
 
-    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(context, node);
+    auto& nodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(context, contextBuilder, node);
 
     auto& inputOne = nodeContext.getInputEventBuffer(11);
     auto& inputTwo = nodeContext.getInputEventBuffer(12);

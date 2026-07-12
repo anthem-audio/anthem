@@ -7,3 +7,6 @@
 [submodule "engine/include/brickworks"]
 	path = engine/include/brickworks
 	url = https://github.com/Orastron/brickworks.git
+[submodule "engine/include/lame"]
+	path = engine/include/lame
+	url = https://github.com/ShiftMediaProject/lame.git

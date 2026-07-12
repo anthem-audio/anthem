@@ -19,6 +19,7 @@
 
 // #define JUCE_CHECK_MEMORY_LEAKS 0
 
+#include "console_logger.h"
 #include "modules/core/engine.h"
 
 #include <juce_audio_devices/juce_audio_devices.h>
@@ -27,7 +28,6 @@
 #include <memory>
 
 #ifdef __EMSCRIPTEN__
-#include "console_logger.h"
 #include "modules/core/comms_methods_for_ui_wasm.h"
 #endif
 
@@ -41,13 +41,33 @@ private:
     // juce::Logger::writeToLog("change detected");
   }
 
+  juce::String getEngineIdForLogging() {
+    auto engineId = juce::SystemStats::getEnvironmentVariable("ANTHEM_ENGINE_ID", "unknown").trim();
+    return engineId.isEmpty() ? "unknown" : engineId;
+  }
+
+  std::unique_ptr<juce::FileLogger> createFileLogger(const juce::String& engineId) {
+    auto logSessionDir = juce::SystemStats::getEnvironmentVariable("ANTHEM_LOG_SESSION_DIR", "");
+
+    if (logSessionDir.isNotEmpty()) {
+      auto logFile =
+          juce::File(logSessionDir)
+              .getChildFile("engine-" + engineId + "-" +
+                            juce::String(juce::Time::getCurrentTime().toMilliseconds()) + ".log")
+              .getNonexistentSibling(false);
+      return std::make_unique<juce::FileLogger>(logFile, "Anthem Engine", -1);
+    }
+
+    return std::unique_ptr<juce::FileLogger>(juce::FileLogger::createDefaultAppLogger(
+        "Anthem", "AnthemEngine.log", "Anthem Engine", static_cast<juce::int64>(1024) * 1024));
+  }
+
   void initializeLogging() {
 #ifdef __EMSCRIPTEN__
     logger = std::make_unique<ConsoleLogger>();
     juce::Logger::setCurrentLogger(logger.get());
 #else
-    auto fileLogger = std::unique_ptr<juce::FileLogger>(juce::FileLogger::createDefaultAppLogger(
-        "Anthem", "AnthemEngine.log", "Anthem Engine", static_cast<juce::int64>(1024) * 1024));
+    auto fileLogger = createFileLogger(getEngineIdForLogging());
 
     if (fileLogger == nullptr) {
       juce::Logger::writeToLog("Failed to create Anthem engine file logger.");
@@ -55,8 +75,12 @@ private:
     }
 
     const auto logFilePath = fileLogger->getLogFile().getFullPathName();
-    juce::Logger::setCurrentLogger(fileLogger.get());
+#if !defined(NDEBUG)
+    logger = std::make_unique<TeeLogger>(std::move(fileLogger), std::make_unique<ConsoleLogger>());
+#else
     logger = std::move(fileLogger);
+#endif
+    juce::Logger::setCurrentLogger(logger.get());
 
     juce::Logger::writeToLog(juce::String("Logging to ") + logFilePath);
 #endif
@@ -68,7 +92,7 @@ public:
     return "JUCE_APPLICATION_NAME_STRING";
   }
   const juce::String getApplicationVersion() override {
-    return "0.0.1";
+    return ANTHEM_VERSION_STRING;
   }
 
   bool moreThanOneInstanceAllowed() override {

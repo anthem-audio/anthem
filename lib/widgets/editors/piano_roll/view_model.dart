@@ -21,20 +21,24 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
+import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:collection/collection.dart';
 import 'package:mobx/mobx.dart';
 
 part 'view_model.g.dart';
 
-enum ActiveNoteAttribute {
+enum PianoRollStem {
   velocity(bottom: 0, baseline: 0, top: 1),
   pan(bottom: -1, baseline: 0, top: 1);
 
-  const ActiveNoteAttribute({
+  const PianoRollStem({
     required this.bottom,
     required this.baseline,
     required this.top,
@@ -65,14 +69,21 @@ class PianoRollRenderedNoteRef {
   int get hashCode => Object.hash(id, isTransient);
 }
 
+class PianoRollHitTestResult {
+  final CanvasAnnotation<PianoRollRenderedNoteRef>? note;
+  final CanvasAnnotation<PianoRollRenderedNoteRef>? resizeHandle;
+
+  const PianoRollHitTestResult({this.note, this.resizeHandle});
+}
+
 // ignore: library_private_types_in_public_api
 class PianoRollViewModel = _PianoRollViewModel with _$PianoRollViewModel;
 
-abstract class _PianoRollViewModel with Store {
+abstract class _PianoRollViewModel with Store implements DisposableService {
   _PianoRollViewModel({
     required this.keyHeight,
     required double keyValueAtTop,
-    required this.timeView,
+    required this.timeRange,
   }) : keyValueAtTopRaw = keyValueAtTop;
 
   @observable
@@ -92,7 +103,22 @@ abstract class _PianoRollViewModel with Store {
   bool keyValueAtTopAnimationShouldSnap = false;
 
   @observable
-  TimeRange timeView;
+  TimeRange timeRange;
+
+  TimeRangeViewport? _timeRangeViewport;
+
+  TimeRangeViewport get timeRangeViewport {
+    final timeRangeViewport = _timeRangeViewport;
+    if (timeRangeViewport != null &&
+        identical(timeRangeViewport.target, timeRange)) {
+      return timeRangeViewport;
+    }
+
+    return _timeRangeViewport = TimeRangeViewport(
+      target: timeRange,
+      contentSource: const TimeRangeContentSource.activePattern(),
+    );
+  }
 
   @observable
   Rectangle<double>? selectionBox;
@@ -112,22 +138,34 @@ abstract class _PianoRollViewModel with Store {
   Id? hoveredNote;
 
   @observable
-  ActiveNoteAttribute activeNoteAttribute = ActiveNoteAttribute.velocity;
+  PianoRollStem activeStem = PianoRollStem.velocity;
 
   @observable
   EditorTool tool = EditorTool.pencil;
 
   @observable
-  bool noteAttributeEditorOpen = true;
+  bool stemEditorOpen = true;
 
   final visibleNotes = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
   final visibleResizeAreas = CanvasAnnotationSet<PianoRollRenderedNoteRef>();
+  final noteLabelImageCache = NoteLabelImageCache();
 
   // These don't need to be observable, since they're just used during event
   // handling.
   Time cursorNoteLength = 96;
   double cursorNoteVelocity = 0.75;
   double cursorNotePan = 0;
+
+  void ensureRenderCachesForDevicePixelRatio(double devicePixelRatio) {
+    if (!noteLabelImageCache.isInitializedFor(devicePixelRatio)) {
+      noteLabelImageCache.init(devicePixelRatio);
+    }
+  }
+
+  @override
+  void dispose() {
+    noteLabelImageCache.dispose();
+  }
 
   void clearTransientNoteState() {
     pressedNote = null;
@@ -186,36 +224,8 @@ abstract class _PianoRollViewModel with Store {
     return note;
   }
 
-  List<ResolvedPatternNote> resolveRenderedNotes(PatternModel pattern) {
-    final resolvedNotes = <ResolvedPatternNote>[];
-    final overriddenNotes = <ResolvedPatternNote>[];
-    final previewOnlyNotes = <ResolvedPatternNote>[];
-
-    for (final note in pattern.getResolvedNotes()) {
-      if (note.isPreviewOnly) {
-        previewOnlyNotes.add(note);
-      } else if (note.hasOverride) {
-        overriddenNotes.add(note);
-      } else {
-        resolvedNotes.add(note);
-      }
-    }
-
-    // Notes painted later appear above earlier notes and win hit tests. Preview
-    // notes should therefore sit on top, with overridden committed notes above
-    // plain committed notes.
-    resolvedNotes.addAll(overriddenNotes);
-    resolvedNotes.addAll(previewOnlyNotes);
-
-    return resolvedNotes;
-  }
-
   /// Calculates the note and resize handle under the cursor, if there is one.
-  ({
-    CanvasAnnotation<PianoRollRenderedNoteRef>? note,
-    CanvasAnnotation<PianoRollRenderedNoteRef>? resizeHandle,
-  })
-  getContentUnderCursor(Offset pos) {
+  PianoRollHitTestResult hitTestContent(Offset pos) {
     final noteUnderCursor = visibleNotes.hitTest(pos);
     final resizeHandleUnderCursor = visibleResizeAreas
         .hitTestAll(pos)
@@ -227,8 +237,11 @@ abstract class _PianoRollViewModel with Store {
         .firstWhereOrNull(
           (element) =>
               noteUnderCursor == null ||
-              element.metadata == noteUnderCursor.metadata,
+              element.metadata == noteUnderCursor.annotation.metadata,
         );
-    return (note: noteUnderCursor, resizeHandle: resizeHandleUnderCursor);
+    return PianoRollHitTestResult(
+      note: noteUnderCursor?.annotation,
+      resizeHandle: resizeHandleUnderCursor,
+    );
   }
 }

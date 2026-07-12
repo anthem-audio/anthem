@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -36,6 +36,7 @@ class NodePortModel extends _NodePortModel
     required super.id,
     required super.nodeId,
     required super.config,
+    super.parameterDisplayText,
   }) : super(connections: AnthemObservableList()) {
     if (config.parameterConfig != null) {
       parameterValue = config.parameterConfig!.defaultValue;
@@ -58,8 +59,8 @@ class NodePortModel extends _NodePortModel
 
 abstract class _NodePortModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  // This will map to the 32-bit parameter ID from the VST standard if this is a
-  // control input port.
+  // Port IDs are unique within their node, data type and direction. For plugin
+  // parameter ports, this maps to the plugin's parameter ID.
   int id;
 
   Id nodeId;
@@ -70,13 +71,25 @@ abstract class _NodePortModel
 
   /// The normalized value of the parameter, if this port is a control input
   /// port.
+  ///
+  /// For third-party plugin parameters, this mirrors the latest value known to
+  /// Anthem for UI and automation workflows. It is not restored into the plugin
+  /// on engine start; the plugin's opaque processor state is the restore
+  /// source.
   @anthemObservable
   double? parameterValue;
+
+  /// Runtime display text for the current parameter value, usually supplied by
+  /// third-party plugins.
+  @anthemObservable
+  @hide
+  String? parameterDisplayText;
 
   _NodePortModel({
     required this.id,
     required this.nodeId,
     required this.config,
     required this.connections,
+    this.parameterDisplayText,
   });
 }

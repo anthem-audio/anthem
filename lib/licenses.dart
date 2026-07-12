@@ -118,6 +118,19 @@ Emscripten. These modifications were made between September and October of 2025.
     yield LicenseEntryWithLineBreaks(['JUCE'], agpl);
   });
 
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(
+      ['LAME'],
+      '''
+LAME 3.100 source code is included as a Git submodule at engine/include/lame.
+
+The LAME project is distributed under the GNU Library General Public License,
+version 2. See engine/include/lame/COPYING for the bundled source.
+''',
+    );
+    yield LicenseEntryWithLineBreaks(['LAME'], lgpl2);
+  });
+
   // JUCE dependencies are below.
 
   LicenseRegistry.addLicense(() async* {

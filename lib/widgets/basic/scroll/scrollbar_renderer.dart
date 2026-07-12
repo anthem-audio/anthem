@@ -17,12 +17,15 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/service_registry.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/widgets.dart';
 
 import '../../../theme.dart';
 
 enum ScrollbarDirection { horizontal, vertical }
+
+const _disabledLogicalTravelEpsilon = 1e-9;
 
 class ScrollbarChangeEvent {
   final double handleStart;
@@ -32,6 +35,128 @@ class ScrollbarChangeEvent {
     required this.handleStart,
     required this.handleEnd,
   });
+}
+
+class _ScrollbarGeometry {
+  final double handleStart;
+  final double handleEnd;
+  final double logicalTravel;
+  final double pixelTravel;
+
+  const _ScrollbarGeometry({
+    required this.handleStart,
+    required this.handleEnd,
+    required this.logicalTravel,
+    required this.pixelTravel,
+  });
+}
+
+_ScrollbarGeometry _calculateScrollbarGeometry({
+  required double trackSize,
+  required double scrollRegionStart,
+  required double scrollRegionEnd,
+  required double handleStart,
+  required double handleEnd,
+  required double minHandlePixelSize,
+  required double minHandleSize,
+  required bool canScrollPastStart,
+  required bool canScrollPastEnd,
+}) {
+  final scrollRegionSize = scrollRegionEnd - scrollRegionStart;
+  final handleSize = math.max(0.0, handleEnd - handleStart);
+
+  if (trackSize <= 0 || scrollRegionSize <= 0) {
+    return const _ScrollbarGeometry(
+      handleStart: 0,
+      handleEnd: 0,
+      logicalTravel: 0,
+      pixelTravel: 0,
+    );
+  }
+
+  final effectiveMinHandleSize = math.min(
+    scrollRegionSize,
+    math.max(0.0, minHandleSize),
+  );
+  final visualHandleRegionSize = math.min(
+    scrollRegionSize,
+    math.max(handleSize, effectiveMinHandleSize),
+  );
+  final effectiveMinHandlePixelSize = math.min(
+    trackSize,
+    math.max(0.0, minHandlePixelSize),
+  );
+  final minVisualHandleSize = math.min(
+    trackSize,
+    math.max(
+      effectiveMinHandlePixelSize,
+      trackSize * effectiveMinHandleSize / scrollRegionSize,
+    ),
+  );
+  final visualHandleSize = math.min(
+    trackSize,
+    math.max(
+      minVisualHandleSize,
+      trackSize * visualHandleRegionSize / scrollRegionSize,
+    ),
+  );
+
+  final logicalTravel = math.max(0.0, scrollRegionSize - handleSize);
+  final pixelTravel = math.max(0.0, trackSize - visualHandleSize);
+
+  final isPastStart = canScrollPastStart && handleStart < scrollRegionStart;
+  final isPastEnd = canScrollPastEnd && handleEnd > scrollRegionEnd;
+
+  if (isPastStart || isPastEnd) {
+    final rawHandleStart =
+        trackSize * (handleStart - scrollRegionStart) / scrollRegionSize;
+    final rawHandleEnd =
+        trackSize * (handleEnd - scrollRegionStart) / scrollRegionSize;
+    final rawHandleSize = rawHandleEnd - rawHandleStart;
+
+    var visualHandleStart = rawHandleStart;
+    var visualHandleEnd = rawHandleEnd;
+
+    if (rawHandleSize < minVisualHandleSize) {
+      final handleCenter = (rawHandleStart + rawHandleEnd) / 2;
+      visualHandleStart = handleCenter - minVisualHandleSize / 2;
+      visualHandleEnd = handleCenter + minVisualHandleSize / 2;
+    }
+
+    if (isPastStart) {
+      visualHandleStart = 0;
+      visualHandleEnd = math.max(visualHandleEnd, minVisualHandleSize);
+    }
+
+    if (isPastEnd) {
+      visualHandleEnd = trackSize;
+      visualHandleStart = math.min(
+        visualHandleStart,
+        trackSize - minVisualHandleSize,
+      );
+    }
+
+    return _ScrollbarGeometry(
+      handleStart: visualHandleStart.clamp(0.0, trackSize).toDouble(),
+      handleEnd: visualHandleEnd.clamp(0.0, trackSize).toDouble(),
+      logicalTravel: logicalTravel,
+      pixelTravel: pixelTravel,
+    );
+  }
+
+  final progress = logicalTravel == 0
+      ? 0.0
+      : ((handleStart - scrollRegionStart) / logicalTravel)
+            .clamp(0.0, 1.0)
+            .toDouble();
+  final visualHandleStart = progress * pixelTravel;
+
+  return _ScrollbarGeometry(
+    handleStart: visualHandleStart,
+    handleEnd: visualHandleStart + visualHandleSize,
+    logicalTravel: logicalTravel,
+    pixelTravel: pixelTravel,
+  );
 }
 
 class ScrollbarRenderer extends StatefulWidget {
@@ -54,8 +179,8 @@ class ScrollbarRenderer extends StatefulWidget {
 
   final void Function(ScrollbarChangeEvent event)? onChange;
 
-  /// If true, the scrollbar will show as disabled when the start is 0 and the
-  /// end is 1.
+  /// If true, the scrollbar will show as disabled when the handle is at least
+  /// as large as the scroll region.
   final bool disableAtFullSize;
 
   const ScrollbarRenderer({
@@ -91,19 +216,32 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     setState(() {
       pressed = true;
     });
-
-    ServiceRegistry.mainWindowController.setCursorOverride(
-      SystemMouseCursors.click,
-    );
   }
 
   void _handleMove(double pos, double trackSize) {
+    if (trackSize <= 0) {
+      return;
+    }
+
     final scrollRegionSize = widget.scrollRegionEnd - widget.scrollRegionStart;
 
     // Delta since mouse down
     final pixelDelta = pos - startPos;
 
-    final handleDelta = (pixelDelta / trackSize) * scrollRegionSize;
+    final geometry = _calculateScrollbarGeometry(
+      trackSize: trackSize,
+      scrollRegionStart: widget.scrollRegionStart,
+      scrollRegionEnd: widget.scrollRegionEnd,
+      handleStart: startHandleStart,
+      handleEnd: startHandleEnd,
+      minHandlePixelSize: widget.minHandlePixelSize,
+      minHandleSize: widget.minHandleSize,
+      canScrollPastStart: widget.canScrollPastStart,
+      canScrollPastEnd: widget.canScrollPastEnd,
+    );
+    final handleDelta = geometry.pixelTravel == 0
+        ? (pixelDelta / trackSize) * scrollRegionSize
+        : (pixelDelta / geometry.pixelTravel) * geometry.logicalTravel;
 
     var handleStart = startHandleStart + handleDelta;
     var handleEnd = startHandleEnd + handleDelta;
@@ -143,8 +281,6 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
     setState(() {
       pressed = false;
     });
-
-    ServiceRegistry.mainWindowController.clearCursorOverride();
   }
 
   @override
@@ -163,45 +299,23 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
             : constraints.maxHeight;
         final trackSize = mainAxisSize;
 
-        // Calculate handle start & end position
-
-        final scrollRegionSize =
-            widget.scrollRegionEnd - widget.scrollRegionStart;
-        final normalizedHandleStart =
-            (widget.handleStart - widget.scrollRegionStart) / scrollRegionSize;
-        final normalizedHandleEnd =
-            (widget.handleEnd - widget.scrollRegionStart) / scrollRegionSize;
-
-        var handleStart = trackSize * normalizedHandleStart;
-        var handleEnd = trackSize * normalizedHandleEnd;
-
-        // Ensure handle size is at least the supplied minimum
-        if (handleEnd - handleStart < widget.minHandlePixelSize) {
-          final extraSizeNeeded =
-              widget.minHandlePixelSize - (handleEnd - handleStart);
-
-          handleEnd += extraSizeNeeded / 2;
-          handleStart -= extraSizeNeeded / 2;
-        }
-
-        // Correct for out of bounds
-        if (handleStart < 0) {
-          handleStart = 0;
-        }
-        if (handleEnd > trackSize) {
-          handleEnd = trackSize;
-        }
-        if (handleStart > trackSize - widget.minHandlePixelSize) {
-          handleStart = trackSize - widget.minHandlePixelSize;
-        }
-        if (handleEnd < 0 + widget.minHandlePixelSize) {
-          handleEnd = 0 + widget.minHandlePixelSize;
-        }
+        final geometry = _calculateScrollbarGeometry(
+          trackSize: trackSize,
+          scrollRegionStart: widget.scrollRegionStart,
+          scrollRegionEnd: widget.scrollRegionEnd,
+          handleStart: widget.handleStart,
+          handleEnd: widget.handleEnd,
+          minHandlePixelSize: widget.minHandlePixelSize,
+          minHandleSize: widget.minHandleSize,
+          canScrollPastStart: widget.canScrollPastStart,
+          canScrollPastEnd: widget.canScrollPastEnd,
+        );
+        final handleStart = geometry.handleStart;
+        final handleEnd = geometry.handleEnd;
 
         final isDisabled =
             widget.disableAtFullSize &&
-            (widget.handleStart <= widget.scrollRegionStart &&
-                widget.handleEnd >= widget.scrollRegionEnd);
+            geometry.logicalTravel <= _disabledLogicalTravelEpsilon;
 
         var handleColor = AnthemTheme.panel.scrollbar;
         if (isDisabled) {
@@ -221,7 +335,6 @@ class _ScrollbarRendererState extends State<ScrollbarRenderer> {
               top: isHorizontal ? 1 : handleStart,
               bottom: isHorizontal ? 1 : mainAxisSize - handleEnd,
               child: MouseRegion(
-                cursor: SystemMouseCursors.click,
                 onEnter: (e) {
                   setState(() {
                     hovered = true;

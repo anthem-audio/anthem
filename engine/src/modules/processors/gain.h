@@ -44,7 +44,7 @@ public:
   GainProcessor(GainProcessor&&) noexcept = default;
   GainProcessor& operator=(GainProcessor&&) noexcept = default;
 
-  void prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 };
 

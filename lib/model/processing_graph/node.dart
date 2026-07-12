@@ -24,11 +24,14 @@ import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/balance.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/simple_midi_generator.dart';
 import 'package:anthem/model/processing_graph/processors/simple_volume_lfo.dart';
@@ -42,6 +45,35 @@ import 'processors/master_output.dart';
 import 'processors/tone_generator.dart';
 
 part 'node.g.dart';
+
+@AnthemModel(serializable: true, generateModelSync: true)
+class NodeOwnerModel extends _NodeOwnerModel
+    with _$NodeOwnerModel, _$NodeOwnerModelAnthemModelMixin {
+  NodeOwnerModel({super.trackId, super.deviceId}) {
+    if (deviceId != null && trackId == null) {
+      throw ArgumentError('NodeOwnerModel.deviceId requires trackId.');
+    }
+  }
+
+  NodeOwnerModel.uninitialized() : super();
+
+  factory NodeOwnerModel.fromJson(Map<String, dynamic> json) =>
+      _$NodeOwnerModelAnthemModelMixin.fromJson(json);
+}
+
+abstract class _NodeOwnerModel with Store, AnthemModelBase {
+  /// The track this node semantically belongs to, if any.
+  @anthemObservable
+  Id? trackId;
+
+  /// The device this node semantically belongs to, if any.
+  ///
+  /// If this is set, [trackId] must also be set.
+  @anthemObservable
+  Id? deviceId;
+
+  _NodeOwnerModel({this.trackId, this.deviceId});
+}
 
 @AnthemModel.syncedModel(
   cppBehaviorClassName: 'Node',
@@ -59,6 +91,7 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? eventOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
     super.isThirdPartyPlugin = false,
+    super.owner,
   }) : super(
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
          eventInputPorts: eventInputPorts ?? AnthemObservableList(),
@@ -78,6 +111,7 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? eventOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
     super.isThirdPartyPlugin = false,
+    super.owner,
   }) : super(
          id: idAllocator.allocateId(),
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
@@ -99,10 +133,47 @@ class NodeModel extends _NodeModel
         controlOutputPorts: AnthemObservableList(),
         processor: null,
         isThirdPartyPlugin: false,
+        owner: null,
       );
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
+
+  AnthemObservableList<NodePortModel> getInputPortsByType(
+    NodePortDataType dataType,
+  ) {
+    return switch (dataType) {
+      NodePortDataType.audio => audioInputPorts,
+      NodePortDataType.event => eventInputPorts,
+      NodePortDataType.control => controlInputPorts,
+    };
+  }
+
+  AnthemObservableList<NodePortModel> getOutputPortsByType(
+    NodePortDataType dataType,
+  ) {
+    return switch (dataType) {
+      NodePortDataType.audio => audioOutputPorts,
+      NodePortDataType.event => eventOutputPorts,
+      NodePortDataType.control => controlOutputPorts,
+    };
+  }
+
+  NodePortModel getInputPortById(NodePortDataType dataType, int portId) {
+    for (final port in getInputPortsByType(dataType)) {
+      if (port.id == portId) return port;
+    }
+
+    throw Exception('Input port with type $dataType and id $portId not found');
+  }
+
+  NodePortModel getOutputPortById(NodePortDataType dataType, int portId) {
+    for (final port in getOutputPortsByType(dataType)) {
+      if (port.id == portId) return port;
+    }
+
+    throw Exception('Output port with type $dataType and id $portId not found');
+  }
 
   NodePortModel getPortById(int portId) {
     for (final port in audioInputPorts) {
@@ -134,6 +205,18 @@ class NodeModel extends _NodeModel
         .followedBy(controlInputPorts)
         .followedBy(controlOutputPorts);
   }
+
+  void touchControlInputParameter(NodePortModel port) {
+    if (port.nodeId != id ||
+        !controlInputPorts.contains(port) ||
+        port.config.dataType != NodePortDataType.control ||
+        port.config.parameterConfig == null ||
+        lastChangedControlPortId == port.id) {
+      return;
+    }
+
+    lastChangedControlPortId = port.id;
+  }
 }
 
 abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
@@ -157,7 +240,9 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// Serialized state of the processor.
   ///
   /// This is currently only used for third-party plugins, where arbitrary state
-  /// from the plugin needs to be serialized into the project model.
+  /// from the plugin needs to be serialized into the project model. For these
+  /// plugins, this opaque state is the only state restored into the plugin on
+  /// engine start; mirrored control port parameter values are not replayed.
   @hideFromCpp
   String processorState = '';
 
@@ -186,6 +271,20 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   @hide
   TimerDebouncedAction? _stateUpdateDebouncedAction;
+
+  /// The control input port ID of the most recently touched parameter.
+  @anthemObservable
+  @hideButAllowOnChange
+  int? lastChangedControlPortId;
+
+  /// Optional semantic owner information for UI/project logic.
+  ///
+  /// The processing graph remains authoritative for audio topology, while
+  /// tracks and devices remain authoritative for structural ownership. This is
+  /// denormalized metadata used for fast reverse lookups from node to owner.
+  @anthemObservable
+  @hideFromCpp
+  NodeOwnerModel? owner;
 
   /// Schedules a state update for the processor.
   ///
@@ -225,12 +324,20 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
       return;
     }
 
-    // Send the current state of the processor to the engine.
-    project.engine.processingGraphApi.setPluginState(id, processorState);
-    stateIsSentToEngineCompleter.complete();
+    if (processorState.isNotEmpty) {
+      project.engine.processingGraphApi.setPluginState(id, processorState);
+    }
+
+    if (!stateIsSentToEngineCompleter.isCompleted) {
+      stateIsSentToEngineCompleter.complete();
+    }
   }
 
   void handleEngineStateChange(EngineState state) {
+    if (state == EngineState.stopped) {
+      lastChangedControlPortId = null;
+    }
+
     if (!isThirdPartyPlugin) return;
 
     if (state == EngineState.stopped) {
@@ -245,10 +352,12 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   @Union([
     BalanceProcessorModel,
+    ControlValueVisualizationProcessorModel,
     DbMeterProcessorModel,
     GainProcessorModel,
     LiveEventProviderProcessorModel,
     MasterOutputProcessorModel,
+    SequenceAutomationProviderProcessorModel,
     SequenceNoteProviderProcessorModel,
     SimpleMidiGeneratorProcessorModel,
     SimpleVolumeLfoProcessorModel,
@@ -268,6 +377,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     required this.controlOutputPorts,
     required this.processor,
     required this.isThirdPartyPlugin,
+    required this.owner,
   }) {
     onModelFirstAttached(() {
       if (!isThirdPartyPlugin) return;

@@ -25,14 +25,15 @@ import 'package:anthem/engine_api/engine_connector.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
 
-export 'package:anthem/engine_api/messages/messages.dart'
-    show InvalidationRange, FieldAccess, FieldUpdateKind;
-
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
+part 'api/render_api.dart';
 part 'api/sequencer_api.dart';
 part 'api/visualization_api.dart';
 
@@ -99,23 +100,34 @@ enum StartupSendBehavior {
   bypassStartupQueue,
 }
 
-class _QueuedStartupRequest {
+class _QueuedEngineRequest {
   final Request request;
   final Completer<Response>? responseCompleter;
+  final Duration? timeout;
 
-  _QueuedStartupRequest(this.request, {this.responseCompleter});
+  _QueuedEngineRequest(
+    this.request, {
+    this.responseCompleter,
+    required this.timeout,
+  });
 }
 
 class _PendingReply {
   final void Function(Response response) onReply;
   final void Function(Object error) onError;
-  final Timer timeoutTimer;
+  final Timer? timeoutTimer;
 
   _PendingReply({
     required this.onReply,
     required this.onError,
     required this.timeoutTimer,
   });
+}
+
+class _PluginParameterGestureSession {
+  final double oldValue;
+
+  const _PluginParameterGestureSession({required this.oldValue});
 }
 
 /// Engine class, used for communicating with the Anthem engine process.
@@ -131,16 +143,25 @@ class Engine {
 
   late ModelSyncApi modelSyncApi;
   late ProcessingGraphApi processingGraphApi;
+  late RenderApi renderApi;
   late SequencerApi sequencerApi;
   late VisualizationApi visualizationApi;
 
   final Map<int, _PendingReply> _replyFunctions = {};
+  final Map<(Id, int), _PluginParameterGestureSession>
+  _pluginParameterGestureSessions = {};
 
   int Function() get _getRequestId => _engineConnector.getRequestId;
 
   final StreamController<EngineState> _engineStateStreamController =
       StreamController.broadcast();
+  final StreamController<String?> _audioSessionInvalidatedStreamController =
+      StreamController.broadcast();
+  final StreamController<Response> _renderEventStreamController =
+      StreamController.broadcast();
   late final Stream<EngineState> engineStateStream;
+  late final Stream<String?> audioSessionInvalidatedStream;
+  late final Stream<Response> renderEventStream;
   Completer<void> _readyForMessagesCompleter = Completer<void>();
 
   EngineState _engineState = EngineState.stopped;
@@ -148,35 +169,27 @@ class Engine {
   /// The engine's current lifecycle state.
   EngineState get engineState => _engineState;
 
-  /// Returns whether the engine has completed startup and is ready for normal
-  /// request traffic.
+  /// Returns whether the engine has completed startup and is ready for request
+  /// traffic.
   bool get isRunning => _engineState == EngineState.running;
   bool _socketReady = false;
   bool _canFlushStartupQueue = false;
   bool _autoFlushStartupQueue = false;
   bool _isFlushingStartupQueue = false;
-  final ListQueue<_QueuedStartupRequest> _startupQueue = ListQueue();
+  final ListQueue<_QueuedEngineRequest> _startupQueue = ListQueue();
+
+  int _renderRequestHoldCount = 0;
+  bool _isFlushingRenderHeldRequests = false;
+
+  // Timeouts are stored with requests held during render and only start when
+  // the request is actually dispatched to the engine.
+  final ListQueue<_QueuedEngineRequest> _renderHeldRequestQueue = ListQueue();
+
+  /// Returns whether request traffic is currently held during render.
+  bool get areRequestsHeldForRender => _renderRequestHoldCount > 0;
 
   bool _isAudioReady = false;
-  EngineAudioConfig? _audioConfig;
-
-  /// Completer that completes when the audio thread is ready.
-  Completer<void> _audioReadyCompleter = Completer<void>();
-
-  /// Completes when the engine's audio thread is ready for audio-dependent
-  /// work.
-  Future<void> get audioReadyFuture => _audioReadyCompleter.future;
-
-  /// Indicates that the audio thread is active.
-  ///
-  /// This will be false when the engine is first started, and the engine will
-  /// set this via an event once it has initialized the audio thread.
-  set isAudioReady(bool value) {
-    _isAudioReady = value;
-    if (value && !_audioReadyCompleter.isCompleted) {
-      _audioReadyCompleter.complete();
-    }
-  }
+  AudioProcessingConfigDto? _audioConfig;
 
   /// Returns whether the engine's audio thread has finished starting.
   bool get isAudioReady => _isAudioReady;
@@ -186,7 +199,7 @@ class Engine {
   /// Returns `null` whenever the current config is not valid, including while
   /// the engine is stopped, while startup is still in progress, or after the
   /// audio device has been torn down.
-  EngineAudioConfig? get audioConfig =>
+  AudioProcessingConfigDto? get audioConfig =>
       _engineState == EngineState.running ? _audioConfig : null;
 
   /// Returns a [Future] that completes when the engine is ready to receive
@@ -229,7 +242,7 @@ class Engine {
 
   void _failPendingReplies(Object error) {
     for (final pendingReply in _replyFunctions.values) {
-      pendingReply.timeoutTimer.cancel();
+      pendingReply.timeoutTimer?.cancel();
       pendingReply.onError(error);
     }
     _replyFunctions.clear();
@@ -243,6 +256,79 @@ class Engine {
     _isFlushingStartupQueue = false;
     _autoFlushStartupQueue = false;
     _canFlushStartupQueue = false;
+  }
+
+  void _clearRenderHeldRequests(Object error) {
+    while (_renderHeldRequestQueue.isNotEmpty) {
+      final queuedRequest = _renderHeldRequestQueue.removeFirst();
+      queuedRequest.responseCompleter?.completeError(error);
+    }
+
+    _renderRequestHoldCount = 0;
+    _isFlushingRenderHeldRequests = false;
+  }
+
+  void holdRequestsForRender() {
+    if (_engineState != EngineState.running) {
+      throw StateError('Engine must be running to hold requests for render.');
+    }
+
+    _renderRequestHoldCount++;
+  }
+
+  void releaseRequestsHeldForRender() {
+    if (_renderRequestHoldCount == 0) {
+      return;
+    }
+
+    _renderRequestHoldCount--;
+    if (_renderRequestHoldCount == 0) {
+      _flushRenderHeldRequests();
+    }
+  }
+
+  void _queueRenderHeldRequest(
+    Request request, {
+    Completer<Response>? responseCompleter,
+    Duration? timeout = const Duration(seconds: 5),
+  }) {
+    _renderHeldRequestQueue.add(
+      _QueuedEngineRequest(
+        request,
+        responseCompleter: responseCompleter,
+        timeout: timeout,
+      ),
+    );
+  }
+
+  void _flushRenderHeldRequests() {
+    if (_isFlushingRenderHeldRequests ||
+        areRequestsHeldForRender ||
+        _engineState != EngineState.running) {
+      return;
+    }
+
+    _isFlushingRenderHeldRequests = true;
+
+    try {
+      while (_renderHeldRequestQueue.isNotEmpty &&
+          _engineState == EngineState.running &&
+          !areRequestsHeldForRender) {
+        final queuedRequest = _renderHeldRequestQueue.removeFirst();
+
+        if (queuedRequest.responseCompleter != null) {
+          _dispatchRequestWithReply(
+            queuedRequest.request,
+            responseCompleter: queuedRequest.responseCompleter,
+            timeout: queuedRequest.timeout,
+          );
+        } else {
+          _dispatchRequestNoReply(queuedRequest.request);
+        }
+      }
+    } finally {
+      _isFlushingRenderHeldRequests = false;
+    }
   }
 
   void _setEngineState(EngineState state) {
@@ -260,21 +346,40 @@ class Engine {
       _clearStartupQueue(
         StateError('Engine stopped before startup completed.'),
       );
+      _clearRenderHeldRequests(
+        StateError('Engine stopped while requests were held for render.'),
+      );
       _failPendingReplies(
         StateError('Engine stopped while waiting for reply.'),
       );
+      _pluginParameterGestureSessions.clear();
 
       if (_readyForMessagesCompleter.isCompleted) {
         _readyForMessagesCompleter = Completer<void>();
-      }
-
-      if (_audioReadyCompleter.isCompleted) {
-        _audioReadyCompleter = Completer<void>();
       }
     }
 
     if (!_engineStateStreamController.isClosed) {
       _engineStateStreamController.add(state);
+    }
+  }
+
+  void _setAudioReady(AudioProcessingConfigDto audioConfig) {
+    _audioConfig = audioConfig;
+    _isAudioReady = true;
+  }
+
+  void _markAudioStopped() {
+    _audioConfig = null;
+    _isAudioReady = false;
+  }
+
+  void _markAudioSessionInvalidated(String? reason) {
+    _audioConfig = null;
+    _isAudioReady = false;
+
+    if (!_audioSessionInvalidatedStreamController.isClosed) {
+      _audioSessionInvalidatedStreamController.add(reason);
     }
   }
 
@@ -286,9 +391,13 @@ class Engine {
   }) : _engineConnectorFactory =
            engineConnectorFactory ?? _defaultEngineConnectorFactory {
     engineStateStream = _engineStateStreamController.stream;
+    audioSessionInvalidatedStream =
+        _audioSessionInvalidatedStreamController.stream;
+    renderEventStream = _renderEventStreamController.stream;
 
     modelSyncApi = ModelSyncApi(this);
     processingGraphApi = ProcessingGraphApi(this);
+    renderApi = RenderApi(this);
     sequencerApi = SequencerApi(this);
     visualizationApi = VisualizationApi(this);
   }
@@ -297,20 +406,177 @@ class Engine {
     project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 
+  NodePortModel? _findPluginParameterPort(NodeModel node, int controlPortId) {
+    for (final port in node.controlInputPorts) {
+      if (port.id == controlPortId && port.config.parameterConfig != null) {
+        return port;
+      }
+    }
+
+    return null;
+  }
+
+  void _applyPluginParameterValue(
+    NodeModel node,
+    int controlPortId,
+    double rawValue,
+    String? displayText, {
+    required bool markTouched,
+  }) {
+    final value = rawValue.clamp(0.0, 1.0).toDouble();
+    final port = _findPluginParameterPort(node, controlPortId);
+
+    if (port == null) {
+      return;
+    }
+
+    if (markTouched) {
+      node.touchControlInputParameter(port);
+    }
+
+    if (port.parameterValue != value) {
+      port.parameterValue = value;
+    }
+
+    if (port.parameterDisplayText != displayText) {
+      port.parameterDisplayText = displayText;
+    }
+  }
+
+  void _handlePluginParameterChanged(PluginParameterChangedEvent event) {
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null) {
+      return;
+    }
+
+    _applyPluginParameterValue(
+      node,
+      event.controlPortId,
+      event.value,
+      event.displayText,
+      markTouched: true,
+    );
+
+    _scheduleNodeStateUpdate(event.nodeId);
+  }
+
+  void _handlePluginParameterGesture(PluginParameterGestureEvent event) {
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null) {
+      return;
+    }
+
+    final port = _findPluginParameterPort(node, event.controlPortId);
+    if (port == null) {
+      return;
+    }
+
+    final key = (event.nodeId, event.controlPortId);
+
+    if (event.isStarting) {
+      node.touchControlInputParameter(port);
+      _pluginParameterGestureSessions[key] = _PluginParameterGestureSession(
+        oldValue: SetParameterValueCommand.effectiveParameterValue(port),
+      );
+      return;
+    }
+
+    final session = _pluginParameterGestureSessions.remove(key);
+    if (session == null) {
+      return;
+    }
+
+    final newValue = SetParameterValueCommand.effectiveParameterValue(port);
+    if (session.oldValue == newValue) {
+      return;
+    }
+
+    project.push(
+      SetParameterValueCommand(
+        nodeId: event.nodeId,
+        controlPortId: event.controlPortId,
+        oldValue: session.oldValue,
+        newValue: newValue,
+      ),
+    );
+  }
+
+  void _handlePluginParameterSnapshot(PluginParameterSnapshotEvent event) {
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null) {
+      return;
+    }
+
+    for (final parameterValue in event.parameterValues) {
+      _applyPluginParameterValue(
+        node,
+        parameterValue.controlPortId,
+        parameterValue.value,
+        parameterValue.displayText,
+        markTouched: false,
+      );
+    }
+  }
+
+  void _applyResponseState(Response response) {
+    switch (response) {
+      case StartAudioResponse e when e.success && e.audioConfig != null:
+        _setAudioReady(e.audioConfig!);
+        return;
+      case StartRenderAudioSessionResponse e
+          when e.success && e.audioConfig != null:
+        _setAudioReady(e.audioConfig!);
+        return;
+      case StopAudioResponse e when e.success:
+        _markAudioStopped();
+        return;
+      default:
+        return;
+    }
+  }
+
   void _onReply(Response response) {
     switch (response) {
       case VisualizationUpdateEvent e:
         project.visualizationProvider.processVisualizationUpdate(e);
         return;
       case AudioReadyEvent e:
-        _audioConfig = e.audioConfig;
-        isAudioReady = true;
+        _setAudioReady(e.audioConfig);
+        return;
+      case AudioSessionInvalidatedEvent e:
+        _markAudioSessionInvalidated(e.reason);
+        return;
+      case RenderStartedEvent e:
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
+        return;
+      case RenderProgressEvent e:
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
+        return;
+      case RenderCompletedEvent e:
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
+        return;
+      case RenderFailedEvent e:
+        if (!_renderEventStreamController.isClosed) {
+          _renderEventStreamController.add(e);
+        }
         return;
       case PluginChangedEvent e:
         _scheduleNodeStateUpdate(e.nodeId);
         return;
       case PluginParameterChangedEvent e:
-        _scheduleNodeStateUpdate(e.nodeId);
+        _handlePluginParameterChanged(e);
+        return;
+      case PluginParameterGestureEvent e:
+        _handlePluginParameterGesture(e);
+        return;
+      case PluginParameterSnapshotEvent e:
+        _handlePluginParameterSnapshot(e);
         return;
       case PluginLoadedEvent e:
         final node = project.processingGraph.nodes[e.nodeId];
@@ -331,8 +597,9 @@ class Engine {
 
     final pendingReply = _replyFunctions.remove(response.id);
     if (pendingReply != null) {
+      _applyResponseState(response);
       pendingReply.onReply(response);
-      pendingReply.timeoutTimer.cancel();
+      pendingReply.timeoutTimer?.cancel();
     }
   }
 
@@ -342,7 +609,7 @@ class Engine {
 
   Future<void> _exit() async {
     final request = Exit(id: _getRequestId());
-    await _request(request);
+    await _request(request, bypassRenderRequestHold: true);
 
     _engineConnector.dispose();
 
@@ -353,6 +620,8 @@ class Engine {
     await stop();
 
     _engineStateStreamController.close();
+    _audioSessionInvalidatedStreamController.close();
+    _renderEventStreamController.close();
   }
 
   /// Stops the engine process, if it is running.
@@ -368,6 +637,91 @@ class Engine {
     }
   }
 
+  Future<AudioProcessingConfigDto> _startAudio({
+    required StartupSendBehavior startupBehavior,
+    bool bypassRenderRequestHold = false,
+  }) async {
+    final audioStartReply =
+        await _request(
+              StartAudioRequest(id: _getRequestId()),
+              startupBehavior: startupBehavior,
+              bypassRenderRequestHold: bypassRenderRequestHold,
+              // Audio device initialization can block behind OS permission
+              // prompts, such as the first-run microphone access prompt on
+              // macOS.
+              timeout: null,
+            )
+            as StartAudioResponse;
+    if (!audioStartReply.success) {
+      throw StateError(
+        'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
+      );
+    }
+    if (audioStartReply.audioConfig == null) {
+      throw StateError(
+        'Engine audio startup failed: audio config was not provided.',
+      );
+    }
+
+    return audioStartReply.audioConfig!;
+  }
+
+  /// Starts the audio thread without restarting the engine process.
+  Future<AudioProcessingConfigDto> startAudio() async {
+    if (_engineState != EngineState.running) {
+      throw StateError('Engine must be running to start audio.');
+    }
+
+    if (_audioConfig != null) {
+      return _audioConfig!;
+    }
+
+    return _startAudio(startupBehavior: StartupSendBehavior.requireRunning);
+  }
+
+  Future<AudioProcessingConfigDto> startAudioForRender() async {
+    if (_engineState != EngineState.running) {
+      throw StateError('Engine must be running to start audio.');
+    }
+
+    if (_audioConfig != null) {
+      return _audioConfig!;
+    }
+
+    return _startAudio(
+      startupBehavior: StartupSendBehavior.requireRunning,
+      bypassRenderRequestHold: true,
+    );
+  }
+
+  /// Stops the audio thread without stopping the engine process.
+  Future<void> stopAudio() async {
+    await _stopAudio();
+  }
+
+  Future<void> stopAudioForRender() async {
+    await _stopAudio(bypassRenderRequestHold: true);
+  }
+
+  Future<void> _stopAudio({bool bypassRenderRequestHold = false}) async {
+    if (_engineState != EngineState.running) {
+      return;
+    }
+
+    final stopAudioReply =
+        await _request(
+              StopAudioRequest(id: _getRequestId()),
+              bypassRenderRequestHold: bypassRenderRequestHold,
+            )
+            as StopAudioResponse;
+
+    if (!stopAudioReply.success) {
+      throw StateError(
+        'Engine audio shutdown failed: ${stopAudioReply.error ?? 'Unknown error.'}',
+      );
+    }
+  }
+
   /// Starts the engine process, and attaches to it.
   Future<void> start({bool initializeAudio = true}) async {
     if (_engineState != EngineState.stopped) {
@@ -376,9 +730,6 @@ class Engine {
 
     _audioConfig = null;
     _isAudioReady = false;
-    if (_audioReadyCompleter.isCompleted) {
-      _audioReadyCompleter = Completer<void>();
-    }
 
     _setEngineState(EngineState.starting);
 
@@ -436,24 +787,9 @@ class Engine {
       }
 
       if (initializeAudio) {
-        final audioStartReply =
-            await _request(
-                  StartAudioRequest(id: _getRequestId()),
-                  startupBehavior: StartupSendBehavior.bypassStartupQueue,
-                )
-                as StartAudioResponse;
-        if (!audioStartReply.success) {
-          throw StateError(
-            'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
-          );
-        }
-        if (audioStartReply.audioConfig == null) {
-          throw StateError(
-            'Engine audio startup failed: audio config was not provided.',
-          );
-        }
-
-        _audioConfig = audioStartReply.audioConfig;
+        await _startAudio(
+          startupBehavior: StartupSendBehavior.bypassStartupQueue,
+        );
       }
 
       _autoFlushStartupQueue = true;
@@ -503,20 +839,22 @@ class Engine {
   Future<Response> _dispatchRequestWithReply(
     Request request, {
     Completer<Response>? responseCompleter,
+    Duration? timeout = const Duration(seconds: 5),
   }) {
     final completer = responseCompleter ?? Completer<Response>();
-    final timeout = Duration(seconds: 5);
-    final timer = Timer(timeout, () {
-      if (_replyFunctions.containsKey(request.id)) {
-        completer.completeError(
-          TimeoutException(
-            'Request ${request.id} of type ${request.runtimeType} timed out after ${timeout.inSeconds} seconds.',
-            timeout,
-          ),
-        );
-        _replyFunctions.remove(request.id);
-      }
-    });
+    final timer = timeout == null
+        ? null
+        : Timer(timeout, () {
+            if (_replyFunctions.containsKey(request.id)) {
+              completer.completeError(
+                TimeoutException(
+                  'Request ${request.id} of type ${request.runtimeType} timed out after ${timeout.inSeconds} seconds.',
+                  timeout,
+                ),
+              );
+              _replyFunctions.remove(request.id);
+            }
+          });
 
     _replyFunctions[request.id] = _PendingReply(
       onReply: (response) {
@@ -542,9 +880,14 @@ class Engine {
   void _queueStartupRequest(
     Request request, {
     Completer<Response>? responseCompleter,
+    Duration? timeout = const Duration(seconds: 5),
   }) {
     _startupQueue.add(
-      _QueuedStartupRequest(request, responseCompleter: responseCompleter),
+      _QueuedEngineRequest(
+        request,
+        responseCompleter: responseCompleter,
+        timeout: timeout,
+      ),
     );
 
     if (_autoFlushStartupQueue &&
@@ -571,6 +914,7 @@ class Engine {
           _dispatchRequestWithReply(
             queuedRequest.request,
             responseCompleter: queuedRequest.responseCompleter,
+            timeout: queuedRequest.timeout,
           );
         } else {
           _dispatchRequestNoReply(queuedRequest.request);
@@ -589,11 +933,17 @@ class Engine {
   Future<Response> _request(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
+    bool bypassRenderRequestHold = false,
+    Duration? timeout = const Duration(seconds: 5),
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {
       final completer = Completer<Response>();
-      _queueStartupRequest(request, responseCompleter: completer);
+      _queueStartupRequest(
+        request,
+        responseCompleter: completer,
+        timeout: timeout,
+      );
       return completer.future;
     }
 
@@ -612,20 +962,31 @@ class Engine {
           'Engine socket must be ready to send bypass requests.',
         );
       }
-      return _dispatchRequestWithReply(request);
+      return _dispatchRequestWithReply(request, timeout: timeout);
     }
 
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
     }
 
-    return _dispatchRequestWithReply(request);
+    if (!bypassRenderRequestHold && areRequestsHeldForRender) {
+      final completer = Completer<Response>();
+      _queueRenderHeldRequest(
+        request,
+        responseCompleter: completer,
+        timeout: timeout,
+      );
+      return completer.future;
+    }
+
+    return _dispatchRequestWithReply(request, timeout: timeout);
   }
 
   /// Sends a request to the engine, but does not wait for a response.
   void _requestNoReply(
     Request request, {
     StartupSendBehavior startupBehavior = StartupSendBehavior.requireRunning,
+    bool bypassRenderRequestHold = false,
   }) {
     if (startupBehavior == StartupSendBehavior.queueDuringStartup &&
         engineState == EngineState.starting) {
@@ -650,6 +1011,11 @@ class Engine {
 
     if (engineState != EngineState.running) {
       throw AssertionError('Engine must be running to send commands.');
+    }
+
+    if (!bypassRenderRequestHold && areRequestsHeldForRender) {
+      _queueRenderHeldRequest(request);
+      return;
     }
 
     _dispatchRequestNoReply(request);

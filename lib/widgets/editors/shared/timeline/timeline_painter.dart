@@ -22,27 +22,27 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:anthem/widgets/editors/shared/timeline/timeline_constants.dart';
 import 'package:flutter/widgets.dart';
 
 class TimelinePainter extends CustomPainter {
   TimelinePainter({
     required Listenable repaint,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.ticksPerQuarter,
     required this.defaultTimeSignature,
     required this.timeSignatureChanges,
   }) : super(repaint: repaint);
 
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final int ticksPerQuarter;
   final TimeSignatureModel defaultTimeSignature;
   final List<TimeSignatureChangeModel> timeSignatureChanges;
 
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -155,10 +155,7 @@ class TimelinePainter extends CustomPainter {
 
         // Don't draw numbers that are off-screen
         if (x >= -50) {
-          // Vertical line for bar - skip bar 1, because it looks weird
-          if (barNumber > 1) {
-            canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), markerPaint);
-          }
+          canvas.drawRect(Rect.fromLTWH(x, 0, 1, size.height), markerPaint);
 
           // Bar number
           TextSpan span = TextSpan(
@@ -190,12 +187,13 @@ class TimelinePainter extends CustomPainter {
 
       i++;
     }
+
+    paintEditorLeftEdgeBorder(canvas, size);
   }
 
   @override
   bool shouldRepaint(TimelinePainter oldDelegate) {
-    return oldDelegate.timeViewStartAnimation != timeViewStartAnimation ||
-        oldDelegate.timeViewEndAnimation != timeViewEndAnimation ||
+    return oldDelegate.timeRangeAnimation != timeRangeAnimation ||
         oldDelegate.ticksPerQuarter != ticksPerQuarter ||
         oldDelegate.defaultTimeSignature != defaultTimeSignature ||
         oldDelegate.timeSignatureChanges != timeSignatureChanges;

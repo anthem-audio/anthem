@@ -19,9 +19,13 @@
 
 #pragma once
 
+#include <cstdint>
+#include <functional>
 #include <iostream>
-#include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
+#include <optional>
+#include <unordered_map>
+#include <vector>
 
 #ifndef __EMSCRIPTEN__
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -29,10 +33,13 @@
 
 #include "comms.h"
 #include "messages/messages.h"
-#include "modules/core/audio_callback.h"
+#include "modules/audio/audio_block_processor.h"
+#include "modules/audio/audio_session_controller.h"
 #include "modules/core/command_handler.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/processing_graph/graph_processor.h"
+#include "modules/render/render_controller.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 #include "modules/sequencer/runtime/transport.h"
 #include "modules/util/id_generator.h"
@@ -40,14 +47,27 @@
 
 namespace anthem {
 
+class Node;
+class ProcessingGraphNodeInitializationSession;
+
+using InitializeProcessingGraphNodesCallback =
+    std::function<void(std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>)>;
+
 class Engine {
 private:
-  bool isAudioCallbackRunning;
+  friend class ProcessingGraphNodeInitializationSession;
 
   // Singleton shared pointer instance
   static std::unique_ptr<Engine> instance;
 
-  std::unique_ptr<AudioCallback> audioCallback;
+  void resetInitializedProcessingGraphNodes();
+
+  // Tracks the graph node instances that have already completed main-thread
+  // initialization for the current engine-side model state. The key is the
+  // stable node ID, while the weak pointer lets us detect undo/redo cases where
+  // a node with the same ID has been removed and later recreated as a distinct
+  // model object.
+  std::unordered_map<int64_t, std::weak_ptr<Node>> initializedProcessingGraphNodes;
 public:
   // The project model.
   //
@@ -63,15 +83,7 @@ public:
   // The sequence store stores the compiled sequences. It is used by the
   // sequencer to get the compiled sequences for playback.
   std::unique_ptr<RuntimeSequenceStore> sequenceStore;
-
-  // Executes the processing graph on the audio thread.
-  std::unique_ptr<GraphProcessor> graphProcessor;
-
-  // JUCE class for managing audio devices.
-  //
-  // This is declared before transport so the audio device manager outlives the
-  // clock adapter owned by transport.
-  juce::AudioDeviceManager audioDeviceManager;
+  std::unique_ptr<RuntimeAutomationSequenceStore> automationSequenceStore;
 
   // The transport contains information about:
   // - The sequence being played
@@ -80,6 +92,13 @@ public:
   // - The project tempo
   // - The current playhead reset point and loop points
   std::unique_ptr<Transport> transport;
+
+  // App-level services that processors may read on the audio thread without
+  // reaching through the engine singleton.
+  std::unique_ptr<EngineRuntimeServices> engineRuntimeServices;
+
+  // Executes the processing graph on the audio thread.
+  std::unique_ptr<GraphProcessor> graphProcessor;
 
   // Class for coordinating global visualization that is sent back to the UI,
   // such as CPU burden and transport location.
@@ -93,6 +112,20 @@ public:
   // The UI communication layer. This is used to send and receive messages from
   // the UI.
   Comms comms;
+
+  // Lifetime note: the audio and render controllers store non-owning
+  // references to the members above. Keep those referenced members declared
+  // before the controllers so C++ destruction tears down the controllers first.
+
+  // Shared block processor used by realtime audio and offline render sessions.
+  std::unique_ptr<AudioBlockProcessor> audioBlockProcessor;
+
+  // Owns audio session state, including realtime device sessions, render audio
+  // sessions, and the active processing config.
+  std::unique_ptr<AudioSessionController> audioSessionController;
+
+  // Executes offline renders against the active render audio session.
+  std::unique_ptr<RenderController> renderController;
 
   // Handles command messages from the UI.
   CommandHandler commandHandler;
@@ -119,17 +152,11 @@ public:
 
   void shutdown();
 
-  // Sets up the audio callback
-  std::shared_ptr<EngineAudioConfig> startAudioCallback();
-  void stopAudioCallback();
-
-  bool isAudioThreadRunning() const {
-    return isAudioCallbackRunning;
-  }
-
-  std::shared_ptr<EngineAudioConfig> getCurrentAudioConfig() const;
-
-  void compileProcessingGraph();
+  // Initializes the delta between the current shared model graph and
+  // initializedProcessingGraphNodes. Nodes already present in the tracker are
+  // left alone; new or replaced nodes are prepared and reported individually.
+  void initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete);
+  void publishProcessingGraph();
 };
 
 } // namespace anthem

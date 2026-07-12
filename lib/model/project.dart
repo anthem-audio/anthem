@@ -26,10 +26,10 @@ import 'package:anthem/logic/commands/journal_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
-import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/sequencer.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';
@@ -40,6 +40,8 @@ import 'processing_graph/processing_graph.dart';
 import 'shared/hydratable.dart';
 
 part 'project.g.dart';
+
+const String currentProjectFileSoftwareVersion = '0.0.0-prealpha.1';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 
@@ -68,44 +70,49 @@ class ProjectModel extends _ProjectModel
     final List<Id> initTrackOrder = [];
     final List<Id> initSendTrackOrder = [];
 
+    void addTrack(TrackModel track, List<Id> orderList) {
+      initTracks[track.id] = track;
+      orderList.add(track.id);
+    }
+
     for (var i = 1; i <= 1; i++) {
       final track = TrackModel(
         idAllocator: idAllocator,
         name: 'Track $i',
-        color: AnthemColor.randomHue(),
-        type: .instrument,
+        color: .new(hue: 0, palette: .grayscale),
+        type: .normal,
       );
-      track.createAndRegisterNodes(this, idAllocator);
-      initTracks[track.id] = track;
-      initTrackOrder.add(track.id);
+      addTrack(track, initTrackOrder);
     }
 
-    final masterTrack =
-        TrackModel(
-            idAllocator: idAllocator,
-            name: 'Master',
-            color: AnthemColor.randomHue(),
-            type: .audio,
-          )
-          ..isMasterTrack = true
-          ..createAndRegisterNodes(this, idAllocator);
-    initTracks[masterTrack.id] = masterTrack;
-    initSendTrackOrder.add(masterTrack.id);
+    final masterTrack = TrackModel(
+      idAllocator: idAllocator,
+      name: 'Master',
+      color: .new(hue: 0, palette: .grayscale),
+      type: .normal,
+    )..isMasterTrack = true;
+    addTrack(masterTrack, initSendTrackOrder);
 
     tracks = AnthemObservableMap.of(initTracks);
     trackOrder = AnthemObservableList.of(initTrackOrder);
     sendTrackOrder = AnthemObservableList.of(initSendTrackOrder);
+
+    for (final trackId in initTrackOrder.followedBy(initSendTrackOrder)) {
+      initTracks[trackId]!.createAndRegisterNodes(this, idAllocator);
+    }
 
     final masterOutputPortId = processingGraph
         .getMasterOutputNode()
         .audioInputPorts
         .first
         .id;
+    final masterTrackProcessing = masterTrack.requireProcessing;
     for (final trackId in initTrackOrder.followedBy(initSendTrackOrder)) {
       final track = initTracks[trackId]!;
+      final processing = track.requireProcessing;
       final destinationNodeId = track.isMasterTrack
           ? processingGraph.masterOutputNodeId
-          : masterTrack.utilityNodeId!;
+          : masterTrackProcessing.utilityNodeId!;
       final destinationPortId = track.isMasterTrack
           ? masterOutputPortId
           : UtilityProcessorModel.audioInputPortId;
@@ -113,10 +120,11 @@ class ProjectModel extends _ProjectModel
       processingGraph.addConnection(
         NodeConnectionModel(
           idAllocator: idAllocator,
-          sourceNodeId: track.audioOutputNodeId,
-          sourcePortId: track.audioOutputPortId,
+          sourceNodeId: processing.audioOutputNodeId,
+          sourcePortId: processing.audioOutputPortId,
           destinationNodeId: destinationNodeId,
           destinationPortId: destinationPortId,
+          dataType: NodePortDataType.audio,
         ),
       );
     }
@@ -142,18 +150,15 @@ class ProjectModel extends _ProjectModel
     // any compiled sequences for this channel.
     onChange(
       // This filter matches against removals from the tracks map.
-      (b) => b.tracks.anyValue.filterByChangeType([
+      (b) => b.tracks().anyValue(bindKeyTo: 'trackId').filterByChangeType([
         ModelFilterChangeType.mapRemove,
       ]),
-      (e) {
+      (_, bindings) {
         if (!engine.isRunning) {
           return;
         }
 
-        // Field accessors are:
-        // 0: the tracks field
-        // 1: accessing a value in the map by key
-        final trackId = e.fieldAccessors[1].key as Id;
+        final trackId = bindings.get<Id>('trackId');
         engine.sequencerApi.cleanUpTrack(trackId);
       },
     );
@@ -169,6 +174,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// audio, control and notes between processors, and to eventually route the
   /// resulting audio to the audio output device.
   late ProcessingGraphModel processingGraph;
+
+  /// The version of Anthem that last saved this project file.
+  @hideFromCpp
+  String savedInSoftwareVersion = currentProjectFileSoftwareVersion;
 
   /// ID of the master output node in the processing graph. Audio that is routed
   /// to this node is sent to the audio output device.
@@ -302,22 +311,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     engine.engineStateStream.listen((state) {
       (this as ProjectModel).engineState = state;
 
-      if (state == EngineState.running) {
-        _finishEngineStartup();
-      }
-
       if (state == EngineState.stopped) {
-        // Make sure the engine isn't playing when it starts again
-        sequence.isPlaying = false;
-
-        if (_fieldChangedListener != null) {
-          // Unhook the model change stream from the engine
-          (this as AnthemModelBase).removeRawFieldChangedListener(
-            _fieldChangedListener!,
-          );
-          _fieldChangedListener = null;
-        }
-        _modelSyncCompleter = Completer();
+        handleEngineStopped();
       }
     });
 
@@ -341,25 +336,32 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     );
   }
 
-  /// Finishes startup work after the engine has acknowledged the initial model.
-  void _finishEngineStartup() {
+  /// Completes the first-sync future after the engine has acknowledged the
+  /// initial model.
+  void completeFirstEngineSync() {
     if (!_modelSyncCompleter.isCompleted) {
       _modelSyncCompleter.complete();
     }
+  }
 
-    // The engine will receive the processing graph when we sync the model,
-    // but it still needs to be compiled by the engine for use on the audio
-    // thread, so we do that here.
-    engine.processingGraphApi.compile();
+  /// Cleans up model-side engine sync state after the engine process stops.
+  void handleEngineStopped() {
+    final hadSyncState =
+        _fieldChangedListener != null || _modelSyncCompleter.isCompleted;
 
-    // We need to compile all arrangements for use in the audio thread.
-    for (final arrangement in sequence.arrangements.values) {
-      engine.sequencerApi.compileArrangement(arrangement.id);
+    // Make sure the engine isn't playing when it starts again.
+    sequence.isPlaying = false;
+
+    if (_fieldChangedListener != null) {
+      // Unhook the model change stream from the engine.
+      (this as AnthemModelBase).removeRawFieldChangedListener(
+        _fieldChangedListener!,
+      );
+      _fieldChangedListener = null;
     }
 
-    // And same for patterns.
-    for (final pattern in sequence.patterns.values) {
-      engine.sequencerApi.compilePattern(pattern.id);
+    if (hadSyncState) {
+      _modelSyncCompleter = Completer();
     }
   }
 

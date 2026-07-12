@@ -78,7 +78,6 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
               id: _ToneGeneratorProcessorModel.frequencyPortId,
               defaultValue:
                   ToneGeneratorProcessorModel.frequencyToParameterValue(440),
-              smoothingDurationSeconds: 0.5,
             ),
           ),
         ),
@@ -90,7 +89,6 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
             parameterConfig: ParameterConfigModel(
               id: _ToneGeneratorProcessorModel.amplitudePortId,
               defaultValue: 0.75,
-              smoothingDurationSeconds: 0.5,
             ),
           ),
         ),

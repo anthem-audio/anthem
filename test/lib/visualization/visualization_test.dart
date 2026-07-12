@@ -57,8 +57,8 @@ class RecordingVisualizationApi extends Fake implements VisualizationApi {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  EngineAudioConfig testAudioConfig() {
-    return EngineAudioConfig(
+  AudioProcessingConfigDto testAudioConfig() {
+    return AudioProcessingConfigDto(
       sampleRate: 48000,
       blockSize: 512,
       inputChannelCount: 2,
@@ -81,21 +81,28 @@ void main() {
   createProjectWithVisualizationProvider({
     Duration Function()? wallClockNowForTest,
     VisualizationApi? visualizationApi,
+    Stream<EngineState>? engineStateStream,
   }) {
     final visualizationApiMock = visualizationApi ?? MockVisualizationApi();
+    var currentEngineState = EngineState.running;
+    final trackedEngineStateStream =
+        (engineStateStream ?? const Stream<EngineState>.empty()).map((state) {
+          currentEngineState = state;
+          return state;
+        });
 
     final engineMock = MockEngine();
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
     when(engineMock.audioConfig).thenReturn(testAudioConfig());
-    when(engineMock.engineState).thenReturn(EngineState.running);
+    when(engineMock.engineState).thenAnswer((_) => currentEngineState);
     when(
       engineMock.engineStateStream,
-    ).thenAnswer((_) => const Stream<EngineState>.empty());
+    ).thenAnswer((_) => trackedEngineStateStream);
     when(engineMock.readyForMessages).thenAnswer((_) async {});
 
     final projectMock = MockProjectModel();
     when(projectMock.engine).thenReturn(engineMock);
-    when(projectMock.engineState).thenReturn(EngineState.running);
+    when(projectMock.engineState).thenAnswer((_) => currentEngineState);
 
     final visualizationProvider = VisualizationProvider(
       projectMock,
@@ -307,8 +314,12 @@ void main() {
         ],
       );
 
-      expect(controller.values, [0, 0]);
-      expect(controller.engineTimes, [null, null]);
+      expect(controller.values, [2, 1]);
+      expect(controller.engineTimes, [
+        engineTimeForSampleTimestamp(240),
+        engineTimeForSampleTimestamp(120),
+      ]);
+      expect(notificationCount, 3);
 
       setup.visualizationProvider.processVisualizationUpdate(
         VisualizationUpdateEvent(
@@ -337,6 +348,75 @@ void main() {
 
       controller.dispose();
       setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  testWidgets(
+    'Active visualization controllers reset cached values when the engine stops',
+    (tester) async {
+      final engineStates = StreamController<EngineState>.broadcast();
+      final setup = createProjectWithVisualizationProvider(
+        engineStateStream: engineStates.stream,
+      );
+      final singleController = VisualizationSubscriptionController<int>(
+        visualizationProvider: setup.visualizationProvider,
+        config: VisualizationSubscriptionConfig.latestInt('single'),
+        minimumUpdateInterval: const Duration(seconds: 1),
+      );
+      final multiController = MultiVisualizationSubscriptionController<int>(
+        visualizationProvider: setup.visualizationProvider,
+        configs: [
+          VisualizationSubscriptionConfig.latestInt('left'),
+          VisualizationSubscriptionConfig.latestInt('right'),
+        ],
+        minimumUpdateInterval: const Duration(seconds: 1),
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'single',
+              values: [9],
+              sampleTimestamps: [480],
+            ),
+            testVisualizationItem(
+              id: 'left',
+              values: [3],
+              sampleTimestamps: [960],
+            ),
+            testVisualizationItem(
+              id: 'right',
+              values: [4],
+              sampleTimestamps: [1440],
+            ),
+          ],
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+
+      expect(singleController.value, 9);
+      expect(singleController.engineTime, engineTimeForSampleTimestamp(480));
+      expect(multiController.values, [3, 4]);
+      expect(multiController.engineTimes, [
+        engineTimeForSampleTimestamp(960),
+        engineTimeForSampleTimestamp(1440),
+      ]);
+
+      engineStates.add(EngineState.stopped);
+      await tester.pump();
+
+      expect(singleController.value, 0);
+      expect(singleController.engineTime, isNull);
+      expect(multiController.values, [0, 0]);
+      expect(multiController.engineTimes, [null, null]);
+
+      singleController.dispose();
+      multiController.dispose();
+      setup.visualizationProvider.dispose();
+      await engineStates.close();
       await tester.pump();
     },
   );
@@ -612,6 +692,33 @@ void main() {
     },
   );
 
+  test('Visualization updates are ignored without an active audio config', () {
+    final setup = createProjectWithVisualizationProvider();
+    when(setup.engine.audioConfig).thenReturn(null);
+
+    final subscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('subscriptionId'),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'subscriptionId',
+            valueType: VisualizationValueType.doubleValue,
+            values: [1.0],
+            sampleTimestamps: [10],
+          ),
+        ],
+      ),
+    );
+
+    expect(subscription.readValue(), equals(0.0));
+
+    setup.visualizationProvider.dispose();
+  });
+
   test('Visualization updates reject mismatched declared value types', () {
     final setup = createProjectWithVisualizationProvider();
     setup.visualizationProvider.subscribe(
@@ -648,6 +755,127 @@ void main() {
       expect(
         () => setup.visualizationProvider.subscribe(
           VisualizationSubscriptionConfig.latestInt('subscriptionId'),
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      setup.visualizationProvider.dispose();
+    },
+  );
+
+  test('VisualizationProvider seeds late subscribers from cached values', () {
+    final setup = createProjectWithVisualizationProvider();
+
+    final early = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+    );
+
+    setup.visualizationProvider.processVisualizationUpdate(
+      VisualizationUpdateEvent(
+        id: 0,
+        items: [
+          testVisualizationItem(
+            id: 'playhead_sequence_id',
+            values: [10, 11],
+            sampleTimestamps: [240, 480],
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      early.readTimedValue(),
+      isA<TimedVisualizationValue<int>>()
+          .having((value) => value.value, 'value', 11)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(480),
+          ),
+    );
+
+    final late = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+    );
+
+    expect(
+      late.readTimedValue(),
+      isA<TimedVisualizationValue<int>>()
+          .having((value) => value.value, 'value', 11)
+          .having(
+            (value) => value.engineTime,
+            'engineTime',
+            engineTimeForSampleTimestamp(480),
+          ),
+    );
+
+    early.dispose();
+    late.dispose();
+    setup.visualizationProvider.dispose();
+  });
+
+  test(
+    'VisualizationProvider clears cached values when the engine stops',
+    () async {
+      final engineStates = StreamController<EngineState>.broadcast();
+      final setup = createProjectWithVisualizationProvider(
+        engineStateStream: engineStates.stream,
+      );
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(
+              id: 'playhead_sequence_id',
+              values: [12],
+              sampleTimestamps: [960],
+            ),
+          ],
+        ),
+      );
+
+      final beforeStop = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+      );
+      expect(beforeStop.readValue(), 12);
+
+      engineStates.add(EngineState.stopped);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(beforeStop.readTimedValue(), isNull);
+      expect(beforeStop.readValue(), 0);
+
+      final afterStop = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+      );
+      expect(afterStop.readTimedValue(), isNull);
+      expect(afterStop.readValue(), 0);
+
+      beforeStop.dispose();
+      afterStop.dispose();
+      setup.visualizationProvider.dispose();
+      await engineStates.close();
+    },
+  );
+
+  test(
+    'Cached visualization values reject conflicting declared value types',
+    () {
+      final setup = createProjectWithVisualizationProvider();
+
+      setup.visualizationProvider.processVisualizationUpdate(
+        VisualizationUpdateEvent(
+          id: 0,
+          items: [
+            testVisualizationItem(id: 'cached', values: [1]),
+          ],
+        ),
+      );
+
+      expect(
+        () => setup.visualizationProvider.subscribe(
+          VisualizationSubscriptionConfig.latestDouble('cached'),
         ),
         throwsA(isA<StateError>()),
       );

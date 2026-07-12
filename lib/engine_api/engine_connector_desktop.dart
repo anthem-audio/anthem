@@ -23,10 +23,15 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_socket_server.dart';
+import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:logging/logging.dart';
 
 part 'engine_connector_desktop.debug_engine_path.g.dart';
 
+final _log = Logger('engine_connector');
 final mainExecutablePath = File(Platform.resolvedExecutable);
+const _engineIdEnvironmentKey = 'ANTHEM_ENGINE_ID';
+const _enginePortEnvironmentKey = 'ANTHEM_ENGINE_PORT';
 
 /// Provides a way to communicate with the engine process.
 ///
@@ -57,10 +62,10 @@ final mainExecutablePath = File(Platform.resolvedExecutable);
 /// engineConnector.send(requestBytes);
 /// ```
 class EngineConnector extends EngineConnectorBase {
-  /// This ID is sent to the engine as an argument on launch. The engine will
-  /// send this ID back as the first message to the socket when it connects,
-  /// which allows us to figure out which engine is associated with a given
-  /// socket connection.
+  /// This ID is sent to the engine in its environment on launch. The engine
+  /// will send this ID back as the first message to the socket when it
+  /// connects, which allows us to figure out which engine is associated with a
+  /// given socket connection.
   final int _id;
 
   Process? _engineProcess;
@@ -84,10 +89,10 @@ class EngineConnector extends EngineConnectorBase {
     this._id, {
     required super.kDebugMode,
     super.onReply,
-    void Function()? onExit,
+    this._onExit,
     super.noHeartbeat = false,
     this.enginePathOverride,
-  }) : _onExit = onExit {
+  }) {
     onInit = _init();
 
     // If any requests came in before the engine was started, send them now.
@@ -127,52 +132,77 @@ class EngineConnector extends EngineConnectorBase {
       developmentEnginePath = debugEnginePath;
     }
 
+    final releaseEngineUri = Platform.isMacOS
+        ? mainExecutablePath.parent.uri.resolve(
+            '../Frameworks/App.Framework/Resources/flutter_assets/assets/engine/AnthemEngine',
+          )
+        : mainExecutablePath.parent.uri.resolve(
+            'data/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+          );
+
     final anthemPathStr =
         enginePathOverride ??
         developmentEnginePath ??
-        mainExecutablePath.parent.uri
-            .resolve(
-              '../${Platform.isMacOS ? 'Frameworks/App.Framework/Resources' : './data'}/flutter_assets/assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-            )
-            .toFilePath(windows: Platform.isWindows);
+        releaseEngineUri.toFilePath(windows: Platform.isWindows);
 
     if (!await File(anthemPathStr).exists()) {
+      _log.severe('Could not start engine. File not found: $anthemPathStr');
       return false;
     }
 
-    // If we're in debug mode, start with a command line window so we can see logging
-    if (kDebugMode) {
-      if (Platform.isWindows) {
-        _setEngineProcess(
-          await Process.start('powershell', [
-            '-Command',
-            '& {Start-Process -FilePath "$anthemPathStr" -ArgumentList "${EngineSocketServer.instance.port} $_id" -Wait}',
-          ]),
-        );
+    _log.info('Starting engine from $anthemPathStr');
+
+    final engineEnvironment = {
+      ...AnthemLogManager.instance.childProcessEnvironment,
+      ...?_debugLameEnvironment(),
+      _engineIdEnvironmentKey: _id.toString(),
+      _enginePortEnvironmentKey: EngineSocketServer.instance.port.toString(),
+    };
+
+    try {
+      // If we're in debug mode, start with a command line window so we can see logging
+      if (kDebugMode) {
+        if (Platform.isWindows) {
+          _setEngineProcess(
+            await Process.start('powershell', [
+              '-Command',
+              '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
+            ], environment: engineEnvironment),
+          );
+        } else {
+          _setEngineProcess(
+            await Process.start(
+              anthemPathStr,
+              [],
+              // There's no singular way to start in a shell window on Linux, so
+              // this mirrors the engine output to our standard out.
+              mode: ProcessStartMode.inheritStdio,
+              environment: engineEnvironment,
+            ),
+          );
+        }
       } else {
         _setEngineProcess(
           await Process.start(
             anthemPathStr,
-            [EngineSocketServer.instance.port.toString(), _id.toString()],
-            // There's no singular way to start in a shell window on Linux, so
-            // this mirrors the engine output to our standard out.
-            mode: ProcessStartMode.inheritStdio,
+            [],
+
+            // I'm not sure why this is necessary, but the process doesn't start
+            // correctly without it on Windows without this.
+            mode: Platform.isWindows
+                ? ProcessStartMode.inheritStdio
+                : ProcessStartMode.normal,
+            environment: engineEnvironment,
           ),
         );
       }
-    } else {
-      _setEngineProcess(
-        await Process.start(
-          anthemPathStr,
-          [EngineSocketServer.instance.port.toString(), _id.toString()],
-
-          // I'm not sure why this is necessary, but the process doesn't start
-          // correctly without it on Windows without this.
-          mode: Platform.isWindows
-              ? ProcessStartMode.inheritStdio
-              : ProcessStartMode.normal,
-        ),
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Could not start engine process from $anthemPathStr',
+        error,
+        stackTrace,
       );
+      return false;
     }
 
     // Wait for the engine to connect before setting our initialized state to
@@ -184,6 +214,43 @@ class EngineConnector extends EngineConnectorBase {
     _initialized = true;
 
     return true;
+  }
+
+  Map<String, String>? _debugLameEnvironment() {
+    final lamePath = _debugLamePath();
+    if (lamePath == null) {
+      return null;
+    }
+
+    return {'ANTHEM_LAME_PATH': lamePath};
+  }
+
+  String? _debugLamePath() {
+    if (!kDebugMode) {
+      return null;
+    }
+
+    final configuredLamePath = Platform.environment['ANTHEM_LAME_PATH'];
+    if (configuredLamePath != null && configuredLamePath.isNotEmpty) {
+      return configuredLamePath;
+    }
+
+    final lameFileName = 'lame${Platform.isWindows ? '.exe' : ''}';
+    final candidatePaths = [
+      Uri.base.resolve('assets/engine/$lameFileName'),
+      mainExecutablePath.parent.uri.resolve(
+        'data/flutter_assets/assets/engine/$lameFileName',
+      ),
+    ];
+
+    for (final candidatePath in candidatePaths) {
+      final candidateFile = File.fromUri(candidatePath);
+      if (candidateFile.existsSync()) {
+        return candidateFile.absolute.path;
+      }
+    }
+
+    return null;
   }
 
   /// Sends the given bytes to the engine.

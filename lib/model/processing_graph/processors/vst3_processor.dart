@@ -72,7 +72,9 @@ class VST3ProcessorModel extends _VST3ProcessorModel
   }
 
   static int get eventInputPortId => _VST3ProcessorModel.eventInputPortId;
+  static int get audioInputPortId => _VST3ProcessorModel.audioInputPortId;
   static int get audioOutputPortId => _VST3ProcessorModel.audioOutputPortId;
+  static int get eventOutputPortId => _VST3ProcessorModel.eventOutputPortId;
 }
 
 abstract class _VST3ProcessorModel
@@ -80,6 +82,10 @@ abstract class _VST3ProcessorModel
   static const int audioOutputPortId = 0;
 
   static const int eventInputPortId = 1;
+
+  static const int audioInputPortId = 2;
+
+  static const int eventOutputPortId = 3;
 
   @anthemObservable
   Id nodeId;

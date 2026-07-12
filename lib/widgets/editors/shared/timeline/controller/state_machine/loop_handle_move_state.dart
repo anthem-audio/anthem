@@ -31,6 +31,7 @@ class _TimelineLoopHandleMoveSessionData {
 
 class TimelineLoopHandleMoveState extends TimelineMachineState {
   _TimelineLoopHandleMoveSessionData? _sessionData;
+  CursorOverrideHandle? _cursorOverrideHandle;
 
   @override
   TimelineLoopEditState get parentState =>
@@ -113,6 +114,7 @@ class TimelineLoopHandleMoveState extends TimelineMachineState {
     required EditorStateMachineEvent event,
     required EditorStateMachineState<TimelineStateMachineData> from,
   }) {
+    _setResizeCursorOverride();
     _initializeSession();
   }
 
@@ -127,5 +129,22 @@ class TimelineLoopHandleMoveState extends TimelineMachineState {
     required EditorStateMachineState<TimelineStateMachineData> to,
   }) {
     _clearSession();
+    _clearResizeCursorOverride();
+  }
+
+  @override
+  void onDispose() {
+    _clearResizeCursorOverride();
+  }
+
+  void _setResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = ServiceRegistry.mainWindowController
+        .pushCursorOverride(SystemMouseCursors.resizeLeftRight);
+  }
+
+  void _clearResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = null;
   }
 }

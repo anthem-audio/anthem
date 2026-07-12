@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,16 @@
 
 part of 'package:anthem/engine_api/engine.dart';
 
+class ProcessingGraphNodeInitialization {
+  final bool didInitialize;
+  final List<ProcessingGraphNodeInitializationResult> results;
+
+  ProcessingGraphNodeInitialization({
+    required this.didInitialize,
+    required this.results,
+  });
+}
+
 /// This class is an API for the processing graph in the Anthem Engine. It can
 /// be used to add and remove nodes, and to connect and disconnect existing
 /// nodes.
@@ -27,34 +37,104 @@ class ProcessingGraphApi {
 
   ProcessingGraphApi(this._engine);
 
-  /// Compiles the processing graph, and pushes the result to the audio thread.
+  /// Initializes any processing graph nodes that have not been initialized by
+  /// the engine yet.
+  Future<ProcessingGraphNodeInitialization> initializeNodes() {
+    return _initializeNodes(bypassRenderRequestHold: false);
+  }
+
+  Future<ProcessingGraphNodeInitialization> initializeNodesForRender() {
+    return _initializeNodes(bypassRenderRequestHold: true);
+  }
+
+  Future<ProcessingGraphNodeInitialization> _initializeNodes({
+    required bool bypassRenderRequestHold,
+  }) async {
+    final id = _engine._getRequestId();
+
+    final request = InitializeProcessingGraphNodesRequest(id: id);
+
+    final response =
+        (await _engine._request(
+              request,
+              bypassRenderRequestHold: bypassRenderRequestHold,
+              timeout: Duration(seconds: 30),
+            ))
+            as InitializeProcessingGraphNodesResponse;
+
+    if (response.error != null) {
+      throw Exception(
+        'initializeNodes(): engine returned an error: ${response.error}',
+      );
+    }
+
+    return ProcessingGraphNodeInitialization(
+      didInitialize: response.didInitialize,
+      results: response.results,
+    );
+  }
+
+  /// Publishes the processing graph to the audio thread.
   ///
   /// Any updates to the topology of the processing graph, e.g. adding or
   /// removing nodes or modifying connections, are done first by modifying the
-  /// model. When ready, this method can be called to compile an updated set of
-  /// processing instructions and push them to the audio thread.
-  Future<void> compile() async {
+  /// model. When ready, this method can be called to publish an updated set of
+  /// processing instructions to the audio thread.
+  Future<void> publish() {
+    return _publish(bypassRenderRequestHold: false);
+  }
+
+  Future<void> publishForRender() {
+    return _publish(bypassRenderRequestHold: true);
+  }
+
+  Future<void> _publish({required bool bypassRenderRequestHold}) async {
     final id = _engine._getRequestId();
 
-    final request = CompileProcessingGraphRequest(id: id);
+    final request = PublishProcessingGraphRequest(id: id);
 
     final response =
-        (await _engine._request(request)) as CompileProcessingGraphResponse;
+        (await _engine._request(
+              request,
+              bypassRenderRequestHold: bypassRenderRequestHold,
+            ))
+            as PublishProcessingGraphResponse;
 
     if (response.success) {
       return;
     } else {
-      throw Exception('compile(): engine returned an error: ${response.error}');
+      throw Exception('publish(): engine returned an error: ${response.error}');
     }
   }
 
   /// Pushes a serialized plugin state blob into the engine for the given node.
-  void setPluginState(Id nodeId, String state) async {
+  void setPluginState(Id nodeId, String state) {
     final id = _engine._getRequestId();
 
     final request = SetPluginStateRequest(id: id, nodeId: nodeId, state: state);
 
     _engine._requestNoReply(request);
+  }
+
+  /// Sets a normalized third-party plugin parameter value immediately.
+  void setPluginParameterValue(Id nodeId, int controlPortId, double value) {
+    if (!_engine.isRunning) {
+      return;
+    }
+
+    final id = _engine._getRequestId();
+
+    final request = SetPluginParameterValueRequest(
+      id: id,
+      nodeId: nodeId,
+      controlPortId: controlPortId,
+      value: value,
+    );
+
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.dropDuringStartup,
+    );
   }
 
   /// Reads the current serialized plugin state blob from the engine.
@@ -67,6 +147,19 @@ class ProcessingGraphApi {
         (await _engine._request(request)) as GetPluginStateResponse;
 
     return response.state;
+  }
+
+  /// Opens the native plugin editor window for the given third-party plugin
+  /// node.
+  void openPluginWindow(Id nodeId) {
+    final id = _engine._getRequestId();
+
+    final request = OpenPluginWindowRequest(id: id, nodeId: nodeId);
+
+    _engine._requestNoReply(
+      request,
+      startupBehavior: StartupSendBehavior.dropDuringStartup,
+    );
   }
 
   /// Sends a live event to the given LiveEventProviderProcessor node in the

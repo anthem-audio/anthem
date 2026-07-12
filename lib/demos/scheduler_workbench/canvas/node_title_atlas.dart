@@ -282,7 +282,7 @@ Future<ui.Image> renderNodeTitleImage({
   const verticalGutter = 3.0;
 
   final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
+  final canvas = Canvas(recorder)..scale(devicePixelRatio);
   final paragraphStyle = ui.ParagraphStyle(
     textAlign: TextAlign.center,
     ellipsis: '...',
@@ -292,34 +292,27 @@ Future<ui.Image> renderNodeTitleImage({
     ..pushStyle(
       ui.TextStyle(
         color: const Color(0xFFE6EEF5),
-        fontSize: 15 * devicePixelRatio,
+        fontSize: 15,
         fontWeight: FontWeight.w600,
       ),
     )
     ..addText(title);
 
   final paragraph = paragraphBuilder.build();
-  final inputWidth = maxTextWidth * devicePixelRatio;
-  final tileWidth = (maxTextWidth + horizontalGutter * 2) * devicePixelRatio;
-  final tileHeight = (maxTextHeight + verticalGutter * 2) * devicePixelRatio;
+  final tileWidth = maxTextWidth + horizontalGutter * 2;
+  final tileHeight = maxTextHeight + verticalGutter * 2;
 
-  paragraph.layout(ui.ParagraphConstraints(width: inputWidth));
+  paragraph.layout(ui.ParagraphConstraints(width: maxTextWidth));
   canvas.clipRect(Rect.fromLTWH(0, 0, tileWidth, tileHeight));
 
-  final textY =
-      (verticalGutter +
-              (maxTextHeight - paragraph.height / devicePixelRatio) / 2)
-          .clamp(verticalGutter, verticalGutter + maxTextHeight)
-          .toDouble() *
-      devicePixelRatio;
-  canvas.drawParagraph(
-    paragraph,
-    Offset(horizontalGutter * devicePixelRatio, textY),
-  );
+  final textY = (verticalGutter + (maxTextHeight - paragraph.height) / 2)
+      .clamp(verticalGutter, verticalGutter + maxTextHeight)
+      .toDouble();
+  canvas.drawParagraph(paragraph, Offset(horizontalGutter, textY));
 
   final picture = recorder.endRecording();
-  final imageWidthPx = max(1, tileWidth.ceil());
-  final imageHeightPx = max(1, tileHeight.ceil());
+  final imageWidthPx = max(1, (tileWidth * devicePixelRatio).ceil());
+  final imageHeightPx = max(1, (tileHeight * devicePixelRatio).ceil());
 
   return picture.toImage(imageWidthPx, imageHeightPx);
 }

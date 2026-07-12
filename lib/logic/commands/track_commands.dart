@@ -22,10 +22,10 @@ import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
-import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
-import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
-import 'package:anthem/model/processing_graph/processors/utility.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -43,6 +43,260 @@ class TrackDescriptorForCommand {
     required this.trackType,
     this.parentTrackId,
   });
+}
+
+class AutomationLaneAddRemoveCommand extends Command {
+  final bool _isAdd;
+  final Id parentTrackId;
+  final TrackModel lane;
+  final int index;
+  ProcessingGraphFragment? _removedGraphFragment;
+
+  AutomationLaneAddRemoveCommand.add({
+    required ProjectModel project,
+    required this.parentTrackId,
+    required Id nodeId,
+    required int portId,
+    required String name,
+    this.index = 0,
+  }) : _isAdd = true,
+       lane = TrackModel(
+         idAllocator: ServiceRegistry.forProject(project.id).idAllocator,
+         name: name,
+         color: project.tracks[parentTrackId]!.color.clone(),
+         type: TrackType.automationLane,
+         automationTarget: TrackAutomationTargetModel(
+           nodeId: nodeId,
+           portId: portId,
+         ),
+       )..automationLaneParentTrackId = parentTrackId;
+
+  factory AutomationLaneAddRemoveCommand.remove({
+    required ProjectModel project,
+    required Id laneId,
+  }) {
+    final lane = project.tracks[laneId];
+    if (lane == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Automation lane $laneId '
+        'not found.',
+      );
+    }
+
+    if (!lane.isAutomationLane) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Track $laneId is not an '
+        'automation lane.',
+      );
+    }
+
+    final parentTrackId = lane.automationLaneParentTrackId;
+    if (parentTrackId == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Automation lane $laneId has '
+        'no parent track.',
+      );
+    }
+
+    final parentTrack = project.tracks[parentTrackId];
+    if (parentTrack == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Parent track $parentTrackId '
+        'not found for automation lane $laneId.',
+      );
+    }
+
+    final index = parentTrack.automationLanes.indexOf(laneId);
+    if (index == -1) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand.remove(): Automation lane $laneId not '
+        'found in parent track $parentTrackId.',
+      );
+    }
+
+    return AutomationLaneAddRemoveCommand._remove(
+      parentTrackId: parentTrackId,
+      lane: lane,
+      index: index,
+    );
+  }
+
+  AutomationLaneAddRemoveCommand._remove({
+    required this.parentTrackId,
+    required this.lane,
+    required this.index,
+  }) : _isAdd = false;
+
+  @override
+  void execute(ProjectModel project) {
+    if (_isAdd) {
+      _add(project);
+    } else {
+      _remove(project);
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    if (_isAdd) {
+      _remove(project);
+    } else {
+      _add(project);
+    }
+  }
+
+  void _add(ProjectModel project) {
+    final parentTrack = project.tracks[parentTrackId];
+    if (parentTrack == null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand._add(): Parent track $parentTrackId '
+        'not found.',
+      );
+    }
+
+    if (project.tracks[lane.id] != null) {
+      throw StateError(
+        'AutomationLaneAddRemoveCommand._add(): Automation lane ${lane.id} '
+        'already exists.',
+      );
+    }
+
+    lane.automationLaneParentTrackId = parentTrackId;
+    project.tracks[lane.id] = lane;
+    final insertIndex = index
+        .clamp(0, parentTrack.automationLanes.length)
+        .toInt();
+    parentTrack.automationLanes.insert(insertIndex, lane.id);
+
+    if (_removedGraphFragment != null && !_removedGraphFragment!.isEmpty) {
+      project.processingGraph.restoreGraphFragment(_removedGraphFragment!);
+    } else {
+      _createAutomationProviderGraph(project);
+    }
+
+    ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel.registerTrack(lane.id);
+
+    _publishProcessingGraphIfEngineRunning(project);
+  }
+
+  void _remove(ProjectModel project) {
+    final parentTrack = project.tracks[parentTrackId];
+    if (parentTrack == null) {
+      return;
+    }
+
+    final arrangerViewModel = ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel;
+    arrangerViewModel.unregisterTrack(lane.id);
+    arrangerViewModel.selectedTracks.remove(lane.id);
+
+    parentTrack.automationLanes.remove(lane.id);
+
+    final ownedNodeIds = lane.automationProcessing?.getOwnedNodeIds() ?? [];
+    if (ownedNodeIds.isNotEmpty) {
+      _removedGraphFragment = project.processingGraph.removeNodesAndCapture(
+        ownedNodeIds,
+      );
+    }
+
+    project.tracks.remove(lane.id);
+
+    if (project.engine.isRunning) {
+      project.engine.sequencerApi.cleanUpTrack(lane.id);
+    }
+
+    _publishProcessingGraphIfEngineRunning(project);
+  }
+
+  void _createAutomationProviderGraph(ProjectModel project) {
+    final target = lane.automationTarget;
+    if (target == null) {
+      return;
+    }
+
+    final processingGraph = project.processingGraph;
+    final destinationNode = processingGraph.nodes[target.nodeId];
+    if (destinationNode == null) {
+      return;
+    }
+
+    try {
+      destinationNode.getInputPortById(NodePortDataType.control, target.portId);
+    } catch (_) {
+      return;
+    }
+
+    final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+    final providerNode = SequenceAutomationProviderProcessorModel.create(
+      idAllocator: idAllocator,
+      trackId: lane.id,
+      emptyValue: _getAutomationTargetCurrentValue(
+        destinationNode: destinationNode,
+        portId: target.portId,
+      ),
+    ).createNode();
+    providerNode.owner = NodeOwnerModel(trackId: lane.id);
+    lane.requireAutomationProcessing.sequenceAutomationProviderNodeId =
+        providerNode.id;
+
+    final visualizationId =
+        ControlValueVisualizationProcessorModel.buildVisualizationId(
+          nodeId: target.nodeId,
+          portId: target.portId,
+        );
+    final visualizationNode = ControlValueVisualizationProcessorModel.create(
+      idAllocator: idAllocator,
+      visualizationId: visualizationId,
+    ).createNode();
+    visualizationNode.owner = NodeOwnerModel(trackId: lane.id);
+    lane.requireAutomationProcessing.controlValueVisualizationNodeId =
+        visualizationNode.id;
+
+    processingGraph.addNode(providerNode);
+    processingGraph.addNode(visualizationNode);
+    processingGraph.addConnection(
+      NodeConnectionModel(
+        idAllocator: idAllocator,
+        sourceNodeId: providerNode.id,
+        sourcePortId:
+            SequenceAutomationProviderProcessorModel.controlOutputPortId,
+        destinationNodeId: target.nodeId,
+        destinationPortId: target.portId,
+        dataType: NodePortDataType.control,
+      ),
+    );
+    processingGraph.addConnection(
+      NodeConnectionModel(
+        idAllocator: idAllocator,
+        sourceNodeId: providerNode.id,
+        sourcePortId:
+            SequenceAutomationProviderProcessorModel.controlOutputPortId,
+        destinationNodeId: visualizationNode.id,
+        destinationPortId:
+            ControlValueVisualizationProcessorModel.controlInputPortId,
+        dataType: NodePortDataType.control,
+      ),
+    );
+  }
+
+  double _getAutomationTargetCurrentValue({
+    required NodeModel destinationNode,
+    required int portId,
+  }) {
+    final port = destinationNode.getInputPortById(
+      NodePortDataType.control,
+      portId,
+    );
+
+    return (port.parameterValue ??
+            port.config.parameterConfig?.defaultValue ??
+            0)
+        .clamp(0.0, 1.0)
+        .toDouble();
+  }
 }
 
 class _InternalTrackAddRemoveDescriptor {
@@ -102,18 +356,20 @@ class TrackAddRemoveCommand extends Command {
         }
       }
 
+      final trackModel = TrackModel(
+        idAllocator: idAllocator,
+        name: track.isSendTrack
+            ? 'Send Track ${project.sendTrackOrder.length}'
+            : 'Track ${project.trackOrder.length + 1}',
+        color: AnthemColor(hue: 0, palette: .grayscale),
+        type: track.trackType,
+      );
+
       return _InternalTrackAddRemoveDescriptor(
         index: track.index,
         isSendTrack: track.isSendTrack,
         parentTrackId: track.parentTrackId,
-        trackModel: TrackModel(
-          idAllocator: idAllocator,
-          name: track.isSendTrack
-              ? 'Send Track ${project.sendTrackOrder.length}'
-              : 'Track ${project.trackOrder.length + 1}',
-          color: AnthemColor.randomHue(),
-          type: track.trackType,
-        ),
+        trackModel: trackModel,
       );
     }).toList()..sort((a, b) => (a.index ?? 0).compareTo(b.index ?? 0));
   }
@@ -144,6 +400,12 @@ class TrackAddRemoveCommand extends Command {
     // Collect all descendants of a track (recursively)
     List<TrackModel> collectDescendants(TrackModel track) {
       final result = <TrackModel>[];
+      for (final automationLaneId in track.automationLanes) {
+        final automationLane = project.tracks[automationLaneId];
+        if (automationLane != null) {
+          result.add(automationLane);
+        }
+      }
       for (final childId in track.childTracks) {
         final child = project.tracks[childId];
         if (child != null) {
@@ -294,6 +556,10 @@ class TrackAddRemoveCommand extends Command {
         ];
 
         for (final track in tracksToCheck) {
+          if (!track.hasProcessing) {
+            continue;
+          }
+
           final utilityNodeId = _tryGetTrackUtilityNodeId(track);
           final dbMeterNodeId = _tryGetTrackDbMeterNodeId(track);
 
@@ -318,7 +584,9 @@ class TrackAddRemoveCommand extends Command {
       }
     }
 
-    trackController.rerouteTracks(_collectTrackIdsForDescriptors(_tracks));
+    trackController.rerouteTracks(
+      _collectRoutableTrackIdsForDescriptors(_tracks),
+    );
 
     final arrangerViewModel = ServiceRegistry.forProject(
       project.id,
@@ -328,7 +596,9 @@ class TrackAddRemoveCommand extends Command {
       ..clear()
       ..addAll(_tracks.map((t) => t.trackModel.id));
 
-    project.engine.processingGraphApi.compile();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 
   void _remove(ProjectModel project) {
@@ -336,7 +606,9 @@ class TrackAddRemoveCommand extends Command {
       project.id,
     ).trackController;
     final removedTrackIds = <Id>{};
-    final routedTrackIdsToRemove = _collectTrackIdsForDescriptors(_tracks);
+    final routedTrackIdsToRemove = _collectRoutableTrackIdsForDescriptors(
+      _tracks,
+    );
 
     for (final trackId in routedTrackIdsToRemove) {
       if (project.tracks[trackId] != null) {
@@ -397,7 +669,10 @@ class TrackAddRemoveCommand extends Command {
       _tracks.map((t) => t.trackModel.id),
     );
 
-    final nodeIdsToRemove = _collectTrackNodeIdsForDescriptors(_tracks);
+    final nodeIdsToRemove = _collectTrackNodeIdsForDescriptors(
+      project,
+      _tracks,
+    );
     if (nodeIdsToRemove.isNotEmpty) {
       final removedNodesFragment = project.processingGraph
           .removeNodesAndCapture(nodeIdsToRemove);
@@ -410,19 +685,52 @@ class TrackAddRemoveCommand extends Command {
       }
     }
 
-    project.engine.processingGraphApi.compile();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 }
 
 Id? _tryGetTrackUtilityNodeId(TrackModel track) {
-  return track.utilityNodeId;
+  return track.processing?.utilityNodeId;
 }
 
 Id? _tryGetTrackDbMeterNodeId(TrackModel track) {
-  return track.dbMeterNodeId;
+  return track.processing?.dbMeterNodeId;
+}
+
+void _publishProcessingGraphIfEngineRunning(ProjectModel project) {
+  if (!project.engine.isRunning) {
+    return;
+  }
+
+  ServiceRegistry.forProject(
+    project.id,
+  ).projectController.publishProcessingGraph();
+}
+
+Set<Id> _collectAutomationLaneNodeIdsForTrack(
+  ProjectModel project,
+  TrackModel track,
+) {
+  final nodeIds = <Id>{};
+
+  for (final laneId in track.automationLanes) {
+    final lane = project.tracks[laneId];
+    if (lane != null) {
+      nodeIds.addAll(lane.automationProcessing?.getOwnedNodeIds() ?? []);
+    }
+  }
+
+  if (track.isAutomationLane) {
+    nodeIds.addAll(track.automationProcessing?.getOwnedNodeIds() ?? []);
+  }
+
+  return nodeIds;
 }
 
 Set<Id> _collectTrackNodeIdsForDescriptors(
+  ProjectModel project,
   Iterable<_InternalTrackAddRemoveDescriptor> descriptors,
 ) {
   final nodeIds = <Id>{};
@@ -434,250 +742,35 @@ Set<Id> _collectTrackNodeIdsForDescriptors(
     ];
 
     for (final track in tracksToScan) {
-      nodeIds.addAll(track.getOwnedNodeIds());
+      final processing = track.processing;
+      if (processing != null) {
+        nodeIds.addAll(processing.getOwnedNodeIds());
+      }
+      nodeIds.addAll(_collectAutomationLaneNodeIdsForTrack(project, track));
     }
   }
 
   return nodeIds;
 }
 
-Set<Id> _collectTrackIdsForDescriptors(
+Set<Id> _collectRoutableTrackIdsForDescriptors(
   Iterable<_InternalTrackAddRemoveDescriptor> descriptors,
 ) {
   final trackIds = <Id>{};
 
   for (final descriptor in descriptors) {
-    trackIds.add(descriptor.trackModel.id);
-    trackIds.addAll(descriptor.descendantTrackModels.map((track) => track.id));
+    if (descriptor.trackModel.hasProcessing) {
+      trackIds.add(descriptor.trackModel.id);
+    }
+
+    for (final descendant in descriptor.descendantTrackModels) {
+      if (descendant.hasProcessing) {
+        trackIds.add(descendant.id);
+      }
+    }
   }
 
   return trackIds;
-}
-
-class SetTrackInstrumentNodeCommand extends Command {
-  final Id trackId;
-  final NodeModel instrumentNode;
-
-  final Id? _previousInstrumentNodeId;
-
-  ProcessingGraphFragment? _removedAddedInstrumentFragment;
-  ProcessingGraphFragment? _removedPreviousInstrumentFragment;
-
-  SetTrackInstrumentNodeCommand({
-    required TrackModel track,
-    required this.instrumentNode,
-  }) : trackId = track.id,
-       _previousInstrumentNodeId = track.instrumentNodeId;
-
-  @override
-  void execute(ProjectModel project) {
-    final track = project.tracks[trackId];
-    if (track == null) {
-      throw StateError(
-        'SetTrackInstrumentNodeCommand.execute(): Track $trackId not found.',
-      );
-    }
-
-    final sequenceNoteProviderNode = _getExistingSequenceNoteProviderNode(
-      project,
-      track,
-    );
-    final liveEventProviderNode = _getExistingLiveEventProviderNode(
-      project,
-      track,
-    );
-
-    final hasRestorableInstrumentFragment =
-        _removedAddedInstrumentFragment != null &&
-        !_removedAddedInstrumentFragment!.isEmpty;
-
-    if (hasRestorableInstrumentFragment) {
-      _removeCurrentInstrumentNode(project, track, captureForRollback: false);
-      project.processingGraph.restoreGraphFragment(
-        _removedAddedInstrumentFragment!,
-      );
-    } else {
-      _removeCurrentInstrumentNode(project, track, captureForRollback: true);
-
-      project.processingGraph.addNode(instrumentNode);
-
-      _connectInstrumentAudioToTrackUtility(project, track, instrumentNode);
-      _connectSequenceProviderToInstrument(
-        project,
-        sequenceNoteProviderNode,
-        instrumentNode,
-      );
-      _connectLiveEventProviderToInstrument(
-        project,
-        liveEventProviderNode,
-        instrumentNode,
-      );
-    }
-
-    track.instrumentNodeId = instrumentNode.id;
-
-    project.engine.processingGraphApi.compile();
-  }
-
-  @override
-  void rollback(ProjectModel project) {
-    final track = project.tracks[trackId];
-    if (track == null) {
-      throw StateError(
-        'SetTrackInstrumentNodeCommand.rollback(): Track $trackId not found.',
-      );
-    }
-
-    if (track.instrumentNodeId == instrumentNode.id) {
-      final removedNodesFragment = project.processingGraph
-          .removeNodesAndCapture([instrumentNode.id]);
-      _removedAddedInstrumentFragment ??= removedNodesFragment;
-    }
-
-    if (_removedPreviousInstrumentFragment != null &&
-        !_removedPreviousInstrumentFragment!.isEmpty) {
-      project.processingGraph.restoreGraphFragment(
-        _removedPreviousInstrumentFragment!,
-      );
-    }
-
-    track.instrumentNodeId = _previousInstrumentNodeId;
-
-    project.engine.processingGraphApi.compile();
-  }
-
-  void _removeCurrentInstrumentNode(
-    ProjectModel project,
-    TrackModel track, {
-    required bool captureForRollback,
-  }) {
-    final currentInstrumentNodeId = track.instrumentNodeId;
-    if (currentInstrumentNodeId == null ||
-        currentInstrumentNodeId == instrumentNode.id) {
-      return;
-    }
-
-    final removedNodesFragment = project.processingGraph.removeNodesAndCapture([
-      currentInstrumentNodeId,
-    ]);
-
-    if (captureForRollback) {
-      _removedPreviousInstrumentFragment ??= removedNodesFragment;
-    }
-
-    track.instrumentNodeId = null;
-  }
-}
-
-NodeModel _getExistingSequenceNoteProviderNode(
-  ProjectModel project,
-  TrackModel track,
-) {
-  final sequenceProviderNodeId = track.sequenceNoteProviderNodeId;
-  final sequenceProviderNode =
-      project.processingGraph.nodes[sequenceProviderNodeId];
-
-  if (sequenceProviderNode == null) {
-    throw StateError(
-      'SetTrackInstrumentNodeCommand requires an existing sequence note '
-      'provider node on track ${track.id}.',
-    );
-  }
-
-  return sequenceProviderNode;
-}
-
-NodeModel _getExistingLiveEventProviderNode(
-  ProjectModel project,
-  TrackModel track,
-) {
-  final liveEventProviderNodeId = track.liveEventProviderNodeId;
-  final liveEventProviderNode =
-      project.processingGraph.nodes[liveEventProviderNodeId];
-
-  if (liveEventProviderNode == null) {
-    throw StateError(
-      'SetTrackInstrumentNodeCommand requires an existing live event '
-      'provider node on track ${track.id}.',
-    );
-  }
-
-  return liveEventProviderNode;
-}
-
-void _connectInstrumentAudioToTrackUtility(
-  ProjectModel project,
-  TrackModel track,
-  NodeModel instrumentNode,
-) {
-  if (instrumentNode.audioOutputPorts.isEmpty) {
-    return;
-  }
-
-  final utilityNodeId = _tryGetTrackUtilityNodeId(track);
-  if (utilityNodeId == null) {
-    return;
-  }
-
-  final utilityNode = project.processingGraph.nodes[utilityNodeId];
-  if (utilityNode == null || utilityNode.audioInputPorts.isEmpty) {
-    return;
-  }
-
-  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
-  project.processingGraph.addConnection(
-    NodeConnectionModel(
-      idAllocator: idAllocator,
-      sourceNodeId: instrumentNode.id,
-      sourcePortId: instrumentNode.audioOutputPorts.first.id,
-      destinationNodeId: utilityNode.id,
-      destinationPortId: UtilityProcessorModel.audioInputPortId,
-    ),
-  );
-}
-
-void _connectSequenceProviderToInstrument(
-  ProjectModel project,
-  NodeModel sequenceProviderNode,
-  NodeModel instrumentNode,
-) {
-  if (sequenceProviderNode.eventOutputPorts.isEmpty ||
-      instrumentNode.eventInputPorts.isEmpty) {
-    return;
-  }
-
-  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
-  project.processingGraph.addConnection(
-    NodeConnectionModel(
-      idAllocator: idAllocator,
-      sourceNodeId: sequenceProviderNode.id,
-      sourcePortId: SequenceNoteProviderProcessorModel.eventOutputPortId,
-      destinationNodeId: instrumentNode.id,
-      destinationPortId: instrumentNode.eventInputPorts.first.id,
-    ),
-  );
-}
-
-void _connectLiveEventProviderToInstrument(
-  ProjectModel project,
-  NodeModel liveEventProviderNode,
-  NodeModel instrumentNode,
-) {
-  if (liveEventProviderNode.eventOutputPorts.isEmpty ||
-      instrumentNode.eventInputPorts.isEmpty) {
-    return;
-  }
-
-  final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
-  project.processingGraph.addConnection(
-    NodeConnectionModel(
-      idAllocator: idAllocator,
-      sourceNodeId: liveEventProviderNode.id,
-      sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
-      destinationNodeId: instrumentNode.id,
-      destinationPortId: instrumentNode.eventInputPorts.first.id,
-    ),
-  );
 }
 
 class TrackGroupUngroupCommand extends Command {
@@ -698,6 +791,8 @@ class TrackGroupUngroupCommand extends Command {
   /// The group track to be added, which will become the parent of
   /// [_childrenToAddToGroup].
   late final TrackModel _newGroupTrack;
+
+  late final List<TrackModel> _newGroupAutomationLanes;
 
   /// The track that should be the parent of [_newGroupTrack].
   ///
@@ -932,9 +1027,10 @@ class TrackGroupUngroupCommand extends Command {
     _newGroupTrack = TrackModel(
       idAllocator: idAllocator,
       name: 'New Group',
-      color: AnthemColor.randomHue(),
+      color: .new(hue: 0, palette: .grayscale),
       type: .group,
     );
+    _newGroupAutomationLanes = const [];
     _groupTrackGraphFragment = trackController.buildTrackMixFragment(
       _newGroupTrack,
     );
@@ -969,8 +1065,17 @@ class TrackGroupUngroupCommand extends Command {
 
     _isForSendTrack = trackController.isSendTrack(groupTrack);
     _newGroupTrack = track;
+    _newGroupAutomationLanes = track.automationLanes
+        .map((laneId) => project.tracks[laneId])
+        .nonNulls
+        .toList(growable: false);
     _groupTrackGraphFragment = project.processingGraph.captureNodes(
-      _newGroupTrack.getOwnedNodeIds(),
+      _newGroupTrack.requireProcessing.getOwnedNodeIds().followedBy(
+        _newGroupAutomationLanes.expand(
+          (lane) =>
+              lane.automationProcessing?.getOwnedNodeIds() ?? Iterable.empty(),
+        ),
+      ),
     );
     _parentTrack = track.parentTrackId;
 
@@ -1028,6 +1133,9 @@ class TrackGroupUngroupCommand extends Command {
       ..addAll(_childrenToAddToGroup.map((c) => c.$1));
 
     project.tracks[_newGroupTrack.id] = _newGroupTrack;
+    for (final lane in _newGroupAutomationLanes) {
+      project.tracks[lane.id] = lane;
+    }
 
     parentTrackList.insert(_indexInParent, _newGroupTrack.id);
 
@@ -1043,8 +1151,15 @@ class TrackGroupUngroupCommand extends Command {
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.registerTrack(_newGroupTrack.id);
+    for (final lane in _newGroupAutomationLanes) {
+      ServiceRegistry.forProject(
+        project.id,
+      ).arrangerViewModel.registerTrack(lane.id);
+    }
 
-    project.engine.processingGraphApi.compile();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 
   void _ungroup(ProjectModel project) {
@@ -1067,6 +1182,9 @@ class TrackGroupUngroupCommand extends Command {
     );
 
     project.tracks.remove(_newGroupTrack.id);
+    for (final lane in _newGroupAutomationLanes) {
+      project.tracks.remove(lane.id);
+    }
     parentTrackList.remove(_newGroupTrack.id);
 
     _newGroupTrack.childTracks.clear();
@@ -1084,8 +1202,15 @@ class TrackGroupUngroupCommand extends Command {
     ServiceRegistry.forProject(
       project.id,
     ).arrangerViewModel.unregisterTrack(_newGroupTrack.id);
+    for (final lane in _newGroupAutomationLanes) {
+      ServiceRegistry.forProject(
+        project.id,
+      ).arrangerViewModel.unregisterTrack(lane.id);
+    }
 
-    project.engine.processingGraphApi.compile();
+    ServiceRegistry.forProject(
+      project.id,
+    ).projectController.publishProcessingGraph();
   }
 }
 

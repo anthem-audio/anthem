@@ -23,7 +23,7 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
   @override
   ArrangerDragState get parentState => super.parentState as ArrangerDragState;
 
-  Id? _targetTrackId;
+  Id? _targetRowId;
   double? _defaultStartOffset;
 
   // Local latch of parentState.hasCrossedActivationDistance. The parent drag
@@ -41,14 +41,14 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
   @override
   void onEntry({required event, required from}) {
     _didCrossActivationDistance = false;
-    _resolveTargetTrackId();
+    _resolveTargetRowId();
     _resolveDefaultHintBounds();
     _handleMove();
   }
 
   @override
   void onExit({required event, required to}) {
-    _targetTrackId = null;
+    _targetRowId = null;
     _defaultStartOffset = null;
     _didCrossActivationDistance = false;
     viewModel.clipCreateHint = null;
@@ -103,37 +103,34 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     }
   }
 
-  void _resolveTargetTrackId() {
+  void _resolveTargetRowId() {
     final start = parentState.dragStartPosition;
     if (start == null) {
-      _targetTrackId = null;
+      _targetRowId = null;
       return;
     }
 
-    final fractionalTrackIndex = viewModel.trackPositionCalculator
-        .getTrackIndexFromPosition(start.y);
-    if (fractionalTrackIndex.isInfinite) {
-      _targetTrackId = null;
+    final rowHit = viewModel.trackPositionCalculator.rowAtPosition(start.y);
+    if (rowHit == null) {
+      _targetRowId = null;
       return;
     }
 
-    _targetTrackId = viewModel.trackPositionCalculator.trackIndexToId(
-      fractionalTrackIndex.floor(),
-    );
+    _targetRowId = _rowIdForCreate(rowHit.row);
   }
 
   void _handleMove() {
-    final trackId = _targetTrackId;
+    final rowId = _targetRowId;
     final startPosition = parentState.dragStartPosition;
     final currentPosition = parentState.dragCurrentPosition;
 
-    if (trackId == null || startPosition == null || currentPosition == null) {
+    if (rowId == null || startPosition == null || currentPosition == null) {
       viewModel.clipCreateHint = null;
       return;
     }
 
-    final track = project.tracks[trackId];
-    if (track == null) {
+    final color = _clipCreateHintColor(rowId);
+    if (color == null) {
       viewModel.clipCreateHint = null;
       return;
     }
@@ -147,16 +144,16 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     }
 
     final startOffsetRaw = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       viewPixelWidth: interactionState.viewSize.width,
       pixelOffsetFromLeft: startPosition.x,
     );
     final endOffsetRaw = max(
       0.0,
       pixelsToTime(
-        timeViewStart: viewModel.timeView.start,
-        timeViewEnd: viewModel.timeView.end,
+        timeViewStart: viewModel.timeRange.start,
+        timeViewEnd: viewModel.timeRange.end,
         viewPixelWidth: interactionState.viewSize.width,
         pixelOffsetFromLeft: currentPosition.x,
       ),
@@ -179,10 +176,10 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
           ).toDouble();
 
     viewModel.clipCreateHint = (
-      trackId: trackId,
+      rowId: rowId,
       startOffset: startOffset,
       endOffset: endOffset,
-      color: track.color.colorShifter.clipBase.toColor().withValues(alpha: 0.5),
+      color: color,
     );
 
     // Clear the cursor once we have a real clip create hint
@@ -202,8 +199,8 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
     }
 
     final startOffsetRaw = pixelsToTime(
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
       viewPixelWidth: interactionState.viewSize.width,
       pixelOffsetFromLeft: startPosition.x,
     );
@@ -222,13 +219,12 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
 
   void _handleUp() {
     if (!_didCrossActivationDistance) {
-      final trackId = _targetTrackId;
       final startOffset = _defaultStartOffset;
-      if (trackId == null || startOffset == null) {
+      if (startOffset == null) {
         return;
       }
 
-      controller.createClip(trackId: trackId, offset: startOffset);
+      _createClipForRow(rowId: _targetRowId, offset: startOffset);
       return;
     }
 
@@ -245,10 +241,79 @@ class ArrangerCreateClipState extends _ArrangerLeafState {
       return;
     }
 
-    controller.createClip(
-      trackId: clipCreateHint.trackId,
+    _createClipForRow(
+      rowId: clipCreateHint.rowId,
       offset: start,
       width: end - start,
     );
+  }
+
+  Id? _rowIdForCreate(ArrangerRow row) {
+    return switch (row) {
+      TrackArrangerRow(:final trackId) =>
+        project.tracks.containsKey(trackId) ? trackId : null,
+      PhantomAutomationArrangerRow() => row.rowId,
+    };
+  }
+
+  Color? _clipCreateHintColor(Id rowId) {
+    final trackId = switch (viewModel.trackPositionCalculator.tryRowIdToRow(
+      rowId,
+    )) {
+      TrackArrangerRow(:final trackId) => trackId,
+      PhantomAutomationArrangerRow(:final phantomLane) =>
+        phantomLane.parentTrackId,
+      null => null,
+    };
+    if (trackId == null) {
+      return null;
+    }
+
+    final trackColor = project.tracks[trackId]?.color;
+    if (trackColor == null) {
+      return null;
+    }
+
+    // Grayscale tracks carry no hue, so the clip-create hint would be a flat
+    // gray. Use a fixed color (default palette, hue 161) instead so the hint
+    // remains readable.
+    final effectiveColor =
+        trackColor.palette == AnthemColorPaletteKind.grayscale
+        ? AnthemColor(hue: 161, palette: .normal)
+        : trackColor;
+
+    return effectiveColor.colorShifter.clipBase.toColor().withValues(
+      alpha: 0.5,
+    );
+  }
+
+  void _createClipForRow({
+    required Id? rowId,
+    required double offset,
+    double? width,
+  }) {
+    if (rowId == null) {
+      return;
+    }
+
+    switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
+      case TrackArrangerRow(:final trackId):
+        if (project.tracks.containsKey(trackId)) {
+          controller.createClip(trackId: trackId, offset: offset, width: width);
+        }
+        break;
+      case PhantomAutomationArrangerRow(:final phantomLane):
+        final target = phantomLane.target;
+        if (target != null) {
+          controller.createClipForAutomationTarget(
+            target: target,
+            offset: offset,
+            width: width,
+          );
+        }
+        break;
+      case null:
+        return;
+    }
   }
 }

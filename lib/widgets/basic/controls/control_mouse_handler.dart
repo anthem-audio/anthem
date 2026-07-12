@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,6 +26,9 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:pointer_lock/pointer_lock.dart';
 
+const _doubleClickThreshold = Duration(milliseconds: 500);
+const _maxDoubleClickDistance = 8.0;
+
 class ControlMouseEvent {
   Offset delta;
   Offset absolute;
@@ -47,6 +50,7 @@ class ControlMouseHandler extends StatefulWidget {
   final void Function()? onStart;
   final void Function(ControlMouseEvent event)? onEnd;
   final void Function(ControlMouseEvent event)? onChange;
+  final VoidCallback? onDoubleClick;
 
   final MouseCursor cursor;
 
@@ -65,6 +69,7 @@ class ControlMouseHandler extends StatefulWidget {
     this.onStart,
     this.onEnd,
     this.onChange,
+    this.onDoubleClick,
     this.cursor = MouseCursor.defer,
     this.baseHint,
     this.getHintText,
@@ -95,12 +100,107 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   int? baseHintId;
   int? changeHintId;
 
+  Duration? _lastClickTimestamp;
+  Offset? _lastClickPosition;
+  Duration? _activeClickTimestamp;
+  Offset? _activeClickPosition;
+  bool _activeClickMoved = false;
+
+  bool _isPrimaryButton(PointerDownEvent event) {
+    return event.buttons & kPrimaryButton > 0;
+  }
+
+  bool _isWithinDoubleClickThreshold(Duration timestamp) {
+    final lastClickTimestamp = _lastClickTimestamp;
+    if (lastClickTimestamp == null) {
+      return false;
+    }
+
+    final elapsed = timestamp - lastClickTimestamp;
+    return elapsed >= Duration.zero && elapsed <= _doubleClickThreshold;
+  }
+
+  bool _qualifiesAsDoubleClick(PointerDownEvent event) {
+    final lastClickPosition = _lastClickPosition;
+    return widget.onDoubleClick != null &&
+        lastClickPosition != null &&
+        _isWithinDoubleClickThreshold(event.timeStamp) &&
+        (event.position - lastClickPosition).distance <=
+            _maxDoubleClickDistance;
+  }
+
+  void _clearPendingClick() {
+    _lastClickTimestamp = null;
+    _lastClickPosition = null;
+  }
+
+  void _clearActiveClick() {
+    _activeClickTimestamp = null;
+    _activeClickPosition = null;
+    _activeClickMoved = false;
+  }
+
+  bool _acceptPointerLock(PointerLockDragAcceptDetails details) {
+    final event = details.trigger;
+
+    if (!_isPrimaryButton(event)) {
+      _clearPendingClick();
+      _clearActiveClick();
+      return false;
+    }
+
+    if (_qualifiesAsDoubleClick(event)) {
+      _clearPendingClick();
+      _clearActiveClick();
+      widget.onDoubleClick?.call();
+      return false;
+    }
+
+    _activeClickTimestamp = event.timeStamp;
+    _activeClickPosition = event.position;
+    _activeClickMoved = false;
+
+    return true;
+  }
+
+  void _recordActiveClick() {
+    final activeClickTimestamp = _activeClickTimestamp;
+    final activeClickPosition = _activeClickPosition;
+
+    if (activeClickTimestamp != null &&
+        activeClickPosition != null &&
+        !_activeClickMoved) {
+      _lastClickTimestamp = activeClickTimestamp;
+      _lastClickPosition = activeClickPosition;
+    } else {
+      _clearPendingClick();
+    }
+
+    _clearActiveClick();
+  }
+
   void onPointerDown(PointerEvent e) async {
+    pointerDeviceKind = e.kind;
+
+    widget.onStart?.call();
+
+    if (widget.getHintText != null) {
+      final hintText = widget.getHintText!();
+      if (hintText.isNotEmpty) {
+        changeHintId = HintStore.instance.addHint([
+          HintSection('click + drag', hintText),
+        ]);
+      }
+    }
+
     final mediaQuery = MediaQuery.of(context);
     devicePixelRatio = mediaQuery.devicePixelRatio;
 
     final windowPos = await getWindowPosition();
     final windowSize = await getWindowSize();
+    if (!mounted) {
+      return;
+    }
 
     windowRect = Rect.fromLTWH(
       windowPos.dx / devicePixelRatio,
@@ -117,19 +217,6 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
     originalMouseY = mousePos.dy;
     mostRecentMouseX = mousePos.dx;
     mostRecentMouseY = mousePos.dy;
-
-    widget.onStart?.call();
-
-    if (widget.getHintText != null) {
-      final hintText = widget.getHintText!();
-      if (hintText.isNotEmpty) {
-        changeHintId = HintStore.instance.addHint([
-          HintSection('click + drag', hintText),
-        ]);
-      }
-    }
-
-    pointerDeviceKind = e.kind;
   }
 
   void onPointerMove(PointerLockMoveEvent e) {
@@ -137,6 +224,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
     accumulatorX += e.delta.dx;
     accumulatorY += e.delta.dy;
+    _activeClickMoved = _activeClickMoved || e.delta.dx != 0 || e.delta.dy != 0;
 
     widget.onChange?.call(
       ControlMouseEvent(
@@ -155,7 +243,10 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
   }
 
   void onPointerUp(PointerEvent e) {
-    if (pointerDeviceKind == null) return;
+    if (pointerDeviceKind == null) {
+      _recordActiveClick();
+      return;
+    }
 
     widget.onEnd?.call(
       ControlMouseEvent(
@@ -165,6 +256,8 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
         isScroll: false,
       ),
     );
+
+    _recordActiveClick();
 
     accumulatorX = 0;
     accumulatorY = 0;
@@ -212,6 +305,7 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
 
     final lock = PointerLockDragArea(
       windowsMode: PointerLockWindowsMode.capture,
+      accept: _acceptPointerLock,
       onLock: (e) {
         onPointerDown(e.trigger);
       },
@@ -220,7 +314,9 @@ class _ControlMouseHandlerState extends State<ControlMouseHandler> {
       },
       onUnlock: (e) {
         onPointerUp(e.trigger);
-        setState(() {});
+        if (mounted) {
+          setState(() {});
+        }
       },
       cursor: PointerLockCursor.hidden,
       child: listener,

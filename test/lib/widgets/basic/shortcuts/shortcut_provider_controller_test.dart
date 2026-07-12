@@ -17,7 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -178,5 +180,110 @@ void main() {
         );
       },
     );
+  });
+
+  group('primaryModifierKey', () {
+    tearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('uses Control on non-macOS platforms', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+
+      expect(primaryModifierKey, equals(LogicalKeyboardKey.control));
+      expect(isPrimaryModifierKey(LogicalKeyboardKey.controlLeft), isTrue);
+      expect(isPrimaryModifierKey(LogicalKeyboardKey.metaLeft), isFalse);
+    });
+
+    test('uses Meta on macOS', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+      expect(primaryModifierKey, equals(LogicalKeyboardKey.meta));
+      expect(isPrimaryModifierKey(LogicalKeyboardKey.metaLeft), isTrue);
+      expect(isPrimaryModifierKey(LogicalKeyboardKey.controlLeft), isFalse);
+    });
+  });
+
+  group('KeyboardModifiers', () {
+    tearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('exposes a platform primary modifier', () {
+      final modifiers = KeyboardModifiers();
+      modifiers.setControl(true);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      expect(modifiers.primary, isTrue);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      expect(modifiers.primary, isFalse);
+
+      modifiers.setMeta(true);
+      expect(modifiers.primary, isTrue);
+    });
+  });
+
+  group('ShortcutBehaviors', () {
+    test('normalizes meta variants when matching shortcuts', () {
+      final shortcutManager = ShortcutBehaviors();
+      var callCount = 0;
+
+      shortcutManager.register(
+        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyA),
+        () {
+          callCount++;
+        },
+      );
+
+      shortcutManager.handleShortcut(
+        LogicalKeySet(LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyA),
+      );
+      shortcutManager.handleShortcut(
+        LogicalKeySet(LogicalKeyboardKey.metaRight, LogicalKeyboardKey.keyA),
+      );
+
+      expect(callCount, equals(2));
+    });
+  });
+
+  group('registerEditorDeleteShortcut', () {
+    tearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('registers Delete on non-macOS platforms', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      final shortcutManager = ShortcutBehaviors();
+      var callCount = 0;
+
+      registerEditorDeleteShortcut(shortcutManager, () {
+        callCount++;
+      });
+
+      shortcutManager.handleShortcut(LogicalKeySet(LogicalKeyboardKey.delete));
+      shortcutManager.handleShortcut(
+        LogicalKeySet(LogicalKeyboardKey.backspace),
+      );
+
+      expect(callCount, equals(1));
+    });
+
+    test('registers Backspace as Delete on macOS', () {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final shortcutManager = ShortcutBehaviors();
+      var callCount = 0;
+
+      registerEditorDeleteShortcut(shortcutManager, () {
+        callCount++;
+      });
+
+      shortcutManager.handleShortcut(
+        LogicalKeySet(LogicalKeyboardKey.backspace),
+      );
+      shortcutManager.handleShortcut(LogicalKeySet(LogicalKeyboardKey.delete));
+
+      expect(callCount, equals(2));
+    });
   });
 }

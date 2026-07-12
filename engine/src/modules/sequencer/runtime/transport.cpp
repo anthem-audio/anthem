@@ -21,11 +21,15 @@
 
 #include "modules/util/intentionally_leak.h"
 
+#include <algorithm>
+#include <cmath>
 #include <unordered_map>
 
 namespace anthem {
 
 namespace {
+constexpr double scheduledStopTickTolerance = 1.0e-9;
+
 using TrackToJumpEventsMap = std::unordered_map<int64_t, std::vector<PlayheadJumpSequenceEvent>>;
 using ActiveNotesForTrack = std::unordered_map<SourceNoteId, NoteOnEvent>;
 using TrackToActiveNotesMap = std::unordered_map<int64_t, ActiveNotesForTrack>;
@@ -222,11 +226,21 @@ void Transport::setBeatsPerMinute(double beatsPerMinute) {
 }
 
 void Transport::prepareToProcess() {
+  jassert(!rt_activeBlockPlan.has_value());
+
   sampleRate = clock->currentSampleRate();
   rt_sampleCounter = 0;
+  rt_activeBlockPlan = std::nullopt;
 }
 
-void Transport::rt_prepareForProcessingBlock() {
+int Transport::rt_beginProcessingBlock(int requestedSamples) {
+  jassert(requestedSamples >= 0);
+  jassert(!rt_activeBlockPlan.has_value());
+
+  if (rt_activeBlockPlan.has_value()) {
+    return 0;
+  }
+
   rt_shouldStopSequenceNotes = false;
 
   auto newConfigOpt = configBuffer.read();
@@ -252,7 +266,13 @@ void Transport::rt_prepareForProcessingBlock() {
       rt_shouldStopSequenceNotes = true;
     }
 
-    if (newConfig->isPlaying && !rt_config->isPlaying) {
+    if (newConfig->isPlaying && (!rt_config->isPlaying || newConfig->forcePlayheadStartOnPlay)) {
+      if (newConfig->forcePlayheadStartOnPlay) {
+        rt_playhead = newConfig->playheadStart;
+        rt_playheadJumpOrPauseOccurred = true;
+        rt_shouldStopSequenceNotes = true;
+      }
+
       rt_playheadJumpEventForStart = &newConfig->playheadJumpEventForStart;
     }
 
@@ -287,13 +307,85 @@ void Transport::rt_prepareForProcessingBlock() {
   } else {
     rt_playheadJumpEvent = nullptr;
   }
+
+  if (rt_shouldStopSequenceNotesAtNextBlockStart) {
+    rt_playheadJumpOrPauseOccurred = true;
+    rt_shouldStopSequenceNotes = true;
+    rt_shouldStopSequenceNotesAtNextBlockStart = false;
+  }
+
+  rt_activeBlockPlan = rt_createProcessingBlockPlan(requestedSamples);
+  return rt_activeBlockPlan->numSamples;
 }
 
-void Transport::rt_advancePlayhead(int numSamples) {
-  rt_playhead = rt_getPlayheadAfterAdvance(numSamples);
-  rt_sampleCounter += static_cast<int64_t>(numSamples);
+Transport::ProcessingBlockPlan Transport::rt_createProcessingBlockPlan(int requestedSamples) const {
+  jassert(requestedSamples >= 0);
+
+  if (requestedSamples <= 0) {
+    const auto stopsPlaybackAtEnd =
+        rt_config->isPlaying && rt_config->scheduledStopTick.has_value() &&
+        rt_config->scheduledStopTick.value() - rt_playhead <= scheduledStopTickTolerance;
+    return ProcessingBlockPlan{
+        .numSamples = 0,
+        .stopsPlaybackAtEnd = stopsPlaybackAtEnd,
+    };
+  }
+
+  if (!rt_config->isPlaying || !rt_config->scheduledStopTick.has_value()) {
+    return ProcessingBlockPlan{
+        .numSamples = requestedSamples,
+        .stopsPlaybackAtEnd = false,
+    };
+  }
+
+  const auto remainingTicks = rt_config->scheduledStopTick.value() - rt_playhead;
+  if (remainingTicks <= scheduledStopTickTolerance) {
+    return ProcessingBlockPlan{
+        .numSamples = 0,
+        .stopsPlaybackAtEnd = true,
+    };
+  }
+
+  const auto requestedTickAdvance = rt_getPlayheadAdvanceAmount(requestedSamples);
+  if (requestedTickAdvance + scheduledStopTickTolerance < remainingTicks) {
+    return ProcessingBlockPlan{
+        .numSamples = requestedSamples,
+        .stopsPlaybackAtEnd = false,
+    };
+  }
+
+  const auto samplesToStop =
+      sequencer_timing::tickDeltaToSampleOffset(remainingTicks, rt_getTimingParams());
+  return ProcessingBlockPlan{
+      .numSamples = std::clamp(static_cast<int>(std::ceil(samplesToStop)), 0, requestedSamples),
+      .stopsPlaybackAtEnd = true,
+  };
+}
+
+TransportBlockResult Transport::rt_endProcessingBlock() {
+  jassert(rt_activeBlockPlan.has_value());
+
+  if (!rt_activeBlockPlan.has_value()) {
+    return TransportBlockResult{};
+  }
+
+  const auto blockPlan = rt_activeBlockPlan.value();
+  rt_activeBlockPlan = std::nullopt;
+
+  jassert(blockPlan.numSamples >= 0);
+
+  rt_playhead = rt_getPlayheadAfterAdvance(blockPlan.numSamples);
+  rt_sampleCounter += static_cast<int64_t>(blockPlan.numSamples);
   rt_playheadJumpOrPauseOccurred = false;
   rt_shouldStopSequenceNotes = false;
+
+  if (blockPlan.stopsPlaybackAtEnd) {
+    jassert(rt_config->scheduledStopTick.has_value());
+    rt_playhead = rt_config->scheduledStopTick.value();
+    rt_config->isPlaying = false;
+    rt_config->scheduledStopTick = std::nullopt;
+    rt_shouldStopSequenceNotesAtNextBlockStart = true;
+  }
 
   if (rt_playheadJumpEventForSeek != nullptr) {
     enqueueForDeferredDeletionOrLeak(playheadJumpEventDeleteBuffer, rt_playheadJumpEventForSeek);
@@ -301,6 +393,10 @@ void Transport::rt_advancePlayhead(int numSamples) {
   }
 
   rt_playheadJumpEventForStart = nullptr;
+
+  return TransportBlockResult{
+      .didReachScheduledStop = blockPlan.stopsPlaybackAtEnd,
+  };
 }
 
 double Transport::rt_getPlayheadAdvanceAmount(int numSamples) const {
@@ -377,6 +473,36 @@ void Transport::jumpTo(double playheadPosition) {
     jassertfalse;
     delete eventPtr;
   }
+}
+
+void Transport::beginRenderPlayback(int64_t activeSequenceId, double startTick, double stopTick) {
+  jassert(stopTick > startTick);
+
+  if (!configBeforeRenderPlayback.has_value()) {
+    configBeforeRenderPlayback = config;
+  }
+
+  rt_shouldStopSequenceNotesAtNextBlockStart = false;
+
+  config.activeSequenceId = activeSequenceId;
+  config.isPlaying = true;
+  config.playheadStart = startTick;
+  config.forcePlayheadStartOnPlay = true;
+  config.playheadJumpEventForStart = createPlayheadJumpEvent(startTick);
+  config.scheduledStopTick = stopTick;
+  clearLoopPoints();
+  sendConfigToAudioThread();
+}
+
+void Transport::endRenderPlayback() {
+  if (!configBeforeRenderPlayback.has_value()) {
+    return;
+  }
+
+  rt_shouldStopSequenceNotesAtNextBlockStart = false;
+  config = std::move(configBeforeRenderPlayback.value());
+  configBeforeRenderPlayback = std::nullopt;
+  sendConfigToAudioThread();
 }
 
 void Transport::clearLoopPoints() {

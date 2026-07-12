@@ -1,0 +1,258 @@
+/*
+  Copyright (C) 2026 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import 'dart:math';
+
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/command.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
+import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/device.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/track.dart';
+
+class DeviceAddRemoveCommand extends Command {
+  final bool _isAdd;
+  final Id trackId;
+
+  late final DeviceModel _device;
+  int? _index;
+  ProcessingGraphFragment? _graphFragment;
+
+  DeviceAddRemoveCommand.add({
+    required ProjectModel project,
+    required this.trackId,
+    required DeviceDescriptorForCommand device,
+  }) : _isAdd = true {
+    _getTrack(project, trackId, 'DeviceAddRemoveCommand.add');
+
+    final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+    final createResult = DeviceFactories.create(
+      idAllocator: idAllocator,
+      descriptor: device,
+    );
+
+    _device = createResult.device;
+    _index = device.index;
+    _graphFragment = createResult.graphFragment;
+  }
+
+  DeviceAddRemoveCommand.remove({
+    required ProjectModel project,
+    required this.trackId,
+    required Id deviceId,
+  }) : _isAdd = false {
+    final track = _getTrack(project, trackId, 'DeviceAddRemoveCommand.remove');
+    final processing = track.requireProcessing;
+    final index = processing.devices.indexWhere(
+      (device) => device.id == deviceId,
+    );
+    if (index == -1) {
+      throw StateError(
+        'DeviceAddRemoveCommand.remove(): Device $deviceId not found on '
+        'track $trackId.',
+      );
+    }
+
+    _device = processing.devices[index];
+    _index = index;
+  }
+
+  @override
+  void execute(ProjectModel project) {
+    if (_isAdd) {
+      _add(project);
+    } else {
+      _remove(project);
+    }
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    if (_isAdd) {
+      _remove(project);
+    } else {
+      _add(project);
+    }
+  }
+
+  void _add(ProjectModel project) {
+    final track = _getTrack(project, trackId, 'DeviceAddRemoveCommand._add');
+    final processing = track.requireProcessing;
+    final graphFragment = _graphFragment;
+    if (graphFragment == null) {
+      throw StateError(
+        'DeviceAddRemoveCommand._add(): No graph fragment is available '
+        'for device ${_device.id}.',
+      );
+    }
+
+    if (processing.devices.any((device) => device.id == _device.id)) {
+      throw StateError(
+        'DeviceAddRemoveCommand._add(): Device ${_device.id} already '
+        'exists on track $trackId.',
+      );
+    }
+
+    final insertIndex = _index == null
+        ? processing.devices.length
+        : min(_index!, processing.devices.length);
+    processing.devices.insert(insertIndex, _device);
+    _index ??= insertIndex;
+
+    _stampDeviceNodeOwners(
+      trackId: trackId,
+      device: _device,
+      graphFragment: graphFragment,
+    );
+
+    if (!graphFragment.isEmpty) {
+      project.processingGraph.restoreGraphFragment(graphFragment);
+    }
+
+    _rebuildTrackRoutingAndPublish(project, trackId);
+  }
+
+  void _remove(ProjectModel project) {
+    final track = _getTrack(project, trackId, 'DeviceAddRemoveCommand._remove');
+    final processing = track.requireProcessing;
+    final index = processing.devices.indexWhere(
+      (device) => device.id == _device.id,
+    );
+    if (index == -1) {
+      throw StateError(
+        'DeviceAddRemoveCommand._remove(): Device ${_device.id} not found '
+        'on track $trackId.',
+      );
+    }
+    _index ??= index;
+
+    final deviceController = ServiceRegistry.forProject(
+      project.id,
+    ).deviceController;
+
+    deviceController.disconnectTrackDeviceRouting(trackId);
+
+    processing.devices.removeAt(index);
+
+    _graphFragment = project.processingGraph.removeNodesAndCapture(
+      _device.nodeIds,
+    );
+
+    _rebuildTrackRoutingAndPublish(project, trackId);
+  }
+}
+
+class MoveTrackDeviceCommand extends Command {
+  final Id trackId;
+  final Id deviceId;
+  final int newIndex;
+
+  late int _oldIndex;
+
+  MoveTrackDeviceCommand({
+    required this.trackId,
+    required this.deviceId,
+    required this.newIndex,
+  });
+
+  @override
+  void execute(ProjectModel project) {
+    final track = _getTrack(project, trackId, 'MoveTrackDeviceCommand.execute');
+    _oldIndex = _moveDevice(
+      track.requireProcessing,
+      trackId,
+      deviceId,
+      newIndex,
+    );
+
+    _rebuildTrackRoutingAndPublish(project, trackId);
+  }
+
+  @override
+  void rollback(ProjectModel project) {
+    final track = _getTrack(
+      project,
+      trackId,
+      'MoveTrackDeviceCommand.rollback',
+    );
+    _moveDevice(track.requireProcessing, trackId, deviceId, _oldIndex);
+
+    _rebuildTrackRoutingAndPublish(project, trackId);
+  }
+}
+
+void _rebuildTrackRoutingAndPublish(ProjectModel project, Id trackId) {
+  final serviceRegistry = ServiceRegistry.forProject(project.id);
+
+  serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
+  serviceRegistry.trackController.rerouteTracks([trackId]);
+  serviceRegistry.projectController.publishProcessingGraph();
+}
+
+TrackModel _getTrack(ProjectModel project, Id trackId, String caller) {
+  final track = project.tracks[trackId];
+  if (track == null) {
+    throw StateError('$caller(): Track $trackId not found.');
+  }
+  if (!track.hasProcessing) {
+    throw StateError('$caller(): Track $trackId does not support devices.');
+  }
+
+  return track;
+}
+
+void _stampDeviceNodeOwners({
+  required Id trackId,
+  required DeviceModel device,
+  required ProcessingGraphFragment graphFragment,
+}) {
+  for (final node in graphFragment.nodes) {
+    if (!device.nodeIds.contains(node.id)) {
+      continue;
+    }
+
+    node.owner = NodeOwnerModel(trackId: trackId, deviceId: device.id);
+  }
+}
+
+int _moveDevice(
+  TrackProcessingModel processing,
+  Id trackId,
+  Id deviceId,
+  int newIndex,
+) {
+  final oldIndex = processing.devices.indexWhere(
+    (device) => device.id == deviceId,
+  );
+  if (oldIndex == -1) {
+    throw StateError(
+      'MoveTrackDeviceCommand: Device $deviceId not found on track '
+      '$trackId.',
+    );
+  }
+
+  final device = processing.devices.removeAt(oldIndex);
+  final boundedIndex = min(newIndex, processing.devices.length);
+  processing.devices.insert(boundedIndex, device);
+
+  return oldIndex;
+}

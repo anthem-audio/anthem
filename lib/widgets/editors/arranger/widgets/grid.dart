@@ -24,12 +24,12 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/shared/helpers/grid_paint_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 
 class ArrangerBackgroundPainter extends CustomPainterObserver {
   final Animation<double> verticalScrollPositionAnimation;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final ArrangementModel? activeArrangement;
   final ProjectModel project;
 
@@ -38,12 +38,11 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     required this.activeArrangement,
     required this.project,
     required this.verticalScrollPositionAnimation,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
   }) : super(debugName: 'ArrangerBackgroundPainter', repaint: repaint);
 
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
 
   @override
   void observablePaint(Canvas canvas, Size size) {
@@ -51,25 +50,35 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     final majorLinePaint = Paint()..color = AnthemTheme.grid.major;
     // final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
 
+    paintTimeGridPhraseShading(
+      canvas: canvas,
+      size: size,
+      baseTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: activeArrangement?.timeSignatureChanges ?? [],
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
     // Horizontal lines
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
-    final trackController = serviceRegistry.trackController;
     final renderedVerticalScrollPosition =
         verticalScrollPositionAnimation.value;
     final verticalScrollDelta =
         viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
 
     var i = 0;
-    for (final (_, isSendTrack, _) in trackController.getTracksIterable()) {
+    final visibleRows = viewModel.trackPositionCalculator.visibleRows;
+    for (final row in visibleRows) {
       final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
         i,
       );
       final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(i);
 
       var drawPosition = trackPosition + verticalScrollDelta;
-      if (!isSendTrack) {
+      if (!row.isSendTrack) {
         drawPosition += trackHeight;
       }
       drawPosition--;
@@ -84,7 +93,7 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
 
     // Vertical lines
 
-    paintTimeGrid(
+    paintTimeGridLines(
       canvas: canvas,
       size: size,
       snap: AutoSnap(),
@@ -102,7 +111,6 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
         oldDelegate.project != project ||
         oldDelegate.verticalScrollPositionAnimation !=
             verticalScrollPositionAnimation ||
-        oldDelegate.timeViewStartAnimation != timeViewStartAnimation ||
-        oldDelegate.timeViewEndAnimation != timeViewEndAnimation;
+        oldDelegate.timeRangeAnimation != timeRangeAnimation;
   }
 }

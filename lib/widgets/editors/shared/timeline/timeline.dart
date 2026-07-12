@@ -30,8 +30,8 @@ import 'package:provider/provider.dart';
 import 'controller/timeline_controller.dart';
 import 'controller/state_machine/timeline_state_machine.dart'
     show TimelineLoopHandle;
-import '../helpers/types.dart';
 import '../scroll_manager.dart';
+import '../time_range_animation.dart';
 import 'loop_indicator.dart';
 import 'playhead_handle.dart';
 import 'timeline_labels.dart';
@@ -43,23 +43,17 @@ class Timeline extends StatefulWidget {
   final Id? arrangementID;
   final Id? patternID;
 
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
 
   const Timeline.pattern({
     super.key,
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.patternID,
   }) : arrangementID = null;
 
   const Timeline.arrangement({
     super.key,
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.arrangementID,
   }) : patternID = null;
 
@@ -81,7 +75,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
     }
 
     controller.syncModifierState(
-      ctrlPressed: keyboardModifiers.ctrl,
+      ctrlPressed: keyboardModifiers.primary,
       altPressed: keyboardModifiers.alt,
       shiftPressed: keyboardModifiers.shift,
     );
@@ -100,8 +94,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
     controller.onViewSizeChanged(timelineSize);
     controller.onRenderedTimeViewChanged(
-      timeViewStart: widget.timeViewStartAnimation.value,
-      timeViewEnd: widget.timeViewEndAnimation.value,
+      timeViewStart: widget.timeRangeAnimation.renderedStart,
+      timeViewEnd: widget.timeRangeAnimation.renderedEnd,
     );
   }
 
@@ -148,7 +142,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    widget.timeViewAnimationController.addListener(_syncRenderedViewMetrics);
+    widget.timeRangeAnimation.controller.addListener(_syncRenderedViewMetrics);
   }
 
   /// Recreates the controller if needed.
@@ -204,14 +198,13 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
   void didUpdateWidget(covariant Timeline oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (!identical(
-      oldWidget.timeViewAnimationController,
-      widget.timeViewAnimationController,
-    )) {
-      oldWidget.timeViewAnimationController.removeListener(
+    if (!identical(oldWidget.timeRangeAnimation, widget.timeRangeAnimation)) {
+      oldWidget.timeRangeAnimation.controller.removeListener(
         _syncRenderedViewMetrics,
       );
-      widget.timeViewAnimationController.addListener(_syncRenderedViewMetrics);
+      widget.timeRangeAnimation.controller.addListener(
+        _syncRenderedViewMetrics,
+      );
     }
 
     final didTargetChange =
@@ -249,7 +242,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    widget.timeViewAnimationController.removeListener(_syncRenderedViewMetrics);
+    widget.timeRangeAnimation.controller.removeListener(
+      _syncRenderedViewMetrics,
+    );
     _keyboardModifiers?.removeListener(_handleKeyboardModifiersChanged);
     _controller?.dispose();
     super.dispose();
@@ -266,13 +261,12 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
       builder: (context, constraints) {
         _lastTimelineSize = constraints.biggest;
 
-        final timeView = context.watch<TimeRange>();
         final project = Provider.of<ProjectModel>(context);
         final controller = _requiredController;
         _syncRenderedViewMetrics();
 
         return EditorScrollManager.timeline(
-          timeView: timeView,
+          timeRangeViewport: widget.timeRangeAnimation.viewport,
           child: Listener(
             onPointerDown: handlePointerDown,
             onPointerMove: handlePointerMove,
@@ -290,10 +284,8 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                         builder: (context) {
                           return CustomPaint(
                             painter: TimelinePainter(
-                              repaint: widget.timeViewAnimationController,
-                              timeViewStartAnimation:
-                                  widget.timeViewStartAnimation,
-                              timeViewEndAnimation: widget.timeViewEndAnimation,
+                              repaint: widget.timeRangeAnimation.controller,
+                              timeRangeAnimation: widget.timeRangeAnimation,
                               ticksPerQuarter: project.sequence.ticksPerQuarter,
                               defaultTimeSignature:
                                   project.sequence.defaultTimeSignature,
@@ -325,7 +317,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                           .toList();
 
                       return AnimatedBuilder(
-                        animation: widget.timeViewAnimationController,
+                        animation: widget.timeRangeAnimation.controller,
                         builder: (context, child) {
                           return Observer(
                             warnWhenNoObservables: false,
@@ -335,9 +327,9 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                                   timeSignatureChanges: controller
                                       .timeSignatureChanges(),
                                   timeViewStart:
-                                      widget.timeViewStartAnimation.value,
+                                      widget.timeRangeAnimation.renderedStart,
                                   timeViewEnd:
-                                      widget.timeViewEndAnimation.value,
+                                      widget.timeRangeAnimation.renderedEnd,
                                 ),
                                 children: timelineLabels,
                               );
@@ -352,10 +344,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                     builder: (context) {
                       final loopPoints = controller.loopPoints();
                       return LoopIndicator(
-                        timeViewAnimationController:
-                            widget.timeViewAnimationController,
-                        timeViewStartAnimation: widget.timeViewStartAnimation,
-                        timeViewEndAnimation: widget.timeViewEndAnimation,
+                        timeRangeAnimation: widget.timeRangeAnimation,
                         timelineSize: constraints.biggest,
                         loopStart: loopPoints?.start,
                         loopEnd: loopPoints?.end,
@@ -403,11 +392,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                                   .sequence
                                   .playbackStartPosition
                                   .toDouble(),
-                              timeViewAnimationController:
-                                  widget.timeViewAnimationController,
-                              timeViewStartAnimation:
-                                  widget.timeViewStartAnimation,
-                              timeViewEndAnimation: widget.timeViewEndAnimation,
+                              timeRangeAnimation: widget.timeRangeAnimation,
                               timelineSize: constraints.biggest,
                             ),
                           );
@@ -464,11 +449,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                                   ? null
                                   : project.sequence.playbackStartPosition
                                         .toDouble(),
-                              timeViewAnimationController:
-                                  widget.timeViewAnimationController,
-                              timeViewStartAnimation:
-                                  widget.timeViewStartAnimation,
-                              timeViewEndAnimation: widget.timeViewEndAnimation,
+                              timeRangeAnimation: widget.timeRangeAnimation,
                               timelineSize: constraints.biggest,
                             ),
                           );

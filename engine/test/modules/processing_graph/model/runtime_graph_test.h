@@ -19,11 +19,11 @@
 
 #pragma once
 
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/executor/graph_executor.h"
 #include "modules/processing_graph/executor/graph_executor_shared.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/model/runtime_graph.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <atomic>
@@ -63,6 +63,18 @@ class RuntimeGraphTest : public juce::UnitTest {
 
     node->audioInputPorts()->push_back(
         graph_test_helpers::makePort(inputPortId(nodeId), nodeId, NodePortDataType::audio));
+    node->audioOutputPorts()->push_back(
+        graph_test_helpers::makePort(outputPortId(nodeId), nodeId, NodePortDataType::audio));
+
+    graph.nodes()->insert_or_assign(nodeId, node);
+
+    return node;
+  }
+
+  static std::shared_ptr<Node> addAudioSourceGraphNode(
+      ProcessingGraphModel& graph, int64_t nodeId) {
+    auto node = graph_test_helpers::makeNode(nodeId);
+
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(outputPortId(nodeId), nodeId, NodePortDataType::audio));
 
@@ -135,7 +147,8 @@ class RuntimeGraphTest : public juce::UnitTest {
         sourceNodeId,
         controlOutputPortId(sourceNodeId),
         destinationNodeId,
-        controlInputPortId(destinationNodeId));
+        controlInputPortId(destinationNodeId),
+        NodePortDataType::control);
 
     sourceNode->controlOutputPorts()->at(0)->connections()->push_back(connectionId);
     destinationNode->controlInputPorts()->at(0)->connections()->push_back(connectionId);
@@ -155,7 +168,8 @@ class RuntimeGraphTest : public juce::UnitTest {
         sourceNodeId,
         eventOutputPortId(sourceNodeId),
         destinationNodeId,
-        eventInputPortId(destinationNodeId));
+        eventInputPortId(destinationNodeId),
+        NodePortDataType::event);
 
     sourceNode->eventOutputPorts()->at(0)->connections()->push_back(connectionId);
     destinationNode->eventInputPorts()->at(0)->connections()->push_back(connectionId);
@@ -174,18 +188,17 @@ class RuntimeGraphTest : public juce::UnitTest {
   }
 
   static std::unique_ptr<RuntimeGraph> buildRuntimeGraph(
-      ProcessingGraphModel& graph, GraphRuntimeServices& rtServices) {
+      ProcessingGraphModel& graph, EngineRuntimeServices& rtServices) {
     return RuntimeGraph::fromProcessingGraph(graph,
         rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 8,
-        },
-        44100.0);
+        });
   }
 
   static bool buildThrowsRuntimeError(ProcessingGraphModel& graph) {
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
 
     try {
       (void)buildRuntimeGraph(graph, rtServices);
@@ -210,14 +223,18 @@ public:
     testBuildsNodesInputNodesAndEdges();
     testDeduplicatesNodeConnections();
     testAliasesSingleAudioConnection();
-    testAliasesAudioFanOutConnections();
-    testDisconnectedAudioInputsShareSilentBuffer();
+    testFullyReplacingAudioSourceSkipsArenaClear();
+    testOnlyPreparedProcessorsAreInstalled();
+    testAudioViewsUsePortChannelCountsAndSharedBuffersUseMaxWidth();
+    testCopiesAudioFanOutConnections();
+    testDisconnectedAudioInputsUseWritableClearedBuffers();
     testAliasesSingleEventConnection();
     testBuildsEventFanInTransferAction();
     testPrepareGraphForBlockResetsRemainingUpstreamNodeCounters();
     testDecrementRemainingUpstreamNodeCounter();
     testSingleThreadedExecutorMakesAudioAvailableToReadyDownstreamNodes();
     testSingleThreadedExecutorHandlesDuplicateEdges();
+    testDisconnectedControlParameterUsesParameterSignal();
     testConnectedControlParameterDoesNotOverwriteAliasedSignal();
     testSingleThreadedExecutorHandlesControlFanIn();
     testSingleThreadedExecutorProcessesNodesWithoutProcessors();
@@ -239,7 +256,7 @@ public:
     addConnection(*graph, 100, 1, 3);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.size()), 3, "All graph nodes should copy.");
@@ -284,9 +301,15 @@ public:
     expect(thirdNode.connectionTransferActions[0].dataType == RuntimeConnectionDataType::audio,
         "The transfer action should preserve its audio data type.");
     expectEquals(
-        static_cast<int>(thirdNode.connectionTransferActions[0].sourceBufferIndices.size()),
+        static_cast<int>(thirdNode.connectionTransferActions[0].sourceAudioSlotSlices.size()),
         2,
         "Each real incoming audio connection should contribute to the grouped merge.");
+
+    auto thirdInputBufferIndex = thirdNode.nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(3));
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               thirdInputBufferIndex),
+        "A full-width fan-in transfer destination should not need allocation-time clearing.");
   }
 
   void testDeduplicatesNodeConnections() {
@@ -298,7 +321,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceNode = runtimeGraph->nodes.at(1);
@@ -319,7 +342,7 @@ public:
         destinationNode.connectionTransferActions[0].dataType == RuntimeConnectionDataType::audio,
         "The transfer action should preserve its audio data type.");
     expectEquals(
-        static_cast<int>(destinationNode.connectionTransferActions[0].sourceBufferIndices.size()),
+        static_cast<int>(destinationNode.connectionTransferActions[0].sourceAudioSlotSlices.size()),
         2,
         "Duplicate real audio connections should still contribute separately.");
     expectEquals(static_cast<int>(sourceNode.priority),
@@ -336,68 +359,226 @@ public:
     addGraphNode(*graph, 2);
     addConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& sourceOutputBuffer =
-        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
-    auto& destinationInputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+    auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+    auto destinationInputBufferIndex = runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(2));
 
-    expect(&sourceOutputBuffer == &destinationInputBuffer,
+    expect(sourceOutputBufferIndex == destinationInputBufferIndex,
         "A single audio connection should bind the destination input to the source output.");
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()),
         0,
         "A single aliased connection should not need a transfer action.");
   }
 
-  void testAliasesAudioFanOutConnections() {
-    beginTest("RuntimeGraph aliases audio fan-out connections");
+  void testFullyReplacingAudioSourceSkipsArenaClear() {
+    beginTest("RuntimeGraph skips arena clear for fully replacing audio sources");
 
     auto graph = graph_test_helpers::makeProcessingGraph();
-    addGraphNode(*graph, 1);
+
+    auto sourceNode = graph_test_helpers::makeToneGeneratorNode(1);
+    sourceNode->audioOutputPorts()->push_back(
+        graph_test_helpers::makePort(outputPortId(1), 1, NodePortDataType::audio));
+    sourceNode->getProcessor().value()->isPrepared = true;
+    graph->nodes()->insert_or_assign(1, sourceNode);
+
+    EngineRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               sourceOutputBufferIndex),
+        "A full-output-writing source should not need allocation-time audio clearing.");
+  }
+
+  void testOnlyPreparedProcessorsAreInstalled() {
+    beginTest("RuntimeGraph only installs prepared processors");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+
+    auto sourceNode = graph_test_helpers::makeToneGeneratorNode(1);
+    sourceNode->audioOutputPorts()->push_back(
+        graph_test_helpers::makePort(outputPortId(1), 1, NodePortDataType::audio));
+    graph->nodes()->insert_or_assign(1, sourceNode);
+
+    auto processor = sourceNode->getProcessor();
+    expect(processor.has_value(), "The test node should have a processor.");
+
+    processor.value()->isPrepared = false;
+
+    EngineRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+
+    expect(runtimeGraph->nodes.at(1).processor == nullptr,
+        "Unprepared processors should not be installed in the runtime graph.");
+    expect(runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               sourceOutputBufferIndex),
+        "Unprepared processor outputs should keep allocation-time clearing.");
+
+    runtimeGraph.reset();
+    processor.value()->isPrepared = true;
+
+    auto preparedRuntimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    sourceOutputBufferIndex = preparedRuntimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+
+    expect(preparedRuntimeGraph->nodes.at(1).processor == processor.value().get(),
+        "Prepared processors should be installed in the runtime graph.");
+    expect(!preparedRuntimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               sourceOutputBufferIndex),
+        "Prepared full-output-writing processors can skip allocation-time clearing.");
+  }
+
+  void testAudioViewsUsePortChannelCountsAndSharedBuffersUseMaxWidth() {
+    beginTest("RuntimeGraph exposes logical audio views over max-width shared buffers");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+
+    auto sourceNode = graph_test_helpers::makeNode(1);
+    sourceNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
+        outputPortId(1), 1, NodePortDataType::audio, std::nullopt, std::nullopt, 1));
+    graph->nodes()->insert_or_assign(1, sourceNode);
+
+    auto wideningNode = graph_test_helpers::makeNode(2);
+    wideningNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
+        inputPortId(2), 2, NodePortDataType::audio, std::nullopt, std::nullopt, 1));
+    wideningNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
+        outputPortId(2), 2, NodePortDataType::audio, std::nullopt, std::nullopt, 2));
+    graph->nodes()->insert_or_assign(2, wideningNode);
+
+    auto destinationNode = graph_test_helpers::makeNode(3);
+    destinationNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
+        inputPortId(3), 3, NodePortDataType::audio, std::nullopt, std::nullopt, 2));
+    graph->nodes()->insert_or_assign(3, destinationNode);
+
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 2, 3);
+
+    EngineRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+
+    auto sourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+    auto wideningInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
+    auto wideningOutputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputAudioBuffer(outputPortId(2));
+    auto wideningProcessBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getAudioProcessBuffer();
+
+    auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+    auto wideningInputBufferIndex = runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(2));
+    auto wideningOutputBufferIndex = runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(2));
+
+    expectEquals(sourceOutputBuffer.getNumChannels(), 1);
+    expectEquals(wideningInputBuffer.getNumChannels(), 1);
+    expectEquals(wideningOutputBuffer.getNumChannels(), 2);
+    expectEquals(wideningProcessBuffer.getNumChannels(), 2);
+    expect(sourceOutputBufferIndex == wideningInputBufferIndex);
+    expect(wideningInputBufferIndex == wideningOutputBufferIndex);
+    expectEquals(
+        runtimeGraph->graphProcessContext->getSampleBufferSlotChannelCount(sourceOutputBufferIndex),
+        2,
+        "The shared physical buffer should be wide enough for the widest aliased view.");
+    expect(runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               sourceOutputBufferIndex),
+        "A widened physical slot should keep allocation-time clearing for unwritten channels.");
+  }
+
+  void testCopiesAudioFanOutConnections() {
+    beginTest("RuntimeGraph copies audio fan-out connections into branch buffers");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addAudioSourceGraphNode(*graph, 1);
     addGraphNode(*graph, 2);
     addGraphNode(*graph, 3);
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 1, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& sourceOutputBuffer =
-        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
-    auto& firstDestinationInputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
-    auto& secondDestinationInputBuffer =
-        runtimeGraph->nodes.at(3).nodeProcessContext->getInputAudioBuffer(inputPortId(3));
+    auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+    auto firstDestinationInputBufferIndex =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
+            NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(2));
+    auto secondDestinationInputBufferIndex =
+        runtimeGraph->nodes.at(3).nodeProcessContext->getBufferIndex(
+            NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(3));
 
-    expect(&sourceOutputBuffer == &firstDestinationInputBuffer,
-        "The first fan-out destination should alias the source output.");
-    expect(&sourceOutputBuffer == &secondDestinationInputBuffer,
-        "The second fan-out destination should alias the source output.");
-    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 0);
-    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()), 0);
+    expect(sourceOutputBufferIndex != firstDestinationInputBufferIndex,
+        "The first fan-out destination should get a mutable branch buffer.");
+    expect(sourceOutputBufferIndex != secondDestinationInputBufferIndex,
+        "The second fan-out destination should get a mutable branch buffer.");
+    expect(firstDestinationInputBufferIndex != secondDestinationInputBufferIndex,
+        "Fan-out destinations should not share mutable branch buffers.");
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 1);
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()), 1);
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               firstDestinationInputBufferIndex),
+        "A full-width fan-out transfer destination should not need allocation-time clearing.");
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               secondDestinationInputBufferIndex),
+        "A full-width fan-out transfer destination should not need allocation-time clearing.");
   }
 
-  void testDisconnectedAudioInputsShareSilentBuffer() {
-    beginTest("RuntimeGraph shares one silent buffer across disconnected audio inputs");
+  void testDisconnectedAudioInputsUseWritableClearedBuffers() {
+    beginTest("RuntimeGraph gives disconnected audio inputs writable cleared buffers");
 
     auto graph = graph_test_helpers::makeProcessingGraph();
     addGraphNode(*graph, 1);
     addGraphNode(*graph, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& firstInputBuffer =
+    auto firstInputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(1));
+    auto secondInputBufferIndex = runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(2));
+
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    auto firstInputBuffer =
         runtimeGraph->nodes.at(1).nodeProcessContext->getInputAudioBuffer(inputPortId(1));
-    auto& secondInputBuffer =
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+    auto secondInputBuffer =
         runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
 
-    expect(&firstInputBuffer == &secondInputBuffer,
-        "Disconnected audio inputs should share the graph's silent input buffer.");
+    expect(firstInputBufferIndex != secondInputBufferIndex,
+        "Disconnected audio inputs should not share mutable input buffers.");
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               firstInputBufferIndex),
+        "A full-width disconnected input clear should replace allocation-time clearing.");
+    expect(!runtimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
+               secondInputBufferIndex),
+        "A full-width disconnected input clear should replace allocation-time clearing.");
     expectWithinAbsoluteError(
-        firstInputBuffer.getSample(0, 0), 0.0f, 0.0001f, "The shared buffer should be silent.");
+        firstInputBuffer.getSample(0, 0), 0.0f, 0.0001f, "The input buffer should be silent.");
+    expectWithinAbsoluteError(
+        secondInputBuffer.getSample(0, 0), 0.0f, 0.0001f, "The input buffer should be silent.");
   }
 
   void testAliasesSingleEventConnection() {
@@ -408,7 +589,7 @@ public:
     addEventGraphNode(*graph, 2);
     addEventConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& sourceOutputBuffer =
@@ -443,7 +624,7 @@ public:
     addEventConnection(*graph, 100, 1, 3);
     addEventConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     auto& destinationNode = runtimeGraph->nodes.at(3);
@@ -470,7 +651,7 @@ public:
     addConnection(*graph, 100, 1, 3);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     for (auto& [_, runtimeNode] : runtimeGraph->nodes) {
@@ -514,14 +695,18 @@ public:
     beginTest("Single-threaded executor makes audio available to ready downstream nodes");
 
     auto graph = graph_test_helpers::makeProcessingGraph();
-    addGraphNode(*graph, 1);
+    addAudioSourceGraphNode(*graph, 1);
     addGraphNode(*graph, 2);
     addConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& sourceOutputBuffer =
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
+
+    auto sourceOutputBuffer =
         runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
 
     for (int channel = 0; channel < sourceOutputBuffer.getNumChannels(); ++channel) {
@@ -530,9 +715,12 @@ public:
       }
     }
 
-    processRuntimeGraph(*runtimeGraph, 4);
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
 
-    auto& destinationInputBuffer =
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+    auto destinationInputBuffer =
         runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
 
     for (int channel = 0; channel < destinationInputBuffer.getNumChannels(); ++channel) {
@@ -548,32 +736,41 @@ public:
     beginTest("Single-threaded executor handles duplicate edges");
 
     auto graph = graph_test_helpers::makeProcessingGraph();
-    addGraphNode(*graph, 1);
+    addAudioSourceGraphNode(*graph, 1);
     addGraphNode(*graph, 2);
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& sourceOutputBuffer =
-        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
+    auto sourceOutputBufferIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
     auto destinationInputBufferIndex = runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
         NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(2));
-    auto& destinationInputBuffer =
-        runtimeGraph->graphProcessContext->getAudioBuffer(destinationInputBufferIndex);
 
-    expect(&sourceOutputBuffer != &destinationInputBuffer,
+    expect(sourceOutputBufferIndex != destinationInputBufferIndex,
         "Audio fan-in should use a dedicated destination buffer.");
+
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
+    auto sourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
 
     for (int channel = 0; channel < sourceOutputBuffer.getNumChannels(); ++channel) {
       for (int sample = 0; sample < 4; ++sample) {
         sourceOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 1));
-        destinationInputBuffer.setSample(channel, sample, 99.0f);
       }
     }
 
-    processRuntimeGraph(*runtimeGraph, 4);
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+    auto destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
 
     for (int channel = 0; channel < destinationInputBuffer.getNumChannels(); ++channel) {
       for (int sample = 0; sample < 4; ++sample) {
@@ -592,23 +789,32 @@ public:
     addControlGraphNode(*graph, 2, true);
     addControlConnection(*graph, 100, 1, 2);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& sourceOutputBuffer = runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
-        controlOutputPortId(1));
-    auto& destinationInputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getInputControlBuffer(controlInputPortId(2));
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
 
-    expect(&sourceOutputBuffer == &destinationInputBuffer,
-        "A single control connection should alias the destination input to the source output.");
+    auto sourceOutputBuffer = runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
+        controlOutputPortId(1));
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).connectionTransferActions.size()), 0);
 
     for (int sample = 0; sample < 4; ++sample) {
       sourceOutputBuffer.setSample(0, sample, static_cast<float>(sample) * 0.2f);
     }
 
-    processRuntimeGraph(*runtimeGraph, 4);
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+
+    auto destinationInputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getInputControlBuffer(controlInputPortId(2));
+
+    expect(sourceOutputBuffer.getReadPointer(0) == destinationInputBuffer.getReadPointer(0),
+        "A single control connection should alias the destination input to the source output.");
 
     for (int sample = 0; sample < 4; ++sample) {
       expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
@@ -616,6 +822,27 @@ public:
           0.0001f,
           "The connected control input should keep the source output value.");
     }
+  }
+
+  void testDisconnectedControlParameterUsesParameterSignal() {
+    beginTest("Disconnected control parameter uses a parameter signal");
+
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addControlGraphNode(*graph, 1, true);
+
+    EngineRuntimeServices rtServices;
+    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
+
+    auto* context = runtimeGraph->nodes.at(1).nodeProcessContext;
+    jassert(context != nullptr);
+
+    auto inputBuffer = context->getInputControlBuffer(controlInputPortId(1));
+    auto inputSignal = context->getInputControlSignal(controlInputPortId(1));
+
+    expect(!inputBuffer.isValid(), "Disconnected control parameters should not allocate buffers.");
+    expect(!inputSignal.hasBuffer(), "The input signal should expose the parameter value.");
+    expectWithinAbsoluteError(
+        inputSignal.getSample(0), 0.25f, 0.0001f, "The parameter value should be readable.");
   }
 
   void testSingleThreadedExecutorHandlesControlFanIn() {
@@ -628,20 +855,9 @@ public:
     addControlConnection(*graph, 100, 1, 3);
     addControlConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& firstSourceOutputBuffer =
-        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
-            controlOutputPortId(1));
-    auto& secondSourceOutputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputControlBuffer(
-            controlOutputPortId(2));
-    auto& destinationInputBuffer =
-        runtimeGraph->nodes.at(3).nodeProcessContext->getInputControlBuffer(controlInputPortId(3));
-
-    expect(&secondSourceOutputBuffer != &destinationInputBuffer,
-        "Control fan-in should use a dedicated destination buffer.");
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(3).connectionTransferActions.size()),
         1,
         "Control fan-in should create one grouped transfer action.");
@@ -649,12 +865,38 @@ public:
                RuntimeConnectionDataType::control,
         "The transfer action should preserve its control data type.");
 
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
+    auto firstSourceOutputBuffer =
+        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputControlBuffer(
+            controlOutputPortId(1));
     for (int sample = 0; sample < 4; ++sample) {
       firstSourceOutputBuffer.setSample(0, sample, static_cast<float>(sample) * 0.1f);
+    }
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    auto secondSourceOutputBuffer =
+        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputControlBuffer(
+            controlOutputPortId(2));
+    for (int sample = 0; sample < 4; ++sample) {
       secondSourceOutputBuffer.setSample(0, sample, 0.5f + static_cast<float>(sample) * 0.1f);
     }
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(2));
 
-    processRuntimeGraph(*runtimeGraph, 4);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(3));
+    rt_processNode(state, runtimeGraph->nodes.at(3), 4);
+
+    auto destinationInputBuffer =
+        runtimeGraph->nodes.at(3).nodeProcessContext->getInputControlBuffer(controlInputPortId(3));
+
+    expect(destinationInputBuffer.isValid(), "Control fan-in should have a destination buffer.");
+    expect(secondSourceOutputBuffer.getReadPointer(0) != destinationInputBuffer.getReadPointer(0),
+        "Control fan-in should use a dedicated destination buffer.");
 
     for (int sample = 0; sample < 4; ++sample) {
       expectWithinAbsoluteError(destinationInputBuffer.getSample(0, sample),
@@ -665,35 +907,44 @@ public:
   }
 
   void testSingleThreadedExecutorProcessesNodesWithoutProcessors() {
-    beginTest("Single-threaded executor processes nodes without processors");
+    beginTest("Single-threaded executor passes audio through nodes without processors");
 
     auto graph = graph_test_helpers::makeProcessingGraph();
-    addGraphNode(*graph, 1);
+    addAudioSourceGraphNode(*graph, 1);
     addGraphNode(*graph, 2);
     addGraphNode(*graph, 3);
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
-    auto& firstOutputBuffer =
+    GraphExecutorState state(*runtimeGraph);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
+
+    auto firstOutputBuffer =
         runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
-    auto& secondOutputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getOutputAudioBuffer(outputPortId(2));
 
     for (int channel = 0; channel < firstOutputBuffer.getNumChannels(); ++channel) {
       for (int sample = 0; sample < 4; ++sample) {
         firstOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 1));
-        secondOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 10));
       }
     }
 
-    processRuntimeGraph(*runtimeGraph, 4);
+    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
 
-    auto& secondInputBuffer =
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
+    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
+    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(2));
+
+    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(3));
+    rt_processNode(state, runtimeGraph->nodes.at(3), 4);
+
+    auto secondInputBuffer =
         runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
-    auto& thirdInputBuffer =
+    auto thirdInputBuffer =
         runtimeGraph->nodes.at(3).nodeProcessContext->getInputAudioBuffer(inputPortId(3));
 
     for (int channel = 0; channel < secondInputBuffer.getNumChannels(); ++channel) {
@@ -701,7 +952,7 @@ public:
         expectWithinAbsoluteError(
             secondInputBuffer.getSample(channel, sample), static_cast<float>(sample + 1), 0.0001f);
         expectWithinAbsoluteError(
-            thirdInputBuffer.getSample(channel, sample), static_cast<float>(sample + 10), 0.0001f);
+            thirdInputBuffer.getSample(channel, sample), static_cast<float>(sample + 1), 0.0001f);
       }
     }
   }
@@ -716,7 +967,7 @@ public:
     addConnection(*graph, 100, 1, 2);
     addConnection(*graph, 101, 2, 3);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 3);
@@ -737,7 +988,7 @@ public:
     addConnection(*graph, 102, 2, 4);
     addConnection(*graph, 103, 3, 4);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 5);
@@ -759,7 +1010,7 @@ public:
     addConnection(*graph, 101, 3, 4);
     addConnection(*graph, 102, 4, 5);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).priority), 2);

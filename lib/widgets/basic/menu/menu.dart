@@ -28,6 +28,7 @@ import 'menu_renderer.dart';
 
 class Menu extends StatefulWidget {
   final AnthemMenuController menuController;
+  final AnthemMenuControllerGroup? menuControllerGroup;
   final MenuDef menuDef;
   final Widget? child;
   late final MenuAlignment menuAlignment;
@@ -37,6 +38,7 @@ class Menu extends StatefulWidget {
   Menu({
     super.key,
     required this.menuController,
+    this.menuControllerGroup,
     this.child,
     required this.menuDef,
     MenuAlignment? alignment,
@@ -51,8 +53,8 @@ class Menu extends StatefulWidget {
 }
 
 class _MenuState extends State<Menu> {
-  int openMenuID = -1;
-  List<ScreenOverlayHandle> openMenus = [];
+  final Object tapRegionGroupId = Object();
+  ScreenOverlayHandle? openMenuHandle;
 
   @override
   Widget build(BuildContext context) {
@@ -61,13 +63,30 @@ class _MenuState extends State<Menu> {
     );
     widget.menuController.open = ([pos]) =>
         openMenu(screenOverlayController, pos);
-    return widget.child ?? const SizedBox();
+    widget.menuController.close = screenOverlayController.clear;
+    widget.menuController.getIsOpen = () => openMenuHandle != null;
+
+    final anchor = TapRegion(
+      groupId: tapRegionGroupId,
+      child: widget.child ?? const SizedBox(),
+    );
+
+    final menuControllerGroup = widget.menuControllerGroup;
+    if (menuControllerGroup == null) return anchor;
+
+    return MouseRegion(
+      onEnter: (_) =>
+          menuControllerGroup.handleMenuEnter(widget.menuController),
+      child: anchor,
+    );
   }
 
   void openMenu(
     ScreenOverlayController screenOverlayController,
     Offset? incomingPos,
   ) {
+    if (openMenuHandle != null) return;
+
     final contentRenderBox = context.findRenderObject() as RenderBox;
     final anchorPos =
         incomingPos ??
@@ -86,28 +105,74 @@ class _MenuState extends State<Menu> {
         );
     final anchorRect = Rect.fromLTWH(anchorPos.dx, anchorPos.dy, 0, 0);
 
-    final handle = screenOverlayController.show(
+    late final ScreenOverlayHandle handle;
+    handle = screenOverlayController.show(
       ScreenOverlayEntry(
         builder: (context) {
           return MenuPositioned(
             anchorRect: anchorRect,
-            child: MenuRenderer(menu: widget.menuDef),
+            child: MenuRenderer(
+              menu: widget.menuDef,
+              tapRegionGroupId: tapRegionGroupId,
+              onTapOutside: screenOverlayController.clear,
+            ),
           );
         },
-        onClose: widget.onClose,
+        onClose: () {
+          if (openMenuHandle == handle) {
+            openMenuHandle = null;
+          }
+          widget.onClose?.call();
+        },
       ),
     );
-    openMenus.add(handle);
-  }
-
-  void closeMenu() {
-    for (var menu in openMenus) {
-      menu.close();
-    }
-    openMenus.clear();
+    openMenuHandle = handle;
   }
 }
 
 class AnthemMenuController {
   late void Function([Offset? pos]) open;
+  late void Function() close;
+  late bool Function() getIsOpen;
+
+  bool get isOpen => getIsOpen();
+
+  void toggle([Offset? pos]) {
+    if (isOpen) {
+      close();
+    } else {
+      open(pos);
+    }
+  }
+}
+
+/// Coordinates hover switching between a group of top-level menus.
+///
+/// Hovering a menu while another menu in the group is open closes the current
+/// menu tree and opens the hovered menu. Hovering does nothing while the entire
+/// group is closed.
+class AnthemMenuControllerGroup {
+  final List<AnthemMenuController> _menuControllers;
+
+  AnthemMenuControllerGroup(Iterable<AnthemMenuController> menuControllers)
+    : _menuControllers = List.unmodifiable(menuControllers);
+
+  void handleMenuEnter(AnthemMenuController hoveredMenuController) {
+    assert(_menuControllers.contains(hoveredMenuController));
+
+    if (hoveredMenuController.isOpen) return;
+
+    AnthemMenuController? openMenuController;
+    for (final menuController in _menuControllers) {
+      if (menuController.isOpen) {
+        openMenuController = menuController;
+        break;
+      }
+    }
+
+    if (openMenuController == null) return;
+
+    openMenuController.close();
+    hoveredMenuController.open();
+  }
 }

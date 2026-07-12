@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,10 +23,11 @@ import 'dart:typed_data';
 
 /// Manages TCP connections to engine processes.
 ///
-/// When an engine is started, it will be given a port and an ID as arguments.
-/// The engine will connect to the port on localhost, and its first message will
-/// include the ID it was given. This allows the server to associate the socket
-/// with its ID, and that socket object can then be accessed via [onMessage].
+/// When an engine is started, it will be given a port and an ID in its
+/// environment. The engine will connect to the port on localhost, and its first
+/// message will include the ID it was given. This allows the server to
+/// associate the socket with its ID, and that socket object can then be
+/// accessed via [onMessage].
 class EngineSocketServer {
   static final _instance = EngineSocketServer._internal();
   static EngineSocketServer get instance => _instance;

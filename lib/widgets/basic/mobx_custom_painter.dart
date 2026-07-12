@@ -26,9 +26,8 @@ import 'package:mobx/src/core.dart' show ReactionImpl;
 /// A [CustomPainter] that repaints when observables accessed by
 /// [observablePaint] change.
 abstract class CustomPainterObserver extends CustomPainter {
-  CustomPainterObserver({String? debugName, Listenable? repaint})
-    : _tracker = _MobxPaintTracker(name: debugName ?? 'CustomPainterObserver'),
-      _repaint = repaint;
+  CustomPainterObserver({String? debugName, this._repaint})
+    : _tracker = _MobxPaintTracker(name: debugName ?? 'CustomPainterObserver');
 
   final _MobxPaintTracker _tracker;
   final Listenable? _repaint;

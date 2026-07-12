@@ -19,6 +19,8 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show InvalidationRange;
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
@@ -45,11 +47,16 @@ class _RunningEngine extends Mock implements Engine {
   Stream<EngineState> get engineStateStream => _engineStateStream;
 }
 
-ClipModel _createClip({required Id id, required Id patternId, int offset = 0}) {
+ClipModel _createClip({
+  required Id id,
+  required Id patternId,
+  Id? trackId,
+  int offset = 0,
+}) {
   return ClipModel(
     idAllocator: ProjectEntityIdAllocator.test(() => id),
     patternId: patternId,
-    trackId: getId(),
+    trackId: trackId ?? getId(),
     offset: offset,
   );
 }
@@ -97,20 +104,39 @@ Future<void> _flushMicrotasks() async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('ArrangementModel pattern clip reference cache', () {
+  group('ArrangementModel clip reference caches', () {
     test('is not serialized', () {
       final arrangement = _createArrangement();
       final serialized = arrangement.toJson();
 
       expect(serialized.containsKey('patternClipReferenceCounts'), isFalse);
+      expect(serialized.containsKey('patternClipIdsByPatternId'), isFalse);
+      expect(serialized.containsKey('trackClipIdsByTrackId'), isFalse);
     });
 
     test('is rebuilt from clips when deserialized', () {
       final patternA = getId();
       final patternB = getId();
-      final clipA1 = _createClip(id: getId(), patternId: patternA, offset: 0);
-      final clipA2 = _createClip(id: getId(), patternId: patternA, offset: 96);
-      final clipB = _createClip(id: getId(), patternId: patternB, offset: 192);
+      final trackA = getId();
+      final trackB = getId();
+      final clipA1 = _createClip(
+        id: getId(),
+        patternId: patternA,
+        trackId: trackA,
+        offset: 0,
+      );
+      final clipA2 = _createClip(
+        id: getId(),
+        patternId: patternA,
+        trackId: trackA,
+        offset: 96,
+      );
+      final clipB = _createClip(
+        id: getId(),
+        patternId: patternB,
+        trackId: trackB,
+        offset: 192,
+      );
 
       final arrangement = ArrangementModel.fromJson({
         'id': getId(),
@@ -126,8 +152,28 @@ void main() {
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(2));
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(1));
       expect(
+        arrangement.getClipIdsForPattern(patternA).toSet(),
+        equals({clipA1.id, clipA2.id}),
+      );
+      expect(arrangement.getClipIdsForPattern(patternB), equals([clipB.id]));
+      expect(
         arrangement.patternClipReferenceCounts.keys.toSet(),
         equals({patternA, patternB}),
+      );
+      expect(
+        arrangement.patternClipIdsByPatternId.keys.toSet(),
+        equals({patternA, patternB}),
+      );
+      expect(
+        arrangement.getClipIdsForTrack(trackA).toSet(),
+        equals({clipA1.id, clipA2.id}),
+      );
+      expect(arrangement.getClipIdsForTrack(trackB), equals([clipB.id]));
+      expect(arrangement.hasClipsForTrack(trackA), isTrue);
+      expect(arrangement.hasClipsForTrack(getId()), isFalse);
+      expect(
+        arrangement.trackClipIdsByTrackId.keys.toSet(),
+        equals({trackA, trackB}),
       );
     });
 
@@ -135,43 +181,98 @@ void main() {
       final arrangement = _createArrangement();
       final patternA = getId();
       final patternB = getId();
-      final clipA1 = _createClip(id: getId(), patternId: patternA);
-      final clipA2 = _createClip(id: getId(), patternId: patternA);
-      final clipB = _createClip(id: getId(), patternId: patternB);
+      final trackA = getId();
+      final trackB = getId();
+      final clipA1 = _createClip(
+        id: getId(),
+        patternId: patternA,
+        trackId: trackA,
+      );
+      final clipA2 = _createClip(
+        id: getId(),
+        patternId: patternA,
+        trackId: trackA,
+      );
+      final clipB = _createClip(
+        id: getId(),
+        patternId: patternB,
+        trackId: trackB,
+      );
 
       arrangement.clips[clipA1.id] = clipA1;
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(1));
+      expect(arrangement.getClipIdsForPattern(patternA), equals([clipA1.id]));
+      expect(arrangement.getClipIdsForTrack(trackA), equals([clipA1.id]));
+      expect(arrangement.hasClipsForTrack(trackA), isTrue);
 
       arrangement.clips[clipA2.id] = clipA2;
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(2));
+      expect(
+        arrangement.getClipIdsForPattern(patternA).toSet(),
+        equals({clipA1.id, clipA2.id}),
+      );
+      expect(
+        arrangement.getClipIdsForTrack(trackA).toSet(),
+        equals({clipA1.id, clipA2.id}),
+      );
 
       arrangement.clips[clipB.id] = clipB;
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(1));
+      expect(arrangement.getClipIdsForPattern(patternB), equals([clipB.id]));
+      expect(arrangement.getClipIdsForTrack(trackB), equals([clipB.id]));
 
       arrangement.clips.remove(clipA1.id);
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(1));
+      expect(arrangement.getClipIdsForPattern(patternA), equals([clipA2.id]));
+      expect(arrangement.getClipIdsForTrack(trackA), equals([clipA2.id]));
 
       arrangement.clips.remove(clipA2.id);
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(0));
+      expect(arrangement.getClipIdsForPattern(patternA), isEmpty);
+      expect(arrangement.getClipIdsForTrack(trackA), isEmpty);
+      expect(arrangement.hasClipsForTrack(trackA), isFalse);
       expect(
         arrangement.patternClipReferenceCounts.containsKey(patternA),
         isFalse,
       );
+      expect(
+        arrangement.patternClipIdsByPatternId.containsKey(patternA),
+        isFalse,
+      );
+      expect(arrangement.trackClipIdsByTrackId.containsKey(trackA), isFalse);
     });
 
     test('updates correctly when map put replaces an existing clip', () {
       final arrangement = _createArrangement();
       final patternA = getId();
       final patternB = getId();
+      final trackA = getId();
+      final trackB = getId();
       final clipId = getId();
 
-      arrangement.clips[clipId] = _createClip(id: clipId, patternId: patternA);
+      arrangement.clips[clipId] = _createClip(
+        id: clipId,
+        patternId: patternA,
+        trackId: trackA,
+      );
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(1));
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(0));
+      expect(arrangement.getClipIdsForPattern(patternA), equals([clipId]));
+      expect(arrangement.getClipIdsForPattern(patternB), isEmpty);
+      expect(arrangement.getClipIdsForTrack(trackA), equals([clipId]));
+      expect(arrangement.getClipIdsForTrack(trackB), isEmpty);
 
-      arrangement.clips[clipId] = _createClip(id: clipId, patternId: patternB);
+      arrangement.clips[clipId] = _createClip(
+        id: clipId,
+        patternId: patternB,
+        trackId: trackB,
+      );
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(0));
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(1));
+      expect(arrangement.getClipIdsForPattern(patternA), isEmpty);
+      expect(arrangement.getClipIdsForPattern(patternB), equals([clipId]));
+      expect(arrangement.getClipIdsForTrack(trackA), isEmpty);
+      expect(arrangement.getClipIdsForTrack(trackB), equals([clipId]));
     });
 
     test('updates when a clip patternId changes', () {
@@ -185,23 +286,85 @@ void main() {
       arrangement.clips[clip2.id] = clip2;
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(2));
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(0));
+      expect(
+        arrangement.getClipIdsForPattern(patternA).toSet(),
+        equals({clip1.id, clip2.id}),
+      );
+      expect(arrangement.getClipIdsForPattern(patternB), isEmpty);
 
       clip1.patternId = patternB;
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(1));
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(1));
+      expect(arrangement.getClipIdsForPattern(patternA), equals([clip2.id]));
+      expect(arrangement.getClipIdsForPattern(patternB), equals([clip1.id]));
 
       // Writing same value should not change counts.
       clip1.patternId = patternB;
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(1));
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(1));
+      expect(arrangement.getClipIdsForPattern(patternA), equals([clip2.id]));
+      expect(arrangement.getClipIdsForPattern(patternB), equals([clip1.id]));
 
       clip2.patternId = patternB;
       expect(arrangement.getPatternClipReferenceCount(patternA), equals(0));
       expect(arrangement.getPatternClipReferenceCount(patternB), equals(2));
+      expect(arrangement.getClipIdsForPattern(patternA), isEmpty);
+      expect(
+        arrangement.getClipIdsForPattern(patternB).toSet(),
+        equals({clip1.id, clip2.id}),
+      );
       expect(
         arrangement.patternClipReferenceCounts.containsKey(patternA),
         isFalse,
       );
+      expect(
+        arrangement.patternClipIdsByPatternId.containsKey(patternA),
+        isFalse,
+      );
+    });
+
+    test('updates when a clip trackId changes', () {
+      final arrangement = _createArrangement();
+      final patternId = getId();
+      final trackA = getId();
+      final trackB = getId();
+      final clip1 = _createClip(
+        id: getId(),
+        patternId: patternId,
+        trackId: trackA,
+      );
+      final clip2 = _createClip(
+        id: getId(),
+        patternId: patternId,
+        trackId: trackA,
+      );
+
+      arrangement.clips[clip1.id] = clip1;
+      arrangement.clips[clip2.id] = clip2;
+      expect(
+        arrangement.getClipIdsForTrack(trackA).toSet(),
+        equals({clip1.id, clip2.id}),
+      );
+      expect(arrangement.getClipIdsForTrack(trackB), isEmpty);
+
+      clip1.trackId = trackB;
+      expect(arrangement.getClipIdsForTrack(trackA), equals([clip2.id]));
+      expect(arrangement.getClipIdsForTrack(trackB), equals([clip1.id]));
+      expect(arrangement.hasClipsForTrack(trackA), isTrue);
+      expect(arrangement.hasClipsForTrack(trackB), isTrue);
+
+      // Writing same value should not change indexes.
+      clip1.trackId = trackB;
+      expect(arrangement.getClipIdsForTrack(trackA), equals([clip2.id]));
+      expect(arrangement.getClipIdsForTrack(trackB), equals([clip1.id]));
+
+      clip2.trackId = trackB;
+      expect(arrangement.getClipIdsForTrack(trackA), isEmpty);
+      expect(
+        arrangement.getClipIdsForTrack(trackB).toSet(),
+        equals({clip1.id, clip2.id}),
+      );
+      expect(arrangement.trackClipIdsByTrackId.containsKey(trackA), isFalse);
     });
   });
 

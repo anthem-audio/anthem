@@ -251,23 +251,36 @@ class MapRemove extends FieldOperation {
   }
 }
 
+class _NoFieldAccessorValue {
+  const _NoFieldAccessorValue();
+}
+
+const _noFieldAccessorValue = _NoFieldAccessorValue();
+
 /// Represents a field in a model.
 class FieldAccessor {
   final FieldType fieldType;
   final String? fieldName;
   final int? index;
   final dynamic key;
+  final dynamic _value;
 
   FieldAccessor({
     required this.fieldType,
     this.fieldName,
     this.index,
     this.key,
+    this._value = _noFieldAccessorValue,
   });
+
+  bool get hasValue => !identical(_value, _noFieldAccessorValue);
+
+  dynamic get value => hasValue ? _value : null;
 
   @override
   String toString() {
-    return 'FieldAccessor(fieldType: $fieldType, fieldName: $fieldName, index: $index, key: $key)';
+    return 'FieldAccessor(fieldType: $fieldType, fieldName: $fieldName, '
+        'index: $index, key: $key, hasValue: $hasValue)';
   }
 }
 
@@ -288,14 +301,12 @@ typedef ModelChangeDecorator = void Function(MutableModelChange change);
 class MutableModelChange {
   final FieldOperation operation;
   final List<FieldAccessor> _leafToRootAccessors;
-  bool _sendToEngine;
+  bool _sendToEngine = true;
 
   MutableModelChange._({
     required this.operation,
-    required List<FieldAccessor> leafToRootAccessors,
-    bool sendToEngine = true,
-  }) : _leafToRootAccessors = leafToRootAccessors,
-       _sendToEngine = sendToEngine;
+    required this._leafToRootAccessors,
+  });
 
   /// Whether the root model should forward this change to the engine.
   ///
@@ -549,6 +560,7 @@ mixin AnthemModelBase {
         fieldName: parentFieldName,
         index: parentListIndex,
         key: parentMapKey,
+        value: this,
       ),
     );
 

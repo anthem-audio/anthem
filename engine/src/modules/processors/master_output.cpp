@@ -22,6 +22,7 @@
 #include "modules/core/engine.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
+#include <algorithm>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_core/juce_core.h>
 
@@ -32,25 +33,38 @@ MasterOutputProcessor::MasterOutputProcessor(const MasterOutputProcessorModelImp
 
 MasterOutputProcessor::~MasterOutputProcessor() {}
 
-void MasterOutputProcessor::prepareToProcess() {
-  auto* device = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  if (device == nullptr) {
+void MasterOutputProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
+  if (!audioProcessingConfig.has_value()) {
     jassertfalse;
-    juce::Logger::writeToLog("Error: No audio device is currently set.");
+    juce::Logger::writeToLog("Error: No audio processing config is currently set.");
+    complete(ProcessorPrepareResult{
+        .success = false,
+        .error = std::string("No audio processing config is active."),
+    });
     return;
   }
 
-  auto outputChannelsMask = device->getActiveOutputChannels();
-  auto outputChannels = outputChannelsMask.countNumberOfSetBits();
-  auto bufferSize = device->getCurrentBufferSizeSamples();
+  auto outputChannels = audioProcessingConfig->outputChannelCount;
+  auto bufferSize = audioProcessingConfig->blockSize;
   buffer = juce::AudioSampleBuffer(outputChannels, bufferSize);
+
+  complete(std::nullopt);
 }
 
 void MasterOutputProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
+  auto inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {
-    this->buffer.copyFrom(channel, 0, inputBuffer, channel, 0, numSamples);
+    auto* outputSamples = buffer.getWritePointer(channel);
+    const auto* inputSamples = inputBuffer.getReadPointer(channel);
+
+    if (outputSamples == nullptr || inputSamples == nullptr) {
+      continue;
+    }
+
+    std::copy(inputSamples, inputSamples + numSamples, outputSamples);
   }
 }
 

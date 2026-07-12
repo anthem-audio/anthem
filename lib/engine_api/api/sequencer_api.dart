@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -29,15 +29,16 @@ class SequencerApi {
   /// If [tracksToRebuild] is specified, only the given tracks will be
   /// rebuilt. Otherwise, all tracks will be rebuilt.
   ///
-  /// If [invalidationRanges] is specified, these are the ranges of the sequence
-  /// that are no longer "valid". Valid in this context means that the data within
-  /// this range is changed and can no longer be relied on for playback. For
-  /// example, if an instrument has received a note on event and the playhead is
-  /// within one of these ranges, the instrument is not guaranteed to receive a
-  /// matching note off event.
+  /// If [invalidationRanges] is specified, these are the note-event ranges of
+  /// the sequence that are no longer "valid". Valid in this context means that
+  /// the data within this range is changed and can no longer be relied on for
+  /// playback. For example, if an instrument has received a note on event and
+  /// the playhead is within one of these ranges, the instrument is not
+  /// guaranteed to receive a matching note off event.
   ///
   /// If [invalidationRanges] is specified, [tracksToRebuild] must also be
-  /// specified, and vice versa.
+  /// specified.
+  ///
   void compileArrangement(
     Id arrangementId, {
     List<Id>? tracksToRebuild,
@@ -61,15 +62,16 @@ class SequencerApi {
   /// If [tracksToRebuild] is specified, only the given tracks will be
   /// rebuilt. Otherwise, all tracks will be rebuilt.
   ///
-  /// If [invalidationRanges] is specified, these are the ranges of the sequence
-  /// that are no longer "valid". Valid in this context means that the data within
-  /// this range is changed and can no longer be relied on for playback. For
-  /// example, if an instrument has received a note on event and the playhead is
-  /// within one of these ranges, the instrument is not guaranteed to receive a
-  /// matching note off event.
+  /// If [invalidationRanges] is specified, these are the note-event ranges of
+  /// the sequence that are no longer "valid". Valid in this context means that
+  /// the data within this range is changed and can no longer be relied on for
+  /// playback. For example, if an instrument has received a note on event and
+  /// the playhead is within one of these ranges, the instrument is not
+  /// guaranteed to receive a matching note off event.
   ///
   /// If [invalidationRanges] is specified, [tracksToRebuild] must also be
-  /// specified, and vice versa.
+  /// specified.
+  ///
   void compilePattern(
     Id patternId, {
     List<Id>? tracksToRebuild,

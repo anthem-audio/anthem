@@ -44,7 +44,11 @@ import 'track_controller_test.mocks.dart';
 
 class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
   @override
-  Future<void> compile() async {}
+  Future<ProcessingGraphNodeInitialization> initializeNodes() async =>
+      ProcessingGraphNodeInitialization(didInitialize: true, results: []);
+
+  @override
+  Future<void> publish() async {}
 }
 
 class _MockEngine extends Mock implements Engine {
@@ -57,6 +61,15 @@ class _MockEngine extends Mock implements Engine {
 
   @override
   ProcessingGraphApi get processingGraphApi => _processingGraphApi;
+}
+
+void _createAndRegisterTrackNodes({
+  required TrackModel track,
+  required ProjectModel project,
+  required ProjectEntityIdAllocator idAllocator,
+}) {
+  track.setParentPropertiesOnChildren();
+  track.createAndRegisterNodes(project, idAllocator);
 }
 
 void main() {
@@ -88,9 +101,13 @@ void main() {
         idAllocator: ProjectEntityIdAllocator.test(getId),
         name: 'Track',
         color: AnthemColor.randomHue(),
-        type: .instrument,
+        type: .normal,
       );
-      track.createAndRegisterNodes(project, idAllocator);
+      _createAndRegisterTrackNodes(
+        track: track,
+        project: project,
+        idAllocator: idAllocator,
+      );
 
       when(
         project.tracks,
@@ -102,7 +119,7 @@ void main() {
     test('returns the utility node audio input pair', () {
       final result = trackController.getTrackFxChainAudioInput(track.id);
 
-      expect(result.nodeId, equals(track.utilityNodeId));
+      expect(result.nodeId, equals(track.requireProcessing.utilityNodeId));
       expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
     });
   });
@@ -144,14 +161,30 @@ void main() {
       when(project.engine).thenReturn(mockEngine);
 
       groupTrack = createTrack('Group', .group);
-      childTrack = createTrack('Child', .instrument);
-      topLevelTrack = createTrack('Top Level', .instrument);
-      masterTrack = createTrack('Master', .audio)..isMasterTrack = true;
+      childTrack = createTrack('Child', .normal);
+      topLevelTrack = createTrack('Top Level', .normal);
+      masterTrack = createTrack('Master', .normal)..isMasterTrack = true;
 
-      groupTrack.createAndRegisterNodes(project, idAllocator);
-      childTrack.createAndRegisterNodes(project, idAllocator);
-      topLevelTrack.createAndRegisterNodes(project, idAllocator);
-      masterTrack.createAndRegisterNodes(project, idAllocator);
+      _createAndRegisterTrackNodes(
+        track: groupTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
+      _createAndRegisterTrackNodes(
+        track: childTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
+      _createAndRegisterTrackNodes(
+        track: topLevelTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
+      _createAndRegisterTrackNodes(
+        track: masterTrack,
+        project: project,
+        idAllocator: idAllocator,
+      );
 
       groupTrack.childTracks.add(childTrack.id);
       childTrack.parentTrackId = groupTrack.id;
@@ -173,7 +206,7 @@ void main() {
         childTrack.id,
       );
 
-      expect(result.nodeId, equals(groupTrack.utilityNodeId));
+      expect(result.nodeId, equals(groupTrack.requireProcessing.utilityNodeId));
       expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
     });
 
@@ -184,7 +217,10 @@ void main() {
           topLevelTrack.id,
         );
 
-        expect(result.nodeId, equals(masterTrack.utilityNodeId));
+        expect(
+          result.nodeId,
+          equals(masterTrack.requireProcessing.utilityNodeId),
+        );
         expect(result.portId, equals(UtilityProcessorModel.audioInputPortId));
       },
     );
@@ -230,7 +266,7 @@ void main() {
       when(project.trackOrder).thenReturn(trackOrder);
       when(project.sendTrackOrder).thenReturn(sendTrackOrder);
 
-      // Regular tracks: A (group) -> B, C
+      // normal tracks: A (group) -> B, C
       final trackAId = getId();
       final trackBId = getId();
       final trackCId = getId();
@@ -244,8 +280,8 @@ void main() {
       when(trackC.id).thenReturn(trackCId);
 
       when(trackA.type).thenReturn(TrackType.group);
-      when(trackB.type).thenReturn(TrackType.instrument);
-      when(trackC.type).thenReturn(TrackType.instrument);
+      when(trackB.type).thenReturn(TrackType.normal);
+      when(trackC.type).thenReturn(TrackType.normal);
 
       when(
         trackA.childTracks,
@@ -279,8 +315,8 @@ void main() {
       when(masterTrack.id).thenReturn(masterTrackId);
 
       when(trackL.type).thenReturn(TrackType.group);
-      when(trackM.type).thenReturn(TrackType.instrument);
-      when(masterTrack.type).thenReturn(TrackType.instrument);
+      when(trackM.type).thenReturn(TrackType.normal);
+      when(masterTrack.type).thenReturn(TrackType.normal);
 
       when(trackL.childTracks).thenReturn(AnthemObservableList.of([trackMId]));
       when(trackM.childTracks).thenReturn(AnthemObservableList());
@@ -320,6 +356,101 @@ void main() {
         isFalse,
       );
       expect(trackController.canGroupTracks([masterTrack.id]), isFalse);
+    });
+  });
+
+  group('getTrackColorTargetIds()', () {
+    late MockProjectModel project;
+    late TrackController trackController;
+    late AnthemObservableMap<Id, TrackModel> tracks;
+
+    late TrackModel parentTrack;
+    late TrackModel automationLaneA;
+    late TrackModel automationLaneB;
+    late TrackModel normalTrack;
+
+    TrackModel createTrack(String name, TrackType type) {
+      return TrackModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: name,
+        color: AnthemColor.randomHue(),
+        type: type,
+      );
+    }
+
+    setUp(() {
+      project = MockProjectModel();
+      tracks = AnthemObservableMap();
+      when(project.tracks).thenReturn(tracks);
+
+      parentTrack = createTrack('Parent', .normal);
+      automationLaneA = createTrack('Automation A', .automationLane)
+        ..automationLaneParentTrackId = parentTrack.id;
+      automationLaneB = createTrack('Automation B', .automationLane)
+        ..automationLaneParentTrackId = parentTrack.id;
+      normalTrack = createTrack('Normal', .normal);
+
+      parentTrack.automationLanes.addAll([
+        automationLaneA.id,
+        automationLaneB.id,
+      ]);
+
+      tracks.addAll({
+        parentTrack.id: parentTrack,
+        automationLaneA.id: automationLaneA,
+        automationLaneB.id: automationLaneB,
+        normalTrack.id: normalTrack,
+      });
+
+      trackController = TrackController(project);
+    });
+
+    test('expands a parent track to include its automation lanes', () {
+      expect(trackController.getTrackColorTargetIds([parentTrack.id]), [
+        parentTrack.id,
+        automationLaneA.id,
+        automationLaneB.id,
+      ]);
+    });
+
+    test(
+      'expands an automation lane to include its parent and sibling lanes',
+      () {
+        expect(trackController.getTrackColorTargetIds([automationLaneB.id]), [
+          parentTrack.id,
+          automationLaneA.id,
+          automationLaneB.id,
+        ]);
+      },
+    );
+
+    test(
+      'deduplicates tracks when parent and automation lanes are selected',
+      () {
+        expect(
+          trackController.getTrackColorTargetIds([
+            automationLaneA.id,
+            parentTrack.id,
+            automationLaneB.id,
+          ]),
+          [parentTrack.id, automationLaneA.id, automationLaneB.id],
+        );
+      },
+    );
+
+    test('keeps unrelated selected tracks in the color target list', () {
+      expect(
+        trackController.getTrackColorTargetIds([
+          normalTrack.id,
+          automationLaneA.id,
+        ]),
+        [
+          normalTrack.id,
+          parentTrack.id,
+          automationLaneA.id,
+          automationLaneB.id,
+        ],
+      );
     });
   });
 
@@ -377,15 +508,15 @@ void main() {
       when(project.engine).thenReturn(mockEngine);
 
       regularGroup = createTrack('Regular Group', .group);
-      regularChildA = createTrack('Regular Child A', .instrument);
-      regularChildB = createTrack('Regular Child B', .instrument);
-      regularTopA = createTrack('Regular Top A', .instrument);
-      regularTopB = createTrack('Regular Top B', .instrument);
+      regularChildA = createTrack('Regular Child A', .normal);
+      regularChildB = createTrack('Regular Child B', .normal);
+      regularTopA = createTrack('Regular Top A', .normal);
+      regularTopB = createTrack('Regular Top B', .normal);
 
       sendGroup = createTrack('Send Group', .group);
-      sendChild = createTrack('Send Child', .instrument);
-      sendTop = createTrack('Send Top', .instrument);
-      masterTrack = createTrack('Master', .audio)..isMasterTrack = true;
+      sendChild = createTrack('Send Child', .normal);
+      sendTop = createTrack('Send Top', .normal);
+      masterTrack = createTrack('Master', .normal)..isMasterTrack = true;
 
       tracks.addAll({
         regularGroup.id: regularGroup,
@@ -412,7 +543,7 @@ void main() {
       final arrangerViewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 40,
-        timeView: TimeRange(0, 4),
+        timeRange: TimeRange(0, 4),
       );
       ServiceRegistry.initializeProject(
         project,
@@ -461,7 +592,7 @@ void main() {
       final newTrack = tracks[newTrackId];
       expect(newTrack, isNotNull);
       expect(newTrack!.parentTrackId, equals(regularGroup.id));
-      expect(newTrack.type, equals(TrackType.instrument));
+      expect(newTrack.type, equals(TrackType.normal));
     });
 
     test('regular child anchor inserts below within parent group', () {
@@ -501,7 +632,38 @@ void main() {
       expect(trackOrder[anchorIndex + 2], equals(regularTopB.id));
     });
 
-    test('top-level send anchor inserts below in sendTrackOrder', () {
+    test('addSendTrack inserts new send tracks at the start', () {
+      final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
+
+      trackController.addSendTrack();
+      final firstNewTrackId = sendTrackOrder.first;
+
+      trackController.addSendTrack();
+      final secondNewTrackId = sendTrackOrder.first;
+
+      trackController.addSendTrack();
+      final thirdNewTrackId = sendTrackOrder.first;
+
+      expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 3));
+      expect(
+        sendTrackOrder.take(3),
+        equals([thirdNewTrackId, secondNewTrackId, firstNewTrackId]),
+      );
+      expect(sendTrackOrder.skip(3), equals(oldSendTrackOrder));
+      expect(sendTrackOrder.last, equals(masterTrack.id));
+
+      for (final trackId in [
+        firstNewTrackId,
+        secondNewTrackId,
+        thirdNewTrackId,
+      ]) {
+        final track = tracks[trackId];
+        expect(track, isNotNull);
+        expect(track!.parentTrackId, isNull);
+      }
+    });
+
+    test('top-level send anchor inserts above in sendTrackOrder', () {
       final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
       final anchorIndex = oldSendTrackOrder.indexOf(sendTop.id);
 
@@ -509,13 +671,45 @@ void main() {
 
       expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 1));
 
-      final newTrackId = sendTrackOrder[anchorIndex + 1];
+      final newTrackId = sendTrackOrder[anchorIndex];
       final newTrack = tracks[newTrackId];
       expect(newTrack, isNotNull);
       expect(newTrack!.parentTrackId, isNull);
 
-      expect(sendTrackOrder[anchorIndex], equals(sendTop.id));
-      expect(sendTrackOrder[anchorIndex + 2], equals(masterTrack.id));
+      expect(sendTrackOrder[anchorIndex + 1], equals(sendTop.id));
+      expect(sendTrackOrder.last, equals(masterTrack.id));
+    });
+
+    test('master track anchor inserts above master in sendTrackOrder', () {
+      final oldSendTrackOrder = List<Id>.from(sendTrackOrder);
+      final masterIndex = oldSendTrackOrder.indexOf(masterTrack.id);
+
+      trackController.insertTrackAt(masterTrack.id);
+
+      expect(sendTrackOrder.length, equals(oldSendTrackOrder.length + 1));
+
+      final newTrackId = sendTrackOrder[masterIndex];
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, isNull);
+
+      expect(sendTrackOrder[masterIndex + 1], equals(masterTrack.id));
+    });
+
+    test('send child anchor inserts above within parent group', () {
+      final oldChildren = List<Id>.from(sendGroup.childTracks);
+      final anchorIndex = oldChildren.indexOf(sendChild.id);
+
+      trackController.insertTrackAt(sendChild.id);
+
+      expect(sendGroup.childTracks.length, equals(oldChildren.length + 1));
+
+      final newTrackId = sendGroup.childTracks[anchorIndex];
+      final newTrack = tracks[newTrackId];
+      expect(newTrack, isNotNull);
+      expect(newTrack!.parentTrackId, equals(sendGroup.id));
+
+      expect(sendGroup.childTracks[anchorIndex + 1], equals(sendChild.id));
     });
   });
 
@@ -536,6 +730,7 @@ void main() {
     late TrackModel groupTrack;
     late TrackModel childTrack;
     late TrackModel otherTrack;
+    late TrackModel automationLane;
     late TrackModel masterTrack;
 
     late ArrangementModel arrangementA;
@@ -543,12 +738,14 @@ void main() {
 
     late PatternModel orphanPatternA;
     late PatternModel orphanPatternB;
+    late PatternModel automationLanePattern;
     late PatternModel sharedPattern;
 
     late ClipModel clipOnGroupOrphan;
     late ClipModel clipOnGroupShared;
     late ClipModel clipOnOtherShared;
     late ClipModel clipOnChildOrphan;
+    late ClipModel clipOnAutomationLane;
 
     TrackModel createTrack(String name, TrackType type) {
       return TrackModel(
@@ -600,9 +797,9 @@ void main() {
       when(project.engine).thenReturn(mockEngine);
 
       groupTrack = createTrack('Group', .group);
-      childTrack = createTrack('Child', .instrument);
-      otherTrack = createTrack('Other', .instrument);
-      masterTrack = createTrack('Master', .instrument)..isMasterTrack = true;
+      childTrack = createTrack('Child', .normal);
+      otherTrack = createTrack('Other', .normal);
+      masterTrack = createTrack('Master', .normal)..isMasterTrack = true;
 
       groupTrack.childTracks.add(childTrack.id);
       childTrack.parentTrackId = groupTrack.id;
@@ -633,6 +830,10 @@ void main() {
         idAllocator: ProjectEntityIdAllocator.test(getId),
         name: 'Orphan B',
       );
+      automationLanePattern = PatternModel(
+        idAllocator: ProjectEntityIdAllocator.test(getId),
+        name: 'Automation Lane Orphan',
+      );
       sharedPattern = PatternModel(
         idAllocator: ProjectEntityIdAllocator.test(getId),
         name: 'Shared',
@@ -640,6 +841,7 @@ void main() {
 
       sequence.patterns[orphanPatternA.id] = orphanPatternA;
       sequence.patterns[orphanPatternB.id] = orphanPatternB;
+      sequence.patterns[automationLanePattern.id] = automationLanePattern;
       sequence.patterns[sharedPattern.id] = sharedPattern;
 
       clipOnGroupOrphan = createClip(
@@ -676,7 +878,7 @@ void main() {
       final arrangerViewModel = ArrangerViewModel(
         project: project,
         baseTrackHeight: 40,
-        timeView: TimeRange(0, 4),
+        timeRange: TimeRange(0, 4),
       );
       trackController = TrackController(project);
 
@@ -703,6 +905,18 @@ void main() {
       }
 
       trackController.rerouteTracks(tracks.keys);
+
+      automationLane = createTrack('Automation Lane', .automationLane)
+        ..automationLaneParentTrackId = otherTrack.id;
+      tracks[automationLane.id] = automationLane;
+      otherTrack.automationLanes.add(automationLane.id);
+
+      clipOnAutomationLane = createClip(
+        patternId: automationLanePattern.id,
+        trackId: automationLane.id,
+        offset: 64,
+      );
+      arrangementA.clips[clipOnAutomationLane.id] = clipOnAutomationLane;
     });
 
     tearDown(() {
@@ -750,6 +964,18 @@ void main() {
       expect(tracks[childTrack.id], isNull);
       expect(tracks[otherTrack.id], isNotNull);
       expect(tracks[masterTrack.id], isNotNull);
+
+      verify(project.startUndoGroup()).called(1);
+      verify(project.commitUndoGroup()).called(1);
+    });
+
+    test('removeAutomationLane removes lane clips and orphan patterns', () {
+      trackController.removeAutomationLane(automationLane.id);
+
+      expect(arrangementA.clips[clipOnAutomationLane.id], isNull);
+      expect(sequence.patterns[automationLanePattern.id], isNull);
+      expect(otherTrack.automationLanes, isEmpty);
+      expect(tracks[automationLane.id], isNull);
 
       verify(project.startUndoGroup()).called(1);
       verify(project.commitUndoGroup()).called(1);

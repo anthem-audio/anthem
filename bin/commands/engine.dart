@@ -26,7 +26,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
-import '../util/misc.dart';
+import '../cli_helpers.dart';
 
 class EngineCommand extends Command<dynamic> {
   @override
@@ -38,6 +38,7 @@ class EngineCommand extends Command<dynamic> {
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
+    addSubcommand(_BuildLameCommand());
     addSubcommand(_CleanEngineCommand());
     addSubcommand(_FormatEngineCommand());
     addSubcommand(_LintEngineCommand());
@@ -259,6 +260,81 @@ Some things to keep in mind:
 
       print(Colorize('Copy complete.').lightGreen());
     }
+  }
+}
+
+class _BuildLameCommand extends Command<dynamic> {
+  @override
+  String get name => 'build-lame';
+
+  @override
+  String get description => 'Builds LAME and copies it to Flutter assets.';
+
+  _BuildLameCommand() {
+    argParser.addOption(
+      'jobs',
+      abbr: 'j',
+      help: 'Maximum number of parallel build jobs to pass to make.',
+    );
+  }
+
+  @override
+  Future<void> run() async {
+    final jobs =
+        _parseJobsOption(argResults!['jobs'] as String?) ??
+        Platform.numberOfProcessors;
+    final packageRootPath = getPackageRootPath();
+    final lameSourcePath = packageRootPath.resolve('engine/include/lame/');
+
+    if (!File.fromUri(lameSourcePath.resolve('configure')).existsSync()) {
+      print(
+        Colorize(
+          'Error: Could not find LAME source at engine/include/lame.',
+        ).red(),
+      );
+      exit(1);
+    }
+
+    print(Colorize('Building LAME...\n\n')..lightGreen());
+
+    final buildRootPath = packageRootPath.resolve(
+      'build/lame/${_getLamePlatformId()}/',
+    );
+    final sourceBuildPath = buildRootPath.resolve('source/');
+    final outputBinaryPath = buildRootPath.resolve(_lameExecutableName);
+
+    _recreateBuildDirectory(buildRootPath);
+    _copyDirectorySync(
+      Directory.fromUri(lameSourcePath),
+      Directory.fromUri(sourceBuildPath),
+    );
+    _normalizeLameBuildLineEndings(sourceBuildPath);
+
+    if (Platform.isWindows) {
+      await _buildLameOnWindows(sourceBuildPath, jobs: jobs);
+    } else {
+      await _buildLameOnUnix(sourceBuildPath, jobs: jobs);
+    }
+
+    final builtBinaryPath = _resolveBuiltLameBinaryLocation(sourceBuildPath);
+    File.fromUri(
+      builtBinaryPath,
+    ).copySync(outputBinaryPath.toFilePath(windows: Platform.isWindows));
+    await _makeExecutable(outputBinaryPath);
+
+    final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
+    final flutterAssetsDir = Directory.fromUri(flutterAssetsDirPath);
+    if (!flutterAssetsDir.existsSync()) {
+      flutterAssetsDir.createSync(recursive: true);
+    }
+
+    final flutterLamePath = flutterAssetsDirPath.resolve(_lameExecutableName);
+    File.fromUri(
+      outputBinaryPath,
+    ).copySync(flutterLamePath.toFilePath(windows: Platform.isWindows));
+    await _makeExecutable(flutterLamePath);
+
+    print(Colorize('\n\nLAME build complete.').lightGreen());
   }
 }
 
@@ -967,6 +1043,329 @@ String _requireNinjaExecutable() {
     ).red(),
   );
   exit(1);
+}
+
+const _lameConfigureArguments = [
+  '--disable-shared',
+  '--enable-static',
+  '--disable-nasm',
+  '--disable-gtktest',
+  '--disable-analyzer-hooks',
+  '--disable-decoder',
+  '--disable-dependency-tracking',
+  '--with-fileio=lame',
+];
+
+// Anthem uses LAME only for audio encoding, without command-line ID3 metadata
+// or interactive terminal output. Disabling these optional paths also avoids
+// portability issues in the bundled LAME version.
+const _lameConfigureEnvironment = {
+  'am_cv_func_iconv': 'no',
+  'ac_cv_lib_termcap_initscr': 'no',
+  'ac_cv_lib_curses_initscr': 'no',
+  'ac_cv_lib_ncurses_initscr': 'no',
+};
+
+String get _lameExecutableName => Platform.isWindows ? 'lame.exe' : 'lame';
+
+void _normalizeLameBuildLineEndings(Uri sourceBuildPath) {
+  // The LAME submodule has Windows checkout behavior, but Autotools needs LF.
+  // Normalize only the disposable build copy so the submodule stays untouched.
+  for (final entity in Directory.fromUri(
+    sourceBuildPath,
+  ).listSync(recursive: true, followLinks: false)) {
+    if (entity is! File) continue;
+    if (_fileSystemEntityName(entity) == '.git') continue;
+
+    final bytes = entity.readAsBytesSync();
+    if (bytes.contains(0)) continue;
+    if (!bytes.contains(13)) continue;
+
+    final normalizedBytes = <int>[];
+    var changed = false;
+
+    for (var i = 0; i < bytes.length; i++) {
+      final byte = bytes[i];
+      if (byte != 13) {
+        normalizedBytes.add(byte);
+        continue;
+      }
+
+      changed = true;
+      normalizedBytes.add(10);
+      if (i + 1 < bytes.length && bytes[i + 1] == 10) {
+        i++;
+      }
+    }
+
+    if (changed) {
+      entity.writeAsBytesSync(normalizedBytes);
+    }
+  }
+}
+
+Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
+  final workingDirectory = sourceBuildPath.toFilePath(windows: false);
+  final environment = <String, String>{
+    ..._lameConfigureEnvironment,
+    if (Platform.isLinux && Platform.environment['CC'] == null)
+      'CC': _requireLlvmExecutable('clang'),
+  };
+
+  await _runInheritedProcess(
+    'sh',
+    ['./configure', ..._lameConfigureArguments],
+    workingDirectory: workingDirectory,
+    environment: environment,
+  );
+  await _runInheritedProcess(
+    'make',
+    ['-j$jobs'],
+    workingDirectory: workingDirectory,
+    environment: environment,
+  );
+}
+
+Future<void> _buildLameOnWindows(
+  Uri sourceBuildPath, {
+  required int jobs,
+}) async {
+  final msys2Bash = _requireMsys2BashExecutable();
+  final msystem = _getMsys2System();
+  final sourceBuildPathWindows = sourceBuildPath.toFilePath(windows: true);
+  final configureCommand = [
+    'sh',
+    './configure',
+    ..._lameConfigureArguments,
+  ].map(_bashQuote).join(' ');
+
+  final script =
+      '''
+set -euo pipefail
+export MSYSTEM=${_bashQuote(msystem)}
+mingw_prefix=${_bashQuote(_getMsys2MingwPrefix(msystem))}
+export PATH="\$mingw_prefix/bin:/usr/bin:\$PATH"
+cd "\$(cygpath -u ${_bashQuote(sourceBuildPathWindows)})"
+export CC=clang
+export CFLAGS="-O2"
+export LDFLAGS="-static"
+$configureCommand
+make -j$jobs
+''';
+
+  await _runInheritedProcess(
+    msys2Bash,
+    ['-lc', script],
+    environment: {
+      ..._lameConfigureEnvironment,
+      'MSYSTEM': msystem,
+      'CHERE_INVOKING': '1',
+    },
+  );
+}
+
+String _requireMsys2BashExecutable() {
+  final configuredBash = Platform.environment['ANTHEM_MSYS2_BASH'];
+  if (configuredBash != null && configuredBash.isNotEmpty) {
+    if (File(configuredBash).existsSync()) return configuredBash;
+
+    print(
+      Colorize(
+        'Error: ANTHEM_MSYS2_BASH is set, but no file exists at $configuredBash.',
+      ).red(),
+    );
+    exit(1);
+  }
+
+  const candidatePaths = [
+    r'C:\msys64\usr\bin\bash.exe',
+    r'C:\msys2\usr\bin\bash.exe',
+  ];
+
+  for (final candidatePath in candidatePaths) {
+    if (File(candidatePath).existsSync()) return candidatePath;
+  }
+
+  print(
+    Colorize(
+      'Error: Could not find MSYS2 bash. Install MSYS2, or set ANTHEM_MSYS2_BASH to the bash.exe path.',
+    ).red(),
+  );
+  exit(1);
+}
+
+String _getMsys2System() {
+  final configuredSystem = Platform.environment['ANTHEM_MSYS2_SYSTEM'];
+  if (configuredSystem != null && configuredSystem.isNotEmpty) {
+    return configuredSystem;
+  }
+
+  return _getHostArchitectureName() == 'arm64' ? 'CLANGARM64' : 'CLANG64';
+}
+
+String _getMsys2MingwPrefix(String msystem) {
+  return switch (msystem.toUpperCase()) {
+    'CLANGARM64' => '/clangarm64',
+    'CLANG64' => '/clang64',
+    _ => throw UnsupportedError('Unsupported MSYS2 system: $msystem'),
+  };
+}
+
+Uri _resolveBuiltLameBinaryLocation(Uri sourceBuildPath) {
+  final candidatePaths = [
+    sourceBuildPath.resolve('frontend/.libs/$_lameExecutableName'),
+    sourceBuildPath.resolve('frontend/$_lameExecutableName'),
+  ];
+
+  for (final candidatePath in candidatePaths) {
+    if (File.fromUri(candidatePath).existsSync()) {
+      return candidatePath;
+    }
+  }
+
+  final attemptedPaths = candidatePaths
+      .map((path) => path.toFilePath(windows: Platform.isWindows))
+      .join('\n - ');
+  print(
+    Colorize(
+      'Error: Could not find built LAME binary. Tried:\n - $attemptedPaths',
+    ).red(),
+  );
+  exit(1);
+}
+
+void _recreateBuildDirectory(Uri buildDirectoryPath) {
+  final allowedRoot = Directory.fromUri(
+    getPackageRootPath().resolve('build/lame/'),
+  ).absolute.path;
+  final buildDirectory = Directory.fromUri(buildDirectoryPath).absolute;
+
+  if (!_isPathWithinDirectory(buildDirectory.path, allowedRoot)) {
+    print(
+      Colorize(
+        'Error: Refusing to recreate unexpected build directory: ${buildDirectory.path}',
+      ).red(),
+    );
+    exit(1);
+  }
+
+  if (buildDirectory.existsSync()) {
+    buildDirectory.deleteSync(recursive: true);
+  }
+
+  buildDirectory.createSync(recursive: true);
+}
+
+bool _isPathWithinDirectory(String path, String directory) {
+  var normalizedPath = Directory(path).absolute.path;
+  var normalizedDirectory = Directory(directory).absolute.path;
+
+  if (Platform.isWindows) {
+    normalizedPath = normalizedPath.toLowerCase();
+    normalizedDirectory = normalizedDirectory.toLowerCase();
+  }
+
+  final directoryWithSeparator =
+      normalizedDirectory.endsWith(Platform.pathSeparator)
+      ? normalizedDirectory
+      : '$normalizedDirectory${Platform.pathSeparator}';
+
+  return normalizedPath == normalizedDirectory ||
+      normalizedPath.startsWith(directoryWithSeparator);
+}
+
+void _copyDirectorySync(Directory source, Directory destination) {
+  destination.createSync(recursive: true);
+
+  for (final entity in source.listSync(followLinks: false)) {
+    final destinationPath = _joinFileSystemPath(
+      destination.path,
+      _fileSystemEntityName(entity),
+    );
+
+    if (entity is Directory) {
+      _copyDirectorySync(entity, Directory(destinationPath));
+    } else if (entity is File) {
+      entity.copySync(destinationPath);
+    }
+  }
+}
+
+String _fileSystemEntityName(FileSystemEntity entity) {
+  final normalizedPath = entity.path.replaceAll('\\', '/');
+  final pathParts = normalizedPath.split('/').where((part) => part.isNotEmpty);
+  return pathParts.last;
+}
+
+String _joinFileSystemPath(String directory, String name) {
+  final separator = Platform.pathSeparator;
+  if (directory.endsWith(separator)) return '$directory$name';
+  return '$directory$separator$name';
+}
+
+Future<void> _makeExecutable(Uri filePath) async {
+  if (Platform.isWindows) return;
+
+  await _runInheritedProcess('chmod', [
+    '755',
+    filePath.toFilePath(windows: false),
+  ]);
+}
+
+Future<void> _runInheritedProcess(
+  String executable,
+  List<String> arguments, {
+  String? workingDirectory,
+  Map<String, String>? environment,
+}) async {
+  final process = await Process.start(
+    executable,
+    arguments,
+    workingDirectory: workingDirectory,
+    environment: environment?.isEmpty ?? true ? null : environment,
+    mode: ProcessStartMode.inheritStdio,
+  );
+
+  final exitCode = await process.exitCode;
+  if (exitCode != 0) {
+    print(Colorize('\n\nError: Command failed: $executable').red());
+    exit(exitCode);
+  }
+}
+
+String _getLamePlatformId() {
+  return '${Platform.operatingSystem}-${_getHostArchitectureName()}';
+}
+
+String _getHostArchitectureName() {
+  if (Platform.isWindows) {
+    final architecture =
+        Platform.environment['PROCESSOR_ARCHITECTURE']?.toLowerCase() ?? '';
+    final architectureWow64 =
+        Platform.environment['PROCESSOR_ARCHITEW6432']?.toLowerCase() ?? '';
+
+    if (architecture.contains('arm64') || architectureWow64.contains('arm64')) {
+      return 'arm64';
+    }
+
+    return 'x64';
+  }
+
+  final result = Process.runSync('uname', ['-m']);
+  if (result.exitCode != 0) {
+    return 'unknown';
+  }
+
+  final machine = (result.stdout as String).trim().toLowerCase();
+  return switch (machine) {
+    'x86_64' || 'amd64' => 'x64',
+    'aarch64' || 'arm64' => 'arm64',
+    _ => machine,
+  };
+}
+
+String _bashQuote(String value) {
+  return "'${value.replaceAll("'", r"'\''")}'";
 }
 
 String _toCmakePath(String path) {

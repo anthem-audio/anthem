@@ -21,21 +21,195 @@
 
 part of 'messages.dart';
 
-class CompileProcessingGraphRequest extends Request {
-  CompileProcessingGraphRequest.uninitialized();
+class InitializeProcessingGraphNodesRequest extends Request {
+  InitializeProcessingGraphNodesRequest.uninitialized();
 
-  CompileProcessingGraphRequest({required int id}) {
+  InitializeProcessingGraphNodesRequest({required int id}) {
     super.id = id;
   }
 }
 
-class CompileProcessingGraphResponse extends Response {
+class InitializeProcessingGraphNodesResponse extends Response {
+  late bool didInitialize;
+  late List<ProcessingGraphNodeInitializationResult> results;
+  String? error;
+
+  InitializeProcessingGraphNodesResponse.uninitialized()
+    : didInitialize = false,
+      results = [];
+
+  InitializeProcessingGraphNodesResponse({
+    required int id,
+    required this.didInitialize,
+    required this.results,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphNodeInitializationResult
+    extends _ProcessingGraphNodeInitializationResult
+    with _$ProcessingGraphNodeInitializationResultAnthemModelMixin {
+  ProcessingGraphNodeInitializationResult.uninitialized()
+    : super(nodeId: -1, success: false, parameterValues: []);
+
+  ProcessingGraphNodeInitializationResult({
+    required super.nodeId,
+    required super.success,
+    List<ProcessingGraphParameterValue>? parameterValues,
+    super.error,
+    super.portConfiguration,
+  }) : super(parameterValues: parameterValues ?? []);
+
+  factory ProcessingGraphNodeInitializationResult.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ProcessingGraphNodeInitializationResultAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphNodeInitializationResult {
+  Id nodeId;
+  bool success;
+  String? error;
+  ProcessingGraphNodePortConfiguration? portConfiguration;
+  List<ProcessingGraphParameterValue> parameterValues;
+
+  _ProcessingGraphNodeInitializationResult({
+    required this.nodeId,
+    required this.success,
+    required this.parameterValues,
+    this.error,
+    this.portConfiguration,
+  });
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphParameterValue extends _ProcessingGraphParameterValue
+    with _$ProcessingGraphParameterValueAnthemModelMixin {
+  ProcessingGraphParameterValue.uninitialized()
+    : super(controlPortId: -1, value: 0.0);
+
+  ProcessingGraphParameterValue({
+    required super.controlPortId,
+    required super.value,
+    super.displayText,
+  });
+
+  factory ProcessingGraphParameterValue.fromJson(Map<String, dynamic> json) =>
+      _$ProcessingGraphParameterValueAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphParameterValue {
+  int controlPortId;
+  double value;
+  String? displayText;
+
+  _ProcessingGraphParameterValue({
+    required this.controlPortId,
+    required this.value,
+    this.displayText,
+  });
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphNodePortConfiguration
+    extends _ProcessingGraphNodePortConfiguration
+    with _$ProcessingGraphNodePortConfigurationAnthemModelMixin {
+  ProcessingGraphNodePortConfiguration.uninitialized()
+    : super(
+        audioInputPorts: [],
+        audioOutputPorts: [],
+        eventInputPorts: [],
+        eventOutputPorts: [],
+        controlInputPorts: [],
+        controlOutputPorts: [],
+      );
+
+  ProcessingGraphNodePortConfiguration({
+    required super.audioInputPorts,
+    required super.audioOutputPorts,
+    required super.eventInputPorts,
+    required super.eventOutputPorts,
+    required super.controlInputPorts,
+    required super.controlOutputPorts,
+  });
+
+  factory ProcessingGraphNodePortConfiguration.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ProcessingGraphNodePortConfigurationAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphNodePortConfiguration {
+  List<ProcessingGraphPortConfiguration> audioInputPorts;
+  List<ProcessingGraphPortConfiguration> audioOutputPorts;
+  List<ProcessingGraphPortConfiguration> eventInputPorts;
+  List<ProcessingGraphPortConfiguration> eventOutputPorts;
+  List<ProcessingGraphPortConfiguration> controlInputPorts;
+  List<ProcessingGraphPortConfiguration> controlOutputPorts;
+
+  _ProcessingGraphNodePortConfiguration({
+    required this.audioInputPorts,
+    required this.audioOutputPorts,
+    required this.eventInputPorts,
+    required this.eventOutputPorts,
+    required this.controlInputPorts,
+    required this.controlOutputPorts,
+  });
+}
+
+@AnthemModel(serializable: true, generateCpp: true)
+class ProcessingGraphPortConfiguration extends _ProcessingGraphPortConfiguration
+    with _$ProcessingGraphPortConfigurationAnthemModelMixin {
+  ProcessingGraphPortConfiguration.uninitialized() : super(id: -1);
+
+  ProcessingGraphPortConfiguration({
+    required super.id,
+    super.name,
+    super.channelCount,
+    super.parameterDefaultValue,
+    super.parameterDisplayMode,
+    super.parameterUnitLabel,
+  });
+
+  factory ProcessingGraphPortConfiguration.fromJson(
+    Map<String, dynamic> json,
+  ) => _$ProcessingGraphPortConfigurationAnthemModelMixin.fromJson(json);
+}
+
+abstract class _ProcessingGraphPortConfiguration {
+  int id;
+  String? name;
+  int? channelCount;
+  double? parameterDefaultValue;
+  String? parameterDisplayMode;
+  String? parameterUnitLabel;
+
+  _ProcessingGraphPortConfiguration({
+    required this.id,
+    this.name,
+    this.channelCount,
+    this.parameterDefaultValue,
+    this.parameterDisplayMode,
+    this.parameterUnitLabel,
+  });
+}
+
+class PublishProcessingGraphRequest extends Request {
+  PublishProcessingGraphRequest.uninitialized();
+
+  PublishProcessingGraphRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+class PublishProcessingGraphResponse extends Response {
   late bool success;
   String? error;
 
-  CompileProcessingGraphResponse.uninitialized();
+  PublishProcessingGraphResponse.uninitialized();
 
-  CompileProcessingGraphResponse({
+  PublishProcessingGraphResponse({
     required int id,
     required this.success,
     this.error,
@@ -68,16 +242,50 @@ class PluginChangedEvent extends Response {
 
 class PluginParameterChangedEvent extends Response {
   late Id nodeId;
-  late int parameterIndex;
-  late double newValue;
+  late int controlPortId;
+  late double value;
+  String? displayText;
 
   PluginParameterChangedEvent.uninitialized();
 
   PluginParameterChangedEvent({
     required int id,
     required this.nodeId,
-    required this.parameterIndex,
-    required this.newValue,
+    required this.controlPortId,
+    required this.value,
+    this.displayText,
+  }) {
+    super.id = id;
+  }
+}
+
+class PluginParameterGestureEvent extends Response {
+  late Id nodeId;
+  late int controlPortId;
+  late bool isStarting;
+
+  PluginParameterGestureEvent.uninitialized();
+
+  PluginParameterGestureEvent({
+    required int id,
+    required this.nodeId,
+    required this.controlPortId,
+    required this.isStarting,
+  }) {
+    super.id = id;
+  }
+}
+
+class PluginParameterSnapshotEvent extends Response {
+  late Id nodeId;
+  late List<ProcessingGraphParameterValue> parameterValues;
+
+  PluginParameterSnapshotEvent.uninitialized() : parameterValues = [];
+
+  PluginParameterSnapshotEvent({
+    required int id,
+    required this.nodeId,
+    required this.parameterValues,
   }) {
     super.id = id;
   }
@@ -119,6 +327,33 @@ class SetPluginStateRequest extends Request {
     required this.nodeId,
     required this.state,
   }) {
+    super.id = id;
+  }
+}
+
+class SetPluginParameterValueRequest extends Request {
+  late Id nodeId;
+  late int controlPortId;
+  late double value;
+
+  SetPluginParameterValueRequest.uninitialized();
+
+  SetPluginParameterValueRequest({
+    required int id,
+    required this.nodeId,
+    required this.controlPortId,
+    required this.value,
+  }) {
+    super.id = id;
+  }
+}
+
+class OpenPluginWindowRequest extends Request {
+  late Id nodeId;
+
+  OpenPluginWindowRequest.uninitialized();
+
+  OpenPluginWindowRequest({required int id, required this.nodeId}) {
     super.id = id;
   }
 }

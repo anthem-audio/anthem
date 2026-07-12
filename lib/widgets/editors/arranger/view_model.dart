@@ -21,12 +21,15 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/arrangement/clip.dart' show TimeViewModel;
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/widgets.dart';
 import 'package:mobx/mobx.dart';
@@ -50,21 +53,141 @@ class ClipTimingOverride {
   }) : assert(timeViewEnd > timeViewStart);
 }
 
-class ArrangerContentUnderCursor {
-  final CanvasAnnotation<Id>? clip;
-  final CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle;
+class ArrangerClipPreview {
+  final Id clipId;
+  final Id sourceClipId;
+  final Id trackId;
+  final int offset;
+  final PatternModel pattern;
+  final int timeViewStart;
+  final int timeViewEnd;
 
-  const ArrangerContentUnderCursor({this.clip, this.resizeHandle});
+  const ArrangerClipPreview({
+    required this.clipId,
+    required this.sourceClipId,
+    required this.trackId,
+    required this.offset,
+    required this.pattern,
+    required this.timeViewStart,
+    required this.timeViewEnd,
+  }) : assert(timeViewEnd > timeViewStart);
+
+  ArrangerClipPreview copyWith({int? offset}) {
+    return ArrangerClipPreview(
+      clipId: clipId,
+      sourceClipId: sourceClipId,
+      trackId: trackId,
+      offset: offset ?? this.offset,
+      pattern: pattern,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+  }
+}
+
+class ArrangerHitTestResult {
+  final CanvasAnnotationHit<Id>? clip;
+  final CanvasAnnotation<({Id id, ResizeAreaType type})>? resizeHandle;
+  final CanvasAnnotation<AutomationHandleAnnotation>? automationHandle;
+
+  const ArrangerHitTestResult({
+    this.clip,
+    this.resizeHandle,
+    this.automationHandle,
+  });
+}
+
+class AutomationParameterTarget {
+  final Id ownerTrackId;
+  final Id nodeId;
+  final int portId;
+  final String ownerName;
+  final String parameterName;
+
+  const AutomationParameterTarget({
+    required this.ownerTrackId,
+    required this.nodeId,
+    required this.portId,
+    required this.ownerName,
+    required this.parameterName,
+  });
+
+  String get title => '$ownerName $parameterName';
+}
+
+class PhantomAutomationLaneInfo {
+  final Id id;
+  final Id parentTrackId;
+  final AutomationParameterTarget? target;
+
+  const PhantomAutomationLaneInfo({
+    required this.id,
+    required this.parentTrackId,
+    required this.target,
+  });
+
+  String get title => target?.title ?? 'No parameter selected';
+}
+
+sealed class ArrangerRow {
+  final bool isSendTrack;
+  final int trackDepth;
+
+  const ArrangerRow({required this.isSendTrack, required this.trackDepth});
+
+  Id get rowId;
+}
+
+class TrackArrangerRow extends ArrangerRow {
+  final Id trackId;
+
+  const TrackArrangerRow({
+    required this.trackId,
+    required super.isSendTrack,
+    required super.trackDepth,
+  });
+
+  @override
+  Id get rowId => trackId;
+}
+
+class PhantomAutomationArrangerRow extends ArrangerRow {
+  final PhantomAutomationLaneInfo phantomLane;
+
+  const PhantomAutomationArrangerRow({
+    required this.phantomLane,
+    required super.isSendTrack,
+    required super.trackDepth,
+  });
+
+  @override
+  Id get rowId => phantomLane.id;
 }
 
 abstract class _ArrangerViewModel with Store {
+  final ProjectModel project;
   final ProjectId projectId;
 
   @observable
   EditorTool tool = EditorTool.pencil;
 
   @observable
-  TimeRange timeView;
+  TimeRange timeRange;
+
+  TimeRangeViewport? _timeRangeViewport;
+
+  TimeRangeViewport get timeRangeViewport {
+    final timeRangeViewport = _timeRangeViewport;
+    if (timeRangeViewport != null &&
+        identical(timeRangeViewport.target, timeRange)) {
+      return timeRangeViewport;
+    }
+
+    return _timeRangeViewport = TimeRangeViewport(
+      target: timeRange,
+      contentSource: const TimeRangeContentSource.activeArrangement(),
+    );
+  }
 
   @observable
   double baseTrackHeight;
@@ -73,6 +196,13 @@ abstract class _ArrangerViewModel with Store {
   /// get the actual height for each track
   @observable
   ObservableMap<Id, double> trackHeightModifiers;
+
+  /// Whether each track's automation lanes are expanded in the arranger.
+  final ObservableMap<Id, bool> automationExpandedByTrackId;
+
+  /// Most recent automatable parameter changed by user/plugin interaction.
+  @observable
+  AutomationParameterTarget? lastTweakedAutomationTarget;
 
   /// Vertical scroll position, in pixels.
   @observable
@@ -104,17 +234,26 @@ abstract class _ArrangerViewModel with Store {
   final ObservableMap<Id, ClipTimingOverride> clipTimingOverrides =
       ObservableMap();
 
-  /// The clip that is currently being pressed, if any.
-  @observable
-  Id? pressedClip;
+  final ObservableMap<Id, ArrangerClipPreview> previewClips = ObservableMap();
 
   /// The clip currently under the mouse cursor, if any.
   @observable
   Id? hoveredClip;
 
-  /// The position of the cursor that shows when you hover over a track.
+  /// The clip that should currently display inline automation handles, if any.
   @observable
-  (double offset, Id trackId)? hoverIndicatorPosition;
+  Id? clipWithAutomationHandles;
+
+  /// The inline automation handle currently under the mouse cursor, if any.
+  @observable
+  AutomationHandleAnnotation? hoveredAutomationHandle;
+
+  /// Used to preserve automation point tension when adding points inline.
+  double? lastInteractedAutomationTension;
+
+  /// The position of the cursor that shows when you hover over a row.
+  @observable
+  ({double offset, Id rowId})? hoverIndicatorPosition;
 
   /// The current mouse cursor for the arranger canvas.
   @observable
@@ -123,7 +262,7 @@ abstract class _ArrangerViewModel with Store {
   /// The box that shows to indicate where a new clip will be created while
   /// creating a clip.
   @observable
-  ({Id trackId, double startOffset, double endOffset, Color color})?
+  ({Id rowId, double startOffset, double endOffset, Color color})?
   clipCreateHint;
 
   /// Calculates and caches the size and position of tracks in the current view.
@@ -132,21 +271,42 @@ abstract class _ArrangerViewModel with Store {
   final visibleClips = CanvasAnnotationSet<Id>();
   final visibleResizeAreas =
       CanvasAnnotationSet<({Id id, ResizeAreaType type})>();
+  final visibleAutomationHandles =
+      CanvasAnnotationSet<AutomationHandleAnnotation>();
+
+  double? _renderCacheDevicePixelRatio;
+
+  // Project model IDs are non-negative. Phantom rows are arranger-only view
+  // state, so keep them in a separate negative ID range.
+  final _phantomAutomationLaneIdByParentTrackId = <Id, Id>{};
+  Id _nextPhantomAutomationLaneId = -1;
 
   _ArrangerViewModel({
-    required ProjectModel project,
+    required this.project,
     required this.baseTrackHeight,
-    required this.timeView,
+    required this.timeRange,
   }) : projectId = project.id,
        trackHeightModifiers = ObservableMap.of(
          project.tracks.nonObservableInner.map(
            (key, value) => MapEntry(key, 1),
+         ),
+       ),
+       automationExpandedByTrackId = ObservableMap.of(
+         project.tracks.nonObservableInner.map(
+           (key, value) => MapEntry(key, false),
          ),
        ) {
     trackPositionCalculator = TrackPositionAndSize(
       project,
       this as ArrangerViewModel,
     );
+  }
+
+  void ensureRenderCachesForDevicePixelRatio(double devicePixelRatio) {
+    if (_renderCacheDevicePixelRatio != devicePixelRatio) {
+      _renderCacheDevicePixelRatio = devicePixelRatio;
+      project.sequence.scheduleClipTitleTextureAtlasUpdate();
+    }
   }
 
   /// Total height of the entire scrollable region
@@ -171,6 +331,10 @@ abstract class _ArrangerViewModel with Store {
   double get maxVerticalScrollPosition =>
       (scrollAreaHeight - editorHeight).clamp(0, double.infinity);
 
+  void refreshTrackLayout(double editorHeight) {
+    trackPositionCalculator.invalidate(editorHeight);
+  }
+
   void applyVerticalScrollDelta(double pixelDelta) {
     verticalScrollPosition =
         (verticalScrollPosition +
@@ -180,9 +344,18 @@ abstract class _ArrangerViewModel with Store {
             .clamp(0.0, maxVerticalScrollPosition);
   }
 
-  /// Calculates the clip and resize handle under the cursor, if there is one.
-  ArrangerContentUnderCursor getContentUnderCursor(Offset pos) {
+  /// Calculates the clip and inline handles under the cursor, if there are any.
+  ArrangerHitTestResult hitTestContent(Offset pos) {
     final clipUnderCursor = visibleClips.hitTest(pos);
+    final clipUnderCursorId = clipUnderCursor?.annotation.metadata;
+    final automationHandleCandidates = visibleAutomationHandles
+        .hitTestAll(pos)
+        .where((element) => element.metadata.clipId == clipUnderCursorId);
+    final automationHandleUnderCursor =
+        automationHandleCandidates.firstWhereOrNull(
+          (element) => element.metadata.kind == AutomationHandleKind.point,
+        ) ??
+        automationHandleCandidates.firstOrNull;
     final resizeHandleCandidates = visibleResizeAreas
         .hitTestAll(pos)
         // We only report a resize handle if the cursor is also over the
@@ -192,26 +365,188 @@ abstract class _ArrangerViewModel with Store {
         // each other.
         .where(
           (element) =>
-              clipUnderCursor == null ||
-              element.metadata.id == clipUnderCursor.metadata,
+              clipUnderCursorId == null ||
+              element.metadata.id == clipUnderCursorId,
         );
     final resizeHandleUnderCursor =
         resizeHandleCandidates.firstWhereOrNull(
           (element) => element.metadata.type == ResizeAreaType.end,
         ) ??
         resizeHandleCandidates.firstOrNull;
-    return ArrangerContentUnderCursor(
+    return ArrangerHitTestResult(
       clip: clipUnderCursor,
       resizeHandle: resizeHandleUnderCursor,
+      automationHandle: automationHandleUnderCursor,
     );
   }
 
   void registerTrack(Id trackId) {
     trackHeightModifiers[trackId] = 1;
+    automationExpandedByTrackId[trackId] = false;
   }
 
   void unregisterTrack(Id trackId) {
     trackHeightModifiers.remove(trackId);
+    automationExpandedByTrackId.remove(trackId);
+    final phantomLaneId = _phantomAutomationLaneIdByParentTrackId.remove(
+      trackId,
+    );
+    if (phantomLaneId != null) {
+      trackHeightModifiers.remove(phantomLaneId);
+    }
+  }
+
+  double rowHeightModifier(Id rowId) => trackHeightModifiers[rowId] ?? 1;
+
+  void setRowHeightModifier(Id rowId, double modifier) {
+    trackHeightModifiers[rowId] = modifier;
+  }
+
+  void resetRowHeightModifier(Id rowId) {
+    setRowHeightModifier(rowId, 1);
+  }
+
+  Id _phantomAutomationLaneIdForTrack(Id trackId) {
+    return _phantomAutomationLaneIdByParentTrackId.putIfAbsent(
+      trackId,
+      () => _nextPhantomAutomationLaneId--,
+    );
+  }
+
+  Id? automationLaneIdForTarget(AutomationParameterTarget target) {
+    final parentTrack = project.tracks[target.ownerTrackId];
+    if (parentTrack == null) {
+      return null;
+    }
+
+    for (final automationLaneId in parentTrack.automationLanes) {
+      final lane = project.tracks[automationLaneId];
+      final laneTarget = lane?.automationTarget;
+      if (laneTarget == null) {
+        continue;
+      }
+
+      if (laneTarget.nodeId == target.nodeId &&
+          laneTarget.portId == target.portId) {
+        return automationLaneId;
+      }
+    }
+
+    return null;
+  }
+
+  bool hasAutomationLaneForTarget(AutomationParameterTarget target) =>
+      automationLaneIdForTarget(target) != null;
+
+  PhantomAutomationLaneInfo? phantomAutomationLaneForTrack(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track == null || track.isAutomationLane) {
+      return null;
+    }
+
+    if (!(automationExpandedByTrackId[trackId] ?? false)) {
+      return null;
+    }
+
+    final lastTweakedTarget = lastTweakedAutomationTarget;
+    if (lastTweakedTarget?.ownerTrackId == trackId &&
+        !hasAutomationLaneForTarget(lastTweakedTarget!)) {
+      return PhantomAutomationLaneInfo(
+        id: _phantomAutomationLaneIdForTrack(trackId),
+        parentTrackId: trackId,
+        target: lastTweakedTarget,
+      );
+    }
+
+    if (track.automationLanes.isEmpty) {
+      return PhantomAutomationLaneInfo(
+        id: _phantomAutomationLaneIdForTrack(trackId),
+        parentTrackId: trackId,
+        target: null,
+      );
+    }
+
+    return null;
+  }
+
+  int visibleSubtreeRowCount(Id rootTrackId) {
+    var count = 0;
+
+    void countTrack(Id trackId) {
+      final track = project.tracks[trackId];
+      if (track == null) {
+        return;
+      }
+
+      count++;
+
+      if (!track.isAutomationLane &&
+          (automationExpandedByTrackId[track.id] ?? false)) {
+        if (phantomAutomationLaneForTrack(track.id) != null) {
+          count++;
+        }
+
+        count += track.automationLanes.length;
+      }
+
+      for (final childTrackId in track.childTracks) {
+        countTrack(childTrackId);
+      }
+    }
+
+    countTrack(rootTrackId);
+    return count;
+  }
+
+  Iterable<ArrangerRow> getVisibleRows() sync* {
+    final topLevelTracks = project.trackOrder
+        .map((trackId) => (trackId, false))
+        .followedBy(project.sendTrackOrder.map((trackId) => (trackId, true)));
+
+    Iterable<ArrangerRow> yieldChildren(
+      Id trackId,
+      bool isSendTrack,
+      int currentDepth,
+    ) sync* {
+      yield TrackArrangerRow(
+        trackId: trackId,
+        isSendTrack: isSendTrack,
+        trackDepth: currentDepth,
+      );
+
+      final track = project.tracks[trackId];
+      if (track == null) {
+        return;
+      }
+
+      if (!track.isAutomationLane &&
+          (automationExpandedByTrackId[trackId] ?? false)) {
+        final phantomLane = phantomAutomationLaneForTrack(trackId);
+        if (phantomLane != null) {
+          yield PhantomAutomationArrangerRow(
+            phantomLane: phantomLane,
+            isSendTrack: isSendTrack,
+            trackDepth: currentDepth + 1,
+          );
+        }
+
+        for (final automationLaneId in track.automationLanes) {
+          yield TrackArrangerRow(
+            trackId: automationLaneId,
+            isSendTrack: isSendTrack,
+            trackDepth: currentDepth + 1,
+          );
+        }
+      }
+
+      for (final childTrackId in track.childTracks) {
+        yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+      }
+    }
+
+    for (final topLevelTrack in topLevelTracks) {
+      yield* yieldChildren(topLevelTrack.$1, topLevelTrack.$2, 0);
+    }
   }
 }
 
@@ -229,17 +564,55 @@ abstract class _ArrangerViewModel with Store {
 /// allocation and GC pressure.
 @visibleForTesting
 class TrackPositionAndSize {
+  static const _addButtonAreaHeight = 33.0;
+
   ProjectModel projectModel;
   ArrangerViewModel arrangerViewModel;
 
   var _cache = Float64List(0);
+  final _rowIdToIndex = <Id, int>{};
+  final _rowIdToRow = <Id, ArrangerRow>{};
   final _trackIdToIndex = <Id, int>{};
   final _trackIndexToId = <int, Id>{};
+  final _rowIndexToRow = <int, ArrangerRow>{};
+  List<ArrangerRow> _visibleRows = const [];
 
   TrackPositionAndSize(this.projectModel, this.arrangerViewModel);
 
+  final layoutRevision = ValueNotifier<int>(0);
+
+  List<ArrangerRow> get visibleRows => _visibleRows;
+
+  int? tryRowIdToIndex(Id rowId) => _rowIdToIndex[rowId];
+  int rowIdToIndex(Id rowId) => _rowIdToIndex[rowId]!;
+  ArrangerRow? tryRowIdToRow(Id rowId) => _rowIdToRow[rowId];
+  int? tryTrackIdToIndex(Id trackId) => _trackIdToIndex[trackId];
   int trackIdToIndex(Id trackId) => _trackIdToIndex[trackId]!;
   Id trackIndexToId(int index) => _trackIndexToId[index]!;
+  Id? tryTrackIndexToId(int index) => _trackIndexToId[index];
+  ArrangerRow rowAtIndex(int index) => _rowIndexToRow[index]!;
+  ({int rowIndex, double fraction, ArrangerRow row})? rowAtPosition(
+    double yPosition, {
+    bool includeBorder = false,
+  }) {
+    for (int i = 0; i < _cache.length ~/ 2; i++) {
+      final trackPosition = _cache[i * 2 + 1];
+      final trackHeight = _cache[i * 2];
+      final trackBottom = trackPosition + trackHeight;
+      // The last pixel is the divider between rows.
+      final hitBottom = includeBorder ? trackBottom : trackBottom - 1;
+
+      if (yPosition >= trackPosition && yPosition < hitBottom) {
+        return (
+          rowIndex: i,
+          fraction: (yPosition - trackPosition) / trackHeight,
+          row: rowAtIndex(i),
+        );
+      }
+    }
+
+    return null;
+  }
 
   double getTrackHeight(int trackIndex) => _cache[trackIndex * 2];
   double getTrackPosition(num fractionalTrackIndex) =>
@@ -250,75 +623,126 @@ class TrackPositionAndSize {
   /// Gets the track index plus a [0 - 1) offset from the top of the track,
   /// given a y-offset from the top of the screen.
   double getTrackIndexFromPosition(double yPosition) {
-    for (int i = 0; i < _cache.length ~/ 2; i++) {
-      final trackPosition = _cache[i * 2 + 1];
-      final trackHeight = _cache[i * 2];
-
-      if (yPosition >= trackPosition &&
-          yPosition <= trackPosition + trackHeight) {
-        return i.toDouble() + (yPosition - trackPosition) / trackHeight;
-      }
-    }
-
-    return double.infinity;
+    final rowHit = rowAtPosition(yPosition);
+    return rowHit == null
+        ? double.infinity
+        : rowHit.rowIndex.toDouble() + rowHit.fraction;
   }
 
   /// To be called on build in a LayoutBuilder, as soon as we can know the
   /// height of the editor and before any further build or render work is done.
   ///
   /// This is meant to be used with a MobX observer.
+  ///
+  /// This also clamps the vertical scroll position after recalculating the
+  /// scrollable height, then refreshes track positions again if the clamp
+  /// changed the scroll position.
   void invalidate(double editorHeight) {
-    final trackCount = projectModel.tracks.length;
+    arrangerViewModel.editorHeight = editorHeight;
 
-    final serviceRegistry = ServiceRegistry.forProject(projectModel.id);
-    final trackController = serviceRegistry.trackController;
-    final allTracksIterable = trackController.getTracksIterable();
+    final visibleRows = arrangerViewModel.getVisibleRows().toList(
+      growable: false,
+    );
+    final previousRows = _visibleRows;
+    final trackCount = visibleRows.length;
+    var layoutChanged = previousRows.length != trackCount;
 
     if (_cache.length != trackCount * 2) {
       _cache = Float64List(trackCount * 2);
-      _trackIdToIndex.clear();
-      _trackIndexToId.clear();
     }
+    _rowIdToIndex.clear();
+    _rowIdToRow.clear();
+    _trackIdToIndex.clear();
+    _trackIndexToId.clear();
+    _rowIndexToRow.clear();
+    _visibleRows = visibleRows;
 
     var totalTrackHeight = 0.0;
-    const addButtonAreaHeight = 33.0;
-
-    for (final (i, (trackId, _, _)) in allTracksIterable.indexed) {
+    for (final (i, row) in visibleRows.indexed) {
       final heightIndex = i * 2;
-      final trackHeight = calculateTrackHeight(
-        arrangerViewModel.baseTrackHeight,
-        arrangerViewModel.trackHeightModifiers[trackId]!,
-      );
+      final trackHeight = switch (row) {
+        TrackArrangerRow() ||
+        PhantomAutomationArrangerRow() => calculateTrackHeight(
+          arrangerViewModel.baseTrackHeight,
+          arrangerViewModel.rowHeightModifier(row.rowId),
+        ),
+      };
+      if (!layoutChanged) {
+        layoutChanged =
+            _cache[heightIndex] != trackHeight ||
+            !_sameLayoutRow(previousRows[i], row);
+      }
       _cache[heightIndex] = trackHeight;
-      _trackIdToIndex[trackId] = i;
-      _trackIndexToId[i] = trackId;
+      _rowIdToIndex[row.rowId] = i;
+      _rowIdToRow[row.rowId] = row;
+      _rowIndexToRow[i] = row;
+      if (row case TrackArrangerRow(:final trackId)) {
+        _trackIdToIndex[trackId] = i;
+        _trackIndexToId[i] = trackId;
+      }
       totalTrackHeight += trackHeight;
     }
 
     final trackGap = max(
       0.0,
-      editorHeight - (totalTrackHeight + addButtonAreaHeight) + 1,
+      editorHeight - (totalTrackHeight + _addButtonAreaHeight) + 1,
     );
+
+    if (!layoutChanged) {
+      layoutChanged = arrangerViewModel.regularToSendGapHeight != trackGap;
+    }
 
     arrangerViewModel.regularToSendGapHeight = trackGap;
 
+    arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
+      visibleRows,
+      trackGap,
+    );
+
+    final clampedVerticalScrollPosition = arrangerViewModel
+        .verticalScrollPosition
+        .clamp(0.0, arrangerViewModel.maxVerticalScrollPosition);
+
+    if (clampedVerticalScrollPosition !=
+        arrangerViewModel.verticalScrollPosition) {
+      arrangerViewModel.verticalScrollPosition = clampedVerticalScrollPosition;
+      arrangerViewModel.scrollAreaHeight = _updateCachedTrackPositions(
+        visibleRows,
+        trackGap,
+      );
+    }
+
+    if (layoutChanged) {
+      layoutRevision.value++;
+    }
+  }
+
+  bool _sameLayoutRow(ArrangerRow previousRow, ArrangerRow nextRow) {
+    return previousRow.rowId == nextRow.rowId &&
+        previousRow.isSendTrack == nextRow.isSendTrack &&
+        previousRow.trackDepth == nextRow.trackDepth;
+  }
+
+  double _updateCachedTrackPositions(
+    Iterable<ArrangerRow> allRows,
+    double trackGap,
+  ) {
     var lastWasSendTrack = false;
     var positionPointer = -arrangerViewModel.verticalScrollPosition;
 
-    for (final (i, (_, isSendTrack, _)) in allTracksIterable.indexed) {
+    for (final (i, row) in allRows.indexed) {
       final heightIndex = i * 2;
       final positionIndex = heightIndex + 1;
 
-      if (isSendTrack && !lastWasSendTrack) {
+      if (row.isSendTrack && !lastWasSendTrack) {
         lastWasSendTrack = true;
-        positionPointer += trackGap + addButtonAreaHeight;
+        positionPointer += trackGap + _addButtonAreaHeight;
       }
 
       _cache[positionIndex] = positionPointer;
       positionPointer += _cache[heightIndex];
     }
 
-    arrangerViewModel.scrollAreaHeight =
-        positionPointer + arrangerViewModel.verticalScrollPosition - 1;
+    return positionPointer + arrangerViewModel.verticalScrollPosition - 1;
   }
 }

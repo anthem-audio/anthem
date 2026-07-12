@@ -52,7 +52,7 @@ private:
   // The number of events in the active buffer.
   size_t numEvents;
 
-  // Sticky lifetime diagnostics for this compiled graph result.
+  // Sticky lifetime diagnostics for this published graph result.
   size_t highWaterMark;
   size_t timesGrown;
 

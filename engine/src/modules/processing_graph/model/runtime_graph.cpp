@@ -24,12 +24,18 @@
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/model/node_connection.h"
 #include "modules/processing_graph/model/node_port.h"
+#include "modules/processing_graph/processor/processor.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 
+#include <algorithm>
+#include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace anthem {
 
@@ -55,6 +61,13 @@ using UniqueDestinationMap =
 using GraphConnectionMap = ModelUnorderedMap<int64_t, std::shared_ptr<anthem::NodeConnection>>;
 using BufferBindingsByNodeId =
     std::unordered_map<RuntimeNode::Id, NodeProcessContext::BufferBindings>;
+// Maps source node ID -> source audio output port ID -> number of outgoing
+// audio connections from that port.
+using AudioOutputConnectionCountMap =
+    std::unordered_map<RuntimeNode::Id, std::unordered_map<int64_t, size_t>>;
+using AudioOutputConnectionMap = std::unordered_map<RuntimeNode::Id,
+    std::unordered_map<int64_t, std::vector<anthem::NodeConnection*>>>;
+using AudioOutputWidthMap = std::unordered_map<RuntimeNode::Id, std::unordered_map<int64_t, int>>;
 
 RuntimeConnectionDataType toRuntimeConnectionDataType(NodePortDataType dataType) {
   switch (dataType) {
@@ -76,12 +89,20 @@ size_t getBufferIndex(const NodeProcessContext::BufferBindings& bindings,
   switch (dataType) {
     case NodePortDataType::audio:
       return direction == NodeProcessContext::BufferDirection::input
-                 ? bindings.inputAudioBuffers.at(id)
-                 : bindings.outputAudioBuffers.at(id);
+                 ? bindings.inputAudioBuffers.at(id).slotIndex
+                 : bindings.outputAudioBuffers.at(id).slotIndex;
     case NodePortDataType::control:
-      return direction == NodeProcessContext::BufferDirection::input
-                 ? bindings.inputControlBuffers.at(id)
-                 : bindings.outputControlBuffers.at(id);
+      if (direction == NodeProcessContext::BufferDirection::output) {
+        return bindings.outputControlBuffers.at(id);
+      } else {
+        auto bufferIndex = bindings.inputControlBuffers.at(id);
+        if (!bufferIndex.has_value()) {
+          throw std::runtime_error(
+              "Processing graph input control port has no buffer: " + std::to_string(id));
+        }
+
+        return *bufferIndex;
+      }
     case NodePortDataType::event:
       return direction == NodeProcessContext::BufferDirection::input
                  ? bindings.inputEventBuffers.at(id)
@@ -102,7 +123,80 @@ anthem::NodeConnection& getGraphConnection(
   return *connectionIter->second;
 }
 
+AudioBufferSlotSlice getAudioBufferSlotSlice(const NodeProcessContext::BufferBindings& bindings,
+    NodeProcessContext::BufferDirection direction,
+    int64_t id) {
+  return direction == NodeProcessContext::BufferDirection::input
+             ? bindings.inputAudioBuffers.at(id)
+             : bindings.outputAudioBuffers.at(id);
+}
+
+NodePort& getAudioInputPortById(anthem::Node& graphNode, int64_t portId) {
+  for (auto& port : *graphNode.audioInputPorts()) {
+    if (port->id() == portId) {
+      return *port;
+    }
+  }
+
+  throw std::runtime_error(
+      "Processing graph audio input port ID not found: " + std::to_string(portId));
+}
+
+NodePort& getAudioOutputPortById(anthem::Node& graphNode, int64_t portId) {
+  for (auto& port : *graphNode.audioOutputPorts()) {
+    if (port->id() == portId) {
+      return *port;
+    }
+  }
+
+  throw std::runtime_error(
+      "Processing graph audio output port ID not found: " + std::to_string(portId));
+}
+
+int getAudioPortChannelCount(RuntimeGraph& runtimeGraph, NodePort& port) {
+  jassert(runtimeGraph.graphProcessContext != nullptr);
+
+  const auto configuredChannelCount = port.config()->channelCount();
+  const auto channelCount = configuredChannelCount.value_or(
+      static_cast<int64_t>(runtimeGraph.graphProcessContext->getDefaultAudioChannelCount()));
+
+  if (channelCount <= 0 || channelCount > std::numeric_limits<int>::max()) {
+    throw std::runtime_error(
+        "Processing graph audio port has invalid channel count: " + std::to_string(port.id()));
+  }
+
+  return static_cast<int>(channelCount);
+}
+
+int getNodeAudioProcessChannelCount(RuntimeGraph& runtimeGraph, anthem::Node& graphNode) {
+  int result = 0;
+
+  for (auto& port : *graphNode.audioInputPorts()) {
+    result = std::max(result, getAudioPortChannelCount(runtimeGraph, *port));
+  }
+
+  for (auto& port : *graphNode.audioOutputPorts()) {
+    result = std::max(result, getAudioPortChannelCount(runtimeGraph, *port));
+  }
+
+  return result;
+}
+
+bool hasSingleAudioInputAndOutput(anthem::Node& graphNode) {
+  return graphNode.audioInputPorts()->size() == 1 && graphNode.audioOutputPorts()->size() == 1;
+}
+
+std::optional<std::shared_ptr<Processor>> getPreparedProcessor(anthem::Node& graphNode) {
+  auto processor = graphNode.getProcessor();
+  if (!processor.has_value() || processor.value() == nullptr || !processor.value()->isPrepared) {
+    return std::nullopt;
+  }
+
+  return processor;
+}
+
 void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
     ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes) {
   size_t totalAudioBufferCount = 0;
   size_t totalControlBufferCount = 0;
@@ -133,12 +227,13 @@ void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
     runtimeGraph.nodes.at(nodeId).connectionTransferActions.reserve(incomingConnectionCount);
   }
 
-  runtimeGraph.graphProcessContext->reserve(
+  contextBuilder.reserve(
       graphNodes.size(), totalAudioBufferCount, totalControlBufferCount, totalEventBufferCount);
 }
 
-void createNodeProcessContexts(
-    RuntimeGraph& runtimeGraph, BufferBindingsByNodeId& bufferBindingsByNodeId) {
+void createNodeProcessContexts(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    BufferBindingsByNodeId& bufferBindingsByNodeId) {
   jassert(runtimeGraph.graphProcessContext != nullptr);
 
   for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
@@ -153,14 +248,177 @@ void createNodeProcessContexts(
           std::to_string(runtimeNode.id));
     }
 
-    auto& nodeProcessContext = runtimeGraph.graphProcessContext->createNodeProcessContext(
+    auto& nodeProcessContext = contextBuilder.createNodeProcessContext(
         runtimeNode.sourceNode, std::move(bufferBindingsIter->second));
     runtimeNode.nodeProcessContext = &nodeProcessContext;
 
-    auto processor = runtimeNode.sourceNode->getProcessor();
+    auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
     if (processor.has_value()) {
       runtimeNode.processor = processor.value().get();
     }
+  }
+}
+
+void addSampleBufferSlotIndex(std::vector<size_t>& slotIndices, size_t slotIndex) {
+  if (std::find(slotIndices.begin(), slotIndices.end(), slotIndex) != slotIndices.end()) {
+    return;
+  }
+
+  slotIndices.push_back(slotIndex);
+}
+
+void addSampleBufferSlotSliceIndex(
+    std::vector<size_t>& slotIndices, const AudioBufferSlotSlice& slice) {
+  addSampleBufferSlotIndex(slotIndices, slice.slotIndex);
+}
+
+bool sampleBufferSlotSliceCoversFullSlot(
+    RuntimeGraph& runtimeGraph, const AudioBufferSlotSlice& slice) {
+  jassert(runtimeGraph.graphProcessContext != nullptr);
+  return slice.channelCount ==
+         runtimeGraph.graphProcessContext->getSampleBufferSlotChannelCount(slice.slotIndex);
+}
+
+void markFullSlotInitializer(RuntimeGraph& runtimeGraph,
+    std::vector<bool>& slotHasFullInitializer,
+    const AudioBufferSlotSlice& slice) {
+  if (slice.slotIndex >= slotHasFullInitializer.size()) {
+    jassertfalse;
+    return;
+  }
+
+  if (sampleBufferSlotSliceCoversFullSlot(runtimeGraph, slice)) {
+    slotHasFullInitializer[slice.slotIndex] = true;
+  }
+}
+
+bool nodeUsesAudioSlotAsInput(
+    const NodeProcessContext::BufferBindings& bindings, size_t slotIndex) {
+  for (const auto& [_, slice] : bindings.inputAudioBuffers) {
+    if (slice.slotIndex == slotIndex) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+void buildSampleBufferSlotUsage(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    BufferBindingsByNodeId& bufferBindingsByNodeId) {
+  jassert(runtimeGraph.graphProcessContext != nullptr);
+
+  for (auto& [nodeId, bindings] : bufferBindingsByNodeId) {
+    auto& runtimeNode = runtimeGraph.nodes.at(nodeId);
+    auto& slotIndices = runtimeNode.sampleBufferSlotIndices;
+
+    slotIndices.reserve(bindings.inputAudioBuffers.size() + bindings.outputAudioBuffers.size() +
+                        bindings.inputControlBuffers.size() + bindings.outputControlBuffers.size() +
+                        bindings.rt_audioBuffersToClear.size() +
+                        runtimeNode.connectionTransferActions.size());
+
+    for (const auto& [_, slice] : bindings.inputAudioBuffers) {
+      addSampleBufferSlotSliceIndex(slotIndices, slice);
+    }
+
+    for (const auto& [_, slice] : bindings.outputAudioBuffers) {
+      addSampleBufferSlotSliceIndex(slotIndices, slice);
+    }
+
+    if (bindings.audioProcessBuffer.has_value()) {
+      addSampleBufferSlotSliceIndex(slotIndices, *bindings.audioProcessBuffer);
+    }
+
+    for (const auto& slice : bindings.rt_audioBuffersToClear) {
+      addSampleBufferSlotSliceIndex(slotIndices, slice);
+    }
+
+    for (const auto& [_, bufferIndex] : bindings.inputControlBuffers) {
+      if (bufferIndex.has_value()) {
+        addSampleBufferSlotIndex(slotIndices, *bufferIndex);
+      }
+    }
+
+    for (const auto& [_, bufferIndex] : bindings.outputControlBuffers) {
+      addSampleBufferSlotIndex(slotIndices, bufferIndex);
+    }
+
+    for (const auto& action : runtimeNode.connectionTransferActions) {
+      if (action.dataType == RuntimeConnectionDataType::audio) {
+        addSampleBufferSlotSliceIndex(slotIndices, action.destinationAudioSlotSlice);
+
+        for (const auto& sourceSlice : action.sourceAudioSlotSlices) {
+          addSampleBufferSlotSliceIndex(slotIndices, sourceSlice);
+        }
+
+        continue;
+      }
+
+      if (action.dataType == RuntimeConnectionDataType::control) {
+        addSampleBufferSlotIndex(slotIndices, action.destinationBufferIndex);
+
+        for (const auto sourceBufferIndex : action.sourceBufferIndices) {
+          addSampleBufferSlotIndex(slotIndices, sourceBufferIndex);
+        }
+      }
+    }
+
+    contextBuilder.registerSampleBufferSlotsUsedByNode(slotIndices);
+  }
+}
+
+// Decide which slots must be cleared when arena memory is assigned. A slot can
+// skip allocation-time clearing if graph execution will fully initialize it
+// first, either by clearing a disconnected audio input, writing a transfer
+// destination, or writing an audio processor output that does not alias an
+// input.
+void buildSampleBufferSlotInitialization(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    BufferBindingsByNodeId& bufferBindingsByNodeId) {
+  jassert(runtimeGraph.graphProcessContext != nullptr);
+
+  std::vector<bool> slotHasFullInitializer(
+      runtimeGraph.graphProcessContext->getSampleBufferSlotCount(), false);
+
+  for (auto& [nodeId, bindings] : bufferBindingsByNodeId) {
+    auto& runtimeNode = runtimeGraph.nodes.at(nodeId);
+
+    for (const auto& slice : bindings.rt_audioBuffersToClear) {
+      markFullSlotInitializer(runtimeGraph, slotHasFullInitializer, slice);
+    }
+
+    for (const auto& action : runtimeNode.connectionTransferActions) {
+      if (action.dataType == RuntimeConnectionDataType::audio) {
+        markFullSlotInitializer(
+            runtimeGraph, slotHasFullInitializer, action.destinationAudioSlotSlice);
+      } else if (action.dataType == RuntimeConnectionDataType::control) {
+        if (action.destinationBufferIndex < slotHasFullInitializer.size()) {
+          slotHasFullInitializer[action.destinationBufferIndex] = true;
+        }
+      }
+    }
+
+    if (runtimeNode.sourceNode == nullptr) {
+      continue;
+    }
+
+    const auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
+    if (!processor.has_value()) {
+      continue;
+    }
+
+    for (const auto& [_, slice] : bindings.outputAudioBuffers) {
+      if (nodeUsesAudioSlotAsInput(bindings, slice.slotIndex)) {
+        continue;
+      }
+
+      markFullSlotInitializer(runtimeGraph, slotHasFullInitializer, slice);
+    }
+  }
+
+  for (size_t slotIndex = 0; slotIndex < slotHasFullInitializer.size(); ++slotIndex) {
+    contextBuilder.setSampleBufferSlotClearOnAllocate(
+        slotIndex, !slotHasFullInitializer[slotIndex]);
   }
 }
 
@@ -218,18 +476,65 @@ RuntimeNode& addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
   return destinationNode;
 }
 
-void addConnectionSourceToTransferAction(RuntimeConnectionTransferAction& action,
-    RuntimeNode*& destinationRuntimeNode,
-    RuntimeGraph& runtimeGraph,
+void addInputPortConnectionsToRuntimeTopology(RuntimeGraph& runtimeGraph,
     UniqueDestinationMap& uniqueDestinationIdsBySource,
+    GraphConnectionMap& graphConnections,
+    RuntimeNode::Id inputPortNodeId,
+    NodePortDataType expectedDataType,
+    ModelVector<int64_t>& inputPortConnections) {
+  for (auto connectionId : inputPortConnections) {
+    auto& connection = getGraphConnection(graphConnections, connectionId);
+    if (connection.dataType() != expectedDataType) {
+      throw std::runtime_error(
+          "Processing graph connection data type does not match input port type: " +
+          std::to_string(connection.id()));
+    }
+
+    addConnectionToRuntimeGraph(
+        runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
+  }
+}
+
+void buildRuntimeTopology(RuntimeGraph& runtimeGraph,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    GraphConnectionMap& graphConnections) {
+  UniqueDestinationMap uniqueDestinationIdsBySource;
+  uniqueDestinationIdsBySource.reserve(graphNodes.size());
+
+  for (auto& [_, graphNode] : graphNodes) {
+    for (auto& inputPort : *graphNode->audioInputPorts()) {
+      addInputPortConnectionsToRuntimeTopology(runtimeGraph,
+          uniqueDestinationIdsBySource,
+          graphConnections,
+          graphNode->id(),
+          NodePortDataType::audio,
+          *inputPort->connections());
+    }
+
+    for (auto& inputPort : *graphNode->controlInputPorts()) {
+      addInputPortConnectionsToRuntimeTopology(runtimeGraph,
+          uniqueDestinationIdsBySource,
+          graphConnections,
+          graphNode->id(),
+          NodePortDataType::control,
+          *inputPort->connections());
+    }
+
+    for (auto& inputPort : *graphNode->eventInputPorts()) {
+      addInputPortConnectionsToRuntimeTopology(runtimeGraph,
+          uniqueDestinationIdsBySource,
+          graphConnections,
+          graphNode->id(),
+          NodePortDataType::event,
+          *inputPort->connections());
+    }
+  }
+}
+
+void addConnectionSourceToTransferAction(RuntimeConnectionTransferAction& action,
     anthem::NodeConnection& connection,
     NodePortDataType dataType,
-    RuntimeNode::Id inputPortNodeId,
     BufferBindingsByNodeId& bufferBindingsByNodeId) {
-  auto& destinationNode = addConnectionToRuntimeGraph(
-      runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
-  destinationRuntimeNode = &destinationNode;
-
   auto sourceBufferIndex = getBufferIndex(bufferBindingsByNodeId.at(connection.sourceNodeId()),
       dataType,
       NodeProcessContext::BufferDirection::output,
@@ -245,132 +550,527 @@ void reserveBufferBindingStorage(
   bindings.outputControlBuffers.reserve(graphNode.controlOutputPorts()->size());
   bindings.inputEventBuffers.reserve(graphNode.eventInputPorts()->size());
   bindings.outputEventBuffers.reserve(graphNode.eventOutputPorts()->size());
+  bindings.rt_audioBuffersToClear.reserve(
+      graphNode.audioInputPorts()->size() + graphNode.audioOutputPorts()->size());
   bindings.rt_eventBuffersToClear.reserve(
       graphNode.eventInputPorts()->size() + graphNode.eventOutputPorts()->size());
-  bindings.rt_parameterInputPortsToWrite.reserve(graphNode.controlInputPorts()->size());
 }
 
-void bindOutputPortBuffers(RuntimeGraph& runtimeGraph,
+void bindNonAudioOutputPortBuffers(GraphProcessContext::Builder& contextBuilder,
     anthem::Node& graphNode,
     NodeProcessContext::BufferBindings& bindings) {
-  jassert(runtimeGraph.graphProcessContext != nullptr);
-
-  for (auto& port : *graphNode.audioOutputPorts()) {
-    bindings.outputAudioBuffers.emplace(
-        port->id(), runtimeGraph.graphProcessContext->allocateAudioBuffer());
-  }
-
   for (auto& port : *graphNode.controlOutputPorts()) {
-    bindings.outputControlBuffers.emplace(
-        port->id(), runtimeGraph.graphProcessContext->allocateControlBuffer());
+    bindings.outputControlBuffers.emplace(port->id(), contextBuilder.allocateControlBuffer());
   }
 
   for (auto& port : *graphNode.eventOutputPorts()) {
     // TODO: Seed initial capacities from persisted per-port runtime hints once
-    // graph recompilation can preserve processing state across compiles.
-    auto bufferIndex =
-        runtimeGraph.graphProcessContext->allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+    // graph publishing can preserve processing state across publishes.
+    auto bufferIndex = contextBuilder.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
     bindings.outputEventBuffers.emplace(port->id(), bufferIndex);
     bindings.rt_eventBuffersToClear.push_back(bufferIndex);
   }
 }
 
-void bindAudioInputPort(RuntimeGraph& runtimeGraph,
-    GraphConnectionMap& graphConnections,
-    UniqueDestinationMap& uniqueDestinationIdsBySource,
-    BufferBindingsByNodeId& bufferBindingsByNodeId,
-    RuntimeNode::Id inputPortNodeId,
-    NodePort& inputPort,
-    NodeProcessContext::BufferBindings& bindings) {
-  jassert(runtimeGraph.graphProcessContext != nullptr);
+AudioOutputConnectionCountMap buildAudioOutputConnectionCountMap(
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    GraphConnectionMap& graphConnections) {
+  AudioOutputConnectionCountMap result;
 
-  auto connectionCount = inputPort.connections()->size();
-
-  // If there are no inputs, we will only read silence. There is a shared
-  // silence buffer for this, which should hopefully be more cache-friendly.
-  if (connectionCount == 0) {
-    bindings.inputAudioBuffers.emplace(
-        inputPort.id(), runtimeGraph.graphProcessContext->getSharedSilentAudioBufferIndex());
-    return;
+  for (auto& [_, graphNode] : graphNodes) {
+    for (auto& inputPort : *graphNode->audioInputPorts()) {
+      for (auto connectionId : *inputPort->connections()) {
+        auto& connection = getGraphConnection(graphConnections, connectionId);
+        result[connection.sourceNodeId()][connection.sourcePortId()]++;
+      }
+    }
   }
 
-  // For input ports with only one incoming connection, which is probably most
-  // ports, we can skip the copy step and just direct the node/processor to read
-  // directly from the output port's buffer.
-  if (connectionCount == 1) {
-    auto& connection = getGraphConnection(graphConnections, inputPort.connections()->at(0));
-    addConnectionToRuntimeGraph(
-        runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
+  return result;
+}
 
-    auto sourceBufferIndex = getBufferIndex(bufferBindingsByNodeId.at(connection.sourceNodeId()),
-        NodePortDataType::audio,
-        NodeProcessContext::BufferDirection::output,
-        connection.sourcePortId());
-    bindings.inputAudioBuffers.emplace(inputPort.id(), sourceBufferIndex);
-    return;
+AudioOutputConnectionMap buildAudioOutputConnectionMap(
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    GraphConnectionMap& graphConnections) {
+  AudioOutputConnectionMap result;
+
+  for (auto& [_, graphNode] : graphNodes) {
+    for (auto& inputPort : *graphNode->audioInputPorts()) {
+      for (auto connectionId : *inputPort->connections()) {
+        auto& connection = getGraphConnection(graphConnections, connectionId);
+        result[connection.sourceNodeId()][connection.sourcePortId()].push_back(&connection);
+      }
+    }
   }
 
-  // Finally, the only case where we need a dedicated input buffer is when the
-  // input port has multiple incoming connections. In this case, we sum all the
-  // connected output buffers into the input buffer.
+  return result;
+}
 
-  auto destinationBufferIndex = runtimeGraph.graphProcessContext->allocateAudioBuffer();
-  bindings.inputAudioBuffers.emplace(inputPort.id(), destinationBufferIndex);
+const std::vector<anthem::NodeConnection*>& getAudioOutputConnections(
+    const AudioOutputConnectionMap& connectionMap, RuntimeNode::Id nodeId, int64_t portId) {
+  static const std::vector<anthem::NodeConnection*> emptyConnections;
 
-  RuntimeConnectionTransferAction action;
-  action.dataType = RuntimeConnectionDataType::audio;
-  action.destinationBufferIndex = destinationBufferIndex;
-  action.sourceBufferIndices.reserve(connectionCount);
-  RuntimeNode* destinationRuntimeNode = nullptr;
-
-  for (auto connectionId : *inputPort.connections()) {
-    auto& connection = getGraphConnection(graphConnections, connectionId);
-    addConnectionSourceToTransferAction(action,
-        destinationRuntimeNode,
-        runtimeGraph,
-        uniqueDestinationIdsBySource,
-        connection,
-        NodePortDataType::audio,
-        inputPortNodeId,
-        bufferBindingsByNodeId);
+  auto nodeIter = connectionMap.find(nodeId);
+  if (nodeIter == connectionMap.end()) {
+    return emptyConnections;
   }
 
-  jassert(destinationRuntimeNode != nullptr);
-  if (destinationRuntimeNode != nullptr) {
-    destinationRuntimeNode->connectionTransferActions.push_back(std::move(action));
+  auto portIter = nodeIter->second.find(portId);
+  if (portIter == nodeIter->second.end()) {
+    return emptyConnections;
+  }
+
+  return portIter->second;
+}
+
+size_t getAudioOutputConnectionCount(const AudioOutputConnectionCountMap& connectionCounts,
+    RuntimeNode::Id sourceNodeId,
+    int64_t sourcePortId) {
+  auto nodeIter = connectionCounts.find(sourceNodeId);
+  if (nodeIter == connectionCounts.end()) {
+    return 0;
+  }
+
+  auto portIter = nodeIter->second.find(sourcePortId);
+  if (portIter == nodeIter->second.end()) {
+    return 0;
+  }
+
+  return portIter->second;
+}
+
+int getRequiredAudioOutputBufferChannelCount(RuntimeGraph& runtimeGraph,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    RuntimeNode::Id nodeId,
+    int64_t outputPortId);
+
+int getRequiredAudioInputBufferChannelCount(RuntimeGraph& runtimeGraph,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    RuntimeNode::Id nodeId,
+    int64_t inputPortId) {
+  auto& graphNode = *graphNodes.at(nodeId);
+  auto& inputPort = getAudioInputPortById(graphNode, inputPortId);
+  auto result = getAudioPortChannelCount(runtimeGraph, inputPort);
+
+  if (!hasSingleAudioInputAndOutput(graphNode) ||
+      graphNode.audioInputPorts()->at(0)->id() != inputPortId) {
+    return result;
+  }
+
+  auto& outputPort = *graphNode.audioOutputPorts()->at(0);
+
+  result = std::max(result, getNodeAudioProcessChannelCount(runtimeGraph, graphNode));
+  result = std::max(result,
+      getRequiredAudioOutputBufferChannelCount(runtimeGraph,
+          graphNodes,
+          audioOutputConnections,
+          outputWidthMemo,
+          nodeId,
+          outputPort.id()));
+
+  return result;
+}
+
+int getRequiredAudioOutputBufferChannelCount(RuntimeGraph& runtimeGraph,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    RuntimeNode::Id nodeId,
+    int64_t outputPortId) {
+  auto nodeMemoIter = outputWidthMemo.find(nodeId);
+  if (nodeMemoIter != outputWidthMemo.end()) {
+    auto portMemoIter = nodeMemoIter->second.find(outputPortId);
+    if (portMemoIter != nodeMemoIter->second.end()) {
+      return portMemoIter->second;
+    }
+  }
+
+  auto& graphNode = *graphNodes.at(nodeId);
+  auto& outputPort = getAudioOutputPortById(graphNode, outputPortId);
+  auto result = getAudioPortChannelCount(runtimeGraph, outputPort);
+
+  if (hasSingleAudioInputAndOutput(graphNode) &&
+      graphNode.audioOutputPorts()->at(0)->id() == outputPortId) {
+    result = std::max(result, getNodeAudioProcessChannelCount(runtimeGraph, graphNode));
+  }
+
+  const auto& outputConnections =
+      getAudioOutputConnections(audioOutputConnections, nodeId, outputPortId);
+
+  if (outputConnections.size() == 1) {
+    auto& connection = *outputConnections[0];
+    auto& destinationNode = *graphNodes.at(connection.destinationNodeId());
+    auto& destinationInputPort =
+        getAudioInputPortById(destinationNode, connection.destinationPortId());
+
+    if (destinationInputPort.connections()->size() == 1) {
+      result = std::max(result,
+          getRequiredAudioInputBufferChannelCount(runtimeGraph,
+              graphNodes,
+              audioOutputConnections,
+              outputWidthMemo,
+              connection.destinationNodeId(),
+              connection.destinationPortId()));
+    }
+  }
+
+  outputWidthMemo[nodeId][outputPortId] = result;
+  return result;
+}
+
+void validateAudioConnectionChannelCounts(RuntimeGraph& runtimeGraph,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    GraphConnectionMap& graphConnections) {
+  for (auto& [_, graphNode] : graphNodes) {
+    for (auto& inputPort : *graphNode->audioInputPorts()) {
+      const auto inputChannelCount = getAudioPortChannelCount(runtimeGraph, *inputPort);
+
+      for (auto connectionId : *inputPort->connections()) {
+        auto& connection = getGraphConnection(graphConnections, connectionId);
+        auto& sourceNode = *graphNodes.at(connection.sourceNodeId());
+        auto& sourceOutputPort = getAudioOutputPortById(sourceNode, connection.sourcePortId());
+        const auto sourceChannelCount = getAudioPortChannelCount(runtimeGraph, sourceOutputPort);
+
+        if (sourceChannelCount != inputChannelCount) {
+          throw std::runtime_error("Processing graph audio connection has mismatched channel "
+                                   "counts: " +
+                                   std::to_string(connection.id()));
+        }
+      }
+    }
   }
 }
 
-void bindControlInputPort(RuntimeGraph& runtimeGraph,
+void bindAudioPortBuffersForNode(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
     GraphConnectionMap& graphConnections,
-    UniqueDestinationMap& uniqueDestinationIdsBySource,
     BufferBindingsByNodeId& bufferBindingsByNodeId,
+    const AudioOutputConnectionCountMap& audioOutputConnectionCounts,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    std::unordered_set<RuntimeNode::Id>& audioBoundNodeIds,
+    RuntimeNode::Id nodeId);
+
+AudioBufferSlotSlice getAudioOutputBufferSlotSlice(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    GraphConnectionMap& graphConnections,
+    BufferBindingsByNodeId& bufferBindingsByNodeId,
+    const AudioOutputConnectionCountMap& audioOutputConnectionCounts,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    std::unordered_set<RuntimeNode::Id>& audioBoundNodeIds,
+    anthem::NodeConnection& connection) {
+  // Recursion point: before an input can bind to an upstream audio output, the
+  // source node's audio ports must already be bound.
+  bindAudioPortBuffersForNode(runtimeGraph,
+      contextBuilder,
+      graphNodes,
+      graphConnections,
+      bufferBindingsByNodeId,
+      audioOutputConnectionCounts,
+      audioOutputConnections,
+      outputWidthMemo,
+      audioBoundNodeIds,
+      connection.sourceNodeId());
+
+  return getAudioBufferSlotSlice(bufferBindingsByNodeId.at(connection.sourceNodeId()),
+      NodeProcessContext::BufferDirection::output,
+      connection.sourcePortId());
+}
+
+void bindAudioInputPort(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    GraphConnectionMap& graphConnections,
+    BufferBindingsByNodeId& bufferBindingsByNodeId,
+    const AudioOutputConnectionCountMap& audioOutputConnectionCounts,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    std::unordered_set<RuntimeNode::Id>& audioBoundNodeIds,
     RuntimeNode::Id inputPortNodeId,
     NodePort& inputPort,
     NodeProcessContext::BufferBindings& bindings) {
-  // The logic here for zero-, one- and multi-input ports is similar to audio
-  // ports, which is documented above.
-
   jassert(runtimeGraph.graphProcessContext != nullptr);
 
   auto connectionCount = inputPort.connections()->size();
 
+  // Rule: disconnected audio inputs get their own writable buffer, which is
+  // cleared before the node runs.
   if (connectionCount == 0) {
-    auto bufferIndex = runtimeGraph.graphProcessContext->allocateControlBuffer();
-    runtimeGraph.graphProcessContext->getControlBuffer(bufferIndex).clear();
-    bindings.inputControlBuffers.emplace(inputPort.id(), bufferIndex);
-
-    if (inputPort.config()->parameterConfig().has_value()) {
-      bindings.rt_parameterInputPortsToWrite.insert(inputPort.id());
-    }
-
+    auto slotIndex =
+        contextBuilder.declareAudioBufferSlot(getRequiredAudioInputBufferChannelCount(runtimeGraph,
+            graphNodes,
+            audioOutputConnections,
+            outputWidthMemo,
+            inputPortNodeId,
+            inputPort.id()));
+    AudioBufferSlotSlice slice{
+        .slotIndex = slotIndex,
+        .channelCount = getAudioPortChannelCount(runtimeGraph, inputPort),
+    };
+    bindings.inputAudioBuffers.emplace(inputPort.id(), slice);
+    bindings.rt_audioBuffersToClear.push_back(slice);
     return;
   }
 
   if (connectionCount == 1) {
     auto& connection = getGraphConnection(graphConnections, inputPort.connections()->at(0));
-    addConnectionToRuntimeGraph(
-        runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
+    auto& destinationRuntimeNode = runtimeGraph.nodes.at(inputPortNodeId);
+    auto sourceSlice = getAudioOutputBufferSlotSlice(runtimeGraph,
+        contextBuilder,
+        graphNodes,
+        graphConnections,
+        bufferBindingsByNodeId,
+        audioOutputConnectionCounts,
+        audioOutputConnections,
+        outputWidthMemo,
+        audioBoundNodeIds,
+        connection);
+
+    const auto sourceConnectionCount = getAudioOutputConnectionCount(
+        audioOutputConnectionCounts, connection.sourceNodeId(), connection.sourcePortId());
+
+    // Rule: a single-source audio input with no source fan-out can read the
+    // source output buffer directly.
+    if (sourceConnectionCount <= 1) {
+      bindings.inputAudioBuffers.emplace(inputPort.id(),
+          AudioBufferSlotSlice{
+              .slotIndex = sourceSlice.slotIndex,
+              .channelCount = getAudioPortChannelCount(runtimeGraph, inputPort),
+          });
+      return;
+    }
+
+    // Rule: if the source output fans out, copy it into this node's private
+    // input buffer so this node can process in place without mutating sibling
+    // branches.
+    auto destinationSlotIndex =
+        contextBuilder.declareAudioBufferSlot(getRequiredAudioInputBufferChannelCount(runtimeGraph,
+            graphNodes,
+            audioOutputConnections,
+            outputWidthMemo,
+            inputPortNodeId,
+            inputPort.id()));
+    AudioBufferSlotSlice destinationSlice{
+        .slotIndex = destinationSlotIndex,
+        .channelCount = getAudioPortChannelCount(runtimeGraph, inputPort),
+    };
+    bindings.inputAudioBuffers.emplace(inputPort.id(), destinationSlice);
+
+    RuntimeConnectionTransferAction action;
+    action.dataType = RuntimeConnectionDataType::audio;
+    action.destinationAudioSlotSlice = destinationSlice;
+    action.sourceAudioSlotSlices.push_back(sourceSlice);
+    destinationRuntimeNode.connectionTransferActions.push_back(std::move(action));
+    return;
+  }
+
+  // Rule: fan-in audio inputs get a private input buffer and a transfer action
+  // that sums all connected source output buffers into it.
+  auto destinationSlotIndex =
+      contextBuilder.declareAudioBufferSlot(getRequiredAudioInputBufferChannelCount(runtimeGraph,
+          graphNodes,
+          audioOutputConnections,
+          outputWidthMemo,
+          inputPortNodeId,
+          inputPort.id()));
+  AudioBufferSlotSlice destinationSlice{
+      .slotIndex = destinationSlotIndex,
+      .channelCount = getAudioPortChannelCount(runtimeGraph, inputPort),
+  };
+  bindings.inputAudioBuffers.emplace(inputPort.id(), destinationSlice);
+
+  RuntimeConnectionTransferAction action;
+  action.dataType = RuntimeConnectionDataType::audio;
+  action.destinationAudioSlotSlice = destinationSlice;
+  action.sourceAudioSlotSlices.reserve(connectionCount);
+  auto& destinationRuntimeNode = runtimeGraph.nodes.at(inputPortNodeId);
+
+  for (auto connectionId : *inputPort.connections()) {
+    auto& connection = getGraphConnection(graphConnections, connectionId);
+
+    auto sourceSlice = getAudioOutputBufferSlotSlice(runtimeGraph,
+        contextBuilder,
+        graphNodes,
+        graphConnections,
+        bufferBindingsByNodeId,
+        audioOutputConnectionCounts,
+        audioOutputConnections,
+        outputWidthMemo,
+        audioBoundNodeIds,
+        connection);
+    action.sourceAudioSlotSlices.push_back(sourceSlice);
+  }
+
+  destinationRuntimeNode.connectionTransferActions.push_back(std::move(action));
+}
+
+void bindAudioOutputPortBuffers(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    anthem::Node& graphNode,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    NodeProcessContext::BufferBindings& bindings) {
+  jassert(runtimeGraph.graphProcessContext != nullptr);
+
+  auto& audioInputPorts = *graphNode.audioInputPorts();
+  auto& audioOutputPorts = *graphNode.audioOutputPorts();
+
+  // Rule: single-audio-input/single-audio-output nodes process in place, so the
+  // output port aliases the input port's buffer.
+  if (audioInputPorts.size() == 1 && audioOutputPorts.size() == 1) {
+    const auto inputBufferIter = bindings.inputAudioBuffers.find(audioInputPorts[0]->id());
+
+    if (inputBufferIter != bindings.inputAudioBuffers.end()) {
+      bindings.outputAudioBuffers.emplace(audioOutputPorts[0]->id(),
+          AudioBufferSlotSlice{
+              .slotIndex = inputBufferIter->second.slotIndex,
+              .channelCount = getAudioPortChannelCount(runtimeGraph, *audioOutputPorts[0]),
+          });
+      return;
+    }
+  }
+
+  // Rule: nodes that cannot use the single-input/single-output in-place shape
+  // get dedicated audio output buffers.
+  for (auto& port : audioOutputPorts) {
+    if (bindings.outputAudioBuffers.find(port->id()) != bindings.outputAudioBuffers.end()) {
+      continue;
+    }
+
+    auto slotIndex =
+        contextBuilder.declareAudioBufferSlot(getRequiredAudioOutputBufferChannelCount(runtimeGraph,
+            graphNodes,
+            audioOutputConnections,
+            outputWidthMemo,
+            graphNode.id(),
+            port->id()));
+    bindings.outputAudioBuffers.emplace(port->id(),
+        AudioBufferSlotSlice{
+            .slotIndex = slotIndex,
+            .channelCount = getAudioPortChannelCount(runtimeGraph, *port),
+        });
+  }
+}
+
+void bindAudioProcessBufferForNode(RuntimeGraph& runtimeGraph,
+    anthem::Node& graphNode,
+    NodeProcessContext::BufferBindings& bindings) {
+  const auto processChannelCount = getNodeAudioProcessChannelCount(runtimeGraph, graphNode);
+  const auto audioInputPortCount = graphNode.audioInputPorts()->size();
+  const auto audioOutputPortCount = graphNode.audioOutputPorts()->size();
+
+  if (processChannelCount == 0 || bindings.audioProcessBuffer.has_value()) {
+    return;
+  }
+
+  if ((audioInputPortCount + audioOutputPortCount) > 2) {
+    return;
+  }
+
+  if (audioOutputPortCount == 1) {
+    const auto outputPortId = graphNode.audioOutputPorts()->at(0)->id();
+    const auto outputSlice = bindings.outputAudioBuffers.at(outputPortId);
+    bindings.audioProcessBuffer = AudioBufferSlotSlice{
+        .slotIndex = outputSlice.slotIndex,
+        .channelCount = processChannelCount,
+    };
+    return;
+  }
+
+  if (audioInputPortCount == 1) {
+    const auto inputPortId = graphNode.audioInputPorts()->at(0)->id();
+    const auto inputSlice = bindings.inputAudioBuffers.at(inputPortId);
+    bindings.audioProcessBuffer = AudioBufferSlotSlice{
+        .slotIndex = inputSlice.slotIndex,
+        .channelCount = processChannelCount,
+    };
+  }
+}
+
+void bindAudioPortBuffersForNode(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
+    GraphConnectionMap& graphConnections,
+    BufferBindingsByNodeId& bufferBindingsByNodeId,
+    const AudioOutputConnectionCountMap& audioOutputConnectionCounts,
+    const AudioOutputConnectionMap& audioOutputConnections,
+    AudioOutputWidthMap& outputWidthMemo,
+    std::unordered_set<RuntimeNode::Id>& audioBoundNodeIds,
+    RuntimeNode::Id nodeId) {
+  if (audioBoundNodeIds.find(nodeId) != audioBoundNodeIds.end()) {
+    return;
+  }
+
+  auto graphNodeIter = graphNodes.find(nodeId);
+  if (graphNodeIter == graphNodes.end() || graphNodeIter->second == nullptr) {
+    throw std::runtime_error(
+        "Processing graph cannot bind audio buffers for missing node: " + std::to_string(nodeId));
+  }
+
+  auto bindingsIter = bufferBindingsByNodeId.find(nodeId);
+  if (bindingsIter == bufferBindingsByNodeId.end()) {
+    throw std::runtime_error(
+        "Processing graph buffer bindings missing for node: " + std::to_string(nodeId));
+  }
+
+  auto& graphNode = *graphNodeIter->second;
+  auto& bindings = bindingsIter->second;
+
+  // Audio inputs are bound before audio outputs so a one-input/one-output node
+  // can alias its output to the selected input process buffer.
+  for (auto& inputPort : *graphNode.audioInputPorts()) {
+    bindAudioInputPort(runtimeGraph,
+        contextBuilder,
+        graphNodes,
+        graphConnections,
+        bufferBindingsByNodeId,
+        audioOutputConnectionCounts,
+        audioOutputConnections,
+        outputWidthMemo,
+        audioBoundNodeIds,
+        graphNode.id(),
+        *inputPort,
+        bindings);
+  }
+
+  bindAudioOutputPortBuffers(runtimeGraph,
+      contextBuilder,
+      graphNode,
+      graphNodes,
+      audioOutputConnections,
+      outputWidthMemo,
+      bindings);
+  bindAudioProcessBufferForNode(runtimeGraph, graphNode, bindings);
+
+  audioBoundNodeIds.insert(nodeId);
+}
+
+void bindControlInputPort(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
+    GraphConnectionMap& graphConnections,
+    BufferBindingsByNodeId& bufferBindingsByNodeId,
+    RuntimeNode::Id inputPortNodeId,
+    NodePort& inputPort,
+    NodeProcessContext::BufferBindings& bindings) {
+  jassert(runtimeGraph.graphProcessContext != nullptr);
+
+  auto connectionCount = inputPort.connections()->size();
+
+  if (connectionCount == 0) {
+    bindings.inputControlBuffers.emplace(inputPort.id(), std::nullopt);
+    return;
+  }
+
+  if (connectionCount == 1) {
+    auto& connection = getGraphConnection(graphConnections, inputPort.connections()->at(0));
 
     // A single-source input can read directly from the source output. Fan-in
     // inputs below get a dedicated destination buffer and transfer action.
@@ -382,57 +1082,42 @@ void bindControlInputPort(RuntimeGraph& runtimeGraph,
     return;
   }
 
-  auto destinationBufferIndex = runtimeGraph.graphProcessContext->allocateControlBuffer();
+  auto destinationBufferIndex = contextBuilder.allocateControlBuffer();
   bindings.inputControlBuffers.emplace(inputPort.id(), destinationBufferIndex);
 
   RuntimeConnectionTransferAction action;
   action.dataType = RuntimeConnectionDataType::control;
   action.destinationBufferIndex = destinationBufferIndex;
   action.sourceBufferIndices.reserve(connectionCount);
-  RuntimeNode* destinationRuntimeNode = nullptr;
 
   for (auto connectionId : *inputPort.connections()) {
     auto& connection = getGraphConnection(graphConnections, connectionId);
-    addConnectionSourceToTransferAction(action,
-        destinationRuntimeNode,
-        runtimeGraph,
-        uniqueDestinationIdsBySource,
-        connection,
-        NodePortDataType::control,
-        inputPortNodeId,
-        bufferBindingsByNodeId);
+    addConnectionSourceToTransferAction(
+        action, connection, NodePortDataType::control, bufferBindingsByNodeId);
   }
 
-  jassert(destinationRuntimeNode != nullptr);
-  if (destinationRuntimeNode != nullptr) {
-    destinationRuntimeNode->connectionTransferActions.push_back(std::move(action));
-  }
+  runtimeGraph.nodes.at(inputPortNodeId).connectionTransferActions.push_back(std::move(action));
 }
 
 void bindEventInputPort(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
     GraphConnectionMap& graphConnections,
-    UniqueDestinationMap& uniqueDestinationIdsBySource,
     BufferBindingsByNodeId& bufferBindingsByNodeId,
     RuntimeNode::Id inputPortNodeId,
     NodePort& inputPort,
     NodeProcessContext::BufferBindings& bindings) {
-  // The logic here for zero-, one- and multi-input ports is similar to audio
-  // ports, which is documented above.
-
   jassert(runtimeGraph.graphProcessContext != nullptr);
 
   auto connectionCount = inputPort.connections()->size();
 
   if (connectionCount == 0) {
     bindings.inputEventBuffers.emplace(
-        inputPort.id(), runtimeGraph.graphProcessContext->getSharedEmptyEventBufferIndex());
+        inputPort.id(), contextBuilder.getSharedEmptyEventBufferIndex());
     return;
   }
 
   if (connectionCount == 1) {
     auto& connection = getGraphConnection(graphConnections, inputPort.connections()->at(0));
-    addConnectionToRuntimeGraph(
-        runtimeGraph, uniqueDestinationIdsBySource, inputPortNodeId, connection);
 
     // A single-source input can read directly from the source output. Fan-in
     // inputs below get a dedicated destination buffer and transfer action.
@@ -445,9 +1130,8 @@ void bindEventInputPort(RuntimeGraph& runtimeGraph,
   }
 
   // TODO: Seed initial capacities from persisted per-port runtime hints once
-  // graph recompilation can preserve processing state across compiles.
-  auto destinationBufferIndex =
-      runtimeGraph.graphProcessContext->allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
+  // graph publishing can preserve processing state across publishes.
+  auto destinationBufferIndex = contextBuilder.allocateEventBuffer(DEFAULT_EVENT_BUFFER_SIZE);
   bindings.inputEventBuffers.emplace(inputPort.id(), destinationBufferIndex);
   bindings.rt_eventBuffersToClear.push_back(destinationBufferIndex);
 
@@ -455,46 +1139,26 @@ void bindEventInputPort(RuntimeGraph& runtimeGraph,
   action.dataType = RuntimeConnectionDataType::event;
   action.destinationBufferIndex = destinationBufferIndex;
   action.sourceBufferIndices.reserve(connectionCount);
-  RuntimeNode* destinationRuntimeNode = nullptr;
 
   for (auto connectionId : *inputPort.connections()) {
     auto& connection = getGraphConnection(graphConnections, connectionId);
-    addConnectionSourceToTransferAction(action,
-        destinationRuntimeNode,
-        runtimeGraph,
-        uniqueDestinationIdsBySource,
-        connection,
-        NodePortDataType::event,
-        inputPortNodeId,
-        bufferBindingsByNodeId);
+    addConnectionSourceToTransferAction(
+        action, connection, NodePortDataType::event, bufferBindingsByNodeId);
   }
 
-  jassert(destinationRuntimeNode != nullptr);
-  if (destinationRuntimeNode != nullptr) {
-    destinationRuntimeNode->connectionTransferActions.push_back(std::move(action));
-  }
+  runtimeGraph.nodes.at(inputPortNodeId).connectionTransferActions.push_back(std::move(action));
 }
 
 void bindInputPortBuffers(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
     GraphConnectionMap& graphConnections,
-    UniqueDestinationMap& uniqueDestinationIdsBySource,
     BufferBindingsByNodeId& bufferBindingsByNodeId,
     anthem::Node& graphNode,
     NodeProcessContext::BufferBindings& bindings) {
-  for (auto& inputPort : *graphNode.audioInputPorts()) {
-    bindAudioInputPort(runtimeGraph,
-        graphConnections,
-        uniqueDestinationIdsBySource,
-        bufferBindingsByNodeId,
-        graphNode.id(),
-        *inputPort,
-        bindings);
-  }
-
   for (auto& inputPort : *graphNode.controlInputPorts()) {
     bindControlInputPort(runtimeGraph,
+        contextBuilder,
         graphConnections,
-        uniqueDestinationIdsBySource,
         bufferBindingsByNodeId,
         graphNode.id(),
         *inputPort,
@@ -503,8 +1167,8 @@ void bindInputPortBuffers(RuntimeGraph& runtimeGraph,
 
   for (auto& inputPort : *graphNode.eventInputPorts()) {
     bindEventInputPort(runtimeGraph,
+        contextBuilder,
         graphConnections,
-        uniqueDestinationIdsBySource,
         bufferBindingsByNodeId,
         graphNode.id(),
         *inputPort,
@@ -512,7 +1176,8 @@ void bindInputPortBuffers(RuntimeGraph& runtimeGraph,
   }
 }
 
-BufferBindingsByNodeId createBufferBindingsAndConnections(RuntimeGraph& runtimeGraph,
+BufferBindingsByNodeId createBufferBindings(RuntimeGraph& runtimeGraph,
+    GraphProcessContext::Builder& contextBuilder,
     ModelUnorderedMap<int64_t, std::shared_ptr<anthem::Node>>& graphNodes,
     GraphConnectionMap& graphConnections) {
   BufferBindingsByNodeId bufferBindingsByNodeId;
@@ -524,11 +1189,30 @@ BufferBindingsByNodeId createBufferBindingsAndConnections(RuntimeGraph& runtimeG
     auto& bindings = bindingsIter->second;
 
     reserveBufferBindingStorage(bindings, *graphNode);
-    bindOutputPortBuffers(runtimeGraph, *graphNode, bindings);
+    bindNonAudioOutputPortBuffers(contextBuilder, *graphNode, bindings);
   }
 
-  UniqueDestinationMap uniqueDestinationIdsBySource;
-  uniqueDestinationIdsBySource.reserve(graphNodes.size());
+  auto audioOutputConnectionCounts =
+      buildAudioOutputConnectionCountMap(graphNodes, graphConnections);
+  auto audioOutputConnections = buildAudioOutputConnectionMap(graphNodes, graphConnections);
+  AudioOutputWidthMap outputWidthMemo;
+  validateAudioConnectionChannelCounts(runtimeGraph, graphNodes, graphConnections);
+
+  std::unordered_set<RuntimeNode::Id> audioBoundNodeIds;
+  audioBoundNodeIds.reserve(graphNodes.size());
+
+  for (auto& [nodeId, _] : graphNodes) {
+    bindAudioPortBuffersForNode(runtimeGraph,
+        contextBuilder,
+        graphNodes,
+        graphConnections,
+        bufferBindingsByNodeId,
+        audioOutputConnectionCounts,
+        audioOutputConnections,
+        outputWidthMemo,
+        audioBoundNodeIds,
+        nodeId);
+  }
 
   for (auto& [nodeId, graphNode] : graphNodes) {
     auto bindingsIter = bufferBindingsByNodeId.find(nodeId);
@@ -538,8 +1222,8 @@ BufferBindingsByNodeId createBufferBindingsAndConnections(RuntimeGraph& runtimeG
     }
 
     bindInputPortBuffers(runtimeGraph,
+        contextBuilder,
         graphConnections,
-        uniqueDestinationIdsBySource,
         bufferBindingsByNodeId,
         *graphNode,
         bindingsIter->second);
@@ -595,18 +1279,17 @@ size_t getAndSetPriority(RuntimeNode& node) {
 
 std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
     ProcessingGraphModel& processingGraph,
-    GraphRuntimeServices& rtServices,
-    const GraphBufferLayout& bufferLayout,
-    double sampleRate) {
+    EngineRuntimeServices& rtServices,
+    const GraphBufferLayout& bufferLayout) {
   auto& graphNodes = *processingGraph.nodes();
   auto& graphConnections = *processingGraph.connections();
 
   auto runtimeGraphStorage = std::make_unique<RuntimeGraph>(graphNodes.size());
   auto& runtimeGraph = *runtimeGraphStorage;
 
-  runtimeGraph.sampleRate = static_cast<float>(sampleRate);
   runtimeGraph.graphProcessContext =
       std::make_unique<GraphProcessContext>(rtServices, bufferLayout);
+  GraphProcessContext::Builder contextBuilder(*runtimeGraph.graphProcessContext);
   runtimeGraph.nodes.reserve(graphNodes.size());
 
   for (auto& [nodeId, graphNode] : graphNodes) {
@@ -622,10 +1305,10 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
     runtimeGraph.nodes.emplace(nodeId, RuntimeNode(nodeId, graphNode));
   }
 
-  reserveRuntimeGraphStorage(runtimeGraph, graphNodes);
-  auto bufferBindingsByNodeId =
-      createBufferBindingsAndConnections(runtimeGraph, graphNodes, graphConnections);
-  createNodeProcessContexts(runtimeGraph, bufferBindingsByNodeId);
+  // Build and validate graph topology before allocating buffers. Audio buffer
+  // binding can recurse upstream to find in-place process buffers, so cycles
+  // must be rejected before that phase starts.
+  buildRuntimeTopology(runtimeGraph, graphNodes, graphConnections);
 
   for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
     if (runtimeNode.upstreamNodeCount == 0) {
@@ -647,6 +1330,14 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
   for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
     assertAcyclicFromNode(runtimeNode, dfsStates);
   }
+
+  reserveRuntimeGraphStorage(runtimeGraph, contextBuilder, graphNodes);
+  auto bufferBindingsByNodeId =
+      createBufferBindings(runtimeGraph, contextBuilder, graphNodes, graphConnections);
+  buildSampleBufferSlotUsage(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
+  buildSampleBufferSlotInitialization(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
+  contextBuilder.finalizeSampleArena();
+  createNodeProcessContexts(runtimeGraph, contextBuilder, bufferBindingsByNodeId);
 
   for (auto* inputNode : runtimeGraph.inputNodes) {
     getAndSetPriority(*inputNode);

@@ -23,16 +23,12 @@
 
 #include <memory>
 
-namespace juce {
-class AudioDeviceManager;
-}
-
 namespace anthem {
 
 class Engine;
 
 std::unique_ptr<TransportProjectView> createTransportProjectView(Engine& engine);
 
-std::unique_ptr<TransportClock> createTransportClock(juce::AudioDeviceManager& audioDeviceManager);
+std::unique_ptr<TransportClock> createTransportClock(Engine& engine);
 
 } // namespace anthem

@@ -19,10 +19,13 @@
 
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
+import 'package:anthem/model/device.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -34,6 +37,250 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 
 part 'track.g.dart';
 
+@AnthemModel(serializable: true, generateModelSync: true)
+class TrackAutomationTargetModel extends _TrackAutomationTargetModel
+    with
+        _$TrackAutomationTargetModel,
+        _$TrackAutomationTargetModelAnthemModelMixin {
+  TrackAutomationTargetModel({required super.nodeId, required super.portId});
+
+  TrackAutomationTargetModel.uninitialized() : super(nodeId: -1, portId: -1);
+
+  factory TrackAutomationTargetModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackAutomationTargetModelAnthemModelMixin.fromJson(json);
+}
+
+abstract class _TrackAutomationTargetModel with Store, AnthemModelBase {
+  /// The processing graph node that owns the automated parameter.
+  @anthemObservable
+  Id nodeId;
+
+  /// The control input port ID for the automated parameter.
+  @anthemObservable
+  int portId;
+
+  _TrackAutomationTargetModel({required this.nodeId, required this.portId});
+}
+
+@AnthemModel.syncedModel()
+class TrackProcessingModel extends _TrackProcessingModel
+    with _$TrackProcessingModel, _$TrackProcessingModelAnthemModelMixin {
+  TrackProcessingModel()
+    : super(
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
+      );
+
+  TrackProcessingModel.uninitialized()
+    : super(
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
+      );
+
+  factory TrackProcessingModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackProcessingModelAnthemModelMixin.fromJson(json);
+
+  static List<String> buildDbMeterVisualizationIds(Id trackId) {
+    return ['db-meter-$trackId-left', 'db-meter-$trackId-right'];
+  }
+}
+
+abstract class _TrackProcessingModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
+  @anthemObservable
+  Id? utilityNodeId;
+
+  NodeModel? get utilityNode => project.processingGraph.nodes[utilityNodeId];
+
+  @anthemObservable
+  Id? dbMeterNodeId;
+
+  NodeModel? get dbMeterNode => project.processingGraph.nodes[dbMeterNodeId];
+
+  @anthemObservable
+  AnthemObservableList<DeviceModel> devices;
+
+  /// Generated rack routing connection IDs.
+  ///
+  /// These connections are derived from [devices] and should be rebuilt rather
+  /// than edited as device-owned graph state.
+  @anthemObservable
+  AnthemObservableList<Id> deviceRoutingConnectionIds;
+
+  /// Sequence note provider node assigned to this track.
+  ///
+  /// This node is the sequencer -> processing graph interface for track notes.
+  @anthemObservable
+  Id? sequenceNoteProviderNodeId;
+
+  /// Live event provider node assigned to this track.
+  ///
+  /// This node allows direct note audition for this track's instrument.
+  @anthemObservable
+  Id? liveEventProviderNodeId;
+
+  NodeModel? get sequenceNoteProviderNode =>
+      project.processingGraph.nodes[sequenceNoteProviderNodeId];
+
+  NodeModel? get liveEventProviderNode =>
+      project.processingGraph.nodes[liveEventProviderNodeId];
+
+  Id get audioOutputNodeId => utilityNodeId!;
+  int get audioOutputPortId => UtilityProcessorModel.audioOutputPortId;
+
+  TrackModel get track => getFirstAncestorOfType<TrackModel>();
+
+  List<Id> getOwnedNodeIds() {
+    return [
+      utilityNodeId,
+      dbMeterNodeId,
+      sequenceNoteProviderNodeId,
+      liveEventProviderNodeId,
+      ...devices.expand((device) => device.nodeIds),
+    ].nonNulls.toList();
+  }
+
+  /// Visualization IDs used for this track's stereo dB meter.
+  List<String> get dbMeterVisualizationIds =>
+      TrackProcessingModel.buildDbMeterVisualizationIds(track.id);
+
+  void createAndRegisterNodes({
+    required TrackModel track,
+    required ProjectModel project,
+    required ProjectEntityIdAllocator idAllocator,
+  }) {
+    final trackId = track.id;
+
+    final utilityNode = UtilityProcessorModel.create(
+      idAllocator: idAllocator,
+    ).createNode();
+    utilityNode.owner = NodeOwnerModel(trackId: trackId);
+    utilityNodeId = utilityNode.id;
+    project.processingGraph.addNode(utilityNode);
+
+    final dbMeterNode = DbMeterProcessorModel.create(
+      idAllocator: idAllocator,
+      publishEverySamples: 1024,
+      visualizationIds: TrackProcessingModel.buildDbMeterVisualizationIds(
+        trackId,
+      ),
+    ).createNode();
+    dbMeterNode.owner = NodeOwnerModel(trackId: trackId);
+    dbMeterNodeId = dbMeterNode.id;
+    project.processingGraph.addNode(dbMeterNode);
+
+    project.processingGraph.addConnection(
+      NodeConnectionModel(
+        idAllocator: idAllocator,
+        sourceNodeId: utilityNodeId!,
+        sourcePortId: UtilityProcessorModel.audioOutputPortId,
+        destinationNodeId: dbMeterNodeId!,
+        destinationPortId: DbMeterProcessorModel.audioInputPortId,
+        dataType: NodePortDataType.audio,
+      ),
+    );
+
+    final sequenceNoteProviderNode = SequenceNoteProviderProcessorModel.create(
+      idAllocator: idAllocator,
+      trackId: trackId,
+    ).createNode();
+    sequenceNoteProviderNode.owner = NodeOwnerModel(trackId: trackId);
+    sequenceNoteProviderNodeId = sequenceNoteProviderNode.id;
+    project.processingGraph.addNode(sequenceNoteProviderNode);
+
+    final liveEventProviderNode = LiveEventProviderProcessorModel.create(
+      idAllocator: idAllocator,
+    ).createNode();
+    liveEventProviderNode.owner = NodeOwnerModel(trackId: trackId);
+    liveEventProviderNodeId = liveEventProviderNode.id;
+    project.processingGraph.addNode(liveEventProviderNode);
+  }
+
+  _TrackProcessingModel({
+    required this.devices,
+    required this.deviceRoutingConnectionIds,
+  }) : utilityNodeId = null,
+       dbMeterNodeId = null,
+       sequenceNoteProviderNodeId = null,
+       liveEventProviderNodeId = null,
+       super();
+}
+
+@AnthemModel(serializable: true, generateModelSync: true)
+class TrackAutomationProcessingModel extends _TrackAutomationProcessingModel
+    with
+        _$TrackAutomationProcessingModel,
+        _$TrackAutomationProcessingModelAnthemModelMixin {
+  TrackAutomationProcessingModel()
+    : super(
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
+      );
+
+  TrackAutomationProcessingModel.uninitialized()
+    : super(
+        devices: AnthemObservableList(),
+        deviceRoutingConnectionIds: AnthemObservableList(),
+      );
+
+  factory TrackAutomationProcessingModel.fromJson(Map<String, dynamic> json) =>
+      _$TrackAutomationProcessingModelAnthemModelMixin.fromJson(json);
+}
+
+abstract class _TrackAutomationProcessingModel
+    with Store, AnthemModelBase, ProjectModelGetterMixin {
+  /// Sequence automation provider node assigned to this automation lane.
+  @anthemObservable
+  Id? sequenceAutomationProviderNodeId;
+
+  NodeModel? get sequenceAutomationProviderNode =>
+      project.processingGraph.nodes[sequenceAutomationProviderNodeId];
+
+  /// Control-value visualization sink assigned to this automation lane.
+  @anthemObservable
+  Id? controlValueVisualizationNodeId;
+
+  NodeModel? get controlValueVisualizationNode =>
+      project.processingGraph.nodes[controlValueVisualizationNodeId];
+
+  ControlValueVisualizationProcessorModel?
+  get controlValueVisualizationProcessor {
+    final processor = controlValueVisualizationNode?.processor;
+    if (processor is ControlValueVisualizationProcessorModel) {
+      return processor;
+    }
+
+    return null;
+  }
+
+  @anthemObservable
+  AnthemObservableList<DeviceModel> devices;
+
+  /// Generated automation device routing connection IDs.
+  ///
+  /// These connections are derived from [devices] and should be rebuilt rather
+  /// than edited as device-owned graph state.
+  @anthemObservable
+  AnthemObservableList<Id> deviceRoutingConnectionIds;
+
+  TrackModel get track => getFirstAncestorOfType<TrackModel>();
+
+  List<Id> getOwnedNodeIds() {
+    return [
+      sequenceAutomationProviderNodeId,
+      controlValueVisualizationNodeId,
+      ...devices.expand((device) => device.nodeIds),
+    ].nonNulls.toList();
+  }
+
+  _TrackAutomationProcessingModel({
+    required this.devices,
+    required this.deviceRoutingConnectionIds,
+  }) : sequenceAutomationProviderNodeId = null,
+       controlValueVisualizationNodeId = null,
+       super();
+}
+
 @AnthemModel.syncedModel()
 class TrackModel extends _TrackModel
     with _$TrackModel, _$TrackModelAnthemModelMixin {
@@ -42,14 +289,26 @@ class TrackModel extends _TrackModel
     required super.name,
     required super.color,
     required super.type,
-  }) : super(id: idAllocator.allocateId());
+    super.automationTarget,
+  }) : super(
+         id: idAllocator.allocateId(),
+         processing: type == TrackType.automationLane
+             ? null
+             : TrackProcessingModel(),
+         automationProcessing: type == TrackType.automationLane
+             ? TrackAutomationProcessingModel()
+             : null,
+       );
 
   TrackModel.uninitialized()
     : super(
         id: -1,
         name: '',
         color: AnthemColor.uninitialized(),
-        type: .hybrid,
+        type: .normal,
+        automationTarget: null,
+        processing: null,
+        automationProcessing: null,
       );
 
   factory TrackModel.fromJson(Map<String, dynamic> json) =>
@@ -57,7 +316,7 @@ class TrackModel extends _TrackModel
 }
 
 @AnthemEnum()
-enum TrackType { instrument, audio, hybrid, group }
+enum TrackType { normal, group, automationLane }
 
 abstract class _TrackModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
@@ -78,14 +337,8 @@ abstract class _TrackModel
 
   /// The type of this track.
   ///
-  /// This changes the track's behavior from the UI side. For example, all
-  /// tracks can have clips with any kind of content, but:
-  /// - Audio tracks may only allow audio clips in the UI, and will certainly
-  ///   default to them
-  /// - Instrument tracks may not be able to play audio? This is undecided as of
-  ///   writing.
-  /// - When creating a clip on a group track, a group clip will be created, and
-  ///   regular clips will not be allowed here
+  /// Normal and group tracks participate in audio/event processing. Automation
+  /// lanes own automation processing instead.
   @anthemObservable
   TrackType type;
 
@@ -98,6 +351,13 @@ abstract class _TrackModel
   /// track order. They will show up in the [ProjectModel.tracks] map.
   @anthemObservable
   AnthemObservableList<Id> childTracks = AnthemObservableList<Id>();
+
+  /// IDs of automation lanes owned by this track.
+  ///
+  /// These lanes are rendered below this track when automation is expanded, but
+  /// they are not group children and do not participate in audio processing.
+  @anthemObservable
+  AnthemObservableList<Id> automationLanes = AnthemObservableList<Id>();
 
   @anthemObservable
   /// The ID of the parent of this track, if there is any.
@@ -112,63 +372,63 @@ abstract class _TrackModel
   @anthemObservable
   bool isMasterTrack = false;
 
+  /// The track that owns this automation lane, if this track is an automation
+  /// lane.
   @anthemObservable
-  Id? utilityNodeId;
+  Id? automationLaneParentTrackId;
 
-  NodeModel? get utilityNode => project.processingGraph.nodes[utilityNodeId];
-
-  @anthemObservable
-  Id? dbMeterNodeId;
-
-  NodeModel? get dbMeterNode => project.processingGraph.nodes[dbMeterNodeId];
-
-  /// Optional instrument node assigned to this track.
-  @anthemObservable
-  Id? instrumentNodeId;
-
-  /// Sequence note provider node assigned to this track.
+  /// Audio/event processing state for normal and group tracks.
   ///
-  /// This node is the sequencer -> processing graph interface for track notes.
+  /// Automation lanes deliberately leave this null.
   @anthemObservable
-  Id? sequenceNoteProviderNodeId;
+  TrackProcessingModel? processing;
 
-  /// Live event provider node assigned to this track.
+  /// Automation/control processing state for automation lanes.
   ///
-  /// This node allows direct note audition for this track's instrument.
+  /// Normal and group tracks deliberately leave this null.
   @anthemObservable
-  Id? liveEventProviderNodeId;
+  @hideFromCpp
+  TrackAutomationProcessingModel? automationProcessing;
 
-  NodeModel? get instrumentNode =>
-      project.processingGraph.nodes[instrumentNodeId];
-
-  NodeModel? get sequenceNoteProviderNode =>
-      project.processingGraph.nodes[sequenceNoteProviderNodeId];
-
-  NodeModel? get liveEventProviderNode =>
-      project.processingGraph.nodes[liveEventProviderNodeId];
-
-  Id get audioOutputNodeId => utilityNodeId!;
-  int get audioOutputPortId => UtilityProcessorModel.audioOutputPortId;
-
-  /// Returns all processing graph node IDs currently owned by this track.
+  /// Parameter target represented by this automation lane.
   ///
-  /// This is the single source of truth for which nodes are considered part of
-  /// a track for lifecycle operations such as remove/restore.
-  List<Id> getOwnedNodeIds() {
-    return [
-      utilityNodeId,
-      dbMeterNodeId,
-      instrumentNodeId,
-      sequenceNoteProviderNodeId,
-      liveEventProviderNodeId,
-    ].nonNulls.toList();
+  /// Only automation lanes should set this. It is UI/project data for now and
+  /// is not part of the engine-side track model.
+  @anthemObservable
+  @hideFromCpp
+  TrackAutomationTargetModel? automationTarget;
+
+  bool get isAutomationLane => type == TrackType.automationLane;
+  bool get hasProcessing => processing != null;
+  bool get hasAutomationProcessing => automationProcessing != null;
+
+  TrackProcessingModel get requireProcessing {
+    final processing = this.processing;
+    if (processing == null) {
+      throw StateError('Track $id does not have processing state.');
+    }
+
+    return processing;
   }
 
-  /// Visualization IDs used for this track's stereo dB meter.
-  List<String> get dbMeterVisualizationIds => buildDbMeterVisualizationIds(id);
+  TrackAutomationProcessingModel get requireAutomationProcessing {
+    final automationProcessing = this.automationProcessing;
+    if (automationProcessing == null) {
+      throw StateError('Track $id does not have automation processing state.');
+    }
 
-  static List<String> buildDbMeterVisualizationIds(Id trackId) {
-    return ['db-meter-$trackId-left', 'db-meter-$trackId-right'];
+    return automationProcessing;
+  }
+
+  void createAndRegisterNodes(
+    ProjectModel project,
+    ProjectEntityIdAllocator idAllocator,
+  ) {
+    requireProcessing.createAndRegisterNodes(
+      track: this as TrackModel,
+      project: project,
+      idAllocator: idAllocator,
+    );
   }
 
   _TrackModel({
@@ -176,52 +436,8 @@ abstract class _TrackModel
     required this.name,
     required this.color,
     required this.type,
-  }) : utilityNodeId = null,
-       dbMeterNodeId = null,
-       instrumentNodeId = null,
-       sequenceNoteProviderNodeId = null,
-       liveEventProviderNodeId = null,
-       super();
-
-  void createAndRegisterNodes(
-    ProjectModel project,
-    ProjectEntityIdAllocator idAllocator,
-  ) {
-    final utilityNode = UtilityProcessorModel.create(
-      idAllocator: idAllocator,
-    ).createNode();
-    utilityNodeId = utilityNode.id;
-    project.processingGraph.addNode(utilityNode);
-
-    final dbMeterNode = DbMeterProcessorModel.create(
-      idAllocator: idAllocator,
-      publishEverySamples: 1024,
-      visualizationIds: dbMeterVisualizationIds,
-    ).createNode();
-    dbMeterNodeId = dbMeterNode.id;
-    project.processingGraph.addNode(dbMeterNode);
-
-    project.processingGraph.addConnection(
-      NodeConnectionModel(
-        idAllocator: idAllocator,
-        sourceNodeId: utilityNodeId!,
-        sourcePortId: UtilityProcessorModel.audioOutputPortId,
-        destinationNodeId: dbMeterNodeId!,
-        destinationPortId: DbMeterProcessorModel.audioInputPortId,
-      ),
-    );
-
-    final sequenceNoteProviderNode = SequenceNoteProviderProcessorModel.create(
-      idAllocator: idAllocator,
-      trackId: id,
-    ).createNode();
-    sequenceNoteProviderNodeId = sequenceNoteProviderNode.id;
-    project.processingGraph.addNode(sequenceNoteProviderNode);
-
-    final liveEventProviderNode = LiveEventProviderProcessorModel.create(
-      idAllocator: idAllocator,
-    ).createNode();
-    liveEventProviderNodeId = liveEventProviderNode.id;
-    project.processingGraph.addNode(liveEventProviderNode);
-  }
+    required this.automationTarget,
+    required this.processing,
+    required this.automationProcessing,
+  }) : super();
 }

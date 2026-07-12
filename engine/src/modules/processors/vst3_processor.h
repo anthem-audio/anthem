@@ -26,6 +26,9 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
+#include <optional>
+#include <unordered_map>
+#include <vector>
 
 namespace anthem {
 
@@ -147,15 +150,33 @@ private:
   juce::PluginDescription pluginDescription;
 
   std::unique_ptr<juce::AudioPluginInstance> pluginInstance;
+  juce::AudioBuffer<float> rt_emptyAudioBuffer;
+  juce::AudioBuffer<float> rt_pluginAudioBufferView;
+  std::vector<float*> rt_pluginAudioChannelPointers;
 
   juce::MidiBuffer rt_eventBufferForPlugin;
+  std::optional<int64_t> audioInputPortIdForPlugin;
+  std::optional<int64_t> audioOutputPortIdForPlugin;
+  std::optional<int64_t> eventInputPortIdForPlugin;
+  std::optional<int64_t> eventOutputPortIdForPlugin;
+  int pluginInputChannelCount = 0;
+  int pluginOutputChannelCount = 0;
+
+  // Built during plugin preparation, then read without mutation from both the
+  // audio thread and the message thread.
+  std::unordered_map<int64_t, juce::AudioProcessorParameter*> parametersByPortId;
 
   std::unique_ptr<PluginEditorWindow> editorWindow;
 
   void detachPluginListener();
   void rebindEditorWindowCloseCallback();
-  void showPluginGUI();
+  void bringPluginWindowToFront();
   void hidePluginGUI();
+  ProcessorPrepareResult buildPrepareResultForPlugin();
+  void sendPluginParameterChangedEvent(
+      int64_t controlPortId, juce::AudioProcessorParameter& parameter, float value);
+  void sendPluginParameterGestureEvent(int64_t controlPortId, bool isStarting);
+  void sendPluginParameterSnapshotEvent();
 public:
   VST3Processor(const VST3ProcessorModelImpl& _impl);
   ~VST3Processor() override;
@@ -165,16 +186,23 @@ public:
   VST3Processor(VST3Processor&&) noexcept = default;
   VST3Processor& operator=(VST3Processor&&) noexcept = delete;
 
-  void prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 
   void initialize(
       std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
 
-  void tryInitializePlugin();
+  void tryInitializePlugin(ProcessorPrepareCallback complete);
+
+  std::optional<std::string> openPluginWindow();
+  std::optional<std::string> setPluginParameterValue(int64_t controlPortId, double value);
 
   void audioProcessorParameterChanged(
       juce::AudioProcessor* processor, int parameterIndex, float newValue) override;
+  void audioProcessorParameterChangeGestureBegin(
+      juce::AudioProcessor* processor, int parameterIndex) override;
+  void audioProcessorParameterChangeGestureEnd(
+      juce::AudioProcessor* processor, int parameterIndex) override;
   void audioProcessorChanged(
       juce::AudioProcessor* processor, const juce::AudioProcessor::ChangeDetails& details) override;
 

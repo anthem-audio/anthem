@@ -1,0 +1,1004 @@
+/*
+  Copyright (C) 2023 - 2026 Joshua Wade
+
+  This file is part of Anthem.
+
+  Anthem is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Anthem is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Anthem. If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import 'dart:math';
+import 'dart:ui';
+
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/pattern.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
+import 'package:anthem/theme.dart';
+import 'package:anthem/widgets/basic/clip/packed_texture.dart';
+import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
+import 'package:anthem/widgets/basic/clip/clip.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
+import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+
+import 'clip_title_text.dart';
+
+// For automation rendering
+final _automationLineBuffer = LineBuffer();
+final _automationLineJoinBuffer = CoordinateBuffer();
+final _automationTriCoordBuffer = CoordinateBuffer();
+
+const _clipTitleHeight = 16;
+const _clipTitlePadding = clipTitlePadding;
+const _clipTitleEllipsisCropPadding = -3.0;
+
+const _contentBaseColor = Color(0xFF777777);
+// Clip content is composited with BlendMode.plus, so black is a neutral fill.
+const _automationHandleFillColor = Color(0xFF000000);
+const _automationHandleHoveredStrokeColor = Color(0xFF999999);
+const _automationPointHandleRadius = 3.5;
+const _automationTensionHandleRadius = 2.5;
+const _automationHandleStrokeWidth = 2.0;
+const _automationHandleAnnotationMargin = 8.0;
+
+class ClipRenderInfo {
+  final PatternModel pattern;
+  final AnthemColor color;
+  final Id clipId;
+  final Id trackId;
+  final bool hasTimingOverride;
+  final int clipOffset;
+  final int clipWidth;
+  final double clipTimeViewStart;
+  final double clipTimeViewEnd;
+  final double x;
+  final double y;
+  final double width;
+  final double height;
+  final bool selected;
+  final bool hovered;
+  final bool showAutomationHandles;
+
+  ClipRenderInfo({
+    required this.pattern,
+    required this.color,
+    required this.clipId,
+    required this.trackId,
+    required this.hasTimingOverride,
+    required this.clipOffset,
+    required int clipTimeViewStart,
+    required int clipTimeViewEnd,
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    required this.selected,
+    required this.hovered,
+    this.showAutomationHandles = false,
+  }) : assert(clipTimeViewEnd > clipTimeViewStart),
+       clipWidth = clipTimeViewEnd - clipTimeViewStart,
+       clipTimeViewStart = clipTimeViewStart.toDouble(),
+       clipTimeViewEnd = clipTimeViewEnd.toDouble();
+}
+
+void paintClipList({
+  required ProjectModel project,
+  required Canvas canvas,
+  required Size canvasSize,
+  required AutomationHandleAnnotationSet automationHandleAnnotations,
+  required AutomationHandleAnnotation? hoveredAutomationHandle,
+  required List<ClipRenderInfo> clipList,
+  required double devicePixelRatio,
+  required double timeViewStart,
+  required double timeViewEnd,
+  bool hideBorder = false,
+}) {
+  for (final clipEntry in clipList) {
+    _paintContainer(
+      canvas: canvas,
+      color: clipEntry.color,
+      x: clipEntry.x,
+      y: clipEntry.y,
+      width: clipEntry.width,
+      height: clipEntry.height,
+      selected: clipEntry.selected,
+      hovered: clipEntry.hovered,
+      hideBorder: hideBorder,
+    );
+  }
+
+  // Begin blend mode layer
+  canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
+  try {
+    // The buffers are global for allocation efficiency, so clear before and
+    // after use to avoid stale draw data if rendering throws midway through.
+    _automationTriCoordBuffer.clear();
+    _automationLineBuffer.clear();
+    _automationLineJoinBuffer.clear();
+
+    for (final clipEntry in clipList) {
+      final pattern = clipEntry.pattern;
+
+      final y = clipEntry.y;
+      final height = clipEntry.height;
+
+      if (!shouldRenderClipContent(height)) continue;
+
+      final lane = pattern.automation;
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: canvasSize,
+        xDrawPositionTime: (
+          clipEntry.clipOffset.toDouble(),
+          (clipEntry.clipOffset + clipEntry.clipWidth).toDouble(),
+        ),
+        yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
+        points: lane.points,
+        strokeWidth: 2.0,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+
+        // The use of timePerPixel here scales the automation curve in the X
+        // direction so that it does not draw across the clip boundary. This
+        // makes the positioning very slightly incorrect, but since we can't
+        // render-clip the draw call around the entire DAW clip (due to
+        // performance concerns), we have to get the automation to draw within
+        // the DAW clip boundaries without any render clipping.
+        clipStart: clipEntry.clipTimeViewStart,
+        clipEnd: clipEntry.clipTimeViewEnd,
+        clipOffset: clipEntry.clipOffset.toDouble(),
+        color: _contentBaseColor,
+
+        lineBuffer: _automationLineBuffer,
+        lineJoinBuffer: _automationLineJoinBuffer,
+        triCoordBuffer: _automationTriCoordBuffer,
+
+        correctForClipBounds: true,
+      );
+
+      // This avoids connecting lines between clips.
+      _automationLineBuffer.disconnectNext();
+    }
+
+    final automationShadedPaint = Paint()
+      ..color = const Color(0x19FFFFFF)
+      ..style = PaintingStyle.fill;
+
+    final linePaint = getLinePaint(
+      chosenColor: _contentBaseColor,
+      strokeWidth: 2.0,
+    );
+
+    final lineJoinCirclePaint = getLineJoinPaint(
+      chosenColor: _contentBaseColor,
+      strokeWidth: 2.0,
+    );
+
+    final notePaint = Paint()..color = _contentBaseColor;
+
+    // This aliases on Skia, but we draw a line along the main boundary that
+    // would alias, so it works out well on Skia platforms (as of writing,
+    // this is Windows, Linux, and web). Also this is extremely fast.
+    canvas.drawVertices(
+      Vertices.raw(VertexMode.triangles, _automationTriCoordBuffer.buffer),
+      BlendMode.srcOver,
+      automationShadedPaint,
+    );
+
+    canvas.drawRawPoints(
+      PointMode.lines,
+      _automationLineBuffer.buffer,
+      linePaint,
+    );
+
+    canvas.drawRawPoints(
+      PointMode.points,
+      _automationLineJoinBuffer.buffer,
+      lineJoinCirclePaint,
+    );
+
+    // Title
+
+    // Make sure we're observing necessary MobX observables
+    for (var entry in clipList) {
+      entry.pattern.name;
+      entry.pattern.clipNotesUpdateSignal.value;
+    }
+
+    const textHeight = 15.0;
+
+    final sequence = project.sequence;
+    final spriteSheet = sequence.patternTitleTexture;
+    final textureAtlases = spriteSheet.textureAtlases;
+    final atlasEntriesByPatternId = sequence.clipTitleAtlasEntriesByPatternId;
+    final ellipsisAtlasEntry = sequence.clipTitleEllipsisAtlasEntry;
+
+    final isTextureAtlasDevicePixelRatioMatch =
+        textureAtlases.isNotEmpty &&
+        sequence.clipTitleTextureAtlasDevicePixelRatio == devicePixelRatio;
+
+    if (isTextureAtlasDevicePixelRatioMatch) {
+      final drawRecordsByAtlasIndex = <int, _ClipTitleAtlasDrawRecords>{};
+      var hasClipEntriesWithoutAtlasEntry = false;
+      final hasUsableEllipsisAtlasEntry =
+          ellipsisAtlasEntry != null &&
+          ellipsisAtlasEntry.atlasIndex < textureAtlases.length;
+
+      for (final clipEntry in clipList) {
+        final atlasEntry = atlasEntriesByPatternId[clipEntry.pattern.id];
+
+        if (atlasEntry != null &&
+            atlasEntry.atlasIndex < textureAtlases.length) {
+          _addClipTitleAtlasDrawRecords(
+            recordsByAtlasIndex: drawRecordsByAtlasIndex,
+            clipEntry: clipEntry,
+            titleAtlasEntry: atlasEntry,
+            ellipsisAtlasEntry: hasUsableEllipsisAtlasEntry
+                ? ellipsisAtlasEntry
+                : null,
+            devicePixelRatio: devicePixelRatio,
+            textHeight: textHeight,
+          );
+        } else {
+          hasClipEntriesWithoutAtlasEntry = true;
+        }
+      }
+
+      for (final entry in drawRecordsByAtlasIndex.entries) {
+        final textureAtlas = textureAtlases[entry.key];
+        final records = entry.value;
+        canvas.drawAtlas(
+          textureAtlas,
+          records.transforms,
+          records.rects,
+          List.generate(records.length, (i) {
+            return _contentBaseColor;
+          }, growable: false),
+          BlendMode.dstIn,
+          null,
+          Paint(),
+        );
+      }
+
+      // A new pattern can exist in the arrangement before its title has been
+      // packed into the shared atlas. In that case, fall back to direct title
+      // rendering for that clip instead of crashing the entire paint pass.
+      if (hasClipEntriesWithoutAtlasEntry) {
+        for (final clipEntry in clipList) {
+          final atlasEntry = atlasEntriesByPatternId[clipEntry.pattern.id];
+          if (atlasEntry != null &&
+              atlasEntry.atlasIndex < textureAtlases.length) {
+            continue;
+          }
+
+          _drawClipTitleDirect(
+            canvas: canvas,
+            canvasSize: canvasSize,
+            clipEntry: clipEntry,
+            textHeight: textHeight,
+          );
+        }
+      }
+    } else {
+      // Fallback if the atlas hasn't been generated yet, or if it was built
+      // for a different device pixel ratio.
+      _drawClipTitlesDirect(
+        canvas: canvas,
+        canvasSize: canvasSize,
+        clipList: clipList,
+        textHeight: textHeight,
+      );
+    }
+
+    // Notes
+    for (final clipEntry in clipList) {
+      _paintClipNotes(
+        canvas: canvas,
+        notePaint: notePaint,
+        pattern: clipEntry.pattern,
+        clipContentWidth: clipEntry.clipWidth.toDouble(),
+        clipTimeViewStart: clipEntry.clipTimeViewStart,
+        x: clipEntry.x,
+        y: clipEntry.y,
+        width: clipEntry.width,
+        height: clipEntry.height,
+      );
+
+      if (clipEntry.showAutomationHandles &&
+          shouldRenderClipContent(clipEntry.height)) {
+        _paintAutomationHandles(
+          canvas: canvas,
+          canvasSize: canvasSize,
+          pattern: clipEntry.pattern,
+          clipId: clipEntry.clipId,
+          x: clipEntry.x,
+          y: clipEntry.y,
+          width: clipEntry.width,
+          height: clipEntry.height,
+          clipOffset: clipEntry.clipOffset.toDouble(),
+          clipTimeViewStart: clipEntry.clipTimeViewStart,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          automationHandleAnnotations: automationHandleAnnotations,
+          hoveredAutomationHandle: hoveredAutomationHandle,
+        );
+      }
+    }
+  } finally {
+    _automationTriCoordBuffer.clear();
+    _automationLineBuffer.clear();
+    _automationLineJoinBuffer.clear();
+    canvas.restore();
+  }
+
+  if (!hideBorder) {
+    for (final clipEntry in clipList) {
+      _paintContainerBorder(
+        canvas: canvas,
+        x: clipEntry.x,
+        y: clipEntry.y,
+        width: clipEntry.width,
+        height: clipEntry.height,
+      );
+    }
+  }
+}
+
+/// Paints a clip onto the given canvas with the given position and size.
+void paintClip({
+  required Canvas canvas,
+  required Size canvasSize,
+  required PatternModel pattern,
+  required AnthemColor color,
+  ClipModel? clip,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  required bool selected,
+  bool hovered = false,
+  required double timeViewStart,
+  required double timeViewEnd,
+  bool hideBorder = false,
+}) {
+  _paintContainer(
+    canvas: canvas,
+    color: color,
+    x: x,
+    y: y,
+    width: width,
+    height: height,
+    selected: selected,
+    hovered: hovered,
+    hideBorder: hideBorder,
+  );
+
+  canvas.saveLayer(null, Paint()..blendMode = BlendMode.plus);
+  try {
+    // Title
+
+    drawPatternTitle(
+      canvas: canvas,
+      size: canvasSize,
+      clipRect: Rect.fromLTWH(x, y, width, height),
+      pattern: pattern,
+      color: color,
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      selected: selected,
+      overrideTextColor: _contentBaseColor,
+    );
+
+    // Automation
+
+    if (shouldRenderClipContent(height)) {
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: canvasSize,
+        xDrawPositionTime: clip != null
+            ? (clip.offset.toDouble(), (clip.offset + clip.width).toDouble())
+            : (0.0, 0.0),
+        yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
+        points: pattern.automation.points,
+        strokeWidth: 2.0,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        color: _contentBaseColor,
+      );
+    }
+
+    // Notes
+
+    if (shouldRenderClipContent(height)) {
+      _paintClipNotes(
+        canvas: canvas,
+        notePaint: Paint()..color = _contentBaseColor,
+        pattern: pattern,
+        clipContentWidth:
+            clip?.width.toDouble() ?? pattern.getWidth().toDouble(),
+        clipTimeViewStart: clip?.timeView?.start.toDouble() ?? 0.0,
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+      );
+    }
+  } finally {
+    canvas.restore();
+  }
+}
+
+class _ClipTitleAtlasDrawRecords {
+  final transforms = <RSTransform>[];
+  final rects = <Rect>[];
+
+  int get length => transforms.length;
+
+  void add({required RSTransform transform, required Rect rect}) {
+    transforms.add(transform);
+    rects.add(rect);
+  }
+}
+
+void _addClipTitleAtlasDrawRecords({
+  required Map<int, _ClipTitleAtlasDrawRecords> recordsByAtlasIndex,
+  required ClipRenderInfo clipEntry,
+  required PackedTextureEntry titleAtlasEntry,
+  required PackedTextureEntry? ellipsisAtlasEntry,
+  required double devicePixelRatio,
+  required double textHeight,
+}) {
+  final horizontalInset = _clipTitlePadding + 1;
+  final ellipsisEntry = ellipsisAtlasEntry;
+  final availableWidth = max(0.0, clipEntry.width - _clipTitlePadding * 2);
+  final availableSourceWidth = availableWidth * devicePixelRatio;
+  final titleOverflows = titleAtlasEntry.rect.width > availableSourceWidth;
+  final canDrawEllipsis =
+      ellipsisEntry != null && titleOverflows && availableSourceWidth > 0;
+  final ellipsisSourceWidth = canDrawEllipsis
+      ? min(ellipsisEntry.rect.width, availableSourceWidth)
+      : 0.0;
+  final titleCropPaddingSourceWidth = canDrawEllipsis
+      ? _clipTitleEllipsisCropPadding * devicePixelRatio
+      : 0.0;
+  final titleSourceWidth = min(
+    titleAtlasEntry.rect.width,
+    max(
+      0.0,
+      availableSourceWidth - ellipsisSourceWidth - titleCropPaddingSourceWidth,
+    ),
+  );
+  final y = _clipTitleY(clipEntry: clipEntry, textHeight: textHeight);
+
+  void addRecord({
+    required PackedTextureEntry atlasEntry,
+    required double sourceWidth,
+    required double translateX,
+  }) {
+    if (sourceWidth <= 0) {
+      return;
+    }
+
+    recordsByAtlasIndex
+        .putIfAbsent(atlasEntry.atlasIndex, () => _ClipTitleAtlasDrawRecords())
+        .add(
+          transform: RSTransform.fromComponents(
+            rotation: 0,
+            scale: 1 / devicePixelRatio,
+            anchorX: 0,
+            anchorY: 0,
+            translateX: translateX,
+            translateY: y,
+          ),
+          rect: Rect.fromLTWH(
+            atlasEntry.rect.left,
+            atlasEntry.rect.top,
+            sourceWidth,
+            atlasEntry.rect.height,
+          ),
+        );
+  }
+
+  addRecord(
+    atlasEntry: titleAtlasEntry,
+    sourceWidth: titleSourceWidth,
+    translateX: clipEntry.x,
+  );
+
+  if (canDrawEllipsis) {
+    addRecord(
+      atlasEntry: ellipsisEntry,
+      sourceWidth: ellipsisSourceWidth,
+      translateX:
+          clipEntry.x +
+          clipEntry.width -
+          horizontalInset -
+          ellipsisSourceWidth / devicePixelRatio,
+    );
+  }
+}
+
+double _clipTitleY({
+  required ClipRenderInfo clipEntry,
+  required double textHeight,
+}) {
+  return shouldRenderClipContent(clipEntry.height)
+      ? clipEntry.y
+      : clipEntry.y + (clipEntry.height / 2) - (textHeight / 2);
+}
+
+void _drawClipTitlesDirect({
+  required Canvas canvas,
+  required Size canvasSize,
+  required List<ClipRenderInfo> clipList,
+  required double textHeight,
+}) {
+  for (final clipEntry in clipList) {
+    _drawClipTitleDirect(
+      canvas: canvas,
+      canvasSize: canvasSize,
+      clipEntry: clipEntry,
+      textHeight: textHeight,
+    );
+  }
+}
+
+void _drawClipTitleDirect({
+  required Canvas canvas,
+  required Size canvasSize,
+  required ClipRenderInfo clipEntry,
+  required double textHeight,
+}) {
+  final pattern = clipEntry.pattern;
+  final y = clipEntry.y;
+  final height = clipEntry.height;
+
+  final textY = shouldRenderClipContent(height)
+      ? y
+      : y + (height / 2) - (textHeight / 2);
+  final rect = Rect.fromLTWH(clipEntry.x, textY, clipEntry.width, textHeight);
+
+  final x = clipEntry.x;
+  final width = clipEntry.width;
+  final selected = clipEntry.selected;
+  drawPatternTitle(
+    canvas: canvas,
+    size: canvasSize,
+    clipRect: rect,
+    pattern: pattern,
+    color: clipEntry.color,
+    x: x,
+    y: textY,
+    width: width,
+    height: height,
+    selected: selected,
+    // Match the atlas render path tint to avoid visible color shifts while
+    // a title is waiting to be packed into the shared atlas.
+    overrideTextColor: _contentBaseColor,
+  );
+}
+
+void _paintAutomationHandles({
+  required Canvas canvas,
+  required Size canvasSize,
+  required PatternModel pattern,
+  required Id clipId,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required AutomationHandleAnnotationSet automationHandleAnnotations,
+  required AutomationHandleAnnotation? hoveredAutomationHandle,
+}) {
+  final contentRect = Rect.fromLTRB(
+    x + 1,
+    y + _clipTitleHeight + 1,
+    x + width - 1,
+    y + height - 1,
+  );
+  if (contentRect.isEmpty) {
+    return;
+  }
+
+  final points = pattern.automation.points;
+  points.observeAllChanges();
+  if (points.isEmpty) {
+    return;
+  }
+
+  final fillPaint = Paint()..color = _automationHandleFillColor;
+  final strokePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = _automationHandleStrokeWidth;
+
+  canvas.save();
+  canvas.clipRect(contentRect);
+  try {
+    var previousPoint = points.first;
+    for (final (pointIndex, point) in points.indexed.skip(1)) {
+      final center = _automationTensionHandleCenter(
+        canvasSize: canvasSize,
+        contentRect: contentRect,
+        clipOffset: clipOffset,
+        clipTimeViewStart: clipTimeViewStart,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        previousPointOffset: previousPoint.offset,
+        previousPointValue: previousPoint.value,
+        pointOffset: point.offset,
+        pointValue: point.value,
+        tension: point.tension,
+      );
+      _drawAutomationHandleCircle(
+        canvas: canvas,
+        center: center,
+        radius: _automationTensionHandleRadius,
+        fillPaint: fillPaint,
+        strokePaint: strokePaint
+          ..color = _automationHandleStrokeColor(
+            clipId: clipId,
+            kind: AutomationHandleKind.tensionHandle,
+            pointId: point.id,
+            hoveredAutomationHandle: hoveredAutomationHandle,
+          ),
+      );
+      _addAutomationHandleAnnotation(
+        automationHandleAnnotations: automationHandleAnnotations,
+        clipId: clipId,
+        contentRect: contentRect,
+        center: center,
+        radius: _automationTensionHandleRadius,
+        kind: AutomationHandleKind.tensionHandle,
+        pointIndex: pointIndex,
+        pointId: point.id,
+      );
+      previousPoint = point;
+    }
+
+    for (final (pointIndex, point) in points.indexed) {
+      final center = _automationPointHandleCenter(
+        canvasSize: canvasSize,
+        contentRect: contentRect,
+        clipOffset: clipOffset,
+        clipTimeViewStart: clipTimeViewStart,
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        pointOffset: point.offset,
+        pointValue: point.value,
+      );
+      _drawAutomationHandleCircle(
+        canvas: canvas,
+        center: center,
+        radius: _automationPointHandleRadius,
+        fillPaint: fillPaint,
+        strokePaint: strokePaint
+          ..color = _automationHandleStrokeColor(
+            clipId: clipId,
+            kind: AutomationHandleKind.point,
+            pointId: point.id,
+            hoveredAutomationHandle: hoveredAutomationHandle,
+          ),
+      );
+      _addAutomationHandleAnnotation(
+        automationHandleAnnotations: automationHandleAnnotations,
+        clipId: clipId,
+        contentRect: contentRect,
+        center: center,
+        radius: _automationPointHandleRadius,
+        kind: AutomationHandleKind.point,
+        pointIndex: pointIndex,
+        pointId: point.id,
+      );
+    }
+  } finally {
+    canvas.restore();
+  }
+}
+
+void _addAutomationHandleAnnotation({
+  required AutomationHandleAnnotationSet automationHandleAnnotations,
+  required Id clipId,
+  required Rect contentRect,
+  required Offset center,
+  required double radius,
+  required AutomationHandleKind kind,
+  required int pointIndex,
+  required Id pointId,
+}) {
+  final rect = Rect.fromCenter(
+    center: center,
+    width: radius * 2 + _automationHandleAnnotationMargin,
+    height: radius * 2 + _automationHandleAnnotationMargin,
+  ).intersect(contentRect);
+  if (rect.isEmpty) {
+    return;
+  }
+
+  automationHandleAnnotations.add(
+    rect: rect,
+    metadata: AutomationHandleAnnotation(
+      clipId: clipId,
+      kind: kind,
+      pointIndex: pointIndex,
+      pointId: pointId,
+      center: center,
+    ),
+  );
+}
+
+Offset _automationPointHandleCenter({
+  required Size canvasSize,
+  required Rect contentRect,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required int pointOffset,
+  required double pointValue,
+}) {
+  return Offset(
+    _clipTimeToCanvasX(
+      canvasSize: canvasSize,
+      clipOffset: clipOffset,
+      clipTimeViewStart: clipTimeViewStart,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      clipTime: pointOffset.toDouble(),
+    ),
+    contentRect.top + (1 - pointValue) * contentRect.height,
+  );
+}
+
+Offset _automationTensionHandleCenter({
+  required Size canvasSize,
+  required Rect contentRect,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required int previousPointOffset,
+  required double previousPointValue,
+  required int pointOffset,
+  required double pointValue,
+  required double tension,
+}) {
+  const normalizedX = 0.5;
+  final normalizedY =
+      evaluateSmooth(normalizedX, tension) * (pointValue - previousPointValue) +
+      previousPointValue;
+  final pointTime =
+      normalizedX * (pointOffset - previousPointOffset) + previousPointOffset;
+
+  return Offset(
+    _clipTimeToCanvasX(
+      canvasSize: canvasSize,
+      clipOffset: clipOffset,
+      clipTimeViewStart: clipTimeViewStart,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      clipTime: pointTime,
+    ),
+    contentRect.top + (1 - normalizedY) * contentRect.height,
+  );
+}
+
+double _clipTimeToCanvasX({
+  required Size canvasSize,
+  required double clipOffset,
+  required double clipTimeViewStart,
+  required double timeViewStart,
+  required double timeViewEnd,
+  required double clipTime,
+}) {
+  return timeToPixels(
+    time: clipOffset + clipTime - clipTimeViewStart,
+    timeViewStart: timeViewStart,
+    timeViewEnd: timeViewEnd,
+    viewPixelWidth: canvasSize.width,
+  );
+}
+
+Color _automationHandleStrokeColor({
+  required Id clipId,
+  required AutomationHandleKind kind,
+  required Id pointId,
+  required AutomationHandleAnnotation? hoveredAutomationHandle,
+}) {
+  if (_isAutomationHandleMatch(
+    hoveredAutomationHandle,
+    clipId: clipId,
+    kind: kind,
+    pointId: pointId,
+  )) {
+    return _automationHandleHoveredStrokeColor;
+  }
+
+  return _contentBaseColor;
+}
+
+bool _isAutomationHandleMatch(
+  AutomationHandleAnnotation? handle, {
+  required Id clipId,
+  required AutomationHandleKind kind,
+  required Id pointId,
+}) {
+  return handle?.clipId == clipId &&
+      handle?.kind == kind &&
+      handle?.pointId == pointId;
+}
+
+void _drawAutomationHandleCircle({
+  required Canvas canvas,
+  required Offset center,
+  required double radius,
+  required Paint fillPaint,
+  required Paint strokePaint,
+}) {
+  canvas.drawCircle(center, radius, fillPaint);
+  canvas.drawCircle(center, radius, strokePaint);
+}
+
+void _paintContainer({
+  required Canvas canvas,
+  required AnthemColor color,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  required bool selected,
+  required bool hovered,
+  bool hideBorder = false,
+}) {
+  final baseColor = getBaseColor(
+    color: color,
+    selected: selected,
+    hovered: hovered,
+  );
+
+  final rectPaint = Paint()..color = baseColor;
+
+  final rect = Rect.fromLTWH(
+    x + (hideBorder ? 0 : 0.5),
+    y + (hideBorder ? 0 : 0.5),
+    width - (hideBorder ? 0 : 1),
+    height - (hideBorder ? 0 : 1),
+  );
+
+  canvas.drawRect(rect, rectPaint);
+
+  if (selected) {
+    final strokeColor = getSelectedBorderColor(color: color);
+
+    final selectedRectPaint = Paint()
+      ..color = strokeColor
+      ..style = .stroke;
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(1), .circular(1)),
+      selectedRectPaint,
+    );
+  }
+}
+
+void _paintContainerBorder({
+  required Canvas canvas,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+}) {
+  final rect = Rect.fromLTWH(x + 0.5, y + 0.5, width - 1, height - 1);
+
+  final rectStrokePaint = Paint()
+    ..color = AnthemTheme.grid.accent
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.0;
+
+  canvas.drawRect(rect, rectStrokePaint);
+}
+
+void drawPatternTitle({
+  required Canvas canvas,
+  required Size size,
+  required Rect clipRect,
+  required PatternModel pattern,
+  required AnthemColor color,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+  Color? overrideTextColor,
+  bool selected = false,
+  bool saveLayer = true,
+}) {
+  final Color textColor;
+
+  if (overrideTextColor != null) {
+    textColor = overrideTextColor;
+  } else {
+    textColor = getContentColor(color: color, selected: selected);
+  }
+
+  drawClipTitleText(
+    canvas: canvas,
+    title: pattern.name,
+    x: x,
+    y: y,
+    width: width,
+    textColor: textColor,
+  );
+}
+
+(double, double) getClipTitleSize({required PatternModel pattern}) {
+  return getClipTitleTextSize(title: pattern.name);
+}
+
+void _paintClipNotes({
+  required Canvas canvas,
+  required Paint notePaint,
+  required PatternModel pattern,
+  required double clipContentWidth,
+  required double clipTimeViewStart,
+  required double x,
+  required double y,
+  required double width,
+  required double height,
+}) {
+  if (!shouldRenderClipContent(height)) return;
+
+  final clipNotesEntry = pattern.clipNotesRenderCache;
+  if (clipNotesEntry.renderedVertices == null) return;
+
+  canvas.save();
+
+  canvas.clipRect(Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2));
+
+  final innerHeight = height - 2;
+
+  final dist = clipNotesEntry.highestNote - clipNotesEntry.lowestNote;
+  final notePadding =
+      (innerHeight - _clipTitleHeight) * (0.4 - dist * 0.05).clamp(0.1, 0.4);
+
+  // The vertices for the notes are in a coordinate system based on notes,
+  // where X is time and Y is normalized. The transformations below
+  // translate this to the correct position and scale it to convert it into
+  // pixel coordinates.
+
+  final clipScaleFactor = (width - 1) / clipContentWidth;
+
+  canvas.translate(-clipTimeViewStart * clipScaleFactor, 0);
+  canvas.translate(x + 1, y + 1 + _clipTitleHeight + notePadding);
+  canvas.scale(
+    clipScaleFactor,
+    innerHeight - _clipTitleHeight - notePadding * 2,
+  );
+
+  // The clip may not start at the beginning, which we account for here.
+
+  canvas.drawVertices(
+    clipNotesEntry.renderedVertices!,
+    BlendMode.srcOver,
+    notePaint,
+  );
+
+  canvas.restore();
+}

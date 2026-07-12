@@ -30,12 +30,14 @@ class _DialogState {
   Widget? currentDialogContent;
   String? currentDialogTitle;
   List<DialogButton>? currentDialogButtons;
+  bool dismissible;
   void Function()? onDismiss;
 
   _DialogState({
     required this.currentDialogContent,
     required this.currentDialogTitle,
     required this.currentDialogButtons,
+    required this.dismissible,
     required this.onDismiss,
   });
 }
@@ -63,6 +65,8 @@ class _DialogRendererState extends State<DialogRenderer>
       dialogStack.isNotEmpty ? dialogStack.last.currentDialogTitle : null;
   List<DialogButton>? get currentDialogButtons =>
       dialogStack.isNotEmpty ? dialogStack.last.currentDialogButtons : null;
+  bool get dismissible =>
+      dialogStack.isNotEmpty ? dialogStack.last.dismissible : true;
   void Function()? get onDismiss =>
       dialogStack.isNotEmpty ? dialogStack.last.onDismiss : null;
 
@@ -83,6 +87,7 @@ class _DialogRendererState extends State<DialogRenderer>
     Widget content, {
     String? title,
     List<DialogButton>? buttons,
+    bool dismissible = true,
     void Function()? onDismiss,
   }) {
     setState(() {
@@ -91,6 +96,7 @@ class _DialogRendererState extends State<DialogRenderer>
           currentDialogContent: content,
           currentDialogTitle: title,
           currentDialogButtons: buttons,
+          dismissible: dismissible,
           onDismiss: onDismiss,
         ),
       );
@@ -114,12 +120,13 @@ class _DialogRendererState extends State<DialogRenderer>
     if (currentDialogContent != null) {
       blocker = Positioned.fill(
         child: MouseRegion(
-          cursor: SystemMouseCursors.click,
           child: GestureDetector(
-            onTap: () {
-              closeDialog();
-              onDismiss?.call();
-            },
+            onTap: dismissible
+                ? () {
+                    closeDialog();
+                    onDismiss?.call();
+                  }
+                : null,
             child: Container(color: const Color(0x33000000)),
           ),
         ),
@@ -154,8 +161,10 @@ class _DialogRendererState extends State<DialogRenderer>
                               height: 24,
                               child: Center(
                                 child: Padding(
-                                  // Makes space for the close button
-                                  padding: const EdgeInsets.only(right: 36),
+                                  // Makes space for the close button.
+                                  padding: EdgeInsets.only(
+                                    right: dismissible ? 36 : 0,
+                                  ),
                                   child: Text(
                                     currentDialogTitle!,
                                     style: TextStyle(
@@ -187,21 +196,22 @@ class _DialogRendererState extends State<DialogRenderer>
                     ),
 
                   // Close button
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Button(
-                      width: 24,
-                      height: 24,
-                      variant: ButtonVariant.label,
-                      hideBorder: true,
-                      icon: Icons.close,
-                      onPress: () {
-                        closeDialog();
-                        onDismiss?.call();
-                      },
+                  if (dismissible)
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: Button(
+                        width: 24,
+                        height: 24,
+                        variant: ButtonVariant.label,
+                        hideBorder: true,
+                        icon: Icons.close,
+                        onPress: () {
+                          closeDialog();
+                          onDismiss?.call();
+                        },
+                      ),
                     ),
-                  ),
 
                   // Action buttons
                   Positioned(

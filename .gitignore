@@ -58,6 +58,16 @@ app.*.map.json
 /engine/src/generated/
 /web/engine/
 
+# Flatpak generated outputs
+/packaging/flatpak/.config/
+/packaging/flatpak/.flatpak-builder/
+/packaging/flatpak/.flutter
+/packaging/flatpak/build-dir/
+/packaging/flatpak/generated/
+/packaging/flatpak/repo/
+/packaging/flatpak/*.flatpak
+/packaging/flatpak/io.github.anthem_audio.Anthem.yml
+
 # Visual Studio
 **/out/build/**
 **/.vs/**

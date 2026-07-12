@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@
 
 #include <iostream>
 #include <juce_core/juce_core.h>
+#include <memory>
 
 namespace anthem {
 
@@ -28,6 +29,26 @@ class ConsoleLogger : public juce::Logger {
 public:
   void logMessage(const juce::String& message) override {
     std::cout << message << std::endl;
+  }
+};
+
+class TeeLogger : public juce::Logger {
+private:
+  std::unique_ptr<juce::FileLogger> fileLogger;
+  std::unique_ptr<ConsoleLogger> consoleLogger;
+public:
+  TeeLogger(
+      std::unique_ptr<juce::FileLogger> fileLogger, std::unique_ptr<ConsoleLogger> consoleLogger)
+    : fileLogger(std::move(fileLogger)), consoleLogger(std::move(consoleLogger)) {}
+
+  void logMessage(const juce::String& message) override {
+    if (fileLogger != nullptr) {
+      fileLogger->logMessage(message);
+    }
+
+    if (consoleLogger != nullptr) {
+      consoleLogger->logMessage(message);
+    }
   }
 };
 

@@ -42,20 +42,32 @@ ToneGeneratorProcessor::ToneGeneratorProcessor(const ToneGeneratorProcessorModel
 
 ToneGeneratorProcessor::~ToneGeneratorProcessor() {}
 
-void ToneGeneratorProcessor::prepareToProcess() {
-  auto* currentDevice = Engine::getInstance().audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
-  sampleRate = currentDevice->getCurrentSampleRate();
+void ToneGeneratorProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
+  jassert(audioProcessingConfig.has_value());
+
+  if (!audioProcessingConfig.has_value()) {
+    complete(ProcessorPrepareResult{
+        .success = false,
+        .error = std::string("No audio processing config is active."),
+    });
+    return;
+  }
+
+  sampleRate = audioProcessingConfig->sampleRate;
+
+  complete(std::nullopt);
 }
 
 void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& audioOutBuffer =
+  auto audioOutBuffer =
       context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
 
-  auto& frequencyControlBuffer =
-      context.getInputControlBuffer(ToneGeneratorProcessorModelBase::frequencyPortId);
-  auto& amplitudeControlBuffer =
-      context.getInputControlBuffer(ToneGeneratorProcessorModelBase::amplitudePortId);
+  auto frequencyControl =
+      context.getInputControlSignal(ToneGeneratorProcessorModelBase::frequencyPortId);
+  auto amplitudeControl =
+      context.getInputControlSignal(ToneGeneratorProcessorModelBase::amplitudePortId);
 
   // Process incoming events
   auto& eventInBuffer =
@@ -77,8 +89,8 @@ void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples
 
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {
-    auto normalizedFrequency = frequencyControlBuffer.getReadPointer(0)[sample];
-    auto amplitude = amplitudeControlBuffer.getReadPointer(0)[sample];
+    auto normalizedFrequency = frequencyControl.getSample(sample);
+    auto amplitude = amplitudeControl.getSample(sample);
     jassert(juce::jlimit(0.0f, 1.0f, normalizedFrequency) == normalizedFrequency);
     jassert(juce::jlimit(0.0f, 1.0f, amplitude) == amplitude);
 

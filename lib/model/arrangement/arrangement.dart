@@ -69,30 +69,30 @@ class ArrangementModel extends _ArrangementModel
   });
 
   void _init() {
-    _rebuildPatternClipReferenceCounts();
+    _rebuildClipReferenceCaches();
 
-    // Keep the pattern usage cache in sync when clips are inserted, replaced,
-    // or removed from the arrangement.
-    onChange((b) => b.clips.anyValue, (e) {
+    // Keep clip lookup caches in sync when clips are inserted, replaced, or
+    // removed from the arrangement.
+    onChange((b) => b.clips().anyValue(), (e, _) {
       final oldClip = e.operation.oldValue as ClipModel?;
       final newClip = e.operation.newValue as ClipModel?;
 
       if (oldClip != null) {
-        _decrementPatternClipReferenceCount(oldClip.patternId);
+        _removeClipReference(oldClip);
       }
 
       if (newClip != null) {
-        _incrementPatternClipReferenceCount(newClip.patternId);
+        _addClipReference(newClip);
       }
     });
 
     // Keep the pattern usage cache in sync when an existing clip is retargeted
     // to a different pattern.
-    onChange((b) => b.clips.anyValue.patternId, (e) {
+    onChange((b) => b.clips().anyValue().patternId(), (e, _) {
       final oldPatternId = e.operation.oldValue as Id?;
       final newPatternId = e.operation.newValue as Id?;
 
-      // Clip add/remove is handled by the clips.anyValue observer above.
+      // Clip add/remove is handled by the clips().anyValue() observer above.
       if (oldPatternId == null || newPatternId == null) {
         return;
       }
@@ -101,8 +101,35 @@ class ArrangementModel extends _ArrangementModel
         return;
       }
 
-      _decrementPatternClipReferenceCount(oldPatternId);
-      _incrementPatternClipReferenceCount(newPatternId);
+      final clipId = e.fieldAccessors[1].key as Id;
+      _movePatternClipReference(
+        clipId: clipId,
+        oldPatternId: oldPatternId,
+        newPatternId: newPatternId,
+      );
+    });
+
+    // Keep the track lookup cache in sync when an existing clip is moved to a
+    // different track.
+    onChange((b) => b.clips().anyValue().trackId(), (e, _) {
+      final oldTrackId = e.operation.oldValue as Id?;
+      final newTrackId = e.operation.newValue as Id?;
+
+      // Clip add/remove is handled by the clips().anyValue() observer above.
+      if (oldTrackId == null || newTrackId == null) {
+        return;
+      }
+
+      if (oldTrackId == newTrackId) {
+        return;
+      }
+
+      final clipId = e.fieldAccessors[1].key as Id;
+      _moveTrackClipReference(
+        clipId: clipId,
+        oldTrackId: oldTrackId,
+        newTrackId: newTrackId,
+      );
     });
 
     onModelFirstAttached(() {
@@ -113,19 +140,19 @@ class ArrangementModel extends _ArrangementModel
       // Recompile affected engine clip data when clip timing or source pattern
       // fields change.
       onChange(
-        (b) => b.clips.anyValue.multiple([
-          (b) => b.offset,
-          (b) => b.trackId,
-          (b) => b.patternId,
-          (b) => b.timeView.withDescendants,
+        (b) => b.clips().anyValue().multiple([
+          (b) => b.offset(),
+          (b) => b.trackId(),
+          (b) => b.patternId(),
+          (b) => b.timeView().withDescendants,
         ]),
-        (e) {
+        (e, _) {
           _recompileOnClipFieldChanged(e);
         },
       );
 
       // Recompile engine clip data when clips are added or removed.
-      onChange((b) => b.clips.anyValue, (e) {
+      onChange((b) => b.clips().anyValue(), (e, _) {
         _recompileOnClipAddedOrRemoved(
           e.operation.oldValue as ClipModel?,
           e.operation.newValue as ClipModel?,
@@ -137,16 +164,16 @@ class ArrangementModel extends _ArrangementModel
       onChange(
         (b) => b.multiple([
           // Changes to the clips map itself
-          (b) => b.clips.anyValue,
+          (b) => b.clips().anyValue(),
 
           // Changes to clip properties that affect arrangement width
-          (b) => b.clips.anyValue.multiple([
-            (b) => b.offset,
-            (b) => b.patternId,
-            (b) => b.timeView.withDescendants,
+          (b) => b.clips().anyValue().multiple([
+            (b) => b.offset(),
+            (b) => b.patternId(),
+            (b) => b.timeView().withDescendants,
           ]),
         ]),
-        (e) {
+        (e, _) {
           updateViewWidthAction.execute();
         },
       );
@@ -156,7 +183,7 @@ class ArrangementModel extends _ArrangementModel
       // We don't have a detailed model change observation system in the engine,
       // so this is a simple way to allow the engine to perform necessary
       // side-effects.
-      onChange((b) => b.loopPoints.withDescendants, (e) {
+      onChange((b) => b.loopPoints().withDescendants, (e, _) {
         _updateLoopPointsAction.execute();
       });
     });
@@ -188,42 +215,119 @@ abstract class _ArrangementModel
   @hide
   final Map<Id, int> patternClipReferenceCounts = {};
 
+  /// Cache of clip IDs per pattern for this arrangement.
+  ///
+  /// The key is a pattern ID, and the value is the set of clips in this
+  /// arrangement that reference that pattern ID.
+  @hide
+  final Map<Id, Set<Id>> patternClipIdsByPatternId = {};
+
+  /// Cache of clip IDs per track for this arrangement.
+  ///
+  /// The key is a track ID, and the value is the set of clips in this
+  /// arrangement that belong to that track.
+  @hide
+  final Map<Id, Set<Id>> trackClipIdsByTrackId = {};
+
   _ArrangementModel({required this.name, required this.id}) : super();
 
   _ArrangementModel.create({required this.name, required this.id}) : super();
 
-  @hide
   int getPatternClipReferenceCount(Id patternId) {
     return patternClipReferenceCounts[patternId] ?? 0;
   }
 
-  @hide
-  void _rebuildPatternClipReferenceCounts() {
+  List<Id> getClipIdsForPattern(Id patternId) {
+    return patternClipIdsByPatternId[patternId]?.toList(growable: false) ??
+        const [];
+  }
+
+  List<Id> getClipIdsForTrack(Id trackId) {
+    return trackClipIdsByTrackId[trackId]?.toList(growable: false) ?? const [];
+  }
+
+  bool hasClipsForTrack(Id trackId) {
+    return trackClipIdsByTrackId[trackId]?.isNotEmpty ?? false;
+  }
+
+  void _rebuildClipReferenceCaches() {
     patternClipReferenceCounts.clear();
+    patternClipIdsByPatternId.clear();
+    trackClipIdsByTrackId.clear();
     for (final clip in clips.values) {
-      _incrementPatternClipReferenceCount(clip.patternId);
+      _addClipReference(clip);
     }
   }
 
-  @hide
-  void _incrementPatternClipReferenceCount(Id patternId) {
+  void _addClipReference(ClipModel clip) {
+    _addClipIdToPattern(patternId: clip.patternId, clipId: clip.id);
+    _addClipIdToTrack(trackId: clip.trackId, clipId: clip.id);
+  }
+
+  void _removeClipReference(ClipModel clip) {
+    _removeClipIdFromPattern(patternId: clip.patternId, clipId: clip.id);
+    _removeClipIdFromTrack(trackId: clip.trackId, clipId: clip.id);
+  }
+
+  void _movePatternClipReference({
+    required Id clipId,
+    required Id oldPatternId,
+    required Id newPatternId,
+  }) {
+    _removeClipIdFromPattern(patternId: oldPatternId, clipId: clipId);
+    _addClipIdToPattern(patternId: newPatternId, clipId: clipId);
+  }
+
+  void _moveTrackClipReference({
+    required Id clipId,
+    required Id oldTrackId,
+    required Id newTrackId,
+  }) {
+    _removeClipIdFromTrack(trackId: oldTrackId, clipId: clipId);
+    _addClipIdToTrack(trackId: newTrackId, clipId: clipId);
+  }
+
+  void _addClipIdToPattern({required Id patternId, required Id clipId}) {
     patternClipReferenceCounts[patternId] =
         (patternClipReferenceCounts[patternId] ?? 0) + 1;
+    (patternClipIdsByPatternId[patternId] ??= <Id>{}).add(clipId);
   }
 
-  @hide
-  void _decrementPatternClipReferenceCount(Id patternId) {
+  void _removeClipIdFromPattern({required Id patternId, required Id clipId}) {
     final currentCount = patternClipReferenceCounts[patternId];
-    if (currentCount == null) {
+    if (currentCount != null) {
+      if (currentCount <= 1) {
+        patternClipReferenceCounts.remove(patternId);
+      } else {
+        patternClipReferenceCounts[patternId] = currentCount - 1;
+      }
+    }
+
+    final clipIds = patternClipIdsByPatternId[patternId];
+    if (clipIds == null) {
       return;
     }
 
-    if (currentCount <= 1) {
-      patternClipReferenceCounts.remove(patternId);
+    clipIds.remove(clipId);
+    if (clipIds.isEmpty) {
+      patternClipIdsByPatternId.remove(patternId);
+    }
+  }
+
+  void _addClipIdToTrack({required Id trackId, required Id clipId}) {
+    (trackClipIdsByTrackId[trackId] ??= <Id>{}).add(clipId);
+  }
+
+  void _removeClipIdFromTrack({required Id trackId, required Id clipId}) {
+    final clipIds = trackClipIdsByTrackId[trackId];
+    if (clipIds == null) {
       return;
     }
 
-    patternClipReferenceCounts[patternId] = currentCount - 1;
+    clipIds.remove(clipId);
+    if (clipIds.isEmpty) {
+      trackClipIdsByTrackId.remove(trackId);
+    }
   }
 
   /// Gets the time position of the end of the last clip in this arrangement,

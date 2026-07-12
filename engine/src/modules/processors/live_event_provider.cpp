@@ -104,7 +104,9 @@ bool LiveEventProviderProcessor::addLiveInputEvent(LiveInputEvent event) {
   return liveInputEventBuffer->add(event);
 }
 
-void LiveEventProviderProcessor::prepareToProcess() {}
+void LiveEventProviderProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  complete(std::nullopt);
+}
 
 void LiveEventProviderProcessor::process(NodeProcessContext& context, int /*numSamples*/
 ) {

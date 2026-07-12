@@ -57,9 +57,11 @@ export 'pattern/note.dart';
 export 'pattern/pattern.dart';
 
 export 'processing_graph/processors/balance.dart';
+export 'processing_graph/processors/control_value_visualization.dart';
 export 'processing_graph/processors/gain.dart';
 export 'processing_graph/processors/live_event_provider.dart';
 export 'processing_graph/processors/master_output.dart';
+export 'processing_graph/processors/sequence_automation_provider.dart';
 export 'processing_graph/processors/sequence_note_provider.dart';
 export 'processing_graph/processors/simple_midi_generator.dart';
 export 'processing_graph/processors/simple_volume_lfo.dart';
@@ -72,8 +74,10 @@ export 'processing_graph/node_port_config.dart';
 export 'processing_graph/node_port.dart';
 export 'processing_graph/node.dart';
 export 'processing_graph/parameter_config.dart';
+export 'processing_graph/port_ref.dart';
 export 'processing_graph/processing_graph.dart';
 
+export 'device.dart';
 export 'shared/anthem_color.dart';
 export 'shared/hydratable.dart';
 export 'shared/loop_points.dart';

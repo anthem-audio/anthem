@@ -22,13 +22,18 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/logic/commands/device_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/track_controller.dart';
-import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/processors/control_value_visualization.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 import 'package:anthem/model/processing_graph/processors/live_event_provider.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_note_provider.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
@@ -51,7 +56,11 @@ import 'track_commands_test.mocks.dart';
 
 class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
   @override
-  Future<void> compile() async {}
+  Future<ProcessingGraphNodeInitialization> initializeNodes() async =>
+      ProcessingGraphNodeInitialization(didInitialize: true, results: []);
+
+  @override
+  Future<void> publish() async {}
 }
 
 class _MockEngine extends Mock implements Engine {
@@ -104,7 +113,7 @@ void main() {
         idAllocator: ProjectEntityIdAllocator.test(() => trackId),
         name: oldName,
         color: color,
-        type: .instrument,
+        type: .normal,
       );
 
       tracks = AnthemObservableMap.of({trackId: track});
@@ -146,7 +155,7 @@ void main() {
   group('Track group/ungroup and add/remove with groups', () {
     // The track hierarchy here is as follows:
     //
-    // REGULAR TRACKS:
+    // normal tracks:
     // - A (group)
     //   - B (group)
     //     - C (instrument)
@@ -262,7 +271,7 @@ void main() {
         final track = TrackModel(
           idAllocator: ProjectEntityIdAllocator.test(() => id),
           name: name,
-          color: MockAnthemColor(),
+          color: AnthemColor(hue: 0),
           type: type,
         );
 
@@ -273,21 +282,21 @@ void main() {
 
       final pairA = createTrack('A', .group, false);
       final pairB = createTrack('B', .group, false);
-      final pairC = createTrack('C', .instrument, false);
-      final pairD = createTrack('D', .instrument, false);
+      final pairC = createTrack('C', .normal, false);
+      final pairD = createTrack('D', .normal, false);
       final pairE = createTrack('E', .group, false);
-      final pairF = createTrack('F', .instrument, false);
-      final pairG = createTrack('G', .instrument, false);
-      final pairH = createTrack('H', .instrument, false);
-      final pairI = createTrack('I', .instrument, false);
-      final pairJ = createTrack('J', .instrument, false);
-      final pairK = createTrack('K', .instrument, false);
+      final pairF = createTrack('F', .normal, false);
+      final pairG = createTrack('G', .normal, false);
+      final pairH = createTrack('H', .normal, false);
+      final pairI = createTrack('I', .normal, false);
+      final pairJ = createTrack('J', .normal, false);
+      final pairK = createTrack('K', .normal, false);
       final pairL = createTrack('L', .group, true);
-      final pairM = createTrack('M', .instrument, true);
-      final pairN = createTrack('N', .instrument, true);
-      final pairO = createTrack('O', .instrument, true);
-      final pairP = createTrack('P', .instrument, true);
-      final pairMaster = createTrack('Master', .instrument, true);
+      final pairM = createTrack('M', .normal, true);
+      final pairN = createTrack('N', .normal, true);
+      final pairO = createTrack('O', .normal, true);
+      final pairP = createTrack('P', .normal, true);
+      final pairMaster = createTrack('Master', .normal, true);
 
       trackAId = pairA.$1;
       trackBId = pairB.$1;
@@ -382,7 +391,7 @@ void main() {
         final id1Index = trackOrderToUse.indexOf(id1);
         expect(
           tracks[trackOrderToUse[id1Index]]!.type,
-          equals(TrackType.instrument),
+          equals(TrackType.normal),
         );
 
         final command = TrackGroupUngroupCommand.group(
@@ -419,14 +428,16 @@ void main() {
       }
 
       void expectTrackHasMixRouting(TrackModel track) {
-        expect(track.utilityNodeId, isNotNull);
-        expect(track.dbMeterNodeId, isNotNull);
+        expect(track.requireProcessing.utilityNodeId, isNotNull);
+        expect(track.requireProcessing.dbMeterNodeId, isNotNull);
 
-        final utilityNodeId = track.utilityNodeId!;
-        final dbMeterNodeId = track.dbMeterNodeId!;
+        final utilityNodeId = track.requireProcessing.utilityNodeId!;
+        final dbMeterNodeId = track.requireProcessing.dbMeterNodeId!;
         final expectedDestination = track.parentTrackId != null
             ? (
-                nodeId: tracks[track.parentTrackId]!.utilityNodeId!,
+                nodeId: tracks[track.parentTrackId]!
+                    .requireProcessing
+                    .utilityNodeId!,
                 portId: UtilityProcessorModel.audioInputPortId,
               )
             : track.isMasterTrack
@@ -439,7 +450,7 @@ void main() {
                     .id,
               )
             : (
-                nodeId: masterTrack.utilityNodeId!,
+                nodeId: masterTrack.requireProcessing.utilityNodeId!,
                 portId: UtilityProcessorModel.audioInputPortId,
               );
 
@@ -472,7 +483,7 @@ void main() {
         );
       }
 
-      test('Basic track grouping test, regular tracks', () {
+      test('Basic track grouping test, normal tracks', () {
         runBasicGroupTest(false, trackJId, trackKId);
       });
 
@@ -493,11 +504,14 @@ void main() {
         newGroupTrack!;
 
         expectTrackHasMixRouting(newGroupTrack);
-        expect(newGroupTrack.sequenceNoteProviderNodeId, isNull);
-        expect(newGroupTrack.liveEventProviderNodeId, isNull);
+        expect(
+          newGroupTrack.requireProcessing.sequenceNoteProviderNodeId,
+          isNull,
+        );
+        expect(newGroupTrack.requireProcessing.liveEventProviderNodeId, isNull);
 
-        final utilityNodeId = newGroupTrack.utilityNodeId!;
-        final dbMeterNodeId = newGroupTrack.dbMeterNodeId!;
+        final utilityNodeId = newGroupTrack.requireProcessing.utilityNodeId!;
+        final dbMeterNodeId = newGroupTrack.requireProcessing.dbMeterNodeId!;
 
         command.rollback(project);
 
@@ -511,8 +525,14 @@ void main() {
         expect(restoredGroupTrack, isNotNull);
         restoredGroupTrack!;
 
-        expect(restoredGroupTrack.utilityNodeId, equals(utilityNodeId));
-        expect(restoredGroupTrack.dbMeterNodeId, equals(dbMeterNodeId));
+        expect(
+          restoredGroupTrack.requireProcessing.utilityNodeId,
+          equals(utilityNodeId),
+        );
+        expect(
+          restoredGroupTrack.requireProcessing.dbMeterNodeId,
+          equals(dbMeterNodeId),
+        );
         expectTrackHasMixRouting(restoredGroupTrack);
       });
 
@@ -521,8 +541,8 @@ void main() {
         () {
           expectTrackHasMixRouting(trackL);
 
-          final utilityNodeId = trackL.utilityNodeId!;
-          final dbMeterNodeId = trackL.dbMeterNodeId!;
+          final utilityNodeId = trackL.requireProcessing.utilityNodeId!;
+          final dbMeterNodeId = trackL.requireProcessing.dbMeterNodeId!;
 
           final command = TrackGroupUngroupCommand.ungroup(
             project: project,
@@ -538,14 +558,14 @@ void main() {
           command.rollback(project);
 
           expect(tracks[trackLId], isNotNull);
-          expect(trackL.utilityNodeId, equals(utilityNodeId));
-          expect(trackL.dbMeterNodeId, equals(dbMeterNodeId));
+          expect(trackL.requireProcessing.utilityNodeId, equals(utilityNodeId));
+          expect(trackL.requireProcessing.dbMeterNodeId, equals(dbMeterNodeId));
           expectTrackHasMixRouting(trackL);
         },
       );
 
       test(
-        "Can't group tracks where some are send tracks and some are regular tracks",
+        "Can't group tracks where some are send tracks and some are normal tracks",
         () {
           expect(() {
             print('throws');
@@ -816,7 +836,7 @@ void main() {
       });
 
       test(
-        'Grouping a single top-level regular track wraps it in a new group',
+        'Grouping a single top-level normal track wraps it in a new group',
         () {
           final originalTrackOrder = List<Id>.from(trackOrder);
           final mockArrangerViewModel =
@@ -911,7 +931,7 @@ void main() {
 
         command.execute(project);
 
-        // Regular track order unchanged
+        // normal track order unchanged
         expect(trackOrder, hasLength(originalTrackOrderLength));
 
         // Track L is removed from the tracks map
@@ -933,7 +953,7 @@ void main() {
 
         command.rollback(project);
 
-        // Regular track order unchanged
+        // normal track order unchanged
         expect(trackOrder, hasLength(originalTrackOrderLength));
 
         // sendTrackOrder restored to [L, O, P, Master]
@@ -960,32 +980,262 @@ void main() {
       });
     });
 
-    group('Add/remove', () {
-      test(
-        'Set track instrument command adds and restores nodes on undo/redo',
-        () {
-          final instrumentNode = ToneGeneratorProcessorModel(
-            nodeId: getId(),
-          ).createNode();
+    group('AutomationLaneAddRemoveCommand', () {
+      ({TrackModel automationLane, TrackModel parentTrack})
+      addUtilityAutomationLane() {
+        final utilityNodeId = trackJ.requireProcessing.utilityNodeId!;
 
-          final command = SetTrackInstrumentNodeCommand(
-            track: trackC,
-            instrumentNode: instrumentNode,
+        final command = AutomationLaneAddRemoveCommand.add(
+          project: project,
+          parentTrackId: trackJ.id,
+          nodeId: utilityNodeId,
+          portId: UtilityProcessorModel.gainPortId,
+          name: 'Volume',
+        );
+
+        command.execute(project);
+
+        return (
+          automationLane: tracks[trackJ.automationLanes.single]!,
+          parentTrack: trackJ,
+        );
+      }
+
+      test(
+        'automation lane graph includes control value visualization sink',
+        () {
+          final utilityNode =
+              processingGraph.nodes[trackJ.requireProcessing.utilityNodeId!]!;
+          final port = utilityNode.getPortById(
+            UtilityProcessorModel.gainPortId,
+          );
+          port.parameterValue = 0.42;
+
+          final (:automationLane, :parentTrack) = addUtilityAutomationLane();
+
+          final automationProcessing =
+              automationLane.requireAutomationProcessing;
+          final providerNode = processingGraph
+              .nodes[automationProcessing.sequenceAutomationProviderNodeId];
+          final visualizationNode = processingGraph
+              .nodes[automationProcessing.controlValueVisualizationNodeId];
+
+          expect(providerNode, isNotNull);
+          expect(visualizationNode, isNotNull);
+
+          final visualizationProcessor =
+              visualizationNode!.processor
+                  as ControlValueVisualizationProcessorModel;
+          final expectedVisualizationId =
+              ControlValueVisualizationProcessorModel.buildVisualizationId(
+                nodeId: port.nodeId,
+                portId: port.id,
+              );
+
+          expect(
+            visualizationProcessor.visualizationId,
+            equals(expectedVisualizationId),
+          );
+          expect(
+            automationProcessing.getOwnedNodeIds(),
+            containsAll([providerNode!.id, visualizationNode.id]),
+          );
+          expect(parentTrack.automationLanes, contains(automationLane.id));
+
+          final connections = processingGraph.connections.values;
+          expect(
+            connections.any(
+              (connection) =>
+                  connection.sourceNodeId == providerNode.id &&
+                  connection.sourcePortId ==
+                      SequenceAutomationProviderProcessorModel
+                          .controlOutputPortId &&
+                  connection.destinationNodeId == port.nodeId &&
+                  connection.destinationPortId == port.id &&
+                  connection.dataType == NodePortDataType.control,
+            ),
+            isTrue,
+          );
+          expect(
+            connections.any(
+              (connection) =>
+                  connection.sourceNodeId == providerNode.id &&
+                  connection.sourcePortId ==
+                      SequenceAutomationProviderProcessorModel
+                          .controlOutputPortId &&
+                  connection.destinationNodeId == visualizationNode.id &&
+                  connection.destinationPortId ==
+                      ControlValueVisualizationProcessorModel
+                          .controlInputPortId &&
+                  connection.dataType == NodePortDataType.control,
+            ),
+            isTrue,
+          );
+        },
+      );
+
+      test('automation visualization node clears and restores with lane', () {
+        final utilityNode =
+            processingGraph.nodes[trackJ.requireProcessing.utilityNodeId!]!;
+        final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
+        port.parameterValue = 0.42;
+
+        final command = AutomationLaneAddRemoveCommand.add(
+          project: project,
+          parentTrackId: trackJ.id,
+          nodeId: utilityNode.id,
+          portId: UtilityProcessorModel.gainPortId,
+          name: 'Volume',
+        );
+
+        command.execute(project);
+
+        final automationLane = tracks[trackJ.automationLanes.single]!;
+        final visualizationNodeId = automationLane
+            .requireAutomationProcessing
+            .controlValueVisualizationNodeId;
+        final visualizationProcessor =
+            processingGraph.nodes[visualizationNodeId]!.processor
+                as ControlValueVisualizationProcessorModel;
+        final visualizationId = visualizationProcessor.visualizationId;
+
+        expect(visualizationNodeId, isNotNull);
+        expect(visualizationId, isNotNull);
+
+        command.rollback(project);
+
+        expect(trackJ.automationLanes, isEmpty);
+        expect(processingGraph.nodes[visualizationNodeId], isNull);
+
+        command.execute(project);
+
+        expect(trackJ.automationLanes, hasLength(1));
+        final restoredVisualizationNode =
+            processingGraph.nodes[visualizationNodeId];
+        expect(restoredVisualizationNode, isNotNull);
+        expect(
+          (restoredVisualizationNode!.processor
+                  as ControlValueVisualizationProcessorModel)
+              .visualizationId,
+          equals(visualizationId),
+        );
+      });
+
+      test(
+        'remove clears lane graph and rollback restores it at same index',
+        () {
+          final utilityNode =
+              processingGraph.nodes[trackJ.requireProcessing.utilityNodeId!]!;
+
+          final gainCommand = AutomationLaneAddRemoveCommand.add(
+            project: project,
+            parentTrackId: trackJ.id,
+            nodeId: utilityNode.id,
+            portId: UtilityProcessorModel.gainPortId,
+            name: 'Gain',
+          );
+          final balanceCommand = AutomationLaneAddRemoveCommand.add(
+            project: project,
+            parentTrackId: trackJ.id,
+            nodeId: utilityNode.id,
+            portId: UtilityProcessorModel.balancePortId,
+            name: 'Balance',
+            index: 1,
+          );
+
+          gainCommand.execute(project);
+          balanceCommand.execute(project);
+
+          final gainLane = gainCommand.lane;
+          final balanceLane = balanceCommand.lane;
+          final gainProcessing = gainLane.requireAutomationProcessing;
+          final providerNodeId =
+              gainProcessing.sequenceAutomationProviderNodeId;
+          final visualizationNodeId =
+              gainProcessing.controlValueVisualizationNodeId;
+
+          expect(trackJ.automationLanes, [gainLane.id, balanceLane.id]);
+          expect(tracks[gainLane.id], same(gainLane));
+          expect(processingGraph.nodes[providerNodeId], isNotNull);
+          expect(processingGraph.nodes[visualizationNodeId], isNotNull);
+
+          final removeCommand = AutomationLaneAddRemoveCommand.remove(
+            project: project,
+            laneId: gainLane.id,
+          );
+
+          removeCommand.execute(project);
+
+          expect(trackJ.automationLanes, [balanceLane.id]);
+          expect(tracks[gainLane.id], isNull);
+          expect(processingGraph.nodes[providerNodeId], isNull);
+          expect(processingGraph.nodes[visualizationNodeId], isNull);
+
+          removeCommand.rollback(project);
+
+          expect(trackJ.automationLanes, [gainLane.id, balanceLane.id]);
+          expect(tracks[gainLane.id], same(gainLane));
+          expect(gainLane.automationLaneParentTrackId, trackJ.id);
+          expect(processingGraph.nodes[providerNodeId], isNotNull);
+          expect(processingGraph.nodes[visualizationNodeId], isNotNull);
+        },
+      );
+    });
+
+    group('Add/remove', () {
+      List<Object> connectionsMatching({
+        required Id sourceNodeId,
+        required int sourcePortId,
+        required Id destinationNodeId,
+        required int destinationPortId,
+      }) {
+        return processingGraph.connections.values
+            .where(
+              (connection) =>
+                  connection.sourceNodeId == sourceNodeId &&
+                  connection.sourcePortId == sourcePortId &&
+                  connection.destinationNodeId == destinationNodeId &&
+                  connection.destinationPortId == destinationPortId,
+            )
+            .toList(growable: false);
+      }
+
+      test(
+        'Device add/remove command adds and restores nodes on undo/redo',
+        () {
+          final command = DeviceAddRemoveCommand.add(
+            project: project,
+            trackId: trackC.id,
+            device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
           );
 
           command.execute(project);
 
-          final sequenceNodeId = trackC.sequenceNoteProviderNodeId;
-          final liveEventNodeId = trackC.liveEventProviderNodeId;
-          expect(trackC.instrumentNodeId, equals(instrumentNode.id));
+          final device = trackC.requireProcessing.devices.single;
+          final instrumentNodeId = device.nodeIds.single;
+          final sequenceNodeId =
+              trackC.requireProcessing.sequenceNoteProviderNodeId;
+          final liveEventNodeId =
+              trackC.requireProcessing.liveEventProviderNodeId;
+          expect(trackC.requireProcessing.devices, hasLength(1));
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
           expect(sequenceNodeId, isNotNull);
           expect(liveEventNodeId, isNotNull);
-          expect(processingGraph.nodes[instrumentNode.id], isNotNull);
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
           expect(processingGraph.nodes[sequenceNodeId!], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId!], isNotNull);
 
+          final instrumentNode = processingGraph.nodes[instrumentNodeId]!;
+          expect(instrumentNode.owner?.trackId, equals(trackC.id));
+          expect(instrumentNode.owner?.deviceId, equals(device.id));
+
           final sequenceNode = processingGraph.nodes[sequenceNodeId]!;
           final liveEventNode = processingGraph.nodes[liveEventNodeId]!;
+          expect(sequenceNode.owner?.trackId, equals(trackC.id));
+          expect(sequenceNode.owner?.deviceId, isNull);
+          expect(liveEventNode.owner?.trackId, equals(trackC.id));
+          expect(liveEventNode.owner?.deviceId, isNull);
+
           final sequenceProcessor =
               sequenceNode.processor as SequenceNoteProviderProcessorModel;
           expect(sequenceProcessor.trackId, equals(trackC.id));
@@ -995,8 +1245,9 @@ void main() {
               .values
               .where(
                 (connection) =>
-                    connection.sourceNodeId == instrumentNode.id &&
-                    connection.destinationNodeId == trackC.utilityNodeId &&
+                    connection.sourceNodeId == instrumentNodeId &&
+                    connection.destinationNodeId ==
+                        trackC.requireProcessing.utilityNodeId &&
                     connection.sourcePortId ==
                         ToneGeneratorProcessorModel.audioOutputPortId &&
                     connection.destinationPortId ==
@@ -1011,7 +1262,7 @@ void main() {
               .where(
                 (connection) =>
                     connection.sourceNodeId == sequenceNode.id &&
-                    connection.destinationNodeId == instrumentNode.id &&
+                    connection.destinationNodeId == instrumentNodeId &&
                     connection.sourcePortId ==
                         SequenceNoteProviderProcessorModel.eventOutputPortId &&
                     connection.destinationPortId ==
@@ -1026,7 +1277,7 @@ void main() {
               .where(
                 (connection) =>
                     connection.sourceNodeId == liveEventNode.id &&
-                    connection.destinationNodeId == instrumentNode.id &&
+                    connection.destinationNodeId == instrumentNodeId &&
                     connection.sourcePortId ==
                         LiveEventProviderProcessorModel.eventOutputPortId &&
                     connection.destinationPortId ==
@@ -1037,23 +1288,197 @@ void main() {
 
           command.rollback(project);
 
-          expect(trackC.instrumentNodeId, isNull);
-          expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
-          expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
-          expect(processingGraph.nodes[instrumentNode.id], isNull);
+          expect(trackC.requireProcessing.devices, isEmpty);
+          expect(trackC.requireProcessing.deviceRoutingConnectionIds, isEmpty);
+          expect(
+            trackC.requireProcessing.sequenceNoteProviderNodeId,
+            equals(sequenceNodeId),
+          );
+          expect(
+            trackC.requireProcessing.liveEventProviderNodeId,
+            equals(liveEventNodeId),
+          );
+          expect(processingGraph.nodes[instrumentNodeId], isNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId], isNotNull);
 
           command.execute(project);
 
-          expect(trackC.instrumentNodeId, equals(instrumentNode.id));
-          expect(trackC.sequenceNoteProviderNodeId, equals(sequenceNodeId));
-          expect(trackC.liveEventProviderNodeId, equals(liveEventNodeId));
-          expect(processingGraph.nodes[instrumentNode.id], isNotNull);
+          expect(trackC.requireProcessing.devices, hasLength(1));
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
+          expect(
+            processingGraph.nodes[instrumentNodeId]?.owner?.trackId,
+            equals(trackC.id),
+          );
+          expect(
+            processingGraph.nodes[instrumentNodeId]?.owner?.deviceId,
+            equals(device.id),
+          );
+          expect(
+            trackC.requireProcessing.sequenceNoteProviderNodeId,
+            equals(sequenceNodeId),
+          );
+          expect(
+            trackC.requireProcessing.liveEventProviderNodeId,
+            equals(liveEventNodeId),
+          );
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
           expect(processingGraph.nodes[sequenceNodeId], isNotNull);
           expect(processingGraph.nodes[liveEventNodeId], isNotNull);
         },
       );
+
+      test(
+        'Device add/remove command removes and restores nodes on undo/redo',
+        () {
+          DeviceAddRemoveCommand.add(
+            project: project,
+            trackId: trackC.id,
+            device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+          ).execute(project);
+
+          final device = trackC.requireProcessing.devices.single;
+          final instrumentNodeId = device.nodeIds.single;
+          final initialRoutingConnectionIds = trackC
+              .requireProcessing
+              .deviceRoutingConnectionIds
+              .toList(growable: false);
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
+          expect(initialRoutingConnectionIds, isNotEmpty);
+
+          final command = DeviceAddRemoveCommand.remove(
+            project: project,
+            trackId: trackC.id,
+            deviceId: device.id,
+          );
+
+          command.execute(project);
+
+          expect(trackC.requireProcessing.devices, isEmpty);
+          expect(trackC.requireProcessing.deviceRoutingConnectionIds, isEmpty);
+          expect(processingGraph.nodes[instrumentNodeId], isNull);
+          for (final connectionId in initialRoutingConnectionIds) {
+            expect(processingGraph.connections[connectionId], isNull);
+          }
+
+          command.rollback(project);
+
+          expect(trackC.requireProcessing.devices.single.id, equals(device.id));
+          expect(processingGraph.nodes[instrumentNodeId], isNotNull);
+          expect(
+            trackC.requireProcessing.deviceRoutingConnectionIds,
+            isNotEmpty,
+          );
+        },
+      );
+
+      test('Device add/remove command adds utility devices', () {
+        final command = DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: trackC.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.utility),
+        );
+
+        command.execute(project);
+
+        final device = trackC.requireProcessing.devices.single;
+        final utilityNodeId = device.nodeIds.single;
+        final utilityNode = processingGraph.nodes[utilityNodeId]!;
+        expect(device.type, equals(DeviceType.utility));
+        expect(utilityNode.processor, isA<UtilityProcessorModel>());
+        expect(
+          device.defaultAudioInputPort?.portId,
+          equals(UtilityProcessorModel.audioInputPortId),
+        );
+        expect(
+          device.defaultAudioOutputPort?.portId,
+          equals(UtilityProcessorModel.audioOutputPortId),
+        );
+
+        command.rollback(project);
+
+        expect(trackC.requireProcessing.devices, isEmpty);
+        expect(processingGraph.nodes[utilityNodeId], isNull);
+      });
+
+      test('Device changes reassert the track main output route', () {
+        final originalMainRoute = processingGraph.connections.values
+            .firstWhere(
+              (connection) =>
+                  connection.sourceNodeId ==
+                      trackJ.requireProcessing.utilityNodeId &&
+                  connection.sourcePortId ==
+                      UtilityProcessorModel.audioOutputPortId &&
+                  connection.destinationNodeId ==
+                      masterTrack.requireProcessing.utilityNodeId &&
+                  connection.destinationPortId ==
+                      UtilityProcessorModel.audioInputPortId,
+            )
+            .id;
+        processingGraph.removeConnection(originalMainRoute);
+
+        expect(
+          connectionsMatching(
+            sourceNodeId: trackJ.requireProcessing.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: masterTrack.requireProcessing.utilityNodeId!,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+          ),
+          isEmpty,
+        );
+
+        DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: trackJ.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+        ).execute(project);
+
+        final toneGeneratorNodeId =
+            trackJ.requireProcessing.devices.single.nodeIds.single;
+        final masterOutputPortId = processingGraph
+            .getMasterOutputNode()
+            .audioInputPorts
+            .first
+            .id;
+
+        expect(
+          connectionsMatching(
+            sourceNodeId: toneGeneratorNodeId,
+            sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
+            destinationNodeId: trackJ.requireProcessing.utilityNodeId!,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          connectionsMatching(
+            sourceNodeId: trackJ.requireProcessing.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: trackJ.requireProcessing.dbMeterNodeId!,
+            destinationPortId: DbMeterProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          connectionsMatching(
+            sourceNodeId: trackJ.requireProcessing.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: masterTrack.requireProcessing.utilityNodeId!,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          connectionsMatching(
+            sourceNodeId: masterTrack.requireProcessing.utilityNodeId!,
+            sourcePortId: UtilityProcessorModel.audioOutputPortId,
+            destinationNodeId: processingGraph.masterOutputNodeId,
+            destinationPortId: masterOutputPortId,
+          ),
+          hasLength(1),
+        );
+      });
 
       test('Add track undo/redo restores the same track nodes', () {
         final command = TrackAddRemoveCommand.add(
@@ -1062,7 +1487,7 @@ void main() {
             TrackDescriptorForCommand(
               index: 2,
               isSendTrack: false,
-              trackType: .instrument,
+              trackType: .normal,
               parentTrackId: trackAId,
             ),
           ],
@@ -1072,10 +1497,12 @@ void main() {
 
         final newTrackId = trackA.childTracks[2];
         final newTrack = tracks[newTrackId]!;
-        final utilityNodeId = newTrack.utilityNodeId;
-        final dbMeterNodeId = newTrack.dbMeterNodeId;
-        final sequenceNodeId = newTrack.sequenceNoteProviderNodeId;
-        final liveEventNodeId = newTrack.liveEventProviderNodeId;
+        final utilityNodeId = newTrack.requireProcessing.utilityNodeId;
+        final dbMeterNodeId = newTrack.requireProcessing.dbMeterNodeId;
+        final sequenceNodeId =
+            newTrack.requireProcessing.sequenceNoteProviderNodeId;
+        final liveEventNodeId =
+            newTrack.requireProcessing.liveEventProviderNodeId;
         final utilityToDbMeterConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
@@ -1110,10 +1537,16 @@ void main() {
 
         command.execute(project);
 
-        expect(newTrack.utilityNodeId, equals(utilityNodeId));
-        expect(newTrack.dbMeterNodeId, equals(dbMeterNodeId));
-        expect(newTrack.sequenceNoteProviderNodeId, equals(sequenceNodeId));
-        expect(newTrack.liveEventProviderNodeId, equals(liveEventNodeId));
+        expect(newTrack.requireProcessing.utilityNodeId, equals(utilityNodeId));
+        expect(newTrack.requireProcessing.dbMeterNodeId, equals(dbMeterNodeId));
+        expect(
+          newTrack.requireProcessing.sequenceNoteProviderNodeId,
+          equals(sequenceNodeId),
+        );
+        expect(
+          newTrack.requireProcessing.liveEventProviderNodeId,
+          equals(liveEventNodeId),
+        );
         expect(processingGraph.nodes[utilityNodeId], isNotNull);
         expect(processingGraph.nodes[dbMeterNodeId], isNotNull);
         expect(processingGraph.nodes[sequenceNodeId], isNotNull);
@@ -1125,8 +1558,8 @@ void main() {
       });
 
       test('Remove track undo restores captured nodes and connections', () {
-        final utilityNodeId = trackC.utilityNodeId;
-        final dbMeterNodeId = trackC.dbMeterNodeId;
+        final utilityNodeId = trackC.requireProcessing.utilityNodeId;
+        final dbMeterNodeId = trackC.requireProcessing.dbMeterNodeId;
         final utilityToDbMeterConnectionId = processingGraph.connections.values
             .firstWhere(
               (connection) =>
@@ -1163,71 +1596,64 @@ void main() {
         );
       });
 
-      test(
-        'Remove track captures optional instrument, sequence, and live nodes',
-        () {
-          final sequenceProviderNodeId = trackC.sequenceNoteProviderNodeId!;
-          final liveEventProviderNodeId = trackC.liveEventProviderNodeId!;
+      test('Remove track captures device, sequence, and live nodes', () {
+        final sequenceProviderNodeId =
+            trackC.requireProcessing.sequenceNoteProviderNodeId!;
+        final liveEventProviderNodeId =
+            trackC.requireProcessing.liveEventProviderNodeId!;
 
-          final instrumentNode = ToneGeneratorProcessorModel(
-            nodeId: getId(),
-          ).createNode();
+        DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: trackC.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
+        ).execute(project);
+        final deviceNodeId =
+            trackC.requireProcessing.devices.single.nodeIds.single;
 
-          processingGraph.addNode(instrumentNode);
+        final deviceRoutingConnectionIds = trackC
+            .requireProcessing
+            .deviceRoutingConnectionIds
+            .toList(growable: false);
 
-          processingGraph.addConnection(
-            NodeConnectionModel(
-              idAllocator: ProjectEntityIdAllocator.test(getId),
-              sourceNodeId: instrumentNode.id,
-              sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
-              destinationNodeId: trackC.utilityNodeId!,
-              destinationPortId: UtilityProcessorModel.audioInputPortId,
-            ),
-          );
-          processingGraph.addConnection(
-            NodeConnectionModel(
-              idAllocator: ProjectEntityIdAllocator.test(getId),
-              sourceNodeId: sequenceProviderNodeId,
-              sourcePortId:
-                  SequenceNoteProviderProcessorModel.eventOutputPortId,
-              destinationNodeId: instrumentNode.id,
-              destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
-            ),
-          );
-          processingGraph.addConnection(
-            NodeConnectionModel(
-              idAllocator: ProjectEntityIdAllocator.test(getId),
-              sourceNodeId: liveEventProviderNodeId,
-              sourcePortId: LiveEventProviderProcessorModel.eventOutputPortId,
-              destinationNodeId: instrumentNode.id,
-              destinationPortId: ToneGeneratorProcessorModel.eventInputPortId,
-            ),
-          );
+        final command = TrackAddRemoveCommand.remove(
+          project: project,
+          ids: [trackCId],
+        );
 
-          trackC.instrumentNodeId = instrumentNode.id;
+        command.execute(project);
 
-          final command = TrackAddRemoveCommand.remove(
-            project: project,
-            ids: [trackCId],
-          );
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.utilityNodeId],
+          isNull,
+        );
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.dbMeterNodeId],
+          isNull,
+        );
+        expect(processingGraph.nodes[deviceNodeId], isNull);
+        expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
+        expect(processingGraph.nodes[liveEventProviderNodeId], isNull);
+        for (final connectionId in deviceRoutingConnectionIds) {
+          expect(processingGraph.connections[connectionId], isNull);
+        }
 
-          command.execute(project);
+        command.rollback(project);
 
-          expect(processingGraph.nodes[trackC.utilityNodeId], isNull);
-          expect(processingGraph.nodes[trackC.dbMeterNodeId], isNull);
-          expect(processingGraph.nodes[instrumentNode.id], isNull);
-          expect(processingGraph.nodes[sequenceProviderNodeId], isNull);
-          expect(processingGraph.nodes[liveEventProviderNodeId], isNull);
-
-          command.rollback(project);
-
-          expect(processingGraph.nodes[trackC.utilityNodeId], isNotNull);
-          expect(processingGraph.nodes[trackC.dbMeterNodeId], isNotNull);
-          expect(processingGraph.nodes[instrumentNode.id], isNotNull);
-          expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);
-          expect(processingGraph.nodes[liveEventProviderNodeId], isNotNull);
-        },
-      );
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.utilityNodeId],
+          isNotNull,
+        );
+        expect(
+          processingGraph.nodes[trackC.requireProcessing.dbMeterNodeId],
+          isNotNull,
+        );
+        expect(processingGraph.nodes[deviceNodeId], isNotNull);
+        expect(processingGraph.nodes[sequenceProviderNodeId], isNotNull);
+        expect(processingGraph.nodes[liveEventProviderNodeId], isNotNull);
+        for (final connectionId in deviceRoutingConnectionIds) {
+          expect(processingGraph.connections[connectionId], isNotNull);
+        }
+      });
 
       test('Add a track to a group parent', () {
         final originalChildCount = trackA.childTracks.length;
@@ -1239,7 +1665,7 @@ void main() {
             TrackDescriptorForCommand(
               index: 2,
               isSendTrack: false,
-              trackType: .instrument,
+              trackType: .normal,
               parentTrackId: trackAId,
             ),
           ],
@@ -1254,8 +1680,8 @@ void main() {
         final newTrack = tracks[newTrackId];
         expect(newTrack, isNotNull);
         expect(newTrack!.parentTrackId, equals(trackAId));
-        expect(newTrack.type, equals(TrackType.instrument));
-        // Total tracks increased by 1
+        expect(newTrack.type, equals(TrackType.normal));
+        // Total tracks increased by only the new track.
         expect(tracks, hasLength(originalTracksCount + 1));
         // Top-level order unchanged
         expect(trackOrder, hasLength(3));
@@ -1276,7 +1702,7 @@ void main() {
           tracks: [
             TrackDescriptorForCommand(
               isSendTrack: false,
-              trackType: .instrument,
+              trackType: .normal,
               parentTrackId: trackBId,
             ),
           ],
@@ -1302,7 +1728,7 @@ void main() {
             tracks: [
               TrackDescriptorForCommand(
                 isSendTrack: false,
-                trackType: .instrument,
+                trackType: .normal,
                 parentTrackId: trackCId, // C is an instrument, not a group
               ),
             ],

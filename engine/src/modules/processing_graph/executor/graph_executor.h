@@ -40,6 +40,10 @@ public:
     double sampleRate = 0.0;
     size_t maxActiveWorkerThreadCount = 0;
 
+    // Controls OS scheduling priority for worker threads, not whether the
+    // executor uses worker threads.
+    bool useRealtimeWorkerScheduling = true;
+
     // Filled by GraphExecutor::prepare(). These are exposed here so the
     // platform-specific worker startup scopes can stay self-contained.
     size_t activeWorkerThreadCount = 0;
@@ -62,7 +66,7 @@ public:
   private:
     class Impl;
 
-    RuntimeState(size_t readyNodeQueueCount, size_t readyNodeQueueCapacity);
+    RuntimeState(size_t nodeQueueCount, size_t nodeQueueCapacity);
 
     friend class GraphExecutor::Impl;
     friend class GraphExecutor;

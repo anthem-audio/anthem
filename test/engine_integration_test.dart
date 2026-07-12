@@ -25,9 +25,10 @@ import 'dart:typed_data';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/commands/device_commands.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
-import 'package:anthem/logic/commands/track_commands.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
@@ -52,6 +53,19 @@ Future<T> _sendRequestAndWaitForReply<T extends Response>({
   engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
 
   return (await replyFuture) as T;
+}
+
+Future<void> _sendExitAndWaitForProcess({
+  required EngineConnector engineConnector,
+  required Stream<void> exitStream,
+}) async {
+  final exitFuture = exitStream.first.timeout(Duration(seconds: 5));
+  final encoder = JsonUtf8Encoder();
+  final request = Exit(id: engineConnector.getRequestId());
+
+  engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+  await exitFuture;
+  engineConnector.dispose();
 }
 
 void main() {
@@ -92,56 +106,68 @@ void main() {
   }
 
   group('Heartbeat tests', () {
-    test('No heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
-      final exitStreamController = StreamController<void>.broadcast();
+    test(
+      'Engine does not exit before heartbeat starts',
+      timeout: Timeout(Duration(seconds: 120)),
+      () async {
+        final exitStreamController = StreamController<void>.broadcast();
 
-      var exitCalled = false;
-      exitStreamController.stream.first.then((_) => exitCalled = true);
+        var exitCalled = false;
 
-      var heartbeatWaitCompleter = Completer<void>();
+        final engineConnector = EngineConnector(
+          12345678, // Can't collide with any other tests
+          enginePathOverride: enginePath!.toFilePath(
+            windows: Platform.isWindows,
+          ),
+          kDebugMode: true,
+          noHeartbeat: true,
+          onExit: () {
+            exitCalled = true;
+            exitStreamController.add(null);
+          },
+        );
 
-      final _ = EngineConnector(
-        12345678, // Can't collide with any other tests
-        enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
-        kDebugMode: true,
-        noHeartbeat: true,
-        onExit: () => exitStreamController.add(null),
-      );
+        expect(
+          await engineConnector.onInit,
+          isTrue,
+          reason: 'The engine connector should initialize successfully.',
+        );
 
-      expect(
-        exitCalled,
-        isFalse,
-        reason: 'The engine should not crash when it first starts.',
-      );
+        expect(
+          exitCalled,
+          isFalse,
+          reason: 'The engine should not crash when it first starts.',
+        );
 
-      final startTime = DateTime.now();
+        await Future.any<void>([
+          exitStreamController.stream.first,
+          Future<void>.delayed(Duration(seconds: 15)),
+        ]);
 
-      Timer.periodic(Duration(milliseconds: 500), (timer) {
-        if (exitCalled) {
-          heartbeatWaitCompleter.complete();
-          timer.cancel();
-        }
+        expect(
+          exitCalled,
+          isFalse,
+          reason:
+              'The engine should not exit before the heartbeat watchdog starts.',
+        );
 
-        if (DateTime.now().difference(startTime).inSeconds > 30) {
-          heartbeatWaitCompleter.complete();
-          timer.cancel();
-        }
-      });
+        await _sendExitAndWaitForProcess(
+          engineConnector: engineConnector,
+          exitStream: exitStreamController.stream,
+        );
 
-      await heartbeatWaitCompleter.future;
-
-      expect(
-        exitCalled,
-        isTrue,
-        reason: 'The engine should exit if it does not receive a heartbeat.',
-      );
-    });
+        expect(
+          exitCalled,
+          isTrue,
+          reason: 'The engine should exit when disposed.',
+        );
+      },
+    );
 
     test('Heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
       final exitStreamController = StreamController<void>.broadcast();
 
       var exitCalled = false;
-      exitStreamController.stream.first.then((_) => exitCalled = true);
 
       var heartbeatWaitCompleter = Completer<void>();
 
@@ -149,7 +175,10 @@ void main() {
         12345678 + 1, // Can't collide with any other tests
         enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
         kDebugMode: true,
-        onExit: () => exitStreamController.add(null),
+        onExit: () {
+          exitCalled = true;
+          exitStreamController.add(null);
+        },
       );
 
       expect(
@@ -164,8 +193,6 @@ void main() {
       engineConnector.startHeartbeatTimer();
 
       exitCalled = false;
-
-      exitStreamController.stream.first.then((_) => exitCalled = true);
 
       expect(
         exitCalled,
@@ -187,8 +214,10 @@ void main() {
         reason: 'The engine should not exit if it receives a heartbeat.',
       );
 
-      engineConnector.dispose();
-      await exitStreamController.stream.first;
+      await _sendExitAndWaitForProcess(
+        engineConnector: engineConnector,
+        exitStream: exitStreamController.stream,
+      );
 
       expect(
         exitCalled,
@@ -284,8 +313,8 @@ void main() {
       project = ProjectModel.create(
         enginePath!.toFilePath(windows: Platform.isWindows),
       );
-      ServiceRegistry.initializeProject(project);
-      await project.engine.start(initializeAudio: false);
+      final serviceRegistry = ServiceRegistry.initializeProject(project);
+      await serviceRegistry.projectEngineController.start(startAudio: false);
       expect(
         project.engine.engineState,
         EngineState.running,
@@ -295,7 +324,8 @@ void main() {
     });
 
     tearDownAll(() async {
-      await project.engine.stop();
+      final serviceRegistry = ServiceRegistry.forProject(project.id);
+      await serviceRegistry.projectEngineController.stop();
       ServiceRegistry.removeProject(project.id);
     });
 
@@ -404,19 +434,19 @@ void main() {
     //   }
     // });
 
-    test('Add a track instrument node and some notes', () async {
+    test('Add a track device and some notes', () async {
       final instrumentTrackId = project.trackOrder.first;
       final instrumentTrack = project.tracks[instrumentTrackId]!;
-      final instrumentNode = ToneGeneratorProcessorModel(
-        nodeId: getId(),
-      ).createNode();
 
       project.execute(
-        SetTrackInstrumentNodeCommand(
-          track: instrumentTrack,
-          instrumentNode: instrumentNode,
+        DeviceAddRemoveCommand.add(
+          project: project,
+          trackId: instrumentTrack.id,
+          device: DeviceDescriptorForCommand(type: DeviceType.toneGenerator),
         ),
       );
+      final instrumentNodeId =
+          instrumentTrack.requireProcessing.devices.single.nodeIds.single;
 
       final command = AddNoteCommand(
         patternID: project.sequence.patterns.keys.first,
@@ -439,10 +469,18 @@ void main() {
       final trackMap = state['tracks'] as Map<String, dynamic>;
       final syncedInstrumentTrack =
           trackMap[instrumentTrackId.toString()] as Map<String, dynamic>;
+      final syncedProcessing =
+          syncedInstrumentTrack['processing'] as Map<String, dynamic>;
+      final syncedDevices = syncedProcessing['devices'] as List<dynamic>;
       expect(
-        syncedInstrumentTrack['instrumentNodeId'],
-        equals(instrumentNode.id),
-        reason: 'The track should reference the instrument node.',
+        syncedDevices,
+        hasLength(1),
+        reason: 'The track should reference the device.',
+      );
+      expect(
+        (syncedDevices.single as Map<String, dynamic>)['nodeIds'],
+        contains(instrumentNodeId),
+        reason: 'The device should own the tone generator node.',
       );
 
       final pattern =

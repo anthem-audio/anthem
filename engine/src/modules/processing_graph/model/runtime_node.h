@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "modules/processing_graph/runtime/audio_buffer_slot_slice.h"
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -38,11 +40,16 @@ enum class RuntimeConnectionDataType : uint8_t {
 };
 
 struct RuntimeConnectionTransferAction {
-  // Precomputed graph-owned buffer indices for a multi-source input. The data
-  // type determines whether sources are summed, copied, or appended.
+  // Precomputed graph-owned buffer references for an input that cannot alias
+  // its source directly. Audio uses slot slices so transfers only touch
+  // channels that belong to the connected ports; control/event use whole buffer
+  // indices.
   RuntimeConnectionDataType dataType;
   size_t destinationBufferIndex = 0;
   std::vector<size_t> sourceBufferIndices;
+
+  AudioBufferSlotSlice destinationAudioSlotSlice;
+  std::vector<AudioBufferSlotSlice> sourceAudioSlotSlices;
 };
 
 struct RuntimeNodeState {
@@ -95,6 +102,11 @@ struct RuntimeNode {
   // Connection-derived buffer operations that must run before this node
   // processes.
   std::vector<RuntimeConnectionTransferAction> connectionTransferActions;
+
+  // Deduplicated logical sample buffer slots touched by this node while it
+  // runs. The executor allocates these slots before processing the node and
+  // releases one node-use after processing completes.
+  std::vector<size_t> sampleBufferSlotIndices;
 
   // Non-owning pointers to nodes owned by the RuntimeGraph.
   std::vector<RuntimeNode*> outgoingConnections;

@@ -18,9 +18,10 @@
 */
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -32,23 +33,47 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' hide TextBox;
+import 'package:logging/logging.dart';
+
+final _log = Logger('main_window_controller');
+
+class CursorOverrideHandle {
+  final MainWindowController _controller;
+  final int _id;
+
+  bool _closed = false;
+
+  CursorOverrideHandle._(this._controller, this._id);
+
+  void close() {
+    if (_closed) {
+      return;
+    }
+
+    _closed = true;
+    _controller._releaseCursorOverride(_id);
+  }
+}
 
 class MainWindowController {
-  void _addProject(ProjectModel project) {
+  final Map<int, MouseCursor> _cursorOverrides = {};
+  int _nextCursorOverrideId = 0;
+
+  ServiceRegistry _addProject(ProjectModel project) {
     final store = AnthemStore.instance;
 
     store.projects[project.id] = project;
     store.projectOrder.add(project.id);
     store.activeProjectId = project.id;
-    ServiceRegistry.initializeProject(project);
+    return ServiceRegistry.initializeProject(project);
   }
 
   // Returns the ID of the new tab
   Future<ProjectId> newProject() async {
     ProjectModel project = ProjectModel.create();
 
-    _addProject(project);
-    await project.engine.start();
+    final serviceRegistry = _addProject(project);
+    await serviceRegistry.projectEngineController.start();
 
     return project.id;
   }
@@ -108,28 +133,33 @@ class MainWindowController {
       initialDirectory: home,
     );
 
-    final String file;
+    final ProjectModel project;
     String? path;
 
-    if (kIsWeb) {
-      final bytes = result?.files.firstOrNull?.bytes;
-      if (bytes == null) return null;
-      file = utf8.decode(bytes);
-    } else {
-      path = result?.files.firstOrNull?.path;
-      if (path == null) return null;
-      file = await File(path).readAsString();
+    try {
+      final Map<String, dynamic> projectJson;
+      if (kIsWeb) {
+        final bytes = result?.files.firstOrNull?.bytes;
+        if (bytes == null) return null;
+        projectJson = await decodeProjectFileBytes(bytes);
+      } else {
+        path = result?.files.firstOrNull?.path;
+        if (path == null) return null;
+        projectJson = await readProjectFile(path);
+      }
+
+      project = ProjectModel.fromJson(projectJson);
+    } catch (error, stackTrace) {
+      _log.warning('Could not load project file.', error, stackTrace);
+      return null;
     }
 
-    final project = ProjectModel.fromJson(
-      json.decode(file) as Map<String, dynamic>,
-    );
-    _addProject(project);
+    final serviceRegistry = _addProject(project);
 
     project.filePath = path;
     project.isDirty = false;
 
-    await project.engine.start();
+    await serviceRegistry.projectEngineController.start();
     return project.id;
   }
 
@@ -143,7 +173,7 @@ class MainWindowController {
     String? path;
 
     if (!kIsWeb) {
-      if (alwaysUseFilePicker) {
+      if (alwaysUseFilePicker || project.filePath == null) {
         path = (await FilePicker.saveFile(
           type: FileType.custom,
           allowedExtensions: ['anthem'],
@@ -203,8 +233,22 @@ class MainWindowController {
       final fileName = await completer.future;
       if (fileName == null) return false;
 
-      final bytes = utf8.encode(json.encode(project.toJson()));
-      await FilePicker.saveFile(fileName: '$fileName.anthem', bytes: bytes);
+      try {
+        final bytes = await encodeProjectFile(project);
+        await FilePicker.saveFile(fileName: '$fileName.anthem', bytes: bytes);
+      } catch (error, stackTrace) {
+        _log.warning('Could not save project file.', error, stackTrace);
+
+        dialogController.showMarkdownDialog(
+          title: 'Save',
+          markdown:
+              'Could not save project:\n\n'
+              '${escapeDialogMarkdown(error.toString())}',
+          buttons: [DialogButton.ok()],
+        );
+
+        return false;
+      }
 
       project.isDirty = false;
       return true;
@@ -216,9 +260,7 @@ class MainWindowController {
         }),
       );
 
-      await File(
-        path!,
-      ).writeAsString(json.encode(project.toJson()), flush: true);
+      await writeProjectFile(path!, project);
 
       project.isDirty = false;
       project.filePath = path;
@@ -226,12 +268,83 @@ class MainWindowController {
     }
   }
 
-  void setCursorOverride(MouseCursor cursor) {
-    ServiceRegistry.mainWindowViewModel.globalCursor = cursor;
+  Future<bool> exportLogs({required DialogController dialogController}) async {
+    if (kIsWeb) {
+      return false;
+    }
+
+    final timestamp = DateTime.now()
+        .toUtc()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .replaceAll('.', '-');
+
+    var path = await FilePicker.saveFile(
+      dialogTitle: 'Export Anthem logs',
+      fileName: 'anthem-logs-$timestamp.zip',
+      type: FileType.custom,
+      allowedExtensions: ['zip'],
+    );
+
+    if (path == null) {
+      return false;
+    }
+
+    if (!path.toLowerCase().endsWith('.zip')) {
+      path = '$path.zip';
+    }
+
+    try {
+      final exportedPath = await AnthemLogManager.instance.exportLogs(
+        outputPath: path,
+      );
+
+      dialogController.showMarkdownDialog(
+        title: 'Export logs',
+        markdown: 'Saved logs to:\n\n${escapeDialogMarkdown(exportedPath)}',
+        buttons: [DialogButton.ok()],
+      );
+
+      return true;
+    } catch (error, stackTrace) {
+      _log.warning('Could not export logs.', error, stackTrace);
+
+      dialogController.showMarkdownDialog(
+        title: 'Export logs',
+        markdown:
+            'Could not export logs:\n\n${escapeDialogMarkdown(error.toString())}',
+        buttons: [DialogButton.ok()],
+      );
+
+      return false;
+    }
   }
 
-  void clearCursorOverride() {
-    ServiceRegistry.mainWindowViewModel.globalCursor = MouseCursor.defer;
+  CursorOverrideHandle pushCursorOverride(MouseCursor cursor) {
+    final id = _nextCursorOverrideId++;
+    _cursorOverrides[id] = cursor;
+    _syncCursorOverride();
+
+    return CursorOverrideHandle._(this, id);
+  }
+
+  void _releaseCursorOverride(int id) {
+    _cursorOverrides.remove(id);
+    _syncCursorOverride();
+  }
+
+  void _syncCursorOverride() {
+    ServiceRegistry.mainWindowViewModel.globalCursor =
+        _cursorOverrides.values.lastOrNull ?? MouseCursor.defer;
+  }
+
+  void clearAllCursorOverrides() {
+    _cursorOverrides.clear();
+    _syncCursorOverride();
+  }
+
+  void dispose() {
+    clearAllCursorOverrides();
   }
 }
 

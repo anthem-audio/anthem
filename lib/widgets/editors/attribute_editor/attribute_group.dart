@@ -75,7 +75,6 @@ class _AttributeGroupState extends State<AttributeGroup>
       crossAxisAlignment: .stretch,
       children: [
         MouseRegion(
-          cursor: SystemMouseCursors.click,
           onEnter: (e) {
             setState(() {
               headerHovered = true;
@@ -142,7 +141,7 @@ class _AttributeGroupState extends State<AttributeGroup>
         SizeTransition(
           sizeFactor: heightAnimation,
           axis: .vertical,
-          axisAlignment: -1,
+          alignment: AlignmentDirectional.topStart,
           child: Container(
             // SizeTransition contains Align, which un-does the column cross
             // axis expand, so we need to force a horizontal expansion here

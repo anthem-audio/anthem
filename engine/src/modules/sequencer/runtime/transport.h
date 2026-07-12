@@ -103,6 +103,10 @@ public:
   bool isPlaying = false;
   double playheadStart = 0.0;
 
+  // Used by render playback, where the play command itself must define the
+  // exact first tick even if prior stopped-position updates were coalesced.
+  bool forcePlayheadStartOnPlay = false;
+
   PlayheadJumpEvent playheadJumpEventForStart;
 
   bool hasLoop = false;
@@ -110,16 +114,30 @@ public:
   double loopStart;
   double loopEnd;
 
+  // Defines a one-shot playback stop. Offline processing uses this to shorten
+  // the block that reaches the stop without converting musical time outside
+  // the transport.
+  std::optional<double> scheduledStopTick;
+
   TransportConfig() {
     loopStart = 0.0;
     loopEnd = std::numeric_limits<double>::infinity();
   }
 };
 
+struct TransportBlockResult {
+  bool didReachScheduledStop = false;
+};
+
 class Transport : private juce::Timer {
 private:
   JUCE_LEAK_DETECTOR(Transport)
   friend class TransportTest;
+
+  struct ProcessingBlockPlan {
+    int numSamples = 0;
+    bool stopsPlaybackAtEnd = false;
+  };
 
   // The audio thread reads the transport state from here
   RingBuffer<TransportConfig*, 64> configBuffer;
@@ -148,8 +166,12 @@ private:
   void clearLoopPoints();
 
   void sendConfigToAudioThread();
+  ProcessingBlockPlan rt_createProcessingBlockPlan(int requestedSamples) const;
 
   double sampleRate;
+  std::optional<TransportConfig> configBeforeRenderPlayback;
+  std::optional<ProcessingBlockPlan> rt_activeBlockPlan;
+  bool rt_shouldStopSequenceNotesAtNextBlockStart = false;
 public:
   // The transport config.
   //
@@ -214,12 +236,20 @@ public:
     updateLoopPoints(true);
   }
 
+  // Temporarily replaces normal transport playback state with a render range.
+  // Render playback intentionally ignores loop points and must be paired with
+  // endRenderPlayback().
+  void beginRenderPlayback(int64_t activeSequenceId, double startTick, double stopTick);
+  void endRenderPlayback();
+
   // Analogous to `prepareToProcess()` in AnthemProcessor, this must be called
   // before the transport is used for processing.
   void prepareToProcess();
 
-  // Must be called at the start of every processing block.
-  void rt_prepareForProcessingBlock();
+  // Begins a processing block, applies pending transport changes, and returns
+  // the authoritative number of samples to process. Must be paired with
+  // rt_endProcessingBlock().
+  int rt_beginProcessingBlock(int requestedSamples);
 
   // Gets the exact number of ticks that the playhead would advance by, given
   // the current buffer size in samples.
@@ -229,11 +259,9 @@ public:
   // transport code.
   sequencer_timing::TimingParams rt_getTimingParams() const;
 
-  // Advances the playhead by the given number of samples.
-  //
-  // This should be called at the end of every processing block, and should be
-  // the last thing done within the transport for the block.
-  void rt_advancePlayhead(int samples);
+  // Ends the active processing block. This advances the playhead, commits any
+  // scheduled stop, and must be the last transport operation for the block.
+  TransportBlockResult rt_endProcessingBlock();
 
   // Returns the value that the playhead would have after advancing it by the
   // given number of samples.

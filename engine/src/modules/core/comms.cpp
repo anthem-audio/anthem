@@ -245,30 +245,17 @@ void Comms::init() {
 
 #else // #ifdef __EMSCRIPTEN__
 
-  auto parameters = juce::JUCEApplicationBase::getCommandLineParameters();
-
-  auto spaceIndex = parameters.indexOfChar(' ');
-
-  if (spaceIndex == -1) {
-    juce::Logger::writeToLog(
-        juce::String("Invalid command line args: ") + parameters + " - Exiting...");
-    juce::JUCEApplicationBase::quit();
-    return;
-  }
-
-  auto portStr = parameters.substring(0, spaceIndex);
-  auto idStr = parameters.substring(spaceIndex + 1);
+  auto portStr = juce::SystemStats::getEnvironmentVariable("ANTHEM_ENGINE_PORT", "").trim();
+  auto idStr = juce::SystemStats::getEnvironmentVariable("ANTHEM_ENGINE_ID", "").trim();
 
   if (portStr.length() == 0) {
-    juce::Logger::writeToLog(
-        juce::String("Port was not provided. Args: ") + parameters + " - Exiting...");
+    juce::Logger::writeToLog("ANTHEM_ENGINE_PORT was not provided in the environment. Exiting...");
     juce::JUCEApplicationBase::quit();
     return;
   }
 
   if (idStr.length() == 0) {
-    juce::Logger::writeToLog(
-        juce::String("Engine ID was not provided. Args: ") + parameters + " - Exiting...");
+    juce::Logger::writeToLog("ANTHEM_ENGINE_ID was not provided in the environment. Exiting...");
     juce::JUCEApplicationBase::quit();
     return;
   }

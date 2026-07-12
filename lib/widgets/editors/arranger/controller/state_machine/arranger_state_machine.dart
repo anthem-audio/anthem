@@ -20,34 +20,53 @@
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/arranger_clip_clone.dart';
+import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/commands/pattern_commands.dart';
+import 'package:anthem/logic/commands/pattern_automation_commands.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/arrangement/arrangement.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/automation_point.dart';
+import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/time_signature.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_title_text.dart'
+    show clipTitleHeight;
+import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
+import 'package:anthem/widgets/editors/shared/canvas_annotation_set.dart';
 import 'package:anthem/widgets/editors/shared/editor_state_machine.dart';
+import 'package:anthem/widgets/editors/shared/helpers/snap_delta.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 part 'create_clip_state.dart';
+part 'automation_point_move_state.dart';
+part 'automation_tension_change_state.dart';
 part 'clip_move_state.dart';
 part 'clip_resize_state.dart';
 part 'selection_box_state.dart';
-part 'snap_delta.dart';
 
 enum ArrangerModifierKey { ctrl, alt, shift }
 
 enum ArrangerCancelTrigger { escapeKey }
 
+enum ArrangerPointerButton { primary, secondary, other }
+
 enum ArrangerInteractionFamily {
   selectionBox,
   createClip,
+  automationPointMove,
+  automationTensionChange,
   clipResize,
   clipMove,
 }
@@ -104,26 +123,49 @@ class ArrangerStateMachine
 
   void onPointerDown(PointerDownEvent event) {
     data.handlePointerDown(event);
+    final pointerContext = pointerContextAt(event.localPosition);
+    if (data.activePointerId == event.pointer) {
+      data.activePointerDownContext = pointerContext;
+      data.activePointerContext = pointerContext;
+    }
+
+    _syncPointerDerivedViewState();
     emitSignal(_ArrangerPointerDownSignal(event));
     notifyDataUpdated();
   }
 
   void onPointerMove(PointerEvent event) {
     data.handlePointerMove(event);
+    if (data.activePointerId == event.pointer) {
+      data.activePointerContext = pointerContextAt(event.localPosition);
+    }
+
+    _syncPointerDerivedViewState();
     emitSignal(_ArrangerPointerMoveSignal(event));
     notifyDataUpdated();
   }
 
   void onPointerUp(PointerEvent event) {
-    final activePrimaryPointerId = data.activePrimaryPointerId;
+    final activePointerId = data.activePointerId;
+    final activePointerButton = data.activePointerButton;
+    final pointerContext = pointerContextAt(event.localPosition);
+    if (activePointerId == event.pointer) {
+      data.activePointerContext = pointerContext;
+    }
 
     data.handlePointerUp(event);
+    _refreshHoverContext();
+    _syncPointerDerivedViewState();
     emitSignal(_ArrangerPointerUpSignal(event));
     notifyDataUpdated();
 
-    if (activePrimaryPointerId == event.pointer) {
+    if (activePointerId == event.pointer) {
+      data.activePointerDownContext = null;
+      data.activePointerContext = null;
       // Exiting states need to see cancellation until their onExit has run.
-      data.clearInteractionCancellation();
+      if (activePointerButton == ArrangerPointerButton.primary) {
+        data.clearInteractionCancellation();
+      }
     }
   }
 
@@ -134,11 +176,15 @@ class ArrangerStateMachine
 
   void onExit(PointerExitEvent event) {
     data.handleExit(event);
+    _refreshHoverContext();
+    _syncPointerDerivedViewState();
     notifyDataUpdated();
   }
 
   void onHover(PointerHoverEvent event) {
     data.handleHover(event);
+    _refreshHoverContext();
+    _syncPointerDerivedViewState();
     notifyDataUpdated();
   }
 
@@ -180,11 +226,17 @@ class ArrangerStateMachine
     data.renderedTimeViewEnd = timeViewEnd;
     data.renderedVerticalScrollPosition = verticalScrollPosition;
 
+    _refreshHoverContext();
+    _refreshActivePointerContext();
+    _syncPointerDerivedViewState();
     emitSignal(const _ArrangerViewTransformChangedSignal());
     notifyDataUpdated();
   }
 
   void onTrackLayoutChanged() {
+    _refreshHoverContext();
+    _refreshActivePointerContext();
+    _syncPointerDerivedViewState();
     emitSignal(const _ArrangerTrackLayoutChangedSignal());
   }
 
@@ -214,10 +266,14 @@ class ArrangerStateMachine
     return timeSignature;
   }
 
-  List<DivisionChange> divisionChanges() {
+  List<DivisionChange> divisionChanges({
+    Snap? snap,
+    double minPixelsPerSection = minorMinPixels,
+  }) {
     return getDivisionChanges(
       viewWidthInPixels: data.viewSize.width,
-      snap: AutoSnap(),
+      minPixelsPerSection: minPixelsPerSection,
+      snap: snap ?? AutoSnap(),
       defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: arrangementTimeSignatureChanges(),
       ticksPerQuarter: project.sequence.ticksPerQuarter,
@@ -226,90 +282,82 @@ class ArrangerStateMachine
     );
   }
 
-  ArrangerStateMachine._({
-    required super.data,
-    required super.idleState,
-    required super.states,
-    required this.project,
-    required this.viewModel,
-    required this.controller,
-  });
-
-  factory ArrangerStateMachine.create({
-    required ProjectModel project,
-    required ArrangerViewModel viewModel,
-    required ArrangerController controller,
-  }) {
-    final data = ArrangerStateMachineData()
-      ..renderedTimeViewStart = viewModel.timeView.start
-      ..renderedTimeViewEnd = viewModel.timeView.end
-      ..renderedVerticalScrollPosition = viewModel.verticalScrollPosition;
-    final idleState = ArrangerIdleState();
-    final dragState = ArrangerDragState(idleState);
-    final createClipState = ArrangerCreateClipState(dragState);
-    final clipMoveState = ArrangerClipMoveState(dragState);
-    final clipResizeState = ArrangerClipResizeState(dragState);
-    final selectionBoxState = ArrangerSelectionBoxState(dragState);
-    final states = [
-      idleState,
-      dragState,
-      createClipState,
-      clipMoveState,
-      clipResizeState,
-      selectionBoxState,
-    ];
-
-    return ArrangerStateMachine._(
-      data: data,
-      idleState: idleState,
-      states: states,
-      project: project,
-      viewModel: viewModel,
-      controller: controller,
+  ArrangerPointerContext pointerContextAt(Offset position) {
+    final hitTestResult = viewModel.hitTestContent(position);
+    return ArrangerPointerContext(
+      position: position,
+      hitTestResult: hitTestResult,
+      target: _pointerTargetForHitTestResult(hitTestResult),
     );
   }
-}
 
-/// Shared base for the arranger's leaf (non-idle, non-drag-parent) states.
-///
-/// Every concrete leaf state needs access to the same five handles (the state
-/// machine, its interaction data, the project, and the arranger's view model
-/// and controller), plus a small set of helpers for the work those states do
-/// repeatedly (resolving the clip under a point, looking up the active
-/// arrangement's clips, converting a pixel drag into a snapped tick delta).
-/// Hosting them here keeps each leaf focused on its interaction-specific
-/// logic.
-abstract class _ArrangerLeafState
-    extends EditorStateMachineState<ArrangerStateMachineData> {
-  _ArrangerLeafState([super.parentState]);
+  ArrangerPointerTarget _pointerTargetForHitTestResult(
+    ArrangerHitTestResult hitTestResult,
+  ) {
+    final clipHit = hitTestResult.clip;
+    final isAutomationClipBody = clipHit != null
+        ? _isAutomationClipBodyHit(clipHit)
+        : false;
 
-  /// The owning state machine, cast to its concrete type.
-  ArrangerStateMachine get arrangerStateMachine =>
-      stateMachine as ArrangerStateMachine;
-
-  /// The state machine's input data: active pointers and their positions,
-  /// modifier key state, the rendered time view, and cancellation flag.
-  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
-
-  ProjectModel get project => arrangerStateMachine.project;
-  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
-  ArrangerController get controller => arrangerStateMachine.controller;
-
-  /// Returns the clip ID for whatever was rendered at the cursor, preferring
-  /// the clip body, then falling back to the resize handle (which overhangs
-  /// the clip's right edge). Returns `null` if the cursor is over empty
-  /// arranger canvas.
-  Id? clipIdFromContentUnderCursor(ArrangerContentUnderCursor content) {
-    return content.clip?.metadata ?? content.resizeHandle?.metadata.id;
+    return ArrangerPointerTarget(
+      clipHit: clipHit,
+      isAutomationClipContent: isAutomationClipBody,
+      resizeHandle: hitTestResult.resizeHandle,
+      automationHandleAnnotation: hitTestResult.automationHandle,
+    );
   }
 
-  /// Convenience wrapper for the common
-  /// `clipIdFromContentUnderCursor(viewModel.getContentUnderCursor(...))`
-  /// pattern used by click handlers and hit-testing.
-  Id? clipIdAtPoint(Offset position) {
-    return clipIdFromContentUnderCursor(
-      viewModel.getContentUnderCursor(position),
-    );
+  bool _isAutomationClipBodyHit(CanvasAnnotationHit<Id> clipHit) {
+    final arrangementData = activeArrangementWithClips();
+    final clip = arrangementData?.clips[clipHit.annotation.metadata];
+    final isAutomationClip =
+        clip != null && project.tracks[clip.trackId]?.isAutomationLane == true;
+    final clipPaintHeight = clipHit.annotation.rect.height + 1;
+
+    return isAutomationClip &&
+        shouldRenderClipContent(clipPaintHeight) &&
+        clipHit.offset.dy >= clipTitleHeight;
+  }
+
+  void _refreshHoverContext() {
+    final hoveredPointer = data.hoveredPointer;
+    data.hoverContext = hoveredPointer == null
+        ? null
+        : pointerContextAt(Offset(hoveredPointer.x, hoveredPointer.y));
+  }
+
+  void _refreshActivePointerContext() {
+    final activePointer = data.activePointer;
+    data.activePointerContext = activePointer == null
+        ? null
+        : pointerContextAt(Offset(activePointer.x, activePointer.y));
+  }
+
+  void _syncPointerDerivedViewState() {
+    _syncClipWithAutomationHandles();
+    _syncAutomationHandleHoverState();
+  }
+
+  void _syncClipWithAutomationHandles() {
+    final pointerContext = data.activePointerId != null
+        ? data.activePointerDownContext
+        : data.hoverContext;
+    final nextClipId = pointerContext?.automationClipContentClipId;
+
+    if (viewModel.clipWithAutomationHandles != nextClipId) {
+      viewModel.clipWithAutomationHandles = nextClipId;
+    }
+  }
+
+  void _syncAutomationHandleHoverState() {
+    final pointerContext = data.activePointerId != null
+        ? data.activePointerDownContext
+        : data.hoverContext;
+    final nextHoveredHandle = pointerContext?.automationHandle;
+
+    if (viewModel.hoveredAutomationHandle != nextHoveredHandle) {
+      viewModel.hoveredAutomationHandle = nextHoveredHandle;
+    }
   }
 
   /// Resolves the currently active arrangement alongside its clips map.
@@ -334,6 +382,188 @@ abstract class _ArrangerLeafState
       clips: arrangement.clips.nonObservableInner,
     );
   }
+
+  ArrangerStateMachine._({
+    required super.data,
+    required super.idleState,
+    required super.states,
+    required this.project,
+    required this.viewModel,
+    required this.controller,
+  });
+
+  factory ArrangerStateMachine.create({
+    required ProjectModel project,
+    required ArrangerViewModel viewModel,
+    required ArrangerController controller,
+  }) {
+    final data = ArrangerStateMachineData()
+      ..renderedTimeViewStart = viewModel.timeRange.start
+      ..renderedTimeViewEnd = viewModel.timeRange.end
+      ..renderedVerticalScrollPosition = viewModel.verticalScrollPosition;
+    final idleState = ArrangerIdleState();
+    final dragState = ArrangerDragState(idleState);
+    final createClipState = ArrangerCreateClipState(dragState);
+    final automationPointMoveState = ArrangerAutomationPointMoveState(
+      dragState,
+    );
+    final automationTensionChangeState = ArrangerAutomationTensionChangeState(
+      dragState,
+    );
+    final clipMoveState = ArrangerClipMoveState(dragState);
+    final clipResizeState = ArrangerClipResizeState(dragState);
+    final selectionBoxState = ArrangerSelectionBoxState(dragState);
+    final states = [
+      idleState,
+      dragState,
+      createClipState,
+      automationPointMoveState,
+      automationTensionChangeState,
+      clipMoveState,
+      clipResizeState,
+      selectionBoxState,
+    ];
+
+    return ArrangerStateMachine._(
+      data: data,
+      idleState: idleState,
+      states: states,
+      project: project,
+      viewModel: viewModel,
+      controller: controller,
+    );
+  }
+}
+
+typedef ArrangerResizeHandleAnnotation =
+    CanvasAnnotation<({Id id, ResizeAreaType type})>;
+
+Rect _automationClipContentRectForHit(CanvasAnnotationHit<Id> clipHit) {
+  final clipRect = clipHit.annotation.rect;
+  return Rect.fromLTRB(
+    clipRect.left,
+    clipRect.top + clipTitleHeight,
+    clipRect.right,
+    clipRect.bottom,
+  );
+}
+
+class ArrangerPointerContext {
+  final Offset position;
+  final ArrangerHitTestResult hitTestResult;
+  final ArrangerPointerTarget target;
+
+  const ArrangerPointerContext({
+    required this.position,
+    required this.hitTestResult,
+    required this.target,
+  });
+
+  Id? get hoveredClipId => target.hoveredClipId;
+  Id? get selectableClipId => target.selectableClipId;
+  Id? get movableClipId => target.movableClipId;
+  Id? get automationClipContentClipId => target.automationClipContentClipId;
+  Rect? get automationClipContentRect => target.automationClipContentRect;
+  AutomationHandleAnnotation? get automationHandle => target.automationHandle;
+  ArrangerResizeHandleAnnotation? get resizeHandleTarget =>
+      target.resizeHandleTarget;
+}
+
+class ArrangerPointerTarget {
+  final CanvasAnnotationHit<Id>? clipHit;
+  final bool isAutomationClipContent;
+  final ArrangerResizeHandleAnnotation? resizeHandle;
+  final CanvasAnnotation<AutomationHandleAnnotation>?
+  automationHandleAnnotation;
+
+  const ArrangerPointerTarget({
+    this.clipHit,
+    this.isAutomationClipContent = false,
+    this.resizeHandle,
+    this.automationHandleAnnotation,
+  });
+
+  Id? get clipId => clipHit?.annotation.metadata;
+
+  bool get isEmpty =>
+      clipHit == null &&
+      resizeHandle == null &&
+      automationHandleAnnotation == null;
+
+  AutomationHandleAnnotation? get automationHandle =>
+      automationHandleAnnotation?.metadata;
+
+  bool get isAutomationPointHandle =>
+      automationHandle?.kind == AutomationHandleKind.point;
+
+  bool get hasAutomationClipContent =>
+      isAutomationClipContent || automationHandleAnnotation != null;
+
+  Id? get hoveredClipId => clipId ?? resizeHandle?.metadata.id;
+
+  Id? get selectableClipId {
+    if (isAutomationPointHandle) {
+      return null;
+    }
+
+    return clipId ?? resizeHandle?.metadata.id;
+  }
+
+  Id? get movableClipId {
+    if (automationHandleAnnotation != null) {
+      return null;
+    }
+
+    return selectableClipId;
+  }
+
+  Id? get automationClipContentClipId {
+    if (!hasAutomationClipContent) {
+      return null;
+    }
+
+    return clipId ?? automationHandle?.clipId;
+  }
+
+  Rect? get automationClipContentRect {
+    final hit = clipHit;
+    if (!hasAutomationClipContent || hit == null) {
+      return null;
+    }
+
+    return _automationClipContentRectForHit(hit);
+  }
+
+  ArrangerResizeHandleAnnotation? get resizeHandleTarget {
+    if (automationHandleAnnotation != null) {
+      return null;
+    }
+
+    return resizeHandle;
+  }
+}
+
+/// Shared base for the arranger's leaf (non-idle, non-drag-parent) states.
+///
+/// Every concrete leaf state needs access to the same five handles (the state
+/// machine, its interaction data, the project, and the arranger's view model
+/// and controller), plus a helper for converting a pixel drag into a snapped
+/// tick delta.
+abstract class _ArrangerLeafState
+    extends EditorStateMachineState<ArrangerStateMachineData> {
+  _ArrangerLeafState([super.parentState]);
+
+  /// The owning state machine, cast to its concrete type.
+  ArrangerStateMachine get arrangerStateMachine =>
+      stateMachine as ArrangerStateMachine;
+
+  /// The state machine's input data: active pointers and their positions,
+  /// modifier key state, the rendered time view, and cancellation flag.
+  ArrangerStateMachineData get interactionState => arrangerStateMachine.data;
+
+  ProjectModel get project => arrangerStateMachine.project;
+  ArrangerViewModel get viewModel => arrangerStateMachine.viewModel;
+  ArrangerController get controller => arrangerStateMachine.controller;
 
   /// Converts a pixel drag (start/current X in local coordinates) into tick
   /// times plus a drag delta.
@@ -369,6 +599,57 @@ abstract class _ArrangerLeafState
 
     return (startTime: startTime, currentTime: currentTime, delta: delta);
   }
+
+  ({
+    ClipModel clip,
+    PatternModel pattern,
+    AutomationPointModel point,
+    int pointIndex,
+  })?
+  resolveAutomationPointForHandle({
+    required Id clipId,
+    required AutomationHandleAnnotation automationHandle,
+  }) {
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
+    if (arrangementData == null) {
+      return null;
+    }
+
+    final clip = arrangementData.clips[clipId];
+    if (clip == null) {
+      return null;
+    }
+
+    final track = project.tracks[clip.trackId];
+    if (track?.isAutomationLane != true) {
+      return null;
+    }
+
+    final pattern = project.sequence.patterns[clip.patternId];
+    if (pattern == null) {
+      return null;
+    }
+
+    final points = pattern.automation.points;
+    var pointIndex = automationHandle.pointIndex;
+    if (pointIndex < 0 ||
+        pointIndex >= points.length ||
+        points[pointIndex].id != automationHandle.pointId) {
+      pointIndex = points.indexWhere(
+        (point) => point.id == automationHandle.pointId,
+      );
+      if (pointIndex == -1) {
+        return null;
+      }
+    }
+
+    return (
+      clip: clip,
+      pattern: pattern,
+      point: points[pointIndex],
+      pointIndex: pointIndex,
+    );
+  }
 }
 
 /// An immutable snapshot of a pointer position in local arranger coordinates.
@@ -402,22 +683,30 @@ class ArrangerStateMachineData {
 
   Map<int, ActivePointer> pointers = {};
   ActivePointer? hoveredPointer;
-  int? activePrimaryPointerId;
-  ActivePointer? activePrimaryPointerDownPosition;
+  ArrangerPointerContext? hoverContext;
+  int? activePointerId;
+  ArrangerPointerButton? activePointerButton;
+  ActivePointer? activePointerDownPosition;
+  ArrangerPointerContext? activePointerDownContext;
+  ArrangerPointerContext? activePointerContext;
 
   double renderedTimeViewStart = 0;
   double renderedTimeViewEnd = 0;
   double renderedVerticalScrollPosition = 0;
   bool isCurrentInteractionCanceled = false;
 
-  ActivePointer? get activePrimaryPointer {
-    final pointerId = activePrimaryPointerId;
+  ActivePointer? get activePointer {
+    final pointerId = activePointerId;
     if (pointerId == null) {
       return null;
     }
 
     return pointers[pointerId];
   }
+
+  bool get isPrimaryPointerActive =>
+      activePointerId != null &&
+      activePointerButton == ArrangerPointerButton.primary;
 
   bool isModifierPressed(ArrangerModifierKey modifier) {
     return switch (modifier) {
@@ -442,9 +731,14 @@ class ArrangerStateMachineData {
     final pos = pointerEvent.localPosition;
     pointers[pointerEvent.pointer] = ActivePointer(pos.dx, pos.dy);
 
-    if (pointerEvent.buttons & kPrimaryMouseButton == kPrimaryMouseButton) {
-      activePrimaryPointerId = pointerEvent.pointer;
-      activePrimaryPointerDownPosition = ActivePointer(pos.dx, pos.dy);
+    final button = _pointerButtonForEvent(pointerEvent);
+    if (activePointerId == null || button == ArrangerPointerButton.primary) {
+      activePointerId = pointerEvent.pointer;
+      activePointerButton = button;
+      activePointerDownPosition = ActivePointer(pos.dx, pos.dy);
+    }
+
+    if (button == ArrangerPointerButton.primary) {
       clearInteractionCancellation();
     }
   }
@@ -473,9 +767,10 @@ class ArrangerStateMachineData {
     final pointerId = event.pointer;
     pointers.remove(pointerId);
 
-    if (activePrimaryPointerId == pointerId) {
-      activePrimaryPointerId = null;
-      activePrimaryPointerDownPosition = null;
+    if (activePointerId == pointerId) {
+      activePointerId = null;
+      activePointerButton = null;
+      activePointerDownPosition = null;
     }
   }
 
@@ -483,6 +778,7 @@ class ArrangerStateMachineData {
 
   void handleExit(PointerExitEvent e) {
     hoveredPointer = null;
+    hoverContext = null;
   }
 
   void handleHover(PointerHoverEvent e) {
@@ -496,6 +792,18 @@ class ArrangerStateMachineData {
   void clearInteractionCancellation() {
     isCurrentInteractionCanceled = false;
   }
+
+  ArrangerPointerButton _pointerButtonForEvent(PointerDownEvent event) {
+    if (event.buttons & kPrimaryMouseButton == kPrimaryMouseButton) {
+      return ArrangerPointerButton.primary;
+    }
+
+    if (event.buttons & kSecondaryMouseButton == kSecondaryMouseButton) {
+      return ArrangerPointerButton.secondary;
+    }
+
+    return ArrangerPointerButton.other;
+  }
 }
 
 class ArrangerIdleState extends _ArrangerLeafState {
@@ -507,8 +815,8 @@ class ArrangerIdleState extends _ArrangerLeafState {
 
   ActivePointer? lastHoveredPointer;
 
-  int? _activePrimaryPointerId;
-  Offset? _activePrimaryPointerDownPosition;
+  int? _primaryClickPointerId;
+  Offset? _primaryClickDownPosition;
 
   DateTime? _lastPrimaryClickTimestamp;
   Offset? _lastPrimaryClickPosition;
@@ -520,64 +828,59 @@ class ArrangerIdleState extends _ArrangerLeafState {
   void updateHover() {
     lastHoveredPointer = interactionState.hoveredPointer?.clone();
 
-    final coordinates = lastHoveredPointer == null
-        ? null
-        : (lastHoveredPointer!.x, lastHoveredPointer!.y);
-    updateHoveredClip(coordinates);
-    updateArrangerCursor(coordinates);
-    updateSystemMouseCursor(coordinates);
+    updateHoveredClip();
+    updateArrangerCursor();
+    updateSystemMouseCursor();
   }
 
-  void updateHoveredClip((double x, double y)? coordinates) {
-    if (coordinates == null) {
+  void updateHoveredClip() {
+    final hoverContext = interactionState.hoverContext;
+    if (hoverContext == null) {
       viewModel.hoveredClip = null;
       return;
     }
 
-    final (x, y) = coordinates;
-    final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
-    final hoveredClipId = clipIdFromContentUnderCursor(contentUnderCursor);
+    final hoveredClipId = hoverContext.hoveredClipId;
     if (viewModel.hoveredClip != hoveredClipId) {
       viewModel.hoveredClip = hoveredClipId;
     }
   }
 
-  void updateArrangerCursor((double x, double y)? coordinates) {
-    if (coordinates == null) {
+  void updateArrangerCursor() {
+    final hoverContext = interactionState.hoverContext;
+    if (hoverContext == null) {
       viewModel.hoverIndicatorPosition = null;
       return;
     }
 
-    final (x, y) = coordinates;
-    final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
-    if (contentUnderCursor.clip != null ||
-        contentUnderCursor.resizeHandle != null) {
+    if (!hoverContext.target.isEmpty) {
       viewModel.hoverIndicatorPosition = null;
       return;
     }
 
+    final position = hoverContext.position;
     final adjustedY =
-        y +
+        position.dy +
         interactionState.renderedVerticalScrollPosition -
         viewModel.verticalScrollPosition;
 
-    final fractionalTrackIndex = viewModel.trackPositionCalculator
-        .getTrackIndexFromPosition(adjustedY);
-
-    if (fractionalTrackIndex.isInfinite) {
+    final rowHit = viewModel.trackPositionCalculator.rowAtPosition(adjustedY);
+    if (rowHit == null) {
       viewModel.hoverIndicatorPosition = null;
       return;
     }
 
-    final trackId = viewModel.trackPositionCalculator.trackIndexToId(
-      fractionalTrackIndex.floor(),
-    );
+    final rowId = _rowIdForCursor(rowHit.row);
+    if (rowId == null) {
+      viewModel.hoverIndicatorPosition = null;
+      return;
+    }
 
     final offset = pixelsToTime(
       timeViewStart: interactionState.renderedTimeViewStart,
       timeViewEnd: interactionState.renderedTimeViewEnd,
       viewPixelWidth: interactionState.viewSize.width,
-      pixelOffsetFromLeft: x,
+      pixelOffsetFromLeft: position.dx,
     );
 
     final targetTime = interactionState.isAltPressed
@@ -588,18 +891,28 @@ class ArrangerIdleState extends _ArrangerLeafState {
             round: true,
           );
 
-    viewModel.hoverIndicatorPosition = (targetTime.toDouble(), trackId);
+    viewModel.hoverIndicatorPosition = (
+      offset: targetTime.toDouble(),
+      rowId: rowId,
+    );
   }
 
-  void updateSystemMouseCursor((double x, double y)? coordinates) {
-    if (coordinates == null) {
+  Id? _rowIdForCursor(ArrangerRow row) {
+    return switch (row) {
+      TrackArrangerRow(:final trackId) =>
+        project.tracks.containsKey(trackId) ? trackId : null,
+      PhantomAutomationArrangerRow() => row.rowId,
+    };
+  }
+
+  void updateSystemMouseCursor() {
+    final hoverContext = interactionState.hoverContext;
+    if (hoverContext == null) {
       viewModel.mouseCursor = MouseCursor.defer;
       return;
     }
 
-    final (x, y) = coordinates;
-    final contentUnderCursor = viewModel.getContentUnderCursor(Offset(x, y));
-    final newCursor = contentUnderCursor.resizeHandle != null
+    final newCursor = hoverContext.resizeHandleTarget != null
         ? SystemMouseCursors.resizeLeftRight
         : MouseCursor.defer;
 
@@ -608,9 +921,9 @@ class ArrangerIdleState extends _ArrangerLeafState {
     }
   }
 
-  void _clearActivePrimaryPointerTracking() {
-    _activePrimaryPointerId = null;
-    _activePrimaryPointerDownPosition = null;
+  void _clearPrimaryClickTracking() {
+    _primaryClickPointerId = null;
+    _primaryClickDownPosition = null;
   }
 
   void _handlePointerDownSignal(_ArrangerPointerDownSignal signal) {
@@ -622,7 +935,13 @@ class ArrangerIdleState extends _ArrangerLeafState {
     final isSecondaryClick =
         pointerEvent.buttons & kSecondaryMouseButton == kSecondaryMouseButton;
     if (isSecondaryClick) {
-      handleSecondaryClick(pointerEvent);
+      final pointerContext = interactionState.activePointerDownContext;
+      if (interactionState.activePointerId == pointerEvent.pointer &&
+          interactionState.activePointerButton ==
+              ArrangerPointerButton.secondary &&
+          pointerContext != null) {
+        handleSecondaryClick(pointerEvent, pointerContext);
+      }
       return;
     }
 
@@ -649,8 +968,8 @@ class ArrangerIdleState extends _ArrangerLeafState {
       doubleClickPressed = true;
     }
 
-    _activePrimaryPointerId = pointerEvent.pointer;
-    _activePrimaryPointerDownPosition = pointerEvent.localPosition;
+    _primaryClickPointerId = pointerEvent.pointer;
+    _primaryClickDownPosition = pointerEvent.localPosition;
   }
 
   void _handlePointerUpSignal(_ArrangerPointerUpSignal signal) {
@@ -659,7 +978,7 @@ class ArrangerIdleState extends _ArrangerLeafState {
     final pointerEvent = signal.event;
     if (pointerEvent is PointerCancelEvent) {
       doubleClickPressed = false;
-      _clearActivePrimaryPointerTracking();
+      _clearPrimaryClickTracking();
       return;
     }
 
@@ -667,8 +986,8 @@ class ArrangerIdleState extends _ArrangerLeafState {
       return;
     }
 
-    final activePointerId = _activePrimaryPointerId;
-    final pointerDownPosition = _activePrimaryPointerDownPosition;
+    final activePointerId = _primaryClickPointerId;
+    final pointerDownPosition = _primaryClickDownPosition;
     if (activePointerId == null || pointerDownPosition == null) {
       return;
     }
@@ -681,9 +1000,14 @@ class ArrangerIdleState extends _ArrangerLeafState {
 
     final clickPosition = pointerEvent.localPosition;
     final clickTravelDistance = (clickPosition - pointerDownPosition).distance;
-    _clearActivePrimaryPointerTracking();
+    _clearPrimaryClickTracking();
 
     if (clickTravelDistance > _maxClickTravelDistance) {
+      return;
+    }
+
+    final pointerContext = interactionState.activePointerContext;
+    if (pointerContext == null) {
       return;
     }
 
@@ -692,17 +1016,21 @@ class ArrangerIdleState extends _ArrangerLeafState {
     if (wasDoubleClickPressed) {
       _lastPrimaryClickTimestamp = null;
       _lastPrimaryClickPosition = null;
-      handleDoubleClick(pointerEvent);
+      handleDoubleClick(pointerContext);
       return;
     }
 
     _lastPrimaryClickTimestamp = clickTimestamp;
     _lastPrimaryClickPosition = clickPosition;
-    handleSingleClick(pointerEvent);
+    handleSingleClick(pointerContext);
   }
 
-  void handleSingleClick(PointerEvent event) {
-    final clipId = clipIdAtPoint(event.localPosition);
+  void handleSingleClick(ArrangerPointerContext pointerContext) {
+    if (pointerContext.target.isAutomationPointHandle) {
+      return;
+    }
+
+    final clipId = pointerContext.selectableClipId;
 
     if (clipId == null) {
       viewModel.selectedClips.clear();
@@ -727,8 +1055,19 @@ class ArrangerIdleState extends _ArrangerLeafState {
       ..add(clipId);
   }
 
-  void handleSecondaryClick(PointerEvent event) {
-    final clipId = clipIdAtPoint(event.localPosition);
+  void handleSecondaryClick(
+    PointerEvent event,
+    ArrangerPointerContext pointerContext,
+  ) {
+    if (_resetAutomationTension(pointerContext)) {
+      return;
+    }
+
+    if (pointerContext.target.isAutomationPointHandle) {
+      return;
+    }
+
+    final clipId = pointerContext.selectableClipId;
     if (clipId == null) {
       return;
     }
@@ -754,8 +1093,20 @@ class ArrangerIdleState extends _ArrangerLeafState {
     );
   }
 
-  void handleDoubleClick(PointerEvent event) {
-    final clipId = clipIdAtPoint(event.localPosition);
+  void handleDoubleClick(ArrangerPointerContext pointerContext) {
+    if (_resetAutomationTension(pointerContext)) {
+      return;
+    }
+
+    if (_deleteAutomationPoint(pointerContext)) {
+      return;
+    }
+
+    if (pointerContext.target.isAutomationPointHandle) {
+      return;
+    }
+
+    final clipId = pointerContext.selectableClipId;
     if (clipId == null) {
       return;
     }
@@ -764,11 +1115,80 @@ class ArrangerIdleState extends _ArrangerLeafState {
         viewModel.selectedClips.contains(clipId) &&
         viewModel.selectedClips.length > 1;
 
-    final didOpenEditor = controller.openClipInPianoRoll(clipId);
+    final didOpenEditor = controller.openClipInEditor(clipId);
 
     if (didOpenEditor && !isPartOfMultiSelection) {
       viewModel.selectedClips.remove(clipId);
     }
+  }
+
+  bool _resetAutomationTension(ArrangerPointerContext pointerContext) {
+    final automationHandle = pointerContext.automationHandle;
+    if (automationHandle?.kind != AutomationHandleKind.tensionHandle) {
+      return false;
+    }
+
+    final clipId = pointerContext.automationClipContentClipId;
+    if (clipId == null) {
+      return true;
+    }
+
+    final target = resolveAutomationPointForHandle(
+      clipId: clipId,
+      automationHandle: automationHandle!,
+    );
+    if (target == null) {
+      return true;
+    }
+
+    final oldTension = target.point.tension;
+    viewModel.lastInteractedAutomationTension = 0;
+    if (oldTension == 0) {
+      return true;
+    }
+
+    project.execute(
+      SetAutomationPointTensionCommand(
+        patternID: target.pattern.id,
+        pointIndex: target.pointIndex,
+        oldTension: oldTension,
+        newTension: 0,
+      ),
+    );
+
+    return true;
+  }
+
+  bool _deleteAutomationPoint(ArrangerPointerContext pointerContext) {
+    final automationHandle = pointerContext.automationHandle;
+    if (automationHandle?.kind != AutomationHandleKind.point) {
+      return false;
+    }
+
+    final clipId = pointerContext.automationClipContentClipId;
+    if (clipId == null) {
+      return true;
+    }
+
+    final target = resolveAutomationPointForHandle(
+      clipId: clipId,
+      automationHandle: automationHandle!,
+    );
+    if (target == null) {
+      return true;
+    }
+
+    project.execute(
+      DeleteAutomationPointCommand(
+        patternID: target.pattern.id,
+        point: target.point,
+        index: target.pointIndex,
+      ),
+    );
+
+    viewModel.hoveredAutomationHandle = null;
+
+    return true;
   }
 
   @override
@@ -810,25 +1230,36 @@ class ArrangerDragState extends _ArrangerLeafState {
   int? activePointerId;
   ActivePointer? dragStartPosition;
   ActivePointer? dragCurrentPosition;
-  ArrangerContentUnderCursor? dragStartContentUnderCursor;
+  ArrangerPointerContext? dragStartContext;
+  ArrangerPointerContext? dragCurrentContext;
   bool hasCrossedActivationDistance = false;
 
-  bool get isDragPointerActive =>
-      interactionState.activePrimaryPointerId != null;
+  bool get isDragPointerActive => interactionState.isPrimaryPointerActive;
 
   bool get _isDragStartOverResizeHandle =>
-      dragStartContentUnderCursor?.resizeHandle != null;
+      dragStartContext?.resizeHandleTarget != null;
 
-  ({Id id, ResizeAreaType type})? get dragStartResizeHandle =>
-      dragStartContentUnderCursor?.resizeHandle?.metadata;
+  bool get _isDragStartOverMovableClip =>
+      dragStartContext?.movableClipId != null;
 
-  bool get _isDragStartOverClip => dragStartContentUnderCursor?.clip != null;
+  bool get _isDragStartOverEmpty => dragStartContext?.target.isEmpty ?? false;
 
-  Id? get dragStartClipId => dragStartContentUnderCursor?.clip?.metadata;
+  bool get _isDragStartOverAutomationClipContent {
+    return dragStartContext?.automationClipContentClipId != null;
+  }
 
-  Id? get dragStartResizeHandleClipId => dragStartResizeHandle?.id;
+  bool get _isDragStartOverAutomationPointHandle {
+    return dragStartContext?.automationHandle?.kind ==
+        AutomationHandleKind.point;
+  }
 
-  ResizeAreaType? get dragStartResizeAreaType => dragStartResizeHandle?.type;
+  bool get _isDragStartOverAutomationTensionHandle {
+    return dragStartContext?.automationHandle?.kind ==
+        AutomationHandleKind.tensionHandle;
+  }
+
+  bool get _isDragStartOverAutomationHandle =>
+      dragStartContext?.automationHandle != null;
 
   bool get _isSelectionModeActive =>
       interactionState.isCtrlPressed || viewModel.tool == EditorTool.select;
@@ -838,15 +1269,20 @@ class ArrangerDragState extends _ArrangerLeafState {
   /// Priority (first match wins):
   ///
   /// 1. No interaction if the pointer is up or the drag has been canceled.
-  /// 2. Selection box - when Ctrl is held or the select tool is active, once
-  ///    the pointer has moved past the activation distance.
-  /// 3. Create clip - on a double-click press over empty canvas with the pencil
+  /// 2. Automation point move - on an automation point handle, or on a
+  ///    double-click press over automation clip content that is not a handle.
+  /// 3. Automation tension change - activation distance crossed over an
+  ///    automation tension handle.
+  /// 4. Selection box - when Ctrl is held or the select tool is active, once
+  ///    the pointer has moved past the activation distance, unless the drag
+  ///    started on an automation point handle.
+  /// 5. Create clip - on a double-click press over empty canvas with the pencil
   ///    tool. Deliberately fires *before* the activation distance so a
   ///    double-click-release (no drag) can still insert at a point.
-  /// 4. Clip resize - activation distance crossed with the drag start over a
+  /// 6. Clip resize - activation distance crossed with the drag start over a
   ///    resize handle.
-  /// 5. Clip move - activation distance crossed with the drag start over a clip
-  ///    body (not on its resize handle).
+  /// 7. Clip move - activation distance crossed with the drag start over a
+  ///    movable clip target (not on its resize handle).
   ///
   /// Anything else returns null, meaning "stay in drag-parent".
   ArrangerInteractionFamily? get interactionFamily {
@@ -854,13 +1290,30 @@ class ArrangerDragState extends _ArrangerLeafState {
       return null;
     }
 
-    if (hasCrossedActivationDistance && _isSelectionModeActive) {
+    if (_isDragStartOverAutomationPointHandle &&
+        !parentState.doubleClickPressed) {
+      return ArrangerInteractionFamily.automationPointMove;
+    }
+
+    if (parentState.doubleClickPressed &&
+        _isDragStartOverAutomationClipContent &&
+        !_isDragStartOverAutomationHandle) {
+      return ArrangerInteractionFamily.automationPointMove;
+    }
+
+    if (hasCrossedActivationDistance &&
+        _isDragStartOverAutomationTensionHandle) {
+      return ArrangerInteractionFamily.automationTensionChange;
+    }
+
+    if (hasCrossedActivationDistance &&
+        _isSelectionModeActive &&
+        !_isDragStartOverAutomationPointHandle) {
       return ArrangerInteractionFamily.selectionBox;
     }
 
     if (parentState.doubleClickPressed &&
-        !_isDragStartOverClip &&
-        !_isDragStartOverResizeHandle &&
+        _isDragStartOverEmpty &&
         viewModel.tool == EditorTool.pencil) {
       return ArrangerInteractionFamily.createClip;
     }
@@ -871,42 +1324,25 @@ class ArrangerDragState extends _ArrangerLeafState {
 
     if (hasCrossedActivationDistance &&
         !_isDragStartOverResizeHandle &&
-        _isDragStartOverClip) {
+        _isDragStartOverMovableClip) {
       return ArrangerInteractionFamily.clipMove;
     }
 
     return null;
   }
 
-  bool get _isClipPressEligible =>
-      isDragPointerActive &&
-      !interactionState.isCurrentInteractionCanceled &&
-      !_isSelectionModeActive &&
-      (_isDragStartOverClip || _isDragStartOverResizeHandle);
-
-  Id? get _pressedClipCandidateId => dragStartContentUnderCursor == null
-      ? null
-      : clipIdFromContentUnderCursor(dragStartContentUnderCursor!);
-
-  void _syncPressedClip() {
-    final nextPressedClip = _isClipPressEligible
-        ? _pressedClipCandidateId
-        : null;
-    if (viewModel.pressedClip != nextPressedClip) {
-      viewModel.pressedClip = nextPressedClip;
-    }
-  }
-
   void _syncDragParameters() {
-    final nextActivePointerId = interactionState.activePrimaryPointerId;
+    final nextActivePointerId = interactionState.isPrimaryPointerActive
+        ? interactionState.activePointerId
+        : null;
 
     if (nextActivePointerId == null) {
       activePointerId = null;
       dragStartPosition = null;
       dragCurrentPosition = null;
-      dragStartContentUnderCursor = null;
+      dragStartContext = null;
+      dragCurrentContext = null;
       hasCrossedActivationDistance = false;
-      _syncPressedClip();
       return;
     }
 
@@ -916,22 +1352,19 @@ class ArrangerDragState extends _ArrangerLeafState {
     // fixed origin; interactionFamily / leaf states read these as-is.
     if (activePointerId != nextActivePointerId) {
       activePointerId = nextActivePointerId;
-      dragStartPosition = interactionState.activePrimaryPointerDownPosition
-          ?.clone();
-      dragCurrentPosition = interactionState.activePrimaryPointer?.clone();
-      final start = dragStartPosition;
-      dragStartContentUnderCursor = start == null
-          ? null
-          : viewModel.getContentUnderCursor(Offset(start.x, start.y));
+      dragStartPosition = interactionState.activePointerDownPosition?.clone();
+      dragCurrentPosition = interactionState.activePointer?.clone();
+      dragStartContext = interactionState.activePointerDownContext;
+      dragCurrentContext = interactionState.activePointerContext;
       hasCrossedActivationDistance = false;
     }
 
-    dragCurrentPosition = interactionState.activePrimaryPointer?.clone();
+    dragCurrentPosition = interactionState.activePointer?.clone();
+    dragCurrentContext = interactionState.activePointerContext;
 
     final start = dragStartPosition;
     final current = dragCurrentPosition;
     if (start == null || current == null) {
-      _syncPressedClip();
       return;
     }
 
@@ -947,8 +1380,6 @@ class ArrangerDragState extends _ArrangerLeafState {
       hasCrossedActivationDistance =
           distanceSquared >= _dragActivationDistance * _dragActivationDistance;
     }
-
-    _syncPressedClip();
   }
 
   @override
@@ -969,14 +1400,14 @@ class ArrangerDragState extends _ArrangerLeafState {
       from: ArrangerIdleState,
       to: ArrangerDragState,
       canTransition: ({required data, required event, required currentState}) =>
-          interactionState.activePrimaryPointerId != null,
+          interactionState.isPrimaryPointerActive,
     ),
     .new(
       name: 'Exit drag state',
       from: ArrangerDragState,
       to: ArrangerIdleState,
       canTransition: ({required data, required event, required currentState}) =>
-          interactionState.activePrimaryPointerId == null,
+          !interactionState.isPrimaryPointerActive,
     ),
   ];
 

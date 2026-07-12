@@ -19,6 +19,7 @@
 
 import 'dart:convert';
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/license_text.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -26,12 +27,15 @@ import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
+import 'package:anthem/version.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
+import 'package:anthem/widgets/main_window/render_dialog.dart';
+import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show showLicensePage;
@@ -39,6 +43,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
+
+const _macOSWindowControlPadding = 86.0;
 
 class WindowHeader extends StatefulWidget {
   final ProjectId selectedTabId;
@@ -57,6 +63,7 @@ class WindowHeader extends StatefulWidget {
 class _WindowHeaderState extends State<WindowHeader> {
   @override
   Widget build(BuildContext context) {
+    final isMacOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
     final Widget windowHandleAndControls;
 
     if (kIsWeb) {
@@ -64,7 +71,9 @@ class _WindowHeaderState extends State<WindowHeader> {
         color: AnthemTheme.panel.backgroundLight,
       );
     } else {
-      windowHandleAndControls = _WindowHandleAndControls();
+      windowHandleAndControls = _WindowHandleAndControls(
+        showWindowButtons: !isMacOS,
+      );
     }
 
     return SizedBox(
@@ -72,6 +81,7 @@ class _WindowHeaderState extends State<WindowHeader> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          if (isMacOS) const SizedBox(width: _macOSWindowControlPadding),
           Padding(
             padding: const EdgeInsets.only(bottom: 1),
             child: Row(children: [const EngineIndicator(), _ApplicationMenu()]),
@@ -98,7 +108,9 @@ class _WindowHeaderState extends State<WindowHeader> {
 }
 
 class _WindowHandleAndControls extends StatelessWidget {
-  const _WindowHandleAndControls();
+  final bool showWindowButtons;
+
+  const _WindowHandleAndControls({required this.showWindowButtons});
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +121,7 @@ class _WindowHandleAndControls extends StatelessWidget {
           color: AnthemTheme.panel.backgroundLight,
           child: Align(
             alignment: Alignment.centerRight,
-            child: _WindowButtons(),
+            child: showWindowButtons ? _WindowButtons() : null,
           ),
         ),
       ),
@@ -246,7 +258,6 @@ class _TabState extends State<_Tab> {
     final controller = ServiceRegistry.mainWindowController;
 
     final result = MouseRegion(
-      cursor: widget.isSelected ? MouseCursor.defer : SystemMouseCursors.click,
       onEnter: (_) {
         setState(() {
           isHovered = true;
@@ -354,16 +365,18 @@ class _ApplicationMenu extends StatefulObserverWidget {
 }
 
 class _ApplicationMenuState extends State<_ApplicationMenu> {
-  AnthemMenuController? _fileMenuController;
-  AnthemMenuController? _editMenuController;
-  AnthemMenuController? _helpMenuController;
+  final _fileMenuController = AnthemMenuController();
+  final _editMenuController = AnthemMenuController();
+  final _helpMenuController = AnthemMenuController();
+
+  late final _menuControllerGroup = AnthemMenuControllerGroup([
+    _fileMenuController,
+    _editMenuController,
+    _helpMenuController,
+  ]);
 
   @override
   Widget build(BuildContext context) {
-    final fileMenuController = _fileMenuController ?? AnthemMenuController();
-    final editMenuController = _editMenuController ?? AnthemMenuController();
-    final helpMenuController = _helpMenuController ?? AnthemMenuController();
-
     final mainWindowController = ServiceRegistry.mainWindowController;
 
     final activeProjectId = AnthemStore.instance.activeProjectId;
@@ -420,6 +433,38 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
             );
           },
         ),
+        if (!kIsWeb)
+          AnthemMenuItem(
+            text: 'Render...',
+            hint: 'Render the active project',
+            disabled: activeProject.engineState != EngineState.running,
+            onSelected: () async {
+              if (activeProject.engineState != EngineState.running) return;
+
+              final renderDialogController = RenderDialogController.forProject(
+                activeProject,
+              );
+              await renderDialogController.loadSavedState();
+              final pickedFile = await renderDialogController.chooseFile();
+              if (!pickedFile) {
+                return;
+              }
+
+              if (activeProject.engineState != EngineState.running) return;
+
+              dialogController.showDialog(
+                title: 'Render',
+                content: RenderDialog(controller: renderDialogController),
+                buttons: [
+                  DialogButton(
+                    text: 'Render',
+                    shouldCloseDialog: false,
+                    onPress: renderDialogController.render,
+                  ),
+                ],
+              );
+            },
+          ),
         if (kDebugMode) Separator(),
         if (kDebugMode)
           AnthemMenuItem(
@@ -493,15 +538,26 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
     );
     final helpMenuDef = MenuDef(
       children: [
+        if (!kIsWeb)
+          AnthemMenuItem(
+            text: 'Export logs...',
+            onSelected: () {
+              mainWindowController.exportLogs(
+                dialogController: dialogController,
+              );
+            },
+          ),
+        if (!kIsWeb) Separator(),
         AnthemMenuItem(
           text: 'About...',
           onSelected: () {
             final dialogController = ServiceRegistry.dialogController;
-            dialogController.showTextDialog(
-              text:
-                  'Version: Pre-alpha\n\n'
-                  'UI design and icons copyright (C) 2021 - 2026 Budislav Stepanov\n'
-                  'Code copyright (C) 2021 - 2026 Joshua Wade',
+            dialogController.showMarkdownDialog(
+              markdown:
+                  '**Version:** $anthemVersion\n\n'
+                  '**UI design and icons:** Copyright (C) 2021 - 2026 '
+                  'Budislav Stepanov\n\n'
+                  '**Code:** Copyright (C) 2021 - 2026 Joshua Wade',
               title: 'About Anthem',
               buttons: [
                 DialogButton(
@@ -517,9 +573,9 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                   text: 'License',
                   shouldCloseDialog: false,
                   onPress: () {
-                    dialogController.showTextDialog(
+                    dialogController.showMarkdownDialog(
                       title: 'License',
-                      text: agpl,
+                      markdown: escapeDialogMarkdownPreformattedText(agpl),
                       buttons: [DialogButton.ok()],
                     );
                   },
@@ -531,7 +587,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                     showLicensePage(
                       context: context,
                       applicationName: 'Anthem',
-                      applicationVersion: 'Pre-alpha',
+                      applicationVersion: anthemVersion,
                     );
                   },
                 ),
@@ -557,41 +613,44 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Menu(
-                menuController: fileMenuController,
+                menuController: _fileMenuController,
+                menuControllerGroup: _menuControllerGroup,
                 menuDef: fileMenuDef,
                 offset: const Offset(0, 1),
                 child: _ApplicationMenuButton(
                   text: 'File',
                   isFirst: true,
                   onPress: () {
-                    fileMenuController.open();
+                    _fileMenuController.toggle();
                   },
                 ),
               ),
+              Container(width: 1, color: AnthemTheme.panel.border),
               Menu(
-                menuController: editMenuController,
+                menuController: _editMenuController,
+                menuControllerGroup: _menuControllerGroup,
                 menuDef: editMenuDef,
                 offset: const Offset(0, 1),
-                child: Container(width: 1, color: AnthemTheme.panel.border),
+                child: _ApplicationMenuButton(
+                  text: 'Edit',
+                  onPress: () {
+                    _editMenuController.toggle();
+                  },
+                ),
               ),
-              _ApplicationMenuButton(
-                text: 'Edit',
-                onPress: () {
-                  editMenuController.open();
-                },
-              ),
+              Container(width: 1, color: AnthemTheme.panel.border),
               Menu(
-                menuController: helpMenuController,
+                menuController: _helpMenuController,
+                menuControllerGroup: _menuControllerGroup,
                 menuDef: helpMenuDef,
                 offset: const Offset(0, 1),
-                child: Container(width: 1, color: AnthemTheme.panel.border),
-              ),
-              _ApplicationMenuButton(
-                text: 'Help',
-                isLast: true,
-                onPress: () {
-                  helpMenuController.open();
-                },
+                child: _ApplicationMenuButton(
+                  text: 'Help',
+                  isLast: true,
+                  onPress: () {
+                    _helpMenuController.toggle();
+                  },
+                ),
               ),
             ],
           ),

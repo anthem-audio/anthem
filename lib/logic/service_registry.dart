@@ -19,8 +19,14 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/clipboard/clipboard_service.dart';
+import 'package:anthem/logic/device_controller.dart';
+import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/main_window_controller.dart';
+import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/project_engine_controller.dart';
+import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -28,23 +34,20 @@ import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/automation_editor/controller/automation_editor_controller.dart';
-import 'package:anthem/widgets/editors/automation_editor/view_model.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/main_window/main_window_view_model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+export 'package:anthem/logic/disposable_service.dart';
 
 /// A registry for storing and retrieving services by key.
 ///
 /// Project-scoped controllers and view models are owned here and created lazily
 /// on first access. Widgets should consume them from this registry rather than
 /// constructing or disposing them directly.
-abstract interface class DisposableService {
-  void dispose();
-}
-
 typedef ServiceFactory<T extends Object> =
     T Function(ProjectModel project, ServiceRegistry registry);
 
@@ -81,8 +84,30 @@ final projectControllerService = ServiceDef<ProjectController>(
   disposePriority: 100,
 );
 
+final projectEngineControllerService = ServiceDef<ProjectEngineController>(
+  create: (project, registry) =>
+      ProjectEngineController(project, registry.use(projectControllerService)),
+  disposePriority: 110,
+);
+
+final projectRenderControllerService = ServiceDef<ProjectRenderController>(
+  create: (project, registry) =>
+      ProjectRenderController(project, registry.use(projectControllerService)),
+  disposePriority: 100,
+);
+
 final trackControllerService = ServiceDef<TrackController>(
   create: (project, _) => TrackController(project),
+  disposePriority: 100,
+);
+
+final deviceControllerService = ServiceDef<DeviceController>(
+  create: (project, _) => DeviceController(project),
+  disposePriority: 100,
+);
+
+final parameterControllerService = ServiceDef<ParameterController>(
+  create: (project, _) => ParameterController(project),
   disposePriority: 100,
 );
 
@@ -90,7 +115,7 @@ final arrangerViewModelService = ServiceDef<ArrangerViewModel>(
   create: (project, _) => ArrangerViewModel(
     project: project,
     baseTrackHeight: 53,
-    timeView: TimeRange(0, 3072),
+    timeRange: TimeRange(0, 3072),
   ),
 );
 
@@ -106,7 +131,7 @@ final pianoRollViewModelService = ServiceDef<PianoRollViewModel>(
   create: (_, _) => PianoRollViewModel(
     keyHeight: 14.0,
     keyValueAtTop: 63.95,
-    timeView: TimeRange(0, 3072),
+    timeRange: TimeRange(0, 3072),
   ),
 );
 
@@ -117,19 +142,6 @@ final pianoRollControllerService = ServiceDef<PianoRollController>(
   ),
   disposePriority: 100,
 );
-
-final automationEditorViewModelService = ServiceDef<AutomationEditorViewModel>(
-  create: (_, _) => AutomationEditorViewModel(timeView: TimeRange(0, 3072)),
-);
-
-final automationEditorControllerService =
-    ServiceDef<AutomationEditorController>(
-      create: (project, registry) => AutomationEditorController(
-        viewModel: registry.use(automationEditorViewModelService),
-        project: project,
-      ),
-      disposePriority: 100,
-    );
 
 class ProjectServiceFactoryOverrides {
   static const empty = ProjectServiceFactoryOverrides._(<Object, Object>{});
@@ -167,7 +179,13 @@ class ServiceRegistry {
       MainWindowController();
   static final MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
   static final DialogController dialogController = DialogController();
+  static final ClipboardService clipboard = ClipboardService();
   static late final ScreenOverlayController screenOverlayController;
+  static SharedPreferencesAsync? _preferences;
+
+  static SharedPreferencesAsync get preferences {
+    return _preferences ??= SharedPreferencesAsync();
+  }
 
   static final Map<ProjectId, ServiceRegistry> _serviceRegistriesByProjectId =
       {};
@@ -226,19 +244,22 @@ class ServiceRegistry {
   }
 
   ProjectController get projectController => use(projectControllerService);
+  ProjectEngineController get projectEngineController =>
+      use(projectEngineControllerService);
+  ProjectRenderController get projectRenderController =>
+      use(projectRenderControllerService);
   TrackController get trackController => use(trackControllerService);
+  DeviceController get deviceController => use(deviceControllerService);
+  ParameterController get parameterController =>
+      use(parameterControllerService);
   ProjectEntityIdAllocator get idAllocator => use(idAllocatorService);
   ArrangerController get arrangerController => use(arrangerControllerService);
   PianoRollController get pianoRollController =>
       use(pianoRollControllerService);
-  AutomationEditorController get automationEditorController =>
-      use(automationEditorControllerService);
 
   ProjectViewModel get projectViewModel => use(projectViewModelService);
   ArrangerViewModel get arrangerViewModel => use(arrangerViewModelService);
   PianoRollViewModel get pianoRollViewModel => use(pianoRollViewModelService);
-  AutomationEditorViewModel get automationEditorViewModel =>
-      use(automationEditorViewModelService);
 
   final ProjectModel project;
   final ProjectServiceFactoryOverrides _overrides;

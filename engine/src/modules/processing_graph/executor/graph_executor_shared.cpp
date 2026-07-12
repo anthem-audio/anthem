@@ -33,40 +33,13 @@ GraphExecutorState::GraphExecutorState(RuntimeGraph& runtimeGraph) : runtimeGrap
 
 namespace {
 
-void rt_writeParametersToControlInputs(
-    NodeProcessContext& context, float sampleRate, int numSamples) {
-  jassert(sampleRate > 0.0f);
-  const auto secondsPerSample = sampleRate > 0.0f ? 1.0f / sampleRate : 0.0f;
-
-  for (auto& parameter : context.rt_getInputParameterBindings()) {
-    if (!parameter.rt_shouldWriteToBuffer) {
-      continue;
-    }
-
-    auto value = parameter.value->load();
-    jassert(juce::jlimit(0.0f, 1.0f, value) == value);
-
-    if (parameter.rt_smoother->getTargetValue() != value) {
-      parameter.rt_smoother->setTargetValue(value);
-    }
-
-    auto& controlBuffer = *parameter.rt_buffer;
-    for (int sample = 0; sample < numSamples; ++sample) {
-      parameter.rt_smoother->process(secondsPerSample);
-      auto currentValue = parameter.rt_smoother->getCurrentValue();
-      jassert(juce::jlimit(0.0f, 1.0f, currentValue) == currentValue);
-      controlBuffer.setSample(0, sample, currentValue);
-    }
-  }
-}
-
 void rt_applyControlConnectionTransfer(const RuntimeConnectionTransferAction& action,
     GraphProcessContext& graphProcessContext,
     int numSamples) {
   jassert(!action.sourceBufferIndices.empty());
 
-  auto& source = graphProcessContext.getControlBuffer(action.sourceBufferIndices.back());
-  auto& destination = graphProcessContext.getControlBuffer(action.destinationBufferIndex);
+  auto source = graphProcessContext.rt_getControlBufferView(action.sourceBufferIndices.back());
+  auto destination = graphProcessContext.rt_getControlBufferView(action.destinationBufferIndex);
   jassert(source.getNumChannels() == destination.getNumChannels());
   jassert(source.getNumSamples() == destination.getNumSamples());
   jassert(numSamples <= source.getNumSamples());
@@ -96,27 +69,31 @@ void rt_applyEventConnectionTransfer(
 void rt_applyAudioConnectionTransfer(const RuntimeConnectionTransferAction& action,
     GraphProcessContext& graphProcessContext,
     int numSamples) {
-  auto& destination = graphProcessContext.getAudioBuffer(action.destinationBufferIndex);
-  jassert(!action.sourceBufferIndices.empty());
+  const auto& destinationSlice = action.destinationAudioSlotSlice;
+  auto destination = graphProcessContext.rt_getAudioBufferView(destinationSlice);
+  jassert(!action.sourceAudioSlotSlices.empty());
   jassert(numSamples <= destination.getNumSamples());
+  jassert(destinationSlice.channelCount > 0);
+  jassert(destinationSlice.channelCount <= destination.getNumChannels());
 
 #if JUCE_ASSERTIONS_ENABLED
-  for (const auto sourceBufferIndex : action.sourceBufferIndices) {
-    const auto& source = graphProcessContext.getAudioBuffer(sourceBufferIndex);
-    jassert(source.getNumChannels() == destination.getNumChannels());
+  for (const auto& sourceSlice : action.sourceAudioSlotSlices) {
+    const auto source = graphProcessContext.rt_getAudioBufferView(sourceSlice);
     jassert(source.getNumSamples() == destination.getNumSamples());
     jassert(numSamples <= source.getNumSamples());
+    jassert(sourceSlice.channelCount == destinationSlice.channelCount);
+    jassert(sourceSlice.channelCount <= source.getNumChannels());
   }
 #endif
 
-  for (int channel = 0; channel < destination.getNumChannels(); ++channel) {
+  for (int channel = 0; channel < destinationSlice.channelCount; ++channel) {
     auto* destinationSamples = destination.getWritePointer(channel);
 
     for (int sample = 0; sample < numSamples; ++sample) {
       float sum = 0.0f;
 
-      for (const auto sourceBufferIndex : action.sourceBufferIndices) {
-        const auto& source = graphProcessContext.getAudioBuffer(sourceBufferIndex);
+      for (const auto& sourceSlice : action.sourceAudioSlotSlices) {
+        const auto source = graphProcessContext.rt_getAudioBufferView(sourceSlice);
         sum += source.getReadPointer(channel)[sample];
       }
 
@@ -148,6 +125,19 @@ void rt_prepareGraphForBlock(GraphExecutorState& state) {
     runtimeNode.rt_state.rt_remainingUpstreamNodes.store(
         runtimeNode.upstreamNodeCount, std::memory_order_relaxed);
   }
+
+  if (state.runtimeGraph.graphProcessContext != nullptr) {
+    state.runtimeGraph.graphProcessContext->rt_prepareSampleArenaForBlock();
+  }
+}
+
+void rt_prepareNodeForProcessing(GraphExecutorState& state, RuntimeNode& node) {
+  if (state.runtimeGraph.graphProcessContext == nullptr) {
+    return;
+  }
+
+  state.runtimeGraph.graphProcessContext->rt_allocateSampleBufferSlotsForNode(
+      node.sampleBufferSlotIndices);
 }
 
 void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples) {
@@ -159,8 +149,6 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
   }
 
   node.nodeProcessContext->clearBuffers();
-  rt_writeParametersToControlInputs(
-      *node.nodeProcessContext, state.runtimeGraph.sampleRate, numSamples);
 
   for (const auto& connectionTransferAction : node.connectionTransferActions) {
     rt_applyConnectionTransfer(
@@ -170,6 +158,15 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
   if (node.processor != nullptr) {
     node.processor->process(*node.nodeProcessContext, numSamples);
   }
+}
+
+void rt_finishNodeProcessing(GraphExecutorState& state, RuntimeNode& node) {
+  if (state.runtimeGraph.graphProcessContext == nullptr) {
+    return;
+  }
+
+  state.runtimeGraph.graphProcessContext->rt_releaseSampleBufferSlotUsesForNode(
+      node.sampleBufferSlotIndices);
 }
 
 bool rt_decrementRemainingUpstreamNodes(RuntimeNode& node) {

@@ -20,6 +20,7 @@
 #pragma once
 
 #include "generated/lib/model/processing_graph/processors/db_meter.h"
+#include "modules/core/visualization/visualization_broker.h"
 #include "modules/core/visualization/visualization_provider.h"
 #include "modules/processing_graph/processor/processor.h"
 #include "modules/processors/db_meter_accumulator.h"
@@ -50,12 +51,12 @@ public:
 
 class DbMeterProcessor : public Processor, public DbMeterProcessorModelBase {
 private:
-  std::vector<std::shared_ptr<DbMeterVisualizationProvider>> channelProviders;
-  std::vector<std::string> registeredVisualizationIds;
+  std::vector<RegisteredVisualizationProvider<DbMeterVisualizationProvider>> visualizationProviders;
   DbMeterAccumulator rt_accumulator;
-  std::shared_ptr<std::atomic<int64_t>> rt_publishEverySamples;
+  std::unique_ptr<std::atomic<int64_t>> publishEverySamplesStorage;
+  std::atomic<int64_t>* rt_publishEverySamples = nullptr;
 
-  void syncVisualizationProviders();
+  void registerVisualizationProviders();
   void unregisterVisualizationProviders();
 public:
   DbMeterProcessor(const DbMeterProcessorModelImpl& _impl);
@@ -67,7 +68,7 @@ public:
   DbMeterProcessor(DbMeterProcessor&&) noexcept = default;
   DbMeterProcessor& operator=(DbMeterProcessor&&) noexcept = default;
 
-  void prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 
   void initialize(

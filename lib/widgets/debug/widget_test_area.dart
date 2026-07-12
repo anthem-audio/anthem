@@ -21,8 +21,12 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/menu_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/radio_button_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/slider_widget_test_screen.dart';
 import 'package:flutter/widgets.dart';
 
@@ -31,6 +35,26 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-button',
     title: 'Button',
     description: 'Tests for lib/widgets/basic/button.dart',
+  ),
+  menu(
+    key: 'widget-test-screen-menu',
+    title: 'Menu',
+    description: 'Tests for lib/widgets/basic/menu',
+  ),
+  checkbox(
+    key: 'widget-test-screen-checkbox',
+    title: 'Checkbox',
+    description: 'Tests for lib/widgets/basic/checkbox.dart',
+  ),
+  radioButton(
+    key: 'widget-test-screen-radio-button',
+    title: 'Radio button',
+    description: 'Tests for lib/widgets/basic/radio_button.dart',
+  ),
+  dialog(
+    key: 'widget-test-screen-dialog',
+    title: 'Dialog',
+    description: 'Tests for lib/widgets/basic/dialog',
   ),
   meter(
     key: 'widget-test-screen-meter',
@@ -104,11 +128,47 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             },
           ),
           TreeViewItemModel(
+            key: WidgetTestScreenId.menu.key,
+            label: labelForScreen(WidgetTestScreenId.menu),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.menu;
+              });
+            },
+          ),
+          TreeViewItemModel(
+            key: WidgetTestScreenId.checkbox.key,
+            label: labelForScreen(WidgetTestScreenId.checkbox),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.checkbox;
+              });
+            },
+          ),
+          TreeViewItemModel(
+            key: WidgetTestScreenId.radioButton.key,
+            label: labelForScreen(WidgetTestScreenId.radioButton),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.radioButton;
+              });
+            },
+          ),
+          TreeViewItemModel(
             key: WidgetTestScreenId.meter.key,
             label: labelForScreen(WidgetTestScreenId.meter),
             onClick: () {
               setState(() {
                 selectedScreen = WidgetTestScreenId.meter;
+              });
+            },
+          ),
+          TreeViewItemModel(
+            key: WidgetTestScreenId.dialog.key,
+            label: labelForScreen(WidgetTestScreenId.dialog),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.dialog;
               });
             },
           ),
@@ -144,6 +204,10 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
   Widget _getScreenWidget() {
     return switch (selectedScreen) {
       WidgetTestScreenId.button => const ButtonWidgetTestScreen(),
+      WidgetTestScreenId.menu => const MenuWidgetTestScreen(),
+      WidgetTestScreenId.checkbox => const CheckboxWidgetTestScreen(),
+      WidgetTestScreenId.radioButton => const RadioButtonWidgetTestScreen(),
+      WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
       WidgetTestScreenId.slider => const SliderWidgetTestScreen(),
@@ -233,7 +297,7 @@ WidgetTestScreenId? tryParseWidgetTestScreenId(String value) {
   final normalized = value.trim().toLowerCase();
 
   for (final screen in WidgetTestScreenId.values) {
-    if (screen.name == normalized) {
+    if (screen.name.toLowerCase() == normalized) {
       return screen;
     }
   }

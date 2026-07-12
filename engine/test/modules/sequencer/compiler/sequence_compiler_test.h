@@ -70,7 +70,6 @@ class SequenceCompilerTest : public juce::UnitTest {
     return std::make_shared<PatternModel>(PatternModelImpl{
         .id = patternId,
         .name = "Pattern",
-        .color = nullptr,
         .notes = noteMap,
         .automation = nullptr,
         .timeSignatureChanges =

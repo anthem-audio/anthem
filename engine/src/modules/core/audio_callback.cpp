@@ -19,22 +19,23 @@
 
 #include "audio_callback.h"
 
-#include "modules/core/engine.h"
+#include "modules/audio/audio_block_processor.h"
+#include "modules/audio/audio_session_controller.h"
+#include "project.h"
 
+#include <algorithm>
 #include <stdexcept>
+#include <string>
 
 namespace anthem {
 
-AudioCallback::AudioCallback(Engine* engine) {
-  this->engine = engine;
-
+AudioCallback::AudioCallback(Project& project,
+    AudioBlockProcessor& audioBlockProcessor,
+    AudioSessionController& audioSessionController)
+  : audioBlockProcessor(audioBlockProcessor), audioSessionController(audioSessionController) {
   juce::Logger::writeToLog("AnthemAudioCallback: constructing...");
 
-  if (Engine::getInstance().project == nullptr) {
-    throw std::runtime_error("project model is null");
-  }
-
-  auto& processingGraph = Engine::getInstance().project->processingGraph();
+  auto& processingGraph = project.processingGraph();
   auto masterOutputNodeId = processingGraph->masterOutputNodeId();
 
   juce::Logger::writeToLog(
@@ -60,12 +61,6 @@ AudioCallback::AudioCallback(Engine* engine) {
 
   masterOutputProcessor = masterOutputProcessorSharedPtr.get();
 
-  cpuBurdenProvider = Engine::getInstance().globalVisualizationSources->cpuBurdenProvider.get();
-  playheadPositionProvider =
-      Engine::getInstance().globalVisualizationSources->playheadPositionProvider.get();
-  playheadSequenceIdProvider =
-      Engine::getInstance().globalVisualizationSources->playheadSequenceIdProvider.get();
-
   juce::Logger::writeToLog("AnthemAudioCallback: constructed successfully.");
 }
 
@@ -76,83 +71,42 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
     int numOutputChannels,
     int numSamples,
     [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context) {
-  auto startTime = std::chrono::high_resolution_clock::now();
-
-  auto transport = engine->transport.get();
-
-  // Set up the transport for this processing block
-  transport->rt_prepareForProcessingBlock();
-  const auto blockStartSample = transport->rt_sampleCounter;
-
-  // Tell the sequence store to pick up any sequence updates.
-  engine->sequenceStore->rt_processSequenceChanges(numSamples);
-
-  engine->graphProcessor->rt_process(numSamples);
+  const auto processResult = audioBlockProcessor.processAudioBlock(
+      numSamples, rt_sampleRate, audioSessionController.getAudioProcessingConfigGeneration());
+  jassert(processResult.processedSamples == numSamples);
 
   auto& outputBuffer = masterOutputProcessor->buffer;
 
-  bool badValue = false;
-  float lastBadValue = 0.0f;
+  // A processed graph must provide a master output buffer that matches the
+  // callback block shape.
+  if (processResult.didProcessGraph) {
+    jassert(outputBuffer.getNumChannels() >= numOutputChannels);
+    jassert(outputBuffer.getNumSamples() >= numSamples);
 
-  // The master output node may have an empty buffer if it hasn't been initialized yet
-  if (outputBuffer.getNumChannels() > 0 && outputBuffer.getNumSamples() > 0) {
     for (int channel = 0; channel < numOutputChannels; ++channel) {
       if (outputChannelData[channel] == nullptr) {
         continue;
       }
 
       for (int sample = 0; sample < numSamples; ++sample) {
-        auto sampleValue = outputBuffer.getSample(channel, sample);
-        if (std::isnan(sampleValue) || std::isinf(sampleValue) || sampleValue > 100.0f ||
-            sampleValue < -100.0f) {
-          badValue = true;
-          lastBadValue = sampleValue;
-          sampleValue = 0.0f;
-        }
-        outputChannelData[channel][sample] = sampleValue;
+        outputChannelData[channel][sample] = outputBuffer.getSample(channel, sample);
+      }
+    }
+  } else {
+    for (int channel = 0; channel < numOutputChannels; ++channel) {
+      if (outputChannelData[channel] != nullptr) {
+        std::fill_n(outputChannelData[channel], numSamples, 0.0f);
       }
     }
   }
-
-  // Get ms since epoch
-  auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
-      std::chrono::system_clock::now().time_since_epoch())
-                 .count();
-
-  if (now - lastDebugOutputTime > 2000) {
-    if (badValue) {
-      juce::Logger::writeToLog(
-          "Bad value detected in audio callback. Last bad value: " + juce::String(lastBadValue));
-    }
-    lastDebugOutputTime = now;
-  }
-
-  auto endTime = std::chrono::high_resolution_clock::now();
-
-  auto duration =
-      std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
-  auto durationInSeconds = static_cast<double>(duration) / 1e6;
-  auto cpuBurden = durationInSeconds * this->sampleRate /
-                   static_cast<double>(numSamples); // actual time / total buffer time
-  cpuBurdenProvider->rt_updateCpuBurden(cpuBurden, blockStartSample, numSamples, this->sampleRate);
-
-  playheadPositionProvider->rt_updatePlayheadPosition(
-      *transport, blockStartSample, numSamples, this->sampleRate);
-
-  auto& activeSequenceId = transport->rt_config->activeSequenceId;
-  if (activeSequenceId.has_value()) {
-    playheadSequenceIdProvider->rt_updatePlayheadSequenceId(*activeSequenceId, blockStartSample);
-  }
-
-  transport->rt_advancePlayhead(numSamples);
-  engine->sequenceStore->rt_cleanupAfterBlock();
 }
 
 void AudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice* device) {
-  // According to this:
-  //    https://forum.juce.com/t/which-thread-calls-audiodeviceabouttostart-stopped/6594
-  // -- we don't have any guarantees about which thread this will be called on, so we
-  // schedule this update to run on the message thread.
+  // JUCE does not guarantee which thread calls this. During initial startup,
+  // engine preparation has already happened on the message thread before the
+  // callback is registered. During a runtime device restart, keep this path
+  // minimal and request an invalidation so the UI can perform a normal
+  // stop/start cycle.
 
   if (device == nullptr) {
     juce::Logger::writeToLog("audioDeviceAboutToStart() received a null device.");
@@ -167,32 +121,10 @@ void AudioCallback::audioDeviceAboutToStart([[maybe_unused]] juce::AudioIODevice
                            ", sampleRate=" + juce::String(deviceSampleRate) +
                            ", bufferSize=" + juce::String(bufferSize));
 
-  this->sampleRate = deviceSampleRate;
+  rt_sampleRate = deviceSampleRate;
 
-  juce::MessageManager::callAsync([deviceName, deviceSampleRate, this]() {
-    auto& engine = Engine::getInstance();
-
-    engine.transport->prepareToProcess();
-    juce::Logger::writeToLog(
-        "audioDeviceAboutToStart(): transport prepared for device " + deviceName);
-
-    auto audioConfig = engine.getCurrentAudioConfig();
-    if (audioConfig == nullptr) {
-      juce::Logger::writeToLog(
-          "audioDeviceAboutToStart(): Failed to build audio config for current device.");
-      return;
-    }
-
-    // This notifies the UI that the engine has started
-    Response response = AudioReadyEvent{
-        .audioConfig = audioConfig,
-        .responseBase = ResponseBase{.id = -1},
-    };
-
-    auto responseText = rfl::json::write(response);
-    Engine::getInstance().comms.send(responseText);
-    juce::Logger::writeToLog("audioDeviceAboutToStart(): AudioReadyEvent sent to UI.");
-  });
+  audioSessionController.requestAudioSessionInvalidation(
+      std::string("The audio device restarted while the audio session was running."));
 }
 
 void AudioCallback::audioDeviceStopped() {

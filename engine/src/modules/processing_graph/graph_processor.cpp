@@ -19,28 +19,28 @@
 
 #include "graph_processor.h"
 
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/executor/graph_executor.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/util/intentionally_leak.h"
-
-#include <juce_audio_devices/juce_audio_devices.h>
 
 namespace anthem {
 
 struct GraphProcessor::RuntimeGraphHandoff {
-  RuntimeGraphHandoff(
-      RuntimeGraph* runtimeGraph, std::unique_ptr<GraphExecutor::RuntimeState> executorState)
-    : runtimeGraph(runtimeGraph), executorState(std::move(executorState)) {}
+  RuntimeGraphHandoff(RuntimeGraph* runtimeGraph,
+      std::unique_ptr<GraphExecutor::RuntimeState> executorState,
+      uint64_t audioProcessingConfigGeneration)
+    : runtimeGraph(runtimeGraph), executorState(std::move(executorState)),
+      audioProcessingConfigGeneration(audioProcessingConfigGeneration) {}
 
   std::unique_ptr<RuntimeGraph> runtimeGraph;
   std::unique_ptr<GraphExecutor::RuntimeState> executorState;
+  uint64_t audioProcessingConfigGeneration;
 };
 
-GraphProcessor::GraphProcessor()
-  : executor(std::make_unique<GraphExecutor>()),
-    rt_services(std::make_unique<GraphRuntimeServices>()),
+GraphProcessor::GraphProcessor(EngineRuntimeServices& engineRuntimeServices)
+  : executor(std::make_unique<GraphExecutor>()), engineRuntimeServices(&engineRuntimeServices),
     clearDeletionQueueTimedCallback(
-        juce::TimedCallback([this]() { this->clearDeletionQueueFromMainThread(); })) {
+        juce::TimedCallback([this]() { this->clearRetiredRuntimeGraphs(); })) {
   executor->prepare();
   clearDeletionQueueTimedCallback.startTimer(2000);
 }
@@ -52,21 +52,25 @@ GraphProcessor::~GraphProcessor() {
     delete nextHandoff.value();
   }
 
-  clearDeletionQueueFromMainThread();
+  clearRetiredRuntimeGraphs();
 
   delete rt_activeRuntimeGraphHandoff;
   rt_activeRuntimeGraphHandoff = nullptr;
 }
 
-void GraphProcessor::prepareForAudioDevice(juce::AudioIODevice* device) {
+void GraphProcessor::prepareForAudioProcessingConfig(
+    const AudioProcessingConfig& audioProcessingConfig,
+    GraphWorkerSchedulingMode workerSchedulingMode) {
   GraphExecutor::ThreadConfig threadConfig;
 
-  if (device != nullptr) {
-    threadConfig.audioBlockSize = device->getCurrentBufferSizeSamples();
-    threadConfig.sampleRate = device->getCurrentSampleRate();
+  if (audioProcessingConfig.isValid()) {
+    threadConfig.audioBlockSize = audioProcessingConfig.blockSize;
+    threadConfig.sampleRate = audioProcessingConfig.sampleRate;
+    threadConfig.useRealtimeWorkerScheduling =
+        workerSchedulingMode == GraphWorkerSchedulingMode::realtime;
 
 #if JUCE_MAC
-    threadConfig.macAudioWorkgroup = device->getWorkgroup();
+    threadConfig.macAudioWorkgroup = audioProcessingConfig.macAudioWorkgroup;
 
     if (threadConfig.macAudioWorkgroup) {
       threadConfig.maxActiveWorkerThreadCount =
@@ -79,19 +83,33 @@ void GraphProcessor::prepareForAudioDevice(juce::AudioIODevice* device) {
   resetRtServices();
 }
 
-void GraphProcessor::setRuntimeGraphFromMainThread(RuntimeGraph* runtimeGraph) {
+void GraphProcessor::publishRuntimeGraph(
+    RuntimeGraph* runtimeGraph, uint64_t audioProcessingConfigGeneration) {
   if (runtimeGraph == nullptr) {
     return;
   }
 
   auto executorState = executor->createRuntimeStateForGraph(*runtimeGraph);
-  auto* handoff = new RuntimeGraphHandoff(runtimeGraph, std::move(executorState));
+  auto* handoff = new RuntimeGraphHandoff(
+      runtimeGraph, std::move(executorState), audioProcessingConfigGeneration);
 
   if (!pendingRuntimeGraphHandoffsQueue.add(handoff)) {
     jassertfalse;
     delete handoff;
     return;
   }
+}
+
+void GraphProcessor::clearRuntimeGraph() {
+  while (auto nextHandoff = pendingRuntimeGraphHandoffsQueue.read()) {
+    delete nextHandoff.value();
+  }
+
+  delete rt_activeRuntimeGraphHandoff;
+  rt_activeRuntimeGraphHandoff = nullptr;
+
+  clearRetiredRuntimeGraphs();
+  resetRtServices();
 }
 
 void GraphProcessor::rt_processGraphUpdates() {
@@ -111,13 +129,13 @@ void GraphProcessor::rt_processGraphUpdates() {
   }
 }
 
-void GraphProcessor::rt_process(int numSamples) {
+bool GraphProcessor::rt_process(int numSamples, uint64_t currentAudioProcessingConfigGeneration) {
   rt_processGraphUpdates();
 
-  // The audio thread can run before the first runtime graph has been compiled
+  // The audio thread can run before the first runtime graph has been published
   // and handed over.
   if (rt_activeRuntimeGraphHandoff == nullptr) {
-    return;
+    return false;
   }
 
   auto& handoff = *rt_activeRuntimeGraphHandoff;
@@ -126,25 +144,32 @@ void GraphProcessor::rt_process(int numSamples) {
   jassert(handoff.executorState != nullptr);
 
   if (handoff.runtimeGraph == nullptr || handoff.executorState == nullptr) {
-    return;
+    return false;
+  }
+
+  // The processing graph that we use must have been generated using the same
+  // audio config that we have. If it wasn't, then we can't process.
+  if (handoff.audioProcessingConfigGeneration != currentAudioProcessingConfigGeneration) {
+    return false;
   }
 
   executor->rt_processBlock(*handoff.runtimeGraph, *handoff.executorState, numSamples);
+  return true;
 }
 
-GraphRuntimeServices& GraphProcessor::getRtServices() {
-  jassert(rt_services != nullptr);
-  return *rt_services;
+EngineRuntimeServices& GraphProcessor::getEngineRuntimeServices() {
+  jassert(engineRuntimeServices != nullptr);
+  return *engineRuntimeServices;
 }
 
 void GraphProcessor::resetRtServices() {
-  jassert(rt_services != nullptr);
-  if (rt_services != nullptr) {
-    rt_services->rt_reset();
+  jassert(engineRuntimeServices != nullptr);
+  if (engineRuntimeServices != nullptr) {
+    engineRuntimeServices->rt_reset();
   }
 }
 
-void GraphProcessor::clearDeletionQueueFromMainThread() {
+void GraphProcessor::clearRetiredRuntimeGraphs() {
   auto nextHandoff = retiredRuntimeGraphHandoffsQueue.read();
 
   while (nextHandoff) {

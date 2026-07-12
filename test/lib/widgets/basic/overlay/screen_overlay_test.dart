@@ -27,11 +27,12 @@ import 'package:provider/provider.dart';
 
 void main() {
   testWidgets(
-    'ScreenOverlay provides controller access and clears active overlays on pointer release and cancel',
+    'ScreenOverlay provides controller access without blocking its base child',
     (WidgetTester tester) async {
       late ScreenOverlayController providedController;
       late ScreenOverlayViewModel providedViewModel;
       int onCloseCalls = 0;
+      int basePointerUpCalls = 0;
 
       await tester.pumpWidget(
         Directionality(
@@ -51,7 +52,11 @@ void main() {
                     listen: false,
                   );
 
-                  return const SizedBox(key: ValueKey<String>('base-child'));
+                  return Listener(
+                    behavior: HitTestBehavior.opaque,
+                    onPointerUp: (_) => basePointerUpCalls += 1,
+                    child: const SizedBox(key: ValueKey<String>('base-child')),
+                  );
                 },
               ),
             ),
@@ -66,7 +71,7 @@ void main() {
       );
       expect(providedViewModel.entries, isEmpty);
 
-      providedController.show(
+      final handle = providedController.show(
         ScreenOverlayEntry(
           builder: (_) => const Positioned(
             left: 10,
@@ -91,34 +96,20 @@ void main() {
       await tester.tapAt(const Offset(200, 200));
       await tester.pump();
 
+      expect(
+        find.byKey(const ValueKey<String>('overlay-entry')),
+        findsOneWidget,
+      );
+      expect(providedViewModel.entries, hasLength(1));
+      expect(onCloseCalls, equals(0));
+      expect(basePointerUpCalls, equals(1));
+
+      handle.close();
+      await tester.pump();
+
       expect(find.byKey(const ValueKey<String>('overlay-entry')), findsNothing);
       expect(providedViewModel.entries, isEmpty);
       expect(onCloseCalls, equals(1));
-
-      providedController.show(
-        ScreenOverlayEntry(
-          builder: (_) => const Positioned(
-            left: 10,
-            top: 10,
-            child: SizedBox(
-              key: ValueKey<String>('overlay-entry'),
-              width: 20,
-              height: 20,
-            ),
-          ),
-          onClose: () => onCloseCalls += 1,
-        ),
-      );
-      await tester.pump();
-
-      final gesture = await tester.startGesture(const Offset(200, 200));
-      await tester.pump();
-      await gesture.cancel();
-      await tester.pump();
-
-      expect(find.byKey(const ValueKey<String>('overlay-entry')), findsNothing);
-      expect(providedViewModel.entries, isEmpty);
-      expect(onCloseCalls, equals(2));
     },
   );
 }

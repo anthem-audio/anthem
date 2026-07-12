@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:io';
-
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
@@ -27,8 +25,6 @@ import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
-import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
-import 'package:file_picker/file_picker.dart';
 
 typedef _ClipRemoveTarget = ({Id arrangementId, Id clipId});
 
@@ -53,17 +49,27 @@ class TrackController {
   /// Parent/master routing is derived from hierarchy and should be added
   /// separately after the track is placed in its final location.
   ProcessingGraphFragment buildTrackMixFragment(TrackModel track) {
+    if (!track.hasProcessing) {
+      throw StateError(
+        'TrackController.buildTrackMixFragment(): Track ${track.id} does not '
+        'have processing state.',
+      );
+    }
+    final processing = track.requireProcessing;
+
     final utilityNode = UtilityProcessorModel.create(
       idAllocator: _idAllocator,
     ).createNode();
-    track.utilityNodeId = utilityNode.id;
+    processing.utilityNodeId = utilityNode.id;
 
     final dbMeterNode = DbMeterProcessorModel.create(
       idAllocator: _idAllocator,
       publishEverySamples: 1024,
-      visualizationIds: track.dbMeterVisualizationIds,
+      visualizationIds: TrackProcessingModel.buildDbMeterVisualizationIds(
+        track.id,
+      ),
     ).createNode();
-    track.dbMeterNodeId = dbMeterNode.id;
+    processing.dbMeterNodeId = dbMeterNode.id;
 
     return ProcessingGraphFragment(
       nodes: [utilityNode, dbMeterNode],
@@ -74,6 +80,7 @@ class TrackController {
           sourcePortId: UtilityProcessorModel.audioOutputPortId,
           destinationNodeId: dbMeterNode.id,
           destinationPortId: DbMeterProcessorModel.audioInputPortId,
+          dataType: NodePortDataType.audio,
         ),
       ],
     );
@@ -85,8 +92,15 @@ class TrackController {
   /// This is the same node/port pair that instrument audio is routed into.
   ({Id nodeId, int portId}) getTrackFxChainAudioInput(Id trackId) {
     final track = project.tracks[trackId]!;
+    if (!track.hasProcessing) {
+      throw StateError(
+        'TrackController.getTrackFxChainAudioInput(): Track $trackId does not '
+        'have processing state.',
+      );
+    }
 
-    final utilityNodeId = track.utilityNodeId;
+    final processing = track.requireProcessing;
+    final utilityNodeId = processing.utilityNodeId;
     final utilityNode = project.processingGraph.nodes[utilityNodeId];
     if (utilityNode == null) {
       throw StateError(
@@ -118,6 +132,12 @@ class TrackController {
       throw StateError(
         'TrackController.getTrackMainRoutingDestination(): Track $trackId not '
         'found.',
+      );
+    }
+    if (!track.hasProcessing) {
+      throw StateError(
+        'TrackController.getTrackMainRoutingDestination(): Track $trackId does '
+        'not have processing state.',
       );
     }
 
@@ -178,12 +198,17 @@ class TrackController {
         'found.',
       );
     }
+    if (!track.hasProcessing) {
+      return;
+    }
 
+    final processing = track.requireProcessing;
     final connectionsToRemove = project.processingGraph.connections.values
         .where(
           (connection) =>
-              connection.sourceNodeId == track.audioOutputNodeId &&
-              connection.sourcePortId == track.audioOutputPortId &&
+              connection.sourceNodeId == processing.audioOutputNodeId &&
+              connection.sourcePortId == processing.audioOutputPortId &&
+              connection.dataType == NodePortDataType.audio &&
               !_isTrackDbMeterConnection(track, connection),
         )
         .map((connection) => connection.id)
@@ -207,15 +232,20 @@ class TrackController {
         'found.',
       );
     }
+    if (!track.hasProcessing) {
+      return;
+    }
 
+    final processing = track.requireProcessing;
     final destination = getTrackMainRoutingDestination(trackId);
     project.processingGraph.addConnection(
       NodeConnectionModel(
         idAllocator: _idAllocator,
-        sourceNodeId: track.audioOutputNodeId,
-        sourcePortId: track.audioOutputPortId,
+        sourceNodeId: processing.audioOutputNodeId,
+        sourcePortId: processing.audioOutputPortId,
         destinationNodeId: destination.nodeId,
         destinationPortId: destination.portId,
+        dataType: NodePortDataType.audio,
       ),
     );
   }
@@ -244,73 +274,18 @@ class TrackController {
     TrackModel track,
     NodeConnectionModel connection,
   ) {
-    return connection.destinationNodeId == track.dbMeterNodeId &&
-        connection.destinationPortId == DbMeterProcessorModel.audioInputPortId;
-  }
-
-  void setTrackInstrumentNode({required Id trackId, required NodeModel node}) {
-    final track = project.tracks[trackId];
-    if (track == null) {
-      throw StateError(
-        'TrackController.setTrackInstrumentNode(): Track $trackId not found.',
-      );
-    }
-
-    project.execute(
-      SetTrackInstrumentNodeCommand(track: track, instrumentNode: node),
-    );
-  }
-
-  void setTrackVst3InstrumentNode(Id trackId) async {
-    final dialogController = ServiceRegistry.dialogController;
-    String initialDirectory;
-
-    if (Platform.isWindows) {
-      initialDirectory = 'C:\\Program Files\\Common Files\\VST3';
-    } else if (Platform.isMacOS) {
-      initialDirectory = '/Library/Audio/Plug-Ins/VST3';
-    } else if (Platform.isLinux) {
-      initialDirectory = Platform.environment['HOME'] ?? '/';
-    } else {
-      throw UnsupportedError(
-        'Unsupported platform: ${Platform.operatingSystem}',
-      );
-    }
-
-    final result = await FilePicker.pickFiles(
-      dialogTitle: 'Choose a plugin (VST3)',
-      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
-      initialDirectory: initialDirectory,
-      type: Platform.isMacOS ? FileType.custom : FileType.any,
-    );
-
-    final path = result?.files[0].path;
-
-    if (path?.toLowerCase().endsWith('.vst3') != true) {
-      dialogController.showTextDialog(
-        title: 'Error',
-        text:
-            'The selected plugin could not be loaded. It may '
-            'not be a valid VST3 plugin, or it may be incompatible.',
-        buttons: [DialogButton.ok()],
-      );
-      return;
-    }
-
-    setTrackInstrumentNode(
-      trackId: trackId,
-      node: VST3ProcessorModel.create(
-        idAllocator: _idAllocator,
-        vst3Path: path!,
-      ).createNode(),
-    );
+    return connection.destinationNodeId ==
+            track.requireProcessing.dbMeterNodeId &&
+        connection.destinationPortId ==
+            DbMeterProcessorModel.audioInputPortId &&
+        connection.dataType == NodePortDataType.audio;
   }
 
   void addTrack() {
     project.execute(
       TrackAddRemoveCommand.add(
         project: project,
-        tracks: [.new(isSendTrack: false, trackType: .instrument)],
+        tracks: [.new(isSendTrack: false, trackType: .normal)],
       ),
     );
   }
@@ -319,7 +294,7 @@ class TrackController {
     project.execute(
       TrackAddRemoveCommand.add(
         project: project,
-        tracks: [.new(isSendTrack: true, trackType: .instrument)],
+        tracks: [.new(index: 0, isSendTrack: true, trackType: .normal)],
       ),
     );
   }
@@ -330,6 +305,12 @@ class TrackController {
     if (anchorTrack == null) {
       throw StateError(
         'TrackController.insertTrackAt(): Track $anchorTrackId not found.',
+      );
+    }
+    if (anchorTrack.isAutomationLane) {
+      throw StateError(
+        'TrackController.insertTrackAt(): Automation lanes cannot be used as '
+        'track insertion anchors.',
       );
     }
 
@@ -360,7 +341,7 @@ class TrackController {
         );
       }
 
-      index = anchorIndex + 1;
+      index = anchorIsSendTrack ? anchorIndex : anchorIndex + 1;
     } else {
       final topLevelOrder = anchorIsSendTrack
           ? project.sendTrackOrder
@@ -374,7 +355,7 @@ class TrackController {
         );
       }
 
-      index = anchorIndex + 1;
+      index = anchorIsSendTrack ? anchorIndex : anchorIndex + 1;
     }
 
     project.execute(
@@ -384,7 +365,7 @@ class TrackController {
           .new(
             index: index,
             isSendTrack: anchorIsSendTrack,
-            trackType: .instrument,
+            trackType: .normal,
             parentTrackId: parentTrackId,
           ),
         ],
@@ -394,6 +375,27 @@ class TrackController {
 
   void removeTrack(Id trackId) {
     removeTracks([trackId]);
+  }
+
+  /// Removes an automation lane and any sequencer content that points to it.
+  void removeAutomationLane(Id laneId) {
+    final removeCommand = AutomationLaneAddRemoveCommand.remove(
+      project: project,
+      laneId: laneId,
+    );
+
+    final clipDeleteTargets = _collectClipDeleteTargetsForTracks([laneId]);
+    final clipAndPatternDeletionPlan = _buildClipAndPatternDeletionPlan(
+      clipDeleteTargets,
+    );
+
+    project.startUndoGroup();
+
+    _executeClipAndPatternDeletionPlan(clipAndPatternDeletionPlan);
+
+    project.execute(removeCommand);
+
+    project.commitUndoGroup();
   }
 
   /// Removes tracks and any sequencer content that points to them.
@@ -473,6 +475,13 @@ class TrackController {
       safetyCounter++;
 
       final currentTrack = projectTracks[currentTrackId]!;
+      final automationLaneParentTrackId =
+          currentTrack.automationLaneParentTrackId;
+      if (automationLaneParentTrackId != null) {
+        currentTrackId = automationLaneParentTrackId;
+        continue;
+      }
+
       if (currentTrack.parentTrackId == null &&
           sendTrackOrder.contains(currentTrackId)) {
         return true;
@@ -489,9 +498,18 @@ class TrackController {
   /// Returns the ID, a boolean saying whether the track is a send track, and an
   /// int giving the current depth.
   ///
-  /// Does not skip collapsed group tracks.
-  Iterable<(Id trackId, bool isSendTrack, int trackDepth)>
-  getTracksIterable() sync* {
+  /// By default, this returns the tracks visible in the arranger. If
+  /// [includeCollapsedTracks] is true, tracks hidden by collapsed UI state are
+  /// included too.
+  Iterable<(Id trackId, bool isSendTrack, int trackDepth)> getTracksIterable({
+    bool includeCollapsedTracks = false,
+  }) sync* {
+    final automationExpandedByTrackId = includeCollapsedTracks
+        ? null
+        : ServiceRegistry.maybeForProject(
+            project.id,
+          )?.arrangerViewModel.automationExpandedByTrackId;
+
     final topLevelTracks = project.trackOrder
         .map((t) => (t, false))
         .followedBy(project.sendTrackOrder.map((t) => (t, true)));
@@ -503,6 +521,15 @@ class TrackController {
     ) sync* {
       yield (trackId, isSendTrack, currentDepth);
       final track = project.tracks[trackId]!;
+
+      if (!track.isAutomationLane &&
+          (includeCollapsedTracks ||
+              (automationExpandedByTrackId?[trackId] ?? false))) {
+        for (final automationLaneId in track.automationLanes) {
+          yield (automationLaneId, isSendTrack, currentDepth + 1);
+        }
+      }
+
       for (final childTrackId in track.childTracks) {
         yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
       }
@@ -532,6 +559,10 @@ class TrackController {
         return false;
       }
 
+      if (track.isAutomationLane) {
+        return false;
+      }
+
       final isSendTrack = this.isSendTrack(id, false);
 
       hasSendTracks = hasSendTracks || isSendTrack;
@@ -555,6 +586,51 @@ class TrackController {
     project.execute(
       SetTrackNameCommand(track: project.tracks[trackId]!, newName: newName),
     );
+  }
+
+  /// Returns the tracks whose colors should change for a track color edit.
+  ///
+  /// Automation lanes derive their color from their parent track, so selecting
+  /// either a parent track or one of its automation lanes targets the full
+  /// parent-plus-automation-lanes group. Duplicate targets are removed so a
+  /// single color picker action only enqueues one color command per track.
+  List<Id> getTrackColorTargetIds(Iterable<Id> trackIds) {
+    final targetIds = <Id>{};
+
+    void addTrackAndAutomationLanes(TrackModel track) {
+      targetIds.add(track.id);
+
+      for (final automationLaneId in track.automationLanes) {
+        if (project.tracks.containsKey(automationLaneId)) {
+          targetIds.add(automationLaneId);
+        }
+      }
+    }
+
+    for (final trackId in trackIds) {
+      final track = project.tracks[trackId];
+      if (track == null) {
+        continue;
+      }
+
+      if (!track.isAutomationLane) {
+        addTrackAndAutomationLanes(track);
+        continue;
+      }
+
+      final parentTrackId = track.automationLaneParentTrackId;
+      final parentTrack = parentTrackId == null
+          ? null
+          : project.tracks[parentTrackId];
+
+      if (parentTrack != null) {
+        addTrackAndAutomationLanes(parentTrack);
+      }
+
+      targetIds.add(track.id);
+    }
+
+    return targetIds.toList(growable: false);
   }
 
   void setTrackColor(Id trackId, double hue, AnthemColorPaletteKind palette) {
@@ -597,6 +673,10 @@ class TrackController {
       final track = project.tracks[trackId];
       if (track == null) {
         return;
+      }
+
+      for (final automationLaneId in track.automationLanes) {
+        collect(automationLaneId);
       }
 
       for (final childTrackId in track.childTracks) {

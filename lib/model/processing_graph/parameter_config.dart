@@ -23,6 +23,9 @@ import 'package:mobx/mobx.dart';
 
 part 'parameter_config.g.dart';
 
+@AnthemEnum()
+enum ParameterDisplayMode { percent, gainDb, pan, pluginText }
+
 /// A model representing the configuration of a parameter for a node in the
 /// processing graph.
 ///
@@ -37,19 +40,23 @@ part 'parameter_config.g.dart';
 ///
 /// This class is responsible for storing the configuration of a parameter in
 /// the processing graph. Parameter values are always stored normalized in the
-/// range [0, 1]. This config stores the default normalized value and the
-/// duration over which the parameter value will be smoothed.
+/// range [0, 1]. This config stores the default normalized value.
 @AnthemModel.syncedModel()
 class ParameterConfigModel extends _ParameterConfigModel
     with _$ParameterConfigModel, _$ParameterConfigModelAnthemModelMixin {
   ParameterConfigModel({
     required super.id,
     required super.defaultValue,
-    required super.smoothingDurationSeconds,
+    super.displayMode = ParameterDisplayMode.percent,
+    super.unitLabel,
   });
 
   ParameterConfigModel.uninitialized()
-    : super(id: 0, defaultValue: 0.0, smoothingDurationSeconds: 0.0);
+    : super(
+        id: 0,
+        defaultValue: 0.0,
+        displayMode: ParameterDisplayMode.percent,
+      );
 
   factory ParameterConfigModel.fromJson(Map<String, dynamic> json) =>
       _$ParameterConfigModelAnthemModelMixin.fromJson(json);
@@ -59,20 +66,23 @@ abstract class _ParameterConfigModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// The ID associated with this parameter.
   ///
-  /// This must be unique within a plugin. This is analogous to the VST3
-  /// parameter ID, and will be set to the value of the VST3 parameter ID if
-  /// this processor is a VST3 plugin.
+  /// This must match the control input port ID for this parameter. For plugin
+  /// parameter ports, this maps to the plugin's parameter ID.
   int id;
 
   /// The default normalized value of the parameter.
   double defaultValue;
 
-  /// The duration in seconds over which the parameter value will be smoothed.
-  double smoothingDurationSeconds;
+  /// How normalized values should be displayed in the UI.
+  ParameterDisplayMode? displayMode;
+
+  /// Optional unit label for display text, such as "Hz" or "dB".
+  String? unitLabel;
 
   _ParameterConfigModel({
     required this.id,
     required this.defaultValue,
-    required this.smoothingDurationSeconds,
+    this.displayMode,
+    this.unitLabel,
   });
 }

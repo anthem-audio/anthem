@@ -47,12 +47,10 @@ class VisualizationSubscriptionController<T> extends ChangeNotifier {
   /// The controller subscribes immediately and begins caching the latest
   /// rendered value exposed by the underlying [VisualizationSubscription].
   VisualizationSubscriptionController({
-    required VisualizationProvider visualizationProvider,
-    required VisualizationSubscriptionConfig<T> config,
-    Duration? minimumUpdateInterval,
-  }) : _visualizationProvider = visualizationProvider,
-       _config = config,
-       _minimumUpdateInterval = minimumUpdateInterval {
+    required this._visualizationProvider,
+    required this._config,
+    this._minimumUpdateInterval,
+  }) {
     _attachSubscription();
   }
 
@@ -67,8 +65,9 @@ class VisualizationSubscriptionController<T> extends ChangeNotifier {
 
   /// The latest cached visualization value.
   ///
-  /// This is `null` until the controller has received an update with a value,
-  /// or until the underlying subscription emits its first default-backed value.
+  /// This is `null` until the controller has received or replayed an update
+  /// with a value, or until the underlying subscription emits its first
+  /// default-backed value.
   T? get value => _value;
 
   /// The engine time associated with the latest cached value.
@@ -133,22 +132,41 @@ class VisualizationSubscriptionController<T> extends ChangeNotifier {
     _subscription = subscription;
 
     _updateSubscription = subscription.onUpdate.listen((_) {
-      if (_shouldSkipUpdate()) {
+      if (!_visualizationProvider.isEngineRunning) {
+        _lastUpdateWallTime = null;
+      } else if (_shouldSkipUpdate()) {
         return;
       }
 
-      final timedValue = subscription.readTimedValue();
-      final nextValue = timedValue?.value ?? subscription.readValue();
-      final nextEngineTime = timedValue?.engineTime;
-
-      if (nextValue == _value && nextEngineTime == _engineTime) {
+      if (!_readSubscriptionValue(subscription, allowDefaultFallback: true)) {
         return;
       }
 
-      _value = nextValue;
-      _engineTime = nextEngineTime;
       notifyListeners();
     });
+
+    _readSubscriptionValue(subscription, allowDefaultFallback: false);
+  }
+
+  bool _readSubscriptionValue(
+    VisualizationSubscription<T> subscription, {
+    required bool allowDefaultFallback,
+  }) {
+    final timedValue = subscription.readTimedValue();
+    if (timedValue == null && !allowDefaultFallback) {
+      return false;
+    }
+
+    final nextValue = timedValue?.value ?? subscription.readValue();
+    final nextEngineTime = timedValue?.engineTime;
+
+    if (nextValue == _value && nextEngineTime == _engineTime) {
+      return false;
+    }
+
+    _value = nextValue;
+    _engineTime = nextEngineTime;
+    return true;
   }
 
   void _detachSubscription() {
@@ -193,18 +211,17 @@ class MultiVisualizationSubscriptionController<T> extends ChangeNotifier {
   /// Creates a controller for a fixed list of visualization subscriptions.
   ///
   /// The controller subscribes immediately and initializes [values] with each
-  /// config's default value. [engineTimes] starts with `null` entries until
+  /// config's default value, then replaces any entries that can be seeded from
+  /// cached subscription data. [engineTimes] starts with `null` entries until
   /// timed values arrive from the underlying subscriptions.
   MultiVisualizationSubscriptionController({
-    required VisualizationProvider visualizationProvider,
+    required this._visualizationProvider,
     required List<VisualizationSubscriptionConfig<T>> configs,
-    Duration? minimumUpdateInterval,
-  }) : _visualizationProvider = visualizationProvider,
-       _configs = List<VisualizationSubscriptionConfig<T>>.of(
+    this._minimumUpdateInterval,
+  }) : _configs = List<VisualizationSubscriptionConfig<T>>.of(
          configs,
          growable: false,
-       ),
-       _minimumUpdateInterval = minimumUpdateInterval {
+       ) {
     _attachSubscriptions();
   }
 
@@ -322,24 +339,48 @@ class MultiVisualizationSubscriptionController<T> extends ChangeNotifier {
 
       _updateSubscriptions.add(
         subscription.onUpdate.listen((_) {
-          if (_shouldSkipUpdate(i)) {
+          if (!_visualizationProvider.isEngineRunning) {
+            _lastUpdateWallTimes[i] = null;
+          } else if (_shouldSkipUpdate(i)) {
             return;
           }
 
-          final timedValue = subscription.readTimedValue();
-          final nextValue = timedValue?.value ?? subscription.readValue();
-          final nextEngineTime = timedValue?.engineTime;
-
-          if (_values[i] == nextValue && _engineTimes[i] == nextEngineTime) {
+          if (!_readSubscriptionValueAt(
+            i,
+            subscription,
+            allowDefaultFallback: true,
+          )) {
             return;
           }
 
-          _values[i] = nextValue;
-          _engineTimes[i] = nextEngineTime;
           notifyListeners();
         }),
       );
+
+      _readSubscriptionValueAt(i, subscription, allowDefaultFallback: false);
     }
+  }
+
+  bool _readSubscriptionValueAt(
+    int index,
+    VisualizationSubscription<T> subscription, {
+    required bool allowDefaultFallback,
+  }) {
+    final timedValue = subscription.readTimedValue();
+    if (timedValue == null && !allowDefaultFallback) {
+      return false;
+    }
+
+    final nextValue = timedValue?.value ?? subscription.readValue();
+    final nextEngineTime = timedValue?.engineTime;
+
+    if (_values[index] == nextValue && _engineTimes[index] == nextEngineTime) {
+      return false;
+    }
+
+    _values[index] = nextValue;
+    _engineTimes[index] = nextEngineTime;
+    return true;
   }
 
   void _detachSubscriptions() {

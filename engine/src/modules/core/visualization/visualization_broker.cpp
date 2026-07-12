@@ -22,6 +22,7 @@
 #include "messages/messages.h"
 #include "modules/core/engine.h"
 
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 
@@ -29,6 +30,49 @@ namespace anthem {
 
 namespace {
 template <typename T> using RemoveCvRef = std::remove_cv_t<std::remove_reference_t<T>>;
+}
+
+VisualizationProviderRegistration::VisualizationProviderRegistration(
+    VisualizationBroker& broker, std::string id, VisualizationDataProvider* provider)
+  : broker(&broker), id(std::move(id)), provider(provider) {}
+
+VisualizationProviderRegistration::~VisualizationProviderRegistration() {
+  release();
+}
+
+VisualizationProviderRegistration::VisualizationProviderRegistration(
+    VisualizationProviderRegistration&& other) noexcept
+  : broker(other.broker), id(std::move(other.id)), provider(other.provider) {
+  other.broker = nullptr;
+  other.provider = nullptr;
+}
+
+VisualizationProviderRegistration& VisualizationProviderRegistration::operator=(
+    VisualizationProviderRegistration&& other) noexcept {
+  if (this != &other) {
+    release();
+
+    broker = other.broker;
+    id = std::move(other.id);
+    provider = other.provider;
+
+    other.broker = nullptr;
+    other.provider = nullptr;
+  }
+
+  return *this;
+}
+
+void VisualizationProviderRegistration::release() {
+  if (broker == nullptr || provider == nullptr) {
+    return;
+  }
+
+  broker->releaseDataProvider(id, provider);
+
+  broker = nullptr;
+  id.clear();
+  provider = nullptr;
 }
 
 VisualizationBroker::VisualizationBroker() {
@@ -48,7 +92,119 @@ void VisualizationBroker::setUpdateInterval(double newUpdateIntervalMs) {
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
 }
 
+void VisualizationBroker::suppressOutboundUpdates() {
+  outboundUpdateBehavior = OutboundUpdateBehavior::suppressed;
+}
+
+void VisualizationBroker::discardPendingUpdatesThenResume() {
+  outboundUpdateBehavior = OutboundUpdateBehavior::discardThenResume;
+}
+
+VisualizationProviderRegistration VisualizationBroker::registerDataProvider(
+    const std::string& name, std::unique_ptr<VisualizationDataProvider> provider) {
+  if (provider == nullptr) {
+    jassertfalse;
+    return VisualizationProviderRegistration();
+  }
+
+  if (currentDataProviders.find(name) != currentDataProviders.end()) {
+    juce::Logger::writeToLog(
+        juce::String("Warning: replacing visualization provider for duplicate ID '") +
+        juce::String(name) +
+        "'. This can happen during processing graph handoff; otherwise, IDs should be unique.");
+  }
+
+  auto entry = std::make_unique<ProviderEntry>(ProviderEntry{
+      .id = name,
+      .provider = std::move(provider),
+  });
+
+  auto* entryPtr = entry.get();
+  auto* providerPtr = entryPtr->provider.get();
+
+  dataProviders.push_back(std::move(entry));
+  currentDataProviders[name] = entryPtr;
+
+  return VisualizationProviderRegistration(*this, name, providerPtr);
+}
+
+void VisualizationBroker::releaseDataProvider(
+    const std::string& name, VisualizationDataProvider* provider) {
+  if (provider == nullptr) {
+    return;
+  }
+
+  auto currentIter = currentDataProviders.find(name);
+  const bool releasingCurrent =
+      currentIter != currentDataProviders.end() && currentIter->second->provider.get() == provider;
+
+  auto providerIter = std::find_if(
+      dataProviders.begin(), dataProviders.end(), [&](const std::unique_ptr<ProviderEntry>& entry) {
+        return entry != nullptr && entry->id == name && entry->provider.get() == provider;
+      });
+
+  if (providerIter == dataProviders.end()) {
+    return;
+  }
+
+  dataProviders.erase(providerIter);
+
+  if (!releasingCurrent) {
+    return;
+  }
+
+  auto replacementIter = std::find_if(dataProviders.rbegin(),
+      dataProviders.rend(),
+      [&](const std::unique_ptr<ProviderEntry>& entry) {
+        return entry != nullptr && entry->id == name;
+      });
+
+  if (replacementIter == dataProviders.rend()) {
+    currentDataProviders.erase(name);
+    return;
+  }
+
+  currentDataProviders[name] = replacementIter->get();
+}
+
+VisualizationDataProvider* VisualizationBroker::getCurrentDataProviderForTesting(
+    const std::string& name) const {
+  auto iter = currentDataProviders.find(name);
+  if (iter == currentDataProviders.end()) {
+    return nullptr;
+  }
+
+  return iter->second->provider.get();
+}
+
+size_t VisualizationBroker::getDataProviderCountForTesting(const std::string& name) const {
+  return static_cast<size_t>(std::count_if(
+      dataProviders.begin(), dataProviders.end(), [&](const std::unique_ptr<ProviderEntry>& entry) {
+        return entry != nullptr && entry->id == name;
+      }));
+}
+
+void VisualizationBroker::discardPendingProviderData() {
+  for (const auto& entry : dataProviders) {
+    if (entry == nullptr || entry->provider == nullptr) {
+      continue;
+    }
+
+    entry->provider->getData();
+  }
+}
+
 void VisualizationBroker::timerCallback() {
+  if (outboundUpdateBehavior == OutboundUpdateBehavior::suppressed) {
+    return;
+  }
+
+  if (outboundUpdateBehavior == OutboundUpdateBehavior::discardThenResume) {
+    discardPendingProviderData();
+    outboundUpdateBehavior = OutboundUpdateBehavior::sending;
+    return;
+  }
+
   if (this->subscriptions.empty()) {
     return;
   }
@@ -57,15 +213,20 @@ void VisualizationBroker::timerCallback() {
 
   // Iterate over all subscriptions and query the data providers for updates
   for (const auto& subscription : this->subscriptions) {
-    auto it = this->dataProviders.find(subscription->id);
-    if (it != this->dataProviders.end()) {
-      const auto providerValueType = it->second->getValueType();
+    auto it = this->currentDataProviders.find(subscription->id);
+    if (it != this->currentDataProviders.end()) {
+      auto* provider = it->second->provider.get();
+      if (provider == nullptr) {
+        continue;
+      }
+
+      const auto providerValueType = provider->getValueType();
       if (providerValueType != subscription->valueType) {
         jassertfalse;
         continue;
       }
 
-      auto data = it->second->getData();
+      auto data = provider->getData();
       if (!data.has_value()) {
         continue;
       }
@@ -141,7 +302,9 @@ void VisualizationBroker::timerCallback() {
 void VisualizationBroker::dispose() {
   this->stopTimer();
   this->dataProviders.clear();
+  this->currentDataProviders.clear();
   this->subscriptions.clear();
+  this->outboundUpdateBehavior = OutboundUpdateBehavior::sending;
 }
 
 } // namespace anthem

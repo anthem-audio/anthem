@@ -44,14 +44,15 @@ void SimpleVolumeLfoProcessor::rt_advanceState(RuntimeState& state, float rt_rat
   }
 }
 
-void SimpleVolumeLfoProcessor::prepareToProcess() {
+void SimpleVolumeLfoProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
   rt_state = RuntimeState{};
+  complete(std::nullopt);
 }
 
 void SimpleVolumeLfoProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& inputBuffer =
+  auto inputBuffer =
       context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
-  auto& outputBuffer =
+  auto outputBuffer =
       context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);
 
   // Generate a sine wave

@@ -20,38 +20,38 @@
 #include "modules/core/engine.h"
 
 #include "modules/core/adapters/transport_adapters.h"
+#include "modules/core/processing_graph_node_initialization_session.h"
 #include "modules/processing_graph/model/runtime_graph.h"
-#include "modules/processors/db_meter.h"
+
+#include <memory>
+#include <utility>
 
 namespace anthem {
 
-namespace {
-std::shared_ptr<EngineAudioConfig> buildAudioConfig(juce::AudioIODevice* device) {
-  if (device == nullptr) {
-    return nullptr;
-  }
-
-  auto audioConfig = std::make_shared<EngineAudioConfig>();
-  audioConfig->sampleRate = device->getCurrentSampleRate();
-  audioConfig->blockSize = device->getCurrentBufferSizeSamples();
-  audioConfig->inputChannelCount = device->getActiveInputChannels().countNumberOfSetBits();
-  audioConfig->outputChannelCount = device->getActiveOutputChannels().countNumberOfSetBits();
-  return audioConfig;
-}
-} // namespace
-
 std::unique_ptr<Engine> Engine::instance = nullptr;
 
-Engine::Engine() {
-  isAudioCallbackRunning = false;
-}
+Engine::Engine() = default;
 
 void Engine::initialize() {
-  this->graphProcessor = std::make_unique<GraphProcessor>();
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
-  transport = std::make_unique<Transport>(
-      createTransportProjectView(*this), createTransportClock(audioDeviceManager));
+  this->automationSequenceStore = std::make_unique<RuntimeAutomationSequenceStore>();
+  transport =
+      std::make_unique<Transport>(createTransportProjectView(*this), createTransportClock(*this));
+  this->engineRuntimeServices =
+      std::make_unique<EngineRuntimeServices>(*transport, *sequenceStore, *automationSequenceStore);
+  this->graphProcessor = std::make_unique<GraphProcessor>(*engineRuntimeServices);
   globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
+  audioBlockProcessor = std::make_unique<AudioBlockProcessor>(*transport,
+      *sequenceStore,
+      *automationSequenceStore,
+      *graphProcessor,
+      *globalVisualizationSources);
+  audioSessionController = std::make_unique<AudioSessionController>(
+      project, *graphProcessor, *transport, comms, *audioBlockProcessor, [this]() {
+        resetInitializedProcessingGraphNodes();
+      });
+  renderController = std::make_unique<RenderController>(
+      *audioSessionController, *audioBlockProcessor, *transport, comms);
 
 #ifndef __EMSCRIPTEN__
   juce::addDefaultFormatsToManager(audioPluginFormatManager);
@@ -60,159 +60,61 @@ void Engine::initialize() {
 #endif // #ifndef __EMSCRIPTEN__
 
   comms.init();
-
-// On desktop, we use a heartbeat to make sure that we have an active
-// connection to the UI. While it shouldn't be possible due to how we start
-// the engine from the Dart side, this is a last resort to make sure that we
-// don't have a dangling engine process if something goes wrong.
-//
-// On web, we don't need this for two reasons: First, the web version is
-// self-contained within the browser tab; if something is wrong, the tab can
-// just be closed. Second, the connection between the UI and engine is much
-// more direct on web, since the UI gets an object to puppeteer the engine
-// directly, and the risk of losing track of the engine is much lower.
-//
-// The other reason this is removed on web is that when the browser loses
-// focus, it may throttle or pause background tasks, which causes the UI to
-// stop sending heartbeats. We could fix this, but since it's not needed on
-// web anyway, it's simpler to just disable it.
-#ifndef __EMSCRIPTEN__
-  commandHandler.startHeartbeatThread();
-#endif // #ifndef __EMSCRIPTEN__
 }
 
 void Engine::shutdown() {
-  stopAudioCallback();
+  if (renderController != nullptr) {
+    renderController->stopRenderThread();
+  }
+
+  if (audioSessionController != nullptr) {
+    audioSessionController->stopAudio();
+  }
 }
 
-std::shared_ptr<EngineAudioConfig> Engine::startAudioCallback() {
-  if (isAudioCallbackRunning) {
-    juce::Logger::writeToLog("Tried to start audio callback when it was already running. This "
-                             "probably doesn't break anything, but it's definitely a bug.");
-    return getCurrentAudioConfig();
+void Engine::resetInitializedProcessingGraphNodes() {
+  for (auto& [_, initializedNodeWeakPtr] : initializedProcessingGraphNodes) {
+    auto initializedNode = initializedNodeWeakPtr.lock();
+    if (initializedNode == nullptr) {
+      continue;
+    }
+
+    auto processor = initializedNode->getProcessor();
+    if (processor.has_value()) {
+      processor.value()->isPrepared = false;
+    }
   }
 
-  juce::Logger::writeToLog("Creating audio callback...");
-
-  try {
-    audioCallback = std::make_unique<AudioCallback>(this);
-  } catch (const std::exception& e) {
-    juce::Logger::writeToLog("Failed to create audio callback: " + juce::String(e.what()));
-    return nullptr;
-  }
-
-  juce::Logger::writeToLog("Initializing audio device manager...");
-  juce::Logger::writeToLog("Listing available audio devices...");
-  auto& deviceTypes = audioDeviceManager.getAvailableDeviceTypes();
-  juce::Logger::writeToLog(
-      "Found " + juce::String(static_cast<int>(deviceTypes.size())) + " device types:");
-  for (int i = 0; i < deviceTypes.size(); i++) {
-    auto* deviceType = deviceTypes[i];
-    juce::Logger::writeToLog(" - " + deviceType->getTypeName());
-  }
-
-  // Initialize the audio device manager with 2 input and 2 output channels
-  auto initError = this->audioDeviceManager.initialiseWithDefaultDevices(2, 2);
-  if (initError.isNotEmpty()) {
-    juce::Logger::writeToLog("initialiseWithDefaultDevices(2, 2) failed: " + initError);
-    juce::Logger::writeToLog("Retrying with 0 input channels and 2 output channels...");
-
-    initError = this->audioDeviceManager.initialiseWithDefaultDevices(0, 2);
-  }
-
-  if (initError.isNotEmpty()) {
-    juce::Logger::writeToLog("initialiseWithDefaultDevices() failed again: " + initError);
-    return nullptr;
-  }
-
-  auto* device = this->audioDeviceManager.getCurrentAudioDevice();
-  if (device == nullptr) {
-    juce::Logger::writeToLog(
-        "Audio device manager initialized, but no current audio device is available.");
-    return nullptr;
-  }
-
-  auto audioConfig = buildAudioConfig(device);
-  if (audioConfig == nullptr) {
-    juce::Logger::writeToLog("Failed to build audio config for current device.");
-    return nullptr;
-  }
-
-  juce::Logger::writeToLog("Selected audio device: " + device->getName());
-  juce::Logger::writeToLog("Sample rate: " + juce::String(device->getCurrentSampleRate()));
-  juce::Logger::writeToLog("Buffer size: " + juce::String(device->getCurrentBufferSizeSamples()));
-  juce::Logger::writeToLog("Active output channels: " +
-                           juce::String(device->getActiveOutputChannels().countNumberOfSetBits()));
-
-  graphProcessor->prepareForAudioDevice(device);
-  transport->prepareToProcess();
-  juce::Logger::writeToLog("Transport prepared before audio callback registration.");
-
-  // Set up the audio callback
-  this->audioDeviceManager.addAudioCallback(this->audioCallback.get());
-  juce::Logger::writeToLog("Audio callback registered with device manager.");
-
-  isAudioCallbackRunning = true;
-
-  return audioConfig;
+  initializedProcessingGraphNodes.clear();
 }
 
-void Engine::stopAudioCallback() {
-  if (isAudioCallbackRunning) {
-    audioDeviceManager.removeAudioCallback(audioCallback.get());
-    audioDeviceManager.closeAudioDevice();
-    isAudioCallbackRunning = false;
-  }
-
-  audioCallback.reset();
+void Engine::initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete) {
+  auto session =
+      std::make_shared<ProcessingGraphNodeInitializationSession>(*this, std::move(complete));
+  session->run();
 }
 
-std::shared_ptr<EngineAudioConfig> Engine::getCurrentAudioConfig() const {
-  return buildAudioConfig(audioDeviceManager.getCurrentAudioDevice());
-}
-
-void Engine::compileProcessingGraph() {
-  auto* currentDevice = audioDeviceManager.getCurrentAudioDevice();
-  jassert(currentDevice != nullptr);
-  if (currentDevice == nullptr) {
+void Engine::publishProcessingGraph() {
+  auto audioProcessingConfigSnapshot =
+      audioSessionController->getCurrentAudioProcessingConfigSnapshot();
+  jassert(audioProcessingConfigSnapshot.has_value());
+  if (!audioProcessingConfigSnapshot.has_value()) {
     return;
   }
+
+  const auto& audioProcessingConfig = audioProcessingConfigSnapshot->config;
 
   auto& processingGraph = *project->processingGraph();
 
   auto runtimeGraph = RuntimeGraph::fromProcessingGraph(processingGraph,
-      graphProcessor->getRtServices(),
+      graphProcessor->getEngineRuntimeServices(),
       GraphBufferLayout{
-          .numAudioChannels = currentDevice->getActiveOutputChannels().countNumberOfSetBits(),
-          .blockSize = currentDevice->getCurrentBufferSizeSamples(),
-      },
-      currentDevice->getCurrentSampleRate());
+          .numAudioChannels = audioProcessingConfig.outputChannelCount,
+          .blockSize = audioProcessingConfig.blockSize,
+      });
 
-  // Make sure all nodes have been prepared for processing
-  for (auto& pair : *processingGraph.nodes()) {
-    auto& node = *pair.second;
-
-    auto& procVariant = node.processor();
-    if (!procVariant.has_value()) {
-      continue;
-    }
-
-    rfl::visit(
-        [&](const auto& field) {
-          // 'field' is the rfl::Field<Name, Type> wrapper.
-          // We get the actual std::shared_ptr with .value().
-          const auto& sharedPtr = field.value();
-          Processor* baseProcessor = sharedPtr.get();
-
-          if (!baseProcessor->isPrepared) {
-            baseProcessor->prepareToProcess();
-            baseProcessor->isPrepared = true;
-          }
-        },
-        procVariant.value());
-  }
-
-  graphProcessor->setRuntimeGraphFromMainThread(runtimeGraph.release());
+  graphProcessor->publishRuntimeGraph(
+      runtimeGraph.release(), audioProcessingConfigSnapshot->generation);
 }
 
 } // namespace anthem

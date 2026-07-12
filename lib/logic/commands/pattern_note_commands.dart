@@ -64,9 +64,7 @@ class AddNoteCommand extends Command {
   final Id _patternID;
   final NoteModel _note;
 
-  AddNoteCommand({required Id patternID, required NoteModel note})
-    : _patternID = patternID,
-      _note = note;
+  AddNoteCommand({required this._patternID, required this._note});
 
   @override
   void execute(ProjectModel project) {
@@ -85,9 +83,7 @@ class DeleteNoteCommand extends Command {
   final Id _patternID;
   final NoteModel _note;
 
-  DeleteNoteCommand({required Id patternID, required NoteModel note})
-    : _patternID = patternID,
-      _note = note;
+  DeleteNoteCommand({required this._patternID, required this._note});
 
   @override
   void execute(ProjectModel project) {
@@ -110,13 +106,12 @@ class MoveNotesCommand extends Command {
   _noteMoves;
 
   MoveNotesCommand({
-    required Id patternID,
+    required this._patternID,
     required List<
       ({Id noteID, int oldOffset, int newOffset, int oldKey, int newKey})
     >
     noteMoves,
-  }) : _patternID = patternID,
-       _noteMoves = List.unmodifiable(noteMoves),
+  }) : _noteMoves = List.unmodifiable(noteMoves),
        super();
 
   @override
@@ -147,10 +142,9 @@ class ResizeNotesCommand extends Command {
   final List<({Id noteID, int oldLength, int newLength})> _noteResizes;
 
   ResizeNotesCommand({
-    required Id patternID,
+    required this._patternID,
     required List<({Id noteID, int oldLength, int newLength})> noteResizes,
-  }) : _patternID = patternID,
-       _noteResizes = List.unmodifiable(noteResizes),
+  }) : _noteResizes = List.unmodifiable(noteResizes),
        super();
 
   @override
@@ -179,10 +173,9 @@ class DeleteNotesCommand extends Command {
   final List<NoteModel> _notes;
 
   DeleteNotesCommand({
-    required Id patternID,
+    required this._patternID,
     required Iterable<NoteModel> notes,
-  }) : _patternID = patternID,
-       _notes = List.unmodifiable(notes.map(NoteModel.fromNoteModel)),
+  }) : _notes = List.unmodifiable(notes.map(NoteModel.fromNoteModel)),
        super();
 
   @override
@@ -214,16 +207,12 @@ class SetNoteAttributeCommand extends Command {
   final num _newValue;
 
   SetNoteAttributeCommand({
-    required Id patternID,
-    required Id noteID,
-    required NoteAttribute attribute,
-    required num oldValue,
-    required num newValue,
-  }) : _patternID = patternID,
-       _noteID = noteID,
-       _attribute = attribute,
-       _oldValue = oldValue,
-       _newValue = newValue;
+    required this._patternID,
+    required this._noteID,
+    required this._attribute,
+    required this._oldValue,
+    required this._newValue,
+  });
 
   void _setAttribute(NoteModel note, num value) {
     switch (_attribute) {

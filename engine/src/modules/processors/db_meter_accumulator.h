@@ -20,11 +20,11 @@
 #pragma once
 
 #include "bw_math.h"
+#include "modules/processing_graph/runtime/audio_buffer_view.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <juce_audio_basics/juce_audio_basics.h>
 #include <vector>
 
 namespace anthem {
@@ -59,7 +59,7 @@ public:
   }
 
   template <typename PublishCallback>
-  void rt_processBlock(const juce::AudioBuffer<float>& audioInBuffer,
+  void rt_processBlock(const AudioBufferView& audioInBuffer,
       int numSamples,
       int64_t blockStartSample,
       int64_t publishEverySamples,

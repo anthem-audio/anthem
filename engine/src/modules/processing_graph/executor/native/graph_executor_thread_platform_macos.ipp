@@ -56,8 +56,10 @@ private:
   juce::WorkgroupToken workgroupToken;
 };
 
-juce::Thread::Priority getGraphExecutorWorkerThreadPriority() {
-  return juce::Thread::Priority::high;
+juce::Thread::Priority getGraphExecutorWorkerThreadPriority(
+    const GraphExecutor::ThreadConfig& threadConfig) {
+  return threadConfig.useRealtimeWorkerScheduling ? juce::Thread::Priority::high
+                                                  : juce::Thread::Priority::normal;
 }
 
 bool startGraphExecutorWorkerThread(juce::Thread& thread,
@@ -76,7 +78,7 @@ bool startGraphExecutorWorkerThread(juce::Thread& thread,
         workerIndex, "failed to start as a macOS realtime thread; falling back to high priority.");
   }
 
-  return thread.startThread(getGraphExecutorWorkerThreadPriority());
+  return thread.startThread(getGraphExecutorWorkerThreadPriority(threadConfig));
 }
 
 } // namespace

@@ -127,8 +127,9 @@ Synced model classes get a generated API:
 
 ```dart
 final sub = model.onChange(
-  (b) => b.notes.anyValue.anyElement.anyField,
-  (event) {
+  (b) => b.notes().anyValue(bindKeyTo: 'noteId').anyField(),
+  (event, bindings) {
+    final noteId = bindings.get<Id>('noteId');
     // event.fieldAccessors, event.operation
   },
 );
@@ -137,7 +138,7 @@ final sub = model.onChange(
 `onChange(...)` takes:
 
 1. a filter-builder function
-2. a listener callback receiving `ModelChangeEvent`
+2. a listener callback receiving `ModelChangeEvent` and `ModelChangeBindings`
 
 It returns `ModelFilterSubscription` with `cancel()`.
 
@@ -147,10 +148,10 @@ The generated builder DSL composes path and behavior filters.
 
 Common building blocks:
 
-- field getters (for example `b.name`, `b.loopPoints`)
-- `anyField`
-- list `anyElement`
-- map `anyValue`
+- field methods (for example `b.name()`, `b.loopPoints()`)
+- `anyField()`
+- list `anyElement()`
+- map `anyValue()`
 - `multiple([...])` (logical OR of sub-filters)
 - `filterByChangeType([...])`
 - `withDescendants`
@@ -160,6 +161,41 @@ Common building blocks:
 Fields marked `@hideFromCpp` or `@hideButAllowOnChange` remain available in
 this builder DSL. They are hidden from engine sync, but not from Dart
 listeners.
+
+### Bindings
+
+Filter path segments can bind matched values into the callback's
+`ModelChangeBindings` argument:
+
+```dart
+model.onChange(
+  (b) => b
+      .arrangements()
+      .anyValue(bindKeyTo: 'arrangementId')
+      .clips()
+      .anyValue(bindKeyTo: 'clipId')
+      .offset(bindTo: 'offset'),
+  (event, bindings) {
+    final arrangementId = bindings.get<Id>('arrangementId');
+    final clipId = bindings.get<Id>('clipId');
+    final offset = bindings.get<int>('offset');
+  },
+);
+```
+
+Supported binding options:
+
+- `bindKeyTo` on `anyValue()` binds the matched map key.
+- `bindIndexTo` on `anyElement()` binds the matched list index.
+- `bindTo` / `bindValueTo` bind the changed value when the bound segment is
+  the terminal changed value. For removals, this is the removed value.
+- `bindOldValueTo` and `bindNewValueTo` bind old/new operation values when
+  that value exists for the operation.
+
+`withDescendants` matches descendant changes, but terminal value bindings on
+the wrapped node only bind when the event actually terminates at that node.
+Accessor bindings such as `bindKeyTo` and `bindIndexTo` still bind for
+descendant changes.
 
 ### Change-type filtering
 

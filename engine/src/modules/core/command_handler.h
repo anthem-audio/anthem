@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,6 +21,7 @@
 
 #include "messages/messages.h"
 
+#include <atomic>
 #include <juce_core/juce_core.h>
 #include <juce_events/juce_events.h>
 
@@ -29,23 +30,24 @@ namespace anthem {
 class Engine;
 
 class HeartbeatThread : public juce::Thread {
+private:
+  std::atomic<bool> gotMessageSinceLastHeartbeatCheck{false};
 public:
-  volatile bool gotMessageSinceLastHeartbeatCheck = false;
   HeartbeatThread() : juce::Thread("HeartbeatThread") {}
 
+  void markMessageReceived();
   void run() override;
 };
 
 class CommandHandler {
 private:
   HeartbeatThread heartbeatThread;
+  bool heartbeatThreadStarted = false;
 
   juce::CriticalSection commandQueueMutex;
   std::queue<juce::MemoryBlock> commandQueue;
 public:
-  void startHeartbeatThread() {
-    heartbeatThread.startThread();
-  }
+  void startHeartbeatThread();
 
   // Called from the socket thread
   void addCommandBytesToQueue(juce::MemoryBlock bytes);

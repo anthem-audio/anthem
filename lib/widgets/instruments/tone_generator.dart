@@ -22,7 +22,6 @@ import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/controls/knob.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 
 class ToneGenerator extends StatefulWidget {
   final NodeModel node;
@@ -36,81 +35,39 @@ class ToneGenerator extends StatefulWidget {
 class _ToneGeneratorState extends State<ToneGenerator> {
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final frequencyParameter = ParameterUiBinding.byId(
+      node: widget.node,
+      portId: ToneGeneratorProcessorModel.frequencyPortId,
+      parameterToUiValue: ToneGeneratorProcessorModel.parameterValueToFrequency,
+      uiToParameterValue: ToneGeneratorProcessorModel.frequencyToParameterValue,
+    );
+    final amplitudeParameter = ParameterUiBinding.byId(
+      node: widget.node,
+      portId: ToneGeneratorProcessorModel.amplitudePortId,
+    );
+
+    return SizedBox(
       width: 92,
-      decoration: BoxDecoration(
-        color: AnthemTheme.panel.accent,
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(4),
-          bottomRight: Radius.circular(4),
-        ),
-      ),
       child: Center(
         child: SizedBox(
           width: 80,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Observer(
-                builder: (context) {
-                  final value =
-                      ToneGeneratorProcessorModel.parameterValueToFrequency(
-                        widget.node
-                                .getPortById(
-                                  ToneGeneratorProcessorModel.frequencyPortId,
-                                )
-                                .parameterValue ??
-                            ToneGeneratorProcessorModel.frequencyToParameterValue(
-                              440,
-                            ),
-                      );
-
-                  return Knob(
-                    value: value,
-                    min: 20,
-                    max: 1200,
-                    width: 26,
-                    height: 26,
-                    onValueChanged: (newValue) {
-                      widget.node
-                              .getPortById(
-                                ToneGeneratorProcessorModel.frequencyPortId,
-                              )
-                              .parameterValue =
-                          ToneGeneratorProcessorModel.frequencyToParameterValue(
-                            newValue,
-                          );
-                    },
-                  );
-                },
+              Knob(
+                parameter: frequencyParameter,
+                min: 20,
+                max: 1200,
+                width: 26,
+                height: 26,
               ),
               Text('Pitch', style: TextStyle(color: AnthemTheme.text.main)),
-              Observer(
-                builder: (context) {
-                  final value =
-                      widget.node
-                          .getPortById(
-                            ToneGeneratorProcessorModel.amplitudePortId,
-                          )
-                          .parameterValue ??
-                      0.75;
-
-                  return Knob(
-                    value: value,
-                    min: 0,
-                    max: 1,
-                    width: 26,
-                    height: 26,
-                    onValueChanged: (value) {
-                      widget.node
-                              .getPortById(
-                                ToneGeneratorProcessorModel.amplitudePortId,
-                              )
-                              .parameterValue =
-                          value;
-                    },
-                  );
-                },
+              Knob(
+                parameter: amplitudeParameter,
+                min: 0,
+                max: 1,
+                width: 26,
+                height: 26,
               ),
               Text('Amp', style: TextStyle(color: AnthemTheme.text.main)),
             ],

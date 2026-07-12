@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build-linux:
     runs-on: ${{ matrix.os }}
@@ -29,6 +32,9 @@ jobs:
 
       - name: Build engine
         run: dart run anthem:cli engine build --release
+
+      - name: Build LAME
+        run: dart run anthem:cli engine build-lame
 
       - name: Build Flutter
         run: flutter build linux --verbose --release
@@ -62,6 +68,9 @@ jobs:
       - name: Build engine
         run: dart run anthem:cli engine build --release
 
+      - name: Build LAME
+        run: dart run anthem:cli engine build-lame
+
       - name: Build Flutter
         run: flutter build macos --verbose --release
 
@@ -93,22 +102,43 @@ jobs:
       - name: Initialize project
         uses: ./.github/actions/shared-init
 
+      - name: Set up MSYS2
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.arch == 'arm64' && 'CLANGARM64' || 'CLANG64' }}
+          update: true
+          install: >-
+            base-devel
+            ${{ matrix.arch == 'arm64' && 'mingw-w64-clang-aarch64-toolchain' || 'mingw-w64-clang-x86_64-toolchain' }}
+
       - name: Build engine
         run: dart run anthem:cli engine build --release
 
+      - name: Build LAME
+        run: dart run anthem:cli engine build-lame
+        env:
+          ANTHEM_MSYS2_BASH: ${{ steps.msys2.outputs.msys2-location }}\usr\bin\bash.exe
+          ANTHEM_MSYS2_SYSTEM: ${{ matrix.arch == 'arm64' && 'CLANGARM64' || 'CLANG64' }}
+
       - name: Build Flutter
         run: flutter build windows --verbose --release
+
+      - name: Build installer
+        shell: pwsh
+        run: iscc /DMyArch=${{ matrix.arch }} packaging/windows/anthem.iss
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: anthem-windows-${{ matrix.arch }}
-          # As of writing, Flutter on Windows currently builds x64, as Dart does
-          # not support arm64 on Windows yet. So, both the x64 and arm64 builds
-          # are built as x64, and are output to the x64 folder. If (hopefully
-          # when) this changes, the path here would look like the Linux path
-          # below.
-          path: build/windows/x64/runner/Release
+          path: build/windows/${{ matrix.arch }}/runner/Release
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: anthem-windows-${{ matrix.arch }}-installer
+          path: build/windows/${{ matrix.arch }}/installer/*.exe
 
   build-wasm:
     runs-on: ubuntu-latest

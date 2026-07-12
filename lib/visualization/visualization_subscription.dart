@@ -206,12 +206,10 @@ abstract class VisualizationSubscription<T>
     return _config.toSubscriptionSpec();
   }
 
-  Duration _sampleTimestampToEngineTime(int sampleTimestamp) {
+  Duration? _sampleTimestampToEngineTime(int sampleTimestamp) {
     final sampleRate = _parent._project.engine.audioConfig?.sampleRate;
     if (sampleRate == null || sampleRate <= 0) {
-      throw StateError(
-        'Cannot convert visualization sample timestamp to engine time for ${_config.id} because the engine audio config is unavailable.',
-      );
+      return null;
     }
 
     final microseconds =
@@ -557,7 +555,32 @@ abstract class VisualizationSubscription<T>
 
     if (_isUpdateStale || shouldEmit) {
       _isUpdateStale = false;
-      _updateController.add(null);
+      _emitUpdate();
+    }
+  }
+
+  void _emitUpdate() {
+    if (_updateController.isClosed) {
+      return;
+    }
+
+    _updateController.add(null);
+  }
+
+  void _resetEngineBackedState() {
+    _sourceValue = null;
+    _sourceEngineTime = null;
+    _value = null;
+    _engineTime = null;
+    _overrideValue = null;
+    _overrideSetTime = null;
+    _overrideDuration = null;
+    _shouldReset = false;
+    _isUpdateStale = false;
+    _clearConsumedEngineTimeAnchor();
+
+    if (_hasAdaptiveBuffering) {
+      _resetAdaptiveState();
     }
   }
 
@@ -606,6 +629,10 @@ abstract class VisualizationSubscription<T>
   @override
   void _addValueFromEngine(Object value, int sampleTimestamp) {
     final engineTime = _sampleTimestampToEngineTime(sampleTimestamp);
+    if (engineTime == null) {
+      return;
+    }
+
     final typedValue = _config.visualizationType.cast(value);
 
     if (_hasAdaptiveBuffering) {
@@ -632,12 +659,13 @@ abstract class VisualizationSubscription<T>
   @override
   void _engineStopped() {
     _lastTickElapsed = null;
+    _resetEngineBackedState();
 
-    if (!_ticker.isActive) {
-      return;
+    if (_ticker.isActive) {
+      _ticker.stop();
     }
 
-    _ticker.stop();
+    scheduleMicrotask(_emitUpdate);
   }
 
   @override

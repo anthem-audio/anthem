@@ -26,7 +26,9 @@ import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/piano_roll/helpers.dart';
 import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
+import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui' as ui;
@@ -42,19 +44,15 @@ const _noteResizeHandleOvershoot = 2.0;
 const _minimumClickableNoteArea = 30;
 
 class PianoRollContentRenderer extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
   final AnimationController keyValueAtTopAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Animation<double> keyValueAtTopAnimation;
   final bool shouldGreyOut;
 
   const PianoRollContentRenderer({
     super.key,
-    required this.timeViewAnimationController,
     required this.keyValueAtTopAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.keyValueAtTopAnimation,
     required this.shouldGreyOut,
   });
@@ -63,19 +61,22 @@ class PianoRollContentRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
+    final devicePixelRatio = View.of(context).devicePixelRatio;
+
+    viewModel.ensureRenderCachesForDevicePixelRatio(devicePixelRatio);
 
     return CustomPaint(
       painter: PianoRollPainter(
         repaint: Listenable.merge([
-          timeViewAnimationController,
+          timeRangeAnimation.controller,
           keyValueAtTopAnimationController,
+          viewModel.noteLabelImageCache.repaintSignal,
         ]),
-        timeViewStartAnimation: timeViewStartAnimation,
-        timeViewEndAnimation: timeViewEndAnimation,
+        timeRangeAnimation: timeRangeAnimation,
         keyValueAtTopAnimation: keyValueAtTopAnimation,
         project: project,
         viewModel: viewModel,
-        devicePixelRatio: View.of(context).devicePixelRatio,
+        devicePixelRatio: devicePixelRatio,
         shouldGreyOut: shouldGreyOut,
       ),
     );
@@ -83,8 +84,7 @@ class PianoRollContentRenderer extends StatelessWidget {
 }
 
 class PianoRollPainter extends CustomPainterObserver {
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Animation<double> keyValueAtTopAnimation;
   final PianoRollViewModel viewModel;
   final ProjectModel project;
@@ -93,8 +93,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
   PianoRollPainter({
     required Listenable repaint,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.keyValueAtTopAnimation,
     required this.viewModel,
     required this.project,
@@ -102,8 +101,8 @@ class PianoRollPainter extends CustomPainterObserver {
     required this.shouldGreyOut,
   }) : super(debugName: 'PianoRollPainter', repaint: repaint);
 
-  double get timeViewStart => timeViewStartAnimation.value;
-  double get timeViewEnd => timeViewEndAnimation.value;
+  double get timeViewStart => timeRangeAnimation.renderedStart;
+  double get timeViewEnd => timeRangeAnimation.renderedEnd;
   double get keyValueAtTop => keyValueAtTopAnimation.value;
 
   @override
@@ -117,6 +116,7 @@ class PianoRollPainter extends CustomPainterObserver {
         Rect.fromLTWH(0, 0, size.width, size.height),
         Paint()..color = const Color(0x88404040),
       );
+      paintEditorLeftEdgeBorder(canvas, size);
       return;
     }
 
@@ -134,13 +134,16 @@ class PianoRollPainter extends CustomPainterObserver {
         _drawNotes(canvas, size, pattern);
       },
     );
+
+    paintEditorLeftEdgeBorder(canvas, size);
   }
 
   void _drawNotes(Canvas canvas, Size size, PatternModel pattern) {
     canvas.clipRect(Rect.fromLTWH(0, 0, size.width, size.height));
 
     final colorShifter = AnthemColorShifter(AnthemTheme.primary.main);
-    final resolvedNotes = viewModel.resolveRenderedNotes(pattern);
+    final noteOutsetBorderPaint = Paint()..color = AnthemTheme.grid.minor;
+    final resolvedNotes = pattern.renderOrderedResolvedNotes;
 
     for (final note in resolvedNotes) {
       final noteRef = viewModel.renderedRefFor(note);
@@ -197,9 +200,8 @@ class PianoRollPainter extends CustomPainterObserver {
 
       final noteRect = Rect.fromLTWH(x, y, width, height);
       final rect = RRect.fromRectAndRadius(noteRect, const Radius.circular(1));
-      // Borders are drawn along the edge of the shape, with half the border
-      // inside and half outside. We want all of it to be inside, and this
-      // rectangle accounts for this issue.
+      final borderRect = noteRect.inflate(1);
+      canvas.drawRect(borderRect, noteOutsetBorderPaint);
       canvas.drawRRect(rect, Paint()..color = color);
 
       if (isSelected && width > 1 && height > 1) {
@@ -217,7 +219,7 @@ class PianoRollPainter extends CustomPainterObserver {
       }
 
       if (keyHeight > 25 && width > 2 && height > 2) {
-        final cachedLabel = noteLabelImageCache.get(key);
+        final cachedLabel = viewModel.noteLabelImageCache.get(key);
         if (cachedLabel != null) {
           canvas.save();
           final clipRect = Rect.fromLTWH(x + 1, y + 1, width - 2, height - 2);
@@ -297,8 +299,7 @@ class PianoRollPainter extends CustomPainterObserver {
 
   @override
   bool shouldRepaint(PianoRollPainter oldDelegate) =>
-      timeViewStartAnimation != oldDelegate.timeViewStartAnimation ||
-      timeViewEndAnimation != oldDelegate.timeViewEndAnimation ||
+      timeRangeAnimation != oldDelegate.timeRangeAnimation ||
       keyValueAtTopAnimation != oldDelegate.keyValueAtTopAnimation ||
       viewModel != oldDelegate.viewModel ||
       project != oldDelegate.project ||

@@ -97,13 +97,14 @@ private:
   JUCE_LEAK_DETECTOR(GlobalVisualizationSources)
 public:
   // Measures the processing time relative to the buffer size.
-  std::shared_ptr<CpuVisualizationProvider> cpuBurdenProvider;
+  RegisteredVisualizationProvider<CpuVisualizationProvider> cpuBurdenProvider;
 
   // The playhead position in the transport.
-  std::shared_ptr<PlayheadPositionVisualizationProvider> playheadPositionProvider;
+  RegisteredVisualizationProvider<PlayheadPositionVisualizationProvider> playheadPositionProvider;
 
   // The playhead sequence ID in the transport.
-  std::shared_ptr<PlayheadSequenceIdVisualizationProvider> playheadSequenceIdProvider;
+  RegisteredVisualizationProvider<PlayheadSequenceIdVisualizationProvider>
+      playheadSequenceIdProvider;
 
   GlobalVisualizationSources();
 };

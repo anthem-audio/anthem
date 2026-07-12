@@ -18,14 +18,13 @@
 */
 
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'timeline_constants.dart';
 
 class LoopIndicator extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Size timelineSize;
   final int? loopStart;
   final int? loopEnd;
@@ -34,9 +33,7 @@ class LoopIndicator extends StatelessWidget {
   final void Function(int pointerId) onLoopEndPressed;
 
   const LoopIndicator({
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.timelineSize,
     required this.loopStart,
     required this.loopEnd,
@@ -48,10 +45,10 @@ class LoopIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: timeViewAnimationController,
+      animation: timeRangeAnimation.controller,
       builder: (context, child) {
-        final timeViewStart = timeViewStartAnimation.value;
-        final timeViewEnd = timeViewEndAnimation.value;
+        final timeViewStart = timeRangeAnimation.renderedStart;
+        final timeViewEnd = timeRangeAnimation.renderedEnd;
 
         final loopStartX = timeToPixels(
           timeViewStart: timeViewStart,

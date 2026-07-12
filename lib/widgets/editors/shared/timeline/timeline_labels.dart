@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -108,12 +108,12 @@ class _TimelineLabelState extends State<TimelineLabel> {
   }
 
   void onPointerMove(PointerEvent e) {
-    final timeView = Provider.of<TimeRange>(
+    final timeRange = Provider.of<TimeRange>(
       widget.stableBuildContext,
       listen: false,
     );
     final time =
-        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
+        (e.position.dx - pointerStart) * timeRange.width / widget.timelineWidth;
     TimelineLabelPointerMoveNotification(
       time: time,
       labelID: widget.id,
@@ -123,12 +123,12 @@ class _TimelineLabelState extends State<TimelineLabel> {
   }
 
   void onPointerUp(PointerEvent e) {
-    final timeView = Provider.of<TimeRange>(
+    final timeRange = Provider.of<TimeRange>(
       widget.stableBuildContext,
       listen: false,
     );
     final time =
-        (e.position.dx - pointerStart) * timeView.width / widget.timelineWidth;
+        (e.position.dx - pointerStart) * timeRange.width / widget.timelineWidth;
     TimelineLabelPointerUpNotification(
       time: time,
       labelID: widget.id,

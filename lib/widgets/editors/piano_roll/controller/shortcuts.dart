@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -24,15 +24,89 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
 
   void registerShortcuts() {
     // Delete
-    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), () {
-      deleteSelected();
-    });
+    registerEditorDeleteShortcut(shortcutManager, deleteSelected);
 
-    // Ctrl + A
+    // Primary + A
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyA),
       () {
         selectAll();
+      },
+    );
+
+    // Primary + C
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
+      () {
+        copySelected();
+      },
+    );
+
+    // Primary + X
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyX),
+      () {
+        cutSelected();
+      },
+    );
+
+    // Primary + V
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
+      () {
+        pasteNotes();
+      },
+    );
+
+    // Shift + Up/Down - transpose selected notes by semitone
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowUp),
+      () {
+        transposeSelectedNotes(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowDown),
+      () {
+        transposeSelectedNotes(-1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedNotesByCurrentSnap(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedNotesByCurrentSnap(-1);
+      },
+    );
+
+    // Primary + Up/Down - transpose selected notes by octave
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowUp),
+      () {
+        transposeSelectedNotes(12, requireExactDelta: true);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowDown),
+      () {
+        transposeSelectedNotes(-12, requireExactDelta: true);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedNotesByBar(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedNotesByBar(-1);
       },
     );
 

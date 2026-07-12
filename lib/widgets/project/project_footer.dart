@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -79,44 +79,30 @@ class ProjectFooter extends StatelessWidget {
                 return ButtonGroup(
                   children: [
                     Button(
-                      icon: Icons.detailEditor,
-                      toggleState: viewModel.selectedEditor == .detail,
+                      icon: Icons.pianoRoll,
+                      toggleState: viewModel.selectedEditor == .pianoRoll,
                       width: 26,
                       contentPadding: contentPadding,
                       onPress: () {
-                        if (viewModel.selectedEditor == .detail) {
+                        if (viewModel.selectedEditor == .pianoRoll) {
                           viewModel.selectedEditor = null;
                         } else {
-                          viewModel.selectedEditor = .detail;
+                          viewModel.selectedEditor = .pianoRoll;
                           viewModel.activePanel = .pianoRoll;
                         }
                       },
                     ),
                     Button(
-                      icon: Icons.automationEditor,
-                      toggleState: viewModel.selectedEditor == .automation,
+                      icon: Icons.deviceRack,
+                      toggleState: viewModel.selectedEditor == .deviceRack,
                       width: 26,
                       contentPadding: contentPadding,
                       onPress: () {
-                        if (viewModel.selectedEditor == .automation) {
+                        if (viewModel.selectedEditor == .deviceRack) {
                           viewModel.selectedEditor = null;
                         } else {
-                          viewModel.selectedEditor = .automation;
-                          viewModel.activePanel = .automationEditor;
-                        }
-                      },
-                    ),
-                    Button(
-                      icon: Icons.channelRack,
-                      toggleState: viewModel.selectedEditor == .channelRack,
-                      width: 26,
-                      contentPadding: contentPadding,
-                      onPress: () {
-                        if (viewModel.selectedEditor == .channelRack) {
-                          viewModel.selectedEditor = null;
-                        } else {
-                          viewModel.selectedEditor = .channelRack;
-                          viewModel.activePanel = .channelRack;
+                          viewModel.selectedEditor = .deviceRack;
+                          viewModel.activePanel = .deviceRack;
                         }
                       },
                     ),

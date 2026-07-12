@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2022 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -131,7 +131,6 @@ class _TreeItemState extends State<_TreeItem> with TickerProviderStateMixin {
                   ? () => widget.model.onClick?.call()
                   : null,
               child: MouseRegion(
-                cursor: SystemMouseCursors.click,
                 child: Container(
                   decoration: BoxDecoration(
                     color: isHovered || hasHighestScore

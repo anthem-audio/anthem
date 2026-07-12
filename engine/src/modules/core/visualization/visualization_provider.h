@@ -22,9 +22,11 @@
 #include "messages/messages.h"
 #include "modules/util/ring_buffer.h"
 
+#include <atomic>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
@@ -67,6 +69,59 @@ std::optional<TimestampedVisualizationData<T>> drainTimestampedVisualizationBuff
 
   return data;
 }
+
+// For streams where only the newest value matters, keep a single overwriteable
+// value instead of a queue. Streams that need per-sample history should use a
+// RingBuffer and drainTimestampedVisualizationBuffer().
+template <typename T> class LatestTimestampedVisualizationValue {
+private:
+  static_assert(std::is_trivially_copyable_v<T>);
+  static_assert(std::atomic<T>::is_always_lock_free);
+
+  std::atomic<uint64_t> sequence = 0;
+  std::atomic<int64_t> sampleTimestamp = 0;
+  std::atomic<T> value = {};
+  uint64_t lastReadSequence = 0;
+public:
+  void rt_set(T newValue, int64_t newSampleTimestamp) {
+    const auto writeSequence = sequence.load(std::memory_order_relaxed) + 1;
+
+    sequence.store(writeSequence, std::memory_order_release);
+    sampleTimestamp.store(newSampleTimestamp, std::memory_order_relaxed);
+    value.store(newValue, std::memory_order_relaxed);
+    sequence.store(writeSequence + 1, std::memory_order_release);
+  }
+
+  std::optional<TimestampedVisualizationData<T>> drainLatest() {
+    for (int attempt = 0; attempt < 8; attempt++) {
+      const auto beginSequence = sequence.load(std::memory_order_acquire);
+      if (beginSequence == 0 || beginSequence == lastReadSequence) {
+        return std::nullopt;
+      }
+
+      if ((beginSequence & 1) != 0) {
+        continue;
+      }
+
+      const auto latestSampleTimestamp = sampleTimestamp.load(std::memory_order_relaxed);
+      const auto latestValue = value.load(std::memory_order_relaxed);
+      const auto endSequence = sequence.load(std::memory_order_acquire);
+      if (beginSequence != endSequence || (endSequence & 1) != 0) {
+        continue;
+      }
+
+      lastReadSequence = endSequence;
+
+      TimestampedVisualizationData<T> data;
+      data.sampleTimestamps.push_back(latestSampleTimestamp);
+      data.values.push_back(latestValue);
+
+      return data;
+    }
+
+    return std::nullopt;
+  }
+};
 
 // This non-templated base class is required for runtime polymorphism. The
 // VisualizationBroker stores heterogeneous providers (double, int, string,

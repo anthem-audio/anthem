@@ -20,6 +20,20 @@
 import 'package:anthem_codegen/generators/util/model_class_info.dart';
 import 'package:anthem_codegen/generators/util/model_types.dart';
 
+const _valueBindingParams = '''
+String? bindTo,
+String? bindValueTo,
+String? bindOldValueTo,
+String? bindNewValueTo,
+''';
+
+const _valueBindingArgs = '''
+bindTo: bindTo,
+bindValueTo: bindValueTo,
+bindOldValueTo: bindOldValueTo,
+bindNewValueTo: bindNewValueTo,
+''';
+
 String generateFilterBuilders({required ModelClassInfo context}) {
   final result = StringBuffer();
 
@@ -55,26 +69,38 @@ String generateFilterBuilders({required ModelClassInfo context}) {
       EnumModelType() ||
       ColorModelType() =>
         '''
-        void get $fieldName {
-          context.addNode(ModelFilterFieldNode(fieldName: '$fieldName'));
+        GenericModelFilterBuilder $fieldName({
+          $_valueBindingParams
+        }) {
+          context.addNode(ModelFilterFieldNode(
+            fieldName: '$fieldName',
+            $_valueBindingArgs
+          ));
+          return GenericModelFilterBuilder(context);
         }
       ''',
       ListModelType() => _generateListFieldGetter(fieldName, fieldInfo),
       MapModelType() => _generateMapFieldGetter(fieldName, fieldInfo),
       CustomModelType() =>
         '''
-        ${fieldInfo.typeInfo.dartName}ModelFilterBuilder get $fieldName {
+        ${fieldInfo.typeInfo.dartName}ModelFilterBuilder $fieldName({
+          $_valueBindingParams
+        }) {
           context.addNode(ModelFilterFieldNode(
             fieldName: '$fieldName',
+            $_valueBindingArgs
           ));
           return ${fieldInfo.typeInfo.dartName}ModelFilterBuilder(context);
         }
       ''',
       UnionModelType() =>
         '''
-        GenericModelFilterBuilder get $fieldName {
+        GenericModelFilterBuilder $fieldName({
+          $_valueBindingParams
+        }) {
           context.addNode(ModelFilterFieldNode(
             fieldName: '$fieldName',
+            $_valueBindingArgs
           ));
           return GenericModelFilterBuilder(context);
         }
@@ -86,8 +112,13 @@ String generateFilterBuilders({required ModelClassInfo context}) {
   }
 
   result.write('''
-    void get anyField {
-      context.addNode(ModelFilterPassthroughNode());
+    GenericModelFilterBuilder anyField({
+      $_valueBindingParams
+    }) {
+      context.addNode(ModelFilterWildcardNode(
+        $_valueBindingArgs
+      ));
+      return GenericModelFilterBuilder(context);
     }
   ''');
 
@@ -98,7 +129,7 @@ String generateFilterBuilders({required ModelClassInfo context}) {
           final localContext = ModelFilterBuilderContext();
           final builderClass = $className(localContext);
           b(builderClass);
-          return localContext.root ?? ModelFilterPassthroughNode();
+          return localContext.root ?? ModelFilterSelfNode();
         }).toList()
       ));
 
@@ -118,8 +149,13 @@ String _generateListFieldGetter(String fieldName, ModelFieldInfo fieldInfo) {
   );
 
   return '''
-    $listType get $fieldName {
-      context.addNode(ModelFilterFieldNode(fieldName: '$fieldName'));
+    $listType $fieldName({
+      $_valueBindingParams
+    }) {
+      context.addNode(ModelFilterFieldNode(
+        fieldName: '$fieldName',
+        $_valueBindingArgs
+      ));
       return $listType(
         context: context,
         tGenerator: $tGenerator,
@@ -148,7 +184,7 @@ String _generateListType(ListModelType typeInfo) {
       itemType is BoolModelType ||
       itemType is EnumModelType ||
       itemType is ColorModelType) {
-    return 'ListModelFilterBuilder<void>';
+    return 'ListModelFilterBuilder<GenericModelFilterBuilder>';
   } else {
     throw UnimplementedError();
   }
@@ -177,7 +213,7 @@ String _generateListTGenerator(ListModelType typeInfo) {
       typeInfo.itemType is BoolModelType ||
       typeInfo.itemType is EnumModelType ||
       typeInfo.itemType is ColorModelType) {
-    return '(context) {}';
+    return '(context) => GenericModelFilterBuilder(context)';
   } else {
     throw UnimplementedError();
   }
@@ -189,8 +225,13 @@ String _generateMapFieldGetter(String fieldName, ModelFieldInfo fieldInfo) {
   final valueGenerator = _generateMapVGenerator(mapType);
 
   return '''
-    $mapTypeName get $fieldName {
-      context.addNode(ModelFilterFieldNode(fieldName: '$fieldName'));
+    $mapTypeName $fieldName({
+      $_valueBindingParams
+    }) {
+      context.addNode(ModelFilterFieldNode(
+        fieldName: '$fieldName',
+        $_valueBindingArgs
+      ));
       return $mapTypeName(
         context: context,
         valueGenerator: $valueGenerator,
@@ -219,7 +260,7 @@ String _generateMapType(MapModelType typeInfo) {
       valueType is BoolModelType ||
       valueType is EnumModelType ||
       valueType is ColorModelType) {
-    return 'MapModelFilterBuilder<void>';
+    return 'MapModelFilterBuilder<GenericModelFilterBuilder>';
   } else {
     throw UnimplementedError();
   }
@@ -247,7 +288,7 @@ String _generateMapVGenerator(MapModelType typeInfo) {
       valueType is BoolModelType ||
       valueType is EnumModelType ||
       valueType is ColorModelType) {
-    return '(context) {}';
+    return '(context) => GenericModelFilterBuilder(context)';
   } else {
     throw UnimplementedError();
   }
@@ -259,7 +300,7 @@ String generateOnChangeMethod({required ModelClassInfo context}) {
   return '''
     ModelFilterSubscription onChange(
       void Function(${className}ModelFilterBuilder b) build,
-      void Function(ModelChangeEvent) listener,
+      void Function(ModelChangeEvent, ModelChangeBindings) listener,
     ) {
       final context = ModelFilterBuilderContext();
       final builder = ${className}ModelFilterBuilder(context);
@@ -267,10 +308,12 @@ String generateOnChangeMethod({required ModelClassInfo context}) {
       final filter = context.root;
 
       void handler(ModelChangeEvent change) {
-        if (filter != null &&
-            filter.matches(change.fieldAccessors, change.operation)) {
-          listener(change);
+        final match = filter?.match(change.fieldAccessors, change.operation);
+        if (match == null || !match.matches) {
+          return;
         }
+
+        listener(change, ModelChangeBindings(match.bindings));
       }
 
       addRawFieldChangedListener(handler);

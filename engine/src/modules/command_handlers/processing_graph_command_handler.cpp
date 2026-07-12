@@ -21,8 +21,16 @@
 
 #include "modules/core/engine.h"
 #include "modules/processors/live_event_provider.h"
+#ifndef __EMSCRIPTEN__
+#include "modules/processors/vst3_processor.h"
+#endif
 
+#include <exception>
+#include <memory>
+#include <rfl/json.hpp>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace anthem {
 
@@ -35,47 +43,93 @@ std::string toIdString(int64_t id) {
 std::optional<Response> handleProcessingGraphCommand(Request& request) {
   auto& engine = Engine::getInstance();
 
-  if (rfl::holds_alternative<CompileProcessingGraphRequest>(request.variant())) {
-    auto& compileProcessingGraphRequest =
-        rfl::get<CompileProcessingGraphRequest>(request.variant());
+  if (rfl::holds_alternative<InitializeProcessingGraphNodesRequest>(request.variant())) {
+    auto& initializeNodesRequest =
+        rfl::get<InitializeProcessingGraphNodesRequest>(request.variant());
 
-    juce::Logger::writeToLog("Compiling from UI request...");
+    juce::Logger::writeToLog("Initializing processing graph nodes from UI request...");
 
-    if (!engine.isAudioThreadRunning()) {
+    auto results =
+        std::make_shared<std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>>();
+    auto requestId = initializeNodesRequest.requestBase.get().id;
+
+    if (!engine.audioSessionController->hasActiveAudioSession()) {
       juce::Logger::writeToLog(
-          "Skipping processing graph compile because the audio thread is not running.");
+          "Skipping processing graph node initialization because no audio session is active.");
 
-      return std::optional(CompileProcessingGraphResponse{.success = true,
+      return std::optional(InitializeProcessingGraphNodesResponse{.didInitialize = false,
+          .results = results,
           .error = std::nullopt,
-          .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+          .responseBase = ResponseBase{.id = requestId}});
     }
 
-    // We need a valid device in order to query the sample rate and block size
-    // used by the compiled graph.
-    if (engine.audioDeviceManager.getCurrentAudioDevice() == nullptr) {
-      juce::Logger::writeToLog(
-          "Cannot compile processing graph because no audio device is active.");
+    // Note that this is asynchronous (still single-threaded though), so when
+    // the work for this method completes, it calls the lambda we pass in here.
+    engine.initializeProcessingGraphNodes(
+        [requestId](std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>
+                initializationResults) {
+          auto results = std::make_shared<
+              std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>>(
+              std::move(initializationResults));
 
-      return std::optional(CompileProcessingGraphResponse{.success = false,
-          .error = std::string("No audio device is active."),
-          .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+          Response response = InitializeProcessingGraphNodesResponse{.didInitialize = true,
+              .results = results,
+              .error = std::nullopt,
+              .responseBase = ResponseBase{.id = requestId}};
+
+          auto responseString = rfl::json::write(response);
+          Engine::getInstance().comms.send(responseString);
+        });
+
+    return std::nullopt;
+  } else if (rfl::holds_alternative<PublishProcessingGraphRequest>(request.variant())) {
+    auto& publishProcessingGraphRequest =
+        rfl::get<PublishProcessingGraphRequest>(request.variant());
+
+    juce::Logger::writeToLog("Publishing from UI request...");
+
+    if (!engine.audioSessionController->hasActiveAudioSession()) {
+      constexpr auto error = "Cannot publish processing graph because no audio session is active.";
+      juce::Logger::writeToLog(error);
+
+      return std::optional(PublishProcessingGraphResponse{.success = false,
+          .error = std::string(error),
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
+    }
+
+    // We need a valid processing config in order to allocate the graph buffers
+    // used by the published graph.
+    if (!engine.audioSessionController->getCurrentAudioProcessingConfig().has_value()) {
+      juce::Logger::writeToLog(
+          "Cannot publish processing graph because no audio processing config is active.");
+
+      return std::optional(PublishProcessingGraphResponse{.success = false,
+          .error = std::string("No audio processing config is active."),
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
     try {
-      engine.compileProcessingGraph();
-    } catch (std::runtime_error& e) {
-      juce::Logger::writeToLog("Error compiling: " + std::string(e.what()));
+      engine.publishProcessingGraph();
+    } catch (const std::exception& e) {
+      juce::Logger::writeToLog("Error publishing: " + std::string(e.what()));
 
-      return std::optional(CompileProcessingGraphResponse{.success = false,
+      return std::optional(PublishProcessingGraphResponse{.success = false,
           .error = std::string(e.what()),
-          .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
+    } catch (...) {
+      constexpr auto unknownError = "Unknown error while publishing processing graph.";
+      juce::Logger::writeToLog(unknownError);
+
+      return std::optional(PublishProcessingGraphResponse{.success = false,
+          .error = std::string(unknownError),
+          .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
     }
 
-    juce::Logger::writeToLog("Finished compiling.");
+    juce::Logger::writeToLog("Finished publishing.");
 
-    return std::optional(CompileProcessingGraphResponse{.success = true,
+    return std::optional(PublishProcessingGraphResponse{.success = true,
         .error = std::nullopt,
-        .responseBase = ResponseBase{.id = compileProcessingGraphRequest.requestBase.get().id}});
+        .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
   } else if (rfl::holds_alternative<GetPluginStateRequest>(request.variant())) {
     juce::Logger::writeToLog("Handling GetPluginStateRequest...");
 
@@ -154,6 +208,92 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
       juce::Logger::writeToLog("Error setting plugin state: " + std::string(e.what()));
       return std::nullopt;
     }
+  } else if (rfl::holds_alternative<SetPluginParameterValueRequest>(request.variant())) {
+    auto& setPluginParameterValueRequest =
+        rfl::get<SetPluginParameterValueRequest>(request.variant());
+
+#ifdef __EMSCRIPTEN__
+    juce::Logger::writeToLog(
+        "Ignoring SetPluginParameterValueRequest because plugins are not available on this "
+        "platform.");
+#else
+    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
+    auto nodeIter = nodes.find(setPluginParameterValueRequest.nodeId);
+    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
+
+    if (node == nullptr) {
+      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
+                               " not found in processing graph.");
+      return std::nullopt;
+    }
+
+    auto processor = node->getProcessor();
+
+    if (!processor) {
+      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
+                               " does not have a processor.");
+      return std::nullopt;
+    }
+
+    auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor.value());
+
+    if (vst3Processor == nullptr) {
+      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
+                               " is not a VST3 processor.");
+      return std::nullopt;
+    }
+
+    auto error = vst3Processor->setPluginParameterValue(
+        setPluginParameterValueRequest.controlPortId, setPluginParameterValueRequest.value);
+
+    if (error.has_value()) {
+      juce::Logger::writeToLog("Error setting plugin parameter value: " + error.value());
+    }
+#endif
+
+    return std::nullopt;
+  } else if (rfl::holds_alternative<OpenPluginWindowRequest>(request.variant())) {
+    juce::Logger::writeToLog("Handling OpenPluginWindowRequest...");
+
+    auto& openPluginWindowRequest = rfl::get<OpenPluginWindowRequest>(request.variant());
+
+#ifdef __EMSCRIPTEN__
+    juce::Logger::writeToLog("Plugin windows are not available on this platform.");
+#else
+    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
+    auto nodeIter = nodes.find(openPluginWindowRequest.nodeId);
+    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
+
+    if (node == nullptr) {
+      juce::Logger::writeToLog(
+          "Node " + toIdString(openPluginWindowRequest.nodeId) + " not found in processing graph.");
+      return std::nullopt;
+    }
+
+    auto processor = node->getProcessor();
+
+    if (!processor) {
+      juce::Logger::writeToLog(
+          "Node " + toIdString(openPluginWindowRequest.nodeId) + " does not have a processor.");
+      return std::nullopt;
+    }
+
+    auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor.value());
+
+    if (vst3Processor == nullptr) {
+      juce::Logger::writeToLog(
+          "Node " + toIdString(openPluginWindowRequest.nodeId) + " is not a VST3 processor.");
+      return std::nullopt;
+    }
+
+    auto error = vst3Processor->openPluginWindow();
+
+    if (error.has_value()) {
+      juce::Logger::writeToLog("Error opening plugin window: " + error.value());
+    }
+#endif
+
+    return std::nullopt;
   } else if (rfl::holds_alternative<SendLiveEventRequest>(request.variant())) {
     auto& sendLiveEventRequest = rfl::get<SendLiveEventRequest>(request.variant());
 

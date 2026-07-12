@@ -20,7 +20,7 @@
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
-import 'package:anthem/widgets/editors/attribute_editor/sections/track_attributes.dart';
+import 'package:anthem/widgets/editors/attribute_editor/track_attributes.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -43,9 +43,7 @@ class AttributeEditor extends StatelessObserverWidget {
         break;
       case PanelKind.pianoRoll:
         break;
-      case PanelKind.automationEditor:
-        break;
-      case PanelKind.channelRack:
+      case PanelKind.deviceRack:
         break;
       case PanelKind.mixer:
         break;

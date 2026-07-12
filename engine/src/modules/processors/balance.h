@@ -37,7 +37,7 @@ public:
   BalanceProcessor(BalanceProcessor&&) noexcept = default;
   BalanceProcessor& operator=(BalanceProcessor&&) noexcept = default;
 
-  void prepareToProcess() override;
+  void prepareToProcess(ProcessorPrepareCallback complete) override;
   void process(NodeProcessContext& context, int numSamples) override;
 };
 

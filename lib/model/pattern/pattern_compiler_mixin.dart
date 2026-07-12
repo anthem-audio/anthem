@@ -23,13 +23,21 @@ mixin _PatternCompilerMixin on _PatternModel {
   static const Id _noTrackEventListKey = -1;
   // 0x001F_FFFF_FFFF_FFFF is the max safe integer in JavaScript.
   static const int _unboundedClipEnd = 0x001F_FFFF_FFFF_FFFF;
+  static const Duration _automationCompileDebounce = Duration(milliseconds: 75);
 
   final InvalidationRangeCollector _patternInvalidationRangeCollector =
       InvalidationRangeCollector();
   final InvalidationRangeCollector _arrangementInvalidationRangeCollector =
       InvalidationRangeCollector();
   bool _updateArrangements = false;
-  bool _isScheduled = false;
+  bool _isImmediateCompileScheduled = false;
+  bool _automationChanged = false;
+
+  late final TimerDebouncedAction _automationCompileAction =
+      TimerDebouncedAction(
+        _flushScheduledPatternCompile,
+        _automationCompileDebounce,
+      );
 
   void _addPatternInvalidationRange(int start, int end) {
     if (end <= start) {
@@ -124,6 +132,37 @@ mixin _PatternCompilerMixin on _PatternModel {
     _schedulePatternCompile(updateArrangements: true);
   }
 
+  void _recompileOnAutomationPointsAddedOrRemoved(
+    AutomationPointModel? oldPoint,
+    AutomationPointModel? newPoint,
+  ) {
+    if (oldPoint == null && newPoint == null) {
+      return;
+    }
+
+    _automationChanged = true;
+    _schedulePatternCompile(updateArrangements: true, debounce: true);
+  }
+
+  void _recompileOnAutomationPointFieldChanged(ModelChangeEvent change) {
+    final operation = change.operation;
+
+    if (operation is! RawFieldUpdate) {
+      return;
+    }
+
+    final fieldName = _getLastFieldAccessor(change.fieldAccessors)?.fieldName;
+    if (fieldName != 'offset' &&
+        fieldName != 'value' &&
+        fieldName != 'tension' &&
+        fieldName != 'curve') {
+      return;
+    }
+
+    _automationChanged = true;
+    _schedulePatternCompile(updateArrangements: true, debounce: true);
+  }
+
   void _compileAffectedArrangements() {
     final engine = project.engine;
     final patternInvalidationSize = _patternInvalidationRangeCollector.size;
@@ -144,7 +183,10 @@ mixin _PatternCompilerMixin on _PatternModel {
 
         final clipTimeViewStart = clip.timeView?.start ?? 0;
         final clipTimeViewEnd = clip.timeView?.end ?? _unboundedClipEnd;
-        var clipInvalidationOccurred = false;
+
+        if (_automationChanged) {
+          tracksToCompile.add(clip.trackId);
+        }
 
         for (var i = 0; i < patternInvalidationSize; i++) {
           final patternInvalidationRangeStart = patternInvalidationData[i * 2];
@@ -162,7 +204,7 @@ mixin _PatternCompilerMixin on _PatternModel {
             continue;
           }
 
-          clipInvalidationOccurred = true;
+          tracksToCompile.add(clip.trackId);
 
           final arrangementRangeStart = adjustedPatternRangeStart + clip.offset;
           final arrangementRangeEnd = adjustedPatternRangeEnd + clip.offset;
@@ -172,65 +214,77 @@ mixin _PatternCompilerMixin on _PatternModel {
             arrangementRangeEnd,
           );
         }
-
-        if (clipInvalidationOccurred) {
-          tracksToCompile.add(clip.trackId);
-        }
       }
 
-      if (tracksToCompile.isEmpty ||
-          _arrangementInvalidationRangeCollector.size == 0) {
+      if (tracksToCompile.isEmpty) {
         continue;
       }
 
       engine.sequencerApi.compileArrangement(
         arrangement.id,
         tracksToRebuild: tracksToCompile.toList(),
-        invalidationRanges: _arrangementInvalidationRangeCollector.getRanges(),
+        invalidationRanges: _arrangementInvalidationRangeCollector.size > 0
+            ? _arrangementInvalidationRangeCollector.getRanges()
+            : null,
       );
     }
 
     _arrangementInvalidationRangeCollector.reset();
   }
 
-  void _schedulePatternCompile({required bool updateArrangements}) {
-    _updateArrangements = _updateArrangements || updateArrangements;
+  void _flushScheduledPatternCompile() {
+    void reset() {
+      _patternInvalidationRangeCollector.reset();
+      _updateArrangements = false;
+      _automationChanged = false;
+    }
 
-    if (_isScheduled) {
+    if (_patternInvalidationRangeCollector.size == 0 && !_automationChanged) {
+      reset();
       return;
     }
 
-    _isScheduled = true;
+    final engine = project.engine;
+    if (!engine.isRunning) {
+      reset();
+      return;
+    }
+
+    engine.sequencerApi.compilePattern(
+      id,
+      tracksToRebuild: [_noTrackEventListKey],
+      invalidationRanges: _patternInvalidationRangeCollector.size > 0
+          ? _patternInvalidationRangeCollector.getRanges()
+          : null,
+    );
+
+    if (_updateArrangements) {
+      _compileAffectedArrangements();
+    }
+
+    reset();
+  }
+
+  void _schedulePatternCompile({
+    required bool updateArrangements,
+    bool debounce = false,
+  }) {
+    _updateArrangements = _updateArrangements || updateArrangements;
+
+    if (debounce) {
+      _automationCompileAction.execute();
+      return;
+    }
+
+    if (_isImmediateCompileScheduled) {
+      return;
+    }
+
+    _isImmediateCompileScheduled = true;
 
     Future.microtask(() {
-      void reset() {
-        _patternInvalidationRangeCollector.reset();
-        _updateArrangements = false;
-        _isScheduled = false;
-      }
-
-      if (_patternInvalidationRangeCollector.size == 0) {
-        reset();
-        return;
-      }
-
-      final engine = project.engine;
-      if (!engine.isRunning) {
-        reset();
-        return;
-      }
-
-      engine.sequencerApi.compilePattern(
-        id,
-        tracksToRebuild: [_noTrackEventListKey],
-        invalidationRanges: _patternInvalidationRangeCollector.getRanges(),
-      );
-
-      if (_updateArrangements) {
-        _compileAffectedArrangements();
-      }
-
-      reset();
+      _isImmediateCompileScheduled = false;
+      _flushScheduledPatternCompile();
     });
   }
 

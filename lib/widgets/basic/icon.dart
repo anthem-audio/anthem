@@ -44,15 +44,16 @@ class Icons {
   static IconDef browserPanel = const IconDef(
     'assets/icons/bottom_bar/browser_panel.svg',
   );
-  static IconDef channelRack = const IconDef(
+  static IconDef deviceRack = const IconDef(
     'assets/icons/bottom_bar/instruments_effects_panel.svg',
   );
   static IconDef close = const IconDef('assets/icons/small/close.svg');
-  static IconDef detailEditor = const IconDef(
+  static IconDef pianoRoll = const IconDef(
     'assets/icons/bottom_bar/detail_editor.svg',
   );
   static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
   static IconDef file = const IconDef('assets/icons_old/file.svg');
+  static IconDef folder = const IconDef('assets/icons/icon/folder.svg');
   static IconDef kebab = const IconDef('assets/icons/misc.svg');
   static IconDef maximize = const IconDef('assets/icons/small/maximize.svg');
   static IconDef midi = const IconDef(
@@ -61,6 +62,9 @@ class Icons {
   static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
   static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
   static IconDef mute = const IconDef('assets/icons/arranger/mute.svg');
+  static IconDef openPluginWindow = const IconDef(
+    'assets/icons/icon/expanded_device.svg',
+  );
   static IconDef patternPickerAudio = const IconDef(
     'assets/icons/arranger/clip/audio.svg',
   );
@@ -73,7 +77,7 @@ class Icons {
   static IconDef patternPickerMidi = const IconDef(
     'assets/icons/arranger/clip/note.svg',
   );
-  static IconDef pianoRollAttributes = const IconDef(
+  static IconDef pianoRollStems = const IconDef(
     'assets/icons/note_editor/control.svg',
   );
   static IconDef play = const IconDef('assets/icons/main_toolbar/play.svg');

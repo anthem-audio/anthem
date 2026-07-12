@@ -29,6 +29,7 @@ import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 typedef StereoMeterValues = ({double left, double right});
+typedef StereoMeterTimestamps = ({Duration left, Duration right});
 typedef StereoMeterConfigs = ({
   VisualizationSubscriptionConfig<double> left,
   VisualizationSubscriptionConfig<double> right,
@@ -51,6 +52,19 @@ double defaultMeterDbToNormalizedPosition(double db) {
   }
 
   return gainDbToParameterValue(db);
+}
+
+double _estimatedVisualizationSamplesPerSecond() {
+  var estimatedSamplesPerSecond = 60.0;
+
+  for (final display in PlatformDispatcher.instance.displays) {
+    final refreshRate = display.refreshRate;
+    if (refreshRate.isFinite && refreshRate > estimatedSamplesPerSecond) {
+      estimatedSamplesPerSecond = refreshRate;
+    }
+  }
+
+  return estimatedSamplesPerSecond;
 }
 
 /// Painter-ready meter state derived from the latest stereo visualization
@@ -126,30 +140,6 @@ class Meter extends StatefulWidget {
           return Meter.dbToNormalizedHeight(stop.db, dbToNormalizedPosition);
         }),
       ),
-    );
-  }
-
-  static double decayPeakNormalizedHeight({
-    required double currentNormalizedHeight,
-    required double previousPeakNormalizedHeight,
-    required Duration elapsed,
-    required double fallRateNormalizedPerSecond,
-  }) {
-    if (elapsed <= Duration.zero || fallRateNormalizedPerSecond <= 0) {
-      return math.max(currentNormalizedHeight, previousPeakNormalizedHeight);
-    }
-
-    final fallenNormalized =
-        fallRateNormalizedPerSecond *
-        (elapsed.inMicroseconds / Duration.microsecondsPerSecond);
-
-    return clampDouble(
-      math.max(
-        currentNormalizedHeight,
-        math.max(0.0, previousPeakNormalizedHeight - fallenNormalized),
-      ),
-      0.0,
-      1.0,
     );
   }
 
@@ -241,14 +231,13 @@ class MeterPainter extends CustomPainter {
   final double peakLineThickness;
 
   MeterPainter({
-    required MeterSnapshot snapshot,
+    required MeterSnapshot this._snapshot,
     required this.gradientColors,
     required this.gradientStopPositions,
     required this.backgroundTrackColor,
     this.noBackground = false,
     this.peakLineThickness = 1.0,
-  }) : _snapshot = snapshot,
-       _snapshotListenable = null;
+  }) : _snapshotListenable = null;
 
   MeterPainter.fromListenable({
     required ValueListenable<MeterSnapshot> snapshotListenable,
@@ -380,128 +369,298 @@ class MeterValueTracker {
   Duration _peakHoldDuration;
   double _peakFallRateNormalizedPerSecond;
 
-  Duration? _lastTimestamp;
-  StereoMeterValues? _lastDb;
-  StereoMeterValues _peakNormalizedHeights = (left: 0.0, right: 0.0);
-  ({Duration left, Duration right}) _peakTimestamps = (
-    left: Duration.zero,
-    right: Duration.zero,
-  );
+  final double _estimatedSamplesPerSecond;
+  late final _MeterPeakChannelTracker _leftPeakTracker;
+  late final _MeterPeakChannelTracker _rightPeakTracker;
 
   MeterValueTracker({
-    required MeterDbToNormalizedPosition dbToNormalizedPosition,
+    required this._dbToNormalizedPosition,
+    required this._peakHoldDuration,
+    required this._peakFallRateNormalizedPerSecond,
+    double estimatedSamplesPerSecond = 60.0,
+  }) : _estimatedSamplesPerSecond =
+           estimatedSamplesPerSecond.isFinite && estimatedSamplesPerSecond > 0
+           ? estimatedSamplesPerSecond
+           : 60.0 {
+    final initialHistoryCapacity = estimateHistoryCapacity(
+      peakHoldDuration: _peakHoldDuration,
+      estimatedSamplesPerSecond: _estimatedSamplesPerSecond,
+    );
+
+    _leftPeakTracker = _MeterPeakChannelTracker(
+      initialHistoryCapacity: initialHistoryCapacity,
+      peakHoldDuration: _peakHoldDuration,
+    );
+    _rightPeakTracker = _MeterPeakChannelTracker(
+      initialHistoryCapacity: initialHistoryCapacity,
+      peakHoldDuration: _peakHoldDuration,
+    );
+  }
+
+  @visibleForTesting
+  static int estimateHistoryCapacity({
     required Duration peakHoldDuration,
-    required double peakFallRateNormalizedPerSecond,
-  }) : _dbToNormalizedPosition = dbToNormalizedPosition,
-       _peakHoldDuration = peakHoldDuration,
-       _peakFallRateNormalizedPerSecond = peakFallRateNormalizedPerSecond;
+    required double estimatedSamplesPerSecond,
+  }) {
+    final effectiveSamplesPerSecond =
+        estimatedSamplesPerSecond.isFinite && estimatedSamplesPerSecond > 0
+        ? estimatedSamplesPerSecond
+        : 60.0;
+    final holdDurationSeconds =
+        math.max(0, peakHoldDuration.inMicroseconds) /
+        Duration.microsecondsPerSecond;
+
+    return math.max(
+      1,
+      (holdDurationSeconds * effectiveSamplesPerSecond * 1.5).ceil(),
+    );
+  }
 
   void updateConfig({
     required MeterDbToNormalizedPosition dbToNormalizedPosition,
     required Duration peakHoldDuration,
     required double peakFallRateNormalizedPerSecond,
   }) {
+    final didMappingChange = _dbToNormalizedPosition != dbToNormalizedPosition;
+    final didPeakHoldDurationChange = _peakHoldDuration != peakHoldDuration;
+
     _dbToNormalizedPosition = dbToNormalizedPosition;
     _peakHoldDuration = peakHoldDuration;
     _peakFallRateNormalizedPerSecond = peakFallRateNormalizedPerSecond;
+
+    if (didPeakHoldDurationChange) {
+      final requiredHistoryCapacity = estimateHistoryCapacity(
+        peakHoldDuration: peakHoldDuration,
+        estimatedSamplesPerSecond: _estimatedSamplesPerSecond,
+      );
+      _leftPeakTracker.updateHistoryConfig(
+        peakHoldDuration: peakHoldDuration,
+        requiredCapacity: requiredHistoryCapacity,
+      );
+      _rightPeakTracker.updateHistoryConfig(
+        peakHoldDuration: peakHoldDuration,
+        requiredCapacity: requiredHistoryCapacity,
+      );
+    } else if (didMappingChange) {
+      _leftPeakTracker.reset();
+      _rightPeakTracker.reset();
+    }
   }
 
   MeterSnapshot resolve({
     required StereoMeterValues db,
-    required Duration timestamp,
+    required StereoMeterTimestamps timestamps,
   }) {
     final currentNormalizedHeights = (
       left: Meter.dbToNormalizedHeight(db.left, _dbToNormalizedPosition),
       right: Meter.dbToNormalizedHeight(db.right, _dbToNormalizedPosition),
     );
 
-    if (_lastTimestamp == null ||
-        _lastDb == null ||
-        timestamp < _lastTimestamp!) {
-      _peakNormalizedHeights = currentNormalizedHeights;
-      _peakTimestamps = (left: timestamp, right: timestamp);
-    } else if (_lastTimestamp != timestamp || _lastDb != db) {
-      final leftPeakState = _resolvePeakChannelState(
+    final peakNormalizedHeights = (
+      left: _leftPeakTracker.resolve(
         currentNormalizedHeight: currentNormalizedHeights.left,
-        previousPeakNormalizedHeight: _peakNormalizedHeights.left,
-        previousPeakTimestamp: _peakTimestamps.left,
-        previousTimestamp: _lastTimestamp!,
-        currentTimestamp: timestamp,
-      );
-      final rightPeakState = _resolvePeakChannelState(
+        timestamp: timestamps.left,
+        peakFallRateNormalizedPerSecond: _peakFallRateNormalizedPerSecond,
+      ),
+      right: _rightPeakTracker.resolve(
         currentNormalizedHeight: currentNormalizedHeights.right,
-        previousPeakNormalizedHeight: _peakNormalizedHeights.right,
-        previousPeakTimestamp: _peakTimestamps.right,
-        previousTimestamp: _lastTimestamp!,
-        currentTimestamp: timestamp,
-      );
-
-      _peakNormalizedHeights = (
-        left: leftPeakState.normalizedHeight,
-        right: rightPeakState.normalizedHeight,
-      );
-      _peakTimestamps = (
-        left: leftPeakState.peakTimestamp,
-        right: rightPeakState.peakTimestamp,
-      );
-    } else {
-      _peakNormalizedHeights = (
-        left: math.max(
-          _peakNormalizedHeights.left,
-          currentNormalizedHeights.left,
-        ),
-        right: math.max(
-          _peakNormalizedHeights.right,
-          currentNormalizedHeights.right,
-        ),
-      );
-    }
-
-    _lastTimestamp = timestamp;
-    _lastDb = db;
+        timestamp: timestamps.right,
+        peakFallRateNormalizedPerSecond: _peakFallRateNormalizedPerSecond,
+      ),
+    );
 
     return MeterSnapshot(
       currentNormalized: currentNormalizedHeights,
-      peakNormalized: _peakNormalizedHeights,
+      peakNormalized: peakNormalizedHeights,
     );
   }
+}
 
-  _PeakChannelState _resolvePeakChannelState({
+class _MeterPeakChannelTracker {
+  final _MeterSampleHistory _history;
+
+  double _floatingPeakNormalizedHeight = 0.0;
+  double? _lastTimestampMicroseconds;
+
+  _MeterPeakChannelTracker({
+    required int initialHistoryCapacity,
+    required Duration peakHoldDuration,
+  }) : _history = _MeterSampleHistory(
+         initialCapacity: initialHistoryCapacity,
+         retentionDuration: peakHoldDuration,
+       );
+
+  double resolve({
     required double currentNormalizedHeight,
-    required double previousPeakNormalizedHeight,
-    required Duration previousPeakTimestamp,
-    required Duration previousTimestamp,
-    required Duration currentTimestamp,
+    required Duration timestamp,
+    required double peakFallRateNormalizedPerSecond,
   }) {
-    if (currentNormalizedHeight > previousPeakNormalizedHeight) {
-      return _PeakChannelState(
-        normalizedHeight: currentNormalizedHeight,
-        peakTimestamp: currentTimestamp,
+    final timestampMicroseconds = timestamp.inMicroseconds.toDouble();
+
+    if (_lastTimestampMicroseconds != null &&
+        timestampMicroseconds < _lastTimestampMicroseconds!) {
+      reset();
+    }
+
+    _history.add(timestampMicroseconds, currentNormalizedHeight);
+    final actualPeakNormalizedHeight = _history.maximumNormalizedHeight;
+
+    if (_lastTimestampMicroseconds == null) {
+      _floatingPeakNormalizedHeight = actualPeakNormalizedHeight;
+    } else {
+      _floatingPeakNormalizedHeight = _decayToward(
+        targetNormalizedHeight: actualPeakNormalizedHeight,
+        elapsedMicroseconds:
+            timestampMicroseconds - _lastTimestampMicroseconds!,
+        fallRateNormalizedPerSecond: peakFallRateNormalizedPerSecond,
       );
     }
 
-    final holdEndTimestamp = previousPeakTimestamp + _peakHoldDuration;
-    if (currentTimestamp <= holdEndTimestamp) {
-      return _PeakChannelState(
-        normalizedHeight: previousPeakNormalizedHeight,
-        peakTimestamp: previousPeakTimestamp,
-      );
-    }
+    _lastTimestampMicroseconds = timestampMicroseconds;
+    return _floatingPeakNormalizedHeight;
+  }
 
-    final fallStartTimestamp = previousTimestamp > holdEndTimestamp
-        ? previousTimestamp
-        : holdEndTimestamp;
+  double _decayToward({
+    required double targetNormalizedHeight,
+    required double elapsedMicroseconds,
+    required double fallRateNormalizedPerSecond,
+  }) {
+    final fallenNormalized =
+        math.max(0.0, fallRateNormalizedPerSecond) *
+        (math.max(0.0, elapsedMicroseconds) / Duration.microsecondsPerSecond);
 
-    return _PeakChannelState(
-      normalizedHeight: Meter.decayPeakNormalizedHeight(
-        currentNormalizedHeight: currentNormalizedHeight,
-        previousPeakNormalizedHeight: previousPeakNormalizedHeight,
-        elapsed: currentTimestamp - fallStartTimestamp,
-        fallRateNormalizedPerSecond: _peakFallRateNormalizedPerSecond,
+    return clampDouble(
+      math.max(
+        targetNormalizedHeight,
+        _floatingPeakNormalizedHeight - fallenNormalized,
       ),
-      peakTimestamp: previousPeakTimestamp,
+      0.0,
+      1.0,
     );
   }
+
+  void updateHistoryConfig({
+    required Duration peakHoldDuration,
+    required int requiredCapacity,
+  }) {
+    _history.updateRetentionDuration(peakHoldDuration);
+    _history.ensureCapacity(requiredCapacity);
+    reset();
+  }
+
+  void reset() {
+    _history.clear();
+    _floatingPeakNormalizedHeight = 0.0;
+    _lastTimestampMicroseconds = null;
+  }
+}
+
+/// A growable circular history containing every meter sample received within
+/// a configured retention duration.
+///
+/// Samples are pruned by timestamp before each insertion. Initial capacity is
+/// estimated from the display refresh rate; the buffer doubles when necessary
+/// to accommodate timer jitter or bunched updates and never contracts.
+class _MeterSampleHistory {
+  static const _entryWidth = 2;
+
+  double _retentionDurationMicroseconds;
+  Float64List _buffer;
+  int _start = 0;
+  int _length = 0;
+
+  _MeterSampleHistory({
+    required int initialCapacity,
+    required Duration retentionDuration,
+  }) : _retentionDurationMicroseconds = _durationToMicroseconds(
+         retentionDuration,
+       ),
+       _buffer = Float64List(math.max(1, initialCapacity) * _entryWidth);
+
+  int get _capacity => _buffer.length ~/ _entryWidth;
+  bool get isNotEmpty => _length > 0;
+
+  double get firstTimestampMicroseconds => _timestampAt(0);
+
+  double get maximumNormalizedHeight {
+    if (!isNotEmpty) {
+      throw StateError('Cannot get the maximum of an empty meter history.');
+    }
+
+    var maximumNormalizedHeight = _valueAt(0);
+
+    for (var i = 1; i < _length; i++) {
+      maximumNormalizedHeight = math.max(maximumNormalizedHeight, _valueAt(i));
+    }
+
+    return maximumNormalizedHeight;
+  }
+
+  void add(double timestampMicroseconds, double normalizedHeight) {
+    final cutoffMicroseconds =
+        timestampMicroseconds - _retentionDurationMicroseconds;
+    while (isNotEmpty && firstTimestampMicroseconds <= cutoffMicroseconds) {
+      _removeFirst();
+    }
+
+    ensureCapacity(_length + 1);
+
+    final physicalIndex = (_start + _length) % _capacity;
+    final fieldIndex = physicalIndex * _entryWidth;
+    _buffer[fieldIndex] = timestampMicroseconds;
+    _buffer[fieldIndex + 1] = normalizedHeight;
+    _length++;
+  }
+
+  void updateRetentionDuration(Duration retentionDuration) {
+    _retentionDurationMicroseconds = _durationToMicroseconds(retentionDuration);
+  }
+
+  void _removeFirst() {
+    if (!isNotEmpty) {
+      return;
+    }
+
+    _start = (_start + 1) % _capacity;
+    _length--;
+  }
+
+  void ensureCapacity(int requiredCapacity) {
+    if (requiredCapacity <= _capacity) {
+      return;
+    }
+
+    var nextCapacity = _capacity;
+    while (nextCapacity < requiredCapacity) {
+      nextCapacity *= 2;
+    }
+
+    final nextBuffer = Float64List(nextCapacity * _entryWidth);
+    for (var i = 0; i < _length; i++) {
+      final nextFieldIndex = i * _entryWidth;
+      nextBuffer[nextFieldIndex] = _timestampAt(i);
+      nextBuffer[nextFieldIndex + 1] = _valueAt(i);
+    }
+
+    _buffer = nextBuffer;
+    _start = 0;
+  }
+
+  void clear() {
+    _start = 0;
+    _length = 0;
+  }
+
+  int _physicalIndex(int logicalIndex) => (_start + logicalIndex) % _capacity;
+
+  double _timestampAt(int logicalIndex) =>
+      _buffer[_physicalIndex(logicalIndex) * _entryWidth];
+
+  double _valueAt(int logicalIndex) =>
+      _buffer[_physicalIndex(logicalIndex) * _entryWidth + 1];
+
+  static double _durationToMicroseconds(Duration duration) =>
+      math.max(0, duration.inMicroseconds).toDouble();
 }
 
 class _MeterController extends ChangeNotifier
@@ -527,6 +686,7 @@ class _MeterController extends ChangeNotifier
          dbToNormalizedPosition: dbToNormalizedPosition,
          peakHoldDuration: peakHoldDuration,
          peakFallRateNormalizedPerSecond: peakFallRateNormalizedPerSecond,
+         estimatedSamplesPerSecond: _estimatedVisualizationSamplesPerSecond(),
        ) {
     _visualizationController.addListener(_handleVisualizationControllerChanged);
     _syncSnapshot(notify: false);
@@ -575,7 +735,8 @@ class _MeterController extends ChangeNotifier
     ];
   }
 
-  ({StereoMeterValues db, Duration timestamp}) _resolveMeterInput() {
+  ({StereoMeterValues db, StereoMeterTimestamps timestamps})
+  _resolveMeterInput() {
     final values = _visualizationController.values;
     final engineTimes = _visualizationController.engineTimes;
     final hasStereoValues = values.length >= 2;
@@ -587,16 +748,13 @@ class _MeterController extends ChangeNotifier
     if (!hasStereoValues || !hasFullTimestampSet) {
       return (
         db: (left: double.negativeInfinity, right: double.negativeInfinity),
-        timestamp: Duration.zero,
+        timestamps: (left: Duration.zero, right: Duration.zero),
       );
     }
 
-    final leftTime = engineTimes[0]!;
-    final rightTime = engineTimes[1]!;
-
     return (
       db: (left: values[0], right: values[1]),
-      timestamp: leftTime.compareTo(rightTime) >= 0 ? leftTime : rightTime,
+      timestamps: (left: engineTimes[0]!, right: engineTimes[1]!),
     );
   }
 
@@ -604,7 +762,7 @@ class _MeterController extends ChangeNotifier
     final input = _resolveMeterInput();
     final nextSnapshot = _valueTracker.resolve(
       db: input.db,
-      timestamp: input.timestamp,
+      timestamps: input.timestamps,
     );
 
     if (nextSnapshot == _snapshot) {
@@ -626,14 +784,4 @@ class _MeterController extends ChangeNotifier
     _visualizationController.dispose();
     super.dispose();
   }
-}
-
-class _PeakChannelState {
-  final double normalizedHeight;
-  final Duration peakTimestamp;
-
-  const _PeakChannelState({
-    required this.normalizedHeight,
-    required this.peakTimestamp,
-  });
 }

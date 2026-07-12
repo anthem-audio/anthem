@@ -28,16 +28,18 @@ GainProcessor::GainProcessor(const GainProcessorModelImpl& _impl)
 
 GainProcessor::~GainProcessor() {}
 
-void GainProcessor::prepareToProcess() {}
+void GainProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  complete(std::nullopt);
+}
 
 void GainProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto& audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
-  auto& audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(GainProcessorModelBase::audioInputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
 
-  auto& amplitudeControlBuffer = context.getInputControlBuffer(GainProcessorModelBase::gainPortId);
+  auto amplitudeControl = context.getInputControlSignal(GainProcessorModelBase::gainPortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
-    auto paramValue = amplitudeControlBuffer.getReadPointer(0)[sample];
+    auto paramValue = amplitudeControl.getSample(sample);
     float targetGain = paramValueToGainLinear(paramValue);
 
     for (int channel = 0; channel < audioOutBuffer.getNumChannels(); ++channel) {

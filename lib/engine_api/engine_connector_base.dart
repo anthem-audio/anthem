@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -23,6 +23,9 @@ import 'dart:convert';
 import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
+
+final _log = Logger('engine_connector');
 
 abstract class EngineConnectorBase {
   var requestIdGen = 0;
@@ -59,8 +62,8 @@ abstract class EngineConnectorBase {
   EngineConnectorBase({
     required this.kDebugMode,
     required this.noHeartbeat,
-    void Function(Response)? onReply,
-  }) : _onReply = onReply;
+    this._onReply,
+  });
 
   void startHeartbeatTimer() {
     _heartbeatCheckTimer = Timer.periodic(
@@ -68,6 +71,10 @@ abstract class EngineConnectorBase {
       const Duration(seconds: 10),
       (_) {
         if (!_heartbeatReceived) {
+          _log.warning(
+            'Engine heartbeat reply was not received within 10 seconds. '
+            'Disposing engine connector.',
+          );
           dispose();
         }
 
@@ -154,15 +161,24 @@ abstract class EngineConnectorBase {
           rethrow;
         }
 
+        // Remove the processed message from the buffer
+        _messageBuffer.removeRange(0, 8 + messageLength);
+
         // Handle heartbeat reply
         if (response is HeartbeatReply) {
           acknowledgeHeartbeat();
         } else {
-          _onReply(response);
+          try {
+            _onReply(response);
+          } catch (error, stackTrace) {
+            _log.severe(
+              'Unhandled exception while processing engine response '
+              '${response.runtimeType}.',
+              error,
+              stackTrace,
+            );
+          }
         }
-
-        // Remove the processed message from the buffer
-        _messageBuffer.removeRange(0, 8 + messageLength);
       } else {
         // Not enough data for a full message yet
         break;

@@ -64,11 +64,6 @@ public:
         << patternId << R"(",
   "name": "Pattern with ID )"
         << patternId << R"(",
-  "color": {
-    "hue": 0,
-    "lightnessMultiplier": 0.5,
-    "saturationMultiplier": 0.5
-  },
   "notes": {},
   "automationLanes": {},
   "timeSignatureChanges": []

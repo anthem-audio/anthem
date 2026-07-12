@@ -19,6 +19,18 @@
 
 part of 'visualization.dart';
 
+class _CachedVisualizationValue {
+  final Object value;
+  final VisualizationValueType valueType;
+  final int sampleTimestamp;
+
+  const _CachedVisualizationValue({
+    required this.value,
+    required this.valueType,
+    required this.sampleTimestamp,
+  });
+}
+
 /// Allows the UI to subscribe to visualization items and receive updates for
 /// them.
 class VisualizationProvider {
@@ -28,6 +40,7 @@ class VisualizationProvider {
   final VisualizationTransportStats _transportStats;
 
   final Map<String, List<_VisualizationSubscriptionBase>> _subscriptions = {};
+  final Map<String, _CachedVisualizationValue> _latestValuesById = {};
 
   bool _enabled = true;
 
@@ -36,7 +49,7 @@ class VisualizationProvider {
       _transportStats = VisualizationTransportStats(
         (clock ?? VisualizationClock.system).now,
       ) {
-    if (_project.engine.engineState == EngineState.running) {
+    if (isEngineRunning) {
       _sendUpdateIntervalToEngine();
     }
 
@@ -44,6 +57,10 @@ class VisualizationProvider {
       if (state == EngineState.running) {
         _sendUpdateIntervalToEngine();
         _scheduleSubscriptionListUpdate();
+      }
+
+      if (state == EngineState.stopped) {
+        _latestValuesById.clear();
       }
 
       // If the engine isn't running, the visualization subscriptions shouldn't
@@ -61,6 +78,9 @@ class VisualizationProvider {
       }
     });
   }
+
+  bool get isEngineRunning =>
+      _project.engine.engineState == EngineState.running;
 
   void _sendUpdateIntervalToEngine() {
     // For the refresh rate, we get the maximum refresh rate of all displays.
@@ -106,21 +126,26 @@ class VisualizationProvider {
   }
 
   void processVisualizationUpdate(VisualizationUpdateEvent update) {
+    final audioConfig = _project.engine.audioConfig;
+    if (audioConfig == null || audioConfig.sampleRate <= 0) {
+      _transportStats.recordArrival(null);
+      return;
+    }
+
     _transportStats.recordArrival(_latestVisibleEventEngineTime(update));
 
     for (final item in update.items) {
+      final values = item.values as List;
+      final sampleTimestamps = item.sampleTimestamps;
+
+      if (values.length != sampleTimestamps.length) {
+        throw StateError(
+          'Visualization item ${item.id} has ${values.length} values but ${sampleTimestamps.length} sample timestamps.',
+        );
+      }
+
       final subscriptions = _subscriptions[item.id];
-
       if (subscriptions != null) {
-        final values = item.values as List;
-        final sampleTimestamps = item.sampleTimestamps;
-
-        if (values.length != sampleTimestamps.length) {
-          throw StateError(
-            'Visualization item ${item.id} has ${values.length} values but ${sampleTimestamps.length} sample timestamps.',
-          );
-        }
-
         for (final subscription in subscriptions) {
           if (subscription.valueType != item.valueType) {
             throw StateError(
@@ -132,6 +157,14 @@ class VisualizationProvider {
             subscription._addValueFromEngine(values[i], sampleTimestamps[i]);
           }
         }
+      }
+
+      if (values.isNotEmpty) {
+        _latestValuesById[item.id] = _CachedVisualizationValue(
+          value: values.last as Object,
+          valueType: item.valueType,
+          sampleTimestamp: sampleTimestamps.last,
+        );
       }
     }
   }
@@ -146,6 +179,13 @@ class VisualizationProvider {
         )) {
       throw StateError(
         'Visualization item ${config.id} already has subscriptions with a different declared value type.',
+      );
+    }
+
+    final cachedValue = _latestValuesById[config.id];
+    if (cachedValue != null && cachedValue.valueType != config.valueType) {
+      throw StateError(
+        'Visualization item ${config.id} has a cached value with declared value type ${cachedValue.valueType}, but subscription expects ${config.valueType}.',
       );
     }
 
@@ -166,6 +206,13 @@ class VisualizationProvider {
     }
 
     _subscriptions[config.id]!.add(subscription);
+
+    if (cachedValue != null) {
+      subscription._addValueFromEngine(
+        cachedValue.value,
+        cachedValue.sampleTimestamp,
+      );
+    }
 
     return subscription;
   }

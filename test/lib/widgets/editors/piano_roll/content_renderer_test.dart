@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
@@ -26,9 +26,11 @@ import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
-import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
+import 'package:anthem/widgets/editors/shared/time_range_content_source.dart';
+import 'package:anthem/widgets/editors/shared/time_range_viewport.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -57,8 +59,6 @@ void main() {
     late PianoRollViewModel viewModel;
 
     setUp(() {
-      noteLabelImageCache = NoteLabelImageCache();
-
       project = ProjectModel.create()..engine = _StoppedEngine();
       pattern = PatternModel(idAllocator: _testIdAllocator(), name: 'Pattern');
       project.sequence.patterns[pattern.id] = pattern;
@@ -67,24 +67,28 @@ void main() {
       viewModel = PianoRollViewModel(
         keyHeight: 20,
         keyValueAtTop: 64,
-        timeView: TimeRange(0, 1000),
+        timeRange: TimeRange(0, 1000),
       );
     });
 
-    void paintCurrentFrame({
+    ui.Picture paintFrame({
       required double timeViewStart,
       required double timeViewEnd,
       required double keyValueAtTop,
       Size size = const Size(100, 160),
     }) {
-      final timeViewStartAnimation = AlwaysStoppedAnimation(timeViewStart);
-      final timeViewEndAnimation = AlwaysStoppedAnimation(timeViewEnd);
+      final timeRangeAnimation = TimeRangeAnimation(
+        viewport: TimeRangeViewport(
+          target: TimeRange(timeViewStart, timeViewEnd),
+          contentSource: const TimeRangeContentSource.fixed(end: 1000000),
+        ),
+        vsync: const TestVSync(),
+      )..update();
       final keyValueAtTopAnimation = AlwaysStoppedAnimation(keyValueAtTop);
 
       final painter = PianoRollPainter(
         repaint: ValueNotifier(null),
-        timeViewStartAnimation: timeViewStartAnimation,
-        timeViewEndAnimation: timeViewEndAnimation,
+        timeRangeAnimation: timeRangeAnimation,
         keyValueAtTopAnimation: keyValueAtTopAnimation,
         viewModel: viewModel,
         project: project,
@@ -92,10 +96,28 @@ void main() {
         shouldGreyOut: false,
       );
 
-      final recorder = PictureRecorder();
-      final canvas = Canvas(recorder);
-      painter.observablePaint(canvas, size);
-      recorder.endRecording();
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      try {
+        painter.observablePaint(canvas, size);
+        return recorder.endRecording();
+      } finally {
+        timeRangeAnimation.dispose();
+      }
+    }
+
+    void paintCurrentFrame({
+      required double timeViewStart,
+      required double timeViewEnd,
+      required double keyValueAtTop,
+      Size size = const Size(100, 160),
+    }) {
+      paintFrame(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        keyValueAtTop: keyValueAtTop,
+        size: size,
+      ).dispose();
     }
 
     test('skips subpixel notes without aborting later note rendering', () {

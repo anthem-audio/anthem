@@ -2,20 +2,11 @@
 
 ## Anthem
 
-Anthem is a modern, cross-platform digital audio workstation designed for creating and editing music and other audio content. It is desktop-first, and works on Windows, macOS, Linux, and web.
+Anthem is a modern, cross-platform digital audio workstation designed for creating and editing music and other audio content. It is desktop-first, and works on Windows, macOS, and Linux.
 
 Anthem is under active development and currently lacks key functionality and usability features, so it is not yet suitable for use.
 
-You can [try Anthem in the browser](https://anthem-audio.pages.dev/), or download the latest development build for Windows, macOS or Linux (must be logged in to GitHub):
-
-- Visit https://github.com/anthem-audio/anthem/actions?query=branch%3Amain
-- Click on the most recent passing build
-- Scroll down to the bottom and click the download button for your platform and architecture
-
-A few notes:
-- On Windows, Anthem will be flagged by smart screen. This will cause issues, since Anthem contains two executables. After downloading and **before extracting the zip file**, right click on it and select "Properties", then under "Security:" click the checkbox marked "Unblock".
-- macOS builds are not yet signed. There are instructions for running unsigned apps here: https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac
-- Linux builds are not yet packaged with dependencies. Linux builds should work on systems that have [all development dependencies installed](./docs/setup_linux.md), but may not work on other systems. Once Anthem reaches a usable state, we plan to provide Snap and/or Flatpak bundles.
+You can download the latest development build for Windows, macOS or Linux from the releases page. You can also [try Anthem in the browser](https://anthem-audio.pages.dev/), though due to limitations in the web audio API, the web version runs poorly. For the best experience, download the desktop verison.
 
 ## Roadmap
 

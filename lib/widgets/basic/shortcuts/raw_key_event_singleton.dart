@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -62,6 +62,8 @@ class RawKeyEventSingleton {
       (PhysicalKeyboardKey.altRight, LogicalKeyboardKey.altRight),
       (PhysicalKeyboardKey.controlLeft, LogicalKeyboardKey.controlLeft),
       (PhysicalKeyboardKey.controlRight, LogicalKeyboardKey.controlRight),
+      (PhysicalKeyboardKey.metaLeft, LogicalKeyboardKey.metaLeft),
+      (PhysicalKeyboardKey.metaRight, LogicalKeyboardKey.metaRight),
       (PhysicalKeyboardKey.shiftLeft, LogicalKeyboardKey.shiftLeft),
       (PhysicalKeyboardKey.shiftRight, LogicalKeyboardKey.shiftRight),
     ]) {

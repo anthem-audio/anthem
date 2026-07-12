@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -31,7 +31,12 @@ enum NodePortDataType { audio, event, control }
 @AnthemModel.syncedModel()
 class NodePortConfigModel extends _NodePortConfigModel
     with _$NodePortConfigModel, _$NodePortConfigModelAnthemModelMixin {
-  NodePortConfigModel({required super.dataType, super.parameterConfig});
+  NodePortConfigModel({
+    required super.dataType,
+    super.name,
+    super.channelCount,
+    super.parameterConfig,
+  });
 
   NodePortConfigModel.uninitialized() : super(dataType: NodePortDataType.audio);
 
@@ -42,7 +47,14 @@ class NodePortConfigModel extends _NodePortConfigModel
 abstract class _NodePortConfigModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
   NodePortDataType dataType;
+  String? name;
+  int? channelCount;
   ParameterConfigModel? parameterConfig;
 
-  _NodePortConfigModel({required this.dataType, this.parameterConfig});
+  _NodePortConfigModel({
+    required this.dataType,
+    this.name,
+    this.channelCount,
+    this.parameterConfig,
+  });
 }

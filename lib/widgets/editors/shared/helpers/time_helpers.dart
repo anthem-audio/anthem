@@ -23,7 +23,7 @@ import 'package:anthem/model/shared/time_signature.dart';
 
 import 'types.dart';
 
-const minorMinPixels = 18.0;
+const minorMinPixels = 22.0;
 const majorMinPixels = minorMinPixels * 2.0;
 const barMinPixels = majorMinPixels * 2.0;
 
@@ -235,8 +235,8 @@ GetBestDivisionResult getBestDivision({
 }
 
 /// Takes information about the time signature changes in the current time
-/// view, and returns a list of [DivisionChange] objects that describe the
-/// regions within the current time view.
+/// range, and returns a list of [DivisionChange] objects that describe the
+/// regions within the current time range.
 ///
 /// For example, if the [defaultTimeSignature] is 3/4 and there is a single
 /// change to 4/4, this function will return two [DivisionChange] objects, one
@@ -366,28 +366,28 @@ Time getSnappedTime({
   return snapped;
 }
 
-void zoomTimeView({
-  required TimeRange timeView,
+void zoomTimeRange({
+  required TimeRange timeRange,
   required double delta,
   required double mouseX,
   required double editorWidth,
 }) {
-  final timeViewWidth = timeView.width;
+  final timeRangeWidth = timeRange.width;
 
-  // Convert the time view width to log. Converting to log means we can
+  // Convert the time range width to log. Converting to log means we can
   // adjust the size by adding or subtracting a constant value, and it
   // feels right. It also means that zooming in by one tick and then
   // zooming out by one tick gets you back to the exact same position.
-  final timeViewWidthLog = log(timeViewWidth);
-  final newTimeViewWidthLog = timeViewWidthLog + delta * 0.0025;
-  final newTimeViewWidth = pow(e, newTimeViewWidthLog);
+  final timeRangeWidthLog = log(timeRangeWidth);
+  final newTimeRangeWidthLog = timeRangeWidthLog + delta * 0.0025;
+  final newTimeRangeWidth = pow(e, newTimeRangeWidthLog);
 
-  final timeViewSizeChange = newTimeViewWidth - timeViewWidth;
+  final timeRangeSizeChange = newTimeRangeWidth - timeRangeWidth;
 
   final mouseCursorOffset = mouseX / editorWidth;
 
-  var newStart = timeView.start - timeViewSizeChange * mouseCursorOffset;
-  var newEnd = timeView.end + timeViewSizeChange * (1 - mouseCursorOffset);
+  var newStart = timeRange.start - timeRangeSizeChange * mouseCursorOffset;
+  var newEnd = timeRange.end + timeRangeSizeChange * (1 - mouseCursorOffset);
 
   // Somewhat arbitrary, but a safeguard against zooming in too far
   if (newEnd < newStart + 10) {
@@ -399,6 +399,6 @@ void zoomTimeView({
   newStart += startOvershootCorrection;
   newEnd += startOvershootCorrection;
 
-  timeView.start = newStart;
-  timeView.end = newEnd;
+  timeRange.start = newStart;
+  timeRange.end = newEnd;
 }

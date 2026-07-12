@@ -19,23 +19,20 @@
 
 #pragma once
 
-#include "modules/core/constants.h"
-#include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/processors/master_output.h"
 
-#include <chrono>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <memory>
 
 namespace anthem {
 
-class Engine;
+class AudioBlockProcessor;
+class AudioSessionController;
+class Project;
 
 class AudioCallback : public juce::AudioIODeviceCallback {
 private:
-  double sampleRate = -1.0;
-
-  int64_t lastDebugOutputTime;
+  double rt_sampleRate = 0.0;
 
   // There is a shared_ptr reference to the processor here to ensure that it is
   // not deleted, but it should never be accessed from the callback, since
@@ -44,27 +41,12 @@ private:
 
   MasterOutputProcessor* masterOutputProcessor;
 
-  // We will assume the engine application class is always available. This is
-  // normally stored in a shared_ptr, which we can't use from the audio thread
-  // since it's not real-time safe.
-  Engine* engine;
-
-  // This is a reference to the CPU burden provider. The audio callback
-  // calculates the CPU burden every time the audio callback is called, and sets
-  // it here.
-  CpuVisualizationProvider* cpuBurdenProvider;
-
-  // This is a reference to the playhead provider. The audio callback updates
-  // the playhead position every time the audio callback is called, and sets it
-  // here.
-  PlayheadPositionVisualizationProvider* playheadPositionProvider;
-
-  // This is a reference to the playhead sequence ID provider. The audio
-  // callback updates the playhead sequence ID every time the audio callback is
-  // called, and sets it here.
-  PlayheadSequenceIdVisualizationProvider* playheadSequenceIdProvider;
+  AudioBlockProcessor& audioBlockProcessor;
+  AudioSessionController& audioSessionController;
 public:
-  AudioCallback(Engine* engine);
+  AudioCallback(Project& project,
+      AudioBlockProcessor& audioBlockProcessor,
+      AudioSessionController& audioSessionController);
 
   void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
       int numInputChannels,

@@ -20,14 +20,22 @@
 import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show
+        ProcessingGraphNodeInitializationResult,
+        ProcessingGraphNodePortConfiguration,
+        ProcessingGraphParameterValue,
+        ProcessingGraphPortConfiguration;
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/arrangement_commands.dart';
+import 'package:anthem/logic/devices/device_port_defaults.dart';
 import 'package:anthem/logic/live_event_manager.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -35,6 +43,9 @@ class ProjectController {
   ProjectModel project;
   ProjectViewModel viewModel;
   late final LiveEventManager liveEventManager = LiveEventManager(project);
+
+  bool _needsProcessingGraphPublish = false;
+  Future<void>? _processingGraphPublishFuture;
 
   ProjectController(this.project, this.viewModel);
 
@@ -73,17 +84,17 @@ class ProjectController {
   void onShortcut(LogicalKeySet shortcut) {
     // Undo
     if (shortcut.matches(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyZ),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyZ),
     )) {
       undo();
     }
     // Redo
     else if (shortcut.matches(
-          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyY),
+          LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyY),
         ) ||
         shortcut.matches(
           LogicalKeySet(
-            LogicalKeyboardKey.control,
+            primaryModifierKey,
             LogicalKeyboardKey.shift,
             LogicalKeyboardKey.keyZ,
           ),
@@ -97,8 +108,350 @@ class ProjectController {
   }
 
   void togglePlayback() {
-    if (project.engineState == EngineState.running) {
+    if (project.engineState == EngineState.running &&
+        project.engine.isAudioReady) {
       project.sequence.isPlaying = !project.sequence.isPlaying;
+    }
+  }
+
+  Future<void> publishProcessingGraph() {
+    _needsProcessingGraphPublish = true;
+
+    return _processingGraphPublishFuture ??=
+        _runProcessingGraphPublishQueue(forRender: false).whenComplete(() {
+          _processingGraphPublishFuture = null;
+        });
+  }
+
+  Future<void> publishProcessingGraphForRender() async {
+    _needsProcessingGraphPublish = true;
+
+    await _runProcessingGraphPublishQueue(forRender: true);
+  }
+
+  Future<void> _runProcessingGraphPublishQueue({
+    required bool forRender,
+  }) async {
+    try {
+      while (_needsProcessingGraphPublish) {
+        _needsProcessingGraphPublish = false;
+
+        final initialization = forRender
+            ? await project.engine.processingGraphApi.initializeNodesForRender()
+            : await project.engine.processingGraphApi.initializeNodes();
+
+        if (!initialization.didInitialize) {
+          break;
+        }
+
+        _applyNodePortConfigurations(initialization.results);
+
+        if (forRender) {
+          await project.engine.processingGraphApi.publishForRender();
+        } else {
+          await project.engine.processingGraphApi.publish();
+        }
+      }
+    } finally {
+      _needsProcessingGraphPublish = false;
+    }
+  }
+
+  void _applyNodePortConfigurations(
+    List<ProcessingGraphNodeInitializationResult> results,
+  ) {
+    final affectedTrackIds = <Id>{};
+
+    for (final result in results) {
+      if (!result.success) {
+        continue;
+      }
+
+      final portConfiguration = result.portConfiguration;
+
+      if (portConfiguration != null) {
+        final didChange = _applyNodePortConfiguration(
+          result.nodeId,
+          portConfiguration,
+        );
+
+        if (didChange) {
+          affectedTrackIds.addAll(_updateDeviceDefaultsForNode(result.nodeId));
+        }
+      }
+
+      _applyNodeParameterValues(result.nodeId, result.parameterValues);
+    }
+
+    if (affectedTrackIds.isEmpty) {
+      return;
+    }
+
+    final serviceRegistry = ServiceRegistry.forProject(project.id);
+    for (final trackId in affectedTrackIds) {
+      serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
+      serviceRegistry.trackController.rerouteTracks([trackId]);
+    }
+  }
+
+  bool _applyNodePortConfiguration(
+    Id nodeId,
+    ProcessingGraphNodePortConfiguration portConfiguration,
+  ) {
+    final node = project.processingGraph.nodes[nodeId];
+    if (node == null) {
+      return false;
+    }
+
+    final portGroups =
+        <
+          ({
+            AnthemObservableList<NodePortModel> currentPorts,
+            List<ProcessingGraphPortConfiguration> newPortConfigurations,
+            NodePortDataType dataType,
+          })
+        >[
+          (
+            currentPorts: node.audioInputPorts,
+            newPortConfigurations: portConfiguration.audioInputPorts,
+            dataType: .audio,
+          ),
+          (
+            currentPorts: node.audioOutputPorts,
+            newPortConfigurations: portConfiguration.audioOutputPorts,
+            dataType: .audio,
+          ),
+          (
+            currentPorts: node.eventInputPorts,
+            newPortConfigurations: portConfiguration.eventInputPorts,
+            dataType: .event,
+          ),
+          (
+            currentPorts: node.eventOutputPorts,
+            newPortConfigurations: portConfiguration.eventOutputPorts,
+            dataType: .event,
+          ),
+          (
+            currentPorts: node.controlInputPorts,
+            newPortConfigurations: portConfiguration.controlInputPorts,
+            dataType: .control,
+          ),
+          (
+            currentPorts: node.controlOutputPorts,
+            newPortConfigurations: portConfiguration.controlOutputPorts,
+            dataType: .control,
+          ),
+        ];
+
+    final didChange = portGroups.any(
+      (group) => !_portListMatches(
+        group.currentPorts,
+        group.newPortConfigurations,
+        group.dataType,
+      ),
+    );
+
+    if (!didChange) {
+      return false;
+    }
+
+    for (final portGroup in portGroups) {
+      _removeConnectionsForUnconfiguredPorts(
+        portGroup.currentPorts,
+        portGroup.newPortConfigurations,
+      );
+
+      _replacePorts(
+        portGroup.currentPorts,
+        portGroup.newPortConfigurations,
+        portGroup.dataType,
+        nodeId,
+      );
+    }
+
+    return true;
+  }
+
+  bool _portListMatches(
+    AnthemObservableList<NodePortModel> currentPorts,
+    List<ProcessingGraphPortConfiguration> configuredPorts,
+    NodePortDataType dataType,
+  ) {
+    // This compares only the processor-declared port shape. Runtime state like
+    // connections and parameter values is preserved when ports are replaced.
+    if (currentPorts.length != configuredPorts.length) {
+      return false;
+    }
+
+    for (var i = 0; i < currentPorts.length; i++) {
+      final currentPort = currentPorts[i];
+      final configuredPort = configuredPorts[i];
+      final currentParameterConfig = currentPort.config.parameterConfig;
+      if (currentPort.id != configuredPort.id ||
+          currentPort.config.dataType != dataType ||
+          currentPort.config.name != configuredPort.name ||
+          currentPort.config.channelCount != configuredPort.channelCount ||
+          currentParameterConfig?.id !=
+              _parameterConfigIdForPort(configuredPort) ||
+          currentParameterConfig?.defaultValue !=
+              configuredPort.parameterDefaultValue ||
+          currentParameterConfig?.displayMode !=
+              _parameterDisplayModeForPort(configuredPort) ||
+          currentParameterConfig?.unitLabel !=
+              configuredPort.parameterUnitLabel) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  void _removeConnectionsForPorts(Iterable<NodePortModel> ports) {
+    final connectionIds = <Id>{
+      for (final port in ports)
+        for (final connectionId in port.connections) connectionId,
+    };
+
+    for (final connectionId in connectionIds) {
+      if (project.processingGraph.connections[connectionId] != null) {
+        project.processingGraph.removeConnection(connectionId);
+      }
+    }
+  }
+
+  void _removeConnectionsForUnconfiguredPorts(
+    AnthemObservableList<NodePortModel> currentPorts,
+    List<ProcessingGraphPortConfiguration> configuredPorts,
+  ) {
+    final configuredPortIds = {for (final port in configuredPorts) port.id};
+
+    _removeConnectionsForPorts(
+      currentPorts.where((port) => !configuredPortIds.contains(port.id)),
+    );
+  }
+
+  int? _parameterConfigIdForPort(ProcessingGraphPortConfiguration port) {
+    return port.parameterDefaultValue == null ? null : port.id;
+  }
+
+  ParameterDisplayMode? _parameterDisplayModeForPort(
+    ProcessingGraphPortConfiguration port,
+  ) {
+    if (port.parameterDefaultValue == null) {
+      return null;
+    }
+
+    return switch (port.parameterDisplayMode) {
+      'gainDb' => ParameterDisplayMode.gainDb,
+      'pan' => ParameterDisplayMode.pan,
+      'pluginText' => ParameterDisplayMode.pluginText,
+      _ => ParameterDisplayMode.percent,
+    };
+  }
+
+  ParameterConfigModel? _parameterConfigForPort(
+    ProcessingGraphPortConfiguration port,
+  ) {
+    final defaultValue = port.parameterDefaultValue;
+    if (defaultValue == null) {
+      return null;
+    }
+
+    return ParameterConfigModel(
+      id: port.id,
+      defaultValue: defaultValue,
+      displayMode: _parameterDisplayModeForPort(port),
+      unitLabel: port.parameterUnitLabel,
+    );
+  }
+
+  void _applyNodeParameterValues(
+    Id nodeId,
+    List<ProcessingGraphParameterValue> parameterValues,
+  ) {
+    final node = project.processingGraph.nodes[nodeId];
+    if (node == null) {
+      return;
+    }
+
+    final parameterPortsById = {
+      for (final port in node.controlInputPorts)
+        if (port.config.parameterConfig != null) port.id: port,
+    };
+
+    for (final parameterValue in parameterValues) {
+      final port = parameterPortsById[parameterValue.controlPortId];
+      if (port == null) {
+        continue;
+      }
+
+      final value = parameterValue.value.clamp(0.0, 1.0).toDouble();
+      if (port.parameterValue != value) {
+        port.parameterValue = value;
+      }
+
+      if (port.parameterDisplayText != parameterValue.displayText) {
+        port.parameterDisplayText = parameterValue.displayText;
+      }
+    }
+  }
+
+  void _replacePorts(
+    AnthemObservableList<NodePortModel> target,
+    List<ProcessingGraphPortConfiguration> configuredPorts,
+    NodePortDataType dataType,
+    Id nodeId,
+  ) {
+    final currentPortsById = {for (final port in target) port.id: port};
+
+    target
+      ..clear()
+      ..addAll(
+        configuredPorts.map((port) {
+          final replacementPort = NodePortModel(
+            nodeId: nodeId,
+            id: port.id,
+            config: NodePortConfigModel(
+              dataType: dataType,
+              name: port.name,
+              channelCount: port.channelCount,
+              parameterConfig: _parameterConfigForPort(port),
+            ),
+          );
+
+          final currentPort = currentPortsById[port.id];
+          if (currentPort != null) {
+            replacementPort.connections.addAll(currentPort.connections);
+            if (replacementPort.config.parameterConfig != null) {
+              replacementPort.parameterValue =
+                  currentPort.parameterValue ?? replacementPort.parameterValue;
+              replacementPort.parameterDisplayText =
+                  currentPort.parameterDisplayText;
+            }
+          }
+
+          return replacementPort;
+        }),
+      );
+  }
+
+  Iterable<Id> _updateDeviceDefaultsForNode(Id nodeId) sync* {
+    final devicePortDefaults = DevicePortDefaults(project.processingGraph);
+
+    for (final track in project.tracks.values) {
+      if (!track.hasProcessing) {
+        continue;
+      }
+      final processing = track.requireProcessing;
+
+      for (final device in processing.devices) {
+        if (!device.nodeIds.contains(nodeId)) {
+          continue;
+        }
+
+        devicePortDefaults.refreshDeviceDefaultPorts(device);
+        yield track.id;
+      }
     }
   }
 
@@ -111,9 +464,8 @@ class ProjectController {
     viewModel.selectedEditor = editor;
 
     viewModel.activePanel = switch (editor) {
-      .detail => .pianoRoll,
-      .automation => .automationEditor,
-      .channelRack => .channelRack,
+      .pianoRoll => .pianoRoll,
+      .deviceRack => .deviceRack,
       .mixer => .mixer,
     };
   }
@@ -128,7 +480,7 @@ class ProjectController {
       return;
     }
 
-    setActiveEditor(editor: EditorKind.detail);
+    setActiveEditor(editor: EditorKind.pianoRoll);
     project.sequence.setActivePattern(patternID);
   }
 
@@ -153,10 +505,11 @@ class ProjectController {
     final completer = Completer<bool>();
 
     if (project.isDirty) {
-      dialogController.showTextDialog(
+      dialogController.showMarkdownDialog(
         title: 'Unsaved Changes',
-        text:
-            'The project "${project.name}" has unsaved changes.\n\n'
+        markdown:
+            'The project "${escapeDialogMarkdown(project.name)}" has unsaved '
+            'changes.\n\n'
             'Do you want to save before closing?',
         onDismiss: () {
           completer.complete(false);

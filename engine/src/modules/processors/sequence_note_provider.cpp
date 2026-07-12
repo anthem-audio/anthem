@@ -19,7 +19,7 @@
 
 #include "sequence_note_provider.h"
 
-#include "modules/core/engine.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
 
@@ -91,8 +91,9 @@ void SequenceNoteProviderProcessor::rt_handleSequenceNoteOff(RuntimeState& state
   });
 }
 
-void SequenceNoteProviderProcessor::prepareToProcess() {
+void SequenceNoteProviderProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
   // Nothing to do here
+  complete(std::nullopt);
 }
 
 void SequenceNoteProviderProcessor::process(NodeProcessContext& context, int numSamples) {
@@ -100,9 +101,10 @@ void SequenceNoteProviderProcessor::process(NodeProcessContext& context, int num
       context.getOutputEventBuffer(SequenceNoteProviderProcessorModelBase::eventOutputPortId);
 
   auto& trackId = this->trackId();
-  auto& transport = Engine::getInstance().transport;
-  const auto* config = transport->rt_config;
-  auto& sequenceStore = *Engine::getInstance().sequenceStore;
+  auto& engineRuntimeServices = context.rt_getEngineRuntimeServices();
+  auto& transport = engineRuntimeServices.rt_getTransport();
+  const auto* config = transport.rt_config;
+  auto& sequenceStore = engineRuntimeServices.rt_getSequenceStore();
 
   const SequenceEventListCollection* activeSequence = nullptr;
   if (config->activeSequenceId.has_value()) {
@@ -114,17 +116,17 @@ void SequenceNoteProviderProcessor::process(NodeProcessContext& context, int num
   }
 
   RuntimeDependencies dependencies{
-      .rt_shouldStopSequenceNotes = transport->rt_shouldStopSequenceNotes,
-      .rt_playheadJumpEvent = transport->rt_playheadJumpEvent,
+      .rt_shouldStopSequenceNotes = transport.rt_shouldStopSequenceNotes,
+      .rt_playheadJumpEvent = transport.rt_playheadJumpEvent,
       .rt_isPlaying = config->isPlaying,
       .rt_activeTrackId = config->activeTrackId,
-      .rt_playhead = transport->rt_playhead,
+      .rt_playhead = transport.rt_playhead,
       .rt_loopStart = config->loopStart,
       .rt_loopEnd = config->loopEnd,
       .rt_playheadJumpEventForLoop = config->playheadJumpEventForLoop.has_value()
                                          ? &config->playheadJumpEventForLoop.value()
                                          : nullptr,
-      .rt_timingParams = transport->rt_getTimingParams(),
+      .rt_timingParams = transport.rt_getTimingParams(),
       .rt_activeSequence = activeSequence,
   };
 

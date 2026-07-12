@@ -30,15 +30,17 @@ public:
   }
 };
 
-juce::Thread::Priority getGraphExecutorWorkerThreadPriority() {
-  return juce::Thread::Priority::high;
+juce::Thread::Priority getGraphExecutorWorkerThreadPriority(
+    const GraphExecutor::ThreadConfig& threadConfig) {
+  return threadConfig.useRealtimeWorkerScheduling ? juce::Thread::Priority::high
+                                                  : juce::Thread::Priority::normal;
 }
 
 bool startGraphExecutorWorkerThread(juce::Thread& thread,
     int workerIndex,
     const GraphExecutor::ThreadConfig& threadConfig) {
-  juce::ignoreUnused(workerIndex, threadConfig);
-  return thread.startThread(getGraphExecutorWorkerThreadPriority());
+  juce::ignoreUnused(workerIndex);
+  return thread.startThread(getGraphExecutorWorkerThreadPriority(threadConfig));
 }
 
 } // namespace

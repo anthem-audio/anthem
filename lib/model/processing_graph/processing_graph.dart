@@ -17,8 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/processing_graph/processors/master_output.dart';
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/processing_graph/processors/master_output.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
@@ -71,7 +71,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 
   void _init() {
-    // Send a message to compile the processing graph after the model has been
+    // Send a message to publish the processing graph after the model has been
     // sent to the engine
     onModelFirstAttached(() async {
       // Forward engine state changes to all nodes
@@ -100,6 +100,12 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Captures the given nodes and any touching connections without mutating the
   /// graph.
+  ///
+  /// This is for save/restore. For example, tracks only contain references to
+  /// node IDs - they do not hold the actual node objects. When a track is
+  /// removed and we are creating the undo/redo step, we need to capture the
+  /// actual node and processor objects that are removed in that step so we can
+  /// restore them later.
   ProcessingGraphFragment captureNodes(Iterable<Id> nodeIds) {
     final capturedNodeIds = <Id>{};
     for (final nodeId in nodeIds) {
@@ -208,27 +214,45 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 
   void addConnection(NodeConnectionModel connection) {
-    connections[connection.id] = connection;
+    final sourceNode =
+        nodes[connection.sourceNodeId] ??
+        (throw StateError(
+          'Could not add connection: source node '
+          '${connection.sourceNodeId} not found.',
+        ));
+    final destinationNode =
+        nodes[connection.destinationNodeId] ??
+        (throw StateError(
+          'Could not add connection: destination node '
+          '${connection.destinationNodeId} not found.',
+        ));
 
-    final sourceNode = nodes[connection.sourceNodeId]!;
-    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
-    sourceNodePort.connections.add(connection.id);
-
-    final destinationNode = nodes[connection.destinationNodeId];
-    final destinationNodePort = destinationNode!.getPortById(
+    final sourcePort = sourceNode.getOutputPortById(
+      connection.dataType,
+      connection.sourcePortId,
+    );
+    final destinationPort = destinationNode.getInputPortById(
+      connection.dataType,
       connection.destinationPortId,
     );
-    destinationNodePort.connections.add(connection.id);
+
+    connections[connection.id] = connection;
+    sourcePort.connections.add(connection.id);
+    destinationPort.connections.add(connection.id);
   }
 
   void removeConnection(Id connectionId) {
     final connection = connections[connectionId]!;
     final sourceNode = nodes[connection.sourceNodeId]!;
-    final sourceNodePort = sourceNode.getPortById(connection.sourcePortId);
+    final sourceNodePort = sourceNode.getOutputPortById(
+      connection.dataType,
+      connection.sourcePortId,
+    );
     sourceNodePort.connections.removeWhere((e) => e == connectionId);
 
     final destinationNode = nodes[connection.destinationNodeId]!;
-    final destinationNodePort = destinationNode.getPortById(
+    final destinationNodePort = destinationNode.getInputPortById(
+      connection.dataType,
       connection.destinationPortId,
     );
     destinationNodePort.connections.removeWhere((e) => e == connectionId);

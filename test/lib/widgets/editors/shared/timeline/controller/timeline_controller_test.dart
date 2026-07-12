@@ -18,8 +18,11 @@
 */
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show InvalidationRange;
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/shared/loop_points.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -66,8 +69,7 @@ class _TimelineTestEngine extends Mock implements Engine {
   final _RecordingSequencerApi _sequencerApi;
   final bool _isRunning;
 
-  _TimelineTestEngine(this._sequencerApi, {bool isRunning = false})
-    : _isRunning = isRunning;
+  _TimelineTestEngine(this._sequencerApi, {this._isRunning = false});
 
   @override
   bool get isRunning => _isRunning;
@@ -199,6 +201,7 @@ void main() {
 
     tearDown(() {
       fixture.controller.dispose();
+      ServiceRegistry.mainWindowController.clearAllCursorOverrides();
     });
 
     test('pointer routing enters and exits the pointer session state', () {
@@ -313,6 +316,7 @@ void main() {
 
     tearDown(() {
       fixture.controller.dispose();
+      ServiceRegistry.mainWindowController.clearAllCursorOverrides();
     });
 
     test(
@@ -715,6 +719,7 @@ void main() {
 
     tearDown(() {
       fixture.controller.dispose();
+      ServiceRegistry.mainWindowController.clearAllCursorOverrides();
     });
 
     test(
@@ -741,6 +746,36 @@ void main() {
         expect(loopHandleMoveState.originalHandleTime, 192);
       },
     );
+
+    test('loop-handle drag overrides the global cursor until release', () {
+      final controller = fixture.controller;
+
+      controller.pointerDown(
+        PointerDownEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(192), 5),
+          buttons: kPrimaryButton,
+        ),
+        pressedLoopHandle: TimelineLoopHandle.start,
+      );
+
+      expect(
+        ServiceRegistry.mainWindowViewModel.globalCursor,
+        SystemMouseCursors.resizeLeftRight,
+      );
+
+      controller.pointerUp(
+        PointerUpEvent(
+          pointer: 1,
+          position: Offset(fixture.pointerXForTime(192), 5),
+        ),
+      );
+
+      expect(
+        ServiceRegistry.mainWindowViewModel.globalCursor,
+        MouseCursor.defer,
+      );
+    });
 
     test(
       'start-handle drag updates only the start bound and alt changes re-resolve it mid-drag',

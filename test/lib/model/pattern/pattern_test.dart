@@ -20,12 +20,16 @@
 import 'dart:ui' as ui;
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show InvalidationRange;
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/arrangement/clip.dart';
+import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
@@ -54,8 +58,35 @@ Future<void> _flushMicrotasks() async {
   await Future<void>.delayed(Duration.zero);
 }
 
+Future<void> _waitForAutomationCompileDebounce() async {
+  await Future<void>.delayed(const Duration(milliseconds: 125));
+  await _flushMicrotasks();
+}
+
 ProjectEntityIdAllocator _testIdAllocator([Id Function()? allocateId]) {
   return ProjectEntityIdAllocator.test(allocateId ?? getId);
+}
+
+int _ticksPerBar(ProjectModel project) {
+  final timeSignature = project.sequence.defaultTimeSignature;
+  final ticksPerBarDouble =
+      project.sequence.ticksPerQuarter /
+      (timeSignature.denominator / 4) *
+      timeSignature.numerator;
+  final ticksPerBar = ticksPerBarDouble.round();
+
+  assert(ticksPerBarDouble == ticksPerBar);
+
+  return ticksPerBar;
+}
+
+int _sixteenthNote(ProjectModel project) {
+  final sixteenthNoteDouble = project.sequence.ticksPerQuarter / 4;
+  final sixteenthNote = sixteenthNoteDouble.round();
+
+  assert(sixteenthNoteDouble == sixteenthNote);
+
+  return sixteenthNote;
 }
 
 ClipModel _createClipWithTimeView({
@@ -77,6 +108,185 @@ ClipModel _createClipWithTimeView({
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('Pattern resolved note render cache', () {
+    test('invalidates after attached note changes', () async {
+      final project = ProjectModel.create();
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(() => 1000),
+        name: 'Cached Pattern',
+      );
+      final firstNote = NoteModel(
+        idAllocator: _testIdAllocator(() => 1001),
+        key: 60,
+        velocity: 0.8,
+        length: 96,
+        offset: 0,
+        pan: 0,
+      );
+      final secondNote = NoteModel(
+        idAllocator: _testIdAllocator(() => 1002),
+        key: 60,
+        velocity: 0.8,
+        length: 96,
+        offset: 120,
+        pan: 0,
+      );
+      pattern.notes[firstNote.id] = firstNote;
+      pattern.notes[secondNote.id] = secondNote;
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(
+        pattern.renderOrderedResolvedNotes
+            .map((note) => note.id)
+            .toList(growable: false),
+        equals([firstNote.id, secondNote.id]),
+      );
+
+      firstNote.offset = 240;
+
+      expect(
+        pattern.renderOrderedResolvedNotes
+            .map((note) => note.id)
+            .toList(growable: false),
+        equals([secondNote.id, firstNote.id]),
+      );
+    });
+  });
+
+  group('Pattern clip auto width', () {
+    test('defaults to the next bar after content', () async {
+      final project = ProjectModel.create();
+      final ticksPerBar = _ticksPerBar(project);
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Bar-sized Pattern',
+      );
+      final note = NoteModel(
+        idAllocator: _testIdAllocator(),
+        key: 60,
+        velocity: 0.8,
+        length: 17,
+        offset: ticksPerBar,
+        pan: 0,
+      );
+      pattern.notes[note.id] = note;
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(pattern.clipAutoSizeMode, PatternClipAutoSizeMode.nextBar);
+      expect(pattern.getContentWidth(), equals(ticksPerBar + 17));
+      expect(pattern.clipAutoWidth, equals(ticksPerBar * 2));
+    });
+
+    test('content mode uses the exact content end', () async {
+      final project = ProjectModel.create();
+      final ticksPerBar = _ticksPerBar(project);
+      final contentEnd = ticksPerBar + 17;
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Content-sized Pattern',
+      )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
+      pattern.automation.points.addAll([
+        AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 0,
+          value: 0.25,
+        ),
+        AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: contentEnd,
+          value: 0.75,
+        ),
+      ]);
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(pattern.getWidth(), equals(ticksPerBar * 2));
+      expect(pattern.clipAutoWidth, equals(contentEnd));
+    });
+
+    test('content mode uses a sixteenth-note minimum width', () async {
+      final project = ProjectModel.create();
+      final sixteenthNote = _sixteenthNote(project);
+      project.sequence.defaultTimeSignature = TimeSignatureModel(7, 8);
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Minimum Content Pattern',
+      )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
+      pattern.automation.points.add(
+        AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 0,
+          value: 0.25,
+        ),
+      );
+      project.sequence.patterns[pattern.id] = pattern;
+
+      await _flushMicrotasks();
+
+      expect(_ticksPerBar(project), isNot(equals(sixteenthNote)));
+      expect(pattern.getContentWidth(), equals(sixteenthNote));
+      expect(pattern.clipAutoWidth, equals(sixteenthNote));
+    });
+
+    test(
+      'content mode updates arrangement width when content changes within one bar',
+      () async {
+        final project = ProjectModel.create();
+        final ticksPerBar = _ticksPerBar(project);
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID!]!;
+        final arrangementWidthStep = ticksPerBar * 4;
+        final initialArrangementWidth = arrangementWidthStep * 4;
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Content-sized Automation',
+        )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
+        final endPoint = AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 100,
+          value: 0.75,
+        );
+        pattern.automation.points.addAll([
+          AutomationPointModel(
+            idAllocator: _testIdAllocator(),
+            offset: 0,
+            value: 0.25,
+          ),
+          endPoint,
+        ]);
+        project.sequence.patterns[pattern.id] = pattern;
+
+        final clip = ClipModel(
+          idAllocator: _testIdAllocator(),
+          patternId: pattern.id,
+          trackId: getId(),
+          offset: initialArrangementWidth - 150,
+        );
+        arrangement.clips[clip.id] = clip;
+
+        await _flushMicrotasks();
+
+        expect(pattern.clipAutoWidth, equals(100));
+        expect(arrangement.viewWidth, equals(initialArrangementWidth));
+
+        endPoint.offset = 200;
+        await _flushMicrotasks();
+
+        expect(pattern.clipAutoWidth, equals(200));
+        expect(
+          arrangement.viewWidth,
+          equals(initialArrangementWidth + arrangementWidthStep),
+        );
+      },
+    );
+  });
 
   group('Pattern compiler invalidation', () {
     test(
@@ -259,6 +469,118 @@ void main() {
             invalidationRanges: anyNamed('invalidationRanges'),
           ),
         );
+      },
+    );
+
+    test(
+      'rate-limits automation point changes and keeps trailing compile',
+      () async {
+        final sequencerApi = _MockSequencerApi();
+        final runningEngine = _RunningEngine(sequencerApi);
+        final project = ProjectModel.create()..engine = runningEngine;
+
+        final arrangement = project
+            .sequence
+            .arrangements[project.sequence.activeArrangementID]!;
+
+        final pattern = PatternModel(
+          idAllocator: _testIdAllocator(),
+          name: 'Automation Pattern',
+        );
+        final firstPoint = AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 10,
+          value: 0.25,
+        );
+        final secondPoint = AutomationPointModel(
+          idAllocator: _testIdAllocator(),
+          offset: 30,
+          value: 0.75,
+        );
+        pattern.automation.points.addAll([firstPoint, secondPoint]);
+        project.sequence.patterns[pattern.id] = pattern;
+
+        final trackId = getId();
+        final clip = _createClipWithTimeView(
+          id: getId(),
+          patternId: pattern.id,
+          trackId: trackId,
+          offset: 100,
+          start: 0,
+          end: 96,
+        );
+        arrangement.clips[clip.id] = clip;
+
+        await _flushMicrotasks();
+        clearInteractions(sequencerApi);
+
+        firstPoint.value = 0.3;
+        firstPoint.value = 0.4;
+        firstPoint.value = 0.5;
+
+        await _flushMicrotasks();
+
+        final patternCompileVerification = verify(
+          sequencerApi.compilePattern(
+            pattern.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        patternCompileVerification.called(1);
+
+        final patternCompileCaptured = patternCompileVerification.captured;
+        final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
+
+        expect(patternTracksToRebuild, equals(<Id>[-1]));
+
+        final arrangementCompileVerification = verify(
+          sequencerApi.compileArrangement(
+            arrangement.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        arrangementCompileVerification.called(1);
+
+        final arrangementCompileCaptured =
+            arrangementCompileVerification.captured;
+        final arrangementTracksToRebuild =
+            arrangementCompileCaptured[0] as List<Id>;
+
+        expect(arrangementTracksToRebuild, equals(<Id>[trackId]));
+
+        clearInteractions(sequencerApi);
+
+        await _waitForAutomationCompileDebounce();
+
+        final trailingPatternCompileVerification = verify(
+          sequencerApi.compilePattern(
+            pattern.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        trailingPatternCompileVerification.called(1);
+
+        final trailingPatternCompileCaptured =
+            trailingPatternCompileVerification.captured;
+        final trailingPatternTracksToRebuild =
+            trailingPatternCompileCaptured[0] as List<Id>;
+
+        expect(trailingPatternTracksToRebuild, equals(<Id>[-1]));
+
+        final trailingArrangementCompileVerification = verify(
+          sequencerApi.compileArrangement(
+            arrangement.id,
+            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          ),
+        );
+        trailingArrangementCompileVerification.called(1);
+
+        final trailingArrangementCompileCaptured =
+            trailingArrangementCompileVerification.captured;
+        final trailingArrangementTracksToRebuild =
+            trailingArrangementCompileCaptured[0] as List<Id>;
+
+        expect(trailingArrangementTracksToRebuild, equals(<Id>[trackId]));
       },
     );
   });

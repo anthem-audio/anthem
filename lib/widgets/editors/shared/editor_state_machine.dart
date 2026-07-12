@@ -330,6 +330,10 @@ class EditorStateMachine<TData> {
 
     _isDisposed = true;
     _pendingEvents.clear();
+
+    for (final state in states.values) {
+      state.onDispose();
+    }
   }
 }
 
@@ -379,6 +383,13 @@ abstract class EditorStateMachineState<TData> {
     required EditorStateMachineEvent event,
     required EditorStateMachineState<TData> to,
   }) {}
+
+  /// Called when the whole state machine is disposed.
+  ///
+  /// This is for releasing resources owned directly by a state. It deliberately
+  /// does not share semantics with [onExit], because exiting an interaction may
+  /// commit or cancel user edits while disposal should only release resources.
+  void onDispose() {}
 
   Iterable<EditorStateMachineStateTransition<TData>> get transitions => [];
 }

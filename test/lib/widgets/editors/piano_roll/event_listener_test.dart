@@ -20,9 +20,6 @@
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/helpers/id.dart';
-import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_controller.dart';
@@ -36,6 +33,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+
+import '../../../helpers/test_project.dart';
 
 class _PianoRollEventListenerTestFixture {
   static const childKey = Key('piano-roll-event-listener-child');
@@ -54,13 +53,9 @@ class _PianoRollEventListenerTestFixture {
   });
 
   factory _PianoRollEventListenerTestFixture.create() {
-    final project = ProjectModel()
-      ..isHydrated = true
-      ..sequence = SequencerModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-      );
+    final project = createTestProject();
     final pattern = PatternModel(
-      idAllocator: ProjectEntityIdAllocator.test(getId),
+      idAllocator: testIdAllocator(),
       name: 'Pattern 1',
     );
     project.sequence.patterns[pattern.id] = pattern;
@@ -69,7 +64,7 @@ class _PianoRollEventListenerTestFixture {
     final viewModel = PianoRollViewModel(
       keyHeight: 14,
       keyValueAtTop: 63.95,
-      timeView: TimeRange(0, 3072),
+      timeRange: TimeRange(0, 3072),
     );
     final controller = PianoRollController(
       project: project,
@@ -93,13 +88,14 @@ class _PianoRollEventListenerTestFixture {
     required double keyHeight,
     required double keyValueAtTop,
   }) async {
-    viewModel.timeView = TimeRange(timeViewStart, timeViewEnd);
+    viewModel.timeRange = TimeRange(timeViewStart, timeViewEnd);
     viewModel.keyHeight = keyHeight;
     viewModel.keyValueAtTop = keyValueAtTop;
 
     await tester.pumpWidget(
       MultiProvider(
         providers: [
+          Provider<ProjectModel>.value(value: project),
           Provider<PianoRollViewModel>.value(value: viewModel),
           Provider<PianoRollController>.value(value: controller),
           ChangeNotifierProvider<KeyboardModifiers>.value(

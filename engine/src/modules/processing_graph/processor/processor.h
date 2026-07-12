@@ -19,14 +19,54 @@
 
 #pragma once
 
+#include <cstdint>
+#include <functional>
 #include <juce_core/juce_core.h>
 #include <memory>
+#include <optional>
 #include <string>
+#include <vector>
 
 namespace anthem {
 
 class GraphNode;
 class NodeProcessContext;
+
+struct ProcessorPortConfiguration {
+  int64_t id;
+  std::optional<std::string> name = std::nullopt;
+  std::optional<int64_t> channelCount = std::nullopt;
+  std::optional<double> parameterDefaultValue = std::nullopt;
+  std::optional<std::string> parameterDisplayMode = std::nullopt;
+  std::optional<std::string> parameterUnitLabel = std::nullopt;
+};
+
+struct ProcessorParameterValue {
+  int64_t controlPortId;
+  double value;
+  std::optional<std::string> displayText = std::nullopt;
+};
+
+struct ProcessorNodePortConfiguration {
+  std::vector<ProcessorPortConfiguration> audioInputPorts;
+  std::vector<ProcessorPortConfiguration> audioOutputPorts;
+  std::vector<ProcessorPortConfiguration> eventInputPorts;
+  std::vector<ProcessorPortConfiguration> eventOutputPorts;
+  std::vector<ProcessorPortConfiguration> controlInputPorts;
+  std::vector<ProcessorPortConfiguration> controlOutputPorts;
+};
+
+struct ProcessorPrepareResult {
+  bool success = true;
+  std::optional<std::string> error = std::nullopt;
+  std::optional<ProcessorNodePortConfiguration> portConfiguration = std::nullopt;
+  std::vector<ProcessorParameterValue> parameterValues;
+};
+
+// Processors may complete preparation synchronously or asynchronously. A
+// nullopt result means preparation succeeded and there is no engine-discovered
+// port configuration to send back to the UI.
+using ProcessorPrepareCallback = std::function<void(std::optional<ProcessorPrepareResult>)>;
 
 // This class is used to process audio, event and control data. It can produce
 // and/or consume any of these data types.
@@ -44,16 +84,17 @@ public:
 
   // Called on the JUCE message thread to initialize the processor.
   //
-  // Note that this is called after the audio device is started, so audio device
-  // information can be queried at this point.
-  virtual void prepareToProcess() = 0;
+  // Note that this is called after a processing config is active, so timing and
+  // buffer layout information can be queried at this point.
+  virtual void prepareToProcess(ProcessorPrepareCallback complete) = 0;
 
   // This flag must be set after prepareToProcess() is called. It is set by the
   // caller, not by the processor itself.
   bool isPrepared = false;
 
   // This method is called by the processing graph to process audio, event and
-  // control data. It is called once per processing block.
+  // control data. It is called once per processing block. Processors with audio
+  // output ports must fully replace every sample in each output buffer.
   virtual void process(NodeProcessContext& context, int numSamples) = 0;
 
   // Gets the state of the processor

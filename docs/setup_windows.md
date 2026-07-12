@@ -16,8 +16,14 @@ In addition to Flutter, Anthem needs the following:
   ```powershell
   choco install ninja -y
   ```
+- **MSYS2 with the Clang toolchain**: Required by `dart run anthem:cli engine build-lame`. Install MSYS2 from [msys2.org](https://www.msys2.org/), then install the x64 toolchain from an MSYS2 shell:
+  ```bash
+  pacman -S --needed base-devel mingw-w64-clang-x86_64-toolchain
+  ```
+  On Windows ARM64, use `mingw-w64-clang-aarch64-toolchain` instead.
 
 If LLVM is installed but its `bin` directory is not on `PATH`, you can set `ANTHEM_LLVM_BIN` to that directory before running the Anthem CLI.
+If MSYS2 is installed somewhere other than `C:\msys64`, set `ANTHEM_MSYS2_BASH` to the full path of `bash.exe`.
 
 ### Instructions
 

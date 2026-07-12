@@ -22,6 +22,7 @@ import 'dart:math';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -72,17 +73,13 @@ Path _getPlayheadHandlePath() {
 final _playheadHandlePath = _getPlayheadHandlePath();
 
 class PlayheadPositioner extends StatelessWidget {
-  final AnimationController timeViewAnimationController;
-  final Animation<double> timeViewStartAnimation;
-  final Animation<double> timeViewEndAnimation;
+  final TimeRangeAnimation timeRangeAnimation;
   final Size timelineSize;
   final double? playheadTimeOverride;
   final bool isStartMarker;
 
   const PlayheadPositioner({
-    required this.timeViewAnimationController,
-    required this.timeViewStartAnimation,
-    required this.timeViewEndAnimation,
+    required this.timeRangeAnimation,
     required this.timelineSize,
     this.playheadTimeOverride,
     this.isStartMarker = false,
@@ -92,8 +89,8 @@ class PlayheadPositioner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget buildPlayheadAtPosition(double? playheadPosition) {
-      final timeViewStart = timeViewStartAnimation.value;
-      final timeViewEnd = timeViewEndAnimation.value;
+      final timeViewStart = timeRangeAnimation.renderedStart;
+      final timeViewEnd = timeRangeAnimation.renderedEnd;
 
       final playheadX =
           timeToPixels(
@@ -118,7 +115,7 @@ class PlayheadPositioner extends StatelessWidget {
     }
 
     return AnimatedBuilder(
-      animation: timeViewAnimationController,
+      animation: timeRangeAnimation.controller,
       builder: (context, child) {
         if (playheadTimeOverride != null) {
           return buildPlayheadAtPosition(playheadTimeOverride);

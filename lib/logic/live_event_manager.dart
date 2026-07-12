@@ -35,7 +35,7 @@ class LiveEventManager {
 
   Id? _getLiveEventProviderNodeId(Id trackId) {
     final track = project.tracks[trackId];
-    return track?.liveEventProviderNodeId;
+    return track?.processing?.liveEventProviderNodeId;
   }
 
   int _allocateSourceNoteId() {

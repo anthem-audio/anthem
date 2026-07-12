@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -44,18 +44,13 @@ class WasmSharedMemoryRingBuffer {
 
   WasmSharedMemoryRingBuffer({
     required this.engineInterface,
-    required int headPtr,
-    required int tailPtr,
-    required int capacity,
-    required int mask,
-    required int dataPtr,
-    required int ticketPtr,
-  }) : _headPtr = headPtr,
-       _tailPtr = tailPtr,
-       _capacity = capacity,
-       _mask = mask,
-       _dataPtr = dataPtr,
-       _ticketPtr = ticketPtr;
+    required this._headPtr,
+    required this._tailPtr,
+    required this._capacity,
+    required this._mask,
+    required this._dataPtr,
+    required this._ticketPtr,
+  });
 
   JSUint8Array getHeapU8() =>
       engineInterface.appInstance.getProperty('HEAPU8'.toJS) as JSUint8Array;

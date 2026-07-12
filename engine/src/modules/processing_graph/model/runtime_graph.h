@@ -30,7 +30,7 @@
 
 namespace anthem {
 
-class GraphRuntimeServices;
+class EngineRuntimeServices;
 class ProcessingGraphModel;
 
 class RuntimeNodePriorityComparator {
@@ -54,9 +54,8 @@ public:
   RuntimeGraph& operator=(RuntimeGraph&&) = delete;
 
   static std::unique_ptr<RuntimeGraph> fromProcessingGraph(ProcessingGraphModel& processingGraph,
-      GraphRuntimeServices& rtServices,
-      const GraphBufferLayout& bufferLayout,
-      double sampleRate);
+      EngineRuntimeServices& rtServices,
+      const GraphBufferLayout& bufferLayout);
 
   void cleanup();
 
@@ -64,7 +63,6 @@ public:
   std::vector<RuntimeNode*> inputNodes;
   AvailableTaskQueue availableTasks;
   std::unique_ptr<GraphProcessContext> graphProcessContext;
-  float sampleRate = 0.0f;
 private:
   bool hasCleanedUp = false;
 

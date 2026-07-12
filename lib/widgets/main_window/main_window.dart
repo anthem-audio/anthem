@@ -22,10 +22,8 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_renderer.dart';
-import 'package:anthem/widgets/editors/piano_roll/note_label_image_cache.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 
@@ -47,7 +45,6 @@ class _MainWindowState extends State<MainWindow> {
   AnthemMenuController menuController = AnthemMenuController();
 
   bool firstBuild = true;
-  double? lastDevicePixelRatio;
 
   @override
   void initState() {
@@ -55,9 +52,17 @@ class _MainWindowState extends State<MainWindow> {
   }
 
   @override
+  void dispose() {
+    ServiceRegistry.mainWindowController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final viewModel = ServiceRegistry.mainWindowViewModel;
     final store = AnthemStore.instance;
+    final shouldUseNativeWindowBorder =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
     if (firstBuild) {
       firstBuild = false;
@@ -72,131 +77,111 @@ class _MainWindowState extends State<MainWindow> {
       // a user gesture.
       if (kIsWeb) {
         Future(() {
-          ServiceRegistry.dialogController.showTextDialog(
+          ServiceRegistry.dialogController.showMarkdownDialog(
             title: 'Welcome',
-            textSpan: TextSpan(
-              style: TextStyle(color: AnthemTheme.text.main, fontSize: 13),
-              children: [
-                TextSpan(
-                  text:
-                      'This is an early preview of Anthem, a free and open-source digital audio workstation.\n\nAnthem is still ',
-                ),
-                TextSpan(
-                  text: 'in early development',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(text: ', and so '),
-                TextSpan(
-                  text: 'does not work',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(
-                  text: ' for most uses.\n\nFeel free to explore, and please ',
-                ),
-                TextSpan(
-                  text: 'report any bugs on GitHub',
-                  style: TextStyle(
-                    decoration: TextDecoration.underline,
-                    color: AnthemTheme.primary.main,
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {
-                      launchUrl(
-                        Uri.parse('https://github.com/anthem-audio/anthem'),
-                      );
-                    },
-                ),
-                TextSpan(
-                  text:
-                      '. For better performance, lower latency, and third-party plugin support, try ',
-                ),
-                TextSpan(
-                  text: 'the desktop version',
-                  style: TextStyle(
-                    decoration: TextDecoration.underline,
-                    color: AnthemTheme.primary.main,
-                  ),
-                  recognizer: TapGestureRecognizer()
-                    ..onTap = () {
-                      launchUrl(
-                        Uri.parse('https://github.com/anthem-audio/anthem'),
-                      );
-                    },
-                ),
-                TextSpan(text: ', available for Windows, macOS, and Linux.'),
-              ],
-            ),
+            markdown:
+                'This is an early preview of Anthem, a free and open-source '
+                'digital audio workstation.\n\n'
+                'Anthem is still **in early development**, and so '
+                '**does not work** for most uses.\n\n'
+                'Feel free to explore, and please '
+                '[report any bugs on GitHub](https://github.com/anthem-audio/anthem). '
+                'For better performance, lower latency, and third-party plugin '
+                'support, try '
+                '[the desktop version](https://github.com/anthem-audio/anthem), '
+                'available for Windows, macOS, and Linux.',
+            onTapLink: (_, href, _) {
+              if (href != null) {
+                launchUrl(Uri.parse(href));
+              }
+            },
             buttons: [DialogButton.ok()],
           );
         });
       }
     }
 
-    final devicePixelRatio = View.of(context).devicePixelRatio;
+    Widget buildContent() {
+      return Observer(
+        builder: (context) {
+          final tabs = store.projectOrder.map<TabDef>((projectId) {
+            return TabDef(
+              id: projectId,
+              title: store.projects[projectId]?.name ?? '',
+            );
+          }).toList();
 
-    if (lastDevicePixelRatio != devicePixelRatio) {
-      lastDevicePixelRatio = devicePixelRatio;
-
-      for (final project in store.projects.values) {
-        project.sequence.scheduleClipTitleTextureAtlasUpdate();
-      }
+          return Column(
+            children: [
+              RepaintBoundary(
+                child: WindowHeader(
+                  selectedTabId: store.activeProjectId,
+                  tabs: tabs,
+                ),
+              ),
+              Expanded(
+                child: TabContentSwitcher(
+                  tabs: tabs,
+                  selectedTabId: store.activeProjectId,
+                ),
+              ),
+            ],
+          );
+        },
+      );
     }
 
-    if (!noteLabelImageCache.initialized) {
-      noteLabelImageCache.init(devicePixelRatio);
-    }
+    final windowContent = shouldUseNativeWindowBorder
+        ? buildContent()
+        : Container(
+            color: AnthemTheme.panel.border,
+            child: Padding(
+              padding: const EdgeInsets.all(1),
+              child: buildContent(),
+            ),
+          );
 
     return Stack(
       fit: .expand,
       children: [
-        DialogRenderer(
-          child: ScreenOverlay(
-            child: Container(
-              color: AnthemTheme.panel.border,
-              child: Padding(
-                padding: const EdgeInsets.all(3),
-                child: Observer(
-                  builder: (context) {
-                    final tabs = store.projectOrder.map<TabDef>((projectId) {
-                      return TabDef(
-                        id: projectId,
-                        title: store.projects[projectId]?.name ?? '',
-                      );
-                    }).toList();
-
-                    return Column(
-                      children: [
-                        RepaintBoundary(
-                          child: WindowHeader(
-                            selectedTabId: store.activeProjectId,
-                            tabs: tabs,
-                          ),
-                        ),
-                        Expanded(
-                          child: TabContentSwitcher(
-                            tabs: tabs,
-                            selectedTabId: store.activeProjectId,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
+        ScreenOverlay(child: DialogRenderer(child: windowContent)),
 
         // Sets an override for the mouse cursor, which should be used when
-        // the mouse is pressed down during click-and-drag operations.
+        // the mouse is pressed down during click-and-drag operations. While
+        // active, this also shields underlying hover regions from layout churn
+        // during resizes.
         //
-        // See setCursorOverride() and clearCursorOverride() from
+        // See pushCursorOverride() and clearAllCursorOverrides() from
         // MainWindowController for examples on how to use this.
         Observer(
           builder: (context) {
-            return MouseRegion(
-              cursor: viewModel.globalCursor,
-              hitTestBehavior: .translucent,
+            final globalCursor = viewModel.globalCursor;
+            if (globalCursor == MouseCursor.defer) {
+              return MouseRegion(
+                cursor: globalCursor,
+                hitTestBehavior: .translucent,
+              );
+            }
+
+            return Positioned.fill(
+              child: MouseRegion(
+                key: const ValueKey('global-cursor-hover-shield'),
+                cursor: globalCursor,
+                opaque: true,
+                hitTestBehavior: .opaque,
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerUp: (_) {
+                    ServiceRegistry.mainWindowController
+                        .clearAllCursorOverrides();
+                  },
+                  onPointerCancel: (_) {
+                    ServiceRegistry.mainWindowController
+                        .clearAllCursorOverrides();
+                  },
+                  child: const SizedBox.expand(),
+                ),
+              ),
             );
           },
         ),

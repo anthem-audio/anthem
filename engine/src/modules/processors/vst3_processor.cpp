@@ -31,11 +31,73 @@
 #include <juce_gui_basics/native/juce_ScopedThreadDPIAwarenessSetter_windows.h>
 #endif
 
+#include <cmath>
+#include <utility>
+
 namespace anthem {
 
 namespace {
 void writeVST3Log(VST3Processor& processor, const juce::String& message) {
   juce::Logger::writeToLog("[VST3:" + juce::String(processor.nodeId()) + "] " + message);
+}
+
+ProcessorPrepareResult makeVST3PrepareError(std::string error) {
+  return ProcessorPrepareResult{
+      .success = false,
+      .error = std::move(error),
+  };
+}
+
+std::optional<std::string> makeOptionalTrimmedString(const juce::String& value) {
+  const auto trimmed = value.trim();
+
+  if (trimmed.isEmpty()) {
+    return std::nullopt;
+  }
+
+  return trimmed.toStdString();
+}
+
+std::optional<std::string> getParameterDisplayText(
+    juce::AudioProcessorParameter& parameter, float value) {
+  return makeOptionalTrimmedString(parameter.getText(value, 64));
+}
+
+std::optional<int64_t> getVST3ParameterControlPortId(juce::AudioProcessorParameter& parameter) {
+  auto* hostedParameter = dynamic_cast<juce::HostedAudioProcessorParameter*>(&parameter);
+  if (hostedParameter == nullptr) {
+    return std::nullopt;
+  }
+
+  return hostedParameter->getParameterID().getLargeIntValue();
+}
+
+void addMidiMessageToEventBuffer(
+    EventBuffer& targetBuffer, const juce::MidiMessage& message, int sampleOffset) {
+  if (message.isNoteOn()) {
+    targetBuffer.addEvent(LiveEvent{.sampleOffset = sampleOffset,
+        .liveId = invalidLiveNoteId,
+        .event = Event(NoteOnEvent(static_cast<int16_t>(message.getNoteNumber()),
+            static_cast<int16_t>(message.getChannel() - 1),
+            message.getFloatVelocity(),
+            0.0f))});
+    return;
+  }
+
+  if (message.isNoteOff()) {
+    targetBuffer.addEvent(LiveEvent{.sampleOffset = sampleOffset,
+        .liveId = invalidLiveNoteId,
+        .event = Event(NoteOffEvent(static_cast<int16_t>(message.getNoteNumber()),
+            static_cast<int16_t>(message.getChannel() - 1),
+            message.getFloatVelocity()))});
+    return;
+  }
+
+  if (message.isAllNotesOff()) {
+    targetBuffer.addEvent(LiveEvent{.sampleOffset = sampleOffset,
+        .liveId = invalidLiveNoteId,
+        .event = Event(AllVoicesOffEvent{})});
+  }
 }
 
 } // namespace
@@ -73,54 +135,205 @@ void VST3Processor::rebindEditorWindowCloseCallback() {
   });
 }
 
+ProcessorPrepareResult VST3Processor::buildPrepareResultForPlugin() {
+  ProcessorNodePortConfiguration portConfiguration;
+  std::vector<ProcessorParameterValue> parameterValues;
+  parametersByPortId.clear();
+
+  if (audioInputPortIdForPlugin.has_value()) {
+    portConfiguration.audioInputPorts.push_back(ProcessorPortConfiguration{
+        .id = *audioInputPortIdForPlugin,
+        .name = std::string("Audio In"),
+        .channelCount = pluginInputChannelCount,
+    });
+  }
+
+  if (audioOutputPortIdForPlugin.has_value()) {
+    portConfiguration.audioOutputPorts.push_back(ProcessorPortConfiguration{
+        .id = *audioOutputPortIdForPlugin,
+        .name = std::string("Audio Out"),
+        .channelCount = pluginOutputChannelCount,
+    });
+  }
+
+  if (eventInputPortIdForPlugin.has_value()) {
+    portConfiguration.eventInputPorts.push_back(ProcessorPortConfiguration{
+        .id = *eventInputPortIdForPlugin,
+        .name = std::string("MIDI In"),
+    });
+  }
+
+  if (eventOutputPortIdForPlugin.has_value()) {
+    portConfiguration.eventOutputPorts.push_back(ProcessorPortConfiguration{
+        .id = *eventOutputPortIdForPlugin,
+        .name = std::string("MIDI Out"),
+    });
+  }
+
+  // Discover VST parameters and expose them as control input ports.
+  if (pluginInstance != nullptr) {
+    const auto& parameters = pluginInstance->getParameters();
+
+    parametersByPortId.reserve(static_cast<size_t>(parameters.size()));
+    portConfiguration.controlInputPorts.reserve(static_cast<size_t>(parameters.size()));
+    parameterValues.reserve(static_cast<size_t>(parameters.size()));
+
+    for (auto* parameter : parameters) {
+      if (parameter == nullptr) {
+        continue;
+      }
+
+      if (!parameter->isAutomatable()) {
+        continue;
+      }
+
+      auto parameterControlPortId = getVST3ParameterControlPortId(*parameter);
+      if (!parameterControlPortId.has_value()) {
+        continue;
+      }
+
+      auto [_, inserted] = parametersByPortId.emplace(*parameterControlPortId, parameter);
+      if (!inserted) {
+        writeVST3Log(*this,
+            "Skipping duplicate VST3 parameter ID: " + juce::String(*parameterControlPortId));
+        continue;
+      }
+
+      portConfiguration.controlInputPorts.push_back(ProcessorPortConfiguration{
+          .id = *parameterControlPortId,
+          .name = parameter->getName(128).toStdString(),
+          .channelCount = std::nullopt,
+          .parameterDefaultValue = static_cast<double>(parameter->getDefaultValue()),
+          .parameterDisplayMode = std::string("pluginText"),
+          .parameterUnitLabel = makeOptionalTrimmedString(parameter->getLabel()),
+      });
+
+      const auto currentValue = parameter->getValue();
+      parameterValues.push_back(ProcessorParameterValue{
+          .controlPortId = *parameterControlPortId,
+          .value = static_cast<double>(currentValue),
+          .displayText = getParameterDisplayText(*parameter, currentValue),
+      });
+    }
+  }
+
+  return ProcessorPrepareResult{
+      .success = true,
+      .error = std::nullopt,
+      .portConfiguration = std::move(portConfiguration),
+      .parameterValues = std::move(parameterValues),
+  };
+}
+
 // We expect that a valid device is available when this method is called
-void VST3Processor::prepareToProcess() {
+void VST3Processor::prepareToProcess(ProcessorPrepareCallback complete) {
   writeVST3Log(*this, "prepareToProcess() called for path: " + juce::String(vst3Path()));
 
   // If the plugin is not initialized, try to initialize it
-  tryInitializePlugin();
+  tryInitializePlugin(std::move(complete));
 }
 
 void VST3Processor::process(NodeProcessContext& context, int numSamples) {
-  juce::ignoreUnused(numSamples);
-
-  auto& audioOutBuffer = context.getOutputAudioBuffer(VST3ProcessorModelBase::audioOutputPortId);
-  auto& eventInBuffer = context.getInputEventBuffer(VST3ProcessorModelBase::eventInputPortId);
-
-  audioOutBuffer.clear();
-
   if (this->pluginInstance == nullptr) {
     return;
   }
 
   jassert(numSamples == pluginInstance->getBlockSize());
 
-  for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
-    const auto& liveEvent = eventInBuffer.getEvent(i);
-    jassert(juce::isPositiveAndBelow(liveEvent.sampleOffset, numSamples));
+  juce::AudioBuffer<float>* processBuffer = nullptr;
+  AudioBufferView processBufferView;
 
-    if (liveEvent.event.type == EventType::NoteOn) {
-      auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
-          liveEvent.event.noteOn.pitch,
-          static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
+  const auto requiredProcessChannels =
+      juce::jmax(pluginInputChannelCount, pluginOutputChannelCount);
 
-      rt_eventBufferForPlugin.addEvent(noteOn, liveEvent.sampleOffset);
-    } else if (liveEvent.event.type == EventType::NoteOff) {
-      auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
-          liveEvent.event.noteOff.pitch,
-          static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
+  if (context.hasAudioProcessBuffer()) {
+    processBufferView = context.getAudioProcessBuffer();
 
-      rt_eventBufferForPlugin.addEvent(noteOff, liveEvent.sampleOffset);
-    } else if (liveEvent.event.type == EventType::AllVoicesOff) {
-      for (int channel = 1; channel <= 16; channel++) {
-        auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
-        rt_eventBufferForPlugin.addEvent(allVoicesOff, liveEvent.sampleOffset);
+    if (processBufferView.getNumChannels() < requiredProcessChannels ||
+        processBufferView.getNumSamples() < numSamples ||
+        rt_pluginAudioChannelPointers.size() < static_cast<size_t>(requiredProcessChannels)) {
+      jassertfalse;
+      return;
+    }
+
+    for (int channel = 0; channel < requiredProcessChannels; ++channel) {
+      rt_pluginAudioChannelPointers[static_cast<size_t>(channel)] =
+          processBufferView.getWritePointer(channel);
+    }
+
+    // Wrap our arena-allocated buffer in the form expected by JUCE. This must
+    // be done on each process call because the buffer position in memory can
+    // change each time the graph is processed.
+    if (requiredProcessChannels > 0) {
+      rt_pluginAudioBufferView.setDataToReferTo(
+          rt_pluginAudioChannelPointers.data(), requiredProcessChannels, numSamples);
+    }
+
+    processBuffer = &rt_pluginAudioBufferView;
+  } else {
+    processBuffer = &rt_emptyAudioBuffer;
+    processBuffer->clear();
+  }
+
+  if (processBuffer == nullptr || processBuffer->getNumChannels() < requiredProcessChannels ||
+      processBuffer->getNumSamples() < numSamples) {
+    jassertfalse;
+    return;
+  }
+
+  if (eventInputPortIdForPlugin.has_value()) {
+    const auto& eventInBuffer = context.getInputEventBuffer(*eventInputPortIdForPlugin);
+
+    for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
+      const auto& liveEvent = eventInBuffer.getEvent(i);
+      jassert(juce::isPositiveAndBelow(liveEvent.sampleOffset, numSamples));
+
+      if (liveEvent.event.type == EventType::NoteOn) {
+        auto noteOn = juce::MidiMessage::noteOn(liveEvent.event.noteOn.channel + 1,
+            liveEvent.event.noteOn.pitch,
+            static_cast<uint8_t>(std::round(liveEvent.event.noteOn.velocity * 127.0f)));
+
+        rt_eventBufferForPlugin.addEvent(noteOn, liveEvent.sampleOffset);
+      } else if (liveEvent.event.type == EventType::NoteOff) {
+        auto noteOff = juce::MidiMessage::noteOff(liveEvent.event.noteOff.channel + 1,
+            liveEvent.event.noteOff.pitch,
+            static_cast<uint8_t>(std::round(liveEvent.event.noteOff.velocity * 127.0f)));
+
+        rt_eventBufferForPlugin.addEvent(noteOff, liveEvent.sampleOffset);
+      } else if (liveEvent.event.type == EventType::AllVoicesOff) {
+        for (int channel = 1; channel <= 16; channel++) {
+          auto allVoicesOff = juce::MidiMessage::allNotesOff(channel);
+          rt_eventBufferForPlugin.addEvent(allVoicesOff, liveEvent.sampleOffset);
+        }
       }
     }
   }
 
+  for (const auto& connectedPort : context.rt_getConnectedInputControlPorts()) {
+    auto parameterIter = parametersByPortId.find(connectedPort.portId);
+    if (parameterIter == parametersByPortId.end() || parameterIter->second == nullptr) {
+      continue;
+    }
+
+    const auto controlBuffer = context.rt_getInputControlBufferByIndex(connectedPort.bufferIndex);
+    const auto value = juce::jlimit(0.0f, 1.0f, controlBuffer.getReadPointer(0)[0]);
+    auto* parameter = parameterIter->second;
+
+    if (parameter->getValue() != value) {
+      parameter->setValue(value);
+    }
+  }
+
   // Process the plugin
-  pluginInstance->processBlock(audioOutBuffer, rt_eventBufferForPlugin);
+  pluginInstance->processBlock(*processBuffer, rt_eventBufferForPlugin);
+
+  if (eventOutputPortIdForPlugin.has_value()) {
+    auto& eventOutBuffer = context.getOutputEventBuffer(*eventOutputPortIdForPlugin);
+
+    for (const auto metadata : rt_eventBufferForPlugin) {
+      addMidiMessageToEventBuffer(eventOutBuffer, metadata.getMessage(), metadata.samplePosition);
+    }
+  }
 
   rt_eventBufferForPlugin.clear();
 }
@@ -130,25 +343,85 @@ void VST3Processor::initialize(
   VST3ProcessorModelBase::initialize(selfModel, parentModel);
 }
 
-void VST3Processor::tryInitializePlugin() {
+void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
+  auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
+
+  if (!audioProcessingConfig.has_value()) {
+    writeVST3Log(*this, "No audio processing config available. Cannot initialize plugin.");
+    complete(makeVST3PrepareError("No audio processing config is active."));
+    return;
+  }
+
+  auto sampleRate = audioProcessingConfig->sampleRate;
+  auto bufferSize = audioProcessingConfig->blockSize;
+  auto hostBufferChannels = audioProcessingConfig->outputChannelCount;
+
   if (pluginInstance != nullptr) {
-    writeVST3Log(*this, "Plugin instance already exists. Skipping initialization.");
+    writeVST3Log(*this,
+        "Plugin instance already exists. Repreparing plugin. Sample rate: " +
+            juce::String(sampleRate) + ", buffer size: " + juce::String(bufferSize));
+
+    pluginInstance->disableNonMainBuses();
+
+    const auto requiredProcessChannels = juce::jmax(
+        pluginInstance->getTotalNumInputChannels(), pluginInstance->getTotalNumOutputChannels());
+
+    if (requiredProcessChannels > hostBufferChannels) {
+      writeVST3Log(*this,
+          "Plugin requires " + juce::String(requiredProcessChannels) +
+              " process channel(s), but Anthem currently allocates " +
+              juce::String(hostBufferChannels) +
+              " channel(s) per plugin buffer. Refusing to prepare to avoid a host buffer "
+              "overrun.");
+      complete(
+          makeVST3PrepareError("Plugin requires more process channels than Anthem can allocate."));
+      return;
+    }
+
+    pluginInstance->prepareToPlay(sampleRate, bufferSize);
+    writeVST3Log(*this, "prepareToPlay() completed for existing plugin instance.");
+
+    pluginInputChannelCount = pluginInstance->getTotalNumInputChannels();
+    pluginOutputChannelCount = pluginInstance->getTotalNumOutputChannels();
+    audioInputPortIdForPlugin =
+        pluginInputChannelCount > 0
+            ? std::optional<int64_t>(VST3ProcessorModelBase::audioInputPortId)
+            : std::nullopt;
+    audioOutputPortIdForPlugin =
+        pluginOutputChannelCount > 0
+            ? std::optional<int64_t>(VST3ProcessorModelBase::audioOutputPortId)
+            : std::nullopt;
+    eventInputPortIdForPlugin =
+        pluginInstance->acceptsMidi()
+            ? std::optional<int64_t>(VST3ProcessorModelBase::eventInputPortId)
+            : std::nullopt;
+    eventOutputPortIdForPlugin =
+        pluginInstance->producesMidi()
+            ? std::optional<int64_t>(VST3ProcessorModelBase::eventOutputPortId)
+            : std::nullopt;
+    rt_emptyAudioBuffer.setSize(requiredProcessChannels, bufferSize, false, true, true);
+    rt_pluginAudioChannelPointers.resize(static_cast<size_t>(requiredProcessChannels));
+
+    if (requiredProcessChannels > 0) {
+      for (int channel = 0; channel < requiredProcessChannels; ++channel) {
+        rt_pluginAudioChannelPointers[static_cast<size_t>(channel)] =
+            rt_emptyAudioBuffer.getWritePointer(channel);
+      }
+
+      rt_pluginAudioBufferView.setDataToReferTo(
+          rt_pluginAudioChannelPointers.data(), requiredProcessChannels, bufferSize);
+    }
+
+    complete(buildPrepareResultForPlugin());
     return;
   }
 
   auto& audioPluginFormatManager = Engine::getInstance().audioPluginFormatManager;
-  auto& audioDeviceManager = Engine::getInstance().audioDeviceManager;
-
-  auto* device = audioDeviceManager.getCurrentAudioDevice();
-
-  if (device == nullptr) {
-    writeVST3Log(*this, "No audio device available. Cannot initialize plugin.");
-    return;
-  }
 
   writeVST3Log(*this,
-      "Initializing plugin. Sample rate: " + juce::String(device->getCurrentSampleRate()) +
-          ", buffer size: " + juce::String(device->getCurrentBufferSizeSamples()));
+      "Initializing plugin. Sample rate: " + juce::String(audioProcessingConfig->sampleRate) +
+          ", buffer size: " + juce::String(audioProcessingConfig->blockSize));
 
   // First, scan the VST3 file to get proper plugin descriptions
   juce::VST3PluginFormat vst3Format;
@@ -158,6 +431,7 @@ void VST3Processor::tryInitializePlugin() {
 
   if (foundPlugins.isEmpty()) {
     writeVST3Log(*this, "No plugins found in VST3 file: " + juce::String(vst3Path()));
+    complete(makeVST3PrepareError("No plugins found in VST3 file: " + vst3Path()));
     return;
   }
 
@@ -173,30 +447,31 @@ void VST3Processor::tryInitializePlugin() {
   // Use the first plugin found (not the proper way to do this)
   pluginDescription = *foundPlugins[0];
 
-  auto sampleRate = device->getCurrentSampleRate();
-  auto bufferSize = device->getCurrentBufferSizeSamples();
-  auto hostBufferChannels = device->getActiveOutputChannels().countNumberOfSetBits();
   auto weakSelf = self;
 
   audioPluginFormatManager.createPluginInstanceAsync(pluginDescription,
       sampleRate,
       bufferSize,
-      [weakSelf, sampleRate, bufferSize, hostBufferChannels](
+      [weakSelf, sampleRate, bufferSize, hostBufferChannels, complete = std::move(complete)](
           std::unique_ptr<juce::AudioPluginInstance> instance, const juce::String& error) mutable {
         auto selfShared = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
 
         if (selfShared == nullptr) {
+          complete(makeVST3PrepareError("VST3 processor was destroyed before initialization."));
           return;
         }
 
         if (error.isNotEmpty()) {
           writeVST3Log(*selfShared, "Failed to create plugin instance: " + error);
+          complete(makeVST3PrepareError(error.toStdString()));
           return;
         }
 
         if (instance == nullptr) {
           writeVST3Log(*selfShared,
               "Plugin creation callback returned a null instance without an error message.");
+          complete(makeVST3PrepareError(
+              "Plugin creation callback returned a null instance without an error message."));
           return;
         }
 
@@ -214,6 +489,8 @@ void VST3Processor::tryInitializePlugin() {
                   juce::String(hostBufferChannels) +
                   " channel(s) per plugin buffer. Refusing to load to avoid a host buffer "
                   "overrun.");
+          complete(makeVST3PrepareError(
+              "Plugin requires more process channels than Anthem can currently allocate."));
           return;
         }
 
@@ -227,9 +504,48 @@ void VST3Processor::tryInitializePlugin() {
         instance->prepareToPlay(sampleRate, bufferSize);
         writeVST3Log(*selfShared, "prepareToPlay() completed.");
 
+        selfShared->pluginInputChannelCount = instance->getTotalNumInputChannels();
+        selfShared->pluginOutputChannelCount = instance->getTotalNumOutputChannels();
+        selfShared->audioInputPortIdForPlugin =
+            selfShared->pluginInputChannelCount > 0
+                ? std::optional<int64_t>(VST3ProcessorModelBase::audioInputPortId)
+                : std::nullopt;
+        selfShared->audioOutputPortIdForPlugin =
+            selfShared->pluginOutputChannelCount > 0
+                ? std::optional<int64_t>(VST3ProcessorModelBase::audioOutputPortId)
+                : std::nullopt;
+        selfShared->eventInputPortIdForPlugin =
+            instance->acceptsMidi()
+                ? std::optional<int64_t>(VST3ProcessorModelBase::eventInputPortId)
+                : std::nullopt;
+        selfShared->eventOutputPortIdForPlugin =
+            instance->producesMidi()
+                ? std::optional<int64_t>(VST3ProcessorModelBase::eventOutputPortId)
+                : std::nullopt;
+        selfShared->rt_emptyAudioBuffer.setSize(
+            requiredProcessChannels, bufferSize, false, true, true);
+        selfShared->rt_pluginAudioChannelPointers.resize(
+            static_cast<size_t>(requiredProcessChannels));
+
+        if (requiredProcessChannels > 0) {
+          for (int channel = 0; channel < requiredProcessChannels; ++channel) {
+            selfShared->rt_pluginAudioChannelPointers[static_cast<size_t>(channel)] =
+                selfShared->rt_emptyAudioBuffer.getWritePointer(channel);
+          }
+
+          selfShared->rt_pluginAudioBufferView.setDataToReferTo(
+              selfShared->rt_pluginAudioChannelPointers.data(),
+              requiredProcessChannels,
+              bufferSize);
+        }
+
         selfShared->pluginInstance = std::move(instance);
         selfShared->pluginInstance->addListener(selfShared.get());
-        writeVST3Log(*selfShared, "Plugin listener attached. Sending PluginLoadedEvent to UI.");
+        writeVST3Log(*selfShared, "Plugin listener attached.");
+
+        complete(selfShared->buildPrepareResultForPlugin());
+
+        writeVST3Log(*selfShared, "Sending PluginLoadedEvent to UI.");
 
         Response event = PluginLoadedEvent{.nodeId = selfShared->nodeId(),
             .responseBase = ResponseBase{
@@ -238,32 +554,20 @@ void VST3Processor::tryInitializePlugin() {
 
         auto eventString = rfl::json::write(event);
         Engine::getInstance().comms.send(eventString);
-
-        // The plugin instance is created asynchronously. Open the editor on the message thread
-        // and only if the processor still exists by the time we get there.
-        juce::MessageManager::callAsync([weakSelf]() {
-          auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
-
-          if (processor == nullptr) {
-            return;
-          }
-
-          processor->showPluginGUI();
-        });
       });
 }
 
-void VST3Processor::showPluginGUI() {
+std::optional<std::string> VST3Processor::openPluginWindow() {
   if (!pluginInstance) {
-    writeVST3Log(*this, "showPluginGUI() skipped because no plugin instance exists yet.");
-    return;
+    writeVST3Log(*this, "openPluginWindow() skipped because no plugin instance exists yet.");
+    return std::string("Plugin instance is not loaded yet.");
   }
 
   if (editorWindow != nullptr) {
     // Window already exists, just bring it to front
     writeVST3Log(*this, "Plugin editor window already exists. Bringing it to front.");
-    editorWindow->toFront(true);
-    return;
+    bringPluginWindowToFront();
+    return std::nullopt;
   }
 
   // Create the host window first so the editor can inherit its actual host-window
@@ -313,7 +617,7 @@ void VST3Processor::showPluginGUI() {
 
   if (!pluginEditor) {
     writeVST3Log(*this, "createEditorIfNeeded() returned null. No plugin window will be shown.");
-    return;
+    return std::string("Plugin does not provide an editor window.");
   }
 
   auto editorIsResizable = pluginEditor->isResizable();
@@ -347,10 +651,120 @@ void VST3Processor::showPluginGUI() {
 
   editorWindow->setBoundsConstrained(initialBounds);
   editorWindow->setVisible(true);
+  bringPluginWindowToFront();
 
   writeVST3Log(*this,
       "Plugin editor window opened at " + juce::String(editorWindow->getWidth()) + "x" +
           juce::String(editorWindow->getHeight()) + ".");
+
+  return std::nullopt;
+}
+
+void VST3Processor::bringPluginWindowToFront() {
+  if (editorWindow == nullptr) {
+    return;
+  }
+
+  auto* window = editorWindow.get();
+
+  window->setVisible(true);
+  window->setAlwaysOnTop(true);
+  window->toFront(true);
+  window->grabKeyboardFocus();
+
+  juce::Component::SafePointer<PluginEditorWindow> safeWindow(window);
+
+  juce::Timer::callAfterDelay(50, [safeWindow]() mutable {
+    auto* delayedWindow = safeWindow.getComponent();
+
+    if (delayedWindow == nullptr) {
+      return;
+    }
+
+    delayedWindow->setAlwaysOnTop(true);
+    delayedWindow->toFront(true);
+    delayedWindow->grabKeyboardFocus();
+  });
+}
+
+void VST3Processor::sendPluginParameterChangedEvent(
+    int64_t controlPortId, juce::AudioProcessorParameter& parameter, float value) {
+  Response event = PluginParameterChangedEvent{.nodeId = nodeId(),
+      .controlPortId = controlPortId,
+      .value = value,
+      .displayText = getParameterDisplayText(parameter, value),
+      .responseBase = ResponseBase{
+          .id = -1,
+      }};
+
+  auto eventString = rfl::json::write(event);
+  Engine::getInstance().comms.send(eventString);
+}
+
+void VST3Processor::sendPluginParameterGestureEvent(int64_t controlPortId, bool isStarting) {
+  Response event = PluginParameterGestureEvent{.nodeId = nodeId(),
+      .controlPortId = controlPortId,
+      .isStarting = isStarting,
+      .responseBase = ResponseBase{
+          .id = -1,
+      }};
+
+  auto eventString = rfl::json::write(event);
+  Engine::getInstance().comms.send(eventString);
+}
+
+void VST3Processor::sendPluginParameterSnapshotEvent() {
+  auto parameterValues =
+      std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>();
+  parameterValues->reserve(parametersByPortId.size());
+
+  for (const auto& [controlPortId, parameter] : parametersByPortId) {
+    if (parameter == nullptr) {
+      continue;
+    }
+
+    const auto value = parameter->getValue();
+    parameterValues->push_back(std::make_shared<ProcessingGraphParameterValue>(
+        ProcessingGraphParameterValue{.controlPortId = controlPortId,
+            .value = static_cast<double>(value),
+            .displayText = getParameterDisplayText(*parameter, value)}));
+  }
+
+  Response event = PluginParameterSnapshotEvent{.nodeId = nodeId(),
+      .parameterValues = parameterValues,
+      .responseBase = ResponseBase{
+          .id = -1,
+      }};
+
+  auto eventString = rfl::json::write(event);
+  Engine::getInstance().comms.send(eventString);
+}
+
+std::optional<std::string> VST3Processor::setPluginParameterValue(
+    int64_t controlPortId, double value) {
+  if (pluginInstance == nullptr) {
+    writeVST3Log(*this, "setPluginParameterValue() skipped because no plugin instance exists yet.");
+    return std::string("Plugin instance is not loaded yet.");
+  }
+
+  auto parameterIter = parametersByPortId.find(controlPortId);
+
+  if (parameterIter == parametersByPortId.end() || parameterIter->second == nullptr) {
+    return std::string("Plugin parameter " + std::to_string(controlPortId) + " was not found.");
+  }
+
+  auto* parameter = parameterIter->second;
+  const auto clampedValue = juce::jlimit(0.0f, 1.0f, static_cast<float>(value));
+
+  if (parameter->getValue() != clampedValue) {
+    // Use setValue() rather than setValueNotifyingHost() so Anthem-originated
+    // changes do not echo through AudioProcessorListener.
+    parameter->setValue(clampedValue);
+  }
+
+  sendPluginParameterChangedEvent(controlPortId, *parameter, clampedValue);
+
+  return std::nullopt;
 }
 
 void VST3Processor::hidePluginGUI() {
@@ -373,15 +787,103 @@ void VST3Processor::audioProcessorParameterChanged(
       return;
     }
 
-    Response event = PluginParameterChangedEvent{.nodeId = processor->nodeId(),
-        .parameterIndex = parameterIndex,
-        .newValue = newValue,
-        .responseBase = ResponseBase{
-            .id = -1,
-        }};
+    if (processor->pluginInstance == nullptr) {
+      return;
+    }
 
-    auto eventString = rfl::json::write(event);
-    Engine::getInstance().comms.send(eventString);
+    const auto& parameters = processor->pluginInstance->getParameters();
+
+    if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
+      return;
+    }
+
+    auto* parameter = parameters[parameterIndex];
+
+    if (parameter == nullptr) {
+      return;
+    }
+
+    const auto controlPortId = getVST3ParameterControlPortId(*parameter);
+
+    if (!controlPortId.has_value()) {
+      return;
+    }
+
+    processor->sendPluginParameterChangedEvent(*controlPortId, *parameter, newValue);
+  });
+}
+
+void VST3Processor::audioProcessorParameterChangeGestureBegin(
+    juce::AudioProcessor* /*processor*/, int parameterIndex) {
+  auto weakSelf = self;
+
+  juce::MessageManager::callAsync([weakSelf, parameterIndex]() {
+    auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+    if (processor == nullptr) {
+      return;
+    }
+
+    if (processor->pluginInstance == nullptr) {
+      return;
+    }
+
+    const auto& parameters = processor->pluginInstance->getParameters();
+
+    if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
+      return;
+    }
+
+    auto* parameter = parameters[parameterIndex];
+
+    if (parameter == nullptr) {
+      return;
+    }
+
+    const auto controlPortId = getVST3ParameterControlPortId(*parameter);
+
+    if (!controlPortId.has_value()) {
+      return;
+    }
+
+    processor->sendPluginParameterGestureEvent(*controlPortId, true);
+  });
+}
+
+void VST3Processor::audioProcessorParameterChangeGestureEnd(
+    juce::AudioProcessor* /*processor*/, int parameterIndex) {
+  auto weakSelf = self;
+
+  juce::MessageManager::callAsync([weakSelf, parameterIndex]() {
+    auto processor = std::dynamic_pointer_cast<VST3Processor>(weakSelf.lock());
+
+    if (processor == nullptr) {
+      return;
+    }
+
+    if (processor->pluginInstance == nullptr) {
+      return;
+    }
+
+    const auto& parameters = processor->pluginInstance->getParameters();
+
+    if (!juce::isPositiveAndBelow(parameterIndex, parameters.size())) {
+      return;
+    }
+
+    auto* parameter = parameters[parameterIndex];
+
+    if (parameter == nullptr) {
+      return;
+    }
+
+    const auto controlPortId = getVST3ParameterControlPortId(*parameter);
+
+    if (!controlPortId.has_value()) {
+      return;
+    }
+
+    processor->sendPluginParameterGestureEvent(*controlPortId, false);
   });
 }
 
@@ -422,6 +924,7 @@ void VST3Processor::setState(const juce::MemoryBlock& state) {
         "Applying plugin state block of " + juce::String(static_cast<int>(state.getSize())) +
             " bytes.");
     pluginInstance->setStateInformation(state.getData(), static_cast<int>(state.getSize()));
+    sendPluginParameterSnapshotEvent();
   }
 }
 

@@ -34,7 +34,8 @@ import 'package:anthem/widgets/basic/scroll/scrollbar_renderer.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_consumer.dart';
 import 'package:anthem/widgets/editors/piano_roll/content_renderer.dart';
 import 'package:anthem/widgets/editors/shared/playhead_line.dart';
-import 'package:anthem/widgets/util/lazy_follower.dart';
+import 'package:anthem/widgets/basic/lazy_follower.dart';
+import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -46,18 +47,18 @@ import '../shared/timeline/timeline.dart';
 import 'controller/piano_roll_controller.dart';
 import 'helpers.dart';
 import 'widgets/piano_control.dart';
-import 'attribute_editor.dart';
+import 'stem_editor.dart';
 import 'event_listener.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
-
-const noContentBars = 16;
 
 const double minKeyHeight = 6;
 const double maxKeyHeight = 40;
 
 const double minKeyValue = 0;
 const double maxKeyValue = 128;
+
+const double _pianoRollVerticalScrollbarWidth = 17;
 
 // Hack: We need the size of the piano roll's content area at very inconvenient
 // times and I don't feel like figuring out how to properly get it where it
@@ -89,7 +90,7 @@ class _PianoRollState extends State<PianoRoll> {
       value: controller,
       child: Provider.value(
         value: viewModel,
-        child: PianoRollTimeViewProvider(
+        child: PianoRollTimeRangeProvider(
           child: Container(
             color: AnthemTheme.panel.background,
             child: Column(
@@ -116,16 +117,16 @@ class _PianoRollState extends State<PianoRoll> {
 /// We provide the [TimeRange] to the tree because some widgets, such as
 /// [Timeline], are shared between editors, and they need to access the
 /// [TimeRange] without knowing which editor they're associated with.
-class PianoRollTimeViewProvider extends StatelessObserverWidget {
+class PianoRollTimeRangeProvider extends StatelessObserverWidget {
   final Widget? child;
 
-  const PianoRollTimeViewProvider({super.key, this.child});
+  const PianoRollTimeRangeProvider({super.key, this.child});
 
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    return Provider.value(value: viewModel.timeView, child: child);
+    return Provider.value(value: viewModel.timeRange, child: child);
   }
 }
 
@@ -155,14 +156,14 @@ class _PianoRollHeader extends StatelessWidget {
                             context,
                             listen: false,
                           );
-                          final timeView = Provider.of<TimeRange>(
+                          final timeRange = Provider.of<TimeRange>(
                             context,
                             listen: false,
                           );
 
                           controller.addTimeSignatureChange(
                             timeSignature: TimeSignatureModel(3, 4),
-                            offset: timeView.start.floor(),
+                            offset: timeRange.start.floor(),
                             pianoRollWidth: _pianoRollCanvasSize.width,
                           );
                         },
@@ -176,7 +177,7 @@ class _PianoRollHeader extends StatelessWidget {
             child: Button(
               width: 24,
               icon: Icons.kebab,
-              onPress: () => menuController.open(),
+              onPress: () => menuController.toggle(),
             ),
           ),
           const SizedBox(width: 4),
@@ -186,17 +187,16 @@ class _PianoRollHeader extends StatelessWidget {
             builder: (context) {
               return Button(
                 width: 24,
-                icon: Icons.pianoRollAttributes,
-                toggleState: viewModel.noteAttributeEditorOpen,
+                icon: Icons.pianoRollStems,
+                toggleState: viewModel.stemEditorOpen,
                 hint: [
                   HintSection(
                     'click',
-                    '${viewModel.noteAttributeEditorOpen ? 'Close' : 'Open'} the note attribute editor',
+                    '${viewModel.stemEditorOpen ? 'Close' : 'Open'} the stem editor',
                   ),
                 ],
                 onPress: () {
-                  viewModel.noteAttributeEditorOpen =
-                      !viewModel.noteAttributeEditorOpen;
+                  viewModel.stemEditorOpen = !viewModel.stemEditorOpen;
                 },
               );
             },
@@ -207,7 +207,7 @@ class _PianoRollHeader extends StatelessWidget {
   }
 }
 
-class _PianoRollContent extends StatefulObserverWidget {
+class _PianoRollContent extends StatefulWidget {
   const _PianoRollContent();
 
   @override
@@ -217,13 +217,12 @@ class _PianoRollContent extends StatefulObserverWidget {
 class _PianoRollContentState extends State<_PianoRollContent>
     with TickerProviderStateMixin {
   double footerHeight = 61;
+  double? _lastNoteRenderAreaWidth;
 
-  LazyFollowAnimationHelper? timeViewAnimationHelper;
   LazyFollowAnimationHelper? keyValueAtTopAnimationHelper;
 
   @override
   void dispose() {
-    timeViewAnimationHelper?.dispose();
     keyValueAtTopAnimationHelper?.dispose();
     super.dispose();
   }
@@ -233,26 +232,66 @@ class _PianoRollContentState extends State<_PianoRollContent>
     final project = Provider.of<ProjectModel>(context);
     final viewModel = Provider.of<PianoRollViewModel>(context);
 
-    timeViewAnimationHelper ??= LazyFollowAnimationHelper(
-      duration: 250,
-      vsync: this,
-      animateOnFirstUpdate: false,
-      items: [
-        LazyFollowItem(
-          initialValue: 0,
-          getTarget: () => viewModel.timeView.start,
-        ),
-        LazyFollowItem(
-          initialValue: 1,
-          getTarget: () => viewModel.timeView.end,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        _handleNoteRenderAreaResize(
+          viewModel: viewModel,
+          project: project,
+          // The left editor border is drawn inside the editor stack so it can
+          // overlay notes/grid content instead of consuming layout width.
+          width:
+              constraints.maxWidth -
+              pianoControlWidth -
+              _pianoRollVerticalScrollbarWidth,
+        );
+
+        return Observer(
+          builder: (context) {
+            return TimeRangeAnimationBuilder(
+              viewport: viewModel.timeRangeViewport,
+              builder: (context, timeRangeAnimation) {
+                return _buildContentWithTimeRangeAnimation(
+                  context,
+                  project,
+                  viewModel,
+                  timeRangeAnimation,
+                );
+              },
+            );
+          },
+        );
+      },
     );
+  }
 
-    timeViewAnimationHelper!.update();
+  void _handleNoteRenderAreaResize({
+    required PianoRollViewModel viewModel,
+    required ProjectModel project,
+    required double width,
+  }) {
+    if (!width.isFinite || width <= 0) {
+      return;
+    }
 
-    final [timeViewStartAnimItem, timeViewEndAnimItem] =
-        timeViewAnimationHelper!.items;
+    final previousWidth = _lastNoteRenderAreaWidth;
+    _lastNoteRenderAreaWidth = width;
+    if (previousWidth == null || previousWidth <= 0 || previousWidth == width) {
+      return;
+    }
+
+    viewModel.timeRangeViewport.resizeViewportPreservingScale(
+      oldViewportWidth: previousWidth,
+      newViewportWidth: width,
+      project: project,
+    );
+  }
+
+  Widget _buildContentWithTimeRangeAnimation(
+    BuildContext context,
+    ProjectModel project,
+    PianoRollViewModel viewModel,
+    TimeRangeAnimation timeRangeAnimation,
+  ) {
     final shouldGreyOut = project.sequence.activePatternID == null;
 
     keyValueAtTopAnimationHelper ??= LazyFollowAnimationHelper(
@@ -291,10 +330,9 @@ class _PianoRollContentState extends State<_PianoRollContent>
           child: Row(
             children: [
               Container(
-                width: pianoControlWidth + 1,
+                width: pianoControlWidth,
                 decoration: BoxDecoration(
                   border: Border(
-                    right: BorderSide(color: AnthemTheme.panel.border),
                     bottom: BorderSide(color: AnthemTheme.panel.border),
                   ),
                 ),
@@ -304,10 +342,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                   timelineKind: TimelineKind.pattern,
                   patternID: pattern?.id,
                   child: Timeline.pattern(
-                    timeViewAnimationController:
-                        timeViewAnimationHelper!.animationController,
-                    timeViewStartAnimation: timeViewStartAnimItem.animation,
-                    timeViewEndAnimation: timeViewEndAnimItem.animation,
+                    timeRangeAnimation: timeRangeAnimation,
                     patternID: pattern?.id,
                   ),
                 ),
@@ -320,22 +355,24 @@ class _PianoRollContentState extends State<_PianoRollContent>
 
     final pianoControl = SizedBox(
       width: pianoControlWidth,
-      child: AnimatedBuilder(
-        animation: keyValueAtTopAnimationHelper!.animationController,
-        builder: (context, child) {
-          return Observer(
-            builder: (context) {
-              return PianoControl(
-                keyValueAtTop: keyValueAtTopAnimItem.animation.value,
-                keyHeight: viewModel.keyHeight,
-                shouldGreyOut: shouldGreyOut,
-                setKeyValueAtTop: (value) {
-                  viewModel.keyValueAtTop = value;
-                },
-              );
-            },
-          );
-        },
+      child: PianoRollScrollManager.verticalOnly(
+        child: AnimatedBuilder(
+          animation: keyValueAtTopAnimationHelper!.animationController,
+          builder: (context, child) {
+            return Observer(
+              builder: (context) {
+                return PianoControl(
+                  keyValueAtTop: keyValueAtTopAnimItem.animation.value,
+                  keyHeight: viewModel.keyHeight,
+                  shouldGreyOut: shouldGreyOut,
+                  setKeyValueAtTop: (value) {
+                    viewModel.keyValueAtTop = value;
+                  },
+                );
+              },
+            );
+          },
+        ),
       ),
     );
 
@@ -344,22 +381,16 @@ class _PianoRollContentState extends State<_PianoRollContent>
         _pianoRollCanvasSize = constraints.biggest;
 
         final grid = PianoRollGrid(
-          timeViewAnimationController:
-              timeViewAnimationHelper!.animationController,
-          timeViewStartAnimation: timeViewStartAnimItem.animation,
-          timeViewEndAnimation: timeViewEndAnimItem.animation,
+          timeRangeAnimation: timeRangeAnimation,
           keyValueAtTopAnimationController:
               keyValueAtTopAnimationHelper!.animationController,
           keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
         );
 
         final notes = PianoRollContentRenderer(
-          timeViewAnimationController:
-              timeViewAnimationHelper!.animationController,
           keyValueAtTopAnimationController:
               keyValueAtTopAnimationHelper!.animationController,
-          timeViewStartAnimation: timeViewStartAnimItem.animation,
-          timeViewEndAnimation: timeViewEndAnimItem.animation,
+          timeRangeAnimation: timeRangeAnimation,
           keyValueAtTopAnimation: keyValueAtTopAnimItem.animation,
           shouldGreyOut: shouldGreyOut,
         );
@@ -373,17 +404,17 @@ class _PianoRollContentState extends State<_PianoRollContent>
             final selectionBox = viewModel.selectionBox!;
 
             final left = timeToPixels(
-              timeViewStart: viewModel.timeView.start,
-              timeViewEnd: viewModel.timeView.end,
+              timeViewStart: viewModel.timeRange.start,
+              timeViewEnd: viewModel.timeRange.end,
               viewPixelWidth: constraints.maxWidth,
               time: selectionBox.left,
             );
 
             final width = timeToPixels(
-              timeViewStart: viewModel.timeView.start,
-              timeViewEnd: viewModel.timeView.end,
+              timeViewStart: viewModel.timeRange.start,
+              timeViewEnd: viewModel.timeRange.end,
               viewPixelWidth: constraints.maxWidth,
-              time: viewModel.timeView.start + selectionBox.width,
+              time: viewModel.timeRange.start + selectionBox.width,
             );
 
             final top = keyValueToPixels(
@@ -426,10 +457,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
           child: Observer(
             builder: (context) {
               return PlayheadLine(
-                timeViewAnimationController:
-                    timeViewAnimationHelper!.animationController,
-                timeViewStartAnimation: timeViewStartAnimItem.animation,
-                timeViewEndAnimation: timeViewEndAnimItem.animation,
+                timeRangeAnimation: timeRangeAnimation,
                 isVisible: true,
                 editorActiveSequenceId: project.sequence.activePatternID,
               );
@@ -447,7 +475,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
         );
 
         return AnimatedBuilder(
-          animation: timeViewAnimationHelper!.animationController,
+          animation: timeRangeAnimation.controller,
           child: eventListenerChild,
           builder: (context, child) {
             return AnimatedBuilder(
@@ -456,8 +484,8 @@ class _PianoRollContentState extends State<_PianoRollContent>
               builder: (context, child) {
                 return PianoRollEventListener(
                   viewSize: constraints.biggest,
-                  renderedTimeViewStart: timeViewStartAnimItem.animation.value,
-                  renderedTimeViewEnd: timeViewEndAnimItem.animation.value,
+                  renderedTimeViewStart: timeRangeAnimation.renderedStart,
+                  renderedTimeViewEnd: timeRangeAnimation.renderedEnd,
                   renderedKeyHeight: viewModel.keyHeight,
                   renderedKeyValueAtTop: keyValueAtTopAnimItem.animation.value,
                   child: child!,
@@ -475,18 +503,15 @@ class _PianoRollContentState extends State<_PianoRollContent>
       id: 'piano-roll',
       shortcutHandler: controller.onShortcut,
       child: Panel(
-        hidden: !viewModel.noteAttributeEditorOpen,
+        hidden: !viewModel.stemEditorOpen,
         orientation: PanelOrientation.bottom,
         sizeBehavior: PanelSizeBehavior.pixels,
         panelStartSize: 89,
         panelMinSize: 89,
         contentMinSize: 150,
         separatorSize: 6,
-        panelContent: PianoRollAttributeEditor(
-          timeViewAnimationController:
-              timeViewAnimationHelper!.animationController,
-          timeViewStartAnimation: timeViewStartAnimItem.animation,
-          timeViewEndAnimation: timeViewEndAnimItem.animation,
+        panelContent: PianoRollStemEditor(
+          timeRangeAnimation: timeRangeAnimation,
           viewModel: viewModel,
         ),
         child: Row(
@@ -501,7 +526,6 @@ class _PianoRollContentState extends State<_PianoRollContent>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         pianoControl,
-                        Container(color: AnthemTheme.panel.border, width: 1),
                         Expanded(
                           child: Column(
                             children: [
@@ -511,10 +535,10 @@ class _PianoRollContentState extends State<_PianoRollContent>
                                 color: AnthemTheme.panel.border,
                               ),
                               // The scrollbar is always inset in the bottom. If
-                              // the note attribute editor is open, it will be
+                              // the stem editor is open, it will be
                               // rendered in there; otherwise, it will be
                               // rendered here, beneath the main canvas.
-                              if (!viewModel.noteAttributeEditorOpen)
+                              if (!viewModel.stemEditorOpen)
                                 PianoRollHorizontalScrollbar(),
                             ],
                           ),
@@ -526,7 +550,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
               ),
             ),
             Container(
-              width: 17,
+              width: _pianoRollVerticalScrollbarWidth,
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(color: AnthemTheme.panel.border),
@@ -545,7 +569,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
                     ),
                   ),
                   Expanded(child: PianoRollVerticalScrollbar()),
-                  if (viewModel.noteAttributeEditorOpen)
+                  if (viewModel.stemEditorOpen)
                     Container(height: 1, color: AnthemTheme.panel.border),
                 ],
               ),
@@ -572,24 +596,22 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
+    final controller = Provider.of<PianoRollController>(context, listen: false);
 
     return MouseRegion(
       cursor: cursor,
+      onEnter: controller.onEnter,
       onHover: (e) {
+        controller.onHover(e);
+
         final pos = e.localPosition;
 
-        final contentUnderCursor = viewModel.getContentUnderCursor(pos);
-        final newCursor = contentUnderCursor.resizeHandle != null
+        final hitTestResult = viewModel.hitTestContent(pos);
+        final newCursor = hitTestResult.resizeHandle != null
             ? SystemMouseCursors.resizeLeftRight
-            : contentUnderCursor.note != null
+            : hitTestResult.note != null
             ? SystemMouseCursors.move
             : MouseCursor.defer;
-
-        final hoveredNoteRef = contentUnderCursor.note?.metadata;
-        final hoveredNoteId = hoveredNoteRef?.id;
-        if (hoveredNoteId != viewModel.hoveredNote) {
-          viewModel.hoveredNote = hoveredNoteId;
-        }
 
         if (cursor == newCursor) return;
 
@@ -598,7 +620,14 @@ class _PianoRollCanvasCursorState extends State<_PianoRollCanvasCursor> {
         });
       },
       onExit: (e) {
-        viewModel.hoveredNote = null;
+        controller.onExit(e);
+        if (cursor == MouseCursor.defer) {
+          return;
+        }
+
+        setState(() {
+          cursor = MouseCursor.defer;
+        });
       },
       child: widget.child,
     );
@@ -612,23 +641,24 @@ class PianoRollHorizontalScrollbar extends StatelessObserverWidget {
   Widget build(BuildContext context) {
     final viewModel = Provider.of<PianoRollViewModel>(context);
     final project = Provider.of<ProjectModel>(context);
-    final pattern = project.sequence.patterns[project.sequence.activePatternID];
+    final timeRangeViewport = viewModel.timeRangeViewport;
+    final contentBounds = timeRangeViewport.resolveContentBounds(project);
 
     return SizedBox(
       height: 16,
       child: ScrollbarRenderer(
         scrollRegionStart: 0,
-        scrollRegionEnd:
-            pattern?.lastContent.toDouble() ??
-            (project.sequence.ticksPerQuarter * 4 * noContentBars).toDouble(),
-        handleStart: viewModel.timeView.start,
-        handleEnd: viewModel.timeView.end,
+        scrollRegionEnd: contentBounds.end,
+        handleStart: timeRangeViewport.target.start,
+        handleEnd: timeRangeViewport.target.end,
         canScrollPastEnd: true,
         minHandleSize: project.sequence.ticksPerQuarter * 4,
         disableAtFullSize: false,
         onChange: (event) {
-          viewModel.timeView.start = event.handleStart;
-          viewModel.timeView.end = event.handleEnd;
+          timeRangeViewport.setFromScrollbar(
+            start: event.handleStart,
+            end: event.handleEnd,
+          );
         },
       ),
     );

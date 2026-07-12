@@ -47,6 +47,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
   Set<Id>? _resizingClipIds;
   final Map<Id, _ClipResizeBaseline> _resizeBaselines = {};
   ResizeAreaType? _resizeAreaType;
+  CursorOverrideHandle? _cursorOverrideHandle;
 
   /// The min/max delta that keeps every participating clip in a valid state,
   /// cached once in [_initializeResizeSession]. Baselines don't change during
@@ -89,6 +90,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
 
   @override
   void onEntry({required event, required from}) {
+    _setResizeCursorOverride();
     _initializeResizeSession();
     _syncClipOverrides();
   }
@@ -102,6 +104,23 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
   void onExit({required event, required to}) {
     _commitResizeSessionIfNeeded(event: event);
     _clearResizeSession();
+    _clearResizeCursorOverride();
+  }
+
+  @override
+  void onDispose() {
+    _clearResizeCursorOverride();
+  }
+
+  void _setResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = ServiceRegistry.mainWindowController
+        .pushCursorOverride(SystemMouseCursors.resizeLeftRight);
+  }
+
+  void _clearResizeCursorOverride() {
+    _cursorOverrideHandle?.close();
+    _cursorOverrideHandle = null;
   }
 
   void _initializeResizeSession() {
@@ -112,36 +131,36 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
     final clipTimingOverrides = viewModel.clipTimingOverrides;
     clipTimingOverrides.clear();
 
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (arrangementData == null) {
       return;
     }
     final arrangementClips = arrangementData.clips;
 
-    final pressedClipId = parentState.dragStartResizeHandleClipId;
-    final resizeAreaType = parentState.dragStartResizeAreaType;
-    if (pressedClipId == null || resizeAreaType == null) {
+    final resizeHandle = parentState.dragStartContext?.resizeHandleTarget;
+    final dragStartClipId = resizeHandle?.metadata.id;
+    final resizeAreaType = resizeHandle?.metadata.type;
+    if (dragStartClipId == null || resizeAreaType == null) {
       return;
     }
 
-    final pressedClip = arrangementClips[pressedClipId];
-    if (pressedClip == null) {
+    final dragStartClip = arrangementClips[dragStartClipId];
+    if (dragStartClip == null) {
       return;
     }
 
     _resizeAreaType = resizeAreaType;
-    viewModel.pressedClip = pressedClip.id;
 
     final selectedClips = viewModel.selectedClips;
     var selectedClipIds = selectedClips.nonObservableInner;
-    if (!selectedClipIds.contains(pressedClip.id)) {
+    if (!selectedClipIds.contains(dragStartClip.id)) {
       selectedClips.clear();
       selectedClipIds = selectedClips.nonObservableInner;
     }
 
-    final resizingClipIds = selectedClipIds.contains(pressedClip.id)
+    final resizingClipIds = selectedClipIds.contains(dragStartClip.id)
         ? selectedClipIds.toSet()
-        : <Id>{pressedClip.id};
+        : <Id>{dragStartClip.id};
     _resizingClipIds = Set<Id>.unmodifiable(resizingClipIds);
 
     var hasAnyOverrides = false;
@@ -191,7 +210,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
       return;
     }
 
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (arrangementData == null) {
       return;
     }
@@ -338,7 +357,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
     }
 
     final resizingClipIds = _resizingClipIds;
-    final arrangementData = activeArrangementWithClips();
+    final arrangementData = arrangerStateMachine.activeArrangementWithClips();
     if (resizingClipIds == null || arrangementData == null) {
       return;
     }
@@ -409,6 +428,5 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
     _resizeAreaType = null;
     _validResizeDeltaRange = (minDelta: 0, maxDelta: 0);
     viewModel.clipTimingOverrides.clear();
-    viewModel.pressedClip = null;
   }
 }

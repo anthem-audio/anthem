@@ -26,21 +26,24 @@ import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/anthem_model_mobx_helpers.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem/model/sequencer.dart';
-import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/model/shared/loop_points.dart';
-import 'package:anthem/widgets/basic/clip/clip_notes_render_cache.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_notes_render_cache.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import '../shared/time_signature.dart';
 import 'automation_lane.dart';
+import 'automation_point.dart';
 import 'note.dart';
 
 part 'pattern.g.dart';
 
-part 'package:anthem/widgets/basic/clip/clip_notes_render_cache_mixin.dart';
+part 'package:anthem/widgets/editors/arranger/rendering/clip_notes_render_cache_mixin.dart';
 part 'pattern_compiler_mixin.dart';
+
+@AnthemEnum()
+enum PatternClipAutoSizeMode { nextBar, content }
 
 /// The primary container for events.
 ///
@@ -132,6 +135,8 @@ class PatternModel extends _PatternModel
             (clipNotesUpdateSignal.value + 1) % 0xFFFFFFFF;
       });
 
+      _enableResolvedNoteCache();
+
       // Initialize render caches
       updateClipNotesRenderCache();
 
@@ -146,7 +151,7 @@ class PatternModel extends _PatternModel
       //   2. Tell the engine to re-compile all relevant sequences.
 
       // Notes added or removed
-      onChange((b) => b.notes.anyValue, (e) {
+      onChange((b) => b.notes().anyValue(), (e, _) {
         _recompileOnNotesAddedOrRemoved(
           e.operation.oldValue as NoteModel?,
           e.operation.newValue as NoteModel?,
@@ -154,20 +159,22 @@ class PatternModel extends _PatternModel
       });
 
       // Note attributes changed
-      onChange((b) => b.notes.anyValue.anyField, (e) {
+      onChange((b) => b.notes().anyValue().anyField(), (e, _) {
         _recompileOnNoteFieldChanged(e);
       });
 
       // When notes change, we also need to update the clip notes render cache
       // and the clip's default width.
-      onChange((b) => b.notes.withDescendants, (e) {
+      onChange((b) => b.notes().withDescendants, (e, _) {
+        _invalidateResolvedNoteCache();
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
 
       // Preview note overrides are Dart-only changes that should still refresh
       // local rendering and width calculations throughout the UI.
-      onChange((b) => b.noteOverrides.withDescendants, (e) {
+      onChange((b) => b.noteOverrides().withDescendants, (e, _) {
+        _invalidateResolvedNoteCache();
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
@@ -177,18 +184,34 @@ class PatternModel extends _PatternModel
       // These notes are not committed to the main pattern note list yet, but
       // they still need to appear everywhere that asks for the pattern's
       // effective note content.
-      onChange((b) => b.previewNotes.withDescendants, (e) {
+      onChange((b) => b.previewNotes().withDescendants, (e, _) {
+        _invalidateResolvedNoteCache();
         scheduleClipNotesRenderCacheUpdate();
         _clipAutoWidthUpdateAction.execute();
       });
 
-      onChange((b) => b.automation.withDescendants, (e) {
+      onChange((b) => b.automation().withDescendants, (e, _) {
         _clipAutoWidthUpdateAction.execute();
+      });
+
+      onChange((b) => b.clipAutoSizeMode(), (e, _) {
+        _clipAutoWidthUpdateAction.execute();
+      });
+
+      onChange((b) => b.automation().points().anyElement(), (e, _) {
+        _recompileOnAutomationPointsAddedOrRemoved(
+          e.operation.oldValue as AutomationPointModel?,
+          e.operation.newValue as AutomationPointModel?,
+        );
+      });
+
+      onChange((b) => b.automation().points().anyElement().anyField(), (e, _) {
+        _recompileOnAutomationPointFieldChanged(e);
       });
 
       // When the pattern title is changed, we need to update the clip title
       // render cache.
-      onChange((b) => b.name, (e) {
+      onChange((b) => b.name(), (e, _) {
         invalidateClipTitleAtlasEntry();
       });
 
@@ -197,10 +220,16 @@ class PatternModel extends _PatternModel
       // We don't have a detailed model change observation system in the engine,
       // so this is a simple way to allow the engine to perform necessary
       // side-effects.
-      onChange((b) => b.loopPoints.withDescendants, (e) {
+      onChange((b) => b.loopPoints().withDescendants, (e, _) {
         _updateLoopPointsAction.execute();
       });
     });
+  }
+
+  @override
+  void detach() {
+    _invalidateResolvedNoteCache();
+    super.detach();
   }
 
   Iterable<Id> get channelsWithContent => project.tracks.keys;
@@ -213,8 +242,11 @@ abstract class _PatternModel
   @anthemObservable
   String name = '';
 
+  /// Controls how [clipAutoWidth] is calculated for clips with no explicit
+  /// time view.
   @anthemObservable
-  AnthemColor color = AnthemColor(hue: 0);
+  @hideFromCpp
+  PatternClipAutoSizeMode clipAutoSizeMode = PatternClipAutoSizeMode.nextBar;
 
   @anthemObservable
   AnthemObservableMap<Id, NoteModel> notes = AnthemObservableMap();
@@ -252,7 +284,6 @@ abstract class _PatternModel
   _PatternModel() : id = -1;
 
   _PatternModel.create({required this.id, required this.name}) {
-    color = AnthemColor.randomHue();
     timeSignatureChanges = AnthemObservableList();
   }
 
@@ -310,6 +341,37 @@ abstract class _PatternModel
     for (final note in previewNotes.values) {
       yield resolveNote(note, isPreviewOnly: true);
     }
+  }
+
+  @hide
+  bool _resolvedNoteCacheEnabled = false;
+
+  @hide
+  List<ResolvedPatternNote>? _renderOrderedResolvedNotesCache;
+
+  void _enableResolvedNoteCache() {
+    _resolvedNoteCacheEnabled = true;
+    _invalidateResolvedNoteCache();
+  }
+
+  void _invalidateResolvedNoteCache() {
+    _renderOrderedResolvedNotesCache = null;
+  }
+
+  List<ResolvedPatternNote> get renderOrderedResolvedNotes {
+    if (!_resolvedNoteCacheEnabled) {
+      return _buildRenderOrderedResolvedNotes();
+    }
+
+    return _renderOrderedResolvedNotesCache ??=
+        _buildRenderOrderedResolvedNotes();
+  }
+
+  List<ResolvedPatternNote> _buildRenderOrderedResolvedNotes() {
+    final resolvedNotes = getResolvedNotes().toList(growable: false)
+      ..sort(compareResolvedPatternNotesForRendering);
+
+    return List.unmodifiable(resolvedNotes);
   }
 
   /// Merges preview override values into the existing override for [noteId].
@@ -432,10 +494,27 @@ abstract class _PatternModel
     previewNotes.clear();
   }
 
-  /// Gets the time position of the end of the last item in this pattern
-  /// (note, audio clip, automation point), rounded upward to the nearest
-  /// `barMultiple` bars.
-  int getWidth({int barMultiple = 1, int minPaddingInBarMultiples = 1}) {
+  int getContentWidth() {
+    final lastNoteContent = getResolvedNotes().fold<int>(
+      0,
+      (previousValue, note) => max(previousValue, note.offset + note.length),
+    );
+
+    final lastAutomationContent = automation.points.lastOrNull?.offset ?? 0;
+
+    return max(max(lastNoteContent, lastAutomationContent), _sixteenthNote());
+  }
+
+  int _sixteenthNote() {
+    final sixteenthNoteDouble = project.sequence.ticksPerQuarter / 4;
+    final sixteenthNote = sixteenthNoteDouble.round();
+
+    assert(sixteenthNoteDouble == sixteenthNote);
+
+    return max(sixteenthNote, 1);
+  }
+
+  int _ticksPerBar() {
     final ticksPerBarDouble =
         project.sequence.ticksPerQuarter /
         (project.sequence.defaultTimeSignature.denominator / 4) *
@@ -448,21 +527,27 @@ abstract class _PatternModel
     // ticksPerQuarter must be divisible by [0.25, 0.5, 1, 2, 4, 8].
     assert(ticksPerBarDouble == ticksPerBar);
 
-    final lastNoteContent = getResolvedNotes().fold<int>(
-      ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      (previousValue, note) => max(previousValue, note.offset + note.length),
-    );
+    return ticksPerBar;
+  }
 
-    final lastAutomationContent = max(
-      ticksPerBar * barMultiple * minPaddingInBarMultiples,
-      automation.points.lastOrNull?.offset ?? 0,
-    );
+  /// Gets the time position of the end of the last item in this pattern
+  /// (note, audio clip, automation point), rounded upward to the nearest
+  /// `barMultiple` bars.
+  int getWidth({int barMultiple = 1, int minPaddingInBarMultiples = 1}) {
+    final ticksPerBar = _ticksPerBar();
+    final minWidth = ticksPerBar * barMultiple * minPaddingInBarMultiples;
+    final contentWidth = max(getContentWidth(), minWidth);
 
-    final lastContent = max(lastNoteContent, lastAutomationContent);
-
-    return (max(lastContent, 1) / (ticksPerBar * barMultiple)).ceil() *
+    return (contentWidth / (ticksPerBar * barMultiple)).ceil() *
         ticksPerBar *
         barMultiple;
+  }
+
+  int getClipAutoWidth() {
+    return switch (clipAutoSizeMode) {
+      PatternClipAutoSizeMode.nextBar => getWidth(),
+      PatternClipAutoSizeMode.content => getContentWidth(),
+    };
   }
 
   @computed
@@ -494,12 +579,12 @@ abstract class _PatternModel
   /// clip on every edit.
   @anthemObservable
   @hide
-  late int clipAutoWidth = getWidth();
+  late int clipAutoWidth = getClipAutoWidth();
 
   @hide
   late final MicrotaskDebouncedAction _clipAutoWidthUpdateAction =
       MicrotaskDebouncedAction(() {
-        final newClipAutoWidth = getWidth();
+        final newClipAutoWidth = getClipAutoWidth();
 
         final arrangements = project.sequence.arrangements.values.toList();
 

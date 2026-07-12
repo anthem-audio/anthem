@@ -19,9 +19,9 @@
 
 #pragma once
 
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processors/gain_parameter_mapping.h"
 #include "modules/processors/utility.h"
 
@@ -59,25 +59,28 @@ public:
     beginTest("Utility processing applies per-sample gain and stereo balance");
 
     auto node = makeNode();
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = channelCount,
             .blockSize = blockSize,
         });
-    graphContext.reserve(1, 2, 2, 0);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 2, 2, 0);
 
-    auto& context = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
-    auto& outputBuffer = context.getOutputAudioBuffer(UtilityProcessorModelBase::audioOutputPortId);
-    auto& inputBuffer = graphContext.getAudioBuffer(context.getBufferIndex(NodePortDataType::audio,
-        NodeProcessContext::BufferDirection::input,
-        UtilityProcessorModelBase::audioInputPortId));
-    auto& gainBuffer =
-        graphContext.getControlBuffer(context.getBufferIndex(NodePortDataType::control,
+    auto& context =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
+    auto outputBuffer = context.getOutputAudioBuffer(UtilityProcessorModelBase::audioOutputPortId);
+    auto inputBuffer =
+        graphContext.rt_getAudioBufferView(context.getBufferIndex(NodePortDataType::audio,
+            NodeProcessContext::BufferDirection::input,
+            UtilityProcessorModelBase::audioInputPortId));
+    auto gainBuffer =
+        graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
             UtilityProcessorModelBase::gainPortId));
-    auto& balanceBuffer =
-        graphContext.getControlBuffer(context.getBufferIndex(NodePortDataType::control,
+    auto balanceBuffer =
+        graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
             UtilityProcessorModelBase::balancePortId));
 

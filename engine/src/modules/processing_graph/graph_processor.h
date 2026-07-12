@@ -19,20 +19,23 @@
 
 #pragma once
 
+#include "modules/core/audio_processing_config.h"
 #include "modules/processing_graph/model/runtime_graph.h"
 #include "modules/util/ring_buffer.h"
 
+#include <cstdint>
 #include <juce_events/juce_events.h>
 #include <memory>
-
-namespace juce {
-class AudioIODevice;
-}
 
 namespace anthem {
 
 class GraphExecutor;
-class GraphRuntimeServices;
+class EngineRuntimeServices;
+
+enum class GraphWorkerSchedulingMode {
+  realtime,
+  normal,
+};
 
 class GraphProcessor {
 private:
@@ -50,30 +53,35 @@ private:
   RingBuffer<RuntimeGraphHandoff*, 512> retiredRuntimeGraphHandoffsQueue;
 
   std::unique_ptr<GraphExecutor> executor;
-  std::unique_ptr<GraphRuntimeServices> rt_services;
+  EngineRuntimeServices* engineRuntimeServices = nullptr;
   juce::TimedCallback clearDeletionQueueTimedCallback;
 public:
-  GraphProcessor();
+  explicit GraphProcessor(EngineRuntimeServices& engineRuntimeServices);
   ~GraphProcessor();
 
-  void prepareForAudioDevice(juce::AudioIODevice* device);
+  void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig,
+      GraphWorkerSchedulingMode workerSchedulingMode = GraphWorkerSchedulingMode::realtime);
 
   // Transfers ownership of a newly built runtime graph from the main thread to
   // the audio thread.
-  void setRuntimeGraphFromMainThread(RuntimeGraph* runtimeGraph);
+  void publishRuntimeGraph(RuntimeGraph* runtimeGraph, uint64_t audioProcessingConfigGeneration);
+
+  // Clears all runtime graph state. This must only be called while the audio
+  // thread is stopped.
+  void clearRuntimeGraph();
 
   // Picks up graph updates on the audio thread. This does not process audio
   // yet; it only keeps the runtime graph in sync.
   void rt_processGraphUpdates();
 
   // Processes the active runtime graph on the audio thread.
-  void rt_process(int numSamples);
+  bool rt_process(int numSamples, uint64_t currentAudioProcessingConfigGeneration);
 
-  GraphRuntimeServices& getRtServices();
+  EngineRuntimeServices& getEngineRuntimeServices();
   void resetRtServices();
 
   // Destroys retired runtime graphs on the main thread.
-  void clearDeletionQueueFromMainThread();
+  void clearRetiredRuntimeGraphs();
 };
 
 } // namespace anthem

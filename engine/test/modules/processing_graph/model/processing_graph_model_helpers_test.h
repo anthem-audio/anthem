@@ -20,10 +20,10 @@
 #pragma once
 
 #include "generated/lib/engine_api/messages/messages.h"
+#include "modules/core/engine_runtime_services.h"
 #include "modules/processing_graph/graph_test_helpers.h"
 #include "modules/processing_graph/model/node.h"
 #include "modules/processing_graph/runtime/graph_process_context.h"
-#include "modules/processing_graph/runtime/graph_runtime_services.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/processors/gain.h"
 
@@ -146,15 +146,17 @@ public:
 
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
-    graphContext.reserve(1, 0, 1, 0);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 1, 0);
 
-    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& nodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     node->runtimeContext = std::make_optional(&nodeContext);
 
     auto& port = *node->controlInputPorts()->at(0);
@@ -179,15 +181,17 @@ public:
 
     auto node = makeInitializedNodeWithControlParameter(10, 0.25);
 
-    GraphRuntimeServices rtServices;
+    EngineRuntimeServices rtServices;
     GraphProcessContext graphContext(rtServices,
         GraphBufferLayout{
             .numAudioChannels = 2,
             .blockSize = 16,
         });
-    graphContext.reserve(1, 0, 1, 0);
+    GraphProcessContext::Builder contextBuilder(graphContext);
+    contextBuilder.reserve(1, 0, 1, 0);
 
-    auto& nodeContext = graph_test_helpers::createStandaloneNodeProcessContext(graphContext, node);
+    auto& nodeContext =
+        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
     auto& port = *node->controlInputPorts()->at(0);
 
     applyParameterValueUpdate(port, 0.75);

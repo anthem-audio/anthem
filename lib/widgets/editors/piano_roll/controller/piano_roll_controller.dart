@@ -20,13 +20,16 @@
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/commands/timeline_commands.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/clipboard/clipboard_data.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/time_signature.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/piano_roll_live_notes.dart';
 import 'package:anthem/widgets/editors/piano_roll/controller/state_machine/piano_roll_state_machine.dart';
+import 'package:anthem/widgets/editors/piano_roll/piano_roll.dart';
 import 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
@@ -37,6 +40,34 @@ import 'package:mobx/mobx.dart';
 part 'shortcuts.dart';
 
 const maxSafeIntWeb = 0x001F_FFFF_FFFF_FFFF;
+
+/// Resolves a requested vertical note move against the piano-roll key range.
+///
+/// Drag moves use the clamped result so notes move as far as possible. Step
+/// moves that must preserve pitch class, such as octave transposition, can set
+/// [requireExactDelta] so an out-of-range request becomes a no-op.
+int resolvePianoRollKeyDelta({
+  required int requestedDelta,
+  required int keyOfTopNote,
+  required int keyOfBottomNote,
+  bool requireExactDelta = false,
+}) {
+  var resolvedDelta = requestedDelta;
+
+  if (keyOfTopNote + resolvedDelta > maxKeyValue) {
+    resolvedDelta = maxKeyValue.round() - keyOfTopNote;
+  }
+
+  if (keyOfBottomNote + resolvedDelta < minKeyValue) {
+    resolvedDelta = minKeyValue.round() - keyOfBottomNote;
+  }
+
+  if (requireExactDelta && resolvedDelta != requestedDelta) {
+    return 0;
+  }
+
+  return resolvedDelta;
+}
 
 enum PianoRollInteractionFamily {
   selectionBox,
@@ -54,7 +85,6 @@ typedef PianoRollResizeNotePreview = ({Time length});
 class PianoRollController extends _PianoRollController
     with _PianoRollShortcutsMixin
     implements DisposableService {
-  @override
   PianoRollController({required super.project, required super.viewModel}) {
     // Register shortcuts for this editor
     registerShortcuts();
@@ -114,6 +144,18 @@ class _PianoRollController {
 
   void pointerUp(PointerEvent event) {
     stateMachine.onPointerUp(event);
+  }
+
+  void onEnter(PointerEnterEvent event) {
+    stateMachine.onEnter(event);
+  }
+
+  void onExit(PointerExitEvent event) {
+    stateMachine.onExit(event);
+  }
+
+  void onHover(PointerHoverEvent event) {
+    stateMachine.onHover(event);
   }
 
   void onRenderedViewMetricsChanged({
@@ -177,17 +219,20 @@ class _PianoRollController {
 
   List<DivisionChange> divisionChangesForPatternView({
     required double viewWidthInPixels,
+    Snap? snap,
+    double minPixelsPerSection = minorMinPixels,
   }) {
     final pattern = requireActivePattern();
 
     return getDivisionChanges(
       viewWidthInPixels: viewWidthInPixels,
-      snap: AutoSnap(),
+      minPixelsPerSection: minPixelsPerSection,
+      snap: snap ?? AutoSnap(),
       defaultTimeSignature: project.sequence.defaultTimeSignature,
       timeSignatureChanges: pattern.timeSignatureChanges,
       ticksPerQuarter: project.sequence.ticksPerQuarter,
-      timeViewStart: viewModel.timeView.start,
-      timeViewEnd: viewModel.timeView.end,
+      timeViewStart: viewModel.timeRange.start,
+      timeViewEnd: viewModel.timeRange.end,
     );
   }
 
@@ -258,6 +303,283 @@ class _PianoRollController {
     project.execute(command);
 
     viewModel.selectedNotes.clear();
+  }
+
+  List<NoteModel> _getSelectedNotes(PatternModel pattern) {
+    final selectedNoteIds = viewModel.selectedNotes.nonObservableInner;
+
+    return pattern.notes.values
+        .where((note) => selectedNoteIds.contains(note.id))
+        .toList(growable: false);
+  }
+
+  int _copyAnchorOffset(List<NoteModel> notes) {
+    var anchorOffset = notes.first.offset;
+
+    for (final note in notes.skip(1)) {
+      if (note.offset < anchorOffset) {
+        anchorOffset = note.offset;
+      }
+    }
+
+    return anchorOffset;
+  }
+
+  int? _playbackStartPasteAnchorOffset() {
+    if (project.sequence.activeTransportSequenceID !=
+        project.sequence.activePatternID) {
+      return null;
+    }
+
+    final playbackStartPosition = project.sequence.playbackStartPosition;
+    if (playbackStartPosition < viewModel.timeRange.start ||
+        playbackStartPosition >= viewModel.timeRange.end) {
+      return null;
+    }
+
+    return playbackStartPosition < 0 ? 0 : playbackStartPosition;
+  }
+
+  int _visibleStartPasteAnchorOffset() {
+    final visibleStart = viewModel.timeRange.start;
+    final rawTime = visibleStart <= 0 ? 0 : visibleStart.ceil();
+    final viewWidth = stateMachine.data.viewSize.width;
+
+    return snapTimeInActivePattern(
+      rawTime: rawTime,
+      viewWidthInPixels: viewWidth < 1 ? 1 : viewWidth,
+      ceil: true,
+    );
+  }
+
+  int _pasteAnchorOffset() {
+    return _playbackStartPasteAnchorOffset() ??
+        _visibleStartPasteAnchorOffset();
+  }
+
+  bool copySelected() {
+    final pattern = activePatternOrNull;
+    if (viewModel.selectedNotes.isEmpty || pattern == null) {
+      return false;
+    }
+
+    final selectedNotes = _getSelectedNotes(pattern);
+    if (selectedNotes.isEmpty) {
+      return false;
+    }
+
+    ServiceRegistry.clipboard.set(
+      NotesClipboardContent(
+        anchorOffset: _copyAnchorOffset(selectedNotes),
+        notes: selectedNotes,
+      ),
+    );
+
+    return true;
+  }
+
+  void cutSelected() {
+    if (!copySelected()) {
+      return;
+    }
+
+    deleteSelected();
+  }
+
+  void pasteNotes() {
+    final pattern = activePatternOrNull;
+    final content = ServiceRegistry.clipboard.get<NotesClipboardContent>();
+    if (pattern == null || content == null) {
+      return;
+    }
+
+    final newAnchorOffset = _pasteAnchorOffset();
+
+    clearPreviewState();
+
+    final notes = content.reconstruct(
+      idAllocator: idAllocator,
+      newAnchorOffset: newAnchorOffset,
+    );
+
+    if (notes.isEmpty) {
+      return;
+    }
+
+    project.startUndoGroup();
+    for (final note in notes) {
+      project.execute(AddNoteCommand(patternID: pattern.id, note: note));
+    }
+    project.commitUndoGroup();
+
+    viewModel.selectedNotes = ObservableSet.of(
+      notes.map((note) => note.id).toSet(),
+    );
+  }
+
+  /// Moves selected notes vertically by [requestedDelta] keys.
+  void transposeSelectedNotes(
+    int requestedDelta, {
+    bool requireExactDelta = false,
+  }) {
+    final pattern = activePatternOrNull;
+    if (activeInteractionFamily != null ||
+        requestedDelta == 0 ||
+        viewModel.selectedNotes.isEmpty ||
+        pattern == null) {
+      return;
+    }
+
+    final selectedNoteIds = viewModel.selectedNotes.nonObservableInner;
+    final selectedNotes = pattern.notes.values
+        .where((note) => selectedNoteIds.contains(note.id))
+        .toList(growable: false);
+
+    if (selectedNotes.isEmpty) {
+      return;
+    }
+
+    var keyOfTopNote = selectedNotes.first.key;
+    var keyOfBottomNote = selectedNotes.first.key;
+    for (final note in selectedNotes.skip(1)) {
+      if (note.key > keyOfTopNote) {
+        keyOfTopNote = note.key;
+      }
+
+      if (note.key < keyOfBottomNote) {
+        keyOfBottomNote = note.key;
+      }
+    }
+
+    final keyDelta = resolvePianoRollKeyDelta(
+      requestedDelta: requestedDelta,
+      keyOfTopNote: keyOfTopNote,
+      keyOfBottomNote: keyOfBottomNote,
+      requireExactDelta: requireExactDelta,
+    );
+
+    if (keyDelta == 0) {
+      return;
+    }
+
+    clearPreviewState();
+
+    project.execute(
+      MoveNotesCommand(
+        patternID: pattern.id,
+        noteMoves: selectedNotes
+            .map((note) {
+              return (
+                noteID: note.id,
+                oldOffset: note.offset,
+                newOffset: note.offset,
+                oldKey: note.key,
+                newKey: note.key + keyDelta,
+              );
+            })
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void _nudgeSelectedNotesInTime({
+    required int direction,
+    required List<DivisionChange> divisionChanges,
+  }) {
+    int resolveNudgeDelta({required int startOfFirstNote}) {
+      assert(direction == -1 || direction == 1);
+      if (direction != -1 && direction != 1) {
+        return 0;
+      }
+
+      final step = getSnapSizeAtAbsoluteTime(
+        absoluteTime: direction > 0 ? startOfFirstNote : startOfFirstNote - 1,
+        divisionChanges: divisionChanges,
+      );
+      final requestedDelta = direction * step;
+
+      if (startOfFirstNote + requestedDelta < 0) {
+        return -startOfFirstNote;
+      }
+
+      return requestedDelta;
+    }
+
+    final pattern = activePatternOrNull;
+    if (activeInteractionFamily != null ||
+        viewModel.selectedNotes.isEmpty ||
+        pattern == null) {
+      return;
+    }
+
+    final selectedNoteIds = viewModel.selectedNotes.nonObservableInner;
+    final selectedNotes = pattern.notes.values
+        .where((note) => selectedNoteIds.contains(note.id))
+        .toList(growable: false);
+
+    if (selectedNotes.isEmpty) {
+      return;
+    }
+
+    var startOfFirstNote = selectedNotes.first.offset;
+    for (final note in selectedNotes.skip(1)) {
+      if (note.offset < startOfFirstNote) {
+        startOfFirstNote = note.offset;
+      }
+    }
+
+    final timeDelta = resolveNudgeDelta(startOfFirstNote: startOfFirstNote);
+
+    if (timeDelta == 0) {
+      return;
+    }
+
+    clearPreviewState();
+
+    project.execute(
+      MoveNotesCommand(
+        patternID: pattern.id,
+        noteMoves: selectedNotes
+            .map((note) {
+              return (
+                noteID: note.id,
+                oldOffset: note.offset,
+                newOffset: note.offset + timeDelta,
+                oldKey: note.key,
+                newKey: note.key,
+              );
+            })
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void nudgeSelectedNotesByCurrentSnap(int direction) {
+    if (activePatternOrNull == null) {
+      return;
+    }
+
+    _nudgeSelectedNotesInTime(
+      direction: direction,
+      divisionChanges: divisionChangesForPatternView(
+        viewWidthInPixels: stateMachine.data.viewSize.width,
+      ),
+    );
+  }
+
+  void nudgeSelectedNotesByBar(int direction) {
+    if (activePatternOrNull == null) {
+      return;
+    }
+
+    _nudgeSelectedNotesInTime(
+      direction: direction,
+      divisionChanges: divisionChangesForPatternView(
+        viewWidthInPixels: stateMachine.data.viewSize.width,
+        snap: BarSnap(),
+        minPixelsPerSection: 0,
+      ),
+    );
   }
 
   /// Adds all notes to the selection set in the view model.

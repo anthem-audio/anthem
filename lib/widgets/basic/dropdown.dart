@@ -138,7 +138,7 @@ class _DropdownState extends State<Dropdown> {
           },
           child: Button(
             onPress: () {
-              menuController.open();
+              menuController.toggle();
             },
             width: widget.width,
             height: widget.height,

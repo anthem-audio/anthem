@@ -95,7 +95,7 @@ void main() {
 
     List<ModelChangeEvent> changes = [];
 
-    model.onChange((b) => b.name, (e) {
+    model.onChange((b) => b.name(), (e, _) {
       changes.add(e);
     });
 
@@ -125,12 +125,12 @@ void main() {
     final model = Model(id: 0, name: 'name');
 
     List<ModelChangeEvent> changesAllFields = [];
-    model.onChange((b) => b.anyField, (e) {
+    model.onChange((b) => b.anyField(), (e, _) {
       changesAllFields.add(e);
     });
 
     List<ModelChangeEvent> changesSomeFields = [];
-    model.onChange((b) => b.multiple([(b) => b.name, (b) => b.id]), (e) {
+    model.onChange((b) => b.multiple([(b) => b.name(), (b) => b.id()]), (e, _) {
       changesSomeFields.add(e);
     });
 
@@ -173,11 +173,11 @@ void main() {
 
     List<ModelChangeEvent> changes = [];
     model.onChange(
-      (b) => b.listOfSubElements.anyElement.filterByChangeType([
+      (b) => b.listOfSubElements().anyElement().filterByChangeType([
         ModelFilterChangeType.fieldUpdate,
         ModelFilterChangeType.listInsert,
       ]),
-      (e) {
+      (e, _) {
         changes.add(e);
       },
     );
@@ -204,7 +204,7 @@ void main() {
     );
 
     List<ModelChangeEvent> changes = [];
-    model.onChange((b) => b.subElement.value, (e) {
+    model.onChange((b) => b.subElement().value(), (e, _) {
       changes.add(e);
     });
 
@@ -226,7 +226,7 @@ void main() {
     final model = Model(id: 0, name: 'name');
 
     List<ModelChangeEvent> changes = [];
-    model.onChange((b) => b.listOfSubElements.anyElement.value, (e) {
+    model.onChange((b) => b.listOfSubElements().anyElement().value(), (e, _) {
       changes.add(e);
     });
 
@@ -250,7 +250,7 @@ void main() {
       final model = Model(id: 0, name: 'name');
 
       List<ModelChangeEvent> changes = [];
-      model.onChange((b) => b.listOfSubElements.anyElement, (e) {
+      model.onChange((b) => b.listOfSubElements().anyElement(), (e, _) {
         changes.add(e);
       });
 
@@ -270,7 +270,10 @@ void main() {
     final model = Model(id: 0, name: 'name');
 
     List<ModelChangeEvent> changes = [];
-    model.onChange((b) => b.listOfSubElements.anyElement.withDescendants, (e) {
+    model.onChange((b) => b.listOfSubElements().anyElement().withDescendants, (
+      e,
+      _,
+    ) {
       changes.add(e);
     });
 
@@ -294,8 +297,8 @@ void main() {
 
     List<ModelChangeEvent> changes = [];
     model.onChange(
-      (b) => b.listOfListOfSubElements.anyElement.anyElement.value,
-      (e) {
+      (b) => b.listOfListOfSubElements().anyElement().anyElement().value(),
+      (e, _) {
         changes.add(e);
       },
     );
@@ -325,15 +328,15 @@ void main() {
     model.onChange(
       (b) => b
           .multiple([
-            (b) => b.listOfListOfInts.anyElement,
-            (b) => b.listOfListOfInts.anyElement.anyElement,
+            (b) => b.listOfListOfInts().anyElement(),
+            (b) => b.listOfListOfInts().anyElement().anyElement(),
           ])
           .filterByChangeType([
             ModelFilterChangeType.listInsert,
             ModelFilterChangeType.listUpdate,
             ModelFilterChangeType.listRemove,
           ]),
-      (e) {
+      (e, _) {
         changes.add(e);
       },
     );
@@ -363,7 +366,7 @@ void main() {
     final model = Model(id: 0, name: 'name');
 
     List<ModelChangeEvent> changes = [];
-    model.onChange((b) => b.mapOfSubElements.anyValue.value, (e) {
+    model.onChange((b) => b.mapOfSubElements().anyValue().value(), (e, _) {
       changes.add(e);
     });
 
@@ -380,15 +383,119 @@ void main() {
     expect(changes[1].operation.newValue, null);
   });
 
+  test('Bind matched path values', () {
+    final model = Model(id: 0, name: 'name');
+
+    final changes = <ModelChangeEvent>[];
+    final bindings = <ModelChangeBindings>[];
+    model.onChange(
+      (b) => b
+          .mapOfSubElements()
+          .anyValue(bindKeyTo: 'elementKey', bindTo: 'element')
+          .value(
+            bindTo: 'value',
+            bindOldValueTo: 'oldValue',
+            bindNewValueTo: 'newValue',
+          ),
+      (e, b) {
+        changes.add(e);
+        bindings.add(b);
+      },
+    );
+
+    final subElement = ModelSubElement(id: 1, value: 'value');
+    model.mapOfSubElements['one'] = subElement;
+    subElement.value = 'new value';
+
+    expect(changes, hasLength(1));
+    expect(bindings.single.get<String>('elementKey'), 'one');
+    expect(bindings.single.get<ModelSubElement>('element'), same(subElement));
+    expect(bindings.single.get<String>('value'), 'new value');
+    expect(bindings.single.get<String>('oldValue'), 'value');
+    expect(bindings.single.get<String>('newValue'), 'new value');
+  });
+
+  test('Descendant binds path values but not terminal old/new values', () {
+    final model = Model(id: 0, name: 'name');
+
+    final bindings = <ModelChangeBindings>[];
+    model.onChange(
+      (b) => b
+          .mapOfSubElements()
+          .anyValue(
+            bindKeyTo: 'elementKey',
+            bindTo: 'element',
+            bindOldValueTo: 'oldElement',
+            bindNewValueTo: 'newElement',
+          )
+          .withDescendants,
+      (_, b) {
+        bindings.add(b);
+      },
+    );
+
+    final subElement = ModelSubElement(id: 1, value: 'value');
+    model.mapOfSubElements['one'] = subElement;
+    subElement.value = 'new value';
+
+    expect(bindings, hasLength(2));
+
+    expect(bindings[0].get<String>('elementKey'), 'one');
+    expect(bindings[0].get<ModelSubElement>('element'), same(subElement));
+    expect(bindings[0].containsKey('oldElement'), isTrue);
+    expect(bindings[0].maybeGet<ModelSubElement>('oldElement'), isNull);
+    expect(bindings[0].get<ModelSubElement>('newElement'), same(subElement));
+
+    expect(bindings[1].get<String>('elementKey'), 'one');
+    expect(bindings[1].get<ModelSubElement>('element'), same(subElement));
+    expect(bindings[1].containsKey('oldElement'), isFalse);
+    expect(bindings[1].containsKey('newElement'), isFalse);
+  });
+
+  test('Multiple can match current path with modifiers', () {
+    final model = Model(id: 0, name: 'name');
+
+    final changes = <ModelChangeEvent>[];
+    final bindings = <ModelChangeBindings>[];
+    model.onChange(
+      (b) => b.mapOfSubElements().anyValue(bindKeyTo: 'elementKey').multiple([
+        (b) => b.filterByChangeType([
+          ModelFilterChangeType.mapPut,
+          ModelFilterChangeType.mapRemove,
+        ]),
+        (b) => b.value(),
+      ]),
+      (e, b) {
+        changes.add(e);
+        bindings.add(b);
+      },
+    );
+
+    final subElement = ModelSubElement(id: 1, value: 'value');
+    model.mapOfSubElements['one'] = subElement;
+    subElement.value = 'new value';
+    model.mapOfSubElements.remove('one');
+
+    expect(changes, hasLength(3));
+    expect(changes[0].operation, isA<MapPut>());
+    expect(changes[1].operation, isA<RawFieldUpdate>());
+    expect(changes[2].operation, isA<MapRemove>());
+    expect(
+      bindings.map((binding) => binding.get<String>('elementKey')),
+      everyElement('one'),
+    );
+  });
+
   test('Listen for nested map list model field changes', () {
     final model = Model(id: 0, name: 'name');
 
     List<ModelChangeEvent> changes = [];
-    model.onChange((b) => b.mapOfListOfSubElements.anyValue.anyElement.value, (
-      e,
-    ) {
-      changes.add(e);
-    });
+    model.onChange(
+      (b) => b.mapOfListOfSubElements().anyValue().anyElement().value(),
+      (e, _) {
+        changes.add(e);
+      },
+    );
 
     final innerList = AnthemObservableList.of([
       ModelSubElement(id: 1, value: 'value'),
@@ -412,11 +519,12 @@ void main() {
     final model = Model(id: 0, name: 'name');
 
     List<ModelChangeEvent> changes = [];
-    model.onChange((b) => b.listOfMapOfSubElements.anyElement.anyValue.value, (
-      e,
-    ) {
-      changes.add(e);
-    });
+    model.onChange(
+      (b) => b.listOfMapOfSubElements().anyElement().anyValue().value(),
+      (e, _) {
+        changes.add(e);
+      },
+    );
 
     final innerMap = AnthemObservableMap.of({
       'one': ModelSubElement(id: 1, value: 'value'),
@@ -441,11 +549,11 @@ void main() {
 
     List<ModelChangeEvent> changes = [];
     model.onChange(
-      (b) => b.mapOfListOfInts.anyValue.filterByChangeType([
+      (b) => b.mapOfListOfInts().anyValue().filterByChangeType([
         ModelFilterChangeType.mapPut,
         ModelFilterChangeType.mapRemove,
       ]),
-      (e) {
+      (e, _) {
         changes.add(e);
       },
     );

@@ -40,8 +40,35 @@ TimeSignatureChangeModel _createRuntimeGridTimeSignatureChange({
   );
 }
 
-// All vertical lines plus every-four-bars shading
-void paintTimeGrid({
+void paintTimeGridPhraseShading({
+  required Canvas canvas,
+  required Size size,
+  required int ticksPerQuarter,
+  required TimeSignatureModel baseTimeSignature,
+  required List<TimeSignatureChangeModel> timeSignatureChanges,
+  required double timeViewStart,
+  required double timeViewEnd,
+}) {
+  final shadedPaint = Paint()..color = AnthemTheme.grid.shaded;
+
+  // If there are more than 128 4-bar groups on screen, we won't draw the
+  // alternating dark and light shading.
+  if (timeViewEnd - timeViewStart < ticksPerQuarter * 4 * 4 * 128) {
+    _paintPhraseShading(
+      canvas: canvas,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+      defaultTimeSignature: baseTimeSignature,
+      timeSignatureChanges: timeSignatureChanges,
+      size: size,
+      paint: shadedPaint,
+      ticksPerQuarter: ticksPerQuarter,
+    );
+  }
+}
+
+// All vertical time-grid lines.
+void paintTimeGridLines({
   required Canvas canvas,
   required Size size,
   required int ticksPerQuarter,
@@ -51,7 +78,6 @@ void paintTimeGrid({
   required double timeViewStart,
   required double timeViewEnd,
 }) {
-  final shadedPaint = Paint()..color = AnthemTheme.grid.shaded;
   final accentLinePaint = Paint()..color = AnthemTheme.grid.accent;
   final majorLinePaint = Paint()..color = AnthemTheme.grid.major;
   final minorLinePaint = Paint()..color = AnthemTheme.grid.minor;
@@ -119,21 +145,6 @@ void paintTimeGrid({
     size: size,
     paint: accentLinePaint,
   );
-
-  // If there are more than 128 4-bar groups on screen, we won't draw the
-  // alternating dark and light shading.
-  if (timeViewEnd - timeViewStart < ticksPerQuarter * 4 * 4 * 128) {
-    paintPhraseShading(
-      canvas: canvas,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-      defaultTimeSignature: baseTimeSignature,
-      timeSignatureChanges: timeSignatureChanges,
-      size: size,
-      paint: shadedPaint,
-      ticksPerQuarter: ticksPerQuarter,
-    );
-  }
 }
 
 void paintVerticalLines({
@@ -173,22 +184,14 @@ void paintVerticalLines({
     }
 
     while (timePtr < nextDivisionStart && timePtr < timeViewEnd) {
-      // We skip the line if it's at the very start of the sequence, because
-      // otherwise it looks like a double line when the view is scrolled all the
-      // way to the left.
-      if (timePtr > 0) {
-        final x = timeToPixels(
-          timeViewStart: timeViewStart,
-          timeViewEnd: timeViewEnd,
-          viewPixelWidth: size.width,
-          time: timePtr.toDouble(),
-        );
+      final x = timeToPixels(
+        timeViewStart: timeViewStart,
+        timeViewEnd: timeViewEnd,
+        viewPixelWidth: size.width,
+        time: timePtr.toDouble(),
+      );
 
-        canvas.drawRect(
-          Rect.fromLTWH(x, size.height - height, 1, height),
-          paint,
-        );
-      }
+      canvas.drawRect(Rect.fromLTWH(x, size.height - height, 1, height), paint);
 
       timePtr += thisDivision.divisionRenderSize;
 
@@ -202,7 +205,7 @@ void paintVerticalLines({
   }
 }
 
-void paintPhraseShading({
+void _paintPhraseShading({
   required Canvas canvas,
   required double timeViewStart,
   required double timeViewEnd,

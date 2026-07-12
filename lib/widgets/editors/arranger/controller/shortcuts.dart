@@ -49,15 +49,61 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
 
   void registerShortcuts() {
     // Delete
-    shortcutManager.register(LogicalKeySet(LogicalKeyboardKey.delete), () {
-      deleteSelectedClips();
-    });
+    registerEditorDeleteShortcut(shortcutManager, deleteSelectedClips);
 
-    // Ctrl + A
+    // Primary + A
     shortcutManager.register(
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA),
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyA),
       () {
         selectAllClips();
+      },
+    );
+
+    // Primary + C/X/V - copy, cut, paste
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyC),
+      () {
+        copySelectedClips();
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyX),
+      () {
+        cutSelectedClips();
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyV),
+      () {
+        pasteClips();
+      },
+    );
+
+    // Shift + Left/Right - move selected clips by current snap
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedClipsByCurrentSnap(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(LogicalKeyboardKey.shift, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedClipsByCurrentSnap(-1);
+      },
+    );
+
+    // Primary + Left/Right - move selected clips by one bar
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowRight),
+      () {
+        nudgeSelectedClipsByBar(1);
+      },
+    );
+    shortcutManager.register(
+      LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.arrowLeft),
+      () {
+        nudgeSelectedClipsByBar(-1);
       },
     );
 
@@ -100,21 +146,15 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
   }
 
   ArrangerModifierKey? _getModifierKey(LogicalKeyboardKey key) {
-    if (key == LogicalKeyboardKey.control ||
-        key == LogicalKeyboardKey.controlLeft ||
-        key == LogicalKeyboardKey.controlRight) {
+    if (isPrimaryModifierKey(key)) {
       return ArrangerModifierKey.ctrl;
     }
 
-    if (key == LogicalKeyboardKey.alt ||
-        key == LogicalKeyboardKey.altLeft ||
-        key == LogicalKeyboardKey.altRight) {
+    if (isAltModifierKey(key)) {
       return ArrangerModifierKey.alt;
     }
 
-    if (key == LogicalKeyboardKey.shift ||
-        key == LogicalKeyboardKey.shiftLeft ||
-        key == LogicalKeyboardKey.shiftRight) {
+    if (isShiftModifierKey(key)) {
       return ArrangerModifierKey.shift;
     }
 

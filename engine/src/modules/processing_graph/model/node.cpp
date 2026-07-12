@@ -24,6 +24,19 @@
 
 namespace anthem {
 
+namespace {
+std::optional<std::shared_ptr<NodePort>> getPortFromListById(
+    ModelVector<std::shared_ptr<NodePort>>& ports, int64_t id) {
+  for (auto& port : ports) {
+    if (port->id() == id) {
+      return port;
+    }
+  }
+
+  return std::nullopt;
+}
+} // namespace
+
 std::optional<std::shared_ptr<NodePort>> Node::getPortById(int64_t id) {
   for (auto& port : *this->audioInputPorts()) {
     if (port->id() == id) {
@@ -59,6 +72,34 @@ std::optional<std::shared_ptr<NodePort>> Node::getPortById(int64_t id) {
     if (port->id() == id) {
       return port;
     }
+  }
+
+  return std::nullopt;
+}
+
+std::optional<std::shared_ptr<NodePort>> Node::getInputPortById(
+    NodePortDataType dataType, int64_t id) {
+  switch (dataType) {
+    case NodePortDataType::audio:
+      return getPortFromListById(*this->audioInputPorts(), id);
+    case NodePortDataType::control:
+      return getPortFromListById(*this->controlInputPorts(), id);
+    case NodePortDataType::event:
+      return getPortFromListById(*this->eventInputPorts(), id);
+  }
+
+  return std::nullopt;
+}
+
+std::optional<std::shared_ptr<NodePort>> Node::getOutputPortById(
+    NodePortDataType dataType, int64_t id) {
+  switch (dataType) {
+    case NodePortDataType::audio:
+      return getPortFromListById(*this->audioOutputPorts(), id);
+    case NodePortDataType::control:
+      return getPortFromListById(*this->controlOutputPorts(), id);
+    case NodePortDataType::event:
+      return getPortFromListById(*this->eventOutputPorts(), id);
   }
 
   return std::nullopt;

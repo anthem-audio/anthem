@@ -1,9 +1,12 @@
-# cspell:ignore strequal pluginhost
+# cspell:ignore pluginhost prealpha strequal
 
 cmake_minimum_required(VERSION 3.23)
 
+set(ANTHEM_VERSION "0.0.0-prealpha.1")
+set(ANTHEM_VERSION_CORE "0.0.0")
+
 project(AnthemEngine
-  VERSION 0.0.1
+  VERSION ${ANTHEM_VERSION_CORE}
   LANGUAGES C CXX
 )
 
@@ -51,7 +54,7 @@ if (IS_WASM)
     -pthread
     # The value 3 here maps to 3 threads in the engine:
     # - Message thread
-    # - Audio thread
+    # - Audio thread (or render thread)
     # - Comms thread
     "SHELL:-sPTHREAD_POOL_SIZE=3"
     "SHELL:-sPROXY_TO_PTHREAD=1"
@@ -160,6 +163,7 @@ else()
       juce::juce_core
       juce::juce_events
       juce::juce_audio_basics
+      juce::juce_audio_formats
       juce::juce_audio_processors
       juce::juce_audio_devices
 
@@ -173,6 +177,7 @@ else()
     # via DBG -> Logger::outputDebugString, which our unit-test runner treats as
     # a failure signal.
     JUCE_DISABLE_JUCE_VERSION_PRINTING=1
+    JUCE_USE_LAME_AUDIO_FORMAT=1
   )
 
   if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -217,8 +222,20 @@ if (IS_WASM)
 else()
   juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "${PROJECT_VERSION}")
 
+  if(WIN32)
+    # This prevents a console window from showing up in release builds on Windows
+    set_target_properties(AnthemEngine PROPERTIES
+      WIN32_EXECUTABLE "$<NOT:$<CONFIG:Debug>>"
+    )
+    target_link_options(AnthemEngine PRIVATE
+      "$<$<NOT:$<CONFIG:Debug>>:/ENTRY:mainCRTStartup>"
+    )
+  endif()
+
   target_sources(AnthemEngine PRIVATE ${APP_MAIN})
 endif()
+
+target_compile_definitions(AnthemEngine PRIVATE ANTHEM_VERSION_STRING="${ANTHEM_VERSION}")
 
 # Temporarily link WASM build to custom JUCE lib for testing
 if (IS_WASM)
