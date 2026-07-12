@@ -373,7 +373,6 @@ TransportBlockResult Transport::rt_endProcessingBlock() {
   rt_activeBlockPlan = std::nullopt;
 
   jassert(blockPlan.numSamples >= 0);
-  jassert(!blockPlan.stopsPlaybackAtEnd || rt_config->scheduledStopTick.has_value());
 
   rt_playhead = rt_getPlayheadAfterAdvance(blockPlan.numSamples);
   rt_sampleCounter += static_cast<int64_t>(blockPlan.numSamples);
@@ -381,6 +380,7 @@ TransportBlockResult Transport::rt_endProcessingBlock() {
   rt_shouldStopSequenceNotes = false;
 
   if (blockPlan.stopsPlaybackAtEnd) {
+    jassert(rt_config->scheduledStopTick.has_value());
     rt_playhead = rt_config->scheduledStopTick.value();
     rt_config->isPlaying = false;
     rt_config->scheduledStopTick = std::nullopt;
