@@ -97,7 +97,7 @@ class _RenderProgressDialogState extends State<RenderProgressDialog> {
 
   Future<void> _watchResult() async {
     try {
-      final result = await widget.task.result;
+      await widget.task.result;
 
       if (!mounted) {
         return;
@@ -105,7 +105,7 @@ class _RenderProgressDialogState extends State<RenderProgressDialog> {
 
       setState(() {
         _progress = 1;
-        _statusText = 'Rendered ${result.renderedSamples} samples.';
+        _statusText = 'Render complete.';
       });
 
       ServiceRegistry.dialogController.closeDialog();

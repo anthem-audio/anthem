@@ -19,12 +19,6 @@
 
 part of 'package:anthem/engine_api/engine.dart';
 
-class RenderAudioResult {
-  final int renderedSamples;
-
-  RenderAudioResult({required this.renderedSamples});
-}
-
 class RenderAudioStartResult {
   final int renderId;
 

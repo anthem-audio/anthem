@@ -37,12 +37,21 @@ AudioBlockProcessor::AudioBlockProcessor(Transport& transport,
     automationSequenceStore(automationSequenceStore), graphProcessor(graphProcessor),
     globalVisualizationSources(globalVisualizationSources) {}
 
-bool AudioBlockProcessor::processAudioBlock(
+AudioBlockProcessResult AudioBlockProcessor::processAudioBlock(
     int numSamples, double sampleRate, uint64_t audioProcessingConfigGeneration) {
   auto startTime = std::chrono::high_resolution_clock::now();
 
-  transport.rt_prepareForProcessingBlock();
+  numSamples = transport.rt_beginProcessingBlock(numSamples);
   const auto blockStartSample = transport.rt_sampleCounter;
+
+  if (numSamples <= 0) {
+    const auto transportResult = transport.rt_endProcessingBlock();
+    return AudioBlockProcessResult{
+        .didProcessGraph = true,
+        .processedSamples = 0,
+        .didReachScheduledStop = transportResult.didReachScheduledStop,
+    };
+  }
 
   sequenceStore.rt_processSequenceChanges(numSamples);
   automationSequenceStore.rt_processSequenceChanges(numSamples);
@@ -75,10 +84,14 @@ bool AudioBlockProcessor::processAudioBlock(
     playheadSequenceIdProvider->rt_updatePlayheadSequenceId(*activeSequenceId, blockStartSample);
   }
 
-  transport.rt_advancePlayhead(numSamples);
+  const auto transportResult = transport.rt_endProcessingBlock();
   sequenceStore.rt_cleanupAfterBlock();
 
-  return didProcessGraph;
+  return AudioBlockProcessResult{
+      .didProcessGraph = didProcessGraph,
+      .processedSamples = numSamples,
+      .didReachScheduledStop = transportResult.didReachScheduledStop,
+  };
 }
 
 } // namespace anthem

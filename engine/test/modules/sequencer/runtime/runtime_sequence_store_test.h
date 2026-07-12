@@ -82,7 +82,7 @@ class RuntimeSequenceStoreTest : public juce::UnitTest {
     }
 
     transport.setIsPlaying(true);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
     transport.rt_playhead = playheadPosition;
   }
 

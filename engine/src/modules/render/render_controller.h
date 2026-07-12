@@ -66,11 +66,10 @@ private:
   juce::CriticalSection renderThreadMutex;
   std::unique_ptr<RenderThread> renderThread;
 
-  void sendRenderStartedEvent(int64_t renderId, int64_t totalSamples);
-  void sendRenderProgressEvent(int64_t renderId, int64_t renderedSamples, int64_t totalSamples);
-  void sendRenderCompletedEvent(int64_t renderId, int64_t renderedSamples, int64_t totalSamples);
-  void sendRenderFailedEvent(
-      int64_t renderId, const std::string& error, int64_t renderedSamples, int64_t totalSamples);
+  void sendRenderStartedEvent(int64_t renderId);
+  void sendRenderProgressEvent(int64_t renderId, double progress);
+  void sendRenderCompletedEvent(int64_t renderId);
+  void sendRenderFailedEvent(int64_t renderId, const std::string& error);
   void runRender(const RenderJob& renderJob, RenderThread& thread);
   void finishRenderThreadState();
 public:

@@ -252,15 +252,10 @@ class RenderAudioResponse extends Response {
 
 class RenderStartedEvent extends Response {
   late int renderId;
-  late int totalSamples;
 
   RenderStartedEvent.uninitialized();
 
-  RenderStartedEvent({
-    required int id,
-    required this.renderId,
-    required this.totalSamples,
-  }) {
+  RenderStartedEvent({required int id, required this.renderId}) {
     super.id = id;
   }
 }
@@ -268,8 +263,6 @@ class RenderStartedEvent extends Response {
 class RenderProgressEvent extends Response {
   late int renderId;
   late double progress;
-  late int renderedSamples;
-  late int totalSamples;
 
   RenderProgressEvent.uninitialized();
 
@@ -277,8 +270,6 @@ class RenderProgressEvent extends Response {
     required int id,
     required this.renderId,
     required this.progress,
-    required this.renderedSamples,
-    required this.totalSamples,
   }) {
     super.id = id;
   }
@@ -286,17 +277,10 @@ class RenderProgressEvent extends Response {
 
 class RenderCompletedEvent extends Response {
   late int renderId;
-  late int renderedSamples;
-  late int totalSamples;
 
   RenderCompletedEvent.uninitialized();
 
-  RenderCompletedEvent({
-    required int id,
-    required this.renderId,
-    required this.renderedSamples,
-    required this.totalSamples,
-  }) {
+  RenderCompletedEvent({required int id, required this.renderId}) {
     super.id = id;
   }
 }
@@ -304,8 +288,6 @@ class RenderCompletedEvent extends Response {
 class RenderFailedEvent extends Response {
   late int renderId;
   late String error;
-  late int renderedSamples;
-  late int totalSamples;
 
   RenderFailedEvent.uninitialized();
 
@@ -313,8 +295,6 @@ class RenderFailedEvent extends Response {
     required int id,
     required this.renderId,
     required this.error,
-    required this.renderedSamples,
-    required this.totalSamples,
   }) {
     super.id = id;
   }

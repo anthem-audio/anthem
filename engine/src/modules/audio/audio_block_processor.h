@@ -29,6 +29,12 @@ class GlobalVisualizationSources;
 class GraphProcessor;
 class Transport;
 
+struct AudioBlockProcessResult {
+  bool didProcessGraph = false;
+  int processedSamples = 0;
+  bool didReachScheduledStop = false;
+};
+
 class AudioBlockProcessor {
 private:
   Transport& transport;
@@ -43,7 +49,7 @@ public:
       GraphProcessor& graphProcessor,
       GlobalVisualizationSources& globalVisualizationSources);
 
-  bool processAudioBlock(
+  AudioBlockProcessResult processAudioBlock(
       int numSamples, double sampleRate, uint64_t audioProcessingConfigGeneration);
 };
 

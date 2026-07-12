@@ -429,6 +429,10 @@ void main() {
         ),
       );
       final renderFuture = renderTask.result;
+      final progressStatusTexts = <String>[];
+      final progressSubscription = renderTask.progressStream.listen((progress) {
+        progressStatusTexts.add(progress.statusText);
+      });
 
       final firstStopAudioRequest = await _waitForRequest<StopAudioRequest>(
         connector,
@@ -475,12 +479,17 @@ void main() {
         ),
       );
       connector.emitResponse(
-        RenderCompletedEvent(
+        RenderStartedEvent(id: -1, renderId: renderTask.renderId),
+      );
+      connector.emitResponse(
+        RenderProgressEvent(
           id: -1,
           renderId: renderTask.renderId,
-          renderedSamples: 2048,
-          totalSamples: 2048,
+          progress: 0.5,
         ),
+      );
+      connector.emitResponse(
+        RenderCompletedEvent(id: -1, renderId: renderTask.renderId),
       );
       await _flushMicrotasks();
 
@@ -523,9 +532,8 @@ void main() {
         ),
       );
 
-      final renderResult = await renderFuture;
+      await renderFuture;
 
-      expect(renderResult.renderedSamples, equals(2048));
       expect(project.engine.areRequestsHeldForRender, isFalse);
       expect(project.engine.isAudioReady, isTrue);
       expect(project.engine.audioConfig?.sampleRate, equals(44100));
@@ -545,6 +553,11 @@ void main() {
           'publishForRender',
         ]),
       );
+      expect(
+        progressStatusTexts,
+        orderedEquals(['Rendering...', 'Rendering 50%...', 'Render complete.']),
+      );
+      await progressSubscription.cancel();
     },
   );
 
@@ -619,12 +632,7 @@ void main() {
         ),
       );
       connector.emitResponse(
-        RenderCompletedEvent(
-          id: -1,
-          renderId: renderTask.renderId,
-          renderedSamples: 2048,
-          totalSamples: 2048,
-        ),
+        RenderCompletedEvent(id: -1, renderId: renderTask.renderId),
       );
 
       final secondStopAudioRequest = await _waitForNewRequest<StopAudioRequest>(
@@ -635,9 +643,8 @@ void main() {
         StopAudioResponse(id: secondStopAudioRequest.id, success: true),
       );
 
-      final renderResult = await renderFuture;
+      await renderFuture;
 
-      expect(renderResult.renderedSamples, equals(2048));
       expect(project.engine.isAudioReady, isFalse);
       expect(project.engine.audioConfig, isNull);
       expect(connector.sentRequests.whereType<StartAudioRequest>(), isEmpty);
@@ -649,7 +656,7 @@ void main() {
   );
 
   test(
-    'render controller preserves render result when realtime audio restore fails',
+    'render controller preserves render completion when realtime audio restore fails',
     () async {
       final startFuture = projectEngineController.start();
 
@@ -735,12 +742,7 @@ void main() {
         ),
       );
       connector.emitResponse(
-        RenderCompletedEvent(
-          id: -1,
-          renderId: renderTask.renderId,
-          renderedSamples: 2048,
-          totalSamples: 2048,
-        ),
+        RenderCompletedEvent(id: -1, renderId: renderTask.renderId),
       );
 
       final secondStopAudioRequest = await _waitForNewRequest<StopAudioRequest>(
@@ -761,9 +763,8 @@ void main() {
         ),
       );
 
-      final renderResult = await renderFuture;
+      await renderFuture;
 
-      expect(renderResult.renderedSamples, equals(2048));
       expect(project.engine.isAudioReady, isFalse);
       expect(
         processingGraphApi.calls,
@@ -863,8 +864,6 @@ void main() {
           id: -1,
           renderId: renderTask.renderId,
           error: 'Disk full.',
-          renderedSamples: 1024,
-          totalSamples: 2048,
         ),
       );
 

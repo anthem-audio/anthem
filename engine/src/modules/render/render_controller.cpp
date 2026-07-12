@@ -27,7 +27,6 @@
 #include "modules/core/visualization/visualization_broker.h"
 #include "modules/processors/master_output.h"
 #include "modules/render/render_tail_detector.h"
-#include "modules/sequencer/runtime/sequencer_timing.h"
 #include "modules/sequencer/runtime/transport.h"
 
 #include <algorithm>
@@ -57,8 +56,7 @@ struct RenderController::RenderJob {
   int bitDepth = 32;
   int qualityOptionIndex = 0;
   RenderAudioSampleFormat sampleFormat = RenderAudioSampleFormat::floatingPoint;
-  int64_t sourceSamples = 0;
-  int64_t totalSamples = 0;
+  int64_t maximumTailSamples = 0;
   int blockSize = 0;
   double sampleRate = 0.0;
   int outputChannelCount = 0;
@@ -106,23 +104,6 @@ std::shared_ptr<MasterOutputProcessor> getMasterOutputProcessor() {
   }
 
   return std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputProcessorOpt.value());
-}
-
-int64_t getRenderSampleCount(
-    int64_t startTick, int64_t endTick, const Transport& transport, double sampleRate) {
-  const auto tickDelta = static_cast<double>(endTick - startTick);
-  const auto timingParams = sequencer_timing::TimingParams{
-      .ticksPerQuarter = transport.config.ticksPerQuarter,
-      .beatsPerMinute = transport.config.beatsPerMinute,
-      .sampleRate = sampleRate,
-  };
-
-  const auto sampleOffset = sequencer_timing::tickDeltaToSampleOffset(tickDelta, timingParams);
-  if (sampleOffset <= 0.0) {
-    return 0;
-  }
-
-  return static_cast<int64_t>(std::ceil(sampleOffset));
 }
 
 bool containsInt(std::initializer_list<int64_t> values, int64_t value) {
@@ -302,50 +283,34 @@ RenderController::~RenderController() {
   stopRenderThread();
 }
 
-void RenderController::sendRenderStartedEvent(int64_t renderId, int64_t totalSamples) {
-  Response response = RenderStartedEvent{
-      .renderId = renderId, .totalSamples = totalSamples, .responseBase = ResponseBase{.id = -1}};
+void RenderController::sendRenderStartedEvent(int64_t renderId) {
+  Response response =
+      RenderStartedEvent{.renderId = renderId, .responseBase = ResponseBase{.id = -1}};
 
   auto responseText = rfl::json::write(response);
   comms.send(responseText);
 }
 
-void RenderController::sendRenderProgressEvent(
-    int64_t renderId, int64_t renderedSamples, int64_t totalSamples) {
-  auto progress = 0.0;
-  if (totalSamples > 0) {
-    progress = std::clamp(
-        static_cast<double>(renderedSamples) / static_cast<double>(totalSamples), 0.0, 1.0);
-  }
-
+void RenderController::sendRenderProgressEvent(int64_t renderId, double progress) {
   Response response = RenderProgressEvent{.renderId = renderId,
-      .progress = progress,
-      .renderedSamples = renderedSamples,
-      .totalSamples = totalSamples,
+      .progress = std::clamp(progress, 0.0, 1.0),
       .responseBase = ResponseBase{.id = -1}};
 
   auto responseText = rfl::json::write(response);
   comms.send(responseText);
 }
 
-void RenderController::sendRenderCompletedEvent(
-    int64_t renderId, int64_t renderedSamples, int64_t totalSamples) {
-  Response response = RenderCompletedEvent{.renderId = renderId,
-      .renderedSamples = renderedSamples,
-      .totalSamples = totalSamples,
-      .responseBase = ResponseBase{.id = -1}};
+void RenderController::sendRenderCompletedEvent(int64_t renderId) {
+  Response response =
+      RenderCompletedEvent{.renderId = renderId, .responseBase = ResponseBase{.id = -1}};
 
   auto responseText = rfl::json::write(response);
   comms.send(responseText);
 }
 
-void RenderController::sendRenderFailedEvent(
-    int64_t renderId, const std::string& error, int64_t renderedSamples, int64_t totalSamples) {
-  Response response = RenderFailedEvent{.renderId = renderId,
-      .error = error,
-      .renderedSamples = renderedSamples,
-      .totalSamples = totalSamples,
-      .responseBase = ResponseBase{.id = -1}};
+void RenderController::sendRenderFailedEvent(int64_t renderId, const std::string& error) {
+  Response response = RenderFailedEvent{
+      .renderId = renderId, .error = error, .responseBase = ResponseBase{.id = -1}};
 
   auto responseText = rfl::json::write(response);
   comms.send(responseText);
@@ -411,20 +376,11 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
     return renderStartFailure("Master output processor is not available for render.");
   }
 
-  const auto sourceSamples = getRenderSampleCount(
-      options.startTick, options.endTick, transport, audioProcessingConfig->config.sampleRate);
-  if (sourceSamples <= 0) {
-    isRenderingFlag.store(false, std::memory_order_release);
-    return renderStartFailure("Render sample count must be greater than zero.");
-  }
-
   const auto maximumTailSamples =
       options.includeTail
           ? RenderTailDetector::secondsToSamples(
                 RenderTailDetector::maximumTailSeconds, audioProcessingConfig->config.sampleRate)
           : 0;
-  const auto totalSamples = sourceSamples + maximumTailSamples;
-
   auto renderJob = RenderJob{.renderId = options.renderId,
       .outputPath = options.outputPath,
       .format = options.format,
@@ -435,8 +391,7 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
       .bitDepth = static_cast<int>(options.bitDepth),
       .qualityOptionIndex = static_cast<int>(options.qualityOptionIndex),
       .sampleFormat = options.sampleFormat,
-      .sourceSamples = sourceSamples,
-      .totalSamples = totalSamples,
+      .maximumTailSamples = maximumTailSamples,
       .blockSize = audioProcessingConfig->config.blockSize,
       .sampleRate = audioProcessingConfig->config.sampleRate,
       .outputChannelCount = audioProcessingConfig->config.outputChannelCount,
@@ -503,8 +458,7 @@ void RenderController::finishRenderThreadState() {
 
 void RenderController::runRender(const RenderJob& renderJob, RenderThread& thread) {
 #ifdef __EMSCRIPTEN__
-  sendRenderFailedEvent(
-      renderJob.renderId, "File render is not available on web yet.", 0, renderJob.totalSamples);
+  sendRenderFailedEvent(renderJob.renderId, "File render is not available on web yet.");
   isRenderingFlag.store(false, std::memory_order_release);
   return;
 #else
@@ -518,92 +472,139 @@ void RenderController::runRender(const RenderJob& renderJob, RenderThread& threa
   if (writer == nullptr) {
     juce::MessageManager::callAsync(
         []() { VisualizationBroker::getInstance().discardPendingUpdatesThenResume(); });
-    sendRenderFailedEvent(
-        renderJob.renderId, "Failed to create render output file.", 0, renderJob.totalSamples);
+    sendRenderFailedEvent(renderJob.renderId, "Failed to create render output file.");
     isRenderingFlag.store(false, std::memory_order_release);
     return;
   }
 
-  transport.beginRenderPlayback(
-      renderJob.activeSequenceId, static_cast<double>(renderJob.startTick));
-  sendRenderStartedEvent(renderJob.renderId, renderJob.totalSamples);
+  transport.beginRenderPlayback(renderJob.activeSequenceId,
+      static_cast<double>(renderJob.startTick),
+      static_cast<double>(renderJob.endTick));
+  sendRenderStartedEvent(renderJob.renderId);
 
   auto tailDetector = RenderTailDetector(RenderTailDetector::secondsToSamples(
       RenderTailDetector::defaultRequiredSilenceSeconds, renderJob.sampleRate));
-  auto hasStoppedPlaybackForTail = false;
 
-  int64_t renderedSamples = 0;
+  int64_t tailRenderedSamples = 0;
   int64_t lastProgressPercent = -1;
   auto lastProgressUpdateTime = std::chrono::steady_clock::now();
 
-  while (renderedSamples < renderJob.totalSamples) {
-    if (renderJob.includeTail && !hasStoppedPlaybackForTail &&
-        renderedSamples >= renderJob.sourceSamples) {
-      transport.stopRenderPlaybackForTail(static_cast<double>(renderJob.endTick));
-      hasStoppedPlaybackForTail = true;
+  auto getSourceProgress = [&]() {
+    const auto tickRange = static_cast<double>(renderJob.endTick - renderJob.startTick);
+    if (tickRange <= 0.0) {
+      return 0.0;
     }
 
-    if (thread.threadShouldExit()) {
-      finishRenderThreadState();
-      sendRenderFailedEvent(
-          renderJob.renderId, "Render was stopped.", renderedSamples, renderJob.totalSamples);
-      isRenderingFlag.store(false, std::memory_order_release);
-      return;
-    }
+    return std::clamp(
+        (transport.rt_playhead - static_cast<double>(renderJob.startTick)) / tickRange, 0.0, 1.0);
+  };
 
-    const auto blockEndSample = renderJob.includeTail && !hasStoppedPlaybackForTail
-                                    ? renderJob.sourceSamples
-                                    : renderJob.totalSamples;
-    const auto remainingSamples = blockEndSample - renderedSamples;
-    const auto samplesThisBlock =
-        static_cast<int>(std::min<int64_t>(renderJob.blockSize, remainingSamples));
-
-    const auto didProcessGraph = audioBlockProcessor.processAudioBlock(
-        samplesThisBlock, renderJob.sampleRate, renderJob.audioProcessingConfigGeneration);
-    if (!didProcessGraph) {
-      finishRenderThreadState();
-      sendRenderFailedEvent(renderJob.renderId,
-          "No processing graph is active for render.",
-          renderedSamples,
-          renderJob.totalSamples);
-      isRenderingFlag.store(false, std::memory_order_release);
-      return;
-    }
-
-    auto& outputBuffer = renderJob.masterOutputProcessor->buffer;
-    jassert(outputBuffer.getNumChannels() >= renderJob.outputChannelCount);
-    jassert(outputBuffer.getNumSamples() >= samplesThisBlock);
-
-    if (!writer->writeFromAudioSampleBuffer(outputBuffer, 0, samplesThisBlock)) {
-      finishRenderThreadState();
-      sendRenderFailedEvent(renderJob.renderId,
-          "Failed to write render output file.",
-          renderedSamples,
-          renderJob.totalSamples);
-      isRenderingFlag.store(false, std::memory_order_release);
-      return;
-    }
-
-    renderedSamples += samplesThisBlock;
-
-    const auto tailIsComplete =
-        hasStoppedPlaybackForTail &&
-        tailDetector.processBlock(outputBuffer, renderJob.outputChannelCount, samplesThisBlock);
-
-    const auto progressPercent = (renderedSamples * 100) / renderJob.totalSamples;
+  auto sendProgressIfNeeded = [&](bool force) {
+    const auto progress = getSourceProgress();
+    const auto progressPercent = static_cast<int64_t>(std::floor(progress * 100.0));
     const auto now = std::chrono::steady_clock::now();
     const auto millisecondsSinceLastUpdate =
         std::chrono::duration_cast<std::chrono::milliseconds>(now - lastProgressUpdateTime).count();
 
-    if (progressPercent != lastProgressPercent || millisecondsSinceLastUpdate >= 50 ||
-        renderedSamples == renderJob.totalSamples) {
-      sendRenderProgressEvent(renderJob.renderId, renderedSamples, renderJob.totalSamples);
+    if (force || progressPercent != lastProgressPercent || millisecondsSinceLastUpdate >= 50) {
+      sendRenderProgressEvent(renderJob.renderId, progress);
       lastProgressPercent = progressPercent;
       lastProgressUpdateTime = now;
     }
+  };
 
-    if (tailIsComplete) {
-      break;
+  auto sourceComplete = false;
+  while (!sourceComplete) {
+    if (thread.threadShouldExit()) {
+      finishRenderThreadState();
+      sendRenderFailedEvent(renderJob.renderId, "Render was stopped.");
+      isRenderingFlag.store(false, std::memory_order_release);
+      return;
+    }
+
+    const auto processResult = audioBlockProcessor.processAudioBlock(
+        renderJob.blockSize, renderJob.sampleRate, renderJob.audioProcessingConfigGeneration);
+    if (!processResult.didProcessGraph) {
+      finishRenderThreadState();
+      sendRenderFailedEvent(renderJob.renderId, "No processing graph is active for render.");
+      isRenderingFlag.store(false, std::memory_order_release);
+      return;
+    }
+
+    const auto samplesThisBlock = processResult.processedSamples;
+    if (samplesThisBlock > 0) {
+      auto& outputBuffer = renderJob.masterOutputProcessor->buffer;
+      jassert(outputBuffer.getNumChannels() >= renderJob.outputChannelCount);
+      jassert(outputBuffer.getNumSamples() >= samplesThisBlock);
+
+      if (!writer->writeFromAudioSampleBuffer(outputBuffer, 0, samplesThisBlock)) {
+        finishRenderThreadState();
+        sendRenderFailedEvent(renderJob.renderId, "Failed to write render output file.");
+        isRenderingFlag.store(false, std::memory_order_release);
+        return;
+      }
+
+    } else if (!processResult.didReachScheduledStop) {
+      finishRenderThreadState();
+      sendRenderFailedEvent(renderJob.renderId, "Render did not make progress.");
+      isRenderingFlag.store(false, std::memory_order_release);
+      return;
+    }
+
+    sendProgressIfNeeded(processResult.didReachScheduledStop);
+    sourceComplete = processResult.didReachScheduledStop;
+  }
+
+  if (renderJob.includeTail) {
+    while (tailRenderedSamples < renderJob.maximumTailSamples) {
+      if (thread.threadShouldExit()) {
+        finishRenderThreadState();
+        sendRenderFailedEvent(renderJob.renderId, "Render was stopped.");
+        isRenderingFlag.store(false, std::memory_order_release);
+        return;
+      }
+
+      const auto remainingTailSamples = renderJob.maximumTailSamples - tailRenderedSamples;
+      const auto requestedTailSamples =
+          static_cast<int>(std::min<int64_t>(renderJob.blockSize, remainingTailSamples));
+      const auto processResult = audioBlockProcessor.processAudioBlock(
+          requestedTailSamples, renderJob.sampleRate, renderJob.audioProcessingConfigGeneration);
+      if (!processResult.didProcessGraph) {
+        finishRenderThreadState();
+        sendRenderFailedEvent(renderJob.renderId, "No processing graph is active for render.");
+        isRenderingFlag.store(false, std::memory_order_release);
+        return;
+      }
+
+      const auto samplesThisBlock = processResult.processedSamples;
+      if (samplesThisBlock <= 0) {
+        finishRenderThreadState();
+        sendRenderFailedEvent(renderJob.renderId, "Render tail did not make progress.");
+        isRenderingFlag.store(false, std::memory_order_release);
+        return;
+      }
+
+      auto& outputBuffer = renderJob.masterOutputProcessor->buffer;
+      jassert(outputBuffer.getNumChannels() >= renderJob.outputChannelCount);
+      jassert(outputBuffer.getNumSamples() >= samplesThisBlock);
+
+      if (!writer->writeFromAudioSampleBuffer(outputBuffer, 0, samplesThisBlock)) {
+        finishRenderThreadState();
+        sendRenderFailedEvent(renderJob.renderId, "Failed to write render output file.");
+        isRenderingFlag.store(false, std::memory_order_release);
+        return;
+      }
+
+      tailRenderedSamples += samplesThisBlock;
+
+      const auto tailIsComplete =
+          tailDetector.processBlock(outputBuffer, renderJob.outputChannelCount, samplesThisBlock);
+
+      sendProgressIfNeeded(false);
+
+      if (tailIsComplete) {
+        break;
+      }
     }
   }
 
@@ -612,15 +613,12 @@ void RenderController::runRender(const RenderJob& renderJob, RenderThread& threa
 
   const auto outputFile = juce::File(renderJob.outputPath);
   if (!outputFile.existsAsFile() || outputFile.getSize() <= 0) {
-    sendRenderFailedEvent(renderJob.renderId,
-        "Render output file was not created.",
-        renderedSamples,
-        renderJob.totalSamples);
+    sendRenderFailedEvent(renderJob.renderId, "Render output file was not created.");
     isRenderingFlag.store(false, std::memory_order_release);
     return;
   }
 
-  sendRenderCompletedEvent(renderJob.renderId, renderedSamples, renderJob.totalSamples);
+  sendRenderCompletedEvent(renderJob.renderId);
   isRenderingFlag.store(false, std::memory_order_release);
 #endif
 }

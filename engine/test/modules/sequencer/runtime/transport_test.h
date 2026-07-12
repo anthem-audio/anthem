@@ -132,7 +132,8 @@ public:
     testClearingActiveSequenceClearsLoopPoints();
     testConfigQueueReplacementUsesLatestConfig();
     testRenderPlaybackForcesStartTickDisablesLoopAndRestoresConfig();
-    testRenderTailStopPreservesEndPlayheadBeforeRestoringConfig();
+    testRenderPlaybackShortensFinalBlockAndStopsAtEndTick();
+    testRenderPlaybackMarksFullSizedFinalBlock();
     testTimingParamsReflectTransportConfig();
     testJumpToWrapsSeekTargetIntoLoop();
     testActiveTrackChangeRebuildsJumpPayloadOnlyForPatterns();
@@ -289,11 +290,11 @@ public:
     std::optional<int64_t> activeSequenceId = sequenceId;
     transport.setActiveSequenceId(activeSequenceId);
     transport.setIsPlaying(true);
-    transport.rt_prepareForProcessingBlock();
-    transport.rt_advancePlayhead(0);
+    transport.rt_beginProcessingBlock(0);
+    transport.rt_endProcessingBlock();
 
     transport.jumpTo(1.0);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expectEquals(transport.rt_playhead, 1.0, "Seek should update the RT playhead.");
     expect(transport.rt_playheadJumpOrPauseOccurred, "Seek should flag a jump for this block.");
@@ -303,6 +304,7 @@ public:
     auto* jumpEvents = getJumpEventsForTrack(*transport.rt_playheadJumpEvent);
     expect(jumpEvents != nullptr, "Seek payload should restart sustained notes at the new point.");
     expectEquals(static_cast<int>(jumpEvents->size()), 1, "Exactly one note should restart.");
+    transport.rt_endProcessingBlock();
   }
 
   void testStartPublishesStartJumpPayload() {
@@ -323,7 +325,7 @@ public:
     transport.setPlayheadStart(1.0);
     transport.setIsPlaying(true);
 
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expect(transport.rt_playheadJumpEvent != nullptr,
         "Starting playback should publish the cached jump-start payload.");
@@ -333,6 +335,7 @@ public:
     expectEquals(static_cast<int>(jumpEvents->size()), 1, "Exactly one note should restart.");
     expectEquals(
         jumpEvents->at(0).sequenceNoteId, firstNoteId, "The sustained note should restart.");
+    transport.rt_endProcessingBlock();
   }
 
   void testStopReturnsToPlayheadStartAndStopsSequenceNotes() {
@@ -345,21 +348,22 @@ public:
 
     transport.setPlayheadStart(96.0);
     transport.jumpTo(96.0);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
     expectEquals(transport.rt_playhead, 96.0, "Initial stopped seek should restore playhead.");
-    transport.rt_advancePlayhead(0);
+    transport.rt_endProcessingBlock();
 
     transport.setIsPlaying(true);
-    transport.rt_prepareForProcessingBlock();
-    transport.rt_advancePlayhead(250);
+    transport.rt_beginProcessingBlock(250);
+    transport.rt_endProcessingBlock();
     expectEquals(transport.rt_playhead, 97.0, "Playing transport should advance by one tick.");
 
     transport.setIsPlaying(false);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expectEquals(transport.rt_playhead, 96.0, "Stopping should return to the start position.");
     expect(transport.rt_playheadJumpOrPauseOccurred, "Stopping should flag a jump/pause.");
     expect(transport.rt_shouldStopSequenceNotes, "Stopping should stop sequence-owned notes.");
+    transport.rt_endProcessingBlock();
   }
 
   void testLoopWrappingDuringBlockAdvance() {
@@ -375,10 +379,10 @@ public:
     std::optional<int64_t> activeSequenceId = sequenceId;
     transport.setActiveSequenceId(activeSequenceId);
     transport.setIsPlaying(true);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(500);
 
     transport.rt_playhead = 13.0;
-    transport.rt_advancePlayhead(500);
+    transport.rt_endProcessingBlock();
 
     expectEquals(transport.rt_playhead, 11.0, "Advancing past loop end should wrap.");
     expectEquals(transport.rt_sampleCounter,
@@ -448,13 +452,14 @@ public:
 
     transport.setBeatsPerMinute(130.0);
     transport.setBeatsPerMinute(140.0);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expectEquals(
         transport.rt_config->beatsPerMinute, 140.0, "RT config should use the newest value.");
     expectEquals(drainRetiredConfigCount(transport),
         3,
         "Superseded pending configs and the old RT config should be retired.");
+    transport.rt_endProcessingBlock();
   }
 
   void testRenderPlaybackForcesStartTickDisablesLoopAndRestoresConfig() {
@@ -471,35 +476,46 @@ public:
     transport.setPlayheadStart(2.0);
 
     transport.rt_playhead = 99.0;
-    transport.beginRenderPlayback(sequenceId, 32.0);
+    transport.beginRenderPlayback(sequenceId, 32.0, 96.0);
 
     expect(transport.config.isPlaying, "Render playback should start immediately.");
     expect(!transport.config.hasLoop, "Render playback should ignore loop points.");
     expect(transport.config.forcePlayheadStartOnPlay,
         "Render playback should force the first RT playhead position.");
+    expect(transport.config.scheduledStopTick.has_value(),
+        "Render playback should configure a scheduled stop tick.");
+    expectEquals(transport.config.scheduledStopTick.value(),
+        96.0,
+        "Scheduled stop should use the requested render end.");
 
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expectEquals(transport.rt_playhead, 32.0, "RT playhead should jump to the render start.");
     expect(transport.rt_config->isPlaying, "RT config should be playing during render.");
     expect(!transport.rt_config->hasLoop, "RT config should not contain loop points for render.");
+    expect(transport.rt_config->scheduledStopTick.has_value(),
+        "RT config should contain the scheduled stop.");
+    transport.rt_endProcessingBlock();
 
     transport.endRenderPlayback();
 
     expect(!transport.config.isPlaying, "Restored transport config should not be playing.");
     expectEquals(transport.config.playheadStart, 2.0, "Restored playhead start should be kept.");
     expect(transport.config.hasLoop, "Restored transport config should include loop points.");
+    expect(!transport.config.scheduledStopTick.has_value(),
+        "Restored transport config should not keep the scheduled stop.");
     expect(!transport.config.forcePlayheadStartOnPlay,
         "Restored transport config should clear the render-only force flag.");
 
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expect(!transport.rt_config->isPlaying, "Restored RT config should not be playing.");
     expect(transport.rt_config->hasLoop, "Restored RT config should include loop points.");
+    transport.rt_endProcessingBlock();
   }
 
-  void testRenderTailStopPreservesEndPlayheadBeforeRestoringConfig() {
-    beginTest("Render tail stop preserves end playhead before restoring config");
+  void testRenderPlaybackShortensFinalBlockAndStopsAtEndTick() {
+    beginTest("Render playback shortens the final block and stops at the end tick");
 
     auto projectView = std::make_unique<FakeProjectView>();
     auto clock = std::make_unique<FakeClock>();
@@ -507,25 +523,62 @@ public:
     transport.prepareToProcess();
 
     transport.setPlayheadStart(2.0);
-    transport.beginRenderPlayback(sequenceId, 32.0);
-    transport.rt_prepareForProcessingBlock();
-    transport.rt_advancePlayhead(48000);
+    transport.beginRenderPlayback(sequenceId, 32.0, 96.0);
+    const auto firstBlockSamples = transport.rt_beginProcessingBlock(1000);
+    expectEquals(
+        firstBlockSamples, 1000, "Blocks before the render end should use the requested size.");
+    const auto firstBlockResult = transport.rt_endProcessingBlock();
+    expect(!firstBlockResult.didReachScheduledStop,
+        "The first block should not stop playback at its end.");
 
-    transport.stopRenderPlaybackForTail(96.0);
-    transport.rt_prepareForProcessingBlock();
+    const auto finalBlockSamples = transport.rt_beginProcessingBlock(48000);
+    expectEquals(finalBlockSamples, 15000, "Final source block should stop at the scheduled tick.");
+    const auto finalBlockResult = transport.rt_endProcessingBlock();
+    expect(finalBlockResult.didReachScheduledStop,
+        "Final source block should stop playback at its end.");
+
+    expectEquals(transport.rt_playhead, 96.0, "RT playhead should land at the render end.");
+    expect(!transport.rt_config->isPlaying, "RT config should stop after reaching render end.");
+
+    const auto tailBlockSamples = transport.rt_beginProcessingBlock(512);
 
     expect(!transport.rt_config->isPlaying, "RT config should be stopped for render tail.");
     expectEquals(transport.rt_playhead, 96.0, "Render tail should start at the render end.");
     expect(transport.rt_playheadJumpOrPauseOccurred, "Tail stop should flag a pause.");
     expect(transport.rt_shouldStopSequenceNotes, "Tail stop should release sequence notes.");
+    expectEquals(tailBlockSamples, 512, "Tail blocks should use the requested size.");
+    const auto tailBlockResult = transport.rt_endProcessingBlock();
+    expect(!tailBlockResult.didReachScheduledStop, "Tail blocks should not schedule another stop.");
 
     transport.endRenderPlayback();
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expect(!transport.rt_config->isPlaying, "Restored RT config should not be playing.");
     expectEquals(transport.rt_config->playheadStart,
         2.0,
         "Restored RT config should keep the pre-render playhead start.");
+    transport.rt_endProcessingBlock();
+  }
+
+  void testRenderPlaybackMarksFullSizedFinalBlock() {
+    beginTest("Render playback marks a full-sized final block");
+
+    auto projectView = std::make_unique<FakeProjectView>();
+    auto clock = std::make_unique<FakeClock>();
+    Transport transport(std::move(projectView), std::move(clock));
+    transport.prepareToProcess();
+
+    transport.beginRenderPlayback(sequenceId, 32.0, 96.0);
+    const auto finalBlockSamples = transport.rt_beginProcessingBlock(16000);
+
+    expectEquals(
+        finalBlockSamples, 16000, "A final block may use the entire requested sample count.");
+    const auto finalBlockResult = transport.rt_endProcessingBlock();
+    expect(finalBlockResult.didReachScheduledStop,
+        "A full-sized final block should still report that playback stops at its end.");
+
+    expectEquals(transport.rt_playhead, 96.0, "RT playhead should land at the scheduled stop.");
+    expect(!transport.rt_config->isPlaying, "RT config should stop after the full-sized block.");
   }
 
   void testTimingParamsReflectTransportConfig() {
@@ -539,7 +592,7 @@ public:
 
     transport.setTicksPerQuarter(192);
     transport.setBeatsPerMinute(90.0);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     auto timingParams = transport.rt_getTimingParams();
     expectEquals(timingParams.ticksPerQuarter,
@@ -548,6 +601,7 @@ public:
     expectEquals(timingParams.beatsPerMinute, 90.0, "Timing params should use the latest BPM.");
     expectEquals(
         timingParams.sampleRate, 96000.0, "Timing params should use the clock sample rate.");
+    transport.rt_endProcessingBlock();
   }
 
   void testJumpToWrapsSeekTargetIntoLoop() {
@@ -562,9 +616,10 @@ public:
     std::optional<int64_t> activeSequenceId = sequenceId;
     transport.setActiveSequenceId(activeSequenceId);
     transport.jumpTo(17.0);
-    transport.rt_prepareForProcessingBlock();
+    transport.rt_beginProcessingBlock(0);
 
     expectEquals(transport.rt_playhead, 13.0, "Seek target should wrap into the active loop.");
+    transport.rt_endProcessingBlock();
   }
 
   void testActiveTrackChangeRebuildsJumpPayloadOnlyForPatterns() {

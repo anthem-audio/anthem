@@ -738,26 +738,11 @@ void main() {
         equals(RenderAudioSampleFormat.floatingPoint),
       );
 
+      connector.emitResponse(RenderStartedEvent(id: -1, renderId: 42));
       connector.emitResponse(
-        RenderStartedEvent(id: -1, renderId: 42, totalSamples: 1024),
+        RenderProgressEvent(id: -1, renderId: 42, progress: 0.5),
       );
-      connector.emitResponse(
-        RenderProgressEvent(
-          id: -1,
-          renderId: 42,
-          progress: 0.5,
-          renderedSamples: 512,
-          totalSamples: 1024,
-        ),
-      );
-      connector.emitResponse(
-        RenderCompletedEvent(
-          id: -1,
-          renderId: 42,
-          renderedSamples: 1024,
-          totalSamples: 1024,
-        ),
-      );
+      connector.emitResponse(RenderCompletedEvent(id: -1, renderId: 42));
       connector.emitResponse(
         RenderAudioResponse(id: renderRequest.id, success: true, renderId: 42),
       );
@@ -773,10 +758,6 @@ void main() {
       expect(renderEvents[1], isA<RenderProgressEvent>());
       expect(renderEvents[2], isA<RenderCompletedEvent>());
       expect((renderEvents[1] as RenderProgressEvent).progress, equals(0.5));
-      expect(
-        (renderEvents[1] as RenderProgressEvent).renderedSamples,
-        equals(512),
-      );
     });
 
     test(

@@ -54,12 +54,6 @@ class ProjectRenderRequest {
   });
 }
 
-class ProjectRenderResult {
-  final int renderedSamples;
-
-  const ProjectRenderResult({required this.renderedSamples});
-}
-
 class ProjectRenderProgress {
   final double progress;
   final String statusText;
@@ -73,7 +67,7 @@ class ProjectRenderProgress {
 class ProjectRenderTask {
   final int renderId;
   final Stream<ProjectRenderProgress> progressStream;
-  final Future<ProjectRenderResult> result;
+  final Future<void> result;
 
   const ProjectRenderTask({
     required this.renderId,
@@ -86,7 +80,7 @@ class ProjectRenderController {
   final ProjectModel project;
   final ProjectController projectController;
 
-  Future<ProjectRenderResult>? _activeRenderFuture;
+  Future<void>? _activeRenderFuture;
 
   ProjectRenderController(this.project, this.projectController);
 
@@ -99,7 +93,7 @@ class ProjectRenderController {
     final progressController =
         StreamController<ProjectRenderProgress>.broadcast();
 
-    late final Future<ProjectRenderResult> resultFuture;
+    late final Future<void> resultFuture;
     resultFuture =
         _runRender(
           renderId: renderId,
@@ -122,7 +116,7 @@ class ProjectRenderController {
     );
   }
 
-  Future<ProjectRenderResult> _runRender({
+  Future<void> _runRender({
     required int renderId,
     required ProjectRenderRequest request,
     required StreamController<ProjectRenderProgress> progressController,
@@ -195,8 +189,8 @@ class ProjectRenderController {
 
       final completionEvent = await renderCompletion.future;
       switch (completionEvent) {
-        case RenderCompletedEvent e:
-          return ProjectRenderResult(renderedSamples: e.renderedSamples);
+        case RenderCompletedEvent _:
+          return;
         case RenderFailedEvent e:
           throw StateError('Engine render failed: ${e.error}');
         default:
@@ -243,40 +237,27 @@ class ProjectRenderController {
     switch (event) {
       case RenderStartedEvent e when e.renderId == renderId:
         emitProgress(
-          ProjectRenderProgress(
-            progress: 0,
-            statusText: e.totalSamples > 0
-                ? 'Rendering 0 of ${e.totalSamples} samples...'
-                : 'Rendering...',
-          ),
+          const ProjectRenderProgress(progress: 0, statusText: 'Rendering...'),
         );
       case RenderProgressEvent e when e.renderId == renderId:
+        final progress = _sanitizeProgress(e.progress);
         emitProgress(
           ProjectRenderProgress(
-            progress: _sanitizeProgress(e.progress),
-            statusText:
-                'Rendering ${e.renderedSamples} of ${e.totalSamples} samples...',
+            progress: progress,
+            statusText: 'Rendering ${_formatProgressPercent(progress)}...',
           ),
         );
       case RenderCompletedEvent e when e.renderId == renderId:
         emitProgress(
-          ProjectRenderProgress(
+          const ProjectRenderProgress(
             progress: 1,
-            statusText: 'Rendered ${e.renderedSamples} samples.',
+            statusText: 'Render complete.',
           ),
         );
         if (!renderCompletion.isCompleted) {
           renderCompletion.complete(e);
         }
       case RenderFailedEvent e when e.renderId == renderId:
-        emitProgress(
-          ProjectRenderProgress(
-            progress: _sanitizeProgress(
-              e.totalSamples == 0 ? 0 : e.renderedSamples / e.totalSamples,
-            ),
-            statusText: 'Render failed: ${e.error}',
-          ),
-        );
         if (!renderCompletion.isCompleted) {
           renderCompletion.complete(e);
         }
@@ -292,4 +273,8 @@ double _sanitizeProgress(double progress) {
   }
 
   return progress.clamp(0.0, 1.0).toDouble();
+}
+
+String _formatProgressPercent(double progress) {
+  return '${(progress * 100).round()}%';
 }

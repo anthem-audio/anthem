@@ -71,14 +71,15 @@ void AudioCallback::audioDeviceIOCallbackWithContext(
     int numOutputChannels,
     int numSamples,
     [[maybe_unused]] const juce::AudioIODeviceCallbackContext& context) {
-  const auto didProcessGraph = audioBlockProcessor.processAudioBlock(
+  const auto processResult = audioBlockProcessor.processAudioBlock(
       numSamples, rt_sampleRate, audioSessionController.getAudioProcessingConfigGeneration());
+  jassert(processResult.processedSamples == numSamples);
 
   auto& outputBuffer = masterOutputProcessor->buffer;
 
   // A processed graph must provide a master output buffer that matches the
   // callback block shape.
-  if (didProcessGraph) {
+  if (processResult.didProcessGraph) {
     jassert(outputBuffer.getNumChannels() >= numOutputChannels);
     jassert(outputBuffer.getNumSamples() >= numSamples);
 

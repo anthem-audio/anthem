@@ -93,23 +93,26 @@ public:
       auto sequencer = createSequencer();
       sequencer->initialize(sequencer, std::shared_ptr<ModelBase>());
 
-      engine.transport->rt_prepareForProcessingBlock();
+      engine.transport->rt_beginProcessingBlock(0);
       expectEquals(engine.transport->config.playheadStart,
           static_cast<double>(restoredPlayheadPosition),
           "Startup should restore the transport stop target.");
       expectEquals(engine.transport->rt_playhead,
           static_cast<double>(restoredPlayheadPosition),
           "Startup should restore the stopped playhead position.");
+      engine.transport->rt_endProcessingBlock();
 
       engine.transport->setIsPlaying(true);
-      engine.transport->rt_prepareForProcessingBlock();
+      engine.transport->rt_beginProcessingBlock(0);
+      engine.transport->rt_endProcessingBlock();
 
       engine.transport->setIsPlaying(false);
-      engine.transport->rt_prepareForProcessingBlock();
+      engine.transport->rt_beginProcessingBlock(0);
 
       expectEquals(engine.transport->rt_playhead,
           static_cast<double>(restoredPlayheadPosition),
           "After play then stop, the playhead should return to the restored startup position.");
+      engine.transport->rt_endProcessingBlock();
     }
 
     Engine::cleanup();
