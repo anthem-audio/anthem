@@ -1056,10 +1056,15 @@ const _lameConfigureArguments = [
   '--with-fileio=lame',
 ];
 
-// Anthem uses LAME only for audio encoding, without command-line ID3 metadata.
-// Disabling its optional iconv path also avoids an invalid langinfo.h assumption
-// in the bundled LAME version when building with MinGW.
-const _lameConfigureEnvironment = {'am_cv_func_iconv': 'no'};
+// Anthem uses LAME only for audio encoding, without command-line ID3 metadata
+// or interactive terminal output. Disabling these optional paths also avoids
+// portability issues in the bundled LAME version.
+const _lameConfigureEnvironment = {
+  'am_cv_func_iconv': 'no',
+  'ac_cv_lib_termcap_initscr': 'no',
+  'ac_cv_lib_curses_initscr': 'no',
+  'ac_cv_lib_ncurses_initscr': 'no',
+};
 
 String get _lameExecutableName => Platform.isWindows ? 'lame.exe' : 'lame';
 
@@ -1107,15 +1112,6 @@ Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
       'CC': _requireLlvmExecutable('clang'),
   };
 
-  // LAME checks ncurses with initscr(), but the frontend uses tget* symbols
-  // that some Linux SDKs split into libtinfo.
-  if (Platform.isLinux && await _canLinkLameWithTInfo(environment)) {
-    environment['LIBS'] = _appendBuildFlag(
-      Platform.environment['LIBS'],
-      '-ltinfo',
-    );
-  }
-
   await _runInheritedProcess(
     'sh',
     ['./configure', ..._lameConfigureArguments],
@@ -1128,62 +1124,6 @@ Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
     workingDirectory: workingDirectory,
     environment: environment,
   );
-}
-
-Future<bool> _canLinkLameWithTInfo(Map<String, String> environment) async {
-  final compiler = environment['CC'] ?? Platform.environment['CC'] ?? 'cc';
-  final tempDir = Directory.systemTemp.createTempSync(
-    'anthem_lame_tinfo_check_',
-  );
-
-  try {
-    final sourcePath = _joinFileSystemPath(tempDir.path, 'conftest.c');
-    final outputPath = _joinFileSystemPath(tempDir.path, 'conftest');
-
-    File(sourcePath).writeAsStringSync('''
-int tgetent(char*, const char*);
-
-int main(void) {
-  return tgetent(0, "dumb");
-}
-''');
-
-    final result = await Process.run(compiler, [
-      ..._splitBuildFlags(
-        environment['CFLAGS'] ?? Platform.environment['CFLAGS'],
-      ),
-      sourcePath,
-      ..._splitBuildFlags(
-        environment['LDFLAGS'] ?? Platform.environment['LDFLAGS'],
-      ),
-      '-ltinfo',
-      '-o',
-      outputPath,
-    ], environment: environment.isEmpty ? null : environment);
-
-    return result.exitCode == 0;
-  } on ProcessException {
-    return false;
-  } finally {
-    tempDir.deleteSync(recursive: true);
-  }
-}
-
-String _appendBuildFlag(String? existingValue, String flag) {
-  final trimmedValue = existingValue?.trim();
-  if (trimmedValue == null || trimmedValue.isEmpty) return flag;
-
-  final existingFlags = _splitBuildFlags(trimmedValue);
-  if (existingFlags.contains(flag)) return trimmedValue;
-
-  return '$trimmedValue $flag';
-}
-
-List<String> _splitBuildFlags(String? value) {
-  final trimmedValue = value?.trim();
-  if (trimmedValue == null || trimmedValue.isEmpty) return const [];
-
-  return trimmedValue.split(RegExp(r'\s+'));
 }
 
 Future<void> _buildLameOnWindows(
