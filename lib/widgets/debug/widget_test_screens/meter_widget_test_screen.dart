@@ -575,7 +575,7 @@ class _PreviewMeterState extends State<_PreviewMeter> {
   Widget build(BuildContext context) {
     final snapshot = _valueTracker.resolve(
       db: widget.db,
-      timestamp: widget.timestamp,
+      timestamps: (left: widget.timestamp, right: widget.timestamp),
     );
     final gradient = Meter.resolveGradient(
       gradientStops:

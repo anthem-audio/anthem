@@ -41,6 +41,11 @@ double _testDbToNormalizedPosition(double db) {
   return (db + 60.0) / 60.0;
 }
 
+double _identityMeterPosition(double value) => value;
+
+StereoMeterTimestamps _stereoTimestamp(Duration timestamp) =>
+    (left: timestamp, right: timestamp);
+
 void main() {
   group('dbToPixelHeight', () {
     test('returns zero below the minimum point', () {
@@ -74,18 +79,6 @@ void main() {
       expect(defaultMeterDbToNormalizedPosition(-600.0), 0.0);
     });
 
-    test('decayMeterPeakNormalizedHeight falls and clamps to current', () {
-      expect(
-        Meter.decayPeakNormalizedHeight(
-          currentNormalizedHeight: 0.05,
-          previousPeakNormalizedHeight: 0.165,
-          elapsed: const Duration(seconds: 1),
-          fallRateNormalizedPerSecond: 0.1,
-        ),
-        closeTo(0.065, 0.000001),
-      );
-    });
-
     test('resolveMeterGradient converts db stops using the meter mapping', () {
       final resolved = Meter.resolveGradient(
         gradientStops: _testGradientStops,
@@ -108,6 +101,23 @@ void main() {
   });
 
   group('MeterValueTracker', () {
+    test('estimates history capacity with 50 percent headroom', () {
+      expect(
+        MeterValueTracker.estimateHistoryCapacity(
+          peakHoldDuration: const Duration(milliseconds: 750),
+          estimatedSamplesPerSecond: 60,
+        ),
+        68,
+      );
+      expect(
+        MeterValueTracker.estimateHistoryCapacity(
+          peakHoldDuration: const Duration(milliseconds: 750),
+          estimatedSamplesPerSecond: 240,
+        ),
+        270,
+      );
+    });
+
     test('holds peaks before decaying them from timestamps', () {
       final tracker = MeterValueTracker(
         dbToNormalizedPosition: defaultMeterDbToNormalizedPosition,
@@ -117,7 +127,7 @@ void main() {
 
       var snapshot = tracker.resolve(
         db: (left: -48.0, right: -36.0),
-        timestamp: Duration.zero,
+        timestamps: (left: Duration.zero, right: Duration.zero),
       );
 
       expect(
@@ -139,7 +149,10 @@ void main() {
 
       snapshot = tracker.resolve(
         db: (left: -72.0, right: -72.0),
-        timestamp: const Duration(milliseconds: 300),
+        timestamps: (
+          left: const Duration(milliseconds: 300),
+          right: const Duration(milliseconds: 300),
+        ),
       );
 
       expect(
@@ -161,7 +174,10 @@ void main() {
 
       snapshot = tracker.resolve(
         db: (left: -72.0, right: -72.0),
-        timestamp: const Duration(seconds: 1),
+        timestamps: (
+          left: const Duration(seconds: 1),
+          right: const Duration(seconds: 1),
+        ),
       );
 
       expect(
@@ -174,12 +190,205 @@ void main() {
       );
       expect(
         snapshot.peakNormalized.left,
-        closeTo(gainDbToParameterValue(-48) - 0.05, 0.000001),
+        closeTo(gainDbToParameterValue(-48) - 0.07, 0.000001),
       );
       expect(
         snapshot.peakNormalized.right,
-        closeTo(gainParameterCurveSectionCeilingNormalized - 0.05, 0.000001),
+        closeTo(gainParameterCurveSectionCeilingNormalized - 0.07, 0.000001),
       );
+    });
+
+    test('rate-limits decreases in the recent maximum', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: _identityMeterPosition,
+        peakHoldDuration: const Duration(seconds: 1),
+        peakFallRateNormalizedPerSecond: 0.1,
+      );
+
+      tracker.resolve(
+        db: (left: 0.8, right: 0.8),
+        timestamps: _stereoTimestamp(Duration.zero),
+      );
+      tracker.resolve(
+        db: (left: 0.79, right: 0.79),
+        timestamps: _stereoTimestamp(const Duration(milliseconds: 900)),
+      );
+
+      var snapshot = tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: _stereoTimestamp(const Duration(seconds: 1)),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.79, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.79, 0.000001));
+
+      snapshot = tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: _stereoTimestamp(const Duration(milliseconds: 1800)),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.79, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.79, 0.000001));
+
+      snapshot = tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: _stereoTimestamp(const Duration(milliseconds: 1900)),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.78, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.78, 0.000001));
+    });
+
+    test('uses elapsed engine time when updates arrive late', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: _identityMeterPosition,
+        peakHoldDuration: const Duration(seconds: 1),
+        peakFallRateNormalizedPerSecond: 0.1,
+      );
+
+      tracker.resolve(
+        db: (left: 0.8, right: 0.8),
+        timestamps: _stereoTimestamp(Duration.zero),
+      );
+      tracker.resolve(
+        db: (left: 0.79, right: 0.79),
+        timestamps: _stereoTimestamp(const Duration(milliseconds: 900)),
+      );
+      tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: _stereoTimestamp(const Duration(seconds: 1)),
+      );
+
+      final snapshot = tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: _stereoTimestamp(const Duration(seconds: 2)),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.69, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.69, 0.000001));
+    });
+
+    test('jumps immediately to an increasing recent maximum', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: _identityMeterPosition,
+        peakHoldDuration: const Duration(milliseconds: 100),
+        peakFallRateNormalizedPerSecond: 0.1,
+      );
+
+      tracker.resolve(
+        db: (left: 0.8, right: 0.8),
+        timestamps: _stereoTimestamp(Duration.zero),
+      );
+      tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: _stereoTimestamp(const Duration(milliseconds: 100)),
+      );
+
+      final snapshot = tracker.resolve(
+        db: (left: 0.9, right: 0.9),
+        timestamps: _stereoTimestamp(const Duration(milliseconds: 200)),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.9, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.9, 0.000001));
+    });
+
+    test('equal values refresh their hold timestamp', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: _identityMeterPosition,
+        peakHoldDuration: const Duration(seconds: 1),
+        peakFallRateNormalizedPerSecond: 0.1,
+      );
+
+      tracker.resolve(
+        db: (left: 0.8, right: 0.8),
+        timestamps: _stereoTimestamp(Duration.zero),
+      );
+      tracker.resolve(
+        db: (left: 0.8, right: 0.8),
+        timestamps: _stereoTimestamp(const Duration(milliseconds: 500)),
+      );
+
+      final snapshot = tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: _stereoTimestamp(const Duration(seconds: 1)),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.8, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.8, 0.000001));
+    });
+
+    test('tracks stereo engine timestamps independently', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: _identityMeterPosition,
+        peakHoldDuration: const Duration(seconds: 1),
+        peakFallRateNormalizedPerSecond: 0.1,
+      );
+
+      tracker.resolve(
+        db: (left: 0.8, right: 0.6),
+        timestamps: _stereoTimestamp(Duration.zero),
+      );
+      tracker.resolve(
+        db: (left: 0.1, right: 0.6),
+        timestamps: (left: const Duration(seconds: 1), right: Duration.zero),
+      );
+
+      final snapshot = tracker.resolve(
+        db: (left: 0.1, right: 0.1),
+        timestamps: (
+          left: const Duration(seconds: 1),
+          right: const Duration(milliseconds: 500),
+        ),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.7, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.6, 0.000001));
+    });
+
+    test('grows history without losing retained samples', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: _identityMeterPosition,
+        peakHoldDuration: const Duration(seconds: 1),
+        peakFallRateNormalizedPerSecond: 0.1,
+        estimatedSamplesPerSecond: 1,
+      );
+
+      for (var i = 0; i < 100; i++) {
+        tracker.resolve(
+          db: (left: 1 - i * 0.005, right: 1 - i * 0.005),
+          timestamps: _stereoTimestamp(Duration(milliseconds: i * 9)),
+        );
+      }
+
+      final snapshot = tracker.resolve(
+        db: (left: 0.0, right: 0.0),
+        timestamps: _stereoTimestamp(const Duration(seconds: 1)),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.995, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.995, 0.000001));
+    });
+
+    test('resets a channel when its engine timestamp moves backward', () {
+      final tracker = MeterValueTracker(
+        dbToNormalizedPosition: _identityMeterPosition,
+        peakHoldDuration: const Duration(seconds: 1),
+        peakFallRateNormalizedPerSecond: 0.1,
+      );
+
+      tracker.resolve(
+        db: (left: 0.8, right: 0.8),
+        timestamps: _stereoTimestamp(const Duration(seconds: 1)),
+      );
+
+      final snapshot = tracker.resolve(
+        db: (left: 0.2, right: 0.3),
+        timestamps: _stereoTimestamp(Duration.zero),
+      );
+
+      expect(snapshot.peakNormalized.left, closeTo(0.2, 0.000001));
+      expect(snapshot.peakNormalized.right, closeTo(0.3, 0.000001));
     });
   });
 }
