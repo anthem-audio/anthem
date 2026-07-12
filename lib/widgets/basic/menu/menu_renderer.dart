@@ -376,6 +376,13 @@ class _MenuItemRendererState extends State<_MenuItemRenderer> {
   Timer? submenuCloseTimer;
 
   @override
+  void dispose() {
+    cancelHoverTimer();
+    cancelSubmenuCloseTimer();
+    super.dispose();
+  }
+
+  @override
   void didUpdateWidget(covariant _MenuItemRenderer oldWidget) {
     super.didUpdateWidget(oldWidget);
 

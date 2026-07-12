@@ -365,16 +365,18 @@ class _ApplicationMenu extends StatefulObserverWidget {
 }
 
 class _ApplicationMenuState extends State<_ApplicationMenu> {
-  AnthemMenuController? _fileMenuController;
-  AnthemMenuController? _editMenuController;
-  AnthemMenuController? _helpMenuController;
+  final _fileMenuController = AnthemMenuController();
+  final _editMenuController = AnthemMenuController();
+  final _helpMenuController = AnthemMenuController();
+
+  late final _menuControllerGroup = AnthemMenuControllerGroup([
+    _fileMenuController,
+    _editMenuController,
+    _helpMenuController,
+  ]);
 
   @override
   Widget build(BuildContext context) {
-    final fileMenuController = _fileMenuController ?? AnthemMenuController();
-    final editMenuController = _editMenuController ?? AnthemMenuController();
-    final helpMenuController = _helpMenuController ?? AnthemMenuController();
-
     final mainWindowController = ServiceRegistry.mainWindowController;
 
     final activeProjectId = AnthemStore.instance.activeProjectId;
@@ -611,39 +613,42 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Menu(
-                menuController: fileMenuController,
+                menuController: _fileMenuController,
+                menuControllerGroup: _menuControllerGroup,
                 menuDef: fileMenuDef,
                 offset: const Offset(0, 1),
                 child: _ApplicationMenuButton(
                   text: 'File',
                   isFirst: true,
                   onPress: () {
-                    fileMenuController.toggle();
+                    _fileMenuController.toggle();
                   },
                 ),
               ),
               Container(width: 1, color: AnthemTheme.panel.border),
               Menu(
-                menuController: editMenuController,
+                menuController: _editMenuController,
+                menuControllerGroup: _menuControllerGroup,
                 menuDef: editMenuDef,
                 offset: const Offset(0, 1),
                 child: _ApplicationMenuButton(
                   text: 'Edit',
                   onPress: () {
-                    editMenuController.toggle();
+                    _editMenuController.toggle();
                   },
                 ),
               ),
               Container(width: 1, color: AnthemTheme.panel.border),
               Menu(
-                menuController: helpMenuController,
+                menuController: _helpMenuController,
+                menuControllerGroup: _menuControllerGroup,
                 menuDef: helpMenuDef,
                 offset: const Offset(0, 1),
                 child: _ApplicationMenuButton(
                   text: 'Help',
                   isLast: true,
                   onPress: () {
-                    helpMenuController.toggle();
+                    _helpMenuController.toggle();
                   },
                 ),
               ),

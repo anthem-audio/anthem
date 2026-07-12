@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/widgets/basic/color_picker.dart';
 import 'package:anthem/widgets/basic/color_picker_button.dart';
@@ -249,6 +251,230 @@ void main() {
 
     expect(find.text('More'), findsNothing);
     expect(find.text('Nested item'), findsNothing);
+  });
+
+  testWidgets(
+    'menu controller group switches open menus on hover without opening idle menus',
+    (tester) async {
+      final firstController = AnthemMenuController();
+      final secondController = AnthemMenuController();
+      final controllerGroup = AnthemMenuControllerGroup([
+        firstController,
+        secondController,
+      ]);
+
+      await tester.pumpWidget(
+        _MenuTestApp(
+          child: Row(
+            children: [
+              Menu(
+                menuController: firstController,
+                menuControllerGroup: controllerGroup,
+                menuDef: MenuDef(
+                  children: [AnthemMenuItem(text: 'First item')],
+                ),
+                child: _TestButton(
+                  buttonKey: const ValueKey('first-anchor'),
+                  label: 'First',
+                  onTap: firstController.toggle,
+                ),
+              ),
+              Menu(
+                menuController: secondController,
+                menuControllerGroup: controllerGroup,
+                menuDef: MenuDef(
+                  children: [AnthemMenuItem(text: 'Second item')],
+                ),
+                child: _TestButton(
+                  buttonKey: const ValueKey('second-anchor'),
+                  label: 'Second',
+                  onTap: secondController.toggle,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      const outsidePosition = Offset(500, 400);
+      await mouse.addPointer(location: outsidePosition);
+      await tester.pump();
+
+      await mouse.moveTo(
+        tester.getCenter(find.byKey(const ValueKey('first-anchor'))),
+      );
+      await tester.pump();
+      expect(find.text('First item'), findsNothing);
+      expect(find.text('Second item'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('first-anchor')));
+      await tester.pump();
+      expect(find.text('First item'), findsOneWidget);
+
+      await mouse.moveTo(
+        tester.getCenter(find.byKey(const ValueKey('second-anchor'))),
+      );
+      await tester.pump();
+      expect(find.text('First item'), findsNothing);
+      expect(find.text('Second item'), findsOneWidget);
+
+      await mouse.moveTo(outsidePosition);
+      await tester.pump();
+      await mouse.moveTo(
+        tester.getCenter(find.byKey(const ValueKey('second-anchor'))),
+      );
+      await tester.pump();
+      expect(find.text('Second item'), findsOneWidget);
+
+      await tester.tapAt(outsidePosition);
+      await tester.pump();
+      expect(find.text('Second item'), findsNothing);
+
+      await mouse.moveTo(outsidePosition);
+      await tester.pump();
+      await mouse.moveTo(
+        tester.getCenter(find.byKey(const ValueKey('first-anchor'))),
+      );
+      await tester.pump();
+      expect(find.text('First item'), findsNothing);
+    },
+  );
+
+  testWidgets('hover switching closes the current submenu tree', (
+    tester,
+  ) async {
+    final firstController = AnthemMenuController();
+    final secondController = AnthemMenuController();
+    final controllerGroup = AnthemMenuControllerGroup([
+      firstController,
+      secondController,
+    ]);
+
+    await tester.pumpWidget(
+      _MenuTestApp(
+        child: Row(
+          children: [
+            Menu(
+              menuController: firstController,
+              menuControllerGroup: controllerGroup,
+              menuDef: MenuDef(
+                children: [
+                  AnthemMenuItem(
+                    text: 'More',
+                    submenu: MenuDef(
+                      children: [AnthemMenuItem(text: 'Nested item')],
+                    ),
+                  ),
+                ],
+              ),
+              child: _TestButton(
+                buttonKey: const ValueKey('first-anchor'),
+                label: 'First',
+                onTap: firstController.toggle,
+              ),
+            ),
+            Menu(
+              menuController: secondController,
+              menuControllerGroup: controllerGroup,
+              menuDef: MenuDef(children: [AnthemMenuItem(text: 'Second item')]),
+              child: _TestButton(
+                buttonKey: const ValueKey('second-anchor'),
+                label: 'Second',
+                onTap: secondController.toggle,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: const Offset(500, 400));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('first-anchor')));
+    await tester.pump();
+    await tester.tap(find.text('More'));
+    await tester.pump();
+    expect(find.text('Nested item'), findsOneWidget);
+
+    await mouse.moveTo(
+      tester.getCenter(find.byKey(const ValueKey('second-anchor'))),
+    );
+    await tester.pump();
+
+    expect(find.text('More'), findsNothing);
+    expect(find.text('Nested item'), findsNothing);
+    expect(find.text('Second item'), findsOneWidget);
+  });
+
+  testWidgets('hover switching cancels a pending submenu open', (tester) async {
+    final firstController = AnthemMenuController();
+    final secondController = AnthemMenuController();
+    final controllerGroup = AnthemMenuControllerGroup([
+      firstController,
+      secondController,
+    ]);
+
+    await tester.pumpWidget(
+      _MenuTestApp(
+        child: Row(
+          children: [
+            Menu(
+              menuController: firstController,
+              menuControllerGroup: controllerGroup,
+              menuDef: MenuDef(
+                children: [
+                  AnthemMenuItem(
+                    text: 'More',
+                    submenu: MenuDef(
+                      children: [AnthemMenuItem(text: 'Nested item')],
+                    ),
+                  ),
+                ],
+              ),
+              child: _TestButton(
+                buttonKey: const ValueKey('first-anchor'),
+                label: 'First',
+                onTap: firstController.toggle,
+              ),
+            ),
+            Menu(
+              menuController: secondController,
+              menuControllerGroup: controllerGroup,
+              menuDef: MenuDef(children: [AnthemMenuItem(text: 'Second item')]),
+              child: _TestButton(
+                buttonKey: const ValueKey('second-anchor'),
+                label: 'Second',
+                onTap: secondController.toggle,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: const Offset(500, 400));
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('first-anchor')));
+    await tester.pump();
+    await mouse.moveTo(tester.getCenter(find.text('More')));
+    await tester.pump();
+
+    await mouse.moveTo(
+      tester.getCenter(find.byKey(const ValueKey('second-anchor'))),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('More'), findsNothing);
+    expect(find.text('Nested item'), findsNothing);
+    expect(find.text('Second item'), findsOneWidget);
   });
 
   testWidgets(

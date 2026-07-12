@@ -28,6 +28,7 @@ import 'menu_renderer.dart';
 
 class Menu extends StatefulWidget {
   final AnthemMenuController menuController;
+  final AnthemMenuControllerGroup? menuControllerGroup;
   final MenuDef menuDef;
   final Widget? child;
   late final MenuAlignment menuAlignment;
@@ -37,6 +38,7 @@ class Menu extends StatefulWidget {
   Menu({
     super.key,
     required this.menuController,
+    this.menuControllerGroup,
     this.child,
     required this.menuDef,
     MenuAlignment? alignment,
@@ -64,9 +66,18 @@ class _MenuState extends State<Menu> {
     widget.menuController.close = screenOverlayController.clear;
     widget.menuController.getIsOpen = () => openMenuHandle != null;
 
-    return TapRegion(
+    final anchor = TapRegion(
       groupId: tapRegionGroupId,
       child: widget.child ?? const SizedBox(),
+    );
+
+    final menuControllerGroup = widget.menuControllerGroup;
+    if (menuControllerGroup == null) return anchor;
+
+    return MouseRegion(
+      onEnter: (_) =>
+          menuControllerGroup.handleMenuEnter(widget.menuController),
+      child: anchor,
     );
   }
 
@@ -132,5 +143,36 @@ class AnthemMenuController {
     } else {
       open(pos);
     }
+  }
+}
+
+/// Coordinates hover switching between a group of top-level menus.
+///
+/// Hovering a menu while another menu in the group is open closes the current
+/// menu tree and opens the hovered menu. Hovering does nothing while the entire
+/// group is closed.
+class AnthemMenuControllerGroup {
+  final List<AnthemMenuController> _menuControllers;
+
+  AnthemMenuControllerGroup(Iterable<AnthemMenuController> menuControllers)
+    : _menuControllers = List.unmodifiable(menuControllers);
+
+  void handleMenuEnter(AnthemMenuController hoveredMenuController) {
+    assert(_menuControllers.contains(hoveredMenuController));
+
+    if (hoveredMenuController.isOpen) return;
+
+    AnthemMenuController? openMenuController;
+    for (final menuController in _menuControllers) {
+      if (menuController.isOpen) {
+        openMenuController = menuController;
+        break;
+      }
+    }
+
+    if (openMenuController == null) return;
+
+    openMenuController.close();
+    hoveredMenuController.open();
   }
 }

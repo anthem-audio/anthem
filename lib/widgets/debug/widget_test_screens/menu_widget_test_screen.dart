@@ -31,7 +31,16 @@ class MenuWidgetTestScreen extends StatefulWidget {
 }
 
 class _MenuWidgetTestScreenState extends State<MenuWidgetTestScreen> {
-  final menuController = AnthemMenuController();
+  final fileMenuController = AnthemMenuController();
+  final editMenuController = AnthemMenuController();
+  final helpMenuController = AnthemMenuController();
+
+  late final menuControllerGroup = AnthemMenuControllerGroup([
+    fileMenuController,
+    editMenuController,
+    helpMenuController,
+  ]);
+
   bool menuOpened = false;
 
   @override
@@ -42,7 +51,7 @@ class _MenuWidgetTestScreenState extends State<MenuWidgetTestScreen> {
     menuOpened = true;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      menuController.open();
+      fileMenuController.open();
     });
   }
 
@@ -53,39 +62,75 @@ class _MenuWidgetTestScreenState extends State<MenuWidgetTestScreen> {
       spacing: 14,
       children: [
         Text(
-          'Popup menu',
+          'Top-level menu group',
           style: TextStyle(color: AnthemTheme.text.accent, fontSize: 12),
         ),
-        Menu(
-          menuController: menuController,
-          menuDef: MenuDef(
-            children: [
-              AnthemMenuItem(text: 'New project', shortcutLabel: 'Ctrl+N'),
-              AnthemMenuItem(text: 'Open project...', shortcutLabel: 'Ctrl+O'),
-              Separator(),
-              AnthemMenuItem(
-                text: 'Export',
-                submenu: MenuDef(
-                  children: [
-                    AnthemMenuItem(text: 'Audio file...'),
-                    AnthemMenuItem(text: 'Stems...'),
-                  ],
-                ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 2,
+          children: [
+            Menu(
+              menuController: fileMenuController,
+              menuControllerGroup: menuControllerGroup,
+              menuDef: MenuDef(
+                children: [
+                  AnthemMenuItem(text: 'New project', shortcutLabel: 'Ctrl+N'),
+                  AnthemMenuItem(
+                    text: 'Open project...',
+                    shortcutLabel: 'Ctrl+O',
+                  ),
+                  Separator(),
+                  AnthemMenuItem(
+                    text: 'Export',
+                    submenu: MenuDef(
+                      children: [
+                        AnthemMenuItem(text: 'Audio file...'),
+                        AnthemMenuItem(text: 'Stems...'),
+                      ],
+                    ),
+                  ),
+                  AnthemMenuItem(text: 'Unavailable action', disabled: true),
+                ],
               ),
-              AnthemMenuItem(text: 'Unavailable action', disabled: true),
-            ],
-          ),
-          child: Button(
-            width: 140,
-            height: 28,
-            text: 'Toggle menu',
-            showMenuIndicator: true,
-            onPress: menuController.toggle,
-          ),
+              child: Button(
+                width: 72,
+                height: 28,
+                text: 'File',
+                onPress: fileMenuController.toggle,
+              ),
+            ),
+            Menu(
+              menuController: editMenuController,
+              menuControllerGroup: menuControllerGroup,
+              menuDef: MenuDef(
+                children: [
+                  AnthemMenuItem(text: 'Undo', shortcutLabel: 'Ctrl+Z'),
+                  AnthemMenuItem(text: 'Redo', shortcutLabel: 'Ctrl+Shift+Z'),
+                ],
+              ),
+              child: Button(
+                width: 72,
+                height: 28,
+                text: 'Edit',
+                onPress: editMenuController.toggle,
+              ),
+            ),
+            Menu(
+              menuController: helpMenuController,
+              menuControllerGroup: menuControllerGroup,
+              menuDef: MenuDef(children: [AnthemMenuItem(text: 'About...')]),
+              child: Button(
+                width: 72,
+                height: 28,
+                text: 'Help',
+                onPress: helpMenuController.toggle,
+              ),
+            ),
+          ],
         ),
         Text(
-          'Click elsewhere to dismiss the menu and activate the control '
-          'under the same click.',
+          'Hovering File, Edit, or Help switches menus while one is open. '
+          'Hovering does nothing while the group is closed.',
           style: TextStyle(color: AnthemTheme.text.main, fontSize: 12),
         ),
       ],
