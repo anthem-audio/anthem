@@ -23,7 +23,7 @@
   </description>
   <launchable type="desktop-id">io.github.anthem_audio.Anthem.desktop</launchable>
   <releases>
-    <release version="0.0.0-prealpha.1" date="2026-06-23"/>
+    <release version="0.0.0-prealpha.2" date="2026-06-23"/>
   </releases>
   <content_rating type="oars-1.1"/>
 </component>

@@ -41,7 +41,7 @@ import 'shared/hydratable.dart';
 
 part 'project.g.dart';
 
-const String currentProjectFileSoftwareVersion = '0.0.0-prealpha.1';
+const String currentProjectFileSoftwareVersion = '0.0.0-prealpha.2';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 

@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.23)
 
-set(ANTHEM_VERSION "0.0.0-prealpha.1")
+set(ANTHEM_VERSION "0.0.0-prealpha.2")
 set(ANTHEM_VERSION_CORE "0.0.0")
 
 project(AnthemEngine
