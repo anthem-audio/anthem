@@ -136,7 +136,7 @@ mixin _PianoRollShortcutsMixin on _PianoRollController {
     });
   }
 
-  void onShortcut(LogicalKeySet shortcut) {
-    shortcutManager.handleShortcut(shortcut);
+  bool onShortcut(LogicalKeySet shortcut) {
+    return shortcutManager.handleShortcut(shortcut);
   }
 }

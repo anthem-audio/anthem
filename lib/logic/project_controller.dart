@@ -81,12 +81,13 @@ class ProjectController {
     project.sequence.activeTransportSequenceID = command.arrangementID;
   }
 
-  void onShortcut(LogicalKeySet shortcut) {
+  bool onShortcut(LogicalKeySet shortcut) {
     // Undo
     if (shortcut.matches(
       LogicalKeySet(primaryModifierKey, LogicalKeyboardKey.keyZ),
     )) {
       undo();
+      return true;
     }
     // Redo
     else if (shortcut.matches(
@@ -100,11 +101,15 @@ class ProjectController {
           ),
         )) {
       redo();
+      return true;
     }
     // Play / stop
     else if (shortcut.matches(LogicalKeySet(LogicalKeyboardKey.space))) {
       togglePlayback();
+      return true;
     }
+
+    return false;
   }
 
   void togglePlayback() {

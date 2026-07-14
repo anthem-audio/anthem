@@ -139,16 +139,20 @@ class _ShortcutProviderState extends State<ShortcutProvider> {
     if (shift && keyDown) keyboardModifiers.setShift(true);
     if (shift && keyUp) keyboardModifiers.setShift(false);
 
+    var handled = false;
+
     if (keyDown || keyRepeat) {
-      controller.handleKeyDown(
+      handled = controller.handleKeyDown(
         e,
         dispatchRaw: shouldDispatchRaw,
         dispatchShortcuts: shouldDispatchShortcuts,
       );
     }
-    if (keyUp) controller.handleKeyUp(e, dispatchRaw: shouldDispatchRaw);
+    if (keyUp) {
+      handled = controller.handleKeyUp(e, dispatchRaw: shouldDispatchRaw);
+    }
 
-    return false;
+    return handled;
   }
 
   bool _isEditableTextFocused() {

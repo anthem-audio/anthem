@@ -23,7 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 typedef RawKeyHandler = bool Function(KeyEvent keyEvent);
-typedef ShortcutHandler = void Function(LogicalKeySet shortcut);
+typedef ShortcutHandler = bool Function(LogicalKeySet shortcut);
 
 bool isControlModifierKey(LogicalKeyboardKey key) {
   return key == LogicalKeyboardKey.control ||
@@ -140,39 +140,47 @@ class ShortcutProviderController {
 
   /// The associated [ShortcutProvider] will call this function when it
   /// receives a key down event.
-  void handleKeyDown(
+  bool handleKeyDown(
     KeyEvent event, {
     bool dispatchRaw = true,
     bool dispatchShortcuts = true,
   }) {
     final handled = dispatchRaw ? _dispatchRawHandlers(event) : false;
 
-    if (handled) return;
+    if (handled) return true;
 
     pressedKeys.add(event.logicalKey);
 
-    if (!dispatchShortcuts) return;
+    if (!dispatchShortcuts) return false;
 
     final shortcut = LogicalKeySet.fromSet(pressedKeys);
+    var shortcutHandled = false;
 
     for (final handler in globalShortcutHandlers.values) {
-      handler(shortcut);
+      if (handler(shortcut)) {
+        shortcutHandled = true;
+      }
     }
 
     final activeConsumer = this.activeConsumer;
-    if (activeConsumer == null) return;
+    if (activeConsumer == null) return shortcutHandled;
 
-    shortcutHandlers[activeConsumer]?.call(shortcut);
+    if (shortcutHandlers[activeConsumer]?.call(shortcut) ?? false) {
+      shortcutHandled = true;
+    }
+
+    return shortcutHandled;
   }
 
   /// The associated [ShortcutProvider] will call this function when it receives
   /// a key up event.
-  void handleKeyUp(KeyEvent event, {bool dispatchRaw = true}) {
+  bool handleKeyUp(KeyEvent event, {bool dispatchRaw = true}) {
     final handled = dispatchRaw ? _dispatchRawHandlers(event) : false;
 
-    if (handled) return;
+    if (handled) return true;
 
     pressedKeys.remove(event.logicalKey);
+    return false;
   }
 
   /// Marks the given consumer as active. This consumer will receive shortcut
@@ -202,8 +210,14 @@ class ShortcutBehaviors {
     _behaviors[_getShortcutID(shortcut)] = behavior;
   }
 
-  void handleShortcut(LogicalKeySet shortcut) {
-    _behaviors[_getShortcutID(shortcut)]?.call();
+  bool handleShortcut(LogicalKeySet shortcut) {
+    final behavior = _behaviors[_getShortcutID(shortcut)];
+    if (behavior == null) {
+      return false;
+    }
+
+    behavior();
+    return true;
   }
 
   String _getShortcutID(LogicalKeySet shortcut) {

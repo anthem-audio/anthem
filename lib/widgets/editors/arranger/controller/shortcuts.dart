@@ -133,8 +133,8 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
     });
   }
 
-  void onShortcut(LogicalKeySet shortcut) {
-    shortcutManager.handleShortcut(shortcut);
+  bool onShortcut(LogicalKeySet shortcut) {
+    return shortcutManager.handleShortcut(shortcut);
   }
 
   bool _isArrangerPanelActive() {

@@ -23,6 +23,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 KeyDownEvent _keyDown({
   required PhysicalKeyboardKey physicalKey,
@@ -54,18 +55,24 @@ void main() {
       controller = ShortcutProviderController();
     });
 
-    test('dispatches shortcuts to global and active handlers by default', () {
+    test('reports handled and dispatches to global and active handlers', () {
       final globalShortcuts = <LogicalKeySet>[];
       final activeShortcuts = <LogicalKeySet>[];
 
       controller.registerShortcutHandler(
         id: 'global',
         global: true,
-        handler: globalShortcuts.add,
+        handler: (shortcut) {
+          globalShortcuts.add(shortcut);
+          return true;
+        },
       );
       controller.registerShortcutHandler(
         id: 'active',
-        handler: activeShortcuts.add,
+        handler: (shortcut) {
+          activeShortcuts.add(shortcut);
+          return false;
+        },
       );
       controller.setActiveConsumer('active');
 
@@ -75,11 +82,14 @@ void main() {
           logicalKey: LogicalKeyboardKey.controlLeft,
         ),
       );
-      controller.handleKeyDown(
-        _keyDown(
-          physicalKey: PhysicalKeyboardKey.keyA,
-          logicalKey: LogicalKeyboardKey.keyA,
+      expect(
+        controller.handleKeyDown(
+          _keyDown(
+            physicalKey: PhysicalKeyboardKey.keyA,
+            logicalKey: LogicalKeyboardKey.keyA,
+          ),
         ),
+        isTrue,
       );
 
       expect(globalShortcuts, hasLength(2));
@@ -109,16 +119,20 @@ void main() {
           id: 'active',
           handler: (_) {
             shortcutCallCount++;
+            return true;
           },
         );
         controller.setActiveConsumer('active');
 
-        controller.handleKeyDown(
-          _keyDown(
-            physicalKey: PhysicalKeyboardKey.keyB,
-            logicalKey: LogicalKeyboardKey.keyB,
+        expect(
+          controller.handleKeyDown(
+            _keyDown(
+              physicalKey: PhysicalKeyboardKey.keyB,
+              logicalKey: LogicalKeyboardKey.keyB,
+            ),
+            dispatchShortcuts: false,
           ),
-          dispatchShortcuts: false,
+          isFalse,
         );
 
         expect(rawCallCount, equals(1));
@@ -166,12 +180,15 @@ void main() {
       () {
         controller.registerRawKeyHandler(id: 'raw', handler: (_) => true);
 
-        controller.handleKeyDown(
-          _keyDown(
-            physicalKey: PhysicalKeyboardKey.keyA,
-            logicalKey: LogicalKeyboardKey.keyA,
+        expect(
+          controller.handleKeyDown(
+            _keyDown(
+              physicalKey: PhysicalKeyboardKey.keyA,
+              logicalKey: LogicalKeyboardKey.keyA,
+            ),
+            dispatchShortcuts: false,
           ),
-          dispatchShortcuts: false,
+          isTrue,
         );
 
         expect(
@@ -180,6 +197,56 @@ void main() {
         );
       },
     );
+  });
+
+  group('ShortcutProvider', () {
+    tearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('reports matched shortcuts to Flutter as handled', (
+      tester,
+    ) async {
+      const childKey = ValueKey('shortcut-provider-child');
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider(
+          create: (_) => KeyboardModifiers(),
+          child: const ShortcutProvider(child: SizedBox(key: childKey)),
+        ),
+      );
+
+      final childContext = tester.element(find.byKey(childKey));
+      final controller = Provider.of<ShortcutProviderController>(
+        childContext,
+        listen: false,
+      );
+      final shortcutManager = ShortcutBehaviors();
+      var callCount = 0;
+      shortcutManager.register(
+        LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyC),
+        () {
+          callCount++;
+        },
+      );
+      controller.registerShortcutHandler(
+        id: 'active',
+        handler: shortcutManager.handleShortcut,
+      );
+      controller.setActiveConsumer('active');
+
+      await tester.sendKeyDownEvent(
+        LogicalKeyboardKey.metaLeft,
+        platform: 'macos',
+      );
+      final handled = await tester.sendKeyDownEvent(
+        LogicalKeyboardKey.keyC,
+        platform: 'macos',
+      );
+
+      expect(handled, isTrue);
+      expect(callCount, equals(1));
+    });
   });
 
   group('primaryModifierKey', () {
@@ -236,11 +303,23 @@ void main() {
         },
       );
 
-      shortcutManager.handleShortcut(
-        LogicalKeySet(LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyA),
+      expect(
+        shortcutManager.handleShortcut(
+          LogicalKeySet(LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyA),
+        ),
+        isTrue,
       );
-      shortcutManager.handleShortcut(
-        LogicalKeySet(LogicalKeyboardKey.metaRight, LogicalKeyboardKey.keyA),
+      expect(
+        shortcutManager.handleShortcut(
+          LogicalKeySet(LogicalKeyboardKey.metaRight, LogicalKeyboardKey.keyA),
+        ),
+        isTrue,
+      );
+      expect(
+        shortcutManager.handleShortcut(
+          LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyB),
+        ),
+        isFalse,
       );
 
       expect(callCount, equals(2));
