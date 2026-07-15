@@ -98,3 +98,19 @@ final class ProjectFileMigrationException extends ProjectFileLoadException {
         '$cause';
   }
 }
+
+/// The project cannot be migrated because it contains more than one
+/// arrangement.
+final class MultipleArrangementsProjectFileException implements Exception {
+  const MultipleArrangementsProjectFileException({
+    required this.arrangementCount,
+  });
+
+  final int arrangementCount;
+
+  @override
+  String toString() {
+    return 'MultipleArrangementsProjectFileException: $arrangementCount '
+        'arrangements';
+  }
+}

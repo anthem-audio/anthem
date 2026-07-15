@@ -46,8 +46,6 @@ void main() {
   late MockProjectModel project;
   late SequencerModel sequence;
   late AnthemObservableMap<Id, PatternModel> patterns;
-  late AnthemObservableMap<Id, ArrangementModel> arrangements;
-  late AnthemObservableList<Id> arrangementOrder;
 
   PatternModel addPatternToProject(String name) {
     final pattern = PatternModel(idAllocator: _testIdAllocator(), name: name);
@@ -60,8 +58,7 @@ void main() {
       idAllocator: _testIdAllocator(),
       name: name,
     );
-    arrangements[arrangement.id] = arrangement;
-    arrangementOrder.add(arrangement.id);
+    sequence.arrangement = arrangement;
     return arrangement;
   }
 
@@ -80,12 +77,9 @@ void main() {
   setUp(() {
     sequence = SequencerModel.uninitialized();
     patterns = AnthemObservableMap();
-    arrangements = AnthemObservableMap();
-    arrangementOrder = AnthemObservableList();
 
     sequence.patterns = patterns;
-    sequence.arrangements = arrangements;
-    sequence.arrangementOrder = arrangementOrder;
+    addArrangementToProject('Arrangement');
 
     project = MockProjectModel(sequence);
   });
@@ -126,7 +120,6 @@ void main() {
       final newChange = createChange(offset: 48, numerator: 3, denominator: 4);
       final command = AddTimeSignatureChangeCommand(
         timelineKind: TimelineKind.arrangement,
-        arrangementID: arrangement.id,
         change: newChange,
       );
 
@@ -148,7 +141,6 @@ void main() {
       final command = RemoveTimeSignatureChangeCommand(
         timelineKind: TimelineKind.arrangement,
         project: project,
-        arrangementID: arrangement.id,
         changeID: first.id,
       );
 
@@ -170,7 +162,6 @@ void main() {
       final command = MoveTimeSignatureChangeCommand(
         project: project,
         timelineKind: TimelineKind.arrangement,
-        arrangementID: arrangement.id,
         changeID: first.id,
         newOffset: 120,
       );
@@ -191,7 +182,7 @@ void main() {
 
       final setNumerator = SetTimeSignatureNumeratorCommand(
         project: project,
-        arrangementID: arrangement.id,
+        timelineKind: TimelineKind.arrangement,
         changeID: change.id,
         numerator: 7,
       );
@@ -202,7 +193,7 @@ void main() {
 
       final setDenominator = SetTimeSignatureDenominatorCommand(
         project: project,
-        arrangementID: arrangement.id,
+        timelineKind: TimelineKind.arrangement,
         changeID: change.id,
         denominator: 8,
       );

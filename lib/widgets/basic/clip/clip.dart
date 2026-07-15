@@ -29,7 +29,6 @@ import 'package:provider/provider.dart';
 
 class Clip extends StatelessWidget {
   final Id clipId;
-  final Id arrangementId;
   final double ticksPerPixel;
   final bool selected;
   final bool hasResizeHandles;
@@ -39,7 +38,6 @@ class Clip extends StatelessWidget {
   const Clip({
     super.key,
     required this.clipId,
-    required this.arrangementId,
     required this.ticksPerPixel,
     this.selected = false,
     this.hasResizeHandles = true,
@@ -49,8 +47,7 @@ class Clip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final projectModel = Provider.of<ProjectModel>(context);
-    final clipModel =
-        projectModel.sequence.arrangements[arrangementId]!.clips[clipId]!;
+    final clipModel = projectModel.sequence.arrangement.clips[clipId]!;
     final patternModel = projectModel.sequence.patterns[clipModel.patternId]!;
     final color = projectModel.tracks[clipModel.trackId]!.color;
 

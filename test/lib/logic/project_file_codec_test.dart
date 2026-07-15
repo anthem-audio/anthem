@@ -41,6 +41,21 @@ void main() {
     return output.takeBytes();
   }
 
+  Map<String, dynamic> createPrealpha1ProjectJson(ProjectModel project) {
+    final projectJson = project.toJson()
+      ..['savedInSoftwareVersion'] = '0.0.0-prealpha.1';
+    final sequence = projectJson['sequence'] as Map<String, dynamic>;
+    final arrangement = sequence.remove('arrangement') as Map<String, dynamic>;
+    final arrangementId = arrangement['id'] as int;
+
+    sequence['arrangements'] = <String, dynamic>{
+      arrangementId.toString(): arrangement,
+    };
+    sequence['arrangementOrder'] = <int>[arrangementId];
+
+    return projectJson;
+  }
+
   group('project file codec', () {
     test('encodes and decodes a project', () async {
       final project = ProjectModel.create();
@@ -80,13 +95,18 @@ void main() {
       final project = ProjectModel.create();
       addTearDown(project.dispose);
 
-      final oldProjectJson = project.toJson()
-        ..['savedInSoftwareVersion'] = '0.0.0-prealpha.1';
+      final oldProjectJson = createPrealpha1ProjectJson(project);
       final bytes = await encodeProjectJson(oldProjectJson);
-      final expectedJson = Map<String, dynamic>.of(oldProjectJson)
-        ..['savedInSoftwareVersion'] = currentProjectFileSoftwareVersion;
+      final expectedJson = project.toJson();
 
-      expect(await decodeProjectFileBytes(bytes), equals(expectedJson));
+      final decodedJson = await decodeProjectFileBytes(bytes);
+      expect(decodedJson, equals(expectedJson));
+      final decodedProject = ProjectModel.fromJson(decodedJson);
+      addTearDown(decodedProject.dispose);
+      expect(
+        decodedProject.sequence.arrangement.id,
+        project.sequence.arrangement.id,
+      );
 
       final tempDir = await Directory.systemTemp.createTemp(
         'anthem_project_file_migration_test_',

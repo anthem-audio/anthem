@@ -91,14 +91,14 @@ void SequenceCompiler::compilePattern(EntityId patternId,
   store.addOrUpdateTrackInSequence(patternId, sequencer_track_ids::noTrack, noTrackEvents);
 }
 
-void SequenceCompiler::compileArrangement(EntityId arrangementId) {
+void SequenceCompiler::compileArrangement() {
   auto& engine = Engine::getInstance();
 
-  auto arrangementIter = engine.project->sequence()->arrangements()->find(arrangementId);
-  if (arrangementIter == engine.project->sequence()->arrangements()->end()) {
+  auto arrangement = engine.project->sequence()->arrangement();
+  if (arrangement == nullptr) {
     return;
   }
-  auto arrangement = arrangementIter->second;
+  auto arrangementId = arrangement->id();
 
   // This will leak memory if it's not assigned somewhere or cleaned up here
   SequenceEventListCollection newSequence;
@@ -107,7 +107,7 @@ void SequenceCompiler::compileArrangement(EntityId arrangementId) {
   for (EntityId& trackId : *engine.project->trackOrder()) {
     auto* newChannelEvents = new SequenceEventList();
 
-    getTrackNoteEventsForArrangement(trackId, arrangementId, newChannelEvents->events);
+    getTrackNoteEventsForArrangement(trackId, newChannelEvents->events);
     sortEventList(newChannelEvents->events);
 
     newSequence.setTrack(trackId, newChannelEvents);
@@ -118,16 +118,22 @@ void SequenceCompiler::compileArrangement(EntityId arrangementId) {
   store.addOrUpdateSequence(arrangementId, newSequence);
 }
 
-void SequenceCompiler::compileArrangement(EntityId arrangementId,
-    std::vector<EntityId>& trackIdsToRebuild,
+void SequenceCompiler::compileArrangement(std::vector<EntityId>& trackIdsToRebuild,
     std::vector<std::tuple<double, double>>& invalidationRanges) {
-  auto& store = *Engine::getInstance().sequenceStore;
+  auto& engine = Engine::getInstance();
+  auto arrangement = engine.project->sequence()->arrangement();
+  if (arrangement == nullptr) {
+    return;
+  }
+  auto arrangementId = arrangement->id();
+
+  auto& store = *engine.sequenceStore;
 
   for (auto& trackId : trackIdsToRebuild) {
     SequenceEventList newChannelEvents;
     newChannelEvents.invalidationRanges = invalidationRanges;
 
-    getTrackNoteEventsForArrangement(trackId, arrangementId, newChannelEvents.events);
+    getTrackNoteEventsForArrangement(trackId, newChannelEvents.events);
     sortEventList(newChannelEvents.events);
 
     store.addOrUpdateTrackInSequence(arrangementId, trackId, newChannelEvents);
@@ -141,15 +147,13 @@ void SequenceCompiler::cleanUpTrack(EntityId trackId) {
 }
 
 void SequenceCompiler::getTrackNoteEventsForArrangement(
-    EntityId trackId, EntityId arrangementId, std::vector<SequenceEvent>& events) {
+    EntityId trackId, std::vector<SequenceEvent>& events) {
   auto& engine = Engine::getInstance();
 
-  auto arrangementIter = engine.project->sequence()->arrangements()->find(arrangementId);
-  if (arrangementIter == engine.project->sequence()->arrangements()->end()) {
+  auto arrangement = engine.project->sequence()->arrangement();
+  if (arrangement == nullptr) {
     return;
   }
-
-  auto& arrangement = arrangementIter->second;
 
   auto& clips = arrangement->clips();
 

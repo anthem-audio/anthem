@@ -27,23 +27,39 @@ import 'package:anthem/model/shared/time_signature.dart';
 
 /// Identifies which shared timeline target is being edited.
 ///
-/// This first scaffold keeps the target passive. Later migration steps can add
-/// model lookup and mutation helpers once the controller owns live behavior.
+/// Arrangement targets derive their sequence ID from the project's singular
+/// arrangement. Pattern targets retain the selected pattern ID, which may be
+/// null while no pattern is open.
 class TimelineInteractionTarget {
   final TimelineKind kind;
-  final Id sequenceId;
-  final Id? arrangementID;
   final Id? patternID;
 
-  const TimelineInteractionTarget._({
-    required this.kind,
-    required this.sequenceId,
-    required this.arrangementID,
-    required this.patternID,
-  });
+  const TimelineInteractionTarget.arrangement()
+    : kind = TimelineKind.arrangement,
+      patternID = null;
+
+  const TimelineInteractionTarget.pattern(this.patternID)
+    : kind = TimelineKind.pattern;
 
   bool get isArrangement => kind == TimelineKind.arrangement;
   bool get isPattern => kind == TimelineKind.pattern;
+
+  @override
+  bool operator ==(Object other) {
+    return other is TimelineInteractionTarget &&
+        kind == other.kind &&
+        patternID == other.patternID;
+  }
+
+  @override
+  int get hashCode => Object.hash(kind, patternID);
+
+  Id? sequenceId(ProjectModel project) {
+    return switch (kind) {
+      TimelineKind.pattern => patternID,
+      TimelineKind.arrangement => project.sequence.arrangement.id,
+    };
+  }
 
   PatternModel? pattern(ProjectModel project) {
     final patternID = this.patternID;
@@ -55,12 +71,9 @@ class TimelineInteractionTarget {
   }
 
   ArrangementModel? arrangement(ProjectModel project) {
-    final arrangementID = this.arrangementID;
-    if (arrangementID == null) {
-      return null;
-    }
-
-    return project.sequence.arrangements[arrangementID];
+    return kind == TimelineKind.arrangement
+        ? project.sequence.arrangement
+        : null;
   }
 
   List<TimeSignatureChangeModel> timeSignatureChanges(ProjectModel project) {
@@ -143,35 +156,5 @@ class TimelineInteractionTarget {
     if (end != null) {
       existingLoopPoints.end = end;
     }
-  }
-
-  static TimelineInteractionTarget? tryCreate({
-    required Id? arrangementID,
-    required Id? patternID,
-  }) {
-    assert(
-      arrangementID == null || patternID == null,
-      'TimelineInteractionTarget can target at most one sequence at a time.',
-    );
-
-    if (patternID != null) {
-      return TimelineInteractionTarget._(
-        kind: TimelineKind.pattern,
-        sequenceId: patternID,
-        arrangementID: null,
-        patternID: patternID,
-      );
-    }
-
-    if (arrangementID != null) {
-      return TimelineInteractionTarget._(
-        kind: TimelineKind.arrangement,
-        sequenceId: arrangementID,
-        arrangementID: arrangementID,
-        patternID: null,
-      );
-    }
-
-    return null;
   }
 }

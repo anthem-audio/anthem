@@ -167,67 +167,64 @@ mixin _PatternCompilerMixin on _PatternModel {
     final engine = project.engine;
     final patternInvalidationSize = _patternInvalidationRangeCollector.size;
     final patternInvalidationData = _patternInvalidationRangeCollector.rawData;
+    final arrangement = project.sequence.arrangement;
 
-    for (final arrangement in project.sequence.arrangements.values) {
-      if (arrangement.getPatternClipReferenceCount(id) == 0) {
+    if (arrangement.getPatternClipReferenceCount(id) == 0) {
+      return;
+    }
+
+    _arrangementInvalidationRangeCollector.reset();
+    final tracksToCompile = <Id>{};
+
+    for (final clip in arrangement.clips.values) {
+      if (clip.patternId != id) {
         continue;
       }
 
-      _arrangementInvalidationRangeCollector.reset();
-      final tracksToCompile = <Id>{};
+      final clipTimeViewStart = clip.timeView?.start ?? 0;
+      final clipTimeViewEnd = clip.timeView?.end ?? _unboundedClipEnd;
 
-      for (final clip in arrangement.clips.values) {
-        if (clip.patternId != id) {
+      if (_automationChanged) {
+        tracksToCompile.add(clip.trackId);
+      }
+
+      for (var i = 0; i < patternInvalidationSize; i++) {
+        final patternInvalidationRangeStart = patternInvalidationData[i * 2];
+        final patternInvalidationRangeEnd = patternInvalidationData[i * 2 + 1];
+
+        final adjustedPatternRangeStart =
+            max(clipTimeViewStart, patternInvalidationRangeStart) -
+            clipTimeViewStart;
+        final adjustedPatternRangeEnd =
+            min(clipTimeViewEnd, patternInvalidationRangeEnd) -
+            clipTimeViewStart;
+
+        if (adjustedPatternRangeStart >= adjustedPatternRangeEnd) {
           continue;
         }
 
-        final clipTimeViewStart = clip.timeView?.start ?? 0;
-        final clipTimeViewEnd = clip.timeView?.end ?? _unboundedClipEnd;
+        tracksToCompile.add(clip.trackId);
 
-        if (_automationChanged) {
-          tracksToCompile.add(clip.trackId);
-        }
+        final arrangementRangeStart = adjustedPatternRangeStart + clip.offset;
+        final arrangementRangeEnd = adjustedPatternRangeEnd + clip.offset;
 
-        for (var i = 0; i < patternInvalidationSize; i++) {
-          final patternInvalidationRangeStart = patternInvalidationData[i * 2];
-          final patternInvalidationRangeEnd =
-              patternInvalidationData[i * 2 + 1];
-
-          final adjustedPatternRangeStart =
-              max(clipTimeViewStart, patternInvalidationRangeStart) -
-              clipTimeViewStart;
-          final adjustedPatternRangeEnd =
-              min(clipTimeViewEnd, patternInvalidationRangeEnd) -
-              clipTimeViewStart;
-
-          if (adjustedPatternRangeStart >= adjustedPatternRangeEnd) {
-            continue;
-          }
-
-          tracksToCompile.add(clip.trackId);
-
-          final arrangementRangeStart = adjustedPatternRangeStart + clip.offset;
-          final arrangementRangeEnd = adjustedPatternRangeEnd + clip.offset;
-
-          _arrangementInvalidationRangeCollector.addRange(
-            arrangementRangeStart,
-            arrangementRangeEnd,
-          );
-        }
+        _arrangementInvalidationRangeCollector.addRange(
+          arrangementRangeStart,
+          arrangementRangeEnd,
+        );
       }
-
-      if (tracksToCompile.isEmpty) {
-        continue;
-      }
-
-      engine.sequencerApi.compileArrangement(
-        arrangement.id,
-        tracksToRebuild: tracksToCompile.toList(),
-        invalidationRanges: _arrangementInvalidationRangeCollector.size > 0
-            ? _arrangementInvalidationRangeCollector.getRanges()
-            : null,
-      );
     }
+
+    if (tracksToCompile.isEmpty) {
+      return;
+    }
+
+    engine.sequencerApi.compileArrangement(
+      tracksToRebuild: tracksToCompile.toList(),
+      invalidationRanges: _arrangementInvalidationRangeCollector.size > 0
+          ? _arrangementInvalidationRangeCollector.getRanges()
+          : null,
+    );
 
     _arrangementInvalidationRangeCollector.reset();
   }

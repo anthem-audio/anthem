@@ -13,8 +13,7 @@ void main() {
       required Id trackId,
       required Rect rect,
     }) {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = ClipModel(
         idAllocator: testIdAllocator(),
         patternId: getId(),
@@ -43,8 +42,7 @@ void main() {
       required Rect rect,
       TimeViewModel? timeView,
     }) {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = ClipModel(
         idAllocator: fixture.project.idAllocator,
         patternId: pattern.id,
@@ -403,10 +401,7 @@ void main() {
     });
 
     test('shortcut bar nudge uses the active time signature', () {
-      final arrangement = fixture
-          .project
-          .sequence
-          .arrangements[fixture.project.sequence.activeArrangementID]!;
+      final arrangement = fixture.project.sequence.arrangement;
       arrangement.timeSignatureChanges.add(
         TimeSignatureChangeModel(
           idAllocator: testIdAllocator(),
@@ -444,10 +439,7 @@ void main() {
     test(
       'shortcut bar nudge left uses the previous time signature at a change',
       () {
-        final arrangement = fixture
-            .project
-            .sequence
-            .arrangements[fixture.project.sequence.activeArrangementID]!;
+        final arrangement = fixture.project.sequence.arrangement;
         arrangement.timeSignatureChanges.add(
           TimeSignatureChangeModel(
             idAllocator: testIdAllocator(),
@@ -686,6 +678,6 @@ void main() {
 
 extension on ArrangerStateMachineTestFixture {
   ArrangementModel get arrangement {
-    return project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    return project.sequence.arrangement;
   }
 }

@@ -122,7 +122,7 @@ abstract class _ArrangerViewModel with Store {
 
     return _timeRangeViewport = TimeRangeViewport(
       target: timeRange,
-      contentSource: const TimeRangeContentSource.activeArrangement(),
+      contentSource: const TimeRangeContentSource.arrangement(),
     );
   }
 

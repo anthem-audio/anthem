@@ -29,6 +29,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 import 'package:anthem/widgets/editors/shared/timeline/controller/state_machine/timeline_state_machine.dart';
 import 'package:anthem/widgets/editors/shared/timeline/controller/timeline_controller.dart';
+import 'package:anthem/widgets/editors/shared/timeline/controller/timeline_interaction_target.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,8 +42,7 @@ class _RecordingSequencerApi implements SequencerApi {
   void cleanUpTrack(Id trackId) {}
 
   @override
-  void compileArrangement(
-    Id arrangementId, {
+  void compileArrangement({
     List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
@@ -125,8 +125,7 @@ class _TimelineControllerTestFixture {
 
     final controller = TimelineController(
       project: project,
-      arrangementID: null,
-      patternID: pattern.id,
+      interactionTarget: TimelineInteractionTarget.pattern(pattern.id),
     );
 
     return _TimelineControllerTestFixture._(

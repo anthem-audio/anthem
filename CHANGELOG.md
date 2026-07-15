@@ -4,6 +4,7 @@
 
 - Improved track header design
 - Added user-facing errors when a project file fails to load
+- Removed support for multiple arrangements per project
 
 # 0.0.0-prealpha.1
 

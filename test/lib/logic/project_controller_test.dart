@@ -78,55 +78,7 @@ void main() {
     project.dispose();
   });
 
-  group('addArrangement()', () {
-    test('adds a uniquely named arrangement and activates it', () {
-      final originalArrangementIds = project.sequence.arrangementOrder.toList();
-
-      controller.addArrangement();
-
-      expect(project.sequence.arrangementOrder, hasLength(2));
-
-      final newArrangementId = project.sequence.arrangementOrder.last;
-      final newArrangement = project.sequence.arrangements[newArrangementId];
-
-      expect(newArrangementId, isNot(originalArrangementIds.single));
-      expect(newArrangement, isNotNull);
-      expect(newArrangement!.name, equals('Arrangement 2'));
-      expect(project.sequence.activeArrangementID, equals(newArrangementId));
-      expect(
-        project.sequence.activeTransportSequenceID,
-        equals(newArrangementId),
-      );
-    });
-
-    test('uses provided arrangement name', () {
-      controller.addArrangement('Verse');
-
-      final arrangementId = project.sequence.arrangementOrder.last;
-      expect(
-        project.sequence.arrangements[arrangementId]!.name,
-        equals('Verse'),
-      );
-    });
-  });
-
   group('editor and transport selection', () {
-    test(
-      'setActiveArrangement updates active arrangement and transport id',
-      () {
-        controller.addArrangement('Verse');
-        final arrangementId = project.sequence.arrangementOrder.last;
-
-        controller.setActiveArrangement(arrangementId);
-
-        expect(project.sequence.activeArrangementID, equals(arrangementId));
-        expect(
-          project.sequence.activeTransportSequenceID,
-          equals(arrangementId),
-        );
-      },
-    );
-
     test('setActivePattern updates active pattern and transport id', () {
       final pattern = PatternModel(
         idAllocator: ProjectEntityIdAllocator.test(project.allocateId),

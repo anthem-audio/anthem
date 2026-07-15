@@ -378,9 +378,7 @@ void main() {
           engine: runningEngine,
         );
 
-        final arrangement = project
-            .sequence
-            .arrangements[project.sequence.activeArrangementID]!;
+        final arrangement = project.sequence.arrangement;
 
         final oldTrackId = getId();
         final newTrackId = getId();
@@ -402,7 +400,6 @@ void main() {
 
         final verification = verify(
           sequencerApi.compileArrangement(
-            arrangement.id,
             tracksToRebuild: captureAnyNamed('tracksToRebuild'),
             invalidationRanges: captureAnyNamed('invalidationRanges'),
           ),
@@ -429,9 +426,7 @@ void main() {
           engine: runningEngine,
         );
 
-        final arrangement = project
-            .sequence
-            .arrangements[project.sequence.activeArrangementID]!;
+        final arrangement = project.sequence.arrangement;
 
         final clipId = getId();
         final oldTrackId = getId();
@@ -460,7 +455,6 @@ void main() {
 
         final verification = verify(
           sequencerApi.compileArrangement(
-            arrangement.id,
             tracksToRebuild: captureAnyNamed('tracksToRebuild'),
             invalidationRanges: captureAnyNamed('invalidationRanges'),
           ),

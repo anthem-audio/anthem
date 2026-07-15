@@ -26,8 +26,6 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 
-typedef _ClipRemoveTarget = ({Id arrangementId, Id clipId});
-
 /// Project-scoped controller for track-specific business logic.
 ///
 /// This is owned by [ServiceRegistry] and created 1:1 with a [ProjectModel],
@@ -430,15 +428,10 @@ class TrackController {
   }
 
   ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds}) deleteClips({
-    required Id arrangementId,
     required Iterable<Id> clipIds,
   }) {
-    final clipDeleteTargets = clipIds.map(
-      (clipId) => (arrangementId: arrangementId, clipId: clipId),
-    );
-
     final clipAndPatternDeletionPlan = _buildClipAndPatternDeletionPlan(
-      clipDeleteTargets,
+      clipIds,
     );
 
     if (clipAndPatternDeletionPlan.clipsToDelete.isEmpty) {
@@ -450,9 +443,7 @@ class TrackController {
     project.commitUndoGroup();
 
     return (
-      deletedClipIds: clipAndPatternDeletionPlan.clipsToDelete
-          .map((clip) => clip.clipId)
-          .toSet(),
+      deletedClipIds: clipAndPatternDeletionPlan.clipsToDelete.toSet(),
       deletedPatternIds: clipAndPatternDeletionPlan.patternIdsToDelete.toSet(),
     );
   }
@@ -647,16 +638,13 @@ class TrackController {
     project.sequence.setActiveTrack(id);
   }
 
-  Iterable<_ClipRemoveTarget> _collectClipDeleteTargetsForTracks(
-    Iterable<Id> trackIds,
-  ) sync* {
+  Iterable<Id> _collectClipDeleteTargetsForTracks(Iterable<Id> trackIds) sync* {
     final tracksToDelete = _collectTrackIdsIncludingDescendants(trackIds);
 
-    for (final arrangementEntry in project.sequence.arrangements.entries) {
-      for (final clipEntry in arrangementEntry.value.clips.entries) {
-        if (tracksToDelete.contains(clipEntry.value.trackId)) {
-          yield (arrangementId: arrangementEntry.key, clipId: clipEntry.key);
-        }
+    final arrangement = project.sequence.arrangement;
+    for (final clipEntry in arrangement.clips.entries) {
+      if (tracksToDelete.contains(clipEntry.value.trackId)) {
+        yield clipEntry.key;
       }
     }
   }
@@ -697,30 +685,26 @@ class TrackController {
   /// - clip targets are deduplicated so each clip is removed once
   /// - pattern IDs are deduplicated so shared patterns are evaluated once
   ///   against global remaining clip references before deciding deletion
-  ({List<_ClipRemoveTarget> clipsToDelete, List<Id> patternIdsToDelete})
-  _buildClipAndPatternDeletionPlan(Iterable<_ClipRemoveTarget> clipTargets) {
-    final clipsToDelete = <({Id arrangementId, Id clipId, Id patternId})>[];
+  ({List<Id> clipsToDelete, List<Id> patternIdsToDelete})
+  _buildClipAndPatternDeletionPlan(Iterable<Id> clipIds) {
+    final clipsToDelete = <({Id clipId, Id patternId})>[];
 
     // We deduplicate clip targets so repeated clip IDs (or overlapping callers)
     // do not enqueue duplicate remove commands for the same clip.
-    final seenTargets = <_ClipRemoveTarget>{};
+    final seenClipIds = <Id>{};
 
-    for (final target in clipTargets) {
-      if (!seenTargets.add(target)) {
+    for (final clipId in clipIds) {
+      if (!seenClipIds.add(clipId)) {
         continue;
       }
 
-      final arrangement = project.sequence.arrangements[target.arrangementId];
-      final clip = arrangement?.clips[target.clipId];
+      final arrangement = project.sequence.arrangement;
+      final clip = arrangement.clips[clipId];
       if (clip == null) {
         continue;
       }
 
-      clipsToDelete.add((
-        arrangementId: target.arrangementId,
-        clipId: target.clipId,
-        patternId: clip.patternId,
-      ));
+      clipsToDelete.add((clipId: clipId, patternId: clip.patternId));
     }
 
     if (clipsToDelete.isEmpty) {
@@ -736,15 +720,13 @@ class TrackController {
       for (final patternId in candidatePatternIds) patternId: 0,
     };
 
-    for (final arrangement in project.sequence.arrangements.values) {
-      for (final clip in arrangement.clips.values) {
-        if (!candidatePatternIds.contains(clip.patternId)) {
-          continue;
-        }
-
-        remainingPatternRefCounts[clip.patternId] =
-            remainingPatternRefCounts[clip.patternId]! + 1;
+    for (final clip in project.sequence.arrangement.clips.values) {
+      if (!candidatePatternIds.contains(clip.patternId)) {
+        continue;
       }
+
+      remainingPatternRefCounts[clip.patternId] =
+          remainingPatternRefCounts[clip.patternId]! + 1;
     }
 
     for (final clip in clipsToDelete) {
@@ -762,24 +744,18 @@ class TrackController {
 
     return (
       clipsToDelete: clipsToDelete
-          .map(
-            (clip) => (arrangementId: clip.arrangementId, clipId: clip.clipId),
-          )
+          .map((clip) => clip.clipId)
           .toList(growable: false),
       patternIdsToDelete: patternIdsToDelete,
     );
   }
 
   void _executeClipAndPatternDeletionPlan(
-    ({List<_ClipRemoveTarget> clipsToDelete, List<Id> patternIdsToDelete}) plan,
+    ({List<Id> clipsToDelete, List<Id> patternIdsToDelete}) plan,
   ) {
-    for (final clip in plan.clipsToDelete) {
+    for (final clipId in plan.clipsToDelete) {
       project.execute(
-        ClipAddRemoveCommand.remove(
-          arrangementID: clip.arrangementId,
-          clipId: clip.clipId,
-          project: project,
-        ),
+        ClipAddRemoveCommand.remove(clipId: clipId, project: project),
       );
     }
 

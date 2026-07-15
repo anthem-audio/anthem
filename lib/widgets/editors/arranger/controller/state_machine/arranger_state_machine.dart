@@ -246,11 +246,7 @@ class ArrangerStateMachine
   }
 
   List<TimeSignatureChangeModel> arrangementTimeSignatureChanges() {
-    return project
-            .sequence
-            .arrangements[project.sequence.activeArrangementID]
-            ?.timeSignatureChanges ??
-        const <TimeSignatureChangeModel>[];
+    return project.sequence.arrangement.timeSignatureChanges;
   }
 
   TimeSignatureModel timeSignatureAt(Time time) {
@@ -360,22 +356,10 @@ class ArrangerStateMachine
     }
   }
 
-  /// Resolves the currently active arrangement alongside its clips map.
-  ///
-  /// Returns `null` if there is no active arrangement (project has none
-  /// selected, or the selected ID no longer resolves to a model). Callers
-  /// should early-return in that case rather than crashing.
+  /// Resolves the project arrangement alongside its clips map.
   ({ArrangementModel arrangement, Map<Id, ClipModel> clips})?
   activeArrangementWithClips() {
-    final arrangementId = project.sequence.activeArrangementID;
-    if (arrangementId == null) {
-      return null;
-    }
-
-    final arrangement = project.sequence.arrangements[arrangementId];
-    if (arrangement == null) {
-      return null;
-    }
+    final arrangement = project.sequence.arrangement;
 
     return (
       arrangement: arrangement,

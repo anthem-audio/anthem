@@ -26,71 +26,73 @@
 namespace anthem {
 
 std::optional<Response> handleSequencerCommand(Request& request) {
-  if (rfl::holds_alternative<CompileSequenceRequest>(request.variant())) {
-    auto& compileSequenceRequest = rfl::get<CompileSequenceRequest>(request.variant());
+  if (rfl::holds_alternative<CompilePatternRequest>(request.variant())) {
+    auto& compilePatternRequest = rfl::get<CompilePatternRequest>(request.variant());
 
-    if (compileSequenceRequest.patternId.has_value()) {
-      if (compileSequenceRequest.tracksToRebuild.has_value()) {
-        auto invalidationRanges = std::vector<std::tuple<double, double>>();
+    if (compilePatternRequest.tracksToRebuild.has_value()) {
+      auto invalidationRanges = std::vector<std::tuple<double, double>>();
 
-        if (compileSequenceRequest.invalidationRanges.has_value()) {
-          invalidationRanges.reserve(compileSequenceRequest.invalidationRanges.value()->size());
+      if (compilePatternRequest.invalidationRanges.has_value()) {
+        invalidationRanges.reserve(compilePatternRequest.invalidationRanges.value()->size());
 
-          for (const auto& range : *compileSequenceRequest.invalidationRanges.value()) {
-            invalidationRanges.push_back(std::make_tuple(range->start, range->end));
-          }
+        for (const auto& range : *compilePatternRequest.invalidationRanges.value()) {
+          invalidationRanges.push_back(std::make_tuple(range->start, range->end));
         }
-
-        // Compile only the specified tracks for the given pattern.
-        SequenceCompiler::compilePattern(compileSequenceRequest.patternId.value(),
-            *compileSequenceRequest.tracksToRebuild.value(),
-            invalidationRanges);
-
-        AutomationSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value(),
-            *compileSequenceRequest.tracksToRebuild.value());
-      } else {
-        // Compile the entire pattern
-        SequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
-        AutomationSequenceCompiler::compilePattern(compileSequenceRequest.patternId.value());
       }
 
-      if (Engine::getInstance().transport->config.activeSequenceId ==
-          compileSequenceRequest.patternId.value()) {
-        auto& transport = *Engine::getInstance().transport;
-        transport.updateLoopPoints();
-        transport.updatePlayheadJumpEventForStart(true);
-      }
-    } else if (compileSequenceRequest.arrangementId.has_value()) {
-      if (compileSequenceRequest.tracksToRebuild.has_value()) {
-        auto invalidationRanges = std::vector<std::tuple<double, double>>();
+      // Compile only the specified tracks for the given pattern.
+      SequenceCompiler::compilePattern(compilePatternRequest.patternId,
+          *compilePatternRequest.tracksToRebuild.value(),
+          invalidationRanges);
 
-        if (compileSequenceRequest.invalidationRanges.has_value()) {
-          invalidationRanges.reserve(compileSequenceRequest.invalidationRanges.value()->size());
-          for (const auto& range : *compileSequenceRequest.invalidationRanges.value()) {
-            invalidationRanges.push_back(std::make_tuple(range->start, range->end));
-          }
+      AutomationSequenceCompiler::compilePattern(
+          compilePatternRequest.patternId, *compilePatternRequest.tracksToRebuild.value());
+    } else {
+      // Compile the entire pattern
+      SequenceCompiler::compilePattern(compilePatternRequest.patternId);
+      AutomationSequenceCompiler::compilePattern(compilePatternRequest.patternId);
+    }
+
+    if (Engine::getInstance().transport->config.activeSequenceId ==
+        compilePatternRequest.patternId) {
+      auto& transport = *Engine::getInstance().transport;
+      transport.updateLoopPoints();
+      transport.updatePlayheadJumpEventForStart(true);
+    }
+  } else if (rfl::holds_alternative<CompileArrangementRequest>(request.variant())) {
+    auto& compileArrangementRequest = rfl::get<CompileArrangementRequest>(request.variant());
+    auto& engine = Engine::getInstance();
+    auto arrangement = engine.project->sequence()->arrangement();
+    if (arrangement == nullptr) {
+      return std::nullopt;
+    }
+
+    if (compileArrangementRequest.tracksToRebuild.has_value()) {
+      auto invalidationRanges = std::vector<std::tuple<double, double>>();
+
+      if (compileArrangementRequest.invalidationRanges.has_value()) {
+        invalidationRanges.reserve(compileArrangementRequest.invalidationRanges.value()->size());
+        for (const auto& range : *compileArrangementRequest.invalidationRanges.value()) {
+          invalidationRanges.push_back(std::make_tuple(range->start, range->end));
         }
-
-        // Compile only the specified tracks for the given arrangement.
-        SequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value(),
-            *compileSequenceRequest.tracksToRebuild.value(),
-            invalidationRanges);
-
-        AutomationSequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value(),
-            *compileSequenceRequest.tracksToRebuild.value());
-      } else {
-        // Compile the entire arrangement
-        SequenceCompiler::compileArrangement(compileSequenceRequest.arrangementId.value());
-        AutomationSequenceCompiler::compileArrangement(
-            compileSequenceRequest.arrangementId.value());
       }
 
-      if (Engine::getInstance().transport->config.activeSequenceId ==
-          compileSequenceRequest.arrangementId.value()) {
-        auto& transport = *Engine::getInstance().transport;
-        transport.updateLoopPoints();
-        transport.updatePlayheadJumpEventForStart(true);
-      }
+      // Compile only the specified tracks for the arrangement.
+      SequenceCompiler::compileArrangement(
+          *compileArrangementRequest.tracksToRebuild.value(), invalidationRanges);
+
+      AutomationSequenceCompiler::compileArrangement(
+          *compileArrangementRequest.tracksToRebuild.value());
+    } else {
+      // Compile the entire arrangement
+      SequenceCompiler::compileArrangement();
+      AutomationSequenceCompiler::compileArrangement();
+    }
+
+    if (engine.transport->config.activeSequenceId == arrangement->id()) {
+      auto& transport = *engine.transport;
+      transport.updateLoopPoints();
+      transport.updatePlayheadJumpEventForStart(true);
     }
   } else if (rfl::holds_alternative<RemoveTrackRequest>(request.variant())) {
     auto& removeTrackRequest = rfl::get<RemoveTrackRequest>(request.variant());

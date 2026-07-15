@@ -39,14 +39,12 @@ class SequencerApi {
   /// If [invalidationRanges] is specified, [tracksToRebuild] must also be
   /// specified.
   ///
-  void compileArrangement(
-    Id arrangementId, {
+  void compileArrangement({
     List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
-    final request = CompileSequenceRequest.arrangement(
+    final request = CompileArrangementRequest(
       id: _engine._getRequestId(),
-      arrangementId: arrangementId,
       tracksToRebuild: tracksToRebuild,
       invalidationRanges: invalidationRanges,
     );
@@ -77,7 +75,7 @@ class SequencerApi {
     List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {
-    final request = CompileSequenceRequest.pattern(
+    final request = CompilePatternRequest(
       id: _engine._getRequestId(),
       patternId: patternId,
       tracksToRebuild: tracksToRebuild,

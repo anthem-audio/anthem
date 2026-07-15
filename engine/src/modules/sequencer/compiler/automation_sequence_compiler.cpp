@@ -92,24 +92,24 @@ void AutomationSequenceCompiler::compilePattern(
       patternId, sequencer_track_ids::noTrack, getPatternAutomationTrack(patternId));
 }
 
-void AutomationSequenceCompiler::compileArrangement(EntityId arrangementId) {
+void AutomationSequenceCompiler::compileArrangement() {
   auto& engine = Engine::getInstance();
 
-  auto arrangementIter = engine.project->sequence()->arrangements()->find(arrangementId);
-  if (arrangementIter == engine.project->sequence()->arrangements()->end()) {
+  auto arrangement = engine.project->sequence()->arrangement();
+  if (arrangement == nullptr) {
     return;
   }
+  auto arrangementId = arrangement->id();
 
   AutomationSpanListCollection newSequence;
   std::unordered_set<EntityId> trackIds;
 
-  for (auto& [clipId, clip] : *arrangementIter->second->clips()) {
+  for (auto& [clipId, clip] : *arrangement->clips()) {
     trackIds.insert(clip->trackId());
   }
 
   for (auto trackId : trackIds) {
-    auto* trackAutomation =
-        new AutomationSpanList(getTrackAutomationForArrangement(trackId, arrangementId));
+    auto* trackAutomation = new AutomationSpanList(getTrackAutomationForArrangement(trackId));
     newSequence.setTrack(trackId, trackAutomation);
   }
 
@@ -117,13 +117,18 @@ void AutomationSequenceCompiler::compileArrangement(EntityId arrangementId) {
   store.addOrUpdateSequence(arrangementId, newSequence);
 }
 
-void AutomationSequenceCompiler::compileArrangement(
-    EntityId arrangementId, std::vector<EntityId>& trackIdsToRebuild) {
-  auto& store = *Engine::getInstance().automationSequenceStore;
+void AutomationSequenceCompiler::compileArrangement(std::vector<EntityId>& trackIdsToRebuild) {
+  auto& engine = Engine::getInstance();
+  auto arrangement = engine.project->sequence()->arrangement();
+  if (arrangement == nullptr) {
+    return;
+  }
+  auto arrangementId = arrangement->id();
+  auto& store = *engine.automationSequenceStore;
 
   for (auto& trackId : trackIdsToRebuild) {
     store.addOrUpdateTrackInSequence(
-        arrangementId, trackId, getTrackAutomationForArrangement(trackId, arrangementId));
+        arrangementId, trackId, getTrackAutomationForArrangement(trackId));
   }
 }
 
@@ -133,20 +138,19 @@ void AutomationSequenceCompiler::cleanUpTrack(EntityId trackId) {
   store.removeTrackFromAllSequences(trackId);
 }
 
-AutomationSpanList AutomationSequenceCompiler::getTrackAutomationForArrangement(
-    EntityId trackId, EntityId arrangementId) {
+AutomationSpanList AutomationSequenceCompiler::getTrackAutomationForArrangement(EntityId trackId) {
   auto& engine = Engine::getInstance();
 
   AutomationSpanList track;
 
-  auto arrangementIter = engine.project->sequence()->arrangements()->find(arrangementId);
-  if (arrangementIter == engine.project->sequence()->arrangements()->end()) {
+  auto arrangement = engine.project->sequence()->arrangement();
+  if (arrangement == nullptr) {
     return track;
   }
 
   std::vector<AutomationClipSnapshot> clips;
 
-  for (auto& [clipId, clip] : *arrangementIter->second->clips()) {
+  for (auto& [clipId, clip] : *arrangement->clips()) {
     if (clip->trackId() != trackId) {
       continue;
     }

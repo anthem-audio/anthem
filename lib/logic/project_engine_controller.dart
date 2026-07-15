@@ -224,9 +224,7 @@ class ProjectEngineController implements DisposableService {
 
     project.completeFirstEngineSync();
 
-    for (final arrangement in project.sequence.arrangements.values) {
-      project.engine.sequencerApi.compileArrangement(arrangement.id);
-    }
+    project.engine.sequencerApi.compileArrangement();
 
     for (final pattern in project.sequence.patterns.values) {
       project.engine.sequencerApi.compilePattern(pattern.id);

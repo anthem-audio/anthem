@@ -72,14 +72,15 @@ RenderStartResult renderStartFailure(const std::string& error) {
   };
 }
 
-std::optional<int64_t> getActiveArrangementId() {
+std::optional<int64_t> getArrangementId() {
   auto& engine = Engine::getInstance();
 
   if (engine.project == nullptr || engine.project->sequence() == nullptr) {
     return std::nullopt;
   }
 
-  return engine.project->sequence()->activeArrangementID();
+  auto arrangement = engine.project->sequence()->arrangement();
+  return arrangement == nullptr ? std::nullopt : std::make_optional(arrangement->id());
 }
 
 std::shared_ptr<MasterOutputProcessor> getMasterOutputProcessor() {
@@ -364,10 +365,10 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
     return renderStartFailure("No audio processing config is active.");
   }
 
-  const auto activeArrangementId = getActiveArrangementId();
-  if (!activeArrangementId.has_value()) {
+  const auto arrangementId = getArrangementId();
+  if (!arrangementId.has_value()) {
     isRenderingFlag.store(false, std::memory_order_release);
-    return renderStartFailure("No active arrangement is selected for render.");
+    return renderStartFailure("The project arrangement is not available for render.");
   }
 
   auto masterOutputProcessor = getMasterOutputProcessor();
@@ -384,7 +385,7 @@ RenderStartResult RenderController::startRender(const RenderStartOptions& option
   auto renderJob = RenderJob{.renderId = options.renderId,
       .outputPath = options.outputPath,
       .format = options.format,
-      .activeSequenceId = activeArrangementId.value(),
+      .activeSequenceId = arrangementId.value(),
       .startTick = options.startTick,
       .endTick = options.endTick,
       .includeTail = options.includeTail,

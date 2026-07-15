@@ -37,8 +37,7 @@ void main() {
     'activeArrangementContentRenderRange uses active arrangement clip ends',
     () {
       final project = ProjectModel.create();
-      final arrangement =
-          project.sequence.arrangements[project.sequence.activeArrangementID]!;
+      final arrangement = project.sequence.arrangement;
 
       final firstPattern = PatternModel(
         idAllocator: project.idAllocator,
@@ -75,8 +74,7 @@ void main() {
 
   test('activeArrangementLoopRenderRange returns valid loop points only', () {
     final project = ProjectModel.create();
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    final arrangement = project.sequence.arrangement;
 
     expect(activeArrangementLoopRenderRange(project), isNull);
 

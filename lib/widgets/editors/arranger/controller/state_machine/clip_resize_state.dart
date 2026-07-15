@@ -362,7 +362,6 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
       return;
     }
 
-    final arrangement = arrangementData.arrangement;
     final arrangementClips = arrangementData.clips;
     final clipTimingOverrides =
         viewModel.clipTimingOverrides.nonObservableInner;
@@ -414,12 +413,7 @@ class ArrangerClipResizeState extends _ArrangerLeafState {
       return;
     }
 
-    project.execute(
-      ResizeClipsCommand(
-        arrangementID: arrangement.id,
-        clipResizes: clipResizes,
-      ),
-    );
+    project.execute(ResizeClipsCommand(clipResizes: clipResizes));
   }
 
   void _clearResizeSession() {

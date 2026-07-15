@@ -133,7 +133,7 @@ void main() {
       );
       fixture.viewModel.selectedClips.addAll({clipA.id, clipB.id});
       fixture.project.sequence.activeTransportSequenceID =
-          fixture.project.sequence.activeArrangementID;
+          fixture.project.sequence.arrangement.id;
       fixture.project.sequence.playbackStartPosition = 384;
       final patternIdsBeforePaste = fixture.project.sequence.patterns.keys
           .toSet();
@@ -197,7 +197,7 @@ void main() {
       fixture.viewModel.selectedClips.add(clip.id);
       fixture.viewModel.timeRange = TimeRange(0, 960);
       fixture.project.sequence.activeTransportSequenceID =
-          fixture.project.sequence.activeArrangementID;
+          fixture.project.sequence.arrangement.id;
       fixture.project.sequence.playbackStartPosition = 1000;
 
       fixture.controller.onShortcut(
@@ -248,6 +248,6 @@ void main() {
 
 extension on ArrangerStateMachineTestFixture {
   ArrangementModel get arrangement {
-    return project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    return project.sequence.arrangement;
   }
 }

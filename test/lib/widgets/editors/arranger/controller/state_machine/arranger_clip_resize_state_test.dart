@@ -23,8 +23,7 @@ void main() {
       TimeViewModel? timeView,
       int fallbackPatternWidth = 96,
     }) {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = ClipModel(
         idAllocator: testIdAllocator(),
         patternId: addPattern(clipAutoWidth: fallbackPatternWidth),

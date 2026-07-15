@@ -185,8 +185,7 @@ void main() {
     });
 
     test('without drag, pointer up creates auto-sized clip', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
       fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
@@ -240,9 +239,7 @@ void main() {
       () {
         fixture.showRealAutomationLaneForTrack(TrackIds.a);
 
-        final arrangementId = fixture.project.sequence.activeArrangementID!;
-        final arrangement =
-            fixture.project.sequence.arrangements[arrangementId]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final patternCountBefore = fixture.project.sequence.patterns.length;
         final clipCountBefore = arrangement.clips.length;
         fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
@@ -290,9 +287,7 @@ void main() {
         );
         final parentTrack = fixture.project.tracks[TrackIds.a]!;
 
-        final arrangementId = fixture.project.sequence.activeArrangementID!;
-        final arrangement =
-            fixture.project.sequence.arrangements[arrangementId]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final patternCountBefore = fixture.project.sequence.patterns.length;
         final clipCountBefore = arrangement.clips.length;
         fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
@@ -351,8 +346,7 @@ void main() {
     );
 
     test('pointer up with non-zero width creates one pattern and one clip', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
       fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
@@ -396,8 +390,7 @@ void main() {
     test('pointer up with non-zero width creates automation lane clip', () {
       fixture.showRealAutomationLaneForTrack(TrackIds.a);
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
       fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
@@ -448,9 +441,7 @@ void main() {
         fixture.showTargetedPhantomAutomationLaneForTrack(TrackIds.a);
         final parentTrack = fixture.project.tracks[TrackIds.a]!;
 
-        final arrangementId = fixture.project.sequence.activeArrangementID!;
-        final arrangement =
-            fixture.project.sequence.arrangements[arrangementId]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final patternCountBefore = fixture.project.sequence.patterns.length;
         final clipCountBefore = arrangement.clips.length;
         fixture.projectViewModel.selectedEditor = EditorKind.deviceRack;
@@ -505,8 +496,7 @@ void main() {
     );
 
     test('pointer up with zero width does not create clip or pattern', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final patternCountBefore = fixture.project.sequence.patterns.length;
       final clipCountBefore = arrangement.clips.length;
 
@@ -550,9 +540,7 @@ void main() {
     test(
       'escape cancels create clip and prevents re-entry until pointer release',
       () {
-        final arrangementId = fixture.project.sequence.activeArrangementID!;
-        final arrangement =
-            fixture.project.sequence.arrangements[arrangementId]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final patternCountBefore = fixture.project.sequence.patterns.length;
         final clipCountBefore = arrangement.clips.length;
 

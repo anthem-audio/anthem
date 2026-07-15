@@ -116,17 +116,15 @@ class AutomationSequenceCompilerTest : public juce::UnitTest {
 
   static std::shared_ptr<Sequencer> makeSequencer(
       std::initializer_list<std::shared_ptr<PatternModel>> patterns,
-      std::initializer_list<std::shared_ptr<ArrangementModel>> arrangements) {
+      std::shared_ptr<ArrangementModel> arrangement) {
     auto patternMap = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>();
-    auto arrangementMap =
-        std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>();
 
     for (const auto& pattern : patterns) {
       patternMap->insert_or_assign(pattern->id(), pattern);
     }
 
-    for (const auto& arrangement : arrangements) {
-      arrangementMap->insert_or_assign(arrangement->id(), arrangement);
+    if (arrangement == nullptr) {
+      arrangement = makeArrangement({});
     }
 
     return std::make_shared<Sequencer>(SequencerModelImpl{
@@ -135,9 +133,7 @@ class AutomationSequenceCompilerTest : public juce::UnitTest {
         .patterns = patternMap,
         .activePatternID = std::nullopt,
         .activeTrackID = std::nullopt,
-        .arrangements = arrangementMap,
-        .arrangementOrder = std::make_shared<ModelVector<int64_t>>(),
-        .activeArrangementID = std::nullopt,
+        .arrangement = arrangement,
         .activeTransportSequenceID = std::nullopt,
         .defaultTimeSignature = std::make_shared<TimeSignatureModel>(TimeSignatureModelImpl{
             .numerator = 4,
@@ -149,13 +145,13 @@ class AutomationSequenceCompilerTest : public juce::UnitTest {
   }
 
   static void installProject(std::initializer_list<std::shared_ptr<PatternModel>> patterns,
-      std::initializer_list<std::shared_ptr<ArrangementModel>> arrangements) {
+      std::shared_ptr<ArrangementModel> arrangement) {
     Engine::cleanup();
 
     auto& engine = Engine::getInstance();
     engine.automationSequenceStore = std::make_unique<RuntimeAutomationSequenceStore>();
     engine.project = std::make_shared<Project>(ProjectModelImpl{
-        .sequence = makeSequencer(patterns, arrangements),
+        .sequence = makeSequencer(patterns, arrangement),
         .processingGraph = nullptr,
         .masterOutputNodeId = std::nullopt,
         .tracks = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<TrackModel>>>(),
@@ -204,7 +200,7 @@ public:
             makePoint(point2Id, 100, 0.75),
         });
 
-    installProject({pattern}, {});
+    installProject({pattern}, nullptr);
 
     AutomationSequenceCompiler::compilePattern(pattern1Id);
 
@@ -234,9 +230,9 @@ public:
         makeClip(clip1Id, pattern1Id, track1Id, 200, std::make_tuple(50, 100)),
     });
 
-    installProject({pattern}, {arrangement});
+    installProject({pattern}, arrangement);
 
-    AutomationSequenceCompiler::compileArrangement(arrangementId);
+    AutomationSequenceCompiler::compileArrangement();
 
     auto* track = getTrack(getCompiledSequence(arrangementId), track1Id);
     expect(track != nullptr, "Track automation should exist");
@@ -272,9 +268,9 @@ public:
         makeClip(clip2Id, pattern2Id, track1Id, 5),
     });
 
-    installProject({pattern1, pattern2}, {arrangement});
+    installProject({pattern1, pattern2}, arrangement);
 
-    AutomationSequenceCompiler::compileArrangement(arrangementId);
+    AutomationSequenceCompiler::compileArrangement();
 
     auto* track = getTrack(getCompiledSequence(arrangementId), track1Id);
     expect(track != nullptr, "Track automation should exist");
@@ -300,7 +296,7 @@ public:
             makePoint(point2Id, 100, 0.75),
         });
 
-    installProject({pattern}, {});
+    installProject({pattern}, nullptr);
 
     AutomationSequenceCompiler::compilePattern(pattern1Id);
 

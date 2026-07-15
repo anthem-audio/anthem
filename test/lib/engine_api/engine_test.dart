@@ -158,6 +158,28 @@ Future<void> _startEngineThroughInit(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('sequence compile requests have distinct wire types', () {
+    final arrangementRequest = CompileArrangementRequest(
+      id: 1,
+      tracksToRebuild: <Id>[2],
+      invalidationRanges: <InvalidationRange>[
+        InvalidationRange(start: 3, end: 4),
+      ],
+    );
+    final arrangementJson = arrangementRequest.toJson();
+
+    expect(arrangementJson['__type'], 'CompileArrangementRequest');
+    expect(arrangementJson, isNot(contains('arrangementId')));
+    expect(Request.fromJson(arrangementJson), isA<CompileArrangementRequest>());
+
+    final patternRequest = CompilePatternRequest(id: 5, patternId: 6);
+    final patternJson = patternRequest.toJson();
+
+    expect(patternJson['__type'], 'CompilePatternRequest');
+    expect(patternJson['patternId'], 6);
+    expect(Request.fromJson(patternJson), isA<CompilePatternRequest>());
+  });
+
   group('Engine', () {
     late MockProjectModel project;
     late MockVisualizationProvider visualizationProvider;

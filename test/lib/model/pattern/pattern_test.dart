@@ -239,9 +239,7 @@ void main() {
       () async {
         final project = ProjectModel.create();
         final ticksPerBar = _ticksPerBar(project);
-        final arrangement = project
-            .sequence
-            .arrangements[project.sequence.activeArrangementID!]!;
+        final arrangement = project.sequence.arrangement;
         final arrangementWidthStep = ticksPerBar * 4;
         final initialArrangementWidth = arrangementWidthStep * 4;
         final pattern = PatternModel(
@@ -296,9 +294,7 @@ void main() {
         final runningEngine = _RunningEngine(sequencerApi);
         final project = ProjectModel.create()..engine = runningEngine;
 
-        final arrangement = project
-            .sequence
-            .arrangements[project.sequence.activeArrangementID]!;
+        final arrangement = project.sequence.arrangement;
 
         final pattern = PatternModel(
           idAllocator: _testIdAllocator(),
@@ -375,7 +371,6 @@ void main() {
 
         final arrangementCompileVerification = verify(
           sequencerApi.compileArrangement(
-            arrangement.id,
             tracksToRebuild: captureAnyNamed('tracksToRebuild'),
             invalidationRanges: captureAnyNamed('invalidationRanges'),
           ),
@@ -408,9 +403,7 @@ void main() {
         final runningEngine = _RunningEngine(sequencerApi);
         final project = ProjectModel.create()..engine = runningEngine;
 
-        final arrangement = project
-            .sequence
-            .arrangements[project.sequence.activeArrangementID]!;
+        final arrangement = project.sequence.arrangement;
 
         final pattern = PatternModel(
           idAllocator: _testIdAllocator(),
@@ -464,7 +457,6 @@ void main() {
 
         verifyNever(
           sequencerApi.compileArrangement(
-            arrangement.id,
             tracksToRebuild: anyNamed('tracksToRebuild'),
             invalidationRanges: anyNamed('invalidationRanges'),
           ),
@@ -479,9 +471,7 @@ void main() {
         final runningEngine = _RunningEngine(sequencerApi);
         final project = ProjectModel.create()..engine = runningEngine;
 
-        final arrangement = project
-            .sequence
-            .arrangements[project.sequence.activeArrangementID]!;
+        final arrangement = project.sequence.arrangement;
 
         final pattern = PatternModel(
           idAllocator: _testIdAllocator(),
@@ -535,7 +525,6 @@ void main() {
 
         final arrangementCompileVerification = verify(
           sequencerApi.compileArrangement(
-            arrangement.id,
             tracksToRebuild: captureAnyNamed('tracksToRebuild'),
           ),
         );
@@ -569,7 +558,6 @@ void main() {
 
         final trailingArrangementCompileVerification = verify(
           sequencerApi.compileArrangement(
-            arrangement.id,
             tracksToRebuild: captureAnyNamed('tracksToRebuild'),
           ),
         );
@@ -642,7 +630,6 @@ void main() {
         );
         verifyNever(
           sequencerApi.compileArrangement(
-            project.sequence.activeArrangementID!,
             tracksToRebuild: anyNamed('tracksToRebuild'),
             invalidationRanges: anyNamed('invalidationRanges'),
           ),
@@ -705,7 +692,6 @@ void main() {
         );
         verifyNever(
           sequencerApi.compileArrangement(
-            project.sequence.activeArrangementID!,
             tracksToRebuild: anyNamed('tracksToRebuild'),
             invalidationRanges: anyNamed('invalidationRanges'),
           ),

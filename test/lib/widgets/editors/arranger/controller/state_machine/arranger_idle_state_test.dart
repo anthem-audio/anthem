@@ -26,9 +26,7 @@ void main() {
         timeView: TimeViewModel(start: 0, end: 96),
       );
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
-          clip;
+      fixture.project.sequence.arrangement.clips[clip.id] = clip;
       fixture.viewModel.visibleClips.add(rect: rect, metadata: clip.id);
 
       return (clip: clip, pattern: pattern);
@@ -1192,9 +1190,7 @@ void main() {
         timeView: TimeViewModel(start: 0, end: 96),
       );
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
-          clip;
+      fixture.project.sequence.arrangement.clips[clip.id] = clip;
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),
@@ -1250,9 +1246,7 @@ void main() {
         timeView: TimeViewModel(start: 0, end: 96),
       );
 
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      fixture.project.sequence.arrangements[arrangementId]!.clips[clip.id] =
-          clip;
+      fixture.project.sequence.arrangement.clips[clip.id] = clip;
 
       fixture.viewModel.visibleClips.add(
         rect: const Rect.fromLTWH(240, 10, 80, 30),

@@ -55,7 +55,7 @@ class SequencerModel extends _SequencerModel
   factory SequencerModel.fromJson(Map<String, dynamic> json) {
     final sequence = _$SequencerModelAnthemModelMixin.fromJson(json);
     sequence.activePatternID = sequence.patterns.keys.firstOrNull;
-    sequence.activeArrangementID = sequence.arrangementOrder.firstOrNull;
+    sequence.activeTransportSequenceID = sequence.arrangement.id;
     sequence._init();
     return sequence;
   }
@@ -115,14 +115,7 @@ abstract class _SequencerModel
   Id? activeTrackID;
 
   @anthemObservable
-  AnthemObservableMap<Id, ArrangementModel> arrangements = .new();
-
-  @anthemObservable
-  AnthemObservableList<Id> arrangementOrder = .new();
-
-  @anthemObservable
-  @hideFromSerialization
-  Id? activeArrangementID;
+  late ArrangementModel arrangement;
 
   /// The ID of the sequence that is currently set to be played back, if any.
   @anthemObservable
@@ -151,13 +144,10 @@ abstract class _SequencerModel
 
   _SequencerModel.create({required ProjectEntityIdAllocator idAllocator})
     : super() {
-    final arrangement = ArrangementModel(
+    arrangement = ArrangementModel(
       idAllocator: idAllocator,
       name: 'Arrangement 1',
     );
-    arrangements = .of({arrangement.id: arrangement});
-    arrangementOrder = .of([arrangement.id]);
-    activeArrangementID = arrangement.id;
     activeTransportSequenceID = arrangement.id;
   }
 
@@ -175,9 +165,5 @@ abstract class _SequencerModel
 
   void setActiveTrack(Id? trackID) {
     activeTrackID = trackID;
-  }
-
-  void setActiveArrangement(Id? arrangementID) {
-    activeArrangementID = arrangementID;
   }
 }

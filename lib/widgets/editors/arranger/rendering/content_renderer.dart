@@ -164,10 +164,7 @@ class ArrangerContentRenderer extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID];
-
-    if (arrangement == null) return const SizedBox();
+    final arrangement = project.sequence.arrangement;
 
     final devicePixelRatio = View.of(context).devicePixelRatio;
     viewModel.ensureRenderCachesForDevicePixelRatio(devicePixelRatio);

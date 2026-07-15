@@ -27,7 +27,6 @@ import 'package:anthem/engine_api/messages/messages.dart'
         ProcessingGraphParameterValue,
         ProcessingGraphPortConfiguration;
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/logic/commands/arrangement_commands.dart';
 import 'package:anthem/logic/devices/device_port_defaults.dart';
 import 'package:anthem/logic/live_event_manager.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -55,30 +54,6 @@ class ProjectController {
 
   void redo() {
     project.redo();
-  }
-
-  void addArrangement([String? name]) {
-    if (name == null) {
-      final arrangements = project.sequence.arrangements.nonObservableInner;
-      var arrangementNumber = arrangements.length;
-
-      final existingNames = arrangements.values.map((pattern) => pattern.name);
-
-      do {
-        arrangementNumber++;
-        name = 'Arrangement $arrangementNumber';
-      } while (existingNames.contains(name));
-    }
-
-    final command = AddArrangementCommand(
-      project: project,
-      arrangementName: name,
-    );
-
-    project.execute(command);
-
-    project.sequence.setActiveArrangement(command.arrangementID);
-    project.sequence.activeTransportSequenceID = command.arrangementID;
   }
 
   bool onShortcut(LogicalKeySet shortcut) {
@@ -458,11 +433,6 @@ class ProjectController {
         yield track.id;
       }
     }
-  }
-
-  void setActiveArrangement(Id? id) {
-    project.sequence.setActiveArrangement(id);
-    _updateTransportSequenceID(id);
   }
 
   void setActiveEditor({required EditorKind editor}) {

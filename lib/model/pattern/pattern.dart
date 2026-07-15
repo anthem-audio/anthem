@@ -586,14 +586,10 @@ abstract class _PatternModel
       MicrotaskDebouncedAction(() {
         final newClipAutoWidth = getClipAutoWidth();
 
-        final arrangements = project.sequence.arrangements.values.toList();
-
-        // If the clip size changed, it may be the newest last clip in any
-        // arrangement, so we need to resize all the arrangements.
+        // If the clip size changed, it may be the newest last clip in the
+        // arrangement, so its view width may need to change.
         if (newClipAutoWidth != clipAutoWidth) {
-          for (final arrangement in arrangements) {
-            arrangement.updateViewWidthAction.execute();
-          }
+          project.sequence.arrangement.updateViewWidthAction.execute();
         }
 
         clipAutoWidth = newClipAutoWidth;

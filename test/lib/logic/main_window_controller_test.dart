@@ -71,6 +71,23 @@ void main() {
       expect(message, isNot(contains('private implementation detail')));
     });
 
+    test('explains the known multiple-arrangement migration failure', () {
+      final message = projectFileLoadErrorMarkdown(
+        ProjectFileMigrationException(
+          fromVersion: _version('0.0.0-prealpha.1'),
+          targetVersion: _version('0.0.0-prealpha.2'),
+          cause: const MultipleArrangementsProjectFileException(
+            arrangementCount: 3,
+          ),
+        ),
+      );
+
+      expect(message, contains('contains 3 arrangements'));
+      expect(message, contains('only open projects containing one'));
+      expect(message, contains('original project file was not changed'));
+      expect(message, isNot(contains('report this problem')));
+    });
+
     test('does not expose causes for invalid or unexpected errors', () {
       for (final error in <Object>[
         InvalidProjectFileException(

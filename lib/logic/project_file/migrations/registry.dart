@@ -18,9 +18,12 @@
 */
 
 import 'package:anthem/logic/project_file/migrations/migration.dart';
+import 'package:anthem/logic/project_file/migrations/prealpha_2.dart';
 
 /// Project-file migrations in strictly increasing target-version order.
 ///
 /// A migration should only be added when a release changes the serialized
 /// project schema. Compatible releases do not need no-op migrations.
-const projectFileMigrations = <ProjectFileMigration>[];
+const projectFileMigrations = <ProjectFileMigration>[
+  prealpha2ProjectFileMigration,
+];

@@ -49,7 +49,6 @@ public:
 
     auto& sequence = *engine.project->sequence();
     auto& patterns = *sequence.patterns();
-    auto& arrangements = *sequence.arrangements();
 
     if (auto patternIt = patterns.find(sequenceId); patternIt != patterns.end()) {
       if (auto snapshot = snapshotFromLoopPoints(patternIt->second->loopPoints())) {
@@ -57,8 +56,9 @@ public:
       }
     }
 
-    if (auto arrangementIt = arrangements.find(sequenceId); arrangementIt != arrangements.end()) {
-      return snapshotFromLoopPoints(arrangementIt->second->loopPoints());
+    auto arrangement = sequence.arrangement();
+    if (arrangement != nullptr && arrangement->id() == sequenceId) {
+      return snapshotFromLoopPoints(arrangement->loopPoints());
     }
 
     return std::nullopt;

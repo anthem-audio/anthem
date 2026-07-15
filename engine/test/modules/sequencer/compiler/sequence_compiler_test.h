@@ -120,17 +120,15 @@ class SequenceCompilerTest : public juce::UnitTest {
 
   static std::shared_ptr<Sequencer> makeSequencer(
       std::initializer_list<std::shared_ptr<PatternModel>> patterns,
-      std::initializer_list<std::shared_ptr<ArrangementModel>> arrangements) {
+      std::shared_ptr<ArrangementModel> arrangement) {
     auto patternMap = std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<PatternModel>>>();
-    auto arrangementMap =
-        std::make_shared<ModelUnorderedMap<int64_t, std::shared_ptr<ArrangementModel>>>();
 
     for (const auto& pattern : patterns) {
       patternMap->insert_or_assign(pattern->id(), pattern);
     }
 
-    for (const auto& arrangement : arrangements) {
-      arrangementMap->insert_or_assign(arrangement->id(), arrangement);
+    if (arrangement == nullptr) {
+      arrangement = makeArrangement(arrangementId, {});
     }
 
     return std::make_shared<Sequencer>(SequencerModelImpl{
@@ -139,9 +137,7 @@ class SequenceCompilerTest : public juce::UnitTest {
         .patterns = patternMap,
         .activePatternID = std::nullopt,
         .activeTrackID = std::nullopt,
-        .arrangements = arrangementMap,
-        .arrangementOrder = std::make_shared<ModelVector<int64_t>>(),
-        .activeArrangementID = std::nullopt,
+        .arrangement = arrangement,
         .activeTransportSequenceID = std::nullopt,
         .defaultTimeSignature = std::make_shared<TimeSignatureModel>(TimeSignatureModelImpl{
             .numerator = 4,
@@ -153,7 +149,7 @@ class SequenceCompilerTest : public juce::UnitTest {
   }
 
   static void installProject(std::initializer_list<std::shared_ptr<PatternModel>> patterns,
-      std::initializer_list<std::shared_ptr<ArrangementModel>> arrangements,
+      std::shared_ptr<ArrangementModel> arrangement,
       std::initializer_list<EntityId> trackOrder) {
     Engine::cleanup();
 
@@ -167,7 +163,7 @@ class SequenceCompilerTest : public juce::UnitTest {
     auto& engine = Engine::getInstance();
     engine.sequenceStore = std::make_unique<RuntimeSequenceStore>();
     engine.project = std::make_shared<Project>(ProjectModelImpl{
-        .sequence = makeSequencer(patterns, arrangements),
+        .sequence = makeSequencer(patterns, arrangement),
         .processingGraph = nullptr,
         .masterOutputNodeId = std::nullopt,
         .tracks = tracks,
@@ -347,7 +343,7 @@ public:
             makeNote(note2Id, 64, 0, 24, 0.6),
         });
 
-    installProject({pattern}, {}, {});
+    installProject({pattern}, nullptr, {});
 
     SequenceCompiler::compilePattern(missingPatternId);
     expect(getCompiledSequence(missingPatternId) == nullptr,
@@ -394,7 +390,7 @@ public:
     beginTest("Pattern incremental compilation rebuilds no-track only");
 
     auto pattern = makePattern(pattern1Id, {makeNote(note1Id, 60, 0, 12)});
-    installProject({pattern}, {}, {});
+    installProject({pattern}, nullptr, {});
 
     SequenceCompiler::compilePattern(pattern1Id);
     auto* initialNoTrack = getTrack(getCompiledSequence(pattern1Id), sequencer_track_ids::noTrack);
@@ -447,9 +443,9 @@ public:
             makeClip(clip3Id, missingPatternId, track1Id, 200),
         });
 
-    installProject({pattern1, pattern2}, {arrangement}, {track1Id, track2Id, track3Id});
+    installProject({pattern1, pattern2}, arrangement, {track1Id, track2Id, track3Id});
 
-    SequenceCompiler::compileArrangement(arrangementId);
+    SequenceCompiler::compileArrangement();
 
     auto* compiledArrangement = getCompiledSequence(arrangementId);
     expect(compiledArrangement != nullptr, "The arrangement should be compiled");
@@ -519,9 +515,9 @@ public:
             makeClip(clip2Id, pattern2Id, track2Id, 0),
         });
 
-    installProject({pattern1, pattern2}, {arrangement}, {track1Id, track2Id});
+    installProject({pattern1, pattern2}, arrangement, {track1Id, track2Id});
 
-    SequenceCompiler::compileArrangement(arrangementId);
+    SequenceCompiler::compileArrangement();
 
     auto* initialTrack1 = getTrack(getCompiledSequence(arrangementId), track1Id);
     auto* initialTrack2 = getTrack(getCompiledSequence(arrangementId), track2Id);
@@ -535,7 +531,7 @@ public:
 
     std::vector<EntityId> trackIdsToRebuild{track1Id};
     std::vector<std::tuple<double, double>> invalidationRanges{{18.0, 28.0}};
-    SequenceCompiler::compileArrangement(arrangementId, trackIdsToRebuild, invalidationRanges);
+    SequenceCompiler::compileArrangement(trackIdsToRebuild, invalidationRanges);
 
     auto* rebuiltTrack1 = getTrack(getCompiledSequence(arrangementId), track1Id);
     auto* preservedTrack2 = getTrack(getCompiledSequence(arrangementId), track2Id);
@@ -564,10 +560,10 @@ public:
             makeClip(clip2Id, pattern2Id, track2Id, 0),
         });
 
-    installProject({pattern1, pattern2}, {arrangement}, {track1Id, track2Id});
+    installProject({pattern1, pattern2}, arrangement, {track1Id, track2Id});
 
     SequenceCompiler::compilePattern(pattern1Id);
-    SequenceCompiler::compileArrangement(arrangementId);
+    SequenceCompiler::compileArrangement();
 
     expect(getTrack(getCompiledSequence(pattern1Id), sequencer_track_ids::noTrack) != nullptr,
         "Pattern no-track should exist before cleanup");

@@ -166,7 +166,7 @@ class ProjectModel extends _ProjectModel
 
 abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// Represents information about the sequenced content in the project, such as
-  /// arrangements and patterns, and their content.
+  /// the arrangement and patterns, and their content.
   late SequencerModel sequence;
 
   /// Represents the processing graph for the project. This is used to route

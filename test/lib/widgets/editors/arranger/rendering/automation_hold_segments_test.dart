@@ -696,8 +696,7 @@ class _AutomationHoldPaintFixture {
       _point(96, 0.1),
     ]);
 
-    final arrangement =
-        project.sequence.arrangements[project.sequence.activeArrangementID]!;
+    final arrangement = project.sequence.arrangement;
     _addClip(
       project: project,
       arrangement: arrangement,
@@ -729,8 +728,7 @@ class _AutomationHoldPaintFixture {
     return _AutomationHoldPaintFixture._(project: project, lane: lane);
   }
 
-  ArrangementModel get arrangement =>
-      project.sequence.arrangements[project.sequence.activeArrangementID]!;
+  ArrangementModel get arrangement => project.sequence.arrangement;
 
   ArrangerViewModel get viewModel =>
       ServiceRegistry.forProject(project.id).arrangerViewModel;

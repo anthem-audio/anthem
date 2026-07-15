@@ -72,14 +72,10 @@ class MockTrackController extends Mock implements TrackController {
 
   @override
   ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds}) deleteClips({
-    required Id arrangementId,
     required Iterable<Id> clipIds,
   }) {
     return super.noSuchMethod(
-          Invocation.method(#deleteClips, [], {
-            #arrangementId: arrangementId,
-            #clipIds: clipIds,
-          }),
+          Invocation.method(#deleteClips, [], {#clipIds: clipIds}),
           returnValue: (deletedClipIds: <Id>{}, deletedPatternIds: <Id>{}),
         )
         as ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds});
@@ -585,8 +581,7 @@ void main() {
     double? width,
     bool expectPianoRollOpened = true,
   }) {
-    final arrangementId = fixture.project.sequence.activeArrangementID!;
-    final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+    final arrangement = fixture.project.sequence.arrangement;
 
     final beforePatternIds = fixture.project.sequence.patterns.keys.toSet();
     final beforeClipIds = arrangement.clips.keys.toSet();
@@ -692,10 +687,7 @@ void main() {
 
     fixture.project.sequence.patterns[pattern.id] = pattern;
 
-    final arrangement = fixture
-        .project
-        .sequence
-        .arrangements[fixture.project.sequence.activeArrangementID]!;
+    final arrangement = fixture.project.sequence.arrangement;
     final clip = ClipModel(
       idAllocator: fixture.project.idAllocator,
       patternId: pattern.id,
@@ -709,19 +701,15 @@ void main() {
 
   group('createClip', () {
     test(
-      'creates a pattern and clip in active arrangement with rounded timing',
+      'creates a pattern and clip in the arrangement with rounded timing',
       () {
-        final arrangementId = fixture.project.sequence.activeArrangementID;
-        expect(arrangementId, isNotNull);
-
         final createdIds = createClipAndGetCreatedIds(
           trackId: _TrackIds.a1,
           offset: 12.6,
           width: 47.4,
         );
 
-        final arrangement =
-            fixture.project.sequence.arrangements[arrangementId!]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final clip = arrangement.clips[createdIds.clipId]!;
         final pattern =
             fixture.project.sequence.patterns[createdIds.patternId]!;
@@ -752,8 +740,7 @@ void main() {
     });
 
     test('is a single undo/redo action', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
 
       final createdIds = createClipAndGetCreatedIds(
         trackId: _TrackIds.a2a,
@@ -785,15 +772,13 @@ void main() {
     });
 
     test('rounds offset and width near integer boundaries', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
-
       final createdIds = createClipAndGetCreatedIds(
         trackId: _TrackIds.s1,
         offset: 10.49,
         width: 0.51,
       );
 
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = arrangement.clips[createdIds.clipId]!;
 
       expect(clip.offset, equals(10));
@@ -803,7 +788,6 @@ void main() {
     });
 
     test('automation lane clips are created without opening an editor', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
       final (:automationLane, :port) = addUtilityAutomationLane(
         parameterValue: 0.42,
       );
@@ -815,7 +799,7 @@ void main() {
         expectPianoRollOpened: false,
       );
 
-      final arrangement = fixture.project.sequence.arrangements[arrangementId]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = arrangement.clips[createdIds.clipId]!;
       final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
 
@@ -875,10 +859,7 @@ void main() {
         expectPianoRollOpened: false,
       );
 
-      final arrangement = fixture
-          .project
-          .sequence
-          .arrangements[fixture.project.sequence.activeArrangementID!]!;
+      final arrangement = fixture.project.sequence.arrangement;
       final clip = arrangement.clips[createdIds.clipId]!;
       final pattern = fixture.project.sequence.patterns[createdIds.patternId]!;
 
@@ -932,10 +913,7 @@ void main() {
         );
         expect(target, isNotNull);
 
-        final arrangement = fixture
-            .project
-            .sequence
-            .arrangements[fixture.project.sequence.activeArrangementID]!;
+        final arrangement = fixture.project.sequence.arrangement;
         final beforeTrackIds = fixture.project.tracks.keys.toSet();
         final beforePatternIds = fixture.project.sequence.patterns.keys.toSet();
         final beforeClipIds = arrangement.clips.keys.toSet();
@@ -1030,7 +1008,6 @@ void main() {
 
   group('deleteClips', () {
     test('delegates to ProjectController and updates selected clips', () {
-      final arrangementId = fixture.project.sequence.activeArrangementID!;
       final selectedClipA = getId();
       final selectedClipB = getId();
       final unselectedClip = getId();
@@ -1039,10 +1016,7 @@ void main() {
       fixture.viewModel.selectedClips.addAll([selectedClipA, selectedClipB]);
 
       when(
-        fixture.mockTrackController.deleteClips(
-          arrangementId: arrangementId,
-          clipIds: clipIdsToDelete,
-        ),
+        fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete),
       ).thenReturn((
         deletedClipIds: {selectedClipA},
         deletedPatternIds: <Id>{},
@@ -1051,10 +1025,7 @@ void main() {
       fixture.controller.deleteClips(clipIdsToDelete);
 
       verify(
-        fixture.mockTrackController.deleteClips(
-          arrangementId: arrangementId,
-          clipIds: clipIdsToDelete,
-        ),
+        fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete),
       ).called(1);
 
       expect(fixture.viewModel.selectedClips.contains(selectedClipA), isFalse);
@@ -1124,16 +1095,5 @@ void main() {
         expect(fixture.viewModel.lastShiftClickRange, isNull);
       },
     );
-
-    test('does nothing when there is no active arrangement', () {
-      fixture.controller.selectTrack(_TrackIds.a1);
-      fixture.project.sequence.activeArrangementID = null;
-
-      fixture.controller.shiftClickToTrack(_TrackIds.b);
-
-      fixture.expectSelectedTracks([_TrackIds.a1]);
-      expect(fixture.viewModel.lastToggledTrack, equals(_TrackIds.a1));
-      expect(fixture.viewModel.lastShiftClickRange, isNull);
-    });
   });
 }

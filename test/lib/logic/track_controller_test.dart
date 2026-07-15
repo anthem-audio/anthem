@@ -734,7 +734,6 @@ void main() {
     late TrackModel masterTrack;
 
     late ArrangementModel arrangementA;
-    late ArrangementModel arrangementB;
 
     late PatternModel orphanPatternA;
     late PatternModel orphanPatternB;
@@ -814,13 +813,7 @@ void main() {
       trackOrder.addAll([groupTrack.id, otherTrack.id]);
       sendTrackOrder.add(masterTrack.id);
 
-      arrangementA = sequence.arrangements[sequence.activeArrangementID]!;
-      arrangementB = ArrangementModel(
-        idAllocator: ProjectEntityIdAllocator.test(getId),
-        name: 'Arrangement B',
-      );
-      sequence.arrangements[arrangementB.id] = arrangementB;
-      sequence.arrangementOrder.add(arrangementB.id);
+      arrangementA = sequence.arrangement;
 
       orphanPatternA = PatternModel(
         idAllocator: ProjectEntityIdAllocator.test(getId),
@@ -868,7 +861,7 @@ void main() {
       arrangementA.clips[clipOnGroupOrphan.id] = clipOnGroupOrphan;
       arrangementA.clips[clipOnGroupShared.id] = clipOnGroupShared;
       arrangementA.clips[clipOnOtherShared.id] = clipOnOtherShared;
-      arrangementB.clips[clipOnChildOrphan.id] = clipOnChildOrphan;
+      arrangementA.clips[clipOnChildOrphan.id] = clipOnChildOrphan;
 
       when(project.execute(any)).thenAnswer((invocation) {
         final command = invocation.positionalArguments[0] as Command;
@@ -925,14 +918,13 @@ void main() {
 
     test('deleteClips removes target clips and orphan patterns', () {
       final result = trackController.deleteClips(
-        arrangementId: arrangementA.id,
         clipIds: [clipOnGroupOrphan.id, clipOnGroupShared.id, getId()],
       );
 
       expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
       expect(arrangementA.clips[clipOnGroupShared.id], isNull);
       expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
-      expect(arrangementB.clips[clipOnChildOrphan.id], isNotNull);
+      expect(arrangementA.clips[clipOnChildOrphan.id], isNotNull);
 
       expect(result.deletedClipIds, {
         clipOnGroupOrphan.id,
@@ -953,7 +945,7 @@ void main() {
 
       expect(arrangementA.clips[clipOnGroupOrphan.id], isNull);
       expect(arrangementA.clips[clipOnGroupShared.id], isNull);
-      expect(arrangementB.clips[clipOnChildOrphan.id], isNull);
+      expect(arrangementA.clips[clipOnChildOrphan.id], isNull);
       expect(arrangementA.clips[clipOnOtherShared.id], isNotNull);
 
       expect(sequence.patterns[orphanPatternA.id], isNull);

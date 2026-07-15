@@ -55,6 +55,12 @@ String projectFileLoadErrorMarkdown(Object error) {
       'This project was saved in Anthem ${version(error.savedVersion)}, which '
           'is older than the oldest project version supported by this version '
           'of Anthem (${version(error.oldestSupportedVersion)}).',
+    ProjectFileMigrationException(
+      cause: MultipleArrangementsProjectFileException error,
+    ) =>
+      'This project contains ${error.arrangementCount} arrangements. This '
+          'version of Anthem can only open projects containing one '
+          'arrangement. The original project file was not changed.',
     ProjectFileMigrationException error =>
       'Anthem could not update this project from version '
           '${version(error.fromVersion)} to ${version(error.targetVersion)}. '

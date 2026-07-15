@@ -33,7 +33,7 @@
 // sequencer's perspective. The runtime component of the sequencer doesn't even
 // know about patterns - it just sees these event lists.
 //
-// We store event lists for each arrangement and for each pattern. When
+// We store event lists for the arrangement and for each pattern. When
 // something is changed, e.g. some notes are moved around for a given pattern,
 // we don't recompile the entire sequence. Instead, we just update the event
 // lists for the relevant channel.
@@ -54,14 +54,13 @@ public:
       std::vector<EntityId>& trackIdsToRebuild,
       std::vector<std::tuple<double, double>>& invalidationRanges);
 
-  // Compiles the given arrangement, and adds or replaces its entry in the
+  // Compiles the arrangement, and adds or replaces its entry in the
   // sequence store.
-  static void compileArrangement(EntityId arrangementId);
+  static void compileArrangement();
 
-  // Compiles the given tracks for the given arrangement, and replaces them in
+  // Compiles the given tracks for the arrangement, and replaces them in
   // the sequence store.
-  static void compileArrangement(EntityId arrangementId,
-      std::vector<EntityId>& trackIdsToRebuild,
+  static void compileArrangement(std::vector<EntityId>& trackIdsToRebuild,
       std::vector<std::tuple<double, double>>& invalidationRanges);
 
   // Cleans up any sequences related to the given track ID.
@@ -71,7 +70,7 @@ private:
   //
   // The events will be added to the given `events` vector.
   static void getTrackNoteEventsForArrangement(
-      EntityId trackId, EntityId arrangementId, std::vector<SequenceEvent>& events);
+      EntityId trackId, std::vector<SequenceEvent>& events);
 
   // Gets the note events for the given pattern.
   //

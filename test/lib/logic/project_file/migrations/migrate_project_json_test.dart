@@ -57,7 +57,7 @@ void main() {
         _savedVersionKey: '0.0.0-prealpha.1',
       };
 
-      final result = migrateProjectJson(projectJson);
+      final result = migrateProjectJson(projectJson, migrations: const []);
 
       expect(result, same(projectJson));
       expect(result[_savedVersionKey], currentProjectFileSoftwareVersion);

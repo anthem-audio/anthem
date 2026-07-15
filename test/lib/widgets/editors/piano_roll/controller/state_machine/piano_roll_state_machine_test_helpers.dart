@@ -100,8 +100,7 @@ class NoopSequencerApi implements SequencerApi {
   void cleanUpTrack(Id trackId) {}
 
   @override
-  void compileArrangement(
-    Id arrangementId, {
+  void compileArrangement({
     List<Id>? tracksToRebuild,
     List<InvalidationRange>? invalidationRanges,
   }) {}
