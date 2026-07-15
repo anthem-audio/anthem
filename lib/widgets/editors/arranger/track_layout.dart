@@ -59,9 +59,14 @@ class TrackDividerContext {
   final TrackRow resizedRow;
   final TrackResizeEdge resizeEdge;
 
+  /// The row immediately below the divider, or `null` when the divider is
+  /// followed by a section boundary or the end of the layout.
+  final TrackRow? rowBelow;
+
   const TrackDividerContext({
     required this.resizedRow,
     required this.resizeEdge,
+    required this.rowBelow,
   });
 }
 
@@ -90,6 +95,7 @@ class TrackRowLayout {
       other is TrackRowLayout &&
       other.rowIndex == rowIndex &&
       other.row.rowId == row.rowId &&
+      other.row.rowKind == row.rowKind &&
       other.row.isSendTrack == row.isSendTrack &&
       other.row.trackDepth == row.trackDepth &&
       other.contentSpan == contentSpan &&
@@ -99,6 +105,7 @@ class TrackRowLayout {
   int get hashCode => Object.hash(
     rowIndex,
     row.rowId,
+    row.rowKind,
     row.isSendTrack,
     row.trackDepth,
     contentSpan,
@@ -168,7 +175,8 @@ class TrackDividerLayout {
 class TrackLayout {
   static const defaultHeaderWidth = 292.0;
   static const defaultColorIndicatorWidth = 9.0;
-  static const defaultDividerHeight = 1.0;
+  static const standardDividerHeight = 2.0;
+  static const automationLaneDividerHeight = 1.0;
   static const defaultAddTrackControlHeight = 33.0;
 
   static const _rowLayoutEquality = ListEquality<TrackRowLayout>();
@@ -311,12 +319,11 @@ class TrackLayout {
     final sectionBreakIndex = sendSectionStart < 0
         ? rowsList.length
         : sendSectionStart;
-    final resolveDividerHeight =
-        dividerHeightFor ?? (_) => defaultDividerHeight;
+    final resolveDividerHeight = dividerHeightFor ?? _defaultDividerHeightFor;
 
     final rowHeights = <double>[];
     final dividerHeights = <double>[];
-    for (final row in rowsList) {
+    for (final (index, row) in rowsList.indexed) {
       final rowHeight = rowHeightFor(row);
       _validatePositiveFinite(rowHeight, 'rowHeightFor(${row.rowId})');
       rowHeights.add(rowHeight);
@@ -324,8 +331,18 @@ class TrackLayout {
       final resizeEdge = row.isSendTrack
           ? TrackResizeEdge.top
           : TrackResizeEdge.bottom;
+      final nextRow = index + 1 < rowsList.length ? rowsList[index + 1] : null;
+      final rowBelow = row.isSendTrack
+          ? row
+          : nextRow?.isSendTrack == false
+          ? nextRow
+          : null;
       final dividerHeight = resolveDividerHeight(
-        TrackDividerContext(resizedRow: row, resizeEdge: resizeEdge),
+        TrackDividerContext(
+          resizedRow: row,
+          resizeEdge: resizeEdge,
+          rowBelow: rowBelow,
+        ),
       );
       _validatePositiveFinite(dividerHeight, 'dividerHeightFor(${row.rowId})');
       dividerHeights.add(dividerHeight);
@@ -511,6 +528,12 @@ class TrackLayout {
     if (!value.isFinite || value < 0) {
       throw ArgumentError.value(value, name, 'Must be finite and non-negative');
     }
+  }
+
+  static double _defaultDividerHeightFor(TrackDividerContext context) {
+    return context.rowBelow?.rowKind == TrackRowKind.automationLane
+        ? automationLaneDividerHeight
+        : standardDividerHeight;
   }
 
   static void _validatePositiveFinite(double value, String name) {

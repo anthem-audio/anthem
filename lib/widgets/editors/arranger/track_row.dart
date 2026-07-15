@@ -51,6 +51,8 @@ class PhantomAutomationLaneInfo {
   String get title => target?.title ?? 'No parameter selected';
 }
 
+enum TrackRowKind { track, automationLane }
+
 /// Semantic data for one visible track row, independent of calculated layout.
 sealed class TrackRow {
   final bool isSendTrack;
@@ -59,14 +61,19 @@ sealed class TrackRow {
   const TrackRow({required this.isSendTrack, required this.trackDepth});
 
   Id get rowId;
+  TrackRowKind get rowKind;
 }
 
 /// A visible row backed by a track in the project model.
 class ProjectTrackRow extends TrackRow {
   final Id trackId;
 
+  @override
+  final TrackRowKind rowKind;
+
   const ProjectTrackRow({
     required this.trackId,
+    required this.rowKind,
     required super.isSendTrack,
     required super.trackDepth,
   });
@@ -87,4 +94,7 @@ class PhantomAutomationTrackRow extends TrackRow {
 
   @override
   Id get rowId => phantomLane.id;
+
+  @override
+  TrackRowKind get rowKind => TrackRowKind.automationLane;
 }

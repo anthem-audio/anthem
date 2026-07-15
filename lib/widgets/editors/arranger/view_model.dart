@@ -431,13 +431,16 @@ abstract class _ArrangerViewModel with Store {
       bool isSendTrack,
       int currentDepth,
     ) sync* {
+      final track = project.tracks[trackId];
       yield ProjectTrackRow(
         trackId: trackId,
+        rowKind: track?.isAutomationLane == true
+            ? TrackRowKind.automationLane
+            : TrackRowKind.track,
         isSendTrack: isSendTrack,
         trackDepth: currentDepth,
       );
 
-      final track = project.tracks[trackId];
       if (track == null) {
         return;
       }
@@ -456,6 +459,7 @@ abstract class _ArrangerViewModel with Store {
         for (final automationLaneId in track.automationLanes) {
           yield ProjectTrackRow(
             trackId: automationLaneId,
+            rowKind: TrackRowKind.automationLane,
             isSendTrack: isSendTrack,
             trackDepth: currentDepth + 1,
           );

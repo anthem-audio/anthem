@@ -2,6 +2,7 @@
 
 ## New
 
+- Improved track header design
 - Added user-facing errors when a project file fails to load
 
 # 0.0.0-prealpha.1

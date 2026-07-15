@@ -181,6 +181,87 @@ void main() {
       },
     );
 
+    test('uses thin dividers before automation lanes', () {
+      final layout = TrackLayout();
+      final rows = [
+        _row(id: 1), // Group 1
+        _row(id: 2), // Group 2
+        _row(id: 3, depth: 1), // Track 1
+        _row(id: 4, depth: 1), // Track 2
+        _row(id: 5, depth: 2, rowKind: TrackRowKind.automationLane),
+        _row(id: 6, depth: 2, rowKind: TrackRowKind.automationLane),
+        _row(id: 7, depth: 1), // Track 3
+      ];
+
+      layout.recalculate(
+        rows: rows,
+        rowHeightFor: (_) => 10,
+        headerWidth: 100,
+        viewportHeight: 0,
+      );
+
+      expect(layout.dividerLayouts.map((divider) => divider.bounds.height), [
+        2,
+        2,
+        2,
+        1,
+        1,
+        2,
+        2,
+      ]);
+      expect(layout.dividerLayouts.map((divider) => divider.bounds.left), [
+        0,
+        9,
+        9,
+        18,
+        18,
+        9,
+        0,
+      ]);
+      expect(layout.rowLayouts.map((row) => row.contentSpan.top), [
+        0,
+        12,
+        24,
+        36,
+        47,
+        58,
+        70,
+      ]);
+    });
+
+    test('uses the send row below a leading divider to choose its height', () {
+      final layout = TrackLayout();
+
+      layout.recalculate(
+        rows: [
+          _row(id: 1, isSend: true),
+          _row(
+            id: 2,
+            depth: 1,
+            isSend: true,
+            rowKind: TrackRowKind.automationLane,
+          ),
+          _row(
+            id: 3,
+            depth: 1,
+            isSend: true,
+            rowKind: TrackRowKind.automationLane,
+          ),
+          _row(id: 4, depth: 1, isSend: true),
+        ],
+        rowHeightFor: (_) => 10,
+        headerWidth: 100,
+        viewportHeight: 0,
+      );
+
+      expect(layout.dividerLayouts.map((divider) => divider.bounds.height), [
+        2,
+        1,
+        1,
+        2,
+      ]);
+    });
+
     test('only increments the revision when geometry changes', () {
       final layout = TrackLayout();
       final rows = [_row(id: 1)];
@@ -258,5 +339,14 @@ TrackLayout _calculateSimpleLayout({
   return layout;
 }
 
-ProjectTrackRow _row({required int id, int depth = 0, bool isSend = false}) =>
-    ProjectTrackRow(trackId: id, isSendTrack: isSend, trackDepth: depth);
+ProjectTrackRow _row({
+  required int id,
+  int depth = 0,
+  bool isSend = false,
+  TrackRowKind rowKind = TrackRowKind.track,
+}) => ProjectTrackRow(
+  trackId: id,
+  rowKind: rowKind,
+  isSendTrack: isSend,
+  trackDepth: depth,
+);

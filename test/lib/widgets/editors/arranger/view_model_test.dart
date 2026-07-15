@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
@@ -118,5 +119,50 @@ void main() {
       );
       expect(content.automationHandle!.metadata.pointId, 900);
     });
+  });
+
+  test('visible rows classify real and phantom automation lanes', () {
+    const parentWithLaneId = 1;
+    const automationLaneId = 2;
+    const parentWithPhantomId = 3;
+    final project = createTestProject(
+      includeSequence: false,
+      tracks: const [
+        TestProjectTrack(
+          id: parentWithLaneId,
+          name: 'Track with lane',
+          automationLanes: [automationLaneId],
+        ),
+        TestProjectTrack(
+          id: automationLaneId,
+          name: 'Automation lane',
+          type: TrackType.automationLane,
+          automationLaneParentTrackId: parentWithLaneId,
+        ),
+        TestProjectTrack(
+          id: parentWithPhantomId,
+          name: 'Track with phantom lane',
+        ),
+      ],
+      trackOrder: const [parentWithLaneId, parentWithPhantomId],
+    );
+    final viewModel = ArrangerViewModel(
+      project: project,
+      baseTrackHeight: 60,
+      timeRange: TimeRange(0, 960),
+    );
+    viewModel.automationExpandedByTrackId[parentWithLaneId] = true;
+    viewModel.automationExpandedByTrackId[parentWithPhantomId] = true;
+
+    final rows = viewModel.getVisibleTrackRows().toList();
+
+    expect(rows.map((row) => row.rowKind), [
+      TrackRowKind.track,
+      TrackRowKind.automationLane,
+      TrackRowKind.track,
+      TrackRowKind.automationLane,
+    ]);
+    expect(rows[1], isA<ProjectTrackRow>());
+    expect(rows[3], isA<PhantomAutomationTrackRow>());
   });
 }
