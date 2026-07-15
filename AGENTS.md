@@ -45,7 +45,7 @@ Anthem is an open-source DAW. It is written in Dart and C++, using Flutter and J
 - Build macOS the way CI does: `flutter build macos --verbose --release`
 - Build Windows the way CI does: `flutter build windows --verbose --release`
 - Build web the way CI does: `flutter build web --verbose --release --wasm`
-- Build the Windows MSIX package the way CI does: `dart run msix:create --release --build-windows false --install-certificate false --architecture <x64|arm64> --output-path build/windows/<x64|arm64>/msix --output-name anthem-windows-<x64|arm64>`
+- Build the Windows installer the way CI does: `iscc /DMyArch=<x64|arm64> packaging/windows/anthem.iss`
 
 # Development best practices
 
@@ -56,4 +56,6 @@ Anthem is an open-source DAW. It is written in Dart and C++, using Flutter and J
 
 - Do not read anything from `docs/design/` unless specifically asked to, as they are not relevant to day-to-day coding tasks.
 - Read files from `docs/architecture/` that seem relevant to your task.
-- Do not worry about project file migration when making structural changes to the project file. This application is still in development and there are no users.
+- Project file changes may need a migration associated with them. Some notes about this:
+  - The "current version" of the software should always be an upcoming version. You shouldn't need to bump the software version before adding a migration; you can target the current version as reported in `lib/version.dart`.
+  - Migrations should be tested thoroughly.
