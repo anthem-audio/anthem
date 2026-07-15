@@ -43,6 +43,9 @@ const _clipResizeHandleWidth = 12.0;
 /// How far over the clip the resize handle extends, in pixels.
 const _clipResizeHandleOvershoot = 2.0;
 
+/// How far clips paint beyond their row content on each vertical edge.
+const _clipVerticalPaintOvershoot = 1.0;
+
 /// Computes resize handle rectangles for a clip while guaranteeing that each
 /// clip has a center drag area free of resize handles.
 @visibleForTesting
@@ -285,9 +288,10 @@ class ArrangerContentPainter extends CustomPainterObserver {
           .rowLayoutAt(trackIndex)
           .contentSpan
           .height;
-      final contentTop = trackPos;
+      final clipTop = trackPos - _clipVerticalPaintOvershoot;
+      final clipHeight = trackHeight + _clipVerticalPaintOvershoot * 2;
 
-      final rect = Rect.fromLTWH(left, contentTop, width, trackHeight);
+      final rect = Rect.fromLTWH(left, clipTop, width, clipHeight);
 
       canvas.drawRect(rect, Paint()..color = color);
 
@@ -385,10 +389,13 @@ class ArrangerContentPainter extends CustomPainterObserver {
     if (trackIndex == null) return null;
 
     final rowLayout = viewModel.trackLayout.rowLayoutAt(trackIndex);
-    final y = rowLayout.contentSpan.top - renderedVerticalScrollPosition;
-    final trackHeight = rowLayout.contentSpan.height;
+    final contentTop =
+        rowLayout.contentSpan.top - renderedVerticalScrollPosition;
+    final contentHeight = rowLayout.contentSpan.height;
+    final y = contentTop - _clipVerticalPaintOvershoot;
+    final clipHeight = contentHeight + _clipVerticalPaintOvershoot * 2;
 
-    if (y > size.height || y + trackHeight < 0) return null;
+    if (y > size.height || y + clipHeight < 0) return null;
 
     final track = project.tracks[trackId];
     if (track == null) return null;
@@ -405,7 +412,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
       x: x,
       y: y,
       width: width,
-      height: trackHeight,
+      height: clipHeight,
       selected: viewModel.selectedClips.contains(clipId),
       hovered: viewModel.hoveredClip == clipId,
       showAutomationHandles: viewModel.clipWithAutomationHandles == clipId,
@@ -498,10 +505,18 @@ class ArrangerContentPainter extends CustomPainterObserver {
         final x = clipEntry.x;
         final y = clipEntry.y;
         final width = clipEntry.width;
-        final trackHeight = clipEntry.height;
+        final clipPaintHeight = clipEntry.height;
+        final interactionY = y + _clipVerticalPaintOvershoot;
+        final interactionHeight =
+            clipPaintHeight - _clipVerticalPaintOvershoot * 2;
 
         viewModel.visibleClips.add(
-          rect: Rect.fromLTWH(x, y, width - 1, trackHeight - 1),
+          rect: Rect.fromLTWH(
+            x,
+            interactionY,
+            width - 1,
+            interactionHeight - 1,
+          ),
           metadata: clipEntry.clipId,
         );
 
@@ -510,9 +525,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
           end: endResizeHandleRect,
         ) = computeResizeHandleRects(
           clipX: x,
-          clipY: y,
+          clipY: interactionY,
           clipWidth: width,
-          clipHeight: trackHeight,
+          clipHeight: interactionHeight,
         );
         viewModel.visibleResizeAreas.add(
           rect: startResizeHandleRect,
