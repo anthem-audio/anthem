@@ -51,23 +51,20 @@ void paintAutomationHoldSegments({
   required double timeViewEnd,
   required double renderedVerticalScrollPosition,
 }) {
-  final trackPositionCalculator = viewModel.trackPositionCalculator;
-  final verticalScrollDelta =
-      viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
+  final trackLayout = viewModel.trackLayout;
 
-  for (final (rowIndex, row) in trackPositionCalculator.visibleRows.indexed) {
+  for (final rowLayout in trackLayout.rowLayouts) {
     final contentBounds = _automationContentBoundsForRow(
-      viewModel: viewModel,
-      rowIndex: rowIndex,
+      rowLayout: rowLayout,
       canvasSize: canvasSize,
-      verticalScrollDelta: verticalScrollDelta,
+      renderedVerticalScrollPosition: renderedVerticalScrollPosition,
     );
     if (contentBounds == null) {
       continue;
     }
 
-    switch (row) {
-      case TrackArrangerRow(:final trackId):
+    switch (rowLayout.row) {
+      case ProjectTrackRow(:final trackId):
         final track = project.tracks[trackId];
         if (track == null || !track.isAutomationLane) {
           continue;
@@ -99,7 +96,7 @@ void paintAutomationHoldSegments({
           timeViewEnd: timeViewEnd,
         );
 
-      case PhantomAutomationArrangerRow(:final phantomLane):
+      case PhantomAutomationTrackRow(:final phantomLane):
         final target = phantomLane.target;
         final value = target == null
             ? null
@@ -141,17 +138,12 @@ double _automationLaneEmptyValue(TrackModel track) {
 }
 
 ({double contentTop, double contentBottom})? _automationContentBoundsForRow({
-  required ArrangerViewModel viewModel,
-  required int rowIndex,
+  required TrackRowLayout rowLayout,
   required Size canvasSize,
-  required double verticalScrollDelta,
+  required double renderedVerticalScrollPosition,
 }) {
-  final trackPositionCalculator = viewModel.trackPositionCalculator;
-  final trackY =
-      trackPositionCalculator.getTrackPosition(rowIndex) +
-      verticalScrollDelta -
-      1;
-  final trackHeight = trackPositionCalculator.getTrackHeight(rowIndex) + 1;
+  final trackY = rowLayout.contentSpan.top - renderedVerticalScrollPosition;
+  final trackHeight = rowLayout.contentSpan.height;
 
   if (!shouldRenderClipContent(trackHeight) ||
       trackY > canvasSize.height ||

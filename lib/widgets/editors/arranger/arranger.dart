@@ -52,7 +52,7 @@ import 'view_model.dart';
 
 const _timelineHeight = 38.0;
 const _scrollbarShortSideLength = 17.0;
-const _trackHeaderWidth = 190.0;
+const _trackHeaderWidth = TrackLayout.defaultHeaderWidth;
 
 class Arranger extends StatefulWidget {
   const Arranger({super.key});
@@ -703,7 +703,7 @@ class _ArrangerCanvas extends StatelessWidget {
     final renderedViewRepaint = Listenable.merge([
       timeRangeAnimation.controller,
       verticalScrollPositionAnimationController,
-      viewModel.trackPositionCalculator.layoutRevision,
+      viewModel.trackLayout.layoutRevision,
     ]);
 
     return Container(

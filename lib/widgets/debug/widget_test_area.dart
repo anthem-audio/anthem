@@ -21,6 +21,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/arranger_track_headers_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
@@ -70,6 +71,11 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-slider',
     title: 'Slider',
     description: 'Tests for lib/widgets/basic/controls/slider.dart',
+  ),
+  arrangerTrackHeaders(
+    key: 'widget-test-screen-arranger-track-headers',
+    title: 'Arranger track headers',
+    description: 'Tests calculated header, indicator, and divider layout',
   );
 
   final String key;
@@ -198,6 +204,21 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
           ),
         ],
       ),
+      TreeViewItemModel(
+        key: 'widget-test-category-editors',
+        label: 'Editors',
+        children: [
+          TreeViewItemModel(
+            key: WidgetTestScreenId.arrangerTrackHeaders.key,
+            label: labelForScreen(WidgetTestScreenId.arrangerTrackHeaders),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.arrangerTrackHeaders;
+              });
+            },
+          ),
+        ],
+      ),
     ];
   }
 
@@ -211,6 +232,8 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
       WidgetTestScreenId.slider => const SliderWidgetTestScreen(),
+      WidgetTestScreenId.arrangerTrackHeaders =>
+        const ArrangerTrackHeadersWidgetTestScreen(),
     };
   }
 

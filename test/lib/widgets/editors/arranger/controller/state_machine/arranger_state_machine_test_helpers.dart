@@ -92,9 +92,9 @@ Id? trackIdForRowId(ArrangerViewModel viewModel, Id? rowId) {
     return null;
   }
 
-  return switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
-    TrackArrangerRow(:final trackId) => trackId,
-    PhantomAutomationArrangerRow() || null => null,
+  return switch (viewModel.trackLayout.tryRowLayoutForId(rowId)?.row) {
+    ProjectTrackRow(:final trackId) => trackId,
+    PhantomAutomationTrackRow() || null => null,
   };
 }
 
@@ -103,10 +103,9 @@ Id? phantomParentTrackIdForRowId(ArrangerViewModel viewModel, Id? rowId) {
     return null;
   }
 
-  return switch (viewModel.trackPositionCalculator.tryRowIdToRow(rowId)) {
-    PhantomAutomationArrangerRow(:final phantomLane) =>
-      phantomLane.parentTrackId,
-    TrackArrangerRow() || null => null,
+  return switch (viewModel.trackLayout.tryRowLayoutForId(rowId)?.row) {
+    PhantomAutomationTrackRow(:final phantomLane) => phantomLane.parentTrackId,
+    ProjectTrackRow() || null => null,
   };
 }
 
@@ -183,7 +182,7 @@ class ArrangerStateMachineTestFixture {
       project: project,
     );
     controller.onViewSizeChanged(viewSize);
-    viewModel.trackPositionCalculator.invalidate(editorHeight);
+    viewModel.refreshTrackLayout(editorHeight);
 
     return ArrangerStateMachineTestFixture._(
       project: project,
@@ -259,7 +258,7 @@ class ArrangerStateMachineTestFixture {
 
   void showPhantomAutomationLaneForTrack(Id trackId) {
     viewModel.automationExpandedByTrackId[trackId] = true;
-    viewModel.trackPositionCalculator.invalidate(editorHeight);
+    viewModel.refreshTrackLayout(editorHeight);
     controller.onTrackLayoutChanged();
   }
 
@@ -319,7 +318,7 @@ class ArrangerStateMachineTestFixture {
     parentTrack.automationLanes.add(automationLane.id);
     viewModel.registerTrack(automationLane.id);
     viewModel.automationExpandedByTrackId[trackId] = true;
-    viewModel.trackPositionCalculator.invalidate(editorHeight);
+    viewModel.refreshTrackLayout(editorHeight);
     controller.onTrackLayoutChanged();
   }
 

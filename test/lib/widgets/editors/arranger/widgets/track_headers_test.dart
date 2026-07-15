@@ -20,6 +20,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
@@ -45,10 +46,13 @@ void main() {
 
     await fixture.pump(tester);
 
-    final rowIndex = fixture.arrangerViewModel.trackPositionCalculator
-        .rowIdToIndex(phantomRowId);
-    final initialHeight = fixture.arrangerViewModel.trackPositionCalculator
-        .getTrackHeight(rowIndex);
+    final rowIndex = fixture.arrangerViewModel.trackLayout.rowIdToIndex(
+      phantomRowId,
+    );
+    final initialHeight = fixture.arrangerViewModel.trackLayout
+        .rowLayoutAt(rowIndex)
+        .contentSpan
+        .height;
 
     final handleFinder = find.byKey(Key('phantom-$phantomRowId-handle'));
     expect(handleFinder, findsOneWidget);
@@ -68,16 +72,111 @@ void main() {
       greaterThan(1),
     );
     expect(
-      fixture.arrangerViewModel.trackPositionCalculator.getTrackHeight(
-        rowIndex,
-      ),
+      fixture.arrangerViewModel.trackLayout
+          .rowLayoutAt(rowIndex)
+          .contentSpan
+          .height,
       greaterThan(initialHeight),
     );
+  });
+
+  testWidgets('places header content, indicators, and dividers from layout', (
+    tester,
+  ) async {
+    final fixture = _TrackHeadersTestFixture.create();
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      fixture.dispose();
+    });
+
+    await fixture.pump(tester);
+
+    final trackLayout = fixture.arrangerViewModel.trackLayout;
+    final rowLayout = trackLayout.rowLayoutForId(fixture.trackId);
+    final indicatorLayout = trackLayout.colorIndicatorLayouts.firstWhere(
+      (indicator) => indicator.rowId == fixture.trackId,
+    );
+    final dividerLayout = trackLayout.dividerLayouts.firstWhere(
+      (divider) => divider.resizedRowId == fixture.trackId,
+    );
+    final origin = tester.getTopLeft(
+      find.byKey(_TrackHeadersTestFixture.headerAreaKey),
+    );
+
+    expect(
+      tester.getRect(find.byKey(Key(fixture.trackId.toString()))),
+      rowLayout.headerBounds.shift(origin),
+    );
+    expect(
+      tester.getRect(find.byKey(Key('${fixture.trackId}-indicator'))),
+      indicatorLayout.bounds.shift(origin),
+    );
+
+    final visualDividerRect = tester.getRect(
+      find.byKey(Key('${fixture.trackId}-divider-visual')),
+    );
+    expect(visualDividerRect, dividerLayout.bounds.shift(origin));
+
+    final dividerHitRect = tester.getRect(
+      find.byKey(Key('${fixture.trackId}-handle')),
+    );
+    expect(dividerHitRect.center, visualDividerRect.center);
+    expect(dividerHitRect.height, visualDividerRect.height + 10);
+  });
+
+  testWidgets(
+    'keeps a group indicator while laying out visible descendants independently',
+    (tester) async {
+      final fixture = _TrackHeadersTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      final groupTrackId = fixture.createScrollableGroup();
+      final trackLayout = fixture.arrangerViewModel.trackLayout;
+      final groupLayout = trackLayout.rowLayoutForId(groupTrackId);
+      final firstChildId =
+          fixture.project.tracks[groupTrackId]!.childTracks.first;
+
+      fixture.setVerticalScrollPosition(groupLayout.headerBounds.bottom);
+      await fixture.pump(tester);
+
+      expect(find.byKey(Key(groupTrackId.toString())), findsNothing);
+      expect(find.byKey(Key(firstChildId.toString())), findsOneWidget);
+      expect(find.byKey(Key('$groupTrackId-indicator')), findsOneWidget);
+    },
+  );
+
+  testWidgets('culls each header at its own calculated bounds', (tester) async {
+    final fixture = _TrackHeadersTestFixture.create();
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      fixture.dispose();
+    });
+
+    final groupTrackId = fixture.createScrollableGroup();
+    final trackLayout = fixture.arrangerViewModel.trackLayout;
+    final groupBottom = trackLayout
+        .rowLayoutForId(groupTrackId)
+        .headerBounds
+        .bottom;
+
+    fixture.setVerticalScrollPosition(groupBottom - 1);
+    await fixture.pump(tester);
+
+    expect(find.byKey(Key(groupTrackId.toString())), findsOneWidget);
+
+    fixture.setVerticalScrollPosition(groupBottom);
+    await fixture.pump(tester);
+
+    expect(find.byKey(Key(groupTrackId.toString())), findsNothing);
   });
 }
 
 class _TrackHeadersTestFixture {
   static const viewSize = Size(190, 260);
+  static const headerAreaKey = Key('track-headers-test-area');
 
   final ProjectModel project;
 
@@ -100,12 +199,63 @@ class _TrackHeadersTestFixture {
     final phantomLane = arrangerViewModel.phantomAutomationLaneForTrack(
       trackId,
     )!;
-    arrangerViewModel.refreshTrackLayout(viewSize.height);
+    refreshLayout();
     return phantomLane;
   }
 
+  Id createScrollableGroup() {
+    final initialTrackId = project.trackOrder.first;
+    final groupTrack = TrackModel(
+      idAllocator: project.idAllocator,
+      name: 'Group',
+      color: .new(hue: 0, palette: .grayscale),
+      type: .group,
+    );
+
+    project.tracks[initialTrackId]!.parentTrackId = groupTrack.id;
+    groupTrack.childTracks.add(initialTrackId);
+    project.tracks[groupTrack.id] = groupTrack;
+    project.trackOrder[0] = groupTrack.id;
+    arrangerViewModel.registerTrack(groupTrack.id);
+
+    TrackModel createTrack(String name) => TrackModel(
+      idAllocator: project.idAllocator,
+      name: name,
+      color: .new(hue: 0, palette: .grayscale),
+      type: .normal,
+    );
+
+    for (var i = 0; i < 2; i++) {
+      final childTrack = createTrack('Child $i')..parentTrackId = groupTrack.id;
+      project.tracks[childTrack.id] = childTrack;
+      groupTrack.childTracks.add(childTrack.id);
+      arrangerViewModel.registerTrack(childTrack.id);
+    }
+    for (var i = 0; i < 10; i++) {
+      final trailingTrack = createTrack('Trailing $i');
+      project.tracks[trailingTrack.id] = trailingTrack;
+      project.trackOrder.add(trailingTrack.id);
+      arrangerViewModel.registerTrack(trailingTrack.id);
+    }
+
+    refreshLayout();
+    return groupTrack.id;
+  }
+
+  void setVerticalScrollPosition(double position) {
+    arrangerViewModel.verticalScrollPosition = position;
+    refreshLayout();
+  }
+
+  void refreshLayout() {
+    arrangerViewModel.refreshTrackLayout(
+      viewSize.height,
+      headerWidth: viewSize.width,
+    );
+  }
+
   Future<void> pump(WidgetTester tester) async {
-    arrangerViewModel.refreshTrackLayout(viewSize.height);
+    refreshLayout();
 
     await tester.pumpWidget(
       MultiProvider(
@@ -125,9 +275,13 @@ class _TrackHeadersTestFixture {
           child: Align(
             alignment: Alignment.topLeft,
             child: SizedBox(
+              key: headerAreaKey,
               width: viewSize.width,
               height: viewSize.height,
-              child: const TrackHeaders(verticalScrollPosition: 0),
+              child: TrackHeaders(
+                verticalScrollPosition:
+                    arrangerViewModel.verticalScrollPosition,
+              ),
             ),
           ),
         ),

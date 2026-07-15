@@ -66,29 +66,16 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
     final viewModel = serviceRegistry.arrangerViewModel;
     final renderedVerticalScrollPosition =
         verticalScrollPositionAnimation.value;
-    final verticalScrollDelta =
-        viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
-
-    var i = 0;
-    final visibleRows = viewModel.trackPositionCalculator.visibleRows;
-    for (final row in visibleRows) {
-      final trackPosition = viewModel.trackPositionCalculator.getTrackPosition(
-        i,
-      );
-      final trackHeight = viewModel.trackPositionCalculator.getTrackHeight(i);
-
-      var drawPosition = trackPosition + verticalScrollDelta;
-      if (!row.isSendTrack) {
-        drawPosition += trackHeight;
-      }
-      drawPosition--;
-
+    for (final divider in viewModel.trackLayout.dividerLayouts) {
       canvas.drawRect(
-        Rect.fromLTWH(0, drawPosition, size.width, 1),
+        Rect.fromLTWH(
+          0,
+          divider.bounds.top - renderedVerticalScrollPosition,
+          size.width,
+          divider.bounds.height,
+        ),
         majorLinePaint,
       );
-
-      i++;
     }
 
     // Vertical lines

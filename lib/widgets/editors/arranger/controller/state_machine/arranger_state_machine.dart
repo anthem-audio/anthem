@@ -859,12 +859,9 @@ class ArrangerIdleState extends _ArrangerLeafState {
     }
 
     final position = hoverContext.position;
-    final adjustedY =
-        position.dy +
-        interactionState.renderedVerticalScrollPosition -
-        viewModel.verticalScrollPosition;
-
-    final rowHit = viewModel.trackPositionCalculator.rowAtPosition(adjustedY);
+    final contentY =
+        position.dy + interactionState.renderedVerticalScrollPosition;
+    final rowHit = viewModel.trackLayout.rowLayoutAtContentY(contentY);
     if (rowHit == null) {
       viewModel.hoverIndicatorPosition = null;
       return;
@@ -897,11 +894,11 @@ class ArrangerIdleState extends _ArrangerLeafState {
     );
   }
 
-  Id? _rowIdForCursor(ArrangerRow row) {
+  Id? _rowIdForCursor(TrackRow row) {
     return switch (row) {
-      TrackArrangerRow(:final trackId) =>
+      ProjectTrackRow(:final trackId) =>
         project.tracks.containsKey(trackId) ? trackId : null,
-      PhantomAutomationArrangerRow() => row.rowId,
+      PhantomAutomationTrackRow() => row.rowId,
     };
   }
 

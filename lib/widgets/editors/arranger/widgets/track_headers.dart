@@ -10,8 +10,8 @@
 
   Anthem is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-  General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
@@ -19,7 +19,6 @@
 
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
@@ -27,7 +26,6 @@ import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/menu/menu.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/scroll_manager.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:flutter/widgets.dart';
@@ -35,40 +33,52 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import 'track_header.dart';
+import 'track_header_resize.dart';
 
-class _TrackHeaderResizeHandle extends StatefulObserverWidget {
-  final double resizeHandleHeight;
-  final Id rowId;
+const _dividerHitPadding = 5.0;
+
+/// Paints the color assigned to a row or group of rows.
+class TrackColorIndicator extends StatelessWidget {
+  final Color color;
+
+  const TrackColorIndicator({super.key, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        border: Border(
+          right: BorderSide(color: AnthemTheme.panel.border, width: 1),
+        ),
+      ),
+    );
+  }
+}
+
+/// Paints and handles interaction for one calculated track divider.
+class TrackDivider extends StatefulObserverWidget {
+  final TrackDividerLayout layout;
   final double trackHeight;
-  final bool isSendTrack;
+  final double visualTop;
 
-  const _TrackHeaderResizeHandle({
-    required this.resizeHandleHeight,
-    required this.rowId,
+  const TrackDivider({
+    super.key,
+    required this.layout,
     required this.trackHeight,
-    required this.isSendTrack,
+    required this.visualTop,
   });
 
   @override
-  State<_TrackHeaderResizeHandle> createState() =>
-      _TrackHeaderResizeHandleState();
+  State<TrackDivider> createState() => _TrackDividerState();
 }
 
-class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
-  double startPixelHeight = -1;
-  double startModifier = -1;
-  double startY = -1;
-  double startVerticalScrollPosition = -1;
-
-  double lastModifier = -1;
-  double lastPixelHeight = -1;
-  double deadZoneAmountTraveled = -1;
-  bool shouldIgnoreDeadZone = false;
+class _TrackDividerState extends State<TrackDivider> {
+  double? _initialPixelHeight;
+  double? _initialModifier;
+  double? _initialVerticalScrollPosition;
+  TrackHeaderResizeDragState? _dragState;
   CursorOverrideHandle? _cursorOverrideHandle;
-
-  // Dead zone at a height modifier of 1.0, which makes it easier to
-  // reset track height
-  static const deadZoneSize = 8.0;
 
   @override
   void dispose() {
@@ -87,150 +97,105 @@ class _TrackHeaderResizeHandleState extends State<_TrackHeaderResizeHandle> {
     _cursorOverrideHandle = null;
   }
 
+  void _endResize() {
+    _initialPixelHeight = null;
+    _initialModifier = null;
+    _initialVerticalScrollPosition = null;
+    _dragState = null;
+    _clearResizeCursorOverride();
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewModel = Provider.of<ArrangerViewModel>(context);
+    final resizedRowId = widget.layout.resizedRowId;
+    final resizesFromTop = widget.layout.resizeEdge == TrackResizeEdge.top;
+    final trackHeightModifier = viewModel.rowHeightModifier(resizedRowId);
 
-    final trackHeightModifier = viewModel.rowHeightModifier(widget.rowId);
+    return Hint(
+      overrideWhilePressed: true,
+      hint: [
+        .new('click + drag', 'Resize'),
+        .new('right click', 'Insert track...'),
+      ],
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeUpDown,
+        child: GestureDetector(
+          onDoubleTap: () {
+            viewModel.resetRowHeightModifier(resizedRowId);
+            viewModel.refreshTrackLayout(
+              viewModel.editorHeight,
+              headerWidth: viewModel.trackLayout.headerWidth,
+            );
+          },
+          child: Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: (event) {
+              _initialPixelHeight = widget.trackHeight;
+              _initialModifier = trackHeightModifier;
+              _initialVerticalScrollPosition = viewModel.verticalScrollPosition;
+              _dragState = TrackHeaderResizeDragState.initial(
+                pointerY: event.position.dy,
+                initialModifier: trackHeightModifier,
+              );
 
-    return SizedBox(
-      height: widget.resizeHandleHeight,
-      child: Hint(
-        overrideWhilePressed: true,
-        hint: [
-          .new('click + drag', 'Resize'),
-          .new('right click', 'Insert track...'),
-        ],
-        child: MouseRegion(
-          cursor: SystemMouseCursors.resizeUpDown,
-          child: GestureDetector(
-            onDoubleTap: () {
-              // On double click, this resets the track height
-              viewModel.resetRowHeightModifier(widget.rowId);
-
-              // This may require scrolling, as a shorter track may mean that the
-              // bottom of the lowest track is now above the bottom of the editor.
-              // This will be recalculated regardless on next render, but we would
-              // render a single frame incorrectly which is noticeable.
-              // Recalculating here means everything is correct on next render.
-              viewModel.refreshTrackLayout(viewModel.editorHeight);
+              _setResizeCursorOverride();
             },
-            child: Listener(
-              onPointerDown: (event) {
-                startPixelHeight = lastPixelHeight = widget.trackHeight;
-                startModifier = lastModifier = trackHeightModifier;
-                // If we start exactly at 1.0, we ignore the sticky effect
-                // initially
-                shouldIgnoreDeadZone = startModifier == 1;
-                startY = event.position.dy;
-                startVerticalScrollPosition = viewModel.verticalScrollPosition;
+            onPointerMove: (event) {
+              final initialPixelHeight = _initialPixelHeight;
+              final initialModifier = _initialModifier;
+              final initialVerticalScrollPosition =
+                  _initialVerticalScrollPosition;
+              final dragState = _dragState;
+              if (initialPixelHeight == null ||
+                  initialModifier == null ||
+                  initialVerticalScrollPosition == null ||
+                  dragState == null) {
+                return;
+              }
 
-                _setResizeCursorOverride();
-              },
-              onPointerMove: (event) {
-                // Compute raw delta in pixels based on pointer movement
-                final direction = widget.isSendTrack ? -1.0 : 1.0;
-                var deltaPixelsRaw = direction * (event.position.dy - startY);
+              final resizeResult = calculateTrackHeaderResize(
+                initialPixelHeight: initialPixelHeight,
+                initialModifier: initialModifier,
+                pointerY: event.position.dy,
+                isSendTrack: resizesFromTop,
+                state: dragState,
+              );
+              _dragState = resizeResult.state;
 
-                // Raw (no dead-zone) pixel height and modifier
-                var rawPixelHeight = (startPixelHeight + deltaPixelsRaw).clamp(
-                  minTrackHeight,
-                  maxTrackHeight,
-                );
-                var rawModifier =
-                    rawPixelHeight / startPixelHeight * startModifier;
+              viewModel.setRowHeightModifier(
+                resizedRowId,
+                resizeResult.modifier,
+              );
 
-                assert(startModifier > 0);
+              if (resizesFromTop && viewModel.regularToSendGapHeight == 0) {
+                viewModel.verticalScrollPosition =
+                    (initialVerticalScrollPosition +
+                            (resizeResult.pixelHeight - initialPixelHeight))
+                        .clamp(0, viewModel.maxVerticalScrollPosition);
+              }
 
-                final crossingOffset =
-                    startPixelHeight * (1 / startModifier - 1);
-                var distanceFromCrossing = deltaPixelsRaw - crossingOffset;
-
-                final withinDeadZone =
-                    distanceFromCrossing.abs() <= deadZoneSize;
-
-                // This transitions from the "dead zone suppressed" handling in
-                // the else case below, to regular handling.
-                if (shouldIgnoreDeadZone && !withinDeadZone) {
-                  // The user has dragged OUT of the dead zone. We now disable the
-                  // "ignore" flag so that if they return, it will stick.
-                  shouldIgnoreDeadZone = false;
-
-                  // Hack: To prevent a snap (jump in height), we must offset the
-                  // startY. Standard logic subtracts `deadZoneSize` from the
-                  // delta. We shift startY in the opposite direction so the
-                  // resulting delta is larger, counteracting the subtraction.
-                  final offset =
-                      distanceFromCrossing.sign * deadZoneSize * direction;
-                  startY -= offset;
-
-                  // Recalculate delta and raw values based on the new startY
-                  deltaPixelsRaw = direction * (event.position.dy - startY);
-                  rawPixelHeight = (startPixelHeight + deltaPixelsRaw).clamp(
-                    minTrackHeight,
-                    maxTrackHeight,
-                  );
-                  rawModifier =
-                      rawPixelHeight / startPixelHeight * startModifier;
-                  distanceFromCrossing = deltaPixelsRaw - crossingOffset;
-                }
-
-                double newPixelHeight;
-                double newModifier;
-
-                if (!shouldIgnoreDeadZone && withinDeadZone) {
-                  // Inside dead-zone: hold at modifier == 1.0
-                  newPixelHeight = (startPixelHeight / startModifier).clamp(
-                    minTrackHeight,
-                    maxTrackHeight,
-                  );
-                  deadZoneAmountTraveled = distanceFromCrossing;
-                  newModifier =
-                      newPixelHeight / startPixelHeight * startModifier;
-                } else if (!shouldIgnoreDeadZone && !withinDeadZone) {
-                  // Past the dead-zone: subtract its width to keep continuity
-                  final effectiveDelta =
-                      deltaPixelsRaw - distanceFromCrossing.sign * deadZoneSize;
-                  newPixelHeight = (startPixelHeight + effectiveDelta).clamp(
-                    minTrackHeight,
-                    maxTrackHeight,
-                  );
-                  newModifier =
-                      newPixelHeight / startPixelHeight * startModifier;
-                } else {
-                  // Dead-zone suppressed (starting at 1 and moving away)
-                  newPixelHeight = rawPixelHeight;
-                  newModifier = rawModifier;
-                }
-
-                viewModel.setRowHeightModifier(widget.rowId, newModifier);
-
-                if (widget.isSendTrack &&
-                    viewModel.regularToSendGapHeight == 0) {
-                  viewModel.verticalScrollPosition =
-                      (startVerticalScrollPosition +
-                              (newPixelHeight - startPixelHeight))
-                          .clamp(
-                            0,
-                            viewModel.scrollAreaHeight - viewModel.editorHeight,
-                          );
-                }
-
-                // We also need to invalidate here (see invalidate call above for
-                // context)
-                viewModel.refreshTrackLayout(viewModel.editorHeight);
-
-                lastModifier = newModifier;
-                lastPixelHeight = newPixelHeight;
-              },
-              onPointerUp: (e) {
-                _clearResizeCursorOverride();
-              },
-              onPointerCancel: (e) {
-                _clearResizeCursorOverride();
-              },
-              // Hack: Listener callbacks do nothing unless this is here
-              child: Container(color: const Color(0x00000000)),
+              viewModel.refreshTrackLayout(
+                viewModel.editorHeight,
+                headerWidth: viewModel.trackLayout.headerWidth,
+              );
+            },
+            onPointerUp: (_) => _endResize(),
+            onPointerCancel: (_) => _endResize(),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: widget.visualTop,
+                  height: widget.layout.bounds.height,
+                  child: ColoredBox(
+                    key: Key('$resizedRowId-divider-visual'),
+                    color: AnthemTheme.panel.border,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -249,223 +214,228 @@ class TrackHeaders extends StatefulWidget {
 }
 
 class _TrackHeadersState extends State<TrackHeaders> {
-  AnthemMenuController menuController = AnthemMenuController();
+  final _menuController = AnthemMenuController();
 
   @override
   Widget build(BuildContext context) {
     final project = Provider.of<ProjectModel>(context);
-
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final editorHeight = constraints.maxHeight;
+        return ListenableBuilder(
+          listenable: viewModel.trackLayout.layoutRevision,
+          builder: (context, child) => Observer(
+            builder: (context) {
+              final layout = viewModel.trackLayout;
+              final scrollOffset = widget.verticalScrollPosition;
+              final viewportBottom = scrollOffset + constraints.maxHeight;
 
-        return Observer(
-          builder: (context) {
-            List<Widget> headers = [];
-            List<Widget> resizeHandles = [];
+              bool isVisible(Rect bounds) =>
+                  bounds.bottom > scrollOffset && bounds.top < viewportBottom;
 
-            double positionForAddButton = double.nan;
-            var lastTrackWasSendTrack = false;
-            var lastTrackBottom = 0.0;
+              final baseBounds = <Object, Rect>{};
+              final baseChildren = <Widget>[];
 
-            // For MobX, since we're pulling the real values from a cache
-            final _ = viewModel.baseTrackHeight;
+              for (final indicator in layout.colorIndicatorLayouts) {
+                if (!isVisible(indicator.bounds)) continue;
 
-            final verticalScrollDelta =
-                viewModel.verticalScrollPosition -
-                widget.verticalScrollPosition;
-
-            final visibleRows = viewModel.getVisibleRows().toList(
-              growable: false,
-            );
-
-            for (final (trackIndex, row) in visibleRows.indexed) {
-              final trackId = switch (row) {
-                TrackArrangerRow(:final trackId) => trackId,
-                PhantomAutomationArrangerRow() => null,
-              };
-              final rowKey = switch (row) {
-                TrackArrangerRow(:final trackId) => trackId.toString(),
-                PhantomAutomationArrangerRow(:final phantomLane) =>
-                  'phantom-${phantomLane.id}',
-              };
-              final isSendTrack = row.isSendTrack;
-              final trackDepth = row.trackDepth;
-
-              // For MobX, since we're pulling the real values from a cache
-              final _ = viewModel.trackHeightModifiers[row.rowId];
-
-              final track = trackId == null ? null : project.tracks[trackId]!;
-              final isTopLevel =
-                  track != null &&
-                  track.parentTrackId == null &&
-                  track.automationLaneParentTrackId == null;
-
-              final trackPosition = viewModel.trackPositionCalculator
-                  .getTrackPosition(trackIndex);
-              final renderedTrackPosition = trackPosition + verticalScrollDelta;
-              final trackHeight = viewModel.trackPositionCalculator
-                  .getTrackHeight(trackIndex);
-
-              if (isSendTrack && !lastTrackWasSendTrack) {
-                lastTrackWasSendTrack = true;
-                positionForAddButton = lastTrackBottom;
-              }
-
-              lastTrackBottom = renderedTrackPosition + trackHeight;
-
-              if (renderedTrackPosition >= editorHeight) {
-                break;
-              }
-
-              // We only add top-level tracks. Each track renders headers for
-              // its child tracks, which gives us the greatest flexibility in
-              // how we manage the look and feel.
-              if (isTopLevel) {
-                var canMaybeRender = renderedTrackPosition > 0;
-
-                if (!canMaybeRender) {
-                  final subtreeTrackCount = viewModel.visibleSubtreeRowCount(
-                    track.id,
-                  );
-
-                  var totalTrackHeight = 0.0;
-                  for (var i = 0; i < subtreeTrackCount; i++) {
-                    totalTrackHeight += viewModel.trackPositionCalculator
-                        .getTrackHeight(trackIndex + i);
-                  }
-
-                  canMaybeRender =
-                      renderedTrackPosition + totalTrackHeight >= 0;
-                }
-
-                if (canMaybeRender) {
-                  headers.add(
-                    Positioned(
-                      key: Key(track.id.toString()),
-                      top: renderedTrackPosition,
-                      left: 0,
-                      right: 0,
-                      child: SizedBox(child: TrackHeader(trackId: track.id)),
-                    ),
-                  );
-                }
-              }
-
-              // Note here that the resize handle position is different from the
-              // border position. The border for a given track must always be
-              // drawn above the track, because otherwise it is surprisingly
-              // hard to figure out how far to indent the border (see the "left"
-              // property below). When always drawing above the track, the
-              // indent is consistent with the tree depth of the current track,
-              // which makes this easy.
-
-              final borderPos = renderedTrackPosition - 1;
-              if (renderedTrackPosition + trackHeight > 0) {
-                headers.add(
-                  Positioned(
-                    key: Key('$rowKey-border'),
-                    top: borderPos,
-                    left: trackDepth * 9,
-                    right: 0,
-                    height: 1,
-                    child: Container(color: AnthemTheme.panel.border),
-                  ),
-                );
-
-                const resizeHandleHeight = 11.0;
-                var resizeHandleTop =
-                    renderedTrackPosition - 1 - resizeHandleHeight / 2;
-                if (!isSendTrack) {
-                  resizeHandleTop += trackHeight;
-                }
-                resizeHandleTop++;
-
-                resizeHandles.add(
-                  Positioned(
-                    key: Key('$rowKey-handle'),
-                    left: 0,
-                    right: 0,
-                    top: resizeHandleTop,
-                    child: _TrackHeaderResizeHandle(
-                      resizeHandleHeight: resizeHandleHeight,
-                      trackHeight: trackHeight,
-                      isSendTrack: isSendTrack,
-                      rowId: row.rowId,
+                final row = layout.rowLayoutForId(indicator.rowId).row;
+                final color = switch (row) {
+                  ProjectTrackRow(:final trackId) =>
+                    project.tracks[trackId]?.color.colorShifter.clipBase
+                        .toColor(),
+                  PhantomAutomationTrackRow(:final phantomLane) =>
+                    project
+                        .tracks[phantomLane.parentTrackId]
+                        ?.color
+                        .colorShifter
+                        .clipBase
+                        .toColor()
+                        .withValues(alpha: 0.45),
+                };
+                if (color == null) continue;
+                final childId = ('indicator', indicator.rowId);
+                baseBounds[childId] = indicator.bounds;
+                baseChildren.add(
+                  LayoutId(
+                    id: childId,
+                    child: TrackColorIndicator(
+                      key: Key('${row.rowId}-indicator'),
+                      color: color,
                     ),
                   ),
                 );
               }
-            }
 
-            // If we didn't fill the whole area, then we are at the end of the
-            // track list, so we can add an "add track" button
-            if (!positionForAddButton.isNaN) {
-              // We're missing one track border, which is the one right above
-              // the add handle, so we can add it here.
-              headers.add(
-                Positioned(
-                  key: Key('last-border'),
-                  top: positionForAddButton - 1,
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  child: Container(color: AnthemTheme.panel.border),
-                ),
+              for (final rowLayout in layout.rowLayouts) {
+                if (!isVisible(rowLayout.headerBounds)) continue;
+
+                final row = rowLayout.row;
+                if (row case ProjectTrackRow(
+                  :final trackId,
+                ) when !project.tracks.containsKey(trackId)) {
+                  continue;
+                }
+                final childId = ('header', row.rowId);
+                baseBounds[childId] = rowLayout.headerBounds;
+                baseChildren.add(
+                  LayoutId(
+                    id: childId,
+                    child: switch (row) {
+                      ProjectTrackRow(:final trackId) => TrackHeaderContent(
+                        key: Key(trackId.toString()),
+                        trackId: trackId,
+                      ),
+                      PhantomAutomationTrackRow(:final phantomLane) =>
+                        PhantomAutomationTrackHeaderContent(
+                          key: Key('phantom-${phantomLane.id}'),
+                          phantomLane: phantomLane,
+                        ),
+                    },
+                  ),
+                );
+              }
+
+              final addTrackSpan = layout.addTrackControlSpan;
+              final addTrackBounds = Rect.fromLTWH(
+                16,
+                addTrackSpan.top + 8,
+                (layout.headerWidth - 32).clamp(0, double.infinity),
+                16,
               );
+              if (isVisible(addTrackBounds)) {
+                const childId = 'add-track-button';
+                baseBounds[childId] = addTrackBounds;
+                baseChildren.add(
+                  LayoutId(
+                    id: childId,
+                    child: Menu(
+                      menuController: _menuController,
+                      menuDef: .new(
+                        children: [
+                          AnthemMenuItem(
+                            text: 'Add track',
+                            onSelected: () {
+                              serviceRegistry.trackController.addTrack();
+                            },
+                          ),
+                          AnthemMenuItem(
+                            text: 'Add send track',
+                            onSelected: () {
+                              serviceRegistry.trackController.addSendTrack();
+                            },
+                          ),
+                        ],
+                      ),
+                      child: Button(
+                        icon: Icons.add,
+                        hint: [.new('click', 'Add a new track...')],
+                        onPress: _menuController.toggle,
+                        height: 16,
+                      ),
+                    ),
+                  ),
+                );
+              }
 
-              headers.add(
-                Positioned(
-                  key: Key('add-track-button'),
-                  top: positionForAddButton + 8,
-                  left: 16,
-                  right: 16,
-                  child: Menu(
-                    menuController: menuController,
-                    menuDef: .new(
-                      children: [
-                        AnthemMenuItem(
-                          text: 'Add track',
-                          onSelected: () {
-                            final controller = ServiceRegistry.forProject(
-                              project.id,
-                            ).trackController;
-                            controller.addTrack();
-                          },
-                        ),
-                        AnthemMenuItem(
-                          text: 'Add send track',
-                          onSelected: () {
-                            final controller = ServiceRegistry.forProject(
-                              project.id,
-                            ).trackController;
-                            controller.addSendTrack();
-                          },
-                        ),
-                      ],
+              final dividerBounds = <Object, Rect>{};
+              final dividerChildren = <Widget>[];
+              for (final divider in layout.dividerLayouts) {
+                final interactionBounds = Rect.fromLTRB(
+                  divider.bounds.left,
+                  divider.bounds.top - _dividerHitPadding,
+                  divider.bounds.right,
+                  divider.bounds.bottom + _dividerHitPadding,
+                );
+                if (!isVisible(interactionBounds)) continue;
+
+                final childId = ('divider', divider.resizedRowId);
+                final rowLayout = layout.rowLayoutForId(divider.resizedRowId);
+                if (rowLayout.row case ProjectTrackRow(
+                  :final trackId,
+                ) when !project.tracks.containsKey(trackId)) {
+                  continue;
+                }
+                final rowKey = switch (rowLayout.row) {
+                  ProjectTrackRow(:final trackId) => trackId.toString(),
+                  PhantomAutomationTrackRow(:final phantomLane) =>
+                    'phantom-${phantomLane.id}',
+                };
+                dividerBounds[childId] = interactionBounds;
+                dividerChildren.add(
+                  LayoutId(
+                    id: childId,
+                    child: TrackDivider(
+                      key: Key('$rowKey-handle'),
+                      layout: divider,
+                      trackHeight: rowLayout.contentSpan.height,
+                      visualTop: divider.bounds.top - interactionBounds.top,
                     ),
-                    child: Button(
-                      icon: Icons.add,
-                      hint: [.new('click', 'Add a new track...')],
-                      onPress: () {
-                        menuController.toggle();
-                      },
-                      height: 16,
-                    ),
+                  ),
+                );
+              }
+
+              final revision = layout.layoutRevision.value;
+              return ArrangerScrollManager.verticalOnly(
+                child: ClipRect(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CustomMultiChildLayout(
+                        delegate: _TrackHeaderLayoutDelegate(
+                          boundsById: baseBounds,
+                          scrollOffset: scrollOffset,
+                          layoutRevision: revision,
+                        ),
+                        children: baseChildren,
+                      ),
+                      CustomMultiChildLayout(
+                        delegate: _TrackHeaderLayoutDelegate(
+                          boundsById: dividerBounds,
+                          scrollOffset: scrollOffset,
+                          layoutRevision: revision,
+                        ),
+                        children: dividerChildren,
+                      ),
+                    ],
                   ),
                 ),
               );
-            }
-
-            return ArrangerScrollManager.verticalOnly(
-              child: ClipRect(child: Stack(children: headers + resizeHandles)),
-            );
-          },
+            },
+          ),
         );
       },
     );
+  }
+}
+
+class _TrackHeaderLayoutDelegate extends MultiChildLayoutDelegate {
+  final Map<Object, Rect> boundsById;
+  final double scrollOffset;
+  final int layoutRevision;
+
+  _TrackHeaderLayoutDelegate({
+    required this.boundsById,
+    required this.scrollOffset,
+    required this.layoutRevision,
+  });
+
+  @override
+  void performLayout(Size size) {
+    for (final MapEntry(key: childId, value: bounds) in boundsById.entries) {
+      if (!hasChild(childId)) continue;
+
+      layoutChild(childId, BoxConstraints.tight(bounds.size));
+      positionChild(childId, Offset(bounds.left, bounds.top - scrollOffset));
+    }
+  }
+
+  @override
+  bool shouldRelayout(covariant _TrackHeaderLayoutDelegate oldDelegate) {
+    return oldDelegate.layoutRevision != layoutRevision ||
+        oldDelegate.scrollOffset != scrollOffset ||
+        oldDelegate.boundsById.length != boundsById.length;
   }
 }

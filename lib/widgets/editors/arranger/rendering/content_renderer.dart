@@ -27,7 +27,6 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/invalidation_range_collector.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
-import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -207,12 +206,10 @@ class ArrangerContentPainter extends CustomPainterObserver {
   double get timeViewEnd => timeRangeAnimation.renderedEnd;
   double get renderedVerticalScrollPosition =>
       verticalScrollPositionAnimation.value;
-  double get _verticalScrollDelta =>
-      viewModel.verticalScrollPosition - renderedVerticalScrollPosition;
 
-  double _getTrackPosition(num trackIndex) {
-    return viewModel.trackPositionCalculator.getTrackPosition(trackIndex) +
-        _verticalScrollDelta;
+  double _rowTopInViewport(int rowIndex) {
+    return viewModel.trackLayout.rowLayoutAt(rowIndex).contentSpan.top -
+        renderedVerticalScrollPosition;
   }
 
   @override
@@ -283,9 +280,11 @@ class ArrangerContentPainter extends CustomPainterObserver {
       final trackIndex = _rowIdToIndex(rowId);
       if (trackIndex == null) return;
 
-      final trackPos = _getTrackPosition(trackIndex);
-      final trackHeight =
-          viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+      final trackPos = _rowTopInViewport(trackIndex);
+      final trackHeight = viewModel.trackLayout
+          .rowLayoutAt(trackIndex)
+          .contentSpan
+          .height;
       final contentTop = trackPos;
 
       final rect = Rect.fromLTWH(left, contentTop, width, trackHeight);
@@ -322,9 +321,11 @@ class ArrangerContentPainter extends CustomPainterObserver {
     final trackIndex = _rowIdToIndex(rowId);
     if (trackIndex == null) return;
 
-    final trackPos = _getTrackPosition(trackIndex);
-    final trackHeight =
-        viewModel.trackPositionCalculator.getTrackHeight(trackIndex) - 1;
+    final trackPos = _rowTopInViewport(trackIndex);
+    final trackHeight = viewModel.trackLayout
+        .rowLayoutAt(trackIndex)
+        .contentSpan
+        .height;
     final contentTop = trackPos;
 
     final rect = Rect.fromLTWH(
@@ -343,7 +344,7 @@ class ArrangerContentPainter extends CustomPainterObserver {
   }
 
   int? _rowIdToIndex(Id rowId) {
-    return viewModel.trackPositionCalculator.tryRowIdToIndex(rowId);
+    return viewModel.trackLayout.tryRowIdToIndex(rowId);
   }
 
   ClipRenderInfo? _buildClipRenderInfo({
@@ -380,18 +381,12 @@ class ArrangerContentPainter extends CustomPainterObserver {
 
     if (x > size.width || x + width < 0) return null;
 
-    final trackIndex = viewModel.trackPositionCalculator.tryTrackIdToIndex(
-      trackId,
-    );
+    final trackIndex = viewModel.trackLayout.tryTrackIdToIndex(trackId);
     if (trackIndex == null) return null;
 
-    final y = _getTrackPosition(trackIndex) - 1;
-    final trackHeight =
-        calculateTrackHeight(
-          viewModel.baseTrackHeight,
-          viewModel.rowHeightModifier(trackId),
-        ) +
-        1;
+    final rowLayout = viewModel.trackLayout.rowLayoutAt(trackIndex);
+    final y = rowLayout.contentSpan.top - renderedVerticalScrollPosition;
+    final trackHeight = rowLayout.contentSpan.height;
 
     if (y > size.height || y + trackHeight < 0) return null;
 

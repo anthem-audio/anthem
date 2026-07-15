@@ -266,10 +266,7 @@ void main() {
 
         expect(fixture.viewModel.maxVerticalScrollPosition, 0);
         expect(fixture.viewModel.verticalScrollPosition, 0);
-        expect(
-          fixture.viewModel.trackPositionCalculator.getTrackPosition(0),
-          0,
-        );
+        expect(fixture.viewModel.trackLayout.rowLayoutAt(0).contentSpan.top, 0);
       },
     );
   });

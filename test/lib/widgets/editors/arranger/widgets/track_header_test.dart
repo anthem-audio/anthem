@@ -29,8 +29,9 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
+import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/arranger/widgets/track_header.dart';
+import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
@@ -229,6 +230,19 @@ void main() {
 
       await fixture.pump(tester);
 
+      final phantomLane = fixture.arrangerViewModel
+          .phantomAutomationLaneForTrack(fixture.trackId)!;
+      expect(
+        fixture.arrangerViewModel.trackLayout.tryRowLayoutForId(phantomLane.id),
+        isNotNull,
+      );
+      final phantomRow =
+          fixture.arrangerViewModel.trackLayout
+                  .rowLayoutForId(phantomLane.id)
+                  .row
+              as PhantomAutomationTrackRow;
+      expect(phantomRow.phantomLane.target?.parameterName, 'Cutoff');
+      expect(find.byKey(Key('phantom-${phantomLane.id}')), findsOneWidget);
       expect(find.text('Cutoff'), findsOneWidget);
       expect(
         find.text('Very Long Device Name That Needs More Space'),
@@ -411,8 +425,9 @@ class _TrackHeaderTestFixture {
     if (baseTrackHeight != null) {
       fixture.arrangerViewModel.baseTrackHeight = baseTrackHeight;
     }
-    fixture.arrangerViewModel.trackPositionCalculator.invalidate(
+    fixture.arrangerViewModel.refreshTrackLayout(
       viewSize.height,
+      headerWidth: viewSize.width,
     );
 
     return fixture;
@@ -427,9 +442,7 @@ class _TrackHeaderTestFixture {
   Id get trackId => project.trackOrder.first;
 
   double get trackHeight =>
-      arrangerViewModel.trackPositionCalculator.getTrackHeight(
-        arrangerViewModel.trackPositionCalculator.trackIdToIndex(trackId),
-      );
+      arrangerViewModel.trackLayout.rowLayoutForId(trackId).contentSpan.height;
 
   ({Id laneId, String parameterName}) addToneGeneratorAutomationLane({
     required String deviceName,
@@ -467,7 +480,10 @@ class _TrackHeaderTestFixture {
   }
 
   Future<void> pump(WidgetTester tester) async {
-    arrangerViewModel.trackPositionCalculator.invalidate(viewSize.height);
+    arrangerViewModel.refreshTrackLayout(
+      viewSize.height,
+      headerWidth: viewSize.width,
+    );
 
     await tester.pumpWidget(
       Directionality(
@@ -475,6 +491,10 @@ class _TrackHeaderTestFixture {
         child: MultiProvider(
           providers: [
             Provider<ProjectModel>.value(value: project),
+            Provider<ArrangerViewModel>.value(value: arrangerViewModel),
+            Provider<ArrangerController>.value(
+              value: serviceRegistry.arrangerController,
+            ),
             Provider<ScreenOverlayController>.value(
               value: _screenOverlayController,
             ),
@@ -496,7 +516,7 @@ class _TrackHeaderTestFixture {
                         key: headerKey,
                         width: viewSize.width,
                         height: viewSize.height,
-                        child: TrackHeader(trackId: trackId),
+                        child: TrackHeaders(verticalScrollPosition: 0),
                       ),
                     ),
                   ),
@@ -524,12 +544,15 @@ class _TrackHeaderTestFixture {
 
   Rect trackContentRect(WidgetTester tester) {
     final headerTopLeft = tester.getTopLeft(find.byKey(headerKey));
+    final bounds = arrangerViewModel.trackLayout
+        .rowLayoutForId(trackId)
+        .headerBounds;
 
     return Rect.fromLTWH(
-      headerTopLeft.dx + 9,
-      headerTopLeft.dy,
-      viewSize.width - 9,
-      trackHeight - 1,
+      headerTopLeft.dx + bounds.left,
+      headerTopLeft.dy + bounds.top,
+      bounds.width,
+      bounds.height,
     );
   }
 
@@ -565,8 +588,7 @@ class _TrackHeaderTestFixture {
   }
 
   Future<void> clickHeader(WidgetTester tester, TestGesture mouse) async {
-    final position =
-        tester.getTopLeft(find.byKey(headerKey)) + const Offset(28, 20);
+    final position = trackContentRect(tester).topLeft + const Offset(19, 20);
 
     await mouse.down(position);
     await tester.pump();
