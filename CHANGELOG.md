@@ -1,6 +1,8 @@
 # 0.0.0-prealpha.2 (Unreleased)
 
-(nothing yet)
+## New
+
+- Added user-facing errors when a project file fails to load
 
 # 0.0.0-prealpha.1
 

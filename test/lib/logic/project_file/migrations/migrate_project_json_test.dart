@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
 import 'package:anthem/logic/project_file/migrations/migration.dart';
 import 'package:anthem/logic/project_file/version.dart';
@@ -157,7 +158,7 @@ void main() {
       ]) {
         expect(
           () => migrateProjectJson(projectJson),
-          throwsA(isA<FormatException>()),
+          throwsA(isA<InvalidProjectFileException>()),
         );
       }
     });
@@ -167,14 +168,77 @@ void main() {
         () => migrateProjectJson(<String, dynamic>{
           _savedVersionKey: '0.0.0-prealpha.0',
         }),
-        throwsA(isA<UnsupportedError>()),
+        throwsA(
+          isA<ProjectVersionTooOldException>()
+              .having(
+                (error) => error.savedVersion.toString(),
+                'savedVersion',
+                '0.0.0-prealpha.0',
+              )
+              .having(
+                (error) => error.oldestSupportedVersion.toString(),
+                'oldestSupportedVersion',
+                '0.0.0-prealpha.1',
+              ),
+        ),
       );
       expect(
         () => migrateProjectJson(<String, dynamic>{
           _savedVersionKey: '0.0.0-prealpha.3',
         }),
-        throwsA(isA<UnsupportedError>()),
+        throwsA(
+          isA<ProjectSavedInNewerVersionException>()
+              .having(
+                (error) => error.savedVersion.toString(),
+                'savedVersion',
+                '0.0.0-prealpha.3',
+              )
+              .having(
+                (error) => error.currentVersion.toString(),
+                'currentVersion',
+                currentProjectFileSoftwareVersion,
+              ),
+        ),
       );
+    });
+
+    test('wraps migration errors with source and target versions', () {
+      final cause = StateError('migration failed');
+      final projectJson = <String, dynamic>{
+        _savedVersionKey: '0.0.0-prealpha.1',
+      };
+
+      expect(
+        () => migrateProjectJson(
+          projectJson,
+          migrations: [
+            ProjectFileMigration(
+              targetVersion: _version('0.0.0-prealpha.2'),
+              migrate: (_) {},
+            ),
+            ProjectFileMigration(
+              targetVersion: _version('0.0.0-prealpha.3'),
+              migrate: (_) => throw cause,
+            ),
+          ],
+          currentVersion: _version('0.0.0-prealpha.3'),
+        ),
+        throwsA(
+          isA<ProjectFileMigrationException>()
+              .having(
+                (error) => error.fromVersion.toString(),
+                'fromVersion',
+                '0.0.0-prealpha.2',
+              )
+              .having(
+                (error) => error.targetVersion.toString(),
+                'targetVersion',
+                '0.0.0-prealpha.3',
+              )
+              .having((error) => error.cause, 'cause', same(cause)),
+        ),
+      );
+      expect(projectJson[_savedVersionKey], '0.0.0-prealpha.2');
     });
 
     test('rejects unordered and duplicate migrations', () {

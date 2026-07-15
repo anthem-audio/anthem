@@ -22,6 +22,8 @@ import 'dart:io';
 
 import 'package:anthem/helpers/logging/anthem_logging.dart';
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/errors.dart';
+import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -36,6 +38,40 @@ import 'package:flutter/widgets.dart' hide TextBox;
 import 'package:logging/logging.dart';
 
 final _log = Logger('main_window_controller');
+
+@visibleForTesting
+String projectFileLoadErrorMarkdown(Object error) {
+  String version(ProjectFileVersion version) {
+    return escapeDialogMarkdown(version.toString());
+  }
+
+  return switch (error) {
+    ProjectSavedInNewerVersionException error =>
+      'This project was saved in a newer version of Anthem '
+          '(${version(error.savedVersion)}). You are running Anthem '
+          '${version(error.currentVersion)}.\n\n'
+          'Update Anthem to that version or newer to open this project.',
+    ProjectVersionTooOldException error =>
+      'This project was saved in Anthem ${version(error.savedVersion)}, which '
+          'is older than the oldest project version supported by this version '
+          'of Anthem (${version(error.oldestSupportedVersion)}).',
+    ProjectFileMigrationException error =>
+      'Anthem could not update this project from version '
+          '${version(error.fromVersion)} to ${version(error.targetVersion)}. '
+          'The original project file was not changed.\n\n'
+          'Please report this problem and include your Anthem logs.',
+    ProjectFileReadException() =>
+      'Anthem could not read the selected project file. Check that the file '
+          'still exists and that you have permission to open it.',
+    InvalidProjectFileException() =>
+      'Anthem could not read this project. The file may be damaged or may not '
+          'be an Anthem project file. The original file was not changed.',
+    _ =>
+      'Anthem encountered an unexpected error while opening this project. '
+          'The original project file was not changed.\n\n'
+          'See the Anthem logs for more information.',
+  };
+}
 
 class CursorOverrideHandle {
   final MainWindowController _controller;
@@ -112,7 +148,9 @@ class MainWindowController {
 
   /// Returns the ID of the loaded project, or null if the project load failed
   /// or was cancelled.
-  Future<ProjectId?> loadProject() async {
+  Future<ProjectId?> loadProject({
+    required DialogController dialogController,
+  }) async {
     String? home;
     Map<String, String> envVars = kIsWeb ? {} : Platform.environment;
 
@@ -151,6 +189,11 @@ class MainWindowController {
       project = ProjectModel.fromJson(projectJson);
     } catch (error, stackTrace) {
       _log.warning('Could not load project file.', error, stackTrace);
+      dialogController.showMarkdownDialog(
+        title: 'Could not open project',
+        markdown: projectFileLoadErrorMarkdown(error),
+        buttons: [DialogButton.ok()],
+      );
       return null;
     }
 

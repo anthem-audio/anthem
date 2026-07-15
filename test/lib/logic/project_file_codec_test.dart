@@ -22,6 +22,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/logic/project_file/gzip.dart';
 import 'package:anthem/logic/project_file/version.dart';
@@ -102,7 +103,21 @@ void main() {
 
       await expectLater(
         decodeProjectFileBytes(bytes),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<InvalidProjectFileException>()),
+      );
+    });
+
+    test('reports file-system errors separately from invalid files', () async {
+      final tempDir = await Directory.systemTemp.createTemp(
+        'anthem_missing_project_file_test_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final missingPath =
+          '${tempDir.path}${Platform.pathSeparator}missing.anthem';
+
+      await expectLater(
+        readProjectFile(missingPath),
+        throwsA(isA<ProjectFileReadException>()),
       );
     });
   });

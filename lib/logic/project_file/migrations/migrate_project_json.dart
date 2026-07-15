@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/migrations/migration.dart';
 import 'package:anthem/logic/project_file/migrations/registry.dart';
 import 'package:anthem/logic/project_file/version.dart';
@@ -38,12 +39,22 @@ ProjectJson migrateProjectJson(
 
   final savedVersionValue = projectJson[_savedVersionKey];
   if (savedVersionValue is! String) {
-    throw const FormatException(
-      'Expected savedInSoftwareVersion to be a version string.',
+    throw const InvalidProjectFileException(
+      cause: FormatException(
+        'Expected savedInSoftwareVersion to be a version string.',
+      ),
     );
   }
 
-  final savedVersion = ProjectFileVersion.parse(savedVersionValue);
+  final ProjectFileVersion savedVersion;
+  try {
+    savedVersion = ProjectFileVersion.parse(savedVersionValue);
+  } on FormatException catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
 
   if (savedVersion == resolvedCurrentVersion) {
     return projectJson;
@@ -56,26 +67,42 @@ ProjectJson migrateProjectJson(
   );
 
   if (savedVersion < oldestSupportedVersion) {
-    throw UnsupportedError(
-      'Project file version $savedVersion is older than the oldest supported '
-      'version $oldestSupportedVersion.',
+    throw ProjectVersionTooOldException(
+      savedVersion: savedVersion,
+      oldestSupportedVersion: oldestSupportedVersion,
     );
   }
 
   if (savedVersion > resolvedCurrentVersion) {
-    throw UnsupportedError(
-      'Project file version $savedVersion is newer than the current software '
-      'version $resolvedCurrentVersion.',
+    throw ProjectSavedInNewerVersionException(
+      savedVersion: savedVersion,
+      currentVersion: resolvedCurrentVersion,
     );
   }
+
+  var migrationSourceVersion = savedVersion;
 
   for (final migration in migrations) {
     if (migration.targetVersion <= savedVersion) {
       continue;
     }
 
-    migration.migrate(projectJson);
+    try {
+      migration.migrate(projectJson);
+    } catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        ProjectFileMigrationException(
+          fromVersion: migrationSourceVersion,
+          targetVersion: migration.targetVersion,
+          cause: error,
+          causeStackTrace: stackTrace,
+        ),
+        stackTrace,
+      );
+    }
+
     projectJson[_savedVersionKey] = migration.targetVersion.toString();
+    migrationSourceVersion = migration.targetVersion;
   }
 
   projectJson[_savedVersionKey] = resolvedCurrentVersion.toString();

@@ -20,6 +20,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/model/project.dart';
 
@@ -41,19 +42,26 @@ Future<void> writeProjectFileToPath(String path, ProjectModel project) async {
 }
 
 Future<Map<String, dynamic>> readProjectFileFromPath(String path) async {
-  final file = File(path);
-  final header = await file
-      .openRead(0, projectFileHeader.length)
-      .fold<List<int>>([], (bytes, chunk) => bytes..addAll(chunk));
+  try {
+    final file = File(path);
+    final header = await file
+        .openRead(0, projectFileHeader.length)
+        .fold<List<int>>([], (bytes, chunk) => bytes..addAll(chunk));
 
-  validateProjectFileHeader(header);
+    validateProjectFileHeader(header);
 
-  final decoded = await file
-      .openRead(projectFileHeader.length)
-      .transform(gzip.decoder)
-      .transform(utf8.decoder)
-      .transform(json.decoder)
-      .single;
+    final decoded = await file
+        .openRead(projectFileHeader.length)
+        .transform(gzip.decoder)
+        .transform(utf8.decoder)
+        .transform(json.decoder)
+        .single;
 
-  return expectProjectJsonObject(decoded);
+    return expectProjectJsonObject(decoded);
+  } on FileSystemException catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      ProjectFileReadException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
 }

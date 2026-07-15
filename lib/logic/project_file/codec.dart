@@ -20,6 +20,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/logic/project_file/gzip.dart';
 import 'package:anthem/logic/project_file/io.dart';
@@ -41,8 +42,19 @@ Future<Uint8List> encodeProjectFile(ProjectModel project) async {
 
 /// Decodes an Anthem project file from bytes.
 Future<Map<String, dynamic>> decodeProjectFileBytes(List<int> bytes) async {
-  final decompressedJson = await decompressGzip(getProjectFilePayload(bytes));
-  return migrateProjectJson(decodeProjectJson(decompressedJson));
+  final Map<String, dynamic> projectJson;
+
+  try {
+    final decompressedJson = await decompressGzip(getProjectFilePayload(bytes));
+    projectJson = decodeProjectJson(decompressedJson);
+  } catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
+
+  return migrateProjectJson(projectJson);
 }
 
 /// Writes a project to an Anthem project file.
@@ -52,5 +64,18 @@ Future<void> writeProjectFile(String path, ProjectModel project) async {
 
 /// Reads an Anthem project file.
 Future<Map<String, dynamic>> readProjectFile(String path) async {
-  return migrateProjectJson(await readProjectFileFromPath(path));
+  final Map<String, dynamic> projectJson;
+
+  try {
+    projectJson = await readProjectFileFromPath(path);
+  } on ProjectFileReadException {
+    rethrow;
+  } catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
+
+  return migrateProjectJson(projectJson);
 }

@@ -402,11 +402,13 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
           text: 'Load project...',
           hint: 'Load a project',
           onSelected: () {
-            mainWindowController.loadProject().then((projectId) {
-              if (projectId != null) {
-                mainWindowController.switchTab(projectId);
-              }
-            });
+            mainWindowController
+                .loadProject(dialogController: dialogController)
+                .then((projectId) {
+                  if (projectId != null) {
+                    mainWindowController.switchTab(projectId);
+                  }
+                });
           },
         ),
         Separator(),
