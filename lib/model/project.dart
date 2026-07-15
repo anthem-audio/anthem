@@ -23,6 +23,7 @@ import 'dart:convert';
 import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/logic/commands/command_stack.dart';
 import 'package:anthem/logic/commands/journal_commands.dart';
+import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
@@ -40,8 +41,6 @@ import 'processing_graph/processing_graph.dart';
 import 'shared/hydratable.dart';
 
 part 'project.g.dart';
-
-const String currentProjectFileSoftwareVersion = '0.0.0-prealpha.2';
 
 enum ProjectLayoutKind { arrange, edit, mix }
 

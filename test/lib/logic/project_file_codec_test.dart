@@ -19,13 +19,26 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/format.dart';
+import 'package:anthem/logic/project_file/gzip.dart';
+import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  Future<Uint8List> encodeProjectJson(Map<String, dynamic> projectJson) async {
+    final output = BytesBuilder(copy: false)..add(projectFileHeader);
+    final jsonBytes = Uint8List.fromList(
+      JsonUtf8Encoder().convert(projectJson),
+    );
+    output.add(await compressGzip(jsonBytes));
+    return output.takeBytes();
+  }
 
   group('project file codec', () {
     test('encodes and decodes a project', () async {
@@ -60,6 +73,28 @@ void main() {
       final fileBytes = await File(path).readAsBytes();
       expect(fileBytes.first, isNot(equals('{'.codeUnitAt(0))));
       expect(await readProjectFile(path), equals(project.toJson()));
+    });
+
+    test('migrates byte and path reads before returning JSON', () async {
+      final project = ProjectModel.create();
+      addTearDown(project.dispose);
+
+      final oldProjectJson = project.toJson()
+        ..['savedInSoftwareVersion'] = '0.0.0-prealpha.1';
+      final bytes = await encodeProjectJson(oldProjectJson);
+      final expectedJson = Map<String, dynamic>.of(oldProjectJson)
+        ..['savedInSoftwareVersion'] = currentProjectFileSoftwareVersion;
+
+      expect(await decodeProjectFileBytes(bytes), equals(expectedJson));
+
+      final tempDir = await Directory.systemTemp.createTemp(
+        'anthem_project_file_migration_test_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final path = '${tempDir.path}${Platform.pathSeparator}project.anthem';
+      await File(path).writeAsBytes(bytes);
+
+      expect(await readProjectFile(path), equals(expectedJson));
     });
 
     test('rejects files without an Anthem project file header', () async {

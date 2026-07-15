@@ -129,6 +129,20 @@ final class ProjectFileVersion implements Comparable<ProjectFileVersion> {
   }
 }
 
+const String currentProjectFileSoftwareVersion = '0.0.0-prealpha.2';
+
+final ProjectFileVersion currentProjectFileVersion = ProjectFileVersion.parse(
+  currentProjectFileSoftwareVersion,
+);
+
+/// The oldest version that has enough version information to migrate safely.
+const ProjectFileVersion oldestSupportedProjectFileVersion = ProjectFileVersion(
+  major: 0,
+  minor: 0,
+  bugfix: 0,
+  extra: 'prealpha.1',
+);
+
 /// Compares two project-file version strings for use with [List.sort].
 int compareProjectFileVersionStrings(String left, String right) {
   return ProjectFileVersion.parse(

@@ -19,6 +19,7 @@
 
 import 'dart:io';
 
+import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/version.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pub_semver/pub_semver.dart';
@@ -64,20 +65,6 @@ String _issDefineValue(String iss, String defineName) {
   return match.group(1)!;
 }
 
-String _dartStringConstantValue(String dart, String constantName) {
-  final pattern = RegExp(
-    'const\\s+String\\s+${RegExp.escape(constantName)}\\s*=\\s*'
-    '["\']([^"\']+)["\']\\s*;',
-  );
-  final match = pattern.firstMatch(dart);
-
-  if (match == null) {
-    fail('Expected Dart to define $constantName as a string constant.');
-  }
-
-  return match.group(1)!;
-}
-
 String _xmlAttributeValue(
   String xml, {
   required String elementName,
@@ -111,15 +98,8 @@ void main() {
   });
 
   test('Project file software version matches pubspec version', () {
-    final projectModel = _readRepoFile(repoRoot, 'lib/model/project.dart');
-
-    expect(
-      _dartStringConstantValue(
-        projectModel,
-        'currentProjectFileSoftwareVersion',
-      ),
-      pubspecVersion,
-    );
+    expect(currentProjectFileSoftwareVersion, pubspecVersion);
+    expect(currentProjectFileVersion.toString(), pubspecVersion);
   });
 
   test('Inno Setup versions are derived from the pubspec version', () {

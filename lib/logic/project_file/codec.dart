@@ -23,6 +23,7 @@ import 'dart:typed_data';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/logic/project_file/gzip.dart';
 import 'package:anthem/logic/project_file/io.dart';
+import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
 import 'package:anthem/model/project.dart';
 
 /// Encodes a project as an Anthem project file.
@@ -41,7 +42,7 @@ Future<Uint8List> encodeProjectFile(ProjectModel project) async {
 /// Decodes an Anthem project file from bytes.
 Future<Map<String, dynamic>> decodeProjectFileBytes(List<int> bytes) async {
   final decompressedJson = await decompressGzip(getProjectFilePayload(bytes));
-  return decodeProjectJson(decompressedJson);
+  return migrateProjectJson(decodeProjectJson(decompressedJson));
 }
 
 /// Writes a project to an Anthem project file.
@@ -51,5 +52,5 @@ Future<void> writeProjectFile(String path, ProjectModel project) async {
 
 /// Reads an Anthem project file.
 Future<Map<String, dynamic>> readProjectFile(String path) async {
-  return await readProjectFileFromPath(path);
+  return migrateProjectJson(await readProjectFileFromPath(path));
 }
