@@ -99,6 +99,19 @@ class _ButtonWidgetTestScreenState extends State<ButtonWidgetTestScreen> {
               width: 150,
               height: 30,
               child: Button(
+                variant: ButtonVariant.outline,
+                text: 'Outline',
+                onPress: () {
+                  setState(() {
+                    primaryPressCount += 1;
+                  });
+                },
+              ),
+            ),
+            SizedBox(
+              width: 150,
+              height: 30,
+              child: Button(
                 text: 'Menu indicator',
                 showMenuIndicator: true,
                 onPress: () {

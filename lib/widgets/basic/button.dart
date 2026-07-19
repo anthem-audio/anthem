@@ -28,7 +28,7 @@ import 'package:flutter/widgets.dart';
 
 import 'icon.dart';
 
-enum ButtonVariant { main, label, ghost }
+enum ButtonVariant { main, label, ghost, outline }
 
 class ButtonThemeColors {
   final Color idle;
@@ -106,6 +106,17 @@ final buttonGhostTheme = ButtonTheme(
   border: ButtonThemeColors.all(const Color(0xFF2F2F2F)),
   content: _textColors,
 );
+@visibleForTesting
+final buttonOutlineTheme = ButtonTheme(
+  background: const ButtonThemeColors.all(Color(0x00000000)),
+  border: ButtonThemeColors(
+    idle: const Color(0xFF696969),
+    hover: const Color(0xFF737373),
+    press: const Color(0xFF595959),
+    toggleActive: AnthemTheme.primary.main,
+  ),
+  content: _textColors,
+);
 
 @visibleForTesting
 ButtonTheme getButtonTheme(ButtonVariant variant) {
@@ -116,6 +127,8 @@ ButtonTheme getButtonTheme(ButtonVariant variant) {
       return buttonLabelTheme;
     case ButtonVariant.ghost:
       return buttonGhostTheme;
+    case ButtonVariant.outline:
+      return buttonOutlineTheme;
   }
 }
 

@@ -269,6 +269,55 @@ void main() {
       );
     });
 
+    testWidgets(
+      'Outline variant stays transparent and responds at its border',
+      (WidgetTester tester) async {
+        final ButtonTheme outlineTheme = getButtonTheme(ButtonVariant.outline);
+
+        await _pumpButton(
+          tester,
+          const Button(
+            variant: ButtonVariant.outline,
+            width: 100,
+            height: 30,
+            text: 'Outline',
+          ),
+        );
+
+        expect(outlineTheme.border.idle, const Color(0xFF696969));
+        expect(
+          {
+            outlineTheme.background.idle,
+            outlineTheme.background.hover,
+            outlineTheme.background.press,
+            outlineTheme.background.toggleActive,
+          },
+          {const Color(0x00000000)},
+        );
+        _expectButtonColors(
+          tester,
+          background: outlineTheme.background.idle,
+          border: outlineTheme.border.idle,
+        );
+
+        final TestGesture mouse = await _createMouse(tester);
+        await _hoverButton(tester, mouse);
+        _expectButtonColors(
+          tester,
+          background: outlineTheme.background.hover,
+          border: outlineTheme.border.hover,
+        );
+
+        await mouse.down(_buttonCenter(tester));
+        await tester.pump();
+        _expectButtonColors(
+          tester,
+          background: outlineTheme.background.press,
+          border: outlineTheme.border.press,
+        );
+      },
+    );
+
     testWidgets('Toggled state uses active color regardless of pointer state', (
       WidgetTester tester,
     ) async {
@@ -677,6 +726,16 @@ BoxDecoration _buttonDecoration(WidgetTester tester) {
 
   final Container container = tester.widget<Container>(containerFinder);
   return container.decoration! as BoxDecoration;
+}
+
+void _expectButtonColors(
+  WidgetTester tester, {
+  required Color background,
+  required Color border,
+}) {
+  final decoration = _buttonDecoration(tester);
+  expect(decoration.color, background);
+  expect((decoration.border! as Border).top.color, border);
 }
 
 BoxDecoration _buttonDecorationByKey(WidgetTester tester, String keyValue) {
