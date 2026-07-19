@@ -79,8 +79,8 @@ class TrackRowLayout {
   final TrackRow row;
   final VerticalSpan contentSpan;
 
-  /// Bounds for the header-content widget, excluding its color indicator and
-  /// resize divider.
+  /// Bounds for the header-content widget, excluding any color indicator and
+  /// the resize divider.
   final Rect headerBounds;
 
   const TrackRowLayout({
@@ -114,6 +114,8 @@ class TrackRowLayout {
 }
 
 /// Geometry for a color indicator owned by [rowId].
+///
+/// Automation lanes do not have color indicators.
 ///
 /// An indicator starts alongside its owning row and extends through the final
 /// visible descendant. For regular tracks, it includes the final descendant's
@@ -424,7 +426,9 @@ class TrackLayout {
         headerWidth,
         row.trackDepth * colorIndicatorWidth,
       );
-      final headerLeft = min(headerWidth, indicatorLeft + colorIndicatorWidth);
+      final headerLeft = row.rowKind == TrackRowKind.automationLane
+          ? indicatorLeft
+          : min(headerWidth, indicatorLeft + colorIndicatorWidth);
       nextRows.add(
         TrackRowLayout(
           rowIndex: index,
@@ -460,6 +464,8 @@ class TrackLayout {
 
     final nextIndicators = <TrackColorIndicatorLayout>[];
     for (final (index, layout) in nextRows.indexed) {
+      if (layout.row.rowKind == TrackRowKind.automationLane) continue;
+
       final rootDepth = layout.row.trackDepth;
       var lastDescendantIndex = index;
       while (lastDescendantIndex + 1 < nextRows.length &&

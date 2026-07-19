@@ -264,6 +264,36 @@ void main() {
       ]);
     });
 
+    test('automation lanes omit indicators and use the available space', () {
+      final layout = _calculateSimpleLayout(
+        rows: [
+          _row(id: 1),
+          _row(id: 2, depth: 1, rowKind: TrackRowKind.automationLane),
+          const PhantomAutomationTrackRow(
+            phantomLane: PhantomAutomationLaneInfo(
+              id: 3,
+              parentTrackId: 1,
+              target: null,
+            ),
+            isSendTrack: false,
+            trackDepth: 1,
+          ),
+        ],
+        rowHeight: 10,
+        dividerHeight: 2,
+        headerWidth: TrackLayout.defaultHeaderWidth,
+      );
+
+      expect(layout.colorIndicatorLayouts.map((indicator) => indicator.rowId), [
+        1,
+      ]);
+      expect(layout.colorIndicatorLayouts.single.spansDescendants, isTrue);
+
+      final ownerHeader = layout.rowLayoutForId(1).headerBounds;
+      expect(layout.rowLayoutForId(2).headerBounds.left, ownerHeader.left);
+      expect(layout.rowLayoutForId(3).headerBounds.left, ownerHeader.left);
+    });
+
     test('uses the send row below a leading divider to choose its height', () {
       final layout = TrackLayout();
 
