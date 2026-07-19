@@ -27,6 +27,8 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:anthem/widgets/editors/shared/time_range_animation.dart';
 import 'package:flutter/widgets.dart';
 
+const _sectionBreakPaintOvershoot = 2.0;
+
 class ArrangerBackgroundPainter extends CustomPainterObserver {
   final Animation<double> verticalScrollPositionAnimation;
   final TimeRangeAnimation timeRangeAnimation;
@@ -89,6 +91,22 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       ticksPerQuarter: project.sequence.ticksPerQuarter,
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
+    );
+
+    final addTrackControl = viewModel.trackLayout.addTrackControlSpan;
+    final regularToSendGap = viewModel.trackLayout.regularToSendGapSpan;
+    canvas.drawRect(
+      Rect.fromLTRB(
+        0,
+        addTrackControl.top -
+            renderedVerticalScrollPosition -
+            _sectionBreakPaintOvershoot,
+        size.width,
+        regularToSendGap.bottom -
+            renderedVerticalScrollPosition +
+            _sectionBreakPaintOvershoot,
+      ),
+      Paint()..color = AnthemTheme.panel.border,
     );
   }
 

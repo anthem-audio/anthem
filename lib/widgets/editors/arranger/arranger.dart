@@ -43,7 +43,8 @@ import 'package:provider/provider.dart';
 import 'widgets/grid.dart';
 import 'view_model.dart';
 
-const _timelineHeight = 38.0;
+const _timelineContentHeight = 38.0;
+const _contentBorderThickness = 2.0;
 const _scrollbarShortSideLength = 17.0;
 const _trackHeaderWidth = TrackLayout.defaultHeaderWidth;
 
@@ -80,7 +81,8 @@ class _ArrangerState extends State<Arranger> {
                   builder: (context) {
                     final editorHeight =
                         constraints.maxHeight -
-                        _timelineHeight -
+                        _timelineContentHeight -
+                        _contentBorderThickness -
                         _scrollbarShortSideLength;
                     viewModel.refreshTrackLayout(editorHeight);
 
@@ -96,40 +98,38 @@ class _ArrangerState extends State<Arranger> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Expanded(child: _ArrangerContent()),
-                        SizedBox(
+                        Container(
                           width: _scrollbarShortSideLength,
+                          decoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(
+                                color: AnthemTheme.panel.border,
+                                width: _contentBorderThickness,
+                              ),
+                            ),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Container(
-                                height: _timelineHeight,
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: AnthemTheme.panel.border,
-                                      width: 1,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              SizedBox(height: _timelineContentHeight),
                               Expanded(
                                 child: Container(
                                   decoration: BoxDecoration(
                                     border: Border(
-                                      left: BorderSide(
-                                        color: AnthemTheme.panel.border,
-                                        width: 1,
-                                      ),
                                       top: BorderSide(
                                         color: AnthemTheme.panel.border,
-                                        width: 1,
+                                        width: _contentBorderThickness,
                                       ),
                                     ),
                                   ),
                                   child: _VerticalScrollbar(),
                                 ),
                               ),
-                              SizedBox(height: _scrollbarShortSideLength - 1),
+                              SizedBox(
+                                height:
+                                    _scrollbarShortSideLength -
+                                    _contentBorderThickness,
+                              ),
                             ],
                           ),
                         ),
@@ -159,7 +159,10 @@ class _HorizontalScrollbar extends StatelessObserverWidget {
       height: _scrollbarShortSideLength,
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: AnthemTheme.panel.border, width: 1),
+          top: BorderSide(
+            color: AnthemTheme.panel.border,
+            width: _contentBorderThickness,
+          ),
         ),
         color: AnthemTheme.panel.background,
       ),
@@ -438,15 +441,18 @@ class _ArrangerContentState extends State<_ArrangerContent>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            // +1 for bottom border drawn by timeline
-            height: _timelineHeight + 1,
+            height: _timelineContentHeight + _contentBorderThickness,
             child: Row(
               children: [
                 Container(
                   width: _trackHeaderWidth,
                   decoration: BoxDecoration(
                     border: Border(
-                      bottom: BorderSide(color: AnthemTheme.panel.border),
+                      bottom: BorderSide(
+                        color: AnthemTheme.panel.border,
+                        width: _contentBorderThickness,
+                      ),
+                      right: BorderSide(color: AnthemTheme.panel.border),
                     ),
                   ),
                 ),
@@ -455,6 +461,7 @@ class _ArrangerContentState extends State<_ArrangerContent>
                     timelineKind: TimelineKind.arrangement,
                     child: Timeline.arrangement(
                       timeRangeAnimation: timeRangeAnimation,
+                      bottomBorderHeight: _contentBorderThickness,
                     ),
                   ),
                 ),
@@ -465,8 +472,14 @@ class _ArrangerContentState extends State<_ArrangerContent>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
+                Container(
                   width: _trackHeaderWidth,
+                  color: AnthemTheme.panel.border,
+                  foregroundDecoration: BoxDecoration(
+                    border: Border(
+                      right: BorderSide(color: AnthemTheme.panel.border),
+                    ),
+                  ),
                   child: AnimatedBuilder(
                     animation: verticalScrollPositionAnimationHelper!
                         .animationController,
@@ -503,7 +516,10 @@ class _ArrangerContentState extends State<_ArrangerContent>
               Container(
                 decoration: BoxDecoration(
                   border: Border(
-                    top: BorderSide(color: AnthemTheme.panel.border, width: 1),
+                    top: BorderSide(
+                      color: AnthemTheme.panel.border,
+                      width: _contentBorderThickness,
+                    ),
                   ),
                 ),
                 width: _trackHeaderWidth,
@@ -564,18 +580,13 @@ class _ArrangerCanvas extends StatelessWidget {
             },
           );
 
-          final clipsContainer = Observer(
-            builder: (context) {
-              return Positioned.fill(
-                child: ArrangerContentRenderer(
-                  repaint: renderedViewRepaint,
-                  timeRangeAnimation: timeRangeAnimation,
-                  verticalScrollPositionAnimation:
-                      verticalScrollPositionAnimation,
-                  viewModel: viewModel,
-                ),
-              );
-            },
+          final clipsContainer = Positioned.fill(
+            child: ArrangerContentRenderer(
+              repaint: renderedViewRepaint,
+              timeRangeAnimation: timeRangeAnimation,
+              verticalScrollPositionAnimation: verticalScrollPositionAnimation,
+              viewModel: viewModel,
+            ),
           );
 
           final selectionBox = Observer(

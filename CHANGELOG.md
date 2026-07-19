@@ -2,7 +2,7 @@
 
 ## New
 
-- Improved track header design
+- Updated arranger design
 - Added user-facing errors when a project file fails to load
 - Removed support for multiple arrangements per project
 

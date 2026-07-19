@@ -45,14 +45,23 @@ class Timeline extends StatefulWidget {
 
   final TimeRangeAnimation timeRangeAnimation;
 
+  /// Height of the border painted along the bottom of the timeline.
+  final double bottomBorderHeight;
+
   Timeline.pattern({
     super.key,
     required this.timeRangeAnimation,
     required Id? patternID,
-  }) : interactionTarget = TimelineInteractionTarget.pattern(patternID);
+    this.bottomBorderHeight = 1,
+  }) : assert(bottomBorderHeight >= 0),
+       interactionTarget = TimelineInteractionTarget.pattern(patternID);
 
-  const Timeline.arrangement({super.key, required this.timeRangeAnimation})
-    : interactionTarget = const TimelineInteractionTarget.arrangement();
+  const Timeline.arrangement({
+    super.key,
+    required this.timeRangeAnimation,
+    this.bottomBorderHeight = 1,
+  }) : assert(bottomBorderHeight >= 0),
+       interactionTarget = const TimelineInteractionTarget.arrangement();
 
   @override
   State<Timeline> createState() => _TimelineState();
@@ -287,6 +296,7 @@ class _TimelineState extends State<Timeline> with TickerProviderStateMixin {
                                   project.sequence.defaultTimeSignature,
                               timeSignatureChanges: controller
                                   .timeSignatureChanges(),
+                              bottomBorderHeight: widget.bottomBorderHeight,
                             ),
                           );
                         },
