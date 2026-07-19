@@ -123,17 +123,23 @@ class TrackRowLayout {
 class TrackColorIndicatorLayout {
   final Id rowId;
   final Rect bounds;
+  final bool spansDescendants;
 
-  const TrackColorIndicatorLayout({required this.rowId, required this.bounds});
+  const TrackColorIndicatorLayout({
+    required this.rowId,
+    required this.bounds,
+    required this.spansDescendants,
+  });
 
   @override
   bool operator ==(Object other) =>
       other is TrackColorIndicatorLayout &&
       other.rowId == rowId &&
-      other.bounds == bounds;
+      other.bounds == bounds &&
+      other.spansDescendants == spansDescendants;
 
   @override
-  int get hashCode => Object.hash(rowId, bounds);
+  int get hashCode => Object.hash(rowId, bounds, spansDescendants);
 }
 
 /// Visual and interaction geometry for a row's resize divider.
@@ -174,7 +180,7 @@ class TrackDividerLayout {
 /// layout snapshot.
 class TrackLayout {
   static const defaultHeaderWidth = 292.0;
-  static const defaultColorIndicatorWidth = 9.0;
+  static const defaultColorIndicatorWidth = 52.0;
   static const standardDividerHeight = 2.0;
   static const automationLaneDividerHeight = 1.0;
   static const defaultAddTrackControlHeight = 33.0;
@@ -475,6 +481,7 @@ class TrackLayout {
       nextIndicators.add(
         TrackColorIndicatorLayout(
           rowId: layout.row.rowId,
+          spansDescendants: lastDescendantIndex != index,
           bounds: Rect.fromLTRB(
             indicatorLeft,
             layout.contentSpan.top,

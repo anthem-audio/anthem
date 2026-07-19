@@ -32,31 +32,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
+import 'track_color_indicator.dart';
 import 'track_header.dart';
 import 'track_header_resize.dart';
 
 const _dividerHitPadding = 5.0;
 const _addTrackButtonSize = 20.0;
 const _addTrackButtonSpacing = 8.0;
-
-/// Paints the color assigned to a row or group of rows.
-class TrackColorIndicator extends StatelessWidget {
-  final Color color;
-
-  const TrackColorIndicator({super.key, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color,
-        border: Border(
-          right: BorderSide(color: AnthemTheme.panel.border, width: 1),
-        ),
-      ),
-    );
-  }
-}
 
 /// Paints and handles interaction for one calculated track divider.
 class TrackDivider extends StatefulObserverWidget {
@@ -243,7 +225,8 @@ class _TrackHeadersState extends State<TrackHeaders> {
               for (final indicator in layout.colorIndicatorLayouts) {
                 if (!isVisible(indicator.bounds)) continue;
 
-                final row = layout.rowLayoutForId(indicator.rowId).row;
+                final rowLayout = layout.rowLayoutForId(indicator.rowId);
+                final row = rowLayout.row;
                 final color = switch (row) {
                   ProjectTrackRow(:final trackId) =>
                     project.tracks[trackId]?.color.colorShifter.clipBase
@@ -266,6 +249,8 @@ class _TrackHeadersState extends State<TrackHeaders> {
                     child: TrackColorIndicator(
                       key: Key('${row.rowId}-indicator'),
                       color: color,
+                      trackHeight: rowLayout.contentSpan.height,
+                      spansDescendants: indicator.spansDescendants,
                     ),
                   ),
                 );

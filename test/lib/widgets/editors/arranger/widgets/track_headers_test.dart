@@ -180,7 +180,7 @@ void main() {
 }
 
 class _TrackHeadersTestFixture {
-  static const viewSize = Size(190, 260);
+  static const viewSize = Size(TrackLayout.defaultHeaderWidth, 260);
   static const headerAreaKey = Key('track-headers-test-area');
 
   final ProjectModel project;

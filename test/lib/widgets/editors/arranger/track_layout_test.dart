@@ -37,7 +37,7 @@ void main() {
         rowHeightFor: (row) => {1: 40.0, 2: 30.0, 3: 50.0}[row.rowId]!,
         dividerHeightFor: (context) =>
             {1: 2.0, 2: 3.0, 3: 4.0}[context.resizedRow.rowId]!,
-        headerWidth: 100,
+        headerWidth: TrackLayout.defaultHeaderWidth,
         viewportHeight: 0,
       );
 
@@ -46,16 +46,18 @@ void main() {
         const VerticalSpan(top: 42, height: 30),
         const VerticalSpan(top: 75, height: 50),
       ]);
-      expect(layout.rowLayouts.map((row) => row.headerBounds), const [
-        Rect.fromLTWH(9, 0, 91, 40),
-        Rect.fromLTWH(18, 42, 82, 30),
-        Rect.fromLTWH(9, 75, 91, 50),
-      ]);
-      expect(layout.dividerLayouts.map((divider) => divider.bounds), const [
-        Rect.fromLTWH(9, 40, 91, 2),
-        Rect.fromLTWH(0, 72, 100, 3),
-        Rect.fromLTWH(0, 125, 100, 4),
-      ]);
+      expect(
+        layout.rowLayouts.map((row) => _verticalSpan(row.headerBounds)),
+        layout.rowLayouts.map((row) => row.contentSpan),
+      );
+      expect(
+        layout.dividerLayouts.map((divider) => _verticalSpan(divider.bounds)),
+        const [
+          VerticalSpan(top: 40, height: 2),
+          VerticalSpan(top: 72, height: 3),
+          VerticalSpan(top: 125, height: 4),
+        ],
+      );
       expect(
         layout.addTrackControlSpan,
         const VerticalSpan(top: 129, height: 33),
@@ -83,27 +85,44 @@ void main() {
     test(
       'color indicators span visible descendants and intervening dividers',
       () {
+        final rows = [
+          _row(id: 1, depth: 0),
+          _row(id: 2, depth: 1),
+          _row(id: 3, depth: 2),
+          _row(id: 4, depth: 0),
+        ];
         final layout = _calculateSimpleLayout(
-          rows: [
-            _row(id: 1, depth: 0),
-            _row(id: 2, depth: 1),
-            _row(id: 3, depth: 2),
-            _row(id: 4, depth: 0),
-          ],
+          rows: rows,
           rowHeight: 10,
           dividerHeight: 2,
-          headerWidth: 100,
+          headerWidth: TrackLayout.defaultHeaderWidth,
         );
 
+        const lastDescendantRowIds = [3, 3, 3, 4];
         expect(
-          layout.colorIndicatorLayouts.map((indicator) => indicator.bounds),
-          const [
-            Rect.fromLTWH(0, 0, 9, 36),
-            Rect.fromLTWH(9, 12, 9, 24),
-            Rect.fromLTWH(18, 24, 9, 12),
-            Rect.fromLTWH(0, 36, 9, 12),
-          ],
+          layout.colorIndicatorLayouts.map(
+            (indicator) => indicator.spansDescendants,
+          ),
+          [true, true, false, false],
         );
+        for (final (index, indicator) in layout.colorIndicatorLayouts.indexed) {
+          final rowLayout = layout.rowLayoutAt(index);
+          final lastDescendantDivider = layout
+              .dividerLayouts[layout.rowIdToIndex(lastDescendantRowIds[index])];
+
+          expect(
+            indicator.bounds.left,
+            rows[index].trackDepth * TrackLayout.defaultColorIndicatorWidth,
+          );
+          expect(
+            indicator.bounds.width,
+            TrackLayout.defaultColorIndicatorWidth,
+          );
+          expect(indicator.bounds.top, rowLayout.contentSpan.top);
+          expect(indicator.bounds.bottom, lastDescendantDivider.bounds.bottom);
+          expect(rowLayout.headerBounds.left, indicator.bounds.right);
+          expect(rowLayout.headerBounds.right, TrackLayout.defaultHeaderWidth);
+        }
       },
     );
 
@@ -137,21 +156,39 @@ void main() {
           layout.rowLayoutForId(2).contentSpan,
           const VerticalSpan(top: 150, height: 50),
         );
-        expect(layout.dividerLayouts, [
-          const TrackDividerLayout(
-            resizedRowId: 1,
-            resizeEdge: TrackResizeEdge.bottom,
-            bounds: Rect.fromLTWH(0, 40, 100, 2),
-          ),
-          const TrackDividerLayout(
-            resizedRowId: 2,
-            resizeEdge: TrackResizeEdge.top,
-            bounds: Rect.fromLTWH(0, 148, 100, 2),
-          ),
+        expect(layout.dividerLayouts.map((divider) => divider.resizedRowId), [
+          1,
+          2,
+        ]);
+        expect(layout.dividerLayouts.map((divider) => divider.resizeEdge), [
+          TrackResizeEdge.bottom,
+          TrackResizeEdge.top,
         ]);
         expect(
-          layout.colorIndicatorLayouts.map((indicator) => indicator.bounds),
-          const [Rect.fromLTWH(0, 0, 9, 42), Rect.fromLTWH(0, 150, 9, 50)],
+          layout.dividerLayouts.map((divider) => _verticalSpan(divider.bounds)),
+          const [
+            VerticalSpan(top: 40, height: 2),
+            VerticalSpan(top: 148, height: 2),
+          ],
+        );
+
+        final regularIndicator = layout.colorIndicatorLayouts[0];
+        final sendIndicator = layout.colorIndicatorLayouts[1];
+        expect(
+          regularIndicator.bounds.top,
+          layout.rowLayoutForId(1).contentSpan.top,
+        );
+        expect(
+          regularIndicator.bounds.bottom,
+          layout.dividerLayouts[0].bounds.bottom,
+        );
+        expect(
+          sendIndicator.bounds.top,
+          layout.rowLayoutForId(2).contentSpan.top,
+        );
+        expect(
+          sendIndicator.bounds.bottom,
+          layout.rowLayoutForId(2).contentSpan.bottom,
         );
         expect(layout.rowLayoutAtContentY(41.999)?.row.rowId, 1);
         expect(layout.rowLayoutAtContentY(42), isNull);
@@ -196,7 +233,7 @@ void main() {
       layout.recalculate(
         rows: rows,
         rowHeightFor: (_) => 10,
-        headerWidth: 100,
+        headerWidth: TrackLayout.defaultHeaderWidth,
         viewportHeight: 0,
       );
 
@@ -209,15 +246,13 @@ void main() {
         2,
         2,
       ]);
-      expect(layout.dividerLayouts.map((divider) => divider.bounds.left), [
-        0,
-        9,
-        9,
-        18,
-        18,
-        9,
-        0,
-      ]);
+      const dividerIndentDepths = [0, 1, 1, 2, 2, 1, 0];
+      expect(
+        layout.dividerLayouts.map((divider) => divider.bounds.left),
+        dividerIndentDepths.map(
+          (depth) => depth * TrackLayout.defaultColorIndicatorWidth,
+        ),
+      );
       expect(layout.rowLayouts.map((row) => row.contentSpan.top), [
         0,
         12,
@@ -320,6 +355,9 @@ void main() {
     });
   });
 }
+
+VerticalSpan _verticalSpan(Rect bounds) =>
+    VerticalSpan(top: bounds.top, height: bounds.height);
 
 TrackLayout _calculateSimpleLayout({
   required List<TrackRow> rows,
