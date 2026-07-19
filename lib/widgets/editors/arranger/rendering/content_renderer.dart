@@ -29,6 +29,7 @@ import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_hold_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_geometry.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/editor_left_edge_border.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
@@ -42,9 +43,6 @@ const _clipResizeHandleWidth = 12.0;
 
 /// How far over the clip the resize handle extends, in pixels.
 const _clipResizeHandleOvershoot = 2.0;
-
-/// How far clips paint beyond their row content on each vertical edge.
-const _clipVerticalPaintOvershoot = 1.0;
 
 /// Computes resize handle rectangles for a clip while guaranteeing that each
 /// clip has a center drag area free of resize handles.
@@ -285,8 +283,12 @@ class ArrangerContentPainter extends CustomPainterObserver {
           .rowLayoutAt(trackIndex)
           .contentSpan
           .height;
-      final clipTop = trackPos - _clipVerticalPaintOvershoot;
-      final clipHeight = trackHeight + _clipVerticalPaintOvershoot * 2;
+      final clipBounds = clipPaintVerticalBoundsForRow(
+        rowTop: trackPos,
+        rowHeight: trackHeight,
+      );
+      final clipTop = clipBounds.top;
+      final clipHeight = clipBounds.bottom - clipBounds.top;
 
       final rect = Rect.fromLTWH(left, clipTop, width, clipHeight);
 
@@ -389,8 +391,12 @@ class ArrangerContentPainter extends CustomPainterObserver {
     final contentTop =
         rowLayout.contentSpan.top - renderedVerticalScrollPosition;
     final contentHeight = rowLayout.contentSpan.height;
-    final y = contentTop - _clipVerticalPaintOvershoot;
-    final clipHeight = contentHeight + _clipVerticalPaintOvershoot * 2;
+    final clipBounds = clipPaintVerticalBoundsForRow(
+      rowTop: contentTop,
+      rowHeight: contentHeight,
+    );
+    final y = clipBounds.top;
+    final clipHeight = clipBounds.bottom - clipBounds.top;
 
     if (y > size.height || y + clipHeight < 0) return null;
 
@@ -503,9 +509,9 @@ class ArrangerContentPainter extends CustomPainterObserver {
         final y = clipEntry.y;
         final width = clipEntry.width;
         final clipPaintHeight = clipEntry.height;
-        final interactionY = y + _clipVerticalPaintOvershoot;
+        final interactionY = y + clipVerticalPaintOvershoot;
         final interactionHeight =
-            clipPaintHeight - _clipVerticalPaintOvershoot * 2;
+            clipPaintHeight - clipVerticalPaintOvershoot * 2;
 
         viewModel.visibleClips.add(
           rect: Rect.fromLTWH(

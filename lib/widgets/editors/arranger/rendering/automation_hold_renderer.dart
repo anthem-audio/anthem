@@ -29,12 +29,10 @@ import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_geometry.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
-const _clipTitleHeight = 16.0;
-const _automationTopPadding = _clipTitleHeight + 2.0;
-const _automationBottomPadding = 2.0;
 const _automationStrokeWidth = 2.0;
 const _automationFillAlpha = 0.16;
 
@@ -144,20 +142,30 @@ double _automationLaneEmptyValue(TrackModel track) {
 }) {
   final trackY = rowLayout.contentSpan.top - renderedVerticalScrollPosition;
   final trackHeight = rowLayout.contentSpan.height;
+  final clipBounds = clipPaintVerticalBoundsForRow(
+    rowTop: trackY,
+    rowHeight: trackHeight,
+  );
+  final clipHeight = clipBounds.bottom - clipBounds.top;
 
-  if (!shouldRenderClipContent(trackHeight) ||
-      trackY > canvasSize.height ||
-      trackY + trackHeight < 0) {
+  if (!shouldRenderClipContent(clipHeight) ||
+      clipBounds.top > canvasSize.height ||
+      clipBounds.bottom < 0) {
     return null;
   }
 
-  final contentTop = trackY + _automationTopPadding;
-  final contentBottom = trackY + trackHeight - _automationBottomPadding;
-  if (contentBottom <= contentTop) {
+  final automationBounds = automationContentVerticalBoundsForRow(
+    rowTop: trackY,
+    rowHeight: trackHeight,
+  );
+  if (automationBounds.bottom <= automationBounds.top) {
     return null;
   }
 
-  return (contentTop: contentTop, contentBottom: contentBottom);
+  return (
+    contentTop: automationBounds.top,
+    contentBottom: automationBounds.bottom,
+  );
 }
 
 double? _currentAutomationTargetValue({

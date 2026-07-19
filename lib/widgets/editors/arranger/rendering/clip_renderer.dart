@@ -32,6 +32,7 @@ import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_rende
 import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
+import 'package:anthem/widgets/editors/arranger/rendering/clip_geometry.dart';
 import 'package:anthem/widgets/editors/shared/helpers/time_helpers.dart';
 
 import 'clip_title_text.dart';
@@ -138,6 +139,10 @@ void paintClipList({
       if (!shouldRenderClipContent(height)) continue;
 
       final lane = pattern.automation;
+      final automationBounds = automationContentVerticalBoundsForClip(
+        clipTop: y,
+        clipHeight: height,
+      );
       renderAutomationCurve(
         canvas: canvas,
         canvasSize: canvasSize,
@@ -145,7 +150,7 @@ void paintClipList({
           clipEntry.clipOffset.toDouble(),
           (clipEntry.clipOffset + clipEntry.clipWidth).toDouble(),
         ),
-        yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
+        yDrawPositionPixels: (automationBounds.top, automationBounds.bottom),
         points: lane.points,
         strokeWidth: 2.0,
         timeViewStart: timeViewStart,
@@ -407,13 +412,17 @@ void paintClip({
     // Automation
 
     if (shouldRenderClipContent(height)) {
+      final automationBounds = automationContentVerticalBoundsForClip(
+        clipTop: y,
+        clipHeight: height,
+      );
       renderAutomationCurve(
         canvas: canvas,
         canvasSize: canvasSize,
         xDrawPositionTime: clip != null
             ? (clip.offset.toDouble(), (clip.offset + clip.width).toDouble())
             : (0.0, 0.0),
-        yDrawPositionPixels: (y + _clipTitleHeight + 2, y + height - 2),
+        yDrawPositionPixels: (automationBounds.top, automationBounds.bottom),
         points: pattern.automation.points,
         strokeWidth: 2.0,
         timeViewStart: timeViewStart,
