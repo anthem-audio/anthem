@@ -36,6 +36,8 @@ import 'track_header.dart';
 import 'track_header_resize.dart';
 
 const _dividerHitPadding = 5.0;
+const _addTrackButtonSize = 20.0;
+const _addTrackButtonSpacing = 8.0;
 
 /// Paints the color assigned to a row or group of rows.
 class TrackColorIndicator extends StatelessWidget {
@@ -300,10 +302,10 @@ class _TrackHeadersState extends State<TrackHeaders> {
 
               final addTrackSpan = layout.addTrackControlSpan;
               final addTrackBounds = Rect.fromLTWH(
-                16,
-                addTrackSpan.top + 8,
-                (layout.headerWidth - 32).clamp(0, double.infinity),
-                16,
+                _addTrackButtonSpacing,
+                addTrackSpan.top + _addTrackButtonSpacing,
+                _addTrackButtonSize,
+                _addTrackButtonSize,
               );
               if (isVisible(addTrackBounds)) {
                 const childId = 'add-track-button';
@@ -330,10 +332,12 @@ class _TrackHeadersState extends State<TrackHeaders> {
                         ],
                       ),
                       child: Button(
+                        key: const Key('add-track-button'),
                         icon: Icons.add,
                         hint: [.new('click', 'Add a new track...')],
                         onPress: _menuController.toggle,
-                        height: 16,
+                        contentPadding: .zero,
+                        variant: .outline,
                       ),
                     ),
                   ),

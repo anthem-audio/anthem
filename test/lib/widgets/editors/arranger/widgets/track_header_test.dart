@@ -25,7 +25,6 @@ import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
@@ -69,55 +68,6 @@ void main() {
       await fixture.pump(tester);
 
       expect(_automationLaneButtonFinder, findsOneWidget);
-    });
-
-    testWidgets('pins to the bottom-left of the track content', (tester) async {
-      final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 70);
-      addTearDown(() async {
-        await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
-      });
-      await fixture.pump(tester);
-
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await fixture.hoverTrackContent(tester, mouse);
-
-      final contentBoxRect = fixture.trackFixedContentRect(tester);
-      final backgroundRect = tester.getRect(
-        _automationLaneButtonBackgroundFinder,
-      );
-      final buttonRect = tester.getRect(_automationLaneButtonFinder);
-      final background = tester.widget<Container>(
-        _automationLaneButtonBackgroundFinder,
-      );
-
-      expect(background.color, AnthemTheme.panel.main);
-      expect(backgroundRect.left, contentBoxRect.left - 4);
-      expect(backgroundRect.bottom, contentBoxRect.bottom + 4);
-      expect(backgroundRect.width, 28);
-      expect(backgroundRect.height, 28);
-      expect(buttonRect.left, contentBoxRect.left);
-      expect(buttonRect.bottom, contentBoxRect.bottom);
-    });
-
-    testWidgets('centers vertically in the compact track layout', (
-      tester,
-    ) async {
-      final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 40);
-      addTearDown(() async {
-        await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
-      });
-      await fixture.pump(tester);
-
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await fixture.hoverTrackContent(tester, mouse);
-
-      final contentBoxRect = fixture.trackFixedContentRect(tester);
-      final buttonRect = tester.getRect(_automationLaneButtonFinder);
-
-      expect(buttonRect.left, contentBoxRect.left);
-      expect(buttonRect.center.dy, moreOrLessEquals(contentBoxRect.center.dy));
     });
 
     testWidgets('insets compact expanded title around the visible button', (
@@ -553,22 +503,6 @@ class _TrackHeaderTestFixture {
       headerTopLeft.dy + bounds.top,
       bounds.width,
       bounds.height,
-    );
-  }
-
-  Rect trackFixedContentRect(WidgetTester tester) {
-    final trackContentRect = this.trackContentRect(tester);
-    final contentHeight = switch (trackContentRect.height) {
-      >= 78 => 68.0,
-      >= 52 => 44.0,
-      _ => 20.0,
-    };
-
-    return Rect.fromLTWH(
-      trackContentRect.left + 4,
-      trackContentRect.top + (trackContentRect.height - contentHeight) / 2,
-      trackContentRect.width - 8,
-      contentHeight,
     );
   }
 

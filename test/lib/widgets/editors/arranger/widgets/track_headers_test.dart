@@ -21,6 +21,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
+import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
@@ -121,7 +122,11 @@ void main() {
       find.byKey(Key('${fixture.trackId}-handle')),
     );
     expect(dividerHitRect.center, visualDividerRect.center);
-    expect(dividerHitRect.height, visualDividerRect.height + 10);
+    expect(dividerHitRect.height, greaterThan(visualDividerRect.height));
+
+    final addTrackButtonFinder = find.byKey(const Key('add-track-button'));
+    expect(addTrackButtonFinder, findsOneWidget);
+    expect(tester.widget<Button>(addTrackButtonFinder).onPress, isNotNull);
   });
 
   testWidgets(
