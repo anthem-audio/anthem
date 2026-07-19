@@ -540,11 +540,9 @@ void main() {
       trackOrder.addAll([regularGroup.id, regularTopA.id, regularTopB.id]);
       sendTrackOrder.addAll([sendGroup.id, sendTop.id, masterTrack.id]);
 
-      final arrangerViewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 40,
-        timeRange: TimeRange(0, 4),
-      );
+      final arrangerViewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 40
+        ..timeRange = TimeRange(0, 4);
       ServiceRegistry.initializeProject(
         project,
         overrides: ProjectServiceFactoryOverrides([
@@ -868,11 +866,9 @@ void main() {
         command.execute(project);
       });
 
-      final arrangerViewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 40,
-        timeRange: TimeRange(0, 4),
-      );
+      final arrangerViewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 40
+        ..timeRange = TimeRange(0, 4);
       trackController = TrackController(project);
 
       ServiceRegistry.initializeProject(

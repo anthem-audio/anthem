@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2022 - 2025 Joshua Wade
+  Copyright (C) 2022 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,6 +19,13 @@
 
 const minTrackHeight = 29.0;
 const maxTrackHeight = 150.0;
+const defaultBaseTrackHeight = 52.0;
+const defaultAutomationLaneHeight = 42.0;
+
+/// Keeps automation lanes proportionally smaller as the arranger's global
+/// track-height zoom changes.
+const automationLaneHeightRatio =
+    defaultAutomationLaneHeight / defaultBaseTrackHeight;
 
 /// Gets the actual height of a track in pixels, given what we actually store
 /// about the track (base track height & track height modifier)

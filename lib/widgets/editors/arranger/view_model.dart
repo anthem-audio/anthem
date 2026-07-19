@@ -109,7 +109,7 @@ abstract class _ArrangerViewModel with Store {
   EditorTool tool = EditorTool.pencil;
 
   @observable
-  TimeRange timeRange;
+  TimeRange timeRange = TimeRange(0, 3072);
 
   TimeRangeViewport? _timeRangeViewport;
 
@@ -127,10 +127,10 @@ abstract class _ArrangerViewModel with Store {
   }
 
   @observable
-  double baseTrackHeight;
+  double baseTrackHeight = defaultBaseTrackHeight;
 
-  /// Per-track modifier that is multiplied by baseTrackHeight and clamped to
-  /// get the actual height for each track
+  /// Per-row modifier that is multiplied by the row's zoom-scaled base height
+  /// and clamped to get its actual height.
   @observable
   ObservableMap<Id, double> trackHeightModifiers;
 
@@ -218,21 +218,16 @@ abstract class _ArrangerViewModel with Store {
   final _phantomAutomationLaneIdByParentTrackId = <Id, Id>{};
   Id _nextPhantomAutomationLaneId = -1;
 
-  _ArrangerViewModel({
-    required this.project,
-    required this.baseTrackHeight,
-    required this.timeRange,
-  }) : projectId = project.id,
-       trackHeightModifiers = ObservableMap.of(
-         project.tracks.nonObservableInner.map(
-           (key, value) => MapEntry(key, 1),
-         ),
-       ),
-       automationExpandedByTrackId = ObservableMap.of(
-         project.tracks.nonObservableInner.map(
-           (key, value) => MapEntry(key, false),
-         ),
-       ) {
+  _ArrangerViewModel({required this.project})
+    : projectId = project.id,
+      trackHeightModifiers = ObservableMap.of(
+        project.tracks.nonObservableInner.map((key, value) => MapEntry(key, 1)),
+      ),
+      automationExpandedByTrackId = ObservableMap.of(
+        project.tracks.nonObservableInner.map(
+          (key, value) => MapEntry(key, false),
+        ),
+      ) {
     trackLayout = TrackLayout();
   }
 
@@ -273,8 +268,7 @@ abstract class _ArrangerViewModel with Store {
 
     trackLayout.recalculate(
       rows: getVisibleTrackRows(),
-      rowHeightFor: (row) =>
-          calculateTrackHeight(baseTrackHeight, rowHeightModifier(row.rowId)),
+      rowHeightFor: _getRowHeight,
       headerWidth: headerWidth,
       viewportHeight: editorHeight,
     );
@@ -285,6 +279,15 @@ abstract class _ArrangerViewModel with Store {
       0.0,
       maxVerticalScrollPosition,
     );
+  }
+
+  double _getRowHeight(TrackRow row) {
+    final baseHeight = switch (row.rowKind) {
+      .automationLane => baseTrackHeight * automationLaneHeightRatio,
+      _ => baseTrackHeight,
+    };
+
+    return calculateTrackHeight(baseHeight, rowHeightModifier(row.rowId));
   }
 
   void applyVerticalScrollDelta(double pixelDelta) {

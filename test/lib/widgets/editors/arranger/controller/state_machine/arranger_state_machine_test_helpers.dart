@@ -158,11 +158,9 @@ class ArrangerStateMachineTestFixture {
       sendTrackOrder: const [TrackIds.master],
     );
 
-    final viewModel = ArrangerViewModel(
-      project: project,
-      baseTrackHeight: 60,
-      timeRange: TimeRange(0, 960),
-    );
+    final viewModel = ArrangerViewModel(project: project)
+      ..baseTrackHeight = 60
+      ..timeRange = TimeRange(0, 960);
     final projectViewModel = ProjectViewModel()
       ..activePanel = PanelKind.arranger;
     final projectController = ProjectController(project, projectViewModel);

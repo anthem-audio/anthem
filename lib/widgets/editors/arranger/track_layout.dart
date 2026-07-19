@@ -182,10 +182,11 @@ class TrackDividerLayout {
 /// layout snapshot.
 class TrackLayout {
   static const defaultHeaderWidth = 292.0;
-  static const defaultColorIndicatorWidth = 52.0;
   static const standardDividerHeight = 2.0;
   static const automationLaneDividerHeight = 1.0;
-  static const defaultAddTrackControlHeight = 33.0;
+
+  static const _colorIndicatorWidth = 52.0;
+  static const _addTrackControlHeight = 33.0;
 
   static const _rowLayoutEquality = ListEquality<TrackRowLayout>();
   static const _indicatorLayoutEquality =
@@ -269,13 +270,9 @@ class TrackLayout {
     required double headerWidth,
     required double viewportHeight,
     TrackDividerHeightResolver? dividerHeightFor,
-    double colorIndicatorWidth = defaultColorIndicatorWidth,
-    double addTrackControlHeight = defaultAddTrackControlHeight,
   }) {
     _validateNonNegativeFinite(headerWidth, 'headerWidth');
     _validateNonNegativeFinite(viewportHeight, 'viewportHeight');
-    _validateNonNegativeFinite(colorIndicatorWidth, 'colorIndicatorWidth');
-    _validateNonNegativeFinite(addTrackControlHeight, 'addTrackControlHeight');
 
     final rowsList = rows.toList(growable: false);
     final rowIds = <Id>{};
@@ -359,7 +356,7 @@ class TrackLayout {
     final naturalHeight =
         rowHeights.fold(0.0, (sum, height) => sum + height) +
         dividerHeights.fold(0.0, (sum, height) => sum + height) +
-        addTrackControlHeight;
+        _addTrackControlHeight;
     final regularToSendGapHeight = max(0.0, viewportHeight - naturalHeight);
 
     final nextRows = <TrackRowLayout>[];
@@ -371,7 +368,7 @@ class TrackLayout {
     void addSectionBreak() {
       addTrackControlSpan = VerticalSpan(
         top: position,
-        height: addTrackControlHeight,
+        height: _addTrackControlHeight,
       );
       position = addTrackControlSpan.bottom;
       regularToSendGapSpan = VerticalSpan(
@@ -387,7 +384,7 @@ class TrackLayout {
       required TrackResizeEdge resizeEdge,
       required int indentDepth,
     }) {
-      final dividerLeft = min(headerWidth, indentDepth * colorIndicatorWidth);
+      final dividerLeft = min(headerWidth, indentDepth * _colorIndicatorWidth);
       final dividerBounds = Rect.fromLTWH(
         dividerLeft,
         position,
@@ -424,11 +421,11 @@ class TrackLayout {
       );
       final indicatorLeft = min(
         headerWidth,
-        row.trackDepth * colorIndicatorWidth,
+        row.trackDepth * _colorIndicatorWidth,
       );
       final headerLeft = row.rowKind == TrackRowKind.automationLane
           ? indicatorLeft
-          : min(headerWidth, indicatorLeft + colorIndicatorWidth);
+          : min(headerWidth, indicatorLeft + _colorIndicatorWidth);
       nextRows.add(
         TrackRowLayout(
           rowIndex: index,
@@ -473,10 +470,10 @@ class TrackLayout {
         lastDescendantIndex++;
       }
 
-      final indicatorLeft = min(headerWidth, rootDepth * colorIndicatorWidth);
+      final indicatorLeft = min(headerWidth, rootDepth * _colorIndicatorWidth);
       final indicatorRight = min(
         headerWidth,
-        indicatorLeft + colorIndicatorWidth,
+        indicatorLeft + _colorIndicatorWidth,
       );
       final lastDescendant = nextRows[lastDescendantIndex];
       final lastDescendantDivider = nextDividers[lastDescendantIndex];

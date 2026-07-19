@@ -112,11 +112,7 @@ void main() {
 
           expect(
             indicator.bounds.left,
-            rows[index].trackDepth * TrackLayout.defaultColorIndicatorWidth,
-          );
-          expect(
-            indicator.bounds.width,
-            TrackLayout.defaultColorIndicatorWidth,
+            rows[index].trackDepth * indicator.bounds.width,
           );
           expect(indicator.bounds.top, rowLayout.contentSpan.top);
           expect(indicator.bounds.bottom, lastDescendantDivider.bounds.bottom);
@@ -247,11 +243,10 @@ void main() {
         2,
       ]);
       const dividerIndentDepths = [0, 1, 1, 2, 2, 1, 0];
+      final indicatorWidth = layout.colorIndicatorLayouts.first.bounds.width;
       expect(
         layout.dividerLayouts.map((divider) => divider.bounds.left),
-        dividerIndentDepths.map(
-          (depth) => depth * TrackLayout.defaultColorIndicatorWidth,
-        ),
+        dividerIndentDepths.map((depth) => depth * indicatorWidth),
       );
       expect(layout.rowLayouts.map((row) => row.contentSpan.top), [
         0,

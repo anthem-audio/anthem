@@ -73,7 +73,6 @@ class _ArrangerTrackHeadersWidgetTestScreenState
       ..registerTrack(drums.id)
       ..registerTrack(snare.id)
       ..registerTrack(bass.id)
-      ..baseTrackHeight = 53
       ..setRowHeightModifier(kick.id, 1.35)
       ..setRowHeightModifier(snare.id, 0.82)
       ..setRowHeightModifier(bass.id, 1.1)

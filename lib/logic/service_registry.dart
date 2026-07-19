@@ -112,11 +112,7 @@ final parameterControllerService = ServiceDef<ParameterController>(
 );
 
 final arrangerViewModelService = ServiceDef<ArrangerViewModel>(
-  create: (project, _) => ArrangerViewModel(
-    project: project,
-    baseTrackHeight: 53,
-    timeRange: TimeRange(0, 3072),
-  ),
+  create: (project, _) => ArrangerViewModel(project: project),
 );
 
 final arrangerControllerService = ServiceDef<ArrangerController>(

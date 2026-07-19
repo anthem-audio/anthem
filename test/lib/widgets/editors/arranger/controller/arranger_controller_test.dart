@@ -184,11 +184,9 @@ class _ArrangerControllerTestFixture {
       trackOrder: const [_TrackIds.a, _TrackIds.b],
       sendTrackOrder: const [_TrackIds.s, _TrackIds.master],
     );
-    final viewModel = ArrangerViewModel(
-      project: project,
-      baseTrackHeight: 60,
-      timeRange: TimeRange(0, 960),
-    );
+    final viewModel = ArrangerViewModel(project: project)
+      ..baseTrackHeight = 60
+      ..timeRange = TimeRange(0, 960);
 
     AnthemStore.instance.projects[project.id] = project;
     final mockProjectController = MockProjectController();
@@ -272,11 +270,9 @@ void main() {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
       final mockProjectController = MockProjectController();
 
       AnthemStore.instance.projects[project.id] = project;
@@ -385,11 +381,9 @@ void main() {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
 
       AnthemStore.instance.projects[project.id] = project;
       ServiceRegistry.initializeProject(
@@ -443,11 +437,9 @@ void main() {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
 
       AnthemStore.instance.projects[project.id] = project;
       ServiceRegistry.initializeProject(
@@ -500,11 +492,9 @@ void main() {
       fixture.dispose();
 
       final project = ProjectModel.create();
-      final viewModel = ArrangerViewModel(
-        project: project,
-        baseTrackHeight: 60,
-        timeRange: TimeRange(0, 960),
-      );
+      final viewModel = ArrangerViewModel(project: project)
+        ..baseTrackHeight = 60
+        ..timeRange = TimeRange(0, 960);
 
       AnthemStore.instance.projects[project.id] = project;
       ServiceRegistry.initializeProject(
@@ -538,11 +528,9 @@ void main() {
         fixture.dispose();
 
         final project = ProjectModel.create();
-        final viewModel = ArrangerViewModel(
-          project: project,
-          baseTrackHeight: 60,
-          timeRange: TimeRange(0, 960),
-        );
+        final viewModel = ArrangerViewModel(project: project)
+          ..baseTrackHeight = 60
+          ..timeRange = TimeRange(0, 960);
 
         AnthemStore.instance.projects[project.id] = project;
         ServiceRegistry.initializeProject(

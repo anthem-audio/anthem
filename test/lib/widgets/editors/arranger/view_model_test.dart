@@ -18,9 +18,9 @@
 */
 
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
+import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
-import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,11 +30,7 @@ void main() {
   ArrangerViewModel createViewModel() {
     final project = createTestProject(includeSequence: false);
 
-    return ArrangerViewModel(
-      project: project,
-      baseTrackHeight: 60,
-      timeRange: TimeRange(0, 960),
-    );
+    return ArrangerViewModel(project: project);
   }
 
   group('ArrangerViewModel hitTestContent', () {
@@ -121,7 +117,21 @@ void main() {
     });
   });
 
-  test('visible rows classify real and phantom automation lanes', () {
+  test('owns its default time range', () {
+    final firstViewModel = createViewModel();
+    final secondViewModel = createViewModel();
+    final secondStart = secondViewModel.timeRange.start;
+
+    expect(
+      identical(firstViewModel.timeRange, secondViewModel.timeRange),
+      false,
+    );
+
+    firstViewModel.timeRange.start++;
+    expect(secondViewModel.timeRange.start, secondStart);
+  });
+
+  test('real and phantom automation lanes share compact zoom behavior', () {
     const parentWithLaneId = 1;
     const automationLaneId = 2;
     const parentWithPhantomId = 3;
@@ -146,11 +156,7 @@ void main() {
       ],
       trackOrder: const [parentWithLaneId, parentWithPhantomId],
     );
-    final viewModel = ArrangerViewModel(
-      project: project,
-      baseTrackHeight: 60,
-      timeRange: TimeRange(0, 960),
-    );
+    final viewModel = ArrangerViewModel(project: project);
     viewModel.automationExpandedByTrackId[parentWithLaneId] = true;
     viewModel.automationExpandedByTrackId[parentWithPhantomId] = true;
 
@@ -164,5 +170,22 @@ void main() {
     ]);
     expect(rows[1], isA<ProjectTrackRow>());
     expect(rows[3], isA<PhantomAutomationTrackRow>());
+
+    viewModel.refreshTrackLayout(0);
+    expect(
+      viewModel.trackLayout.rowLayouts.map(
+        (layout) => layout.contentSpan.height,
+      ),
+      [defaultBaseTrackHeight, 42, defaultBaseTrackHeight, 42],
+    );
+
+    viewModel.baseTrackHeight = defaultBaseTrackHeight * 2;
+    viewModel.refreshTrackLayout(0);
+    expect(
+      viewModel.trackLayout.rowLayouts.map(
+        (layout) => layout.contentSpan.height,
+      ),
+      [defaultBaseTrackHeight * 2, 84, defaultBaseTrackHeight * 2, 84],
+    );
   });
 }
