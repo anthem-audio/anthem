@@ -19,10 +19,10 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:anthem/engine_api/memory_block.dart';
+import 'package:anthem/engine_api/length_prefixed_json_decoder.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('engine_connector');
@@ -59,11 +59,17 @@ abstract class EngineConnectorBase {
 
   final void Function(Response reply)? _onReply;
 
+  late final LengthPrefixedJsonDecoder _responseDecoder;
+
   EngineConnectorBase({
     required this.kDebugMode,
     required this.noHeartbeat,
     this._onReply,
-  });
+  }) {
+    _responseDecoder = LengthPrefixedJsonDecoder(
+      onMessage: _handleDecodedMessage,
+    );
+  }
 
   void startHeartbeatTimer() {
     _heartbeatCheckTimer = Timer.periodic(
@@ -99,90 +105,43 @@ abstract class EngineConnectorBase {
 
   void send(Uint8List bytes);
 
-  final _messageBuffer = MemoryBlock();
-
-  void onReceive(Uint8List message) {
+  void onReceive(Uint8List bytes) {
     if (_onReply == null) return;
 
-    // Append incoming data to the buffer
-    _messageBuffer.append(message);
+    try {
+      _responseDecoder.add(bytes);
+    } on FormatException catch (_) {
+      // Malformed framing or JSON means the IPC stream can no longer be
+      // interpreted reliably. Shut down the connector and surface the error.
+      dispose();
+      rethrow;
+    }
+  }
 
-    // Process the buffer to extract complete messages
-    while (_messageBuffer.buffer.length >= 8) {
-      // Extract the message length (8 bytes, 64-bit integer)
-      final byteData = ByteData.sublistView(
-        Uint8List.fromList(_messageBuffer.buffer),
+  void _handleDecodedMessage(Object? json) {
+    if (json is! Map<String, dynamic>) {
+      throw FormatException(
+        'Expected an engine response to be a JSON object, got '
+        '${json.runtimeType}.',
       );
+    }
 
-      var messageLength = 0;
+    final response = Response.fromJson(json);
 
-      if (kIsWeb && !kIsWasm) {
-        // Read two 32-bit words and combine safely using BigInt to avoid JS 32-bit shifts.
-        final lowOffset = Endian.host == Endian.little ? 0 : 4;
-        final highOffset = Endian.host == Endian.little ? 4 : 0;
+    if (response is HeartbeatReply) {
+      acknowledgeHeartbeat();
+      return;
+    }
 
-        final low = byteData.getUint32(lowOffset, Endian.host);
-        final high = byteData.getUint32(highOffset, Endian.host);
-
-        final bigLen = (BigInt.from(high) << 32) | BigInt.from(low);
-
-        // Guard against values that exceed JS safe integer range.
-        const maxSafe = 0x001F_FFFF_FFFF_FFFF; // 2^53 - 1
-        if (bigLen > BigInt.from(maxSafe)) {
-          throw StateError(
-            'Message length exceeds JS safe integer range: $bigLen',
-          );
-        }
-
-        messageLength = bigLen.toInt();
-      } else {
-        messageLength = byteData.getUint64(0, Endian.host);
-      }
-
-      // Check if the buffer contains the full message
-      if (_messageBuffer.buffer.length >= 8 + messageLength) {
-        // Extract the full message
-        final messageStart = 8;
-        final messageEnd = messageStart + messageLength;
-        final fullMessage = _messageBuffer.buffer.sublist(
-          messageStart,
-          messageEnd,
-        );
-
-        Response response;
-        try {
-          response = Response.fromJson(jsonDecode(utf8.decode(fullMessage)));
-        } on FormatException catch (_) {
-          // If we can't decode, then something is fatally wrong. This is
-          // probably a bug, so we should shut down the engine and report the
-          // error.
-          dispose();
-
-          rethrow;
-        }
-
-        // Remove the processed message from the buffer
-        _messageBuffer.removeRange(0, 8 + messageLength);
-
-        // Handle heartbeat reply
-        if (response is HeartbeatReply) {
-          acknowledgeHeartbeat();
-        } else {
-          try {
-            _onReply(response);
-          } catch (error, stackTrace) {
-            _log.severe(
-              'Unhandled exception while processing engine response '
-              '${response.runtimeType}.',
-              error,
-              stackTrace,
-            );
-          }
-        }
-      } else {
-        // Not enough data for a full message yet
-        break;
-      }
+    try {
+      _onReply?.call(response);
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Unhandled exception while processing engine response '
+        '${response.runtimeType}.',
+        error,
+        stackTrace,
+      );
     }
   }
 

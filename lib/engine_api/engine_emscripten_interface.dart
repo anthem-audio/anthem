@@ -18,14 +18,24 @@
 */
 
 import 'dart:async';
+import 'dart:collection';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:anthem/engine_api/memory_block.dart';
 import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
 import 'package:flutter/scheduler.dart';
+
+class _PendingOutgoingMessage {
+  final Uint8List bytes;
+  int offset = 0;
+
+  _PendingOutgoingMessage(Uint8List bytes) : bytes = Uint8List.fromList(bytes);
+
+  int get bytesRemaining => bytes.length - offset;
+  bool get isComplete => offset == bytes.length;
+}
 
 class EngineEmscriptenInterface {
   static const _introBytesToSkip = 16;
@@ -36,7 +46,7 @@ class EngineEmscriptenInterface {
   late final WasmSharedMemoryRingBuffer readBuffer;
   late final WasmSharedMemoryRingBuffer writeBuffer;
 
-  List<MemoryBlock> outgoingMessages = [];
+  final Queue<_PendingOutgoingMessage> _outgoingMessages = ListQueue();
 
   void Function(Uint8List bytes)? onMessageReceived;
 
@@ -262,7 +272,7 @@ class EngineEmscriptenInterface {
   }
 
   void sendMessage(Uint8List bytes) {
-    outgoingMessages.add(MemoryBlock.fromTypedList(bytes));
+    _outgoingMessages.add(_PendingOutgoingMessage(bytes));
     _scheduleSendPendingMessages();
   }
 
@@ -297,19 +307,21 @@ class EngineEmscriptenInterface {
     var bytesRemainingInPass = _maxBytesPerSendPass;
 
     try {
-      while (outgoingMessages.isNotEmpty && bytesRemainingInPass > 0) {
-        final message = outgoingMessages.first;
-        final messageData = message.buffer;
-        final bytesToAttempt = min(messageData.length, bytesRemainingInPass);
+      while (_outgoingMessages.isNotEmpty && bytesRemainingInPass > 0) {
+        final message = _outgoingMessages.first;
+        final bytesToAttempt = min(
+          message.bytesRemaining,
+          bytesRemainingInPass,
+        );
 
         var bytesWrittenFromMessage = 0;
         while (bytesWrittenFromMessage < bytesToAttempt) {
           final success = writeBuffer.tryEnqueue(
-            messageData[bytesWrittenFromMessage],
+            message.bytes[message.offset + bytesWrittenFromMessage],
           );
           if (!success) {
             if (bytesWrittenFromMessage > 0) {
-              message.removeRange(0, bytesWrittenFromMessage);
+              message.offset += bytesWrittenFromMessage;
               didWriteBytes = true;
             }
 
@@ -324,10 +336,9 @@ class EngineEmscriptenInterface {
           bytesWrittenFromMessage++;
         }
 
-        if (bytesWrittenFromMessage == messageData.length) {
-          outgoingMessages.removeAt(0);
-        } else if (bytesWrittenFromMessage > 0) {
-          message.removeRange(0, bytesWrittenFromMessage);
+        message.offset += bytesWrittenFromMessage;
+        if (message.isComplete) {
+          _outgoingMessages.removeFirst();
         }
 
         if (bytesWrittenFromMessage > 0) {
@@ -340,7 +351,7 @@ class EngineEmscriptenInterface {
         _notifyWriteBufferChanged();
       }
 
-      if (outgoingMessages.isNotEmpty) {
+      if (_outgoingMessages.isNotEmpty) {
         _scheduleSendPendingMessages();
       }
     } finally {

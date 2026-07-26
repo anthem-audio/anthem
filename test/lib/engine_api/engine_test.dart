@@ -180,6 +180,25 @@ void main() {
     expect(Request.fromJson(patternJson), isA<CompilePatternRequest>());
   });
 
+  test('engine connector decodes responses split across transport chunks', () {
+    final responses = <Response>[];
+    final connector = _TestEngineConnector(
+      kDebugMode: false,
+      onReply: responses.add,
+    );
+    final frame = _frameResponse(
+      EngineReadyCheckResponse(id: 12, success: true),
+    );
+
+    for (var i = 0; i < frame.length; i++) {
+      connector.onReceive(Uint8List.sublistView(frame, i, i + 1));
+    }
+
+    expect(responses, hasLength(1));
+    expect(responses.single, isA<EngineReadyCheckResponse>());
+    expect(responses.single.id, 12);
+  });
+
   group('Engine', () {
     late MockProjectModel project;
     late MockVisualizationProvider visualizationProvider;
