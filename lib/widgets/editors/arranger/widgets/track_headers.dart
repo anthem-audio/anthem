@@ -215,42 +215,37 @@ class _TrackHeadersState extends State<TrackHeaders> {
               final layout = viewModel.trackLayout;
               final scrollOffset = widget.verticalScrollPosition;
               final viewportBottom = scrollOffset + constraints.maxHeight;
+              final hoveredTrackHeaderRowId = viewModel.hoveredTrackHeaderRowId;
 
               bool isVisible(Rect bounds) =>
                   bounds.bottom > scrollOffset && bounds.top < viewportBottom;
 
               final baseBounds = <Object, Rect>{};
               final baseChildren = <Widget>[];
+              final hoverBounds = <Object, Rect>{};
+              final hoverChildren = <Widget>[];
+              final indicatorByTrackId = {
+                for (final indicator in layout.colorIndicatorLayouts)
+                  indicator.trackId: indicator,
+              };
 
               for (final indicator in layout.colorIndicatorLayouts) {
                 if (!isVisible(indicator.bounds)) continue;
 
-                final rowLayout = layout.rowLayoutForId(indicator.rowId);
-                final row = rowLayout.row;
-                final color = switch (row) {
-                  ProjectTrackRow(:final trackId) =>
-                    project.tracks[trackId]?.color.colorShifter.clipBase
-                        .toColor(),
-                  PhantomAutomationTrackRow(:final phantomLane) =>
-                    project
-                        .tracks[phantomLane.parentTrackId]
-                        ?.color
-                        .colorShifter
-                        .clipBase
-                        .toColor()
-                        .withValues(alpha: 0.45),
-                };
-                if (color == null) continue;
-                final childId = ('indicator', indicator.rowId);
+                final rowLayout = layout.rowLayoutForId(indicator.trackId);
+                if (!project.tracks.containsKey(indicator.trackId)) continue;
+                final childId = ('indicator', indicator.trackId);
                 baseBounds[childId] = indicator.bounds;
                 baseChildren.add(
                   LayoutId(
                     id: childId,
                     child: TrackColorIndicator(
-                      key: Key('${row.rowId}-indicator'),
-                      color: color,
+                      key: Key('${indicator.trackId}-indicator'),
+                      trackId: indicator.trackId,
                       trackHeight: rowLayout.contentSpan.height,
                       spansDescendants: indicator.spansDescendants,
+                      showButtonBorders:
+                          hoveredTrackHeaderRowId == indicator.trackId,
                     ),
                   ),
                 );
@@ -281,6 +276,32 @@ class _TrackHeadersState extends State<TrackHeaders> {
                           phantomLane: phantomLane,
                         ),
                     },
+                  ),
+                );
+
+                final hoverChildId = ('hover', row.rowId);
+                final indicator = indicatorByTrackId[row.rowId];
+                hoverBounds[hoverChildId] = Rect.fromLTRB(
+                  indicator?.bounds.left ?? rowLayout.headerBounds.left,
+                  rowLayout.headerBounds.top,
+                  rowLayout.headerBounds.right,
+                  rowLayout.headerBounds.bottom,
+                );
+                hoverChildren.add(
+                  LayoutId(
+                    id: hoverChildId,
+                    child: MouseRegion(
+                      key: Key('${row.rowId}-header-hover-region'),
+                      opaque: false,
+                      onEnter: (_) {
+                        viewModel.hoveredTrackHeaderRowId = row.rowId;
+                      },
+                      onExit: (_) {
+                        if (viewModel.hoveredTrackHeaderRowId == row.rowId) {
+                          viewModel.hoveredTrackHeaderRowId = null;
+                        }
+                      },
+                    ),
                   ),
                 );
               }
@@ -387,6 +408,14 @@ class _TrackHeadersState extends State<TrackHeaders> {
                           layoutRevision: revision,
                         ),
                         children: dividerChildren,
+                      ),
+                      CustomMultiChildLayout(
+                        delegate: _TrackHeaderLayoutDelegate(
+                          boundsById: hoverBounds,
+                          scrollOffset: scrollOffset,
+                          layoutRevision: revision,
+                        ),
+                        children: hoverChildren,
                       ),
                     ],
                   ),

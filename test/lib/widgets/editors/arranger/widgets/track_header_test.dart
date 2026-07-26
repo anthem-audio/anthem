@@ -26,6 +26,8 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/controls/slider.dart' as anthem;
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
@@ -42,56 +44,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   ServiceRegistry.screenOverlayController = _screenOverlayController;
 
-  group('automation lane button', () {
-    testWidgets('appears while hovered or expanded', (tester) async {
-      final fixture = _TrackHeaderTestFixture.create();
-      addTearDown(() async {
-        await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
-      });
-      await fixture.pump(tester);
-
-      expect(_automationLaneButtonFinder, findsNothing);
-
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await fixture.hoverTrackContent(tester, mouse);
-
-      expect(_automationLaneButtonFinder, findsOneWidget);
-
-      await mouse.moveTo(const Offset(400, 400));
-      await tester.pump();
-
-      expect(_automationLaneButtonFinder, findsNothing);
-
-      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
-          true;
-      await fixture.pump(tester);
-
-      expect(_automationLaneButtonFinder, findsOneWidget);
-    });
-
-    testWidgets('insets compact expanded title around the visible button', (
-      tester,
-    ) async {
-      final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 40);
-      addTearDown(() async {
-        await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
-      });
-
-      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
-          true;
-      await fixture.pump(tester);
-
-      final titleRect = tester.getRect(find.text('Track 1'));
-      final buttonBackgroundRect = tester.getRect(
-        _automationLaneButtonBackgroundFinder,
-      );
-
-      expect(titleRect.left, greaterThanOrEqualTo(buttonBackgroundRect.right));
-    });
-
-    testWidgets('does not pass clicks through to the track header', (
+  group('automation lanes', () {
+    testWidgets('indicator button toggles expansion without existing lanes', (
       tester,
     ) async {
       final fixture = _TrackHeaderTestFixture.create();
@@ -101,61 +55,68 @@ void main() {
       });
       await fixture.pump(tester);
 
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await fixture.hoverTrackContent(tester, mouse);
-      await mouse.down(tester.getCenter(_automationLaneButtonFinder));
-      await tester.pump();
-      await mouse.up();
+      expect(
+        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
+        isFalse,
+      );
+      final buttonFinder = _automationLaneButtonFinder(fixture.trackId);
+      expect(buttonFinder, findsOneWidget);
+
+      var button = tester.widget<Button>(buttonFinder);
+      expect(button.icon, same(Icons.track.automationAdd));
+      expect(button.toggleState, isFalse);
+
+      await tester.tap(buttonFinder);
       await tester.pump();
 
       expect(
-        fixture.arrangerViewModel.selectedTracks,
-        isNot(contains(fixture.trackId)),
+        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
+        isTrue,
       );
+      button = tester.widget<Button>(buttonFinder);
+      expect(button.icon, same(Icons.track.automationExpanded));
+      expect(button.toggleState, isTrue);
+
+      await tester.tap(buttonFinder);
+      await tester.pump();
+
+      expect(
+        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
+        isFalse,
+      );
+      button = tester.widget<Button>(buttonFinder);
+      expect(button.icon, same(Icons.track.automationAdd));
+      expect(button.toggleState, isFalse);
     });
 
-    testWidgets('toggles the track automation expansion state', (tester) async {
+    testWidgets('indicator button reflects existing automation lanes', (
+      tester,
+    ) async {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
         fixture.dispose();
       });
+
+      fixture.addToneGeneratorAutomationLane(
+        deviceName: 'Tone Generator',
+        laneName: 'Filter Sweep',
+      );
+      fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
+          false;
       await fixture.pump(tester);
 
-      expect(
-        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
-        isFalse,
-      );
+      final buttonFinder = _automationLaneButtonFinder(fixture.trackId);
+      var button = tester.widget<Button>(buttonFinder);
+      expect(button.icon, same(Icons.track.automationCollapsed));
+      expect(button.toggleState, isFalse);
 
-      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
-      await fixture.hoverTrackContent(tester, mouse);
+      await tester.tap(buttonFinder);
+      await tester.pump();
 
-      expect(
-        tester.widget<Button>(_automationLaneButtonFinder).toggleState,
-        isFalse,
-      );
-
-      await fixture.clickAutomationLaneButton(tester, mouse);
-
-      expect(
-        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
-        isTrue,
-      );
-      expect(
-        tester.widget<Button>(_automationLaneButtonFinder).toggleState,
-        isTrue,
-      );
-
-      await fixture.clickAutomationLaneButton(tester, mouse);
-
-      expect(
-        fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId],
-        isFalse,
-      );
-      expect(
-        tester.widget<Button>(_automationLaneButtonFinder).toggleState,
-        isFalse,
-      );
+      button = tester.widget<Button>(buttonFinder);
+      expect(button.icon, same(Icons.track.automationExpanded));
+      expect(button.toggleState, isTrue);
     });
 
     testWidgets('phantom lane shows parameter above device name', (
@@ -178,10 +139,11 @@ void main() {
             parameterName: 'Cutoff',
           );
 
-      await fixture.pump(tester);
-
       final phantomLane = fixture.arrangerViewModel
           .phantomAutomationLaneForTrack(fixture.trackId)!;
+
+      await fixture.pump(tester);
+
       expect(
         fixture.arrangerViewModel.trackLayout.tryRowLayoutForId(phantomLane.id),
         isNotNull,
@@ -248,8 +210,11 @@ void main() {
 
       await fixture.pump(tester);
 
+      final automationLaneHeader = find.byKey(
+        Key(automationLaneInfo.laneId.toString()),
+      );
       await tester.tapAt(
-        tester.getCenter(find.text(laneName)),
+        tester.getCenter(automationLaneHeader),
         buttons: kSecondaryMouseButton,
       );
       await tester.pump();
@@ -263,7 +228,7 @@ void main() {
 
       expect(fixture.project.tracks[automationLaneInfo.laneId], isNull);
       expect(fixture.project.tracks[fixture.trackId]!.automationLanes, isEmpty);
-      expect(find.text(laneName), findsNothing);
+      expect(automationLaneHeader, findsNothing);
     });
 
     testWidgets('compact automation lane label renders on one row', (
@@ -299,6 +264,154 @@ void main() {
       expect(compactLabelFinder, findsOneWidget);
       expect(find.text(laneName), findsNothing);
       expect(find.text(deviceName), findsNothing);
+    });
+  });
+
+  group('automation lane value slider', () {
+    testWidgets('is vertical and bound to the automated parameter', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      final laneInfo = fixture.addToneGeneratorAutomationLane(
+        deviceName: 'Tone Generator',
+        laneName: 'Filter Sweep',
+      );
+      await fixture.pump(tester);
+
+      final lane = fixture.project.tracks[laneInfo.laneId]!;
+      final target = lane.automationTarget!;
+      final slider = tester.widget<anthem.Slider>(
+        _automationSliderFinder(lane.id),
+      );
+
+      expect(slider.axis, anthem.SliderAxis.vertical);
+      expect(slider.width, 15);
+      expect(slider.parameter?.node.id, target.nodeId);
+      expect(slider.parameter?.port.id, target.portId);
+      expect(
+        slider.parameter?.automationVisualizationId,
+        lane
+            .requireAutomationProcessing
+            .controlValueVisualizationProcessor
+            ?.visualizationId,
+      );
+    });
+
+    testWidgets('changes size in sync with the regular track meter', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      final laneInfo = fixture.addToneGeneratorAutomationLane(
+        deviceName: 'Tone Generator',
+        laneName: 'Filter Sweep',
+      );
+      final meterFinder = _volumeMeterFinder(fixture.trackId);
+      final sliderFinder = _automationSliderFinder(laneInfo.laneId);
+
+      Future<void> expectControlHeights({
+        required double modifier,
+        required double meterHeight,
+        required double sliderHeight,
+      }) async {
+        fixture.arrangerViewModel.setRowHeightModifier(
+          fixture.trackId,
+          modifier,
+        );
+        fixture.arrangerViewModel.setRowHeightModifier(
+          laneInfo.laneId,
+          modifier,
+        );
+        await fixture.pump(tester);
+
+        expect(tester.getSize(meterFinder).height, meterHeight);
+        expect(tester.getSize(sliderFinder).height, sliderHeight);
+      }
+
+      await expectControlHeights(
+        modifier: 0.99,
+        meterHeight: 20,
+        sliderHeight: 20,
+      );
+      await expectControlHeights(
+        modifier: 1,
+        meterHeight: 44,
+        sliderHeight: 34,
+      );
+      await expectControlHeights(
+        modifier: 1.49,
+        meterHeight: 44,
+        sliderHeight: 34,
+      );
+      await expectControlHeights(
+        modifier: 1.5,
+        meterHeight: 68,
+        sliderHeight: 55,
+      );
+      expect(
+        tester.getRect(sliderFinder).right,
+        tester.getRect(meterFinder).right,
+      );
+    });
+
+    testWidgets('is omitted when the stored target is unavailable', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      final laneInfo = fixture.addToneGeneratorAutomationLane(
+        deviceName: 'Tone Generator',
+        laneName: 'Filter Sweep',
+      );
+      final lane = fixture.project.tracks[laneInfo.laneId]!;
+      lane.automationTarget!.nodeId = 999999;
+
+      await fixture.pump(tester);
+
+      expect(_automationSliderFinder(lane.id), findsNothing);
+    });
+
+    testWidgets('remains vertically centered in larger header sizes', (
+      tester,
+    ) async {
+      final fixture = _TrackHeaderTestFixture.create();
+      addTearDown(() async {
+        await tester.pumpWidget(const SizedBox.shrink());
+        fixture.dispose();
+      });
+
+      final laneInfo = fixture.addToneGeneratorAutomationLane(
+        deviceName: 'Tone Generator',
+        laneName: 'Filter Sweep',
+      );
+      final headerFinder = find.byKey(Key(laneInfo.laneId.toString()));
+      final sliderFinder = _automationSliderFinder(laneInfo.laneId);
+
+      for (final modifier in [1.25, 1.75]) {
+        fixture.arrangerViewModel.setRowHeightModifier(
+          laneInfo.laneId,
+          modifier,
+        );
+        await fixture.pump(tester);
+
+        expect(
+          tester.getRect(sliderFinder).center.dy,
+          closeTo(tester.getRect(headerFinder).center.dy, 0.000001),
+        );
+      }
     });
   });
 
@@ -346,12 +459,29 @@ void main() {
   });
 }
 
-final _automationLaneButtonFinder = find.byKey(
-  const ValueKey<String>('track-header-automation-lane-button'),
+Finder _automationLaneButtonFinder(Id trackId) => find
+    .descendant(
+      of: find.byKey(Key('$trackId-indicator')),
+      matching: find.byType(Button),
+    )
+    .at(1);
+
+Finder _automationSliderFinder(Id trackId) => find.descendant(
+  of: find.byKey(Key(trackId.toString())),
+  matching: find.byType(anthem.Slider),
 );
 
-final _automationLaneButtonBackgroundFinder = find.byKey(
-  const ValueKey<String>('track-header-automation-lane-button-background'),
+Finder _volumeMeterFinder(Id trackId) => find.descendant(
+  of: find.byKey(Key(trackId.toString())),
+  matching: find.byWidgetPredicate((widget) {
+    if (widget is! Container) return false;
+
+    final decoration = widget.decoration;
+    return widget.constraints?.minWidth == 15 &&
+        widget.constraints?.maxWidth == 15 &&
+        decoration is BoxDecoration &&
+        decoration.border != null;
+  }),
 );
 
 final _screenOverlayViewModel = ScreenOverlayViewModel();
@@ -504,21 +634,6 @@ class _TrackHeaderTestFixture {
       bounds.width,
       bounds.height,
     );
-  }
-
-  Future<void> hoverTrackContent(WidgetTester tester, TestGesture mouse) async {
-    await mouse.moveTo(trackContentRect(tester).center);
-    await tester.pump();
-  }
-
-  Future<void> clickAutomationLaneButton(
-    WidgetTester tester,
-    TestGesture mouse,
-  ) async {
-    await mouse.down(tester.getCenter(_automationLaneButtonFinder));
-    await tester.pump();
-    await mouse.up();
-    await tester.pump();
   }
 
   Future<void> clickHeader(WidgetTester tester, TestGesture mouse) async {

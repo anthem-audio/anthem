@@ -177,6 +177,11 @@ abstract class _ArrangerViewModel with Store {
   @observable
   Id? hoveredClip;
 
+  /// The arranger header row whose header or solid color indicator is under
+  /// the mouse cursor, if any.
+  @observable
+  Id? hoveredTrackHeaderRowId;
+
   /// The clip that should currently display inline automation handles, if any.
   @observable
   Id? clipWithAutomationHandles;
@@ -272,6 +277,12 @@ abstract class _ArrangerViewModel with Store {
       headerWidth: headerWidth,
       viewportHeight: editorHeight,
     );
+
+    final hoveredTrackHeaderRowId = this.hoveredTrackHeaderRowId;
+    if (hoveredTrackHeaderRowId != null &&
+        trackLayout.tryRowLayoutForId(hoveredTrackHeaderRowId) == null) {
+      this.hoveredTrackHeaderRowId = null;
+    }
 
     regularToSendGapHeight = trackLayout.regularToSendGapSpan.height;
     scrollAreaHeight = trackLayout.contentHeight;

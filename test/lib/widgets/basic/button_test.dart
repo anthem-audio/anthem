@@ -223,6 +223,39 @@ void main() {
       expect(onRightClickCalls, equals(1));
       expect(parentRightClickCalls, equals(0));
     });
+
+    testWidgets('Non-interactable button ignores hover and clicks', (
+      WidgetTester tester,
+    ) async {
+      final hintStore = MockHintStore();
+      var onPressCalls = 0;
+      final mainTheme = getButtonTheme(ButtonVariant.main);
+
+      await _pumpButton(
+        tester,
+        Button(
+          width: 100,
+          height: 30,
+          text: 'Inactive',
+          interactable: false,
+          consumePress: true,
+          onPress: () => onPressCalls += 1,
+          hint: [HintSection('click', 'Does nothing')],
+          hintStoreOverride: hintStore,
+        ),
+      );
+
+      final mouse = await _createMouse(tester);
+      await _hoverButton(tester, mouse);
+      await mouse.down(_buttonCenter(tester));
+      await tester.pump();
+      await mouse.up();
+      await tester.pump();
+
+      expect(onPressCalls, 0);
+      expect(_buttonDecoration(tester).color, mainTheme.background.idle);
+      verifyNever(hintStore.addHint(any));
+    });
   });
 
   group('Button visuals', () {
@@ -317,6 +350,39 @@ void main() {
         );
       },
     );
+
+    testWidgets('borderMatchesContent follows the content state color', (
+      WidgetTester tester,
+    ) async {
+      await _pumpButton(
+        tester,
+        const Button(
+          variant: ButtonVariant.outline,
+          width: 100,
+          height: 30,
+          text: 'Matched border',
+          borderMatchesContent: true,
+        ),
+      );
+
+      void expectMatchingColors() {
+        final decoration = _buttonDecoration(tester);
+        final borderColor = (decoration.border! as Border).top.color;
+        final text = tester.widget<Text>(find.text('Matched border'));
+
+        expect(borderColor, text.style!.color);
+      }
+
+      expectMatchingColors();
+
+      final TestGesture mouse = await _createMouse(tester);
+      await _hoverButton(tester, mouse);
+      expectMatchingColors();
+
+      await mouse.down(_buttonCenter(tester));
+      await tester.pump();
+      expectMatchingColors();
+    });
 
     testWidgets('Toggled state uses active color regardless of pointer state', (
       WidgetTester tester,
@@ -713,19 +779,21 @@ Offset _buttonCenter(WidgetTester tester) {
 }
 
 BoxDecoration _buttonDecoration(WidgetTester tester) {
-  final Finder containerFinder = find.descendant(
+  final Finder decoratedBoxFinder = find.descendant(
     of: find.byType(Button),
     matching: find.byWidgetPredicate((Widget widget) {
-      return widget is Container &&
+      return widget is DecoratedBox &&
           widget.decoration is BoxDecoration &&
           widget.child is ClipRRect;
     }),
   );
 
-  expect(containerFinder, findsOneWidget);
+  expect(decoratedBoxFinder, findsOneWidget);
 
-  final Container container = tester.widget<Container>(containerFinder);
-  return container.decoration! as BoxDecoration;
+  final DecoratedBox decoratedBox = tester.widget<DecoratedBox>(
+    decoratedBoxFinder,
+  );
+  return decoratedBox.decoration as BoxDecoration;
 }
 
 void _expectButtonColors(
@@ -739,17 +807,19 @@ void _expectButtonColors(
 }
 
 BoxDecoration _buttonDecorationByKey(WidgetTester tester, String keyValue) {
-  final Finder containerFinder = find.descendant(
+  final Finder decoratedBoxFinder = find.descendant(
     of: find.byKey(ValueKey<String>(keyValue)),
     matching: find.byWidgetPredicate((Widget widget) {
-      return widget is Container &&
+      return widget is DecoratedBox &&
           widget.decoration is BoxDecoration &&
           widget.child is ClipRRect;
     }),
   );
 
-  expect(containerFinder, findsOneWidget);
+  expect(decoratedBoxFinder, findsOneWidget);
 
-  final Container container = tester.widget<Container>(containerFinder);
-  return container.decoration! as BoxDecoration;
+  final DecoratedBox decoratedBox = tester.widget<DecoratedBox>(
+    decoratedBoxFinder,
+  );
+  return decoratedBox.decoration as BoxDecoration;
 }

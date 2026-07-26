@@ -97,6 +97,7 @@ class Icons {
     'assets/icons/small/arrow_down.svg',
   );
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
+  static _TrackIcons track = _TrackIcons();
   static _ToolIcons tools = _ToolIcons();
   static _MainToolbarIcons mainToolbar = _MainToolbarIcons();
 }
@@ -112,6 +113,30 @@ class _ScrollbarIcons {
     'assets/icons_old/scrollbar/arrow_right.svg',
   );
   IconDef arrowUp = const IconDef('assets/icons_old/scrollbar/arrow_up.svg');
+}
+
+class _TrackIcons {
+  IconDef add = const IconDef('assets/icons/track/add.svg');
+  IconDef audio = const IconDef('assets/icons/track/audio.svg');
+  IconDef automationAdd = const IconDef(
+    'assets/icons/track/automation-add.svg',
+  );
+  IconDef automationCollapsed = const IconDef(
+    'assets/icons/track/automation-collapsed.svg',
+  );
+  IconDef automationExpanded = const IconDef(
+    'assets/icons/track/automation-expanded.svg',
+  );
+  IconDef automationFlying = const IconDef(
+    'assets/icons/track/automation-flying.svg',
+  );
+  IconDef folderClosed = const IconDef('assets/icons/track/folder-closed.svg');
+  IconDef folderOpen = const IconDef('assets/icons/track/folder-open.svg');
+  IconDef instrument = const IconDef('assets/icons/track/instrument.svg');
+  IconDef master = const IconDef('assets/icons/track/master.svg');
+  IconDef showSendTracks = const IconDef(
+    'assets/icons/track/show-send-tracks.svg',
+  );
 }
 
 class _ToolIcons {

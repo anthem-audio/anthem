@@ -279,9 +279,10 @@ void main() {
         headerWidth: TrackLayout.defaultHeaderWidth,
       );
 
-      expect(layout.colorIndicatorLayouts.map((indicator) => indicator.rowId), [
-        1,
-      ]);
+      expect(
+        layout.colorIndicatorLayouts.map((indicator) => indicator.trackId),
+        [1],
+      );
       expect(layout.colorIndicatorLayouts.single.spansDescendants, isTrue);
 
       final ownerHeader = layout.rowLayoutForId(1).headerBounds;

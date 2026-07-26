@@ -17,42 +17,57 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/project.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/arranger_diagonal_pattern.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_color_indicator.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   testWidgets('only descendant-spanning indicators render the pattern', (
     tester,
   ) async {
+    final project = ProjectModel.create();
+    ServiceRegistry.initializeProject(project);
+    addTearDown(() {
+      ServiceRegistry.removeProject(project.id);
+      project.dispose();
+    });
+    final trackId = project.trackOrder.first;
+
     await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: Column(
-          children: const [
-            SizedBox(
-              width: 100,
-              height: 80,
-              child: TrackColorIndicator(
-                color: Color(0xFF123456),
-                trackHeight: 40,
-                spansDescendants: true,
+      Provider<ProjectModel>.value(
+        value: project,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Column(
+            children: [
+              SizedBox(
+                width: 100,
+                height: 80,
+                child: TrackColorIndicator(
+                  trackId: trackId,
+                  trackHeight: 40,
+                  spansDescendants: true,
+                ),
               ),
-            ),
-            SizedBox(
-              width: 100,
-              height: 40,
-              child: TrackColorIndicator(
-                color: Color(0xFF123456),
-                trackHeight: 40,
-                spansDescendants: false,
+              SizedBox(
+                width: 100,
+                height: 40,
+                child: TrackColorIndicator(
+                  trackId: trackId,
+                  trackHeight: 40,
+                  spansDescendants: false,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+    await tester.pump(const Duration(milliseconds: 1));
 
     expect(find.byType(ArrangerDiagonalPattern), findsOneWidget);
   });

@@ -37,6 +37,7 @@
     "grayscale",
     "ifdef",
     "ifndef",
+    "interactable",
     "interprocess",
     "iscc",
     "jassert",

@@ -113,7 +113,7 @@ class TrackRowLayout {
   );
 }
 
-/// Geometry for a color indicator owned by [rowId].
+/// Geometry for a color indicator owned by [trackId].
 ///
 /// Automation lanes do not have color indicators.
 ///
@@ -123,12 +123,12 @@ class TrackRowLayout {
 /// bottom because that row's divider precedes its content.
 @immutable
 class TrackColorIndicatorLayout {
-  final Id rowId;
+  final Id trackId;
   final Rect bounds;
   final bool spansDescendants;
 
   const TrackColorIndicatorLayout({
-    required this.rowId,
+    required this.trackId,
     required this.bounds,
     required this.spansDescendants,
   });
@@ -136,12 +136,12 @@ class TrackColorIndicatorLayout {
   @override
   bool operator ==(Object other) =>
       other is TrackColorIndicatorLayout &&
-      other.rowId == rowId &&
+      other.trackId == trackId &&
       other.bounds == bounds &&
       other.spansDescendants == spansDescendants;
 
   @override
-  int get hashCode => Object.hash(rowId, bounds, spansDescendants);
+  int get hashCode => Object.hash(trackId, bounds, spansDescendants);
 }
 
 /// Visual and interaction geometry for a row's resize divider.
@@ -461,9 +461,13 @@ class TrackLayout {
 
     final nextIndicators = <TrackColorIndicatorLayout>[];
     for (final (index, layout) in nextRows.indexed) {
-      if (layout.row.rowKind == TrackRowKind.automationLane) continue;
+      final row = layout.row;
+      if (row is! ProjectTrackRow || row.rowKind != TrackRowKind.track) {
+        continue;
+      }
+      final trackId = row.trackId;
 
-      final rootDepth = layout.row.trackDepth;
+      final rootDepth = row.trackDepth;
       var lastDescendantIndex = index;
       while (lastDescendantIndex + 1 < nextRows.length &&
           nextRows[lastDescendantIndex + 1].row.trackDepth > rootDepth) {
@@ -483,7 +487,7 @@ class TrackLayout {
       };
       nextIndicators.add(
         TrackColorIndicatorLayout(
-          rowId: layout.row.rowId,
+          trackId: trackId,
           spansDescendants: lastDescendantIndex != index,
           bounds: Rect.fromLTRB(
             indicatorLeft,

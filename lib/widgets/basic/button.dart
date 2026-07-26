@@ -152,12 +152,14 @@ class Button extends StatefulWidget {
   final Color? backgroundPress;
   final Color? backgroundToggleActive;
   final bool? hideBorder;
+  final bool borderMatchesContent;
   final BorderRadius? borderRadius;
 
   final void Function()? onPress;
   final void Function()? onRightClick;
   final bool? toggleState;
   final bool consumePress;
+  final bool interactable;
 
   final List<HintSection>? hint;
   @visibleForTesting
@@ -179,11 +181,13 @@ class Button extends StatefulWidget {
     this.backgroundPress,
     this.backgroundToggleActive,
     this.hideBorder,
+    this.borderMatchesContent = false,
     this.borderRadius,
     this.onPress,
     this.onRightClick,
     this.toggleState,
     this.consumePress = false,
+    this.interactable = true,
     this.hint,
     this.hintStoreOverride,
   });
@@ -214,6 +218,17 @@ class _ButtonState extends State<Button> {
   @override
   void didUpdateWidget(Button oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    if (!widget.interactable) {
+      hovered = false;
+      pressed = false;
+      if (hintId != null) {
+        _hintStore.removeHint(hintId!);
+        hintId = null;
+      }
+      return;
+    }
+
     if (hovered && oldWidget.hint != widget.hint) {
       if (hintId != null) {
         _hintStore.removeHint(hintId!);
@@ -254,6 +269,9 @@ class _ButtonState extends State<Button> {
     }
 
     final contentColor = theme.content.getColor(hovered, pressed, toggled);
+    final borderColor = widget.borderMatchesContent
+        ? contentColor
+        : theme.border.getColor(hovered, pressed, toggled);
 
     Widget? buttonContent;
 
@@ -302,6 +320,29 @@ class _ButtonState extends State<Button> {
         groupStyle?.borderRadius ??
         BorderRadius.circular(4);
 
+    final buttonVisual = SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: effectiveBorderRadius,
+          border: effectiveHideBorder == true
+              ? null
+              : Border.all(color: borderColor),
+          color: background,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(1),
+          child: Stack(
+            fit: widget.expand != null ? StackFit.expand : StackFit.passthrough,
+            children: stackChildren,
+          ),
+        ),
+      ),
+    );
+
+    if (!widget.interactable) return buttonVisual;
+
     return MouseRegion(
       onEnter: (e) {
         if (!mounted) return;
@@ -348,28 +389,7 @@ class _ButtonState extends State<Button> {
               pressed = false;
             });
           },
-          child: Container(
-            width: widget.width,
-            height: widget.height,
-            decoration: BoxDecoration(
-              borderRadius: effectiveBorderRadius,
-              border: effectiveHideBorder == true
-                  ? null
-                  : Border.all(
-                      color: theme.border.getColor(hovered, pressed, toggled),
-                    ),
-              color: background,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(1),
-              child: Stack(
-                fit: widget.expand != null
-                    ? StackFit.expand
-                    : StackFit.passthrough,
-                children: stackChildren,
-              ),
-            ),
-          ),
+          child: buttonVisual,
         ),
       ),
     );

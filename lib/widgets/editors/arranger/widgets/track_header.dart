@@ -33,6 +33,7 @@ import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
+import 'package:anthem/widgets/editors/arranger/widgets/track_header_content_layout.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/scheduler.dart';
@@ -50,25 +51,7 @@ class TrackHeaderContent extends StatefulObserverWidget {
   State<TrackHeaderContent> createState() => _TrackHeaderContentState();
 }
 
-const _trackContentPadding = EdgeInsets.symmetric(horizontal: 4, vertical: 4);
-const _trackCompactHeightThreshold = 52.0;
-const _trackTallHeightThreshold = 78.0;
-const _trackCompactContentHeight = 20.0;
-const _trackMediumContentHeight = 44.0;
-const _trackTallContentHeight = 68.0;
-const _trackAutomationLaneButtonSize = 20.0;
-
-double _trackContentHeightFor(double availableHeight) {
-  if (availableHeight >= _trackTallHeightThreshold) {
-    return _trackTallContentHeight;
-  }
-
-  if (availableHeight >= _trackCompactHeightThreshold) {
-    return _trackMediumContentHeight;
-  }
-
-  return _trackCompactContentHeight;
-}
+const _trackMeterWidth = 15.0;
 
 class _TrackHeaderContentState extends State<TrackHeaderContent> {
   static const _doubleClickThreshold = Duration(milliseconds: 500);
@@ -126,20 +109,6 @@ class _TrackHeaderContentState extends State<TrackHeaderContent> {
     final trackBackgroundColor = viewModel.selectedTracks.contains(track.id)
         ? AnthemTheme.panel.borderLight
         : AnthemTheme.panel.main;
-
-    final isAutomationExpanded =
-        viewModel.automationExpandedByTrackId[track.id] ?? false;
-
-    void toggleAutomationExpanded() {
-      if (track.isAutomationLane) {
-        return;
-      }
-
-      viewModel.automationExpandedByTrackId[track.id] =
-          !(viewModel.automationExpandedByTrackId[track.id] ?? false);
-      viewModel.refreshTrackLayout(viewModel.editorHeight);
-      controller.onTrackLayoutChanged();
-    }
 
     void onClick() {
       if (HardwareKeyboard.instance.isShiftPressed) {
@@ -241,20 +210,12 @@ class _TrackHeaderContentState extends State<TrackHeaderContent> {
       openContextMenu(e.globalPosition, MenuDef(children: menuItems));
     }
 
-    return MouseRegion(
-      child: GestureDetector(
-        onTapUp: onPrimaryTapUp,
-        onSecondaryTapUp: onSecondaryClick,
-        child: Container(
-          color: trackBackgroundColor,
-          child: _TrackContent(
-            track: track,
-            backgroundColor: trackBackgroundColor,
-            automationExpanded: isAutomationExpanded,
-            showAutomationToggle: !track.isAutomationLane,
-            onToggleAutomationExpanded: toggleAutomationExpanded,
-          ),
-        ),
+    return GestureDetector(
+      onTapUp: onPrimaryTapUp,
+      onSecondaryTapUp: onSecondaryClick,
+      child: Container(
+        color: trackBackgroundColor,
+        child: _TrackContent(track: track),
       ),
     );
   }
@@ -276,38 +237,42 @@ class PhantomAutomationTrackHeaderContent extends StatelessWidget {
     final target = phantomLane.target;
 
     return LayoutBuilder(
-      builder: (context, constraints) => Container(
-        color: AnthemTheme.panel.main,
-        padding: _trackContentPadding,
-        child: Row(
-          spacing: 4,
-          children: [
-            Expanded(
-              child: _AutomationTargetLabel(
-                title: target?.parameterName ?? phantomLane.title,
-                subtitle: target?.ownerName,
-                isPlaceholder: target == null,
-                compact: constraints.maxHeight < _trackCompactHeightThreshold,
-              ),
-            ),
-            if (target != null)
-              Button(
-                key: ValueKey(
-                  'phantom-automation-lane-add-${phantomLane.parentTrackId}',
+      builder: (context, constraints) {
+        final contentLayout = calculateTrackHeaderContentLayout(
+          headerHeight: constraints.maxHeight,
+          isAutomationLane: true,
+        );
+
+        return Container(
+          color: AnthemTheme.panel.main,
+          padding: trackHeaderContentPadding,
+          child: Row(
+            spacing: 4,
+            children: [
+              Expanded(
+                child: _AutomationTargetLabel(
+                  title: target?.parameterName ?? phantomLane.title,
+                  subtitle: target?.ownerName,
+                  isPlaceholder: target == null,
+                  compact: contentLayout.size == TrackHeaderSize.compact,
                 ),
-                consumePress: true,
-                contentPadding: const EdgeInsets.all(2),
-                height: 20,
-                width: 20,
-                icon: Icons.add,
-                hint: [.new('click', 'Create automation lane')],
-                onPress: () {
-                  controller.createAutomationLaneForTarget(target);
-                },
               ),
-          ],
-        ),
-      ),
+              if (target != null)
+                Button(
+                  consumePress: true,
+                  contentPadding: const EdgeInsets.all(2),
+                  height: 20,
+                  width: 20,
+                  icon: Icons.add,
+                  hint: [.new('click', 'Create automation lane')],
+                  onPress: () {
+                    controller.createAutomationLaneForTarget(target);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -391,71 +356,25 @@ class _AutomationTargetLabel extends StatelessWidget {
   }
 }
 
-class _TrackContent extends StatefulWidget {
+class _TrackContent extends StatelessWidget {
   final TrackModel track;
-  final Color backgroundColor;
-  final bool automationExpanded;
-  final bool showAutomationToggle;
-  final VoidCallback onToggleAutomationExpanded;
 
-  const _TrackContent({
-    required this.track,
-    required this.backgroundColor,
-    required this.automationExpanded,
-    required this.showAutomationToggle,
-    required this.onToggleAutomationExpanded,
-  });
-
-  @override
-  State<_TrackContent> createState() => _TrackContentState();
-}
-
-class _TrackContentState extends State<_TrackContent> {
-  bool _hovered = false;
+  const _TrackContent({required this.track});
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final height = constraints.maxHeight;
+        final contentLayout = calculateTrackHeaderContentLayout(
+          headerHeight: height,
+          isAutomationLane: track.isAutomationLane,
+        );
 
-        return MouseRegion(
-          onEnter: (_) {
-            setState(() {
-              _hovered = true;
-            });
-          },
-          onExit: (_) {
-            setState(() {
-              _hovered = false;
-            });
-          },
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Padding(
-                padding: _trackContentPadding,
-                child: Center(
-                  child: _TrackContentRow(
-                    track: widget.track,
-                    height: height,
-                    reserveAutomationToggleSpace:
-                        widget.showAutomationToggle &&
-                        widget.automationExpanded,
-                  ),
-                ),
-              ),
-              if (widget.showAutomationToggle &&
-                  (_hovered || widget.automationExpanded))
-                _TrackAutomationLaneButton(
-                  backgroundColor: widget.backgroundColor,
-                  contentPadding: _trackContentPadding,
-                  contentAreaHeight: height,
-                  contentHeight: _trackContentHeightFor(height),
-                  automationExpanded: widget.automationExpanded,
-                  onToggleAutomationExpanded: widget.onToggleAutomationExpanded,
-                ),
-            ],
+        return Padding(
+          padding: trackHeaderContentPadding,
+          child: Center(
+            child: _TrackContentRow(track: track, contentLayout: contentLayout),
           ),
         );
       },
@@ -463,71 +382,15 @@ class _TrackContentState extends State<_TrackContent> {
   }
 }
 
-class _TrackAutomationLaneButton extends StatelessWidget {
-  final Color backgroundColor;
-  final EdgeInsets contentPadding;
-  final double contentAreaHeight;
-  final double contentHeight;
-  final bool automationExpanded;
-  final VoidCallback onToggleAutomationExpanded;
-
-  const _TrackAutomationLaneButton({
-    required this.backgroundColor,
-    required this.contentPadding,
-    required this.contentAreaHeight,
-    required this.contentHeight,
-    required this.automationExpanded,
-    required this.onToggleAutomationExpanded,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final contentTop = (contentAreaHeight - contentHeight) / 2;
-    final contentBottom = contentTop + contentHeight;
-    final top =
-        contentBottom - _trackAutomationLaneButtonSize - contentPadding.top;
-
-    final button = Container(
-      key: const ValueKey('track-header-automation-lane-button-background'),
-      color: backgroundColor,
-      padding: contentPadding,
-      child: Button(
-        key: const ValueKey('track-header-automation-lane-button'),
-        consumePress: true,
-        contentPadding: const EdgeInsets.all(2),
-        height: _trackAutomationLaneButtonSize,
-        width: _trackAutomationLaneButtonSize,
-        icon: Icons.automationEditor,
-        toggleState: automationExpanded,
-        onPress: onToggleAutomationExpanded,
-        hint: [
-          .new(
-            'click',
-            automationExpanded
-                ? 'Hide automation lanes'
-                : 'Show automation lanes',
-          ),
-        ],
-      ),
-    );
-
-    return Positioned(left: 0, top: top, child: button);
-  }
-}
-
 class _TrackContentRow extends StatelessObserverWidget {
   final TrackModel track;
-  final double height;
-  final bool reserveAutomationToggleSpace;
+  final TrackHeaderContentLayout contentLayout;
 
-  const _TrackContentRow({
-    required this.track,
-    required this.height,
-    required this.reserveAutomationToggleSpace,
-  });
+  const _TrackContentRow({required this.track, required this.contentLayout});
 
   @override
   Widget build(BuildContext context) {
+    final headerSize = contentLayout.size;
     final project = Provider.of<ProjectModel>(context);
     final processing = track.processing;
     final automationTarget = track.automationTarget;
@@ -543,8 +406,15 @@ class _TrackContentRow extends StatelessObserverWidget {
     } else {
       resolvedAutomationTarget = null;
     }
-    final reserveCompactAutomationToggleSpace =
-        reserveAutomationToggleSpace && height < _trackCompactHeightThreshold;
+    final automationTargetNode = resolvedAutomationTarget == null
+        ? null
+        : project.processingGraph.nodes[resolvedAutomationTarget.nodeId];
+    final automationParameter = automationTargetNode == null
+        ? null
+        : ParameterUiBinding.byId(
+            node: automationTargetNode,
+            portId: resolvedAutomationTarget!.portId,
+          );
     final utilityNode = processing?.utilityNode;
     final gainParameter = utilityNode == null
         ? null
@@ -562,37 +432,39 @@ class _TrackContentRow extends StatelessObserverWidget {
           );
 
     return Row(
-      crossAxisAlignment: height >= _trackCompactHeightThreshold
-          ? .start
-          : .center,
+      crossAxisAlignment:
+          track.isAutomationLane || headerSize == TrackHeaderSize.compact
+          ? .center
+          : .start,
       spacing: 4,
       children: [
         Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: reserveCompactAutomationToggleSpace
-                  ? _trackAutomationLaneButtonSize + _trackContentPadding.right
-                  : 0,
-            ),
-            child: track.isAutomationLane
-                ? _AutomationTargetLabel(
-                    title: track.name,
-                    subtitle: resolvedAutomationTarget?.ownerName,
-                    compact: height < _trackCompactHeightThreshold,
-                  )
-                : Text(
-                    track.name,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: height >= _trackCompactHeightThreshold ? 2 : 1,
-                    style: TextStyle(
-                      color: AnthemTheme.text.main,
-                      fontSize: 11,
-                      fontWeight: .w500,
-                    ),
+          child: track.isAutomationLane
+              ? _AutomationTargetLabel(
+                  title: track.name,
+                  subtitle: resolvedAutomationTarget?.ownerName,
+                  compact: headerSize == TrackHeaderSize.compact,
+                )
+              : Text(
+                  track.name,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: headerSize == TrackHeaderSize.compact ? 1 : 2,
+                  style: TextStyle(
+                    color: AnthemTheme.text.main,
+                    fontSize: 11,
+                    fontWeight: .w500,
                   ),
-          ),
+                ),
         ),
-        if (processing != null) ...[
+        if (track.isAutomationLane && automationParameter != null)
+          Slider(
+            parameter: automationParameter,
+            axis: .vertical,
+            width: _trackMeterWidth,
+            height: contentLayout.height,
+            borderRadius: 2,
+          )
+        else if (processing != null) ...[
           SizedBox(
             width: 70,
             child: Column(
@@ -601,7 +473,7 @@ class _TrackContentRow extends StatelessObserverWidget {
               spacing: 4,
               children: [
                 _TrackControlButtons(),
-                if (height >= _trackCompactHeightThreshold &&
+                if (headerSize != TrackHeaderSize.compact &&
                     gainParameter != null)
                   Slider(
                     parameter: gainParameter,
@@ -612,7 +484,7 @@ class _TrackContentRow extends StatelessObserverWidget {
                     stickyPoints: [gainParameterZeroDbNormalized],
                     hint: (v) => 'Track gain: ${gainParameterValueToString(v)}',
                   ),
-                if (height >= _trackTallHeightThreshold &&
+                if (headerSize == TrackHeaderSize.tall &&
                     balanceParameter != null)
                   Slider(
                     parameter: balanceParameter,
@@ -629,14 +501,10 @@ class _TrackContentRow extends StatelessObserverWidget {
             ),
           ),
           Container(
-            width: 9,
+            width: _trackMeterWidth,
             // This is a bit ugly but avoids an IntrinsicHeight, which the
             // docs say is slow, and I don't really want to find out why
-            height: height >= _trackTallHeightThreshold
-                ? _trackTallContentHeight
-                : height >= _trackCompactHeightThreshold
-                ? _trackMediumContentHeight
-                : _trackCompactContentHeight,
+            height: contentLayout.height,
             decoration: BoxDecoration(
               border: Border.all(color: AnthemTheme.panel.border),
               borderRadius: .circular(2),

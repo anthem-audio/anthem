@@ -95,7 +95,7 @@ void main() {
     final trackLayout = fixture.arrangerViewModel.trackLayout;
     final rowLayout = trackLayout.rowLayoutForId(fixture.trackId);
     final indicatorLayout = trackLayout.colorIndicatorLayouts.firstWhere(
-      (indicator) => indicator.rowId == fixture.trackId,
+      (indicator) => indicator.trackId == fixture.trackId,
     );
     final dividerLayout = trackLayout.dividerLayouts.firstWhere(
       (divider) => divider.resizedRowId == fixture.trackId,

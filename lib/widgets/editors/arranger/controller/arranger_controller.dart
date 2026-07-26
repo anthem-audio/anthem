@@ -152,6 +152,16 @@ abstract class _ArrangerController {
     stateMachine.onTrackLayoutChanged();
   }
 
+  void toggleTrackAutomationExpanded(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track == null || track.isAutomationLane) return;
+
+    viewModel.automationExpandedByTrackId[trackId] =
+        !(viewModel.automationExpandedByTrackId[trackId] ?? false);
+    viewModel.refreshTrackLayout(viewModel.editorHeight);
+    onTrackLayoutChanged();
+  }
+
   void _handleParameterTouched(
     ModelChangeEvent _,
     ModelChangeBindings bindings,
