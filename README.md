@@ -6,7 +6,7 @@ Anthem is a modern, cross-platform digital audio workstation designed for creati
 
 Anthem is under active development and currently lacks key functionality and usability features, so it is not yet suitable for use.
 
-You can download the latest development build for Windows, macOS or Linux from the releases page. You can also [try Anthem in the browser](https://anthem-audio.pages.dev/), though due to limitations in the web audio API, the web version runs poorly. For the best experience, download the desktop verison.
+You can download the latest development build for Windows, macOS or Linux from the releases page. You can also [try Anthem in the browser](https://anthem-audio.pages.dev/), though due to limitations in the web audio API, the web version runs poorly. For the best experience, download the desktop version.
 
 ## Roadmap
 
