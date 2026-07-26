@@ -22,6 +22,7 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/button.dart';
+import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_controller.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.dart';
@@ -152,6 +153,55 @@ void main() {
       expect(find.byKey(Key('$groupTrackId-indicator')), findsOneWidget);
     },
   );
+
+  testWidgets('group indicator button hides and restores descendants', (
+    tester,
+  ) async {
+    final fixture = _TrackHeadersTestFixture.create();
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      fixture.dispose();
+    });
+
+    final groupTrackId = fixture.createScrollableGroup();
+    final childTrackId =
+        fixture.project.tracks[groupTrackId]!.childTracks.first;
+    await fixture.pump(tester);
+
+    final groupButton = find
+        .descendant(
+          of: find.byKey(Key('$groupTrackId-indicator')),
+          matching: find.byType(Button),
+        )
+        .first;
+
+    expect(fixture.arrangerViewModel.isGroupExpanded(groupTrackId), isTrue);
+    expect(
+      tester.widget<Button>(groupButton).icon,
+      same(Icons.track.folderOpen),
+    );
+    expect(find.byKey(Key(childTrackId.toString())), findsOneWidget);
+
+    await tester.tap(groupButton);
+    await tester.pump();
+
+    expect(fixture.arrangerViewModel.isGroupExpanded(groupTrackId), isFalse);
+    expect(
+      tester.widget<Button>(groupButton).icon,
+      same(Icons.track.folderClosed),
+    );
+    expect(find.byKey(Key(childTrackId.toString())), findsNothing);
+
+    await tester.tap(groupButton);
+    await tester.pump();
+
+    expect(fixture.arrangerViewModel.isGroupExpanded(groupTrackId), isTrue);
+    expect(
+      tester.widget<Button>(groupButton).icon,
+      same(Icons.track.folderOpen),
+    );
+    expect(find.byKey(Key(childTrackId.toString())), findsOneWidget);
+  });
 
   testWidgets('culls each header at its own calculated bounds', (tester) async {
     final fixture = _TrackHeadersTestFixture.create();

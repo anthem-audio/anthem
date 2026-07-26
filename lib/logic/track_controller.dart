@@ -495,11 +495,9 @@ class TrackController {
   Iterable<(Id trackId, bool isSendTrack, int trackDepth)> getTracksIterable({
     bool includeCollapsedTracks = false,
   }) sync* {
-    final automationExpandedByTrackId = includeCollapsedTracks
-        ? null
-        : ServiceRegistry.maybeForProject(
-            project.id,
-          )?.arrangerViewModel.automationExpandedByTrackId;
+    final arrangerViewModel = ServiceRegistry.forProject(
+      project.id,
+    ).arrangerViewModel;
 
     final topLevelTracks = project.trackOrder
         .map((t) => (t, false))
@@ -515,14 +513,19 @@ class TrackController {
 
       if (!track.isAutomationLane &&
           (includeCollapsedTracks ||
-              (automationExpandedByTrackId?[trackId] ?? false))) {
+              (arrangerViewModel.automationExpandedByTrackId[trackId] ??
+                  false))) {
         for (final automationLaneId in track.automationLanes) {
           yield (automationLaneId, isSendTrack, currentDepth + 1);
         }
       }
 
-      for (final childTrackId in track.childTracks) {
-        yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+      if (includeCollapsedTracks ||
+          track.type != TrackType.group ||
+          arrangerViewModel.isGroupExpanded(trackId)) {
+        for (final childTrackId in track.childTracks) {
+          yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+        }
       }
     }
 

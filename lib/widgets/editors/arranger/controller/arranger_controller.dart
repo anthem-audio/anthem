@@ -152,14 +152,26 @@ abstract class _ArrangerController {
     stateMachine.onTrackLayoutChanged();
   }
 
+  void _refreshTrackLayoutAfterVisibilityChanged() {
+    viewModel.refreshTrackLayout(viewModel.editorHeight);
+    onTrackLayoutChanged();
+  }
+
   void toggleTrackAutomationExpanded(Id trackId) {
     final track = project.tracks[trackId];
     if (track == null || track.isAutomationLane) return;
 
     viewModel.automationExpandedByTrackId[trackId] =
         !(viewModel.automationExpandedByTrackId[trackId] ?? false);
-    viewModel.refreshTrackLayout(viewModel.editorHeight);
-    onTrackLayoutChanged();
+    _refreshTrackLayoutAfterVisibilityChanged();
+  }
+
+  void toggleTrackGroupExpanded(Id trackId) {
+    final track = project.tracks[trackId];
+    if (track?.type != TrackType.group) return;
+
+    viewModel.setGroupExpanded(trackId, !viewModel.isGroupExpanded(trackId));
+    _refreshTrackLayoutAfterVisibilityChanged();
   }
 
   void _handleParameterTouched(
@@ -300,8 +312,7 @@ abstract class _ArrangerController {
     project.execute(command);
 
     viewModel.automationExpandedByTrackId[target.ownerTrackId] = true;
-    viewModel.refreshTrackLayout(viewModel.editorHeight);
-    onTrackLayoutChanged();
+    _refreshTrackLayoutAfterVisibilityChanged();
 
     return command.lane.id;
   }

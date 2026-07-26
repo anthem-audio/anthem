@@ -17,9 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
-import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -129,6 +130,68 @@ void main() {
 
     firstViewModel.timeRange.start++;
     expect(secondViewModel.timeRange.start, secondStart);
+  });
+
+  test('group and automation expansion remain independent', () {
+    const groupId = 1;
+    const automationLaneId = 2;
+    const nestedGroupId = 3;
+    const childTrackId = 4;
+    final project = createTestProject(
+      includeSequence: false,
+      tracks: const [
+        TestProjectTrack(
+          id: groupId,
+          name: 'Group',
+          type: TrackType.group,
+          childTracks: [nestedGroupId],
+          automationLanes: [automationLaneId],
+        ),
+        TestProjectTrack(
+          id: automationLaneId,
+          name: 'Automation lane',
+          type: TrackType.automationLane,
+          automationLaneParentTrackId: groupId,
+        ),
+        TestProjectTrack(
+          id: nestedGroupId,
+          name: 'Nested group',
+          type: TrackType.group,
+          childTracks: [childTrackId],
+          parentTrackId: groupId,
+        ),
+        TestProjectTrack(
+          id: childTrackId,
+          name: 'Child',
+          parentTrackId: nestedGroupId,
+        ),
+      ],
+      trackOrder: const [groupId],
+    );
+    final viewModel = ArrangerViewModel(project: project);
+    viewModel.automationExpandedByTrackId[groupId] = true;
+
+    Iterable<Id> visibleTrackIds() => viewModel
+        .getVisibleTrackRows()
+        .whereType<ProjectTrackRow>()
+        .map((row) => row.trackId);
+
+    expect(visibleTrackIds(), [
+      groupId,
+      automationLaneId,
+      nestedGroupId,
+      childTrackId,
+    ]);
+
+    viewModel.setGroupExpanded(nestedGroupId, false);
+    expect(visibleTrackIds(), [groupId, automationLaneId, nestedGroupId]);
+
+    viewModel.setGroupExpanded(groupId, false);
+    expect(visibleTrackIds(), [groupId, automationLaneId]);
+
+    viewModel.setGroupExpanded(groupId, true);
+    expect(visibleTrackIds(), [groupId, automationLaneId, nestedGroupId]);
+    expect(viewModel.isGroupExpanded(nestedGroupId), isFalse);
   });
 
   test('real and phantom automation lanes share compact zoom behavior', () {

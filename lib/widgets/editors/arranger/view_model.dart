@@ -137,6 +137,9 @@ abstract class _ArrangerViewModel with Store {
   /// Whether each track's automation lanes are expanded in the arranger.
   final ObservableMap<Id, bool> automationExpandedByTrackId;
 
+  /// Whether each group track's child tracks are visible in the arranger.
+  final ObservableMap<Id, bool> groupExpandedByTrackId;
+
   /// Most recent automatable parameter changed by user/plugin interaction.
   @observable
   AutomationParameterTarget? lastTweakedAutomationTarget;
@@ -231,6 +234,11 @@ abstract class _ArrangerViewModel with Store {
       automationExpandedByTrackId = ObservableMap.of(
         project.tracks.nonObservableInner.map(
           (key, value) => MapEntry(key, false),
+        ),
+      ),
+      groupExpandedByTrackId = ObservableMap.of(
+        project.tracks.nonObservableInner.map(
+          (key, value) => MapEntry(key, true),
         ),
       ) {
     trackLayout = TrackLayout();
@@ -349,11 +357,13 @@ abstract class _ArrangerViewModel with Store {
   void registerTrack(Id trackId) {
     trackHeightModifiers[trackId] = 1;
     automationExpandedByTrackId[trackId] = false;
+    groupExpandedByTrackId[trackId] = true;
   }
 
   void unregisterTrack(Id trackId) {
     trackHeightModifiers.remove(trackId);
     automationExpandedByTrackId.remove(trackId);
+    groupExpandedByTrackId.remove(trackId);
     final phantomLaneId = _phantomAutomationLaneIdByParentTrackId.remove(
       trackId,
     );
@@ -370,6 +380,12 @@ abstract class _ArrangerViewModel with Store {
 
   void resetRowHeightModifier(Id rowId) {
     setRowHeightModifier(rowId, 1);
+  }
+
+  bool isGroupExpanded(Id trackId) => groupExpandedByTrackId[trackId] ?? true;
+
+  void setGroupExpanded(Id trackId, bool expanded) {
+    groupExpandedByTrackId[trackId] = expanded;
   }
 
   Id _phantomAutomationLaneIdForTrack(Id trackId) {
@@ -480,8 +496,10 @@ abstract class _ArrangerViewModel with Store {
         }
       }
 
-      for (final childTrackId in track.childTracks) {
-        yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+      if (track.type != .group || isGroupExpanded(trackId)) {
+        for (final childTrackId in track.childTracks) {
+          yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+        }
       }
     }
 

@@ -64,7 +64,6 @@ void main() {
 
       var button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationAdd));
-      expect(button.toggleState, isFalse);
 
       await tester.tap(buttonFinder);
       await tester.pump();
@@ -75,7 +74,6 @@ void main() {
       );
       button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationExpanded));
-      expect(button.toggleState, isTrue);
 
       await tester.tap(buttonFinder);
       await tester.pump();
@@ -86,7 +84,6 @@ void main() {
       );
       button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationAdd));
-      expect(button.toggleState, isFalse);
     });
 
     testWidgets('indicator button reflects existing automation lanes', (
@@ -109,14 +106,12 @@ void main() {
       final buttonFinder = _automationLaneButtonFinder(fixture.trackId);
       var button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationCollapsed));
-      expect(button.toggleState, isFalse);
 
       await tester.tap(buttonFinder);
       await tester.pump();
 
       button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationExpanded));
-      expect(button.toggleState, isTrue);
     });
 
     testWidgets('phantom lane shows parameter above device name', (

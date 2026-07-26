@@ -124,8 +124,12 @@ Iterable<(Id trackId, bool isSendTrack, int trackDepth)> _getTracksIterable(
       }
     }
 
-    for (final childTrackId in track.childTracks) {
-      yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+    if (includeCollapsedTracks ||
+        track.type != TrackType.group ||
+        viewModel.isGroupExpanded(trackId)) {
+      for (final childTrackId in track.childTracks) {
+        yield* yieldChildren(childTrackId, isSendTrack, currentDepth + 1);
+      }
     }
   }
 

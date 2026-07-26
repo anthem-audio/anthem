@@ -73,6 +73,51 @@ void _createAndRegisterTrackNodes({
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('getTracksIterable()', () {
+    test('can exclude or include descendants of collapsed groups', () {
+      final project = ProjectModel.create();
+      ServiceRegistry.initializeProject(project);
+      addTearDown(() {
+        ServiceRegistry.removeProject(project.id);
+        project.dispose();
+      });
+
+      final childTrackId = project.trackOrder.first;
+      final groupTrack = TrackModel(
+        idAllocator: project.idAllocator,
+        name: 'Group',
+        color: AnthemColor.randomHue(),
+        type: .group,
+      )..childTracks.add(childTrackId);
+      project.tracks[childTrackId]!.parentTrackId = groupTrack.id;
+      project.tracks[groupTrack.id] = groupTrack;
+      project.trackOrder[0] = groupTrack.id;
+
+      final services = ServiceRegistry.forProject(project.id);
+      services.arrangerViewModel.registerTrack(groupTrack.id);
+
+      expect(
+        services.trackController.getTracksIterable().map((entry) => entry.$1),
+        contains(childTrackId),
+      );
+
+      services.arrangerViewModel.setGroupExpanded(groupTrack.id, false);
+
+      expect(
+        services.trackController.getTracksIterable().map((entry) => entry.$1),
+        isNot(contains(childTrackId)),
+      );
+      expect(
+        services.trackController
+            .getTracksIterable(includeCollapsedTracks: true)
+            .map((entry) => entry.$1),
+        contains(childTrackId),
+      );
+    });
+  });
+
   group('getTrackFxChainAudioInput()', () {
     final projectId = getProjectId();
 

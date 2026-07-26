@@ -35,8 +35,6 @@ const _extendedIndicatorColorWidth = 8.0;
 const _buttonSize = 20.0;
 const _buttonSpacing = 4.0;
 
-void _dummyButtonHandler() {}
-
 /// Paints the color assigned to a row or group of rows.
 class TrackColorIndicator extends StatelessObserverWidget {
   final Id trackId;
@@ -60,6 +58,7 @@ class TrackColorIndicator extends StatelessObserverWidget {
 
     final projectServices = ServiceRegistry.forProject(project.id);
     final viewModel = projectServices.arrangerViewModel;
+    final groupExpanded = viewModel.isGroupExpanded(trackId);
     final automationExpanded =
         viewModel.automationExpandedByTrackId[trackId] ?? false;
     final hasAutomationLanes = track.automationLanes.isNotEmpty;
@@ -112,13 +111,31 @@ class TrackColorIndicator extends StatelessObserverWidget {
                         height: _buttonSize,
                         icon: switch (track.type) {
                           TrackType.normal => Icons.track.instrument,
-                          TrackType.group => Icons.track.folderOpen,
+                          TrackType.group =>
+                            groupExpanded
+                                ? Icons.track.folderOpen
+                                : Icons.track.folderClosed,
                           TrackType.automationLane => throw StateError(
                             'Automation tracks do not support color indicators',
                           ),
                         },
                         interactable: track.type == .group,
-                        onPress: _dummyButtonHandler,
+                        hint: track.type == .group
+                            ? [
+                                .new(
+                                  'click',
+                                  groupExpanded
+                                      ? 'Collapse track group'
+                                      : 'Expand track group',
+                                ),
+                              ]
+                            : null,
+                        onPress: track.type == .group
+                            ? () {
+                                projectServices.arrangerController
+                                    .toggleTrackGroupExpanded(trackId);
+                              }
+                            : null,
                       ),
                       Button(
                         variant: ButtonVariant.outline,
