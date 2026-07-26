@@ -1480,6 +1480,60 @@ void main() {
         );
       });
 
+      test('Add track numbering includes tracks nested in groups', () {
+        trackC.name = 'Track 1';
+        trackD.name = 'Track 2';
+
+        final command = TrackAddRemoveCommand.add(
+          project: project,
+          tracks: [
+            TrackDescriptorForCommand(isSendTrack: false, trackType: .normal),
+          ],
+        );
+
+        command.execute(project);
+
+        final newTrack = tracks[trackOrder.last]!;
+        expect(newTrack.name, 'Track 3');
+
+        command.rollback(project);
+        expect(tracks[newTrack.id], isNull);
+
+        command.execute(project);
+        expect(tracks[newTrack.id]!.name, 'Track 3');
+      });
+
+      test('Add track numbering fills gaps and reserves batch names', () {
+        trackC.name = 'Track 1';
+        trackD.name = 'Track 3';
+        trackM.name = 'Send Track 1';
+        trackN.name = 'Send Track 3';
+        final existingTrackIds = tracks.keys.toSet();
+
+        final command = TrackAddRemoveCommand.add(
+          project: project,
+          tracks: [
+            TrackDescriptorForCommand(isSendTrack: false, trackType: .normal),
+            TrackDescriptorForCommand(isSendTrack: false, trackType: .normal),
+            TrackDescriptorForCommand(isSendTrack: true, trackType: .normal),
+            TrackDescriptorForCommand(isSendTrack: true, trackType: .normal),
+          ],
+        );
+
+        command.execute(project);
+
+        final newTrackNames = tracks.entries
+            .where((entry) => !existingTrackIds.contains(entry.key))
+            .map((entry) => entry.value.name)
+            .toSet();
+        expect(newTrackNames, {
+          'Track 2',
+          'Track 4',
+          'Send Track 2',
+          'Send Track 4',
+        });
+      });
+
       test('Add track undo/redo restores the same track nodes', () {
         final command = TrackAddRemoveCommand.add(
           project: project,

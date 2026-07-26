@@ -45,6 +45,67 @@ class TrackDescriptorForCommand {
   });
 }
 
+final _regularTrackNamePattern = RegExp(r'^Track ([1-9]\d*)$');
+final _sendTrackNamePattern = RegExp(r'^Send Track ([1-9]\d*)$');
+
+class _DefaultTrackNameAllocator {
+  final Set<int> _usedRegularTrackNumbers;
+  final Set<int> _usedSendTrackNumbers;
+
+  _DefaultTrackNameAllocator._(
+    this._usedRegularTrackNumbers,
+    this._usedSendTrackNumbers,
+  );
+
+  factory _DefaultTrackNameAllocator.fromProject(ProjectModel project) {
+    final usedRegularTrackNumbers = <int>{};
+    final usedSendTrackNumbers = <int>{};
+    final trackController = ServiceRegistry.forProject(
+      project.id,
+    ).trackController;
+
+    for (final track in project.tracks.values) {
+      if (track.isAutomationLane || track.isMasterTrack) {
+        continue;
+      }
+
+      final isSendTrack = trackController.isSendTrack(track.id, false);
+      final pattern = isSendTrack
+          ? _sendTrackNamePattern
+          : _regularTrackNamePattern;
+      final match = pattern.firstMatch(track.name);
+      final trackNumber = match == null ? null : int.tryParse(match.group(1)!);
+
+      if (trackNumber == null) {
+        continue;
+      }
+
+      (isSendTrack ? usedSendTrackNumbers : usedRegularTrackNumbers).add(
+        trackNumber,
+      );
+    }
+
+    return _DefaultTrackNameAllocator._(
+      usedRegularTrackNumbers,
+      usedSendTrackNumbers,
+    );
+  }
+
+  String allocate({required bool isSendTrack}) {
+    final usedTrackNumbers = isSendTrack
+        ? _usedSendTrackNumbers
+        : _usedRegularTrackNumbers;
+    var trackNumber = 1;
+
+    while (usedTrackNumbers.contains(trackNumber)) {
+      trackNumber++;
+    }
+
+    usedTrackNumbers.add(trackNumber);
+    return '${isSendTrack ? 'Send Track' : 'Track'} $trackNumber';
+  }
+}
+
 class AutomationLaneAddRemoveCommand extends Command {
   final bool _isAdd;
   final Id parentTrackId;
@@ -337,6 +398,7 @@ class TrackAddRemoveCommand extends Command {
     required List<TrackDescriptorForCommand> tracks,
   }) : _isAdd = true {
     final idAllocator = ServiceRegistry.forProject(project.id).idAllocator;
+    final nameAllocator = _DefaultTrackNameAllocator.fromProject(project);
 
     _tracks = tracks.map((track) {
       // Validate parent track if specified
@@ -358,9 +420,7 @@ class TrackAddRemoveCommand extends Command {
 
       final trackModel = TrackModel(
         idAllocator: idAllocator,
-        name: track.isSendTrack
-            ? 'Send Track ${project.sendTrackOrder.length}'
-            : 'Track ${project.trackOrder.length + 1}',
+        name: nameAllocator.allocate(isSendTrack: track.isSendTrack),
         color: AnthemColor(hue: 0, palette: .grayscale),
         type: track.trackType,
       );
