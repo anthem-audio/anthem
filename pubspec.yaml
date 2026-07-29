@@ -8,6 +8,7 @@ environment:
 
 workspace:
   - codegen
+  - native/anthem_native_ipc
   - tools/anthem_analyzer_plugin
 
 dependencies:
@@ -20,6 +21,8 @@ dependencies:
 
   anthem_codegen:
     path: codegen
+  anthem_native_ipc:
+    path: native/anthem_native_ipc
 
   archive: ^4.0.9
   args: ^2.6.0

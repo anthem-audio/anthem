@@ -62,7 +62,7 @@ class PlayheadPositionVisualizationProvider
 private:
   JUCE_LEAK_DETECTOR(PlayheadPositionVisualizationProvider)
 
-  RingBuffer<TimestampedVisualizationValue<double>, 2048> playheadPositionBuffer;
+  LatestTimestampedVisualizationValue<double> latestPlayheadPosition;
   double rt_sampleRate = 0.0;
   int64_t rt_samplesPerUpdate = 0;
   int64_t rt_nextSampleTimestamp = 0;
@@ -71,9 +71,6 @@ public:
 
   void rt_updatePlayheadPosition(
       const Transport& transport, int64_t blockStartSample, int numSamples, double sampleRate);
-
-  PlayheadPositionVisualizationProvider()
-    : playheadPositionBuffer(RingBuffer<TimestampedVisualizationValue<double>, 2048>()) {}
 };
 
 class PlayheadSequenceIdVisualizationProvider

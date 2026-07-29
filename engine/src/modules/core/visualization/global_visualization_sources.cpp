@@ -85,7 +85,7 @@ void CpuVisualizationProvider::rt_updateCpuBurden(
 }
 
 std::optional<NumericVisualizationData> PlayheadPositionVisualizationProvider::getTypedData() {
-  return drainTimestampedVisualizationBuffer(playheadPositionBuffer);
+  return latestPlayheadPosition.drainLatest();
 }
 
 void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
@@ -106,10 +106,7 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
 
   if (!transport.rt_config->isPlaying) {
     if (transport.rt_playheadJumpOrPauseOccurred) {
-      playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
-          .sampleTimestamp = blockStartSample,
-          .value = transport.rt_playhead,
-      });
+      latestPlayheadPosition.rt_set(transport.rt_playhead, blockStartSample);
       rt_nextSampleTimestamp = blockStartSample + rt_samplesPerUpdate;
     } else {
       rt_nextSampleTimestamp = alignSampleTimestampToBlock(
@@ -117,10 +114,7 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
     }
 
     while (rt_nextSampleTimestamp < blockEndSample) {
-      playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
-          .sampleTimestamp = rt_nextSampleTimestamp,
-          .value = transport.rt_playhead,
-      });
+      latestPlayheadPosition.rt_set(transport.rt_playhead, rt_nextSampleTimestamp);
       rt_nextSampleTimestamp += rt_samplesPerUpdate;
     }
 
@@ -128,10 +122,7 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
   }
 
   if (transport.rt_playheadJumpOrPauseOccurred) {
-    playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
-        .sampleTimestamp = blockStartSample,
-        .value = transport.rt_playhead,
-    });
+    latestPlayheadPosition.rt_set(transport.rt_playhead, blockStartSample);
     rt_nextSampleTimestamp = blockStartSample + rt_samplesPerUpdate;
   }
 
@@ -144,10 +135,7 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
                                       ? transport.rt_playhead
                                       : transport.rt_getPlayheadAfterAdvance(sampleOffset);
 
-    playheadPositionBuffer.add(TimestampedVisualizationValue<double>{
-        .sampleTimestamp = rt_nextSampleTimestamp,
-        .value = playheadPosition,
-    });
+    latestPlayheadPosition.rt_set(playheadPosition, rt_nextSampleTimestamp);
     rt_nextSampleTimestamp += rt_samplesPerUpdate;
   }
 }

@@ -421,7 +421,7 @@ class _FormatEngineCommand extends Command<dynamic> {
       'check',
       defaultsTo: false,
       help:
-          'Checks whether the engine C++ files are already formatted without modifying them.',
+          'Checks whether C++ files are already formatted without modifying them.',
     );
   }
 
@@ -429,7 +429,7 @@ class _FormatEngineCommand extends Command<dynamic> {
   String get name => 'format';
 
   @override
-  String get description => 'Formats Anthem-owned engine C++ files.';
+  String get description => 'Formats C++ files.';
 
   @override
   Future<void> run() async {
@@ -438,18 +438,22 @@ class _FormatEngineCommand extends Command<dynamic> {
     print(
       Colorize(
         checkOnly
-            ? 'Checking Anthem engine C++ formatting...'
-            : 'Formatting Anthem engine C++ files...',
+            ? 'Checking Anthem C++ formatting...'
+            : 'Formatting Anthem C++ files...',
       )..lightGreen(),
     );
 
     final clangFormat = _requireLlvmExecutable('clang-format');
     final packageRootPath = getPackageRootPath();
-    final files = _getOwnedEngineCppFiles();
+    final clangFormatStyle = packageRootPath
+        .resolve('engine/.clang-format')
+        .toFilePath(windows: Platform.isWindows);
+    final files = _getOwnedCppFiles(includeNativeIpc: true);
 
     if (files.isEmpty) {
       print(
-        Colorize('No engine C++ files found, nothing to format.')..lightGreen(),
+        Colorize('No C++ files found, nothing to format.')
+          ..lightGreen(),
       );
       return;
     }
@@ -460,6 +464,7 @@ class _FormatEngineCommand extends Command<dynamic> {
       final process = await Process.start(
         clangFormat,
         [
+          '--style=file:$clangFormatStyle',
           if (checkOnly) '--dry-run',
           if (checkOnly) '--Werror',
           if (!checkOnly) '-i',
@@ -552,7 +557,7 @@ class _LintEngineCommand extends Command<dynamic> {
     }
 
     final extraArgs = await _getClangTidyExtraArgs();
-    final files = _getOwnedEngineCppFiles(translationUnitsOnly: true);
+    final files = _getOwnedCppFiles(translationUnitsOnly: true);
     var hasFailures = false;
     var completedFileCount = 0;
 
@@ -935,7 +940,10 @@ bool _usesSingleConfigBuild({required bool wasm, required bool useClang}) {
       (Platform.isWindows && useClang);
 }
 
-List<File> _getOwnedEngineCppFiles({bool translationUnitsOnly = false}) {
+List<File> _getOwnedCppFiles({
+  bool translationUnitsOnly = false,
+  bool includeNativeIpc = false,
+}) {
   final packageRootPath = getPackageRootPath();
   final fileExtensions = translationUnitsOnly ? ['.cpp'] : ['.cpp', '.h'];
   final files = <File>[];
@@ -943,6 +951,14 @@ List<File> _getOwnedEngineCppFiles({bool translationUnitsOnly = false}) {
   final roots = [
     Directory.fromUri(packageRootPath.resolve('engine/src/')),
     Directory.fromUri(packageRootPath.resolve('engine/test/')),
+    if (includeNativeIpc)
+      Directory.fromUri(
+        packageRootPath.resolve('native/anthem_native_ipc/include/'),
+      ),
+    if (includeNativeIpc)
+      Directory.fromUri(
+        packageRootPath.resolve('native/anthem_native_ipc/src/'),
+      ),
   ];
 
   for (final root in roots) {

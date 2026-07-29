@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -32,7 +32,7 @@ class FlutterTestCommand extends Command<dynamic> {
 
   @override
   String get description =>
-      'Runs Flutter tests in the root package and analyzer plugin tests in the plugin package.';
+      'Runs tests in the root package and workspace packages.';
 
   @override
   Future<void> run() async {
@@ -56,6 +56,16 @@ class FlutterTestCommand extends Command<dynamic> {
       arguments: ['test'],
       workingDirectory: analyzerPluginPath,
       failureMessage: 'Analyzer plugin tests failed.',
+    );
+
+    final nativeIpcPath = packageRootPath.resolve('native/anthem_native_ipc/');
+
+    print(Colorize('\nRunning native IPC package tests...').lightGreen());
+    await _runCommand(
+      executable: 'dart',
+      arguments: ['test'],
+      workingDirectory: nativeIpcPath,
+      failureMessage: 'Native IPC package tests failed.',
     );
 
     print(Colorize('\n\nFlutter testing complete.').lightGreen());
