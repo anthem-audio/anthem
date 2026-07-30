@@ -53,6 +53,7 @@ class _TestEngineConnector extends EngineConnectorBase {
 
   final List<Request> sentRequests = [];
   var startHeartbeatTimerCallCount = 0;
+  var finalizeVisualizationSharedMemorySetupCallCount = 0;
   var isDisposed = false;
 
   _TestEngineConnector({
@@ -88,6 +89,11 @@ class _TestEngineConnector extends EngineConnectorBase {
   @override
   void startHeartbeatTimer() {
     startHeartbeatTimerCallCount++;
+  }
+
+  @override
+  void finalizeVisualizationSharedMemorySetup() {
+    finalizeVisualizationSharedMemorySetupCallCount++;
   }
 
   @override
@@ -223,7 +229,6 @@ void main() {
         inputChannelCount: 2,
         outputChannelCount: 2,
       );
-
       EngineConnectorBase createConnector(
         int id, {
         required bool kDebugMode,
@@ -275,6 +280,8 @@ void main() {
         );
 
         await _flushMicrotasks();
+
+        expect(connector.finalizeVisualizationSharedMemorySetupCallCount, 1);
 
         expect(
           connector.sentRequests.map((request) => request.runtimeType).toList(),
@@ -507,6 +514,30 @@ void main() {
         expect(connector.startHeartbeatTimerCallCount, 0);
       },
     );
+
+    test('shared memory setup failure stops startup', () async {
+      final startFuture = engine.start();
+
+      connector.completeInit();
+      await _flushMicrotasks();
+
+      final readyCheckRequest =
+          connector.sentRequests.single as EngineReadyCheckRequest;
+      connector.emitResponse(
+        EngineReadyCheckResponse(
+          id: readyCheckRequest.id,
+          success: false,
+          error: 'Could not open shared memory.',
+        ),
+      );
+
+      await startFuture;
+
+      expect(engine.engineState, EngineState.stopped);
+      expect(connector.isDisposed, isTrue);
+      expect(connector.finalizeVisualizationSharedMemorySetupCallCount, 0);
+      expect(connector.sentRequests, hasLength(1));
+    });
 
     test(
       'audio startup failure stops the engine after model init succeeds',

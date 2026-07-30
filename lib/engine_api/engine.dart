@@ -30,12 +30,15 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 
 part 'api/model_sync_api.dart';
 part 'api/processing_graph_api.dart';
 part 'api/render_api.dart';
 part 'api/sequencer_api.dart';
 part 'api/visualization_api.dart';
+
+final _log = Logger('engine');
 
 enum EngineState { stopped, starting, running }
 
@@ -770,6 +773,8 @@ class Engine {
         );
       }
 
+      _engineConnector.finalizeVisualizationSharedMemorySetup();
+
       _canFlushStartupQueue = true;
       if (_startupQueue.isEmpty ||
           _startupQueue.first.request is! ModelInitRequest) {
@@ -794,13 +799,12 @@ class Engine {
 
       _autoFlushStartupQueue = true;
       _flushStartupQueue();
-    } catch (e, st) {
+    } catch (error, stackTrace) {
       if (_engineState != EngineState.starting) {
         return;
       }
 
-      debugPrint('Engine[$id]: startup handshake failed: $e');
-      debugPrint('$st');
+      _log.severe('Engine $id startup handshake failed.', error, stackTrace);
       _engineConnector.dispose();
       _setEngineState(EngineState.stopped);
       return;

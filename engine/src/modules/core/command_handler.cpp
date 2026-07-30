@@ -146,8 +146,10 @@ void CommandHandler::processNextCommand() {
   else if (rfl::holds_alternative<EngineReadyCheckRequest>(request.variant())) {
     auto& requestAsReadyCheck = rfl::get<EngineReadyCheckRequest>(request.variant());
 
-    auto readyCheckReply = EngineReadyCheckResponse{.success = true,
-        .error = std::nullopt,
+    const auto& bootstrapResult = Engine::getInstance().getBootstrapResult();
+
+    auto readyCheckReply = EngineReadyCheckResponse{.success = bootstrapResult.succeeded(),
+        .error = bootstrapResult.error,
         .responseBase = ResponseBase{.id = requestAsReadyCheck.requestBase.get().id}};
 
     response = std::optional(std::move(readyCheckReply));

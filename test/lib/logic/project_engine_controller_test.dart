@@ -81,6 +81,11 @@ class _TestEngineConnector extends EngineConnectorBase {
   }
 
   @override
+  void finalizeVisualizationSharedMemorySetup() {
+    // This test connector does not own platform resources.
+  }
+
+  @override
   void dispose() {
     isDisposed = true;
     super.dispose();

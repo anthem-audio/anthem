@@ -109,6 +109,13 @@ endif()
 add_subdirectory(include)          # Third-party libraries excluding JUCE
 add_subdirectory(include/JUCE)     # JUCE (this is our fork with WASM support)
 
+if (NOT IS_WASM)
+  add_subdirectory(
+    ${PROJECT_SOURCE_DIR}/../native/anthem_native_ipc
+    ${CMAKE_CURRENT_BINARY_DIR}/anthem_native_ipc
+  )
+endif()
+
 add_library(project_includes INTERFACE)
 target_include_directories(project_includes INTERFACE
   ${PROJECT_SOURCE_DIR}/src
@@ -160,6 +167,7 @@ if (IS_WASM)
 else()
   target_link_libraries(AnthemEngineLib
     PUBLIC
+      anthem::native_ipc
       juce::juce_core
       juce::juce_events
       juce::juce_audio_basics

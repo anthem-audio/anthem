@@ -105,6 +105,9 @@ abstract class EngineConnectorBase {
 
   void send(Uint8List bytes);
 
+  /// Called after the engine confirms that it opened the shared memory.
+  void finalizeVisualizationSharedMemorySetup();
+
   void onReceive(Uint8List bytes) {
     if (_onReply == null) return;
 

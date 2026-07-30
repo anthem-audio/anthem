@@ -23,7 +23,11 @@
 #include "modules/core/processing_graph_node_initialization_session.h"
 #include "modules/processing_graph/model/runtime_graph.h"
 
+#include <charconv>
+#include <limits>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace anthem {
@@ -57,6 +61,8 @@ void Engine::initialize() {
   juce::addDefaultFormatsToManager(audioPluginFormatManager);
   juce::Logger::writeToLog(
       "Initialized audio plugin format manager with UI-capable plugin formats.");
+
+  bootstrapResult.error = initializeVisualizationSharedMemory();
 #endif // #ifndef __EMSCRIPTEN__
 
   comms.init();
@@ -71,6 +77,47 @@ void Engine::shutdown() {
     audioSessionController->stopAudio();
   }
 }
+
+#ifndef __EMSCRIPTEN__
+std::optional<std::string> Engine::initializeVisualizationSharedMemory() noexcept {
+  constexpr auto identifierEnvironmentKey = "ANTHEM_VISUALIZATION_SHARED_MEMORY_IDENTIFIER";
+  constexpr auto sizeEnvironmentKey = "ANTHEM_VISUALIZATION_SHARED_MEMORY_SIZE";
+
+  try {
+    const auto identifier =
+        juce::SystemStats::getEnvironmentVariable(identifierEnvironmentKey, "").toStdString();
+    const auto sizeString =
+        juce::SystemStats::getEnvironmentVariable(sizeEnvironmentKey, "").toStdString();
+
+    if (identifier.empty()) {
+      throw std::invalid_argument(
+          std::string(identifierEnvironmentKey) + " was not provided in the environment.");
+    }
+
+    uint64_t size = 0;
+    const auto parseResult =
+        std::from_chars(sizeString.data(), sizeString.data() + sizeString.size(), size);
+    if (sizeString.empty() || parseResult.ec != std::errc{} ||
+        parseResult.ptr != sizeString.data() + sizeString.size() || size == 0 ||
+        size > std::numeric_limits<std::size_t>::max()) {
+      throw std::invalid_argument(std::string(sizeEnvironmentKey) + " is invalid.");
+    }
+
+    auto region = ipc::SharedMemoryRegion::open(identifier, static_cast<std::size_t>(size));
+    visualizationSharedMemory = std::make_unique<ipc::SharedMemoryRegion>(std::move(region));
+    juce::Logger::writeToLog("Attached visualization shared memory.");
+    return std::nullopt;
+  } catch (const std::exception& exception) {
+    auto error = std::string(exception.what());
+    juce::Logger::writeToLog("Failed to attach visualization shared memory: " + error);
+    return error;
+  } catch (...) {
+    auto error = std::string("Unknown error while attaching visualization shared memory.");
+    juce::Logger::writeToLog(error);
+    return error;
+  }
+}
+#endif // #ifndef __EMSCRIPTEN__
 
 void Engine::resetInitializedProcessingGraphNodes() {
   for (auto& [_, initializedNodeWeakPtr] : initializedProcessingGraphNodes) {

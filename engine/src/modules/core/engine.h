@@ -24,10 +24,12 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 #ifndef __EMSCRIPTEN__
+#include <anthem_native_ipc/shared_memory_region.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #endif // #ifndef __EMSCRIPTEN__
 
@@ -53,6 +55,16 @@ class ProcessingGraphNodeInitializationSession;
 using InitializeProcessingGraphNodesCallback =
     std::function<void(std::vector<std::shared_ptr<ProcessingGraphNodeInitializationResult>>)>;
 
+// Result of engine-local initialization that must complete before normal
+// requests can be processed.
+struct EngineBootstrapResult {
+  std::optional<std::string> error = std::nullopt;
+
+  bool succeeded() const noexcept {
+    return !error.has_value();
+  }
+};
+
 class Engine {
 private:
   friend class ProcessingGraphNodeInitializationSession;
@@ -68,6 +80,8 @@ private:
   // a node with the same ID has been removed and later recreated as a distinct
   // model object.
   std::unordered_map<int64_t, std::weak_ptr<Node>> initializedProcessingGraphNodes;
+
+  EngineBootstrapResult bootstrapResult;
 public:
   // The project model.
   //
@@ -105,6 +119,9 @@ public:
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
 
 #ifndef __EMSCRIPTEN__
+  // The UI creates this mapping and retains the other process-local view.
+  std::unique_ptr<ipc::SharedMemoryRegion> visualizationSharedMemory;
+
   // JUCE class for loading and managing plugins
   juce::AudioPluginFormatManager audioPluginFormatManager;
 #endif // #ifndef __EMSCRIPTEN__
@@ -152,11 +169,19 @@ public:
 
   void shutdown();
 
+  const EngineBootstrapResult& getBootstrapResult() const noexcept {
+    return bootstrapResult;
+  }
+
   // Initializes the delta between the current shared model graph and
   // initializedProcessingGraphNodes. Nodes already present in the tracker are
   // left alone; new or replaced nodes are prepared and reported individually.
   void initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete);
   void publishProcessingGraph();
+private:
+#ifndef __EMSCRIPTEN__
+  std::optional<std::string> initializeVisualizationSharedMemory() noexcept;
+#endif // #ifndef __EMSCRIPTEN__
 };
 
 } // namespace anthem

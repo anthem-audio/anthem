@@ -24,6 +24,7 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_socket_server.dart';
 import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:anthem_native_ipc/anthem_native_ipc.dart';
 import 'package:logging/logging.dart';
 
 part 'engine_connector_desktop.debug_engine_path.g.dart';
@@ -32,6 +33,11 @@ final _log = Logger('engine_connector');
 final mainExecutablePath = File(Platform.resolvedExecutable);
 const _engineIdEnvironmentKey = 'ANTHEM_ENGINE_ID';
 const _enginePortEnvironmentKey = 'ANTHEM_ENGINE_PORT';
+const _visualizationSharedMemoryIdentifierEnvironmentKey =
+    'ANTHEM_VISUALIZATION_SHARED_MEMORY_IDENTIFIER';
+const _visualizationSharedMemorySizeEnvironmentKey =
+    'ANTHEM_VISUALIZATION_SHARED_MEMORY_SIZE';
+const _visualizationSharedMemorySize = 16 * 1024 * 1024;
 
 /// Provides a way to communicate with the engine process.
 ///
@@ -69,6 +75,7 @@ class EngineConnector extends EngineConnectorBase {
   final int _id;
 
   Process? _engineProcess;
+  SharedMemoryRegion? _visualizationSharedMemory;
 
   final void Function()? _onExit;
 
@@ -150,13 +157,32 @@ class EngineConnector extends EngineConnectorBase {
       return false;
     }
 
+    try {
+      _visualizationSharedMemory = SharedMemoryRegion.create(
+        _visualizationSharedMemorySize,
+      );
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Could not create visualization shared memory for engine $_id.',
+        error,
+        stackTrace,
+      );
+      return false;
+    }
+
     _log.info('Starting engine from $anthemPathStr');
 
+    final visualizationSharedMemory = _visualizationSharedMemory!;
     final engineEnvironment = {
       ...AnthemLogManager.instance.childProcessEnvironment,
       ...?_debugLameEnvironment(),
       _engineIdEnvironmentKey: _id.toString(),
       _enginePortEnvironmentKey: EngineSocketServer.instance.port.toString(),
+      _visualizationSharedMemoryIdentifierEnvironmentKey:
+          visualizationSharedMemory.identifier,
+      _visualizationSharedMemorySizeEnvironmentKey: visualizationSharedMemory
+          .size
+          .toString(),
     };
 
     try {
@@ -202,6 +228,7 @@ class EngineConnector extends EngineConnectorBase {
         error,
         stackTrace,
       );
+      _closeVisualizationSharedMemory();
       return false;
     }
 
@@ -214,6 +241,25 @@ class EngineConnector extends EngineConnectorBase {
     _initialized = true;
 
     return true;
+  }
+
+  @override
+  void finalizeVisualizationSharedMemorySetup() {
+    final region = _visualizationSharedMemory;
+    if (region == null) {
+      return;
+    }
+
+    try {
+      region.removeIdentifier();
+    } catch (error, stackTrace) {
+      _log.warning(
+        'Could not remove the visualization shared memory identifier for '
+        'engine $_id. The existing mappings remain usable.',
+        error,
+        stackTrace,
+      );
+    }
   }
 
   Map<String, String>? _debugLameEnvironment() {
@@ -276,6 +322,13 @@ class EngineConnector extends EngineConnectorBase {
 
     // Unsubscribe from engine replies
     _engineReplySub?.cancel();
+
+    _closeVisualizationSharedMemory();
+  }
+
+  void _closeVisualizationSharedMemory() {
+    _visualizationSharedMemory?.close();
+    _visualizationSharedMemory = null;
   }
 
   /// Stops the engine process, and cleans up the messaging infrastructure.
@@ -290,6 +343,7 @@ class EngineConnector extends EngineConnectorBase {
     _engineProcess = process;
 
     _engineProcess!.exitCode.then((exitCode) {
+      _closeVisualizationSharedMemory();
       _onExit?.call();
     });
   }

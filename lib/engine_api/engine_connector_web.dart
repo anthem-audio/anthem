@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -88,5 +88,11 @@ class EngineConnector extends EngineConnectorBase {
     }
 
     engineInterface.sendMessage(bytes);
+  }
+
+  @override
+  void finalizeVisualizationSharedMemorySetup() {
+    // Web does not use an OS shared-memory identifier. Its visualization
+    // transport will live directly in shared WebAssembly memory.
   }
 }
