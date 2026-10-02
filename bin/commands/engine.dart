@@ -451,10 +451,7 @@ class _FormatEngineCommand extends Command<dynamic> {
     final files = _getOwnedCppFiles(includeNativeIpc: true);
 
     if (files.isEmpty) {
-      print(
-        Colorize('No C++ files found, nothing to format.')
-          ..lightGreen(),
-      );
+      print(Colorize('No C++ files found, nothing to format.')..lightGreen());
       return;
     }
 
