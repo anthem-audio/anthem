@@ -17,12 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ffi';
-import 'dart:typed_data';
-
-import 'package:ffi/ffi.dart';
-
-import 'native_bindings.dart' as bindings;
+part of '../anthem_native_ipc.dart';
 
 const _maximumSupportedSize = 0x7FFFFFFFFFFFFFFF;
 
@@ -120,7 +115,7 @@ final class SharedMemoryRegion implements Finalizable {
   void removeIdentifier() {
     _ensureOpen();
     if (bindings.anthemSharedMemoryRegionRemoveIdentifier(_handle) == 0) {
-      throw SharedMemoryException(_lastNativeError());
+      throw SharedMemoryException(_nativeIpcLastError());
     }
   }
 
@@ -138,7 +133,7 @@ final class SharedMemoryRegion implements Finalizable {
 
   static SharedMemoryRegion _fromNativeHandle(Pointer<Void> handle) {
     if (handle == nullptr) {
-      throw SharedMemoryException(_lastNativeError());
+      throw SharedMemoryException(_nativeIpcLastError());
     }
 
     final nativeIdentifier = bindings.anthemSharedMemoryRegionGetIdentifier(
@@ -158,16 +153,6 @@ final class SharedMemoryRegion implements Finalizable {
       nativeIdentifier.cast<Utf8>().toDartString(),
       size,
     );
-  }
-
-  static String _lastNativeError() {
-    final error = bindings.anthemNativeIpcGetLastError();
-    if (error == nullptr) {
-      return 'Unknown native shared memory error.';
-    }
-
-    final message = error.cast<Utf8>().toDartString();
-    return message.isEmpty ? 'Unknown native shared memory error.' : message;
   }
 
   static void _validateSize(int size) {

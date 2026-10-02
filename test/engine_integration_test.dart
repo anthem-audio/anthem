@@ -32,6 +32,7 @@ import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -226,6 +227,92 @@ void main() {
       );
     });
   }, skip: skipEngineIntegrationTests);
+
+  test('startup cancellation disposes the visualization reader', () async {
+    final connector = EngineConnector(
+      12345699,
+      enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
+      kDebugMode: false,
+      noHeartbeat: true,
+    );
+    connector.dispose();
+    expect(await connector.onInit, isFalse);
+    expect(connector.visualizationRecordConsumer, isNull);
+    connector.dispose();
+  });
+
+  test(
+    'binary visualization records cross the engine ring and survive restart',
+    timeout: const Timeout(Duration(seconds: 60)),
+    () async {
+      for (var iteration = 0; iteration < 2; iteration++) {
+        final replies = StreamController<Response>.broadcast();
+        final exits = StreamController<void>.broadcast();
+        final recordFuture = Completer<VisualizationRecord>();
+        var socketVisualizationUpdates = 0;
+        final connector = EngineConnector(
+          12345700,
+          enginePathOverride: enginePath!.toFilePath(
+            windows: Platform.isWindows,
+          ),
+          kDebugMode: false,
+          noHeartbeat: true,
+          onReply: (response) {
+            if (response is VisualizationUpdateEvent) {
+              socketVisualizationUpdates++;
+            }
+            replies.add(response);
+          },
+          onExit: () => exits.add(null),
+        );
+        connector.onVisualizationRecord = (record) {
+          if (!recordFuture.isCompleted) recordFuture.complete(record);
+        };
+        addTearDown(connector.dispose);
+        expect(await connector.onInit, isTrue);
+        final ready =
+            await _sendRequestAndWaitForReply<EngineReadyCheckResponse>(
+              engineConnector: connector,
+              request: EngineReadyCheckRequest(id: connector.getRequestId()),
+              replyStream: replies.stream,
+            );
+        expect(ready.success, isTrue);
+        connector.finalizeVisualizationSharedMemorySetup();
+        final response =
+            await _sendRequestAndWaitForReply<
+              TestPublishVisualizationRecordResponse
+            >(
+              engineConnector: connector,
+              request: TestPublishVisualizationRecordRequest(
+                id: connector.getRequestId(),
+              ),
+              replyStream: replies.stream,
+            );
+        expect(response.success, isTrue);
+        final record = await recordFuture.future.timeout(
+          const Duration(seconds: 5),
+        );
+        expect(record.generation, 9);
+        expect(record.sampleRate, 48000);
+        expect(record.update.items.map((item) => item.id), ['d-Ω', 'i']);
+        expect(record.update.items[0].values, [-0.0, 1.5]);
+        expect(record.update.items[1].values, [-7, 9007199254740991]);
+        expect(socketVisualizationUpdates, 0);
+        expect(
+          connector.visualizationRecordConsumer!.queueByteHighWater,
+          greaterThan(40),
+        );
+        await _sendExitAndWaitForProcess(
+          engineConnector: connector,
+          exitStream: exits.stream,
+        );
+        expect(connector.visualizationRecordConsumer, isNull);
+        await replies.close();
+        await exits.close();
+      }
+    },
+    skip: skipEngineIntegrationTests,
+  );
 
   group('Gain parameter mapping tests', () {
     test(

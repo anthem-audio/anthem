@@ -43,6 +43,7 @@ class VisualizationProvider {
   final Map<String, _CachedVisualizationValue> _latestValuesById = {};
 
   bool _enabled = true;
+  int? _recordGeneration;
 
   VisualizationProvider(this._project, {VisualizationClock? clock})
     : clock = clock ?? VisualizationClock.system,
@@ -61,6 +62,8 @@ class VisualizationProvider {
 
       if (state == EngineState.stopped) {
         _latestValuesById.clear();
+        _recordGeneration = null;
+        _transportStats.reset();
       }
 
       // If the engine isn't running, the visualization subscriptions shouldn't
@@ -83,11 +86,10 @@ class VisualizationProvider {
       _project.engine.engineState == EngineState.running;
 
   void _sendUpdateIntervalToEngine() {
-    // For the refresh rate, we get the maximum refresh rate of all displays.
-    final refreshRate = PlatformDispatcher.instance.displays.isNotEmpty
-        ? PlatformDispatcher.instance.displays
-              .map((d) => d.refreshRate)
-              .reduce(max)
+    final reportedRate =
+        PlatformDispatcher.instance.implicitView?.display.refreshRate ?? 60.0;
+    final refreshRate = reportedRate.isFinite && reportedRate > 0
+        ? reportedRate.clamp(1.0, 240.0)
         : 60.0;
 
     _project.engine.visualizationApi.setUpdateInterval(
@@ -167,6 +169,27 @@ class VisualizationProvider {
         );
       }
     }
+  }
+
+  void processVisualizationRecord(VisualizationRecord record) {
+    final audioConfig = _project.engine.audioConfig;
+    if (audioConfig == null ||
+        audioConfig.sampleRate != record.sampleRate ||
+        (_recordGeneration != null && record.generation < _recordGeneration!)) {
+      return;
+    }
+    if (record.discontinuity ||
+        (_recordGeneration != null && _recordGeneration != record.generation)) {
+      if (_recordGeneration != record.generation) _latestValuesById.clear();
+      _transportStats.reset();
+      for (final group in _subscriptions.values) {
+        for (final subscription in group) {
+          subscription._transportDiscontinuity();
+        }
+      }
+    }
+    _recordGeneration = record.generation;
+    processVisualizationUpdate(record.update);
   }
 
   VisualizationSubscription<T> subscribe<T>(

@@ -25,6 +25,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
+import 'package:anthem/engine_api/wasm_visualization_record_ring_buffer.dart';
 import 'package:flutter/scheduler.dart';
 
 class _PendingOutgoingMessage {
@@ -45,19 +46,32 @@ class EngineEmscriptenInterface {
 
   late final WasmSharedMemoryRingBuffer readBuffer;
   late final WasmSharedMemoryRingBuffer writeBuffer;
+  late final WasmVisualizationRecordRingBufferReader
+  visualizationRingBufferReader;
 
   final Queue<_PendingOutgoingMessage> _outgoingMessages = ListQueue();
 
   void Function(Uint8List bytes)? onMessageReceived;
+  final void Function()? onPollVisualization;
 
-  late final Ticker _readTicker;
-  late final Timer _readFallbackTimer;
+  Ticker? _readTicker;
+  Timer? _readFallbackTimer;
+  Timer? _readyCheckTimer;
+  Timer? _sendTimer;
+  Completer<void>? _readyCompleter;
+  bool _disposed = false;
+  bool _hasVisualizationReader = false;
   final Completer<void> _introMessageReceivedCompleter = Completer<void>();
-  bool _hasReceivedTickerTick = false;
+  final Stopwatch _sinceReadTick = Stopwatch()..start();
 
-  EngineEmscriptenInterface(this.exportName, {this.onMessageReceived});
+  EngineEmscriptenInterface(
+    this.exportName, {
+    this.onMessageReceived,
+    this.onPollVisualization,
+  });
 
   Future<void> init() async {
+    _ensureActive();
     final constructorAny = globalContext.getProperty(exportName.toJS);
     if (!constructorAny.isA<JSFunction>()) {
       throw Exception(
@@ -76,6 +90,7 @@ class EngineEmscriptenInterface {
 
     final appInstancePromise = appInstancePromiseAny as JSPromise;
     final appInstanceAny = await appInstancePromise.toDart;
+    _ensureActive();
     if (!appInstanceAny.isA<JSObject>()) {
       throw Exception(
         'EngineEmscriptenInterface: $exportName Promise did not resolve to an object',
@@ -84,8 +99,9 @@ class EngineEmscriptenInterface {
     appInstance = appInstanceAny as JSObject;
 
     final completer = Completer<void>();
+    _readyCompleter = completer;
 
-    Timer.periodic(Duration(milliseconds: 100), (timer) {
+    _readyCheckTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
       final isCommsReadyAny = appInstance.getProperty('_isCommsReady'.toJS);
       if (isCommsReadyAny.isA<JSFunction>()) {
         final result = (isCommsReadyAny as JSFunction).callAsFunction();
@@ -116,6 +132,8 @@ class EngineEmscriptenInterface {
     });
 
     await completer.future;
+    _readyCompleter = null;
+    _ensureActive();
 
     JSFunction getAsFunction(String functionName) {
       final funcAny = appInstance.getProperty(functionName.toJS);
@@ -267,11 +285,18 @@ class EngineEmscriptenInterface {
       ticketPtr: writeBufferTicketPtr.toDartInt,
     );
 
+    visualizationRingBufferReader = WasmVisualizationRecordRingBufferReader(
+      appInstance,
+    );
+    _hasVisualizationReader = true;
+
     _setUpReadTicker();
     await _introMessageReceivedCompleter.future;
+    _ensureActive();
   }
 
   void sendMessage(Uint8List bytes) {
+    if (_disposed) return;
     _outgoingMessages.add(_PendingOutgoingMessage(bytes));
     _scheduleSendPendingMessages();
   }
@@ -283,10 +308,11 @@ class EngineEmscriptenInterface {
   static const _fullBufferRetryDelay = Duration(milliseconds: 1);
 
   void _scheduleSendPendingMessages([Duration delay = Duration.zero]) {
-    if (_isSendScheduled) return;
+    if (_disposed || _isSendScheduled) return;
 
     _isSendScheduled = true;
-    Timer(delay, () {
+    _sendTimer = Timer(delay, () {
+      _sendTimer = null;
       _isSendScheduled = false;
       _sendPendingMessages();
     });
@@ -300,7 +326,7 @@ class EngineEmscriptenInterface {
   }
 
   void _sendPendingMessages() {
-    if (_isSendActive) return;
+    if (_disposed || _isSendActive) return;
 
     _isSendActive = true;
     var didWriteBytes = false;
@@ -385,23 +411,24 @@ class EngineEmscriptenInterface {
     // and the timer makes sure control-plane traffic is still drained during
     // startup or any other period where frames are not being produced yet.
     _readTicker = Ticker((elapsed) {
-      if (!_hasReceivedTickerTick) {
-        _hasReceivedTickerTick = true;
-        _readFallbackTimer.cancel();
-      }
-
+      _sinceReadTick.reset();
       _tryRead();
+      onPollVisualization?.call();
     });
 
     _readFallbackTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
-      _tryRead();
+      if (_sinceReadTick.elapsedMilliseconds >= 16) {
+        _tryRead();
+        onPollVisualization?.call();
+      }
     });
 
-    _readTicker.start();
+    _readTicker!.start();
   }
 
   var _introBytesSkipped = 0;
   void _tryRead() {
+    if (_disposed) return;
     var size = readBuffer.size();
     if (size == 0) return;
 
@@ -460,5 +487,30 @@ class EngineEmscriptenInterface {
     }
 
     onMessageReceived?.call(builder.toBytes());
+  }
+
+  void _ensureActive() {
+    if (_disposed) throw StateError('The engine interface has been disposed.');
+  }
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _readyCheckTimer?.cancel();
+    _sendTimer?.cancel();
+    _readFallbackTimer?.cancel();
+    _readTicker?.dispose();
+    _outgoingMessages.clear();
+    if (_hasVisualizationReader) visualizationRingBufferReader.close();
+    final ready = _readyCompleter;
+    if (ready != null && !ready.isCompleted) {
+      ready.completeError(StateError('Engine initialization was cancelled.'));
+    }
+    if (_readTicker != null && !_introMessageReceivedCompleter.isCompleted) {
+      _introMessageReceivedCompleter.completeError(
+        StateError('Engine initialization was cancelled.'),
+      );
+    }
+    onMessageReceived = null;
   }
 }

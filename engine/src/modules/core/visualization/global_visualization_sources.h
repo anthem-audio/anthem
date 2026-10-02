@@ -78,15 +78,11 @@ class PlayheadSequenceIdVisualizationProvider
 private:
   JUCE_LEAK_DETECTOR(PlayheadSequenceIdVisualizationProvider)
 
-  RingBuffer<TimestampedVisualizationValue<int64_t>, 64> playheadSequenceIdBuffer;
-  std::optional<int64_t> lastQueuedId;
+  LatestTimestampedVisualizationValue<int64_t> latestPlayheadSequenceId;
 public:
   std::optional<IntegerVisualizationData> getTypedData() override;
 
   void rt_updatePlayheadSequenceId(int64_t newPlayheadSequenceId, int64_t sampleTimestamp);
-
-  PlayheadSequenceIdVisualizationProvider()
-    : playheadSequenceIdBuffer(RingBuffer<TimestampedVisualizationValue<int64_t>, 64>()) {}
 };
 
 class GlobalVisualizationSources {

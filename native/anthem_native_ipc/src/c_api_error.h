@@ -17,13 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ffi';
-import 'dart:typed_data';
+#pragma once
 
-import 'package:ffi/ffi.dart';
+#include <exception>
 
-import 'src/native_bindings.dart' as bindings;
+namespace anthem::ipc::cApi {
 
-part 'src/native_error.dart';
-part 'src/shared_memory_region.dart';
-part 'src/spsc_record_ring_buffer.dart';
+void clearLastError() noexcept;
+void setLastError(const char* message) noexcept;
+void setLastError(const std::exception& error) noexcept;
+
+} // namespace anthem::ipc::cApi

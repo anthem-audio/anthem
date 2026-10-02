@@ -19,6 +19,8 @@
 
 #include "test_command_handler.h"
 
+#include "modules/core/engine.h"
+#include "modules/core/visualization/visualization_record.h"
 #include "modules/processors/gain_parameter_mapping.h"
 
 #include <cmath>
@@ -30,6 +32,19 @@
 namespace anthem {
 
 std::optional<Response> handleTestCommand(Request& request) {
+  if (rfl::holds_alternative<TestPublishVisualizationRecordRequest>(request.variant())) {
+    const auto& testRequest = rfl::get<TestPublishVisualizationRecordRequest>(request.variant());
+    const std::vector<VisualizationRecordItem> items{
+        {"d-\xce\xa9", NumericVisualizationData{{10, 20}, {-0.0, 1.5}}},
+        {"i", IntegerVisualizationData{{10, 20}, {-7, 9007199254740991LL}}},
+    };
+    static std::uint32_t sequence = 7;
+    const auto bytes = encodeVisualizationRecord({sequence++, 9, 48000, 20}, items);
+    auto* writer = Engine::getInstance().visualizationComms.getWriter();
+    const bool success = writer != nullptr && bytes.has_value() && writer->tryWrite(*bytes);
+    return TestPublishVisualizationRecordResponse{
+        .success = success, .responseBase = ResponseBase{.id = testRequest.requestBase.get().id}};
+  }
   if (!rfl::holds_alternative<TestSampleGainCurveRequest>(request.variant())) {
     return std::nullopt;
   }

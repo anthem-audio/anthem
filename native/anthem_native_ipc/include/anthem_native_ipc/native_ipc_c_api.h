@@ -17,13 +17,29 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ffi';
-import 'dart:typed_data';
+#pragma once
 
-import 'package:ffi/ffi.dart';
+#if defined(_WIN32) && !defined(ANTHEM_NATIVE_IPC_STATIC)
+#if defined(ANTHEM_NATIVE_IPC_BUILDING)
+#define ANTHEM_NATIVE_IPC_API __declspec(dllexport)
+#else
+#define ANTHEM_NATIVE_IPC_API __declspec(dllimport)
+#endif
+#else
+#define ANTHEM_NATIVE_IPC_API
+#endif
 
-import 'src/native_bindings.dart' as bindings;
+#ifdef __cplusplus
+#define ANTHEM_NATIVE_IPC_NOEXCEPT noexcept
+extern "C" {
+#else
+#define ANTHEM_NATIVE_IPC_NOEXCEPT
+#endif
 
-part 'src/native_error.dart';
-part 'src/shared_memory_region.dart';
-part 'src/spsc_record_ring_buffer.dart';
+/// Returns a description of the last failure. The pointer remains valid until
+/// the next fallible call into this API.
+ANTHEM_NATIVE_IPC_API const char* anthem_native_ipc_get_last_error(void) ANTHEM_NATIVE_IPC_NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif

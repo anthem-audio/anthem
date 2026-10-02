@@ -310,6 +310,29 @@ class TestSampleGainCurveRequest extends Request {
   }
 }
 
+/// Publishes the fixed visualization wire fixture through the engine's ring.
+/// Used by integration tests without requiring an audio device or project.
+class TestPublishVisualizationRecordRequest extends Request {
+  TestPublishVisualizationRecordRequest.uninitialized();
+
+  TestPublishVisualizationRecordRequest({required int id}) {
+    super.id = id;
+  }
+}
+
+class TestPublishVisualizationRecordResponse extends Response {
+  late bool success;
+
+  TestPublishVisualizationRecordResponse.uninitialized();
+
+  TestPublishVisualizationRecordResponse({
+    required int id,
+    required this.success,
+  }) {
+    super.id = id;
+  }
+}
+
 class TestSampleGainCurveResponse extends Response {
   late List<double> dbValues;
   late List<bool> isNegativeInfinity;

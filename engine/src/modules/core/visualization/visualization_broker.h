@@ -21,6 +21,7 @@
 
 #include "juce_events/juce_events.h"
 #include "visualization_provider.h"
+#include "visualization_record.h"
 
 #include <memory>
 #include <string>
@@ -120,6 +121,7 @@ private:
   double updateIntervalMs;
 
   OutboundUpdateBehavior outboundUpdateBehavior = OutboundUpdateBehavior::sending;
+  VisualizationRecordPublisher recordPublisher;
 
   void releaseDataProvider(const std::string& name, VisualizationDataProvider* provider);
   void discardPendingProviderData();

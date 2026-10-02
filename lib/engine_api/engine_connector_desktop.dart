@@ -23,6 +23,7 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_socket_server.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/helpers/logging/anthem_logging.dart';
 import 'package:anthem_native_ipc/anthem_native_ipc.dart';
 import 'package:logging/logging.dart';
@@ -37,7 +38,7 @@ const _visualizationSharedMemoryIdentifierEnvironmentKey =
     'ANTHEM_VISUALIZATION_SHARED_MEMORY_IDENTIFIER';
 const _visualizationSharedMemorySizeEnvironmentKey =
     'ANTHEM_VISUALIZATION_SHARED_MEMORY_SIZE';
-const _visualizationSharedMemorySize = 16 * 1024 * 1024;
+const _visualizationSharedMemorySize = 16 * 1024 * 1024 + 128;
 
 /// Provides a way to communicate with the engine process.
 ///
@@ -76,10 +77,14 @@ class EngineConnector extends EngineConnectorBase {
 
   Process? _engineProcess;
   SharedMemoryRegion? _visualizationSharedMemory;
+  SharedMemoryRecordRingBufferReader? _visualizationRingBufferReader;
+  Timer? _visualizationReadTimer;
 
   final void Function()? _onExit;
 
   bool _initialized = false;
+  bool _shuttingDown = false;
+  Completer<void>? _engineConnectCompleter;
 
   /// If any requests are sent before the engine starts and IPC is set up, this
   /// list will hold the requests until the engine is initialized, at which
@@ -117,6 +122,7 @@ class EngineConnector extends EngineConnectorBase {
     // Wait for the socket server to start, since this is what the engines will
     // connect to. This will only cause a wait when the app is first launched.
     await EngineSocketServer.instance.init;
+    if (_shuttingDown) return false;
 
     EngineSocketServer.instance.onMessage(_id, (message) {
       onReceive(message);
@@ -124,12 +130,14 @@ class EngineConnector extends EngineConnectorBase {
 
     // Set up a completer to complete when the engine has connected.
     final engineConnectCompleter = Completer<void>();
-    EngineSocketServer.instance.onConnect(
-      _id,
-      () => engineConnectCompleter.complete(),
-    );
+    _engineConnectCompleter = engineConnectCompleter;
+    EngineSocketServer.instance.onConnect(_id, () {
+      if (!engineConnectCompleter.isCompleted) {
+        engineConnectCompleter.complete();
+      }
+    });
 
-    EngineSocketServer.instance.onClose(_id, _shutdown);
+    EngineSocketServer.instance.onClose(_id, dispose);
 
     String? developmentEnginePath;
 
@@ -154,19 +162,30 @@ class EngineConnector extends EngineConnectorBase {
 
     if (!await File(anthemPathStr).exists()) {
       _log.severe('Could not start engine. File not found: $anthemPathStr');
+      dispose();
       return false;
     }
+    if (_shuttingDown) return false;
 
     try {
-      _visualizationSharedMemory = SharedMemoryRegion.create(
-        _visualizationSharedMemorySize,
+      final region = SharedMemoryRegion.create(_visualizationSharedMemorySize);
+      _visualizationSharedMemory = region;
+      _visualizationRingBufferReader =
+          SharedMemoryRecordRingBufferReader.initialize(region);
+      final reader = _visualizationRingBufferReader!;
+      visualizationRecordConsumer = VisualizationRecordConsumer(
+        tryAcquire: reader.tryAcquire,
+        release: reader.release,
+        onRecord: handleVisualizationRecord,
+        availableBytes: () => reader.availableBytes,
       );
     } catch (error, stackTrace) {
       _log.severe(
-        'Could not create visualization shared memory for engine $_id.',
+        'Could not create the visualization transport for engine $_id.',
         error,
         stackTrace,
       );
+      dispose();
       return false;
     }
 
@@ -228,7 +247,7 @@ class EngineConnector extends EngineConnectorBase {
         error,
         stackTrace,
       );
-      _closeVisualizationSharedMemory();
+      dispose();
       return false;
     }
 
@@ -237,8 +256,13 @@ class EngineConnector extends EngineConnectorBase {
     // connected. _initialized is false while we wait, and this causes incoming
     // messages to be queued instead of attempting and failing to send them.
     await engineConnectCompleter.future;
+    if (_shuttingDown) return false;
 
     _initialized = true;
+    _visualizationReadTimer = Timer.periodic(
+      const Duration(milliseconds: 8),
+      (_) => pollVisualizationRecords(),
+    );
 
     return true;
   }
@@ -302,6 +326,7 @@ class EngineConnector extends EngineConnectorBase {
   /// Sends the given bytes to the engine.
   @override
   void send(Uint8List bytes) {
+    if (_shuttingDown) return;
     if (!_initialized) {
       _bufferedRequests.add(bytes);
       return;
@@ -317,16 +342,28 @@ class EngineConnector extends EngineConnectorBase {
   }
 
   void _shutdown() {
+    if (_shuttingDown) return;
+    _shuttingDown = true;
+    _initialized = false;
+    final connecting = _engineConnectCompleter;
+    if (connecting != null && !connecting.isCompleted) connecting.complete();
     // Kill engine process
     _engineProcess?.kill();
 
     // Unsubscribe from engine replies
     _engineReplySub?.cancel();
+    _bufferedRequests.clear();
+    EngineSocketServer.instance.cleanUpEngine(_id);
 
     _closeVisualizationSharedMemory();
   }
 
   void _closeVisualizationSharedMemory() {
+    _visualizationReadTimer?.cancel();
+    _visualizationReadTimer = null;
+    visualizationRecordConsumer = null;
+    _visualizationRingBufferReader?.close();
+    _visualizationRingBufferReader = null;
     _visualizationSharedMemory?.close();
     _visualizationSharedMemory = null;
   }
@@ -340,10 +377,14 @@ class EngineConnector extends EngineConnectorBase {
 
   /// Sets the engine process, and attaches a listener when it stops.
   void _setEngineProcess(Process process) {
+    if (_shuttingDown) {
+      process.kill();
+      return;
+    }
     _engineProcess = process;
 
     _engineProcess!.exitCode.then((exitCode) {
-      _closeVisualizationSharedMemory();
+      dispose();
       _onExit?.call();
     });
   }

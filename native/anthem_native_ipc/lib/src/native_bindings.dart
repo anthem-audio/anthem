@@ -59,5 +59,77 @@ external int anthemSharedMemoryRegionRemoveIdentifier(Pointer<Void> region);
 )
 external void anthemSharedMemoryRegionDestroy(Pointer<Void> region);
 
+@Native<Int32 Function(Pointer<Uint8>, Uint64)>(
+  symbol: 'anthem_spsc_record_ring_buffer_initialize',
+)
+external int anthemSpscRecordRingBufferInitialize(
+  Pointer<Uint8> data,
+  int size,
+);
+
+@Native<Pointer<Void> Function(Pointer<Uint8>, Uint64)>(
+  symbol: 'anthem_spsc_record_ring_buffer_writer_create',
+)
+external Pointer<Void> anthemSpscRecordRingBufferWriterCreate(
+  Pointer<Uint8> data,
+  int size,
+);
+
+@Native<Int32 Function(Pointer<Void>, Pointer<Uint8>, Uint64)>(
+  symbol: 'anthem_spsc_record_ring_buffer_writer_try_write',
+)
+external int anthemSpscRecordRingBufferWriterTryWrite(
+  Pointer<Void> writer,
+  Pointer<Uint8> record,
+  int size,
+);
+
+@Native<Void Function(Pointer<Void>)>(
+  symbol: 'anthem_spsc_record_ring_buffer_writer_destroy',
+)
+external void anthemSpscRecordRingBufferWriterDestroy(Pointer<Void> writer);
+
+@Native<Pointer<Void> Function(Pointer<Uint8>, Uint64)>(
+  symbol: 'anthem_spsc_record_ring_buffer_reader_create',
+)
+external Pointer<Void> anthemSpscRecordRingBufferReaderCreate(
+  Pointer<Uint8> data,
+  int size,
+);
+
+@Native<Int32 Function(Pointer<Void>)>(
+  symbol: 'anthem_spsc_record_ring_buffer_reader_try_acquire',
+)
+external int anthemSpscRecordRingBufferReaderTryAcquire(Pointer<Void> reader);
+
+@Native<Pointer<Uint8> Function(Pointer<Void>)>(
+  symbol: 'anthem_spsc_record_ring_buffer_reader_get_data',
+)
+external Pointer<Uint8> anthemSpscRecordRingBufferReaderGetData(
+  Pointer<Void> reader,
+);
+
+@Native<Uint64 Function(Pointer<Void>)>(
+  symbol: 'anthem_spsc_record_ring_buffer_reader_get_size',
+)
+external int anthemSpscRecordRingBufferReaderGetSize(Pointer<Void> reader);
+
+@Native<Uint64 Function(Pointer<Void>)>(
+  symbol: 'anthem_spsc_record_ring_buffer_reader_get_available_bytes',
+)
+external int anthemSpscRecordRingBufferReaderGetAvailableBytes(
+  Pointer<Void> reader,
+);
+
+@Native<Int32 Function(Pointer<Void>)>(
+  symbol: 'anthem_spsc_record_ring_buffer_reader_release',
+)
+external int anthemSpscRecordRingBufferReaderRelease(Pointer<Void> reader);
+
+@Native<Void Function(Pointer<Void>)>(
+  symbol: 'anthem_spsc_record_ring_buffer_reader_destroy',
+)
+external void anthemSpscRecordRingBufferReaderDestroy(Pointer<Void> reader);
+
 @Native<Pointer<Char> Function()>(symbol: 'anthem_native_ipc_get_last_error')
 external Pointer<Char> anthemNativeIpcGetLastError();

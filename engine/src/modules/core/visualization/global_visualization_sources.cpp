@@ -141,20 +141,14 @@ void PlayheadPositionVisualizationProvider::rt_updatePlayheadPosition(
 }
 
 std::optional<IntegerVisualizationData> PlayheadSequenceIdVisualizationProvider::getTypedData() {
-  return drainTimestampedVisualizationBuffer(playheadSequenceIdBuffer);
+  return latestPlayheadSequenceId.drainLatest();
 }
 
 void PlayheadSequenceIdVisualizationProvider::rt_updatePlayheadSequenceId(
     int64_t newPlayheadSequenceId, int64_t sampleTimestamp) {
-  if (lastQueuedId.has_value() && lastQueuedId.value() == newPlayheadSequenceId) {
-    return;
-  }
-
-  lastQueuedId = newPlayheadSequenceId;
-  playheadSequenceIdBuffer.add(TimestampedVisualizationValue<int64_t>{
-      .sampleTimestamp = sampleTimestamp,
-      .value = newPlayheadSequenceId,
-  });
+  // Refresh unchanged IDs too, so subscribers can recover current state and
+  // valid timestamps after an audio session or visualization delivery reset.
+  latestPlayheadSequenceId.rt_set(newPlayheadSequenceId, sampleTimestamp);
 }
 
 GlobalVisualizationSources::GlobalVisualizationSources() {

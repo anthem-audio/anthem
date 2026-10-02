@@ -24,6 +24,7 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/parameter_commands.dart';
 import 'package:anthem/model/processing_graph/node.dart';
@@ -920,6 +921,29 @@ void main() {
         );
 
         await publishFuture;
+      },
+    );
+
+    test(
+      'binary visualization records retain their metadata when forwarded',
+      () async {
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        final record = VisualizationRecord(
+          sequence: 1,
+          generation: 2,
+          sampleRate: 48000,
+          newestSampleTimestamp: 0,
+          update: VisualizationUpdateEvent(id: -1, items: []),
+          discontinuity: true,
+        );
+        connector.handleVisualizationRecord(record);
+        verify(
+          visualizationProvider.processVisualizationRecord(record),
+        ).called(1);
       },
     );
 

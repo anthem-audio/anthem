@@ -19,23 +19,12 @@
 
 #pragma once
 
+#include "anthem_native_ipc/native_ipc_c_api.h"
+
 #include <stdint.h>
 
-#if defined(_WIN32) && !defined(ANTHEM_NATIVE_IPC_STATIC)
-#if defined(ANTHEM_NATIVE_IPC_BUILDING)
-#define ANTHEM_NATIVE_IPC_API __declspec(dllexport)
-#else
-#define ANTHEM_NATIVE_IPC_API __declspec(dllimport)
-#endif
-#else
-#define ANTHEM_NATIVE_IPC_API
-#endif
-
 #ifdef __cplusplus
-#define ANTHEM_NATIVE_IPC_NOEXCEPT noexcept
 extern "C" {
-#else
-#define ANTHEM_NATIVE_IPC_NOEXCEPT
 #endif
 
 typedef struct AnthemSharedMemoryRegion AnthemSharedMemoryRegion;
@@ -73,12 +62,6 @@ ANTHEM_NATIVE_IPC_API int32_t anthem_shared_memory_region_remove_identifier(
 ANTHEM_NATIVE_IPC_API void anthem_shared_memory_region_destroy(
     AnthemSharedMemoryRegion* region) ANTHEM_NATIVE_IPC_NOEXCEPT;
 
-/// Returns a description of the last failure. The pointer remains valid until
-/// the next fallible call into this API.
-ANTHEM_NATIVE_IPC_API const char* anthem_native_ipc_get_last_error(void) ANTHEM_NATIVE_IPC_NOEXCEPT;
-
 #ifdef __cplusplus
 }
 #endif
-
-#undef ANTHEM_NATIVE_IPC_NOEXCEPT

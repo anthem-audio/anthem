@@ -19,8 +19,11 @@
 
 #include "console_logger.h"
 #include "modules/core/engine_api_message_test.h"
+#include "modules/core/global_visualization_sources_test.h"
 #include "modules/core/sequencer_test.h"
+#include "modules/core/spsc_record_ring_buffer_test.h"
 #include "modules/core/visualization_broker_test.h"
+#include "modules/core/visualization_record_test.h"
 #include "modules/processing_graph/model/processing_graph_model_helpers_test.h"
 #include "modules/processing_graph/model/runtime_graph_test.h"
 #include "modules/processing_graph/processor/event_buffer_test.h"

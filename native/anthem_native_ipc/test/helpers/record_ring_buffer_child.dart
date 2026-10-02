@@ -17,13 +17,33 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:ffi';
+import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:ffi/ffi.dart';
+import 'package:anthem_native_ipc/anthem_native_ipc.dart';
 
-import 'src/native_bindings.dart' as bindings;
+void main(List<String> arguments) {
+  if (arguments.length != 2) {
+    stderr.writeln('Expected a shared memory identifier and size.');
+    exitCode = 2;
+    return;
+  }
 
-part 'src/native_error.dart';
-part 'src/shared_memory_region.dart';
-part 'src/spsc_record_ring_buffer.dart';
+  final region = SharedMemoryRegion.open(
+    identifier: arguments[0],
+    size: int.parse(arguments[1]),
+  );
+  final writer = SharedMemoryRecordRingBufferWriter.open(region);
+
+  try {
+    if (!writer.tryWrite(Uint8List.fromList([11, 22, 33, 44]))) {
+      stderr.writeln(
+        'The child process found the record ring unexpectedly full.',
+      );
+      exitCode = 3;
+    }
+  } finally {
+    writer.close();
+    region.close();
+  }
+}

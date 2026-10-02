@@ -24,6 +24,7 @@ import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -126,10 +127,6 @@ void main() {
     if (values.every((value) => value is int)) {
       return VisualizationValueType.intValue;
     }
-    if (values.every((value) => value is String)) {
-      return VisualizationValueType.stringValue;
-    }
-
     throw ArgumentError(
       'Could not infer a visualization value type for ${values.map((value) => value.runtimeType).toList()}.',
     );
@@ -472,22 +469,22 @@ void main() {
     setup.visualizationProvider.dispose();
   });
 
-  test('String subscriptions expose typed reads and overrides', () {
+  test('Integer subscriptions expose typed reads and overrides', () {
     var wallClock = Duration.zero;
     final setup = createProjectWithVisualizationProvider(
       wallClockNowForTest: () => wallClock,
     );
 
-    final latestString = setup.visualizationProvider.subscribe(
-      VisualizationSubscriptionConfig.latestString('string_latest'),
+    final latestInt = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestInt('int_latest'),
     );
     setup.visualizationProvider.processVisualizationUpdate(
       VisualizationUpdateEvent(
         id: 0,
         items: [
           testVisualizationItem(
-            id: 'string_latest',
-            values: ['alpha'],
+            id: 'int_latest',
+            values: [7],
             sampleTimestamps: [11],
           ),
           testVisualizationItem(
@@ -499,11 +496,11 @@ void main() {
       ),
     );
 
-    expect(latestString.readValue(), 'alpha');
+    expect(latestInt.readValue(), 7);
     expect(
-      latestString.readTimedValue(),
-      isA<TimedVisualizationValue<String>>()
-          .having((value) => value.value, 'value', 'alpha')
+      latestInt.readTimedValue(),
+      isA<TimedVisualizationValue<int>>()
+          .having((value) => value.value, 'value', 7)
           .having(
             (value) => value.engineTime,
             'engineTime',
@@ -511,16 +508,13 @@ void main() {
           ),
     );
 
-    latestString.setOverride(
-      value: 'override',
-      duration: const Duration(seconds: 1),
-    );
-    expect(latestString.readValue(), 'override');
+    latestInt.setOverride(value: 9, duration: const Duration(seconds: 1));
+    expect(latestInt.readValue(), 9);
     wallClock = const Duration(milliseconds: 5);
     expect(
-      latestString.readTimedValue(),
-      isA<TimedVisualizationValue<String>>()
-          .having((value) => value.value, 'value', 'override')
+      latestInt.readTimedValue(),
+      isA<TimedVisualizationValue<int>>()
+          .having((value) => value.value, 'value', 9)
           .having(
             (value) => value.engineTime,
             'engineTime',
@@ -815,6 +809,68 @@ void main() {
   });
 
   test(
+    'Refreshed sequence IDs seed late subscribers after audio reconfiguration',
+    () {
+      final setup = createProjectWithVisualizationProvider();
+      addTearDown(setup.visualizationProvider.dispose);
+      final early = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+      );
+      var sequence = 0;
+
+      void update(int generation, int timestamp, List<int> ids) {
+        setup.visualizationProvider.processVisualizationRecord(
+          VisualizationRecord(
+            sequence: sequence++,
+            generation: generation,
+            sampleRate: 48000,
+            newestSampleTimestamp: timestamp,
+            update: VisualizationUpdateEvent(
+              id: -1,
+              items: [
+                if (ids.isNotEmpty)
+                  testVisualizationItem(
+                    id: 'playhead_sequence_id',
+                    values: ids,
+                    sampleTimestamps: [timestamp],
+                  ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      update(1, 48000, [42]);
+      expect(early.readValue(), 42);
+      update(2, 0, []);
+      expect(early.readValue(), 42);
+
+      final duringReset = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+      );
+      expect(duringReset.readTimedValue(), isNull);
+
+      // The next periodic snapshot restores the unchanged ID on the new clock.
+      update(2, 480, [42]);
+      final afterRefresh = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
+      );
+      for (final subscription in [early, duringReset, afterRefresh]) {
+        expect(
+          subscription.readTimedValue(),
+          isA<TimedVisualizationValue<int>>()
+              .having((value) => value.value, 'value', 42)
+              .having(
+                (value) => value.engineTime,
+                'engineTime',
+                engineTimeForSampleTimestamp(480),
+              ),
+        );
+      }
+    },
+  );
+
+  test(
     'VisualizationProvider clears cached values when the engine stops',
     () async {
       final engineStates = StreamController<EngineState>.broadcast();
@@ -966,6 +1022,188 @@ void main() {
     expect(await getNextSubscriptionChanges(), isEmpty);
     setup.visualizationProvider.dispose();
   });
+
+  testWidgets(
+    'transport recovery discards old history and preserves recent meter peaks',
+    (tester) async {
+      var wallClock = Duration.zero;
+      final setup = createProjectWithVisualizationProvider(
+        wallClockNowForTest: () => wallClock,
+      );
+      final playhead = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestDouble(
+          'playhead',
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+      );
+      final meter = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.max(
+          'meter',
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+      );
+      void update(
+        int sequence,
+        List<int> timestamps,
+        List<double> positions,
+        List<double> peaks, {
+        bool discontinuity = false,
+      }) {
+        setup.visualizationProvider.processVisualizationRecord(
+          VisualizationRecord(
+            sequence: sequence,
+            generation: 1,
+            sampleRate: 48000,
+            newestSampleTimestamp: timestamps.last,
+            discontinuity: discontinuity,
+            update: VisualizationUpdateEvent(
+              id: -1,
+              items: [
+                testVisualizationItem(
+                  id: 'playhead',
+                  values: positions,
+                  sampleTimestamps: timestamps,
+                ),
+                testVisualizationItem(
+                  id: 'meter',
+                  values: peaks,
+                  sampleTimestamps: timestamps,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      update(1, [0, 768], [0, 1], [99, 1]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      wallClock = const Duration(seconds: 2);
+      update(2, [96000, 96768, 97536], [100, 101, 102], [
+        0.2,
+        0.8,
+        0.3,
+      ], discontinuity: true);
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(
+        playhead.readTimedValue()!.engineTime,
+        greaterThanOrEqualTo(const Duration(seconds: 2)),
+      );
+      expect(playhead.readValue(), 102);
+      expect(meter.readValue(), closeTo(0.8, 0.00001));
+      setup.visualizationProvider.dispose();
+      await tester.pump();
+    },
+  );
+
+  test(
+    'transport discontinuities preserve active overrides and reject old sessions',
+    () {
+      final setup = createProjectWithVisualizationProvider();
+      final subscription = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestDouble('value'),
+      );
+      subscription.setOverride(
+        value: 42,
+        duration: const Duration(seconds: 10),
+      );
+      void update(int generation, double value) {
+        setup.visualizationProvider.processVisualizationRecord(
+          VisualizationRecord(
+            sequence: 1,
+            generation: generation,
+            sampleRate: 48000,
+            newestSampleTimestamp: 10,
+            discontinuity: true,
+            update: VisualizationUpdateEvent(
+              id: -1,
+              items: [
+                testVisualizationItem(
+                  id: 'value',
+                  values: [value],
+                  sampleTimestamps: [10],
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      update(2, 7);
+      update(1, 9);
+      expect(subscription.readValue(), 42);
+      final lateSubscription = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.latestDouble('value'),
+      );
+      expect(lateSubscription.readValue(), 7);
+      setup.visualizationProvider.dispose();
+    },
+  );
+
+  for (final scenario in [
+    (name: 'consumed peaks', peakTime: 0, expected: 1.0),
+    (name: 'stale unseen peaks', peakTime: 512, expected: 1.0),
+    (name: 'recent unseen peaks', peakTime: 1904, expected: 10.0),
+  ]) {
+    testWidgets('Adaptive meter catch-up handles ${scenario.name}', (
+      tester,
+    ) async {
+      var wallClock = Duration.zero;
+      final setup = createProjectWithVisualizationProvider(
+        wallClockNowForTest: () => wallClock,
+      );
+      final meter = setup.visualizationProvider.subscribe(
+        VisualizationSubscriptionConfig.max(
+          'meter',
+          bufferMode: VisualizationBufferMode.adaptive,
+        ),
+      );
+      var sequence = 0;
+      void update(int milliseconds, double value) {
+        wallClock = Duration(milliseconds: milliseconds);
+        final timestamp = milliseconds * 48;
+        setup.visualizationProvider.processVisualizationRecord(
+          VisualizationRecord(
+            sequence: sequence++,
+            generation: 1,
+            sampleRate: 48000,
+            newestSampleTimestamp: timestamp,
+            update: VisualizationUpdateEvent(
+              id: -1,
+              items: [
+                testVisualizationItem(
+                  id: 'meter',
+                  values: [value],
+                  sampleTimestamps: [timestamp],
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      try {
+        update(0, 10);
+        update(16, 1);
+        await tester.pump();
+        expect(meter.readValue(), 10);
+        update(32, 1);
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(meter.readValue(), 1);
+
+        // Polling continues without frames, so no delivery discontinuity clears
+        // the buffer. The next frame must bound its own peak recovery window.
+        for (var milliseconds = 48; milliseconds <= 2000; milliseconds += 16) {
+          update(milliseconds, milliseconds == scenario.peakTime ? 10 : 1);
+        }
+        await tester.pump(const Duration(milliseconds: 1968));
+        expect(meter.readValue(), scenario.expected);
+      } finally {
+        setup.visualizationProvider.dispose();
+        await tester.pump();
+      }
+    });
+  }
 
   testWidgets('Adaptive latest subscriptions render a delayed held timeline', (
     tester,

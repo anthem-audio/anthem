@@ -37,6 +37,12 @@ if (IS_WASM)
     _getReadBufferMask
     _getReadBufferDataPtr
     _getReadBufferTicketPtr
+
+    _tryAcquireVisualizationRecord
+    _getAcquiredVisualizationRecordData
+    _getAcquiredVisualizationRecordSize
+    _getVisualizationRecordAvailableBytes
+    _releaseVisualizationRecord
   )
 
   string(JOIN "," EXPORTED_FUNCTIONS_STRING ${EXPORTED_FUNCTIONS})
@@ -108,13 +114,10 @@ endif()
 
 add_subdirectory(include)          # Third-party libraries excluding JUCE
 add_subdirectory(include/JUCE)     # JUCE (this is our fork with WASM support)
-
-if (NOT IS_WASM)
-  add_subdirectory(
-    ${PROJECT_SOURCE_DIR}/../native/anthem_native_ipc
-    ${CMAKE_CURRENT_BINARY_DIR}/anthem_native_ipc
-  )
-endif()
+add_subdirectory(
+  ${PROJECT_SOURCE_DIR}/../native/anthem_native_ipc
+  ${CMAKE_CURRENT_BINARY_DIR}/anthem_native_ipc
+)
 
 add_library(project_includes INTERFACE)
 target_include_directories(project_includes INTERFACE
@@ -152,6 +155,7 @@ target_link_libraries(AnthemEngineLib
 
     reflectcpp
     brickworks::brickworks
+    anthem::record_ring_buffer
 )
 
 if (IS_WASM)
@@ -272,6 +276,10 @@ if (NOT IS_WASM)
   target_include_directories(AnthemTest
     PRIVATE
       ${PROJECT_SOURCE_DIR}/test
+  )
+
+  target_compile_definitions(AnthemTest PRIVATE
+    ANTHEM_TEST_FIXTURES_DIR="${PROJECT_SOURCE_DIR}/../test/fixtures"
   )
 
   target_link_libraries(AnthemTest

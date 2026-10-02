@@ -24,7 +24,6 @@ import 'package:provider/provider.dart';
 
 typedef DoubleVisualizationValue = double;
 typedef IntVisualizationValue = int;
-typedef StringVisualizationValue = String;
 
 typedef VisualizationBuilderCallback<T> =
     Widget Function(BuildContext context, T? value, Duration? engineTime);
@@ -39,14 +38,10 @@ typedef DoubleVisualizationBuilder =
     VisualizationBuilderCallback<DoubleVisualizationValue>;
 typedef IntVisualizationBuilder =
     VisualizationBuilderCallback<IntVisualizationValue>;
-typedef StringVisualizationBuilder =
-    VisualizationBuilderCallback<StringVisualizationValue>;
 typedef MultiDoubleVisualizationBuilder =
     MultiVisualizationBuilderCallback<DoubleVisualizationValue>;
 typedef MultiIntVisualizationBuilder =
     MultiVisualizationBuilderCallback<IntVisualizationValue>;
-typedef MultiStringVisualizationBuilder =
-    MultiVisualizationBuilderCallback<StringVisualizationValue>;
 
 /// Builder that rebuilds when the given visualization data item changes.
 ///
@@ -74,20 +69,6 @@ abstract final class VisualizationBuilder {
     Duration? minimumUpdateInterval,
   }) {
     return _VisualizationBuilder<IntVisualizationValue>(
-      key: key,
-      config: config,
-      builder: builder,
-      minimumUpdateInterval: minimumUpdateInterval,
-    );
-  }
-
-  static Widget string({
-    Key? key,
-    required VisualizationSubscriptionConfig<StringVisualizationValue> config,
-    required StringVisualizationBuilder builder,
-    Duration? minimumUpdateInterval,
-  }) {
-    return _VisualizationBuilder<StringVisualizationValue>(
       key: key,
       config: config,
       builder: builder,
@@ -190,21 +171,6 @@ abstract final class MultiVisualizationBuilder {
     Duration? minimumUpdateInterval,
   }) {
     return _MultiVisualizationBuilder<IntVisualizationValue>(
-      key: key,
-      configs: configs,
-      builder: builder,
-      minimumUpdateInterval: minimumUpdateInterval,
-    );
-  }
-
-  static Widget string({
-    Key? key,
-    required List<VisualizationSubscriptionConfig<StringVisualizationValue>>
-    configs,
-    required MultiStringVisualizationBuilder builder,
-    Duration? minimumUpdateInterval,
-  }) {
-    return _MultiVisualizationBuilder<StringVisualizationValue>(
       key: key,
       configs: configs,
       builder: builder,

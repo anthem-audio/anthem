@@ -23,14 +23,10 @@
 #include "modules/core/engine.h"
 
 #include <algorithm>
-#include <type_traits>
+#include <cmath>
 #include <utility>
 
 namespace anthem {
-
-namespace {
-template <typename T> using RemoveCvRef = std::remove_cv_t<std::remove_reference_t<T>>;
-}
 
 VisualizationProviderRegistration::VisualizationProviderRegistration(
     VisualizationBroker& broker, std::string id, VisualizationDataProvider* provider)
@@ -83,20 +79,25 @@ VisualizationBroker::VisualizationBroker() {
 void VisualizationBroker::setSubscriptions(
     const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions) {
   this->subscriptions = newSubscriptions;
+  recordPublisher.reset();
 }
 
 void VisualizationBroker::setUpdateInterval(double newUpdateIntervalMs) {
-  this->updateIntervalMs = newUpdateIntervalMs;
+  if (!std::isfinite(newUpdateIntervalMs) || newUpdateIntervalMs <= 0)
+    return;
+  this->updateIntervalMs = std::clamp(newUpdateIntervalMs, 1000.0 / 240.0, 1000.0);
 
   this->stopTimer();
   this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
 }
 
 void VisualizationBroker::suppressOutboundUpdates() {
+  recordPublisher.reset();
   outboundUpdateBehavior = OutboundUpdateBehavior::suppressed;
 }
 
 void VisualizationBroker::discardPendingUpdatesThenResume() {
+  recordPublisher.reset();
   outboundUpdateBehavior = OutboundUpdateBehavior::discardThenResume;
 }
 
@@ -121,6 +122,7 @@ VisualizationProviderRegistration VisualizationBroker::registerDataProvider(
 
   auto* entryPtr = entry.get();
   auto* providerPtr = entryPtr->provider.get();
+  recordPublisher.discard(name);
 
   dataProviders.push_back(std::move(entry));
   currentDataProviders[name] = entryPtr;
@@ -152,6 +154,8 @@ void VisualizationBroker::releaseDataProvider(
   if (!releasingCurrent) {
     return;
   }
+
+  recordPublisher.discard(name);
 
   auto replacementIter = std::find_if(dataProviders.rbegin(),
       dataProviders.rend(),
@@ -209,94 +213,41 @@ void VisualizationBroker::timerCallback() {
     return;
   }
 
-  auto visualizationItems = std::make_shared<std::vector<std::shared_ptr<VisualizationItem>>>();
-
-  // Iterate over all subscriptions and query the data providers for updates
-  for (const auto& subscription : this->subscriptions) {
-    auto it = this->currentDataProviders.find(subscription->id);
-    if (it != this->currentDataProviders.end()) {
-      auto* provider = it->second->provider.get();
-      if (provider == nullptr) {
-        continue;
-      }
-
-      const auto providerValueType = provider->getValueType();
-      if (providerValueType != subscription->valueType) {
-        jassertfalse;
-        continue;
-      }
-
-      auto data = provider->getData();
-      if (!data.has_value()) {
-        continue;
-      }
-
-      std::visit(
-          [&](auto&& batchValue) {
-            using Batch = RemoveCvRef<decltype(batchValue)>;
-
-            auto batch = std::forward<decltype(batchValue)>(batchValue);
-            if (batch.values.empty()) {
-              return;
-            }
-
-            if (batch.sampleTimestamps.size() != batch.values.size()) {
-              jassertfalse;
-              return;
-            }
-
-            auto sampleTimestampsSharedPtr =
-                std::make_shared<std::vector<int64_t>>(std::move(batch.sampleTimestamps));
-
-            if constexpr (std::is_same_v<Batch, NumericVisualizationData>) {
-              auto dataSharedPtr = std::make_shared<std::vector<double>>(std::move(batch.values));
-
-              visualizationItems->push_back(std::make_shared<VisualizationItem>(VisualizationItem{
-                  .id = subscription->id,
-                  .valueType = VisualizationValueType::doubleValue,
-                  .values = rfl::make_field<"List<double>">(dataSharedPtr),
-                  .sampleTimestamps = sampleTimestampsSharedPtr,
-              }));
-            } else if constexpr (std::is_same_v<Batch, IntegerVisualizationData>) {
-              auto dataSharedPtr = std::make_shared<std::vector<int64_t>>(std::move(batch.values));
-
-              visualizationItems->push_back(std::make_shared<VisualizationItem>(VisualizationItem{
-                  .id = subscription->id,
-                  .valueType = VisualizationValueType::intValue,
-                  .values = rfl::make_field<"List<int>">(dataSharedPtr),
-                  .sampleTimestamps = sampleTimestampsSharedPtr,
-              }));
-            } else if constexpr (std::is_same_v<Batch, StringVisualizationData>) {
-              auto dataSharedPtr =
-                  std::make_shared<std::vector<std::string>>(std::move(batch.values));
-
-              visualizationItems->push_back(std::make_shared<VisualizationItem>(VisualizationItem{
-                  .id = subscription->id,
-                  .valueType = VisualizationValueType::stringValue,
-                  .values = rfl::make_field<"List<String>">(dataSharedPtr),
-                  .sampleTimestamps = sampleTimestampsSharedPtr,
-              }));
-            }
-          },
-          std::move(data.value()));
-    }
+  auto& engine = Engine::getInstance();
+  auto* writer = engine.visualizationComms.getWriter();
+  if (writer == nullptr || engine.audioSessionController == nullptr) {
+    return;
   }
-
-  if (visualizationItems->empty()) {
+  const auto config = engine.audioSessionController->getCurrentAudioProcessingConfigSnapshot();
+  if (!config.has_value()) {
+    recordPublisher.reset();
+    discardPendingProviderData();
     return;
   }
 
-  // Create a VisualizationUpdateEvent message and send it to the UI
-  Response visualizationUpdate = VisualizationUpdateEvent{.items = visualizationItems,
-      .responseBase = ResponseBase{
-          // Usually, the response ID is the same as the ID of the request that was
-          // sent to the engine. In this case, there was no request, so we set it to
-          // -1.
-          .id = -1,
-      }};
-
-  auto responseText = rfl::json::write(visualizationUpdate);
-  Engine::getInstance().comms.send(responseText);
+  std::vector<VisualizationRecordItem> items;
+  for (const auto& subscription : subscriptions) {
+    const auto entry = currentDataProviders.find(subscription->id);
+    if (entry == currentDataProviders.end())
+      continue;
+    auto& provider = *entry->second->provider;
+    if (provider.getValueType() != subscription->valueType) {
+      jassertfalse;
+      continue;
+    }
+    auto data = provider.getData();
+    if (!data.has_value())
+      continue;
+    const auto valid = std::visit(
+        [](const auto& batch) {
+          return !batch.values.empty() && batch.values.size() == batch.sampleTimestamps.size() &&
+                 std::is_sorted(batch.sampleTimestamps.begin(), batch.sampleTimestamps.end());
+        },
+        *data);
+    if (valid)
+      items.push_back(VisualizationRecordItem{subscription->id, std::move(*data)});
+  }
+  recordPublisher.publish(*writer, config->generation, config->config.sampleRate, std::move(items));
 }
 
 void VisualizationBroker::dispose() {
@@ -304,6 +255,7 @@ void VisualizationBroker::dispose() {
   this->dataProviders.clear();
   this->currentDataProviders.clear();
   this->subscriptions.clear();
+  recordPublisher.reset();
   this->outboundUpdateBehavior = OutboundUpdateBehavior::sending;
 }
 

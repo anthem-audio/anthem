@@ -43,7 +43,7 @@ The setup guides below give instructions for setting up Anthem development on yo
 
 ## Architecture
 
-Anthem has two main components, the UI and the engine, which live in separate processes. These processes communicate using a local TCP socket, with messages encoded using JSON.
+Anthem has two main components, the UI and the engine, which live in separate processes on desktop. Commands and replies use a local TCP socket with JSON messages; visualization updates use a separate bounded shared-memory record ring. On web, both channels live in shared WebAssembly memory.
 
 The project model is created in Dart, and augmented using code generation. We generate the following code based on the project model:
 - Serialization and deserialization methods, for saving project files based on the project model

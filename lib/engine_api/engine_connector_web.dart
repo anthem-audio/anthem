@@ -21,6 +21,7 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_emscripten_interface.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:flutter/foundation.dart';
 
 class EngineConnector extends EngineConnectorBase {
@@ -29,9 +30,11 @@ class EngineConnector extends EngineConnectorBase {
     onMessageReceived: (bytes) {
       onReceive(bytes);
     },
+    onPollVisualization: pollVisualizationRecords,
   );
 
   bool _isInitialized = false;
+  bool _disposed = false;
 
   final List<Uint8List> _pendingMessages = [];
 
@@ -43,27 +46,37 @@ class EngineConnector extends EngineConnectorBase {
     super.noHeartbeat = false,
     String? enginePathOverride,
   }) {
-    onInit = engineInterface.init().then((_) {
-      _init();
-      return true;
-    });
+    onInit = engineInterface
+        .init()
+        .then((_) {
+          if (_disposed) return false;
+          final reader = engineInterface.visualizationRingBufferReader;
+          visualizationRecordConsumer = VisualizationRecordConsumer(
+            tryAcquire: reader.tryAcquire,
+            release: reader.release,
+            onRecord: handleVisualizationRecord,
+            availableBytes: () => reader.availableBytes,
+          );
+          _init();
+          return true;
+        })
+        .catchError((Object error) {
+          dispose();
+          return false;
+        });
   }
 
   void _init() {
+    _isInitialized = true;
     for (var message in _pendingMessages) {
       send(message);
     }
     _pendingMessages.clear();
-
-    _isInitialized = true;
-
-    for (var message in _pendingMessages) {
-      send(message);
-    }
   }
 
   @override
   void send(Uint8List bytes) {
+    if (_disposed) return;
     if (!_isInitialized) {
       _pendingMessages.add(bytes);
       return;
@@ -94,5 +107,14 @@ class EngineConnector extends EngineConnectorBase {
   void finalizeVisualizationSharedMemorySetup() {
     // Web does not use an OS shared-memory identifier. Its visualization
     // transport will live directly in shared WebAssembly memory.
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _isInitialized = false;
+    super.dispose();
+    engineInterface.dispose();
+    _pendingMessages.clear();
   }
 }

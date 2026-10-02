@@ -20,12 +20,11 @@
 #include "anthem_native_ipc/shared_memory_region_c_api.h"
 
 #include "anthem_native_ipc/shared_memory_region.h"
+#include "c_api_error.h"
 
 #include <cstddef>
 #include <exception>
 #include <limits>
-#include <memory>
-#include <new>
 #include <stdexcept>
 
 struct AnthemSharedMemoryRegion {
@@ -33,54 +32,6 @@ struct AnthemSharedMemoryRegion {
 };
 
 namespace {
-
-// The Dart-facing mapping API is intentionally called only from the UI thread.
-constexpr char noError[] = "";
-constexpr char unknownError[] = "Unknown native shared memory error.";
-constexpr char errorStorageAllocationFailure[] =
-    "Unable to retain the native shared memory error message.";
-
-std::unique_ptr<char[]> lastErrorStorage;
-const char* lastErrorMessage = noError;
-
-void clearLastError() noexcept {
-  lastErrorStorage.reset();
-  lastErrorMessage = noError;
-}
-
-void setStaticLastError(const char* message) noexcept {
-  lastErrorStorage.reset();
-  lastErrorMessage = message;
-}
-
-void setLastError(const char* message) noexcept {
-  if (message == nullptr) {
-    setStaticLastError(unknownError);
-    return;
-  }
-
-  std::size_t length = 0;
-  while (message[length] != '\0') {
-    ++length;
-  }
-
-  auto* storage = new (std::nothrow) char[length + 1];
-  if (storage == nullptr) {
-    setStaticLastError(errorStorageAllocationFailure);
-    return;
-  }
-
-  for (std::size_t index = 0; index <= length; ++index) {
-    storage[index] = message[index];
-  }
-
-  lastErrorStorage.reset(storage);
-  lastErrorMessage = storage;
-}
-
-void setLastError(const std::exception& error) noexcept {
-  setLastError(error.what());
-}
 
 std::size_t checkedSize(uint64_t size) {
   if (size == 0) {
@@ -95,14 +46,14 @@ std::size_t checkedSize(uint64_t size) {
 }
 
 template <typename Factory> AnthemSharedMemoryRegion* createRegion(Factory&& factory) noexcept {
-  clearLastError();
+  anthem::ipc::cApi::clearLastError();
 
   try {
     return new AnthemSharedMemoryRegion{factory()};
   } catch (const std::exception& error) {
-    setLastError(error);
+    anthem::ipc::cApi::setLastError(error);
   } catch (...) {
-    setLastError("Unknown error while creating a shared memory mapping.");
+    anthem::ipc::cApi::setLastError("Unknown error while creating a shared memory mapping.");
   }
 
   return nullptr;
@@ -152,10 +103,10 @@ const char* anthem_shared_memory_region_get_identifier(
 }
 
 int32_t anthem_shared_memory_region_remove_identifier(AnthemSharedMemoryRegion* region) noexcept {
-  clearLastError();
+  anthem::ipc::cApi::clearLastError();
 
   if (region == nullptr) {
-    setLastError("Shared memory region must not be null.");
+    anthem::ipc::cApi::setLastError("Shared memory region must not be null.");
     return 0;
   }
 
@@ -163,9 +114,10 @@ int32_t anthem_shared_memory_region_remove_identifier(AnthemSharedMemoryRegion* 
     region->region.removeIdentifier();
     return 1;
   } catch (const std::exception& error) {
-    setLastError(error);
+    anthem::ipc::cApi::setLastError(error);
   } catch (...) {
-    setLastError("Unknown error while removing a shared memory region identifier.");
+    anthem::ipc::cApi::setLastError(
+        "Unknown error while removing a shared memory region identifier.");
   }
 
   return 0;
@@ -173,8 +125,4 @@ int32_t anthem_shared_memory_region_remove_identifier(AnthemSharedMemoryRegion* 
 
 void anthem_shared_memory_region_destroy(AnthemSharedMemoryRegion* region) noexcept {
   delete region;
-}
-
-const char* anthem_native_ipc_get_last_error() noexcept {
-  return lastErrorMessage;
 }

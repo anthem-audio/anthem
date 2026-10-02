@@ -29,7 +29,6 @@
 #include <vector>
 
 #ifndef __EMSCRIPTEN__
-#include <anthem_native_ipc/shared_memory_region.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #endif // #ifndef __EMSCRIPTEN__
 
@@ -40,6 +39,7 @@
 #include "modules/core/command_handler.h"
 #include "modules/core/engine_runtime_services.h"
 #include "modules/core/visualization/global_visualization_sources.h"
+#include "modules/core/visualization/visualization_comms.h"
 #include "modules/processing_graph/graph_processor.h"
 #include "modules/render/render_controller.h"
 #include "modules/sequencer/runtime/runtime_sequence_store.h"
@@ -118,10 +118,10 @@ public:
   // such as CPU burden and transport location.
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
 
-#ifndef __EMSCRIPTEN__
-  // The UI creates this mapping and retains the other process-local view.
-  std::unique_ptr<ipc::SharedMemoryRegion> visualizationSharedMemory;
+  // Owns the separate channel for visualization records sent to the UI.
+  VisualizationComms visualizationComms;
 
+#ifndef __EMSCRIPTEN__
   // JUCE class for loading and managing plugins
   juce::AudioPluginFormatManager audioPluginFormatManager;
 #endif // #ifndef __EMSCRIPTEN__
@@ -178,10 +178,6 @@ public:
   // left alone; new or replaced nodes are prepared and reported individually.
   void initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete);
   void publishProcessingGraph();
-private:
-#ifndef __EMSCRIPTEN__
-  std::optional<std::string> initializeVisualizationSharedMemory() noexcept;
-#endif // #ifndef __EMSCRIPTEN__
 };
 
 } // namespace anthem

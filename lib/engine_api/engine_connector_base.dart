@@ -23,6 +23,7 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/length_prefixed_json_decoder.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:logging/logging.dart';
 
 final _log = Logger('engine_connector');
@@ -58,6 +59,41 @@ abstract class EngineConnectorBase {
   final bool noHeartbeat;
 
   final void Function(Response reply)? _onReply;
+
+  void Function(VisualizationRecord record)? onVisualizationRecord;
+  VisualizationRecordConsumer? visualizationRecordConsumer;
+  Timer? _visualizationContinuation;
+  bool _disposed = false;
+
+  void pollVisualizationRecords() {
+    if (_disposed) return;
+    try {
+      visualizationRecordConsumer?.poll();
+      if (visualizationRecordConsumer?.reachedBudget == true &&
+          _visualizationContinuation == null) {
+        _visualizationContinuation = Timer(Duration.zero, () {
+          _visualizationContinuation = null;
+          pollVisualizationRecords();
+        });
+      }
+    } catch (error, stackTrace) {
+      _log.severe('Failed to read visualization records.', error, stackTrace);
+      dispose();
+    }
+  }
+
+  void handleVisualizationRecord(VisualizationRecord record) {
+    try {
+      final callback = onVisualizationRecord;
+      if (callback != null) {
+        callback(record);
+      } else {
+        _onReply?.call(record.update);
+      }
+    } catch (error, stackTrace) {
+      _log.severe('Failed to process visualization update.', error, stackTrace);
+    }
+  }
 
   late final LengthPrefixedJsonDecoder _responseDecoder;
 
@@ -149,6 +185,10 @@ abstract class EngineConnectorBase {
   }
 
   void dispose() {
+    _disposed = true;
+    _visualizationContinuation?.cancel();
+    _visualizationContinuation = null;
+    visualizationRecordConsumer = null;
     // Stop the heartbeat check timer
     _heartbeatCheckTimer?.cancel();
 

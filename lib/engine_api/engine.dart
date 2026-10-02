@@ -743,6 +743,8 @@ class Engine {
       onExit: _onExit,
       enginePathOverride: enginePathOverride,
     );
+    _engineConnector.onVisualizationRecord =
+        project.visualizationProvider.processVisualizationRecord;
 
     final modelInitFuture = project.initializeEngine();
     _consumeFutureError(modelInitFuture);

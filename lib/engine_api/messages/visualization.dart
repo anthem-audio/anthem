@@ -20,7 +20,7 @@
 part of 'messages.dart';
 
 @AnthemEnum()
-enum VisualizationValueType { doubleValue, intValue, stringValue }
+enum VisualizationValueType { doubleValue, intValue }
 
 @AnthemModel(serializable: true, generateCpp: true)
 class VisualizationSubscriptionSpec extends _VisualizationSubscriptionSpec
@@ -106,7 +106,7 @@ abstract class _VisualizationItem {
   String id;
   VisualizationValueType valueType;
 
-  @Union([List<double>, List<int>, List<String>])
+  @Union([List<double>, List<int>])
   Object values;
 
   /// Sample-domain timestamps for the values in this item.

@@ -22,6 +22,23 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
+    'an explicit transport reset clears old jitter and engine-time anchors',
+    () {
+      var clock = Duration.zero;
+      final stats = VisualizationTransportStats(() => clock);
+      stats.recordArrival(Duration.zero);
+      clock = const Duration(milliseconds: 100);
+      stats.recordArrival(const Duration(milliseconds: 10));
+      expect(stats.recommendedDelay, greaterThan(Duration.zero));
+      stats.reset();
+      expect(stats.recommendedDelay, Duration.zero);
+      expect(stats.averageInterval, Duration.zero);
+      expect(stats.averageWallInterval, Duration.zero);
+      stats.recordArrival(const Duration(seconds: 5));
+      expect(stats.recommendedDelay, Duration.zero);
+    },
+  );
+  test(
     'VisualizationTransportStats computes delay and thresholds directly',
     () {
       var wallClock = Duration.zero;
@@ -87,5 +104,10 @@ void main() {
     expect(stats.p95Jitter, Duration.zero);
     expect(stats.bufferMargin, const Duration(milliseconds: 4));
     expect(stats.stallTimeout, const Duration(milliseconds: 120));
+    wallClock += const Duration(milliseconds: 10);
+    stats.recordArrival(const Duration(milliseconds: 15));
+    expect(stats.averageInterval, const Duration(milliseconds: 10));
+    expect(stats.averageWallInterval, const Duration(milliseconds: 10));
+    expect(stats.recommendedDelay, Duration.zero);
   });
 }

@@ -135,10 +135,14 @@ class EngineSocketServer {
               // When the socket is closed, remove the socket from our map.
               socket.done
                   .then((_) {
-                    cleanUpEngine(engineId);
+                    if (identical(_engineConnections[engineId], socket)) {
+                      cleanUpEngine(engineId);
+                    }
                   })
                   .catchError((_) {
-                    cleanUpEngine(engineId);
+                    if (identical(_engineConnections[engineId], socket)) {
+                      cleanUpEngine(engineId);
+                    }
                   });
 
               // If there is any extra data in the first message, capture it and
@@ -153,12 +157,16 @@ class EngineSocketServer {
             }
           },
           onError: (dynamic error) {
-            if (_engineSocketErrorHandlers.containsKey(engineId)) {
+            if (idFound &&
+                identical(_engineConnections[engineId], socket) &&
+                _engineSocketErrorHandlers.containsKey(engineId)) {
               _engineSocketErrorHandlers[engineId]!.call();
             }
           },
           onDone: () {
-            if (_engineSocketCloseHandlers.containsKey(engineId)) {
+            if (idFound &&
+                identical(_engineConnections[engineId], socket) &&
+                _engineSocketCloseHandlers.containsKey(engineId)) {
               _engineSocketCloseHandlers[engineId]!.call();
             }
           },
@@ -176,8 +184,9 @@ class EngineSocketServer {
   /// Runs the given function once the engine with the given ID connects to the
   /// server. If the engine is already connected, calls the handler immediately.
   void onConnect(int engineId, void Function() handler) {
-    if (_engineSocketConnectHandlers.containsKey(engineId)) {
+    if (_engineConnections.containsKey(engineId)) {
       handler();
+      return;
     }
 
     _engineSocketConnectHandlers[engineId] = handler;

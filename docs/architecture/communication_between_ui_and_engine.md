@@ -6,6 +6,110 @@ The messages are defined as classes in Dart. Anthem’s code generator inspects 
 
 The example below walks through adding a new request and response to show how Anthem's IPC system works.
 
+## Visualization transport
+
+Commands, replies, subscription changes, and update-interval requests remain on
+the reliable JSON channel (TCP on desktop, the existing byte rings on web).
+Visualization batches use a separate bounded SPSC record ring. Its single writer
+is the JUCE message thread, and its single reader is the Dart UI isolate.
+Encoding and publishing never happen on the audio thread.
+
+`Engine` owns a `VisualizationComms` instance, which encapsulates the channel's
+storage, ring endpoints, and platform-specific initialization. The
+`VisualizationBroker` manages providers and subscriptions, and its record
+publisher handles encoding and batching. The broker borrows the writer from
+`VisualizationComms`; the web entry points borrow its reader. The endpoints are
+destroyed before their backing storage when the engine is destroyed.
+
+The desktop UI initializes a shared-memory mapping before starting the engine.
+The engine attaches its writer and reports initialization errors through the
+existing ready-check handshake. The UI unlinks the mapping's identifier after
+that handshake and retains its mapping until the reader is closed. Web uses the
+same C++ ring implementation in shared WebAssembly memory; exported functions
+perform acquire/release and expose queue occupancy. Both allocate 16 MiB of usable
+data plus 128 bytes of cursor storage. Usable ring capacity is a power of two so
+32-bit cursor rollover preserves physical offsets.
+
+### Record format, version 1
+
+All numbers are little-endian. Fields are encoded individually, without C++
+struct padding. Each record has this 40-byte header:
+
+| Offset | Field | Encoding |
+| --- | --- | --- |
+| 0 | Magic, `AIV1` | uint32, `0x31564941` |
+| 4 | Format version | uint32, `1` |
+| 8 | Publication attempt sequence | uint32, wrapping |
+| 12 | Audio processing configuration generation | uint64 |
+| 20 | Sample rate | IEEE 754 float64 |
+| 28 | Newest sample timestamp in this batch | int64 |
+| 36 | Item count | uint32 |
+
+Each item begins with three uint32 fields: UTF-8 ID byte length, value type
+(0 = double, 1 = integer), and sample count, followed by the ID bytes. The former
+string value type (2) is unsupported; subscription IDs remain UTF-8 strings.
+Each sample occupies 16 bytes: an int64 timestamp followed by a float64 or int64
+value. Timestamps use the engine's sample counter, are nonnegative, and are
+ordered within each item. The numeric encodings and type IDs are unchanged.
+
+Records are limited to 1 MiB, IDs to 4096 bytes, and each item to 2048 samples.
+Sample rates must be finite, positive, and at most 1 MHz. JavaScript Dart rejects
+integers outside its exact 53-bit range; native and WebAssembly Dart use 64-bit
+integer accessors.
+The decoder validates counts, bounds, value types, UTF-8, timestamp ordering,
+duplicate IDs, and trailing bytes. Incompatible or malformed records stop the
+connector rather than letting it continue with an uninterpretable transport.
+The common fixture in `test/fixtures/visualization_record_v1.hex` verifies the
+C++ encoder and Dart decoder against the same bytes.
+
+### Freshness and ownership
+
+A full ring rejects the entire new record without blocking or modifying the
+reader cursor. The publisher retains one coalesced pending update, merges newer
+values, trims history to the most recent 250 ms (retaining the final value of slow
+streams), and retries even when providers have no new data. If a batch exceeds
+the record limit, it retains numeric peaks and final values before dropping
+items that still cannot fit. Provider replacement, subscription changes, audio
+configuration changes, and render suppression discard pending state.
+
+Dart polls the desktop ring every 8 ms. Web polls on Flutter frames, with a timer
+fallback when frames are absent. Each pass has a 256-record / 2 ms budget, with
+a yielded continuation when necessary; a single decode is bounded by the record
+size limit. A record is decoded into owned Dart values before release, including
+on errors. Ring-backed views must never escape acquisition into subscriptions.
+The web reader obtains the current Emscripten heap for each acquisition, so heap
+growth does not reuse a stale view.
+
+The consumer coalesces recent samples before notifying the visualization
+provider. It detects sequence gaps, session changes, and pauses longer than
+250 ms. On recovery, timing estimates and old adaptive history are reset, while
+UI overrides and slowly changing unbuffered latest values survive. Adaptive
+render cursors also fast-forward if they fall more than 250 ms beyond their
+target delay behind the newest sample. Ordinary jitter still uses adaptive
+buffering, and meter peaks in the retained history remain available.
+
+Publisher counters track published records, rejected writes, and oversized
+updates. Consumer counters track records/bytes read, skipped records/samples,
+discontinuities, queue byte high-water, and maximum drain duration. These are
+available for debugger inspection without per-message logging. Publish intervals
+are validated and capped at 240 Hz; the UI requests the refresh rate of its own
+display. Stop, startup cancellation, process exit, and disposal close the reader
+before releasing storage and cancel poll continuations, timers, and web tickers.
+
+These changes affect runtime IPC only and do not change project files.
+
+### Transport verification
+
+Engine unit tests cover cursor rollover, concurrent access, full-ring retry,
+provider removal, and peak retention when compacting oversized records. Native
+IPC package tests also exercise a child process and reader/mapping cleanup. The
+desktop engine integration test sends the common fixture through the actual
+writer and restarts the process with the same engine ID, without an audio device.
+
+Dart transport tests cover
+malformed records, bounded burst draining, recent peaks, sequence rollover,
+pauses, and audio generation changes.
+
 ## Adding a new request and response
 
 `messages.dart` in `lib/engine_api/messages` contains base `Request` and `Response` classes. Note that these names merely indicate the direction of the message flow, in that requests are always sent from the UI to the engine and responses are always sent from the engine to the UI. Some requests do not expect a response, and some responses are unprompted.
