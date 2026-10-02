@@ -26,6 +26,7 @@ import 'package:args/command_runner.dart';
 
 import '../cli_helpers.dart';
 import '../integration_test/verify_failure_artifacts.dart';
+import '../integration_test/test_plugin_manifest.dart';
 
 /// Desktop app/engine scenarios, independent from the fast Flutter test suite.
 class IntegrationTestCommand extends Command<void> {
@@ -40,11 +41,16 @@ class IntegrationTestCommand extends Command<void> {
       ..addOption(
         'device',
         abbr: 'd',
-        help: 'Desktop device (linux or macos); defaults to the host.',
+        help:
+            'Desktop device (linux, macos, or windows); defaults to the host.',
       )
       ..addOption(
         'engine',
         help: 'Explicit existing engine executable. Otherwise build the debug engine.',
+      )
+      ..addOption(
+        'test-plugin-manifest',
+        help: 'Existing test-plugins.json from engine build-test-plugins. Otherwise build debug fixtures when needed.',
       )
       ..addOption(
         'target',
@@ -74,10 +80,10 @@ class IntegrationTestCommand extends Command<void> {
       throw UsageException('--seed must be a nonnegative integer.', usage);
     }
     final device = argResults!['device'] as String? ?? Platform.operatingSystem;
-    if (!['linux', 'macos'].contains(device) ||
+    if (!['linux', 'macos', 'windows'].contains(device) ||
         device != Platform.operatingSystem) {
       throw UsageException(
-        'This suite requires a linux or macos desktop device on the current host.',
+        'This suite requires a linux, macos, or windows desktop device on the current host.',
         usage,
       );
     }
@@ -114,6 +120,12 @@ class IntegrationTestCommand extends Command<void> {
         usage,
       );
     }
+    final needsFixtures = testFiles.any(
+      (file) => [
+        'startup_test.dart',
+        'plugin_test.dart',
+      ].contains(file.uri.pathSegments.last),
+    );
     final integrationRoot = Directory.fromUri(
       root.uri.resolve('integration_test'),
     );
@@ -176,7 +188,7 @@ class IntegrationTestCommand extends Command<void> {
       // Deliberately never select the copy in assets/engine: it can be stale.
       final engine = File(
         configured ??
-            '${root.path}/engine/build/AnthemEngine_artefacts/Debug/AnthemEngine',
+            '${root.path}/engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
       ).absolute;
       if (!engine.existsSync()) {
         throw UsageException(
@@ -184,9 +196,49 @@ class IntegrationTestCommand extends Command<void> {
           usage,
         );
       }
-      final version = await Process.run(flutter, [
-        '--version',
-      ], workingDirectory: root.path);
+      File? pluginManifest;
+      TestPluginManifest? fixtures;
+      if (needsFixtures) {
+        final suppliedManifest = argResults!['test-plugin-manifest'] as String?;
+        if (suppliedManifest == null) {
+          if (await _run(
+                Platform.resolvedExecutable,
+                [
+                  'run',
+                  'anthem:cli',
+                  'engine',
+                  'build-test-plugins',
+                  '--debug',
+                  '--jobs',
+                  '2',
+                ],
+                root,
+                transcript,
+              ) !=
+              0) {
+            exitCode = 1;
+            return;
+          }
+        }
+        pluginManifest = File(
+          suppliedManifest ??
+              '${root.path}/engine/build_test_plugins/test-plugins.json',
+        ).absolute;
+        try {
+          fixtures = TestPluginManifest.read(pluginManifest);
+        } catch (error) {
+          throw UsageException(
+            'Cannot use test plugin fixtures: $error',
+            usage,
+          );
+        }
+      }
+      final version = await Process.run(
+        flutter,
+        ['--version'],
+        workingDirectory: root.path,
+        runInShell: Platform.isWindows,
+      );
       if (testFailureHandling) {
         await File('${output.path}/verification.json')
             .writeAsString(jsonEncode({'status': 'pending', 'runId': runId}));
@@ -198,6 +250,8 @@ class IntegrationTestCommand extends Command<void> {
           'target': target.path,
           'testFiles': testFiles.map((file) => file.path).toList(),
           'engine': engine.path,
+          'testPluginManifest': pluginManifest?.path,
+          'testPlugins': fixtures?.toJson(),
           'audio': false,
           'orderingSeed': seed,
           'testFailureHandling': testFailureHandling,
@@ -222,6 +276,8 @@ class IntegrationTestCommand extends Command<void> {
             '--dart-define=ANTHEM_TEST_ENGINE=${engine.path}',
             '--dart-define=ANTHEM_TEST_ARTIFACTS=${output.path}',
             '--dart-define=ANTHEM_TEST_RUN_ID=$runId',
+            if (pluginManifest != null)
+              '--dart-define=ANTHEM_TEST_PLUGIN_MANIFEST=${pluginManifest.path}',
             if (seed != null) '--test-randomize-ordering-seed=$seed',
           ],
           root,
@@ -236,6 +292,7 @@ class IntegrationTestCommand extends Command<void> {
             output,
             testExitCode: exitCode,
             runId: runId,
+            includeUnresponsiveEngine: !Platform.isWindows,
           );
           print(
             'Intentional failures, screenshots, snapshots, and engine cleanup verified.',
@@ -268,6 +325,9 @@ class IntegrationTestCommand extends Command<void> {
       executable,
       arguments,
       workingDirectory: root.path,
+      runInShell:
+          Platform.isWindows &&
+          (executable.endsWith('.bat') || executable.endsWith('.cmd')),
     );
     final output = process.stdout.listen((data) {
       stdout.add(data);

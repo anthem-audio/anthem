@@ -114,6 +114,10 @@ endif()
 
 add_subdirectory(include)          # Third-party libraries excluding JUCE
 add_subdirectory(include/JUCE)     # JUCE (this is our fork with WASM support)
+option(ANTHEM_BUILD_TEST_PLUGINS "Build controlled VST3 integration-test fixtures" OFF)
+if (ANTHEM_BUILD_TEST_PLUGINS AND NOT IS_WASM)
+  add_subdirectory(test_plugins)
+endif()
 add_subdirectory(
   ${PROJECT_SOURCE_DIR}/../native/anthem_native_ipc
   ${CMAKE_CURRENT_BINARY_DIR}/anthem_native_ipc

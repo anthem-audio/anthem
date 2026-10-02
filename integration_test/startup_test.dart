@@ -18,7 +18,6 @@
 */
 
 import 'dart:async';
-import 'dart:io';
 
 import 'package:anthem/app.dart';
 import 'package:anthem/engine_api/engine.dart';
@@ -35,6 +34,7 @@ import 'package:provider/provider.dart';
 
 import 'support/app_test_session.dart';
 import 'support/waits.dart';
+import 'support/test_plugins.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -186,19 +186,14 @@ void main() {
     },
   );
 
-  testAppScenario('startup timeout kills and reaps an unconnected child', (
+  testAppScenario('startup timeout closes an unconnected child', (
     tester,
   ) async {
-    final executable = File('$configuredArtifacts/unconnected-engine.sh');
-    await executable.parent.create(recursive: true);
-    // exec preserves the PID: this child never opens the IPC socket.
-    await executable.writeAsString('#!/bin/sh\nexec sleep 60\n');
-    final chmod = await Process.run('chmod', ['+x', executable.path]);
-    expect(chmod.exitCode, 0);
+    final fixtures = loadTestPlugins();
     final session = AppTestSession(
       tester,
       name: 'startup-timeout',
-      engineExecutable: executable.path,
+      engineExecutable: fixtures.unconnectedEngine,
       startupTimeout: const Duration(seconds: 10),
     );
     await expectLater(

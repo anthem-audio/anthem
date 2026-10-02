@@ -127,6 +127,24 @@ void main() {
   test('rejects a probe process that passed', () async {
     await expectLater(verify(exitCode: 0), throwsStateError);
   });
+  test(
+    'verifies Windows cases without the unsupported suspension probe',
+    () async {
+      await Directory('${directory.path}/unresponsive-engine-probe')
+          .delete(recursive: true);
+      await verifyFailureArtifacts(
+        directory,
+        testExitCode: 1,
+        runId: 'current-run',
+        includeUnresponsiveEngine: false,
+      );
+      final result = jsonDecode(
+        await File('${directory.path}/verification.json').readAsString(),
+      ) as Map;
+      expect(result['verified'], hasLength(4));
+      expect(result['verified'], isNot(contains('unresponsive-engine-probe')));
+    },
+  );
   test('rejects stale artifacts after a compile or launch failure', () async {
     await expectLater(verify(runId: 'new-run'), throwsStateError);
   });

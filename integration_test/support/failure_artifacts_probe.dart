@@ -111,7 +111,7 @@ void main() {
       throw StateError('Could not pause the probe engine.');
     }
     throw StateError('Intentional unresponsive engine probe');
-  });
+  }, skip: Platform.isWindows); // Windows does not support SIGSTOP/SIGCONT.
   testAppScenario('startup failure records the absence of a frame', (
     tester,
   ) async {

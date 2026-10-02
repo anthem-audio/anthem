@@ -50,10 +50,15 @@ jobs:
         if: matrix.arch == 'x64'
         run: sudo apt install -y xvfb
 
+      - name: Build integration test plugins
+        if: matrix.arch == 'x64'
+        timeout-minutes: 15
+        run: dart run anthem:cli engine build-test-plugins --release --jobs 2
+
       - name: Desktop integration scenarios
         if: matrix.arch == 'x64'
         timeout-minutes: 20
-        run: xvfb-run -a -s "-screen 0 1280x800x24" dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --seed 42 --output build/integration_test/ci
+        run: xvfb-run -a -s "-screen 0 1280x800x24" dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --test-plugin-manifest engine/build_test_plugins_release/test-plugins.json --seed 42 --output build/integration_test/ci
 
       - name: Test integration failure handling
         if: matrix.arch == 'x64'
@@ -105,10 +110,15 @@ jobs:
           # If a wildcard pattern is used, the path hierarchy will start with the first wildcard pattern
           path: build/macos/Build/Products/Release/*.app
 
+      - name: Build integration test plugins
+        if: matrix.arch == 'arm64'
+        timeout-minutes: 15
+        run: dart run anthem:cli engine build-test-plugins --release --jobs 2
+
       - name: Desktop integration scenarios
         if: matrix.arch == 'arm64'
         timeout-minutes: 20
-        run: dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --seed 42 --output build/integration_test/ci
+        run: dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --test-plugin-manifest engine/build_test_plugins_release/test-plugins.json --seed 42 --output build/integration_test/ci
 
       - name: Test integration failure handling
         if: matrix.arch == 'arm64'
@@ -180,6 +190,29 @@ jobs:
         with:
           name: anthem-windows-${{ matrix.arch }}-installer
           path: build/windows/${{ matrix.arch }}/installer/*.exe
+
+      - name: Build integration test plugins
+        if: matrix.arch == 'x64'
+        timeout-minutes: 15
+        run: dart run anthem:cli engine build-test-plugins --release --jobs 2
+
+      - name: Desktop integration scenarios
+        if: matrix.arch == 'x64'
+        timeout-minutes: 20
+        run: dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine.exe --test-plugin-manifest engine/build_test_plugins_release/test-plugins.json --seed 42 --output build/integration_test/ci
+
+      - name: Test integration failure handling
+        if: matrix.arch == 'x64'
+        timeout-minutes: 15
+        run: dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine.exe --test-failure-handling --output build/integration_test/ci/failure-probes
+
+      - name: Upload integration diagnostics
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-windows-${{ matrix.arch }}
+          path: build/integration_test/ci
+          if-no-files-found: warn
 
   build-wasm:
     runs-on: ubuntu-latest

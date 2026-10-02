@@ -85,7 +85,7 @@ private:
       rejected = true;
     }
     expect(rejected);
-    expectEquals(storage[0], std::uint32_t{0});
+    expectEquals(static_cast<std::uint64_t>(storage[0]), std::uint64_t{0});
     expect(!reader.hasAcquiredRecord());
   }
 

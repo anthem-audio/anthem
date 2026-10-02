@@ -11,7 +11,9 @@ dart run anthem:cli integration-test
 ```
 
 Run code generation after model changes, as in the setup guide. The runner
-builds the debug engine and chooses the host desktop device (`linux` or `macos`).
+builds the debug engine and chooses the host desktop device (`linux`, `macos`,
+or `windows`). It also builds the controlled VST3 fixtures when the selected
+scenarios need them. All build outputs remain in ignored directories.
 To use an engine you have already built:
 
 ```sh
@@ -77,7 +79,64 @@ The selection override is restored and temporary files are removed after
 session cleanup, including on failure. A saved project copy is retained in the
 artifact directory for diagnostics; user project and settings locations are
 not used. Native dialog UI, third-party plugin state, and audio output are
-outside this coverage.
+outside the original persistence scenario's coverage.
+
+`plugin_test.dart` exercises real source-built JUCE VST3 modules through the
+application's Add Device workflow, substituting only the selected file path.
+It loads both an instrument and an effect, checks their real initialization,
+discovered audio/MIDI ports and parameters, and checks the rendered rack. It
+removes each device, verifies the engine model no longer contains its node,
+then loads another fresh instance in the same application session.
+
+The plugin persistence scenario changes Gain and Invert through Anthem's
+parameter commands, then saves, closes, and reopens the project with a fresh
+engine. The fixtures also serialize a revision counter that is not a parameter:
+cycling Gain back to its default still changes this opaque state. Save must
+collect current state from the actual plugins; reopened instances must return
+the same state and report the expected restored parameter values to Flutter.
+The test preserves device/node identities and retains `saved-plugin-project.anthem`.
+
+These scenarios start an offline processing session at 48 kHz, 128 samples per
+block, and two output channels. This supplies real plugin preparation without
+opening a hardware audio device. They do not yet assert rendered audio samples
+or native plugin editor visibility, interaction, or DPI behavior.
+
+## Building and selecting test plugins
+
+The runner automatically builds debug fixtures when running `startup_test.dart`
+or `plugin_test.dart`. The startup timeout uses a portable native helper that
+deliberately never connects to the engine socket. To build fixtures separately:
+
+```sh
+dart run anthem:cli engine build-test-plugins --debug --jobs 2
+```
+
+This builds the instrument, effect, and helper using the repository's pinned
+JUCE submodule, and writes `engine/build_test_plugins/test-plugins.json` with
+explicit paths. The plugins are not installed into system plugin directories
+or included in Anthem's distribution. The command also supports `--release`
+(`engine/build_test_plugins_release/`) and Windows `--clang` (a separate build
+directory). Manifests reject missing fixtures and builds from another OS.
+
+Run just plugin coverage on Windows, using the default native MSVC toolchain:
+
+```powershell
+dart run anthem:cli integration-test --device windows --target integration_test/plugin_test.dart
+```
+
+To reuse an engine and already-built fixtures on Windows:
+
+```powershell
+dart run anthem:cli integration-test --device windows --engine engine/build/AnthemEngine_artefacts/Debug/AnthemEngine.exe --test-plugin-manifest engine/build_test_plugins/test-plugins.json --target integration_test/plugin_test.dart
+```
+
+The same options apply to Linux/macOS with the host device and engine path.
+The runner records the selected manifest and plugin paths in `run.json`.
+Explicit Windows engine paths launch the actual child executable, allowing
+cleanup to await its exit without tracking a PowerShell wrapper instead.
+
+See [test plugin sources and behavior](../engine/test_plugins/README.md) when
+adding controlled reproductions of future host bugs.
 
 The harness initializes `IntegrationTestWidgetsFlutterBinding` before shared
 application startup. Every session registers teardown before startup, uses
@@ -110,8 +169,8 @@ the existing painter and geometry tests cover that responsibility.
 
 Artifacts currently include the runner transcript, Flutter version and engine
 path, application/engine logs, session IDs/PIDs/exit codes, canvas bounds, and
-engine model snapshots. Linux/Xvfb and macOS build jobs upload these even on
-failure. The note scenario also saves `drawn.json`, `resized.json`, `undone.json`,
+engine model snapshots. Linux/Xvfb, macOS, and Windows build jobs upload these
+even on failure. The note scenario also saves `drawn.json`, `resized.json`, `undone.json`,
 and `redone.json` with viewport diagnostics and engine note state. Persistence
 artifacts include
 `saved-project.anthem`, `saved.json`, `closed-before-reopen.json`, and
@@ -173,15 +232,20 @@ underlying Flutter process must exit nonzero; the command returns success only a
 verifying the original failures, required screenshots and snapshots, and actual
 child exits in `stopped.json`. The probes exercise a failed note assertion with
 held input and a broken diagnostic collector, framework and unawaited errors,
-an unresponsive engine, and startup without a frame. A unique run ID rejects stale
+an unresponsive engine, and startup without a frame. Windows runs the four other
+probes and explicitly skips suspension: Dart does not support SIGSTOP/SIGCONT
+there. A unique run ID rejects stale
 artifacts when reusing an output directory. `verification.json` records the
 verified cases.
 
 The Build workflow runs the normal suite and failure handling checks in the Linux
-x64 and macOS arm64 jobs, using the **release engine already built by the job**.
+x64, macOS arm64, and Windows x64 jobs, using the **release engine already built
+by the job**. Each selected job builds release plugin fixtures once and supplies
+their manifest to the normal suite.
 The separate desktop smoke workflow has been removed. Flutter integration tests
 still compile a debug test application; the release UI bundle is built once and
 uploaded before tests. Xvfb supplies Linux's display. Integration diagnostics
 are uploaded with `always()` under architecture-specific artifact names.
-Windows and the remaining desktop architectures retain their existing builds;
-expanding integration coverage to them is a later task.
+The remaining desktop architectures retain their existing builds; expanding
+integration CI to them is a later task. Linux execution is verified locally;
+macOS and Windows execution require their native runners.

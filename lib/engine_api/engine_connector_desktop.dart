@@ -212,27 +212,16 @@ class EngineConnector extends EngineConnectorBase {
     };
 
     try {
-      // If we're in debug mode, start with a command line window so we can see logging
-      if (kDebugMode) {
-        if (Platform.isWindows) {
-          _setEngineProcess(
-            await Process.start('powershell', [
-              '-Command',
-              '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
-            ], environment: engineEnvironment),
-          );
-        } else {
-          _setEngineProcess(
-            await Process.start(
-              anthemPathStr,
-              [],
-              // There's no singular way to start in a shell window on Linux, so
-              // this mirrors the engine output to our standard out.
-              mode: ProcessStartMode.inheritStdio,
-              environment: engineEnvironment,
-            ),
-          );
-        }
+      // Keep the interactive debug console for ordinary Windows development.
+      // An explicit executable must be the owned child, so tests can confirm
+      // its PID and exit without leaving a child of PowerShell behind.
+      if (kDebugMode && Platform.isWindows && enginePathOverride == null) {
+        _setEngineProcess(
+          await Process.start('powershell', [
+            '-Command',
+            '& {Start-Process -FilePath "$anthemPathStr" -Wait}',
+          ], environment: engineEnvironment),
+        );
       } else {
         _setEngineProcess(
           await Process.start(
@@ -241,7 +230,7 @@ class EngineConnector extends EngineConnectorBase {
 
             // I'm not sure why this is necessary, but the process doesn't start
             // correctly without it on Windows without this.
-            mode: Platform.isWindows
+            mode: kDebugMode || Platform.isWindows
                 ? ProcessStartMode.inheritStdio
                 : ProcessStartMode.normal,
             environment: engineEnvironment,

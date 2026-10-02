@@ -53,7 +53,11 @@ final _scenarioSessionsKey = Object();
 /// Captures failures while the app is still mounted, then preserves the error.
 /// Framework errors retain the binding's reporting path; a pending error at the
 /// end of the scenario is rethrown instead of being silently consumed.
-void testAppScenario(String description, WidgetTesterCallback callback) {
+void testAppScenario(
+  String description,
+  WidgetTesterCallback callback, {
+  bool skip = false,
+}) {
   testWidgets(description, (tester) async {
     final sessions = <AppTestSession>[];
     await runZoned(() async {
@@ -69,7 +73,7 @@ void testAppScenario(String description, WidgetTesterCallback callback) {
         Error.throwWithStackTrace(error, stack);
       }
     }, zoneValues: {_scenarioSessionsKey: sessions});
-  });
+  }, skip: skip);
 }
 
 /// Owns cleanup before any startup work. Files and logs stay in the run's

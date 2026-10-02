@@ -27,6 +27,7 @@ Future<void> verifyFailureArtifacts(
   Directory directory, {
   required int testExitCode,
   required String runId,
+  bool includeUnresponsiveEngine = true,
 }) async {
   void require(bool condition, String message) {
     if (!condition) throw StateError(message);
@@ -37,7 +38,8 @@ Future<void> verifyFailureArtifacts(
     'assertion-probe': 'Intentional assertion probe',
     'framework-probe': 'Intentional framework probe',
     'unawaited-probe': 'Intentional unawaited probe',
-    'unresponsive-engine-probe': 'Intentional unresponsive engine probe',
+    if (includeUnresponsiveEngine)
+      'unresponsive-engine-probe': 'Intentional unresponsive engine probe',
     'startup-failure-probe': 'Engine startup failed',
   };
   final verified = <String>[];

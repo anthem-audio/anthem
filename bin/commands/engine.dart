@@ -27,6 +27,7 @@ import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
 import '../cli_helpers.dart';
+import '../integration_test/test_plugin_manifest.dart';
 
 class EngineCommand extends Command<dynamic> {
   @override
@@ -38,6 +39,7 @@ class EngineCommand extends Command<dynamic> {
 
   EngineCommand() {
     addSubcommand(_BuildEngineCommand());
+    addSubcommand(_BuildTestPluginsCommand());
     addSubcommand(_BuildLameCommand());
     addSubcommand(_CleanEngineCommand());
     addSubcommand(_FormatEngineCommand());
@@ -258,6 +260,87 @@ Some things to keep in mind:
   }
 }
 
+class _BuildTestPluginsCommand extends Command<void> {
+  @override
+  String get name => 'build-test-plugins';
+
+  @override
+  String get description =>
+      'Builds controlled VST3 fixtures for desktop integration tests.';
+
+  _BuildTestPluginsCommand() {
+    argParser
+      ..addFlag(
+        'release',
+        negatable: false,
+        help: 'Build release fixtures; otherwise use debug.',
+      )
+      ..addFlag(
+        'debug',
+        negatable: false,
+        help: 'Build debug fixtures (the default).',
+      )
+      ..addOption(
+        'jobs',
+        abbr: 'j',
+        help: 'Maximum parallel CMake build jobs.',
+      );
+    if (Platform.isWindows) {
+      argParser.addFlag(
+        'clang',
+        negatable: false,
+        help: 'Use Clang and Ninja instead of MSVC.',
+      );
+    }
+  }
+
+  @override
+  Future<void> run() async {
+    final release = argResults!['release'] as bool;
+    if (release && argResults!['debug'] == true) {
+      throw UsageException('Choose either --debug or --release.', usage);
+    }
+    final useClang = Platform.isWindows && argResults!['clang'] == true;
+    final buildDirectoryName = _getBuildDirectoryName(
+      wasm: false,
+      release: release,
+      addressSanitizer: false,
+      useClang: useClang,
+    ).replaceFirst('build', 'build_test_plugins');
+    await _buildCmakeTarget(
+      'AnthemTestPlugins',
+      debug: !release,
+      useClang: useClang,
+      buildDirectoryName: buildDirectoryName,
+      jobs: _parseJobsOption(argResults!['jobs'] as String?),
+      configurationArguments: ['-DANTHEM_BUILD_TEST_PLUGINS=ON'],
+    );
+    final root = getPackageRootPath().resolve('engine/$buildDirectoryName/');
+    final configuration = release ? 'Release' : 'Debug';
+    String pluginPath(String name) => root
+        .resolve(
+          'test_plugins/${name}_artefacts/$configuration/VST3/$name.vst3',
+        )
+        .toFilePath(windows: Platform.isWindows);
+    final manifest = TestPluginManifest(
+      platform: Platform.operatingSystem,
+      instrument: pluginPath('AnthemTestInstrument'),
+      effect: pluginPath('AnthemTestEffect'),
+      unconnectedEngine: root
+          .resolve(
+            'test_plugins/helpers/$configuration/AnthemUnconnectedTestEngine${Platform.isWindows ? '.exe' : ''}',
+          )
+          .toFilePath(windows: Platform.isWindows),
+    );
+    final file = File.fromUri(root.resolve('test-plugins.json'));
+    await file.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(manifest.toJson()),
+    );
+    TestPluginManifest.read(file);
+    print('Test plugin manifest: ${file.path}');
+  }
+}
+
 class _BuildLameCommand extends Command<dynamic> {
   @override
   String get name => 'build-lame';
@@ -439,7 +522,10 @@ class _FormatEngineCommand extends Command<dynamic> {
     final clangFormatStyle = packageRootPath
         .resolve('engine/.clang-format')
         .toFilePath(windows: Platform.isWindows);
-    final files = _getOwnedCppFiles(includeNativeIpc: true);
+    final files = _getOwnedCppFiles(
+      includeNativeIpc: true,
+      includeTestPlugins: true,
+    );
 
     if (files.isEmpty) {
       print(Colorize('No C++ files found, nothing to format.')..lightGreen());
@@ -713,6 +799,7 @@ Future<void> _buildCmakeTarget(
   bool skipConfiguration = false,
   String buildDirectoryName = 'build',
   int? jobs,
+  List<String> configurationArguments = const [],
 }) async {
   if (addressSanitizer && !wasm) {
     print(
@@ -747,6 +834,7 @@ Future<void> _buildCmakeTarget(
       debug: debug,
       useClang: useClang,
       buildDirectoryName: buildDirectoryName,
+      configurationArguments: configurationArguments,
     );
   }
 
@@ -815,6 +903,7 @@ Future<void> _configureCmakeBuild({
   bool debug = false,
   bool useClang = false,
   String buildDirectoryName = 'build',
+  List<String> configurationArguments = const [],
 }) async {
   final packageRootPath = getPackageRootPath();
   final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');
@@ -873,6 +962,7 @@ Future<void> _configureCmakeBuild({
       r'-DCMAKE_C_FLAGS="/fsanitize=address"',
       r'-DCMAKE_CXX_FLAGS="/fsanitize=address"',
     ],
+    ...configurationArguments,
     '..',
   ];
 
@@ -928,6 +1018,7 @@ bool _usesSingleConfigBuild({required bool wasm, required bool useClang}) {
 List<File> _getOwnedCppFiles({
   bool translationUnitsOnly = false,
   bool includeNativeIpc = false,
+  bool includeTestPlugins = false,
 }) {
   final packageRootPath = getPackageRootPath();
   final fileExtensions = translationUnitsOnly ? ['.cpp'] : ['.cpp', '.h'];
@@ -936,6 +1027,8 @@ List<File> _getOwnedCppFiles({
   final roots = [
     Directory.fromUri(packageRootPath.resolve('engine/src/')),
     Directory.fromUri(packageRootPath.resolve('engine/test/')),
+    if (includeTestPlugins)
+      Directory.fromUri(packageRootPath.resolve('engine/test_plugins/')),
     if (includeNativeIpc)
       Directory.fromUri(
         packageRootPath.resolve('native/anthem_native_ipc/include/'),

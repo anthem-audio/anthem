@@ -131,13 +131,17 @@ List<String> _getExecutableCandidateNames(String executableName) {
   if (!Platform.isWindows) return [executableName];
 
   final lowerExecutableName = executableName.toLowerCase();
-  final candidateNames = <String>[executableName];
-
-  if (!lowerExecutableName.endsWith('.exe')) {
-    candidateNames.add('$executableName.exe');
+  if (['.exe', '.bat', '.cmd'].any(lowerExecutableName.endsWith)) {
+    return [executableName];
   }
-
-  return candidateNames;
+  // Flutter includes a Unix shell script with the same bare name. Prefer the
+  // native executable or Windows launcher before considering that file.
+  return [
+    '$executableName.exe',
+    '$executableName.bat',
+    '$executableName.cmd',
+    executableName,
+  ];
 }
 
 String _joinPath(String directory, String name) {
