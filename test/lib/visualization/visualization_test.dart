@@ -120,29 +120,29 @@ void main() {
     );
   }
 
-  VisualizationValueType inferVisualizationValueType(List<Object> values) {
-    if (values.every((value) => value is double)) {
+  VisualizationValueType inferVisualizationValueType<T extends num>() {
+    // int and double runtime checks overlap in JavaScript. Use the fixture's
+    // static element type to keep its declared wire type unambiguous.
+    if (T == double) {
       return VisualizationValueType.doubleValue;
     }
-    if (values.every((value) => value is int)) {
+    if (T == int) {
       return VisualizationValueType.intValue;
     }
-    throw ArgumentError(
-      'Could not infer a visualization value type for ${values.map((value) => value.runtimeType).toList()}.',
-    );
+    throw ArgumentError('Could not infer a visualization value type for $T.');
   }
 
-  VisualizationItem testVisualizationItem({
+  VisualizationItem testVisualizationItem<T extends num>({
     required String id,
-    required List<Object> values,
+    required List<T> values,
     VisualizationValueType? valueType,
     List<int>? sampleTimestamps,
     int startSample = 1,
   }) {
     return VisualizationItem(
       id: id,
-      valueType: valueType ?? inferVisualizationValueType(values),
-      values: values,
+      valueType: valueType ?? inferVisualizationValueType<T>(),
+      values: T == int ? values as List<int> : values as List<double>,
       sampleTimestamps:
           sampleTimestamps ??
           List<int>.generate(values.length, (index) => startSample + index),

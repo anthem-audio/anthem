@@ -158,6 +158,19 @@ jobs:
       - name: Build engine
         run: dart run anthem:cli engine build --release --wasm
 
+      - name: Run browser unit and widget tests
+        timeout-minutes: 20
+        run: dart run anthem:cli flutter_test --web --widgets --reporter github
+
+      - name: Upload browser test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-test-results
+          path: .dart_tool/web-tests/
+          include-hidden-files: true
+          if-no-files-found: ignore
+
       - name: Build Flutter
         run: flutter build web --verbose --release --wasm
 

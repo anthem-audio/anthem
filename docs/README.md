@@ -17,6 +17,7 @@
 - [Setup on macOS](./setup_macos.md)
 - [Setup on Windows](./setup_windows.md)
 - [Setup for web development](./setup_web.md)
+- [Testing](./testing.md)
 
 ## Introduction
 

@@ -106,9 +106,18 @@ IPC package tests also exercise a child process and reader/mapping cleanup. The
 desktop engine integration test sends the common fixture through the actual
 writer and restarts the process with the same engine ID, without an audio device.
 
-Dart transport tests cover
+The web CI job tests the browser reader and decoder with both Dart compilers:
+
+```bash
+dart run anthem:cli flutter_test --web
+```
+
+The browser tests cover zero-copy acquisition, release on invalid views, heap
+replacement, disposal, and owned decoded values. Dart transport tests cover
 malformed records, bounded burst draining, recent peaks, sequence rollover,
 pauses, and audio generation changes.
+
+See [Testing](../testing.md) for browser suite selection and widget test coverage.
 
 ## Adding a new request and response
 

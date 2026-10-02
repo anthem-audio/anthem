@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,8 @@
 */
 
 // ignore_for_file: avoid_print
+
+import 'dart:io';
 
 import 'package:args/command_runner.dart';
 
@@ -45,5 +47,6 @@ void main(List<String> args) async {
     await runner.run(args);
   } on UsageException catch (e) {
     print(e);
+    exitCode = 64;
   }
 }

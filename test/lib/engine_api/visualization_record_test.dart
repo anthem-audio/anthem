@@ -18,21 +18,24 @@
 */
 
 import 'dart:collection';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/engine_api/visualization_record.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
+
+import '../../fixtures/visualization_record_fixture.dart';
 
 Uint8List fixture() {
-  final hex = File(
-    'test/fixtures/visualization_record_v1.hex',
-  ).readAsStringSync().trim();
-  return Uint8List.fromList([
-    for (var i = 0; i < hex.length; i += 2)
-      int.parse(hex.substring(i, i + 2), radix: 16),
-  ]);
+  return visualizationRecordFixture();
+}
+
+// The test records contain nonnegative safe integers. Write the halves because
+// dart2js does not implement ByteData's 64-bit accessors.
+void setRecordInteger(ByteData data, int offset, int value) {
+  assert(value >= 0 && value <= 9007199254740991);
+  data.setUint32(offset, value & 0xFFFFFFFF, Endian.little);
+  data.setUint32(offset + 4, value ~/ 0x100000000, Endian.little);
 }
 
 Uint8List numericRecord(
@@ -45,15 +48,15 @@ Uint8List numericRecord(
   final data = ByteData.sublistView(bytes);
   bytes.setRange(0, 40, fixture().sublist(0, 40));
   data.setUint32(8, sequence, Endian.little);
-  data.setUint64(12, generation, Endian.little);
-  data.setInt64(28, timestamps.last, Endian.little);
+  setRecordInteger(data, 12, generation);
+  setRecordInteger(data, 28, timestamps.last);
   data.setUint32(36, 1, Endian.little);
   data.setUint32(40, 1, Endian.little);
   data.setUint32(44, 0, Endian.little);
   data.setUint32(48, timestamps.length, Endian.little);
   bytes[52] = 100;
   for (var i = 0; i < timestamps.length; i++) {
-    data.setInt64(53 + i * 16, timestamps[i], Endian.little);
+    setRecordInteger(data, 53 + i * 16, timestamps[i]);
     data.setFloat64(61 + i * 16, values[i], Endian.little);
   }
   return bytes;

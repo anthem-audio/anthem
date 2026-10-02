@@ -1,0 +1,26 @@
+# Standalone Dart tests run in Chrome with both dart2js and dart2wasm.
+dart:
+  - test/lib/engine_api/length_prefixed_json_decoder_test.dart
+  - test/lib/engine_api/visualization_record_test.dart
+  - test/lib/engine_api/wasm_visualization_record_ring_buffer_test.dart
+  - test/lib/helpers/bw_fast_math_test.dart
+  - test/lib/helpers/fast_atan2_test.dart
+  - test/lib/helpers/gain_test.dart
+  - test/lib/visualization/ring_buffer_test.dart
+  - codegen/test/writer_test.dart
+
+# Discover the remaining Flutter unit/widget tests under these directories.
+# This pass uses JavaScript; mocked classes currently hit a dart2wasm compiler
+# bug in Dart 3.12.2 (https://github.com/dart-lang/sdk/issues/63904).
+flutter:
+  - test/lib
+  - codegen/test
+
+# These suites exercise desktop filesystem operations or host build tooling.
+# Native IPC, native engine integration, and repository checks are outside the
+# Flutter roots above and continue to run in the existing desktop CI job.
+exclude:
+  - test/lib/helpers/logging/anthem_logging_test.dart
+  - test/lib/logic/project_file_codec_test.dart
+  - test/lib/widgets/main_window/render_dialog_controller_test.dart
+  - codegen/test/dependency_tracking_integration_test.dart

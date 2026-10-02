@@ -36,6 +36,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart'
     show AnthemObservableList, AnthemObservableMap;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
@@ -108,7 +109,13 @@ Uint8List _frameResponse(Response response) {
   final payload = utf8.encode(jsonEncode(response.toJson()));
   final framedResponse = Uint8List(payload.length + 8);
   final header = ByteData.sublistView(framedResponse, 0, 8);
-  header.setUint64(0, payload.length, Endian.host);
+  // Payloads fit in 32 bits; the upper half is already zero. JavaScript does
+  // not implement ByteData's 64-bit accessors.
+  header.setUint32(
+    Endian.host == Endian.little ? 0 : 4,
+    payload.length,
+    Endian.host,
+  );
   framedResponse.setRange(8, framedResponse.length, payload);
   return framedResponse;
 }
@@ -255,7 +262,7 @@ void main() {
     });
 
     test(
-      'start sends a ready check first, then flushes model init, then starts heartbeat',
+      'start sends a ready check first, then flushes model init, then enables desktop heartbeat',
       () async {
         AudioProcessingConfigDto? audioConfigWhenRunning;
         engine.engineStateStream.listen((state) {
@@ -318,7 +325,7 @@ void main() {
         await _flushMicrotasks();
 
         expect(engine.engineState, EngineState.running);
-        expect(connector.startHeartbeatTimerCallCount, 1);
+        expect(connector.startHeartbeatTimerCallCount, kIsWeb ? 0 : 1);
         expect(engine.audioConfig?.sampleRate, startupAudioConfig.sampleRate);
         expect(engine.audioConfig?.blockSize, startupAudioConfig.blockSize);
         expect(
@@ -367,7 +374,7 @@ void main() {
 
       expect(engine.engineState, EngineState.running);
       expect(engine.audioConfig, isNull);
-      expect(connector.startHeartbeatTimerCallCount, 1);
+      expect(connector.startHeartbeatTimerCallCount, kIsWeb ? 0 : 1);
 
       final initializeFuture = engine.processingGraphApi.initializeNodes();
       await _flushMicrotasks();
@@ -679,7 +686,7 @@ void main() {
         expect(engine.engineState, EngineState.running);
         expect(engine.isAudioReady, isFalse);
         expect(engine.audioConfig, isNull);
-        expect(connector.startHeartbeatTimerCallCount, 1);
+        expect(connector.startHeartbeatTimerCallCount, kIsWeb ? 0 : 1);
       },
     );
 

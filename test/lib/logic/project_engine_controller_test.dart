@@ -59,7 +59,11 @@ class _TestEngineConnector extends EngineConnectorBase {
     final payload = utf8.encode(jsonEncode(response.toJson()));
     final framedResponse = Uint8List(payload.length + 8);
     final header = ByteData.sublistView(framedResponse, 0, 8);
-    header.setUint64(0, payload.length, Endian.host);
+    header.setUint32(
+      Endian.host == Endian.little ? 0 : 4,
+      payload.length,
+      Endian.host,
+    );
     framedResponse.setRange(8, framedResponse.length, payload);
     onReceive(framedResponse);
   }
