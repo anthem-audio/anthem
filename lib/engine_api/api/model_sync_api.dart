@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -42,10 +42,9 @@ class ModelSyncApi {
     final request = ModelInitRequest(id: id, serializedModel: serializedModel);
 
     return (await _engine._request(
-          request,
-          startupBehavior: StartupSendBehavior.queueDuringStartup,
-        ))
-        as ModelInitResponse;
+      request,
+      startupBehavior: StartupSendBehavior.queueDuringStartup,
+    )) as ModelInitResponse;
   }
 
   /// Updates the engine model with the given field update.

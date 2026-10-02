@@ -60,9 +60,8 @@ class _DefaultTrackNameAllocator {
   factory _DefaultTrackNameAllocator.fromProject(ProjectModel project) {
     final usedRegularTrackNumbers = <int>{};
     final usedSendTrackNumbers = <int>{};
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
+    final trackController = ServiceRegistry.forProject(project.id)
+        .trackController;
 
     for (final track in project.tracks.values) {
       if (track.isAutomationLane || track.isMasterTrack) {
@@ -235,9 +234,8 @@ class AutomationLaneAddRemoveCommand extends Command {
       _createAutomationProviderGraph(project);
     }
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel.registerTrack(lane.id);
+    ServiceRegistry.forProject(project.id).arrangerViewModel
+        .registerTrack(lane.id);
 
     _publishProcessingGraphIfEngineRunning(project);
   }
@@ -248,9 +246,8 @@ class AutomationLaneAddRemoveCommand extends Command {
       return;
     }
 
-    final arrangerViewModel = ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel;
+    final arrangerViewModel = ServiceRegistry.forProject(project.id)
+        .arrangerViewModel;
     arrangerViewModel.unregisterTrack(lane.id);
     arrangerViewModel.selectedTracks.remove(lane.id);
 
@@ -546,9 +543,8 @@ class TrackAddRemoveCommand extends Command {
   }
 
   void _add(ProjectModel project) {
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
+    final trackController = ServiceRegistry.forProject(project.id)
+        .trackController;
 
     for (final trackDescriptor in _tracks) {
       final _InternalTrackAddRemoveDescriptor(
@@ -594,14 +590,12 @@ class TrackAddRemoveCommand extends Command {
       // Also restore all descendants into the track map
       for (final descendant in descendants) {
         project.tracks[descendant.id] = descendant;
-        ServiceRegistry.forProject(
-          project.id,
-        ).arrangerViewModel.registerTrack(descendant.id);
+        ServiceRegistry.forProject(project.id).arrangerViewModel
+            .registerTrack(descendant.id);
       }
 
-      ServiceRegistry.forProject(
-        project.id,
-      ).arrangerViewModel.registerTrack(track.id);
+      ServiceRegistry.forProject(project.id).arrangerViewModel
+          .registerTrack(track.id);
     }
 
     if (_removedNodesFragment != null && !_removedNodesFragment!.isEmpty) {
@@ -648,23 +642,20 @@ class TrackAddRemoveCommand extends Command {
       _collectRoutableTrackIdsForDescriptors(_tracks),
     );
 
-    final arrangerViewModel = ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel;
+    final arrangerViewModel = ServiceRegistry.forProject(project.id)
+        .arrangerViewModel;
 
     arrangerViewModel.selectedTracks
       ..clear()
       ..addAll(_tracks.map((t) => t.trackModel.id));
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).projectController.publishProcessingGraph();
+    ServiceRegistry.forProject(project.id).projectController
+        .publishProcessingGraph();
   }
 
   void _remove(ProjectModel project) {
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
+    final trackController = ServiceRegistry.forProject(project.id)
+        .trackController;
     final removedTrackIds = <Id>{};
     final routedTrackIdsToRemove = _collectRoutableTrackIdsForDescriptors(
       _tracks,
@@ -694,16 +685,14 @@ class TrackAddRemoveCommand extends Command {
 
       // Unregister and remove all descendants from the track map
       for (final descendant in descendants) {
-        ServiceRegistry.forProject(
-          project.id,
-        ).arrangerViewModel.unregisterTrack(descendant.id);
+        ServiceRegistry.forProject(project.id).arrangerViewModel
+            .unregisterTrack(descendant.id);
         removedTrackIds.add(descendant.id);
         project.tracks.remove(descendant.id);
       }
 
-      ServiceRegistry.forProject(
-        project.id,
-      ).arrangerViewModel.unregisterTrack(track.id);
+      ServiceRegistry.forProject(project.id).arrangerViewModel
+          .unregisterTrack(track.id);
 
       if (parentTrackId != null) {
         // Remove from parent group track's child list
@@ -721,9 +710,8 @@ class TrackAddRemoveCommand extends Command {
       project.tracks.remove(track.id);
     }
 
-    final arrangerViewModel = ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel;
+    final arrangerViewModel = ServiceRegistry.forProject(project.id)
+        .arrangerViewModel;
 
     arrangerViewModel.selectedTracks.removeAll(
       _tracks.map((t) => t.trackModel.id),
@@ -745,9 +733,8 @@ class TrackAddRemoveCommand extends Command {
       }
     }
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).projectController.publishProcessingGraph();
+    ServiceRegistry.forProject(project.id).projectController
+        .publishProcessingGraph();
   }
 }
 
@@ -764,9 +751,8 @@ void _publishProcessingGraphIfEngineRunning(ProjectModel project) {
     return;
   }
 
-  ServiceRegistry.forProject(
-    project.id,
-  ).projectController.publishProcessingGraph();
+  ServiceRegistry.forProject(project.id).projectController
+      .publishProcessingGraph();
 }
 
 Set<Id> _collectAutomationLaneNodeIdsForTrack(
@@ -1174,9 +1160,8 @@ class TrackGroupUngroupCommand extends Command {
   }
 
   void _group(ProjectModel project) {
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
+    final trackController = ServiceRegistry.forProject(project.id)
+        .trackController;
     final parentTrackList = _parentTrack != null
         ? project.tracks[_parentTrack]!.childTracks
         : _isForSendTrack
@@ -1208,24 +1193,20 @@ class TrackGroupUngroupCommand extends Command {
       _newGroupTrack.id,
     ]);
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel.registerTrack(_newGroupTrack.id);
+    ServiceRegistry.forProject(project.id).arrangerViewModel
+        .registerTrack(_newGroupTrack.id);
     for (final lane in _newGroupAutomationLanes) {
-      ServiceRegistry.forProject(
-        project.id,
-      ).arrangerViewModel.registerTrack(lane.id);
+      ServiceRegistry.forProject(project.id).arrangerViewModel
+          .registerTrack(lane.id);
     }
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).projectController.publishProcessingGraph();
+    ServiceRegistry.forProject(project.id).projectController
+        .publishProcessingGraph();
   }
 
   void _ungroup(ProjectModel project) {
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
+    final trackController = ServiceRegistry.forProject(project.id)
+        .trackController;
     final parentTrackList = _parentTrack != null
         ? project.tracks[_parentTrack]!.childTracks
         : _isForSendTrack
@@ -1259,18 +1240,15 @@ class TrackGroupUngroupCommand extends Command {
       _childrenToAddToGroup.map((child) => child.$1),
     );
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel.unregisterTrack(_newGroupTrack.id);
+    ServiceRegistry.forProject(project.id).arrangerViewModel
+        .unregisterTrack(_newGroupTrack.id);
     for (final lane in _newGroupAutomationLanes) {
-      ServiceRegistry.forProject(
-        project.id,
-      ).arrangerViewModel.unregisterTrack(lane.id);
+      ServiceRegistry.forProject(project.id).arrangerViewModel
+          .unregisterTrack(lane.id);
     }
 
-    ServiceRegistry.forProject(
-      project.id,
-    ).projectController.publishProcessingGraph();
+    ServiceRegistry.forProject(project.id).projectController
+        .publishProcessingGraph();
   }
 }
 

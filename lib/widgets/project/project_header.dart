@@ -30,7 +30,7 @@ import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
 import 'package:anthem/logic/project_controller.dart';
-import 'package:flutter/material.dart' hide Icons;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 

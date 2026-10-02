@@ -63,35 +63,35 @@ void main() {
     fail('Timed out waiting for condition.');
   }
 
-  test('initialize creates a session with metadata and app log files', () async {
-    final sessionDirectory = await initializeLogging();
+  test(
+    'initialize creates a session with metadata and app log files',
+    () async {
+      final sessionDirectory = await initializeLogging();
 
-    expect(await sessionDirectory.exists(), isTrue);
-    expect(
-      await File(
-        '${sessionDirectory.path}${Platform.pathSeparator}metadata.json',
-      ).exists(),
-      isTrue,
-    );
-    expect(
-      await File(
-        '${sessionDirectory.path}${Platform.pathSeparator}app.log',
-      ).exists(),
-      isTrue,
-    );
+      expect(await sessionDirectory.exists(), isTrue);
+      expect(
+        await File(
+          '${sessionDirectory.path}${Platform.pathSeparator}metadata.json',
+        ).exists(),
+        isTrue,
+      );
+      expect(
+        await File('${sessionDirectory.path}${Platform.pathSeparator}app.log')
+            .exists(),
+        isTrue,
+      );
 
-    final metadata =
-        jsonDecode(
-              await File(
-                '${sessionDirectory.path}${Platform.pathSeparator}metadata.json',
-              ).readAsString(),
-            )
-            as Map<String, dynamic>;
+      final metadata = jsonDecode(
+        await File(
+          '${sessionDirectory.path}${Platform.pathSeparator}metadata.json',
+        ).readAsString(),
+      ) as Map<String, dynamic>;
 
-    expect(metadata['schemaVersion'], 1);
-    expect(metadata['logRoot'], tempRoot.path);
-    expect(metadata['processId'], pid);
-  });
+      expect(metadata['schemaVersion'], 1);
+      expect(metadata['logRoot'], tempRoot.path);
+      expect(metadata['processId'], pid);
+    },
+  );
 
   test('logging package records are written to app.log as text', () async {
     final sessionDirectory = await initializeLogging();
@@ -146,9 +146,8 @@ void main() {
           '${sessionsRoot.path}${Platform.pathSeparator}inactive-$i',
         );
         await inactiveSession.create();
-        await File(
-          '${inactiveSession.path}${Platform.pathSeparator}app.log',
-        ).writeAsString('old\n');
+        await File('${inactiveSession.path}${Platform.pathSeparator}app.log')
+            .writeAsString('old\n');
         await Future<void>.delayed(const Duration(milliseconds: 2));
       }
 

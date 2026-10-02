@@ -151,9 +151,8 @@ abstract class _TrackProcessingModel
   }) {
     final trackId = track.id;
 
-    final utilityNode = UtilityProcessorModel.create(
-      idAllocator: idAllocator,
-    ).createNode();
+    final utilityNode = UtilityProcessorModel.create(idAllocator: idAllocator)
+        .createNode();
     utilityNode.owner = NodeOwnerModel(trackId: trackId);
     utilityNodeId = utilityNode.id;
     project.processingGraph.addNode(utilityNode);

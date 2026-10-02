@@ -30,9 +30,9 @@ void main() {
   test('browser and C++ visualization golden fixtures match', () {
     expect(
       visualizationRecordFixtureHex,
-      File(
-        'test/fixtures/visualization_record_v1.hex',
-      ).readAsStringSync().trim(),
+      File('test/fixtures/visualization_record_v1.hex')
+          .readAsStringSync()
+          .trim(),
     );
   });
 }

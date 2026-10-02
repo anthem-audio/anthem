@@ -23,6 +23,50 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets(
+    'markdown dialog works without Material and remains interactive',
+    (tester) async {
+      String? tappedLink;
+      await tester.pumpWidget(
+        WidgetsApp(
+          color: const Color(0xFF000000),
+          builder: (context, child) =>
+              const DialogRenderer(child: SizedBox.expand()),
+        ),
+      );
+
+      ServiceRegistry.dialogController.showMarkdownDialog(
+        title: 'Markdown',
+        markdown:
+            '[Read more](https://example.com)\n\n'
+            '${List.generate(40, (index) => 'Paragraph $index').join('\n\n')}',
+        onTapLink: (text, href, title) => tappedLink = href,
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Read more'));
+      expect(tappedLink, 'https://example.com');
+
+      final scrollbar = find.byType(RawScrollbar);
+      final scrollable = find.descendant(
+        of: scrollbar,
+        matching: find.byType(Scrollable),
+      );
+      final position = tester.state<ScrollableState>(scrollable).position;
+      expect(position.maxScrollExtent, greaterThan(0));
+
+      final bounds = tester.getRect(scrollbar);
+      await tester.dragFrom(
+        Offset(bounds.right - 6, bounds.top + 10),
+        const Offset(0, 100),
+      );
+      await tester.pumpAndSettle();
+      expect(position.pixels, greaterThan(0));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('dismissible dialog closes when backdrop is tapped', (
     tester,
   ) async {

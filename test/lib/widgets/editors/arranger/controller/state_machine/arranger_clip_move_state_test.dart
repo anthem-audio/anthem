@@ -462,95 +462,91 @@ void main() {
       },
     );
 
-    test(
-      'shift-dragging selected linked clips duplicates them with a shared cloned pattern',
-      () async {
-        final pattern = addPattern(name: 'Linked');
-        final firstClip = addClipForPattern(
-          pattern: pattern,
-          offset: 100,
-          trackId: TrackIds.a,
-          rect: const Rect.fromLTWH(100, 10, 80, 40),
-        );
-        final secondClip = addClipForPattern(
-          pattern: pattern,
-          offset: 240,
-          trackId: TrackIds.b,
-          rect: const Rect.fromLTWH(260, 70, 80, 40),
-        );
-        final originalPatternIds = fixture.project.sequence.patterns.keys
-            .toSet();
+    test('shift-dragging selected linked clips duplicates them with a shared cloned pattern', () async {
+      final pattern = addPattern(name: 'Linked');
+      final firstClip = addClipForPattern(
+        pattern: pattern,
+        offset: 100,
+        trackId: TrackIds.a,
+        rect: const Rect.fromLTWH(100, 10, 80, 40),
+      );
+      final secondClip = addClipForPattern(
+        pattern: pattern,
+        offset: 240,
+        trackId: TrackIds.b,
+        rect: const Rect.fromLTWH(260, 70, 80, 40),
+      );
+      final originalPatternIds = fixture.project.sequence.patterns.keys.toSet();
 
-        fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
-        pressShift();
-        startClipMove(movePos: const Offset(260, 20));
+      fixture.viewModel.selectedClips.addAll({firstClip.id, secondClip.id});
+      pressShift();
+      startClipMove(movePos: const Offset(260, 20));
 
-        expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
-        expect(fixture.viewModel.previewClips, hasLength(2));
-        expect(
-          fixture.project.sequence.patterns.keys.toSet(),
-          equals(originalPatternIds),
-        );
+      expect(fixture.stateMachine.currentState, isA<ArrangerClipMoveState>());
+      expect(fixture.viewModel.previewClips, hasLength(2));
+      expect(
+        fixture.project.sequence.patterns.keys.toSet(),
+        equals(originalPatternIds),
+      );
 
-        final previewClipIds = fixture.viewModel.previewClips.keys.toSet();
-        expect(fixture.viewModel.selectedClips.toSet(), equals(previewClipIds));
+      final previewClipIds = fixture.viewModel.previewClips.keys.toSet();
+      expect(fixture.viewModel.selectedClips.toSet(), equals(previewClipIds));
 
-        final previewPatternIds = fixture.viewModel.previewClips.values
-            .map((preview) => preview.pattern.id)
-            .toSet();
-        expect(previewPatternIds, hasLength(1));
-        expect(previewPatternIds.single, isNot(pattern.id));
-        expect(fixture.viewModel.clipTimingOverrides, isEmpty);
+      final previewPatternIds = fixture.viewModel.previewClips.values
+          .map((preview) => preview.pattern.id)
+          .toSet();
+      expect(previewPatternIds, hasLength(1));
+      expect(previewPatternIds.single, isNot(pattern.id));
+      expect(fixture.viewModel.clipTimingOverrides, isEmpty);
 
-        final expectedOffsetsByClipId = {
-          for (final entry in fixture.viewModel.previewClips.entries)
-            entry.key: entry.value.offset,
-        };
+      final expectedOffsetsByClipId = {
+        for (final entry in fixture.viewModel.previewClips.entries)
+          entry.key: entry.value.offset,
+      };
 
-        fixture.pointerUp(
-          const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
-        );
-        await Future<void>.delayed(Duration.zero);
+      fixture.pointerUp(
+        const PointerUpEvent(pointer: 1, position: Offset(260, 20)),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-        expect(fixture.viewModel.previewClips, isEmpty);
-        expect(fixture.viewModel.selectedClips.toSet(), equals(previewClipIds));
-        expect(firstClip.offset, 100);
-        expect(secondClip.offset, 240);
-        expect(firstClip.patternId, pattern.id);
-        expect(secondClip.patternId, pattern.id);
+      expect(fixture.viewModel.previewClips, isEmpty);
+      expect(fixture.viewModel.selectedClips.toSet(), equals(previewClipIds));
+      expect(firstClip.offset, 100);
+      expect(secondClip.offset, 240);
+      expect(firstClip.patternId, pattern.id);
+      expect(secondClip.patternId, pattern.id);
 
-        final clonedClips = previewClipIds
-            .map((clipId) => fixture.arrangement.clips[clipId]!)
-            .toList(growable: false);
-        final clonedPatternIds = clonedClips
-            .map((clip) => clip.patternId)
-            .toSet();
-        expect(clonedPatternIds, hasLength(1));
-        expect(clonedPatternIds.single, isNot(pattern.id));
-        expect(
-          fixture.project.sequence.patterns.keys.toSet().difference(
-            originalPatternIds,
-          ),
-          equals(clonedPatternIds),
-        );
-        for (final clonedClip in clonedClips) {
-          expect(clonedClip.offset, expectedOffsetsByClipId[clonedClip.id]);
-        }
+      final clonedClips = previewClipIds
+          .map((clipId) => fixture.arrangement.clips[clipId]!)
+          .toList(growable: false);
+      final clonedPatternIds = clonedClips
+          .map((clip) => clip.patternId)
+          .toSet();
+      expect(clonedPatternIds, hasLength(1));
+      expect(clonedPatternIds.single, isNot(pattern.id));
+      expect(
+        fixture.project.sequence.patterns.keys.toSet().difference(
+          originalPatternIds,
+        ),
+        equals(clonedPatternIds),
+      );
+      for (final clonedClip in clonedClips) {
+        expect(clonedClip.offset, expectedOffsetsByClipId[clonedClip.id]);
+      }
 
-        fixture.project.undo();
+      fixture.project.undo();
 
-        expect(
-          fixture.arrangement.clips.keys.toSet(),
-          equals({firstClip.id, secondClip.id}),
-        );
-        expect(
-          fixture.project.sequence.patterns.keys.toSet(),
-          equals(originalPatternIds),
-        );
-        expect(firstClip.offset, 100);
-        expect(secondClip.offset, 240);
-      },
-    );
+      expect(
+        fixture.arrangement.clips.keys.toSet(),
+        equals({firstClip.id, secondClip.id}),
+      );
+      expect(
+        fixture.project.sequence.patterns.keys.toSet(),
+        equals(originalPatternIds),
+      );
+      expect(firstClip.offset, 100);
+      expect(secondClip.offset, 240);
+    });
 
     test(
       'shift-dragging one linked clip clones only that clip into a new pattern',

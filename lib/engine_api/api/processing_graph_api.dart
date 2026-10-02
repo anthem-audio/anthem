@@ -54,13 +54,11 @@ class ProcessingGraphApi {
 
     final request = InitializeProcessingGraphNodesRequest(id: id);
 
-    final response =
-        (await _engine._request(
-              request,
-              bypassRenderRequestHold: bypassRenderRequestHold,
-              timeout: Duration(seconds: 30),
-            ))
-            as InitializeProcessingGraphNodesResponse;
+    final response = (await _engine._request(
+      request,
+      bypassRenderRequestHold: bypassRenderRequestHold,
+      timeout: Duration(seconds: 30),
+    )) as InitializeProcessingGraphNodesResponse;
 
     if (response.error != null) {
       throw Exception(
@@ -93,12 +91,10 @@ class ProcessingGraphApi {
 
     final request = PublishProcessingGraphRequest(id: id);
 
-    final response =
-        (await _engine._request(
-              request,
-              bypassRenderRequestHold: bypassRenderRequestHold,
-            ))
-            as PublishProcessingGraphResponse;
+    final response = (await _engine._request(
+      request,
+      bypassRenderRequestHold: bypassRenderRequestHold,
+    )) as PublishProcessingGraphResponse;
 
     if (response.success) {
       return;

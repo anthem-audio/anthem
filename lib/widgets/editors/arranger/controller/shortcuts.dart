@@ -138,9 +138,8 @@ mixin _ArrangerShortcutsMixin on _ArrangerController {
   }
 
   bool _isArrangerPanelActive() {
-    final projectViewModel = ServiceRegistry.forProject(
-      viewModel.projectId,
-    ).projectViewModel;
+    final projectViewModel = ServiceRegistry.forProject(viewModel.projectId)
+        .projectViewModel;
 
     return projectViewModel.activePanel == PanelKind.arranger;
   }

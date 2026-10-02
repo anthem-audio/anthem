@@ -265,9 +265,9 @@ class RenderDialogController {
 
     unawaited(saveState());
 
-    final task = ServiceRegistry.forProject(
-      viewModel.projectId,
-    ).projectRenderController.startRender(request);
+    final task = ServiceRegistry.forProject(viewModel.projectId)
+        .projectRenderController
+        .startRender(request);
 
     final dialogController = ServiceRegistry.dialogController;
     dialogController.closeDialog();

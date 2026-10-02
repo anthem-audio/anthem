@@ -93,9 +93,11 @@ final class WasmVisualizationRecordRingBufferReader {
           'The visualization record is outside WebAssembly memory.',
         );
       }
-      final recordView =
-          heap.callMethod('subarray'.toJS, data.toJS, (data + size).toJS)
-              as JSUint8Array;
+      final recordView = heap.callMethod(
+        'subarray'.toJS,
+        data.toJS,
+        (data + size).toJS,
+      ) as JSUint8Array;
       _hasAcquiredRecord = true;
       return recordView.toDart;
     } catch (_) {

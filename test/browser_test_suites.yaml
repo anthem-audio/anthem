@@ -10,8 +10,7 @@ dart:
   - codegen/test/writer_test.dart
 
 # Discover the remaining Flutter unit/widget tests under these directories.
-# This pass uses JavaScript; mocked classes currently hit a dart2wasm compiler
-# bug in Dart 3.12.2 (https://github.com/dart-lang/sdk/issues/63904).
+# This pass follows the same JavaScript/WebAssembly compiler selection.
 flutter:
   - test/lib
   - codegen/test

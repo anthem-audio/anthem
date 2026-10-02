@@ -39,7 +39,7 @@ class FlutterTestCommand extends Command<dynamic> {
         'compiler',
         allowed: ['dart2js', 'dart2wasm', 'both'],
         defaultsTo: 'both',
-        help: 'With --web: compilers for standalone Dart tests.',
+        help: 'With --web: select JavaScript and/or WebAssembly tests.',
       )
       ..addFlag(
         'widgets',

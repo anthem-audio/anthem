@@ -102,44 +102,41 @@ void main() {
       );
     });
 
-    test(
-      'suppresses shortcuts while still dispatching raw handlers and tracking keys',
-      () {
-        var rawCallCount = 0;
-        var shortcutCallCount = 0;
+    test('suppresses shortcuts while still dispatching raw handlers and tracking keys', () {
+      var rawCallCount = 0;
+      var shortcutCallCount = 0;
 
-        controller.registerRawKeyHandler(
-          id: 'raw',
-          handler: (_) {
-            rawCallCount++;
-            return false;
-          },
-        );
-        controller.registerShortcutHandler(
-          id: 'active',
-          handler: (_) {
-            shortcutCallCount++;
-            return true;
-          },
-        );
-        controller.setActiveConsumer('active');
+      controller.registerRawKeyHandler(
+        id: 'raw',
+        handler: (_) {
+          rawCallCount++;
+          return false;
+        },
+      );
+      controller.registerShortcutHandler(
+        id: 'active',
+        handler: (_) {
+          shortcutCallCount++;
+          return true;
+        },
+      );
+      controller.setActiveConsumer('active');
 
-        expect(
-          controller.handleKeyDown(
-            _keyDown(
-              physicalKey: PhysicalKeyboardKey.keyB,
-              logicalKey: LogicalKeyboardKey.keyB,
-            ),
-            dispatchShortcuts: false,
+      expect(
+        controller.handleKeyDown(
+          _keyDown(
+            physicalKey: PhysicalKeyboardKey.keyB,
+            logicalKey: LogicalKeyboardKey.keyB,
           ),
-          isFalse,
-        );
+          dispatchShortcuts: false,
+        ),
+        isFalse,
+      );
 
-        expect(rawCallCount, equals(1));
-        expect(shortcutCallCount, equals(0));
-        expect(controller.pressedKeys, contains(LogicalKeyboardKey.keyB));
-      },
-    );
+      expect(rawCallCount, equals(1));
+      expect(shortcutCallCount, equals(0));
+      expect(controller.pressedKeys, contains(LogicalKeyboardKey.keyB));
+    });
 
     test('can suppress raw handler dispatch for key down and key up', () {
       var rawCallCount = 0;

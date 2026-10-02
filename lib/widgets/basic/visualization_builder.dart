@@ -25,14 +25,16 @@ import 'package:provider/provider.dart';
 typedef DoubleVisualizationValue = double;
 typedef IntVisualizationValue = int;
 
-typedef VisualizationBuilderCallback<T> =
-    Widget Function(BuildContext context, T? value, Duration? engineTime);
-typedef MultiVisualizationBuilderCallback<T> =
-    Widget Function(
-      BuildContext context,
-      List<T> values,
-      List<Duration?> engineTimes,
-    );
+typedef VisualizationBuilderCallback<T> = Widget Function(
+  BuildContext context,
+  T? value,
+  Duration? engineTime,
+);
+typedef MultiVisualizationBuilderCallback<T> = Widget Function(
+  BuildContext context,
+  List<T> values,
+  List<Duration?> engineTimes,
+);
 
 typedef DoubleVisualizationBuilder =
     VisualizationBuilderCallback<DoubleVisualizationValue>;

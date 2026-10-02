@@ -215,12 +215,10 @@ class VisualizationProvider {
     final subscription = switch (config.type) {
       VisualizationSubscriptionType.latest =>
         _LatestVisualizationSubscription<T>(config, this),
-      VisualizationSubscriptionType.max =>
-        _MaxVisualizationSubscription(
-              config as VisualizationSubscriptionConfig<double>,
-              this,
-            )
-            as VisualizationSubscription<T>,
+      VisualizationSubscriptionType.max => _MaxVisualizationSubscription(
+        config as VisualizationSubscriptionConfig<double>,
+        this,
+      ) as VisualizationSubscription<T>,
     };
 
     if (existingSubscriptions == null) {

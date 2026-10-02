@@ -550,9 +550,8 @@ TrackModel _addAutomationLane({
 
   project.tracks[lane.id] = lane;
   parentTrack.automationLanes.add(lane.id);
-  ServiceRegistry.forProject(
-    project.id,
-  ).arrangerViewModel.registerTrack(lane.id);
+  ServiceRegistry.forProject(project.id).arrangerViewModel
+      .registerTrack(lane.id);
 
   return lane;
 }

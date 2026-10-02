@@ -45,9 +45,8 @@ void main() {
       );
       project.processingGraph.restoreGraphFragment(toneGenerator.graphFragment);
 
-      final gainNodeB = GainProcessorModel.create(
-        idAllocator: idAllocator,
-      ).createNode();
+      final gainNodeB = GainProcessorModel.create(idAllocator: idAllocator)
+          .createNode();
       final audioDeviceB = _audioDevice(
         project: project,
         node: gainNodeB,
@@ -63,9 +62,8 @@ void main() {
         unchainableSourceC.graphFragment,
       );
 
-      final gainNodeD = GainProcessorModel.create(
-        idAllocator: idAllocator,
-      ).createNode();
+      final gainNodeD = GainProcessorModel.create(idAllocator: idAllocator)
+          .createNode();
       final audioDeviceD = _audioDevice(
         project: project,
         node: gainNodeD,
@@ -81,9 +79,8 @@ void main() {
         audioDeviceD,
       ]);
 
-      ServiceRegistry.forProject(
-        project.id,
-      ).deviceController.rebuildTrackDeviceRouting(track.id);
+      ServiceRegistry.forProject(project.id).deviceController
+          .rebuildTrackDeviceRouting(track.id);
 
       expect(
         _connectionsMatching(

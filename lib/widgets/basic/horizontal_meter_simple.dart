@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -68,9 +68,7 @@ class HorizontalMeterSimple extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  color: AnthemTheme
-                      .text
-                      .main, // Should be an accent color when we restyle everything
+                  color: AnthemTheme.text.main, // Should be an accent color when we restyle everything
                   fontSize: 12,
                 ),
               ),

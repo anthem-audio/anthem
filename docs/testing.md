@@ -29,13 +29,18 @@ directories are included automatically; add an exclusion only when a suite
 requires desktop facilities. Tests that can run without Flutter can instead be
 added to the manifest's `dart` list for coverage with both compilers.
 
-The Flutter pass currently uses JavaScript. Compiling mocked test classes with
-WASM hits a [Dart compiler crash](https://github.com/dart-lang/sdk/issues/63904)
-in Dart 3.12.2. Flutter's Chrome test backend is deprecated and intended for
-Flutter's own tests; its [Windows URL path bug](https://github.com/flutter/flutter/issues/192069)
-also prevents the widget pass from running on Windows with Flutter 3.44.4.
-The standalone Dart pass works on Windows. Revisit these limitations after an
-SDK update; `--compiler` only changes the standalone Dart pass.
+The Flutter pass also runs with both JavaScript and WebAssembly by default.
+`--compiler` selects the corresponding target for both passes: the standalone
+JavaScript tests use `dart2js`, while Flutter's JavaScript runner uses DDC.
+The [WASM compiler crash](https://github.com/dart-lang/sdk/issues/63904) that
+previously blocked mocked test classes no longer reproduces with Dart 3.13.5.
+
+Flutter's Chrome test backend is deprecated and intended for Flutter's own
+tests. Its [Windows URL path bug](https://github.com/flutter/flutter/issues/192069)
+still prevents the widget pass from running on Windows with Flutter 3.47.6;
+the standalone Dart pass works on Windows. The CLI retains the Windows guard.
+Native text-editing shortcut tests run on the VM because browsers handle those
+shortcuts through the DOM; browser tests cover text-input and selection updates.
 
 Chrome must be installed. Set `CHROME_EXECUTABLE` if the runner cannot find it.
 Use `--list` (with `--widgets` to include Flutter suites) to inspect selection.
@@ -43,8 +48,9 @@ Console output defaults to `expanded`; `--reporter compact` and
 `--reporter github` are also available. JSON event logs are written under
 `.dart_tool/web-tests/`.
 
-The web CI job runs `flutter_test --web --widgets` and uploads the JSON logs,
-including when a test fails. All selected tests execute in Chrome. This command
+The web CI job runs `flutter_test --web --widgets` with both targets and uploads
+the JSON logs, including when a test fails. Each Flutter package/target pair
+has a separate JSON log. All selected tests execute in Chrome. This command
 does not build or launch the complete app or engine and does not add integration
 tests.
 

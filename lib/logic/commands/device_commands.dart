@@ -145,9 +145,8 @@ class DeviceAddRemoveCommand extends Command {
     }
     _index ??= index;
 
-    final deviceController = ServiceRegistry.forProject(
-      project.id,
-    ).deviceController;
+    final deviceController = ServiceRegistry.forProject(project.id)
+        .deviceController;
 
     deviceController.disconnectTrackDeviceRouting(trackId);
 

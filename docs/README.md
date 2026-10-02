@@ -36,6 +36,15 @@ Anthem is developed and maintained by volunteers, with a focus on maintainabilit
 
 ## Getting Started
 
+Use Flutter 3.47.6 stable (Dart 3.13.5), the version pinned in CI. The root
+`pubspec.yaml` records the minimum Flutter and Dart SDK versions. When updating
+Flutter, update the CI version and validate desktop and browser tests together.
+
+Anthem's custom controls use `package:flutter/widgets.dart`. Material controls
+and app infrastructure use the standalone `material_ui` package. The app and
+widget testbed temporarily bridge its theme and localizations to dependencies
+that still use `package:flutter/material.dart`.
+
 The setup guides below give instructions for setting up Anthem development on your preferred platform.
 
 - [Setup instructions for Windows](./setup_windows.md)

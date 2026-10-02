@@ -209,51 +209,48 @@ void main() {
       expect(fixture.noteById(noteB.id).key, equals(62));
     });
 
-    test(
-      'shift drag on a selected group duplicates the selection and moves the clones',
-      () {
-        final noteA = fixture.addNote(key: 60, offset: 100, length: 48);
-        final noteB = fixture.addNote(key: 64, offset: 180, length: 48);
-        fixture.selectNotes([noteA.id, noteB.id]);
+    test('shift drag on a selected group duplicates the selection and moves the clones', () {
+      final noteA = fixture.addNote(key: 60, offset: 100, length: 48);
+      final noteB = fixture.addNote(key: 64, offset: 180, length: 48);
+      fixture.selectNotes([noteA.id, noteB.id]);
 
-        fixture.pointerDown(
-          key: 60.5,
-          offset: 100,
-          noteUnderCursor: noteA.id,
-          shift: true,
-        );
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 100,
+        noteUnderCursor: noteA.id,
+        shift: true,
+      );
 
-        expect(fixture.notes.length, equals(2));
-        expect(fixture.transientNotes, hasLength(2));
-        final clonedIds = fixture.viewModel.selectedNotes.nonObservableInner
-            .toSet();
-        expect(clonedIds, hasLength(2));
-        expect(clonedIds.contains(noteA.id), isFalse);
-        expect(clonedIds.contains(noteB.id), isFalse);
+      expect(fixture.notes.length, equals(2));
+      expect(fixture.transientNotes, hasLength(2));
+      final clonedIds = fixture.viewModel.selectedNotes.nonObservableInner
+          .toSet();
+      expect(clonedIds, hasLength(2));
+      expect(clonedIds.contains(noteA.id), isFalse);
+      expect(clonedIds.contains(noteB.id), isFalse);
 
-        fixture.pointerMove(key: 61.5, offset: 200);
-        fixture.pointerUp(key: 61.5, offset: 200);
+      fixture.pointerMove(key: 61.5, offset: 200);
+      fixture.pointerUp(key: 61.5, offset: 200);
 
-        expect(fixture.noteById(noteA.id).offset, equals(100));
-        expect(fixture.noteById(noteA.id).key, equals(60));
-        expect(fixture.noteById(noteB.id).offset, equals(180));
-        expect(fixture.noteById(noteB.id).key, equals(64));
+      expect(fixture.noteById(noteA.id).offset, equals(100));
+      expect(fixture.noteById(noteA.id).key, equals(60));
+      expect(fixture.noteById(noteB.id).offset, equals(180));
+      expect(fixture.noteById(noteB.id).key, equals(64));
 
-        final movedDistance =
-            fixture.snappedTime(200, round: true, startTime: 100) - 100;
-        final clonePositions = clonedIds.map((clonedId) {
-          final clone = fixture.noteById(clonedId);
-          return (key: clone.key, offset: clone.offset);
-        }).toSet();
-        expect(
-          clonePositions,
-          equals({
-            (key: 61, offset: 100 + movedDistance),
-            (key: 65, offset: 180 + movedDistance),
-          }),
-        );
-      },
-    );
+      final movedDistance =
+          fixture.snappedTime(200, round: true, startTime: 100) - 100;
+      final clonePositions = clonedIds.map((clonedId) {
+        final clone = fixture.noteById(clonedId);
+        return (key: clone.key, offset: clone.offset);
+      }).toSet();
+      expect(
+        clonePositions,
+        equals({
+          (key: 61, offset: 100 + movedDistance),
+          (key: 65, offset: 180 + movedDistance),
+        }),
+      );
+    });
 
     test(
       'undoing a duplicated selection move removes the clones in one action',

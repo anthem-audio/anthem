@@ -669,30 +669,27 @@ void main() {
       expect(bodyResizeContext.resizeHandleTarget?.metadata.id, clip.id);
     });
 
-    test(
-      'hover leaving clip restores timeline cursor location and clears hovered clip',
-      () {
-        fixture.viewModel.visibleClips.add(
-          rect: const Rect.fromLTWH(110, 15, 40, 30),
-          metadata: ClipIds.underCursor,
-        );
+    test('hover leaving clip restores timeline cursor location and clears hovered clip', () {
+      fixture.viewModel.visibleClips.add(
+        rect: const Rect.fromLTWH(110, 15, 40, 30),
+        metadata: ClipIds.underCursor,
+      );
 
-        fixture.hover(const Offset(120, 20));
-        expect(fixture.viewModel.hoverIndicatorPosition, isNull);
-        expect(fixture.viewModel.hoveredClip, ClipIds.underCursor);
+      fixture.hover(const Offset(120, 20));
+      expect(fixture.viewModel.hoverIndicatorPosition, isNull);
+      expect(fixture.viewModel.hoveredClip, ClipIds.underCursor);
 
-        fixture.hover(const Offset(200, 20));
-        expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
-        expect(
-          trackIdForRowId(
-            fixture.viewModel,
-            fixture.viewModel.hoverIndicatorPosition!.rowId,
-          ),
-          TrackIds.a,
-        );
-        expect(fixture.viewModel.hoveredClip, isNull);
-      },
-    );
+      fixture.hover(const Offset(200, 20));
+      expect(fixture.viewModel.hoverIndicatorPosition, isNotNull);
+      expect(
+        trackIdForRowId(
+          fixture.viewModel,
+          fixture.viewModel.hoverIndicatorPosition!.rowId,
+        ),
+        TrackIds.a,
+      );
+      expect(fixture.viewModel.hoveredClip, isNull);
+    });
 
     test('exit clears hover-derived cursor location and hovered clip', () {
       fixture.enter(const Offset(120, 20));

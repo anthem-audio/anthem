@@ -83,37 +83,34 @@ void main() {
       },
     );
 
-    test(
-      'create-note preview sends note off for the final preview pitch on cancel',
-      () async {
-        final liveFixture = PianoRollStateMachineTestFixture.create(
-          enableLiveEvents: true,
-        );
-        addTearDown(liveFixture.dispose);
-        await Future<void>.delayed(Duration.zero);
-        liveFixture.enableLiveEvents();
+    test('create-note preview sends note off for the final preview pitch on cancel', () async {
+      final liveFixture = PianoRollStateMachineTestFixture.create(
+        enableLiveEvents: true,
+      );
+      addTearDown(liveFixture.dispose);
+      await Future<void>.delayed(Duration.zero);
+      liveFixture.enableLiveEvents();
 
-        liveFixture.viewModel.cursorNoteLength = 48;
+      liveFixture.viewModel.cursorNoteLength = 48;
 
-        liveFixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
-        liveFixture.pointerMove(key: 63.5, offset: 173.8, alt: true);
-        liveFixture.pointerCancel(key: 63.5, offset: 173.8, alt: true);
+      liveFixture.pointerDown(key: 60.9, offset: 145.2, alt: true);
+      liveFixture.pointerMove(key: 63.5, offset: 173.8, alt: true);
+      liveFixture.pointerCancel(key: 63.5, offset: 173.8, alt: true);
 
-        expect(liveFixture.liveEvents, hasLength(4));
+      expect(liveFixture.liveEvents, hasLength(4));
 
-        final events = liveFixture.liveEvents
-            .map((entry) => entry.event)
-            .toList(growable: false);
-        expect(events[0], isA<LiveEventRequestNoteOnEvent>());
-        expect((events[0] as LiveEventRequestNoteOnEvent).pitch, equals(60));
-        expect(events[1], isA<LiveEventRequestNoteOffEvent>());
-        expect((events[1] as LiveEventRequestNoteOffEvent).pitch, equals(60));
-        expect(events[2], isA<LiveEventRequestNoteOnEvent>());
-        expect((events[2] as LiveEventRequestNoteOnEvent).pitch, equals(63));
-        expect(events[3], isA<LiveEventRequestNoteOffEvent>());
-        expect((events[3] as LiveEventRequestNoteOffEvent).pitch, equals(63));
-      },
-    );
+      final events = liveFixture.liveEvents
+          .map((entry) => entry.event)
+          .toList(growable: false);
+      expect(events[0], isA<LiveEventRequestNoteOnEvent>());
+      expect((events[0] as LiveEventRequestNoteOnEvent).pitch, equals(60));
+      expect(events[1], isA<LiveEventRequestNoteOffEvent>());
+      expect((events[1] as LiveEventRequestNoteOffEvent).pitch, equals(60));
+      expect(events[2], isA<LiveEventRequestNoteOnEvent>());
+      expect((events[2] as LiveEventRequestNoteOnEvent).pitch, equals(63));
+      expect(events[3], isA<LiveEventRequestNoteOffEvent>());
+      expect((events[3] as LiveEventRequestNoteOffEvent).pitch, equals(63));
+    });
 
     test(
       'controller dispose sends note off for any active live preview note',

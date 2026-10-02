@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -18,6 +18,7 @@
 */
 
 import 'package:flutter_test/flutter_test.dart';
+
 import 'dart:math';
 
 import 'package:anthem/widgets/editors/shared/helpers/box_intersection.dart';

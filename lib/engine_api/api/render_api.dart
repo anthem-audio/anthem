@@ -35,18 +35,16 @@ class RenderApi {
     required int blockSize,
     required int outputChannelCount,
   }) async {
-    final response =
-        await _engine._request(
-              StartRenderAudioSessionRequest(
-                id: _engine._getRequestId(),
-                sampleRate: sampleRate,
-                blockSize: blockSize,
-                outputChannelCount: outputChannelCount,
-              ),
-              startupBehavior: StartupSendBehavior.requireRunning,
-              bypassRenderRequestHold: true,
-            )
-            as StartRenderAudioSessionResponse;
+    final response = await _engine._request(
+      StartRenderAudioSessionRequest(
+        id: _engine._getRequestId(),
+        sampleRate: sampleRate,
+        blockSize: blockSize,
+        outputChannelCount: outputChannelCount,
+      ),
+      startupBehavior: StartupSendBehavior.requireRunning,
+      bypassRenderRequestHold: true,
+    ) as StartRenderAudioSessionResponse;
 
     if (!response.success) {
       throw StateError(
@@ -74,24 +72,22 @@ class RenderApi {
     required int qualityOptionIndex,
     required RenderAudioSampleFormat sampleFormat,
   }) async {
-    final response =
-        await _engine._request(
-              RenderAudioRequest(
-                id: _engine._getRequestId(),
-                renderId: renderId,
-                outputPath: outputPath,
-                format: format,
-                startTick: startTick,
-                endTick: endTick,
-                includeTail: includeTail,
-                bitDepth: bitDepth,
-                qualityOptionIndex: qualityOptionIndex,
-                sampleFormat: sampleFormat,
-              ),
-              startupBehavior: StartupSendBehavior.requireRunning,
-              bypassRenderRequestHold: true,
-            )
-            as RenderAudioResponse;
+    final response = await _engine._request(
+      RenderAudioRequest(
+        id: _engine._getRequestId(),
+        renderId: renderId,
+        outputPath: outputPath,
+        format: format,
+        startTick: startTick,
+        endTick: endTick,
+        includeTail: includeTail,
+        bitDepth: bitDepth,
+        qualityOptionIndex: qualityOptionIndex,
+        sampleFormat: sampleFormat,
+      ),
+      startupBehavior: StartupSendBehavior.requireRunning,
+      bypassRenderRequestHold: true,
+    ) as RenderAudioResponse;
 
     if (!response.success) {
       throw StateError(

@@ -96,9 +96,8 @@ void main() {
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
     when(engineMock.audioConfig).thenReturn(testAudioConfig());
     when(engineMock.engineState).thenAnswer((_) => currentEngineState);
-    when(
-      engineMock.engineStateStream,
-    ).thenAnswer((_) => trackedEngineStateStream);
+    when(engineMock.engineStateStream)
+        .thenAnswer((_) => trackedEngineStateStream);
     when(engineMock.readyForMessages).thenAnswer((_) async {});
 
     final projectMock = MockProjectModel();
@@ -1096,49 +1095,43 @@ void main() {
     },
   );
 
-  test(
-    'transport discontinuities preserve active overrides and reject old sessions',
-    () {
-      final setup = createProjectWithVisualizationProvider();
-      final subscription = setup.visualizationProvider.subscribe(
-        VisualizationSubscriptionConfig.latestDouble('value'),
-      );
-      subscription.setOverride(
-        value: 42,
-        duration: const Duration(seconds: 10),
-      );
-      void update(int generation, double value) {
-        setup.visualizationProvider.processVisualizationRecord(
-          VisualizationRecord(
-            sequence: 1,
-            generation: generation,
-            sampleRate: 48000,
-            newestSampleTimestamp: 10,
-            discontinuity: true,
-            update: VisualizationUpdateEvent(
-              id: -1,
-              items: [
-                testVisualizationItem(
-                  id: 'value',
-                  values: [value],
-                  sampleTimestamps: [10],
-                ),
-              ],
-            ),
+  test('transport discontinuities preserve active overrides and reject old sessions', () {
+    final setup = createProjectWithVisualizationProvider();
+    final subscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('value'),
+    );
+    subscription.setOverride(value: 42, duration: const Duration(seconds: 10));
+    void update(int generation, double value) {
+      setup.visualizationProvider.processVisualizationRecord(
+        VisualizationRecord(
+          sequence: 1,
+          generation: generation,
+          sampleRate: 48000,
+          newestSampleTimestamp: 10,
+          discontinuity: true,
+          update: VisualizationUpdateEvent(
+            id: -1,
+            items: [
+              testVisualizationItem(
+                id: 'value',
+                values: [value],
+                sampleTimestamps: [10],
+              ),
+            ],
           ),
-        );
-      }
-
-      update(2, 7);
-      update(1, 9);
-      expect(subscription.readValue(), 42);
-      final lateSubscription = setup.visualizationProvider.subscribe(
-        VisualizationSubscriptionConfig.latestDouble('value'),
+        ),
       );
-      expect(lateSubscription.readValue(), 7);
-      setup.visualizationProvider.dispose();
-    },
-  );
+    }
+
+    update(2, 7);
+    update(1, 9);
+    expect(subscription.readValue(), 42);
+    final lateSubscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('value'),
+    );
+    expect(lateSubscription.readValue(), 7);
+    setup.visualizationProvider.dispose();
+  });
 
   for (final scenario in [
     (name: 'consumed peaks', peakTime: 0, expected: 1.0),

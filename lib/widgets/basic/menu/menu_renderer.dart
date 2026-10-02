@@ -66,9 +66,8 @@ String? _normalizeShortcutLabel(String? shortcutLabel) {
 double _measureMenuTextWidth(BuildContext context, String text) {
   if (text.isEmpty) return 0;
 
-  final textStyle = DefaultTextStyle.of(
-    context,
-  ).style.merge(const TextStyle(fontSize: _Constants.fontSize));
+  final textStyle = DefaultTextStyle.of(context).style
+      .merge(const TextStyle(fontSize: _Constants.fontSize));
 
   return measureText(
     text: text,

@@ -78,12 +78,19 @@ Future<void> runFlutterWebTests({
     }
   }
   flutterTests.sort();
+  final flutterTargets = [
+    if (compiler != 'dart2wasm') 'js',
+    if (compiler != 'dart2js') 'wasm',
+  ];
 
   if (list) {
     print('Standalone Dart tests ($compiler):');
     dartTests.forEach(print);
     if (widgets) {
-      print('\nFlutter tests (JavaScript):');
+      final targetNames = flutterTargets
+          .map((target) => target == 'wasm' ? 'WebAssembly' : 'JavaScript')
+          .join(', ');
+      print('\nFlutter tests ($targetNames):');
       flutterTests.forEach(print);
     }
     return;
@@ -100,9 +107,8 @@ Future<void> runFlutterWebTests({
     usageException('The browser test selection is empty.');
   }
 
-  await Directory(
-    path.join(root, '.dart_tool/web-tests'),
-  ).create(recursive: true);
+  await Directory(path.join(root, '.dart_tool/web-tests'))
+      .create(recursive: true);
   final dartExecutable = path.join(
     path.dirname(Platform.resolvedExecutable),
     Platform.isWindows ? 'dart.exe' : 'dart',
@@ -125,26 +131,29 @@ Future<void> runFlutterWebTests({
   if (widgets) {
     // Flutter's browser compiler serves files from one package's test
     // directory. Run workspace packages separately so their tests resolve.
-    for (final entry in flutterPackages.entries) {
-      final packageName = entry.key == root
-          ? 'root'
-          : path.relative(entry.key, from: root).replaceAll('\\', '/');
-      final resultFile = path.join(
-        root,
-        '.dart_tool/web-tests/flutter-$packageName-results.json',
-      );
-      await _runTests('flutter', [
-        'test',
-        '--platform',
-        'chrome',
-        '--timeout',
-        '60s',
-        '--reporter',
-        reporter,
-        '--file-reporter',
-        'json:$resultFile',
-        ...entry.value..sort(),
-      ], entry.key);
+    for (final target in flutterTargets) {
+      for (final entry in flutterPackages.entries) {
+        final packageName = entry.key == root
+            ? 'root'
+            : path.relative(entry.key, from: root).replaceAll('\\', '/');
+        final resultFile = path.join(
+          root,
+          '.dart_tool/web-tests/flutter-$packageName-$target-results.json',
+        );
+        await _runTests('flutter', [
+          'test',
+          '--platform',
+          'chrome',
+          if (target == 'wasm') '--wasm',
+          '--timeout',
+          '60s',
+          '--reporter',
+          reporter,
+          '--file-reporter',
+          'json:$resultFile',
+          ...entry.value..sort(),
+        ], entry.key);
+      }
     }
   }
 }

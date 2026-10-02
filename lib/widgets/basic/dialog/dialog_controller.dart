@@ -18,7 +18,7 @@
 */
 
 import 'package:anthem/theme.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 abstract class DialogControllerImpl {
@@ -122,10 +122,14 @@ class _MarkdownDialogContentState extends State<_MarkdownDialogContent> {
         maxWidth: widget.maxWidth,
         maxHeight: widget.maxHeight,
       ),
-      child: Scrollbar(
+      child: RawScrollbar(
         controller: _scrollController,
         thumbVisibility: true,
         interactive: true,
+        thumbColor: AnthemTheme.panel.scrollbar,
+        thickness: 8,
+        radius: const Radius.circular(8),
+        crossAxisMargin: 2,
         child: SingleChildScrollView(
           controller: _scrollController,
           child: MarkdownBody(

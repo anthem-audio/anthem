@@ -504,9 +504,8 @@ abstract class _ArrangerController {
     }
 
     if (track.isAutomationLane) {
-      ServiceRegistry.forProject(
-        project.id,
-      ).trackController.setActiveTrack(track.id);
+      ServiceRegistry.forProject(project.id).trackController
+          .setActiveTrack(track.id);
       return false;
     }
 
@@ -515,9 +514,8 @@ abstract class _ArrangerController {
   }
 
   void deleteClips(Iterable<Id> clipIds) {
-    final trackController = ServiceRegistry.forProject(
-      project.id,
-    ).trackController;
+    final trackController = ServiceRegistry.forProject(project.id)
+        .trackController;
 
     final deletionResult = trackController.deleteClips(clipIds: clipIds);
 
