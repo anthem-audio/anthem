@@ -35,7 +35,7 @@ import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 
 class DeviceController {
   final ProjectModel project;
@@ -109,16 +109,18 @@ class DeviceController {
       );
     }
 
-    final result = await FilePicker.pickFiles(
-      dialogTitle: 'Choose a plugin (VST3)',
-      allowedExtensions: Platform.isMacOS ? null : ['vst3'],
+    final file = await openFile(
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'VST3 plugins', extensions: ['vst3']),
+      ],
       initialDirectory: initialDirectory,
-      type: Platform.isMacOS ? FileType.custom : FileType.any,
+      confirmButtonText: 'Choose plugin',
     );
+    if (file == null) return null;
 
-    final path = result?.files[0].path;
+    final path = file.path;
 
-    if (path?.toLowerCase().endsWith('.vst3') != true) {
+    if (!path.toLowerCase().endsWith('.vst3')) {
       dialogController.showMarkdownDialog(
         title: 'Error',
         markdown:
@@ -132,7 +134,7 @@ class DeviceController {
     return DeviceDescriptorForCommand(
       type: DeviceType.vst3Plugin,
       index: index,
-      vst3Path: path!,
+      vst3Path: path,
     );
   }
 

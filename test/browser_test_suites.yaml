@@ -21,5 +21,6 @@ flutter:
 exclude:
   - test/lib/helpers/logging/anthem_logging_test.dart
   - test/lib/logic/project_file_codec_test.dart
+  - test/lib/logic/main_window_file_test.dart
   - test/lib/widgets/main_window/render_dialog_controller_test.dart
   - codegen/test/dependency_tracking_integration_test.dart

@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/logic/devices/device_factory.dart';
+import 'package:anthem/logic/device_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
@@ -28,9 +29,36 @@ import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+
+import '../../helpers/file_dialog_test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test(
+    'cancelling VST3 selection leaves the rack unchanged without an error',
+    () async {
+      final originalSelector = FileSelectorPlatform.instance;
+      FileSelectorPlatform.instance = FakeFileSelector();
+      addTearDown(() => FileSelectorPlatform.instance = originalSelector);
+      final project = ProjectModel.create();
+      addTearDown(project.dispose);
+      final recordingDialog = RecordingDialog();
+      ServiceRegistry.dialogController.initialize(recordingDialog);
+      addTearDown(ServiceRegistry.dialogController.dispose);
+      final track = project.tracks[project.trackOrder.first]!;
+      final deviceCount = track.requireProcessing.devices.length;
+
+      await DeviceController(project)
+          .addDevice(trackId: track.id, type: DeviceType.vst3Plugin);
+
+      expect(track.requireProcessing.devices, hasLength(deviceCount));
+      expect(recordingDialog.shownCount, 0);
+    },
+    skip: kIsWeb,
+  );
 
   test('rack routing skips incompatible devices in the sparse audio chain', () {
     final project = ProjectModel.create();
