@@ -129,11 +129,17 @@ class ProjectModel extends _ProjectModel
     }
   }
 
-  factory ProjectModel.fromJson(Map<String, dynamic> json) {
+  /// Restores persistent content with an optional runtime engine executable.
+  /// The executable path is never read from or written to the project file.
+  factory ProjectModel.fromJson(
+    Map<String, dynamic> json, {
+    String? enginePathOverride,
+  }) {
     final project = _$ProjectModelAnthemModelMixin.fromJson(json)
       // This is the top model in the tree. setParentPropertiesOnChildren will not
       // work correctly if we don't set this.
-      ..isTopLevelModel = true;
+      ..isTopLevelModel = true
+      .._enginePathOverride = enginePathOverride;
     project.hydrate();
     project._init();
     return project;
@@ -287,7 +293,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   void Function(ModelChangeEvent)? _fieldChangedListener;
 
   @hide
-  final String? _enginePathOverride;
+  // Assigned during construction/deserialization before the lazy engine exists.
+  String? _enginePathOverride;
 
   _ProjectModel.create([this._enginePathOverride]) : super() {
     // This is the top model in the tree. setParentPropertiesOnChildren will not

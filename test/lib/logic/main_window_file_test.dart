@@ -82,6 +82,25 @@ void main() {
     },
   );
 
+  test('deserialization keeps engine selection out of persistent content', () {
+    final persistent = project.toJson();
+    final jsonWithRuntimePath = {
+      ...persistent,
+      'enginePathOverride': 'path-from-project-file',
+    };
+    final restored = ProjectModel.fromJson(
+      jsonWithRuntimePath,
+      enginePathOverride: 'explicit-runtime-engine',
+    );
+    addTearDown(restored.dispose);
+    expect(restored.engine.enginePathOverride, 'explicit-runtime-engine');
+    expect(restored.toJson(), persistent);
+    final defaultRestored = ProjectModel.fromJson(jsonWithRuntimePath);
+    addTearDown(defaultRestored.dispose);
+    expect(defaultRestored.engine.enginePathOverride, isNull);
+    expect(defaultRestored.toJson(), persistent);
+  });
+
   test(
     'Save As writes an Anthem file and ordinary Save reuses its path',
     () async {

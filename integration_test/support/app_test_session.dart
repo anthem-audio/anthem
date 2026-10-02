@@ -28,7 +28,9 @@ import 'package:anthem/helpers/logging/anthem_logging.dart';
 import 'package:anthem/logic/application_session.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/content_renderer.dart';
+import 'package:anthem/widgets/project/project.dart' as project_widget;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,8 +54,9 @@ class AppTestSession {
   final List<TestGesture> _heldPointers = [];
   final Set<LogicalKeyboardKey> _heldKeys = {};
   Future<void>? _cleanup;
+  ProjectModel? _openedProject;
 
-  ProjectModel get project => app.project;
+  ProjectModel get project => _openedProject ?? app.project;
   ServiceRegistry get services => ServiceRegistry.forProject(project.id);
 
   AppTestSession(
@@ -138,6 +141,54 @@ class AppTestSession {
         'Engine exited while waiting. Session diagnostics: $sessionDiagnostics',
       );
     }
+  }
+
+  /// Runs the application's Open workflow with the real configured engine.
+  /// File-selection overrides supply paths; decoding and engine startup remain
+  /// production operations. Retains the loaded model for cleanup diagnostics.
+  Future<ProjectModel?> openProjectFromFile() async {
+    final projectId = await waitForFuture(
+      tester,
+      ServiceRegistry.mainWindowController.loadProject(
+        dialogController: ServiceRegistry.dialogController,
+        engineExecutable: configuredEngine,
+        startAudio: false,
+      ),
+      conditionDescription: 'application Open workflow',
+      collectTimeoutDiagnostics: () => sessionDiagnostics,
+      timeout: startupTimeout,
+    );
+    if (projectId == null) return null;
+    _openedProject = AnthemStore.instance.projects[projectId]!;
+    checkEngine();
+    await waitForFuture(
+      tester,
+      project.waitForFirstSync(),
+      conditionDescription: 'reopened project initial model acknowledgment',
+      collectTimeoutDiagnostics: () => sessionDiagnostics,
+      checkHealth: checkEngine,
+      timeout: startupTimeout,
+    );
+    await waitUntil(
+      tester,
+      conditionDescription: 'reopened project mounted in the app',
+      isReady: () =>
+          AnthemStore.instance.activeProjectId == projectId &&
+          find
+                  .byWidgetPredicate(
+                    (widget) =>
+                        widget is project_widget.Project &&
+                        widget.id == projectId,
+                  )
+                  .evaluate()
+                  .length ==
+              1,
+      collectTimeoutDiagnostics: () => sessionDiagnostics,
+      checkHealth: checkEngine,
+    );
+    expect(project.engine.enginePathOverride, configuredEngine);
+    expect(project.engine.isAudioReady, isFalse);
+    return project;
   }
 
   /// Each poll asks the real engine again. This observes its model only; it

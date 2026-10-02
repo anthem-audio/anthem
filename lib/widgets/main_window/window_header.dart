@@ -379,7 +379,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
     final mainWindowController = ServiceRegistry.mainWindowController;
 
     final activeProjectId = AnthemStore.instance.activeProjectId;
-    final activeProject = AnthemStore.instance.projects[activeProjectId]!;
+    final activeProject = AnthemStore.instance.projects[activeProjectId];
 
     final dialogController = ServiceRegistry.dialogController;
 
@@ -410,118 +410,120 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                 });
           },
         ),
-        Separator(),
-        if (!kIsWeb)
+        if (activeProject != null) ...[
+          Separator(),
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Save',
+              hint: 'Save the active project',
+              onSelected: () {
+                mainWindowController.saveProject(
+                  activeProject.id,
+                  false,
+                  dialogController: dialogController,
+                );
+              },
+            ),
           AnthemMenuItem(
-            text: 'Save',
-            hint: 'Save the active project',
+            text: kIsWeb ? 'Download project...' : 'Save as...',
+            hint: 'Save the active project to a new location',
             onSelected: () {
               mainWindowController.saveProject(
                 activeProject.id,
-                false,
+                true,
                 dialogController: dialogController,
               );
             },
           ),
-        AnthemMenuItem(
-          text: kIsWeb ? 'Download project...' : 'Save as...',
-          hint: 'Save the active project to a new location',
-          onSelected: () {
-            mainWindowController.saveProject(
-              activeProject.id,
-              true,
-              dialogController: dialogController,
-            );
-          },
-        ),
-        if (!kIsWeb)
-          AnthemMenuItem(
-            text: 'Render...',
-            hint: 'Render the active project',
-            disabled: activeProject.engineState != EngineState.running,
-            onSelected: () async {
-              if (activeProject.engineState != EngineState.running) return;
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Render...',
+              hint: 'Render the active project',
+              disabled: activeProject.engineState != EngineState.running,
+              onSelected: () async {
+                if (activeProject.engineState != EngineState.running) return;
 
-              final renderDialogController = RenderDialogController.forProject(
-                activeProject,
-              );
-              await renderDialogController.loadSavedState();
-              final pickedFile = await renderDialogController.chooseFile();
-              if (!pickedFile) {
-                return;
-              }
+                final renderDialogController =
+                    RenderDialogController.forProject(activeProject);
+                await renderDialogController.loadSavedState();
+                final pickedFile = await renderDialogController.chooseFile();
+                if (!pickedFile) {
+                  return;
+                }
 
-              if (activeProject.engineState != EngineState.running) return;
+                if (activeProject.engineState != EngineState.running) return;
 
-              dialogController.showDialog(
-                title: 'Render',
-                content: RenderDialog(controller: renderDialogController),
-                buttons: [
-                  DialogButton(
-                    text: 'Render',
-                    shouldCloseDialog: false,
-                    onPress: renderDialogController.render,
+                dialogController.showDialog(
+                  title: 'Render',
+                  content: RenderDialog(controller: renderDialogController),
+                  buttons: [
+                    DialogButton(
+                      text: 'Render',
+                      shouldCloseDialog: false,
+                      onPress: renderDialogController.render,
+                    ),
+                  ],
+                );
+              },
+            ),
+          if (kDebugMode) Separator(),
+          if (kDebugMode)
+            AnthemMenuItem(
+              text: 'Debug',
+              submenu: MenuDef(
+                children: [
+                  AnthemMenuItem(
+                    text: 'Print project JSON (UI)',
+                    hint: 'Print the project JSON as reported by the UI',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        jsonEncode(
+                          AnthemStore
+                              .instance
+                              .projects[AnthemStore.instance.activeProjectId]!
+                              .toJson(),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              );
-            },
-          ),
-        if (kDebugMode) Separator(),
-        if (kDebugMode)
-          AnthemMenuItem(
-            text: 'Debug',
-            submenu: MenuDef(
-              children: [
-                AnthemMenuItem(
-                  text: 'Print project JSON (UI)',
-                  hint: 'Print the project JSON as reported by the UI',
-                  onSelected: () async {
-                    // ignore: avoid_print
-                    print(
-                      jsonEncode(
-                        AnthemStore
+                  AnthemMenuItem(
+                    text: 'Print project JSON (engine)',
+                    hint: 'Print the project JSON as reported by the engine',
+                    onSelected: () async {
+                      // ignore: avoid_print
+                      print(
+                        await AnthemStore
                             .instance
                             .projects[AnthemStore.instance.activeProjectId]!
-                            .toJson(),
-                      ),
-                    );
-                  },
-                ),
-                AnthemMenuItem(
-                  text: 'Print project JSON (engine)',
-                  hint: 'Print the project JSON as reported by the engine',
-                  onSelected: () async {
-                    // ignore: avoid_print
-                    print(
-                      await AnthemStore
-                          .instance
-                          .projects[AnthemStore.instance.activeProjectId]!
-                          .engine
-                          .modelSyncApi
-                          .debugGetEngineJson(),
-                    );
-                  },
-                ),
-                Separator(),
-                AnthemMenuItem(
-                  text: 'Open widget test area',
-                  onSelected: () {
-                    final projectViewModel = getProjectController().viewModel;
+                            .engine
+                            .modelSyncApi
+                            .debugGetEngineJson(),
+                      );
+                    },
+                  ),
+                  Separator(),
+                  AnthemMenuItem(
+                    text: 'Open widget test area',
+                    onSelected: () {
+                      final projectViewModel = getProjectController().viewModel;
 
-                    projectViewModel.topPanelOverlayContentBuilder = (
-                      context,
-                    ) => const WidgetTestArea();
-                  },
-                ),
-              ],
+                      projectViewModel.topPanelOverlayContentBuilder = (
+                        context,
+                      ) => const WidgetTestArea();
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
+        ],
       ],
     );
     final editMenuDef = MenuDef(
       children: [
         AnthemMenuItem(
           text: 'Undo',
+          disabled: activeProject == null,
           shortcutLabel: 'Ctrl+Z',
           onSelected: () {
             getProjectController().undo();
@@ -530,6 +532,7 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
         ),
         AnthemMenuItem(
           text: 'Redo',
+          disabled: activeProject == null,
           shortcutLabel: 'Ctrl+Shift+Z',
           onSelected: () {
             getProjectController().redo();

@@ -163,9 +163,12 @@ class MainWindowController {
   }
 
   /// Returns the ID of the loaded project, or null if the project load failed
-  /// or was cancelled.
+  /// or was cancelled. Engine selection and audio startup are runtime options;
+  /// native selection, decoding, and migration use the normal file workflow.
   Future<ProjectId?> loadProject({
     required DialogController dialogController,
+    String? engineExecutable,
+    bool startAudio = true,
   }) async {
     String? home;
     Map<String, String> envVars = kIsWeb ? {} : Platform.environment;
@@ -199,7 +202,10 @@ class MainWindowController {
         projectJson = await readProjectFile(path);
       }
 
-      project = ProjectModel.fromJson(projectJson);
+      project = ProjectModel.fromJson(
+        projectJson,
+        enginePathOverride: engineExecutable,
+      );
     } catch (error, stackTrace) {
       _log.warning('Could not load project file.', error, stackTrace);
       dialogController.showMarkdownDialog(
@@ -210,13 +216,10 @@ class MainWindowController {
       return null;
     }
 
-    final serviceRegistry = _addProject(project);
-
     project.filePath = path;
     project.isDirty = false;
 
-    await serviceRegistry.projectEngineController.start();
-    return project.id;
+    return openProject(project, startAudio: startAudio);
   }
 
   Future<bool> saveProject(
