@@ -38,7 +38,7 @@ Linux requires a display; in a headless environment use:
 xvfb-run -a -s "-screen 0 1280x800x24" dart run anthem:cli integration-test
 ```
 
-## Current smoke coverage
+## Scenario coverage
 
 `startup_test.dart` starts and closes two sessions in one app process, checks
 initial model contents through engine IPC, and verifies fresh projects,
@@ -110,10 +110,10 @@ the existing painter and geometry tests cover that responsibility.
 
 Artifacts currently include the runner transcript, Flutter version and engine
 path, application/engine logs, session IDs/PIDs/exit codes, canvas bounds, and
-engine model snapshots. Linux/Xvfb and macOS smoke jobs upload these even on
+engine model snapshots. Linux/Xvfb and macOS build jobs upload these even on
 failure. The note scenario also saves `drawn.json`, `resized.json`, `undone.json`,
-and `redone.json` with viewport diagnostics and engine note state. Expanded
-failure diagnostics are a later delivery. Persistence artifacts include
+and `redone.json` with viewport diagnostics and engine note state. Persistence
+artifacts include
 `saved-project.anthem`, `saved.json`, `closed-before-reopen.json`, and
 `reopened.json`, with persistent content and both engine lifetimes.
 
@@ -130,3 +130,58 @@ dart run anthem:cli integration-test --engine /absolute/path/to/AnthemEngine \
 The probe is outside automatic `*_test.dart` discovery. Normal app logging
 chains the existing Flutter error handler so the integration binding continues
 to report failures.
+
+## Failure artifacts and CI
+
+Scenarios use `testAppScenario`, which captures thrown assertions and pending
+framework errors while the app is still mounted and rethrows the original
+failure. Teardown also captures failures reported by the binding, including
+unawaited errors that bypass the scenario body. Capture runs before releasing
+held input, unmounting the UI, and closing engines. Errors after explicit
+disposal retain model and lifecycle evidence and record the missing frame.
+
+Each failed session produces `failure.json` with the original error and stack,
+session IDs and executable, Dart project content, active editor/panel/pattern,
+selection and held input, arranger target/rendered viewport, and registered
+scenario-driver diagnostics. Piano-roll diagnostics include current canvas
+bounds, target and rendered time/pitch values, and the last input target.
+The report includes a fresh engine snapshot, or a bounded query error when the
+engine cannot reply. Individual collector errors are retained in the report;
+artifact collection does not replace the original test failure. Application
+and engine logs remain in the run's `logs/` directory.
+
+`failure.png` captures the Flutter app surface through a test-owned repaint
+boundary, at one pixel per logical pixel. This includes Flutter overlays and
+dialogs, and excludes native windows such as system file pickers. When startup
+has not produced a frame, the report explains why the screenshot is unavailable.
+Engine queries have a two-second deadline. Screenshot capture and writing have
+a ten-second deadline to allow cold rasterization and PNG encoding; other
+asynchronous artifact operations have three-second deadlines. Cleanup still
+runs if collection fails.
+
+Test the integration harness's diagnostic capture and engine cleanup by running
+deliberately failing scenarios:
+
+```sh
+dart run anthem:cli integration-test --engine /absolute/path/to/AnthemEngine \
+  --test-failure-handling
+```
+
+This flag selects intentional failures outside normal test discovery. Diagnostics
+are already captured automatically when normal integration scenarios fail. The
+underlying Flutter process must exit nonzero; the command returns success only after
+verifying the original failures, required screenshots and snapshots, and actual
+child exits in `stopped.json`. The probes exercise a failed note assertion with
+held input and a broken diagnostic collector, framework and unawaited errors,
+an unresponsive engine, and startup without a frame. A unique run ID rejects stale
+artifacts when reusing an output directory. `verification.json` records the
+verified cases.
+
+The Build workflow runs the normal suite and failure handling checks in the Linux
+x64 and macOS arm64 jobs, using the **release engine already built by the job**.
+The separate desktop smoke workflow has been removed. Flutter integration tests
+still compile a debug test application; the release UI bundle is built once and
+uploaded before tests. Xvfb supplies Linux's display. Integration diagnostics
+are uploaded with `always()` under architecture-specific artifact names.
+Windows and the remaining desktop architectures retain their existing builds;
+expanding integration coverage to them is a later task.

@@ -129,106 +129,110 @@ Future<void> _verifyNotePresent({
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('draw a note, resize the window, then keyboard undo and redo', (
-    tester,
-  ) async {
-    final session = AppTestSession(tester, name: 'note-editing');
-    await session.start();
-    final pianoRoll = PianoRollTestDriver(session);
-    final pattern = await _preparePattern(session, pianoRoll);
+  testAppScenario(
+    'draw a note, resize the window, then keyboard undo and redo',
+    (tester) async {
+      final session = AppTestSession(tester, name: 'note-editing');
+      await session.start();
+      final pianoRoll = PianoRollTestDriver(session);
+      final pattern = await _preparePattern(session, pianoRoll);
 
-    await expectLater(
-      () => pianoRoll.undo(),
-      throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('Activate the piano roll through mouse input'),
-        ),
-      ),
-    );
-    for (final target in [(tick: -24.0, pitch: 60), (tick: 203.0, pitch: 0)]) {
       await expectLater(
-        () => pianoRoll.drawNote(
-          rawTick: target.tick,
-          pitch: target.pitch,
-          moveToTick: target.tick,
-        ),
+        () => pianoRoll.undo(),
         throwsA(
           isA<StateError>().having(
             (error) => error.message,
             'message',
-            allOf(
-              contains('outside the visible piano roll'),
-              contains('renderedTimeRange'),
-            ),
+            contains('Activate the piano roll through mouse input'),
           ),
         ),
       );
-    }
-    expect(pattern.notes, isEmpty);
-    expect(pattern.previewNotes, isEmpty);
+      for (final target in [
+        (tick: -24.0, pitch: 60),
+        (tick: 203.0, pitch: 0),
+      ]) {
+        await expectLater(
+          () => pianoRoll.drawNote(
+            rawTick: target.tick,
+            pitch: target.pitch,
+            moveToTick: target.tick,
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              allOf(
+                contains('outside the visible piano roll'),
+                contains('renderedTimeRange'),
+              ),
+            ),
+          ),
+        );
+      }
+      expect(pattern.notes, isEmpty);
+      expect(pattern.previewNotes, isEmpty);
 
-    await pianoRoll.drawNote(rawTick: 203, pitch: 60, moveToTick: 207);
-    expect(pattern.notes, hasLength(1));
-    final noteId = pattern.notes.keys.single;
-    await _verifyNotePresent(
-      session: session,
-      pianoRoll: pianoRoll,
-      pattern: pattern,
-      noteId: noteId,
-      phase: 'drawn',
-    );
+      await pianoRoll.drawNote(rawTick: 203, pitch: 60, moveToTick: 207);
+      expect(pattern.notes, hasLength(1));
+      final noteId = pattern.notes.keys.single;
+      await _verifyNotePresent(
+        session: session,
+        pianoRoll: pianoRoll,
+        pattern: pattern,
+        noteId: noteId,
+        phase: 'drawn',
+      );
 
-    final originalCanvas = pianoRoll.canvasRect;
-    final originalTimeEnd = pianoRoll.renderedMetrics.renderedTimeViewEnd;
-    await session.resizeWindow(const Size(1100, 720));
-    await pianoRoll.waitForRenderedViewport();
-    expect(pianoRoll.canvasRect.width, lessThan(originalCanvas.width));
-    expect(
-      pianoRoll.renderedMetrics.renderedTimeViewEnd,
-      lessThan(originalTimeEnd),
-    );
-    await _verifyNotePresent(
-      session: session,
-      pianoRoll: pianoRoll,
-      pattern: pattern,
-      noteId: noteId,
-      phase: 'resized',
-    );
+      final originalCanvas = pianoRoll.canvasRect;
+      final originalTimeEnd = pianoRoll.renderedMetrics.renderedTimeViewEnd;
+      await session.resizeWindow(const Size(1100, 720));
+      await pianoRoll.waitForRenderedViewport();
+      expect(pianoRoll.canvasRect.width, lessThan(originalCanvas.width));
+      expect(
+        pianoRoll.renderedMetrics.renderedTimeViewEnd,
+        lessThan(originalTimeEnd),
+      );
+      await _verifyNotePresent(
+        session: session,
+        pianoRoll: pianoRoll,
+        pattern: pattern,
+        noteId: noteId,
+        phase: 'resized',
+      );
 
-    await pianoRoll.undo();
-    expect(pattern.notes, isEmpty);
-    expect(pattern.previewNotes, isEmpty);
-    await pianoRoll.waitForNoteRendering(noteId, visible: false);
-    expect(pianoRoll.viewModel.visibleNotes.getAnnotations(), isEmpty);
-    final undoneModel = await session.waitForEngineModel(
-      conditionDescription: 'undo removes the note from engine',
-      matches: (model) => _engineNotes(model, pattern.id)?.isEmpty == true,
-    );
-    await session.writeSessionDiagnostics(
-      'undone',
-      additionalDiagnostics: {
-        'pianoRoll': pianoRoll.viewportDiagnostics,
-        'engineNotes': _engineNotes(undoneModel, pattern.id),
-      },
-    );
+      await pianoRoll.undo();
+      expect(pattern.notes, isEmpty);
+      expect(pattern.previewNotes, isEmpty);
+      await pianoRoll.waitForNoteRendering(noteId, visible: false);
+      expect(pianoRoll.viewModel.visibleNotes.getAnnotations(), isEmpty);
+      final undoneModel = await session.waitForEngineModel(
+        conditionDescription: 'undo removes the note from engine',
+        matches: (model) => _engineNotes(model, pattern.id)?.isEmpty == true,
+      );
+      await session.writeSessionDiagnostics(
+        'undone',
+        additionalDiagnostics: {
+          'pianoRoll': pianoRoll.viewportDiagnostics,
+          'engineNotes': _engineNotes(undoneModel, pattern.id),
+        },
+      );
 
-    await pianoRoll.redo();
-    await _verifyNotePresent(
-      session: session,
-      pianoRoll: pianoRoll,
-      pattern: pattern,
-      noteId: noteId,
-      phase: 'redone',
-    );
-    expect(HardwareKeyboard.instance.logicalKeysPressed, isEmpty);
-    expect(pianoRoll.renderedMetrics.activePointerId, isNull);
-    await session.dispose();
-    expect(session.project.engine.processExitCode, isNotNull);
-  });
+      await pianoRoll.redo();
+      await _verifyNotePresent(
+        session: session,
+        pianoRoll: pianoRoll,
+        pattern: pattern,
+        noteId: noteId,
+        phase: 'redone',
+      );
+      expect(HardwareKeyboard.instance.logicalKeysPressed, isEmpty);
+      expect(pianoRoll.renderedMetrics.activePointerId, isNull);
+      await session.dispose();
+      expect(session.project.engine.processExitCode, isNotNull);
+    },
+  );
 
-  testWidgets(
+  testAppScenario(
     'input helpers release modifiers and pointer after action failure',
     (tester) async {
       final session = AppTestSession(tester, name: 'input-helper-failure');

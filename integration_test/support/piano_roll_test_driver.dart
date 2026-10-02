@@ -40,8 +40,11 @@ import 'waits.dart';
 /// Every target is calculated from current rendered metrics and canvas bounds.
 class PianoRollTestDriver {
   final AppTestSession session;
+  Map<String, Object?>? _lastInputTarget;
 
-  PianoRollTestDriver(this.session);
+  PianoRollTestDriver(this.session) {
+    session.registerFailureDiagnostics('pianoRoll', () => viewportDiagnostics);
+  }
 
   WidgetTester get tester => session.tester;
   PianoRollViewModel get viewModel => session.services.pianoRollViewModel;
@@ -73,6 +76,7 @@ class PianoRollTestDriver {
   }
 
   Map<String, Object?> get viewportDiagnostics => {
+    'lastInputTarget': _lastInputTarget,
     ...session.sessionDiagnostics,
     'patternId': session.project.sequence.activePatternID,
     'canvasBounds': _laidOutCanvasRect?.toString(),
@@ -186,6 +190,12 @@ class PianoRollTestDriver {
       ),
     );
     final global = rect.topLeft + local;
+    _lastInputTarget = {
+      'tick': rawTick,
+      'pitch': pitch,
+      'localPoint': local.toString(),
+      'globalPoint': global.toString(),
+    };
     if (!rect.contains(global) ||
         !tester.getRect(find.byKey(mainWindowKey)).contains(global)) {
       throw StateError(

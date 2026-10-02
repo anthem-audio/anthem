@@ -72,6 +72,9 @@ class AnthemApplicationSession {
   final SharedPreferencesAsync? preferences;
   final String? logRoot;
 
+  /// Optional host wrapper, used by tests to capture the Flutter surface.
+  final Widget Function(Widget child)? wrapRoot;
+
   Future<void>? _startFuture;
   Future<void>? _disposeFuture;
   bool _mounted = false;
@@ -88,6 +91,7 @@ class AnthemApplicationSession {
     this.requireEngine = false,
     this.preferences,
     this.logRoot,
+    this.wrapRoot,
   }) : project = initialProject ?? ProjectModel.create(engineExecutable) {
     if (initialProject != null && engineExecutable != null) {
       throw ArgumentError(
@@ -131,7 +135,7 @@ class AnthemApplicationSession {
       await project.waitForFirstSync();
     }
     _checkOpen();
-    runApp(const App());
+    runApp(wrapRoot?.call(const App()) ?? const App());
     _mounted = true;
   }
 

@@ -20,7 +20,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui' show PointerDeviceKind;
+import 'dart:ui' as ui;
 
 import 'package:anthem/app.dart';
 import 'package:anthem/engine_api/engine.dart';
@@ -32,29 +32,61 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/content_renderer.dart';
 import 'package:anthem/widgets/project/project.dart' as project_widget;
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/common.dart' show Failure;
+import 'package:integration_test/integration_test.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'memory_preferences.dart';
+import 'failure_artifacts.dart';
 import 'waits.dart';
 
 const logicalWindowSize = Size(1280, 800);
 const configuredEngine = String.fromEnvironment('ANTHEM_TEST_ENGINE');
 const configuredArtifacts = String.fromEnvironment('ANTHEM_TEST_ARTIFACTS');
+const configuredRunId = String.fromEnvironment('ANTHEM_TEST_RUN_ID');
+final _scenarioSessionsKey = Object();
+
+/// Captures failures while the app is still mounted, then preserves the error.
+/// Framework errors retain the binding's reporting path; a pending error at the
+/// end of the scenario is rethrown instead of being silently consumed.
+void testAppScenario(String description, WidgetTesterCallback callback) {
+  testWidgets(description, (tester) async {
+    final sessions = <AppTestSession>[];
+    await runZoned(() async {
+      try {
+        await callback(tester);
+        final exception = tester.takeException();
+        if (exception != null) throw exception;
+      } catch (error, stack) {
+        for (final session in sessions.reversed) {
+          // A failure after explicit disposal still needs lifecycle evidence.
+          await session.captureFailure(error, stack);
+        }
+        Error.throwWithStackTrace(error, stack);
+      }
+    }, zoneValues: {_scenarioSessionsKey: sessions});
+  });
+}
 
 /// Owns cleanup before any startup work. Files and logs stay in the run's
 /// ignored artifact directory; each session gets a fresh settings instance.
 class AppTestSession {
   final WidgetTester tester;
-  final AnthemApplicationSession app;
+  late final AnthemApplicationSession app;
   final Directory artifacts;
   final Duration startupTimeout;
   final List<TestGesture> _heldPointers = [];
   final Set<LogicalKeyboardKey> _heldKeys = {};
   Future<void>? _cleanup;
   ProjectModel? _openedProject;
+  final _screenshotBoundaryKey = GlobalKey();
+  final _failureDiagnostics = <String, Object? Function()>{};
+  Future<void>? _failureCapture;
+  Object? _cleanupError;
 
   ProjectModel get project => _openedProject ?? app.project;
   ServiceRegistry get services => ServiceRegistry.forProject(project.id);
@@ -66,26 +98,34 @@ class AppTestSession {
     ProjectModel? initialProject,
     SharedPreferencesAsync? settings,
     this.startupTimeout = const Duration(seconds: 15),
-  }) : artifacts = Directory('$configuredArtifacts/$name'),
-       app = AnthemApplicationSession(
-         initialProject: initialProject,
-         engineExecutable: initialProject == null ? engineExecutable : null,
-         startAudio: false,
-         requireEngine: true,
-         preferences: settings ?? MemoryPreferences(),
-         logRoot: '$configuredArtifacts/logs',
-       ) {
+  }) : artifacts = Directory('$configuredArtifacts/$name') {
+    app = AnthemApplicationSession(
+      initialProject: initialProject,
+      engineExecutable: initialProject == null ? engineExecutable : null,
+      startAudio: false,
+      requireEngine: true,
+      preferences: settings ?? MemoryPreferences(),
+      logRoot: '$configuredArtifacts/logs',
+      wrapRoot: (child) =>
+          RepaintBoundary(key: _screenshotBoundaryKey, child: child),
+    );
+    (Zone.current[_scenarioSessionsKey] as List<AppTestSession>?)?.add(this);
     addTearDown(dispose);
   }
 
   /// Current session details for failure messages and JSON debug artifacts.
   /// Rebuilt on access; reading these diagnostics does not check readiness.
   Map<String, Object?> get sessionDiagnostics => {
+    'runId': configuredRunId,
     'projectId': project.id,
+    'projectFilePath': project.filePath,
+    'projectIsDirty': project.isDirty,
     'engineId': project.engine.id,
+    'engineExecutable': project.engine.enginePathOverride,
     'engineState': project.engine.engineState.name,
     'enginePid': project.engine.processId,
     'engineExitCode': project.engine.processExitCode,
+    'cleanupError': _cleanupError?.toString(),
     'appPid': pid,
     'logs': AnthemLogManager.instance.activeSessionDirectoryPath,
   };
@@ -235,7 +275,9 @@ class AppTestSession {
   }
 
   Future<TestGesture> holdPointer(Offset location) async {
-    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    final pointer = await tester.createGesture(
+      kind: ui.PointerDeviceKind.mouse,
+    );
     _heldPointers.add(pointer);
     await pointer.down(location);
     return pointer;
@@ -274,7 +316,9 @@ class AppTestSession {
     required Offset start,
     required Future<void> Function(TestGesture) action,
   }) async {
-    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    final pointer = await tester.createGesture(
+      kind: ui.PointerDeviceKind.mouse,
+    );
     _heldPointers.add(pointer);
     var released = false;
     try {
@@ -311,7 +355,124 @@ class AppTestSession {
 
   Future<void> dispose() => _cleanup ??= _dispose();
 
+  /// Scenario drivers add their own target and rendered viewport details here.
+  void registerFailureDiagnostics(String name, Object? Function() collect) {
+    _failureDiagnostics[name] = collect;
+  }
+
+  /// Best effort: collection failures never prevent cleanup or replace errors.
+  Future<void> captureFailure(
+    Object error,
+    StackTrace stack,
+  ) => _failureCapture ??= FailureArtifacts(tester, artifacts)
+      .capture(
+        error: error,
+        stack: stack,
+        collectSession: () => sessionDiagnostics,
+        collectProject: () => project.toJson(),
+        collectUi: () {
+          final registry = ServiceRegistry.maybeForProject(project.id);
+          return {
+            'activeProjectId': AnthemStore.instance.activeProjectId,
+            'openProjectIds': AnthemStore.instance.projectOrder.toList(),
+            'activePatternId': project.sequence.activePatternID,
+            'activeTrackId': project.sequence.activeTrackID,
+            'selectedEditor': registry?.projectViewModel.selectedEditor?.name,
+            'activePanel': registry?.projectViewModel.activePanel?.name,
+            'selectedNotes': registry?.pianoRollViewModel.selectedNotes
+                .toList(),
+            'selectedTracks': registry?.arrangerViewModel.selectedTracks
+                .toList(),
+            'selectedClips': registry?.arrangerViewModel.selectedClips.toList(),
+            'heldKeys': _heldKeys.map((key) => key.debugName).toList(),
+            'heldPointerCount': _heldPointers.length,
+            if (registry != null)
+              'arranger': {
+                'targetTimeRange': [
+                  registry.arrangerViewModel.timeRange.start,
+                  registry.arrangerViewModel.timeRange.end,
+                ],
+                'renderedTimeRange': [
+                  registry
+                      .arrangerController
+                      .stateMachine
+                      .data
+                      .renderedTimeViewStart,
+                  registry
+                      .arrangerController
+                      .stateMachine
+                      .data
+                      .renderedTimeViewEnd,
+                ],
+                'targetVerticalScroll':
+                    registry.arrangerViewModel.verticalScrollPosition,
+                'renderedVerticalScroll': registry
+                    .arrangerController
+                    .stateMachine
+                    .data
+                    .renderedVerticalScrollPosition,
+                'canvasSize': registry
+                    .arrangerController
+                    .stateMachine
+                    .data
+                    .viewSize
+                    .toString(),
+              },
+            'mainWindowBounds': find.byKey(mainWindowKey).evaluate().isEmpty
+                ? null
+                : tester.getRect(find.byKey(mainWindowKey)).toString(),
+          };
+        },
+        additionalDiagnostics: _failureDiagnostics,
+        queryEngine: () => project.engine.engineState == EngineState.running
+            ? project.engine.modelSyncApi.debugGetEngineJson(
+                timeout: const Duration(seconds: 2),
+              )
+            : throw StateError('Engine is ${project.engine.engineState.name}.'),
+        captureScreenshot: () async {
+          final boundary = _screenshotBoundaryKey.currentContext
+              ?.findRenderObject();
+          if (boundary is! RenderRepaintBoundary || !boundary.hasSize) {
+            return null;
+          }
+          // Preserve the current frame; only paint when no usable frame exists.
+          // The artifact collector pumps while awaiting this callback.
+          // Avoid a nested guarded tester.pump during its polling loop.
+          if (boundary.debugNeedsPaint) await tester.binding.endOfFrame;
+          final image = await boundary.toImage(pixelRatio: 1);
+          try {
+            final bytes = await image.toByteData(
+              format: ui.ImageByteFormat.png,
+            );
+            if (bytes == null) {
+              throw StateError('PNG encoding returned no data.');
+            }
+            return bytes.buffer.asUint8List(
+              bytes.offsetInBytes,
+              bytes.lengthInBytes,
+            );
+          } finally {
+            image.dispose();
+          }
+        },
+      )
+      .catchError((Object artifactError) {
+        debugPrint('Failure artifact collection failed: $artifactError');
+      });
+
   Future<void> _dispose() async {
+    // Unawaited errors can bypass the scenario body. The binding leaves a failed
+    // test mounted, so teardown can still retain evidence before unmounting.
+    final binding = tester.binding;
+    if (binding is IntegrationTestWidgetsFlutterBinding) {
+      final failure = binding.results[tester.testDescription];
+      if (failure is Failure) {
+        await captureFailure(
+          failure.details ?? failure.toString(),
+          StackTrace.empty,
+        );
+      }
+    }
     try {
       for (final pointer in _heldPointers) {
         await pointer.cancel();
@@ -319,6 +480,10 @@ class AppTestSession {
       for (final key in _heldKeys) {
         await tester.sendKeyUpEvent(key);
       }
+    } catch (error, stack) {
+      _cleanupError ??= error;
+      await captureFailure(error, stack);
+      rethrow;
     } finally {
       try {
         // Guarded widget APIs finish before the polling helper starts pumping.
@@ -331,9 +496,18 @@ class AppTestSession {
           collectTimeoutDiagnostics: () => sessionDiagnostics,
           timeout: const Duration(seconds: 20),
         );
+      } catch (error, stack) {
+        _cleanupError ??= error;
+        await captureFailure(error, stack);
+        rethrow;
       } finally {
-        await writeSessionDiagnostics('stopped');
-        await tester.binding.setSurfaceSize(null);
+        try {
+          await writeSessionDiagnostics('stopped');
+        } catch (artifactError) {
+          debugPrint('Could not write shutdown diagnostics: $artifactError');
+        } finally {
+          await tester.binding.setSurfaceSize(null);
+        }
       }
     }
     expect(project.engine.engineState, EngineState.stopped);

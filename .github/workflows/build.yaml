@@ -45,6 +45,29 @@ jobs:
           name: anthem-linux-${{ matrix.arch }}
           path: build/linux/${{ matrix.arch }}/release/bundle
 
+      # Reuse the release engine; Flutter builds a separate debug test runner.
+      - name: Install virtual display
+        if: matrix.arch == 'x64'
+        run: sudo apt install -y xvfb
+
+      - name: Desktop integration scenarios
+        if: matrix.arch == 'x64'
+        timeout-minutes: 20
+        run: xvfb-run -a -s "-screen 0 1280x800x24" dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --seed 42 --output build/integration_test/ci
+
+      - name: Test integration failure handling
+        if: matrix.arch == 'x64'
+        timeout-minutes: 15
+        run: xvfb-run -a -s "-screen 0 1280x800x24" dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --test-failure-handling --output build/integration_test/ci/failure-probes
+
+      - name: Upload integration diagnostics
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-linux-${{ matrix.arch }}
+          path: build/integration_test/ci
+          if-no-files-found: warn
+
   build-macos:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -81,6 +104,24 @@ jobs:
           # https://github.com/actions/upload-artifact#upload-using-multiple-paths-and-exclusions
           # If a wildcard pattern is used, the path hierarchy will start with the first wildcard pattern
           path: build/macos/Build/Products/Release/*.app
+
+      - name: Desktop integration scenarios
+        if: matrix.arch == 'arm64'
+        timeout-minutes: 20
+        run: dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --seed 42 --output build/integration_test/ci
+
+      - name: Test integration failure handling
+        if: matrix.arch == 'arm64'
+        timeout-minutes: 15
+        run: dart run anthem:cli integration-test --engine engine/build_release/AnthemEngine_artefacts/Release/AnthemEngine --test-failure-handling --output build/integration_test/ci/failure-probes
+
+      - name: Upload integration diagnostics
+        if: always() && matrix.arch == 'arm64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-macos-${{ matrix.arch }}
+          path: build/integration_test/ci
+          if-no-files-found: warn
 
   build-windows:
     runs-on: ${{ matrix.os }}

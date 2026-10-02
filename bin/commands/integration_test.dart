@@ -25,6 +25,7 @@ import 'dart:io';
 import 'package:args/command_runner.dart';
 
 import '../cli_helpers.dart';
+import '../integration_test/verify_failure_artifacts.dart';
 
 /// Desktop app/engine scenarios, independent from the fast Flutter test suite.
 class IntegrationTestCommand extends Command<void> {
@@ -58,6 +59,11 @@ class IntegrationTestCommand extends Command<void> {
         'seed',
         help:
             'Shuffle test ordering with this integer seed to check isolation.',
+      )
+      ..addFlag(
+        'test-failure-handling',
+        negatable: false,
+        help: 'Run deliberately failing scenarios to check diagnostic capture and engine cleanup.',
       );
   }
 
@@ -76,8 +82,19 @@ class IntegrationTestCommand extends Command<void> {
       );
     }
     final root = Directory.fromUri(getPackageRootPath()).absolute;
+    final testFailureHandling = argResults!['test-failure-handling'] as bool;
+    if (testFailureHandling && argResults!['target'] != 'integration_test') {
+      throw UsageException(
+        '--test-failure-handling selects its own deliberately failing scenarios.',
+        usage,
+      );
+    }
     final target = File.fromUri(
-      root.uri.resolve(argResults!['target'] as String),
+      root.uri.resolve(
+        testFailureHandling
+            ? 'integration_test/support/failure_artifacts_probe.dart'
+            : argResults!['target'] as String,
+      ),
     );
     if (!target.existsSync() && !Directory(target.path).existsSync()) {
       throw UsageException('Test target does not exist: ${target.path}', usage);
@@ -170,14 +187,20 @@ class IntegrationTestCommand extends Command<void> {
       final version = await Process.run(flutter, [
         '--version',
       ], workingDirectory: root.path);
+      if (testFailureHandling) {
+        await File('${output.path}/verification.json')
+            .writeAsString(jsonEncode({'status': 'pending', 'runId': runId}));
+      }
       await File('${output.path}/run.json').writeAsString(
         const JsonEncoder.withIndent('  ').convert({
           'device': device,
+          'runId': runId,
           'target': target.path,
           'testFiles': testFiles.map((file) => file.path).toList(),
           'engine': engine.path,
           'audio': false,
           'orderingSeed': seed,
+          'testFailureHandling': testFailureHandling,
           'flutterVersion': version.stdout.toString(),
           'startedAtUtc': DateTime.now().toUtc().toIso8601String(),
         }),
@@ -198,6 +221,7 @@ class IntegrationTestCommand extends Command<void> {
             'expanded',
             '--dart-define=ANTHEM_TEST_ENGINE=${engine.path}',
             '--dart-define=ANTHEM_TEST_ARTIFACTS=${output.path}',
+            '--dart-define=ANTHEM_TEST_RUN_ID=$runId',
             if (seed != null) '--test-randomize-ordering-seed=$seed',
           ],
           root,
@@ -205,6 +229,22 @@ class IntegrationTestCommand extends Command<void> {
         );
         // Finish the remaining files, preserving the first failing exit code.
         if (exitCode == 0) exitCode = result;
+      }
+      if (testFailureHandling) {
+        try {
+          await verifyFailureArtifacts(
+            output,
+            testExitCode: exitCode,
+            runId: runId,
+          );
+          print(
+            'Intentional failures, screenshots, snapshots, and engine cleanup verified.',
+          );
+          exitCode = 0;
+        } catch (error) {
+          print('Failure handling verification failed: $error');
+          exitCode = 1;
+        }
       }
     } finally {
       try {

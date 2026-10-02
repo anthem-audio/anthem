@@ -18,7 +18,6 @@
 */
 
 import 'package:flutter/widgets.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'app_test_session.dart';
@@ -27,7 +26,7 @@ import 'app_test_session.dart';
 /// integration binding's framework exception reporting and the CLI exit code.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  testWidgets('framework exception must fail this probe', (tester) async {
+  testAppScenario('framework exception must fail this probe', (tester) async {
     final session = AppTestSession(tester, name: 'framework-error-probe');
     await session.start();
     FlutterError.reportError(

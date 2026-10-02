@@ -156,7 +156,7 @@ void _expectSameOpenProject(AppTestSession session, ProjectModel original) {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('save an edited project, close it, and reopen its file', (
+  testAppScenario('save an edited project, close it, and reopen its file', (
     tester,
   ) async {
     final files = await TemporaryProjectFileSelector.install(
@@ -270,7 +270,7 @@ void main() {
     expect(AnthemStore.instance.projects, isEmpty);
   });
 
-  testWidgets(
+  testAppScenario(
     'cancelled selection and failed writes preserve the open project',
     (tester) async {
       final files = await TemporaryProjectFileSelector.install(
@@ -328,7 +328,7 @@ void main() {
     },
   );
 
-  testWidgets(
+  testAppScenario(
     'read failures show the application dialog without replacing the project',
     (tester) async {
       final files = await TemporaryProjectFileSelector.install(
