@@ -96,9 +96,8 @@ void main() {
     when(engineMock.visualizationApi).thenReturn(visualizationApiMock);
     when(engineMock.audioConfig).thenReturn(testAudioConfig());
     when(engineMock.engineState).thenAnswer((_) => currentEngineState);
-    when(
-      engineMock.engineStateStream,
-    ).thenAnswer((_) => trackedEngineStateStream);
+    when(engineMock.engineStateStream)
+        .thenAnswer((_) => trackedEngineStateStream);
     when(engineMock.readyForMessages).thenAnswer((_) async {});
 
     final projectMock = MockProjectModel();
@@ -120,29 +119,29 @@ void main() {
     );
   }
 
-  VisualizationValueType inferVisualizationValueType(List<Object> values) {
-    if (values.every((value) => value is double)) {
+  VisualizationValueType inferVisualizationValueType<T extends num>() {
+    // int and double runtime checks overlap in JavaScript. Use the fixture's
+    // static element type to keep its declared wire type unambiguous.
+    if (T == double) {
       return VisualizationValueType.doubleValue;
     }
-    if (values.every((value) => value is int)) {
+    if (T == int) {
       return VisualizationValueType.intValue;
     }
-    throw ArgumentError(
-      'Could not infer a visualization value type for ${values.map((value) => value.runtimeType).toList()}.',
-    );
+    throw ArgumentError('Could not infer a visualization value type for $T.');
   }
 
-  VisualizationItem testVisualizationItem({
+  VisualizationItem testVisualizationItem<T extends num>({
     required String id,
-    required List<Object> values,
+    required List<T> values,
     VisualizationValueType? valueType,
     List<int>? sampleTimestamps,
     int startSample = 1,
   }) {
     return VisualizationItem(
       id: id,
-      valueType: valueType ?? inferVisualizationValueType(values),
-      values: values,
+      valueType: valueType ?? inferVisualizationValueType<T>(),
+      values: T == int ? values as List<int> : values as List<double>,
       sampleTimestamps:
           sampleTimestamps ??
           List<int>.generate(values.length, (index) => startSample + index),
@@ -1096,49 +1095,43 @@ void main() {
     },
   );
 
-  test(
-    'transport discontinuities preserve active overrides and reject old sessions',
-    () {
-      final setup = createProjectWithVisualizationProvider();
-      final subscription = setup.visualizationProvider.subscribe(
-        VisualizationSubscriptionConfig.latestDouble('value'),
-      );
-      subscription.setOverride(
-        value: 42,
-        duration: const Duration(seconds: 10),
-      );
-      void update(int generation, double value) {
-        setup.visualizationProvider.processVisualizationRecord(
-          VisualizationRecord(
-            sequence: 1,
-            generation: generation,
-            sampleRate: 48000,
-            newestSampleTimestamp: 10,
-            discontinuity: true,
-            update: VisualizationUpdateEvent(
-              id: -1,
-              items: [
-                testVisualizationItem(
-                  id: 'value',
-                  values: [value],
-                  sampleTimestamps: [10],
-                ),
-              ],
-            ),
+  test('transport discontinuities preserve active overrides and reject old sessions', () {
+    final setup = createProjectWithVisualizationProvider();
+    final subscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('value'),
+    );
+    subscription.setOverride(value: 42, duration: const Duration(seconds: 10));
+    void update(int generation, double value) {
+      setup.visualizationProvider.processVisualizationRecord(
+        VisualizationRecord(
+          sequence: 1,
+          generation: generation,
+          sampleRate: 48000,
+          newestSampleTimestamp: 10,
+          discontinuity: true,
+          update: VisualizationUpdateEvent(
+            id: -1,
+            items: [
+              testVisualizationItem(
+                id: 'value',
+                values: [value],
+                sampleTimestamps: [10],
+              ),
+            ],
           ),
-        );
-      }
-
-      update(2, 7);
-      update(1, 9);
-      expect(subscription.readValue(), 42);
-      final lateSubscription = setup.visualizationProvider.subscribe(
-        VisualizationSubscriptionConfig.latestDouble('value'),
+        ),
       );
-      expect(lateSubscription.readValue(), 7);
-      setup.visualizationProvider.dispose();
-    },
-  );
+    }
+
+    update(2, 7);
+    update(1, 9);
+    expect(subscription.readValue(), 42);
+    final lateSubscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('value'),
+    );
+    expect(lateSubscription.readValue(), 7);
+    setup.visualizationProvider.dispose();
+  });
 
   for (final scenario in [
     (name: 'consumed peaks', peakTime: 0, expected: 1.0),

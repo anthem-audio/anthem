@@ -17,17 +17,62 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:typed_data';
+
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/version.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
+
+import '../../helpers/file_dialog_test_helpers.dart';
 
 ProjectFileVersion _version(String value) {
   return ProjectFileVersion.parse(value);
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('cancelling project selection does not show a load error', () async {
+    final originalSelector = FileSelectorPlatform.instance;
+    FileSelectorPlatform.instance = FakeFileSelector();
+    addTearDown(() => FileSelectorPlatform.instance = originalSelector);
+    final recordingDialog = RecordingDialog();
+    final dialogs = DialogController()..initialize(recordingDialog);
+
+    expect(
+      await MainWindowController().loadProject(dialogController: dialogs),
+      isNull,
+    );
+    expect(recordingDialog.shownCount, 0);
+  });
+
+  test(
+    'an unreadable selected project shows an error without opening a project',
+    () async {
+      final originalSelector = FileSelectorPlatform.instance;
+      FileSelectorPlatform.instance = FakeFileSelector()
+        ..selectedFile = XFile.fromData(
+          Uint8List.fromList([12, 34]),
+          name: 'invalid.anthem',
+        );
+      addTearDown(() => FileSelectorPlatform.instance = originalSelector);
+      final recordingDialog = RecordingDialog();
+      final dialogs = DialogController()..initialize(recordingDialog);
+      final projectCount = AnthemStore.instance.projects.length;
+
+      expect(
+        await MainWindowController().loadProject(dialogController: dialogs),
+        isNull,
+      );
+      expect(recordingDialog.shownCount, 1);
+      expect(AnthemStore.instance.projects, hasLength(projectCount));
+    },
+  );
+
   group('projectFileLoadErrorMarkdown', () {
     test('explains that a project was saved by a newer Anthem version', () {
       final message = projectFileLoadErrorMarkdown(

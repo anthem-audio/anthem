@@ -143,11 +143,11 @@ class _CodegenCleanCommand extends Command<dynamic> {
     var deleteCount = 0;
 
     final dartLibFilesToDelete =
-        Directory.fromUri(
-          getPackageRootPath().resolve('lib/'),
-        ).listSync(recursive: true).where((f) {
-          return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
-        });
+        Directory.fromUri(getPackageRootPath().resolve('lib/'))
+            .listSync(recursive: true)
+            .where((f) {
+              return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
+            });
 
     for (final file in dartLibFilesToDelete) {
       file.deleteSync();
@@ -156,11 +156,11 @@ class _CodegenCleanCommand extends Command<dynamic> {
 
     if (!argResults!['root-only']) {
       final dartCodegenFilesToDelete =
-          Directory.fromUri(
-            getPackageRootPath().resolve('codegen/'),
-          ).listSync(recursive: true).where((f) {
-            return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
-          });
+          Directory.fromUri(getPackageRootPath().resolve('codegen/'))
+              .listSync(recursive: true)
+              .where((f) {
+                return f.path.endsWith('.g.dart') || f.path.endsWith('.g.part');
+              });
 
       for (final file in dartCodegenFilesToDelete) {
         file.deleteSync();
@@ -240,8 +240,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     argParser.addFlag(
       'watch',
       abbr: 'w',
-      help:
-          'Starts build_runner in watch mode, which will regenerate code as files change.',
+      help: 'Starts build_runner in watch mode, which will regenerate code as files change.',
     );
     argParser.addFlag(
       'root-only',
@@ -249,8 +248,7 @@ class _CodegenGenerateCommand extends Command<dynamic> {
     );
     argParser.addFlag(
       'explicit-format-for-ci',
-      help:
-          'Explicitly formats generated code to work around code generation still applying the old-style formatter.',
+      help: 'Explicitly formats generated code to work around code generation still applying the old-style formatter.',
     );
   }
 

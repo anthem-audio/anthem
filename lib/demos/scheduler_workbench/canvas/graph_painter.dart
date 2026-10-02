@@ -19,7 +19,7 @@
 
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../models/node.dart';
 import '../models/node_connection.dart';

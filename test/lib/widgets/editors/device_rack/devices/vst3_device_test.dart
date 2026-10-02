@@ -29,7 +29,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/widgets/basic/controls/knob.dart';
 import 'package:anthem/widgets/editors/device_rack/devices/vst3_device.dart';
 import 'package:anthem_codegen/include.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 

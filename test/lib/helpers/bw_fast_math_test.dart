@@ -20,13 +20,21 @@
 import 'dart:math' as math;
 
 import 'package:anthem/helpers/bw_fast_math.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 const _ln2 = math.ln2;
 const _ln10 = math.ln10;
 const _log2E = math.log2e;
 const _log10E = math.log10e;
 const _twoPi = math.pi * 2.0;
+
+// Keep the full signed 64-bit boundaries on VM/WASM, and test JavaScript's
+// exactly representable integer range on dart2js.
+const _isJs =
+    bool.fromEnvironment('dart.library.js_interop') &&
+    !bool.fromEnvironment('dart.tool.dart2wasm');
+const _intMin = _isJs ? -9007199254740991 : -(1 << 63);
+const _intMax = _isJs ? 9007199254740991 : (1 << 63) - 1;
 
 double _wrap(double value, double period) => value.remainder(period);
 
@@ -208,24 +216,16 @@ double _refAcosh(double x) {
 
 void main() {
   group('integer helpers', () {
-    test('sign fill matches 64-bit signed semantics', () {
-      expect(bwSignFill(-0x8000000000000000), -1);
+    test('sign fill matches signed integer semantics', () {
+      expect(bwSignFill(_intMin), -1);
       expect(bwSignFill(-1), -1);
       expect(bwSignFill(0), 0);
       expect(bwSignFill(1), 0);
-      expect(bwSignFill(0x7fffffffffffffff), 0);
+      expect(bwSignFill(_intMax), 0);
     });
 
     test('signed min/max/clip match slow reference logic', () {
-      const samples = <int>[
-        -0x8000000000000000,
-        -100,
-        -1,
-        0,
-        1,
-        100,
-        0x7fffffffffffffff,
-      ];
+      const samples = <int>[_intMin, -100, -1, 0, 1, 100, _intMax];
 
       for (final a in samples) {
         for (final b in samples) {

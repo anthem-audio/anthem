@@ -58,9 +58,8 @@ class DeviceFactories {
   static DeviceCreateResult toneGenerator({
     required ProjectEntityIdAllocator idAllocator,
   }) {
-    final node = ToneGeneratorProcessorModel.create(
-      idAllocator: idAllocator,
-    ).createNode();
+    final node = ToneGeneratorProcessorModel.create(idAllocator: idAllocator)
+        .createNode();
 
     return _singleNodeDevice(
       idAllocator: idAllocator,
@@ -94,9 +93,8 @@ class DeviceFactories {
   static DeviceCreateResult utility({
     required ProjectEntityIdAllocator idAllocator,
   }) {
-    final node = UtilityProcessorModel.create(
-      idAllocator: idAllocator,
-    ).createNode();
+    final node = UtilityProcessorModel.create(idAllocator: idAllocator)
+        .createNode();
 
     return _singleNodeDevice(
       idAllocator: idAllocator,

@@ -20,6 +20,7 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 const _tileCellCount = 6;
@@ -93,7 +94,11 @@ class _ArrangerDiagonalPatternState extends State<ArrangerDiagonalPattern> {
       1,
     );
     _shader = ui.ImageShader(
-      image,
+      // CanvasKit disposes the supplied image with the shader. Give it a
+      // separate handle so replacing a shader keeps the shared tile alive.
+      kIsWeb && !const bool.fromEnvironment('dart.tool.dart2wasm')
+          ? image.clone()
+          : image,
       TileMode.repeated,
       TileMode.repeated,
       transform.storage,

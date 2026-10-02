@@ -85,23 +85,20 @@ class _BuildEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'skip-configuration',
       defaultsTo: false,
-      help:
-          'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
+      help: 'Skips the configuration step (cmake ..). A regular build must have been run once for the same configuration, otherwise this will fail.',
     );
 
     argParser.addOption(
       'jobs',
       abbr: 'j',
-      help:
-          'Maximum number of parallel build jobs to pass to CMake. Use 1 for single-threaded compilation.',
+      help: 'Maximum number of parallel build jobs to pass to CMake. Use 1 for single-threaded compilation.',
     );
 
     if (Platform.isWindows) {
       argParser.addFlag(
         'clang',
         defaultsTo: false,
-        help:
-            'On Windows desktop builds, uses the Ninja generator with clang/clang++ instead of the default MSVC generator. Useful for warning checks and clang-tidy.',
+        help: 'On Windows desktop builds, uses the Ninja generator with clang/clang++ instead of the default MSVC generator. Useful for warning checks and clang-tidy.',
       );
     }
   }
@@ -165,8 +162,7 @@ to generate the files.''')..red(),
       return;
     }
 
-    print(
-      '''Note: Code generation must be run to keep the generated files up-to-date.
+    print('''Note: Code generation must be run to keep the generated files up-to-date.
 
 Some things to keep in mind:
  - The following command can be used to keep the generated files up to date:
@@ -177,8 +173,7 @@ Some things to keep in mind:
    running the above commands.
 
 
-''',
-    );
+''');
 
     final buildDirectoryName = _getBuildDirectoryName(
       wasm: wasm,
@@ -288,9 +283,8 @@ class _BuildLameCommand extends Command<dynamic> {
 
     if (!File.fromUri(lameSourcePath.resolve('configure')).existsSync()) {
       print(
-        Colorize(
-          'Error: Could not find LAME source at engine/include/lame.',
-        ).red(),
+        Colorize('Error: Could not find LAME source at engine/include/lame.')
+            .red(),
       );
       exit(1);
     }
@@ -317,9 +311,8 @@ class _BuildLameCommand extends Command<dynamic> {
     }
 
     final builtBinaryPath = _resolveBuiltLameBinaryLocation(sourceBuildPath);
-    File.fromUri(
-      builtBinaryPath,
-    ).copySync(outputBinaryPath.toFilePath(windows: Platform.isWindows));
+    File.fromUri(builtBinaryPath)
+        .copySync(outputBinaryPath.toFilePath(windows: Platform.isWindows));
     await _makeExecutable(outputBinaryPath);
 
     final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
@@ -329,9 +322,8 @@ class _BuildLameCommand extends Command<dynamic> {
     }
 
     final flutterLamePath = flutterAssetsDirPath.resolve(_lameExecutableName);
-    File.fromUri(
-      outputBinaryPath,
-    ).copySync(flutterLamePath.toFilePath(windows: Platform.isWindows));
+    File.fromUri(outputBinaryPath)
+        .copySync(flutterLamePath.toFilePath(windows: Platform.isWindows));
     await _makeExecutable(flutterLamePath);
 
     print(Colorize('\n\nLAME build complete.').lightGreen());
@@ -420,8 +412,7 @@ class _FormatEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'check',
       defaultsTo: false,
-      help:
-          'Checks whether C++ files are already formatted without modifying them.',
+      help: 'Checks whether C++ files are already formatted without modifying them.',
     );
   }
 
@@ -503,8 +494,7 @@ class _LintEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'skip-configuration',
       defaultsTo: false,
-      help:
-          'Skips refreshing the CMake compile database. The lint build directory must already be configured.',
+      help: 'Skips refreshing the CMake compile database. The lint build directory must already be configured.',
     );
   }
 
@@ -601,16 +591,14 @@ class _EngineUnitTestCommand extends Command<dynamic> {
     argParser.addOption(
       'jobs',
       abbr: 'j',
-      help:
-          'Maximum number of parallel build jobs to pass to CMake before running tests. Use 1 for single-threaded compilation.',
+      help: 'Maximum number of parallel build jobs to pass to CMake before running tests. Use 1 for single-threaded compilation.',
     );
 
     if (Platform.isWindows) {
       argParser.addFlag(
         'clang',
         defaultsTo: false,
-        help:
-            'On Windows, uses the Ninja generator with clang/clang++ instead of the default MSVC generator.',
+        help: 'On Windows, uses the Ninja generator with clang/clang++ instead of the default MSVC generator.',
       );
     }
   }

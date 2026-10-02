@@ -25,23 +25,76 @@ import 'package:args/command_runner.dart';
 import 'package:colorize/colorize.dart';
 
 import '../cli_helpers.dart';
+import 'flutter_test_web.dart';
 
 class FlutterTestCommand extends Command<dynamic> {
+  FlutterTestCommand() {
+    argParser
+      ..addFlag(
+        'web',
+        negatable: false,
+        help: 'Run browser tests in Chrome instead of the VM/host suites.',
+      )
+      ..addOption(
+        'compiler',
+        allowed: ['dart2js', 'dart2wasm', 'both'],
+        defaultsTo: 'both',
+        help: 'With --web: select JavaScript and/or WebAssembly tests.',
+      )
+      ..addFlag(
+        'widgets',
+        negatable: false,
+        help: 'With --web: also run Flutter unit/widget tests (Linux/macOS).',
+      )
+      ..addOption(
+        'reporter',
+        allowed: ['expanded', 'compact', 'github'],
+        help: 'Console test reporter (browser default: expanded).',
+      )
+      ..addFlag(
+        'list',
+        negatable: false,
+        help: 'With --web: list selected test files without running them.',
+      );
+  }
+
   @override
   String get name => 'flutter_test';
 
   @override
-  String get description =>
-      'Runs tests in the root package and workspace packages.';
+  String get description => 'Runs VM/host tests, or browser tests with --web.';
 
   @override
   Future<void> run() async {
+    if (argResults!.rest.isNotEmpty) {
+      usageException('This command does not accept positional arguments.');
+    }
     final packageRootPath = getPackageRootPath();
+
+    if (argResults!['web'] as bool) {
+      await runFlutterWebTests(
+        packageRootPath: packageRootPath,
+        compiler: argResults!['compiler'] as String,
+        widgets: argResults!['widgets'] as bool,
+        reporter: argResults!['reporter'] as String? ?? 'expanded',
+        list: argResults!['list'] as bool,
+        usageException: usageException,
+      );
+      return;
+    }
+    for (final option in ['compiler', 'widgets', 'list']) {
+      if (argResults!.wasParsed(option)) {
+        usageException('--$option requires --web.');
+      }
+    }
+    final reporterArguments = argResults!.wasParsed('reporter')
+        ? ['--reporter', argResults!['reporter'] as String]
+        : <String>[];
 
     print(Colorize('Running Flutter tests...').lightGreen());
     await _runCommand(
       executable: 'flutter',
-      arguments: ['test', 'test', 'codegen/test'],
+      arguments: ['test', ...reporterArguments, 'test', 'codegen/test'],
       workingDirectory: packageRootPath,
       failureMessage: 'Flutter tests failed.',
     );
@@ -53,7 +106,7 @@ class FlutterTestCommand extends Command<dynamic> {
     print(Colorize('\nRunning analyzer plugin tests...').lightGreen());
     await _runCommand(
       executable: 'dart',
-      arguments: ['test'],
+      arguments: ['test', ...reporterArguments],
       workingDirectory: analyzerPluginPath,
       failureMessage: 'Analyzer plugin tests failed.',
     );
@@ -63,7 +116,7 @@ class FlutterTestCommand extends Command<dynamic> {
     print(Colorize('\nRunning native IPC package tests...').lightGreen());
     await _runCommand(
       executable: 'dart',
-      arguments: ['test'],
+      arguments: ['test', ...reporterArguments],
       workingDirectory: nativeIpcPath,
       failureMessage: 'Native IPC package tests failed.',
     );

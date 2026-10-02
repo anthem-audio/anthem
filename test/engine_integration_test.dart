@@ -91,13 +91,11 @@ void main() {
   // In CI, we use the release build since that's what we're releasing, and it means
   // we don't have to build twice. When developing locally, we expect that the debug
   // engine will be the most up-to-date, so we use that by default.
-  if (File(
-    debugEnginePath.toFilePath(windows: Platform.isWindows),
-  ).existsSync()) {
+  if (File(debugEnginePath.toFilePath(windows: Platform.isWindows))
+      .existsSync()) {
     enginePath = debugEnginePath;
-  } else if (File(
-    releaseEnginePath.toFilePath(windows: Platform.isWindows),
-  ).existsSync()) {
+  } else if (File(releaseEnginePath.toFilePath(windows: Platform.isWindows))
+      .existsSync()) {
     enginePath = releaseEnginePath;
   } else {
     throw Exception(
@@ -148,8 +146,7 @@ void main() {
         expect(
           exitCalled,
           isFalse,
-          reason:
-              'The engine should not exit before the heartbeat watchdog starts.',
+          reason: 'The engine should not exit before the heartbeat watchdog starts.',
         );
 
         await _sendExitAndWaitForProcess(
@@ -405,8 +402,7 @@ void main() {
       expect(
         project.engine.engineState,
         EngineState.running,
-        reason:
-            'Model sync tests require the engine IPC and model sync layers to start successfully.',
+        reason: 'Model sync tests require the engine IPC and model sync layers to start successfully.',
       );
     });
 
@@ -420,9 +416,9 @@ void main() {
       // The initial state should be sent to the engine when it starts via
       // project.engine.modelSyncApi.initModel().
 
-      final initialState =
-          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
-              as Map<String, dynamic>;
+      final initialState = jsonDecode(
+        await project.engine.modelSyncApi.debugGetEngineJson(),
+      ) as Map<String, dynamic>;
 
       expect(
         initialState['sequence'],
@@ -437,8 +433,7 @@ void main() {
       expect(
         initialState['isDirty'],
         isNotNull,
-        reason:
-            'The initial state should contain isDirty - this is not in the project file.',
+        reason: 'The initial state should contain isDirty - this is not in the project file.',
       );
     });
 
@@ -457,9 +452,9 @@ void main() {
         expectedPatternNames.add('Pattern $i');
       }
 
-      final state =
-          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
-              as Map<String, dynamic>;
+      final state = jsonDecode(
+        await project.engine.modelSyncApi.debugGetEngineJson(),
+      ) as Map<String, dynamic>;
 
       final patternMap = state['sequence']!['patterns'] as Map<String, dynamic>;
 
@@ -549,9 +544,9 @@ void main() {
 
       project.execute(command);
 
-      final state =
-          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
-              as Map<String, dynamic>;
+      final state = jsonDecode(
+        await project.engine.modelSyncApi.debugGetEngineJson(),
+      ) as Map<String, dynamic>;
 
       final trackMap = state['tracks'] as Map<String, dynamic>;
       final syncedInstrumentTrack =
@@ -638,9 +633,9 @@ void main() {
         ),
       );
 
-      final state =
-          jsonDecode(await project.engine.modelSyncApi.debugGetEngineJson())
-              as Map<String, dynamic>;
+      final state = jsonDecode(
+        await project.engine.modelSyncApi.debugGetEngineJson(),
+      ) as Map<String, dynamic>;
 
       final pattern =
           state['sequence']!['patterns'][patternId.toString()]

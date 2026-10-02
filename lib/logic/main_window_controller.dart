@@ -28,7 +28,7 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
@@ -38,6 +38,10 @@ import 'package:flutter/widgets.dart' hide TextBox;
 import 'package:logging/logging.dart';
 
 final _log = Logger('main_window_controller');
+const _projectFileType = XTypeGroup(
+  label: 'Anthem projects',
+  extensions: ['anthem'],
+);
 
 @visibleForTesting
 String projectFileLoadErrorMarkdown(Object error) {
@@ -177,11 +181,11 @@ class MainWindowController {
       home = null;
     }
 
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['anthem'],
+    final file = await openFile(
+      acceptedTypeGroups: [_projectFileType],
       initialDirectory: home,
     );
+    if (file == null) return null;
 
     final ProjectModel project;
     String? path;
@@ -189,12 +193,9 @@ class MainWindowController {
     try {
       final Map<String, dynamic> projectJson;
       if (kIsWeb) {
-        final bytes = result?.files.firstOrNull?.bytes;
-        if (bytes == null) return null;
-        projectJson = await decodeProjectFileBytes(bytes);
+        projectJson = await decodeProjectFileBytes(await file.readAsBytes());
       } else {
-        path = result?.files.firstOrNull?.path;
-        if (path == null) return null;
+        path = file.path;
         projectJson = await readProjectFile(path);
       }
 
@@ -229,10 +230,10 @@ class MainWindowController {
 
     if (!kIsWeb) {
       if (alwaysUseFilePicker || project.filePath == null) {
-        path = (await FilePicker.saveFile(
-          type: FileType.custom,
-          allowedExtensions: ['anthem'],
-        ));
+        path = (await getSaveLocation(
+          acceptedTypeGroups: [_projectFileType],
+          suggestedName: '${project.name}.anthem',
+        ))?.path;
       } else {
         path = project.filePath;
       }
@@ -240,7 +241,7 @@ class MainWindowController {
 
     if (!kIsWeb && path == null) return false;
 
-    if (path != null && !path.endsWith('.anthem')) {
+    if (path != null && !path.toLowerCase().endsWith('.anthem')) {
       path += '.anthem';
     }
 
@@ -290,7 +291,11 @@ class MainWindowController {
 
       try {
         final bytes = await encodeProjectFile(project);
-        await FilePicker.saveFile(fileName: '$fileName.anthem', bytes: bytes);
+        await XFile.fromData(
+          bytes,
+          name: '$fileName.anthem',
+          mimeType: 'application/octet-stream',
+        ).saveTo('$fileName.anthem');
       } catch (error, stackTrace) {
         _log.warning('Could not save project file.', error, stackTrace);
 
@@ -334,12 +339,13 @@ class MainWindowController {
         .replaceAll(':', '-')
         .replaceAll('.', '-');
 
-    var path = await FilePicker.saveFile(
-      dialogTitle: 'Export Anthem logs',
-      fileName: 'anthem-logs-$timestamp.zip',
-      type: FileType.custom,
-      allowedExtensions: ['zip'],
-    );
+    var path = (await getSaveLocation(
+      suggestedName: 'anthem-logs-$timestamp.zip',
+      confirmButtonText: 'Export',
+      acceptedTypeGroups: [
+        const XTypeGroup(label: 'ZIP archives', extensions: ['zip']),
+      ],
+    ))?.path;
 
     if (path == null) {
       return false;

@@ -29,7 +29,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/main_window/render_dialog_view_model.dart';
 import 'package:anthem/widgets/main_window/render_progress_dialog.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -229,19 +229,23 @@ class RenderDialogController {
         ? _directoryForPath(viewModel.filePath) ?? _projectDirectory(project)
         : _projectDirectory(project);
 
-    final path = await FilePicker.saveFile(
-      dialogTitle: 'Render audio',
-      fileName: fileName,
+    final location = await getSaveLocation(
+      suggestedName: fileName,
       initialDirectory: initialDirectory,
-      type: FileType.custom,
-      allowedExtensions: _renderAudioFormatExtensions,
+      confirmButtonText: 'Select',
+      acceptedTypeGroups: [
+        const XTypeGroup(
+          label: 'Audio files',
+          extensions: _renderAudioFormatExtensions,
+        ),
+      ],
     );
 
-    if (path == null) {
+    if (location == null) {
       return false;
     }
 
-    setFilePath(path);
+    setFilePath(location.path);
     _clearStatusText();
     return true;
   }
@@ -265,9 +269,9 @@ class RenderDialogController {
 
     unawaited(saveState());
 
-    final task = ServiceRegistry.forProject(
-      viewModel.projectId,
-    ).projectRenderController.startRender(request);
+    final task = ServiceRegistry.forProject(viewModel.projectId)
+        .projectRenderController
+        .startRender(request);
 
     final dialogController = ServiceRegistry.dialogController;
     dialogController.closeDialog();

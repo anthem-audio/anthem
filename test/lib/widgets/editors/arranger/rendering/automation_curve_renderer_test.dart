@@ -668,33 +668,30 @@ void main() {
       );
     });
 
-    test(
-      'paint path clears provided line buffer when all buffers are not provided',
-      () {
-        final points = _makePointModelList([
-          (offset: 0, value: 0.2, curve: AutomationCurveType.smooth),
-          (offset: 100, value: 0.8, curve: AutomationCurveType.smooth),
-        ]);
+    test('paint path clears provided line buffer when all buffers are not provided', () {
+      final points = _makePointModelList([
+        (offset: 0, value: 0.2, curve: AutomationCurveType.smooth),
+        (offset: 100, value: 0.8, curve: AutomationCurveType.smooth),
+      ]);
 
-        final lineBuffer = LineBuffer();
-        final recorder = ui.PictureRecorder();
-        final canvas = ui.Canvas(recorder);
+      final lineBuffer = LineBuffer();
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
 
-        renderAutomationCurve(
-          canvas: canvas,
-          canvasSize: const ui.Size(100, 40),
-          xDrawPositionTime: (0.0, 100.0),
-          yDrawPositionPixels: (0.0, 40.0),
-          points: points,
-          strokeWidth: 2.0,
-          timeViewStart: 0.0,
-          timeViewEnd: 100.0,
-          lineBuffer: lineBuffer,
-        );
+      renderAutomationCurve(
+        canvas: canvas,
+        canvasSize: const ui.Size(100, 40),
+        xDrawPositionTime: (0.0, 100.0),
+        yDrawPositionPixels: (0.0, 40.0),
+        points: points,
+        strokeWidth: 2.0,
+        timeViewStart: 0.0,
+        timeViewEnd: 100.0,
+        lineBuffer: lineBuffer,
+      );
 
-        expect(lineBuffer.lineCount, equals(0));
-      },
-    );
+      expect(lineBuffer.lineCount, equals(0));
+    });
 
     test('paint path produces visible pixels', () async {
       final points = _makePointModelList([

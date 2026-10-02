@@ -50,7 +50,7 @@ runs:
     - name: Clone Flutter
       shell: bash
       run: |
-        git clone --branch stable https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+        git clone --depth 1 --branch 3.47.6 https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
         echo "$RUNNER_TEMP/flutter/bin" >> $GITHUB_PATH
 
     - name: Install Flutter

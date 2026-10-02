@@ -27,8 +27,10 @@ class ButtonTabProps {
   ButtonTabProps({required this.isHovered, required this.isSelected});
 }
 
-typedef ButtonTabsBuilder =
-    Widget Function(BuildContext context, ButtonTabProps props);
+typedef ButtonTabsBuilder = Widget Function(
+  BuildContext context,
+  ButtonTabProps props,
+);
 
 class ButtonTabs extends StatelessWidget {
   final List<ButtonTabsBuilder> builders;

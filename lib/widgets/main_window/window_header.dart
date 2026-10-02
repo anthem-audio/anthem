@@ -38,7 +38,7 @@ import 'package:anthem/widgets/main_window/render_dialog.dart';
 import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show showLicensePage;
+import 'package:material_ui/material_ui.dart' show showLicensePage;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -338,9 +338,8 @@ class _TabState extends State<_Tab> {
                       icon: Icons.close,
                       onPress: () {
                         closePressed = true;
-                        ServiceRegistry.forProject(
-                          widget.id,
-                        ).projectController.close();
+                        ServiceRegistry.forProject(widget.id).projectController
+                            .close();
                       },
                     ),
                   ),
@@ -509,8 +508,9 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
                   onSelected: () {
                     final projectViewModel = getProjectController().viewModel;
 
-                    projectViewModel.topPanelOverlayContentBuilder =
-                        (context) => const WidgetTestArea();
+                    projectViewModel.topPanelOverlayContentBuilder = (
+                      context,
+                    ) => const WidgetTestArea();
                   },
                 ),
               ],

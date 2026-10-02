@@ -4,7 +4,8 @@ publish_to: 'none'
 version: 0.0.0-prealpha.2
 
 environment:
-  sdk: ">=3.12.0 <4.0.0"
+  sdk: ">=3.13.0 <4.0.0"
+  flutter: ">=3.47.6"
 
 workspace:
   - codegen
@@ -29,12 +30,14 @@ dependencies:
   collection: ^1.17.1
   colorize: ^3.0.0
   crypto: ^3.0.6
-  file_picker: ^11.0.2
-  flutter_mobx: ^2.3.0
+  cupertino_icons: ^2.0.0
+  file_selector: ^1.1.0
+  flutter_mobx: ^2.4.0
   flutter_shaders: ^0.1.3
   flutter_svg: ^2.0.16
   fuzzywuzzy: ^1.2.0
   logging: ^1.3.0
+  material_ui: ^1.5.0
   meta: ^1.17.0
   mobx: ^2.5.0
   provider: ^6.0.2
@@ -47,17 +50,19 @@ dependencies:
       ref: staging-spm-event-deltas
   mockito: ^5.4.5
   path: ^1.9.1
-  window_manager: ^0.5.0
+  window_manager: ^0.5.2
   okcolor: ^1.1.0
   web: ^1.1.1
   shelf_proxy: ^1.0.4
   shelf: ^1.4.2
   shelf_static: ^1.1.3
   url_launcher: ^6.3.2
-  flutter_markdown_plus: ^1.0.7
+  flutter_markdown_plus: ^1.0.12
   shared_preferences: ^2.5.5
+  yaml: ^3.1.3
 
 dev_dependencies:
+  test: ^1.31.0
   analyzer: ^12.1.0
   build_runner: ^2.6.0
   build: ^4.0.1
@@ -65,8 +70,8 @@ dev_dependencies:
   mobx_codegen: ^2.7.2
   pub_semver: ^2.2.0
   source_gen: ^4.0.1
-  yaml: ^3.1.3
   shared_preferences_platform_interface: ^2.4.2
+  file_selector_platform_interface: ^2.7.0
 
 flutter:
   uses-material-design: true

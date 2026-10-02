@@ -255,9 +255,8 @@ class _TrackHeadersState extends State<TrackHeaders> {
                 if (!isVisible(rowLayout.headerBounds)) continue;
 
                 final row = rowLayout.row;
-                if (row case ProjectTrackRow(
-                  :final trackId,
-                ) when !project.tracks.containsKey(trackId)) {
+                if (row case ProjectTrackRow(:final trackId)
+                    when !project.tracks.containsKey(trackId)) {
                   continue;
                 }
                 final childId = ('header', row.rowId);
@@ -363,9 +362,8 @@ class _TrackHeadersState extends State<TrackHeaders> {
 
                 final childId = ('divider', divider.resizedRowId);
                 final rowLayout = layout.rowLayoutForId(divider.resizedRowId);
-                if (rowLayout.row case ProjectTrackRow(
-                  :final trackId,
-                ) when !project.tracks.containsKey(trackId)) {
+                if (rowLayout.row case ProjectTrackRow(:final trackId)
+                    when !project.tracks.containsKey(trackId)) {
                   continue;
                 }
                 final rowKey = switch (rowLayout.row) {

@@ -20,7 +20,8 @@
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 
 import '../../../widgets/basic/clip/packed_texture.dart';
 

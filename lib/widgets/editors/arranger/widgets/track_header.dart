@@ -396,9 +396,8 @@ class _TrackContentRow extends StatelessObserverWidget {
     final automationTarget = track.automationTarget;
     final AutomationParameterTarget? resolvedAutomationTarget;
     if (track.isAutomationLane && automationTarget != null) {
-      final controller = ServiceRegistry.forProject(
-        project.id,
-      ).arrangerController;
+      final controller = ServiceRegistry.forProject(project.id)
+          .arrangerController;
       resolvedAutomationTarget = controller.resolveAutomationTarget(
         nodeId: automationTarget.nodeId,
         portId: automationTarget.portId,

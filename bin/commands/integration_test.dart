@@ -43,8 +43,7 @@ class IntegrationTestCommand extends Command<void> {
       )
       ..addOption(
         'engine',
-        help:
-            'Explicit existing engine executable. Otherwise build the debug engine.',
+        help: 'Explicit existing engine executable. Otherwise build the debug engine.',
       )
       ..addOption(
         'target',
@@ -53,8 +52,7 @@ class IntegrationTestCommand extends Command<void> {
       )
       ..addOption(
         'output',
-        help:
-            'Artifact directory. Defaults to a new build/integration_test run directory.',
+        help: 'Artifact directory. Defaults to a new build/integration_test run directory.',
       )
       ..addOption(
         'seed',

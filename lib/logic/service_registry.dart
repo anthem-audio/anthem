@@ -48,8 +48,10 @@ export 'package:anthem/logic/disposable_service.dart';
 /// Project-scoped controllers and view models are owned here and created lazily
 /// on first access. Widgets should consume them from this registry rather than
 /// constructing or disposing them directly.
-typedef ServiceFactory<T extends Object> =
-    T Function(ProjectModel project, ServiceRegistry registry);
+typedef ServiceFactory<T extends Object> = T Function(
+  ProjectModel project,
+  ServiceRegistry registry,
+);
 
 class ServiceDef<T extends Object> {
   final ServiceFactory<T> create;

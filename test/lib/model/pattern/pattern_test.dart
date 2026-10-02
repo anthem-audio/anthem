@@ -234,235 +234,223 @@ void main() {
       expect(pattern.clipAutoWidth, equals(sixteenthNote));
     });
 
-    test(
-      'content mode updates arrangement width when content changes within one bar',
-      () async {
-        final project = ProjectModel.create();
-        final ticksPerBar = _ticksPerBar(project);
-        final arrangement = project.sequence.arrangement;
-        final arrangementWidthStep = ticksPerBar * 4;
-        final initialArrangementWidth = arrangementWidthStep * 4;
-        final pattern = PatternModel(
+    test('content mode updates arrangement width when content changes within one bar', () async {
+      final project = ProjectModel.create();
+      final ticksPerBar = _ticksPerBar(project);
+      final arrangement = project.sequence.arrangement;
+      final arrangementWidthStep = ticksPerBar * 4;
+      final initialArrangementWidth = arrangementWidthStep * 4;
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Content-sized Automation',
+      )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
+      final endPoint = AutomationPointModel(
+        idAllocator: _testIdAllocator(),
+        offset: 100,
+        value: 0.75,
+      );
+      pattern.automation.points.addAll([
+        AutomationPointModel(
           idAllocator: _testIdAllocator(),
-          name: 'Content-sized Automation',
-        )..clipAutoSizeMode = PatternClipAutoSizeMode.content;
-        final endPoint = AutomationPointModel(
-          idAllocator: _testIdAllocator(),
-          offset: 100,
-          value: 0.75,
-        );
-        pattern.automation.points.addAll([
-          AutomationPointModel(
-            idAllocator: _testIdAllocator(),
-            offset: 0,
-            value: 0.25,
-          ),
-          endPoint,
-        ]);
-        project.sequence.patterns[pattern.id] = pattern;
+          offset: 0,
+          value: 0.25,
+        ),
+        endPoint,
+      ]);
+      project.sequence.patterns[pattern.id] = pattern;
 
-        final clip = ClipModel(
-          idAllocator: _testIdAllocator(),
-          patternId: pattern.id,
-          trackId: getId(),
-          offset: initialArrangementWidth - 150,
-        );
-        arrangement.clips[clip.id] = clip;
+      final clip = ClipModel(
+        idAllocator: _testIdAllocator(),
+        patternId: pattern.id,
+        trackId: getId(),
+        offset: initialArrangementWidth - 150,
+      );
+      arrangement.clips[clip.id] = clip;
 
-        await _flushMicrotasks();
+      await _flushMicrotasks();
 
-        expect(pattern.clipAutoWidth, equals(100));
-        expect(arrangement.viewWidth, equals(initialArrangementWidth));
+      expect(pattern.clipAutoWidth, equals(100));
+      expect(arrangement.viewWidth, equals(initialArrangementWidth));
 
-        endPoint.offset = 200;
-        await _flushMicrotasks();
+      endPoint.offset = 200;
+      await _flushMicrotasks();
 
-        expect(pattern.clipAutoWidth, equals(200));
-        expect(
-          arrangement.viewWidth,
-          equals(initialArrangementWidth + arrangementWidthStep),
-        );
-      },
-    );
+      expect(pattern.clipAutoWidth, equals(200));
+      expect(
+        arrangement.viewWidth,
+        equals(initialArrangementWidth + arrangementWidthStep),
+      );
+    });
   });
 
   group('Pattern compiler invalidation', () {
-    test(
-      'compiles NO_TRACK pattern events and maps invalidation to arrangement tracks',
-      () async {
-        final sequencerApi = _MockSequencerApi();
-        final runningEngine = _RunningEngine(sequencerApi);
-        final project = ProjectModel.create()..engine = runningEngine;
+    test('compiles NO_TRACK pattern events and maps invalidation to arrangement tracks', () async {
+      final sequencerApi = _MockSequencerApi();
+      final runningEngine = _RunningEngine(sequencerApi);
+      final project = ProjectModel.create()..engine = runningEngine;
 
-        final arrangement = project.sequence.arrangement;
+      final arrangement = project.sequence.arrangement;
 
-        final pattern = PatternModel(
-          idAllocator: _testIdAllocator(),
-          name: 'Pattern A',
-        );
-        final note = NoteModel(
-          idAllocator: _testIdAllocator(),
-          key: 60,
-          velocity: 0.9,
-          length: 20,
-          offset: 60,
-          pan: 0,
-        );
-        pattern.notes[note.id] = note;
-        project.sequence.patterns[pattern.id] = pattern;
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Pattern A',
+      );
+      final note = NoteModel(
+        idAllocator: _testIdAllocator(),
+        key: 60,
+        velocity: 0.9,
+        length: 20,
+        offset: 60,
+        pan: 0,
+      );
+      pattern.notes[note.id] = note;
+      project.sequence.patterns[pattern.id] = pattern;
 
-        final trackA = getId();
-        final trackB = getId();
-        final trackC = getId();
+      final trackA = getId();
+      final trackB = getId();
+      final trackC = getId();
 
-        final clipA = _createClipWithTimeView(
-          id: getId(),
-          patternId: pattern.id,
-          trackId: trackA,
-          offset: 100,
-          start: 0,
-          end: 96,
-        );
-        final clipB = _createClipWithTimeView(
-          id: getId(),
-          patternId: pattern.id,
-          trackId: trackB,
-          offset: 300,
-          start: 48,
-          end: 120,
-        );
-        final clipC = _createClipWithTimeView(
-          id: getId(),
-          patternId: pattern.id,
-          trackId: trackC,
-          offset: 500,
-          start: 0,
-          end: 32,
-        );
+      final clipA = _createClipWithTimeView(
+        id: getId(),
+        patternId: pattern.id,
+        trackId: trackA,
+        offset: 100,
+        start: 0,
+        end: 96,
+      );
+      final clipB = _createClipWithTimeView(
+        id: getId(),
+        patternId: pattern.id,
+        trackId: trackB,
+        offset: 300,
+        start: 48,
+        end: 120,
+      );
+      final clipC = _createClipWithTimeView(
+        id: getId(),
+        patternId: pattern.id,
+        trackId: trackC,
+        offset: 500,
+        start: 0,
+        end: 32,
+      );
 
-        arrangement.clips[clipA.id] = clipA;
-        arrangement.clips[clipB.id] = clipB;
-        arrangement.clips[clipC.id] = clipC;
+      arrangement.clips[clipA.id] = clipA;
+      arrangement.clips[clipB.id] = clipB;
+      arrangement.clips[clipC.id] = clipC;
 
-        await _flushMicrotasks();
-        clearInteractions(sequencerApi);
+      await _flushMicrotasks();
+      clearInteractions(sequencerApi);
 
-        note.key = 61;
-        await _flushMicrotasks();
+      note.key = 61;
+      await _flushMicrotasks();
 
-        final patternCompileVerification = verify(
-          sequencerApi.compilePattern(
-            pattern.id,
-            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
-            invalidationRanges: captureAnyNamed('invalidationRanges'),
-          ),
-        );
-        patternCompileVerification.called(1);
+      final patternCompileVerification = verify(
+        sequencerApi.compilePattern(
+          pattern.id,
+          tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          invalidationRanges: captureAnyNamed('invalidationRanges'),
+        ),
+      );
+      patternCompileVerification.called(1);
 
-        final patternCompileCaptured = patternCompileVerification.captured;
-        final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
-        final patternInvalidationRanges =
-            patternCompileCaptured[1] as List<InvalidationRange>;
+      final patternCompileCaptured = patternCompileVerification.captured;
+      final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
+      final patternInvalidationRanges =
+          patternCompileCaptured[1] as List<InvalidationRange>;
 
-        expect(patternTracksToRebuild, equals(<Id>[-1]));
-        expect(patternInvalidationRanges, hasLength(1));
-        expect(patternInvalidationRanges[0].start, equals(60));
-        expect(patternInvalidationRanges[0].end, equals(80));
+      expect(patternTracksToRebuild, equals(<Id>[-1]));
+      expect(patternInvalidationRanges, hasLength(1));
+      expect(patternInvalidationRanges[0].start, equals(60));
+      expect(patternInvalidationRanges[0].end, equals(80));
 
-        final arrangementCompileVerification = verify(
-          sequencerApi.compileArrangement(
-            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
-            invalidationRanges: captureAnyNamed('invalidationRanges'),
-          ),
-        );
-        arrangementCompileVerification.called(1);
+      final arrangementCompileVerification = verify(
+        sequencerApi.compileArrangement(
+          tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          invalidationRanges: captureAnyNamed('invalidationRanges'),
+        ),
+      );
+      arrangementCompileVerification.called(1);
 
-        final arrangementCompileCaptured =
-            arrangementCompileVerification.captured;
-        final arrangementTracksToRebuild =
-            arrangementCompileCaptured[0] as List<Id>;
-        final arrangementInvalidationRanges =
-            arrangementCompileCaptured[1] as List<InvalidationRange>;
+      final arrangementCompileCaptured =
+          arrangementCompileVerification.captured;
+      final arrangementTracksToRebuild =
+          arrangementCompileCaptured[0] as List<Id>;
+      final arrangementInvalidationRanges =
+          arrangementCompileCaptured[1] as List<InvalidationRange>;
 
-        expect(
-          arrangementTracksToRebuild.toSet(),
-          equals(<Id>{trackA, trackB}),
-        );
-        expect(arrangementInvalidationRanges, hasLength(2));
-        expect(arrangementInvalidationRanges[0].start, equals(160));
-        expect(arrangementInvalidationRanges[0].end, equals(180));
-        expect(arrangementInvalidationRanges[1].start, equals(312));
-        expect(arrangementInvalidationRanges[1].end, equals(332));
-      },
-    );
+      expect(arrangementTracksToRebuild.toSet(), equals(<Id>{trackA, trackB}));
+      expect(arrangementInvalidationRanges, hasLength(2));
+      expect(arrangementInvalidationRanges[0].start, equals(160));
+      expect(arrangementInvalidationRanges[0].end, equals(180));
+      expect(arrangementInvalidationRanges[1].start, equals(312));
+      expect(arrangementInvalidationRanges[1].end, equals(332));
+    });
 
-    test(
-      'does not recompile arrangement tracks when invalidation does not touch any clip view',
-      () async {
-        final sequencerApi = _MockSequencerApi();
-        final runningEngine = _RunningEngine(sequencerApi);
-        final project = ProjectModel.create()..engine = runningEngine;
+    test('does not recompile arrangement tracks when invalidation does not touch any clip view', () async {
+      final sequencerApi = _MockSequencerApi();
+      final runningEngine = _RunningEngine(sequencerApi);
+      final project = ProjectModel.create()..engine = runningEngine;
 
-        final arrangement = project.sequence.arrangement;
+      final arrangement = project.sequence.arrangement;
 
-        final pattern = PatternModel(
-          idAllocator: _testIdAllocator(),
-          name: 'Pattern B',
-        );
-        final note = NoteModel(
-          idAllocator: _testIdAllocator(),
-          key: 60,
-          velocity: 0.9,
-          length: 20,
-          offset: 60,
-          pan: 0,
-        );
-        pattern.notes[note.id] = note;
-        project.sequence.patterns[pattern.id] = pattern;
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Pattern B',
+      );
+      final note = NoteModel(
+        idAllocator: _testIdAllocator(),
+        key: 60,
+        velocity: 0.9,
+        length: 20,
+        offset: 60,
+        pan: 0,
+      );
+      pattern.notes[note.id] = note;
+      project.sequence.patterns[pattern.id] = pattern;
 
-        final clip = _createClipWithTimeView(
-          id: getId(),
-          patternId: pattern.id,
-          trackId: getId(),
-          offset: 100,
-          start: 0,
-          end: 40,
-        );
-        arrangement.clips[clip.id] = clip;
+      final clip = _createClipWithTimeView(
+        id: getId(),
+        patternId: pattern.id,
+        trackId: getId(),
+        offset: 100,
+        start: 0,
+        end: 40,
+      );
+      arrangement.clips[clip.id] = clip;
 
-        await _flushMicrotasks();
-        clearInteractions(sequencerApi);
+      await _flushMicrotasks();
+      clearInteractions(sequencerApi);
 
-        note.velocity = 0.7;
-        await _flushMicrotasks();
+      note.velocity = 0.7;
+      await _flushMicrotasks();
 
-        final patternCompileVerification = verify(
-          sequencerApi.compilePattern(
-            pattern.id,
-            tracksToRebuild: captureAnyNamed('tracksToRebuild'),
-            invalidationRanges: captureAnyNamed('invalidationRanges'),
-          ),
-        );
-        patternCompileVerification.called(1);
+      final patternCompileVerification = verify(
+        sequencerApi.compilePattern(
+          pattern.id,
+          tracksToRebuild: captureAnyNamed('tracksToRebuild'),
+          invalidationRanges: captureAnyNamed('invalidationRanges'),
+        ),
+      );
+      patternCompileVerification.called(1);
 
-        final patternCompileCaptured = patternCompileVerification.captured;
-        final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
-        final patternInvalidationRanges =
-            patternCompileCaptured[1] as List<InvalidationRange>;
+      final patternCompileCaptured = patternCompileVerification.captured;
+      final patternTracksToRebuild = patternCompileCaptured[0] as List<Id>;
+      final patternInvalidationRanges =
+          patternCompileCaptured[1] as List<InvalidationRange>;
 
-        expect(patternTracksToRebuild, equals(<Id>[-1]));
-        expect(patternInvalidationRanges, hasLength(1));
-        expect(patternInvalidationRanges[0].start, equals(60));
-        expect(patternInvalidationRanges[0].end, equals(80));
+      expect(patternTracksToRebuild, equals(<Id>[-1]));
+      expect(patternInvalidationRanges, hasLength(1));
+      expect(patternInvalidationRanges[0].start, equals(60));
+      expect(patternInvalidationRanges[0].end, equals(80));
 
-        verifyNever(
-          sequencerApi.compileArrangement(
-            tracksToRebuild: anyNamed('tracksToRebuild'),
-            invalidationRanges: anyNamed('invalidationRanges'),
-          ),
-        );
-      },
-    );
+      verifyNever(
+        sequencerApi.compileArrangement(
+          tracksToRebuild: anyNamed('tracksToRebuild'),
+          invalidationRanges: anyNamed('invalidationRanges'),
+        ),
+      );
+    });
 
     test(
       'rate-limits automation point changes and keeps trailing compile',
@@ -637,67 +625,64 @@ void main() {
       },
     );
 
-    test(
-      'preview-only notes update local geometry and width without compiling the engine',
-      () async {
-        final sequencerApi = _MockSequencerApi();
-        final runningEngine = _RunningEngine(sequencerApi);
-        final project = ProjectModel.create()..engine = runningEngine;
+    test('preview-only notes update local geometry and width without compiling the engine', () async {
+      final sequencerApi = _MockSequencerApi();
+      final runningEngine = _RunningEngine(sequencerApi);
+      final project = ProjectModel.create()..engine = runningEngine;
 
-        final pattern = PatternModel(
-          idAllocator: _testIdAllocator(),
-          name: 'Pattern Preview',
-        );
-        project.sequence.patterns[pattern.id] = pattern;
+      final pattern = PatternModel(
+        idAllocator: _testIdAllocator(),
+        name: 'Pattern Preview',
+      );
+      project.sequence.patterns[pattern.id] = pattern;
 
-        await _flushMicrotasks();
-        clearInteractions(sequencerApi);
+      await _flushMicrotasks();
+      clearInteractions(sequencerApi);
 
-        final initialClipAutoWidth = pattern.clipAutoWidth;
-        final initialUpdateSignal = pattern.clipNotesUpdateSignal.value;
+      final initialClipAutoWidth = pattern.clipAutoWidth;
+      final initialUpdateSignal = pattern.clipNotesUpdateSignal.value;
 
-        final previewNote = NoteModel(
-          idAllocator: _testIdAllocator(),
-          key: 64,
-          velocity: 0.5,
-          length: 240,
-          offset: 520,
-          pan: -0.25,
-        );
-        pattern.addPreviewNote(previewNote);
+      final previewNote = NoteModel(
+        idAllocator: _testIdAllocator(),
+        key: 64,
+        velocity: 0.5,
+        length: 240,
+        offset: 520,
+        pan: -0.25,
+      );
+      pattern.addPreviewNote(previewNote);
 
-        await _flushMicrotasks();
+      await _flushMicrotasks();
 
-        final resolvedNote = pattern.resolveNoteById(previewNote.id);
-        expect(resolvedNote, isNotNull);
-        expect(resolvedNote!.offset, equals(520));
-        expect(resolvedNote.length, equals(240));
-        expect(resolvedNote.isPreviewOnly, isTrue);
+      final resolvedNote = pattern.resolveNoteById(previewNote.id);
+      expect(resolvedNote, isNotNull);
+      expect(resolvedNote!.offset, equals(520));
+      expect(resolvedNote.length, equals(240));
+      expect(resolvedNote.isPreviewOnly, isTrue);
 
-        expect(pattern.clipAutoWidth, greaterThan(initialClipAutoWidth));
-        expect(
-          pattern.clipNotesUpdateSignal.value,
-          isNot(equals(initialUpdateSignal)),
-        );
-        expect(pattern.clipNotesRenderCache.rawVertices, isNotNull);
-        expect(pattern.clipNotesRenderCache.rawVertices![0], equals(520.0));
-        expect(pattern.clipNotesRenderCache.rawVertices![2], equals(760.0));
+      expect(pattern.clipAutoWidth, greaterThan(initialClipAutoWidth));
+      expect(
+        pattern.clipNotesUpdateSignal.value,
+        isNot(equals(initialUpdateSignal)),
+      );
+      expect(pattern.clipNotesRenderCache.rawVertices, isNotNull);
+      expect(pattern.clipNotesRenderCache.rawVertices![0], equals(520.0));
+      expect(pattern.clipNotesRenderCache.rawVertices![2], equals(760.0));
 
-        verifyNever(
-          sequencerApi.compilePattern(
-            pattern.id,
-            tracksToRebuild: anyNamed('tracksToRebuild'),
-            invalidationRanges: anyNamed('invalidationRanges'),
-          ),
-        );
-        verifyNever(
-          sequencerApi.compileArrangement(
-            tracksToRebuild: anyNamed('tracksToRebuild'),
-            invalidationRanges: anyNamed('invalidationRanges'),
-          ),
-        );
-      },
-    );
+      verifyNever(
+        sequencerApi.compilePattern(
+          pattern.id,
+          tracksToRebuild: anyNamed('tracksToRebuild'),
+          invalidationRanges: anyNamed('invalidationRanges'),
+        ),
+      );
+      verifyNever(
+        sequencerApi.compileArrangement(
+          tracksToRebuild: anyNamed('tracksToRebuild'),
+          invalidationRanges: anyNamed('invalidationRanges'),
+        ),
+      );
+    });
   });
 
   group('Pattern title atlas state', () {

@@ -73,9 +73,9 @@ List<AutomationHoldSegment> buildAutomationHoldSegmentsForTrack({
     return const [];
   }
 
-  final clipTimingOverrides = ServiceRegistry.forProject(
-    project.id,
-  ).arrangerViewModel.clipTimingOverrides;
+  final clipTimingOverrides = ServiceRegistry.forProject(project.id)
+      .arrangerViewModel
+      .clipTimingOverrides;
 
   final clips = arrangement
       .getClipIdsForTrack(trackId)

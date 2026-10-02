@@ -68,6 +68,7 @@ export 'package:flutter/gestures.dart';
 export 'package:flutter/services.dart';
 export 'package:flutter/widgets.dart';
 export 'package:flutter_test/flutter_test.dart';
+
 export '../../../../../helpers/test_project.dart' show testIdAllocator;
 
 class TrackIds {

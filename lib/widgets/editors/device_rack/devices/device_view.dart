@@ -112,9 +112,8 @@ class _DeviceViewState extends State<DeviceView> {
 
   MenuDef _buildDeviceMenuDef(BuildContext context) {
     final project = Provider.of<ProjectModel>(context, listen: false);
-    final deviceController = ServiceRegistry.forProject(
-      project.id,
-    ).deviceController;
+    final deviceController = ServiceRegistry.forProject(project.id)
+        .deviceController;
 
     return MenuDef(
       children: [

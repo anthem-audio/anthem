@@ -145,9 +145,8 @@ class EngineEmscriptenInterface {
       return funcAny as JSFunction;
     }
 
-    final readBufferHeadPtrAny = getAsFunction(
-      '_getReadBufferHeadPtr',
-    ).callAsFunction();
+    final readBufferHeadPtrAny = getAsFunction('_getReadBufferHeadPtr')
+        .callAsFunction();
     if (!readBufferHeadPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferHeadPtr did not return a number',
@@ -155,9 +154,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferHeadPtr = readBufferHeadPtrAny as JSNumber;
 
-    final readBufferTailPtrAny = getAsFunction(
-      '_getReadBufferTailPtr',
-    ).callAsFunction();
+    final readBufferTailPtrAny = getAsFunction('_getReadBufferTailPtr')
+        .callAsFunction();
     if (!readBufferTailPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferTailPtr did not return a number',
@@ -165,9 +163,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferTailPtr = readBufferTailPtrAny as JSNumber;
 
-    final readBufferCapacityAny = getAsFunction(
-      '_getReadBufferCapacity',
-    ).callAsFunction();
+    final readBufferCapacityAny = getAsFunction('_getReadBufferCapacity')
+        .callAsFunction();
     if (!readBufferCapacityAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferCapacity did not return a number',
@@ -175,9 +172,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferCapacity = readBufferCapacityAny as JSNumber;
 
-    final readBufferMaskAny = getAsFunction(
-      '_getReadBufferMask',
-    ).callAsFunction();
+    final readBufferMaskAny = getAsFunction('_getReadBufferMask')
+        .callAsFunction();
     if (!readBufferMaskAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferMask did not return a number',
@@ -185,9 +181,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferMask = readBufferMaskAny as JSNumber;
 
-    final readBufferDataPtrAny = getAsFunction(
-      '_getReadBufferDataPtr',
-    ).callAsFunction();
+    final readBufferDataPtrAny = getAsFunction('_getReadBufferDataPtr')
+        .callAsFunction();
     if (!readBufferDataPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferDataPtr did not return a number',
@@ -195,9 +190,8 @@ class EngineEmscriptenInterface {
     }
     final readBufferDataPtr = readBufferDataPtrAny as JSNumber;
 
-    final readBufferTicketPtrAny = getAsFunction(
-      '_getReadBufferTicketPtr',
-    ).callAsFunction();
+    final readBufferTicketPtrAny = getAsFunction('_getReadBufferTicketPtr')
+        .callAsFunction();
     if (!readBufferTicketPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getReadBufferTicketPtr did not return a number',
@@ -215,9 +209,8 @@ class EngineEmscriptenInterface {
       ticketPtr: readBufferTicketPtr.toDartInt,
     );
 
-    final writeBufferHeadPtrAny = getAsFunction(
-      '_getWriteBufferHeadPtr',
-    ).callAsFunction();
+    final writeBufferHeadPtrAny = getAsFunction('_getWriteBufferHeadPtr')
+        .callAsFunction();
     if (!writeBufferHeadPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferHeadPtr did not return a number',
@@ -225,9 +218,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferHeadPtr = writeBufferHeadPtrAny as JSNumber;
 
-    final writeBufferTailPtrAny = getAsFunction(
-      '_getWriteBufferTailPtr',
-    ).callAsFunction();
+    final writeBufferTailPtrAny = getAsFunction('_getWriteBufferTailPtr')
+        .callAsFunction();
     if (!writeBufferTailPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferTailPtr did not return a number',
@@ -235,9 +227,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferTailPtr = writeBufferTailPtrAny as JSNumber;
 
-    final writeBufferCapacityAny = getAsFunction(
-      '_getWriteBufferCapacity',
-    ).callAsFunction();
+    final writeBufferCapacityAny = getAsFunction('_getWriteBufferCapacity')
+        .callAsFunction();
     if (!writeBufferCapacityAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferCapacity did not return a number',
@@ -245,9 +236,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferCapacity = writeBufferCapacityAny as JSNumber;
 
-    final writeBufferMaskAny = getAsFunction(
-      '_getWriteBufferMask',
-    ).callAsFunction();
+    final writeBufferMaskAny = getAsFunction('_getWriteBufferMask')
+        .callAsFunction();
     if (!writeBufferMaskAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferMask did not return a number',
@@ -255,9 +245,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferMask = writeBufferMaskAny as JSNumber;
 
-    final writeBufferDataPtrAny = getAsFunction(
-      '_getWriteBufferDataPtr',
-    ).callAsFunction();
+    final writeBufferDataPtrAny = getAsFunction('_getWriteBufferDataPtr')
+        .callAsFunction();
     if (!writeBufferDataPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferDataPtr did not return a number',
@@ -265,9 +254,8 @@ class EngineEmscriptenInterface {
     }
     final writeBufferDataPtr = writeBufferDataPtrAny as JSNumber;
 
-    final writeBufferTicketPtrAny = getAsFunction(
-      '_getWriteBufferTicketPtr',
-    ).callAsFunction();
+    final writeBufferTicketPtrAny = getAsFunction('_getWriteBufferTicketPtr')
+        .callAsFunction();
     if (!writeBufferTicketPtrAny.isA<JSNumber>()) {
       throw Exception(
         'EngineEmscriptenInterface: _getWriteBufferTicketPtr did not return a number',

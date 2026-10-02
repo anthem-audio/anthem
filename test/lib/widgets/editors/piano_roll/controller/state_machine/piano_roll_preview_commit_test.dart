@@ -114,53 +114,50 @@ void main() {
       fixture.expectNoActiveTransientState();
     });
 
-    test(
-      'single-note duplicate preview keeps the duplicate transient until commit',
-      () {
-        final note = fixture.addNote(key: 60, offset: 100, length: 48);
+    test('single-note duplicate preview keeps the duplicate transient until commit', () {
+      final note = fixture.addNote(key: 60, offset: 100, length: 48);
 
-        fixture.pointerDown(
-          key: 60.5,
-          offset: 100,
-          noteUnderCursor: note.id,
-          shift: true,
-        );
-        expect(
-          fixture.notes.map((note) => note.id).toList(growable: false),
-          orderedEquals([note.id]),
-        );
-        expect(fixture.transientNotes, hasLength(1));
-        final duplicateId = fixture.transientNotes.single.id;
+      fixture.pointerDown(
+        key: 60.5,
+        offset: 100,
+        noteUnderCursor: note.id,
+        shift: true,
+      );
+      expect(
+        fixture.notes.map((note) => note.id).toList(growable: false),
+        orderedEquals([note.id]),
+      );
+      expect(fixture.transientNotes, hasLength(1));
+      final duplicateId = fixture.transientNotes.single.id;
 
-        fixture.pointerMove(key: 62.5, offset: 200);
+      fixture.pointerMove(key: 62.5, offset: 200);
 
-        final expectedOffset = fixture.snappedTime(
-          200,
-          round: true,
-          startTime: 100,
-        );
-        final movedDuplicatePreview = fixture.transientNoteById(duplicateId);
+      final expectedOffset = fixture.snappedTime(
+        200,
+        round: true,
+        startTime: 100,
+      );
+      final movedDuplicatePreview = fixture.transientNoteById(duplicateId);
 
-        expect(fixture.noteById(note.id).offset, equals(100));
-        expect(fixture.noteById(note.id).key, equals(60));
-        expect(fixture.pattern.noteOverrides, isEmpty);
-        expect(movedDuplicatePreview.offset, equals(expectedOffset));
-        expect(movedDuplicatePreview.key, equals(62));
-        expect(fixture.viewModel.pressedNote, equals(duplicateId));
-        expect(
-          fixture.viewModel.selectedNotes.nonObservableInner,
-          equals({duplicateId}),
-        );
+      expect(fixture.noteById(note.id).offset, equals(100));
+      expect(fixture.noteById(note.id).key, equals(60));
+      expect(fixture.pattern.noteOverrides, isEmpty);
+      expect(movedDuplicatePreview.offset, equals(expectedOffset));
+      expect(movedDuplicatePreview.key, equals(62));
+      expect(fixture.viewModel.pressedNote, equals(duplicateId));
+      expect(
+        fixture.viewModel.selectedNotes.nonObservableInner,
+        equals({duplicateId}),
+      );
 
-        fixture.pointerUp(key: 62.5, offset: 200);
+      fixture.pointerUp(key: 62.5, offset: 200);
 
-        expect(fixture.noteById(note.id).offset, equals(100));
-        expect(fixture.noteById(note.id).key, equals(60));
-        expect(fixture.noteById(duplicateId).offset, equals(expectedOffset));
-        expect(fixture.noteById(duplicateId).key, equals(62));
-        fixture.expectNoActiveTransientState();
-      },
-    );
+      expect(fixture.noteById(note.id).offset, equals(100));
+      expect(fixture.noteById(note.id).key, equals(60));
+      expect(fixture.noteById(duplicateId).offset, equals(expectedOffset));
+      expect(fixture.noteById(duplicateId).key, equals(62));
+      fixture.expectNoActiveTransientState();
+    });
 
     test(
       'selected-group duplicate preview keeps clones transient until commit',

@@ -25,7 +25,7 @@ import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
 import 'package:anthem/widgets/main_window/main_window.dart';
 import 'package:anthem_codegen/include/model_base_mixin.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -103,9 +103,8 @@ class _AppState extends State<App> with WindowListener {
 
       ServiceRegistry.mainWindowController.switchTab(project.id);
 
-      final projectController = ServiceRegistry.forProject(
-        project.id,
-      ).projectController;
+      final projectController = ServiceRegistry.forProject(project.id)
+          .projectController;
       final didClose = await projectController.close();
 
       if (didClose != true) {
@@ -196,14 +195,18 @@ class _AppState extends State<App> with WindowListener {
         ),
       ),
       builder: (context, child) {
-        return GestureDetector(
-          // Un-focus text boxes when clicking elsewhere
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: ScrollConfiguration(
-            behavior: ScrollConfiguration.of(
-              context,
-            ).copyWith(scrollbars: false),
-            child: child!,
+        // Keep legacy dependencies, including flutter_markdown_plus, on the
+        // same theme and localizations until they migrate to material_ui.
+        // ignore: deprecated_member_use
+        return MaterialUiCompatibilityBridge(
+          child: GestureDetector(
+            // Un-focus text boxes when clicking elsewhere
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context)
+                  .copyWith(scrollbars: false),
+              child: child!,
+            ),
           ),
         );
       },

@@ -154,9 +154,8 @@ void main() {
         idAllocator: idAllocator,
       );
 
-      when(
-        project.tracks,
-      ).thenReturn(AnthemObservableMap.of({track.id: track}));
+      when(project.tracks)
+          .thenReturn(AnthemObservableMap.of({track.id: track}));
 
       trackController = TrackController(project);
     });
@@ -328,9 +327,8 @@ void main() {
       when(trackB.type).thenReturn(TrackType.normal);
       when(trackC.type).thenReturn(TrackType.normal);
 
-      when(
-        trackA.childTracks,
-      ).thenReturn(AnthemObservableList.of([trackBId, trackCId]));
+      when(trackA.childTracks)
+          .thenReturn(AnthemObservableList.of([trackBId, trackCId]));
       when(trackB.childTracks).thenReturn(AnthemObservableList());
       when(trackC.childTracks).thenReturn(AnthemObservableList());
 

@@ -55,9 +55,8 @@ class TrackController {
     }
     final processing = track.requireProcessing;
 
-    final utilityNode = UtilityProcessorModel.create(
-      idAllocator: _idAllocator,
-    ).createNode();
+    final utilityNode = UtilityProcessorModel.create(idAllocator: _idAllocator)
+        .createNode();
     processing.utilityNodeId = utilityNode.id;
 
     final dbMeterNode = DbMeterProcessorModel.create(
@@ -495,9 +494,8 @@ class TrackController {
   Iterable<(Id trackId, bool isSendTrack, int trackDepth)> getTracksIterable({
     bool includeCollapsedTracks = false,
   }) sync* {
-    final arrangerViewModel = ServiceRegistry.forProject(
-      project.id,
-    ).arrangerViewModel;
+    final arrangerViewModel = ServiceRegistry.forProject(project.id)
+        .arrangerViewModel;
 
     final topLevelTracks = project.trackOrder
         .map((t) => (t, false))

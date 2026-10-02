@@ -41,6 +41,7 @@ export 'package:anthem/widgets/editors/piano_roll/view_model.dart';
 export 'package:anthem/widgets/editors/shared/helpers/types.dart';
 export 'package:flutter/widgets.dart';
 export 'package:flutter_test/flutter_test.dart';
+
 export '../../../../../helpers/test_project.dart' show testIdAllocator;
 
 class StemEditorStoppedEngine extends Mock implements Engine {

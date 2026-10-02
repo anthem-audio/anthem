@@ -26,8 +26,9 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
 typedef TrackRowHeightResolver = double Function(TrackRow row);
-typedef TrackDividerHeightResolver =
-    double Function(TrackDividerContext context);
+typedef TrackDividerHeightResolver = double Function(
+  TrackDividerContext context,
+);
 
 /// The vertical interval occupied by an element in scrollable content space.
 ///

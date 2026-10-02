@@ -287,48 +287,42 @@ void main() {
       );
     });
 
-    test(
-      'rollback restores the original snapshot across repeated undo/redo cycles',
-      () {
-        final pattern = addPatternToProject('Pattern');
-        final note = addNote(
-          pattern,
-          key: 60,
-          offset: 64,
-          length: 48,
-          velocity: 0.5,
-          pan: -0.25,
-        );
+    test('rollback restores the original snapshot across repeated undo/redo cycles', () {
+      final pattern = addPatternToProject('Pattern');
+      final note = addNote(
+        pattern,
+        key: 60,
+        offset: 64,
+        length: 48,
+        velocity: 0.5,
+        pan: -0.25,
+      );
 
-        final command = DeleteNotesCommand(
-          patternID: pattern.id,
-          notes: [note],
-        );
+      final command = DeleteNotesCommand(patternID: pattern.id, notes: [note]);
 
-        command.execute(project);
-        command.rollback(project);
+      command.execute(project);
+      command.rollback(project);
 
-        final restoredNote = pattern.notes.values.single;
-        expect(restoredNote.id, equals(note.id));
-        restoredNote.key = 72;
-        restoredNote.offset = 192;
-        restoredNote.length = 24;
-        restoredNote.velocity = 0.9;
-        restoredNote.pan = 0.5;
+      final restoredNote = pattern.notes.values.single;
+      expect(restoredNote.id, equals(note.id));
+      restoredNote.key = 72;
+      restoredNote.offset = 192;
+      restoredNote.length = 24;
+      restoredNote.velocity = 0.9;
+      restoredNote.pan = 0.5;
 
-        command.execute(project);
-        expect(pattern.notes, isEmpty);
+      command.execute(project);
+      expect(pattern.notes, isEmpty);
 
-        command.rollback(project);
-        final restoredAgain = pattern.notes.values.single;
-        expect(restoredAgain.id, equals(note.id));
-        expect(restoredAgain.key, equals(60));
-        expect(restoredAgain.offset, equals(64));
-        expect(restoredAgain.length, equals(48));
-        expect(restoredAgain.velocity, equals(0.5));
-        expect(restoredAgain.pan, equals(-0.25));
-      },
-    );
+      command.rollback(project);
+      final restoredAgain = pattern.notes.values.single;
+      expect(restoredAgain.id, equals(note.id));
+      expect(restoredAgain.key, equals(60));
+      expect(restoredAgain.offset, equals(64));
+      expect(restoredAgain.length, equals(48));
+      expect(restoredAgain.velocity, equals(0.5));
+      expect(restoredAgain.pan, equals(-0.25));
+    });
   });
 
   group('SetNoteAttributeCommand', () {

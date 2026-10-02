@@ -23,7 +23,7 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/icon.dart';
-import 'package:flutter/material.dart' as material;
+import 'package:material_ui/material_ui.dart' show CircularProgressIndicator;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 
@@ -48,9 +48,8 @@ class EngineIndicator extends StatelessObserverWidget {
           return;
         }
 
-        final engineController = ServiceRegistry.forProject(
-          project.id,
-        ).projectEngineController;
+        final engineController = ServiceRegistry.forProject(project.id)
+            .projectEngineController;
 
         if (engineState != EngineState.stopped) {
           await engineController.stop();
@@ -65,10 +64,7 @@ class EngineIndicator extends StatelessObserverWidget {
           indicator = SizedBox(
             width: 12,
             height: 12,
-            child: material.CircularProgressIndicator(
-              color: color,
-              strokeWidth: 2,
-            ),
+            child: CircularProgressIndicator(color: color, strokeWidth: 2),
           );
         } else {
           indicator = SvgIcon(
@@ -79,7 +75,7 @@ class EngineIndicator extends StatelessObserverWidget {
           );
         }
 
-        return material.Center(child: indicator);
+        return Center(child: indicator);
       },
     );
   }

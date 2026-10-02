@@ -21,11 +21,15 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/length_prefixed_json_decoder.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 Uint8List _messageHeader(int messageLength) {
   final header = Uint8List(8);
-  ByteData.sublistView(header).setUint64(0, messageLength, Endian.host);
+  final data = ByteData.sublistView(header);
+  final lowOffset = Endian.host == Endian.little ? 0 : 4;
+  final highOffset = Endian.host == Endian.little ? 4 : 0;
+  data.setUint32(lowOffset, messageLength & 0xFFFFFFFF, Endian.host);
+  data.setUint32(highOffset, messageLength ~/ 0x100000000, Endian.host);
   return header;
 }
 
@@ -89,6 +93,26 @@ void main() {
       ['second', 2],
       'third',
     ]);
+  });
+
+  test('decodes split numbers from offset views without reading padding', () {
+    final message = <String, Object?>{
+      'values': [-1234, 56.789, 1.25e-30],
+    };
+    final frame = _frameJson(message);
+    final backing = Uint8List(frame.length + 12)
+      ..fillRange(0, frame.length + 12, 0xFF);
+    backing.setRange(5, 5 + frame.length, frame);
+    final paddedFrame = Uint8List.sublistView(backing, 5, 5 + frame.length);
+
+    // Try every split, including inside signs, integer/fractional digits,
+    // and exponents. Bytes outside each nested view must not be decoded.
+    for (var split = 1; split < frame.length; split++) {
+      final decodedMessages = <Object?>[];
+      final decoder = LengthPrefixedJsonDecoder(onMessage: decodedMessages.add);
+      _addInChunks(decoder, paddedFrame, [split]);
+      expect(decodedMessages, [message], reason: 'Split at byte $split');
+    }
   });
 
   test('continues across mixed header and message boundaries', () {

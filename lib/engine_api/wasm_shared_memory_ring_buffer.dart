@@ -62,8 +62,11 @@ class WasmSharedMemoryRingBuffer {
   /// Atomically loads a value from the given pointer in the given heap.
   int _atomicLoad(JSTypedArray heap, int ptr) {
     final atomicObject = window.getProperty('Atomics'.toJS) as JSObject;
-    return (atomicObject.callMethod('load'.toJS, heap, ptr.toJS) as JSNumber)
-        .toDartInt;
+    return (atomicObject.callMethod(
+      'load'.toJS,
+      heap,
+      ptr.toJS,
+    ) as JSNumber).toDartInt;
   }
 
   /// Atomically stores a value to the given pointer in the given heap.
@@ -149,14 +152,12 @@ class WasmSharedMemoryRingBuffer {
     // waitAsync is in all major browsers except Firefox, where it just landed
     // in nightly. Fingers crossed it will make Firefox 145.
 
-    final result =
-        atomicObject.callMethod(
-              'waitAsync'.toJS,
-              heapI32,
-              (_ticketPtr ~/ 4).toJS,
-              lastSeenTicket.toJS,
-            )
-            as JSObject;
+    final result = atomicObject.callMethod(
+      'waitAsync'.toJS,
+      heapI32,
+      (_ticketPtr ~/ 4).toJS,
+      lastSeenTicket.toJS,
+    ) as JSObject;
 
     final asyncField = result.getProperty('async'.toJS) as JSBoolean;
     if (asyncField.toDart) {

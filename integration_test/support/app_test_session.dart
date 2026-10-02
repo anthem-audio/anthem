@@ -252,9 +252,8 @@ class AppTestSession {
   }) async {
     await artifacts.create(recursive: true);
     await File('${artifacts.path}/$lifecyclePhase.json').writeAsString(
-      const JsonEncoder.withIndent(
-        '  ',
-      ).convert({...sessionDiagnostics, ...additionalDiagnostics}),
+      const JsonEncoder.withIndent('  ')
+          .convert({...sessionDiagnostics, ...additionalDiagnostics}),
       flush: true,
     );
   }

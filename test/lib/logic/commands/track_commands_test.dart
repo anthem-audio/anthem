@@ -564,18 +564,15 @@ void main() {
         },
       );
 
-      test(
-        "Can't group tracks where some are send tracks and some are normal tracks",
-        () {
-          expect(() {
-            print('throws');
-            TrackGroupUngroupCommand.group(
-              project: project,
-              trackIds: [trackAId, trackOId],
-            );
-          }, throwsA(anything));
-        },
-      );
+      test("Can't group tracks where some are send tracks and some are normal tracks", () {
+        expect(() {
+          print('throws');
+          TrackGroupUngroupCommand.group(
+            project: project,
+            trackIds: [trackAId, trackOId],
+          );
+        }, throwsA(anything));
+      });
 
       test('Simple grouping within another group', () {
         final originalTrackOrderLength = trackOrder.length;
@@ -1843,44 +1840,41 @@ void main() {
         expect(trackE.childTracks, hasLength(2));
       });
 
-      test(
-        'Remove nested group track removes it from parent and clears descendants',
-        () {
-          final originalTracksCount = tracks.length;
-          final originalAChildCount = trackA.childTracks.length;
+      test('Remove nested group track removes it from parent and clears descendants', () {
+        final originalTracksCount = tracks.length;
+        final originalAChildCount = trackA.childTracks.length;
 
-          // Track E is inside A, and contains F and G
-          final command = TrackAddRemoveCommand.remove(
-            project: project,
-            ids: [trackEId],
-          );
+        // Track E is inside A, and contains F and G
+        final command = TrackAddRemoveCommand.remove(
+          project: project,
+          ids: [trackEId],
+        );
 
-          command.execute(project);
+        command.execute(project);
 
-          // E, F, G removed from tracks map
-          expect(tracks[trackEId], isNull);
-          expect(tracks[trackFId], isNull);
-          expect(tracks[trackGId], isNull);
-          expect(tracks, hasLength(originalTracksCount - 3));
+        // E, F, G removed from tracks map
+        expect(tracks[trackEId], isNull);
+        expect(tracks[trackFId], isNull);
+        expect(tracks[trackGId], isNull);
+        expect(tracks, hasLength(originalTracksCount - 3));
 
-          // E removed from A's child list
-          expect(trackA.childTracks, hasLength(originalAChildCount - 1));
-          expect(trackA.childTracks.contains(trackEId), isFalse);
+        // E removed from A's child list
+        expect(trackA.childTracks, hasLength(originalAChildCount - 1));
+        expect(trackA.childTracks.contains(trackEId), isFalse);
 
-          // Top-level order unchanged
-          expect(trackOrder, hasLength(3));
+        // Top-level order unchanged
+        expect(trackOrder, hasLength(3));
 
-          // Rollback
-          command.rollback(project);
+        // Rollback
+        command.rollback(project);
 
-          expect(tracks[trackEId], isNotNull);
-          expect(tracks[trackFId], isNotNull);
-          expect(tracks[trackGId], isNotNull);
-          expect(tracks, hasLength(originalTracksCount));
-          expect(trackA.childTracks, hasLength(originalAChildCount));
-          expect(trackA.childTracks.contains(trackEId), isTrue);
-        },
-      );
+        expect(tracks[trackEId], isNotNull);
+        expect(tracks[trackFId], isNotNull);
+        expect(tracks[trackGId], isNotNull);
+        expect(tracks, hasLength(originalTracksCount));
+        expect(trackA.childTracks, hasLength(originalAChildCount));
+        expect(trackA.childTracks.contains(trackEId), isTrue);
+      });
 
       test(
         'Removing parent and child together only removes parent from tree',

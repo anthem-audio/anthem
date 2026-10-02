@@ -318,35 +318,32 @@ void main() {
       expect(resolvedTransient.key, equals(67));
     });
 
-    test(
-      'resolvePressedRenderedNote resolves preview notes from the unified pressed ID',
-      () {
-        final viewModel = createViewModel();
-        final pattern = createPattern(const []);
-        const transientNoteId = 1001;
+    test('resolvePressedRenderedNote resolves preview notes from the unified pressed ID', () {
+      final viewModel = createViewModel();
+      final pattern = createPattern(const []);
+      const transientNoteId = 1001;
 
-        pattern.addPreviewNote(
-          createPreviewNote(
-            id: transientNoteId,
-            key: 72,
-            velocity: 0.5,
-            length: 72,
-            offset: 360,
-            pan: -0.1,
-          ),
-        );
-        viewModel.pressedNote = transientNoteId;
+      pattern.addPreviewNote(
+        createPreviewNote(
+          id: transientNoteId,
+          key: 72,
+          velocity: 0.5,
+          length: 72,
+          offset: 360,
+          pan: -0.1,
+        ),
+      );
+      viewModel.pressedNote = transientNoteId;
 
-        final pressedNote = viewModel.resolvePressedRenderedNote(pattern);
+      final pressedNote = viewModel.resolvePressedRenderedNote(pattern);
 
-        expect(pressedNote, isNotNull);
-        expect(
-          viewModel.renderedRefFor(pressedNote!),
-          const PianoRollRenderedNoteRef.transient(transientNoteId),
-        );
-        expect(pressedNote.key, equals(72));
-      },
-    );
+      expect(pressedNote, isNotNull);
+      expect(
+        viewModel.renderedRefFor(pressedNote!),
+        const PianoRollRenderedNoteRef.transient(transientNoteId),
+      );
+      expect(pressedNote.key, equals(72));
+    });
 
     test('clearTransientPreviewState clears transient interaction state', () {
       final viewModel = createViewModel();

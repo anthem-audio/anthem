@@ -116,9 +116,8 @@ class ParameterUiBinding {
   );
 
   void beginChange() {
-    ServiceRegistry.forProject(
-      node.project.id,
-    ).parameterController.beginChange(node: node, port: port);
+    ServiceRegistry.forProject(node.project.id).parameterController
+        .beginChange(node: node, port: port);
   }
 
   void updateChange(double value) {
@@ -127,14 +126,12 @@ class ParameterUiBinding {
   }
 
   void commitChange() {
-    ServiceRegistry.forProject(
-      node.project.id,
-    ).parameterController.commitChange(node: node, port: port);
+    ServiceRegistry.forProject(node.project.id).parameterController
+        .commitChange(node: node, port: port);
   }
 
   void resetToDefault() {
-    ServiceRegistry.forProject(
-      node.project.id,
-    ).parameterController.resetToDefault(node: node, port: port);
+    ServiceRegistry.forProject(node.project.id).parameterController
+        .resetToDefault(node: node, port: port);
   }
 }

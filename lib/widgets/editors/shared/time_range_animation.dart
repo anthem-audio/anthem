@@ -72,11 +72,10 @@ class TimeRangeAnimation {
   }
 }
 
-typedef TimeRangeAnimationWidgetBuilder =
-    Widget Function(
-      BuildContext context,
-      TimeRangeAnimation timeRangeAnimation,
-    );
+typedef TimeRangeAnimationWidgetBuilder = Widget Function(
+  BuildContext context,
+  TimeRangeAnimation timeRangeAnimation,
+);
 
 class TimeRangeAnimationBuilder extends StatefulObserverWidget {
   final TimeRangeViewport viewport;

@@ -62,12 +62,11 @@ class MockTrackController extends Mock implements TrackController {
     bool includeCollapsedTracks = false,
   }) {
     return super.noSuchMethod(
-          Invocation.method(#getTracksIterable, [], {
-            #includeCollapsedTracks: includeCollapsedTracks,
-          }),
-          returnValue: const <(Id, bool, int)>[],
-        )
-        as Iterable<(Id, bool, int)>;
+      Invocation.method(#getTracksIterable, [], {
+        #includeCollapsedTracks: includeCollapsedTracks,
+      }),
+      returnValue: const <(Id, bool, int)>[],
+    ) as Iterable<(Id, bool, int)>;
   }
 
   @override
@@ -75,10 +74,9 @@ class MockTrackController extends Mock implements TrackController {
     required Iterable<Id> clipIds,
   }) {
     return super.noSuchMethod(
-          Invocation.method(#deleteClips, [], {#clipIds: clipIds}),
-          returnValue: (deletedClipIds: <Id>{}, deletedPatternIds: <Id>{}),
-        )
-        as ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds});
+      Invocation.method(#deleteClips, [], {#clipIds: clipIds}),
+      returnValue: (deletedClipIds: <Id>{}, deletedPatternIds: <Id>{}),
+    ) as ({Set<Id> deletedClipIds, Set<Id> deletedPatternIds});
   }
 
   @override
@@ -398,9 +396,8 @@ void main() {
       );
 
       try {
-        final controller = ServiceRegistry.forProject(
-          project.id,
-        ).arrangerController;
+        final controller = ServiceRegistry.forProject(project.id)
+            .arrangerController;
         final parentTrack = project.tracks[project.trackOrder.first]!;
         final utilityNode = parentTrack.requireProcessing.utilityNode!;
         final utilityPort = utilityNode.getPortById(
@@ -946,9 +943,8 @@ void main() {
         expect(pattern.automation.points, hasLength(2));
         expect(pattern.automation.points[0].value, closeTo(0.64, 0.000001));
         expect(pattern.automation.points[1].value, closeTo(0.64, 0.000001));
-        verify(
-          fixture.mockTrackController.setActiveTrack(automationLane.id),
-        ).called(1);
+        verify(fixture.mockTrackController.setActiveTrack(automationLane.id))
+            .called(1);
         verifyNever(
           fixture.mockProjectController.openPatternInPianoRoll(
             createdPatternIds.single,
@@ -1007,18 +1003,16 @@ void main() {
 
       fixture.viewModel.selectedClips.addAll([selectedClipA, selectedClipB]);
 
-      when(
-        fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete),
-      ).thenReturn((
-        deletedClipIds: {selectedClipA},
-        deletedPatternIds: <Id>{},
-      ));
+      when(fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete))
+          .thenReturn((
+            deletedClipIds: {selectedClipA},
+            deletedPatternIds: <Id>{},
+          ));
 
       fixture.controller.deleteClips(clipIdsToDelete);
 
-      verify(
-        fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete),
-      ).called(1);
+      verify(fixture.mockTrackController.deleteClips(clipIds: clipIdsToDelete))
+          .called(1);
 
       expect(fixture.viewModel.selectedClips.contains(selectedClipA), isFalse);
       expect(fixture.viewModel.selectedClips.contains(selectedClipB), isTrue);

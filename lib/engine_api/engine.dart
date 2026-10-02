@@ -44,15 +44,14 @@ enum EngineState { stopped, starting, running }
 
 var _engineIdGenerator = 0;
 
-typedef EngineConnectorFactory =
-    EngineConnectorBase Function(
-      int id, {
-      required bool kDebugMode,
-      void Function(Response)? onReply,
-      void Function()? onExit,
-      bool noHeartbeat,
-      String? enginePathOverride,
-    });
+typedef EngineConnectorFactory = EngineConnectorBase Function(
+  int id, {
+  required bool kDebugMode,
+  void Function(Response)? onReply,
+  void Function()? onExit,
+  bool noHeartbeat,
+  String? enginePathOverride,
+});
 
 EngineConnectorBase _defaultEngineConnectorFactory(
   int id, {
@@ -668,17 +667,15 @@ class Engine {
     required StartupSendBehavior startupBehavior,
     bool bypassRenderRequestHold = false,
   }) async {
-    final audioStartReply =
-        await _request(
-              StartAudioRequest(id: _getRequestId()),
-              startupBehavior: startupBehavior,
-              bypassRenderRequestHold: bypassRenderRequestHold,
-              // Audio device initialization can block behind OS permission
-              // prompts, such as the first-run microphone access prompt on
-              // macOS.
-              timeout: null,
-            )
-            as StartAudioResponse;
+    final audioStartReply = await _request(
+      StartAudioRequest(id: _getRequestId()),
+      startupBehavior: startupBehavior,
+      bypassRenderRequestHold: bypassRenderRequestHold,
+      // Audio device initialization can block behind OS permission
+      // prompts, such as the first-run microphone access prompt on
+      // macOS.
+      timeout: null,
+    ) as StartAudioResponse;
     if (!audioStartReply.success) {
       throw StateError(
         'Engine audio startup failed: ${audioStartReply.error ?? 'Unknown error.'}',
@@ -735,12 +732,10 @@ class Engine {
       return;
     }
 
-    final stopAudioReply =
-        await _request(
-              StopAudioRequest(id: _getRequestId()),
-              bypassRenderRequestHold: bypassRenderRequestHold,
-            )
-            as StopAudioResponse;
+    final stopAudioReply = await _request(
+      StopAudioRequest(id: _getRequestId()),
+      bypassRenderRequestHold: bypassRenderRequestHold,
+    ) as StopAudioResponse;
 
     if (!stopAudioReply.success) {
       throw StateError(
@@ -788,12 +783,10 @@ class Engine {
     _socketReady = true;
 
     try {
-      final response =
-          await _request(
-                EngineReadyCheckRequest(id: _getRequestId()),
-                startupBehavior: StartupSendBehavior.bypassStartupQueue,
-              )
-              as EngineReadyCheckResponse;
+      final response = await _request(
+        EngineReadyCheckRequest(id: _getRequestId()),
+        startupBehavior: StartupSendBehavior.bypassStartupQueue,
+      ) as EngineReadyCheckResponse;
       if (!response.success) {
         throw StateError(
           'Engine startup handshake failed: ${response.error ?? 'Unknown error.'}',

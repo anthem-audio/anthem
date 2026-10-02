@@ -145,7 +145,6 @@ const ProjectFileVersion oldestSupportedProjectFileVersion = ProjectFileVersion(
 
 /// Compares two project-file version strings for use with [List.sort].
 int compareProjectFileVersionStrings(String left, String right) {
-  return ProjectFileVersion.parse(
-    left,
-  ).compareTo(ProjectFileVersion.parse(right));
+  return ProjectFileVersion.parse(left)
+      .compareTo(ProjectFileVersion.parse(right));
 }
