@@ -18,13 +18,19 @@ To use an engine you have already built:
 dart run anthem:cli integration-test --engine /absolute/path/to/AnthemEngine
 ```
 
-`--seed` shuffles scenario order for isolation checks; use a fixed integer to
-reproduce a run. `--device` selects the host desktop explicitly. `--target`
-selects a scenario file. `--output` selects an artifact directory; otherwise each run gets a new
+The default target is the whole `integration_test/` suite. `--seed` shuffles
+scenario order for isolation checks; use a fixed integer to reproduce a run.
+`--device` selects the host desktop explicitly. `--target` selects a test file
+or directory, for example `--target integration_test/note_editing_test.dart`.
+Targets must be inside the package's `integration_test/` directory so Flutter
+runs them with the real desktop app and native plugins.
+`--output` selects an artifact directory; otherwise each run gets a new
 `build/integration_test/` directory. The runner prints that path and returns the
 Flutter test exit code. It never selects the bundled engine copy as a fallback.
 Only one integration runner can own a checkout at a time, since Flutter desktop
-targets share build output.
+targets share build output. The runner executes each test file in a separate
+Flutter process, sequentially, so later files get a fresh desktop log reader.
+It runs all selected files and returns the first failing exit code, if any.
 
 Linux requires a display; in a headless environment use:
 
@@ -41,6 +47,13 @@ modifiers. It also covers a missing executable, a startup deadline with a child
 that never connects, recovery after that failure, and readiness diagnostics.
 Each shutdown awaits the actual child exit code rather than just sending a
 signal. A shutdown that requires a forced kill is reported as a failure.
+
+`note_editing_test.dart` draws a note through real mouse down/move/up events,
+then uses the platform's primary modifier with Z for undo and Shift+Z for redo.
+It checks the note's identity, pitch, offset, length, velocity, and pan in Dart
+and in fresh engine model queries, plus its presence in rendered frame
+annotations. It also checks offscreen target rejection, window resizing, and
+modifier/pointer release after an input action fails.
 
 The harness initializes `IntegrationTestWidgetsFlutterBinding` before shared
 application startup. Every session registers teardown before startup, uses
@@ -60,11 +73,23 @@ Initial model acknowledgment establishes startup. Each model predicate queries
 the engine again, with both a request and overall deadline. These observations
 do not prove audio-thread adoption or audible output.
 
+The piano-roll driver prepares prerequisite pattern data and viewport settings
+through existing models and controllers. It verifies a matching rendered frame
+before input, uses the current canvas bounds for each target, and requires mouse
+activation before sending history shortcuts. The initial fixture uses the
+product's automatic snap mode at a verified 24-tick interval; expected note
+properties are literal scenario values, independent of coordinate conversion.
+Existing note targets are located by persistent ID in current annotations,
+clipped to the visible canvas, and checked for overlapping notes and resize
+handles. These locators do not independently prove correct rendering geometry;
+the existing painter and geometry tests cover that responsibility.
+
 Artifacts currently include the runner transcript, Flutter version and engine
 path, application/engine logs, session IDs/PIDs/exit codes, canvas bounds, and
 engine model snapshots. Linux/Xvfb and macOS smoke jobs upload these even on
-failure. Expanded diagnostics and additional editing/persistence scenarios are
-later deliveries.
+failure. The note scenario also saves `drawn.json`, `resized.json`, `undone.json`,
+and `redone.json` with viewport diagnostics and engine note state. Expanded
+failure diagnostics and persistence scenarios are later deliveries.
 
 ## Verify exception reporting
 

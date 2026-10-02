@@ -190,6 +190,61 @@ class AppTestSession {
     return pointer;
   }
 
+  /// Holds physical keys for one action, releasing them even if it fails.
+  /// Session teardown also owns them until their release succeeds.
+  Future<void> withKeysHeld(
+    List<LogicalKeyboardKey> keys,
+    Future<void> Function() action,
+  ) async {
+    if (keys.toSet().length != keys.length ||
+        keys.any(HardwareKeyboard.instance.logicalKeysPressed.contains)) {
+      throw ArgumentError(
+        'Shortcut keys must be distinct and not already held.',
+      );
+    }
+    final pressed = <LogicalKeyboardKey>[];
+    try {
+      for (final key in keys) {
+        pressed.add(key);
+        await holdKey(key);
+      }
+      await action();
+    } finally {
+      for (final key in pressed.reversed) {
+        await tester.sendKeyUpEvent(key);
+        _heldKeys.remove(key);
+      }
+    }
+  }
+
+  /// Sends mouse down, the action's moves, and mouse up. A failed action sends
+  /// cancel instead, so the app receives a complete pointer event sequence.
+  Future<void> withMouseGesture({
+    required Offset start,
+    required Future<void> Function(TestGesture) action,
+  }) async {
+    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    _heldPointers.add(pointer);
+    var released = false;
+    try {
+      await pointer.down(start);
+      await action(pointer);
+      await pointer.up();
+      released = true;
+    } finally {
+      if (!released) await pointer.cancel();
+      _heldPointers.remove(pointer);
+    }
+  }
+
+  /// Changes both the Flutter test surface and the native desktop window.
+  /// Callers must then wait for their editor's rendered layout to match.
+  Future<void> resizeWindow(Size size) async {
+    await tester.binding.setSurfaceSize(size);
+    await windowManager.setSize(size);
+    await tester.pump();
+  }
+
   /// Writes the current session diagnostics to `<lifecyclePhase>.json`.
   Future<void> writeSessionDiagnostics(
     String lifecyclePhase, {

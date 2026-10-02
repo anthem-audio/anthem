@@ -27,13 +27,13 @@ jobs:
       - name: Install virtual display
         if: runner.os == 'Linux'
         run: sudo apt install -y xvfb
-      - name: Startup and restart (Linux)
+      - name: Startup and note editing (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run -a -s "-screen 0 1280x800x24" dart run anthem:cli integration-test --seed 42 --output build/integration_test/ci
-      - name: Startup and restart (macOS)
+      - name: Startup and note editing (macOS)
         if: runner.os == 'macOS'
         run: dart run anthem:cli integration-test --seed 42 --output build/integration_test/ci
-      - name: Upload logs and observations
+      - name: Upload logs and diagnostics
         if: always()
         uses: actions/upload-artifact@v7
         with:

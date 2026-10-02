@@ -48,8 +48,8 @@ class IntegrationTestCommand extends Command<void> {
       )
       ..addOption(
         'target',
-        defaultsTo: 'integration_test/startup_test.dart',
-        help: 'Integration test file to run.',
+        defaultsTo: 'integration_test',
+        help: 'Integration test file or directory to run.',
       )
       ..addOption(
         'output',
@@ -81,8 +81,35 @@ class IntegrationTestCommand extends Command<void> {
     final target = File.fromUri(
       root.uri.resolve(argResults!['target'] as String),
     );
-    if (!target.existsSync()) {
+    if (!target.existsSync() && !Directory(target.path).existsSync()) {
       throw UsageException('Test target does not exist: ${target.path}', usage);
+    }
+    final testFiles =
+        target.existsSync()
+              ? [target]
+              : Directory(target.path)
+                    .listSync(recursive: true, followLinks: false)
+                    .whereType<File>()
+                    .where((file) => file.path.endsWith('_test.dart'))
+                    .toList()
+          ..sort((a, b) => a.path.compareTo(b.path));
+    if (testFiles.isEmpty) {
+      throw UsageException(
+        'No *_test.dart files found in ${target.path}.',
+        usage,
+      );
+    }
+    final integrationRoot = Directory.fromUri(
+      root.uri.resolve('integration_test'),
+    );
+    final integrationPrefix =
+        '${integrationRoot.path}${Platform.pathSeparator}';
+    if (testFiles.any((file) => !file.path.startsWith(integrationPrefix))) {
+      throw UsageException(
+        'Desktop integration targets must be inside ${integrationRoot.path}. '
+        'Flutter runs files outside that directory as widget tests.',
+        usage,
+      );
     }
     final flutter = findExecutable('flutter');
     if (flutter == null) {
@@ -149,6 +176,7 @@ class IntegrationTestCommand extends Command<void> {
         const JsonEncoder.withIndent('  ').convert({
           'device': device,
           'target': target.path,
+          'testFiles': testFiles.map((file) => file.path).toList(),
           'engine': engine.path,
           'audio': false,
           'orderingSeed': seed,
@@ -156,22 +184,30 @@ class IntegrationTestCommand extends Command<void> {
           'startedAtUtc': DateTime.now().toUtc().toIso8601String(),
         }),
       );
-      exitCode = await _run(
-        flutter,
-        [
-          'test',
-          target.path,
-          '-d',
-          device,
-          '--reporter',
-          'expanded',
-          '--dart-define=ANTHEM_TEST_ENGINE=${engine.path}',
-          '--dart-define=ANTHEM_TEST_ARTIFACTS=${output.path}',
-          if (seed != null) '--test-randomize-ordering-seed=$seed',
-        ],
-        root,
-        transcript,
-      );
+      // Flutter's desktop device closes its log stream when an app exits.
+      // Give each file a fresh Flutter process and log reader. Run sequentially
+      // because desktop builds share an output directory.
+      exitCode = 0;
+      for (final testFile in testFiles) {
+        final result = await _run(
+          flutter,
+          [
+            'test',
+            testFile.path,
+            '-d',
+            device,
+            '--reporter',
+            'expanded',
+            '--dart-define=ANTHEM_TEST_ENGINE=${engine.path}',
+            '--dart-define=ANTHEM_TEST_ARTIFACTS=${output.path}',
+            if (seed != null) '--test-randomize-ordering-seed=$seed',
+          ],
+          root,
+          transcript,
+        );
+        // Finish the remaining files, preserving the first failing exit code.
+        if (exitCode == 0) exitCode = result;
+      }
     } finally {
       try {
         await transcript.flush();

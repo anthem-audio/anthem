@@ -58,6 +58,9 @@ const double maxKeyHeight = 40;
 const double minKeyValue = 0;
 const double maxKeyValue = 128;
 
+/// The note canvas, excluding the piano keyboard, timeline, and scrollbars.
+const pianoRollCanvasKey = ValueKey('piano-roll-canvas');
+
 const double _pianoRollVerticalScrollbarWidth = 17;
 
 // Hack: We need the size of the piano roll's content area at very inconvenient
@@ -483,6 +486,7 @@ class _PianoRollContentState extends State<_PianoRollContent>
               child: child,
               builder: (context, child) {
                 return PianoRollEventListener(
+                  key: pianoRollCanvasKey,
                   viewSize: constraints.biggest,
                   renderedTimeViewStart: timeRangeAnimation.renderedStart,
                   renderedTimeViewEnd: timeRangeAnimation.renderedEnd,
