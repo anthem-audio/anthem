@@ -112,10 +112,16 @@ class MainWindowController {
 
   // Returns the ID of the new tab
   Future<ProjectId> newProject() async {
-    ProjectModel project = ProjectModel.create();
+    return openProject(ProjectModel.create());
+  }
 
+  /// Registers a prepared project and starts its real engine.
+  Future<ProjectId> openProject(
+    ProjectModel project, {
+    bool startAudio = true,
+  }) async {
     final serviceRegistry = _addProject(project);
-    await serviceRegistry.projectEngineController.start();
+    await serviceRegistry.projectEngineController.start(startAudio: startAudio);
 
     return project.id;
   }
@@ -147,8 +153,8 @@ class MainWindowController {
     store.projectOrder.remove(projectId);
 
     // If the active project was closed, set it to the first open project
-    if (store.activeProjectId == projectId && store.projectOrder.isNotEmpty) {
-      store.activeProjectId = store.projectOrder[0];
+    if (store.activeProjectId == projectId) {
+      store.activeProjectId = store.projectOrder.firstOrNull ?? '';
     }
   }
 

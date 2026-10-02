@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -19,10 +19,13 @@
 
 // ignore_for_file: avoid_print
 
+import 'dart:io';
+
 import 'package:args/command_runner.dart';
 
 import 'commands/codegen.dart';
 import 'commands/engine.dart';
+import 'commands/integration_test.dart';
 import 'commands/flutter_test.dart';
 import 'commands/flutter_run_web_with_proxy.dart';
 
@@ -38,6 +41,7 @@ void main(List<String> args) async {
       CommandRunner<dynamic>('anthem:cli', 'Utilities for developing Anthem.')
         ..addCommand(CodegenCommand())
         ..addCommand(EngineCommand())
+        ..addCommand(IntegrationTestCommand())
         ..addCommand(FlutterTestCommand())
         ..addCommand(FlutterRunWebWithProxyCommand());
 
@@ -45,5 +49,6 @@ void main(List<String> args) async {
     await runner.run(args);
   } on UsageException catch (e) {
     print(e);
+    exitCode = 64;
   }
 }

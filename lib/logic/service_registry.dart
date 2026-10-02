@@ -176,7 +176,28 @@ class ServiceRegistry {
   static final MainWindowViewModel mainWindowViewModel = MainWindowViewModel();
   static final DialogController dialogController = DialogController();
   static final ClipboardService clipboard = ClipboardService();
-  static late final ScreenOverlayController screenOverlayController;
+  static ScreenOverlayController? _screenOverlayController;
+
+  static ScreenOverlayController get screenOverlayController =>
+      _screenOverlayController ??
+      (throw StateError('The screen overlay is not mounted.'));
+
+  static set screenOverlayController(ScreenOverlayController controller) {
+    _screenOverlayController = controller;
+  }
+
+  static void detachScreenOverlay(ScreenOverlayController controller) {
+    if (identical(_screenOverlayController, controller)) {
+      _screenOverlayController = null;
+    }
+  }
+
+  /// Settings belong to the current application session. Null uses the native
+  /// store; an explicit instance lets a session supply isolated storage.
+  static void setSessionPreferences(SharedPreferencesAsync? preferences) {
+    _preferences = preferences;
+  }
+
   static SharedPreferencesAsync? _preferences;
 
   static SharedPreferencesAsync get preferences {

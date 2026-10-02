@@ -48,6 +48,15 @@ abstract class EngineConnectorBase {
 
   late final Future<bool> onInit;
 
+  /// Desktop process observations. In-process connectors have no child PID.
+  int? get processId => null;
+  int? get processExitCode => null;
+
+  /// Releases the connector and waits for any owned process to exit.
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
+    dispose();
+  }
+
   /// Should be set to kDebugMode from Flutter, or false if not running in a
   /// Flutter environment.
   ///

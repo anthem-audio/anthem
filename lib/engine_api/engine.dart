@@ -139,7 +139,13 @@ class _PluginParameterGestureSession {
 /// processes and presents a higher-level async API to the rest of the UI.
 class Engine {
   int id;
-  late EngineConnectorBase _engineConnector;
+  EngineConnectorBase? _connector;
+  EngineConnectorBase get _engineConnector => _connector!;
+  Future<void>? _stopFuture;
+  Future<void>? _disposeFuture;
+
+  int? get processId => _connector?.processId;
+  int? get processExitCode => _connector?.processExitCode;
 
   /// The project that this engine is attached to
   ProjectModel project;
@@ -610,32 +616,50 @@ class Engine {
     _setEngineState(EngineState.stopped);
   }
 
-  Future<void> _exit() async {
-    final request = Exit(id: _getRequestId());
-    await _request(request, bypassRenderRequestHold: true);
+  Future<void> dispose() => _disposeFuture ??= _dispose();
 
-    _engineConnector.dispose();
-
-    _setEngineState(EngineState.stopped);
-  }
-
-  Future<void> dispose() async {
-    await stop();
-
-    _engineStateStreamController.close();
-    _audioSessionInvalidatedStreamController.close();
-    _renderEventStreamController.close();
+  Future<void> _dispose() async {
+    try {
+      await stop();
+    } finally {
+      _engineStateStreamController.close();
+      _audioSessionInvalidatedStreamController.close();
+      _renderEventStreamController.close();
+    }
   }
 
   /// Stops the engine process, if it is running.
   Future<void> stop() async {
-    if (_engineState == EngineState.running) {
-      await _exit();
-      return;
+    if (_stopFuture != null) return _stopFuture;
+    final stopping = _stop();
+    _stopFuture = stopping;
+    try {
+      await stopping;
+    } finally {
+      _stopFuture = null;
     }
+  }
 
-    if (_engineState == EngineState.starting) {
-      _engineConnector.dispose();
+  Future<void> _stop() async {
+    final connector = _connector;
+    if (connector == null) return;
+    try {
+      if (_engineState == EngineState.running) {
+        try {
+          await _request(
+            Exit(id: _getRequestId()),
+            bypassRenderRequestHold: true,
+          );
+        } catch (error, stackTrace) {
+          _log.warning(
+            'Engine $id did not acknowledge exit.',
+            error,
+            stackTrace,
+          );
+        }
+      }
+      await connector.shutdown();
+    } finally {
       _setEngineState(EngineState.stopped);
     }
   }
@@ -727,6 +751,7 @@ class Engine {
 
   /// Starts the engine process, and attaches to it.
   Future<void> start({bool initializeAudio = true}) async {
+    if (_disposeFuture != null) throw StateError('Engine $id is disposed.');
     if (_engineState != EngineState.stopped) {
       return;
     }
@@ -736,7 +761,7 @@ class Engine {
 
     _setEngineState(EngineState.starting);
 
-    _engineConnector = _engineConnectorFactory(
+    _connector = _engineConnectorFactory(
       id,
       kDebugMode: kDebugMode,
       onReply: _onReply,

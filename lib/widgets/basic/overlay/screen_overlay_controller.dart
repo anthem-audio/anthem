@@ -49,10 +49,10 @@ class ScreenOverlayController {
   }
 
   void clear() {
-    for (final entry in viewModel.entries.nonObservableInner.values) {
+    final entries = viewModel.entries.values.toList();
+    viewModel.entries.clear();
+    for (final entry in entries) {
       entry.onClose?.call();
     }
-
-    viewModel.entries.clear();
   }
 }

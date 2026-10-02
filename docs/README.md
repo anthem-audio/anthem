@@ -40,6 +40,7 @@ The setup guides below give instructions for setting up Anthem development on yo
 - [Setup instructions for Windows](./setup_windows.md)
 - [Setup instructions for Linux](./setup_linux.md)
 - [Setup instructions for macOS](./setup_macos.md)
+- [Desktop integration tests](./integration_testing.md)
 
 ## Architecture
 

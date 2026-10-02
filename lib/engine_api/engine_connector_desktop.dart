@@ -76,6 +76,13 @@ class EngineConnector extends EngineConnectorBase {
   final int _id;
 
   Process? _engineProcess;
+  int? _processExitCode;
+
+  @override
+  int? get processId => _engineProcess?.pid;
+
+  @override
+  int? get processExitCode => _processExitCode;
   SharedMemoryRegion? _visualizationSharedMemory;
   SharedMemoryRecordRingBufferReader? _visualizationRingBufferReader;
   Timer? _visualizationReadTimer;
@@ -375,17 +382,39 @@ class EngineConnector extends EngineConnectorBase {
     super.dispose();
   }
 
+  @override
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
+    dispose();
+    // Process.start may complete after disposal. Wait for initialization so any
+    // engine process that starts during cleanup is stopped and its exit is
+    // confirmed before cleanup completes.
+    await onInit.timeout(timeout);
+    final process = _engineProcess;
+    if (process == null) return;
+
+    try {
+      await process.exitCode.timeout(timeout);
+    } on TimeoutException {
+      process.kill(ProcessSignal.sigkill);
+      await process.exitCode.timeout(timeout);
+      throw TimeoutException(
+        'Engine $_id (PID ${process.pid}) did not exit after shutdown; '
+        'it required a forced kill.',
+        timeout,
+      );
+    }
+  }
+
   /// Sets the engine process, and attaches a listener when it stops.
   void _setEngineProcess(Process process) {
-    if (_shuttingDown) {
-      process.kill();
-      return;
-    }
     _engineProcess = process;
 
     _engineProcess!.exitCode.then((exitCode) {
+      _processExitCode = exitCode;
+      _log.info('Engine $_id (PID ${process.pid}) exited with $exitCode.');
       dispose();
       _onExit?.call();
     });
+    if (_shuttingDown) process.kill();
   }
 }
