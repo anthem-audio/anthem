@@ -148,11 +148,18 @@ abstract class _TrackProcessingModel
     required TrackModel track,
     required ProjectModel project,
     required ProjectEntityIdAllocator idAllocator,
+    required bool isSendTrack,
   }) {
     final trackId = track.id;
 
+    // Leave headroom on source tracks. Groups, returns, and the master keep
+    // unity gain so routing through them does not add another attenuation.
+    final defaultGainDb =
+        track.type == TrackType.normal && !track.isMasterTrack && !isSendTrack
+        ? -10.0
+        : 0.0;
     final utilityNode = UtilityProcessorModel.create(idAllocator: idAllocator)
-        .createNode();
+        .createNode(defaultGainDb: defaultGainDb);
     utilityNode.owner = NodeOwnerModel(trackId: trackId);
     utilityNodeId = utilityNode.id;
     project.processingGraph.addNode(utilityNode);
@@ -419,14 +426,18 @@ abstract class _TrackModel
     return automationProcessing;
   }
 
+  /// Creates this track's processing nodes with its initial volume default.
+  /// [isSendTrack] includes tracks nested inside send groups.
   void createAndRegisterNodes(
     ProjectModel project,
-    ProjectEntityIdAllocator idAllocator,
-  ) {
+    ProjectEntityIdAllocator idAllocator, {
+    required bool isSendTrack,
+  }) {
     requireProcessing.createAndRegisterNodes(
       track: this as TrackModel,
       project: project,
       idAllocator: idAllocator,
+      isSendTrack: isSendTrack,
     );
   }
 

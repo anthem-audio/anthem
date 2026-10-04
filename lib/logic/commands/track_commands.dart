@@ -626,7 +626,11 @@ class TrackAddRemoveCommand extends Command {
               presentRequiredTrackNodeCount == requiredTrackNodeIds.length;
 
           if (hasNoTrackNodes) {
-            track.createAndRegisterNodes(project, idAllocator);
+            track.createAndRegisterNodes(
+              project,
+              idAllocator,
+              isSendTrack: trackController.isSendTrack(track.id, false),
+            );
           } else if (!hasAllTrackNodes) {
             throw StateError(
               'TrackAddRemoveCommand._add(): Track ${track.id} has incomplete '

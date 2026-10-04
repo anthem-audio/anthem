@@ -67,8 +67,9 @@ class UtilityProcessorModel extends _UtilityProcessorModel
   factory UtilityProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$UtilityProcessorModelAnthemModelMixin.fromJson(json);
 
+  /// [defaultGainDb] sets both the initial gain and its reset default.
   @override
-  NodeModel createNode() {
+  NodeModel createNode({double defaultGainDb = 0.0}) {
     return NodeModel(
       id: nodeId,
       processor: this,
@@ -100,7 +101,7 @@ class UtilityProcessorModel extends _UtilityProcessorModel
             dataType: NodePortDataType.control,
             parameterConfig: ParameterConfigModel(
               id: gainPortId,
-              defaultValue: gainParameterZeroDbNormalized,
+              defaultValue: gainDbToParameterValue(defaultGainDb),
               displayMode: ParameterDisplayMode.gainDb,
               unitLabel: 'dB',
             ),

@@ -370,7 +370,11 @@ void main() {
             trackController.buildTrackMixFragment(track),
           );
         } else {
-          track.createAndRegisterNodes(project, idAllocator);
+          track.createAndRegisterNodes(
+            project,
+            idAllocator,
+            isSendTrack: trackController.isSendTrack(track.id, false),
+          );
         }
       }
 
