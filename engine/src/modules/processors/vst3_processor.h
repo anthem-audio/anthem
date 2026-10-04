@@ -107,7 +107,7 @@ public:
       return bounds;
     }
 
-    framedBounds = clampBoundsToArea(framedBounds, display->userArea);
+    framedBounds = clampBoundsToArea(framedBounds, display->userBounds.toNearestInt());
     getNativeFrameBorder().subtractFrom(framedBounds);
 
     return framedBounds;

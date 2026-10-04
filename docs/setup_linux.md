@@ -13,7 +13,7 @@ In addition to Flutter, Anthem needs the following:
 - **Make**: Used for assembling Anthem components.
 - **Apt packages**: The following packages are required by either JUCE or Flutter, and can be installed with `apt` or a similar package manager:
    ```
-   ninja-build llvm-22 clang-22 clang-format-22 clang-tidy-22 libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.1-dev libcurl4-openssl-dev
+   ninja-build llvm-22 clang-22 clang-format-22 clang-tidy-22 libx11-dev libxi-dev libxrandr-dev libxinerama-dev libxcursor-dev libfreetype-dev mesa-common-dev libasound2-dev freeglut3-dev libxcomposite-dev libgtk-3-dev libasound2-dev libwebkit2gtk-4.1-dev libcurl4-openssl-dev
    ```
   On Ubuntu, the `clang-format` package provided by the default distribution repositories may be an older LLVM version. If `llvm-22`, `clang-22`, `clang-format-22`, or `clang-tidy-22` are not available, install LLVM 22 from [apt.llvm.org](https://apt.llvm.org/).
 

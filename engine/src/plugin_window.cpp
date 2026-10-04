@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2023 Joshua Wade
+  Copyright (C) 2023 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -26,7 +26,7 @@ namespace anthem {
 PluginWindow::PluginWindow(juce::AudioProcessor* processor)
   : DocumentWindow(
         processor->getName(), juce::Colours::lightgrey, juce::DocumentWindow::allButtons) {
-  auto* editor = processor->createEditorIfNeeded();
+  auto* editor = processor->createEditorAndMakeActive();
   if (editor != nullptr) {
     setContentOwned(editor, true);
     setResizable(false, false);

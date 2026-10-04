@@ -574,9 +574,9 @@ std::optional<std::string> VST3Processor::openPluginWindow() {
   // environment during first-time setup.
   //
   // On Windows, Anthem reaches this code from MessageManager::callAsync() after
-  // asynchronous plugin creation. That means createEditorIfNeeded() runs from JUCE's
+  // asynchronous plugin creation. That means createEditorAndMakeActive() runs from JUCE's
   // hidden message window rather than from a real plugin-host HWND message handler.
-  // Some VST3 editors query DPI during createEditorIfNeeded(), and JUCE's Windows
+  // Some VST3 editors query DPI during createEditorAndMakeActive(), and JUCE's Windows
   // host code expects that work to happen with the thread DPI context matched to the
   // actual host window. AudioPluginHost normally gets this naturally because plugin
   // windows are opened from real UI interaction.
@@ -613,10 +613,11 @@ std::optional<std::string> VST3Processor::openPluginWindow() {
 #endif
 
   auto pluginEditor =
-      std::unique_ptr<juce::AudioProcessorEditor>(pluginInstance->createEditorIfNeeded());
+      std::unique_ptr<juce::AudioProcessorEditor>(pluginInstance->createEditorAndMakeActive());
 
   if (!pluginEditor) {
-    writeVST3Log(*this, "createEditorIfNeeded() returned null. No plugin window will be shown.");
+    writeVST3Log(
+        *this, "createEditorAndMakeActive() returned null. No plugin window will be shown.");
     return std::string("Plugin does not provide an editor window.");
   }
 
@@ -638,7 +639,7 @@ std::optional<std::string> VST3Processor::openPluginWindow() {
     initialBounds = initialBounds.withCentre(activeWindow->getScreenBounds().getCentre());
   } else if (auto* primaryDisplay = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
       primaryDisplay != nullptr) {
-    initialBounds = initialBounds.withCentre(primaryDisplay->userArea.getCentre());
+    initialBounds = initialBounds.withCentre(primaryDisplay->userBounds.toNearestInt().getCentre());
   } else {
     initialBounds.setPosition(50, 50);
   }
