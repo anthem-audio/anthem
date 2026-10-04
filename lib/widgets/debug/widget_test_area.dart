@@ -22,6 +22,7 @@ import 'package:anthem/widgets/basic/hint/hint_display.dart';
 import 'package:anthem/widgets/basic/tree_view/tree_view.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/button_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/arranger_track_headers_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/automation_curve_bounds_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
@@ -76,6 +77,11 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-arranger-track-headers',
     title: 'Arranger track headers',
     description: 'Tests calculated header, indicator, and divider layout',
+  ),
+  automationCurveBounds(
+    key: 'widget-test-screen-automation-curve-bounds',
+    title: 'Automation curve bounds',
+    description: 'Reproduces asymmetric clipping at opposite tension extremes',
   );
 
   final String key;
@@ -209,6 +215,15 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
         label: 'Editors',
         children: [
           TreeViewItemModel(
+            key: WidgetTestScreenId.automationCurveBounds.key,
+            label: labelForScreen(WidgetTestScreenId.automationCurveBounds),
+            onClick: () {
+              setState(() {
+                selectedScreen = WidgetTestScreenId.automationCurveBounds;
+              });
+            },
+          ),
+          TreeViewItemModel(
             key: WidgetTestScreenId.arrangerTrackHeaders.key,
             label: labelForScreen(WidgetTestScreenId.arrangerTrackHeaders),
             onClick: () {
@@ -234,6 +249,8 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
       WidgetTestScreenId.slider => const SliderWidgetTestScreen(),
       WidgetTestScreenId.arrangerTrackHeaders =>
         const ArrangerTrackHeadersWidgetTestScreen(),
+      WidgetTestScreenId.automationCurveBounds =>
+        const AutomationCurveBoundsWidgetTestScreen(),
     };
   }
 

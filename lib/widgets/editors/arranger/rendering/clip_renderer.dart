@@ -156,12 +156,8 @@ void paintClipList({
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
 
-        // The use of timePerPixel here scales the automation curve in the X
-        // direction so that it does not draw across the clip boundary. This
-        // makes the positioning very slightly incorrect, but since we can't
-        // render-clip the draw call around the entire DAW clip (due to
-        // performance concerns), we have to get the automation to draw within
-        // the DAW clip boundaries without any render clipping.
+        // Inset geometry in screen space while retaining this entire source
+        // window. All curves still share the same batched draw calls.
         clipStart: clipEntry.clipTimeViewStart,
         clipEnd: clipEntry.clipTimeViewEnd,
         clipOffset: clipEntry.clipOffset.toDouble(),

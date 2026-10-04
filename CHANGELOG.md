@@ -6,6 +6,10 @@
 - Added user-facing errors when a project file fails to load
 - Removed support for multiple arrangements per project
 
+## Fixed
+
+- Steep curves at the start of automation clips now render correctly at all zoom levels
+
 # 0.0.0-prealpha.1
 
 This is the first release. See below for a feature list; future releases will include change logs.

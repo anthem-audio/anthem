@@ -508,8 +508,13 @@ double evaluateCurveForTesting(double time, List<AutomationPoint> points) {
 /// multiple curves to be drawn all at once, which is usually much faster. Fill
 /// geometry is generated only for callers that draw it explicitly.
 ///
-/// [correctForClipBounds] applies a one-pixel start shift used by clip
-/// rendering paths to avoid visible bleed just before clip boundaries.
+/// [correctForClipBounds] compresses the curve's X coordinates by
+/// [clipLeftInsetPixels] at the left clip edge, leaving the right endpoint
+/// fixed without changing the source-time window. Stroke, joins, and fill
+/// share this transform and remain batchable.
+/// The transform uses the full clip bounds even when an edge is offscreen.
+/// The inset is in logical pixels and applies to the stroke centerline.
+/// Curves narrower than the inset are omitted.
 void renderAutomationCurve({
   required Canvas canvas,
   required Size canvasSize,
@@ -534,10 +539,10 @@ void renderAutomationCurve({
   CoordinateBuffer? lineJoinBuffer,
   CoordinateBuffer? triCoordBuffer,
 
-  // One-pixel start correction used to keep curve sampling from bleeding
-  // slightly before clipped boundaries.
   bool correctForClipBounds = false,
+  double clipLeftInsetPixels = 1.0,
 }) {
+  assert(clipLeftInsetPixels >= 0 && clipLeftInsetPixels.isFinite);
   if (points.length < 2) return;
 
   points.observeAllChanges();
@@ -607,13 +612,6 @@ void renderAutomationCurve({
     endTime = points.last.offset.toDouble() + clipOffset - (clipStart ?? 0.0);
   }
 
-  // This prevents the curve from rendering slightly before the start of the
-  // clip.
-  if (correctForClipBounds) {
-    final timePerPixel = (timeViewEnd - timeViewStart) / canvasSize.width;
-    startTime += timePerPixel;
-  }
-
   var startX = timeToPixels(
     timeViewStart: timeViewStart,
     timeViewEnd: timeViewEnd,
@@ -628,14 +626,35 @@ void renderAutomationCurve({
     time: endTime,
   );
 
-  // Whether the start of the curve is cut off by the view
-  final willCutOffStart = startX < 0;
+  final originalStartX = startX;
+  final originalEndX = endX;
+  final originalWidth = originalEndX - originalStartX;
+  final inset = correctForClipBounds ? clipLeftInsetPixels : 0.0;
 
-  // Whether the end of the curve is cut off by the view
-  final willCutOffEnd = endX > canvasSize.width;
+  // There is no room for an inset curve in these clips. Avoid an inverted
+  // transform at extreme zoom out.
+  // The tolerance handles roundoff when the remaining width is effectively zero.
+  if (originalWidth < 0 || (inset > 0 && originalWidth <= inset + 1e-6)) {
+    endObservationBlockFor(points);
+    return;
+  }
+
+  final xScale = inset == 0 ? 1.0 : (originalWidth - inset) / originalWidth;
+  double drawX(double x) => originalEndX - (originalEndX - x) * xScale;
+  double sampleX(double x) => originalEndX - (originalEndX - x) / xScale;
+
+  // Clip in the transformed screen space, then invert to find the original
+  // time to sample. Panning must not move the inset onto a viewport edge.
+  final willCutOffStart = drawX(startX) < 0;
+  final willCutOffEnd = drawX(endX) > canvasSize.width;
+
+  if (drawX(endX) < 0 || drawX(startX) > canvasSize.width) {
+    endObservationBlockFor(points);
+    return;
+  }
 
   if (willCutOffStart) {
-    startX = 0;
+    startX = sampleX(0);
     startTime = pixelsToTime(
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
@@ -645,7 +664,7 @@ void renderAutomationCurve({
   }
 
   if (willCutOffEnd) {
-    endX = canvasSize.width;
+    endX = sampleX(canvasSize.width);
     endTime = pixelsToTime(
       timeViewStart: timeViewStart,
       timeViewEnd: timeViewEnd,
@@ -692,8 +711,8 @@ void renderAutomationCurve({
         );
         final y = valueToY(automationPoints[i].value);
 
-        curveBuilder.addPoint(x, y, true);
-        lineJoinBuffer.add(x, y);
+        curveBuilder.addPoint(drawX(x), y, true);
+        lineJoinBuffer.add(drawX(x), y);
       }
     }
 
@@ -701,11 +720,11 @@ void renderAutomationCurve({
     // points) where the most recent time was found.
     mostRecentCurve = _currentCurveCache;
 
-    curveBuilder.addPoint(x, y);
+    curveBuilder.addPoint(drawX(x), y);
   }
 
   curveBuilder.addPoint(
-    endX.toDouble(),
+    drawX(endX),
     valueToY(
       _evaluateCurve(
         endTime - clipOffset + (clipStart ?? 0.0),
