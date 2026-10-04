@@ -9,6 +9,7 @@
 ## Fixed
 
 - Fixed VST3 plugin selection on Linux
+- Fixed the left panel width at 200 pixels
 
 # 0.0.0-prealpha.1
 
