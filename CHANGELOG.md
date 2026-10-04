@@ -7,12 +7,13 @@
 - Removed support for multiple arrangements per project
 - Set default track level to -10db, excluding group, send, and master tracks
 - Play button now remains visually pressed while playback is running
+- Fixed the left panel width at 200 pixels
 
 ## Fixed
 
 - Steep curves at the start of automation clips now render correctly at all zoom levels
 - Fixed VST3 plugin selection on Linux
-- Fixed the left panel width at 200 pixels
+- Added speculative fix for performance issues with visualization data streaming
 
 # 0.0.0-prealpha.1
 
