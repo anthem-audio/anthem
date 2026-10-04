@@ -92,7 +92,7 @@ void main() {
           'enginePid': pid,
           'engineState': 'stopped',
           'cleanupError': null,
-          'engineExitCode': early ? null : -15,
+          'engineExitCode': early ? null : 0,
         }),
       );
       if (!early) {
@@ -176,6 +176,14 @@ void main() {
       'framework-probe',
       'stopped',
       (data) => data['cleanupError'] = 'forced shutdown',
+    );
+    await expectLater(verify(), throwsStateError);
+  });
+  test('rejects a terminated child without a reported cleanup error', () async {
+    await change(
+      'framework-probe',
+      'stopped',
+      (data) => data['engineExitCode'] = -1,
     );
     await expectLater(verify(), throwsStateError);
   });

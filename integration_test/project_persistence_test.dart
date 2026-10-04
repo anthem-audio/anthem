@@ -203,7 +203,7 @@ void main() {
       collectTimeoutDiagnostics: () => session.sessionDiagnostics,
     );
     await tester.pump();
-    expect(original.engine.processExitCode, isNotNull);
+    expect(original.engine.processExitCode, 0);
     expect(AnthemStore.instance.projects, isEmpty);
     expect(ServiceRegistry.maybeForProject(original.id), isNull);
     await tester.tap(find.text('File'));

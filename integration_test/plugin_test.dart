@@ -339,7 +339,7 @@ void main() {
       conditionDescription: 'old plugin engine exited',
       collectTimeoutDiagnostics: () => session.sessionDiagnostics,
     );
-    expect(original.engine.processExitCode, isNotNull);
+    expect(original.engine.processExitCode, 0);
     expect(AnthemStore.instance.projects, isEmpty);
 
     files.projectFiles.selectedOpenPath = savedPath;

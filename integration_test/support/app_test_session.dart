@@ -91,6 +91,7 @@ class AppTestSession {
   final _failureDiagnostics = <String, Object? Function()>{};
   Future<void>? _failureCapture;
   Object? _cleanupError;
+  bool _startedSuccessfully = false;
 
   ProjectModel get project => _openedProject ?? app.project;
   ServiceRegistry get services => ServiceRegistry.forProject(project.id);
@@ -151,6 +152,7 @@ class AppTestSession {
       collectTimeoutDiagnostics: () => sessionDiagnostics,
       timeout: startupTimeout,
     );
+    _startedSuccessfully = true;
     await windowManager.setSize(logicalWindowSize);
     await waitUntil(
       tester,
@@ -518,8 +520,10 @@ class AppTestSession {
     if (project.engine.processId != null) {
       expect(
         project.engine.processExitCode,
-        isNotNull,
-        reason: 'Cleanup must await actual child process exit.',
+        _startedSuccessfully ? equals(0) : isNotNull,
+        reason: _startedSuccessfully
+            ? 'A started engine must finish normal shutdown successfully.'
+            : 'Failed startup cleanup must await actual child process exit.',
       );
     }
   }

@@ -90,8 +90,8 @@ Future<void> verifyFailureArtifacts(
       );
     } else {
       require(
-        stopped['enginePid'] != null && stopped['engineExitCode'] != null,
-        '${entry.key}: no actual child exit was recorded.',
+        stopped['enginePid'] != null && stopped['engineExitCode'] == 0,
+        '${entry.key}: engine did not finish normal shutdown successfully.',
       );
       require(
         screenshot['status'] == 'saved',

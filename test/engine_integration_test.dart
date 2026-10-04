@@ -66,6 +66,7 @@ Future<void> _sendExitAndWaitForProcess({
 
   engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
   await exitFuture;
+  expect(engineConnector.processExitCode, 0);
   engineConnector.dispose();
 }
 

@@ -91,6 +91,7 @@ class EngineConnector extends EngineConnectorBase {
 
   bool _initialized = false;
   bool _shuttingDown = false;
+  Future<void>? _shutdownFuture;
   Completer<void>? _engineConnectCompleter;
 
   /// If any requests are sent before the engine starts and IPC is set up, this
@@ -144,7 +145,7 @@ class EngineConnector extends EngineConnectorBase {
       }
     });
 
-    EngineSocketServer.instance.onClose(_id, dispose);
+    EngineSocketServer.instance.onClose(_id, _onSocketClosed);
 
     String? developmentEnginePath;
 
@@ -337,14 +338,28 @@ class EngineConnector extends EngineConnectorBase {
     EngineSocketServer.instance.send(_id, bytes);
   }
 
-  void _shutdown() {
+  void _onSocketClosed() {
+    if (_shuttingDown) return;
+    // Exit closes the socket before native audio/plugin teardown is finished.
+    // Wait for the child to exit instead of terminating it from this callback.
+    unawaited(
+      shutdown().catchError((Object error, StackTrace stackTrace) {
+        _log.warning(
+          'Engine $_id shutdown after socket closure failed.',
+          error,
+          stackTrace,
+        );
+      }),
+    );
+  }
+
+  void _shutdown({bool terminateProcess = true}) {
     if (_shuttingDown) return;
     _shuttingDown = true;
     _initialized = false;
     final connecting = _engineConnectCompleter;
     if (connecting != null && !connecting.isCompleted) connecting.complete();
-    // Kill engine process
-    _engineProcess?.kill();
+    if (terminateProcess) _engineProcess?.kill();
 
     // Unsubscribe from engine replies
     _engineReplySub?.cancel();
@@ -372,8 +387,14 @@ class EngineConnector extends EngineConnectorBase {
   }
 
   @override
-  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
-    dispose();
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) =>
+      _shutdownFuture ??= _shutdownAndWait(timeout);
+
+  Future<void> _shutdownAndWait(Duration timeout) async {
+    // Connected engines handle Exit or socket closure themselves. Incomplete
+    // startup still needs immediate termination, including a late Process.start.
+    _shutdown(terminateProcess: !_initialized);
+    super.dispose();
     // Process.start may complete after disposal. Wait for initialization so any
     // engine process that starts during cleanup is stopped and its exit is
     // confirmed before cleanup completes.

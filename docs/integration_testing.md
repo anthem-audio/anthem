@@ -47,8 +47,11 @@ initial model contents through engine IPC, and verifies fresh projects,
 selection, undo history, overlays, dialogs, cursor state, settings, and keyboard
 modifiers. It also covers a missing executable, a startup deadline with a child
 that never connects, recovery after that failure, and readiness diagnostics.
-Each shutdown awaits the actual child exit code rather than just sending a
-signal. A shutdown that requires a forced kill is reported as a failure.
+Each shutdown awaits the actual child exit code. Engines that started
+successfully must exit with code zero, allowing native cleanup to finish after
+the Exit acknowledgment and socket closure. A normal shutdown that requires a
+forced kill after its deadline is reported as a failure. Failed or cancelled
+startup may terminate an unconnected child, but still awaits its actual exit.
 
 `note_editing_test.dart` draws a note through real mouse down/move/up events,
 then uses the platform's primary modifier with Z for undo and Shift+Z for redo.
