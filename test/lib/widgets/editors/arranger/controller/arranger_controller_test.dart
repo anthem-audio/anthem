@@ -619,6 +619,7 @@ void main() {
     parentTrack.createAndRegisterNodes(
       fixture.project,
       fixture.project.idAllocator,
+      isSendTrack: false,
     );
 
     final utilityNode = parentTrack.requireProcessing.utilityNode!;

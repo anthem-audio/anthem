@@ -97,7 +97,11 @@ class ProjectModel extends _ProjectModel
     sendTrackOrder = AnthemObservableList.of(initSendTrackOrder);
 
     for (final trackId in initTrackOrder.followedBy(initSendTrackOrder)) {
-      initTracks[trackId]!.createAndRegisterNodes(this, idAllocator);
+      initTracks[trackId]!.createAndRegisterNodes(
+        this,
+        idAllocator,
+        isSendTrack: initSendTrackOrder.contains(trackId),
+      );
     }
 
     final masterOutputPortId = processingGraph

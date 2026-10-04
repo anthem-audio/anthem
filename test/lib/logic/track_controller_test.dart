@@ -69,7 +69,7 @@ void _createAndRegisterTrackNodes({
   required ProjectEntityIdAllocator idAllocator,
 }) {
   track.setParentPropertiesOnChildren();
-  track.createAndRegisterNodes(project, idAllocator);
+  track.createAndRegisterNodes(project, idAllocator, isSendTrack: false);
 }
 
 void main() {
@@ -605,7 +605,11 @@ void main() {
             trackController.buildTrackMixFragment(track),
           );
         } else {
-          track.createAndRegisterNodes(project, idAllocator);
+          track.createAndRegisterNodes(
+            project,
+            idAllocator,
+            isSendTrack: trackController.isSendTrack(track.id, false),
+          );
         }
       }
 
@@ -932,7 +936,11 @@ void main() {
             trackController.buildTrackMixFragment(track),
           );
         } else {
-          track.createAndRegisterNodes(project, idAllocator);
+          track.createAndRegisterNodes(
+            project,
+            idAllocator,
+            isSendTrack: trackController.isSendTrack(track.id, false),
+          );
         }
       }
 
