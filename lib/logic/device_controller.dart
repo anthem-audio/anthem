@@ -109,16 +109,23 @@ class DeviceController {
       );
     }
 
-    final file = await openFile(
-      acceptedTypeGroups: [
-        const XTypeGroup(label: 'VST3 plugins', extensions: ['vst3']),
-      ],
-      initialDirectory: initialDirectory,
-      confirmButtonText: 'Choose plugin',
-    );
-    if (file == null) return null;
-
-    final path = file.path;
+    // Linux VST3 bundles are directories
+    final String? path;
+    if (Platform.isLinux) {
+      path = await getDirectoryPath(
+        initialDirectory: initialDirectory,
+        confirmButtonText: 'Choose plugin',
+      );
+    } else {
+      path = (await openFile(
+        acceptedTypeGroups: [
+          const XTypeGroup(label: 'VST3 plugins', extensions: ['vst3']),
+        ],
+        initialDirectory: initialDirectory,
+        confirmButtonText: 'Choose plugin',
+      ))?.path;
+    }
+    if (path == null) return null;
 
     if (!path.toLowerCase().endsWith('.vst3')) {
       dialogController.showMarkdownDialog(
