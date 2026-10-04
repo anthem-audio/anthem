@@ -111,25 +111,23 @@ class _MiddleGroup extends StatelessWidget {
   }
 }
 
-class _PlayStopButtonGroup extends StatelessWidget {
+class _PlayStopButtonGroup extends StatelessObserverWidget {
   const _PlayStopButtonGroup();
 
   @override
   Widget build(BuildContext context) {
+    final projectModel = Provider.of<ProjectModel>(context);
+
     return ButtonGroup(
       children: [
         Button(
           icon: Icons.play,
+          toggleState: projectModel.sequence.isPlaying,
           height: 24,
           width: 24,
           contentPadding: EdgeInsets.all(3),
           hint: [HintSection('click', 'Play')],
           onPress: () {
-            final projectModel = Provider.of<ProjectModel>(
-              context,
-              listen: false,
-            );
-
             if (projectModel.engineState != EngineState.running) {
               return;
             }
@@ -144,10 +142,6 @@ class _PlayStopButtonGroup extends StatelessWidget {
           contentPadding: EdgeInsets.all(3),
           hint: [HintSection('click', 'Stop')],
           onPress: () {
-            final projectModel = Provider.of<ProjectModel>(
-              context,
-              listen: false,
-            );
             projectModel.sequence.isPlaying = false;
           },
         ),

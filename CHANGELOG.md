@@ -6,6 +6,7 @@
 - Added user-facing errors when a project file fails to load
 - Removed support for multiple arrangements per project
 - Set default track level to -10db, excluding group, send, and master tracks
+- Play button now remains visually pressed while playback is running
 
 ## Fixed
 
