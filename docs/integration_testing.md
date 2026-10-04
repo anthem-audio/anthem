@@ -85,7 +85,10 @@ not used. Native dialog UI, third-party plugin state, and audio output are
 outside the original persistence scenario's coverage.
 
 `plugin_test.dart` exercises real source-built JUCE VST3 modules through the
-application's Add Device workflow, substituting only the selected file path.
+application's Add Device workflow, substituting only the selected plugin path.
+The selection helper requires a directory chooser for Linux VST3 bundles and
+a file chooser on macOS and Windows. Native dialog UI remains outside these
+scenarios' coverage.
 It loads both an instrument and an effect, checks their real initialization,
 discovered audio/MIDI ports and parameters, and checks the rendered rack. It
 removes each device, verifies the engine model no longer contains its node,

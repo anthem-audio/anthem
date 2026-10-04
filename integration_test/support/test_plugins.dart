@@ -98,20 +98,39 @@ class TestPluginFileSelector extends FileSelectorPlatform {
     String? confirmButtonText,
   }) async {
     if (acceptedTypeGroups?.single.extensions?.single == 'vst3') {
-      pluginSelectionCount++;
-      expect(confirmButtonText, 'Choose plugin');
-      final selected = selectedPluginPath;
-      if (selected == null) return null;
-      if (![fixtures.instrument, fixtures.effect].contains(selected)) {
-        throw StateError('Selected plugin is not a configured test fixture.');
-      }
-      return XFile(selected);
+      expect(
+        Platform.isLinux,
+        isFalse,
+        reason: 'Linux VST3 bundles must be selected with a directory chooser.',
+      );
+      final selected = _selectPlugin(confirmButtonText);
+      return selected == null ? null : XFile(selected);
     }
     return projectFiles.openFile(
       acceptedTypeGroups: acceptedTypeGroups,
       initialDirectory: initialDirectory,
       confirmButtonText: confirmButtonText,
     );
+  }
+
+  @override
+  Future<String?> getDirectoryPath({
+    String? initialDirectory,
+    String? confirmButtonText,
+  }) async {
+    expect(Platform.isLinux, isTrue);
+    return _selectPlugin(confirmButtonText);
+  }
+
+  String? _selectPlugin(String? confirmButtonText) {
+    pluginSelectionCount++;
+    expect(confirmButtonText, 'Choose plugin');
+    final selected = selectedPluginPath;
+    if (selected != null &&
+        ![fixtures.instrument, fixtures.effect].contains(selected)) {
+      throw StateError('Selected plugin is not a configured test fixture.');
+    }
+    return selected;
   }
 
   @override
