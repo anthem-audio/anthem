@@ -9,10 +9,10 @@ environment:
 resolution: workspace
 
 dependencies:
-  code_assets: ^1.0.0
+  code_assets: ^2.1.0
   ffi: ^2.1.4
-  hooks: ^1.0.0
-  native_toolchain_c: ^0.17.4
+  hooks: ^2.2.0
+  native_toolchain_c: ^0.19.5
 
 dev_dependencies:
   lints: ^6.0.0

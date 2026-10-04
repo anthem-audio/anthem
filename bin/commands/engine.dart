@@ -366,8 +366,10 @@ class _BuildLameCommand extends Command<dynamic> {
 
     if (!File.fromUri(lameSourcePath.resolve('configure')).existsSync()) {
       print(
-        Colorize('Error: Could not find LAME source at engine/include/lame.')
-            .red(),
+        Colorize(
+          'Error: Could not find LAME source at engine/include/lame. '
+          'Run git submodule update --init --recursive.',
+        ).red(),
       );
       exit(1);
     }
@@ -385,7 +387,6 @@ class _BuildLameCommand extends Command<dynamic> {
       Directory.fromUri(lameSourcePath),
       Directory.fromUri(sourceBuildPath),
     );
-    _normalizeLameBuildLineEndings(sourceBuildPath);
 
     if (Platform.isWindows) {
       await _buildLameOnWindows(sourceBuildPath, jobs: jobs);
@@ -1150,53 +1151,18 @@ const _lameConfigureArguments = [
   '--with-fileio=lame',
 ];
 
-// Anthem uses LAME only for audio encoding, without command-line ID3 metadata
-// or interactive terminal output. Disabling these optional paths also avoids
-// portability issues in the bundled LAME version.
+// Anthem does not use LAME's interactive terminal output or iconv tag conversion.
+// LAME 4.0 calls setlocale even without iconv, but guards its locale.h include
+// with HAVE_ICONV. Include the header explicitly for this release.
 const _lameConfigureEnvironment = {
   'am_cv_func_iconv': 'no',
+  'CPPFLAGS': '-include locale.h',
   'ac_cv_lib_termcap_initscr': 'no',
   'ac_cv_lib_curses_initscr': 'no',
   'ac_cv_lib_ncurses_initscr': 'no',
 };
 
 String get _lameExecutableName => Platform.isWindows ? 'lame.exe' : 'lame';
-
-void _normalizeLameBuildLineEndings(Uri sourceBuildPath) {
-  // The LAME submodule has Windows checkout behavior, but Autotools needs LF.
-  // Normalize only the disposable build copy so the submodule stays untouched.
-  for (final entity in Directory.fromUri(
-    sourceBuildPath,
-  ).listSync(recursive: true, followLinks: false)) {
-    if (entity is! File) continue;
-    if (_fileSystemEntityName(entity) == '.git') continue;
-
-    final bytes = entity.readAsBytesSync();
-    if (bytes.contains(0)) continue;
-    if (!bytes.contains(13)) continue;
-
-    final normalizedBytes = <int>[];
-    var changed = false;
-
-    for (var i = 0; i < bytes.length; i++) {
-      final byte = bytes[i];
-      if (byte != 13) {
-        normalizedBytes.add(byte);
-        continue;
-      }
-
-      changed = true;
-      normalizedBytes.add(10);
-      if (i + 1 < bytes.length && bytes[i + 1] == 10) {
-        i++;
-      }
-    }
-
-    if (changed) {
-      entity.writeAsBytesSync(normalizedBytes);
-    }
-  }
-}
 
 Future<void> _buildLameOnUnix(Uri sourceBuildPath, {required int jobs}) async {
   final workingDirectory = sourceBuildPath.toFilePath(windows: false);
@@ -1372,10 +1338,9 @@ void _copyDirectorySync(Directory source, Directory destination) {
   destination.createSync(recursive: true);
 
   for (final entity in source.listSync(followLinks: false)) {
-    final destinationPath = _joinFileSystemPath(
-      destination.path,
-      _fileSystemEntityName(entity),
-    );
+    final name = _fileSystemEntityName(entity);
+    if (name == '.git') continue;
+    final destinationPath = _joinFileSystemPath(destination.path, name);
 
     if (entity is Directory) {
       _copyDirectorySync(entity, Directory(destinationPath));
