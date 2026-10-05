@@ -62,7 +62,21 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
       timeViewEnd: timeViewEnd,
     );
 
-    // Horizontal lines
+    // Vertical lines
+
+    paintTimeGridLines(
+      canvas: canvas,
+      size: size,
+      snap: AutoSnap(),
+      baseTimeSignature: project.sequence.defaultTimeSignature,
+      timeSignatureChanges: activeArrangement?.timeSignatureChanges ?? [],
+      ticksPerQuarter: project.sequence.ticksPerQuarter,
+      timeViewStart: timeViewStart,
+      timeViewEnd: timeViewEnd,
+    );
+
+    // Draw track dividers over the time grid so they stay continuous at
+    // intersections with vertical lines.
 
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     final viewModel = serviceRegistry.arrangerViewModel;
@@ -79,19 +93,6 @@ class ArrangerBackgroundPainter extends CustomPainterObserver {
         majorLinePaint,
       );
     }
-
-    // Vertical lines
-
-    paintTimeGridLines(
-      canvas: canvas,
-      size: size,
-      snap: AutoSnap(),
-      baseTimeSignature: project.sequence.defaultTimeSignature,
-      timeSignatureChanges: activeArrangement?.timeSignatureChanges ?? [],
-      ticksPerQuarter: project.sequence.ticksPerQuarter,
-      timeViewStart: timeViewStart,
-      timeViewEnd: timeViewEnd,
-    );
 
     final addTrackControl = viewModel.trackLayout.addTrackControlSpan;
     final regularToSendGap = viewModel.trackLayout.regularToSendGapSpan;
