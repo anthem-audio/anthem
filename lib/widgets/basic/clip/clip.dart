@@ -23,6 +23,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_renderer.dart';
+import 'package:anthem/widgets/editors/arranger/automation_parameter.dart';
 import 'package:anthem/widgets/basic/mobx_custom_painter.dart';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
@@ -56,6 +57,7 @@ class Clip extends StatelessWidget {
         pattern: patternModel,
         color: color,
         clip: clipModel,
+        project: projectModel,
         hideBorder: hideBorder,
       ),
     );
@@ -66,23 +68,37 @@ class ClipPainter extends CustomPainterObserver {
   final PatternModel pattern;
   final AnthemColor color;
   final ClipModel? clip;
+  final ProjectModel? project;
   final bool hideBorder;
 
   ClipPainter({
     required this.pattern,
     required this.color,
     this.clip,
+    this.project,
     this.hideBorder = false,
   }) : super(debugName: 'ClipPainter');
 
   @override
   void observablePaint(Canvas canvas, Size size) {
+    final project = this.project;
+    final target = project?.tracks[clip?.trackId]?.automationTarget;
+    final parameterPort = project == null
+        ? null
+        : resolveAutomationParameterPort(
+            project: project,
+            nodeId: target?.nodeId,
+            portId: target?.portId,
+          );
     paintClip(
       canvas: canvas,
       canvasSize: size,
       pattern: pattern,
       color: color,
       clip: clip,
+      normalizedVisualBaseline:
+          parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
+          0.0,
       x: 0,
       y: 0,
       width: size.width,
@@ -99,6 +115,7 @@ class ClipPainter extends CustomPainterObserver {
       pattern != oldDelegate.pattern ||
       color != oldDelegate.color ||
       clip != oldDelegate.clip ||
+      project != oldDelegate.project ||
       hideBorder != oldDelegate.hideBorder;
 }
 

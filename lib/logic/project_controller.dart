@@ -403,6 +403,14 @@ class ProjectController {
           if (currentPort != null) {
             replacementPort.connections.addAll(currentPort.connections);
             if (replacementPort.config.parameterConfig != null) {
+              // Visual metadata belongs to the UI and is absent from engine
+              // port declarations. Keep it when refreshing a matching port.
+              replacementPort.config.parameterConfig!.normalizedVisualBaseline =
+                  currentPort
+                      .config
+                      .parameterConfig
+                      ?.normalizedVisualBaseline ??
+                  0.0;
               replacementPort.parameterValue =
                   currentPort.parameterValue ?? replacementPort.parameterValue;
               replacementPort.parameterDisplayText =

@@ -273,6 +273,46 @@ void main() {
   });
 
   group('DownsamplingCurveBuilder', () {
+    for (final (startY, endY) in [(10.0, 30.0), (30.0, 10.0)]) {
+      test('fills only toward the baseline when crossing $startY to $endY', () async {
+        final fill = CoordinateBuffer();
+        final lines = LineBuffer();
+        final builder = DownsamplingCurveBuilder(
+          lineBuffer: lines,
+          lineJoinBuffer: CoordinateBuffer(),
+          triCoordBuffer: fill,
+          baseY: 20,
+        );
+        builder.addPoint(0, startY);
+        builder.addPoint(100, endY);
+        builder.finish();
+        expect(lines.lineCount, 1);
+
+        final recorder = ui.PictureRecorder();
+        final canvas = ui.Canvas(recorder);
+        canvas.drawVertices(
+          ui.Vertices.raw(ui.VertexMode.triangles, fill.buffer),
+          ui.BlendMode.srcOver,
+          ui.Paint()..color = const ui.Color(0x80FFFFFF),
+        );
+        final image = await recorder.endRecording().toImage(100, 40);
+        final pixels = (await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!;
+        image.dispose();
+        int alpha(int x, int y) => pixels.getUint8((y * 100 + x) * 4 + 3);
+        final leftFillY = startY < 20 ? 17 : 22;
+        final rightFillY = endY < 20 ? 17 : 22;
+        // No overlap/double opacity and no fill on the wrong side of the curve.
+        expect(alpha(10, leftFillY), 128);
+        expect(alpha(90, rightFillY), 128);
+        expect(alpha(10, rightFillY), 0);
+        expect(alpha(90, leftFillY), 0);
+        expect(alpha(50, 15), 0);
+        expect(alpha(50, 25), 0);
+      });
+    }
+
     test('collapses nearly straight points into fewer segments', () {
       final lineBuffer = LineBuffer();
       final lineJoinBuffer = CoordinateBuffer();
@@ -348,6 +388,39 @@ void main() {
   });
 
   group('renderAutomationCurve', () {
+    test('changing fill baseline preserves curve strokes and joins', () {
+      final points = _makePointModelList([
+        (offset: 0, value: 0.1, curve: AutomationCurveType.smooth),
+        (offset: 35, value: 0.9, curve: AutomationCurveType.smooth),
+        (offset: 70, value: 0.2, curve: AutomationCurveType.smooth),
+      ]);
+      final original = _renderClipCurve(points);
+      for (final baseline in [0.5, 0.25]) {
+        final centered = _renderClipCurve(
+          points,
+          normalizedVisualBaseline: baseline,
+          yDrawPositionPixels: (10, 50),
+        );
+        final sameBounds = _renderClipCurve(
+          points,
+          yDrawPositionPixels: (10, 50),
+        );
+        expect(centered.lines.buffer, orderedEquals(sameBounds.lines.buffer));
+        expect(centered.joins.buffer, orderedEquals(sameBounds.joins.buffer));
+        expect(
+          centered.fill.buffer,
+          isNot(orderedEquals(sameBounds.fill.buffer)),
+        );
+        _expectCoordinateInBuffer(
+          centered.fill,
+          x: centered.lines.buffer.first,
+          y: 10 + 40 * (1 - baseline),
+          tolerance: 1e-4,
+        );
+      }
+      expect(original.lines.lineCount, greaterThan(0));
+    });
+
     test('returns immediately with fewer than two points', () {
       final points = _makePointModelList([
         (offset: 0, value: 0.5, curve: AutomationCurveType.smooth),
@@ -759,6 +832,8 @@ _renderClipCurve(
   double viewEnd = 100,
   double canvasWidth = 100,
   bool correctForClipBounds = true,
+  double normalizedVisualBaseline = 0,
+  (double, double) yDrawPositionPixels = (0, 40),
 }) {
   final geometry = (
     lines: LineBuffer(),
@@ -772,7 +847,8 @@ _renderClipCurve(
       canvas: ui.Canvas(recorder),
       canvasSize: ui.Size(canvasWidth, 40),
       xDrawPositionTime: (clipOffset, clipOffset + clipEnd - clipStart),
-      yDrawPositionPixels: (0, 40),
+      yDrawPositionPixels: yDrawPositionPixels,
+      normalizedVisualBaseline: normalizedVisualBaseline,
       points: points,
       strokeWidth: 2,
       timeViewStart: viewStart,

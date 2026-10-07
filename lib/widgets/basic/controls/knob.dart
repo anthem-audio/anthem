@@ -44,6 +44,12 @@ class Knob extends StatefulWidget {
   final double min;
   final double max;
 
+  /// Start of the filled arc, normalized to the knob's range in [0, 1].
+  ///
+  /// Defaults to the bound parameter's visual baseline, or to 0.5 for an
+  /// unbound pan knob and 0.0 for other unbound knobs. Does not affect editing.
+  final double? normalizedVisualBaseline;
+
   final void Function(double)? onValueChanged;
   final VoidCallback? onValueChangeStart;
   final void Function(double)? onValueChangeEnd;
@@ -60,6 +66,7 @@ class Knob extends StatefulWidget {
     this.type = KnobType.normal,
     this.value,
     this.parameter,
+    this.normalizedVisualBaseline,
     this.onValueChanged,
     this.onValueChangeStart,
     this.onValueChangeEnd,
@@ -69,7 +76,11 @@ class Knob extends StatefulWidget {
     this.hoverHintOverride,
     this.hint,
   }) : min = min ?? (type == KnobType.pan ? -1 : 0),
-       assert(value != null || parameter != null);
+       assert(value != null || parameter != null),
+       assert(
+         normalizedVisualBaseline == null ||
+             (normalizedVisualBaseline >= 0 && normalizedVisualBaseline <= 1),
+       );
 
   @override
   State<Knob> createState() => _KnobState();
@@ -164,6 +175,14 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
     Widget buildControl({double? automationParameterValue}) {
       final value = currentValue(automationParameterValue);
+      final parameter = widget.parameter;
+      final visualBaseline =
+          widget.normalizedVisualBaseline ??
+          (parameter != null
+              ? scaledToRaw(parameter.uiVisualBaseline)
+              : widget.type == KnobType.pan
+              ? 0.5
+              : 0.0);
 
       void resetParameterToDefault() {
         final parameter = widget.parameter;
@@ -266,7 +285,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
                 return CustomPaint(
                   painter: _KnobPainter(
                     value: scaledToRaw(value),
-                    type: widget.type,
+                    visualBaseline: visualBaseline,
                     sizeMultiplier: sizeMultiplierHelper.animation.value,
                     trackSize: trackSizeHelper.animation.value,
                   ),
@@ -316,13 +335,13 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 
 class _KnobPainter extends CustomPainter {
   final double value;
-  final KnobType type;
+  final double visualBaseline;
   final double sizeMultiplier;
   final double trackSize;
 
   _KnobPainter({
     required this.value,
-    required this.type,
+    required this.visualBaseline,
     required this.sizeMultiplier,
     required this.trackSize,
   });
@@ -347,15 +366,8 @@ class _KnobPainter extends CustomPainter {
       radius: multipliedSize.width / 2 - (0.5 + trackSize * 0.5),
     );
 
-    final startAngle = switch (type) {
-      KnobType.normal => pi / 2,
-      KnobType.pan => -pi / 2,
-    };
-
-    final valueAngle = switch (type) {
-      KnobType.normal => value * pi * 2,
-      KnobType.pan => (value - 0.5) * pi * 2,
-    };
+    final startAngle = pi / 2 + visualBaseline * pi * 2;
+    final valueAngle = (value - visualBaseline) * pi * 2;
 
     // Inner arc
     canvas.drawArc(arcRect, startAngle, valueAngle, false, trackFillPaint);
@@ -372,7 +384,7 @@ class _KnobPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _KnobPainter oldDelegate) {
     return oldDelegate.value != value ||
-        oldDelegate.type != type ||
+        oldDelegate.visualBaseline != visualBaseline ||
         oldDelegate.sizeMultiplier != sizeMultiplier ||
         oldDelegate.trackSize != trackSize;
   }
