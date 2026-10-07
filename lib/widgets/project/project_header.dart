@@ -17,14 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/button_group.dart';
-import 'package:anthem/widgets/basic/controls/digit_control.dart';
 import 'package:anthem/widgets/basic/controls/time_signature_control.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/horizontal_meter_simple.dart';
@@ -35,6 +33,7 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
 
 import '../basic/icon.dart';
+import 'tempo_control.dart';
 
 class ProjectHeader extends StatelessWidget {
   const ProjectHeader({super.key});
@@ -65,27 +64,30 @@ class _LeftGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final projectController = context.read<ProjectController>();
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Button(
-          icon: Icons.undo,
-          width: 24,
-          onPress: () {
-            projectController.undo();
-          },
-          hint: [HintSection('click', 'Undo (Ctrl+Z)')],
-        ),
-        const SizedBox(width: 4),
-        Button(
-          icon: Icons.redo,
-          width: 24,
-          onPress: () {
-            projectController.redo();
-          },
-          hint: [HintSection('click', 'Redo (Ctrl+Shift+Z)')],
-        ),
-      ],
+    return TapRegion(
+      groupId: projectController.tempoTapRegionGroupId,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Button(
+            icon: Icons.undo,
+            width: 24,
+            onPress: () {
+              projectController.undo();
+            },
+            hint: [HintSection('click', 'Undo (Ctrl+Z)')],
+          ),
+          const SizedBox(width: 4),
+          Button(
+            icon: Icons.redo,
+            width: 24,
+            onPress: () {
+              projectController.redo();
+            },
+            hint: [HintSection('click', 'Redo (Ctrl+Shift+Z)')],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -98,7 +100,7 @@ class _MiddleGroup extends StatelessWidget {
     return Row(
       spacing: 4,
       children: [
-        _TempoControl(),
+        TempoControl(),
         TimeSignatureControl(),
 
         // The goal is a spacer of width 16, which is 8 plus two spacers of 4
@@ -146,49 +148,6 @@ class _PlayStopButtonGroup extends StatelessObserverWidget {
           },
         ),
       ],
-    );
-  }
-}
-
-class _TempoControl extends StatefulObserverWidget {
-  const _TempoControl();
-
-  @override
-  State<_TempoControl> createState() => _TempoControlState();
-}
-
-class _TempoControlState extends State<_TempoControl> {
-  int originalTempo = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    final projectModel = Provider.of<ProjectModel>(context);
-
-    return DigitControl(
-      size: DigitDisplaySize.large,
-      decimalPlaces: 2,
-      minCharacterCount: 6,
-      hint: 'Set the project tempo',
-      hintUnits: 'beats per minute',
-      value: projectModel.sequence.beatsPerMinute,
-      onStart: () {
-        originalTempo = projectModel.sequence.beatsPerMinuteRaw;
-      },
-      onChanged: (value) {
-        projectModel.sequence.beatsPerMinuteRaw = (value.clamp(10, 999) * 100)
-            .round();
-      },
-      onEnd: () {
-        final newTempo = projectModel.sequence.beatsPerMinuteRaw;
-
-        if (newTempo == originalTempo) {
-          return;
-        }
-
-        projectModel.push(
-          SetTempoCommand(oldRawTempo: originalTempo, newRawTempo: newTempo),
-        );
-      },
     );
   }
 }

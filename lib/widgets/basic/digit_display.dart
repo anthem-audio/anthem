@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -50,6 +50,8 @@ class DigitDisplay extends StatelessWidget {
   final Widget Function(BuildContext context)? contentBuilder;
 
   final Widget? overlay;
+  final Color? borderColor;
+  final Color? backgroundColor;
 
   const DigitDisplay({
     super.key,
@@ -59,6 +61,8 @@ class DigitDisplay extends StatelessWidget {
     this.contentBuilder,
     this.monospace = false,
     this.overlay,
+    this.borderColor,
+    this.backgroundColor,
   });
 
   @override
@@ -73,9 +77,9 @@ class DigitDisplay extends StatelessWidget {
       height: calculateHeight(size),
       width: width?.toDouble(),
       decoration: BoxDecoration(
-        border: Border.all(color: AnthemTheme.control.border),
+        border: Border.all(color: borderColor ?? AnthemTheme.control.border),
         borderRadius: BorderRadius.circular(4),
-        color: AnthemTheme.control.background,
+        color: backgroundColor ?? AnthemTheme.control.background,
       ),
       child: Stack(
         children: [
