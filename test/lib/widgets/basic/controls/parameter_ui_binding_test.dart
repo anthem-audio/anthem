@@ -104,6 +104,25 @@ void main() {
     expect(port.parameterValue, 0.25);
   });
 
+  test('ParameterUiBinding maps a pan visual baseline into the UI domain', () {
+    final (:project, :node, :port) = _createParameterProject(
+      defaultValue: 0.25,
+      displayMode: ParameterDisplayMode.pan,
+      normalizedVisualBaseline: 0.5,
+    );
+    addTearDown(() => _disposeProject(project));
+    expect(ParameterUiBinding(node: node, port: port).uiVisualBaseline, 0.5);
+
+    final mappedBinding = ParameterUiBinding(
+      node: node,
+      port: port,
+      parameterToUiValue: (value) => value * 2 - 1,
+      uiToParameterValue: (value) => (value + 1) * 0.5,
+    );
+    expect(mappedBinding.uiValue, -0.5);
+    expect(mappedBinding.uiVisualBaseline, 0);
+  });
+
   test('ParameterUiBinding resolves automation visualization from lane', () {
     final project = ProjectModel.create();
     ServiceRegistry.initializeProject(project);
@@ -144,7 +163,11 @@ void main() {
 }
 
 ({ProjectModel project, NodeModel node, NodePortModel port})
-_createParameterProject({required double defaultValue}) {
+_createParameterProject({
+  required double defaultValue,
+  ParameterDisplayMode? displayMode,
+  double normalizedVisualBaseline = 0.0,
+}) {
   final project = ProjectModel.create();
   ServiceRegistry.initializeProject(project);
 
@@ -157,6 +180,8 @@ _createParameterProject({required double defaultValue}) {
       parameterConfig: ParameterConfigModel(
         id: 100,
         defaultValue: defaultValue,
+        normalizedVisualBaseline: normalizedVisualBaseline,
+        displayMode: displayMode,
       ),
     ),
   );

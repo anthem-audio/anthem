@@ -200,6 +200,71 @@ void main() {
       },
     );
 
+    test('port refresh preserves visual baselines and defaults new plugin ports to minimum', () async {
+      final nodeId = project.allocateId();
+      final node = NodeModel(
+        id: nodeId,
+        controlInputPorts: AnthemObservableList.of([
+          NodePortModel(
+            nodeId: nodeId,
+            id: 100,
+            config: NodePortConfigModel(
+              dataType: NodePortDataType.control,
+              name: 'Previous name',
+              parameterConfig: ParameterConfigModel(
+                id: 100,
+                defaultValue: 0.5,
+                normalizedVisualBaseline: 0.25,
+                displayMode: ParameterDisplayMode.pluginText,
+              ),
+            ),
+          ),
+        ]),
+      );
+      project.processingGraph.addNode(node);
+      final api = _RecordingProcessingGraphApi();
+      api.results = [
+        ProcessingGraphNodeInitializationResult(
+          nodeId: nodeId,
+          success: true,
+          parameterValues: [],
+          portConfiguration: ProcessingGraphNodePortConfiguration(
+            audioInputPorts: [],
+            audioOutputPorts: [],
+            eventInputPorts: [],
+            eventOutputPorts: [],
+            controlOutputPorts: [],
+            controlInputPorts: [
+              ProcessingGraphPortConfiguration(
+                id: 100,
+                name: 'New name',
+                parameterDefaultValue: 0.5,
+                parameterDisplayMode: 'pluginText',
+              ),
+              ProcessingGraphPortConfiguration(
+                id: 101,
+                name: 'New parameter',
+                parameterDefaultValue: 0.5,
+                parameterDisplayMode: 'pluginText',
+              ),
+            ],
+          ),
+        ),
+      ];
+      project.engine.processingGraphApi = api;
+      await controller.publishProcessingGraph();
+      final refreshedPort = node.getPortById(100);
+      expect(refreshedPort.config.name, 'New name');
+      expect(
+        refreshedPort.config.parameterConfig!.normalizedVisualBaseline,
+        0.25,
+      );
+      expect(
+        node.getPortById(101).config.parameterConfig!.normalizedVisualBaseline,
+        0.0,
+      );
+    });
+
     test(
       'publishProcessingGraph does not mark initialized parameters as touched',
       () async {

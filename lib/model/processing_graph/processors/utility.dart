@@ -116,6 +116,7 @@ class UtilityProcessorModel extends _UtilityProcessorModel
               id: balancePortId,
               defaultValue: UtilityProcessorModel.panToParameterValue(0.0),
               displayMode: ParameterDisplayMode.pan,
+              normalizedVisualBaseline: 0.5,
             ),
           ),
         ),

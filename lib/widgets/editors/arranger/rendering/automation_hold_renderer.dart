@@ -21,13 +21,12 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:anthem/model/arrangement/arrangement.dart';
-import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/automation_hold_segments.dart';
+import 'package:anthem/widgets/editors/arranger/automation_parameter.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_content_visibility.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/clip_geometry.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
@@ -82,6 +81,12 @@ void paintAutomationHoldSegments({
                   value: _automationLaneEmptyValue(track),
                 ),
               ];
+        final target = track.automationTarget;
+        final parameterPort = resolveAutomationParameterPort(
+          project: project,
+          nodeId: target?.nodeId,
+          portId: target?.portId,
+        );
 
         _paintTrackAutomationHoldSegments(
           canvas: canvas,
@@ -90,15 +95,23 @@ void paintAutomationHoldSegments({
           color: track.color.colorShifter.clipBase.toColor(),
           contentTop: contentBounds.contentTop,
           contentBottom: contentBounds.contentBottom,
+          normalizedVisualBaseline:
+              parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
+              0.0,
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
         );
 
       case PhantomAutomationTrackRow(:final phantomLane):
         final target = phantomLane.target;
-        final value = target == null
-            ? null
-            : _currentAutomationTargetValue(project: project, target: target);
+        final parameterPort = resolveAutomationParameterPort(
+          project: project,
+          nodeId: target?.nodeId,
+          portId: target?.portId,
+        );
+        final value =
+            parameterPort?.parameterValue ??
+            parameterPort?.config.parameterConfig?.defaultValue;
         final parentTrack = project.tracks[phantomLane.parentTrackId];
         if (value == null || parentTrack == null) {
           continue;
@@ -117,6 +130,9 @@ void paintAutomationHoldSegments({
           color: parentTrack.color.colorShifter.clipBase.toColor(),
           contentTop: contentBounds.contentTop,
           contentBottom: contentBounds.contentBottom,
+          normalizedVisualBaseline:
+              parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
+              0.0,
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
         );
@@ -168,37 +184,6 @@ double _automationLaneEmptyValue(TrackModel track) {
   );
 }
 
-double? _currentAutomationTargetValue({
-  required ProjectModel project,
-  required AutomationParameterTarget target,
-}) {
-  final node = project.processingGraph.nodes[target.nodeId];
-  if (node == null) {
-    return null;
-  }
-
-  final port = _findControlInputPort(node: node, portId: target.portId);
-  final parameterConfig = port?.config.parameterConfig;
-  if (port == null || parameterConfig == null) {
-    return null;
-  }
-
-  return port.parameterValue ?? parameterConfig.defaultValue;
-}
-
-NodePortModel? _findControlInputPort({
-  required NodeModel node,
-  required int portId,
-}) {
-  for (final port in node.controlInputPorts) {
-    if (port.id == portId) {
-      return port;
-    }
-  }
-
-  return null;
-}
-
 void _paintTrackAutomationHoldSegments({
   required Canvas canvas,
   required Size canvasSize,
@@ -206,11 +191,15 @@ void _paintTrackAutomationHoldSegments({
   required Color color,
   required double contentTop,
   required double contentBottom,
+  required double normalizedVisualBaseline,
   required double timeViewStart,
   required double timeViewEnd,
 }) {
   _automationHoldLineBuffer.clear();
   _automationHoldFillBuffer.clear();
+  final baseY =
+      contentTop +
+      (contentBottom - contentTop) * (1 - normalizedVisualBaseline);
 
   try {
     for (final segment in segments) {
@@ -244,7 +233,7 @@ void _paintTrackAutomationHoldSegments({
       final lineY =
           contentTop + (contentBottom - contentTop) * (1.0 - segment.value);
 
-      _addFillRect(x1: startX, x2: endX, y: lineY, baseY: contentBottom);
+      _addFillRect(x1: startX, x2: endX, y: lineY, baseY: baseY);
 
       _automationHoldLineBuffer.add(startX, lineY);
       _automationHoldLineBuffer.add(endX, lineY);

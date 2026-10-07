@@ -136,8 +136,34 @@ class NodeModel extends _NodeModel
         owner: null,
       );
 
-  factory NodeModel.fromJson(Map<String, dynamic> json) =>
-      _$NodeModelAnthemModelMixin.fromJson(json);
+  factory NodeModel.fromJson(Map<String, dynamic> json) {
+    final node = _$NodeModelAnthemModelMixin.fromJson(json);
+    final panPortId = switch (node.processor) {
+      UtilityProcessorModel() => UtilityProcessorModel.balancePortId,
+      BalanceProcessorModel() => BalanceProcessorModel.balancePortId,
+      _ => null,
+    };
+    if (panPortId != null) {
+      // Restore built-in metadata for projects saved before baselines were
+      // stored. Preserve every supplied baseline, including zero.
+      for (final portJson in json['controlInputPorts'] as List<dynamic>) {
+        final port = portJson as Map<String, dynamic>;
+        if (port['id'] != panPortId) continue;
+        final config = port['config'] as Map<String, dynamic>;
+        final parameter = config['parameterConfig'] as Map<String, dynamic>?;
+        if (parameter != null &&
+            !parameter.containsKey('normalizedVisualBaseline')) {
+          node
+                  .getInputPortById(NodePortDataType.control, panPortId)
+                  .config
+                  .parameterConfig!
+                  .normalizedVisualBaseline =
+              0.5;
+        }
+      }
+    }
+    return node;
+  }
 
   AnthemObservableList<NodePortModel> getInputPortsByType(
     NodePortDataType dataType,

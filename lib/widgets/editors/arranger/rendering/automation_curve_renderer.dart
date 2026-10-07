@@ -162,9 +162,9 @@ class DownsamplingCurveBuilder {
   ({double x, double y})? _curvePointB;
   bool _pointBIsHandle = false;
 
-  /// Pixel-space Y coordinate representing automation value `0.0`.
+  /// Pixel-space Y coordinate of the parameter's visual baseline.
   ///
-  /// Fill geometry is generated from the curve down to this baseline.
+  /// Fill geometry extends between the curve and this baseline on either side.
   double baseY;
 
   DownsamplingCurveBuilder({
@@ -281,6 +281,20 @@ class DownsamplingCurveBuilder {
 
   // Create geometry for the solid fill under the curve.
   void _createTrianglesForPoints(double x1, double y1, double x2, double y2) {
+    if ((y1 < baseY && y2 > baseY) || (y1 > baseY && y2 < baseY)) {
+      // Split at the crossing so the fill stays between the curve and baseline.
+      // A single quad here would fold over itself and shade unrelated pixels.
+      final crossingX = x1 + (x2 - x1) * (baseY - y1) / (y2 - y1);
+      triCoordBuffer.add(x1, y1);
+      triCoordBuffer.add(crossingX, baseY);
+      triCoordBuffer.add(x1, baseY);
+
+      triCoordBuffer.add(crossingX, baseY);
+      triCoordBuffer.add(x2, y2);
+      triCoordBuffer.add(x2, baseY);
+      return;
+    }
+
     // First triangle
     triCoordBuffer.add(x1, y1);
     triCoordBuffer.add(x2, y2);
@@ -497,6 +511,8 @@ double evaluateCurveForTesting(double time, List<AutomationPoint> points) {
 ///   span)
 /// - [yDrawPositionPixels] is the vertical pixel range where values `1.0` (top)
 ///   to `0.0` (bottom) are drawn
+/// - [normalizedVisualBaseline] anchors the fill within that value range;
+///   it does not change the curve stroke or value mapping
 /// - [timeViewStart]/[timeViewEnd] describe the full visible time window used
 ///   by `timeToPixels` / `pixelsToTime`
 /// - [clipStart]/[clipEnd]/[clipOffset] remap point times when drawing a
@@ -523,6 +539,7 @@ void renderAutomationCurve({
   required AnthemObservableList<AutomationPointModel> points,
   required double strokeWidth,
   Color? color,
+  double normalizedVisualBaseline = 0.0,
 
   required double timeViewStart,
   required double timeViewEnd,
@@ -543,6 +560,7 @@ void renderAutomationCurve({
   double clipLeftInsetPixels = 1.0,
 }) {
   assert(clipLeftInsetPixels >= 0 && clipLeftInsetPixels.isFinite);
+  assert(normalizedVisualBaseline >= 0 && normalizedVisualBaseline <= 1);
   if (points.length < 2) return;
 
   points.observeAllChanges();
@@ -581,7 +599,7 @@ void renderAutomationCurve({
     yDrawPositionPixels.$2 - yDrawPositionPixels.$1,
   );
 
-  final baseY = drawArea.top + drawArea.height;
+  final baseY = drawArea.top + drawArea.height * (1 - normalizedVisualBaseline);
 
   if (points.isEmpty) return;
 

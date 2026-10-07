@@ -28,6 +28,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/clip/packed_texture.dart';
 import 'package:anthem/widgets/editors/arranger/automation_handle_annotation.dart';
+import 'package:anthem/widgets/editors/arranger/automation_parameter.dart';
 import 'package:anthem/widgets/editors/arranger/rendering/automation_curve_renderer.dart';
 import 'package:anthem/widgets/editors/arranger/automation_smooth_curve.dart';
 import 'package:anthem/widgets/basic/clip/clip.dart';
@@ -139,6 +140,12 @@ void paintClipList({
       if (!shouldRenderClipContent(height)) continue;
 
       final lane = pattern.automation;
+      final target = project.tracks[clipEntry.trackId]?.automationTarget;
+      final parameterPort = resolveAutomationParameterPort(
+        project: project,
+        nodeId: target?.nodeId,
+        portId: target?.portId,
+      );
       final automationBounds = automationContentVerticalBoundsForClip(
         clipTop: y,
         clipHeight: height,
@@ -152,6 +159,9 @@ void paintClipList({
         ),
         yDrawPositionPixels: (automationBounds.top, automationBounds.bottom),
         points: lane.points,
+        normalizedVisualBaseline:
+            parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
+            0.0,
         strokeWidth: 2.0,
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,
@@ -174,42 +184,8 @@ void paintClipList({
       _automationLineBuffer.disconnectNext();
     }
 
-    final automationShadedPaint = Paint()
-      ..color = const Color(0x19FFFFFF)
-      ..style = PaintingStyle.fill;
-
-    final linePaint = getLinePaint(
-      chosenColor: _contentBaseColor,
-      strokeWidth: 2.0,
-    );
-
-    final lineJoinCirclePaint = getLineJoinPaint(
-      chosenColor: _contentBaseColor,
-      strokeWidth: 2.0,
-    );
-
+    _paintAutomationBuffers(canvas);
     final notePaint = Paint()..color = _contentBaseColor;
-
-    // This aliases on Skia, but we draw a line along the main boundary that
-    // would alias, so it works out well on Skia platforms (as of writing,
-    // this is Windows, Linux, and web). Also this is extremely fast.
-    canvas.drawVertices(
-      Vertices.raw(VertexMode.triangles, _automationTriCoordBuffer.buffer),
-      BlendMode.srcOver,
-      automationShadedPaint,
-    );
-
-    canvas.drawRawPoints(
-      PointMode.lines,
-      _automationLineBuffer.buffer,
-      linePaint,
-    );
-
-    canvas.drawRawPoints(
-      PointMode.points,
-      _automationLineJoinBuffer.buffer,
-      lineJoinCirclePaint,
-    );
 
     // Title
 
@@ -358,7 +334,46 @@ void paintClipList({
   }
 }
 
+void _paintAutomationBuffers(Canvas canvas) {
+  final automationShadedPaint = Paint()
+    ..color = const Color(0x19FFFFFF)
+    ..style = PaintingStyle.fill;
+
+  final linePaint = getLinePaint(
+    chosenColor: _contentBaseColor,
+    strokeWidth: 2.0,
+  );
+
+  final lineJoinCirclePaint = getLineJoinPaint(
+    chosenColor: _contentBaseColor,
+    strokeWidth: 2.0,
+  );
+
+  // This aliases on Skia, but we draw a line along the main boundary that
+  // would alias, so it works out well on Skia platforms (as of writing,
+  // this is Windows, Linux, and web). Also this is extremely fast.
+  canvas.drawVertices(
+    Vertices.raw(VertexMode.triangles, _automationTriCoordBuffer.buffer),
+    BlendMode.srcOver,
+    automationShadedPaint,
+  );
+
+  canvas.drawRawPoints(
+    PointMode.lines,
+    _automationLineBuffer.buffer,
+    linePaint,
+  );
+
+  canvas.drawRawPoints(
+    PointMode.points,
+    _automationLineJoinBuffer.buffer,
+    lineJoinCirclePaint,
+  );
+}
+
 /// Paints a clip onto the given canvas with the given position and size.
+///
+/// [normalizedVisualBaseline] anchors automation fill within its content area.
 void paintClip({
   required Canvas canvas,
   required Size canvasSize,
@@ -374,6 +389,7 @@ void paintClip({
   required double timeViewStart,
   required double timeViewEnd,
   bool hideBorder = false,
+  double normalizedVisualBaseline = 0.0,
 }) {
   _paintContainer(
     canvas: canvas,
@@ -412,19 +428,33 @@ void paintClip({
         clipTop: y,
         clipHeight: height,
       );
-      renderAutomationCurve(
-        canvas: canvas,
-        canvasSize: canvasSize,
-        xDrawPositionTime: clip != null
-            ? (clip.offset.toDouble(), (clip.offset + clip.width).toDouble())
-            : (0.0, 0.0),
-        yDrawPositionPixels: (automationBounds.top, automationBounds.bottom),
-        points: pattern.automation.points,
-        strokeWidth: 2.0,
-        timeViewStart: timeViewStart,
-        timeViewEnd: timeViewEnd,
-        color: _contentBaseColor,
-      );
+      _automationTriCoordBuffer.clear();
+      _automationLineBuffer.clear();
+      _automationLineJoinBuffer.clear();
+      try {
+        renderAutomationCurve(
+          canvas: canvas,
+          canvasSize: canvasSize,
+          xDrawPositionTime: clip != null
+              ? (clip.offset.toDouble(), (clip.offset + clip.width).toDouble())
+              : (0.0, 0.0),
+          yDrawPositionPixels: (automationBounds.top, automationBounds.bottom),
+          points: pattern.automation.points,
+          normalizedVisualBaseline: normalizedVisualBaseline,
+          strokeWidth: 2.0,
+          timeViewStart: timeViewStart,
+          timeViewEnd: timeViewEnd,
+          color: _contentBaseColor,
+          lineBuffer: _automationLineBuffer,
+          lineJoinBuffer: _automationLineJoinBuffer,
+          triCoordBuffer: _automationTriCoordBuffer,
+        );
+        _paintAutomationBuffers(canvas);
+      } finally {
+        _automationTriCoordBuffer.clear();
+        _automationLineBuffer.clear();
+        _automationLineJoinBuffer.clear();
+      }
     }
 
     // Notes

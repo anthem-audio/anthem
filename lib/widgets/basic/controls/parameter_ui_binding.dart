@@ -115,6 +115,11 @@ class ParameterUiBinding {
     SetParameterValueCommand.effectiveParameterValue(port),
   );
 
+  /// Visual fill baseline in the same UI value domain as [uiValue].
+  double get uiVisualBaseline => uiValueForNormalizedParameterValue(
+    port.config.parameterConfig?.normalizedVisualBaseline ?? 0.0,
+  );
+
   void beginChange() {
     ServiceRegistry.forProject(node.project.id).parameterController
         .beginChange(node: node, port: port);

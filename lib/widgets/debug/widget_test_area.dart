@@ -26,6 +26,7 @@ import 'package:anthem/widgets/debug/widget_test_screens/automation_curve_bounds
 import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/parameter_baselines_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/menu_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/meter_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/radio_button_widget_test_screen.dart';
@@ -67,6 +68,12 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-knob',
     title: 'Knob',
     description: 'Tests for lib/widgets/basic/controls/knob.dart',
+  ),
+  parameterBaselines(
+    key: 'widget-test-screen-parameter-baselines',
+    title: 'Parameter baselines',
+    description:
+        'Compares knob arcs and automation fills at different baselines',
   ),
   slider(
     key: 'widget-test-screen-slider',
@@ -198,6 +205,15 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
                 },
               ),
               TreeViewItemModel(
+                key: WidgetTestScreenId.parameterBaselines.key,
+                label: labelForScreen(WidgetTestScreenId.parameterBaselines),
+                onClick: () {
+                  setState(() {
+                    selectedScreen = WidgetTestScreenId.parameterBaselines;
+                  });
+                },
+              ),
+              TreeViewItemModel(
                 key: WidgetTestScreenId.slider.key,
                 label: labelForScreen(WidgetTestScreenId.slider),
                 onClick: () {
@@ -246,6 +262,8 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
       WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
+      WidgetTestScreenId.parameterBaselines =>
+        const ParameterBaselinesWidgetTestScreen(),
       WidgetTestScreenId.slider => const SliderWidgetTestScreen(),
       WidgetTestScreenId.arrangerTrackHeaders =>
         const ArrangerTrackHeadersWidgetTestScreen(),

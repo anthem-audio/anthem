@@ -8,6 +8,7 @@
 - Set default track level to -10db, excluding group, send, and master tracks
 - Play button now remains visually pressed while playback is running
 - Fixed the left panel width at 200 pixels
+- Automation shading now respects parameter baselines, including centered pan
 
 ## Fixed
 
