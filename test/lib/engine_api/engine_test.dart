@@ -1005,7 +1005,10 @@ void main() {
             id: 100,
             config: NodePortConfigModel(
               dataType: NodePortDataType.control,
-              parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0),
+              parameterConfig: ParameterConfigModel(
+                id: 100,
+                factoryDefaultValue: 0,
+              ),
             ),
           ),
         ]),
@@ -1050,7 +1053,7 @@ void main() {
           dataType: NodePortDataType.control,
           parameterConfig: ParameterConfigModel(
             id: 100,
-            defaultValue: 0,
+            factoryDefaultValue: 0,
             displayMode: ParameterDisplayMode.pluginText,
           ),
         ),
@@ -1092,7 +1095,10 @@ void main() {
         id: 100,
         config: NodePortConfigModel(
           dataType: NodePortDataType.control,
-          parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0),
+          parameterConfig: ParameterConfigModel(
+            id: 100,
+            factoryDefaultValue: 0,
+          ),
         ),
       );
       port.parameterValue = 0.25;
@@ -1146,7 +1152,10 @@ void main() {
         id: 100,
         config: NodePortConfigModel(
           dataType: NodePortDataType.control,
-          parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0),
+          parameterConfig: ParameterConfigModel(
+            id: 100,
+            factoryDefaultValue: 0,
+          ),
         ),
       );
       final node = NodeModel(

@@ -20,12 +20,12 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'master_output.g.dart';
 
@@ -55,23 +55,15 @@ class MasterOutputProcessorModel extends _MasterOutputProcessorModel
       _$MasterOutputProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: MasterOutputProcessorModel(nodeId: nodeId),
-      audioInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          id: _MasterOutputProcessorModel.inputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
-          nodeId: nodeId,
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() =>
+      createNativeNode(processor: this, audioInputPortIds: [inputPortId]);
+
+  static const int inputPortId = _MasterOutputProcessorModel.inputPortId;
 }
 
 abstract class _MasterOutputProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int inputPortId = 0;
 
   late Id nodeId;

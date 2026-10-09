@@ -30,7 +30,7 @@ void NodePort::initialize(
     std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) {
   NodePortModelBase::initialize(selfModel, parentModel);
 
-  if (this->config()->parameterConfig().has_value()) {
+  {
     this->addParameterValueObserver([this](std::optional<double> value) {
       if (!value.has_value()) {
         return;
@@ -71,6 +71,9 @@ void NodePort::sendParameterValueToAudioThreadIfBound(double value) {
   if (!node->runtimeContext.has_value()) {
     return;
   }
+
+  if (!isAvailable() || !node->runtimeContext.value()->hasParameterBinding(id()))
+    return;
 
   node->runtimeContext.value()->setParameterValue(this->id(), static_cast<float>(value));
 }

@@ -17,11 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/processing_graph/parameter_presentation.dart';
+
 import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
@@ -206,6 +209,9 @@ void main() {
         id: nodeId,
         controlInputPorts: AnthemObservableList.of([
           NodePortModel(
+            presentation: ParameterPresentationModel(
+              normalizedVisualBaseline: 0.25,
+            ),
             nodeId: nodeId,
             id: 100,
             config: NodePortConfigModel(
@@ -213,8 +219,7 @@ void main() {
               name: 'Previous name',
               parameterConfig: ParameterConfigModel(
                 id: 100,
-                defaultValue: 0.5,
-                normalizedVisualBaseline: 0.25,
+                factoryDefaultValue: 0.5,
                 displayMode: ParameterDisplayMode.pluginText,
               ),
             ),
@@ -222,6 +227,7 @@ void main() {
         ]),
       );
       project.processingGraph.addNode(node);
+      final previousPort = node.controlInputPorts.single;
       final api = _RecordingProcessingGraphApi();
       api.results = [
         ProcessingGraphNodeInitializationResult(
@@ -254,16 +260,304 @@ void main() {
       project.engine.processingGraphApi = api;
       await controller.publishProcessingGraph();
       final refreshedPort = node.getPortById(100);
+      expect(refreshedPort, same(previousPort));
       expect(refreshedPort.config.name, 'New name');
-      expect(
-        refreshedPort.config.parameterConfig!.normalizedVisualBaseline,
-        0.25,
+      expect(refreshedPort.presentation.normalizedVisualBaseline, 0.25);
+      expect(node.getPortById(101).presentation.normalizedVisualBaseline, 0.0);
+    });
+
+    test('missing discovered ports keep routing, values and presentation and recover by ID', () async {
+      final sourceId = project.allocateId();
+      final destinationId = project.allocateId();
+      final port = NodePortModel(
+        id: 10,
+        nodeId: destinationId,
+        isAvailable: true,
+        initialParameterValue: 0.7,
+        parameterResetValue: 0.3,
+        presentation: ParameterPresentationModel(
+          normalizedVisualBaseline: 0.25,
+        ),
+        config: NodePortConfigModel(
+          dataType: NodePortDataType.control,
+          parameterConfig: ParameterConfigModel(
+            id: 10,
+            factoryDefaultValue: 0.5,
+          ),
+        ),
       );
+      final source = NodeModel(
+        id: sourceId,
+        processor: GainProcessorModel(nodeId: sourceId),
+        controlOutputPorts: AnthemObservableList.of([
+          NodePortModel(
+            id: 20,
+            nodeId: sourceId,
+            isAvailable: true,
+            config: NodePortConfigModel(dataType: NodePortDataType.control),
+          ),
+        ]),
+      );
+      final destination = NodeModel(
+        id: destinationId,
+        processor: GainProcessorModel(nodeId: destinationId),
+        controlInputPorts: AnthemObservableList.of([port]),
+      );
+      project.processingGraph.addNode(source);
+      project.processingGraph.addNode(destination);
+      final connection = NodeConnectionModel(
+        idAllocator: project.idAllocator,
+        sourceNodeId: sourceId,
+        sourcePortId: 20,
+        destinationNodeId: destinationId,
+        destinationPortId: 10,
+        dataType: NodePortDataType.control,
+      );
+      project.processingGraph.addConnection(connection);
+      expect(project.processingGraph.isConnectionResolved(connection), isTrue);
+      final api = _RecordingProcessingGraphApi();
+      project.engine.processingGraphApi = api;
+      ProcessingGraphNodePortConfiguration ports(
+        List<ProcessingGraphPortConfiguration> control,
+      ) => ProcessingGraphNodePortConfiguration(
+        audioInputPorts: [],
+        audioOutputPorts: [],
+        eventInputPorts: [],
+        eventOutputPorts: [],
+        controlInputPorts: control,
+        controlOutputPorts: [],
+      );
+      api.results = [
+        ProcessingGraphNodeInitializationResult(
+          nodeId: destinationId,
+          success: true,
+          portConfiguration: ports([]),
+        ),
+      ];
+      await controller.publishProcessingGraph();
+      expect(port.isAvailable, isFalse);
+      expect(destination.controlInputPorts.single, same(port));
       expect(
-        node.getPortById(101).config.parameterConfig!.normalizedVisualBaseline,
-        0.0,
+        project.processingGraph.connections[connection.id],
+        same(connection),
+      );
+      expect(port.connections, [connection.id]);
+      expect(project.processingGraph.isConnectionResolved(connection), isFalse);
+      expect(port.parameterValue, 0.7);
+      expect(port.parameterResetTarget, 0.3);
+      expect(port.presentation.normalizedVisualBaseline, 0.25);
+      final saved = project.processingGraph.toJson();
+      final reopened = ProcessingGraphModel.fromJson(saved);
+      expect(reopened.toJson(), saved);
+      expect(reopened.connections, contains(connection.id));
+      final reopenedSource =
+          reopened.nodes[sourceId]!.controlOutputPorts.single;
+      final reopenedDestination =
+          reopened.nodes[destinationId]!.controlInputPorts.single;
+      for (final reopenedPort in [reopenedSource, reopenedDestination]) {
+        expect(reopenedPort.connections, [connection.id]);
+        expect(reopenedPort.isAvailable, isFalse);
+      }
+      final reopenedConnection = reopened.connections[connection.id]!;
+      expect(reopened.isConnectionResolved(reopenedConnection), isFalse);
+      reopenedSource.isAvailable = true;
+      reopenedDestination.isAvailable = true;
+      expect(reopened.isConnectionResolved(reopenedConnection), isTrue);
+      api.results = [
+        ProcessingGraphNodeInitializationResult(
+          nodeId: destinationId,
+          success: true,
+          portConfiguration: ports([
+            ProcessingGraphPortConfiguration(
+              id: 10,
+              name: 'Recovered',
+              parameterDefaultValue: 0.9,
+            ),
+          ]),
+          parameterValues: [
+            ProcessingGraphParameterValue(controlPortId: 10, value: 0.6),
+          ],
+        ),
+      ];
+      await controller.publishProcessingGraph();
+      expect(destination.controlInputPorts.single, same(port));
+      expect(port.isAvailable, isTrue);
+      expect(project.processingGraph.isConnectionResolved(connection), isTrue);
+      expect(port.parameterValue, 0.6);
+      expect(port.parameterResetTarget, 0.3);
+      expect(port.config.parameterConfig!.factoryDefaultValue, 0.9);
+      expect(port.presentation.normalizedVisualBaseline, 0.25);
+      expect(
+        project.processingGraph.connections[connection.id],
+        same(connection),
       );
     });
+
+    test('rack rebuild preserves routing when a plugin port disappears and returns', () async {
+      final graph = project.processingGraph;
+      final track = project.tracks[project.trackOrder.first]!;
+      final processing = track.requireProcessing;
+      final instrument = DeviceFactories.toneGenerator(
+        idAllocator: project.idAllocator,
+      );
+      final effect = DeviceFactories.vst3Plugin(
+        idAllocator: project.idAllocator,
+        vst3Path: '/test/effect.vst3',
+      );
+      graph.restoreGraphFragment(instrument.graphFragment);
+      graph.restoreGraphFragment(effect.graphFragment);
+      processing.devices.addAll([instrument.device, effect.device]);
+      for (final node in graph.nodes.values) {
+        for (final port in node.getAllPorts()) {
+          port.isAvailable = true;
+        }
+      }
+
+      final instrumentNode = instrument.graphFragment.nodes.single;
+      final effectNode = effect.graphFragment.nodes.single;
+      final inputId = VST3ProcessorModel.audioInputPortId;
+      final outputId = VST3ProcessorModel.audioOutputPortId;
+      final api = _RecordingProcessingGraphApi();
+      project.engine.processingGraphApi = api;
+
+      Future<void> discoverEffectPorts({required bool hasAudioInput}) async {
+        api.results = [
+          ProcessingGraphNodeInitializationResult(
+            nodeId: effectNode.id,
+            success: true,
+            portConfiguration: ProcessingGraphNodePortConfiguration(
+              audioInputPorts: [
+                if (hasAudioInput)
+                  ProcessingGraphPortConfiguration(
+                    id: inputId,
+                    channelCount: 2,
+                  ),
+              ],
+              audioOutputPorts: [
+                ProcessingGraphPortConfiguration(id: outputId, channelCount: 2),
+              ],
+              eventInputPorts: [],
+              eventOutputPorts: [],
+              controlInputPorts: [],
+              controlOutputPorts: [],
+            ),
+          ),
+        ];
+        await controller.publishProcessingGraph();
+      }
+
+      Iterable<NodeConnectionModel> rackConnections() => processing
+          .deviceRoutingConnectionIds
+          .map((id) => graph.connections[id]!);
+
+      final expectedEndpoints = {
+        (
+          processing.sequenceNoteProviderNodeId!,
+          SequenceNoteProviderProcessorModel.eventOutputPortId,
+          instrumentNode.id,
+          ToneGeneratorProcessorModel.eventInputPortId,
+          NodePortDataType.event,
+        ),
+        (
+          processing.liveEventProviderNodeId!,
+          LiveEventProviderProcessorModel.eventOutputPortId,
+          instrumentNode.id,
+          ToneGeneratorProcessorModel.eventInputPortId,
+          NodePortDataType.event,
+        ),
+        (
+          instrumentNode.id,
+          ToneGeneratorProcessorModel.audioOutputPortId,
+          effectNode.id,
+          inputId,
+          NodePortDataType.audio,
+        ),
+        (
+          effectNode.id,
+          outputId,
+          processing.utilityNodeId!,
+          UtilityProcessorModel.audioInputPortId,
+          NodePortDataType.audio,
+        ),
+      };
+
+      void expectRackRouting() {
+        final connections = rackConnections().toList();
+        expect(connections, hasLength(expectedEndpoints.length));
+        expect(
+          connections
+              .map(
+                (connection) => (
+                  connection.sourceNodeId,
+                  connection.sourcePortId,
+                  connection.destinationNodeId,
+                  connection.destinationPortId,
+                  connection.dataType,
+                ),
+              )
+              .toSet(),
+          expectedEndpoints,
+        );
+      }
+
+      await discoverEffectPorts(hasAudioInput: true);
+      final input = effectNode.audioInputPorts.single;
+      expectRackRouting();
+      expect(rackConnections().every(graph.isConnectionResolved), isTrue);
+
+      await discoverEffectPorts(hasAudioInput: false);
+      expect(effectNode.audioInputPorts.single, same(input));
+      expect(input.isAvailable, isFalse);
+      expect(effect.device.defaultAudioInputPort!.portId, inputId);
+      expectRackRouting();
+      expect(
+        rackConnections()
+            .where((connection) => !graph.isConnectionResolved(connection))
+            .single
+            .destinationNodeId,
+        effectNode.id,
+      );
+
+      await discoverEffectPorts(hasAudioInput: true);
+      expect(effectNode.audioInputPorts.single, same(input));
+      expect(input.isAvailable, isTrue);
+      expectRackRouting();
+      expect(rackConnections().every(graph.isConnectionResolved), isTrue);
+    });
+
+    test(
+      'failed initialization suspends routing without deleting it',
+      () async {
+        final node = project.processingGraph.getMasterOutputNode();
+        final ports = node.getAllPorts().toList();
+        final connectionIds = project.processingGraph.connections.keys.toList();
+        final api = _RecordingProcessingGraphApi()
+          ..results = [
+            ProcessingGraphNodeInitializationResult(
+              nodeId: node.id,
+              success: false,
+              error: 'Unavailable',
+            ),
+          ];
+        project.engine.processingGraphApi = api;
+        await controller.publishProcessingGraph();
+        expect(ports.every((port) => !port.isAvailable), isTrue);
+        expect(
+          project.processingGraph.connections.keys,
+          containsAll(connectionIds),
+        );
+        for (final id in connectionIds) {
+          final connection = project.processingGraph.connections[id]!;
+          if (connection.sourceNodeId == node.id ||
+              connection.destinationNodeId == node.id) {
+            expect(
+              project.processingGraph.isConnectionResolved(connection),
+              isFalse,
+            );
+          }
+        }
+      },
+    );
 
     test(
       'publishProcessingGraph does not mark initialized parameters as touched',
@@ -280,7 +574,7 @@ void main() {
                 dataType: NodePortDataType.control,
                 parameterConfig: ParameterConfigModel(
                   id: 100,
-                  defaultValue: 0.5,
+                  factoryDefaultValue: 0.5,
                 ),
               ),
             ),

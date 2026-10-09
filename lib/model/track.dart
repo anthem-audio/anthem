@@ -154,12 +154,12 @@ abstract class _TrackProcessingModel
 
     // Leave headroom on source tracks. Groups, returns, and the master keep
     // unity gain so routing through them does not add another attenuation.
-    final defaultGainDb =
+    final initialGainDb =
         track.type == TrackType.normal && !track.isMasterTrack && !isSendTrack
         ? -10.0
         : 0.0;
     final utilityNode = UtilityProcessorModel.create(idAllocator: idAllocator)
-        .createNode(defaultGainDb: defaultGainDb);
+        .createNode(initialGainDb: initialGainDb);
     utilityNode.owner = NodeOwnerModel(trackId: trackId);
     utilityNodeId = utilityNode.id;
     project.processingGraph.addNode(utilityNode);

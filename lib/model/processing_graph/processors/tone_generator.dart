@@ -20,13 +20,13 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'tone_generator.g.dart';
 
@@ -57,59 +57,31 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
       _$ToneGeneratorProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      audioOutputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: _ToneGeneratorProcessorModel.audioOutputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
-        ),
-      ]),
-      controlInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: _ToneGeneratorProcessorModel.frequencyPortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(
-              id: _ToneGeneratorProcessorModel.frequencyPortId,
-              defaultValue:
-                  ToneGeneratorProcessorModel.frequencyToParameterValue(440),
-            ),
-          ),
-        ),
-        NodePortModel(
-          nodeId: nodeId,
-          id: _ToneGeneratorProcessorModel.amplitudePortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(
-              id: _ToneGeneratorProcessorModel.amplitudePortId,
-              defaultValue: 0.75,
-            ),
-          ),
-        ),
-      ]),
-      eventInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: _ToneGeneratorProcessorModel.eventInputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.event),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    audioOutputPortIds: [audioOutputPortId],
+    eventInputPortIds: [eventInputPortId],
+    parameters: [
+      NativeParameterPreset(
+        id: frequencyPortId,
+        value: frequencyToParameterValue(440.0),
+        displayMode: ParameterDisplayMode.percent,
+      ),
+      NativeParameterPreset(
+        id: amplitudePortId,
+        value: 0.75,
+        displayMode: ParameterDisplayMode.percent,
+      ),
+    ],
+  );
 
-  static int get audioOutputPortId =>
+  static const int audioOutputPortId =
       _ToneGeneratorProcessorModel.audioOutputPortId;
-  static int get frequencyPortId =>
+  static const int frequencyPortId =
       _ToneGeneratorProcessorModel.frequencyPortId;
-  static int get amplitudePortId =>
+  static const int amplitudePortId =
       _ToneGeneratorProcessorModel.amplitudePortId;
-  static int get eventInputPortId =>
+  static const int eventInputPortId =
       _ToneGeneratorProcessorModel.eventInputPortId;
 
   static const double minFrequencyHz = 1.0;
@@ -130,11 +102,10 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
 
 abstract class _ToneGeneratorProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int audioOutputPortId = 0;
-
   static const int frequencyPortId = 1;
   static const int amplitudePortId = 2;
-
   static const int eventInputPortId = 3;
 
   Id nodeId;

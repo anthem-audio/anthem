@@ -69,9 +69,7 @@ class SetParameterValueCommand extends Command {
   }
 
   static double effectiveParameterValue(NodePortModel port) {
-    return normalizeValue(
-      port.parameterValue ?? port.config.parameterConfig?.defaultValue ?? 0,
-    );
+    return normalizeValue(port.parameterValue ?? port.parameterResetTarget);
   }
 
   static ParameterValueTarget resolveTarget(

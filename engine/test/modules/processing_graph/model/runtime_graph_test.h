@@ -220,6 +220,10 @@ public:
   RuntimeGraphTest() : juce::UnitTest("RuntimeGraphTest", "Anthem") {}
 
   void runTest() override {
+    testUnavailablePortsSuspendConnectionsAndRecover();
+    testAvailabilitySelectsSourcesAndPreservesConnectionOrder();
+    testUnavailableDestinationDoesNotCauseAudioFanOut();
+    testUnavailableConnectionDoesNotFormCycle();
     testBuildsNodesInputNodesAndEdges();
     testDeduplicatesNodeConnections();
     testAliasesSingleAudioConnection();
@@ -244,6 +248,183 @@ public:
     testAvailableTaskQueueOrdersByPriorityThenId();
     testDetectsReachableCycle();
     testDetectsCycleWithoutInputNodes();
+  }
+
+  void testUnavailablePortsSuspendConnectionsAndRecover() {
+    beginTest("Unavailable cached ports retain project routing but are excluded from processing");
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    auto source = addAudioSourceGraphNode(*graph, 1);
+    auto destination = addGraphNode(*graph, 2);
+    addConnection(*graph, 100, 1, 2);
+    auto output = source->audioOutputPorts()->at(0);
+    auto input = destination->audioInputPorts()->at(0);
+    output->isAvailable() = false;
+    EngineRuntimeServices services;
+    auto suspended = buildRuntimeGraph(*graph, services);
+    expectEquals(static_cast<int>(graph->connections()->size()), 1);
+    expectEquals(static_cast<int>(output->connections()->size()), 1);
+    expectEquals(static_cast<int>(suspended->nodes.at(2).upstreamNodeCount), 0);
+    expect(source->availableAudioOutputPorts().empty());
+    output->isAvailable() = true;
+    auto recovered = buildRuntimeGraph(*graph, services);
+    expectEquals(static_cast<int>(recovered->nodes.at(2).upstreamNodeCount), 1);
+    expect(graph->connections()->at(100)->sourcePortId() == output->id());
+
+    input->isAvailable() = false;
+    auto unavailableDestination = buildRuntimeGraph(*graph, services);
+    expectEquals(static_cast<int>(unavailableDestination->nodes.at(2).upstreamNodeCount), 0);
+    expect(unavailableDestination->nodes.at(1).outgoingConnections.empty());
+    expect(destination->availableAudioInputPorts().empty());
+    input->isAvailable() = true;
+    auto destinationRecovered = buildRuntimeGraph(*graph, services);
+    expectEquals(static_cast<int>(destinationRecovered->nodes.at(2).upstreamNodeCount), 1);
+    expectEquals(static_cast<int>(output->connections()->size()), 1);
+    expectEquals(static_cast<int>(input->connections()->size()), 1);
+  }
+
+  void testAvailabilitySelectsSourcesAndPreservesConnectionOrder() {
+    beginTest("Compilation selects available audio, control and event sources from saved routing");
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    auto addMixedNode = [&](int64_t id) {
+      auto node = addGraphNode(*graph, id);
+      node->controlInputPorts()->push_back(graph_test_helpers::makePort(controlInputPortId(id),
+          id,
+          NodePortDataType::control,
+          0.25,
+          graph_test_helpers::makeParameterConfig(id, 0.25)));
+      node->controlOutputPorts()->push_back(
+          graph_test_helpers::makePort(controlOutputPortId(id), id, NodePortDataType::control));
+      node->eventInputPorts()->push_back(
+          graph_test_helpers::makePort(eventInputPortId(id), id, NodePortDataType::event));
+      node->eventOutputPorts()->push_back(
+          graph_test_helpers::makePort(eventOutputPortId(id), id, NodePortDataType::event));
+      return node;
+    };
+    auto firstSource = addMixedNode(1);
+    auto secondSource = addMixedNode(2);
+    addMixedNode(3);
+    addConnection(*graph, 100, 1, 3);
+    addConnection(*graph, 101, 2, 3);
+    addControlConnection(*graph, 102, 1, 3);
+    addControlConnection(*graph, 103, 2, 3);
+    addEventConnection(*graph, 104, 1, 3);
+    addEventConnection(*graph, 105, 2, 3);
+
+    auto setOutputsAvailable = [](Node& node, bool available) {
+      node.audioOutputPorts()->at(0)->isAvailable() = available;
+      node.controlOutputPorts()->at(0)->isAvailable() = available;
+      node.eventOutputPorts()->at(0)->isAvailable() = available;
+    };
+    setOutputsAvailable(*firstSource, false);
+    EngineRuntimeServices services;
+    auto singleSource = buildRuntimeGraph(*graph, services);
+    expectEquals(static_cast<int>(singleSource->nodes.at(3).upstreamNodeCount), 1);
+    expect(singleSource->nodes.at(3).connectionTransferActions.empty());
+    for (auto type :
+        {NodePortDataType::audio, NodePortDataType::control, NodePortDataType::event}) {
+      auto sourcePortId = type == NodePortDataType::audio     ? outputPortId(2)
+                          : type == NodePortDataType::control ? controlOutputPortId(2)
+                                                              : eventOutputPortId(2);
+      auto destinationPortId = type == NodePortDataType::audio     ? inputPortId(3)
+                               : type == NodePortDataType::control ? controlInputPortId(3)
+                                                                   : eventInputPortId(3);
+      auto sourceIndex = singleSource->nodes.at(2).nodeProcessContext->getBufferIndex(
+          type, NodeProcessContext::BufferDirection::output, sourcePortId);
+      auto destinationIndex = singleSource->nodes.at(3).nodeProcessContext->getBufferIndex(
+          type, NodeProcessContext::BufferDirection::input, destinationPortId);
+      expect(sourceIndex == destinationIndex,
+          "The input must alias the available source even when its saved connection is second.");
+    }
+
+    beginTest("Recompilation restores fan-in sources in saved order");
+    setOutputsAvailable(*firstSource, true);
+    auto fanIn = buildRuntimeGraph(*graph, services);
+    expectEquals(static_cast<int>(fanIn->nodes.at(3).upstreamNodeCount), 2);
+    const auto& actions = fanIn->nodes.at(3).connectionTransferActions;
+    expectEquals(static_cast<int>(actions.size()), 3);
+    for (const auto& action : actions) {
+      const auto type =
+          action.dataType == RuntimeConnectionDataType::audio     ? NodePortDataType::audio
+          : action.dataType == RuntimeConnectionDataType::control ? NodePortDataType::control
+                                                                  : NodePortDataType::event;
+      const auto count = type == NodePortDataType::audio ? action.sourceAudioSlotSlices.size()
+                                                         : action.sourceBufferIndices.size();
+      expectEquals(static_cast<int>(count), 2);
+      for (size_t index = 0; index < count; ++index) {
+        const auto nodeId = static_cast<int64_t>(index + 1);
+        const auto portId = type == NodePortDataType::audio     ? outputPortId(nodeId)
+                            : type == NodePortDataType::control ? controlOutputPortId(nodeId)
+                                                                : eventOutputPortId(nodeId);
+        const auto expectedIndex = fanIn->nodes.at(nodeId).nodeProcessContext->getBufferIndex(
+            type, NodeProcessContext::BufferDirection::output, portId);
+        const auto actualIndex = type == NodePortDataType::audio
+                                     ? action.sourceAudioSlotSlices[index].slotIndex
+                                     : action.sourceBufferIndices[index];
+        expect(
+            expectedIndex == actualIndex, "Restored connections must retain saved source order.");
+      }
+    }
+
+    beginTest("Unavailable sources give silence, the parameter value and no events");
+    setOutputsAvailable(*firstSource, false);
+    setOutputsAvailable(*secondSource, false);
+    auto disconnected = buildRuntimeGraph(*graph, services);
+    expectEquals(static_cast<int>(disconnected->nodes.at(3).upstreamNodeCount), 0);
+    expect(disconnected->nodes.at(3).connectionTransferActions.empty());
+    GraphExecutorState state(*disconnected);
+    rt_prepareGraphForBlock(state);
+    rt_prepareNodeForProcessing(state, disconnected->nodes.at(3));
+    auto* context = disconnected->nodes.at(3).nodeProcessContext;
+    expectWithinAbsoluteError(
+        context->getInputAudioBuffer(inputPortId(3)).getSample(0, 0), 0.0f, 0.0001f);
+    expectWithinAbsoluteError(
+        context->getInputControlSignal(controlInputPortId(3)).getSample(0), 0.25f, 0.0001f);
+    expectEquals(
+        static_cast<int>(context->getInputEventBuffer(eventInputPortId(3)).getNumEvents()), 0);
+    expectEquals(static_cast<int>(graph->connections()->size()), 6);
+    auto destination = graph->nodes()->at(3);
+    expectEquals(static_cast<int>(destination->audioInputPorts()->at(0)->connections()->size()), 2);
+    expectEquals(
+        static_cast<int>(destination->controlInputPorts()->at(0)->connections()->size()), 2);
+    expectEquals(static_cast<int>(destination->eventInputPorts()->at(0)->connections()->size()), 2);
+  }
+
+  void testUnavailableDestinationDoesNotCauseAudioFanOut() {
+    beginTest("Unavailable destinations do not cause fan-out copies or channel validation");
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addAudioSourceGraphNode(*graph, 1);
+    addGraphNode(*graph, 2);
+    auto unavailable = addGraphNode(*graph, 3);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 1, 3);
+    unavailable->audioInputPorts()->at(0)->isAvailable() = false;
+    unavailable->audioInputPorts()->at(0)->config()->channelCount() = 4;
+    EngineRuntimeServices services;
+    auto runtimeGraph = buildRuntimeGraph(*graph, services);
+    auto sourceIndex = runtimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
+    auto destinationIndex = runtimeGraph->nodes.at(2).nodeProcessContext->getBufferIndex(
+        NodePortDataType::audio, NodeProcessContext::BufferDirection::input, inputPortId(2));
+    expect(sourceIndex == destinationIndex);
+    expect(runtimeGraph->nodes.at(2).connectionTransferActions.empty());
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(1).outgoingConnections.size()), 1);
+    expectEquals(static_cast<int>(graph->connections()->size()), 2);
+  }
+
+  void testUnavailableConnectionDoesNotFormCycle() {
+    beginTest("Saved cycles are rejected only when their connections become available");
+    auto graph = graph_test_helpers::makeProcessingGraph();
+    addGraphNode(*graph, 1);
+    auto second = addGraphNode(*graph, 2);
+    addConnection(*graph, 100, 1, 2);
+    addConnection(*graph, 101, 2, 1);
+    second->audioOutputPorts()->at(0)->isAvailable() = false;
+    EngineRuntimeServices services;
+    auto runtimeGraph = buildRuntimeGraph(*graph, services);
+    expect(hasInputNode(*runtimeGraph, 1));
+    expectEquals(static_cast<int>(runtimeGraph->nodes.at(2).upstreamNodeCount), 1);
+    second->audioOutputPorts()->at(0)->isAvailable() = true;
+    expect(buildThrowsRuntimeError(*graph));
   }
 
   void testBuildsNodesInputNodesAndEdges() {

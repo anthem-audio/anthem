@@ -25,6 +25,8 @@ import 'package:mobx/mobx.dart';
 
 import 'node.dart';
 import 'node_connection.dart';
+import 'node_port.dart';
+import 'node_port_config.dart';
 
 part 'processing_graph.g.dart';
 
@@ -202,61 +204,127 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
     if (node == null) return;
 
-    for (final port in node.getAllPorts()) {
-      // We copy the list of connections here so we can modify the original
-      // without a concurrent modification error
-      for (final connectionId in [...port.connections]) {
-        removeConnection(connectionId);
-      }
+    final touching = connections.values
+        .where(
+          (connection) =>
+              connection.sourceNodeId == nodeId ||
+              connection.destinationNodeId == nodeId,
+        )
+        .map((connection) => connection.id)
+        .toList();
+    for (final id in touching) {
+      removeConnection(id);
     }
 
     nodes.remove(nodeId);
   }
 
   void addConnection(NodeConnectionModel connection) {
-    final sourceNode =
-        nodes[connection.sourceNodeId] ??
-        (throw StateError(
-          'Could not add connection: source node '
-          '${connection.sourceNodeId} not found.',
-        ));
-    final destinationNode =
-        nodes[connection.destinationNodeId] ??
-        (throw StateError(
-          'Could not add connection: destination node '
-          '${connection.destinationNodeId} not found.',
-        ));
+    if (!nodes.containsKey(connection.sourceNodeId)) {
+      throw StateError(
+        'Could not add connection: source node ${connection.sourceNodeId} not found.',
+      );
+    }
+    if (!nodes.containsKey(connection.destinationNodeId)) {
+      throw StateError(
+        'Could not add connection: destination node ${connection.destinationNodeId} not found.',
+      );
+    }
 
-    final sourcePort = sourceNode.getOutputPortById(
-      connection.dataType,
-      connection.sourcePortId,
-    );
-    final destinationPort = destinationNode.getInputPortById(
-      connection.dataType,
-      connection.destinationPortId,
-    );
-
+    final source = nodes[connection.sourceNodeId]!;
+    final destination = nodes[connection.destinationNodeId]!;
+    // These are defensive checks for connections to native processors. The
+    // lookups throw if no port matches the ID, data type and direction.
+    // Plugin ports may not have been discovered yet, so connections to them
+    // are retained as unresolved.
+    if (!source.isThirdPartyPlugin) {
+      source.getOutputPortById(connection.dataType, connection.sourcePortId);
+    }
+    if (!destination.isThirdPartyPlugin) {
+      destination.getInputPortById(
+        connection.dataType,
+        connection.destinationPortId,
+      );
+    }
     connections[connection.id] = connection;
-    sourcePort.connections.add(connection.id);
-    destinationPort.connections.add(connection.id);
+    _attachConnection(connection);
+  }
+
+  NodePortModel _connectionPort(
+    NodeModel node,
+    NodePortDataType type,
+    int id, {
+    required bool input,
+  }) {
+    final ports = input
+        ? node.getInputPortsByType(type)
+        : node.getOutputPortsByType(type);
+    for (final port in ports) {
+      if (port.id == id) return port;
+    }
+    final port = NodePortModel(
+      id: id,
+      nodeId: node.id,
+      config: NodePortConfigModel(dataType: type),
+    );
+    ports.add(port);
+    return port;
+  }
+
+  void _attachConnection(NodeConnectionModel connection) {
+    final source = nodes[connection.sourceNodeId];
+    final destination = nodes[connection.destinationNodeId];
+    if (source == null || destination == null) return;
+    for (final port in [
+      _connectionPort(
+        source,
+        connection.dataType,
+        connection.sourcePortId,
+        input: false,
+      ),
+      _connectionPort(
+        destination,
+        connection.dataType,
+        connection.destinationPortId,
+        input: true,
+      ),
+    ]) {
+      if (!port.connections.contains(connection.id)) {
+        port.connections.add(connection.id);
+      }
+    }
+  }
+
+  /// Whether both endpoints are currently confirmed by the engine.
+  bool isConnectionResolved(NodeConnectionModel connection) {
+    final source = nodes[connection.sourceNodeId];
+    final destination = nodes[connection.destinationNodeId];
+    if (source == null || destination == null) return false;
+    return source
+            .getOutputPortsByType(connection.dataType)
+            .any(
+              (port) => port.id == connection.sourcePortId && port.isAvailable,
+            ) &&
+        destination
+            .getInputPortsByType(connection.dataType)
+            .any(
+              (port) =>
+                  port.id == connection.destinationPortId && port.isAvailable,
+            );
   }
 
   void removeConnection(Id connectionId) {
-    final connection = connections[connectionId]!;
-    final sourceNode = nodes[connection.sourceNodeId]!;
-    final sourceNodePort = sourceNode.getOutputPortById(
-      connection.dataType,
-      connection.sourcePortId,
-    );
-    sourceNodePort.connections.removeWhere((e) => e == connectionId);
-
-    final destinationNode = nodes[connection.destinationNodeId]!;
-    final destinationNodePort = destinationNode.getInputPortById(
-      connection.dataType,
-      connection.destinationPortId,
-    );
-    destinationNodePort.connections.removeWhere((e) => e == connectionId);
-
+    final connection = connections[connectionId];
+    if (connection == null) return;
+    for (final node in [
+      nodes[connection.sourceNodeId],
+      nodes[connection.destinationNodeId],
+    ]) {
+      if (node == null) continue;
+      for (final port in node.getAllPorts()) {
+        port.connections.removeWhere((id) => id == connectionId);
+      }
+    }
     connections.remove(connectionId);
   }
 

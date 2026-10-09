@@ -22,6 +22,7 @@
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <juce_core/juce_core.h>
+#include <utility>
 
 namespace anthem {
 
@@ -31,14 +32,38 @@ BalanceProcessor::BalanceProcessor(const BalanceProcessorModelImpl& _impl)
 BalanceProcessor::~BalanceProcessor() {}
 
 void BalanceProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .audioInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioInputPortId,
+                  .channelCount = 2,
+              },
+          },
+      .audioOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioOutputPortId,
+                  .channelCount = 2,
+              },
+          },
+      .controlInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = balancePortId,
+                  .parameterDefaultValue = 0.5,
+                  .parameterDisplayMode = "pan",
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void BalanceProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto audioInBuffer = context.getInputAudioBuffer(BalanceProcessorModelBase::audioInputPortId);
-  auto audioOutBuffer = context.getOutputAudioBuffer(BalanceProcessorModelBase::audioOutputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(BalanceProcessor::audioInputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(BalanceProcessor::audioOutputPortId);
 
-  auto balanceControl = context.getInputControlSignal(BalanceProcessorModelBase::balancePortId);
+  auto balanceControl = context.getInputControlSignal(BalanceProcessor::balancePortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
     auto normalizedValue = balanceControl.getSample(sample);

@@ -21,13 +21,13 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'gain.g.dart';
 
@@ -60,49 +60,28 @@ class GainProcessorModel extends _GainProcessorModel
       _$GainProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      audioInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: audioInputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
-        ),
-      ]),
-      audioOutputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: audioOutputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
-        ),
-      ]),
-      controlInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: gainPortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(
-              id: gainPortId,
-              defaultValue: gainParameterZeroDbNormalized,
-              displayMode: ParameterDisplayMode.gainDb,
-              unitLabel: 'dB',
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    audioInputPortIds: [audioInputPortId],
+    audioOutputPortIds: [audioOutputPortId],
+    parameters: [
+      NativeParameterPreset(
+        id: gainPortId,
+        value: gainParameterZeroDbNormalized,
+        displayMode: ParameterDisplayMode.gainDb,
+        unitLabel: 'dB',
+      ),
+    ],
+  );
 
-  static int get audioInputPortId => _GainProcessorModel.audioInputPortId;
-  static int get audioOutputPortId => _GainProcessorModel.audioOutputPortId;
-  static int get gainPortId => _GainProcessorModel.gainPortId;
+  static const int audioInputPortId = _GainProcessorModel.audioInputPortId;
+  static const int audioOutputPortId = _GainProcessorModel.audioOutputPortId;
+  static const int gainPortId = _GainProcessorModel.gainPortId;
 }
 
 abstract class _GainProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
   static const int gainPortId = 2;

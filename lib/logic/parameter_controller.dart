@@ -107,7 +107,7 @@ class ParameterController {
 
     final oldValue = SetParameterValueCommand.effectiveParameterValue(port);
     final newValue = SetParameterValueCommand.normalizeValue(
-      port.config.parameterConfig!.defaultValue,
+      port.parameterResetTarget,
     );
 
     if (oldValue == newValue) {

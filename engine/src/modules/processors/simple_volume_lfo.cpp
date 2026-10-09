@@ -19,7 +19,10 @@
 
 #include "simple_volume_lfo.h"
 
+#include "modules/core/engine.h"
 #include "modules/processing_graph/runtime/node_process_context.h"
+
+#include <utility>
 
 namespace anthem {
 
@@ -45,15 +48,39 @@ void SimpleVolumeLfoProcessor::rt_advanceState(RuntimeState& state, float rt_rat
 }
 
 void SimpleVolumeLfoProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
+  const auto audioProcessingConfig =
+      Engine::getInstance().audioSessionController->getCurrentAudioProcessingConfig();
+  if (!audioProcessingConfig.has_value()) {
+    complete(ProcessorPrepareResult{
+        .success = false,
+        .error = std::string("No audio processing config is active."),
+    });
+    return;
+  }
+
   rt_state = RuntimeState{};
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .audioInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioInputPortId,
+                  .channelCount = audioProcessingConfig->outputChannelCount,
+              },
+          },
+      .audioOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioOutputPortId,
+                  .channelCount = audioProcessingConfig->outputChannelCount,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void SimpleVolumeLfoProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto inputBuffer =
-      context.getInputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioInputPortId);
-  auto outputBuffer =
-      context.getOutputAudioBuffer(SimpleVolumeLfoProcessorModelBase::audioOutputPortId);
+  auto inputBuffer = context.getInputAudioBuffer(SimpleVolumeLfoProcessor::audioInputPortId);
+  auto outputBuffer = context.getOutputAudioBuffer(SimpleVolumeLfoProcessor::audioOutputPortId);
 
   // Generate a sine wave
   for (int sample = 0; sample < numSamples; ++sample) {

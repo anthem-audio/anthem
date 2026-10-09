@@ -147,6 +147,8 @@ public:
     return graphNode.lock();
   }
 
+  bool hasParameterBinding(int64_t id) const;
+
   void setParameterValue(int64_t id, float value);
   float getParameterValue(int64_t id) const;
 

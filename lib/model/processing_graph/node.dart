@@ -136,34 +136,8 @@ class NodeModel extends _NodeModel
         owner: null,
       );
 
-  factory NodeModel.fromJson(Map<String, dynamic> json) {
-    final node = _$NodeModelAnthemModelMixin.fromJson(json);
-    final panPortId = switch (node.processor) {
-      UtilityProcessorModel() => UtilityProcessorModel.balancePortId,
-      BalanceProcessorModel() => BalanceProcessorModel.balancePortId,
-      _ => null,
-    };
-    if (panPortId != null) {
-      // Restore built-in metadata for projects saved before baselines were
-      // stored. Preserve every supplied baseline, including zero.
-      for (final portJson in json['controlInputPorts'] as List<dynamic>) {
-        final port = portJson as Map<String, dynamic>;
-        if (port['id'] != panPortId) continue;
-        final config = port['config'] as Map<String, dynamic>;
-        final parameter = config['parameterConfig'] as Map<String, dynamic>?;
-        if (parameter != null &&
-            !parameter.containsKey('normalizedVisualBaseline')) {
-          node
-                  .getInputPortById(NodePortDataType.control, panPortId)
-                  .config
-                  .parameterConfig!
-                  .normalizedVisualBaseline =
-              0.5;
-        }
-      }
-    }
-    return node;
-  }
+  factory NodeModel.fromJson(Map<String, dynamic> json) =>
+      _$NodeModelAnthemModelMixin.fromJson(json);
 
   AnthemObservableList<NodePortModel> getInputPortsByType(
     NodePortDataType dataType,
@@ -269,7 +243,6 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// from the plugin needs to be serialized into the project model. For these
   /// plugins, this opaque state is the only state restored into the plugin on
   /// engine start; mirrored control port parameter values are not replayed.
-  @hideFromCpp
   String processorState = '';
 
   /// Whether the plugin has been loaded in the engine, if applicable.
@@ -279,21 +252,19 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   @hide
   Completer<void> pluginLoadedCompleter = Completer<void>();
 
-  /// Whether this model's state has been sent to the engine yet.
+  /// Whether the engine has finished restoring this processor's saved state.
   ///
   /// When a node is first created, it has a blank state. However, if a node is
   /// loaded from a project, it may have a state that was serialized from a
   /// previous session, saved in [processorState]. Before we can ever load the
-  /// live state from the plugin in the engine, we need to first send the state
-  /// that we have; otherwise we will overwrite our state and the plugin will
+  /// live state from the plugin in the engine, initialization must restore the
+  /// supplied state; otherwise we will overwrite our state and the plugin will
   /// remain in its initial state.
   ///
-  /// This also applies to stopping and starting the engine. We will keep the
-  /// state here up-to-date with the latest from the engine, and if the engine
-  /// stops or crashes and is then restarted, we will need to make sure we send
-  /// our state to the engine before we start reading it back again.
+  /// On engine restart, initialization restores the latest captured state
+  /// before state capture can resume.
   @hide
-  Completer<void> stateIsSentToEngineCompleter = Completer<void>();
+  Completer<void> stateRestoredCompleter = Completer<void>();
 
   @hide
   TimerDebouncedAction? _stateUpdateDebouncedAction;
@@ -315,21 +286,21 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// Schedules a state update for the processor.
   ///
   /// This sends a request to the engine to get the current state of the
-  /// processor. This is be debounced to avoid excessive requests.
+  /// processor. This is debounced to avoid excessive requests.
   void scheduleDebouncedStateUpdate() async {
     _stateUpdateDebouncedAction ??= TimerDebouncedAction(() async {
-      await updateStateFromEngine(true);
+      await updateStateFromEngine();
     }, Duration(seconds: 1));
     _stateUpdateDebouncedAction!.execute();
   }
 
-  Future<void> updateStateFromEngine([bool waitForSend = false]) async {
-    if (!project.engine.isRunning) {
+  Future<void> updateStateFromEngine() async {
+    // An unavailable or still-initializing plugin cannot supply authoritative
+    // live state. Keep its saved blob, including when saving the project.
+    if (!isThirdPartyPlugin ||
+        !project.engine.isRunning ||
+        !stateRestoredCompleter.isCompleted) {
       return;
-    }
-
-    if (waitForSend) {
-      await stateIsSentToEngineCompleter.future;
     }
 
     final newState = await project.engine.processingGraphApi.getPluginState(id);
@@ -341,38 +312,34 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     }
   }
 
-  /// Sends the current state of the processor to the engine.
+  /// Records the engine's confirmation that saved processor state is restored.
   ///
-  /// On engine start, this must be run to ensure the engine has the correct
-  /// state of the processor.
-  void sendStateToEngine() {
-    if (!project.engine.isRunning) {
-      return;
+  /// Call this after successful engine initialization to allow state capture.
+  void markStateRestored() {
+    if (!stateRestoredCompleter.isCompleted) {
+      stateRestoredCompleter.complete();
     }
+  }
 
-    if (processorState.isNotEmpty) {
-      project.engine.processingGraphApi.setPluginState(id, processorState);
-    }
-
-    if (!stateIsSentToEngineCompleter.isCompleted) {
-      stateIsSentToEngineCompleter.complete();
-    }
+  void markInitializationFailed() {
+    stateRestoredCompleter = Completer<void>();
   }
 
   void handleEngineStateChange(EngineState state) {
     if (state == EngineState.stopped) {
       lastChangedControlPortId = null;
+      if (isThirdPartyPlugin) {
+        for (final port in (this as NodeModel).getAllPorts()) {
+          port.isAvailable = false;
+        }
+      }
     }
 
     if (!isThirdPartyPlugin) return;
 
     if (state == EngineState.stopped) {
-      stateIsSentToEngineCompleter = Completer<void>();
+      stateRestoredCompleter = Completer<void>();
       pluginLoadedCompleter = Completer<void>();
-    } else if (state == EngineState.running) {
-      pluginLoadedCompleter.future.then((_) {
-        sendStateToEngine();
-      });
     }
   }
 
@@ -404,14 +371,5 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     required this.processor,
     required this.isThirdPartyPlugin,
     required this.owner,
-  }) {
-    onModelFirstAttached(() {
-      if (!isThirdPartyPlugin) return;
-      if (!project.engine.isRunning) return;
-
-      pluginLoadedCompleter.future.then((_) {
-        sendStateToEngine();
-      });
-    });
-  }
+  });
 }

@@ -96,8 +96,7 @@ void paintAutomationHoldSegments({
           contentTop: contentBounds.contentTop,
           contentBottom: contentBounds.contentBottom,
           normalizedVisualBaseline:
-              parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
-              0.0,
+              parameterPort?.presentation.normalizedVisualBaseline ?? 0.0,
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
         );
@@ -111,7 +110,7 @@ void paintAutomationHoldSegments({
         );
         final value =
             parameterPort?.parameterValue ??
-            parameterPort?.config.parameterConfig?.defaultValue;
+            parameterPort?.parameterResetTarget;
         final parentTrack = project.tracks[phantomLane.parentTrackId];
         if (value == null || parentTrack == null) {
           continue;
@@ -131,8 +130,7 @@ void paintAutomationHoldSegments({
           contentTop: contentBounds.contentTop,
           contentBottom: contentBounds.contentBottom,
           normalizedVisualBaseline:
-              parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
-              0.0,
+              parameterPort?.presentation.normalizedVisualBaseline ?? 0.0,
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
         );

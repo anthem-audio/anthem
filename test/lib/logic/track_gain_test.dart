@@ -54,7 +54,7 @@ void _expectGain(
   final port = _gainPort(project, trackId);
   expect(gainParameterValueToDb(port.parameterValue!), closeTo(valueDb, 1e-9));
   expect(
-    gainParameterValueToDb(port.config.parameterConfig!.defaultValue),
+    gainParameterValueToDb(port.parameterResetTarget),
     closeTo(defaultDb, 1e-9),
   );
 }
@@ -217,7 +217,7 @@ void main() {
     final trackId = project.trackOrder.single;
     final port = _gainPort(project, trackId);
     // Represent a saved track created before the new default was introduced.
-    port.config.parameterConfig!.defaultValue = gainParameterZeroDbNormalized;
+    port.parameterResetValue = gainParameterZeroDbNormalized;
     port.parameterValue = gainDbToParameterValue(-5);
 
     final restored = ProjectModel.fromJson(
@@ -242,10 +242,7 @@ void main() {
     final gain = project.processingGraph.nodes[device.nodeIds.single]!
         .getPortById(UtilityProcessorModel.gainPortId);
     expect(gain.parameterValue, gainParameterZeroDbNormalized);
-    expect(
-      gain.config.parameterConfig!.defaultValue,
-      gainParameterZeroDbNormalized,
-    );
+    expect(gain.parameterResetTarget, gainParameterZeroDbNormalized);
     _expectGain(project, trackId, valueDb: -10, defaultDb: -10);
   });
 }

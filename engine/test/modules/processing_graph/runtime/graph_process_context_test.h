@@ -235,9 +235,9 @@ public:
     beginTest("Node contexts bind ports, parameters, and live note allocation");
 
     constexpr int64_t nodeId = 10;
-    constexpr int64_t inputPortId = GainProcessorModelBase::audioInputPortId;
-    constexpr int64_t outputPortId = GainProcessorModelBase::audioOutputPortId;
-    constexpr int64_t gainPortId = GainProcessorModelBase::gainPortId;
+    constexpr int64_t inputPortId = GainProcessor::audioInputPortId;
+    constexpr int64_t outputPortId = GainProcessor::audioOutputPortId;
+    constexpr int64_t gainPortId = GainProcessor::gainPortId;
 
     auto node = graph_test_helpers::makeGainNode(nodeId);
     node->audioInputPorts()->push_back(

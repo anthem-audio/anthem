@@ -35,6 +35,7 @@
 #include "modules/processors/gain_parameter_mapping_test.h"
 #include "modules/processors/gain_test.h"
 #include "modules/processors/live_event_provider_test.h"
+#include "modules/processors/native_processor_port_configuration_test.h"
 #include "modules/processors/sequence_automation_provider_test.h"
 #include "modules/processors/sequence_note_provider_test.h"
 #include "modules/processors/utility_test.h"

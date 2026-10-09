@@ -135,6 +135,11 @@ class ProjectModel extends _ProjectModel
 
   /// Restores persistent content with an optional runtime engine executable.
   /// The executable path is never read from or written to the project file.
+  ///
+  /// Note: when loading a project saved by an older version of Anthem, its JSON
+  /// must already have been migrated to the current project file format before
+  /// calling this constructor.
+  /// See `lib/logic/project_file/migrations/migrate_project_json.dart`.
   factory ProjectModel.fromJson(
     Map<String, dynamic> json, {
     String? enginePathOverride,

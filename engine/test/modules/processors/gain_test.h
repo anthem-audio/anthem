@@ -38,11 +38,11 @@ class GainProcessorTest : public juce::UnitTest {
     auto node = graph_test_helpers::makeNode(nodeId);
 
     node->audioInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::audioInputPortId, nodeId, NodePortDataType::audio));
+        GainProcessor::audioInputPortId, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::audioOutputPortId, nodeId, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
-        GainProcessorModelBase::gainPortId, nodeId, NodePortDataType::control));
+        GainProcessor::audioOutputPortId, nodeId, NodePortDataType::audio));
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(GainProcessor::gainPortId, nodeId, NodePortDataType::control));
 
     return node;
   }
@@ -68,15 +68,15 @@ public:
 
     auto& context =
         graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
-    auto outputBuffer = context.getOutputAudioBuffer(GainProcessorModelBase::audioOutputPortId);
+    auto outputBuffer = context.getOutputAudioBuffer(GainProcessor::audioOutputPortId);
     auto inputBuffer =
         graphContext.rt_getAudioBufferView(context.getBufferIndex(NodePortDataType::audio,
             NodeProcessContext::BufferDirection::input,
-            GainProcessorModelBase::audioInputPortId));
+            GainProcessor::audioInputPortId));
     auto gainBuffer =
         graphContext.rt_getControlBufferView(context.getBufferIndex(NodePortDataType::control,
             NodeProcessContext::BufferDirection::input,
-            GainProcessorModelBase::gainPortId));
+            GainProcessor::gainPortId));
 
     const std::array<float, blockSize> channel0Samples{1.0f, -1.0f, 0.5f, 0.25f};
     const std::array<float, blockSize> channel1Samples{0.2f, -0.4f, 1.0f, -1.0f};

@@ -97,8 +97,7 @@ class ClipPainter extends CustomPainterObserver {
       color: color,
       clip: clip,
       normalizedVisualBaseline:
-          parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
-          0.0,
+          parameterPort?.presentation.normalizedVisualBaseline ?? 0.0,
       x: 0,
       y: 0,
       width: size.width,

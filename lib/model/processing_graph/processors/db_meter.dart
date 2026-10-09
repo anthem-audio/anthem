@@ -20,12 +20,12 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'db_meter.g.dart';
 
@@ -73,25 +73,15 @@ class DbMeterProcessorModel extends _DbMeterProcessorModel
       _$DbMeterProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      audioInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: audioInputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() =>
+      createNativeNode(processor: this, audioInputPortIds: [audioInputPortId]);
 
-  static int get audioInputPortId => _DbMeterProcessorModel.audioInputPortId;
+  static const int audioInputPortId = _DbMeterProcessorModel.audioInputPortId;
 }
 
 abstract class _DbMeterProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int audioInputPortId = 0;
 
   Id nodeId;

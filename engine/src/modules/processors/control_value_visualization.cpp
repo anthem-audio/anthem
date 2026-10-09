@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace anthem {
 
@@ -52,7 +53,15 @@ void ControlValueVisualizationProcessor::initialize(
 }
 
 void ControlValueVisualizationProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .controlInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = controlInputPortId,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 std::optional<TimestampedVisualizationValue<double>>
@@ -80,8 +89,8 @@ ControlValueVisualizationProcessor::rt_getBlockValue(
 }
 
 void ControlValueVisualizationProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto inputBuffer = context.getInputControlBuffer(
-      ControlValueVisualizationProcessorModelBase::controlInputPortId);
+  auto inputBuffer =
+      context.getInputControlBuffer(ControlValueVisualizationProcessor::controlInputPortId);
   const int64_t blockStartSample = Engine::getInstance().transport->rt_sampleCounter;
   auto value = rt_getBlockValue(inputBuffer, numSamples, blockStartSample);
 

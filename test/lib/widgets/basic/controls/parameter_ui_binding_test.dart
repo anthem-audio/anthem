@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/model/processing_graph/parameter_presentation.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/model/processing_graph/node.dart';
@@ -173,14 +174,16 @@ _createParameterProject({
 
   final nodeId = project.allocateId();
   final port = NodePortModel(
+    presentation: ParameterPresentationModel(
+      normalizedVisualBaseline: normalizedVisualBaseline,
+    ),
     nodeId: nodeId,
     id: 100,
     config: NodePortConfigModel(
       dataType: NodePortDataType.control,
       parameterConfig: ParameterConfigModel(
         id: 100,
-        defaultValue: defaultValue,
-        normalizedVisualBaseline: normalizedVisualBaseline,
+        factoryDefaultValue: defaultValue,
         displayMode: displayMode,
       ),
     ),

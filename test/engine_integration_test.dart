@@ -34,6 +34,10 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/model/model.dart';
+import 'package:anthem/model/processing_graph/processors/db_meter.dart';
+
+import 'helpers/native_processor_test_nodes.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:anthem/engine_api/engine_connector_desktop.dart';
@@ -388,6 +392,250 @@ void main() {
       },
     );
   }, skip: skipEngineIntegrationTests);
+
+  test('all native processors agree with Dart port IDs and report prepared layouts', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final project = ProjectModel.create(
+      enginePath!.toFilePath(windows: Platform.isWindows),
+    );
+    final nodes = createNativeProcessorTestNodes(project);
+    for (final node in nodes) {
+      project.processingGraph.addNode(node);
+    }
+    final services = ServiceRegistry.initializeProject(project);
+    try {
+      await services.projectEngineController.start(startAudio: false);
+      await project.engine.renderApi.startRenderAudioSession(
+        sampleRate: 48000,
+        blockSize: 128,
+        outputChannelCount: 4,
+      );
+      final initialization = await project.engine.processingGraphApi
+          .initializeNodes();
+      final results = {
+        for (final result in initialization.results) result.nodeId: result,
+      };
+      for (final node in nodes) {
+        final result = results[node.id];
+        final name = node.processor.runtimeType.toString();
+        expect(result, isNotNull, reason: name);
+        expect(result!.success, isTrue, reason: '$name: ${result.error}');
+        final config = result.portConfiguration!;
+        final portGroups = [
+          (node.audioInputPorts, config.audioInputPorts),
+          (node.audioOutputPorts, config.audioOutputPorts),
+          (node.eventInputPorts, config.eventInputPorts),
+          (node.eventOutputPorts, config.eventOutputPorts),
+          (node.controlInputPorts, config.controlInputPorts),
+          (node.controlOutputPorts, config.controlOutputPorts),
+        ];
+        for (final (cached, prepared) in portGroups) {
+          expect(
+            prepared.map((port) => port.id),
+            orderedEquals(cached.map((port) => port.id)),
+            reason: name,
+          );
+        }
+        final expectedWidth =
+            node.processor is BalanceProcessorModel ||
+                node.processor is UtilityProcessorModel
+            ? 2
+            : 4;
+        for (final port in [
+          ...config.audioInputPorts,
+          ...config.audioOutputPorts,
+        ]) {
+          expect(port.channelCount, expectedWidth, reason: name);
+        }
+        for (final port in node.controlInputPorts) {
+          if (port.config.parameterConfig == null) continue;
+          expect(
+            config.controlInputPorts
+                .singleWhere((description) => description.id == port.id)
+                .parameterDefaultValue,
+            isNotNull,
+            reason: name,
+          );
+          // Discovery supplies processor descriptions, not an echo of creation state.
+          expect(result.parameterValues, isEmpty, reason: name);
+        }
+      }
+    } finally {
+      await project.engine.dispose();
+      ServiceRegistry.removeProject(project.id);
+      project.dispose();
+    }
+  });
+
+  test('native discovery preserves supplied instance state and reports resolved channels', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final executable = enginePath!.toFilePath(windows: Platform.isWindows);
+    final original = ProjectModel.create(executable);
+    // Isolate session-dependent meter/master inputs from stereo utilities so
+    // both tested layouts have compatible audio routes.
+    final layoutDependentConnections = original
+        .processingGraph
+        .connections
+        .values
+        .where(
+          (connection) =>
+              connection.dataType == NodePortDataType.audio &&
+              (original
+                          .processingGraph
+                          .nodes[connection.destinationNodeId]!
+                          .processor
+                      is MasterOutputProcessorModel ||
+                  original
+                          .processingGraph
+                          .nodes[connection.destinationNodeId]!
+                          .processor
+                      is DbMeterProcessorModel),
+        )
+        .map((connection) => connection.id)
+        .toList();
+    for (final id in layoutDependentConnections) {
+      original.processingGraph.removeConnection(id);
+    }
+    final trackId = original.trackOrder.single;
+    final utilityId =
+        original.tracks[trackId]!.requireProcessing.utilityNodeId!;
+    final gain = original.processingGraph.nodes[utilityId]!.getPortById(
+      UtilityProcessorModel.gainPortId,
+    );
+    final utility = original.processingGraph.nodes[utilityId]!;
+    // Engine declarations must not echo stale or edited project metadata.
+    gain.config.parameterConfig!
+      ..factoryDefaultValue = 0.123
+      ..displayMode = ParameterDisplayMode.percent
+      ..unitLabel = 'stale';
+    for (final port in [
+      ...utility.audioInputPorts,
+      ...utility.audioOutputPorts,
+    ]) {
+      port.config.channelCount = 17;
+    }
+    final cachedMaster = original.processingGraph
+        .getMasterOutputNode()
+        .audioInputPorts
+        .single;
+    cachedMaster.config.channelCount = 99;
+    final resetValue = gain.parameterResetTarget;
+    final connectionIds = original.processingGraph.connections.keys.toSet();
+    final services = ServiceRegistry.initializeProject(original);
+    Future<void> prepare(
+      ProjectModel project, {
+      int outputChannelCount = 2,
+    }) async {
+      await ServiceRegistry.forProject(project.id).projectEngineController
+          .start(startAudio: false);
+      await project.engine.renderApi.startRenderAudioSession(
+        sampleRate: 48000,
+        blockSize: 128,
+        outputChannelCount: outputChannelCount,
+      );
+      await ServiceRegistry.forProject(project.id).projectController
+          .publishProcessingGraph();
+    }
+
+    try {
+      await prepare(original);
+      expect(gain.parameterValue, closeTo(gainDbToParameterValue(-10), 1e-9));
+      expect(gain.parameterResetTarget, resetValue);
+      expect(
+        gain.config.parameterConfig!.factoryDefaultValue,
+        gainParameterZeroDbNormalized,
+      );
+      expect(
+        gain.config.parameterConfig!.displayMode,
+        ParameterDisplayMode.gainDb,
+      );
+      expect(gain.config.parameterConfig!.unitLabel, 'dB');
+      expect(utility.audioOutputPorts.single.config.channelCount, 2);
+      expect(
+        original.processingGraph
+            .getMasterOutputNode()
+            .audioInputPorts
+            .single
+            .config
+            .channelCount,
+        2,
+      );
+      expect(original.processingGraph.connections.keys.toSet(), connectionIds);
+      gain.parameterValue = 0.321;
+      final saved = original.toJson();
+      await services.projectEngineController.stop();
+      ServiceRegistry.removeProject(original.id);
+      final reopened = ProjectModel.fromJson(
+        saved,
+        enginePathOverride: executable,
+      );
+      ServiceRegistry.initializeProject(reopened);
+      try {
+        await prepare(reopened, outputChannelCount: 4);
+        final restoredGain = reopened.processingGraph.nodes[utilityId]!
+            .getPortById(UtilityProcessorModel.gainPortId);
+        expect(restoredGain.parameterValue, 0.321);
+        expect(restoredGain.parameterResetTarget, resetValue);
+        expect(
+          restoredGain.config.parameterConfig!.factoryDefaultValue,
+          gainParameterZeroDbNormalized,
+        );
+        expect(
+          reopened.processingGraph
+              .getMasterOutputNode()
+              .audioInputPorts
+              .single
+              .config
+              .channelCount,
+          4,
+        );
+      } finally {
+        await reopened.engine.dispose();
+        ServiceRegistry.removeProject(reopened.id);
+        reopened.dispose();
+      }
+    } finally {
+      await original.engine.dispose();
+      ServiceRegistry.removeProject(original.id);
+      original.dispose();
+    }
+  });
+
+  test('failed plugin initialization preserves saved state during capture', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final project = ProjectModel.create(
+      enginePath!.toFilePath(windows: Platform.isWindows),
+    );
+    final node = VST3ProcessorModel.create(
+      idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
+      vst3Path: '/missing-anthem-integration-fixture.vst3',
+    ).createNode();
+    const savedState = 'saved opaque plugin state';
+    node.processorState = savedState;
+    // A failed re-prepare must also revoke a previous successful capture gate.
+    node.markStateRestored();
+    project.processingGraph.addNode(node);
+    final services = ServiceRegistry.initializeProject(project);
+    try {
+      await services.projectEngineController.start(startAudio: false);
+      await project.engine.renderApi.startRenderAudioSession(
+        sampleRate: 48000,
+        blockSize: 128,
+        outputChannelCount: 2,
+      );
+      await services.projectController.publishProcessingGraph();
+      expect(project.engine.isRunning, isTrue);
+      expect(node.stateRestoredCompleter.isCompleted, isFalse);
+      expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);
+      await node.updateStateFromEngine();
+      expect(node.processorState, savedState);
+      expect(node.toJson()['processorState'], savedState);
+    } finally {
+      await project.engine.dispose();
+      ServiceRegistry.removeProject(project.id);
+      project.dispose();
+    }
+  });
 
   group('Model sync tests', () {
     late ProjectModel project;

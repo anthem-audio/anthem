@@ -298,7 +298,7 @@ NodePortModel _createParameterPort({
       name: name,
       parameterConfig: ParameterConfigModel(
         id: id,
-        defaultValue: defaultValue,
+        factoryDefaultValue: defaultValue,
         displayMode: displayMode,
         unitLabel: unitLabel,
       ),

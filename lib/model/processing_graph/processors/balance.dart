@@ -20,13 +20,13 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'balance.g.dart';
 
@@ -61,51 +61,23 @@ class BalanceProcessorModel extends _BalanceProcessorModel
       _$BalanceProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this..nodeId = nodeId,
-      audioInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: audioInputPortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
-            channelCount: 2,
-          ),
-        ),
-      ]),
-      audioOutputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: audioOutputPortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.audio,
-            channelCount: 2,
-          ),
-        ),
-      ]),
-      controlInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: balancePortId,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(
-              id: balancePortId,
-              defaultValue: BalanceProcessorModel.panToParameterValue(0.0),
-              displayMode: ParameterDisplayMode.pan,
-              normalizedVisualBaseline: 0.5,
-            ),
-          ),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    audioInputPortIds: [audioInputPortId],
+    audioOutputPortIds: [audioOutputPortId],
+    parameters: [
+      NativeParameterPreset(
+        id: balancePortId,
+        value: 0.5,
+        displayMode: ParameterDisplayMode.pan,
+        normalizedVisualBaseline: 0.5,
+      ),
+    ],
+  );
 
-  static int get audioInputPortId => _BalanceProcessorModel.audioInputPortId;
-  static int get audioOutputPortId => _BalanceProcessorModel.audioOutputPortId;
-  static int get balancePortId => _BalanceProcessorModel.balancePortId;
+  static const int audioInputPortId = _BalanceProcessorModel.audioInputPortId;
+  static const int audioOutputPortId = _BalanceProcessorModel.audioOutputPortId;
+  static const int balancePortId = _BalanceProcessorModel.balancePortId;
 
   static double parameterValueToPan(double parameterValue) {
     assert(parameterValue >= 0.0 && parameterValue <= 1.0);
@@ -130,11 +102,12 @@ class BalanceProcessorModel extends _BalanceProcessorModel
 
 abstract class _BalanceProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
-  Id nodeId;
-
-  _BalanceProcessorModel({required this.nodeId});
-
+  // Stable port IDs exported to C++ by model codegen.
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
   static const int balancePortId = 2;
+
+  Id nodeId;
+
+  _BalanceProcessorModel({required this.nodeId});
 }

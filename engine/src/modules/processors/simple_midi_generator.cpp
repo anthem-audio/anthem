@@ -23,6 +23,8 @@
 #include "modules/processing_graph/runtime/node_process_context.h"
 #include "modules/sequencer/events/event.h"
 
+#include <utility>
+
 namespace anthem {
 
 SimpleMidiGeneratorProcessor::SimpleMidiGeneratorProcessor(
@@ -54,12 +56,20 @@ void SimpleMidiGeneratorProcessor::prepareToProcess(ProcessorPrepareCallback com
 
   sampleRate = audioProcessingConfig->sampleRate;
 
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .eventOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = eventOutputPortId,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void SimpleMidiGeneratorProcessor::process(NodeProcessContext& context, int numSamples) {
   auto& eventOutBuffer =
-      context.getOutputEventBuffer(SimpleMidiGeneratorProcessorModelBase::eventOutputPortId);
+      context.getOutputEventBuffer(SimpleMidiGeneratorProcessor::eventOutputPortId);
 
   if (!noteOn) {
     currentNote = 50;

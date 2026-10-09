@@ -57,6 +57,8 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
   inputParameters.reserve(graphNode->controlInputPorts()->size());
 
   for (auto& port : *graphNode->controlInputPorts()) {
+    if (!port->isAvailable())
+      continue;
     auto parameterValue = static_cast<float>(port->parameterValue().value_or(0.0));
     auto& parameterConfig = port->config()->parameterConfig();
 
@@ -104,6 +106,12 @@ const NodeProcessContext::InputParameterBinding& NodeProcessContext::findInputPa
   }
 
   return *it;
+}
+
+bool NodeProcessContext::hasParameterBinding(int64_t id) const {
+  return std::any_of(inputParameters.begin(), inputParameters.end(), [id](const auto& binding) {
+    return binding.portId == id;
+  });
 }
 
 void NodeProcessContext::setParameterValue(int64_t id, float value) {

@@ -24,6 +24,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <utility>
 
 namespace anthem {
 
@@ -57,21 +58,46 @@ void ToneGeneratorProcessor::prepareToProcess(ProcessorPrepareCallback complete)
 
   sampleRate = audioProcessingConfig->sampleRate;
 
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .audioOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioOutputPortId,
+                  .channelCount = audioProcessingConfig->outputChannelCount,
+              },
+          },
+      .eventInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = eventInputPortId,
+              },
+          },
+      .controlInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = frequencyPortId,
+                  .parameterDefaultValue =
+                      (440.0 - kMinFrequencyHz) / (kMaxFrequencyHz - kMinFrequencyHz),
+                  .parameterDisplayMode = "percent",
+              },
+              ProcessorPortConfiguration{
+                  .id = amplitudePortId,
+                  .parameterDefaultValue = 0.75,
+                  .parameterDisplayMode = "percent",
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void ToneGeneratorProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto audioOutBuffer =
-      context.getOutputAudioBuffer(ToneGeneratorProcessorModelBase::audioOutputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(ToneGeneratorProcessor::audioOutputPortId);
 
-  auto frequencyControl =
-      context.getInputControlSignal(ToneGeneratorProcessorModelBase::frequencyPortId);
-  auto amplitudeControl =
-      context.getInputControlSignal(ToneGeneratorProcessorModelBase::amplitudePortId);
+  auto frequencyControl = context.getInputControlSignal(ToneGeneratorProcessor::frequencyPortId);
+  auto amplitudeControl = context.getInputControlSignal(ToneGeneratorProcessor::amplitudePortId);
 
   // Process incoming events
-  auto& eventInBuffer =
-      context.getInputEventBuffer(ToneGeneratorProcessorModelBase::eventInputPortId);
+  auto& eventInBuffer = context.getInputEventBuffer(ToneGeneratorProcessor::eventInputPortId);
 
   for (size_t i = 0; i < eventInBuffer.getNumEvents(); ++i) {
     const auto& liveEvent = eventInBuffer.getEvent(i);

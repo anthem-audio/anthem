@@ -131,8 +131,7 @@ void main() {
       expect(percentages, orderedEquals(pixels));
       node
               .getPortById(UtilityProcessorModel.balancePortId)
-              .config
-              .parameterConfig!
+              .presentation
               .normalizedVisualBaseline =
           0.1;
       final offCenter = await _paintClips(project, clips);

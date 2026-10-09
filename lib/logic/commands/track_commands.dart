@@ -349,9 +349,7 @@ class AutomationLaneAddRemoveCommand extends Command {
       portId,
     );
 
-    return (port.parameterValue ??
-            port.config.parameterConfig?.defaultValue ??
-            0)
+    return (port.parameterValue ?? port.parameterResetTarget)
         .clamp(0.0, 1.0)
         .toDouble();
   }

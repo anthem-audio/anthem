@@ -105,7 +105,7 @@ void main() {
       ]) {
         config.displayMode = displayMode;
         for (final baseline in [0.25, 0.5]) {
-          port.config.parameterConfig!.normalizedVisualBaseline = baseline;
+          port.presentation.normalizedVisualBaseline = baseline;
           final bound = await _paintKnob(
             tester,
             Knob(

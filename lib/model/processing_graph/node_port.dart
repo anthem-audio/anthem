@@ -23,6 +23,7 @@ import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node_port_config.dart';
+import 'parameter_presentation.dart';
 
 part 'node_port.g.dart';
 
@@ -37,9 +38,17 @@ class NodePortModel extends _NodePortModel
     required super.nodeId,
     required super.config,
     super.parameterDisplayText,
-  }) : super(connections: AnthemObservableList()) {
+    super.parameterResetValue,
+    super.isAvailable = false,
+    double? initialParameterValue,
+    ParameterPresentationModel? presentation,
+  }) : super(
+         connections: AnthemObservableList(),
+         presentation: presentation ?? ParameterPresentationModel(),
+       ) {
     if (config.parameterConfig != null) {
-      parameterValue = config.parameterConfig!.defaultValue;
+      parameterValue =
+          initialParameterValue ?? config.parameterConfig!.factoryDefaultValue;
     }
   }
 
@@ -49,10 +58,14 @@ class NodePortModel extends _NodePortModel
         nodeId: -1,
         config: NodePortConfigModel.uninitialized(),
         connections: AnthemObservableList(),
+        presentation: ParameterPresentationModel(),
       );
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);
+
+  double get parameterResetTarget =>
+      parameterResetValue ?? config.parameterConfig?.factoryDefaultValue ?? 0.0;
 
   NodePortDataType get type => config.dataType;
 }
@@ -67,7 +80,22 @@ abstract class _NodePortModel
 
   NodePortConfigModel config;
 
+  /// IDs of all saved connections to or from this port, including connections
+  /// whose source or destination port is currently unavailable.
   AnthemObservableList<Id> connections;
+
+  /// False before engine confirmation or while a discovered port is absent.
+  @anthemObservable
+  @hideFromSerialization
+  bool isAvailable;
+
+  /// Optional project/preset reset target, independent of the factory default.
+  @anthemObservable
+  @hideFromCpp
+  double? parameterResetValue;
+
+  @hideFromCpp
+  ParameterPresentationModel presentation;
 
   /// The normalized value of the parameter, if this port is a control input
   /// port.
@@ -90,6 +118,9 @@ abstract class _NodePortModel
     required this.nodeId,
     required this.config,
     required this.connections,
+    required this.presentation,
+    this.isAvailable = false,
+    this.parameterResetValue,
     this.parameterDisplayText,
   });
 }

@@ -208,6 +208,8 @@ class DeviceController {
     }
     final processing = track.requireProcessing;
 
+    // Cached default ports preserve routing intent even while unavailable.
+    // The engine filters unavailable connections when publishing the graph.
     disconnectTrackDeviceRouting(trackId);
 
     final generatedConnectionIds = <Id>[];

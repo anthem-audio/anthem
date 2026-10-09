@@ -21,6 +21,8 @@
 
 #include "modules/processing_graph/runtime/node_process_context.h"
 
+#include <utility>
+
 namespace anthem {
 
 LiveEventProviderProcessor::LiveEventProviderProcessor(
@@ -105,13 +107,21 @@ bool LiveEventProviderProcessor::addLiveInputEvent(LiveInputEvent event) {
 }
 
 void LiveEventProviderProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .eventOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = eventOutputPortId,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void LiveEventProviderProcessor::process(NodeProcessContext& context, int /*numSamples*/
 ) {
   auto& outputEventBuffer =
-      context.getOutputEventBuffer(LiveEventProviderProcessorModelBase::eventOutputPortId);
+      context.getOutputEventBuffer(LiveEventProviderProcessor::eventOutputPortId);
 
   rt_addLiveEventsToBuffer(context, outputEventBuffer);
 }

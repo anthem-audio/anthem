@@ -43,7 +43,7 @@ using NodeProcessorVariant =
 inline std::shared_ptr<ParameterConfigModel> makeParameterConfig(int64_t id, double defaultValue) {
   return std::make_shared<ParameterConfigModel>(ParameterConfigModelImpl{
       .id = id,
-      .defaultValue = defaultValue,
+      .factoryDefaultValue = defaultValue,
   });
 }
 
@@ -53,6 +53,7 @@ inline std::shared_ptr<NodePort> makePort(int64_t id,
     std::optional<double> parameterValue = std::nullopt,
     std::optional<std::shared_ptr<ParameterConfigModel>> parameterConfig = std::nullopt,
     std::optional<int64_t> channelCount = std::nullopt) {
+  const auto connections = std::make_shared<ModelVector<int64_t>>();
   return std::make_shared<NodePort>(NodePortModelImpl{
       .id = id,
       .nodeId = nodeId,
@@ -61,7 +62,8 @@ inline std::shared_ptr<NodePort> makePort(int64_t id,
           .channelCount = channelCount,
           .parameterConfig = parameterConfig,
       }),
-      .connections = std::make_shared<ModelVector<int64_t>>(),
+      .connections = connections,
+      .isAvailable = true,
       .parameterValue = parameterValue,
   });
 }

@@ -40,42 +40,22 @@ enum ParameterDisplayMode { percent, gainDb, pan, pluginText }
 ///
 /// This class is responsible for storing the configuration of a parameter in
 /// the processing graph. Parameter values are always stored normalized in the
-/// range [0, 1]. This config stores the default normalized value.
+/// range [0, 1]. This config stores the processor factory default.
 @AnthemModel.syncedModel()
 class ParameterConfigModel extends _ParameterConfigModel
     with _$ParameterConfigModel, _$ParameterConfigModelAnthemModelMixin {
   ParameterConfigModel({
     required super.id,
-    required super.defaultValue,
+    super.factoryDefaultValue,
     super.displayMode = ParameterDisplayMode.percent,
     super.unitLabel,
-    super.normalizedVisualBaseline = 0.0,
-  }) : assert(normalizedVisualBaseline >= 0 && normalizedVisualBaseline <= 1);
+  });
 
   ParameterConfigModel.uninitialized()
-    : super(
-        id: 0,
-        defaultValue: 0.0,
-        displayMode: ParameterDisplayMode.percent,
-      );
+    : super(id: 0, displayMode: ParameterDisplayMode.percent);
 
-  factory ParameterConfigModel.fromJson(Map<String, dynamic> json) {
-    final baseline = json.containsKey('normalizedVisualBaseline')
-        ? json['normalizedVisualBaseline']
-        : 0.0;
-    if (baseline is! num ||
-        !baseline.isFinite ||
-        baseline < 0 ||
-        baseline > 1) {
-      throw const FormatException(
-        'Parameter visual baseline must be in [0, 1].',
-      );
-    }
-    return _$ParameterConfigModelAnthemModelMixin.fromJson({
-      ...json,
-      'normalizedVisualBaseline': baseline,
-    });
-  }
+  factory ParameterConfigModel.fromJson(Map<String, dynamic> json) =>
+      _$ParameterConfigModelAnthemModelMixin.fromJson(json);
 }
 
 abstract class _ParameterConfigModel
@@ -86,26 +66,24 @@ abstract class _ParameterConfigModel
   /// parameter ports, this maps to the plugin's parameter ID.
   int id;
 
-  /// The default normalized value of the parameter.
-  double defaultValue;
-
-  /// Normalized value from which knob arcs and automation shading extend.
-  /// Independent of the display format, current value and reset default.
+  /// Processor-declared factory default. Instance values and reset overrides
+  /// belong to the port and are never replaced by discovery. Null until
+  /// discovery supplies a default for a newly constructed native parameter.
   @anthemObservable
-  @hideFromCpp
-  double normalizedVisualBaseline;
+  double? factoryDefaultValue;
 
   /// How normalized values should be displayed in the UI.
+  @anthemObservable
   ParameterDisplayMode? displayMode;
 
   /// Optional unit label for display text, such as "Hz" or "dB".
+  @anthemObservable
   String? unitLabel;
 
   _ParameterConfigModel({
     required this.id,
-    required this.defaultValue,
+    this.factoryDefaultValue,
     this.displayMode,
     this.unitLabel,
-    this.normalizedVisualBaseline = 0.0,
   });
 }

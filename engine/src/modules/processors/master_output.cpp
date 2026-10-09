@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_core/juce_core.h>
+#include <utility>
 
 namespace anthem {
 
@@ -50,11 +51,20 @@ void MasterOutputProcessor::prepareToProcess(ProcessorPrepareCallback complete) 
   auto bufferSize = audioProcessingConfig->blockSize;
   buffer = juce::AudioSampleBuffer(outputChannels, bufferSize);
 
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .audioInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = inputPortId,
+                  .channelCount = audioProcessingConfig->outputChannelCount,
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void MasterOutputProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto inputBuffer = context.getInputAudioBuffer(MasterOutputProcessorModelBase::inputPortId);
+  auto inputBuffer = context.getInputAudioBuffer(MasterOutputProcessor::inputPortId);
 
   for (int channel = 0; channel < buffer.getNumChannels(); channel++) {
     auto* outputSamples = buffer.getWritePointer(channel);

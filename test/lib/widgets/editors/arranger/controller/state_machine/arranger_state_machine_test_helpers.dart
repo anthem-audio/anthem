@@ -296,7 +296,7 @@ class ArrangerStateMachineTestFixture {
               name: target.parameterName,
               parameterConfig: ParameterConfigModel(
                 id: target.portId,
-                defaultValue: 0.5,
+                factoryDefaultValue: 0.5,
               ),
             ),
           ),

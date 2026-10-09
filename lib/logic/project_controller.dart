@@ -143,9 +143,16 @@ class ProjectController {
     final affectedTrackIds = <Id>{};
 
     for (final result in results) {
+      final node = project.processingGraph.nodes[result.nodeId];
+      if (node == null) continue;
       if (!result.success) {
+        node.markInitializationFailed();
+        for (final port in node.getAllPorts()) {
+          port.isAvailable = false;
+        }
         continue;
       }
+      node.markStateRestored();
 
       final portConfiguration = result.portConfiguration;
 
@@ -170,7 +177,6 @@ class ProjectController {
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     for (final trackId in affectedTrackIds) {
       serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
-      serviceRegistry.trackController.rerouteTracks([trackId]);
     }
   }
 
@@ -236,12 +242,7 @@ class ProjectController {
     }
 
     for (final portGroup in portGroups) {
-      _removeConnectionsForUnconfiguredPorts(
-        portGroup.currentPorts,
-        portGroup.newPortConfigurations,
-      );
-
-      _replacePorts(
+      _reconcilePorts(
         portGroup.currentPorts,
         portGroup.newPortConfigurations,
         portGroup.dataType,
@@ -257,14 +258,17 @@ class ProjectController {
     List<ProcessingGraphPortConfiguration> configuredPorts,
     NodePortDataType dataType,
   ) {
-    // This compares only the processor-declared port shape. Runtime state like
-    // connections and parameter values is preserved when ports are replaced.
-    if (currentPorts.length != configuredPorts.length) {
+    // Compare processor metadata only. Matching ports keep their identity,
+    // instance state, presentation settings and saved connections.
+    final availablePorts = currentPorts
+        .where((port) => port.isAvailable)
+        .toList();
+    if (availablePorts.length != configuredPorts.length) {
       return false;
     }
 
-    for (var i = 0; i < currentPorts.length; i++) {
-      final currentPort = currentPorts[i];
+    for (var i = 0; i < availablePorts.length; i++) {
+      final currentPort = availablePorts[i];
       final configuredPort = configuredPorts[i];
       final currentParameterConfig = currentPort.config.parameterConfig;
       if (currentPort.id != configuredPort.id ||
@@ -273,7 +277,7 @@ class ProjectController {
           currentPort.config.channelCount != configuredPort.channelCount ||
           currentParameterConfig?.id !=
               _parameterConfigIdForPort(configuredPort) ||
-          currentParameterConfig?.defaultValue !=
+          currentParameterConfig?.factoryDefaultValue !=
               configuredPort.parameterDefaultValue ||
           currentParameterConfig?.displayMode !=
               _parameterDisplayModeForPort(configuredPort) ||
@@ -284,30 +288,6 @@ class ProjectController {
     }
 
     return true;
-  }
-
-  void _removeConnectionsForPorts(Iterable<NodePortModel> ports) {
-    final connectionIds = <Id>{
-      for (final port in ports)
-        for (final connectionId in port.connections) connectionId,
-    };
-
-    for (final connectionId in connectionIds) {
-      if (project.processingGraph.connections[connectionId] != null) {
-        project.processingGraph.removeConnection(connectionId);
-      }
-    }
-  }
-
-  void _removeConnectionsForUnconfiguredPorts(
-    AnthemObservableList<NodePortModel> currentPorts,
-    List<ProcessingGraphPortConfiguration> configuredPorts,
-  ) {
-    final configuredPortIds = {for (final port in configuredPorts) port.id};
-
-    _removeConnectionsForPorts(
-      currentPorts.where((port) => !configuredPortIds.contains(port.id)),
-    );
   }
 
   int? _parameterConfigIdForPort(ProcessingGraphPortConfiguration port) {
@@ -339,7 +319,7 @@ class ProjectController {
 
     return ParameterConfigModel(
       id: port.id,
-      defaultValue: defaultValue,
+      factoryDefaultValue: defaultValue,
       displayMode: _parameterDisplayModeForPort(port),
       unitLabel: port.parameterUnitLabel,
     );
@@ -376,51 +356,76 @@ class ProjectController {
     }
   }
 
-  void _replacePorts(
+  /// Updates one of a node's port lists from the engine's initialization result.
+  ///
+  /// The list may already contain ports created by a Dart factory or loaded from
+  /// a project file. Match these ports by ID and update their metadata, such as
+  /// names, channel counts and factory defaults, in place. Keeping the same port
+  /// objects preserves their parameter values, reset overrides, presentation
+  /// settings and connections. A factory default fills in a parameter value only
+  /// when that parameter has no value yet.
+  ///
+  /// Add newly reported ports. Keep ports that the engine did not report, but
+  /// mark them unavailable so their saved state and routing can recover if they
+  /// return. Reported ports come first, in engine order; unavailable ports follow
+  /// in their previous order.
+  void _reconcilePorts(
     AnthemObservableList<NodePortModel> target,
     List<ProcessingGraphPortConfiguration> configuredPorts,
     NodePortDataType dataType,
     Id nodeId,
   ) {
-    final currentPortsById = {for (final port in target) port.id: port};
-
-    target
-      ..clear()
-      ..addAll(
-        configuredPorts.map((port) {
-          final replacementPort = NodePortModel(
+    final existing = {for (final port in target) port.id: port};
+    final discoveredIds = {for (final port in configuredPorts) port.id};
+    final ordered = <NodePortModel>[];
+    for (final descriptor in configuredPorts) {
+      final port =
+          existing[descriptor.id] ??
+          NodePortModel(
             nodeId: nodeId,
-            id: port.id,
+            id: descriptor.id,
             config: NodePortConfigModel(
               dataType: dataType,
-              name: port.name,
-              channelCount: port.channelCount,
-              parameterConfig: _parameterConfigForPort(port),
+              parameterConfig: _parameterConfigForPort(descriptor),
             ),
           );
-
-          final currentPort = currentPortsById[port.id];
-          if (currentPort != null) {
-            replacementPort.connections.addAll(currentPort.connections);
-            if (replacementPort.config.parameterConfig != null) {
-              // Visual metadata belongs to the UI and is absent from engine
-              // port declarations. Keep it when refreshing a matching port.
-              replacementPort.config.parameterConfig!.normalizedVisualBaseline =
-                  currentPort
-                      .config
-                      .parameterConfig
-                      ?.normalizedVisualBaseline ??
-                  0.0;
-              replacementPort.parameterValue =
-                  currentPort.parameterValue ?? replacementPort.parameterValue;
-              replacementPort.parameterDisplayText =
-                  currentPort.parameterDisplayText;
-            }
-          }
-
-          return replacementPort;
-        }),
-      );
+      port.config.dataType = dataType;
+      port.config.name = descriptor.name;
+      port.config.channelCount = descriptor.channelCount;
+      final parameter = port.config.parameterConfig;
+      if (descriptor.parameterDefaultValue == null) {
+        port.config.parameterConfig = null;
+      } else if (parameter == null) {
+        port.config.parameterConfig = _parameterConfigForPort(descriptor);
+      } else {
+        parameter.id = descriptor.id;
+        parameter.factoryDefaultValue = descriptor.parameterDefaultValue!;
+        parameter.displayMode = _parameterDisplayModeForPort(descriptor);
+        parameter.unitLabel = descriptor.parameterUnitLabel;
+      }
+      if (descriptor.parameterDefaultValue != null) {
+        port.parameterValue ??= descriptor.parameterDefaultValue;
+      }
+      port.isAvailable = true;
+      ordered.add(port);
+    }
+    for (final port in target) {
+      if (!discoveredIds.contains(port.id)) {
+        port.isAvailable = false;
+        ordered.add(port);
+      }
+    }
+    for (var index = 0; index < ordered.length; index++) {
+      if (index >= target.length) {
+        target.add(ordered[index]);
+      } else if (!identical(target[index], ordered[index])) {
+        // Move rather than replace: generated model ownership must remain
+        // attached to exactly one list position.
+        final currentIndex = target.indexOf(ordered[index]);
+        if (currentIndex >= 0) target.removeAt(currentIndex);
+        target.insert(index, ordered[index]);
+      }
+    }
   }
 
   Iterable<Id> _updateDeviceDefaultsForNode(Id nodeId) sync* {

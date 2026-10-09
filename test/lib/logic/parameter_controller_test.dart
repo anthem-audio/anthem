@@ -45,7 +45,10 @@ void main() {
           id: 100,
           config: NodePortConfigModel(
             dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.25),
+            parameterConfig: ParameterConfigModel(
+              id: 100,
+              factoryDefaultValue: 0.25,
+            ),
           ),
         ),
       ]),

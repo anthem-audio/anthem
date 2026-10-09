@@ -13,6 +13,7 @@
 - Steep curves at the start of automation clips now render correctly at all zoom levels
 - Fixed VST3 plugin selection on Linux
 - Fixed the left panel width at 200 pixels
+- Fixed an issue where audio routing data could be deleted if a plugin loaded with a different config than it used when the project was saved
 
 # 0.0.0-prealpha.1
 

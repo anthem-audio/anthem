@@ -106,6 +106,48 @@ void main() {
       expect(destinationAudioPort.connections, equals([10]));
       expect(sourceControlPort.connections, isEmpty);
       expect(destinationControlPort.connections, isEmpty);
+
+      expect(sourceAudioPort.isAvailable, isFalse);
+      expect(destinationAudioPort.isAvailable, isFalse);
+      expect(graph.isConnectionResolved(connection), isFalse);
+
+      sourceAudioPort.isAvailable = true;
+      expect(graph.isConnectionResolved(connection), isFalse);
+
+      destinationAudioPort.isAvailable = true;
+      expect(graph.isConnectionResolved(connection), isTrue);
+
+      for (final port in [sourceAudioPort, destinationAudioPort]) {
+        final restored = NodePortModel.fromJson(port.toJson());
+        expect(restored.isAvailable, isFalse);
+        expect(restored.connections, [10]);
+      }
+    });
+
+    test('plugin connections can precede discovery without inventing confirmed ports', () {
+      final graph = ProcessingGraphModel();
+      final source = NodeModel(id: 1, isThirdPartyPlugin: true);
+      final destination = NodeModel(id: 2, isThirdPartyPlugin: true);
+      graph.addNode(source);
+      graph.addNode(destination);
+      final connection = NodeConnectionModel(
+        idAllocator: _idAllocatorFor(10),
+        sourceNodeId: 1,
+        sourcePortId: 8,
+        destinationNodeId: 2,
+        destinationPortId: 9,
+        dataType: NodePortDataType.audio,
+      );
+      graph.addConnection(connection);
+      expect(graph.connections[10], same(connection));
+      expect(source.audioOutputPorts.single.isAvailable, isFalse);
+      expect(destination.audioInputPorts.single.isAvailable, isFalse);
+      expect(graph.isConnectionResolved(connection), isFalse);
+      source.audioOutputPorts.single.isAvailable = true;
+      destination.audioInputPorts.single.isAvailable = true;
+      expect(graph.isConnectionResolved(connection), isTrue);
+      graph.removeConnection(10);
+      expect(source.audioOutputPorts.single.connections, isEmpty);
     });
 
     test('rejects a mistyped connection without mutating the graph', () {
@@ -159,7 +201,10 @@ void main() {
         nodeId: nodeId,
         id: 100,
         dataType: NodePortDataType.control,
-        parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.5),
+        parameterConfig: ParameterConfigModel(
+          id: 100,
+          factoryDefaultValue: 0.5,
+        ),
       );
       final nonParameterPort = _port(
         nodeId: nodeId,
@@ -193,7 +238,10 @@ void main() {
         nodeId: nodeId,
         id: 100,
         dataType: NodePortDataType.control,
-        parameterConfig: ParameterConfigModel(id: 100, defaultValue: 0.5),
+        parameterConfig: ParameterConfigModel(
+          id: 100,
+          factoryDefaultValue: 0.5,
+        ),
       );
       final nonParameterPort = _port(
         nodeId: nodeId,

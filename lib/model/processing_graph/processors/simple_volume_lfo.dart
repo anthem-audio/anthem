@@ -19,12 +19,12 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'simple_volume_lfo.g.dart';
 
@@ -45,35 +45,21 @@ class SimpleVolumeLfoProcessorModel extends _SimpleVolumeLfoProcessorModel
       _$SimpleVolumeLfoProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      audioInputPorts: AnthemObservableList.of([
-        NodePortModel(
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
-          id: audioInputPortId,
-          nodeId: nodeId,
-        ),
-      ]),
-      audioOutputPorts: AnthemObservableList.of([
-        NodePortModel(
-          config: NodePortConfigModel(dataType: NodePortDataType.audio),
-          id: audioOutputPortId,
-          nodeId: nodeId,
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    audioInputPortIds: [audioInputPortId],
+    audioOutputPortIds: [audioOutputPortId],
+  );
 
-  static int get audioInputPortId =>
+  static const int audioInputPortId =
       _SimpleVolumeLfoProcessorModel.audioInputPortId;
-  static int get audioOutputPortId =>
+  static const int audioOutputPortId =
       _SimpleVolumeLfoProcessorModel.audioOutputPortId;
 }
 
 abstract class _SimpleVolumeLfoProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int audioInputPortId = 0;
   static const int audioOutputPortId = 1;
 

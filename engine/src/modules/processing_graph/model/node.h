@@ -37,6 +37,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <vector>
 
 namespace anthem {
 
@@ -82,11 +83,39 @@ public:
     NodeModelBase::initialize(selfModel, parentModel);
   }
 
+  // Cached available ports, rebuilt at the start of runtime graph compilation.
+  void refreshAvailablePorts();
+  const std::vector<std::shared_ptr<NodePort>>& availableAudioInputPorts() const {
+    return audioInputAvailable;
+  }
+  const std::vector<std::shared_ptr<NodePort>>& availableAudioOutputPorts() const {
+    return audioOutputAvailable;
+  }
+  const std::vector<std::shared_ptr<NodePort>>& availableControlInputPorts() const {
+    return controlInputAvailable;
+  }
+  const std::vector<std::shared_ptr<NodePort>>& availableControlOutputPorts() const {
+    return controlOutputAvailable;
+  }
+  const std::vector<std::shared_ptr<NodePort>>& availableEventInputPorts() const {
+    return eventInputAvailable;
+  }
+  const std::vector<std::shared_ptr<NodePort>>& availableEventOutputPorts() const {
+    return eventOutputAvailable;
+  }
+
   std::optional<std::shared_ptr<NodePort>> getPortById(int64_t id);
   std::optional<std::shared_ptr<NodePort>> getInputPortById(NodePortDataType dataType, int64_t id);
   std::optional<std::shared_ptr<NodePort>> getOutputPortById(NodePortDataType dataType, int64_t id);
 
   std::optional<std::shared_ptr<Processor>> getProcessor();
+private:
+  std::vector<std::shared_ptr<NodePort>> audioInputAvailable;
+  std::vector<std::shared_ptr<NodePort>> audioOutputAvailable;
+  std::vector<std::shared_ptr<NodePort>> controlInputAvailable;
+  std::vector<std::shared_ptr<NodePort>> controlOutputAvailable;
+  std::vector<std::shared_ptr<NodePort>> eventInputAvailable;
+  std::vector<std::shared_ptr<NodePort>> eventOutputAvailable;
 };
 
 } // namespace anthem

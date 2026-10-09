@@ -37,9 +37,18 @@ import 'package:anthem_codegen/include.dart';
 /// between their ports, though this happens externally. The node then delegates
 /// its actual DSP to a processor.
 ///
-/// Each processor has a static node generator that produces a specific node to
-/// represent it. The processor expects specific inputs and outputs, and so it
-/// must create a node that is specifically tailored to itself.
+/// Each processor must provide a way to create a node that represents it in
+/// the graph. A new native node starts with initial parameter values and the
+/// port IDs that the UI expects to use. A node loaded from a project can contain
+/// saved parameter values, whether its processor is native or a VST.
+///
+/// Native processors use the node's parameter values directly. VST processors
+/// restore any saved plugin state, then report their current parameter values
+/// to update the node.
+///
+/// When initializing the processor, the engine confirms which ports exist. It
+/// also supplies factory defaults and audio channel counts. Connections remain
+/// inactive until both of their ports have been confirmed.
 ///
 /// The C++ backing class for each processor actually contains the DSP
 /// implementation. It also inherits AnthemProcessor, which acts as an interface
@@ -61,7 +70,10 @@ mixin Processor on AnthemModelBase, ProjectModelGetterMixin {
 
   /// Creates a node that contains this processor.
   ///
-  /// The node defines the allowed ports, so each processor must define this
-  /// method and generate a valid NodeModel that can represent it.
+  /// Each processor must implement this method and return a [NodeModel] that
+  /// represents it.
+  ///
+  /// The node starts with the ports and parameter values known to the UI.
+  /// The engine confirms which ports exist during initialization.
   NodeModel createNode();
 }

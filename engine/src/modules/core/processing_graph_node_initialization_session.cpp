@@ -22,6 +22,7 @@
 #include <exception>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -237,17 +238,45 @@ void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nod
     return;
   }
 
-  if (!prepareResult.has_value()) {
-    processor->isPrepared = true;
-    markNodeInitialized(nodeId, graphNode);
-    addResult(makeNodeInitializationResult(nodeId, true));
-  } else if (prepareResult->success) {
-    processor->isPrepared = true;
-    markNodeInitialized(nodeId, graphNode);
-    addResult(makeNodeInitializationResult(nodeId, *prepareResult));
-  } else {
+  if (prepareResult.has_value() && !prepareResult->success) {
     processor->isPrepared = false;
     addResult(makeNodeInitializationResult(nodeId, *prepareResult));
+    finishPendingNode();
+    return;
+  }
+
+  try {
+    if (!processor->hasRestoredProjectState) {
+      const auto& savedState = graphNode->processorState();
+      if (!savedState.empty()) {
+        juce::MemoryBlock state;
+        if (!state.fromBase64Encoding(savedState)) {
+          throw std::runtime_error("Invalid saved processor state encoding.");
+        }
+        processor->setState(state);
+      }
+      processor->hasRestoredProjectState = true;
+      if (!savedState.empty()) {
+        // Restoring plugin state can change its bus layout. Re-prepare before
+        // reporting the final descriptors and values, with no factory snapshot
+        // becoming visible to the UI in between.
+        processor->prepareToProcess(
+            [self = shared_from_this(), nodeId, weakGraphNode, weakProcessor](
+                std::optional<ProcessorPrepareResult> result) {
+              self->completeProcessorNode(nodeId, weakGraphNode, weakProcessor, std::move(result));
+            });
+        return;
+      }
+    }
+    if (!prepareResult.has_value() || !prepareResult->portConfiguration.has_value()) {
+      throw std::runtime_error("Processor preparation did not supply a port configuration.");
+    }
+    processor->isPrepared = true;
+    markNodeInitialized(nodeId, graphNode);
+    addResult(makeNodeInitializationResult(nodeId, *prepareResult));
+  } catch (const std::exception& error) {
+    processor->isPrepared = false;
+    addResult(makeNodeInitializationResult(nodeId, false, error.what()));
   }
 
   finishPendingNode();

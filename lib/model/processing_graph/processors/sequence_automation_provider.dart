@@ -20,12 +20,12 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+
+import 'native_node_bootstrap.dart';
 
 part 'sequence_automation_provider.g.dart';
 
@@ -66,26 +66,18 @@ class SequenceAutomationProviderProcessorModel
       _$SequenceAutomationProviderProcessorModelAnthemModelMixin.fromJson(json);
 
   @override
-  NodeModel createNode() {
-    return NodeModel(
-      id: nodeId,
-      processor: this,
-      controlOutputPorts: AnthemObservableList.of([
-        NodePortModel(
-          nodeId: nodeId,
-          id: controlOutputPortId,
-          config: NodePortConfigModel(dataType: NodePortDataType.control),
-        ),
-      ]),
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    controlOutputPortIds: [controlOutputPortId],
+  );
 
-  static int get controlOutputPortId =>
+  static const int controlOutputPortId =
       _SequenceAutomationProviderProcessorModel.controlOutputPortId;
 }
 
 abstract class _SequenceAutomationProviderProcessorModel
     with Store, AnthemModelBase, ProjectModelGetterMixin {
+  // Stable port IDs exported to C++ by model codegen.
   static const int controlOutputPortId = 0;
 
   Id nodeId;

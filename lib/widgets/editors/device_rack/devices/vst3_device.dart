@@ -451,7 +451,7 @@ class _Vst3ParameterRow extends StatelessWidget {
     return _ParameterRowFrame(
       child: Observer(
         builder: (context) {
-          final value = port.parameterValue ?? _defaultValueForPort(port);
+          final value = port.parameterValue ?? port.parameterResetTarget;
 
           return Row(
             children: [
@@ -547,10 +547,6 @@ class _InvalidVst3Device extends StatelessWidget {
       ),
     );
   }
-}
-
-double _defaultValueForPort(NodePortModel port) {
-  return port.config.parameterConfig?.defaultValue ?? 0;
 }
 
 NodePortModel? _findParameterPortById(NodeModel node, int? portId) {

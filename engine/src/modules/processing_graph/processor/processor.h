@@ -63,9 +63,9 @@ struct ProcessorPrepareResult {
   std::vector<ProcessorParameterValue> parameterValues;
 };
 
-// Processors may complete preparation synchronously or asynchronously. A
-// nullopt result means preparation succeeded and there is no engine-discovered
-// port configuration to send back to the UI.
+// Processors may complete preparation synchronously or asynchronously.
+// Successful preparation must include the processor's port configuration.
+// Descriptions come from the processor, independently of cached UI metadata.
 using ProcessorPrepareCallback = std::function<void(std::optional<ProcessorPrepareResult>)>;
 
 // This class is used to process audio, event and control data. It can produce
@@ -91,6 +91,10 @@ public:
   // This flag must be set after prepareToProcess() is called. It is set by the
   // caller, not by the processor itself.
   bool isPrepared = false;
+
+  // Instance state is restored once per processor lifetime. Audio-session
+  // re-preparation must retain the live state rather than replaying a saved blob.
+  bool hasRestoredProjectState = false;
 
   // This method is called by the processing graph to process audio, event and
   // control data. It is called once per processing block. Processors with audio

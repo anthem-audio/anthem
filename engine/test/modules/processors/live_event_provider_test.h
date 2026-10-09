@@ -38,7 +38,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
     auto node = graph_test_helpers::makeNode(nodeId);
 
     node->eventOutputPorts()->push_back(graph_test_helpers::makePort(
-        LiveEventProviderProcessorModelBase::eventOutputPortId, nodeId, NodePortDataType::event));
+        LiveEventProviderProcessor::eventOutputPortId, nodeId, NodePortDataType::event));
 
     return node;
   }
@@ -77,7 +77,7 @@ class LiveEventProviderProcessorTest : public juce::UnitTest {
   }
 
   static EventBuffer& getOutputBuffer(NodeProcessContext& context) {
-    return context.getOutputEventBuffer(LiveEventProviderProcessorModelBase::eventOutputPortId);
+    return context.getOutputEventBuffer(LiveEventProviderProcessor::eventOutputPortId);
   }
 
   void expectEventBase(EventBuffer& buffer,

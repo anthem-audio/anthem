@@ -21,10 +21,14 @@ import 'dart:io';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
+import 'package:anthem/model/processing_graph/parameter_presentation.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/device_rack/devices/vst3_device.dart';
@@ -56,8 +60,8 @@ void _showRack(AppTestSession session, Id trackId) {
   session.services.projectViewModel.activePanel = PanelKind.deviceRack;
 }
 
-NodePortModel _parameter(NodeModel node, String name) =>
-    node.controlInputPorts.singleWhere((port) => port.config.name == name);
+NodePortModel _parameter(NodeModel node, String name) => node.controlInputPorts
+    .singleWhere((port) => port.isAvailable && port.config.name == name);
 
 Future<String> _liveState(AppTestSession session, NodeModel node) async {
   final state = await waitForFuture(
@@ -101,21 +105,35 @@ Future<void> _verifyPlugin(
   );
   await waitForFuture(
     session.tester,
-    node.stateIsSentToEngineCompleter.future,
+    node.stateRestoredCompleter.future,
     conditionDescription: 'plugin ${node.id} restored its opaque state',
     collectTimeoutDiagnostics: () => session.sessionDiagnostics,
   );
   expect(node.processor, isA<VST3ProcessorModel>());
-  expect(node.audioInputPorts, hasLength(instrument ? 0 : 1));
-  expect(node.audioOutputPorts, hasLength(1));
-  expect(node.audioOutputPorts.single.config.channelCount, 2);
-  expect(node.eventInputPorts, hasLength(instrument ? 1 : 0));
-  expect(node.eventOutputPorts, isEmpty);
   expect(
-    node.controlInputPorts.map((port) => port.config.name),
+    node.audioInputPorts.where((port) => port.isAvailable),
+    hasLength(instrument ? 0 : 1),
+  );
+  expect(node.audioOutputPorts.where((port) => port.isAvailable), hasLength(1));
+  expect(node.audioOutputPorts.single.config.channelCount, 2);
+  expect(
+    node.eventInputPorts.where((port) => port.isAvailable),
+    hasLength(instrument ? 1 : 0),
+  );
+  expect(node.eventOutputPorts.where((port) => port.isAvailable), isEmpty);
+  expect(
+    node.controlInputPorts
+        .where((port) => port.isAvailable)
+        .map((port) => port.config.name),
     unorderedEquals(['Gain', 'Invert', 'Bypass']),
   );
-  expect(node.controlInputPorts.map((port) => port.id).toSet(), hasLength(3));
+  expect(
+    node.controlInputPorts
+        .where((port) => port.isAvailable)
+        .map((port) => port.id)
+        .toSet(),
+    hasLength(3),
+  );
   await session.waitForEngineModel(
     conditionDescription: 'engine discovered plugin ${node.id} ports',
     matches: (model) {
@@ -124,12 +142,22 @@ Future<void> _verifyPlugin(
                   .toString()]
               as Map?;
       return engineNode != null &&
-          (engineNode['audioInputPorts'] as List).length ==
+          (engineNode['audioInputPorts'] as List)
+                  .where((port) => port['isAvailable'] == true)
+                  .length ==
               (instrument ? 0 : 1) &&
-          (engineNode['audioOutputPorts'] as List).length == 1 &&
-          (engineNode['eventInputPorts'] as List).length ==
+          (engineNode['audioOutputPorts'] as List)
+                  .where((port) => port['isAvailable'] == true)
+                  .length ==
+              1 &&
+          (engineNode['eventInputPorts'] as List)
+                  .where((port) => port['isAvailable'] == true)
+                  .length ==
               (instrument ? 1 : 0) &&
-          (engineNode['controlInputPorts'] as List).length == 3;
+          (engineNode['controlInputPorts'] as List)
+                  .where((port) => port['isAvailable'] == true)
+                  .length ==
+              3;
     },
   );
 }
@@ -235,6 +263,124 @@ void main() {
     expect(files.pluginSelectionCount, 4);
     await session.dispose();
   });
+
+  testAppScenario(
+    'unavailable plugin parameter preserves its automation through discovery and restart',
+    (tester) async {
+      final fixtures = loadTestPlugins();
+      final files = await TestPluginFileSelector.install(
+        'unavailable-plugin-parameter',
+        fixtures,
+      );
+      final session = AppTestSession(
+        tester,
+        name: 'unavailable-plugin-parameter',
+      );
+      await session.start();
+      final project = session.project;
+      final trackId = project.trackOrder.first;
+      await _prepareRack(session, trackId);
+      final added = await _addPlugin(
+        session,
+        files,
+        trackId,
+        fixtures.instrument,
+        instrument: true,
+      );
+      const missingId = 987654321;
+      final cached = NodePortModel(
+        id: missingId,
+        nodeId: added.node.id,
+        config: NodePortConfigModel(
+          dataType: NodePortDataType.control,
+          name: 'Unavailable parameter',
+          parameterConfig: ParameterConfigModel(
+            id: missingId,
+            factoryDefaultValue: 0.5,
+          ),
+        ),
+        initialParameterValue: 0.456,
+        parameterResetValue: 0.3,
+        presentation: ParameterPresentationModel(
+          normalizedVisualBaseline: 0.25,
+        ),
+      );
+      added.node.controlInputPorts.add(cached);
+      final command = AutomationLaneAddRemoveCommand.add(
+        project: project,
+        parentTrackId: trackId,
+        nodeId: added.node.id,
+        portId: missingId,
+        name: 'Retained automation',
+      );
+      project.execute(command);
+      await publishPluginGraph(session);
+      final connectionIds = cached.connections.toSet();
+      expect(connectionIds, isNotEmpty);
+      added.node.processorState = await _liveState(session, added.node);
+      await waitForFuture(
+        tester,
+        session.services.projectEngineController.stop(),
+        conditionDescription: 'stop engine while retaining project routing',
+        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      );
+      await waitForFuture(
+        tester,
+        session.services.projectEngineController.start(startAudio: false),
+        conditionDescription:
+            'restart engine with cached unavailable parameter',
+        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      );
+      await startOfflinePluginProcessing(session);
+      expect(
+        added.node.getInputPortById(NodePortDataType.control, missingId),
+        same(cached),
+      );
+      expect(cached.isAvailable, isFalse);
+      expect(cached.connections.toSet(), connectionIds);
+      expect(cached.parameterValue, 0.456);
+      expect(cached.parameterResetTarget, 0.3);
+      expect(cached.presentation.normalizedVisualBaseline, 0.25);
+      expect(
+        project.tracks[command.lane.id]!.automationTarget!.portId,
+        missingId,
+      );
+      for (final id in connectionIds) {
+        expect(project.processingGraph.connections, contains(id));
+        expect(
+          project.processingGraph.isConnectionResolved(
+            project.processingGraph.connections[id]!,
+          ),
+          isFalse,
+        );
+      }
+      await session.waitForEngineModel(
+        conditionDescription: 'engine retained suspended routing',
+        matches: (model) {
+          final graph = model['processingGraph'] as Map;
+          final node = (graph['nodes'] as Map)[added.node.id.toString()] as Map;
+          final port = (node['controlInputPorts'] as List).singleWhere(
+            (port) => port['id'] == missingId,
+          ) as Map;
+          return port['isAvailable'] == false &&
+              (port['connections'] as List).toSet().containsAll(
+                connectionIds,
+              ) &&
+              connectionIds.every(
+                (id) =>
+                    (graph['connections'] as Map).containsKey(id.toString()),
+              );
+        },
+      );
+      await session.writeSessionDiagnostics(
+        'unavailable-parameter',
+        additionalDiagnostics: {
+          'port': cached.toJson(),
+          'automationLane': command.lane.toJson(),
+        },
+      );
+    },
+  );
 
   testAppScenario('save and reopen actual VST3 parameters and opaque state', (
     tester,

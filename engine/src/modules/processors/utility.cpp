@@ -22,6 +22,7 @@
 #include "modules/processing_graph/runtime/node_process_context.h"
 
 #include <juce_core/juce_core.h>
+#include <utility>
 
 namespace anthem {
 
@@ -31,15 +32,45 @@ UtilityProcessor::UtilityProcessor(const UtilityProcessorModelImpl& _impl)
 UtilityProcessor::~UtilityProcessor() {}
 
 void UtilityProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
-  complete(std::nullopt);
+  ProcessorNodePortConfiguration ports{
+      .audioInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioInputPortId,
+                  .channelCount = 2,
+              },
+          },
+      .audioOutputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = audioOutputPortId,
+                  .channelCount = 2,
+              },
+          },
+      .controlInputPorts =
+          {
+              ProcessorPortConfiguration{
+                  .id = gainPortId,
+                  .parameterDefaultValue = kGainParameterZeroDbNormalized,
+                  .parameterDisplayMode = "gainDb",
+                  .parameterUnitLabel = "dB",
+              },
+              ProcessorPortConfiguration{
+                  .id = balancePortId,
+                  .parameterDefaultValue = 0.5,
+                  .parameterDisplayMode = "pan",
+              },
+          },
+  };
+  complete(ProcessorPrepareResult{.portConfiguration = std::move(ports)});
 }
 
 void UtilityProcessor::process(NodeProcessContext& context, int numSamples) {
-  auto audioInBuffer = context.getInputAudioBuffer(UtilityProcessorModelBase::audioInputPortId);
-  auto audioOutBuffer = context.getOutputAudioBuffer(UtilityProcessorModelBase::audioOutputPortId);
+  auto audioInBuffer = context.getInputAudioBuffer(UtilityProcessor::audioInputPortId);
+  auto audioOutBuffer = context.getOutputAudioBuffer(UtilityProcessor::audioOutputPortId);
 
-  auto gainControl = context.getInputControlSignal(UtilityProcessorModelBase::gainPortId);
-  auto balanceControl = context.getInputControlSignal(UtilityProcessorModelBase::balancePortId);
+  auto gainControl = context.getInputControlSignal(UtilityProcessor::gainPortId);
+  auto balanceControl = context.getInputControlSignal(UtilityProcessor::balancePortId);
 
   for (int sample = 0; sample < numSamples; sample++) {
     auto gainParamValue = gainControl.getSample(sample);

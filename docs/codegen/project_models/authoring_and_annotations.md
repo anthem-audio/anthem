@@ -181,6 +181,8 @@ These collections are critical to change detection for model syncing, so they mu
 
 Generation only includes mutable fields that can be set during deserialization/sync. Fields without setters are skipped, except static-const primitive constants, which are treated as model constants.
 
+Declare these constants in the private model class, such as `_GainProcessorModel`. The public Dart class can expose `static const` aliases, since Dart static members are not inherited. C++ behavior classes inherit the generated constants from their model base class.
+
 For an example of how these constants are used, see the const IDs defined in [`gain.dart`](/lib/model/processing_graph/processors/gain.dart):
 
 - `audioInputPortId`

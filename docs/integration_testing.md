@@ -94,6 +94,11 @@ discovered audio/MIDI ports and parameters, and checks the rendered rack. It
 removes each device, verifies the engine model no longer contains its node,
 then loads another fresh instance in the same application session.
 
+An unavailable-parameter scenario adds a cached parameter and an automation lane,
+then restarts the real engine. Discovery must retain the same port object, saved
+connection IDs, automation target, value, reset target, and visual baseline while
+excluding the unavailable endpoint from runtime routing.
+
 The plugin persistence scenario changes Gain and Invert through Anthem's
 parameter commands, then saves, closes, and reopens the project with a fresh
 engine. The fixtures also serialize a revision counter that is not a parameter:
