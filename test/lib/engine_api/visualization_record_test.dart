@@ -72,21 +72,21 @@ void main() {
       expect(record.generation, 9);
       expect(record.sampleRate, 48000);
       expect(record.newestSampleTimestamp, 20);
-      expect(record.update.items.map((i) => i.id), ['d-Ω', 'i']);
+      expect(record.items.map((i) => i.id), ['d-Ω', 'i']);
       expect(
-        record.update.items.map((i) => i.valueType),
+        record.items.map((i) => i.valueType),
         VisualizationValueType.values,
       );
-      expect(record.update.items[0].values, [-0.0, 1.5]);
+      expect(record.items[0].values, [-0.0, 1.5]);
       expect(
-        1 / (record.update.items[0].values as List<double>).first,
+        1 / (record.items[0].values as List<double>).first,
         double.negativeInfinity,
       );
-      expect(record.update.items[1].values, [-7, 9007199254740991]);
+      expect(record.items[1].values, [-7, 9007199254740991]);
       bytes.fillRange(0, bytes.length, 0);
-      expect(record.update.items[0].sampleTimestamps, [10, 20]);
-      expect(record.update.items[0].id, 'd-Ω');
-      expect(record.update.items[1].values, [-7, 9007199254740991]);
+      expect(record.items[0].sampleTimestamps, [10, 20]);
+      expect(record.items[0].id, 'd-Ω');
+      expect(record.items[1].values, [-7, 9007199254740991]);
     },
   );
 
@@ -146,12 +146,12 @@ void main() {
     consumer.poll();
     expect(consumer.reachedBudget, isTrue);
     expect(releases, 2);
-    expect(updates.single.update.items.single.values, [1.0, 8.0, 2.0]);
+    expect(updates.single.items.single.values, [1.0, 8.0, 2.0]);
     expect(consumer.skippedSamples, 1);
     consumer.poll();
     expect(consumer.reachedBudget, isFalse);
     expect(releases, 3);
-    expect(updates.last.update.items.single.values, [3.0]);
+    expect(updates.last.items.single.values, [3.0]);
   });
 
   test('pauses, sequence gaps and session changes signal discontinuity', () {
@@ -196,7 +196,7 @@ void main() {
     );
     consumer.poll();
     expect(updates.single.discontinuity, isFalse);
-    expect(updates.single.update.items.single.values, [1.0, 2.0]);
+    expect(updates.single.items.single.values, [1.0, 2.0]);
   });
 
   test('a large burst drains in bounded passes with recent peaks intact', () {
@@ -221,11 +221,11 @@ void main() {
     expect(updates, hasLength(4));
     expect(consumer.recordsRead, 1024);
     expect(consumer.queueByteHighWater, 1024 * 73);
-    expect(updates.last.update.items.single.values, contains(100.0));
-    expect((updates.last.update.items.single.values as List).last, 1023 / 1024);
+    expect(updates.last.items.single.values, contains(100.0));
+    expect((updates.last.items.single.values as List).last, 1023 / 1024);
     for (final update in updates) {
       expect(
-        update.update.items.single.sampleTimestamps.length,
+        update.items.single.sampleTimestamps.length,
         lessThanOrEqualTo(251),
       );
     }

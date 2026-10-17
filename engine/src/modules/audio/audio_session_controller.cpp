@@ -200,13 +200,10 @@ void AudioSessionController::prepareForAudioProcessingConfig(
 }
 
 void AudioSessionController::sendAudioSessionInvalidatedEvent(std::optional<std::string> reason) {
-  Response response = AudioSessionInvalidatedEvent{
-      .reason = std::move(reason),
-      .responseBase = ResponseBase{.id = -1},
-  };
+  IpcEvent event = AudioSessionInvalidatedEvent{.reason = std::move(reason)};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
   juce::Logger::writeToLog("AudioSessionInvalidatedEvent sent to UI.");
 }
 

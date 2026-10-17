@@ -133,8 +133,8 @@ class ProjectRenderController {
         _defaultRenderOutputChannelCount;
     project.engine.holdRequestsForRender();
 
-    StreamSubscription<Response>? renderEventSubscription;
-    final renderCompletion = Completer<Response>();
+    StreamSubscription<IpcEvent>? renderEventSubscription;
+    final renderCompletion = Completer<IpcEvent>();
 
     void emitProgress(ProjectRenderProgress progress) {
       if (!progressController.isClosed) {
@@ -229,9 +229,9 @@ class ProjectRenderController {
   }
 
   void _handleRenderEvent({
-    required Response event,
+    required IpcEvent event,
     required int renderId,
-    required Completer<Response> renderCompletion,
+    required Completer<IpcEvent> renderCompletion,
     required void Function(ProjectRenderProgress progress) emitProgress,
   }) {
     switch (event) {

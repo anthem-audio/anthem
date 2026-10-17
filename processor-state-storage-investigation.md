@@ -1,8 +1,8 @@
 # Processor state storage investigation
 
-Investigated on 2026-10-09. This records findings and a proposed direction for
-future work; it is not an implemented design. Finish the current processor
-metadata review before starting this work.
+Investigated on 2026-10-09. This records findings and decisions for future work;
+the storage system is not implemented yet. The processor metadata review is
+complete, and file storage is the next area of work.
 
 ## Scope
 
@@ -14,6 +14,52 @@ Native sample/wavetable asset management, immutable assets and small snapshots
 that reference those assets are **deferred until there is a specific use-case**.
 Do not introduce that machinery as part of this investigation. Likewise, do not
 require a database, chunk deduplication or a new native state framework up front.
+
+## Agreed storage direction
+
+Use a per-project file store managed by the UI. On desktop, the engine requests
+access through IPC and reads or writes the files directly. IPC carries object
+IDs, temporary paths and access tokens, rather than the stored bytes. Permanent
+references in the project use stable IDs, so moving a project does not invalidate
+them.
+
+Use a project directory containing the JSON document and asset files. This keeps
+the files accessible for inspection and extraction. Define the directory layout
+and save workflow when implementing the new project format; a database or archive
+is not needed for the first implementation.
+
+A write starts with a private temporary file. After the writer closes it, the
+store commits the completed object and makes its ID available to consumers.
+Committed processor snapshots are not edited in place: a later capture creates
+a new object, preserving any earlier snapshot needed by the project or history.
+Read access prevents deletion until the reader releases it. Separately, the store
+must retain objects needed by project state, undo history or recovery data even
+when nobody is reading them.
+
+Support two uses of temporary storage:
+
+- **Unsaved project data:** an unsaved project needs a working store for snapshots
+  and other data that must accompany its first save. Treat this as project data
+  even though its location is temporary. Preserve it across engine restarts and
+  transfer the required objects on save without changing their IDs. Release it
+  when the project is closed or discarded, after stopping active access. Recovery
+  retention must be considered before deleting abandoned working stores.
+- **Session scratch data:** derived files, such as decompressed audio used during
+  a session, belong in a separate temporary area. These files can be regenerated,
+  are excluded from the saved project, and can be deleted once the session no
+  longer uses them. The initial storage work supplies this location and lifetime;
+  audio decompression itself is future work.
+
+Both temporary areas belong to a project session, rather than an engine process,
+so restarting the engine does not remove files still needed by the UI or project.
+Their different retention rules must remain explicit.
+
+The existing IPC transport already carries messages in both directions. Extend
+request/reply handling so the engine can request storage operations and the UI
+can answer them. The UI must service these requests while awaiting engine work,
+and the engine must not block its message thread while waiting for a UI reply.
+Storage requests and file I/O do not run on the audio thread. Desktop file paths
+also require a platform boundary; they cannot be assumed to work unchanged on web.
 
 ## Current Anthem behavior
 
@@ -154,6 +200,11 @@ remove all capture-time allocations: the JUCE API currently used by Anthem
 requires a complete `MemoryBlock`. True VST streaming would be separate adapter
 work; CLAP's stream interface accommodates it directly.
 
+**Follow-up to retain:** moving snapshots to files removes the outer Anthem
+base64/JSON transfer and the payload stored in Dart. It does not remove JUCE's
+complete capture buffer or its internal base64/XML encoding. Measure those costs
+after the storage change; direct VST3 stream support is separate adapter work.
+
 ## Candidate storage contract
 
 Use a common processor-state service that returns durable references:
@@ -167,10 +218,9 @@ The processor or its adapter owns the encoding. The UI can retain a reference
 without understanding the contents or receiving the complete payload. Native,
 VST3 and CLAP processors can share this contract while using different encodings.
 
-A first implementation could use files and a small manifest. A database may be
-useful for indexing later, but is not required to store opaque blobs. References
-should be stable identifiers resolved by the store, rather than permanent
-absolute paths embedded in project files.
+The agreed file store resolves stable identifiers to runtime paths. A small
+manifest can record any persistent metadata needed by the store; permanent
+absolute paths do not belong in project files.
 
 Important properties to settle before implementing:
 
@@ -242,16 +292,23 @@ Choose typed structures, reflect-cpp or `ValueTree` when a particular native
 processor's requirements make the tradeoff concrete. A shared state service need
 not prescribe one internal representation for every processor.
 
-## Possible implementation sequence
+## Implementation sequence
 
-These are future review boundaries, not authorization to begin implementation:
+Implement and review the work in stages. Start with stage 2, the IPC
+infrastructure, using a test operation that does not depend on file storage:
 
-1. Finish the current processor metadata review.
-2. Define the state-reference, storage-lifetime and capture/restore contracts.
-   Resolve project packaging, unsaved-project storage and restart behavior.
-3. Introduce file-backed VST snapshots and small IPC references, preserving
-   initialization ordering and missing-plugin state. Handle project-file changes
-   in versioned migrations, keeping model `fromJson()` current-schema-only.
+1. Build the desktop file store and its tests: stable IDs, temporary writes,
+   commit/abort, read access, retention and deletion, and separate unsaved-project
+   and session-scratch locations. This stage leaves the current project format
+   and plugin capture path intact.
+2. Add engine-originated IPC requests and the engine UI request client. Specific
+   storage operations will follow once the file store is available. Verify
+   replies, errors, disconnects and release of access held by a stopped engine.
+3. Introduce folder-based projects and file-backed VST snapshots, preserving
+   initialization ordering, missing-plugin state, engine restart and Save As.
+   Handle project-file changes in versioned migrations, keeping model
+   `fromJson()` current-schema-only. Replace payloads in the model and IPC with
+   small state references.
 4. Add preset operations and undoable state restoration through the common
    interface, with explicit reconciliation of UI-visible values.
 5. Integrate CLAP when hosting support is implemented. Treat draft resource and

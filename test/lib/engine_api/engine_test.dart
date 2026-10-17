@@ -53,15 +53,22 @@ class _TestEngineConnector extends EngineConnectorBase {
   final Completer<bool> _onInitCompleter = Completer<bool>();
   final void Function()? _onExit;
 
-  final List<Request> sentRequests = [];
+  final List<IpcMessage> sentRequests = [];
   var startHeartbeatTimerCallCount = 0;
   var finalizeVisualizationSharedMemorySetupCallCount = 0;
   var isDisposed = false;
+  Object? sendError;
+  Completer<void>? shutdownCompletion;
+  int? reportedExitCode;
+
+  @override
+  int? get processExitCode => reportedExitCode;
 
   _TestEngineConnector({
     required super.kDebugMode,
     super.noHeartbeat = false,
-    super.onReply,
+    super.onMessage,
+    super.onConnectionClosed,
     this._onExit,
   }) {
     onInit = _onInitCompleter.future;
@@ -73,8 +80,8 @@ class _TestEngineConnector extends EngineConnectorBase {
     }
   }
 
-  void emitResponse(Response response) {
-    onReceive(_frameResponse(response));
+  void emitMessage(IpcMessage message) {
+    onReceive(_frameMessage(message));
   }
 
   void emitExit() {
@@ -82,9 +89,13 @@ class _TestEngineConnector extends EngineConnectorBase {
   }
 
   @override
-  void send(Uint8List bytes) {
+  void sendBytes(Uint8List bytes) {
+    final error = sendError;
+    if (error != null) throw error;
     sentRequests.add(
-      Request.fromJson(jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>),
+      IpcMessage.fromJson(
+        jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
+      ),
     );
   }
 
@@ -99,13 +110,21 @@ class _TestEngineConnector extends EngineConnectorBase {
   }
 
   @override
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
+    dispose();
+    final completion = shutdownCompletion;
+    if (completion != null) await completion.future;
+  }
+
+  @override
   void dispose() {
+    completeInit(false);
     isDisposed = true;
     super.dispose();
   }
 }
 
-Uint8List _frameResponse(Response response) {
+Uint8List _frameMessage(IpcMessage response) {
   final payload = utf8.encode(jsonEncode(response.toJson()));
   final framedResponse = Uint8List(payload.length + 8);
   final header = ByteData.sublistView(framedResponse, 0, 8);
@@ -120,10 +139,10 @@ Uint8List _frameResponse(Response response) {
   return framedResponse;
 }
 
-Uint8List _frameResponses(Iterable<Response> responses) {
+Uint8List _frameMessages(Iterable<IpcMessage> responses) {
   final builder = BytesBuilder();
   for (final response in responses) {
-    builder.add(_frameResponse(response));
+    builder.add(_frameMessage(response));
   }
   return builder.toBytes();
 }
@@ -139,6 +158,7 @@ Future<void> _startEngineThroughInit(
   required AudioProcessingConfigDto audioConfig,
 }) async {
   final startFuture = engine.start();
+  await _flushMicrotasks();
   final connector = getConnector();
 
   connector.completeInit();
@@ -146,19 +166,19 @@ Future<void> _startEngineThroughInit(
 
   final readyCheckRequest =
       connector.sentRequests.single as EngineReadyCheckRequest;
-  connector.emitResponse(
+  connector.emitMessage(
     EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
   );
   await _flushMicrotasks();
 
   final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-  connector.emitResponse(
+  connector.emitMessage(
     ModelInitResponse(id: modelInitRequest.id, success: true),
   );
   await _flushMicrotasks();
 
   final startAudioRequest = connector.sentRequests[2] as StartAudioRequest;
-  connector.emitResponse(
+  connector.emitMessage(
     StartAudioResponse(
       id: startAudioRequest.id,
       success: true,
@@ -195,12 +215,12 @@ void main() {
   });
 
   test('engine connector decodes responses split across transport chunks', () {
-    final responses = <Response>[];
+    final responses = <IpcMessage>[];
     final connector = _TestEngineConnector(
       kDebugMode: false,
-      onReply: responses.add,
+      onMessage: responses.add,
     );
-    final frame = _frameResponse(
+    final frame = _frameMessage(
       EngineReadyCheckResponse(id: 12, success: true),
     );
 
@@ -210,7 +230,7 @@ void main() {
 
     expect(responses, hasLength(1));
     expect(responses.single, isA<EngineReadyCheckResponse>());
-    expect(responses.single.id, 12);
+    expect((responses.single as Response).id, 12);
   });
 
   group('Engine', () {
@@ -240,16 +260,18 @@ void main() {
       EngineConnectorBase createConnector(
         int id, {
         required bool kDebugMode,
-        void Function(Response)? onReply,
+        void Function(IpcMessage)? onMessage,
         void Function()? onExit,
+        void Function()? onConnectionClosed,
         bool noHeartbeat = false,
         String? enginePathOverride,
       }) {
         connector = _TestEngineConnector(
           kDebugMode: kDebugMode,
           noHeartbeat: noHeartbeat,
-          onReply: onReply,
+          onMessage: onMessage,
           onExit: onExit,
+          onConnectionClosed: onConnectionClosed,
         );
         return connector;
       }
@@ -258,6 +280,47 @@ void main() {
 
       when(project.initializeEngine())
           .thenAnswer((_) => engine.modelSyncApi.initModel('test project'));
+    });
+
+    test('engine requests receive responses during startup and render without completing UI requests', () async {
+      final startup = engine.start(initializeAudio: false);
+      connector.completeInit();
+      await _flushMicrotasks();
+      final readyRequest =
+          connector.sentRequests.single as EngineReadyCheckRequest;
+
+      connector.emitMessage(AudioSessionInvalidatedEvent(reason: 'test'));
+      await _flushMicrotasks();
+      expect(engine.engineState, EngineState.starting);
+
+      connector.emitMessage(
+        TestUiEchoRequest(id: readyRequest.id, value: 'during startup'),
+      );
+      await _flushMicrotasks();
+      expect(engine.engineState, EngineState.starting);
+      final reply = connector.sentRequests.last as RequestErrorResponse;
+      expect(reply.id, readyRequest.id);
+      expect(reply.code, RequestErrorCode.unsupported);
+      expect(reply.message, 'Unsupported engine request: TestUiEchoRequest.');
+
+      connector.emitMessage(
+        EngineReadyCheckResponse(id: readyRequest.id, success: true),
+      );
+      await _flushMicrotasks();
+      final modelInit = connector.sentRequests.last as ModelInitRequest;
+      connector.emitMessage(ModelInitResponse(id: modelInit.id, success: true));
+      await startup;
+      expect(engine.engineState, EngineState.running);
+
+      engine.holdRequestsForRender();
+      connector.emitMessage(TestUiEchoRequest(id: 42, value: 'during render'));
+      await _flushMicrotasks();
+      final renderReply = connector.sentRequests.last as RequestErrorResponse;
+      expect(renderReply.id, 42);
+      expect(renderReply.code, RequestErrorCode.unsupported);
+      engine.releaseRequestsHeldForRender();
+      connector.emitExit();
+      await engine.dispose();
     });
 
     test('start sends a ready check first, then flushes model init, then enables desktop heartbeat', () async {
@@ -280,7 +343,7 @@ void main() {
 
       final readyCheckRequest =
           connector.sentRequests.single as EngineReadyCheckRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
       );
 
@@ -297,7 +360,7 @@ void main() {
       expect(connector.startHeartbeatTimerCallCount, 0);
 
       final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         ModelInitResponse(id: modelInitRequest.id, success: true),
       );
       await _flushMicrotasks();
@@ -309,7 +372,7 @@ void main() {
       expect(engine.audioConfig, isNull);
 
       final startAudioRequest = connector.sentRequests[2] as StartAudioRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         StartAudioResponse(
           id: startAudioRequest.id,
           success: true,
@@ -345,7 +408,7 @@ void main() {
 
       final readyCheckRequest =
           connector.sentRequests.single as EngineReadyCheckRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
       );
 
@@ -357,7 +420,7 @@ void main() {
       );
 
       final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         ModelInitResponse(id: modelInitRequest.id, success: true),
       );
 
@@ -382,7 +445,7 @@ void main() {
 
       final initializeRequest =
           connector.sentRequests[2] as InitializeProcessingGraphNodesRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         InitializeProcessingGraphNodesResponse(
           id: initializeRequest.id,
           didInitialize: true,
@@ -413,7 +476,7 @@ void main() {
 
       final publishRequest =
           connector.sentRequests[3] as PublishProcessingGraphRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         PublishProcessingGraphResponse(id: publishRequest.id, success: true),
       );
 
@@ -440,7 +503,7 @@ void main() {
 
         final readyCheckRequest =
             connector.sentRequests.single as EngineReadyCheckRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
         );
 
@@ -461,7 +524,7 @@ void main() {
         );
 
         final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           ModelInitResponse(id: modelInitRequest.id, success: true),
         );
         await _flushMicrotasks();
@@ -473,7 +536,7 @@ void main() {
 
         final startAudioRequest =
             connector.sentRequests[2] as StartAudioRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           StartAudioResponse(
             id: startAudioRequest.id,
             success: true,
@@ -495,6 +558,239 @@ void main() {
         );
       },
     );
+
+    test(
+      'stopping cancels the session before Exit and process cleanup finish',
+      () async {
+        final states = <EngineState>[];
+        final subscription = engine.engineStateStream.listen(states.add);
+        addTearDown(subscription.cancel);
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        final ended = engine.sessionEnded;
+        final pending = expectLater(
+          engine.modelSyncApi.debugGetEngineJson(),
+          throwsStateError,
+        );
+        engine.holdRequestsForRender();
+        final held = expectLater(
+          engine.processingGraphApi.publish(),
+          throwsStateError,
+        );
+        connector.shutdownCompletion = Completer<void>();
+
+        final stopping = engine.stop();
+        expect(engine.engineState, EngineState.stopping);
+        expect(engine.isRunning, isFalse);
+        expect(engine.isAudioReady, isFalse);
+        expect(engine.audioConfig, isNull);
+        await ended;
+        await pending;
+        await held;
+        await expectLater(
+          engine.modelSyncApi.debugGetEngineJson(),
+          throwsStateError,
+        );
+        await _flushMicrotasks();
+
+        final exit = connector.sentRequests.last as Exit;
+        connector.emitMessage(ExitReply(id: exit.id));
+        await _flushMicrotasks();
+        expect(connector.isDisposed, isTrue);
+        expect(engine.engineState, EngineState.stopping);
+
+        connector.shutdownCompletion!.complete();
+        await stopping;
+        await _flushMicrotasks();
+        expect(engine.engineState, EngineState.stopped);
+        expect(states, [
+          EngineState.starting,
+          EngineState.running,
+          EngineState.stopping,
+          EngineState.stopped,
+        ]);
+      },
+    );
+
+    test(
+      'a send failure ends the session and fails pending requests',
+      () async {
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        final pending = expectLater(
+          engine.modelSyncApi.debugGetEngineJson(
+            timeout: const Duration(days: 1),
+          ),
+          throwsStateError,
+        );
+        final sentBeforeFailure = connector.sentRequests.length;
+        connector.shutdownCompletion = Completer<void>();
+        connector.sendError = StateError('IPC write failed.');
+
+        final failedSend = expectLater(
+          engine.modelSyncApi.debugGetEngineJson(
+            timeout: const Duration(days: 1),
+          ),
+          throwsStateError,
+        );
+        await pending;
+        await failedSend;
+        await engine.sessionEnded;
+        expect(connector.isDisposed, isTrue);
+        expect(engine.engineState, EngineState.stopping);
+        expect(connector.sentRequests, hasLength(sentBeforeFailure));
+
+        connector.shutdownCompletion!.complete();
+        await engine.stop();
+        expect(engine.engineState, EngineState.stopped);
+      },
+    );
+
+    test(
+      'connection loss ends only its own session and waits for cleanup',
+      () async {
+        await engine.sessionEnded;
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        final firstConnector = connector;
+        final firstSession = engine.sessionEnded;
+        firstConnector.shutdownCompletion = Completer<void>();
+        firstConnector.dispose();
+        expect(engine.engineState, EngineState.stopping);
+        await firstSession;
+        firstConnector.shutdownCompletion!.complete();
+        await engine.stop();
+        expect(engine.engineState, EngineState.stopped);
+
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        var replacementEnded = false;
+        final replacementSession = engine.sessionEnded;
+        expect(replacementSession, isNot(same(firstSession)));
+        unawaited(
+          replacementSession.then<void>((_) {
+            replacementEnded = true;
+          }),
+        );
+        firstConnector.emitExit();
+        await _flushMicrotasks();
+        expect(engine.engineState, EngineState.running);
+        expect(replacementEnded, isFalse);
+        await firstSession;
+
+        connector.dispose();
+        await engine.stop();
+        await replacementSession;
+      },
+    );
+
+    test(
+      'cleanup failure leaves the engine stopping until cleanup succeeds',
+      () async {
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        connector.shutdownCompletion = Completer<void>();
+        connector.dispose();
+        final failedCleanup = expectLater(engine.stop(), throwsStateError);
+        await engine.sessionEnded;
+        await _flushMicrotasks();
+        connector.shutdownCompletion!.completeError(
+          StateError('Cleanup failed.'),
+        );
+        await failedCleanup;
+        expect(engine.engineState, EngineState.stopping);
+
+        connector.shutdownCompletion = Completer<void>()..complete();
+        await engine.stop();
+        expect(engine.engineState, EngineState.stopped);
+      },
+    );
+
+    test('confirmed process exit ends stopping even when shutdown reports an error', () async {
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+      connector.shutdownCompletion = Completer<void>();
+      connector.dispose();
+      final stopping = expectLater(engine.stop(), throwsStateError);
+      await _flushMicrotasks();
+      connector.reportedExitCode = 9;
+      connector.shutdownCompletion!.completeError(StateError('Forced exit.'));
+      await stopping;
+      expect(engine.engineState, EngineState.stopped);
+    });
+
+    test(
+      'restart waits for process cleanup before creating a new connector',
+      () async {
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        final original = connector;
+        original.shutdownCompletion = Completer<void>();
+        original.dispose();
+        final restart = engine.start(initializeAudio: false);
+        await _flushMicrotasks();
+        expect(connector, same(original));
+        expect(engine.engineState, EngineState.stopping);
+
+        original.shutdownCompletion!.complete();
+        await _flushMicrotasks();
+        expect(connector, isNot(same(original)));
+        connector.completeInit();
+        await _flushMicrotasks();
+        final ready = connector.sentRequests.single as EngineReadyCheckRequest;
+        connector.emitMessage(
+          EngineReadyCheckResponse(id: ready.id, success: true),
+        );
+        await _flushMicrotasks();
+        final init = connector.sentRequests.last as ModelInitRequest;
+        connector.emitMessage(ModelInitResponse(id: init.id, success: true));
+        await restart;
+        expect(engine.engineState, EngineState.running);
+        connector.dispose();
+        await engine.stop();
+      },
+    );
+
+    test('connection loss during initialization waits for cleanup before start returns', () async {
+      final startup = engine.start(initializeAudio: false);
+      connector.shutdownCompletion = Completer<void>();
+      var startupFinished = false;
+      unawaited(
+        startup.then<void>((_) {
+          startupFinished = true;
+        }),
+      );
+      connector.dispose();
+      await engine.sessionEnded;
+      await _flushMicrotasks();
+      expect(engine.engineState, EngineState.stopping);
+      expect(startupFinished, isFalse);
+
+      connector.shutdownCompletion!.complete();
+      await startup;
+      expect(engine.engineState, EngineState.stopped);
+    });
 
     test('stop during startup handshake disposes the connector and returns to stopped', () async {
       final startFuture = engine.start();
@@ -520,7 +816,7 @@ void main() {
 
       final readyCheckRequest =
           connector.sentRequests.single as EngineReadyCheckRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         EngineReadyCheckResponse(
           id: readyCheckRequest.id,
           success: false,
@@ -546,20 +842,20 @@ void main() {
 
         final readyCheckRequest =
             connector.sentRequests.single as EngineReadyCheckRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
         );
         await _flushMicrotasks();
 
         final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           ModelInitResponse(id: modelInitRequest.id, success: true),
         );
         await _flushMicrotasks();
 
         final startAudioRequest =
             connector.sentRequests[2] as StartAudioRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           StartAudioResponse(
             id: startAudioRequest.id,
             success: false,
@@ -589,9 +885,7 @@ void main() {
         inputChannelCount: 0,
         outputChannelCount: 2,
       );
-      connector.emitResponse(
-        AudioReadyEvent(id: -1, audioConfig: restartedAudioConfig),
-      );
+      connector.emitMessage(AudioReadyEvent(audioConfig: restartedAudioConfig));
 
       expect(engine.isAudioReady, isTrue);
       expect(engine.audioConfig?.sampleRate, restartedAudioConfig.sampleRate);
@@ -612,11 +906,8 @@ void main() {
           invalidationReasons.add,
         );
 
-        connector.emitResponse(
-          AudioSessionInvalidatedEvent(
-            id: -1,
-            reason: 'The audio device restarted.',
-          ),
+        connector.emitMessage(
+          AudioSessionInvalidatedEvent(reason: 'The audio device restarted.'),
         );
 
         await _flushMicrotasks();
@@ -635,7 +926,7 @@ void main() {
 
         final stopAudioRequest =
             connector.sentRequests.last as StopAudioRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           StopAudioResponse(id: stopAudioRequest.id, success: true),
         );
 
@@ -663,7 +954,7 @@ void main() {
       expect(connector.sentRequests.last, isA<StopAudioRequest>());
 
       final stopAudioRequest = connector.sentRequests.last as StopAudioRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         StopAudioResponse(id: stopAudioRequest.id, success: true),
       );
 
@@ -685,13 +976,13 @@ void main() {
 
         final readyCheckRequest =
             connector.sentRequests.single as EngineReadyCheckRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
         );
         await _flushMicrotasks();
 
         final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           ModelInitResponse(id: modelInitRequest.id, success: true),
         );
 
@@ -708,7 +999,7 @@ void main() {
 
         final startAudioRequest =
             connector.sentRequests.last as StartAudioRequest;
-        connector.emitResponse(
+        connector.emitMessage(
           StartAudioResponse(
             id: startAudioRequest.id,
             success: true,
@@ -732,20 +1023,20 @@ void main() {
 
       final readyCheckRequest =
           connector.sentRequests.single as EngineReadyCheckRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         EngineReadyCheckResponse(id: readyCheckRequest.id, success: true),
       );
       await _flushMicrotasks();
 
       final modelInitRequest = connector.sentRequests[1] as ModelInitRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         ModelInitResponse(id: modelInitRequest.id, success: true),
       );
 
       await startFuture;
       await _flushMicrotasks();
 
-      final renderEvents = <Response>[];
+      final renderEvents = <IpcEvent>[];
       final subscription = engine.renderEventStream.listen(renderEvents.add);
 
       final startRenderFuture = engine.renderApi.startRenderAudioSession(
@@ -757,7 +1048,7 @@ void main() {
 
       final startRenderRequest =
           connector.sentRequests.last as StartRenderAudioSessionRequest;
-      connector.emitResponse(
+      connector.emitMessage(
         StartRenderAudioSessionResponse(
           id: startRenderRequest.id,
           success: true,
@@ -803,12 +1094,10 @@ void main() {
         equals(RenderAudioSampleFormat.floatingPoint),
       );
 
-      connector.emitResponse(RenderStartedEvent(id: -1, renderId: 42));
-      connector.emitResponse(
-        RenderProgressEvent(id: -1, renderId: 42, progress: 0.5),
-      );
-      connector.emitResponse(RenderCompletedEvent(id: -1, renderId: 42));
-      connector.emitResponse(
+      connector.emitMessage(RenderStartedEvent(renderId: 42));
+      connector.emitMessage(RenderProgressEvent(renderId: 42, progress: 0.5));
+      connector.emitMessage(RenderCompletedEvent(renderId: 42));
+      connector.emitMessage(
         RenderAudioResponse(id: renderRequest.id, success: true, renderId: 42),
       );
 
@@ -874,7 +1163,7 @@ void main() {
         final renderPublishRequest = connector.sentRequests
             .whereType<PublishProcessingGraphRequest>()
             .last;
-        connector.emitResponse(
+        connector.emitMessage(
           PublishProcessingGraphResponse(
             id: renderPublishRequest.id,
             success: true,
@@ -908,7 +1197,7 @@ void main() {
         final publishRequest = connector.sentRequests
             .whereType<PublishProcessingGraphRequest>()
             .last;
-        connector.emitResponse(
+        connector.emitMessage(
           PublishProcessingGraphResponse(id: publishRequest.id, success: true),
         );
 
@@ -929,7 +1218,7 @@ void main() {
           generation: 2,
           sampleRate: 48000,
           newestSampleTimestamp: 0,
-          update: VisualizationUpdateEvent(id: -1, items: []),
+          items: [],
           discontinuity: true,
         );
         connector.handleVisualizationRecord(record);
@@ -938,37 +1227,13 @@ void main() {
       },
     );
 
-    test('VisualizationUpdateEvent is forwarded to the project visualization provider', () async {
-      await _startEngineThroughInit(
-        engine,
-        () => connector,
-        audioConfig: startupAudioConfig,
-      );
-
-      final update = VisualizationUpdateEvent(
-        id: -1,
-        items: [
-          VisualizationItem(
-            id: 'cpu',
-            valueType: VisualizationValueType.doubleValue,
-            values: [0.5],
-            sampleTimestamps: [1],
-          ),
-        ],
-      );
-
-      connector.emitResponse(update);
-
-      verify(visualizationProvider.processVisualizationUpdate(any)).called(1);
-    });
-
     test('connector continues processing later responses after a handler exception', () {
-      final receivedResponses = <Response>[];
+      final receivedResponses = <IpcMessage>[];
       final connector = _TestEngineConnector(
         kDebugMode: false,
-        onReply: (response) {
-          if (response is VisualizationUpdateEvent) {
-            throw StateError('Synthetic visualization failure.');
+        onMessage: (response) {
+          if (response is AudioSessionInvalidatedEvent) {
+            throw StateError('Synthetic event handler failure.');
           }
 
           receivedResponses.add(response);
@@ -976,18 +1241,8 @@ void main() {
       );
 
       connector.onReceive(
-        _frameResponses([
-          VisualizationUpdateEvent(
-            id: -1,
-            items: [
-              VisualizationItem(
-                id: 'cpu',
-                valueType: VisualizationValueType.doubleValue,
-                values: [0.5],
-                sampleTimestamps: [1],
-              ),
-            ],
-          ),
+        _frameMessages([
+          AudioSessionInvalidatedEvent(reason: 'device disconnected'),
           StopAudioResponse(id: 7, success: true),
         ]),
       );
@@ -1021,9 +1276,8 @@ void main() {
         audioConfig: startupAudioConfig,
       );
 
-      connector.emitResponse(
+      connector.emitMessage(
         PluginChangedEvent(
-          id: -1,
           nodeId: 1,
           latencyChanged: false,
           parameterInfoChanged: false,
@@ -1031,13 +1285,8 @@ void main() {
           nonParameterStateChanged: true,
         ),
       );
-      connector.emitResponse(
-        PluginParameterChangedEvent(
-          id: -1,
-          nodeId: 1,
-          controlPortId: 100,
-          value: 0.75,
-        ),
+      connector.emitMessage(
+        PluginParameterChangedEvent(nodeId: 1, controlPortId: 100, value: 0.75),
       );
 
       verify(node.touchControlInputParameter(any)).called(1);
@@ -1068,9 +1317,8 @@ void main() {
         audioConfig: startupAudioConfig,
       );
 
-      connector.emitResponse(
+      connector.emitMessage(
         PluginParameterSnapshotEvent(
-          id: -1,
           nodeId: 1,
           parameterValues: [
             ProcessingGraphParameterValue(
@@ -1112,25 +1360,18 @@ void main() {
         audioConfig: startupAudioConfig,
       );
 
-      connector.emitResponse(
+      connector.emitMessage(
         PluginParameterGestureEvent(
-          id: -1,
           nodeId: 1,
           controlPortId: 100,
           isStarting: true,
         ),
       );
-      connector.emitResponse(
-        PluginParameterChangedEvent(
-          id: -1,
-          nodeId: 1,
-          controlPortId: 100,
-          value: 0.75,
-        ),
+      connector.emitMessage(
+        PluginParameterChangedEvent(nodeId: 1, controlPortId: 100, value: 0.75),
       );
-      connector.emitResponse(
+      connector.emitMessage(
         PluginParameterGestureEvent(
-          id: -1,
           nodeId: 1,
           controlPortId: 100,
           isStarting: false,
@@ -1145,6 +1386,93 @@ void main() {
       expect(capturedCommand.oldValue, equals(0.25));
       expect(capturedCommand.newValue, equals(0.75));
     });
+
+    test(
+      'restarting the engine discards unfinished plugin parameter gestures',
+      () async {
+        final node = MockNodeModel();
+        final port = NodePortModel(
+          nodeId: 1,
+          id: 100,
+          config: NodePortConfigModel(
+            dataType: NodePortDataType.control,
+            parameterConfig: ParameterConfigModel(
+              id: 100,
+              factoryDefaultValue: 0,
+            ),
+          ),
+        );
+        port.parameterValue = 0.25;
+        when(node.controlInputPorts)
+            .thenReturn(AnthemObservableList.of([port]));
+        nodes[1] = node;
+
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+        connector.emitMessage(
+          PluginParameterGestureEvent(
+            nodeId: 1,
+            controlPortId: 100,
+            isStarting: true,
+          ),
+        );
+        connector.emitMessage(
+          PluginParameterChangedEvent(
+            nodeId: 1,
+            controlPortId: 100,
+            value: 0.75,
+          ),
+        );
+
+        connector.dispose();
+        connector.emitExit();
+        await _startEngineThroughInit(
+          engine,
+          () => connector,
+          audioConfig: startupAudioConfig,
+        );
+
+        connector.emitMessage(
+          PluginParameterGestureEvent(
+            nodeId: 1,
+            controlPortId: 100,
+            isStarting: false,
+          ),
+        );
+        verifyNever(project.push(any));
+
+        connector.emitMessage(
+          PluginParameterGestureEvent(
+            nodeId: 1,
+            controlPortId: 100,
+            isStarting: true,
+          ),
+        );
+        connector.emitMessage(
+          PluginParameterChangedEvent(
+            nodeId: 1,
+            controlPortId: 100,
+            value: 0.5,
+          ),
+        );
+        connector.emitMessage(
+          PluginParameterGestureEvent(
+            nodeId: 1,
+            controlPortId: 100,
+            isStarting: false,
+          ),
+        );
+
+        final command =
+            verify(project.push(captureAny)).captured.single
+                as SetParameterValueCommand;
+        expect(command.oldValue, 0.75);
+        expect(command.newValue, 0.5);
+      },
+    );
 
     test('plugin parameter gesture start touches parameter', () async {
       final port = NodePortModel(
@@ -1170,17 +1498,15 @@ void main() {
         audioConfig: startupAudioConfig,
       );
 
-      connector.emitResponse(
+      connector.emitMessage(
         PluginParameterGestureEvent(
-          id: -1,
           nodeId: 1,
           controlPortId: 100,
           isStarting: true,
         ),
       );
-      connector.emitResponse(
+      connector.emitMessage(
         PluginParameterGestureEvent(
-          id: -1,
           nodeId: 1,
           controlPortId: 100,
           isStarting: false,
@@ -1203,12 +1529,75 @@ void main() {
         audioConfig: startupAudioConfig,
       );
 
-      connector.emitResponse(PluginLoadedEvent(id: -1, nodeId: 1));
+      connector.emitMessage(PluginLoadedEvent(nodeId: 1));
 
       await pluginLoadedCompleter.future;
 
       expect(pluginLoadedCompleter.isCompleted, isTrue);
     });
+
+    test(
+      'audio and render notifications survive restart and close on disposal',
+      () async {
+        final invalidations = <String?>[];
+        final renderEvents = <IpcEvent>[];
+        final audioClosed = Completer<void>();
+        final renderClosed = Completer<void>();
+        final audioSubscription = engine.audioSessionInvalidatedStream.listen(
+          invalidations.add,
+          onDone: audioClosed.complete,
+        );
+        final renderSubscription = engine.renderEventStream.listen(
+          renderEvents.add,
+          onDone: renderClosed.complete,
+        );
+        addTearDown(audioSubscription.cancel);
+        addTearDown(renderSubscription.cancel);
+
+        for (var attempt = 0; attempt < 2; attempt++) {
+          await _startEngineThroughInit(
+            engine,
+            () => connector,
+            audioConfig: startupAudioConfig,
+          );
+          connector.emitMessage(
+            RenderProgressEvent(renderId: attempt, progress: 0.5),
+          );
+          connector.emitMessage(
+            AudioSessionInvalidatedEvent(reason: 'device restart $attempt'),
+          );
+          await _flushMicrotasks();
+
+          expect(engine.isAudioReady, isFalse);
+          expect(engine.audioConfig, isNull);
+          expect(audioClosed.isCompleted, isFalse);
+          expect(renderClosed.isCompleted, isFalse);
+
+          connector.emitMessage(
+            AudioReadyEvent(audioConfig: startupAudioConfig),
+          );
+          expect(engine.isAudioReady, isTrue);
+          connector.dispose();
+          connector.emitExit();
+          expect(engine.isAudioReady, isFalse);
+          expect(engine.audioConfig, isNull);
+        }
+
+        await _flushMicrotasks();
+        expect(invalidations, ['device restart 0', 'device restart 1']);
+        expect(
+          renderEvents.whereType<RenderProgressEvent>().map(
+            (event) => event.renderId,
+          ),
+          [0, 1],
+        );
+        expect(audioClosed.isCompleted, isFalse);
+        expect(renderClosed.isCompleted, isFalse);
+
+        await engine.dispose();
+        await Future.wait([audioClosed.future, renderClosed.future]);
+      },
+    );
 
     test('stopping the engine clears the engine audio config', () async {
       await _startEngineThroughInit(

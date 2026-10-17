@@ -148,6 +148,27 @@ void main() {
     );
   }
 
+  var recordSequence = 0;
+  VisualizationRecord testVisualizationRecord({
+    required List<VisualizationItem> items,
+  }) {
+    var newestSampleTimestamp = 0;
+    for (final item in items) {
+      for (final timestamp in item.sampleTimestamps) {
+        if (timestamp > newestSampleTimestamp) {
+          newestSampleTimestamp = timestamp;
+        }
+      }
+    }
+    return VisualizationRecord(
+      sequence: recordSequence++,
+      generation: 1,
+      sampleRate: 48000,
+      newestSampleTimestamp: newestSampleTimestamp,
+      items: items,
+    );
+  }
+
   Future<void> pumpMultiVisualizationBuilder(
     WidgetTester tester, {
     required ProjectModel project,
@@ -207,9 +228,8 @@ void main() {
         notificationCount++;
       });
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'a',
@@ -231,9 +251,8 @@ void main() {
       expect(controller.engineTime, isNull);
       expect(notificationCount, 2);
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'a',
@@ -277,9 +296,8 @@ void main() {
         notificationCount++;
       });
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'a',
@@ -317,9 +335,8 @@ void main() {
       ]);
       expect(notificationCount, 3);
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'a',
@@ -369,9 +386,8 @@ void main() {
         minimumUpdateInterval: const Duration(seconds: 1),
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'single',
@@ -427,9 +443,8 @@ void main() {
       VisualizationSubscriptionConfig.max('max'),
     );
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(id: 'latest', values: [0.5]),
           testVisualizationItem(id: 'max', values: [0.5]),
@@ -440,9 +455,8 @@ void main() {
     expect(latest.readValue(), 0.5);
     expect(max.readValue(), 0.5);
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(id: 'latest', values: [0.6, 0.7, 0.8]),
           testVisualizationItem(id: 'max', values: [0.6, 1.2, 0.8]),
@@ -453,9 +467,8 @@ void main() {
     expect(latest.readValue(), 0.8);
     expect(max.readValue(), 1.2);
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(id: 'max', values: [0.7, 0.9]),
         ],
@@ -477,9 +490,8 @@ void main() {
     final latestInt = setup.visualizationProvider.subscribe(
       VisualizationSubscriptionConfig.latestInt('int_latest'),
     );
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'int_latest',
@@ -534,9 +546,8 @@ void main() {
       VisualizationSubscriptionConfig.max('max'),
     );
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'latest',
@@ -615,9 +626,8 @@ void main() {
       VisualizationSubscriptionConfig.latestDouble('latest'),
     );
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'latest',
@@ -675,8 +685,8 @@ void main() {
         ..sampleTimestamps = [10];
 
       expect(
-        () => setup.visualizationProvider.processVisualizationUpdate(
-          VisualizationUpdateEvent(id: 0, items: [malformedItem]),
+        () => setup.visualizationProvider.processVisualizationRecord(
+          testVisualizationRecord(items: [malformedItem]),
         ),
         throwsA(isA<StateError>()),
       );
@@ -693,9 +703,8 @@ void main() {
       VisualizationSubscriptionConfig.latestDouble('subscriptionId'),
     );
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'subscriptionId',
@@ -712,6 +721,34 @@ void main() {
     setup.visualizationProvider.dispose();
   });
 
+  test('records from a different audio configuration are ignored', () {
+    final setup = createProjectWithVisualizationProvider();
+    addTearDown(setup.visualizationProvider.dispose);
+    final subscription = setup.visualizationProvider.subscribe(
+      VisualizationSubscriptionConfig.latestDouble('value'),
+    );
+    final items = [
+      testVisualizationItem(id: 'value', values: [1.0]),
+    ];
+
+    setup.visualizationProvider.processVisualizationRecord(
+      VisualizationRecord(
+        sequence: 0,
+        generation: 2,
+        sampleRate: 44100,
+        newestSampleTimestamp: 1,
+        items: items,
+      ),
+    );
+    expect(subscription.readValue(), 0.0);
+
+    // The rejected record must not advance the accepted generation.
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(items: items),
+    );
+    expect(subscription.readValue(), 1.0);
+  });
+
   test('Visualization updates reject mismatched declared value types', () {
     final setup = createProjectWithVisualizationProvider();
     setup.visualizationProvider.subscribe(
@@ -719,9 +756,8 @@ void main() {
     );
 
     expect(
-      () => setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      () => setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'subscriptionId',
@@ -763,9 +799,8 @@ void main() {
       VisualizationSubscriptionConfig.latestInt('playhead_sequence_id'),
     );
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'playhead_sequence_id',
@@ -824,17 +859,14 @@ void main() {
             generation: generation,
             sampleRate: 48000,
             newestSampleTimestamp: timestamp,
-            update: VisualizationUpdateEvent(
-              id: -1,
-              items: [
-                if (ids.isNotEmpty)
-                  testVisualizationItem(
-                    id: 'playhead_sequence_id',
-                    values: ids,
-                    sampleTimestamps: [timestamp],
-                  ),
-              ],
-            ),
+            items: [
+              if (ids.isNotEmpty)
+                testVisualizationItem(
+                  id: 'playhead_sequence_id',
+                  values: ids,
+                  sampleTimestamps: [timestamp],
+                ),
+            ],
           ),
         );
       }
@@ -877,9 +909,8 @@ void main() {
         engineStateStream: engineStates.stream,
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'playhead_sequence_id',
@@ -919,9 +950,8 @@ void main() {
     () {
       final setup = createProjectWithVisualizationProvider();
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(id: 'cached', values: [1]),
           ],
@@ -1055,21 +1085,18 @@ void main() {
             sampleRate: 48000,
             newestSampleTimestamp: timestamps.last,
             discontinuity: discontinuity,
-            update: VisualizationUpdateEvent(
-              id: -1,
-              items: [
-                testVisualizationItem(
-                  id: 'playhead',
-                  values: positions,
-                  sampleTimestamps: timestamps,
-                ),
-                testVisualizationItem(
-                  id: 'meter',
-                  values: peaks,
-                  sampleTimestamps: timestamps,
-                ),
-              ],
-            ),
+            items: [
+              testVisualizationItem(
+                id: 'playhead',
+                values: positions,
+                sampleTimestamps: timestamps,
+              ),
+              testVisualizationItem(
+                id: 'meter',
+                values: peaks,
+                sampleTimestamps: timestamps,
+              ),
+            ],
           ),
         );
       }
@@ -1109,16 +1136,13 @@ void main() {
           sampleRate: 48000,
           newestSampleTimestamp: 10,
           discontinuity: true,
-          update: VisualizationUpdateEvent(
-            id: -1,
-            items: [
-              testVisualizationItem(
-                id: 'value',
-                values: [value],
-                sampleTimestamps: [10],
-              ),
-            ],
-          ),
+          items: [
+            testVisualizationItem(
+              id: 'value',
+              values: [value],
+              sampleTimestamps: [10],
+            ),
+          ],
         ),
       );
     }
@@ -1161,16 +1185,13 @@ void main() {
             generation: 1,
             sampleRate: 48000,
             newestSampleTimestamp: timestamp,
-            update: VisualizationUpdateEvent(
-              id: -1,
-              items: [
-                testVisualizationItem(
-                  id: 'meter',
-                  values: [value],
-                  sampleTimestamps: [timestamp],
-                ),
-              ],
-            ),
+            items: [
+              testVisualizationItem(
+                id: 'meter',
+                values: [value],
+                sampleTimestamps: [timestamp],
+              ),
+            ],
           ),
         );
       }
@@ -1213,9 +1234,8 @@ void main() {
       ),
     );
 
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'playhead_position',
@@ -1227,9 +1247,8 @@ void main() {
     );
 
     wallClock = const Duration(milliseconds: 16);
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'playhead_position',
@@ -1241,9 +1260,8 @@ void main() {
     );
 
     wallClock = const Duration(milliseconds: 56);
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'playhead_position',
@@ -1255,9 +1273,8 @@ void main() {
     );
 
     wallClock = const Duration(milliseconds: 72);
-    setup.visualizationProvider.processVisualizationUpdate(
-      VisualizationUpdateEvent(
-        id: 0,
+    setup.visualizationProvider.processVisualizationRecord(
+      testVisualizationRecord(
         items: [
           testVisualizationItem(
             id: 'playhead_position',
@@ -1298,9 +1315,8 @@ void main() {
         ),
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'meter',
@@ -1312,9 +1328,8 @@ void main() {
       );
 
       wallClock = const Duration(milliseconds: 16);
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'meter',
@@ -1326,9 +1341,8 @@ void main() {
       );
 
       wallClock = const Duration(milliseconds: 56);
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'meter',
@@ -1340,9 +1354,8 @@ void main() {
       );
 
       wallClock = const Duration(milliseconds: 72);
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(
               id: 'meter',
@@ -1384,9 +1397,8 @@ void main() {
         config: VisualizationSubscriptionConfig.latestInt('a'),
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(id: 'a', values: [1]),
           ],
@@ -1404,9 +1416,8 @@ void main() {
 
       expect(find.text('null'), findsOneWidget);
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(id: 'a', values: [9]),
             testVisualizationItem(id: 'b', values: [2]),
@@ -1434,9 +1445,8 @@ void main() {
         configs: [VisualizationSubscriptionConfig.latestInt('a')],
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(id: 'a', values: [1]),
           ],
@@ -1455,9 +1465,8 @@ void main() {
         ],
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(id: 'a', values: [2]),
             testVisualizationItem(id: 'b', values: [3]),
@@ -1488,9 +1497,8 @@ void main() {
         ],
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(id: 'a', values: [1]),
             testVisualizationItem(id: 'b', values: [2]),
@@ -1510,9 +1518,8 @@ void main() {
         ],
       );
 
-      setup.visualizationProvider.processVisualizationUpdate(
-        VisualizationUpdateEvent(
-          id: 0,
+      setup.visualizationProvider.processVisualizationRecord(
+        testVisualizationRecord(
           items: [
             testVisualizationItem(id: 'a', values: [4]),
             testVisualizationItem(id: 'b', values: [3]),

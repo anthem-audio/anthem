@@ -122,18 +122,3 @@ abstract class _VisualizationItem {
     required this.sampleTimestamps,
   });
 }
-
-/// An unsolicited response that gives back visualization data.
-class VisualizationUpdateEvent extends Response {
-  /// The list of visualization items that the engine is sending updates for.
-  ///
-  /// This is a list of strings that are the IDs of the visualization items. The
-  /// engine will only send updates for these items.
-  List<VisualizationItem> items;
-
-  VisualizationUpdateEvent.uninitialized() : items = [];
-
-  VisualizationUpdateEvent({required int id, required this.items}) {
-    super.id = id;
-  }
-}

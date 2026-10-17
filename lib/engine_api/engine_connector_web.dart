@@ -41,7 +41,8 @@ class EngineConnector extends EngineConnectorBase {
   EngineConnector(
     int id, {
     required super.kDebugMode,
-    super.onReply,
+    super.onMessage,
+    super.onConnectionClosed,
     void Function()? onExit,
     super.noHeartbeat = false,
     String? enginePathOverride,
@@ -69,13 +70,13 @@ class EngineConnector extends EngineConnectorBase {
   void _init() {
     _isInitialized = true;
     for (var message in _pendingMessages) {
-      send(message);
+      sendBytes(message);
     }
     _pendingMessages.clear();
   }
 
   @override
-  void send(Uint8List bytes) {
+  void sendBytes(Uint8List bytes) {
     if (_disposed) return;
     if (!_isInitialized) {
       _pendingMessages.add(bytes);
@@ -111,6 +112,7 @@ class EngineConnector extends EngineConnectorBase {
 
   @override
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
     _isInitialized = false;
     super.dispose();

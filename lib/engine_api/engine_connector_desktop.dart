@@ -45,16 +45,16 @@ const _visualizationSharedMemorySize = 16 * 1024 * 1024 + 128;
 /// The [EngineConnector] class manages an engine process. It uses a socket to
 /// communicate with the process.
 ///
-/// The [send] method can be used to send messages to the engine. A message can
-/// be sent like so:
+/// The [sendMessage] method can be used to send messages to the engine:
 ///
 /// ```dart
 /// final engineConnectorID = getId();
 /// final engineConnector = EngineConnector(
 ///   engineConnectorID,
-///   (Response response) {
+///   kDebugMode: false,
+///   onMessage: (IpcMessage message) {
 ///     // Handle reply here...
-///   }
+///   },
 /// );
 ///
 /// // ...
@@ -63,10 +63,7 @@ const _visualizationSharedMemorySize = 16 * 1024 * 1024 + 128;
 ///
 /// final request = Heartbeat(id: id);
 ///
-/// final encoder = JsonUtf8Encoder();
-/// final requestBytes = encoder.convert(request.toJson()) as Uint8List;
-///
-/// engineConnector.send(requestBytes);
+/// engineConnector.sendMessage(request);
 /// ```
 class EngineConnector extends EngineConnectorBase {
   /// This ID is sent to the engine in its environment on launch. The engine
@@ -94,13 +91,11 @@ class EngineConnector extends EngineConnectorBase {
   Future<void>? _shutdownFuture;
   Completer<void>? _engineConnectCompleter;
 
-  /// If any requests are sent before the engine starts and IPC is set up, this
-  /// list will hold the requests until the engine is initialized, at which
-  /// point they will all be sent.
-  final List<Uint8List> _bufferedRequests = [];
+  /// Messages buffered until the engine has connected to IPC.
+  final List<Uint8List> _bufferedMessages = [];
 
   /// Stream subscription for socket messages from the engine.
-  StreamSubscription<Uint8List>? _engineReplySub;
+  StreamSubscription<Uint8List>? _engineMessageSubscription;
 
   /// Used for integration tests to specify the path to the engine binary.
   final String? enginePathOverride;
@@ -108,24 +103,24 @@ class EngineConnector extends EngineConnectorBase {
   EngineConnector(
     this._id, {
     required super.kDebugMode,
-    super.onReply,
+    super.onMessage,
+    super.onConnectionClosed,
     this._onExit,
     super.noHeartbeat = false,
     this.enginePathOverride,
   }) {
     onInit = _init();
 
-    // If any requests came in before the engine was started, send them now.
+    // Send messages buffered before IPC was ready.
     onInit.then((success) {
       if (!success) return;
-      for (final request in _bufferedRequests) {
-        send(request);
+      for (final message in _bufferedMessages) {
+        sendBytes(message);
       }
     });
   }
 
-  /// Starts the engine process, sets up IPC, and starts the reply listener
-  /// isolate.
+  /// Starts the engine process, sets up IPC, and listens for engine messages.
   Future<bool> _init() async {
     // Wait for the socket server to start, since this is what the engines will
     // connect to. This will only cause a wait when the app is first launched.
@@ -322,10 +317,10 @@ class EngineConnector extends EngineConnectorBase {
 
   /// Sends the given bytes to the engine.
   @override
-  void send(Uint8List bytes) {
+  void sendBytes(Uint8List bytes) {
     if (_shuttingDown) return;
     if (!_initialized) {
-      _bufferedRequests.add(bytes);
+      _bufferedMessages.add(bytes);
       return;
     }
 
@@ -362,8 +357,8 @@ class EngineConnector extends EngineConnectorBase {
     if (terminateProcess) _engineProcess?.kill();
 
     // Unsubscribe from engine replies
-    _engineReplySub?.cancel();
-    _bufferedRequests.clear();
+    _engineMessageSubscription?.cancel();
+    _bufferedMessages.clear();
     EngineSocketServer.instance.cleanUpEngine(_id);
 
     _closeVisualizationSharedMemory();

@@ -67,7 +67,13 @@ abstract class EngineConnectorBase {
 
   final bool noHeartbeat;
 
-  final void Function(Response reply)? _onReply;
+  /// Receives every decoded JSON message, including heartbeat responses.
+  ///
+  /// The receiver dispatches requests, responses, and events.
+  final void Function(IpcMessage message)? _onMessage;
+
+  /// Reports that this connector can no longer exchange messages.
+  final void Function()? _onConnectionClosed;
 
   void Function(VisualizationRecord record)? onVisualizationRecord;
   VisualizationRecordConsumer? visualizationRecordConsumer;
@@ -93,25 +99,21 @@ abstract class EngineConnectorBase {
 
   void handleVisualizationRecord(VisualizationRecord record) {
     try {
-      final callback = onVisualizationRecord;
-      if (callback != null) {
-        callback(record);
-      } else {
-        _onReply?.call(record.update);
-      }
+      onVisualizationRecord?.call(record);
     } catch (error, stackTrace) {
       _log.severe('Failed to process visualization update.', error, stackTrace);
     }
   }
 
-  late final LengthPrefixedJsonDecoder _responseDecoder;
+  late final LengthPrefixedJsonDecoder _messageDecoder;
 
   EngineConnectorBase({
     required this.kDebugMode,
     required this.noHeartbeat,
-    this._onReply,
+    this._onMessage,
+    this._onConnectionClosed,
   }) {
-    _responseDecoder = LengthPrefixedJsonDecoder(
+    _messageDecoder = LengthPrefixedJsonDecoder(
       onMessage: _handleDecodedMessage,
     );
   }
@@ -135,12 +137,7 @@ abstract class EngineConnectorBase {
 
     _engineHeartbeatTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       final id = getRequestId();
-
-      final heartbeat = Heartbeat(id: id);
-
-      final encoder = JsonUtf8Encoder();
-
-      send(encoder.convert(heartbeat.toJson()) as Uint8List);
+      sendMessage(Heartbeat(id: id));
     });
   }
 
@@ -148,16 +145,20 @@ abstract class EngineConnectorBase {
     _heartbeatReceived = true;
   }
 
-  void send(Uint8List bytes);
+  /// Sends a serialized JSON payload using the platform's IPC transport.
+  ///
+  /// Implementations add transport framing as needed. Callers should use
+  /// [sendMessage] to serialize messages and handle send failures.
+  void sendBytes(Uint8List bytes);
 
   /// Called after the engine confirms that it opened the shared memory.
   void finalizeVisualizationSharedMemorySetup();
 
   void onReceive(Uint8List bytes) {
-    if (_onReply == null) return;
+    if (_disposed) return;
 
     try {
-      _responseDecoder.add(bytes);
+      _messageDecoder.add(bytes);
     } on FormatException catch (_) {
       // Malformed framing or JSON means the IPC stream can no longer be
       // interpreted reliably. Shut down the connector and surface the error.
@@ -167,33 +168,52 @@ abstract class EngineConnectorBase {
   }
 
   void _handleDecodedMessage(Object? json) {
+    if (_disposed) return;
     if (json is! Map<String, dynamic>) {
       throw FormatException(
-        'Expected an engine response to be a JSON object, got '
+        'Expected an IPC message to be a JSON object, got '
         '${json.runtimeType}.',
       );
     }
 
-    final response = Response.fromJson(json);
-
-    if (response is HeartbeatReply) {
-      acknowledgeHeartbeat();
-      return;
-    }
+    final message = IpcMessage.fromJson(json);
 
     try {
-      _onReply?.call(response);
+      _onMessage?.call(message);
     } catch (error, stackTrace) {
       _log.severe(
-        'Unhandled exception while processing engine response '
-        '${response.runtimeType}.',
+        'Unhandled exception while processing engine message '
+        '${message.runtimeType}.',
         error,
         stackTrace,
       );
     }
   }
 
+  /// Serializes [message] as JSON and sends it through this connection.
+  ///
+  /// Messages are ignored after disposal. If serialization or transmission
+  /// fails, closes the connector and reports connection closure.
+  ///
+  /// This method does not schedule requests or wait for responses. Asynchronous
+  /// request handlers must retain the connector that received their request so
+  /// their response cannot reach a replacement engine connection.
+  void sendMessage(IpcMessage message) {
+    if (_disposed) return;
+    try {
+      sendBytes(JsonUtf8Encoder().convert(message.toJson()) as Uint8List);
+    } catch (error, stackTrace) {
+      _log.severe(
+        'Failed to send IPC message ${message.runtimeType}.',
+        error,
+        stackTrace,
+      );
+      dispose();
+    }
+  }
+
   void dispose() {
+    if (_disposed) return;
     _disposed = true;
     _visualizationContinuation?.cancel();
     _visualizationContinuation = null;
@@ -205,5 +225,6 @@ abstract class EngineConnectorBase {
     _engineHeartbeatTimer?.cancel();
 
     _heartbeatReceived = false;
+    _onConnectionClosed?.call();
   }
 }

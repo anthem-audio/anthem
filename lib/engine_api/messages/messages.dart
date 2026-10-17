@@ -26,6 +26,7 @@ part 'model_sync.dart';
 part 'processing_graph.dart';
 part 'sequencer.dart';
 part 'visualization.dart';
+part 'test_messages.dart';
 
 part 'messages.g.dart';
 
@@ -250,54 +251,38 @@ class RenderAudioResponse extends Response {
   }
 }
 
-class RenderStartedEvent extends Response {
+class RenderStartedEvent extends IpcEvent {
   late int renderId;
 
   RenderStartedEvent.uninitialized();
 
-  RenderStartedEvent({required int id, required this.renderId}) {
-    super.id = id;
-  }
+  RenderStartedEvent({required this.renderId});
 }
 
-class RenderProgressEvent extends Response {
+class RenderProgressEvent extends IpcEvent {
   late int renderId;
   late double progress;
 
   RenderProgressEvent.uninitialized();
 
-  RenderProgressEvent({
-    required int id,
-    required this.renderId,
-    required this.progress,
-  }) {
-    super.id = id;
-  }
+  RenderProgressEvent({required this.renderId, required this.progress});
 }
 
-class RenderCompletedEvent extends Response {
+class RenderCompletedEvent extends IpcEvent {
   late int renderId;
 
   RenderCompletedEvent.uninitialized();
 
-  RenderCompletedEvent({required int id, required this.renderId}) {
-    super.id = id;
-  }
+  RenderCompletedEvent({required this.renderId});
 }
 
-class RenderFailedEvent extends Response {
+class RenderFailedEvent extends IpcEvent {
   late int renderId;
   late String error;
 
   RenderFailedEvent.uninitialized();
 
-  RenderFailedEvent({
-    required int id,
-    required this.renderId,
-    required this.error,
-  }) {
-    super.id = id;
-  }
+  RenderFailedEvent({required this.renderId, required this.error});
 }
 
 class TestSampleGainCurveRequest extends Request {
@@ -348,30 +333,63 @@ class TestSampleGainCurveResponse extends Response {
   }
 }
 
-/// Unsolicited response that is sent back one time, when the audio device has
-/// initialized.
-class AudioReadyEvent extends Response {
+/// Sent once when the audio device has initialized.
+class AudioReadyEvent extends IpcEvent {
   late AudioProcessingConfigDto audioConfig;
 
   AudioReadyEvent.uninitialized();
 
-  AudioReadyEvent({required int id, required this.audioConfig}) {
-    super.id = id;
-  }
+  AudioReadyEvent({required this.audioConfig});
 }
 
-/// Unsolicited response sent when the engine detects that the current audio
+/// Sent when the engine detects that the current audio
 /// session can no longer be used.
-class AudioSessionInvalidatedEvent extends Response {
+class AudioSessionInvalidatedEvent extends IpcEvent {
   String? reason;
 
   AudioSessionInvalidatedEvent.uninitialized();
 
-  AudioSessionInvalidatedEvent({required int id, this.reason}) {
+  AudioSessionInvalidatedEvent({this.reason});
+}
+
+@AnthemEnum()
+enum RequestErrorCode { unsupported, failed }
+
+/// Reports a failure to handle a [Request].
+class RequestErrorResponse extends Response {
+  late RequestErrorCode code;
+  late String message;
+
+  RequestErrorResponse.uninitialized();
+
+  RequestErrorResponse({
+    required int id,
+    required this.code,
+    required this.message,
+  }) {
     super.id = id;
   }
 }
 
+/// A message exchanged between the UI and engine.
+///
+/// Either side can send a [Request], [Response], or [IpcEvent]. The receiving
+/// side dispatches requests to its handlers and matches responses to requests
+/// it initiated. Events are delivered separately from request completion.
+@AnthemModel.ipc()
+sealed class IpcMessage extends _IpcMessage with _$IpcMessageAnthemModelMixin {
+  IpcMessage();
+
+  factory IpcMessage.fromJson(Map<String, dynamic> json) =>
+      _$IpcMessageAnthemModelMixin.fromJson(json);
+}
+
+abstract class _IpcMessage {}
+
+/// Requests an operation on the receiving side of the connection.
+///
+/// Each sender allocates its own [id]. A response uses the same ID as its
+/// request. Requests that do not need a response can be sent without waiting.
 @AnthemModel.ipc()
 sealed class Request extends _Request with _$RequestAnthemModelMixin {
   Request();
@@ -380,10 +398,13 @@ sealed class Request extends _Request with _$RequestAnthemModelMixin {
       _$RequestAnthemModelMixin.fromJson(json);
 }
 
-class _Request {
+abstract class _Request extends IpcMessage {
   late int id;
 }
 
+/// Replies to a request initiated by the receiving side.
+///
+/// The [id] must match the corresponding [Request.id].
 @AnthemModel.ipc()
 sealed class Response extends _Response with _$ResponseAnthemModelMixin {
   Response();
@@ -392,6 +413,20 @@ sealed class Response extends _Response with _$ResponseAnthemModelMixin {
       _$ResponseAnthemModelMixin.fromJson(json);
 }
 
-class _Response {
+abstract class _Response extends IpcMessage {
   late int id;
 }
+
+/// Reports an event without completing a request.
+///
+/// Events have no request ID. Any identifiers they carry refer to the operation
+/// or resource described by the event, such as a render session or graph node.
+@AnthemModel.ipc()
+sealed class IpcEvent extends _IpcEvent with _$IpcEventAnthemModelMixin {
+  IpcEvent();
+
+  factory IpcEvent.fromJson(Map<String, dynamic> json) =>
+      _$IpcEventAnthemModelMixin.fromJson(json);
+}
+
+abstract class _IpcEvent extends IpcMessage {}

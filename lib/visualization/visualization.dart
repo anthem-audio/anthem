@@ -28,10 +28,7 @@ import 'dart:ui';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
-    show
-        VisualizationSubscriptionSpec,
-        VisualizationUpdateEvent,
-        VisualizationValueType;
+    show VisualizationSubscriptionSpec, VisualizationValueType;
 import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/src/visualization_transport_stats.dart';
 import 'package:flutter/scheduler.dart';

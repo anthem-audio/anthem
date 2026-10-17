@@ -20,7 +20,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
@@ -31,6 +30,7 @@ import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/engine_api/visualization_record.dart';
 import 'package:anthem/model/model.dart';
@@ -50,12 +50,13 @@ const skipEngineIntegrationTests = false;
 Future<T> _sendRequestAndWaitForReply<T extends Response>({
   required EngineConnector engineConnector,
   required Request request,
-  required Stream<Response> replyStream,
+  required Stream<IpcMessage> replyStream,
 }) async {
-  final replyFuture = replyStream.firstWhere((reply) => reply.id == request.id);
+  final replyFuture = replyStream.firstWhere(
+    (reply) => reply is Response && reply.id == request.id,
+  );
 
-  final encoder = JsonUtf8Encoder();
-  engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+  engineConnector.sendMessage(request);
 
   return (await replyFuture) as T;
 }
@@ -65,10 +66,9 @@ Future<void> _sendExitAndWaitForProcess({
   required Stream<void> exitStream,
 }) async {
   final exitFuture = exitStream.first.timeout(Duration(seconds: 5));
-  final encoder = JsonUtf8Encoder();
   final request = Exit(id: engineConnector.getRequestId());
 
-  engineConnector.send(encoder.convert(request.toJson()) as Uint8List);
+  engineConnector.sendMessage(request);
   await exitFuture;
   expect(engineConnector.processExitCode, 0);
   engineConnector.dispose();
@@ -108,6 +108,244 @@ void main() {
       'Please build the engine before running the tests.',
     );
   }
+
+  test(
+    'native request client supports nested requests, errors, timeout and restart',
+    timeout: const Timeout(Duration(seconds: 60)),
+    () async {
+      Completer<Response>? previousSessionReply;
+      int? previousSessionRequestId;
+      for (var iteration = 0; iteration < 2; iteration++) {
+        final messages = StreamController<IpcMessage>.broadcast();
+        final exits = StreamController<void>.broadcast();
+        final connectionClosed = Completer<void>();
+        late final EngineConnector connector;
+        late FutureOr<Response> Function(TestUiEchoRequest) respond;
+
+        // This fixture is the native request client's peer. Production Engine
+        // dispatch is exercised separately below.
+        Future<void> handleEchoRequest(TestUiEchoRequest request) async {
+          final response = await respond(request);
+          connector.sendMessage(response);
+        }
+
+        connector = EngineConnector(
+          12345730,
+          enginePathOverride: enginePath!.toFilePath(
+            windows: Platform.isWindows,
+          ),
+          kDebugMode: false,
+          noHeartbeat: true,
+          onMessage: (message) {
+            if (message is TestUiEchoRequest) {
+              unawaited(handleEchoRequest(message));
+            } else {
+              messages.add(message);
+            }
+          },
+          onExit: () => exits.add(null),
+          onConnectionClosed: connectionClosed.complete,
+        );
+        addTearDown(() async {
+          await connector.shutdown();
+          await messages.close();
+          await exits.close();
+        });
+        expect(await connector.onInit, isTrue);
+        previousSessionReply?.complete(
+          TestUiEchoResponse(
+            id: previousSessionRequestId!,
+            value: 'from the previous connection',
+          ),
+        );
+
+        Future<TestUiEchoRoundTripResponse> echo(
+          String value, {
+          int timeoutMilliseconds = 5000,
+        }) => _sendRequestAndWaitForReply<TestUiEchoRoundTripResponse>(
+          engineConnector: connector,
+          request: TestUiEchoRoundTripRequest(
+            id: connector.getRequestId(),
+            value: value,
+            timeoutMilliseconds: timeoutMilliseconds,
+          ),
+          replyStream: messages.stream,
+        ).timeout(const Duration(seconds: 10));
+
+        final firstUiReply = Completer<Response>();
+        final firstRequestReceived = Completer<int>();
+        respond = (request) async {
+          if (request.value == 'first') {
+            firstRequestReceived.complete(request.id);
+            return firstUiReply.future;
+          }
+          // The UI can request engine work while answering a native request.
+          // The request client must keep processing replies during that wait.
+          final ready =
+              await _sendRequestAndWaitForReply<EngineReadyCheckResponse>(
+                engineConnector: connector,
+                request: EngineReadyCheckRequest(id: connector.getRequestId()),
+                replyStream: messages.stream,
+              );
+          expect(ready.success, isTrue);
+          return TestUiEchoResponse(id: request.id, value: request.value);
+        };
+        // Both sides allocate ID zero for their first request.
+        final first = echo('first');
+        final firstId = await firstRequestReceived.future;
+        expect(firstId, 0);
+        final second = await echo('second');
+        expect(second.error, isNull);
+        expect(second.value, 'second');
+        firstUiReply.complete(TestUiEchoResponse(id: firstId, value: 'first'));
+        expect((await first).value, 'first');
+
+        for (final code in RequestErrorCode.values) {
+          respond = (request) => RequestErrorResponse(
+            id: request.id,
+            code: code,
+            message: 'Fixture error: ${code.name}.',
+          );
+          expect(
+            (await echo('remote error')).error,
+            'Fixture error: ${code.name}.',
+          );
+        }
+
+        respond = (request) => TestUiEchoResponse(
+          id: request.id + 10000,
+          value: 'wrong request ID',
+        );
+        expect(
+          (await echo('wrong ID', timeoutMilliseconds: 100)).error,
+          'IPC request timed out.',
+        );
+
+        final lateReply = Completer<Response>();
+        late int lateReplyId;
+        respond = (request) {
+          lateReplyId = request.id;
+          return lateReply.future;
+        };
+        expect(
+          (await echo('timeout', timeoutMilliseconds: 100)).error,
+          'IPC request timed out.',
+        );
+        lateReply.complete(TestUiEchoResponse(id: lateReplyId, value: 'late'));
+
+        respond = (request) =>
+            TestUiEchoResponse(id: request.id, value: request.value);
+        final afterTimeout = await echo('after timeout');
+        expect(afterTimeout.error, isNull);
+        expect(afterTimeout.value, 'after timeout');
+
+        previousSessionReply = Completer<Response>();
+        respond = (request) {
+          previousSessionRequestId = request.id;
+          return previousSessionReply!.future;
+        };
+        expect(
+          (await echo('pending at shutdown', timeoutMilliseconds: 100)).error,
+          'IPC request timed out.',
+        );
+        await _sendExitAndWaitForProcess(
+          engineConnector: connector,
+          exitStream: exits.stream,
+        );
+        await connectionClosed.future;
+      }
+      previousSessionReply!.complete(
+        TestUiEchoResponse(
+          id: previousSessionRequestId!,
+          value: 'after shutdown',
+        ),
+      );
+    },
+    skip: skipEngineIntegrationTests,
+  );
+
+  test(
+    'Engine owns the production request dispatcher without project services',
+    () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final executable = enginePath!.toFilePath(windows: Platform.isWindows);
+      final project = ProjectModel.create(executable);
+      final replies = StreamController<IpcMessage>.broadcast();
+      late EngineConnector connector;
+
+      // Observe the real connector without replacing the production handler.
+      EngineConnectorBase createConnector(
+        int id, {
+        required bool kDebugMode,
+        void Function(IpcMessage)? onMessage,
+        void Function()? onExit,
+        void Function()? onConnectionClosed,
+        bool noHeartbeat = false,
+        String? enginePathOverride,
+      }) {
+        connector = EngineConnector(
+          id,
+          kDebugMode: kDebugMode,
+          noHeartbeat: noHeartbeat,
+          enginePathOverride: enginePathOverride,
+          onExit: onExit,
+          onConnectionClosed: onConnectionClosed,
+          onMessage: (message) {
+            onMessage?.call(message);
+            replies.add(message);
+          },
+        );
+        return connector;
+      }
+
+      project.engine = Engine(
+        project.engineID,
+        project,
+        enginePathOverride: executable,
+        engineConnectorFactory: createConnector,
+      );
+      final engine = project.engine;
+      expect(ServiceRegistry.maybeForProject(project.id), isNull);
+      addTearDown(() async {
+        await engine.dispose();
+        project.dispose();
+        await replies.close();
+      });
+
+      for (var attempt = 0; attempt < 2; attempt++) {
+        await engine.start(initializeAudio: false);
+        final result =
+            await _sendRequestAndWaitForReply<TestUiEchoRoundTripResponse>(
+              engineConnector: connector,
+              request: TestUiEchoRoundTripRequest(
+                id: connector.getRequestId(),
+                value: 'unsupported operation',
+              ),
+              replyStream: replies.stream,
+            ).timeout(const Duration(seconds: 5));
+        expect(result.value, isNull);
+        expect(result.error, 'Unsupported engine request: TestUiEchoRequest.');
+        expect(ServiceRegistry.maybeForProject(project.id), isNull);
+        engine.holdRequestsForRender();
+        final duringRender =
+            await _sendRequestAndWaitForReply<TestUiEchoRoundTripResponse>(
+              engineConnector: connector,
+              request: TestUiEchoRoundTripRequest(
+                id: connector.getRequestId(),
+                value: 'during render',
+              ),
+              replyStream: replies.stream,
+            ).timeout(const Duration(seconds: 5));
+        expect(
+          duringRender.error,
+          'Unsupported engine request: TestUiEchoRequest.',
+        );
+        engine.releaseRequestsHeldForRender();
+        await engine.stop();
+      }
+    },
+    skip: skipEngineIntegrationTests,
+  );
 
   group('Heartbeat tests', () {
     test(
@@ -167,67 +405,34 @@ void main() {
       },
     );
 
-    test('Heartbeat', timeout: Timeout(Duration(seconds: 120)), () async {
-      final exitStreamController = StreamController<void>.broadcast();
+    test(
+      'Engine acknowledges heartbeat responses',
+      timeout: Timeout(Duration(seconds: 120)),
+      () async {
+        TestWidgetsFlutterBinding.ensureInitialized();
+        final executable = enginePath!.toFilePath(windows: Platform.isWindows);
+        final project = ProjectModel.create(executable);
+        final engine = project.engine;
+        addTearDown(() async {
+          await engine.dispose();
+          project.dispose();
+        });
 
-      var exitCalled = false;
+        await engine.start(initializeAudio: false);
+        await Future.any<void>([
+          engine.engineStateStream
+              .firstWhere((state) => state == EngineState.stopped)
+              .then((_) {}),
+          Future<void>.delayed(const Duration(seconds: 21)),
+        ]);
 
-      var heartbeatWaitCompleter = Completer<void>();
-
-      final engineConnector = EngineConnector(
-        12345678 + 1, // Can't collide with any other tests
-        enginePathOverride: enginePath!.toFilePath(windows: Platform.isWindows),
-        kDebugMode: true,
-        onExit: () {
-          exitCalled = true;
-          exitStreamController.add(null);
-        },
-      );
-
-      expect(
-        await engineConnector.onInit,
-        isTrue,
-        reason: 'The engine connector should initialize successfully.',
-      );
-
-      // Heartbeat startup belongs to Engine.start(). Engine wraps
-      // EngineConnector. Since we are testing the bare EngineConnector, we need
-      // to start the heartbeat timer manually.
-      engineConnector.startHeartbeatTimer();
-
-      exitCalled = false;
-
-      expect(
-        exitCalled,
-        isFalse,
-        reason: 'The engine should not crash when it first starts.',
-      );
-
-      heartbeatWaitCompleter = Completer<void>();
-
-      Timer(Duration(seconds: 15), () {
-        heartbeatWaitCompleter.complete();
-      });
-
-      await heartbeatWaitCompleter.future;
-
-      expect(
-        exitCalled,
-        isFalse,
-        reason: 'The engine should not exit if it receives a heartbeat.',
-      );
-
-      await _sendExitAndWaitForProcess(
-        engineConnector: engineConnector,
-        exitStream: exitStreamController.stream,
-      );
-
-      expect(
-        exitCalled,
-        isTrue,
-        reason: 'The engine should exit when disposed.',
-      );
-    });
+        // The connector checks for replies every ten seconds. Surviving two
+        // checks exercises acknowledgment as well as heartbeat transmission.
+        expect(engine.engineState, EngineState.running);
+        await engine.stop();
+        expect(engine.engineState, EngineState.stopped);
+      },
+    );
   }, skip: skipEngineIntegrationTests);
 
   test('startup cancellation disposes the visualization reader', () async {
@@ -248,10 +453,10 @@ void main() {
     timeout: const Timeout(Duration(seconds: 60)),
     () async {
       for (var iteration = 0; iteration < 2; iteration++) {
-        final replies = StreamController<Response>.broadcast();
+        final replies = StreamController<IpcMessage>.broadcast();
         final exits = StreamController<void>.broadcast();
         final recordFuture = Completer<VisualizationRecord>();
-        var socketVisualizationUpdates = 0;
+        var socketEvents = 0;
         final connector = EngineConnector(
           12345700,
           enginePathOverride: enginePath!.toFilePath(
@@ -259,9 +464,9 @@ void main() {
           ),
           kDebugMode: false,
           noHeartbeat: true,
-          onReply: (response) {
-            if (response is VisualizationUpdateEvent) {
-              socketVisualizationUpdates++;
+          onMessage: (response) {
+            if (response is IpcEvent) {
+              socketEvents++;
             }
             replies.add(response);
           },
@@ -296,10 +501,10 @@ void main() {
         );
         expect(record.generation, 9);
         expect(record.sampleRate, 48000);
-        expect(record.update.items.map((item) => item.id), ['d-Ω', 'i']);
-        expect(record.update.items[0].values, [-0.0, 1.5]);
-        expect(record.update.items[1].values, [-7, 9007199254740991]);
-        expect(socketVisualizationUpdates, 0);
+        expect(record.items.map((item) => item.id), ['d-Ω', 'i']);
+        expect(record.items[0].values, [-0.0, 1.5]);
+        expect(record.items[1].values, [-7, 9007199254740991]);
+        expect(socketEvents, 0);
         expect(
           connector.visualizationRecordConsumer!.queueByteHighWater,
           greaterThan(40),
@@ -322,7 +527,7 @@ void main() {
       timeout: Timeout(Duration(seconds: 120)),
       () async {
         final exitStreamController = StreamController<void>.broadcast();
-        final replyStreamController = StreamController<Response>.broadcast();
+        final replyStreamController = StreamController<IpcMessage>.broadcast();
 
         final engineConnector = EngineConnector(
           12345678 + 2,
@@ -330,7 +535,7 @@ void main() {
             windows: Platform.isWindows,
           ),
           kDebugMode: true,
-          onReply: replyStreamController.add,
+          onMessage: replyStreamController.add,
           onExit: () => exitStreamController.add(null),
         );
 

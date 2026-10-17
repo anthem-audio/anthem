@@ -1,6 +1,6 @@
 # Communication Between UI and Engine
 
-Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Messages use a request–response pattern with unique IDs, so a “request” (from UI to engine) pairs with a matching “response” (from engine to UI), though some requests have no response and some responses come through as unsolicited events.
+Anthem’s UI and engine each run in their own process—Flutter/Dart for the interface, and C++/JUCE for audio processing—and communicate over a local TCP socket. Most operations begin with a UI request and receive an engine reply with the same ID. Some messages need no reply, and the engine also sends unsolicited events. The engine can also request UI services through the same connection.
 
 The messages are defined as classes in Dart. Anthem’s code generator inspects these Dart classes to automatically generate the corresponding C++ structs and serialization code, ensuring type-safe, two-way data flow from a single source of truth and with minimal boilerplate.
 
@@ -119,11 +119,41 @@ pauses, and audio generation changes.
 
 See [Testing](../testing.md) for browser suite selection and widget test coverage.
 
-## Adding a new request and response
+## Message types
 
-`messages.dart` in `lib/engine_api/messages` contains base `Request` and `Response` classes. Note that these names merely indicate the direction of the message flow, in that requests are always sent from the UI to the engine and responses are always sent from the engine to the UI. Some requests do not expect a response, and some responses are unprompted.
+JSON messages derive from `IpcMessage` and have one of three roles, regardless of which side sends them:
 
-Messages are defined as subclasses of either `Request` or `Response`. Since both base classes are sealed, the sub-classes must be in a `part` file - you can see examples of these at the top of `messages.dart`:
+- `Request` asks the receiver to perform an operation.
+- `Response` replies to a request using the same ID.
+- `IpcEvent` reports an event without a request ID or an expected reply.
+
+Each side allocates IDs for its own requests and matches incoming responses against those requests. Requests in opposite directions can therefore have the same ID without ambiguity.
+
+On the UI side, `Engine` manages request scheduling and response matching. Connectors handle message encoding and transport, while application handlers perform the requested work and process events.
+
+## Engine lifecycle
+
+`Engine` owns the lifecycle state machine: `stopped → starting → running → stopping → stopped`. Shutdown, connection loss, and startup failure enter `stopping`, which rejects ordinary requests and fails pending and queued requests. `stopped` means connection and process cleanup has finished; a restart waits for that cleanup.
+
+Asynchronous UI operations can use `sessionEnded` to cancel work when their engine session enters `stopping`. Each startup creates a separate session, so work from an earlier session cannot send replies to a replacement engine.
+
+## Requests made by the engine
+
+Engine requests allow the engine to use services owned by the UI over the same JSON channel. File storage is an intended use: the UI will manage the store while the engine requests access to files. The request infrastructure is in place; production operations have not yet been added.
+
+The engine sends requests through `Engine::uiRequests`. To add an operation, define its `Request` and `Response` in the messages library and regenerate code, as in the example below. Add a case to [`ProjectEngineRequestHandler`](../../lib/logic/project_engine_request_handler.dart) to forward the request to the relevant application module.
+
+Engine requests and their completion callbacks run on the JUCE message thread and must not be used from the audio thread. They are asynchronous: blocking while waiting for a UI response would prevent the engine from processing that response or handling nested requests.
+
+UI replies bypass startup and render request queues. An engine operation may need a UI service before initialization or rendering can finish, so queuing its reply could deadlock that operation. Replies belong to the session that received the request and are discarded once it ends.
+
+Timeouts and request cancellation stop the engine from waiting for a reply; they do not cancel the UI operation. Session shutdown is a separate signal that UI handlers can use to cancel their work.
+
+## Adding a UI-to-engine request and response
+
+The following example adds an operation handled by the engine.
+
+Define the operation's messages as subclasses of `Request` and `Response`. Since both base classes are sealed, the sub-classes must be in a `part` file - you can see examples of these at the top of `messages.dart`:
 
 ```dart
 part 'model_sync.dart';
@@ -141,9 +171,7 @@ part of 'messages.dart';
 
 class AddRequest extends Request {
   /// This named constructor must be present, as the code generator uses this
-  /// during deserialization. However, we won't ever deserialize this class
-  /// since it's a request. See below for more information on how this is used
-  /// in the response case.
+  /// during deserialization on the receiving side.
   AddRequest.uninitialized();
 
   /// This is an ordinary constructor, which we will use to create instances of
@@ -177,11 +205,8 @@ class AddResponse extends Response {
   /// call this constructor, and then set the fields on the object that is
   /// created.
   ///
-  /// The deserializer will not write to nullable fields if the incoming JSON
-  /// does not contain a value for that field. In that case, this constructor
-  /// should set the field to null. However, in all other cases, the initial
-  /// value of the field does not matter, as it will be overwritten by the
-  /// deserializer.
+  /// Fields are populated from the JSON after construction. Missing nullable
+  /// fields are set to null.
   AddResponse.uninitialized();
 
   AddResponse({required int id, required this.result}) {

@@ -38,6 +38,7 @@
 #include "modules/audio/audio_session_controller.h"
 #include "modules/core/command_handler.h"
 #include "modules/core/engine_runtime_services.h"
+#include "modules/core/ipc_request_client.h"
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/core/visualization/visualization_comms.h"
 #include "modules/processing_graph/graph_processor.h"
@@ -129,6 +130,9 @@ public:
   // The UI communication layer. This is used to send and receive messages from
   // the UI.
   Comms comms;
+
+  // Tracks requests initiated by the engine, without blocking the message loop.
+  IpcRequestClient uiRequests;
 
   // Lifetime note: the audio and render controllers store non-owning
   // references to the members above. Keep those referenced members declared

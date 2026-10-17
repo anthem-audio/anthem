@@ -32,6 +32,29 @@
 namespace anthem {
 
 std::optional<Response> handleTestCommand(Request& request) {
+  if (rfl::holds_alternative<TestUiEchoRoundTripRequest>(request.variant())) {
+    const auto& echoRequest = rfl::get<TestUiEchoRoundTripRequest>(request.variant());
+    const auto id = echoRequest.requestBase.get().id;
+    Engine::getInstance().uiRequests.request(
+        TestUiEchoRequest{.value = echoRequest.value, .requestBase = RequestBase{}},
+        [id](IpcRequestResult result) {
+          TestUiEchoRoundTripResponse reply{
+              .value = std::nullopt, .error = result.error, .responseBase = ResponseBase{.id = id}};
+          if (result.response.has_value()) {
+            if (rfl::holds_alternative<TestUiEchoResponse>(result.response->variant())) {
+              reply.value = rfl::get<TestUiEchoResponse>(result.response->variant()).value;
+            } else if (rfl::holds_alternative<RequestErrorResponse>(result.response->variant())) {
+              reply.error = rfl::get<RequestErrorResponse>(result.response->variant()).message;
+            } else {
+              reply.error = "Unexpected UI echo response.";
+            }
+          }
+          auto json = rfl::json::write(Response{reply});
+          Engine::getInstance().comms.send(json);
+        },
+        std::chrono::milliseconds(echoRequest.timeoutMilliseconds));
+    return std::nullopt;
+  }
   if (rfl::holds_alternative<TestPublishVisualizationRecordRequest>(request.variant())) {
     const auto& testRequest = rfl::get<TestPublishVisualizationRecordRequest>(request.variant());
     const std::vector<VisualizationRecordItem> items{

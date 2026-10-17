@@ -808,6 +808,9 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
 
   for (final subtype in modelClassInfo.sealedSubclasses) {
     forwardDeclarations.add('struct ${subtype.name};');
+    // A nested annotated sealed class generates its own concrete structs.
+    // Ancestor unions refer to those structs without declaring them twice.
+    if (subtype.cppOwner != modelClassInfo.annotatedClass) continue;
     writer.writeLine('struct ${subtype.name} {');
     writer.incrementWhitespace();
 
@@ -827,9 +830,13 @@ _generateStructsForModel(ModelClassInfo modelClassInfo) {
     final baseClassName = modelClassInfo.annotatedClass.name!;
     final baseFieldName =
         baseClassName[0].toLowerCase() + baseClassName.substring(1);
-    writer.writeLine(
-      'rfl::Flatten<${baseClassName}Base> ${baseFieldName}Base;',
-    );
+    if (modelClassInfo.fields.values.any(
+      (field) => !field.isModelConstant && !_shouldSkip(field.fieldElement),
+    )) {
+      writer.writeLine(
+        'rfl::Flatten<${baseClassName}Base> ${baseFieldName}Base;',
+      );
+    }
 
     writer.decrementWhitespace();
     writer.writeLine('};');

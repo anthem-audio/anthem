@@ -89,6 +89,10 @@ static ${context.annotatedClass.name} fromJson(Map<String, dynamic> json) {
       result.write('result = subclassResult;\n');
       result.write('}\n');
     }
+    result.write('''else {
+  throw FormatException('Unknown ${context.annotatedClass.name} type: \${json['__type']}');
+}
+''');
   }
 
   for (final entry in context.fields.entries) {

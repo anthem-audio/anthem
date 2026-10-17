@@ -26,7 +26,8 @@ class EngineConnector extends EngineConnectorBase {
   EngineConnector(
     int id, {
     required super.kDebugMode,
-    void Function(Response)? onReply,
+    void Function(IpcMessage)? onMessage,
+    void Function()? onConnectionClosed,
     void Function()? onExit,
     super.noHeartbeat = false,
     String? enginePathOverride,
@@ -37,7 +38,7 @@ class EngineConnector extends EngineConnectorBase {
   }
 
   @override
-  void send(Uint8List bytes) {
+  void sendBytes(Uint8List bytes) {
     throw UnimplementedError(
       'EngineConnector is not implemented for this platform.',
     );

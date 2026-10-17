@@ -31,7 +31,7 @@ final class VisualizationRecord {
   final int generation;
   final double sampleRate;
   final int newestSampleTimestamp;
-  final VisualizationUpdateEvent update;
+  final List<VisualizationItem> items;
   final bool discontinuity;
 
   const VisualizationRecord({
@@ -39,7 +39,7 @@ final class VisualizationRecord {
     required this.generation,
     required this.sampleRate,
     required this.newestSampleTimestamp,
-    required this.update,
+    required this.items,
     this.discontinuity = false,
   });
 }
@@ -110,7 +110,7 @@ VisualizationRecord decodeVisualizationRecord(Uint8List bytes) {
     generation: generation,
     sampleRate: sampleRate,
     newestSampleTimestamp: newest,
-    update: VisualizationUpdateEvent(id: -1, items: items),
+    items: items,
   );
 }
 
@@ -272,7 +272,7 @@ final class VisualizationRecordConsumer {
       }
       _lastRecordTime = started;
       latest = record;
-      for (final item in record.update.items) {
+      for (final item in record.items) {
         final previous = items[item.id];
         if (previous == null ||
             previous.valueType != item.valueType ||
@@ -319,7 +319,7 @@ final class VisualizationRecordConsumer {
         generation: latest.generation,
         sampleRate: latest.sampleRate,
         newestSampleTimestamp: latest.newestSampleTimestamp,
-        update: VisualizationUpdateEvent(id: -1, items: items.values.toList()),
+        items: items.values.toList(),
         discontinuity: reset,
       ),
     );

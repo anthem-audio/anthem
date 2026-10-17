@@ -55,12 +55,14 @@ class VisualizationProvider {
     }
 
     _engineStateChangeSub = _project.engine.engineStateStream.listen((state) {
+      final sessionEnded =
+          state == EngineState.stopping || state == EngineState.stopped;
       if (state == EngineState.running) {
         _sendUpdateIntervalToEngine();
         _scheduleSubscriptionListUpdate();
       }
 
-      if (state == EngineState.stopped) {
+      if (sessionEnded) {
         _latestValuesById.clear();
         _recordGeneration = null;
         _transportStats.reset();
@@ -68,10 +70,10 @@ class VisualizationProvider {
 
       // If the engine isn't running, the visualization subscriptions shouldn't
       // check for updates.
-      if (state == EngineState.stopped || state == EngineState.running) {
+      if (sessionEnded || state == EngineState.running) {
         for (var subscriptions in _subscriptions.values) {
           for (final subscription in subscriptions) {
-            if (state == EngineState.stopped) {
+            if (sessionEnded) {
               subscription._engineStopped();
             } else {
               subscription._engineStarted();
@@ -108,10 +110,10 @@ class VisualizationProvider {
     return Duration(microseconds: microseconds);
   }
 
-  Duration? _latestVisibleEventEngineTime(VisualizationUpdateEvent update) {
+  Duration? _latestVisibleSampleEngineTime(VisualizationRecord record) {
     int? latestSampleTimestamp;
 
-    for (final item in update.items) {
+    for (final item in record.items) {
       for (final sampleTimestamp in item.sampleTimestamps) {
         if (latestSampleTimestamp == null ||
             sampleTimestamp > latestSampleTimestamp) {
@@ -127,16 +129,33 @@ class VisualizationProvider {
     return _sampleTimestampToEngineTime(latestSampleTimestamp);
   }
 
-  void processVisualizationUpdate(VisualizationUpdateEvent update) {
+  /// Updates subscriptions from a decoded visualization record.
+  ///
+  /// Records with a different sample rate or an older generation are ignored.
+  /// Discontinuities reset buffering before new samples are applied.
+  void processVisualizationRecord(VisualizationRecord record) {
     final audioConfig = _project.engine.audioConfig;
-    if (audioConfig == null || audioConfig.sampleRate <= 0) {
-      _transportStats.recordArrival(null);
+    if (audioConfig == null ||
+        audioConfig.sampleRate <= 0 ||
+        audioConfig.sampleRate != record.sampleRate ||
+        (_recordGeneration != null && record.generation < _recordGeneration!)) {
       return;
     }
+    if (record.discontinuity ||
+        (_recordGeneration != null && _recordGeneration != record.generation)) {
+      if (_recordGeneration != record.generation) _latestValuesById.clear();
+      _transportStats.reset();
+      for (final group in _subscriptions.values) {
+        for (final subscription in group) {
+          subscription._transportDiscontinuity();
+        }
+      }
+    }
+    _recordGeneration = record.generation;
 
-    _transportStats.recordArrival(_latestVisibleEventEngineTime(update));
+    _transportStats.recordArrival(_latestVisibleSampleEngineTime(record));
 
-    for (final item in update.items) {
+    for (final item in record.items) {
       final values = item.values as List;
       final sampleTimestamps = item.sampleTimestamps;
 
@@ -169,27 +188,6 @@ class VisualizationProvider {
         );
       }
     }
-  }
-
-  void processVisualizationRecord(VisualizationRecord record) {
-    final audioConfig = _project.engine.audioConfig;
-    if (audioConfig == null ||
-        audioConfig.sampleRate != record.sampleRate ||
-        (_recordGeneration != null && record.generation < _recordGeneration!)) {
-      return;
-    }
-    if (record.discontinuity ||
-        (_recordGeneration != null && _recordGeneration != record.generation)) {
-      if (_recordGeneration != record.generation) _latestValuesById.clear();
-      _transportStats.reset();
-      for (final group in _subscriptions.values) {
-        for (final subscription in group) {
-          subscription._transportDiscontinuity();
-        }
-      }
-    }
-    _recordGeneration = record.generation;
-    processVisualizationUpdate(record.update);
   }
 
   VisualizationSubscription<T> subscribe<T>(

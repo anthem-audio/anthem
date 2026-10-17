@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -59,7 +59,84 @@ class SealedClassC extends SealedClass {
   SealedClassC.uninitialized();
 }
 
+@AnthemModel(serializable: true)
+sealed class NestedSealedClass extends _NestedSealedClass
+    with _$NestedSealedClassAnthemModelMixin {
+  NestedSealedClass();
+
+  factory NestedSealedClass.fromJson(Map<String, dynamic> json) =>
+      _$NestedSealedClassAnthemModelMixin.fromJson(json);
+}
+
+abstract class _NestedSealedClass extends SealedClass {
+  late String categoryField;
+}
+
+abstract class IntermediateClass extends NestedSealedClass {
+  late String? intermediateField;
+}
+
+class NestedLeaf extends IntermediateClass {
+  late bool leafField;
+
+  NestedLeaf.uninitialized();
+}
+
+class NestedLeafChild extends NestedLeaf {
+  late int childField;
+
+  NestedLeafChild.uninitialized() : super.uninitialized();
+}
+
 void main() {
+  test('nested sealed classes preserve inherited fields and concrete tags', () {
+    final value = NestedLeaf.uninitialized()
+      ..baseField = 3
+      ..categoryField = 'request'
+      ..intermediateField = null
+      ..leafField = true;
+    final expected = {
+      '__type': 'NestedLeaf',
+      'baseField': 3,
+      'categoryField': 'request',
+      'leafField': true,
+    };
+    expect(value.toJson(), expected);
+    for (final decoded in [
+      SealedClass.fromJson(expected),
+      NestedSealedClass.fromJson(expected),
+    ]) {
+      expect(decoded, isA<NestedLeaf>());
+      final leaf = decoded as NestedLeaf;
+      expect(leaf.baseField, 3);
+      expect(leaf.categoryField, 'request');
+      expect(leaf.intermediateField, isNull);
+      expect(leaf.leafField, isTrue);
+      expect(leaf.toJson(), expected);
+    }
+    expect(
+      () => NestedSealedClass.fromJson({'__type': 'SealedClassA'}),
+      throwsFormatException,
+    );
+    expect(
+      () => SealedClass.fromJson({'__type': 'NestedSealedClass'}),
+      throwsFormatException,
+    );
+  });
+  test('concrete descendants retain their own discriminator and fields', () {
+    final value = NestedLeafChild.uninitialized()
+      ..baseField = 1
+      ..categoryField = 'nested'
+      ..intermediateField = 'inherited'
+      ..leafField = false
+      ..childField = 8;
+    final json = value.toJson();
+    expect(json['__type'], 'NestedLeafChild');
+    expect(json['childField'], 8);
+    final decoded = SealedClass.fromJson(json) as NestedLeafChild;
+    expect(decoded.toJson(), json);
+    expect(decoded.intermediateField, 'inherited');
+  });
   test('Test sealed classes', () {
     final sealedClassA = SealedClassA(-1)
       ..baseField = 1

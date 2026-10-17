@@ -390,7 +390,8 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     if (_fieldChangedListener != null) return;
 
     _fieldChangedListener = (change) {
-      if (!change.sendToEngine || engine.engineState == EngineState.stopped) {
+      if (!change.sendToEngine ||
+          (engine.engineState != EngineState.starting && !engine.isRunning)) {
         return;
       }
 

@@ -218,7 +218,7 @@ class PublishProcessingGraphResponse extends Response {
   }
 }
 
-class PluginChangedEvent extends Response {
+class PluginChangedEvent extends IpcEvent {
   late Id nodeId;
 
   late bool latencyChanged;
@@ -229,18 +229,15 @@ class PluginChangedEvent extends Response {
   PluginChangedEvent.uninitialized();
 
   PluginChangedEvent({
-    required int id,
     required this.nodeId,
     required this.latencyChanged,
     required this.parameterInfoChanged,
     required this.programChanged,
     required this.nonParameterStateChanged,
-  }) {
-    super.id = id;
-  }
+  });
 }
 
-class PluginParameterChangedEvent extends Response {
+class PluginParameterChangedEvent extends IpcEvent {
   late Id nodeId;
   late int controlPortId;
   late double value;
@@ -249,17 +246,14 @@ class PluginParameterChangedEvent extends Response {
   PluginParameterChangedEvent.uninitialized();
 
   PluginParameterChangedEvent({
-    required int id,
     required this.nodeId,
     required this.controlPortId,
     required this.value,
     this.displayText,
-  }) {
-    super.id = id;
-  }
+  });
 }
 
-class PluginParameterGestureEvent extends Response {
+class PluginParameterGestureEvent extends IpcEvent {
   late Id nodeId;
   late int controlPortId;
   late bool isStarting;
@@ -267,28 +261,22 @@ class PluginParameterGestureEvent extends Response {
   PluginParameterGestureEvent.uninitialized();
 
   PluginParameterGestureEvent({
-    required int id,
     required this.nodeId,
     required this.controlPortId,
     required this.isStarting,
-  }) {
-    super.id = id;
-  }
+  });
 }
 
-class PluginParameterSnapshotEvent extends Response {
+class PluginParameterSnapshotEvent extends IpcEvent {
   late Id nodeId;
   late List<ProcessingGraphParameterValue> parameterValues;
 
   PluginParameterSnapshotEvent.uninitialized() : parameterValues = [];
 
   PluginParameterSnapshotEvent({
-    required int id,
     required this.nodeId,
     required this.parameterValues,
-  }) {
-    super.id = id;
-  }
+  });
 }
 
 class GetPluginStateRequest extends Request {
@@ -362,14 +350,12 @@ class OpenPluginWindowRequest extends Request {
 /// node.
 ///
 /// This will only fire for nodes that load third-party plugins.
-class PluginLoadedEvent extends Response {
+class PluginLoadedEvent extends IpcEvent {
   late Id nodeId;
 
   PluginLoadedEvent.uninitialized();
 
-  PluginLoadedEvent({required int id, required this.nodeId}) {
-    super.id = id;
-  }
+  PluginLoadedEvent({required this.nodeId});
 }
 
 @AnthemModel(serializable: true, generateCpp: true)

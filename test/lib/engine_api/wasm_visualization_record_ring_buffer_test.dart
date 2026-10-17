@@ -39,11 +39,11 @@ void main() {
       final record = decodeVisualizationRecord(heap.toDart);
       expect(record.generation, 9);
       expect(record.newestSampleTimestamp, 20);
-      expect(record.update.items[0].values, [-0.0, 1.5]);
-      expect(record.update.items[1].values, [-7, 9007199254740991]);
-      expect(record.update.items.map((item) => item.id), ['d-Ω', 'i']);
+      expect(record.items[0].values, [-0.0, 1.5]);
+      expect(record.items[1].values, [-7, 9007199254740991]);
+      expect(record.items.map((item) => item.id), ['d-Ω', 'i']);
       heap.setProperty('52'.toJS, 0.toJS);
-      expect(record.update.items.first.id, 'd-Ω');
+      expect(record.items.first.id, 'd-Ω');
       if (identical(1, 1.0)) {
         final data = ByteData.sublistView(heap.toDart);
         data.setUint32(12, 0, Endian.little);

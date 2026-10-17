@@ -547,10 +547,7 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
 
         writeVST3Log(*selfShared, "Sending PluginLoadedEvent to UI.");
 
-        Response event = PluginLoadedEvent{.nodeId = selfShared->nodeId(),
-            .responseBase = ResponseBase{
-                .id = -1,
-            }};
+        IpcEvent event = PluginLoadedEvent{.nodeId = selfShared->nodeId()};
 
         auto eventString = rfl::json::write(event);
         Engine::getInstance().comms.send(eventString);
@@ -690,25 +687,18 @@ void VST3Processor::bringPluginWindowToFront() {
 
 void VST3Processor::sendPluginParameterChangedEvent(
     int64_t controlPortId, juce::AudioProcessorParameter& parameter, float value) {
-  Response event = PluginParameterChangedEvent{.nodeId = nodeId(),
+  IpcEvent event = PluginParameterChangedEvent{.nodeId = nodeId(),
       .controlPortId = controlPortId,
       .value = value,
-      .displayText = getParameterDisplayText(parameter, value),
-      .responseBase = ResponseBase{
-          .id = -1,
-      }};
+      .displayText = getParameterDisplayText(parameter, value)};
 
   auto eventString = rfl::json::write(event);
   Engine::getInstance().comms.send(eventString);
 }
 
 void VST3Processor::sendPluginParameterGestureEvent(int64_t controlPortId, bool isStarting) {
-  Response event = PluginParameterGestureEvent{.nodeId = nodeId(),
-      .controlPortId = controlPortId,
-      .isStarting = isStarting,
-      .responseBase = ResponseBase{
-          .id = -1,
-      }};
+  IpcEvent event = PluginParameterGestureEvent{
+      .nodeId = nodeId(), .controlPortId = controlPortId, .isStarting = isStarting};
 
   auto eventString = rfl::json::write(event);
   Engine::getInstance().comms.send(eventString);
@@ -731,11 +721,8 @@ void VST3Processor::sendPluginParameterSnapshotEvent() {
             .displayText = getParameterDisplayText(*parameter, value)}));
   }
 
-  Response event = PluginParameterSnapshotEvent{.nodeId = nodeId(),
-      .parameterValues = parameterValues,
-      .responseBase = ResponseBase{
-          .id = -1,
-      }};
+  IpcEvent event =
+      PluginParameterSnapshotEvent{.nodeId = nodeId(), .parameterValues = parameterValues};
 
   auto eventString = rfl::json::write(event);
   Engine::getInstance().comms.send(eventString);
@@ -899,14 +886,11 @@ void VST3Processor::audioProcessorChanged(
       return;
     }
 
-    Response event = PluginChangedEvent{.nodeId = processor->nodeId(),
+    IpcEvent event = PluginChangedEvent{.nodeId = processor->nodeId(),
         .latencyChanged = details.latencyChanged,
         .parameterInfoChanged = details.parameterInfoChanged,
         .programChanged = details.programChanged,
-        .nonParameterStateChanged = details.nonParameterStateChanged,
-        .responseBase = ResponseBase{
-            .id = -1,
-        }};
+        .nonParameterStateChanged = details.nonParameterStateChanged};
 
     auto eventString = rfl::json::write(event);
     Engine::getInstance().comms.send(eventString);

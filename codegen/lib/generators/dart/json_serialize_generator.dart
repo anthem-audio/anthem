@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -34,8 +34,21 @@ import 'field_serializers.dart';
 String generateJsonSerializationCode({required ModelClassInfo context}) {
   var result = StringBuffer();
 
+  final overridesSerialization =
+      context.annotation?.generateModelSync == true ||
+      context.baseClass.allSupertypes.any(
+        (type) =>
+            const TypeChecker.typeNamed(
+                  AnthemModel,
+                  inPackage: 'anthem_codegen',
+                )
+                .firstAnnotationOf(type.element)
+                ?.getField('serializable')
+                ?.toBoolValue() ==
+            true,
+      );
   result.write('''
-${(context.annotation?.generateModelSync == true) ? '@override' : ''}
+${overridesSerialization ? '@override' : ''}
 Map<String, dynamic> toJson({bool forEngine = false, bool forProjectFile = true}) {
   final map = <String, dynamic>{};
 ''');

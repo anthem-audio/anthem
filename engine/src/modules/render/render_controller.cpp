@@ -285,36 +285,32 @@ RenderController::~RenderController() {
 }
 
 void RenderController::sendRenderStartedEvent(int64_t renderId) {
-  Response response =
-      RenderStartedEvent{.renderId = renderId, .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event = RenderStartedEvent{.renderId = renderId};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 void RenderController::sendRenderProgressEvent(int64_t renderId, double progress) {
-  Response response = RenderProgressEvent{.renderId = renderId,
-      .progress = std::clamp(progress, 0.0, 1.0),
-      .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event =
+      RenderProgressEvent{.renderId = renderId, .progress = std::clamp(progress, 0.0, 1.0)};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 void RenderController::sendRenderCompletedEvent(int64_t renderId) {
-  Response response =
-      RenderCompletedEvent{.renderId = renderId, .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event = RenderCompletedEvent{.renderId = renderId};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 void RenderController::sendRenderFailedEvent(int64_t renderId, const std::string& error) {
-  Response response = RenderFailedEvent{
-      .renderId = renderId, .error = error, .responseBase = ResponseBase{.id = -1}};
+  IpcEvent event = RenderFailedEvent{.renderId = renderId, .error = error};
 
-  auto responseText = rfl::json::write(response);
-  comms.send(responseText);
+  auto eventText = rfl::json::write(event);
+  comms.send(eventText);
 }
 
 RenderStartResult RenderController::startRender(const RenderStartOptions& options) {

@@ -30,7 +30,7 @@ namespace anthem {
 
 std::unique_ptr<Engine> Engine::instance = nullptr;
 
-Engine::Engine() = default;
+Engine::Engine() : uiRequests(comms) {}
 
 void Engine::initialize() {
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
@@ -64,6 +64,7 @@ void Engine::initialize() {
 }
 
 void Engine::shutdown() {
+  uiRequests.close();
   if (renderController != nullptr) {
     renderController->stopRenderThread();
   }

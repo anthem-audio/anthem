@@ -25,41 +25,45 @@ class RenderAudioStartResult {
   RenderAudioStartResult({required this.renderId});
 }
 
+/// Sends rendering commands and publishes render lifecycle events.
 class RenderApi {
   final Engine _engine;
+  final StreamController<IpcEvent> _eventController =
+      StreamController.broadcast();
 
   RenderApi(this._engine);
+
+  /// Reports render startup, progress, completion, and failure.
+  Stream<IpcEvent> get events => _eventController.stream;
+
+  bool _handleEvent(IpcEvent event) {
+    switch (event) {
+      case RenderStartedEvent() ||
+          RenderProgressEvent() ||
+          RenderCompletedEvent() ||
+          RenderFailedEvent():
+        if (!_eventController.isClosed) {
+          _eventController.add(event);
+        }
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  void _dispose() {
+    _eventController.close();
+  }
 
   Future<AudioProcessingConfigDto> startRenderAudioSession({
     required double sampleRate,
     required int blockSize,
     required int outputChannelCount,
-  }) async {
-    final response = await _engine._request(
-      StartRenderAudioSessionRequest(
-        id: _engine._getRequestId(),
-        sampleRate: sampleRate,
-        blockSize: blockSize,
-        outputChannelCount: outputChannelCount,
-      ),
-      startupBehavior: StartupSendBehavior.requireRunning,
-      bypassRenderRequestHold: true,
-    ) as StartRenderAudioSessionResponse;
-
-    if (!response.success) {
-      throw StateError(
-        'Engine render audio session startup failed: ${response.error ?? 'Unknown error.'}',
-      );
-    }
-
-    if (response.audioConfig == null) {
-      throw StateError(
-        'Engine render audio session startup failed: audio config was not provided.',
-      );
-    }
-
-    return response.audioConfig!;
-  }
+  }) => _engine._audioSession.startForRender(
+    sampleRate: sampleRate,
+    blockSize: blockSize,
+    outputChannelCount: outputChannelCount,
+  );
 
   Future<RenderAudioStartResult> renderAudio({
     required int renderId,
