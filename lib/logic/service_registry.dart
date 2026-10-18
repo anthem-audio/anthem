@@ -27,6 +27,7 @@ import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/render/project_render_controller.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -78,6 +79,10 @@ final idAllocatorService = ServiceDef<ProjectEntityIdAllocator>(
 
 final projectViewModelService = ServiceDef<ProjectViewModel>(
   create: (_, _) => ProjectViewModel(),
+);
+
+final projectStorageService = ServiceDef<ProjectStorage>(
+  create: (_, _) => ProjectStorage.temporary(),
 );
 
 final projectControllerService = ServiceDef<ProjectController>(
@@ -263,6 +268,7 @@ class ServiceRegistry {
   }
 
   ProjectController get projectController => use(projectControllerService);
+  ProjectStorage get projectStorage => use(projectStorageService);
   ProjectEngineController get projectEngineController =>
       use(projectEngineControllerService);
   ProjectRenderController get projectRenderController =>

@@ -486,11 +486,29 @@ class ProjectController {
   /// Closes the project.
   ///
   /// Returns true if the project was closed, false if the close was cancelled.
-  Future<bool> close() {
+  Future<bool> close() async {
     final dialogController = ServiceRegistry.dialogController;
     final mainWindowController = ServiceRegistry.mainWindowController;
 
     final completer = Completer<bool>();
+
+    Future<void> finishClosing({required bool save}) async {
+      try {
+        final shouldClose =
+            !save ||
+            await mainWindowController.saveProject(
+              project.id,
+              false,
+              dialogController: dialogController,
+            );
+        if (shouldClose) {
+          await mainWindowController.closeProjectWithoutSaving(project.id);
+        }
+        completer.complete(shouldClose);
+      } catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    }
 
     if (project.isDirty) {
       dialogController.showMarkdownDialog(
@@ -506,29 +524,13 @@ class ProjectController {
           DialogButton(text: 'Cancel', isDismissive: true),
           DialogButton(
             text: "Don't Save",
-            onPress: () {
-              mainWindowController.closeProjectWithoutSaving(project.id);
-              completer.complete(true);
-            },
+            onPress: () => finishClosing(save: false),
           ),
-          DialogButton(
-            text: 'Save',
-            onPress: () async {
-              final result = await mainWindowController.saveProject(
-                project.id,
-                false,
-                dialogController: dialogController,
-              );
-              if (result) {
-                mainWindowController.closeProjectWithoutSaving(project.id);
-              }
-              completer.complete(result);
-            },
-          ),
+          DialogButton(text: 'Save', onPress: () => finishClosing(save: true)),
         ],
       );
     } else {
-      mainWindowController.closeProjectWithoutSaving(project.id);
+      await mainWindowController.closeProjectWithoutSaving(project.id);
       completer.complete(true);
     }
 

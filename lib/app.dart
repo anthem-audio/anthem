@@ -95,7 +95,7 @@ class _AppState extends State<App> with WindowListener {
 
     for (final project in [...projects].reversed) {
       if (!project.isDirty) {
-        ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
+        await ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
           project.id,
         );
         continue;

@@ -25,6 +25,7 @@ import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
@@ -102,6 +103,7 @@ class CursorOverrideHandle {
 }
 
 class MainWindowController {
+  final Map<ProjectId, Future<void>> _projectCloseFutures = {};
   final Map<int, MouseCursor> _cursorOverrides = {};
   int _nextCursorOverrideId = 0;
 
@@ -139,7 +141,17 @@ class MainWindowController {
     }
   }
 
-  void closeProjectWithoutSaving(ProjectId projectId) {
+  /// Stops the engine before releasing project services and temporary files.
+  Future<void> closeProjectWithoutSaving(ProjectId projectId) {
+    return _projectCloseFutures.putIfAbsent(
+      projectId,
+      () => _closeProjectWithoutSaving(projectId).whenComplete(() {
+        _projectCloseFutures.remove(projectId);
+      }),
+    );
+  }
+
+  Future<void> _closeProjectWithoutSaving(ProjectId projectId) async {
     final store = AnthemStore.instance;
     final project = store.projects[projectId];
 
@@ -147,6 +159,16 @@ class MainWindowController {
       return;
     }
 
+    await project.engine.dispose();
+    final storage = ServiceRegistry.maybeForProject(projectId)
+        ?.get<ProjectStorage>();
+    if (storage != null) {
+      if (storage.isTemporary) {
+        await storage.discard();
+      } else {
+        await storage.close();
+      }
+    }
     ServiceRegistry.removeProject(projectId);
 
     // Clean up project resources
