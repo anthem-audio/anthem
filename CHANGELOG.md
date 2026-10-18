@@ -6,6 +6,7 @@
 - Added user-facing errors when a project file fails to load
 - Removed support for multiple arrangements per project
 - Set default track level to -10db, excluding group, send, and master tracks
+- Play button now remains visually pressed while playback is running
 - Automation shading now respects parameter baselines, including centered pan
 
 ## Fixed
@@ -14,6 +15,7 @@
 - Fixed VST3 plugin selection on Linux
 - Fixed the left panel width at 200 pixels
 - Fixed an issue where audio routing data could be deleted if a plugin loaded with a different config than it used when the project was saved
+- Added speculative fix for performance issues with visualization data streaming
 
 # 0.0.0-prealpha.1
 

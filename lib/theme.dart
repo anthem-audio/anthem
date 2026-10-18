@@ -122,7 +122,7 @@ class _ByBackgroundType {
 
 // For grid lines in editors
 class _Grid {
-  Color minor = const Color(0xFF3E3E3E);
+  Color minor = const Color(0xFF353535);
   Color major = const Color(0xFF2E2E2E);
   Color accent = const Color(0xFF1A1A1A);
   Color backgroundLight = const Color(0xFF494949);

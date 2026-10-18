@@ -43,16 +43,25 @@ class ProjectController {
   ProjectViewModel viewModel;
   late final LiveEventManager liveEventManager = LiveEventManager(project);
 
+  /// Shared by the tempo control and history buttons so Undo/Redo can cancel
+  /// tapping before outside-click cancellation would allow history to change.
+  final Object tempoTapRegionGroupId = Object();
+
+  /// Installed while tapping. Returns true if a pending tempo edit was cancelled.
+  bool Function()? cancelTempoTap;
+
   bool _needsProcessingGraphPublish = false;
   Future<void>? _processingGraphPublishFuture;
 
   ProjectController(this.project, this.viewModel);
 
   void undo() {
+    if (cancelTempoTap?.call() ?? false) return;
     project.undo();
   }
 
   void redo() {
+    if (cancelTempoTap?.call() ?? false) return;
     project.redo();
   }
 
