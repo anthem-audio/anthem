@@ -38,6 +38,7 @@
 #include "modules/audio/audio_session_controller.h"
 #include "modules/core/command_handler.h"
 #include "modules/core/engine_runtime_services.h"
+#include "modules/core/file_storage_client.h"
 #include "modules/core/ipc_request_client.h"
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/core/visualization/visualization_comms.h"
@@ -133,6 +134,9 @@ public:
 
   // Tracks requests initiated by the engine, without blocking the message loop.
   IpcRequestClient uiRequests;
+
+  // Requests file access from the UI without transporting file contents.
+  FileStorageClient fileStorage;
 
   // Lifetime note: the audio and render controllers store non-owning
   // references to the members above. Keep those referenced members declared

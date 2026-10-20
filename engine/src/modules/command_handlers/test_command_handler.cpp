@@ -32,6 +32,90 @@
 namespace anthem {
 
 std::optional<Response> handleTestCommand(Request& request) {
+  if (rfl::holds_alternative<TestFileStorageRequest>(request.variant())) {
+    const auto& command = rfl::get<TestFileStorageRequest>(request.variant());
+    const auto id = command.requestBase.get().id;
+    auto reply = [id](TestFileStorageResponse response) {
+      response.responseBase.get().id = id;
+      auto json = rfl::json::write(Response{std::move(response)});
+      Engine::getInstance().comms.send(json);
+    };
+    auto done = [reply](std::optional<std::string> error) {
+      TestFileStorageResponse response{};
+      response.error = std::move(error);
+      reply(std::move(response));
+    };
+    auto access = [reply, command](FileStorageResult<FileStorageAccess> result) {
+      TestFileStorageResponse response{};
+      response.error = std::move(result.error);
+      if (result.value) {
+        response.token = result.value->token;
+        response.absolutePath = result.value->absolutePath;
+        const juce::File file(juce::String::fromUTF8(result.value->absolutePath.c_str()));
+        if (command.operation == TestFileStorageOperation::beginWrite) {
+          juce::FileOutputStream output(file);
+          if (!output.openedOk() || !output.write(command.data.data(), command.data.size())) {
+            response.error = "Test could not write the granted file.";
+          }
+          output.flush();
+          if (output.getStatus().failed()) {
+            response.error = output.getStatus().getErrorMessage().toStdString();
+          }
+        } else {
+          juce::MemoryBlock bytes;
+          if (file.loadFileAsData(bytes)) {
+            response.data = std::string();
+            if (bytes.getSize() != 0) {
+              response.data =
+                  std::string(static_cast<const char*>(bytes.getData()), bytes.getSize());
+            }
+          } else {
+            response.error = "Test could not read the granted file.";
+          }
+        }
+      }
+      reply(std::move(response));
+    };
+    auto& storage = Engine::getInstance().fileStorage;
+    switch (command.operation) {
+      case TestFileStorageOperation::beginWrite:
+        storage.beginWrite(
+            command.category, std::move(access), command.baseName, command.extension);
+        break;
+      case TestFileStorageOperation::commitWrite:
+        storage.commitWrite(command.token, [reply](FileStorageResult<std::string> result) {
+          TestFileStorageResponse response{};
+          response.relativePath = std::move(result.value);
+          response.error = std::move(result.error);
+          reply(std::move(response));
+        });
+        break;
+      case TestFileStorageOperation::abortWrite:
+        storage.abortWrite(command.token, std::move(done));
+        break;
+      case TestFileStorageOperation::acquireRead:
+        storage.acquireRead(command.relativePath, std::move(access));
+        break;
+      case TestFileStorageOperation::releaseRead:
+        storage.releaseRead(command.token, std::move(done));
+        break;
+      case TestFileStorageOperation::deleteFile:
+        storage.deleteFile(command.relativePath, std::move(done));
+        break;
+      case TestFileStorageOperation::retainFile:
+        storage.retainFile(command.relativePath, [reply](FileStorageResult<std::string> result) {
+          TestFileStorageResponse response{};
+          response.token = std::move(result.value);
+          response.error = std::move(result.error);
+          reply(std::move(response));
+        });
+        break;
+      case TestFileStorageOperation::releaseRetention:
+        storage.releaseRetention(command.token, std::move(done));
+        break;
+    }
+    return std::nullopt;
+  }
   if (rfl::holds_alternative<TestUiEchoRoundTripRequest>(request.variant())) {
     const auto& echoRequest = rfl::get<TestUiEchoRoundTripRequest>(request.variant());
     const auto id = echoRequest.requestBase.get().id;

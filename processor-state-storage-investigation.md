@@ -1,6 +1,6 @@
 # Processor state storage investigation
 
-Investigated on 2026-10-09. This records findings and decisions for future work. The initial desktop file store and engine-originated IPC infrastructure are implemented. Storage-specific requests, folder-based projects, and file-backed processor state remain follow-on work.
+Investigated on 2026-10-09. This records findings and decisions for future work. The desktop file store and engine storage requests are implemented. Folder-based projects and file-backed processor state remain follow-on work.
 
 ## Scope
 
@@ -15,7 +15,7 @@ require a database, chunk deduplication or a new native state framework up front
 
 ## Agreed storage direction
 
-Use a per-project file store managed by the UI. On desktop, the engine requests access through IPC and reads or writes the files directly. IPC carries object IDs, temporary paths and access tokens, rather than the stored bytes. Permanent references in the project use stable IDs, so moving a project does not invalidate them. File IDs are category-qualified paths relative to the project root, such as `plugin states/Preset 01.bin`. UUID filenames are the default; callers can supply a base name and extension for readable numbered names. Once committed, the name remains stable even if the source track is renamed.
+Use a per-project file store managed by the UI. On desktop, the engine requests access through IPC and reads or writes the files directly. IPC carries relative file paths, absolute access paths and access tokens, rather than the stored bytes. Permanent file references are category-qualified paths relative to the project root, such as `plugin states/Preset 01.bin`, so moving a project does not invalidate them. UUID filenames are the default; callers can supply a base name and extension for readable numbered names. Once committed, the name remains stable even if the source track is renamed.
 
 Use a project directory containing the JSON document and asset files. This keeps
 the files accessible for inspection and extraction. Define the directory layout
@@ -23,7 +23,7 @@ and save workflow when implementing the new project format; a database or archiv
 is not needed for the first implementation.
 
 A write starts with a private temporary file. After the writer closes it, the
-store commits the completed object and makes its ID available to consumers.
+store commits the completed object and returns its relative path to consumers.
 Committed processor snapshots are not edited in place: a later capture creates
 a new object, preserving any earlier snapshot needed by the project or history.
 Read access prevents deletion until the reader releases it. Separately, the store
@@ -35,7 +35,7 @@ Support two uses of temporary storage:
 - **Unsaved project data:** an unsaved project needs a working store for snapshots
   and other data that must accompany its first save. Treat this as project data
   even though its location is temporary. Preserve it across engine restarts and
-  transfer the required objects on save without changing their IDs. Release it
+  transfer the required objects on save without changing their relative paths. Release it
   when the project is closed or discarded, after stopping active access. Recovery
   retention must be considered before deleting abandoned working stores.
 - **Session cache data:** derived files, such as decompressed audio used during a session, belong in categories marked as regenerable caches. These folders share the project root, are excluded from the saved project, and are deleted when the store closes after all access has ended. Audio decompression itself is future work.
@@ -282,15 +282,13 @@ not prescribe one internal representation for every processor.
 
 ## Implementation sequence
 
-Implement and review the work in stages. Stage 2 was completed first using a test operation independent of storage. Stage 1 now provides the file store and temporary locations; connect storage-specific IPC operations before moving processor state into files in stage 3.
+Stages 1 and 2 provide desktop file storage and engine access through IPC. Stage 3 will connect processor-state capture and restoration to this store and introduce the folder project format.
 
-1. Build the desktop file store and its tests: stable IDs, temporary writes,
+1. Build the desktop file store and its tests: relative file paths, temporary writes,
    commit/abort, read access, retention and deletion, and separate unsaved-project
    and regenerable cache categories. This stage leaves the current project format
    and plugin capture path intact.
-2. Add engine-originated IPC requests and the engine UI request client. Specific
-   storage operations will follow once the file store is available. Verify
-   replies, errors, disconnects and release of access held by a stopped engine.
+2. Add engine-originated IPC and storage requests, with a C++ client for write transactions, read access, and deletion. Use one session-based storage API for direct UI calls and engine requests. The store owns read, write, and retention tokens; the IPC handler associates requests with the engine process's storage session. Verify replies, errors, lost replies, and cleanup after the engine stops, while preserving committed files and project-owned references.
 3. Introduce folder-based projects and file-backed VST snapshots, preserving
    initialization ordering, missing-plugin state, engine restart and Save As.
    Handle project-file changes in versioned migrations, keeping model
@@ -311,11 +309,11 @@ can be separate work when a specific use-case or measurement justifies them.
 
 ## Category folders and project roots
 
-The desktop store supports configurable category folders. Only `plugin states` is defined for now; categories for audio and derived caches can be added when those features need them. Each category declares whether it contains required project data or regenerable cache data. File IDs are category-qualified relative paths, such as `plugin states/Preset 01.bin`; no separate ID-to-path manifest is required. Filenames are reserved independently within each category. The store reopens configured categories by scanning their files and preserves unrelated folders and the project document.
+The desktop store supports configurable category folders. Only `plugin states` is defined for now; categories for audio and derived caches can be added when those features need them. Each category declares whether it contains required project data or regenerable cache data. Files are referenced by category-qualified relative paths, such as `plugin states/Preset 01.bin`. Filenames are reserved independently within each category. The store reopens configured categories by scanning their files and preserves unrelated folders and the project document.
 
 `ProjectStorage` accepts an explicit root, which it preserves on close. `ProjectStorage.temporary()` chooses a fresh temporary root for an unsaved project, creating directories only when files are first needed. Temporary storage can be closed while keeping required data for recovery, or discarded after saving elsewhere or explicit user dismissal. An explicit root cannot be discarded through this API. Cache categories are deleted on close in either case.
 
-First save can copy the required files selected by `projectFileIds` to a stable root without changing their IDs. Consumers must finish using the old paths before the temporary root is discarded. Tests exercise this transfer, but the application save workflow and folder project format remain follow-on work. No project schema or migration changes are included in this storage stage.
+First save can copy the required files selected by `projectFilePaths` to a stable root without changing their relative paths. Consumers must finish using the old absolute paths before the temporary root is discarded. Tests exercise this transfer, but the application save workflow and folder project format remain follow-on work. No project schema or migration changes are included in this storage stage.
 
 ## Web storage and portable archives
 
@@ -329,8 +327,10 @@ Verify import, editing, ZIP download, and reopening the downloaded project on de
 
 ## Initial file store
 
-[`ProjectFileStore`](lib/logic/storage/project_file_store.dart) coordinates one store owned by the UI. Writes are published only after the writer closes its temporary file. Read handles prevent deletion during file access; separate retention handles keep objects available for project state or history. Deletion is explicit, and reopening does not remove unreferenced objects or abandoned writes.
+[`ProjectFileStore`](lib/logic/storage/project_file_store.dart) tracks access through sessions. UI clients call its session-based API directly; the engine's IPC handler forwards requests using a session for that engine process. Read tokens prevent deletion during file access; retention tokens keep files available for project state or history. Writes are published after the writer closes its temporary file.
 
-[`ProjectStorage`](lib/logic/storage/project_storage.dart) owns the store for a project session. Engine restarts leave its files intact. Project close waits for engine disposal before closing storage; explicit roots are preserved and temporary roots are discarded. Outstanding access or retention handles cause cleanup to fail while preserving the project and its files. Recovery discovery and retention policy remain future work.
+A client must finish file I/O and close OS file handles before closing its session. The store waits for accepted operations, aborts unfinished writes, and releases that session's tokens. Committed files and other sessions' access remain. Deletion is explicit, and reopening preserves unreferenced objects and abandoned writes.
 
-The current project format and plugin capture path still use embedded state. Storage is available through project services, but no engine storage operations or saved object references have been introduced yet. The desktop filesystem backend has an explicit unsupported boundary on web, tested with both JavaScript and Dart WebAssembly compilation. An OPFS backend and Emscripten filesystem access are deferred to a separate stage so that import cleanup, quota failures, engine restarts, and ZIP download can be verified together.
+[`ProjectStorage`](lib/logic/storage/project_storage.dart) owns the store for the lifetime of an open project. Engine sessions end after their processes stop; UI access and project/history references can last until project closure. Project close waits for engine disposal, and all storage sessions must close before the store can close. Explicit roots are preserved and temporary roots are discarded. Recovery discovery and retention policy remain future work.
+
+The current project format and plugin capture path still use embedded state. The engine can begin, commit, and abort writes; acquire and release reads; retain and release references; and request deletion of unused files. The C++ client and production UI dispatcher are exercised together in real-engine tests, including startup, render request holds, process exit, restart, and a lost access reply. Saved object references have not been added to the project model yet. The desktop filesystem backend has an explicit unsupported boundary on web, tested with both JavaScript and Dart WebAssembly compilation. An OPFS backend and Emscripten filesystem access are deferred to a separate stage so that import cleanup, quota failures, engine restarts, and ZIP download can be verified together.

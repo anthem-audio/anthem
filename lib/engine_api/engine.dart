@@ -459,7 +459,9 @@ class Engine {
       );
       response = RequestErrorResponse(
         id: request.id,
-        code: RequestErrorCode.failed,
+        code: error is UnsupportedError
+            ? RequestErrorCode.unsupported
+            : RequestErrorCode.failed,
         message: error.toString(),
       );
     }
@@ -503,7 +505,17 @@ class Engine {
     );
   }
 
-  Future<void> dispose() => _disposeFuture ??= _dispose();
+  /// Stops the engine and releases its resources.
+  ///
+  /// Cleanup failures can be retried by calling dispose again. The engine cannot
+  /// restart once disposal has begun.
+  Future<void> dispose() => _disposeFuture ??= _dispose().catchError((
+    Object error,
+    StackTrace stack,
+  ) {
+    _disposeFuture = null;
+    Error.throwWithStackTrace(error, stack);
+  });
 
   Future<void> _dispose() async {
     try {
@@ -549,11 +561,13 @@ class Engine {
         // Shutdown can report that a forced termination was necessary even
         // after confirming the process has exited.
         if (connector.processExitCode != null) {
+          await _requestHandler.closeSession();
           _setEngineState(EngineState.stopped);
         }
         rethrow;
       }
     }
+    await _requestHandler.closeSession();
     _setEngineState(EngineState.stopped);
   }
 
@@ -574,10 +588,14 @@ class Engine {
 
   /// Starts the engine process, and attaches to it.
   Future<void> start({bool initializeAudio = true}) async {
-    if (_disposeFuture != null) throw StateError('Engine $id is disposed.');
+    if (_disposeFuture != null || _engineStateStreamController.isClosed) {
+      throw StateError('Engine $id is disposed.');
+    }
     final stopping = _stopFuture;
     if (stopping != null) await stopping;
-    if (_disposeFuture != null) throw StateError('Engine $id is disposed.');
+    if (_disposeFuture != null || _engineStateStreamController.isClosed) {
+      throw StateError('Engine $id is disposed.');
+    }
     if (_engineState != EngineState.stopped) return;
 
     final generation = ++_sessionGeneration;

@@ -72,3 +72,65 @@ class TestUiEchoRoundTripResponse extends Response {
     super.id = id;
   }
 }
+
+/// Selects one storage-client operation for real-engine integration tests.
+@AnthemEnum()
+enum TestFileStorageOperation {
+  beginWrite,
+  commitWrite,
+  abortWrite,
+  acquireRead,
+  releaseRead,
+  deleteFile,
+  retainFile,
+  releaseRetention,
+}
+
+/// Runs a storage operation through the C++ client.
+///
+/// The beginWrite operation writes [data], and acquireRead reads it back.
+/// Each operation closes its OS file before replying, but keeps the token active
+/// until a later command releases it or the engine shuts down.
+class TestFileStorageRequest extends Request {
+  late TestFileStorageOperation operation;
+  String category = 'plugin states';
+  String? baseName;
+  String? extension;
+  String data = '';
+  String token = '';
+  String relativePath = '';
+
+  TestFileStorageRequest.uninitialized();
+  TestFileStorageRequest({
+    required int id,
+    required this.operation,
+    this.category = 'plugin states',
+    this.baseName,
+    this.extension,
+    this.data = '',
+    this.token = '',
+    this.relativePath = '',
+  }) {
+    super.id = id;
+  }
+}
+
+class TestFileStorageResponse extends Response {
+  String? token;
+  String? absolutePath;
+  String? relativePath;
+  String? data;
+  String? error;
+
+  TestFileStorageResponse.uninitialized();
+  TestFileStorageResponse({
+    required int id,
+    this.token,
+    this.absolutePath,
+    this.relativePath,
+    this.data,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}

@@ -214,6 +214,30 @@ void main() {
     expect(Request.fromJson(patternJson), isA<CompilePatternRequest>());
   });
 
+  test('storage requests preserve flat JSON and inherited IDs', () {
+    final request = BeginFileWriteRequest(
+      id: 42,
+      category: 'plugin states',
+      baseName: 'Preset',
+      extension: 'bin',
+    );
+    final json = {
+      '__type': 'BeginFileWriteRequest',
+      'id': 42,
+      'category': 'plugin states',
+      'baseName': 'Preset',
+      'extension': 'bin',
+    };
+    expect(request.toJson(), json);
+
+    for (final decoded in [IpcMessage.fromJson(json), Request.fromJson(json)]) {
+      expect(decoded, isA<BeginFileWriteRequest>());
+      final restored = decoded as BeginFileWriteRequest;
+      expect(restored.id, 42);
+      expect(restored.toJson(), json);
+    }
+  });
+
   test('engine connector decodes responses split across transport chunks', () {
     final responses = <IpcMessage>[];
     final connector = _TestEngineConnector(

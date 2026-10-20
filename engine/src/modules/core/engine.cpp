@@ -30,7 +30,7 @@ namespace anthem {
 
 std::unique_ptr<Engine> Engine::instance = nullptr;
 
-Engine::Engine() : uiRequests(comms) {}
+Engine::Engine() : uiRequests(comms), fileStorage(uiRequests) {}
 
 void Engine::initialize() {
   this->sequenceStore = std::make_unique<RuntimeSequenceStore>();

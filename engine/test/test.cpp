@@ -19,6 +19,7 @@
 
 #include "console_logger.h"
 #include "modules/core/engine_api_message_test.h"
+#include "modules/core/file_storage_client_test.h"
 #include "modules/core/global_visualization_sources_test.h"
 #include "modules/core/ipc_request_client_test.h"
 #include "modules/core/sequencer_test.h"

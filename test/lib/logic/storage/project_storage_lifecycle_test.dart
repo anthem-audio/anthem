@@ -92,20 +92,25 @@ void main() {
     final engine = _EngineWithDelayedDisposal(project);
     project.engine = engine;
     final store = await registry.projectStorage.fileStore;
-    final write = await store.beginWrite(ProjectFileCategory.pluginStates);
-    final id = await write.commit();
-    final read = store.acquireRead(id);
-    read.release();
-    final cached = await store.beginWrite(cache);
-    final cacheId = await cached.commit();
-    final cacheRead = store.acquireRead(cacheId);
-    final cachePath = cacheRead.path;
-    cacheRead.release();
+    final sessionId = store.openSession();
+    final write = await store.beginWrite(
+      sessionId,
+      ProjectFileCategory.pluginStates.directoryName,
+    );
+    final relativePath = await store.commitWrite(sessionId, write.token);
+    final read = store.acquireRead(sessionId, relativePath);
+    store.releaseRead(sessionId, read.token);
+    final cached = await store.beginWrite(sessionId, cache.directoryName);
+    final cacheRelativePath = await store.commitWrite(sessionId, cached.token);
+    final cacheRead = store.acquireRead(sessionId, cacheRelativePath);
+    final cachePath = cacheRead.absolutePath;
+    store.releaseRead(sessionId, cacheRead.token);
+    await store.closeSession(sessionId);
 
     final closing = controller.closeProjectWithoutSaving(project.id);
     expect(controller.closeProjectWithoutSaving(project.id), same(closing));
     await Future<void>.delayed(Duration.zero);
-    expect(await File(read.path).exists(), isTrue);
+    expect(await File(read.absolutePath).exists(), isTrue);
     expect(await File(cachePath).exists(), isTrue);
     expect(ServiceRegistry.maybeForProject(project.id), same(registry));
     expect(AnthemStore.instance.projects[project.id], same(project));
@@ -121,17 +126,21 @@ void main() {
     'failed storage cleanup preserves the project and can be retried',
     () async {
       final store = await registry.projectStorage.fileStore;
-      final write = await store.beginWrite(ProjectFileCategory.pluginStates);
-      final id = await write.commit();
-      final read = store.acquireRead(id);
+      final sessionId = store.openSession();
+      final write = await store.beginWrite(
+        sessionId,
+        ProjectFileCategory.pluginStates.directoryName,
+      );
+      final relativePath = await store.commitWrite(sessionId, write.token);
+      final read = store.acquireRead(sessionId, relativePath);
       await expectLater(
         controller.closeProjectWithoutSaving(project.id),
         throwsStateError,
       );
-      expect(await File(read.path).exists(), isTrue);
+      expect(await File(read.absolutePath).exists(), isTrue);
       expect(ServiceRegistry.maybeForProject(project.id), same(registry));
       expect(AnthemStore.instance.projects[project.id], same(project));
-      read.release();
+      await store.closeSession(sessionId);
       await controller.closeProjectWithoutSaving(project.id);
       expect(await Directory(storage.rootDirectory).exists(), isFalse);
     },
@@ -153,16 +162,21 @@ void main() {
         rootDirectory: path.join(parent.path, 'saved project'),
       );
       final store = await registry.projectStorage.fileStore;
-      final write = await store.beginWrite(ProjectFileCategory.pluginStates);
-      final id = await write.commit();
-      final read = store.acquireRead(id);
-      read.release();
+      final sessionId = store.openSession();
+      final write = await store.beginWrite(
+        sessionId,
+        ProjectFileCategory.pluginStates.directoryName,
+      );
+      final relativePath = await store.commitWrite(sessionId, write.token);
+      final read = store.acquireRead(sessionId, relativePath);
+      store.releaseRead(sessionId, read.token);
+      await store.closeSession(sessionId);
       final document = await File(
         path.join(storage.rootDirectory, 'project.anthem'),
       ).writeAsString('document');
       await controller.closeProjectWithoutSaving(project.id);
       expect(await document.readAsString(), 'document');
-      expect(await File(read.path).exists(), isTrue);
+      expect(await File(read.absolutePath).exists(), isTrue);
     },
   );
 }

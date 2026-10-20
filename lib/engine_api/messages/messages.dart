@@ -22,6 +22,7 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem_codegen/include.dart';
 
+part 'file_storage.dart';
 part 'model_sync.dart';
 part 'processing_graph.dart';
 part 'sequencer.dart';

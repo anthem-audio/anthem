@@ -31,15 +31,17 @@ import 'file_store_io_stub.dart'
 
 /// Coordinates file access for one project's stored objects.
 ///
-/// File IDs are paths relative to [rootDirectory], such as
-/// `plugin states/Preset 01.bin`. They always use forward slashes and remain
-/// valid when the project moves.
-/// Committed files must not be edited in place; replacing a snapshot creates a
-/// new file.
+/// File paths are relative to [rootDirectory], such as `plugin
+/// states/Preset 01.bin`. They always use forward slashes and remain valid when
+/// the project moves.
 ///
-/// A store has one owner in the UI. All readers, writers, and users retaining
-/// objects must obtain handles here, including engine access granted over IPC.
-/// Filesystem changes made outside this API are not coordinated by the store.
+/// Committed files are immutable; changed contents must be written to a new
+/// file.
+///
+/// Each session owns its read, write, and retention tokens. Closing a session
+/// releases its access without deleting committed files. The caller must finish
+/// file I/O before releasing access or closing its session. Filesystem changes
+/// outside this API are not coordinated by the store.
 class ProjectFileStore {
   static final _openRoots = <String>{};
   static const _uuid = Uuid();
@@ -53,9 +55,7 @@ class ProjectFileStore {
   final String _rootKey;
   final Map<String, _StoredObject> _objects = {};
   final Set<String> _reservedNames = {};
-  final Set<PendingFileWrite> _writes = {};
-  int _operationCount = 0;
-  Completer<void>? _idle;
+  final Map<String, _FileStoreSession> _sessions = {};
   bool _closing = false;
   Future<void>? _closeFuture;
 
@@ -64,10 +64,9 @@ class ProjectFileStore {
 
   /// Opens a project root, creating its category folders if needed.
   ///
-  /// IDs are recovered by scanning [categories]; no ID-to-path manifest is
-  /// needed. Other folders and project documents in the root are left alone.
-  /// Opening never deletes unreferenced files or abandoned writes. Callers must
-  /// establish which files are still needed before requesting deletion.
+  /// Existing file paths are recovered by scanning [categories]. Other folders
+  /// and project documents in the root are left alone. Opening the store does
+  /// not delete files or abandoned writes.
   static Future<ProjectFileStore> open(
     String rootDirectory, {
     required Iterable<ProjectFileCategory> categories,
@@ -111,12 +110,14 @@ class ProjectFileStore {
       for (final category in categoryList) {
         final folder = category.directoryName;
         for (final entry in await files.listEntries(p.join(root, folder))) {
-          final id = p.posix.join(folder, entry.name);
-          if (!store._reservedNames.add(id.toLowerCase())) {
-            throw FormatException('File names differ only by case: $id');
+          final relativePath = p.posix.join(folder, entry.name);
+          if (!store._reservedNames.add(relativePath.toLowerCase())) {
+            throw FormatException(
+              'File names differ only by case: $relativePath',
+            );
           }
           if (entry.isFile && _isValidFileName(entry.name)) {
-            store._objects[id] = _StoredObject();
+            store._objects[relativePath] = _StoredObject();
           }
         }
       }
@@ -129,126 +130,267 @@ class ProjectFileStore {
 
   String get _pendingDirectory => p.join(rootDirectory, '.pending');
 
-  String _filePath(String id) => p.joinAll([rootDirectory, ...id.split('/')]);
+  String _absolutePath(String relativePath) =>
+      p.joinAll([rootDirectory, ...relativePath.split('/')]);
 
-  /// A snapshot of the committed object IDs currently available for access.
-  List<String> get objectIds {
+  /// A snapshot of committed relative file paths currently available for access.
+  List<String> get relativePaths {
     _requireOpen();
     return List.unmodifiable(
-      _objects.keys.where((id) => !_objects[id]!.deleting),
+      _objects.keys.where((relativePath) => !_objects[relativePath]!.deleting),
     );
   }
 
-  /// Committed files to include when saving or exporting the project.
-  ///
-  /// Regenerable caches and unfinished writes are excluded. This is a snapshot;
-  /// callers must coordinate ongoing writes before saving a complete project.
-  List<String> get projectFileIds => List.unmodifiable(
-    objectIds.where((id) => !_categoriesByName[id.split('/').first]!.isCache),
+  /// A snapshot of committed relative file paths, excluding caches and
+  /// unfinished writes.
+  List<String> get projectFilePaths => List.unmodifiable(
+    relativePaths.where(
+      (relativePath) =>
+          !_categoriesByName[relativePath.split('/').first]!.isCache,
+    ),
   );
+
+  /// Opens a scope for read, write, and retention tokens.
+  ///
+  /// The caller chooses the lifetime. [closeSession] releases the session's read
+  /// and retention tokens and aborts unfinished writes.
+  String openSession() {
+    _requireOpen();
+    final sessionId = _uuid.v4();
+    _sessions[sessionId] = _FileStoreSession();
+    return sessionId;
+  }
 
   /// Reserves an object name and creates a private file for the writer.
   ///
   /// With [baseName], names are numbered, for example `Bass 01.wav`. Without it,
-  /// a UUID is used. [extension] is optional and may begin with a dot. Names are
-  /// reserved before file creation, including against other pending writes.
-  Future<PendingFileWrite> beginWrite(
-    ProjectFileCategory category, {
+  /// a UUID is used. [extension] is optional and may begin with a dot. [category]
+  /// is the directory name of a registered category. Names are reserved before
+  /// file creation, including against other pending writes.
+  Future<StoredFileAccess> beginWrite(
+    String sessionId,
+    String category, {
     String? baseName,
     String? extension,
   }) {
-    _requireOpen();
-    final registered = _categoriesByName[category.directoryName];
-    if (registered == null || registered.isCache != category.isCache) {
-      throw ArgumentError.value(
-        category,
-        'category',
-        'Category is not registered.',
-      );
+    final session = _sessionForAccess(sessionId);
+    if (!_categoriesByName.containsKey(category)) {
+      throw ArgumentError('Unknown file category: $category');
     }
     final suffix = _extensionSuffix(extension);
     final stem = baseName == null ? null : _sanitizeBaseName(baseName);
     var number = 1;
-    late String id;
+    late String relativePath;
     do {
       final name = stem == null
           ? '${_uuid.v4()}$suffix'
           : '$stem ${(number++).toString().padLeft(2, '0')}$suffix';
-      id = p.posix.join(category.directoryName, name);
-    } while (!_reservedNames.add(id.toLowerCase()));
+      relativePath = p.posix.join(category, name);
+    } while (!_reservedNames.add(relativePath.toLowerCase()));
 
-    final write = PendingFileWrite._(
-      this,
-      id,
+    final token = _uuid.v4();
+    final write = _PendingFileWrite(
+      relativePath,
       p.join(_pendingDirectory, '${_uuid.v4()}.tmp'),
     );
-    return _runOperation(() async {
+    return _runOperation(session, () async {
       try {
-        await files.createFile(write.path);
-        _writes.add(write);
-        return write;
+        await files.createFile(write.absolutePath);
+        session.writes[token] = write;
+        return StoredFileAccess(token: token, absolutePath: write.absolutePath);
       } catch (_) {
-        _reservedNames.remove(id.toLowerCase());
+        _reservedNames.remove(relativePath.toLowerCase());
         rethrow;
       }
     });
   }
 
-  /// Prevents deletion until the caller closes its file and releases the handle.
-  StoredFileRead acquireRead(String objectId) {
-    final object = _objectForAccess(objectId);
+  /// Publishes a finished write and returns its relative path.
+  ///
+  /// Flush and close the file first. Success consumes [token]; a failed commit
+  /// leaves it available for retry or abort. Tokens belong to [sessionId].
+  Future<String> commitWrite(String sessionId, String token) {
+    final session = _sessionForAccess(sessionId);
+    final write = _writeForAccess(session, token);
+    write.busy = true;
+    return _runOperation(session, () async {
+      try {
+        final destination = _absolutePath(write.relativePath);
+        if (await files.entryExists(destination)) {
+          throw StateError('A file already exists at $destination');
+        }
+        await files.renameFile(write.absolutePath, destination);
+        _objects[write.relativePath] = _StoredObject();
+        session.writes.remove(token);
+        return write.relativePath;
+      } finally {
+        write.busy = false;
+      }
+    });
+  }
+
+  /// Removes an unfinished file and consumes its write token.
+  ///
+  /// Close the file first. A failed abort leaves the token available for retry.
+  Future<void> abortWrite(String sessionId, String token) {
+    final session = _sessionForAccess(sessionId);
+    final write = _writeForAccess(session, token);
+    return _runOperation(session, () => _abortWrite(session, token, write));
+  }
+
+  _PendingFileWrite _writeForAccess(_FileStoreSession session, String token) {
+    final write = session.writes[token];
+    if (write == null) throw StateError('Unknown file write token.');
+    if (write.busy) throw StateError('The write is already in progress.');
+    return write;
+  }
+
+  Future<void> _abortWrite(
+    _FileStoreSession session,
+    String token,
+    _PendingFileWrite write,
+  ) async {
+    write.busy = true;
+    try {
+      if (await files.entryExists(write.absolutePath)) {
+        await files.deleteFile(write.absolutePath);
+      }
+      session.writes.remove(token);
+      _reservedNames.remove(write.relativePath.toLowerCase());
+    } finally {
+      write.busy = false;
+    }
+  }
+
+  /// Prevents deletion until [releaseRead] or [closeSession] releases access.
+  StoredFileAccess acquireRead(String sessionId, String relativePath) {
+    final session = _sessionForAccess(sessionId);
+    final object = _objectForAccess(relativePath);
+    final token = _uuid.v4();
     object.readers++;
-    return StoredFileRead._(
-      objectId,
-      _filePath(objectId),
-      () => object.readers--,
+    session.reads[token] = object;
+    return StoredFileAccess(
+      token: token,
+      absolutePath: _absolutePath(relativePath),
     );
+  }
+
+  /// Consumes a read token after the caller has closed the file.
+  void releaseRead(String sessionId, String token) {
+    final session = _sessionForAccess(sessionId);
+    final object = session.reads.remove(token);
+    if (object == null) throw StateError('Unknown file read token.');
+    object.readers--;
   }
 
   /// Keeps an object available independently of whether it is being read.
   ///
-  /// Project state, undo history, and recovery can each retain the same object.
-  /// Releasing a retention handle does not automatically delete the file.
-  StoredFileRetention retain(String objectId) {
-    final object = _objectForAccess(objectId);
+  /// Returns a retention token owned by [sessionId]. The same object may have
+  /// multiple retention tokens. Releasing a token does not delete the file.
+  String retain(String sessionId, String relativePath) {
+    final session = _sessionForAccess(sessionId);
+    final object = _objectForAccess(relativePath);
+    final token = _uuid.v4();
     object.retainers++;
-    return StoredFileRetention._(objectId, () => object.retainers--);
+    session.retentions[token] = object;
+    return token;
+  }
+
+  /// Consumes a retention token; other references and readers remain valid.
+  void releaseRetention(String sessionId, String token) {
+    final session = _sessionForAccess(sessionId);
+    final object = session.retentions.remove(token);
+    if (object == null) throw StateError('Unknown file retention token.');
+    object.retainers--;
   }
 
   /// Deletes an unreferenced object, rejecting new access during deletion.
   ///
-  /// Throws [StateError] if readers or retention handles still exist. The
-  /// caller must know the object is no longer needed before requesting deletion.
-  Future<void> delete(String objectId) {
-    final object = _objectForAccess(objectId);
+  /// Throws [StateError] if any session has a read or retention token for the
+  /// object.
+  Future<void> delete(String sessionId, String relativePath) {
+    final session = _sessionForAccess(sessionId);
+    final object = _objectForAccess(relativePath);
     if (object.readers != 0 || object.retainers != 0) {
-      throw StateError('Stored object is still in use: $objectId');
+      throw StateError('Stored object is still in use: $relativePath');
     }
     object.deleting = true;
-    return _runOperation(() async {
+    return _runOperation(session, () async {
       try {
-        await files.deleteFile(_filePath(objectId));
-        _objects.remove(objectId);
-        _reservedNames.remove(objectId.toLowerCase());
+        await files.deleteFile(_absolutePath(relativePath));
+        _objects.remove(relativePath);
+        _reservedNames.remove(relativePath.toLowerCase());
       } finally {
         object.deleting = false;
       }
     });
   }
 
-  _StoredObject _objectForAccess(String objectId) {
+  _FileStoreSession _sessionForAccess(String sessionId) {
     _requireOpen();
-    if (!_isValidObjectId(objectId)) {
+    final session = _sessions[sessionId];
+    if (session == null) throw StateError('Unknown file store session.');
+    if (session.closing) throw StateError('The file store session is closing.');
+    return session;
+  }
+
+  /// Closes a session and releases its file access.
+  ///
+  /// The caller must first finish file I/O and close any open files. New
+  /// operations are rejected while operations already in progress finish.
+  /// Remaining writes are aborted, and read and retention tokens are released.
+  /// Committed files and other sessions are unaffected.
+  ///
+  /// If cleanup fails, the session can be closed again to retry it. Closing an
+  /// already closed session has no effect.
+  Future<void> closeSession(String sessionId) {
+    final session = _sessions[sessionId];
+    if (session == null) return Future.value();
+    session.closing = true;
+    return session.closeFuture ??= _closeSession(sessionId, session).catchError(
+      (Object error, StackTrace stack) {
+        session.closeFuture = null;
+        Error.throwWithStackTrace(error, stack);
+      },
+    );
+  }
+
+  Future<void> _closeSession(
+    String sessionId,
+    _FileStoreSession session,
+  ) async {
+    await Future.wait(session.operations);
+    for (final object in session.reads.values) {
+      object.readers--;
+    }
+    session.reads.clear();
+    for (final object in session.retentions.values) {
+      object.retainers--;
+    }
+    session.retentions.clear();
+    await Future.wait(
+      session.writes.entries.toList().map(
+        (entry) => _abortWrite(session, entry.key, entry.value),
+      ),
+    );
+    _sessions.remove(sessionId);
+  }
+
+  _StoredObject _objectForAccess(String relativePath) {
+    _requireOpen();
+    if (!_isValidRelativePath(relativePath)) {
       throw ArgumentError.value(
-        objectId,
-        'objectId',
+        relativePath,
+        'relativePath',
         'Expected a category/filename path.',
       );
     }
-    final object = _objects[objectId];
-    if (object == null) throw StateError('Unknown stored object: $objectId');
+    final object = _objects[relativePath];
+    if (object == null) {
+      throw StateError('Unknown stored object: $relativePath');
+    }
     if (object.deleting) {
-      throw StateError('Stored object is being deleted: $objectId');
+      throw StateError('Stored object is being deleted: $relativePath');
     }
     return object;
   }
@@ -257,19 +399,24 @@ class ProjectFileStore {
     if (_closing) throw StateError('The file store is closing or closed.');
   }
 
-  Future<T> _runOperation<T>(Future<T> Function() operation) {
-    if (_operationCount++ == 0) _idle = Completer<void>();
-    return Future<T>.sync(operation).whenComplete(() {
-      if (--_operationCount == 0) _idle!.complete();
-    });
+  Future<T> _runOperation<T>(
+    _FileStoreSession session,
+    Future<T> Function() operation,
+  ) {
+    final future = Future<T>.sync(operation);
+    // Cleanup waits for completion, while the caller receives the result or error.
+    final finished = future.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    session.operations.add(finished);
+    return future.whenComplete(() => session.operations.remove(finished));
   }
 
-  /// Stops new access and waits for file operations already in progress.
+  /// Closes the store, deleting cache categories and preserving other files.
   ///
-  /// Writers must first close their files and commit or abort; readers and
-  /// retainers must release their handles. If handles remain, closing fails and
-  /// can be retried after releasing them. Existing writes can still be aborted.
-  /// Closing deletes cache categories and preserves required project files.
+  /// Rejects new access immediately. Throws [StateError] if any sessions remain
+  /// open; close them with [closeSession] before retrying.
   Future<void> close() {
     _closing = true;
     return _closeFuture ??= _close().catchError((
@@ -282,12 +429,8 @@ class ProjectFileStore {
   }
 
   Future<void> _close() async {
-    while (_operationCount != 0) {
-      await _idle!.future;
-    }
-    if (_writes.isNotEmpty ||
-        _objects.values.any((o) => o.readers != 0 || o.retainers != 0)) {
-      throw StateError('Release file store handles before closing.');
+    if (_sessions.isNotEmpty) {
+      throw StateError('Close file store sessions before closing the store.');
     }
     for (final category in categories.where((c) => c.isCache)) {
       await files.deleteDirectory(
@@ -298,103 +441,38 @@ class ProjectFileStore {
   }
 }
 
+/// A session-owned token and the absolute path it grants access to.
+///
+/// Pass [token] to the store to commit or abort a write, or to release a read.
+/// The token is consumed when that operation succeeds.
+class StoredFileAccess {
+  final String token;
+  final String absolutePath;
+
+  const StoredFileAccess({required this.token, required this.absolutePath});
+}
+
+class _FileStoreSession {
+  final writes = <String, _PendingFileWrite>{};
+  final reads = <String, _StoredObject>{};
+  final retentions = <String, _StoredObject>{};
+  final operations = <Future<void>>{};
+  bool closing = false;
+  Future<void>? closeFuture;
+}
+
+class _PendingFileWrite {
+  final String relativePath;
+  final String absolutePath;
+  bool busy = false;
+
+  _PendingFileWrite(this.relativePath, this.absolutePath);
+}
+
 class _StoredObject {
   int readers = 0;
   int retainers = 0;
   bool deleting = false;
-}
-
-enum _WriteState { pending, committing, aborting, committed, aborted }
-
-/// A private file reserved for a single write transaction.
-///
-/// Flush and close file handles before [commit] or [abort], including handles in the
-/// engine. The store does not own those OS handles and cannot close them itself.
-class PendingFileWrite {
-  final ProjectFileStore _store;
-  final String _objectId;
-  final String path;
-  _WriteState _state = _WriteState.pending;
-
-  PendingFileWrite._(this._store, this._objectId, this.path);
-
-  /// Publishes the completed file and returns its stable object ID.
-  ///
-  /// A failed commit leaves the write available for retry or abort. Calling
-  /// commit again after success returns the same ID without changing the file.
-  Future<String> commit() {
-    if (_state == _WriteState.committed) return Future.value(_objectId);
-    _store._requireOpen();
-    if (_state != _WriteState.pending) {
-      throw StateError('The write is not available for commit.');
-    }
-    _state = _WriteState.committing;
-    return _store._runOperation(() async {
-      try {
-        final destination = _store._filePath(_objectId);
-        if (await files.entryExists(destination)) {
-          throw StateError('A file already exists at $destination');
-        }
-        await files.renameFile(path, destination);
-        _store._objects[_objectId] = _StoredObject();
-        _store._writes.remove(this);
-        _state = _WriteState.committed;
-        return _objectId;
-      } catch (_) {
-        _state = _WriteState.pending;
-        rethrow;
-      }
-    });
-  }
-
-  /// Removes an unfinished file. Repeated calls after a successful abort do nothing.
-  Future<void> abort() {
-    if (_state == _WriteState.aborted) return Future.value();
-    if (_state != _WriteState.pending) {
-      throw StateError('The write is not available for abort.');
-    }
-    _state = _WriteState.aborting;
-    return _store._runOperation(() async {
-      try {
-        if (await files.entryExists(path)) await files.deleteFile(path);
-        _store._writes.remove(this);
-        _store._reservedNames.remove(_objectId.toLowerCase());
-        _state = _WriteState.aborted;
-      } catch (_) {
-        _state = _WriteState.pending;
-        rethrow;
-      }
-    });
-  }
-}
-
-/// Read access to a committed object. Close the file before calling [release].
-class StoredFileRead {
-  final String objectId;
-  final String path;
-  void Function()? _release;
-
-  StoredFileRead._(this.objectId, this.path, this._release);
-
-  /// Releases read access. Repeated calls do nothing.
-  void release() {
-    _release?.call();
-    _release = null;
-  }
-}
-
-/// Retention of an object by project state, undo history, or recovery data.
-class StoredFileRetention {
-  final String objectId;
-  void Function()? _release;
-
-  StoredFileRetention._(this.objectId, this._release);
-
-  /// Releases this reference. Other references and readers remain valid.
-  void release() {
-    _release?.call();
-    _release = null;
-  }
 }
 
 final _invalidNameCharacters = RegExp(r'[<>:"/\\|?*\x00-\x1f]');
@@ -404,19 +482,19 @@ final _reservedDeviceName = RegExp(
   caseSensitive: false,
 );
 
-bool _isValidObjectId(String id) {
-  final parts = id.split('/');
+bool _isValidRelativePath(String relativePath) {
+  final parts = relativePath.split('/');
   return parts.length == 2 && parts.every(_isValidFileName);
 }
 
-bool _isValidFileName(String id) =>
-    id.isNotEmpty &&
-    id != '.' &&
-    id != '..' &&
-    !_invalidNameCharacters.hasMatch(id) &&
-    !_trailingDotsAndSpaces.hasMatch(id) &&
-    !_reservedDeviceName.hasMatch(id.split('.').first) &&
-    utf8.encode(id).length <= 240;
+bool _isValidFileName(String fileName) =>
+    fileName.isNotEmpty &&
+    fileName != '.' &&
+    fileName != '..' &&
+    !_invalidNameCharacters.hasMatch(fileName) &&
+    !_trailingDotsAndSpaces.hasMatch(fileName) &&
+    !_reservedDeviceName.hasMatch(fileName.split('.').first) &&
+    utf8.encode(fileName).length <= 240;
 
 String _sanitizeBaseName(String value) {
   final sanitized = value

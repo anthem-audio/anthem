@@ -38,15 +38,18 @@ Future<ProjectFileStore> openStore(String root) =>
 void main() {
   late Directory directory;
   late ProjectFileStore store;
+  late String sessionId;
 
   setUp(() async {
     directory = await Directory.systemTemp.createTemp(
       'anthem_file_store_test_',
     );
     store = await openStore(path.join(directory.path, 'store'));
+    sessionId = store.openSession();
   });
 
   tearDown(() async {
+    await store.closeSession(sessionId);
     await store.close();
     await directory.delete(recursive: true);
   });
@@ -57,36 +60,39 @@ void main() {
     String value = 'state',
   }) async {
     final write = await store.beginWrite(
-      testFiles,
+      sessionId,
+      testFiles.directoryName,
       baseName: name,
       extension: extension,
     );
-    await File(write.path).writeAsString(value, flush: true);
-    return write.commit();
+    await File(write.absolutePath).writeAsString(value, flush: true);
+    return store.commitWrite(sessionId, write.token);
   }
 
   test(
     'uncommitted data is private; commit publishes a complete file',
     () async {
       final write = await store.beginWrite(
-        testFiles,
+        sessionId,
+        testFiles.directoryName,
         baseName: 'Bass',
         extension: 'wav',
       );
-      await File(write.path).writeAsString('completed data', flush: true);
-      expect(store.objectIds, isEmpty);
+      await File(write.absolutePath)
+          .writeAsString('completed data', flush: true);
+      expect(store.relativePaths, isEmpty);
       expect(
-        () => store.acquireRead('test files/Bass 01.wav'),
+        () => store.acquireRead(sessionId, 'test files/Bass 01.wav'),
         throwsStateError,
       );
-      final id = await write.commit();
-      expect(id, 'test files/Bass 01.wav');
-      expect(await File(write.path).exists(), isFalse);
-      final read = store.acquireRead(id);
-      expect(await File(read.path).readAsString(), 'completed data');
-      read.release();
-      expect(await write.commit(), id);
-      expect(() => write.abort(), throwsStateError);
+      final relativePath = await store.commitWrite(sessionId, write.token);
+      expect(relativePath, 'test files/Bass 01.wav');
+      expect(await File(write.absolutePath).exists(), isFalse);
+      final read = store.acquireRead(sessionId, relativePath);
+      expect(await File(read.absolutePath).readAsString(), 'completed data');
+      store.releaseRead(sessionId, read.token);
+      expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
+      expect(() => store.abortWrite(sessionId, write.token), throwsStateError);
     },
   );
 
@@ -94,21 +100,45 @@ void main() {
     'pending writes reserve names without case-sensitive collisions',
     () async {
       final writes = await Future.wait([
-        store.beginWrite(testFiles, baseName: 'Bass', extension: 'wav'),
-        store.beginWrite(testFiles, baseName: 'Bass', extension: '.WAV'),
-        store.beginWrite(testFiles, baseName: 'bass', extension: 'wav'),
+        store.beginWrite(
+          sessionId,
+          testFiles.directoryName,
+          baseName: 'Bass',
+          extension: 'wav',
+        ),
+        store.beginWrite(
+          sessionId,
+          testFiles.directoryName,
+          baseName: 'Bass',
+          extension: '.WAV',
+        ),
+        store.beginWrite(
+          sessionId,
+          testFiles.directoryName,
+          baseName: 'bass',
+          extension: 'wav',
+        ),
       ]);
-      expect(await writes[2].commit(), 'test files/bass 03.wav');
-      expect(await writes[0].commit(), 'test files/Bass 01.wav');
-      expect(await writes[1].commit(), 'test files/Bass 02.wav');
-      expect(store.objectIds, hasLength(3));
+      expect(
+        await store.commitWrite(sessionId, writes[2].token),
+        'test files/bass 03.wav',
+      );
+      expect(
+        await store.commitWrite(sessionId, writes[0].token),
+        'test files/Bass 01.wav',
+      );
+      expect(
+        await store.commitWrite(sessionId, writes[1].token),
+        'test files/Bass 02.wav',
+      );
+      expect(store.relativePaths, hasLength(3));
     },
   );
 
   test('UUID names remain the default and extensions are optional', () async {
-    final id = await writeObject();
+    final relativePath = await writeObject();
     expect(
-      id,
+      relativePath,
       matches(
         RegExp(
           r'^test files/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
@@ -133,57 +163,77 @@ void main() {
         await writeObject(name: '... ', extension: 'wav'),
         'test files/Object 01.wav',
       );
-      final id = await writeObject(
+      final relativePath = await writeObject(
         name: List.filled(150, '🎵').join(),
         extension: 'wav',
       );
-      expect(utf8.encode(id).length, lessThanOrEqualTo(240));
-      expect(id, endsWith(' 01.wav'));
-      expect(id, isNot(contains('�')));
+      expect(utf8.encode(relativePath).length, lessThanOrEqualTo(240));
+      expect(relativePath, endsWith(' 01.wav'));
+      expect(relativePath, isNot(contains('�')));
     },
   );
 
-  test('invalid extensions and path IDs cannot escape the store', () async {
-    for (final extension in ['../wav', 'a/b', 'wav ', '.', 'x:y']) {
+  test(
+    'invalid extensions and relative paths cannot escape the store',
+    () async {
+      for (final extension in ['../wav', 'a/b', 'wav ', '.', 'x:y']) {
+        expect(
+          () => store.beginWrite(
+            sessionId,
+            testFiles.directoryName,
+            extension: extension,
+          ),
+          throwsArgumentError,
+        );
+      }
+      for (final relativePath in [
+        '',
+        '.',
+        '..',
+        '../other',
+        r'..\other',
+        '/absolute',
+        'test files/CON.wav',
+        'test files/name.',
+        'test files/name ',
+        'test files/../other',
+        'test files//other',
+        'test files/./other',
+        'test files/a/b',
+        r'test files\other',
+      ]) {
+        expect(
+          () => store.acquireRead(sessionId, relativePath),
+          throwsArgumentError,
+        );
+        expect(
+          () => store.retain(sessionId, relativePath),
+          throwsArgumentError,
+        );
+        expect(
+          () => store.delete(sessionId, relativePath),
+          throwsArgumentError,
+        );
+      }
       expect(
-        () => store.beginWrite(testFiles, extension: extension),
-        throwsArgumentError,
+        () => store.acquireRead(sessionId, 'test files/unknown.wav'),
+        throwsStateError,
       );
-    }
-    for (final id in [
-      '',
-      '.',
-      '..',
-      '../other',
-      r'..\other',
-      '/absolute',
-      'test files/CON.wav',
-      'test files/name.',
-      'test files/name ',
-      'test files/../other',
-      'test files//other',
-      'test files/./other',
-      'test files/a/b',
-      r'test files\other',
-    ]) {
-      expect(() => store.acquireRead(id), throwsArgumentError);
-      expect(() => store.retain(id), throwsArgumentError);
-      expect(() => store.delete(id), throwsArgumentError);
-    }
-    expect(() => store.acquireRead('test files/unknown.wav'), throwsStateError);
-  });
+    },
+  );
 
   test('abort removes temporary files and releases a reserved name', () async {
     final write = await store.beginWrite(
-      testFiles,
+      sessionId,
+      testFiles.directoryName,
       baseName: 'Bass',
       extension: 'wav',
     );
-    await write.abort();
-    await write.abort();
-    expect(await File(write.path).exists(), isFalse);
-    expect(() => write.commit(), throwsStateError);
-    expect(store.objectIds, isEmpty);
+    await store.abortWrite(sessionId, write.token);
+    expect(() => store.abortWrite(sessionId, write.token), throwsStateError);
+    expect(await File(write.absolutePath).exists(), isFalse);
+    expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
+    expect(store.relativePaths, isEmpty);
     expect(
       await writeObject(name: 'Bass', extension: 'wav'),
       'test files/Bass 01.wav',
@@ -194,7 +244,12 @@ void main() {
     final pending = Directory(path.join(store.rootDirectory, '.pending'));
     await pending.delete();
     await expectLater(
-      store.beginWrite(testFiles, baseName: 'Bass', extension: 'wav'),
+      store.beginWrite(
+        sessionId,
+        testFiles.directoryName,
+        baseName: 'Bass',
+        extension: 'wav',
+      ),
       throwsA(isA<FileSystemException>()),
     );
     await pending.create();
@@ -207,44 +262,54 @@ void main() {
   test(
     'reads and retained references independently prevent deletion',
     () async {
-      final id = await writeObject();
-      final firstRead = store.acquireRead(id);
-      final secondRead = store.acquireRead(id);
-      final projectReference = store.retain(id);
-      final undoReference = store.retain(id);
-      expect(() => store.delete(id), throwsStateError);
-      firstRead.release();
-      firstRead.release();
-      expect(() => store.delete(id), throwsStateError);
-      secondRead.release();
-      expect(() => store.delete(id), throwsStateError);
-      projectReference.release();
-      expect(() => store.delete(id), throwsStateError);
-      undoReference.release();
-      undoReference.release();
-      expect(await File(firstRead.path).exists(), isTrue);
-      await store.delete(id);
-      expect(await File(firstRead.path).exists(), isFalse);
-      expect(store.objectIds, isEmpty);
+      final relativePath = await writeObject();
+      final firstRead = store.acquireRead(sessionId, relativePath);
+      final secondRead = store.acquireRead(sessionId, relativePath);
+      final projectReference = store.retain(sessionId, relativePath);
+      final undoReference = store.retain(sessionId, relativePath);
+      expect(() => store.delete(sessionId, relativePath), throwsStateError);
+      store.releaseRead(sessionId, firstRead.token);
+      expect(
+        () => store.releaseRead(sessionId, firstRead.token),
+        throwsStateError,
+      );
+      expect(() => store.delete(sessionId, relativePath), throwsStateError);
+      store.releaseRead(sessionId, secondRead.token);
+      expect(() => store.delete(sessionId, relativePath), throwsStateError);
+      store.releaseRetention(sessionId, projectReference);
+      expect(() => store.delete(sessionId, relativePath), throwsStateError);
+      store.releaseRetention(sessionId, undoReference);
+      expect(
+        () => store.releaseRetention(sessionId, undoReference),
+        throwsStateError,
+      );
+      expect(await File(firstRead.absolutePath).exists(), isTrue);
+      await store.delete(sessionId, relativePath);
+      expect(await File(firstRead.absolutePath).exists(), isFalse);
+      expect(store.relativePaths, isEmpty);
     },
   );
 
   test(
     'deletion reserves the object before awaiting filesystem work',
     () async {
-      final id = await writeObject();
-      final deleting = store.delete(id);
-      expect(() => store.acquireRead(id), throwsStateError);
-      expect(() => store.retain(id), throwsStateError);
-      expect(() => store.delete(id), throwsStateError);
+      final relativePath = await writeObject();
+      final deleting = store.delete(sessionId, relativePath);
+      expect(
+        () => store.acquireRead(sessionId, relativePath),
+        throwsStateError,
+      );
+      expect(() => store.retain(sessionId, relativePath), throwsStateError);
+      expect(() => store.delete(sessionId, relativePath), throwsStateError);
       await deleting;
-      expect(store.objectIds, isEmpty);
+      expect(store.relativePaths, isEmpty);
     },
   );
 
   test('failed commit preserves existing data and remains abortable', () async {
     final write = await store.beginWrite(
-      testFiles,
+      sessionId,
+      testFiles.directoryName,
       baseName: 'Bass',
       extension: 'wav',
     );
@@ -252,59 +317,80 @@ void main() {
       path.join(store.rootDirectory, 'test files', 'Bass 01.wav'),
     );
     await existing.writeAsString('existing data');
-    await File(write.path).writeAsString('new data');
-    await expectLater(write.commit(), throwsStateError);
+    await File(write.absolutePath).writeAsString('new data');
+    await expectLater(
+      store.commitWrite(sessionId, write.token),
+      throwsStateError,
+    );
     expect(await existing.readAsString(), 'existing data');
-    expect(await File(write.path).readAsString(), 'new data');
-    await write.abort();
-    expect(store.objectIds, isEmpty);
+    expect(await File(write.absolutePath).readAsString(), 'new data');
+    await store.abortWrite(sessionId, write.token);
+    expect(store.relativePaths, isEmpty);
   });
 
   test('filesystem failures allow commit and deletion to be retried', () async {
-    final write = await store.beginWrite(testFiles, baseName: 'Bass');
-    await File(write.path).delete();
-    await expectLater(write.commit(), throwsA(isA<FileSystemException>()));
-    await File(write.path).writeAsString('retry');
-    final id = await write.commit();
-    final read = store.acquireRead(id);
-    final objectPath = read.path;
-    read.release();
+    final write = await store.beginWrite(
+      sessionId,
+      testFiles.directoryName,
+      baseName: 'Bass',
+    );
+    await File(write.absolutePath).delete();
+    await expectLater(
+      store.commitWrite(sessionId, write.token),
+      throwsA(isA<FileSystemException>()),
+    );
+    await File(write.absolutePath).writeAsString('retry');
+    final relativePath = await store.commitWrite(sessionId, write.token);
+    final read = store.acquireRead(sessionId, relativePath);
+    final objectPath = read.absolutePath;
+    store.releaseRead(sessionId, read.token);
     await File(objectPath).delete();
-    await expectLater(store.delete(id), throwsA(isA<FileSystemException>()));
-    final retained = store.retain(id);
-    retained.release();
+    await expectLater(
+      store.delete(sessionId, relativePath),
+      throwsA(isA<FileSystemException>()),
+    );
+    final retained = store.retain(sessionId, relativePath);
+    store.releaseRetention(sessionId, retained);
     await File(objectPath).writeAsString('retry');
-    await store.delete(id);
+    await store.delete(sessionId, relativePath);
   });
 
   test('commit and abort cannot both operate on the same write', () async {
-    final write = await store.beginWrite(testFiles);
-    final committing = write.commit();
-    expect(() => write.abort(), throwsStateError);
-    expect(() => write.commit(), throwsStateError);
+    final write = await store.beginWrite(sessionId, testFiles.directoryName);
+    final committing = store.commitWrite(sessionId, write.token);
+    expect(() => store.abortWrite(sessionId, write.token), throwsStateError);
+    expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
     await committing;
-    final abortedWrite = await store.beginWrite(testFiles);
-    final aborting = abortedWrite.abort();
-    expect(() => abortedWrite.commit(), throwsStateError);
+    final abortedWrite = await store.beginWrite(
+      sessionId,
+      testFiles.directoryName,
+    );
+    final aborting = store.abortWrite(sessionId, abortedWrite.token);
+    expect(
+      () => store.commitWrite(sessionId, abortedWrite.token),
+      throwsStateError,
+    );
     await aborting;
   });
 
   test(
-    'reopening and moving a store preserve IDs and existing names',
+    'reopening and moving a store preserve relative paths and existing names',
     () async {
-      final id = await writeObject(
+      final relativePath = await writeObject(
         name: 'Bass',
         extension: 'wav',
         value: 'saved data',
       );
+      await store.closeSession(sessionId);
       await store.close();
       final movedPath = path.join(directory.path, 'moved');
       await Directory(store.rootDirectory).rename(movedPath);
       store = await openStore(movedPath);
-      final read = store.acquireRead(id);
-      expect(await File(read.path).readAsString(), 'saved data');
-      expect(path.isWithin(movedPath, read.path), isTrue);
-      read.release();
+      sessionId = store.openSession();
+      final read = store.acquireRead(sessionId, relativePath);
+      expect(await File(read.absolutePath).readAsString(), 'saved data');
+      expect(path.isWithin(movedPath, read.absolutePath), isTrue);
+      store.releaseRead(sessionId, read.token);
       expect(
         await writeObject(name: 'bass', extension: 'wav'),
         'test files/bass 02.wav',
@@ -315,16 +401,18 @@ void main() {
   test(
     'opening preserves unreferenced objects and abandoned temporary files',
     () async {
-      final id = await writeObject();
+      final relativePath = await writeObject();
       final abandoned = File(
         path.join(store.rootDirectory, '.pending', 'abandoned.tmp'),
       );
       await abandoned.writeAsString('incomplete');
+      await store.closeSession(sessionId);
       await store.close();
       store = await openStore(store.rootDirectory);
-      expect(store.objectIds, contains(id));
+      sessionId = store.openSession();
+      expect(store.relativePaths, contains(relativePath));
       expect(await abandoned.readAsString(), 'incomplete');
-      store.retain(id).release();
+      store.releaseRetention(sessionId, store.retain(sessionId, relativePath));
     },
   );
 
@@ -346,80 +434,103 @@ void main() {
       throwsStateError,
     );
     final root = store.rootDirectory;
+    await store.closeSession(sessionId);
     await store.close();
     store = await openStore(root);
+    sessionId = store.openSession();
   });
 
-  test('close refuses live handles and can be retried after release', () async {
-    final id = await writeObject();
-    final read = store.acquireRead(id);
-    final reference = store.retain(id);
-    final pending = await store.beginWrite(testFiles);
+  test('close refuses outstanding sessions and can be retried', () async {
+    final relativePath = await writeObject();
+    final read = store.acquireRead(sessionId, relativePath);
+    store.retain(sessionId, relativePath);
+    final pending = await store.beginWrite(sessionId, testFiles.directoryName);
     await expectLater(store.close(), throwsStateError);
-    expect(() => store.acquireRead(id), throwsStateError);
-    expect(() => store.beginWrite(testFiles), throwsStateError);
-    read.release();
-    reference.release();
-    await pending.abort();
+    expect(() => store.acquireRead(sessionId, relativePath), throwsStateError);
+    expect(() => store.openSession(), throwsStateError);
+    await store.closeSession(sessionId);
     await store.close();
-    expect(await File(read.path).exists(), isTrue);
+    expect(await File(read.absolutePath).exists(), isTrue);
+    expect(await File(pending.absolutePath).exists(), isFalse);
   });
 
-  test('close waits for an in-flight commit', () async {
-    final write = await store.beginWrite(testFiles);
-    final committing = write.commit();
-    final closing = store.close();
-    final id = await committing;
+  test('session close waits for an in-flight commit', () async {
+    final write = await store.beginWrite(sessionId, testFiles.directoryName);
+    final committing = store.commitWrite(sessionId, write.token);
+    final closing = store.closeSession(sessionId);
+    final relativePath = await committing;
     await closing;
-    expect(await File(path.join(store.rootDirectory, id)).exists(), isTrue);
+    await store.close();
+    expect(
+      await File(path.join(store.rootDirectory, relativePath)).exists(),
+      isTrue,
+    );
   });
 
   test(
-    'close during beginWrite leaves the returned transaction abortable',
+    'session close waits for beginWrite and aborts the returned write',
     () async {
-      final writing = store.beginWrite(testFiles);
-      final closing = expectLater(store.close(), throwsStateError);
+      final writing = store.beginWrite(sessionId, testFiles.directoryName);
+      final closing = store.closeSession(sessionId);
       final write = await writing;
       await closing;
-      await write.abort();
-      await store.close();
+      expect(await File(write.absolutePath).exists(), isFalse);
+      expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
     },
   );
+
   test('names are reserved within a category, not across categories', () async {
-    final first = await store.beginWrite(testFiles, baseName: 'Preset');
-    final second = await store.beginWrite(pluginStates, baseName: 'Preset');
-    expect(await first.commit(), 'test files/Preset 01');
-    expect(await second.commit(), 'plugin states/Preset 01');
-    expect(store.projectFileIds, unorderedEquals(store.objectIds));
+    final first = await store.beginWrite(
+      sessionId,
+      testFiles.directoryName,
+      baseName: 'Preset',
+    );
+    final second = await store.beginWrite(
+      sessionId,
+      pluginStates.directoryName,
+      baseName: 'Preset',
+    );
+    expect(
+      await store.commitWrite(sessionId, first.token),
+      'test files/Preset 01',
+    );
+    expect(
+      await store.commitWrite(sessionId, second.token),
+      'plugin states/Preset 01',
+    );
+    expect(store.projectFilePaths, unorderedEquals(store.relativePaths));
   });
 
   test(
     'cache files are usable but excluded from saved project files',
     () async {
-      final savedId = await writeObject(name: 'Bass', extension: 'wav');
+      final savedPath = await writeObject(name: 'Bass', extension: 'wav');
       final write = await store.beginWrite(
-        cache,
+        sessionId,
+        cache.directoryName,
         baseName: 'Bass',
         extension: 'wav',
       );
-      final cachedId = await write.commit();
-      final read = store.acquireRead(cachedId);
-      expect(store.objectIds, unorderedEquals([savedId, cachedId]));
-      expect(store.projectFileIds, [savedId]);
+      final cachedPath = await store.commitWrite(sessionId, write.token);
+      final read = store.acquireRead(sessionId, cachedPath);
+      expect(store.relativePaths, unorderedEquals([savedPath, cachedPath]));
+      expect(store.projectFilePaths, [savedPath]);
       // Cleanup must wait for cache readers too.
       await expectLater(store.close(), throwsStateError);
-      expect(await File(read.path).exists(), isTrue);
-      read.release();
+      expect(await File(read.absolutePath).exists(), isTrue);
+      await store.closeSession(sessionId);
       await store.close();
-      expect(await File(read.path).exists(), isFalse);
+      expect(await File(read.absolutePath).exists(), isFalse);
       store = await openStore(store.rootDirectory);
-      expect(store.objectIds, [savedId]);
+      sessionId = store.openSession();
+      expect(store.relativePaths, [savedPath]);
     },
   );
 
   test(
     'custom categories are recovered while unrelated files stay untouched',
     () async {
+      await store.closeSession(sessionId);
       await store.close();
       const custom = ProjectFileCategory('sample maps');
       final root = store.rootDirectory;
@@ -429,23 +540,24 @@ void main() {
       await unknown.parent.create();
       await unknown.writeAsString('unrecognized data');
       store = await ProjectFileStore.open(root, categories: [custom]);
+      sessionId = store.openSession();
       final write = await store.beginWrite(
-        custom,
+        sessionId,
+        custom.directoryName,
         baseName: 'Map',
         extension: 'json',
       );
-      final id = await write.commit();
+      final relativePath = await store.commitWrite(sessionId, write.token);
+      await store.closeSession(sessionId);
       await store.close();
       store = await ProjectFileStore.open(root, categories: [custom]);
-      expect(store.objectIds, [id]);
-      expect(id, 'sample maps/Map 01.json');
+      sessionId = store.openSession();
+      expect(store.relativePaths, [relativePath]);
+      expect(relativePath, 'sample maps/Map 01.json');
       expect(await document.readAsString(), 'project document');
       expect(await unknown.readAsString(), 'unrecognized data');
-      expect(() => store.beginWrite(testFiles), throwsArgumentError);
       expect(
-        () => store.beginWrite(
-          const ProjectFileCategory('sample maps', isCache: true),
-        ),
+        () => store.beginWrite(sessionId, testFiles.directoryName),
         throwsArgumentError,
       );
     },

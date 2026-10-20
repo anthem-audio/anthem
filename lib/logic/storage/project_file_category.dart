@@ -20,13 +20,13 @@
 /// A directory containing one kind of project file.
 ///
 /// [directoryName] is a single folder name relative to the project root. It is
-/// part of each file's saved ID, so changing it also changes those IDs.
+/// part of each file's relative path, so changing it also changes those paths.
 class ProjectFileCategory {
   final String directoryName;
 
   /// Whether these files can be regenerated from the project's saved data.
   ///
-  /// Cache files are excluded from `ProjectFileStore.projectFileIds` and deleted
+  /// Cache files are excluded from `ProjectFileStore.projectFilePaths` and deleted
   /// when the store closes. Required project data must use a non-cache category.
   final bool isCache;
 
