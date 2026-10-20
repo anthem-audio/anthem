@@ -18,10 +18,13 @@
 */
 
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/project_file/format.dart';
+import 'package:anthem/logic/storage/project_file_category.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -29,6 +32,8 @@ import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+
+import '../test/helpers/prealpha_1_project.dart';
 
 import 'support/app_test_session.dart';
 import 'support/piano_roll_test_driver.dart';
@@ -164,13 +169,26 @@ void main() {
     );
     final session = AppTestSession(tester, name: 'project-persistence');
     await session.start();
+    await files.useTemporaryProjectsDirectory();
     final original = session.project;
     final ids = await _prepareEditedProject(session);
     final originalPid = original.engine.processId;
     final originalEngineId = original.engine.id;
+    final storage = session.services.projectStorage;
+    final store = await storage.fileStore;
+    final client = store.openSession();
+    final pending = await store.beginWrite(
+      client,
+      ProjectFileCategory.pluginStates.directoryName,
+      baseName: 'Test state',
+      extension: 'bin',
+    );
+    await File(pending.absolutePath).writeAsString('snapshot data');
+    final relativePath = await store.commitWrite(client, pending.token);
+    await store.closeSession(client);
     files.selectedSavePath = files.pathFor('saved-melody');
     expect(await _save(session), isTrue);
-    final savedPath = files.pathFor('saved-melody.anthem');
+    final savedPath = files.pathFor('saved-melody/saved-melody.anthem');
     expect(original.filePath, savedPath);
     expect(original.isDirty, isFalse);
     expect(await File(savedPath).length(), greaterThan(0));
@@ -204,6 +222,7 @@ void main() {
     );
     await tester.pump();
     expect(original.engine.processExitCode, 0);
+    expect(await Directory(storage.rootDirectory).exists(), isFalse);
     expect(AnthemStore.instance.projects, isEmpty);
     expect(ServiceRegistry.maybeForProject(original.id), isNull);
     await tester.tap(find.text('File'));
@@ -223,6 +242,12 @@ void main() {
     expect(reopened!.id, original.id);
     expect(reopened.filePath, savedPath);
     expect(reopened.isDirty, isFalse);
+    final reopenedStore = await session.services.projectStorage.fileStore;
+    expect(reopenedStore.projectFilePaths, [relativePath]);
+    final reopenedClient = reopenedStore.openSession();
+    final access = reopenedStore.acquireRead(reopenedClient, relativePath);
+    expect(await File(access.absolutePath).readAsString(), 'snapshot data');
+    await reopenedStore.closeSession(reopenedClient);
     expect(reopened.toJson(), savedPersistentContent);
     expect(reopened.engine.id, isNot(originalEngineId));
     expect(reopened.engine.processId, isNot(originalPid));
@@ -278,6 +303,7 @@ void main() {
       );
       final session = AppTestSession(tester, name: 'persistence-cancellation');
       await session.start();
+      await files.useTemporaryProjectsDirectory();
       final original = session.project;
       final ids = await _prepareEditedProject(session);
       final before = original.toJson();
@@ -290,7 +316,7 @@ void main() {
       expect(await files.directory.list().toList(), isEmpty);
       expect(find.text('Could not open project'), findsNothing);
 
-      files.selectedSavePath = files.pathFor('existing.anthem');
+      files.selectedSavePath = files.pathFor('existing');
       expect(await _save(session), isTrue);
       final savedBytes = await File(original.filePath!).readAsBytes();
       original.execute(SetTempoCommand(newRawTempo: 13900, oldRawTempo: 13700));
@@ -301,12 +327,12 @@ void main() {
         throwsA(isA<FileSystemException>()),
       );
       _expectSameOpenProject(session, original);
-      expect(original.filePath, files.pathFor('existing.anthem'));
+      expect(original.filePath, files.pathFor('existing/existing.anthem'));
       expect(original.isDirty, isTrue);
       expect(original.toJson(), edited);
       expect(await File(original.filePath!).readAsBytes(), savedBytes);
       expect(
-        File(files.pathFor('missing-directory/song.anthem')).existsSync(),
+        Directory(files.pathFor('missing-directory/song')).existsSync(),
         isFalse,
       );
 
@@ -336,6 +362,7 @@ void main() {
       );
       final session = AppTestSession(tester, name: 'persistence-read-failure');
       await session.start();
+      await files.useTemporaryProjectsDirectory();
       final original = session.project;
       final ids = await _prepareEditedProject(session);
       final before = original.toJson();
@@ -367,6 +394,63 @@ void main() {
       }
       expect(await corrupt.readAsBytes(), [12, 34, 56]);
       expect(files.openCount, 2);
+      await _verifyContent(
+        session,
+        trackId: ids.trackId,
+        patternId: ids.patternId,
+        noteId: ids.noteId,
+      );
+      await session.dispose();
+    },
+  );
+  testAppScenario(
+    'legacy files open as unsaved and are preserved by the first folder save',
+    (tester) async {
+      final files = await TemporaryProjectFileSelector.install(
+        'legacy-project-import',
+      );
+      final session = AppTestSession(tester, name: 'legacy-project-import');
+      await session.start();
+      await files.useTemporaryProjectsDirectory();
+      final original = session.project;
+      final ids = await _prepareEditedProject(session);
+      final legacy = File(files.pathFor('Old.song.anthem'));
+      await legacy.writeAsBytes([
+        ...projectFileHeader,
+        ...gzip.encode(
+          utf8.encode(jsonEncode(createPrealpha1ProjectJson(original))),
+        ),
+      ]);
+      final originalBytes = await legacy.readAsBytes();
+      final expected = original.toJson();
+      await waitForFuture(
+        tester,
+        ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
+          original.id,
+        ),
+        conditionDescription: 'close the original project before legacy import',
+        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      );
+
+      files.selectedOpenPath = legacy.path;
+      final imported = await session.openProjectFromFile();
+      expect(imported, isNotNull);
+      expect(imported!.toJson(), expected);
+      expect(imported.filePath, isNull);
+      expect(imported.name, 'New Project');
+      expect(imported.isDirty, isTrue);
+      expect(session.services.projectStorage.isTemporary, isTrue);
+      await tester.pump();
+      expect(find.text('Save this project as a folder'), findsOneWidget);
+      ServiceRegistry.dialogController.closeDialog();
+      await tester.pump();
+
+      files.selectedSavePath = files.pathFor('Converted');
+      expect(await _save(session, saveAs: false), isTrue);
+      expect(imported.filePath, files.pathFor('Converted/Converted.anthem'));
+      expect(imported.name, 'Converted');
+      expect(imported.isDirty, isFalse);
+      expect(await legacy.readAsBytes(), originalBytes);
       await _verifyContent(
         session,
         trackId: ids.trackId,

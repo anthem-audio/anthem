@@ -25,6 +25,7 @@ class FakeFileSelector extends FileSelectorPlatform {
   XFile? selectedFile;
   FileSaveLocation? saveLocation;
   int saveCount = 0;
+  SaveDialogOptions? lastSaveOptions;
 
   @override
   Future<XFile?> openFile({
@@ -41,6 +42,7 @@ class FakeFileSelector extends FileSelectorPlatform {
     SaveDialogOptions options = const SaveDialogOptions(),
   }) async {
     saveCount++;
+    lastSaveOptions = options;
     return saveLocation;
   }
 }

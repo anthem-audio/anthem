@@ -78,7 +78,7 @@ Project files store the graph's connections and each port's list of connection I
 
 ## Project file compatibility
 
-Loading a file saved by an older Anthem version requires a migration before constructing the model. The file reader calls [`migrateProjectJson`](../../lib/logic/project_file/migrations/migrate_project_json.dart) to bring the JSON into the current format. Model `fromJson` methods then read that format without converting older schemas.
+Loading a file saved by an older Anthem version requires a migration before constructing the model. The project loading workflow calls [`migrateProjectJson`](../../lib/logic/project_file/migrations/migrate_project_json.dart) to bring the JSON into the current format. Model `fromJson` methods then read that format without converting older schemas.
 
 The `prealpha.2` migration preserves the old parameter defaults as project reset values and moves visual baselines into `ParameterPresentationModel`. For native processors, it clears the old factory defaults so the engine can supply them during initialization. Existing parameter values are preserved.
 

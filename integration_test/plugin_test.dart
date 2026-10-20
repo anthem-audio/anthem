@@ -434,6 +434,7 @@ void main() {
       expectedStates[fixture.node.id] = await _liveState(session, fixture.node);
     }
     expect(original.isDirty, isTrue);
+    await files.projectFiles.useTemporaryProjectsDirectory();
     files.projectFiles.selectedSavePath = files.projectFiles.pathFor(
       'plugin-state',
     );
@@ -451,7 +452,9 @@ void main() {
       ),
       isTrue,
     );
-    final savedPath = files.projectFiles.pathFor('plugin-state.anthem');
+    final savedPath = files.projectFiles.pathFor(
+      'plugin-state/plugin-state.anthem',
+    );
     expect(original.isDirty, isFalse);
     for (final entry in expectedStates.entries) {
       expect(

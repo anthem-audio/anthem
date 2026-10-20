@@ -22,7 +22,9 @@ import 'dart:io';
 
 import 'package:anthem/helpers/logging/anthem_logging.dart';
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/directory.dart';
 import 'package:anthem/logic/project_file/errors.dart';
+import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
 import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
@@ -37,6 +39,7 @@ import 'package:anthem/model/store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' hide TextBox;
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as paths;
 
 final _log = Logger('main_window_controller');
 const _projectFileType = XTypeGroup(
@@ -51,6 +54,9 @@ String projectFileLoadErrorMarkdown(Object error) {
   }
 
   return switch (error) {
+    ProjectDirectoryRequiresDesktopException() =>
+      'Open this project folder in the desktop version of Anthem. '
+          'The web version does not yet support importing project folders.',
     ProjectSavedInNewerVersionException error =>
       'This project was saved in a newer version of Anthem '
           '(${version(error.savedVersion)}). You are running Anthem '
@@ -107,13 +113,15 @@ class MainWindowController {
   final Map<int, MouseCursor> _cursorOverrides = {};
   int _nextCursorOverrideId = 0;
 
-  ServiceRegistry _addProject(ProjectModel project) {
+  ServiceRegistry _addProject(ProjectModel project, {ProjectStorage? storage}) {
     final store = AnthemStore.instance;
 
     store.projects[project.id] = project;
     store.projectOrder.add(project.id);
     store.activeProjectId = project.id;
-    return ServiceRegistry.initializeProject(project);
+    final registry = ServiceRegistry.initializeProject(project);
+    if (storage != null) registry.register(storage);
+    return registry;
   }
 
   // Returns the ID of the new tab
@@ -125,8 +133,9 @@ class MainWindowController {
   Future<ProjectId> openProject(
     ProjectModel project, {
     bool startAudio = true,
+    ProjectStorage? storage,
   }) async {
-    final serviceRegistry = _addProject(project);
+    final serviceRegistry = _addProject(project, storage: storage);
     await serviceRegistry.projectEngineController.start(startAudio: startAudio);
 
     return project.id;
@@ -192,36 +201,32 @@ class MainWindowController {
     String? engineExecutable,
     bool startAudio = true,
   }) async {
-    String? home;
-    Map<String, String> envVars = kIsWeb ? {} : Platform.environment;
-
-    // This throws on web due to dart:io usage
-    try {
-      if (Platform.isMacOS || Platform.isLinux) {
-        home = envVars['HOME'];
-      } else if (Platform.isWindows) {
-        home = envVars['UserProfile'];
-      }
-    } catch (e) {
-      home = null;
-    }
-
     final file = await openFile(
       acceptedTypeGroups: [_projectFileType],
-      initialDirectory: home,
+      initialDirectory:
+          await ServiceRegistry.applicationSettings.projectsDirectory,
     );
     if (file == null) return null;
 
     final ProjectModel project;
-    String? path;
+    ProjectStorage? storage;
+    final bool needsFolderSave;
 
     try {
-      final Map<String, dynamic> projectJson;
-      if (kIsWeb) {
-        projectJson = await decodeProjectFileBytes(await file.readAsBytes());
-      } else {
-        path = file.path;
-        projectJson = await readProjectFile(path);
+      final projectJson = kIsWeb
+          ? await decodeProjectFileBytes(await file.readAsBytes())
+          : await readProjectFile(file.path);
+      final savedVersion = readSavedProjectVersion(projectJson);
+      // Projects used a single file before prealpha.2.
+      needsFolderSave =
+          savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2');
+      migrateProjectJson(projectJson);
+      if (!needsFolderSave) {
+        if (kIsWeb) {
+          throw const ProjectDirectoryRequiresDesktopException();
+        }
+        storage = ProjectStorage(rootDirectory: paths.dirname(file.path));
+        await storage.fileStore;
       }
 
       project = ProjectModel.fromJson(
@@ -229,6 +234,7 @@ class MainWindowController {
         enginePathOverride: engineExecutable,
       );
     } catch (error, stackTrace) {
+      await storage?.close();
       _log.warning('Could not load project file.', error, stackTrace);
       dialogController.showMarkdownDialog(
         title: 'Could not open project',
@@ -238,10 +244,25 @@ class MainWindowController {
       return null;
     }
 
-    project.filePath = path;
-    project.isDirty = false;
+    project.filePath = needsFolderSave ? null : file.path;
+    project.isDirty = needsFolderSave;
 
-    return openProject(project, startAudio: startAudio);
+    final id = await openProject(
+      project,
+      startAudio: startAudio,
+      storage: storage,
+    );
+    if (needsFolderSave && !kIsWeb) {
+      dialogController.showMarkdownDialog(
+        title: 'Save this project as a folder',
+        markdown:
+            'This project uses the older single-file format. '
+            'It has been opened as an unsaved project and needs to be saved '
+            'to a new project folder. The original file will be kept.',
+        buttons: [DialogButton.ok()],
+      );
+    }
+    return id;
   }
 
   Future<bool> saveProject(
@@ -252,23 +273,44 @@ class MainWindowController {
     final project = AnthemStore.instance.projects[projectId]!;
 
     String? path;
+    var createDirectory = false;
 
     if (!kIsWeb) {
       if (alwaysUseFilePicker || project.filePath == null) {
-        path = (await getSaveLocation(
-          acceptedTypeGroups: [_projectFileType],
-          suggestedName: '${project.name}.anthem',
+        String? initialDirectory = project.filePath == null
+            ? await ServiceRegistry.applicationSettings.projectsDirectory
+            : paths.dirname(paths.dirname(project.filePath!));
+        if (initialDirectory != null) {
+          try {
+            await Directory(initialDirectory).create(recursive: true);
+          } on FileSystemException catch (error, stackTrace) {
+            _log.warning(
+              'Could not create the projects directory.',
+              error,
+              stackTrace,
+            );
+            initialDirectory = null;
+          }
+        }
+        final folder = (await getSaveLocation(
+          initialDirectory: initialDirectory,
+          suggestedName: project.name,
+          confirmButtonText: 'Create project folder',
         ))?.path;
+        if (folder != null) {
+          final root = paths.normalize(paths.absolute(folder));
+          path = paths.join(root, '${paths.basename(root)}.anthem');
+          createDirectory =
+              project.filePath == null ||
+              !paths.equals(root, paths.dirname(project.filePath!));
+          if (!createDirectory) path = project.filePath;
+        }
       } else {
         path = project.filePath;
       }
     }
 
     if (!kIsWeb && path == null) return false;
-
-    if (path != null && !path.toLowerCase().endsWith('.anthem')) {
-      path += '.anthem';
-    }
 
     if (kIsWeb) {
       // Dialog to ask for filename
@@ -345,7 +387,13 @@ class MainWindowController {
         }),
       );
 
-      await writeProjectFile(path!, project);
+      final storage = ServiceRegistry.forProject(projectId).projectStorage;
+      await writeProjectDirectory(
+        path!,
+        project,
+        await storage.fileStore,
+        create: createDirectory,
+      );
 
       project.isDirty = false;
       project.filePath = path;

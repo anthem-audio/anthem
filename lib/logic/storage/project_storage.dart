@@ -27,8 +27,9 @@ import 'file_store_io_stub.dart'
 
 /// Manages files for a project.
 ///
-/// The folder project format will keep the project document and its data files
-/// together in this root. Project save/load does not use this store yet.
+/// A loaded project uses its saved folder as the root. A new project uses a
+/// temporary root. Saving copies required files to the chosen folder; the open
+/// store keeps its root until project closure so existing read paths stay valid.
 ///
 /// These files will be used to store audio clips from the project, and
 /// plugin states. The reason for storing plugin states as separate files is

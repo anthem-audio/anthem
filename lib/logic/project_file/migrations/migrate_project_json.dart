@@ -24,6 +24,29 @@ import 'package:anthem/logic/project_file/version.dart';
 
 const _savedVersionKey = 'savedInSoftwareVersion';
 
+/// Reads the saved software version before migrations update it.
+///
+/// Throws [InvalidProjectFileException] if the version is missing or invalid.
+ProjectFileVersion readSavedProjectVersion(ProjectJson projectJson) {
+  final savedVersionValue = projectJson[_savedVersionKey];
+  if (savedVersionValue is! String) {
+    throw const InvalidProjectFileException(
+      cause: FormatException(
+        'Expected savedInSoftwareVersion to be a version string.',
+      ),
+    );
+  }
+
+  try {
+    return ProjectFileVersion.parse(savedVersionValue);
+  } on FormatException catch (error, stackTrace) {
+    Error.throwWithStackTrace(
+      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
+      stackTrace,
+    );
+  }
+}
+
 /// Applies every project-file migration newer than the version in
 /// [projectJson].
 ///
@@ -37,24 +60,7 @@ ProjectJson migrateProjectJson(
 }) {
   final resolvedCurrentVersion = currentVersion ?? currentProjectFileVersion;
 
-  final savedVersionValue = projectJson[_savedVersionKey];
-  if (savedVersionValue is! String) {
-    throw const InvalidProjectFileException(
-      cause: FormatException(
-        'Expected savedInSoftwareVersion to be a version string.',
-      ),
-    );
-  }
-
-  final ProjectFileVersion savedVersion;
-  try {
-    savedVersion = ProjectFileVersion.parse(savedVersionValue);
-  } on FormatException catch (error, stackTrace) {
-    Error.throwWithStackTrace(
-      InvalidProjectFileException(cause: error, causeStackTrace: stackTrace),
-      stackTrace,
-    );
-  }
+  final savedVersion = readSavedProjectVersion(projectJson);
 
   if (savedVersion == resolvedCurrentVersion) {
     return projectJson;

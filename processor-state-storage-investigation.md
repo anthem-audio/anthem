@@ -1,6 +1,6 @@
 # Processor state storage investigation
 
-Investigated on 2026-10-09. This records findings and decisions for future work. The desktop file store and engine storage requests are implemented. Folder-based projects and file-backed processor state remain follow-on work.
+Investigated on 2026-10-09. This records findings and decisions for future work. The desktop file store, engine storage requests, and folder-based project save/load are implemented. File-backed processor state remains follow-on work.
 
 ## Scope
 
@@ -282,7 +282,7 @@ not prescribe one internal representation for every processor.
 
 ## Implementation sequence
 
-Stages 1 and 2 provide desktop file storage and engine access through IPC. Stage 3 will connect processor-state capture and restoration to this store and introduce the folder project format.
+Stages 1 and 2 provide desktop file storage and engine access through IPC. Stage 3 introduces folder projects, then connects processor-state capture and restoration to this store. The folder save/load checkpoint is implemented; file-backed snapshots are next.
 
 1. Build the desktop file store and its tests: relative file paths, temporary writes,
    commit/abort, read access, retention and deletion, and separate unsaved-project
@@ -313,7 +313,7 @@ The desktop store supports configurable category folders. Only `plugin states` i
 
 `ProjectStorage` accepts an explicit root, which it preserves on close. `ProjectStorage.temporary()` chooses a fresh temporary root for an unsaved project, creating directories only when files are first needed. Temporary storage can be closed while keeping required data for recovery, or discarded after saving elsewhere or explicit user dismissal. An explicit root cannot be discarded through this API. Cache categories are deleted on close in either case.
 
-First save can copy the required files selected by `projectFilePaths` to a stable root without changing their relative paths. Consumers must finish using the old absolute paths before the temporary root is discarded. Tests exercise this transfer, but the application save workflow and folder project format remain follow-on work. No project schema or migration changes are included in this storage stage.
+First save can copy the required files selected by `projectFilePaths` to a stable root without changing their relative paths. Consumers must finish using the old absolute paths before the temporary root is discarded. Desktop Save and Save As now perform this transfer. The open session keeps its existing storage root so that active engine and UI read paths remain valid; temporary roots are discarded when that session closes.
 
 ## Web storage and portable archives
 
@@ -333,4 +333,16 @@ A client must finish file I/O and close OS file handles before closing its sessi
 
 [`ProjectStorage`](lib/logic/storage/project_storage.dart) owns the store for the lifetime of an open project. Engine sessions end after their processes stop; UI access and project/history references can last until project closure. Project close waits for engine disposal, and all storage sessions must close before the store can close. Explicit roots are preserved and temporary roots are discarded. Recovery discovery and retention policy remain future work.
 
-The current project format and plugin capture path still use embedded state. The engine can begin, commit, and abort writes; acquire and release reads; retain and release references; and request deletion of unused files. The C++ client and production UI dispatcher are exercised together in real-engine tests, including startup, render request holds, process exit, restart, and a lost access reply. Saved object references have not been added to the project model yet. The desktop filesystem backend has an explicit unsupported boundary on web, tested with both JavaScript and Dart WebAssembly compilation. An OPFS backend and Emscripten filesystem access are deferred to a separate stage so that import cleanup, quota failures, engine restarts, and ZIP download can be verified together.
+Plugin capture and the project document still use embedded state. The engine can begin, commit, and abort writes; acquire and release reads; retain and release references; and request deletion of unused files. The C++ client and production UI dispatcher are exercised together in real-engine tests, including startup, render request holds, process exit, restart, and a lost access reply. Saved object references have not been added to the project model yet. The desktop filesystem backend has an explicit unsupported boundary on web, tested with both JavaScript and Dart WebAssembly compilation. An OPFS backend and Emscripten filesystem access are deferred to a separate stage so that import cleanup, quota failures, engine restarts, and ZIP download can be verified together.
+
+## Folder project checkpoint
+
+Desktop Save As asks for a new project folder name and location, initially using the configured projects directory. A folder named `Song` contains `Song.anthem` and any required category files, such as `plugin states/State 01.bin`. Open selects the `.anthem` document inside that folder.
+
+The document keeps the existing compressed JSON encoding and container header. Open reads `savedInSoftwareVersion` before migrations update it: versions before `prealpha.2` are imported as unsaved projects, while `prealpha.2` and later use the selected document's parent directory as storage. This cutoff is fixed at the first folder-based release, independently of the running software version. Unreleased development files are not a separate compatibility target.
+
+First save and Save As assemble a new folder before publishing it. Ordinary Save copies any additional completed files, then replaces the document with a completed temporary file. Cache categories and pending writes are excluded. No unused saved files are deleted during Save.
+
+Save As changes the save destination while keeping the open file store at its existing root, so active engine and UI read paths remain valid. Newly written files remain in that working root and are copied on subsequent saves. Temporary roots are discarded when the session closes; reopening uses the saved folder as the store root. Moving the live store to a new root would require coordinating existing readers and is deferred.
+
+Older standalone `.anthem` files open as unsaved projects and show a notice to save as a folder. The original file is preserved. JSON migrations still run before model deserialization. VST state remains embedded until the next checkpoint connects capture and restoration to the file store. Web still offers document-only downloads during development. Current-version projects require folder storage and cannot yet be opened in the browser; ZIP import/export and OPFS storage remain a separate checkpoint to complete before release.

@@ -36,6 +36,7 @@ import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem/engine_api/messages/messages.dart' as message_api;
 import 'package:mobx/mobx.dart';
+import 'package:path/path.dart' as path;
 
 import 'processing_graph/processing_graph.dart';
 import 'shared/hydratable.dart';
@@ -229,7 +230,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
       return 'New Project';
     }
 
-    return filePath!.split(RegExp('[/\\\\]')).last.split('.').first;
+    return path.basenameWithoutExtension(filePath!);
   }
 
   /// Tracks whether or not the project has been saved.

@@ -25,10 +25,13 @@ import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/logic/project_file/gzip.dart';
+import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
 import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/model/processing_graph/parameter_presentation.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../../helpers/prealpha_1_project.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -40,44 +43,6 @@ void main() {
     );
     output.add(await compressGzip(jsonBytes));
     return output.takeBytes();
-  }
-
-  Map<String, dynamic> createPrealpha1ProjectJson(ProjectModel project) {
-    final projectJson = project.toJson()
-      ..['savedInSoftwareVersion'] = '0.0.0-prealpha.1';
-    final sequence = projectJson['sequence'] as Map<String, dynamic>;
-    final arrangement = sequence.remove('arrangement') as Map<String, dynamic>;
-    final arrangementId = arrangement['id'] as int;
-
-    sequence['arrangements'] = <String, dynamic>{
-      arrangementId.toString(): arrangement,
-    };
-    sequence['arrangementOrder'] = <int>[arrangementId];
-
-    final nodes = projectJson['processingGraph']['nodes'] as Map;
-    for (final node in nodes.values) {
-      for (final group in [
-        'audioInputPorts',
-        'audioOutputPorts',
-        'eventInputPorts',
-        'eventOutputPorts',
-        'controlInputPorts',
-        'controlOutputPorts',
-      ]) {
-        for (final port in node[group] as List) {
-          final presentation = port.remove('presentation') as Map;
-          final resetValue = port.remove('parameterResetValue');
-          final parameter = port['config']['parameterConfig'] as Map?;
-          if (parameter == null) continue;
-          final factoryDefault = parameter.remove('factoryDefaultValue');
-          parameter['defaultValue'] = resetValue ?? factoryDefault;
-          parameter['normalizedVisualBaseline'] =
-              presentation['normalizedVisualBaseline'];
-        }
-      }
-    }
-
-    return projectJson;
   }
 
   group('project file codec', () {
@@ -95,6 +60,17 @@ void main() {
         currentProjectFileSoftwareVersion,
       );
       expect(decodedJson, equals(projectJson));
+    });
+
+    test('rejects an unsupported container header', () async {
+      final project = ProjectModel.create();
+      addTearDown(project.dispose);
+      final unsupported = await encodeProjectFile(project);
+      unsupported[11] = 99;
+      await expectLater(
+        decodeProjectFileBytes(unsupported),
+        throwsA(isA<InvalidProjectFileException>()),
+      );
     });
 
     test('writes and reads a project file', () async {
@@ -115,76 +91,90 @@ void main() {
       expect(await readProjectFile(path), equals(project.toJson()));
     });
 
-    test('migrates byte and path reads before returning JSON', () async {
-      final project = ProjectModel.create();
-      addTearDown(project.dispose);
+    test(
+      'preserves the stored version and schema until explicit migration',
+      () async {
+        final project = ProjectModel.create();
+        addTearDown(project.dispose);
 
-      final utility =
-          project.processingGraph.nodes[project
-              .tracks[project.trackOrder.single]!
-              .requireProcessing
-              .utilityNodeId]!;
-      final gain = utility.getPortById(UtilityProcessorModel.gainPortId)
-        ..parameterValue = 0.321;
-      gain.presentation.normalizedVisualBaseline = 0.25;
-      final plugin = VST3ProcessorModel.create(
-        idAllocator: project.idAllocator,
-        vst3Path: '/test/plugin.vst3',
-      ).createNode()..processorState = 'c2F2ZWQgcGx1Z2luIHN0YXRl';
-      plugin.controlInputPorts.add(
-        NodePortModel(
-          id: 7,
-          nodeId: plugin.id,
-          config: NodePortConfigModel(
-            dataType: NodePortDataType.control,
-            parameterConfig: ParameterConfigModel(
-              id: 7,
-              factoryDefaultValue: 0.2,
-              displayMode: ParameterDisplayMode.pluginText,
+        final utility =
+            project.processingGraph.nodes[project
+                .tracks[project.trackOrder.single]!
+                .requireProcessing
+                .utilityNodeId]!;
+        final gain = utility.getPortById(UtilityProcessorModel.gainPortId)
+          ..parameterValue = 0.321;
+        gain.presentation.normalizedVisualBaseline = 0.25;
+        final plugin = VST3ProcessorModel.create(
+          idAllocator: project.idAllocator,
+          vst3Path: '/test/plugin.vst3',
+        ).createNode()..processorState = 'c2F2ZWQgcGx1Z2luIHN0YXRl';
+        plugin.controlInputPorts.add(
+          NodePortModel(
+            id: 7,
+            nodeId: plugin.id,
+            config: NodePortConfigModel(
+              dataType: NodePortDataType.control,
+              parameterConfig: ParameterConfigModel(
+                id: 7,
+                factoryDefaultValue: 0.2,
+                displayMode: ParameterDisplayMode.pluginText,
+              ),
+            ),
+            initialParameterValue: 0.123,
+            parameterResetValue: 0.2,
+            presentation: ParameterPresentationModel(
+              normalizedVisualBaseline: 0.75,
             ),
           ),
-          initialParameterValue: 0.123,
-          parameterResetValue: 0.2,
-          presentation: ParameterPresentationModel(
-            normalizedVisualBaseline: 0.75,
+        );
+        project.processingGraph.addNode(plugin);
+        project.processingGraph.addConnection(
+          NodeConnectionModel(
+            idAllocator: project.idAllocator,
+            sourceNodeId: plugin.id,
+            sourcePortId: VST3ProcessorModel.audioOutputPortId,
+            destinationNodeId: utility.id,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+            dataType: NodePortDataType.audio,
           ),
-        ),
-      );
-      project.processingGraph.addNode(plugin);
-      project.processingGraph.addConnection(
-        NodeConnectionModel(
-          idAllocator: project.idAllocator,
-          sourceNodeId: plugin.id,
-          sourcePortId: VST3ProcessorModel.audioOutputPortId,
-          destinationNodeId: utility.id,
-          destinationPortId: UtilityProcessorModel.audioInputPortId,
-          dataType: NodePortDataType.audio,
-        ),
-      );
+        );
 
-      final oldProjectJson = createPrealpha1ProjectJson(project);
-      final bytes = await encodeProjectJson(oldProjectJson);
-      final expectedJson = project.toJson();
+        final oldProjectJson = createPrealpha1ProjectJson(project);
+        final bytes = await encodeProjectJson(oldProjectJson);
+        final expectedJson = project.toJson();
 
-      final decodedJson = await decodeProjectFileBytes(bytes);
-      expect(decodedJson, equals(expectedJson));
-      final decodedProject = ProjectModel.fromJson(decodedJson);
-      addTearDown(decodedProject.dispose);
-      expect(
-        decodedProject.sequence.arrangement.id,
-        project.sequence.arrangement.id,
-      );
-      expect(decodedProject.toJson(), expectedJson);
+        final decodedJson = await decodeProjectFileBytes(bytes);
+        expect(decodedJson, oldProjectJson);
+        final savedVersion = readSavedProjectVersion(decodedJson);
+        expect(savedVersion.toString(), '0.0.0-prealpha.1');
+        migrateProjectJson(decodedJson);
+        expect(
+          savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2'),
+          isTrue,
+        );
+        expect(readSavedProjectVersion(decodedJson), currentProjectFileVersion);
+        expect(decodedJson, equals(expectedJson));
+        final decodedProject = ProjectModel.fromJson(decodedJson);
+        addTearDown(decodedProject.dispose);
+        expect(
+          decodedProject.sequence.arrangement.id,
+          project.sequence.arrangement.id,
+        );
+        expect(decodedProject.toJson(), expectedJson);
 
-      final tempDir = await Directory.systemTemp.createTemp(
-        'anthem_project_file_migration_test_',
-      );
-      addTearDown(() => tempDir.delete(recursive: true));
-      final path = '${tempDir.path}${Platform.pathSeparator}project.anthem';
-      await File(path).writeAsBytes(bytes);
+        final tempDir = await Directory.systemTemp.createTemp(
+          'anthem_project_file_migration_test_',
+        );
+        addTearDown(() => tempDir.delete(recursive: true));
+        final path = '${tempDir.path}${Platform.pathSeparator}project.anthem';
+        await File(path).writeAsBytes(bytes);
 
-      expect(await readProjectFile(path), equals(expectedJson));
-    });
+        final storedJson = await readProjectFile(path);
+        expect(storedJson, oldProjectJson);
+        expect(migrateProjectJson(storedJson), expectedJson);
+      },
+    );
 
     test('rejects files without an Anthem project file header', () async {
       final bytes = utf8.encode('{"id":"not-compressed"}');

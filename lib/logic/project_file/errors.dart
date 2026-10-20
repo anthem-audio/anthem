@@ -23,6 +23,12 @@ sealed class ProjectFileLoadException implements Exception {
   const ProjectFileLoadException();
 }
 
+/// The selected document requires a project directory on a desktop filesystem.
+final class ProjectDirectoryRequiresDesktopException
+    extends ProjectFileLoadException {
+  const ProjectDirectoryRequiresDesktopException();
+}
+
 final class ProjectSavedInNewerVersionException
     extends ProjectFileLoadException {
   const ProjectSavedInNewerVersionException({

@@ -60,23 +60,9 @@ and in fresh engine model queries, plus its presence in rendered frame
 annotations. It also checks offscreen target rejection, window resizing, and
 modifier/pointer release after an input action fails.
 
-`project_persistence_test.dart` creates an independently specified edited project
-and calls the same Save As, Save, Close, and Open controllers used by the UI.
-Only native file selection is replaced with `FileSelectorPlatform` results
-inside a per-test temporary directory. Saving still collects engine processor
-states and writes a real Anthem file; Open still reads, decodes, migrates, and
-registers the project before starting its real engine. Runtime options select
-the runner's explicit engine and disable hardware audio on reopen. They are
-never stored in the project file.
+`project_persistence_test.dart` creates an independently specified edited project and calls the same Save As, Save, Close, and Open controllers used by the UI. Only native file selection is replaced with `FileSelectorPlatform` results inside a per-test temporary directory. Saving still collects engine processor states and writes a project folder; Open still reads, decodes, migrates, and registers the project before starting its real engine. Runtime options select the runner's explicit engine and disable hardware audio on reopen. They are never stored in the project file.
 
-The scenario waits for the old engine's exit before reopening, checks literal
-track/pattern names, tempo, and note properties plus persistent IDs in Dart and
-the engine, and locates the reopened note in the piano roll. It verifies a clean
-dirty flag and new model/engine instances. Additional scenarios cover cancelled
-Open and Save As, a failed write that preserves the previous file and dirty
-state, ordinary Save without another selection request, and missing/corrupt
-files reported by the real application dialog. Closing the last project leaves
-New and Open available, with project-specific menu actions unavailable.
+The scenario waits for the old engine's exit before reopening, checks literal track/pattern names, tempo, and note properties plus persistent IDs in Dart and the engine, and locates the reopened note in the piano roll. It verifies a clean dirty flag and new model/engine instances. Additional scenarios cover cancelled Open and Save As, a failed write that preserves the previous file and dirty state, ordinary Save without another selection request, and missing/corrupt files reported by the real application dialog. It also checks required file transfer, temporary-root cleanup, reopening the saved store, and importing a legacy standalone file without modifying it. Closing the last project leaves New and Open available, with project-specific menu actions unavailable.
 
 The selection override is restored and temporary files are removed after
 session cleanup, including on failure. A saved project copy is retained in the

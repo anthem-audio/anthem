@@ -2,6 +2,7 @@
 
 ## New
 
+- Desktop projects are now saved in folders; older project files can be opened and saved in the new format
 - Updated arranger design
 - Added user-facing errors when a project file fails to load
 - Removed support for multiple arrangements per project

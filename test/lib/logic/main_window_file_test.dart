@@ -21,13 +21,19 @@ import 'dart:io';
 
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/storage/project_file_store.dart';
+import 'package:anthem/logic/storage/project_file_category.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import '../../helpers/file_dialog_test_helpers.dart';
 
@@ -41,7 +47,7 @@ void main() {
   late RecordingDialog recordingDialog;
   final controller = MainWindowController();
 
-  setUp(() {
+  setUp(() async {
     final originalSelector = FileSelectorPlatform.instance;
     selector = FakeFileSelector();
     FileSelectorPlatform.instance = selector;
@@ -49,14 +55,21 @@ void main() {
 
     directory = Directory.systemTemp.createTempSync('anthem_file_dialog_test_');
     addTearDown(() => directory.deleteSync(recursive: true));
+    final originalPreferences = SharedPreferencesAsyncPlatform.instance;
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    ServiceRegistry.setSessionPreferences(SharedPreferencesAsync());
+    await ServiceRegistry.applicationSettings.setProjectsDirectoryOverride(
+      directory.path,
+    );
+    addTearDown(() {
+      ServiceRegistry.setSessionPreferences(null);
+      SharedPreferencesAsyncPlatform.instance = originalPreferences;
+    });
     project = ProjectModel.create()..isDirty = true;
     AnthemStore.instance.projects[project.id] = project;
     ServiceRegistry.initializeProject(project);
-    addTearDown(() {
-      AnthemStore.instance.projects.remove(project.id);
-      ServiceRegistry.removeProject(project.id);
-      project.dispose();
-    });
+    addTearDown(() => controller.closeProjectWithoutSaving(project.id));
     recordingDialog = RecordingDialog();
     dialogs = DialogController()..initialize(recordingDialog);
   });
@@ -102,7 +115,7 @@ void main() {
   });
 
   test(
-    'Save As writes an Anthem file and ordinary Save reuses its path',
+    'Save As creates a folder and ordinary Save reuses its document',
     () async {
       selector.saveLocation = FileSaveLocation(
         path.join(directory.path, 'song'),
@@ -116,10 +129,21 @@ void main() {
         isTrue,
       );
 
-      final savedPath = path.join(directory.path, 'song.anthem');
+      final savedPath = path.join(directory.path, 'song', 'song.anthem');
       expect(project.filePath, savedPath);
       expect(project.isDirty, isFalse);
-      expect((await readProjectFile(savedPath))['tracks'], isNotEmpty);
+      final contents = await readProjectFile(savedPath);
+      expect(contents['tracks'], isNotEmpty);
+      expect(
+        contents['savedInSoftwareVersion'],
+        currentProjectFileSoftwareVersion,
+      );
+      expect(selector.lastSaveOptions!.initialDirectory, directory.path);
+      expect(selector.lastSaveOptions!.suggestedName, 'New Project');
+      expect(
+        selector.lastSaveOptions!.confirmButtonText,
+        'Create project folder',
+      );
 
       final track = project.tracks[project.trackOrder.first]!;
       track.name = 'Updated track';
@@ -144,18 +168,108 @@ void main() {
     },
   );
 
-  test('Save As preserves an existing uppercase Anthem extension', () async {
-    final savedPath = path.join(directory.path, 'song.ANTHEM');
-    selector.saveLocation = FileSaveLocation(savedPath);
+  test('project names preserve dots in the chosen folder name', () async {
+    final folder = path.join(directory.path, 'Song.v2');
+    selector.saveLocation = FileSaveLocation(folder);
 
     expect(
       await controller.saveProject(project.id, true, dialogController: dialogs),
       isTrue,
     );
-    expect(project.filePath, savedPath);
-    expect(File(savedPath).existsSync(), isTrue);
-    expect(File('$savedPath.anthem').existsSync(), isFalse);
+    expect(project.filePath, path.join(folder, 'Song.v2.anthem'));
+    expect(project.name, 'Song.v2');
   });
+
+  test(
+    'first Save creates the configured parent before showing selection',
+    () async {
+      final parent = path.join(directory.path, 'Projects');
+      await ServiceRegistry.applicationSettings.setProjectsDirectoryOverride(
+        parent,
+      );
+      expect(
+        await controller.saveProject(
+          project.id,
+          false,
+          dialogController: dialogs,
+        ),
+        isFalse,
+      );
+      expect(selector.lastSaveOptions!.initialDirectory, parent);
+      expect(selector.lastSaveOptions!.suggestedName, 'New Project');
+      expect(Directory(parent).existsSync(), isTrue);
+      expect(Directory(parent).listSync(), isEmpty);
+      expect(project.filePath, isNull);
+      expect(project.isDirty, isTrue);
+    },
+  );
+
+  test('Save As does not overwrite an existing folder', () async {
+    final existing = Directory(path.join(directory.path, 'Existing'));
+    await existing.create();
+    final other = await File(path.join(existing.path, 'unrelated'))
+        .writeAsString('keep');
+    selector.saveLocation = FileSaveLocation(existing.path);
+    await expectLater(
+      controller.saveProject(project.id, true, dialogController: dialogs),
+      throwsA(isA<FileSystemException>()),
+    );
+    expect(await other.readAsString(), 'keep');
+    expect(existing.listSync().map((e) => e.path), [other.path]);
+    expect(project.filePath, isNull);
+    expect(project.isDirty, isTrue);
+  });
+
+  test(
+    'an unavailable default directory still allows selection elsewhere',
+    () async {
+      final blocker = await File(path.join(directory.path, 'not-a-directory'))
+          .writeAsString('keep');
+      await ServiceRegistry.applicationSettings.setProjectsDirectoryOverride(
+        blocker.path,
+      );
+      selector.saveLocation = FileSaveLocation(
+        path.join(directory.path, 'Song'),
+      );
+      expect(
+        await controller.saveProject(
+          project.id,
+          false,
+          dialogController: dialogs,
+        ),
+        isTrue,
+      );
+      expect(selector.lastSaveOptions!.initialDirectory, isNull);
+      expect(await blocker.readAsString(), 'keep');
+    },
+  );
+
+  test(
+    'failed folder loading preserves its files and releases the store root',
+    () async {
+      final root = Directory(path.join(directory.path, 'Invalid model'));
+      await root.create();
+      final unrelated = await File(path.join(root.path, 'keep'))
+          .writeAsString('keep');
+      final blocker = await File(
+        path.join(root.path, ProjectFileCategory.pluginStates.directoryName),
+      ).writeAsString('keep too');
+      final document = File(path.join(root.path, 'Invalid.anthem'));
+      await document.writeAsBytes(await encodeProjectFile(project));
+      selector.selectedFile = XFile(document.path);
+      expect(await controller.loadProject(dialogController: dialogs), isNull);
+      expect(recordingDialog.shownCount, 1);
+      expect(AnthemStore.instance.projects[project.id], same(project));
+      expect(await unrelated.readAsString(), 'keep');
+      expect(await blocker.readAsString(), 'keep too');
+      await blocker.delete();
+      final reopened = await ProjectFileStore.open(
+        root.path,
+        categories: ProjectFileCategory.defaults,
+      );
+      await reopened.close();
+    },
+  );
 
   test('a failed write preserves the previous path and dirty state', () async {
     final previousPath = path.join(directory.path, 'previous.anthem');

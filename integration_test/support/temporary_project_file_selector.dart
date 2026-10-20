@@ -19,6 +19,7 @@
 
 import 'dart:io';
 
+import 'package:anthem/logic/service_registry.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
@@ -56,6 +57,10 @@ class TemporaryProjectFileSelector extends FileSelectorPlatform {
     return selector;
   }
 
+  Future<void> useTemporaryProjectsDirectory() => ServiceRegistry
+      .applicationSettings
+      .setProjectsDirectoryOverride(directory.path);
+
   String pathFor(String relativePath) =>
       _requireTemporaryPath(path.join(directory.path, relativePath));
 
@@ -68,8 +73,8 @@ class TemporaryProjectFileSelector extends FileSelectorPlatform {
   }
 
   void _checkProjectFilter(List<XTypeGroup>? groups) {
-    expect(groups, hasLength(1));
-    expect(groups!.single.extensions, ['anthem']);
+    expectSync(groups, hasLength(1));
+    expectSync(groups!.single.extensions, ['anthem']);
   }
 
   @override
@@ -92,8 +97,9 @@ class TemporaryProjectFileSelector extends FileSelectorPlatform {
     SaveDialogOptions options = const SaveDialogOptions(),
   }) async {
     saveCount++;
-    _checkProjectFilter(acceptedTypeGroups);
-    expect(options.suggestedName, endsWith('.anthem'));
+    expectSync(acceptedTypeGroups, isEmpty);
+    expectSync(options.confirmButtonText, 'Create project folder');
+    expectSync(options.suggestedName, isNotEmpty);
     final selectedPath = selectedSavePath;
     return selectedPath == null
         ? null
