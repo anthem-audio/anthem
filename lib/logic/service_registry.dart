@@ -19,6 +19,7 @@
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
+import 'package:anthem/logic/application_settings.dart';
 import 'package:anthem/logic/clipboard/clipboard_service.dart';
 import 'package:anthem/logic/device_controller.dart';
 import 'package:anthem/logic/disposable_service.dart';
@@ -203,6 +204,7 @@ class ServiceRegistry {
   /// store; an explicit instance lets a session supply isolated storage.
   static void setSessionPreferences(SharedPreferencesAsync? preferences) {
     _preferences = preferences;
+    _applicationSettings = null;
   }
 
   static SharedPreferencesAsync? _preferences;
@@ -210,6 +212,11 @@ class ServiceRegistry {
   static SharedPreferencesAsync get preferences {
     return _preferences ??= SharedPreferencesAsync();
   }
+
+  static ApplicationSettings? _applicationSettings;
+
+  static ApplicationSettings get applicationSettings =>
+      _applicationSettings ??= ApplicationSettings(preferences);
 
   static final Map<ProjectId, ServiceRegistry> _serviceRegistriesByProjectId =
       {};

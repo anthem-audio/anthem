@@ -50,6 +50,7 @@ dependencies:
       ref: staging-spm-event-deltas
   mockito: ^5.4.5
   path: ^1.9.1
+  path_provider: ^2.1.6
   window_manager: ^0.5.2
   okcolor: ^1.1.0
   web: ^1.1.1
@@ -72,6 +73,7 @@ dev_dependencies:
   source_gen: ^4.0.1
   shared_preferences_platform_interface: ^2.4.2
   file_selector_platform_interface: ^2.7.0
+  path_provider_platform_interface: ^2.1.3
 
 flutter:
   uses-material-design: true
