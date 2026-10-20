@@ -36,6 +36,7 @@ import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.d
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -86,6 +87,7 @@ void main() {
       );
       button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationExpanded));
+      expect(fixture.arrangerViewModel.selectedTracks, isEmpty);
 
       await tester.tap(buttonFinder);
       await tester.pump();
@@ -96,6 +98,7 @@ void main() {
       );
       button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationAdd));
+      expect(fixture.arrangerViewModel.selectedTracks, isEmpty);
     });
 
     testWidgets('indicator button reflects existing automation lanes', (
@@ -485,6 +488,52 @@ void main() {
         );
       }
     });
+  });
+
+  testWidgets('blank indicator space supports track selection and modifiers', (
+    tester,
+  ) async {
+    final fixture = _TrackHeaderTestFixture.create();
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      fixture.dispose();
+      AnthemStore.instance.projects.remove(fixture.project.id);
+    });
+    final project = fixture.project;
+    AnthemStore.instance.projects[project.id] = project;
+    project.engine.processingGraphApi = _FakeProcessingGraphApi();
+    final controller = fixture.serviceRegistry.arrangerController;
+    final tracks = fixture.serviceRegistry.trackController;
+    tracks.insertTrackAt(project.trackOrder.first);
+    tracks.insertTrackAt(project.trackOrder.last);
+    final ids = project.trackOrder.toList();
+    await fixture.pump(tester);
+
+    Future<void> clickIndicator(Id id) async {
+      final bounds = tester.getRect(find.byKey(Key('$id-indicator')));
+      await tester.tapAt(Offset(bounds.center.dx, bounds.top + 40));
+      await tester.pump();
+    }
+
+    controller.selectTrack(ids[0]);
+    await clickIndicator(ids[1]);
+    expect(fixture.arrangerViewModel.selectedTracks, {ids[1]});
+    expect(fixture.projectViewModel.activePanel, isNull);
+
+    final primaryModifier = defaultTargetPlatform == TargetPlatform.macOS
+        ? LogicalKeyboardKey.metaLeft
+        : LogicalKeyboardKey.controlLeft;
+    await tester.sendKeyDownEvent(primaryModifier);
+    await clickIndicator(ids[0]);
+    expect(fixture.arrangerViewModel.selectedTracks, {ids[0], ids[1]});
+    await clickIndicator(ids[0]);
+    await tester.sendKeyUpEvent(primaryModifier);
+    expect(fixture.arrangerViewModel.selectedTracks, {ids[1]});
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await clickIndicator(ids[2]);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(fixture.arrangerViewModel.selectedTracks, ids.toSet());
   });
 
   testWidgets('single click selects the track without opening an editor', (

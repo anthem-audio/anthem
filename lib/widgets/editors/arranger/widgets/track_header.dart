@@ -31,13 +31,11 @@ import 'package:anthem/widgets/basic/icon.dart';
 import 'package:anthem/widgets/basic/meter.dart';
 import 'package:anthem/widgets/basic/menu/context_menu_api.dart';
 import 'package:anthem/widgets/basic/menu/menu_model.dart';
-import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_header_content_layout.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:provider/provider.dart';
@@ -110,22 +108,8 @@ class _TrackHeaderContentState extends State<TrackHeaderContent> {
         ? AnthemTheme.panel.borderLight
         : AnthemTheme.panel.main;
 
-    void onClick() {
-      if (HardwareKeyboard.instance.isShiftPressed) {
-        controller.shiftClickToTrack(track.id);
-        return;
-      }
-
-      if (isPrimaryModifierPressed(HardwareKeyboard.instance)) {
-        controller.toggleTrackSelection(track.id);
-        return;
-      }
-
-      controller.selectTrack(track.id);
-    }
-
     void onPrimaryTapUp(TapUpDetails e) {
-      onClick();
+      controller.selectTrackFromClick(track.id);
 
       final tapTime = SchedulerBinding.instance.currentSystemFrameTimeStamp;
       if (_isDoubleClick(e.globalPosition, tapTime)) {
