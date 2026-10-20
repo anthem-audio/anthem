@@ -113,7 +113,11 @@ class MainWindowController {
   final Map<int, MouseCursor> _cursorOverrides = {};
   int _nextCursorOverrideId = 0;
 
-  ServiceRegistry _addProject(ProjectModel project, {ProjectStorage? storage}) {
+  /// Registers [project] and makes it active without starting its engine.
+  ServiceRegistry registerProject(
+    ProjectModel project, {
+    ProjectStorage? storage,
+  }) {
     final store = AnthemStore.instance;
 
     store.projects[project.id] = project;
@@ -129,13 +133,13 @@ class MainWindowController {
     return openProject(ProjectModel.create());
   }
 
-  /// Registers a prepared project and starts its real engine.
+  /// Registers [project] and starts its engine.
   Future<ProjectId> openProject(
     ProjectModel project, {
     bool startAudio = true,
     ProjectStorage? storage,
   }) async {
-    final serviceRegistry = _addProject(project, storage: storage);
+    final serviceRegistry = registerProject(project, storage: storage);
     await serviceRegistry.projectEngineController.start(startAudio: startAudio);
 
     return project.id;
@@ -277,21 +281,7 @@ class MainWindowController {
 
     if (!kIsWeb) {
       if (alwaysUseFilePicker || project.filePath == null) {
-        String? initialDirectory = project.filePath == null
-            ? await ServiceRegistry.applicationSettings.projectsDirectory
-            : paths.dirname(paths.dirname(project.filePath!));
-        if (initialDirectory != null) {
-          try {
-            await Directory(initialDirectory).create(recursive: true);
-          } on FileSystemException catch (error, stackTrace) {
-            _log.warning(
-              'Could not create the projects directory.',
-              error,
-              stackTrace,
-            );
-            initialDirectory = null;
-          }
-        }
+        final initialDirectory = await _projectSaveDirectory(project);
         final folder = (await getSaveLocation(
           initialDirectory: initialDirectory,
           suggestedName: project.name,
@@ -398,6 +388,28 @@ class MainWindowController {
       project.isDirty = false;
       project.filePath = path;
       return true;
+    }
+  }
+
+  Future<String?> _projectSaveDirectory(ProjectModel project) async {
+    final existingPath = project.filePath;
+    if (existingPath != null) return paths.dirname(paths.dirname(existingPath));
+
+    try {
+      final directory =
+          await ServiceRegistry.applicationSettings.projectsDirectory;
+      if (directory == null) return null;
+      await Directory(directory).create(recursive: true);
+      return directory;
+    } catch (error, stackTrace) {
+      // A missing drive or unavailable preference store must not prevent saving
+      // elsewhere with the native file picker.
+      _log.warning(
+        'Could not prepare the default projects folder.',
+        error,
+        stackTrace,
+      );
+      return null;
     }
   }
 

@@ -25,6 +25,7 @@ import 'package:anthem/widgets/debug/widget_test_screens/arranger_track_headers_
 import 'package:anthem/widgets/debug/widget_test_screens/automation_curve_bounds_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/checkbox_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/dialog_widget_test_screen.dart';
+import 'package:anthem/widgets/debug/widget_test_screens/settings_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/knob_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/parameter_baselines_widget_test_screen.dart';
 import 'package:anthem/widgets/debug/widget_test_screens/menu_widget_test_screen.dart';
@@ -58,6 +59,16 @@ enum WidgetTestScreenId {
     key: 'widget-test-screen-dialog',
     title: 'Dialog',
     description: 'Tests for lib/widgets/basic/dialog',
+  ),
+  settings(
+    key: 'widget-test-screen-settings',
+    title: 'Settings',
+    description: 'Application settings dialog',
+  ),
+  settingsCustom(
+    key: 'widget-test-screen-settings-custom',
+    title: 'Settings — custom folder',
+    description: 'Application settings with a custom projects folder',
   ),
   meter(
     key: 'widget-test-screen-meter',
@@ -192,6 +203,19 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
             },
           ),
           TreeViewItemModel(
+            key: WidgetTestScreenId.settings.key,
+            label: labelForScreen(WidgetTestScreenId.settings),
+            onClick: () =>
+                setState(() => selectedScreen = WidgetTestScreenId.settings),
+          ),
+          TreeViewItemModel(
+            key: WidgetTestScreenId.settingsCustom.key,
+            label: labelForScreen(WidgetTestScreenId.settingsCustom),
+            onClick: () => setState(
+              () => selectedScreen = WidgetTestScreenId.settingsCustom,
+            ),
+          ),
+          TreeViewItemModel(
             key: 'widget-test-category-basic-controls',
             label: 'Controls',
             children: [
@@ -260,6 +284,11 @@ class _WidgetTestAreaState extends State<WidgetTestArea> {
       WidgetTestScreenId.checkbox => const CheckboxWidgetTestScreen(),
       WidgetTestScreenId.radioButton => const RadioButtonWidgetTestScreen(),
       WidgetTestScreenId.dialog => const DialogWidgetTestScreen(),
+      WidgetTestScreenId.settings => const SettingsWidgetTestScreen(),
+      WidgetTestScreenId.settingsCustom => const SettingsWidgetTestScreen(
+        key: ValueKey('custom-settings-preview'),
+        custom: true,
+      ),
       WidgetTestScreenId.meter => const MeterWidgetTestScreen(),
       WidgetTestScreenId.knob => const KnobWidgetTestScreen(),
       WidgetTestScreenId.parameterBaselines =>

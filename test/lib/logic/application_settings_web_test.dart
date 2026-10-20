@@ -56,6 +56,7 @@ void main() {
 
   test('browser settings have no native projects directory', () async {
     expect(await settings.projectsDirectory, isNull);
+    expect(await settings.defaultProjectsDirectory, isNull);
     await preferences.setString(
       'application.projectsDirectory',
       '/old/projects',

@@ -47,6 +47,11 @@ initial model contents through engine IPC, and verifies fresh projects,
 selection, undo history, overlays, dialogs, cursor state, settings, and keyboard
 modifiers. It also covers a missing executable, a startup deadline with a child
 that never connects, recovery after that failure, and readiness diagnostics.
+Normal application startup mounts the UI before starting the engine. Regression
+scenarios open and close Settings with a missing executable, a thrown startup
+error, and a child that never connects, and verify that session cleanup still
+terminates the child. Strict integration sessions continue to await engine
+readiness and the initial model acknowledgment.
 Each shutdown awaits the actual child exit code. Engines that started
 successfully must exit with code zero, allowing native cleanup to finish after
 the Exit acknowledgment and socket closure. A normal shutdown that requires a

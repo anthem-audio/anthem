@@ -552,7 +552,7 @@ class TrackController {
       }
 
       if (track.isAutomationLane) {
-        return false;
+        continue;
       }
 
       final isSendTrack = this.isSendTrack(id, false);
@@ -565,7 +565,7 @@ class TrackController {
       }
     }
 
-    return true;
+    return hasSendTracks || hasRegularTracks;
   }
 
   void groupTracks(List<Id> trackIds) {

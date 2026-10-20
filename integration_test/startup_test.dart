@@ -21,11 +21,13 @@ import 'dart:async';
 
 import 'package:anthem/app.dart';
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/model/project.dart';
 import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/overlay/screen_overlay_view_model.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
+import 'package:anthem/widgets/main_window/window_header.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -35,6 +37,33 @@ import 'package:provider/provider.dart';
 import 'support/app_test_session.dart';
 import 'support/waits.dart';
 import 'support/test_plugins.dart';
+
+class _FailingEngine extends Engine {
+  _FailingEngine(ProjectModel project) : super(project.engineID, project);
+
+  @override
+  Future<void> start({bool initializeAudio = true}) async {
+    throw StateError('Simulated engine startup/cleanup failure.');
+  }
+}
+
+Future<void> _checkSettingsAreUsable(WidgetTester tester) async {
+  expect(find.byKey(mainWindowKey), findsOneWidget);
+  await tester.tap(
+    find.descendant(of: find.byType(WindowHeader), matching: find.text('Edit')),
+  );
+  await tester.pump();
+  await tester.tap(find.text('Settings…'));
+  await waitUntil(
+    tester,
+    conditionDescription: 'settings dialog while the engine is unavailable',
+    isReady: () => find.text('Project folder').evaluate().length == 1,
+    collectTimeoutDiagnostics: () => find.text('Settings').evaluate().length,
+  );
+  await tester.tap(find.text('Cancel'));
+  await tester.pump();
+  expect(find.text('Project folder'), findsNothing);
+}
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -185,6 +214,66 @@ void main() {
       expect(ServiceRegistry.maybeForProject(session.project.id), isNull);
     },
   );
+
+  testAppScenario('normal startup keeps the UI usable without an engine', (
+    tester,
+  ) async {
+    final session = AppTestSession(
+      tester,
+      name: 'ui-without-engine',
+      engineExecutable: '$configuredArtifacts/missing-engine',
+      requireEngine: false,
+    );
+    await session.start();
+    await waitUntil(
+      tester,
+      conditionDescription: 'failed engine startup cleanup',
+      isReady: () => session.project.engine.engineState == EngineState.stopped,
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+    );
+    await _checkSettingsAreUsable(tester);
+    await session.dispose();
+  });
+
+  testAppScenario('an engine startup exception does not tear down the UI', (
+    tester,
+  ) async {
+    final project = ProjectModel.create();
+    await project.engine.dispose();
+    project.engine = _FailingEngine(project);
+    final session = AppTestSession(
+      tester,
+      name: 'ui-after-engine-error',
+      initialProject: project,
+      requireEngine: false,
+    );
+    await session.start();
+    await _checkSettingsAreUsable(tester);
+    await session.dispose();
+  });
+
+  testAppScenario('the UI starts while an engine connection is still pending', (
+    tester,
+  ) async {
+    final session = AppTestSession(
+      tester,
+      name: 'ui-while-engine-connects',
+      engineExecutable: loadTestPlugins().unconnectedEngine,
+      requireEngine: false,
+    );
+    await session.start();
+    await waitUntil(
+      tester,
+      conditionDescription: 'unconnected child process launch',
+      isReady: () => session.project.engine.processId != null,
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+    );
+    expect(session.project.engine.engineState, EngineState.starting);
+    await _checkSettingsAreUsable(tester);
+    await session.dispose();
+    expect(session.project.engine.processExitCode, isNotNull);
+    expect(AnthemStore.instance.projects, isEmpty);
+  });
 
   testAppScenario('startup timeout closes an unconnected child', (
     tester,

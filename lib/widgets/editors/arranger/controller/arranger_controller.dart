@@ -765,6 +765,17 @@ abstract class _ArrangerController {
     );
   }
 
+  void selectTrackFromClick(Id trackId) {
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isShiftPressed) {
+      shiftClickToTrack(trackId);
+    } else if (isPrimaryModifierPressed(keyboard)) {
+      toggleTrackSelection(trackId);
+    } else {
+      selectTrack(trackId);
+    }
+  }
+
   void selectTrack(Id trackId) {
     viewModel.selectedTracks.clear();
     viewModel.selectedTracks.add(trackId);

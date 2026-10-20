@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
@@ -25,6 +26,7 @@ import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/button.dart';
 import 'package:anthem/widgets/basic/controls/slider.dart' as anthem;
 import 'package:anthem/widgets/basic/icon.dart';
@@ -34,11 +36,22 @@ import 'package:anthem/widgets/editors/arranger/controller/arranger_controller.d
 import 'package:anthem/widgets/editors/arranger/view_model.dart';
 import 'package:anthem/widgets/editors/arranger/widgets/track_headers.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+
+class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
+  @override
+  Future<ProcessingGraphNodeInitialization> initializeNodes() async =>
+      ProcessingGraphNodeInitialization(didInitialize: true, results: []);
+
+  @override
+  Future<void> publish() async {}
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -74,6 +87,7 @@ void main() {
       );
       button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationExpanded));
+      expect(fixture.arrangerViewModel.selectedTracks, isEmpty);
 
       await tester.tap(buttonFinder);
       await tester.pump();
@@ -84,6 +98,7 @@ void main() {
       );
       button = tester.widget<Button>(buttonFinder);
       expect(button.icon, same(Icons.track.automationAdd));
+      expect(fixture.arrangerViewModel.selectedTracks, isEmpty);
     });
 
     testWidgets('indicator button reflects existing automation lanes', (
@@ -186,6 +201,71 @@ void main() {
       expect(find.text(automationLaneInfo.parameterName), findsNothing);
       expect(find.text('$deviceName $laneName'), findsNothing);
     });
+
+    testWidgets(
+      'Shift-selected automation lanes do not prevent grouping tracks',
+      (tester) async {
+        final fixture = _TrackHeaderTestFixture.create();
+        addTearDown(() async {
+          await tester.pumpWidget(const SizedBox.shrink());
+          fixture.dispose();
+          AnthemStore.instance.projects.remove(fixture.project.id);
+        });
+        final project = fixture.project;
+        AnthemStore.instance.projects[project.id] = project;
+        project.engine.processingGraphApi = _FakeProcessingGraphApi();
+        final firstId = fixture.trackId;
+        fixture.serviceRegistry.trackController.insertTrackAt(firstId);
+        final secondId = project.trackOrder.last;
+        final (:laneId, parameterName: _) = fixture
+            .addToneGeneratorAutomationLane(
+              deviceName: 'Tone Generator',
+              laneName: 'Filter Sweep',
+            );
+        await fixture.pump(tester);
+
+        await fixture.clickHeader(
+          tester,
+          await tester.createGesture(kind: PointerDeviceKind.mouse),
+        );
+        final secondHeader = find.byKey(Key(secondId.toString()));
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.tapAt(
+          tester.getTopLeft(secondHeader) + const Offset(19, 20),
+        );
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+        await tester.pump();
+        expect(fixture.arrangerViewModel.selectedTracks, {
+          firstId,
+          laneId,
+          secondId,
+        });
+
+        await tester.tapAt(
+          tester.getCenter(secondHeader),
+          buttons: kSecondaryMouseButton,
+        );
+        await tester.pump();
+        await tester.tap(find.text('Group'));
+        await tester.pump();
+
+        expect(project.trackOrder, hasLength(1));
+        final group = project.tracks[project.trackOrder.single]!;
+        expect(group.childTracks, [firstId, secondId]);
+        expect(project.tracks[firstId]!.automationLanes, [laneId]);
+        expect(project.tracks[laneId]!.automationLaneParentTrackId, firstId);
+
+        project.undo();
+        expect(project.trackOrder, [firstId, secondId]);
+        expect(project.tracks[firstId]!.automationLanes, [laneId]);
+        project.redo();
+        expect(project.tracks[project.trackOrder.single]!.childTracks, [
+          firstId,
+          secondId,
+        ]);
+        expect(project.tracks[laneId]!.automationLaneParentTrackId, firstId);
+      },
+    );
 
     testWidgets('automation lane context menu only shows delete', (
       tester,
@@ -408,6 +488,52 @@ void main() {
         );
       }
     });
+  });
+
+  testWidgets('blank indicator space supports track selection and modifiers', (
+    tester,
+  ) async {
+    final fixture = _TrackHeaderTestFixture.create();
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      fixture.dispose();
+      AnthemStore.instance.projects.remove(fixture.project.id);
+    });
+    final project = fixture.project;
+    AnthemStore.instance.projects[project.id] = project;
+    project.engine.processingGraphApi = _FakeProcessingGraphApi();
+    final controller = fixture.serviceRegistry.arrangerController;
+    final tracks = fixture.serviceRegistry.trackController;
+    tracks.insertTrackAt(project.trackOrder.first);
+    tracks.insertTrackAt(project.trackOrder.last);
+    final ids = project.trackOrder.toList();
+    await fixture.pump(tester);
+
+    Future<void> clickIndicator(Id id) async {
+      final bounds = tester.getRect(find.byKey(Key('$id-indicator')));
+      await tester.tapAt(Offset(bounds.center.dx, bounds.top + 40));
+      await tester.pump();
+    }
+
+    controller.selectTrack(ids[0]);
+    await clickIndicator(ids[1]);
+    expect(fixture.arrangerViewModel.selectedTracks, {ids[1]});
+    expect(fixture.projectViewModel.activePanel, isNull);
+
+    final primaryModifier = defaultTargetPlatform == TargetPlatform.macOS
+        ? LogicalKeyboardKey.metaLeft
+        : LogicalKeyboardKey.controlLeft;
+    await tester.sendKeyDownEvent(primaryModifier);
+    await clickIndicator(ids[0]);
+    expect(fixture.arrangerViewModel.selectedTracks, {ids[0], ids[1]});
+    await clickIndicator(ids[0]);
+    await tester.sendKeyUpEvent(primaryModifier);
+    expect(fixture.arrangerViewModel.selectedTracks, {ids[1]});
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await clickIndicator(ids[2]);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    expect(fixture.arrangerViewModel.selectedTracks, ids.toSet());
   });
 
   testWidgets('single click selects the track without opening an editor', (

@@ -378,6 +378,24 @@ void main() {
       sendTrackOrder.addAll([trackLId, masterTrackId]);
     });
 
+    test('automation lanes do not block grouping the selected tracks', () {
+      final lane = MockTrackModel();
+      when(lane.id).thenReturn(getId());
+      when(lane.isAutomationLane).thenReturn(true);
+      tracks[lane.id] = lane;
+      final trackController = TrackController(project);
+
+      expect(trackController.canGroupTracks([lane.id]), isFalse);
+      expect(
+        trackController.canGroupTracks([lane.id, trackB.id, trackC.id]),
+        isTrue,
+      );
+      expect(
+        trackController.canGroupTracks([lane.id, trackL.id, trackM.id]),
+        isTrue,
+      );
+    });
+
     test('Main test', () {
       final trackController = TrackController(project);
 

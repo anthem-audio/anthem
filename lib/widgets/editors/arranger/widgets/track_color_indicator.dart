@@ -94,6 +94,13 @@ class TrackColorIndicator extends StatelessObserverWidget {
             height: trackHeight,
             child: Stack(
               children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => projectServices.arrangerController
+                        .selectTrackFromClick(trackId),
+                  ),
+                ),
                 Positioned(
                   left: trackHeaderContentPadding.left,
                   top: top,
