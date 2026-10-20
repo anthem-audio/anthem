@@ -89,6 +89,11 @@ void main() {
     expect(await reopened.projectsDirectoryOverride, directory);
     expect(await reopened.projectsDirectory, directory);
     expect(paths.requests, 0);
+    expect(
+      await reopened.defaultProjectsDirectory,
+      path.join(paths.documentsDirectory!, 'Anthem', 'Projects'),
+    );
+    expect(await reopened.projectsDirectoryOverride, directory);
     expect(await temporary.list().toList(), isEmpty);
   });
 

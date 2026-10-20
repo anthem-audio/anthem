@@ -856,6 +856,29 @@ void main() {
       expect(connector.sentRequests, hasLength(1));
     });
 
+    test('model deserialization failure stops the engine cleanly', () async {
+      final startup = engine.start(initializeAudio: false);
+      connector.completeInit();
+      await _flushMicrotasks();
+      final ready = connector.sentRequests.single as EngineReadyCheckRequest;
+      connector.emitMessage(
+        EngineReadyCheckResponse(id: ready.id, success: true),
+      );
+      await _flushMicrotasks();
+      final init = connector.sentRequests.last as ModelInitRequest;
+      connector.emitMessage(
+        ModelInitResponse(
+          id: init.id,
+          success: false,
+          error: 'Could not deserialize the project model.',
+        ),
+      );
+      await startup;
+      expect(engine.engineState, EngineState.stopped);
+      expect(connector.isDisposed, isTrue);
+      expect(connector.startHeartbeatTimerCallCount, 0);
+    });
+
     test(
       'audio startup failure stops the engine after model init succeeds',
       () async {

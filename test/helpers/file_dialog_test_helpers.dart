@@ -20,11 +20,20 @@
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 
 class FakeFileSelector extends FileSelectorPlatform {
   XFile? selectedFile;
   FileSaveLocation? saveLocation;
   int saveCount = 0;
+  String? saveInitialDirectory;
+  String? selectedDirectory;
+
+  @override
+  Future<String?> getDirectoryPath({
+    String? initialDirectory,
+    String? confirmButtonText,
+  }) async => selectedDirectory;
 
   @override
   Future<XFile?> openFile({
@@ -41,6 +50,7 @@ class FakeFileSelector extends FileSelectorPlatform {
     SaveDialogOptions options = const SaveDialogOptions(),
   }) async {
     saveCount++;
+    saveInitialDirectory = options.initialDirectory;
     return saveLocation;
   }
 }
@@ -49,11 +59,15 @@ class RecordingDialog extends DialogControllerImpl {
   int shownCount = 0;
 
   @override
+  bool get isOpen => false;
+
+  @override
   void showDialog(
     Widget content, {
     String? title,
     List<DialogButton>? buttons,
     bool dismissible = true,
+    ValueListenable<bool>? canDismiss,
     void Function()? onDismiss,
   }) {
     shownCount++;

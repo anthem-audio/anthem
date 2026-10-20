@@ -18,15 +18,19 @@
 */
 
 import 'package:anthem/theme.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 abstract class DialogControllerImpl {
+  bool get isOpen;
+
   void showDialog(
     Widget content, {
     String? title,
     List<DialogButton>? buttons,
     bool dismissible = true,
+    ValueListenable<bool>? canDismiss,
     void Function()? onDismiss,
   });
   void closeDialog();
@@ -34,6 +38,9 @@ abstract class DialogControllerImpl {
 
 class DialogController {
   DialogControllerImpl? _impl;
+
+  /// Whether the mounted renderer has any open modal dialogs.
+  bool get isOpen => _impl?.isOpen ?? false;
 
   static const _textDialogMaxWidth = 450.0;
   static const _textDialogMaxHeight = 250.0;
@@ -51,6 +58,7 @@ class DialogController {
     required Widget content,
     List<DialogButton>? buttons,
     bool dismissible = true,
+    ValueListenable<bool>? canDismiss,
     void Function()? onDismiss,
   }) {
     _impl?.showDialog(
@@ -58,6 +66,7 @@ class DialogController {
       title: title,
       buttons: buttons,
       dismissible: dismissible,
+      canDismiss: canDismiss,
       onDismiss: onDismiss,
     );
   }

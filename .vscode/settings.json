@@ -25,6 +25,7 @@
     "deserializers",
     "desync",
     "Diagnosticable",
+    "dismissibility",
     "downsampler",
     "downsamples",
     "dylib",

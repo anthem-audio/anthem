@@ -36,6 +36,7 @@ import 'package:anthem/widgets/basic/menu/menu_model.dart';
 import 'package:anthem/widgets/debug/widget_test_area.dart';
 import 'package:anthem/widgets/main_window/render_dialog.dart';
 import 'package:anthem/widgets/main_window/render_dialog_controller.dart';
+import 'package:anthem/widgets/main_window/settings_dialog.dart';
 import 'package:anthem/widgets/main_window/window_header_engine_indicator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart' show showLicensePage;
@@ -539,6 +540,10 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
           },
           hint: 'Redo (Ctrl+Shift+Z)',
         ),
+        if (!kIsWeb) ...[
+          Separator(),
+          AnthemMenuItem(text: 'Settings…', onSelected: showSettingsDialog),
+        ],
       ],
     );
     final helpMenuDef = MenuDef(

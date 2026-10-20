@@ -83,6 +83,7 @@ class AppTestSession {
   late final AnthemApplicationSession app;
   final Directory artifacts;
   final Duration startupTimeout;
+  final bool requireEngine;
   final List<TestGesture> _heldPointers = [];
   final Set<LogicalKeyboardKey> _heldKeys = {};
   Future<void>? _cleanup;
@@ -103,12 +104,13 @@ class AppTestSession {
     ProjectModel? initialProject,
     SharedPreferencesAsync? settings,
     this.startupTimeout = const Duration(seconds: 15),
+    this.requireEngine = true,
   }) : artifacts = Directory('$configuredArtifacts/$name') {
     app = AnthemApplicationSession(
       initialProject: initialProject,
       engineExecutable: initialProject == null ? engineExecutable : null,
       startAudio: false,
-      requireEngine: true,
+      requireEngine: requireEngine,
       preferences: settings ?? MemoryPreferences(),
       logRoot: '$configuredArtifacts/logs',
       wrapRoot: (child) =>
@@ -152,7 +154,7 @@ class AppTestSession {
       collectTimeoutDiagnostics: () => sessionDiagnostics,
       timeout: startupTimeout,
     );
-    _startedSuccessfully = true;
+    _startedSuccessfully = requireEngine;
     await windowManager.setSize(logicalWindowSize);
     await waitUntil(
       tester,
@@ -166,7 +168,7 @@ class AppTestSession {
         'mainWindows': find.byKey(mainWindowKey).evaluate().length,
         'canvases': find.byType(ArrangerContentRenderer).evaluate().length,
       },
-      checkHealth: checkEngine,
+      checkHealth: requireEngine ? checkEngine : null,
     );
     expect(tester.getSize(find.byKey(mainWindowKey)), logicalWindowSize);
     final canvas = tester.getRect(find.byType(ArrangerContentRenderer));

@@ -28,8 +28,20 @@ import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 import '../../helpers/file_dialog_test_helpers.dart';
+
+class _DocumentsProvider extends PathProviderPlatform {
+  String? documents;
+  _DocumentsProvider(this.documents);
+
+  @override
+  Future<String?> getApplicationDocumentsPath() async => documents;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +51,7 @@ void main() {
   late ProjectModel project;
   late DialogController dialogs;
   late RecordingDialog recordingDialog;
+  late _DocumentsProvider documents;
   final controller = MainWindowController();
 
   setUp(() {
@@ -49,6 +62,18 @@ void main() {
 
     directory = Directory.systemTemp.createTempSync('anthem_file_dialog_test_');
     addTearDown(() => directory.deleteSync(recursive: true));
+    final originalPreferences = SharedPreferencesAsyncPlatform.instance;
+    final originalPaths = PathProviderPlatform.instance;
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    documents = _DocumentsProvider(path.join(directory.path, 'Documents'));
+    PathProviderPlatform.instance = documents;
+    ServiceRegistry.setSessionPreferences(SharedPreferencesAsync());
+    addTearDown(() {
+      ServiceRegistry.setSessionPreferences(null);
+      SharedPreferencesAsyncPlatform.instance = originalPreferences;
+      PathProviderPlatform.instance = originalPaths;
+    });
     project = ProjectModel.create()..isDirty = true;
     AnthemStore.instance.projects[project.id] = project;
     ServiceRegistry.initializeProject(project);
@@ -79,8 +104,72 @@ void main() {
       expect(project.isDirty, isTrue);
       expect(directory.listSync(), isEmpty);
       expect(recordingDialog.shownCount, 0);
+      expect(selector.saveInitialDirectory, directory.path);
     },
   );
+
+  test(
+    'first Save suggests and prepares the default projects folder',
+    () async {
+      expect(
+        await controller.saveProject(
+          project.id,
+          false,
+          dialogController: dialogs,
+        ),
+        isFalse,
+      );
+      final expected = path.join(documents.documents!, 'Anthem', 'Projects');
+      expect(selector.saveInitialDirectory, expected);
+      expect(Directory(expected).existsSync(), isTrue);
+      expect(project.filePath, isNull);
+      expect(project.isDirty, isTrue);
+    },
+  );
+
+  test('a changed preference is used for the next new project save', () async {
+    final custom = path.join(directory.path, 'Custom');
+    await ServiceRegistry.applicationSettings.setProjectsDirectoryOverride(
+      custom,
+    );
+    await controller.saveProject(project.id, true, dialogController: dialogs);
+    expect(selector.saveInitialDirectory, custom);
+    await ServiceRegistry.applicationSettings.setProjectsDirectoryOverride(
+      null,
+    );
+    await controller.saveProject(project.id, true, dialogController: dialogs);
+    expect(
+      selector.saveInitialDirectory,
+      path.join(documents.documents!, 'Anthem', 'Projects'),
+    );
+  });
+
+  test(
+    'an unavailable Documents directory allows the native save picker',
+    () async {
+      documents.documents = null;
+      await controller.saveProject(project.id, true, dialogController: dialogs);
+      expect(selector.saveInitialDirectory, isNull);
+      expect(selector.saveCount, 1);
+    },
+  );
+
+  test('an inaccessible default folder allows saving elsewhere', () async {
+    final blocked = File(path.join(directory.path, 'Not a folder'))
+      ..writeAsStringSync('existing');
+    await ServiceRegistry.applicationSettings.setProjectsDirectoryOverride(
+      path.join(blocked.path, 'Projects'),
+    );
+    selector.saveLocation = FileSaveLocation(
+      path.join(directory.path, 'song.anthem'),
+    );
+    expect(
+      await controller.saveProject(project.id, true, dialogController: dialogs),
+      isTrue,
+    );
+    expect(selector.saveInitialDirectory, isNull);
+    expect(blocked.readAsStringSync(), 'existing');
+  });
 
   test('deserialization keeps engine selection out of persistent content', () {
     final persistent = project.toJson();

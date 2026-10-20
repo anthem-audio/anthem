@@ -45,6 +45,15 @@ class ApplicationSettings {
     final override = await projectsDirectoryOverride;
     if (override != null) return override;
 
+    return defaultProjectsDirectory;
+  }
+
+  /// `Anthem/Projects` under the system Documents directory, ignoring overrides.
+  /// Returns null on web or when the system Documents location is unavailable.
+  /// Reading this value does not create directories.
+  Future<String?> get defaultProjectsDirectory async {
+    if (kIsWeb) return null;
+
     try {
       final documents = await getApplicationDocumentsDirectory();
       return path.join(documents.path, 'Anthem', 'Projects');

@@ -8,6 +8,7 @@
 - Set default track level to -10db, excluding group, send, and master tracks
 - Play button now remains visually pressed while playback is running
 - Automation shading now respects parameter baselines, including centered pan
+- Added a Settings dialog to choose the default folder for new projects
 
 ## Fixed
 

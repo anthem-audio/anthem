@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2025 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -40,6 +40,14 @@ class Dropdown extends StatefulWidget {
   /// Whether or not to add a (none) option to the dropdown
   final bool allowNoSelection;
 
+  /// Whether the menu can be opened and its selection changed.
+  final bool enabled;
+  final ButtonVariant? variant;
+  final bool? hideBorder;
+
+  /// Whether the mouse wheel cycles through options.
+  final bool enableScrollSelection;
+
   const Dropdown({
     super.key,
     this.width,
@@ -52,6 +60,10 @@ class Dropdown extends StatefulWidget {
     this.hint,
     this.contentPadding,
     this.horizontalExpand = true,
+    this.enabled = true,
+    this.variant,
+    this.hideBorder,
+    this.enableScrollSelection = true,
   });
 
   @override
@@ -59,12 +71,30 @@ class Dropdown extends StatefulWidget {
 }
 
 class _DropdownState extends State<Dropdown> {
+  final menuController = AnthemMenuController();
   String? localSelectedID;
-  bool hovered = false;
+  bool _menuOpen = false;
+
+  @override
+  void didUpdateWidget(Dropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled) _closeMenu();
+  }
+
+  @override
+  void dispose() {
+    _closeMenu();
+    super.dispose();
+  }
+
+  void _closeMenu() {
+    if (!_menuOpen) return;
+    _menuOpen = false;
+    menuController.close();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final menuController = AnthemMenuController();
     final selectedID = widget.selectedID ?? localSelectedID;
 
     final selectedItem = widget.items.firstWhere(
@@ -74,6 +104,7 @@ class _DropdownState extends State<Dropdown> {
 
     return Menu(
       menuController: menuController,
+      onClose: () => _menuOpen = false,
       menuDef: MenuDef(
         children:
             widget.items
@@ -95,18 +126,13 @@ class _DropdownState extends State<Dropdown> {
                     ),
                   ].nonNulls.toList()),
       ),
-      child: MouseRegion(
-        // No need to setState since we're not reacting to these
-        onEnter: (e) {
-          hovered = true;
-        },
-        onExit: (e) {
-          hovered = false;
-        },
-
+      child: Opacity(
+        opacity: widget.enabled ? 1 : 0.45,
         child: Listener(
           onPointerSignal: (event) {
-            if (event is PointerScrollEvent) {
+            if (event is PointerScrollEvent &&
+                widget.enabled &&
+                widget.enableScrollSelection) {
               // How many items to scroll by on this event
               final itemIndexDelta = (event.scrollDelta.dy / 100).ceil();
 
@@ -139,9 +165,13 @@ class _DropdownState extends State<Dropdown> {
           child: Button(
             onPress: () {
               menuController.toggle();
+              _menuOpen = menuController.isOpen;
             },
             width: widget.width,
             height: widget.height,
+            variant: widget.variant,
+            hideBorder: widget.hideBorder,
+            interactable: widget.enabled,
             contentPadding:
                 widget.contentPadding ??
                 const EdgeInsets.symmetric(horizontal: 2),
@@ -170,8 +200,10 @@ class _DropdownState extends State<Dropdown> {
                       ),
                     ),
                   if (text != null) const SizedBox(width: 2),
-                  ?textWidget,
-                  if (widget.horizontalExpand) Expanded(child: SizedBox()),
+                  if (widget.horizontalExpand)
+                    Expanded(child: textWidget ?? const SizedBox())
+                  else
+                    ?textWidget,
                   if (!widget.horizontalExpand) SizedBox(width: 4),
                   SvgIcon(icon: Icons.arrowDown, color: contentColor),
                   SizedBox(width: 2),
@@ -186,6 +218,7 @@ class _DropdownState extends State<Dropdown> {
   }
 
   void select(String? id) {
+    if (!mounted || !widget.enabled) return;
     setState(() {
       localSelectedID = id;
     });

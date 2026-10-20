@@ -68,6 +68,10 @@ Future<void> _initializeApplication(String? logRoot) async {
 class AnthemApplicationSession {
   final ProjectModel project;
   final bool startAudio;
+
+  /// Whether [start] waits for engine readiness and initial model sync.
+  /// When true, engine startup errors propagate to the caller.
+  /// When false, startup continues in the background and failures are logged.
   final bool requireEngine;
   final SharedPreferencesAsync? preferences;
   final String? logRoot;
@@ -119,24 +123,45 @@ class AnthemApplicationSession {
     _checkOpen();
     ServiceRegistry.setSessionPreferences(preferences);
     _log.info('Starting Anthem session for project ${project.id}.');
-    await ServiceRegistry.mainWindowController.openProject(
+    final services = ServiceRegistry.mainWindowController.registerProject(
       project,
-      startAudio: startAudio,
     );
-    _checkOpen();
-    if (requireEngine && project.engine.engineState != EngineState.running) {
-      throw StateError(
-        'Engine startup failed for project ${project.id} '
-        '(executable: ${project.engine.enginePathOverride ?? "default"}; '
-        'state: ${project.engine.engineState.name}). See the engine logs.',
-      );
-    }
-    if (project.engine.engineState == EngineState.running) {
-      await project.waitForFirstSync();
-    }
-    _checkOpen();
     runApp(wrapRoot?.call(const App()) ?? const App());
     _mounted = true;
+
+    final engineStartup = _startEngine(services);
+    if (requireEngine) {
+      await engineStartup;
+    } else {
+      unawaited(engineStartup);
+    }
+  }
+
+  Future<void> _startEngine(ServiceRegistry services) async {
+    try {
+      await services.projectEngineController.start(startAudio: startAudio);
+      _checkOpen();
+      if (requireEngine && project.engine.engineState != EngineState.running) {
+        throw StateError(
+          'Engine startup failed for project ${project.id} '
+          '(executable: ${project.engine.enginePathOverride ?? "default"}; '
+          'state: ${project.engine.engineState.name}). See the engine logs.',
+        );
+      }
+      if (project.engine.engineState == EngineState.running) {
+        await project.waitForFirstSync();
+      }
+      _checkOpen();
+    } catch (error, stackTrace) {
+      if (requireEngine) rethrow;
+      if (_disposeFuture != null) return;
+      _log.severe(
+        'Engine startup failed for project ${project.id}. '
+        'The application will remain open.',
+        error,
+        stackTrace,
+      );
+    }
   }
 
   void _checkOpen() {
