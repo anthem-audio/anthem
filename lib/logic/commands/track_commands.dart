@@ -866,6 +866,7 @@ class TrackGroupUngroupCommand extends Command {
   /// See the implementation for details on the exact rules for grouping. The
   /// incoming [trackIds] are the tracks selected by the user when the group
   /// action is invoked.
+  /// Selected automation lanes are ignored and stay attached to their tracks.
   TrackGroupUngroupCommand.group({
     required ProjectModel project,
     required List<Id> trackIds,
@@ -931,20 +932,18 @@ class TrackGroupUngroupCommand extends Command {
     final trackController = serviceRegistry.trackController;
     final idAllocator = serviceRegistry.idAllocator;
 
-    if (!trackController.canGroupTracks(trackIds)) {
+    final tracksToGroup = trackIds
+        .where((id) => project.tracks[id]?.isAutomationLane == false)
+        .toList();
+
+    if (!trackController.canGroupTracks(tracksToGroup)) {
       throw StateError(
         'TrackGroupUngroupCommand.group(): Invalid track list for grouping. '
         'canGroupTracks(trackIds) returned false.',
       );
     }
 
-    if (trackIds.isEmpty) {
-      throw StateError(
-        'TrackGroupUngroupCommand.group(): Track list cannot be empty.',
-      );
-    }
-
-    _isForSendTrack = trackController.isSendTrack(trackIds.first);
+    _isForSendTrack = trackController.isSendTrack(tracksToGroup.first);
 
     /// Gets the nearest common ancestor of all tracks, if there is any.
     ///
@@ -1048,7 +1047,9 @@ class TrackGroupUngroupCommand extends Command {
       return (entryToReturn.key, entryToReturn.value.$2);
     }
 
-    final (newGroupParent, tracksToAddToNewGroup) = getCommonAncestor(trackIds);
+    final (newGroupParent, tracksToAddToNewGroup) = getCommonAncestor(
+      tracksToGroup,
+    );
 
     final parentTrackList = newGroupParent != null
         ? project.tracks[newGroupParent]!.childTracks.nonObservableInner
