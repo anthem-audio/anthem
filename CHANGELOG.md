@@ -16,7 +16,6 @@
 - Reduced audio latency in web builds
 - Steep curves at the start of automation clips now render correctly at all zoom levels
 - Fixed VST3 plugin selection on Linux
-- Fixed the left panel width at 200 pixels
 - Fixed an issue where audio routing data could be deleted if a plugin loaded with a different config than it used when the project was saved
 - Added speculative fix for performance issues with visualization data streaming
 - Fixed grouping tracks when automation lanes are included in the selection
