@@ -776,8 +776,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: staging-spm-event-deltas
-      resolved-ref: "1386f1664e5d6c83cc5694ad05729fcb1f5da33a"
+      ref: "codex/pointer-lock-drag-fallback"
+      resolved-ref: "12e738686db911fb013e858fc3a1e23bd1fe913a"
       url: "https://github.com/josh-audio/pointer_lock.git"
     source: git
     version: "0.0.2"

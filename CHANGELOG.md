@@ -19,6 +19,7 @@
 - Fixed an issue where audio routing data could be deleted if a plugin loaded with a different config than it used when the project was saved
 - Added speculative fix for performance issues with visualization data streaming
 - Fixed grouping tracks when automation lanes are included in the selection
+- Fixed dragging controls with touch or pen input, and prevented viewport jumps when dragging controls in Safari
 
 # 0.0.0-prealpha.1
 
