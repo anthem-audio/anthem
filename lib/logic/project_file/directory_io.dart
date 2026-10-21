@@ -19,7 +19,7 @@
 
 import 'dart:io';
 
-import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/io.dart';
 import 'package:anthem/logic/storage/project_file_store.dart';
 import 'package:anthem/model/project.dart';
 import 'package:path/path.dart' as path;
@@ -32,36 +32,36 @@ import 'package:path/path.dart' as path;
 /// Additional data files from an interrupted save may remain unreferenced.
 ///
 /// The open store keeps its root and read paths until the project closes.
+/// Copies every file in [ProjectFileStore.projectFilePaths]. Existing copies in
+/// another folder are replaced; files in the open store's root stay in place.
 Future<void> writeProjectDirectory(
   String documentPath,
   ProjectModel project,
   ProjectFileStore store, {
   required bool create,
 }) async {
+  final projectJson = project.toJson();
+  final scope = store.openScope();
   final root = path.dirname(documentPath);
-  if (create &&
-      await FileSystemEntity.type(root, followLinks: false) !=
-          FileSystemEntityType.notFound) {
-    throw FileSystemException('Choose a new project folder name.', root);
-  }
-
-  final session = store.openSession();
   Directory? staging;
   try {
-    staging = await Directory(create ? path.dirname(root) : root)
-        .createTemp('.anthem-save-');
     // Acquire all reads before yielding, so deletion cannot interrupt a save.
     final reads = {
       for (final relativePath in store.projectFilePaths)
-        relativePath: store.acquireRead(session, relativePath),
+        relativePath: store.acquireRead(scope, relativePath),
     };
+    if (create &&
+        await FileSystemEntity.type(root, followLinks: false) !=
+            FileSystemEntityType.notFound) {
+      throw FileSystemException('Choose a new project folder name.', root);
+    }
+    final savingInPlace =
+        !create && await FileSystemEntity.identical(store.rootDirectory, root);
+    staging = await Directory(create ? path.dirname(root) : root)
+        .createTemp('.anthem-save-');
     for (final entry in reads.entries) {
+      if (savingInPlace) continue;
       final destination = File(path.join(root, entry.key));
-      if (!create && await destination.exists()) {
-        // Committed files are immutable. A previous save may already have
-        // copied this file, or the open store may be rooted here itself.
-        continue;
-      }
       final staged = File(path.join(staging.path, entry.key));
       await staged.parent.create(recursive: true);
       await File(entry.value.absolutePath).copy(staged.path);
@@ -84,7 +84,7 @@ Future<void> writeProjectDirectory(
     }
 
     final document = path.join(staging.path, path.basename(documentPath));
-    await writeProjectFile(document, project);
+    await writeProjectFileToPath(document, projectJson);
     if (create) {
       if (await FileSystemEntity.type(root, followLinks: false) !=
           FileSystemEntityType.notFound) {
@@ -95,7 +95,7 @@ Future<void> writeProjectDirectory(
       await File(document).rename(documentPath);
     }
   } finally {
-    await store.closeSession(session);
+    await store.closeScope(scope);
     if (staging != null && await staging.exists()) {
       await staging.delete(recursive: true);
     }

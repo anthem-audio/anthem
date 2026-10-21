@@ -17,7 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:path/path.dart' as p;
@@ -38,9 +37,9 @@ import 'file_store_io_stub.dart'
 /// Committed files are immutable; changed contents must be written to a new
 /// file.
 ///
-/// Each session owns its read, write, and retention tokens. Closing a session
+/// Each file scope owns its read, write, and retention tokens. Closing a scope
 /// releases its access without deleting committed files. The caller must finish
-/// file I/O before releasing access or closing its session. Filesystem changes
+/// file I/O before releasing access or closing its scope. Filesystem changes
 /// outside this API are not coordinated by the store.
 class ProjectFileStore {
   static final _openRoots = <String>{};
@@ -55,7 +54,7 @@ class ProjectFileStore {
   final String _rootKey;
   final Map<String, _StoredObject> _objects = {};
   final Set<String> _reservedNames = {};
-  final Map<String, _FileStoreSession> _sessions = {};
+  final Map<String, _FileStoreScope> _scopes = {};
   bool _closing = false;
   Future<void>? _closeFuture;
 
@@ -141,8 +140,8 @@ class ProjectFileStore {
     );
   }
 
-  /// A snapshot of committed relative file paths, excluding caches and
-  /// unfinished writes.
+  /// An inventory of committed paths, excluding caches and unfinished writes.
+  /// Includes files regardless of which scope retains them.
   List<String> get projectFilePaths => List.unmodifiable(
     relativePaths.where(
       (relativePath) =>
@@ -152,13 +151,13 @@ class ProjectFileStore {
 
   /// Opens a scope for read, write, and retention tokens.
   ///
-  /// The caller chooses the lifetime. [closeSession] releases the session's read
+  /// The caller chooses the lifetime. [closeScope] releases the scope's read
   /// and retention tokens and aborts unfinished writes.
-  String openSession() {
+  String openScope() {
     _requireOpen();
-    final sessionId = _uuid.v4();
-    _sessions[sessionId] = _FileStoreSession();
-    return sessionId;
+    final scopeId = _uuid.v4();
+    _scopes[scopeId] = _FileStoreScope();
+    return scopeId;
   }
 
   /// Reserves an object name and creates a private file for the writer.
@@ -168,12 +167,12 @@ class ProjectFileStore {
   /// is the directory name of a registered category. Names are reserved before
   /// file creation, including against other pending writes.
   Future<StoredFileAccess> beginWrite(
-    String sessionId,
+    String scopeId,
     String category, {
     String? baseName,
     String? extension,
   }) {
-    final session = _sessionForAccess(sessionId);
+    final scope = _scopeForAccess(scopeId);
     if (!_categoriesByName.containsKey(category)) {
       throw ArgumentError('Unknown file category: $category');
     }
@@ -193,10 +192,10 @@ class ProjectFileStore {
       relativePath,
       p.join(_pendingDirectory, '${_uuid.v4()}.tmp'),
     );
-    return _runOperation(session, () async {
+    return _runOperation(scope, () async {
       try {
         await files.createFile(write.absolutePath);
-        session.writes[token] = write;
+        scope.writes[token] = write;
         return StoredFileAccess(token: token, absolutePath: write.absolutePath);
       } catch (_) {
         _reservedNames.remove(relativePath.toLowerCase());
@@ -208,12 +207,12 @@ class ProjectFileStore {
   /// Publishes a finished write and returns its relative path.
   ///
   /// Flush and close the file first. Success consumes [token]; a failed commit
-  /// leaves it available for retry or abort. Tokens belong to [sessionId].
-  Future<String> commitWrite(String sessionId, String token) {
-    final session = _sessionForAccess(sessionId);
-    final write = _writeForAccess(session, token);
+  /// leaves it available for retry or abort. Tokens belong to [scopeId].
+  Future<String> commitWrite(String scopeId, String token) {
+    final scope = _scopeForAccess(scopeId);
+    final write = _writeForAccess(scope, token);
     write.busy = true;
-    return _runOperation(session, () async {
+    return _runOperation(scope, () async {
       try {
         final destination = _absolutePath(write.relativePath);
         if (await files.entryExists(destination)) {
@@ -221,7 +220,7 @@ class ProjectFileStore {
         }
         await files.renameFile(write.absolutePath, destination);
         _objects[write.relativePath] = _StoredObject();
-        session.writes.remove(token);
+        scope.writes.remove(token);
         return write.relativePath;
       } finally {
         write.busy = false;
@@ -232,21 +231,21 @@ class ProjectFileStore {
   /// Removes an unfinished file and consumes its write token.
   ///
   /// Close the file first. A failed abort leaves the token available for retry.
-  Future<void> abortWrite(String sessionId, String token) {
-    final session = _sessionForAccess(sessionId);
-    final write = _writeForAccess(session, token);
-    return _runOperation(session, () => _abortWrite(session, token, write));
+  Future<void> abortWrite(String scopeId, String token) {
+    final scope = _scopeForAccess(scopeId);
+    final write = _writeForAccess(scope, token);
+    return _runOperation(scope, () => _abortWrite(scope, token, write));
   }
 
-  _PendingFileWrite _writeForAccess(_FileStoreSession session, String token) {
-    final write = session.writes[token];
+  _PendingFileWrite _writeForAccess(_FileStoreScope scope, String token) {
+    final write = scope.writes[token];
     if (write == null) throw StateError('Unknown file write token.');
     if (write.busy) throw StateError('The write is already in progress.');
     return write;
   }
 
   Future<void> _abortWrite(
-    _FileStoreSession session,
+    _FileStoreScope scope,
     String token,
     _PendingFileWrite write,
   ) async {
@@ -255,20 +254,20 @@ class ProjectFileStore {
       if (await files.entryExists(write.absolutePath)) {
         await files.deleteFile(write.absolutePath);
       }
-      session.writes.remove(token);
+      scope.writes.remove(token);
       _reservedNames.remove(write.relativePath.toLowerCase());
     } finally {
       write.busy = false;
     }
   }
 
-  /// Prevents deletion until [releaseRead] or [closeSession] releases access.
-  StoredFileAccess acquireRead(String sessionId, String relativePath) {
-    final session = _sessionForAccess(sessionId);
+  /// Prevents deletion until [releaseRead] or [closeScope] releases access.
+  StoredFileAccess acquireRead(String scopeId, String relativePath) {
+    final scope = _scopeForAccess(scopeId);
     final object = _objectForAccess(relativePath);
     final token = _uuid.v4();
     object.readers++;
-    session.reads[token] = object;
+    scope.reads[token] = object;
     return StoredFileAccess(
       token: token,
       absolutePath: _absolutePath(relativePath),
@@ -276,46 +275,46 @@ class ProjectFileStore {
   }
 
   /// Consumes a read token after the caller has closed the file.
-  void releaseRead(String sessionId, String token) {
-    final session = _sessionForAccess(sessionId);
-    final object = session.reads.remove(token);
+  void releaseRead(String scopeId, String token) {
+    final scope = _scopeForAccess(scopeId);
+    final object = scope.reads.remove(token);
     if (object == null) throw StateError('Unknown file read token.');
     object.readers--;
   }
 
   /// Keeps an object available independently of whether it is being read.
   ///
-  /// Returns a retention token owned by [sessionId]. The same object may have
+  /// Returns a retention token owned by [scopeId]. The same object may have
   /// multiple retention tokens. Releasing a token does not delete the file.
-  String retain(String sessionId, String relativePath) {
-    final session = _sessionForAccess(sessionId);
+  String retain(String scopeId, String relativePath) {
+    final scope = _scopeForAccess(scopeId);
     final object = _objectForAccess(relativePath);
     final token = _uuid.v4();
     object.retainers++;
-    session.retentions[token] = object;
+    scope.retentions[token] = object;
     return token;
   }
 
   /// Consumes a retention token; other references and readers remain valid.
-  void releaseRetention(String sessionId, String token) {
-    final session = _sessionForAccess(sessionId);
-    final object = session.retentions.remove(token);
+  void releaseRetention(String scopeId, String token) {
+    final scope = _scopeForAccess(scopeId);
+    final object = scope.retentions.remove(token);
     if (object == null) throw StateError('Unknown file retention token.');
     object.retainers--;
   }
 
   /// Deletes an unreferenced object, rejecting new access during deletion.
   ///
-  /// Throws [StateError] if any session has a read or retention token for the
+  /// Throws [StateError] if any scope has a read or retention token for the
   /// object.
-  Future<void> delete(String sessionId, String relativePath) {
-    final session = _sessionForAccess(sessionId);
+  Future<void> delete(String scopeId, String relativePath) {
+    final scope = _scopeForAccess(scopeId);
     final object = _objectForAccess(relativePath);
     if (object.readers != 0 || object.retainers != 0) {
       throw StateError('Stored object is still in use: $relativePath');
     }
     object.deleting = true;
-    return _runOperation(session, () async {
+    return _runOperation(scope, () async {
       try {
         await files.deleteFile(_absolutePath(relativePath));
         _objects.remove(relativePath);
@@ -326,54 +325,52 @@ class ProjectFileStore {
     });
   }
 
-  _FileStoreSession _sessionForAccess(String sessionId) {
+  _FileStoreScope _scopeForAccess(String scopeId) {
     _requireOpen();
-    final session = _sessions[sessionId];
-    if (session == null) throw StateError('Unknown file store session.');
-    if (session.closing) throw StateError('The file store session is closing.');
-    return session;
+    final scope = _scopes[scopeId];
+    if (scope == null) throw StateError('Unknown file store scope.');
+    if (scope.closing) throw StateError('The file store scope is closing.');
+    return scope;
   }
 
-  /// Closes a session and releases its file access.
+  /// Closes a scope and releases its file access.
   ///
   /// The caller must first finish file I/O and close any open files. New
   /// operations are rejected while operations already in progress finish.
   /// Remaining writes are aborted, and read and retention tokens are released.
-  /// Committed files and other sessions are unaffected.
+  /// Committed files and other scopes are unaffected.
   ///
-  /// If cleanup fails, the session can be closed again to retry it. Closing an
-  /// already closed session has no effect.
-  Future<void> closeSession(String sessionId) {
-    final session = _sessions[sessionId];
-    if (session == null) return Future.value();
-    session.closing = true;
-    return session.closeFuture ??= _closeSession(sessionId, session).catchError(
-      (Object error, StackTrace stack) {
-        session.closeFuture = null;
-        Error.throwWithStackTrace(error, stack);
-      },
-    );
+  /// If cleanup fails, the scope can be closed again to retry it. Closing an
+  /// already closed scope has no effect.
+  Future<void> closeScope(String scopeId) {
+    final scope = _scopes[scopeId];
+    if (scope == null) return Future.value();
+    scope.closing = true;
+    return scope.closeFuture ??= _closeScope(scopeId, scope).catchError((
+      Object error,
+      StackTrace stack,
+    ) {
+      scope.closeFuture = null;
+      Error.throwWithStackTrace(error, stack);
+    });
   }
 
-  Future<void> _closeSession(
-    String sessionId,
-    _FileStoreSession session,
-  ) async {
-    await Future.wait(session.operations);
-    for (final object in session.reads.values) {
+  Future<void> _closeScope(String scopeId, _FileStoreScope scope) async {
+    await Future.wait(scope.operations);
+    for (final object in scope.reads.values) {
       object.readers--;
     }
-    session.reads.clear();
-    for (final object in session.retentions.values) {
+    scope.reads.clear();
+    for (final object in scope.retentions.values) {
       object.retainers--;
     }
-    session.retentions.clear();
+    scope.retentions.clear();
     await Future.wait(
-      session.writes.entries.toList().map(
-        (entry) => _abortWrite(session, entry.key, entry.value),
+      scope.writes.entries.toList().map(
+        (entry) => _abortWrite(scope, entry.key, entry.value),
       ),
     );
-    _sessions.remove(sessionId);
+    _scopes.remove(scopeId);
   }
 
   _StoredObject _objectForAccess(String relativePath) {
@@ -400,7 +397,7 @@ class ProjectFileStore {
   }
 
   Future<T> _runOperation<T>(
-    _FileStoreSession session,
+    _FileStoreScope scope,
     Future<T> Function() operation,
   ) {
     final future = Future<T>.sync(operation);
@@ -409,14 +406,14 @@ class ProjectFileStore {
       (_) {},
       onError: (Object _, StackTrace _) {},
     );
-    session.operations.add(finished);
-    return future.whenComplete(() => session.operations.remove(finished));
+    scope.operations.add(finished);
+    return future.whenComplete(() => scope.operations.remove(finished));
   }
 
   /// Closes the store, deleting cache categories and preserving other files.
   ///
-  /// Rejects new access immediately. Throws [StateError] if any sessions remain
-  /// open; close them with [closeSession] before retrying.
+  /// Rejects new access immediately. Throws [StateError] if any scopes remain
+  /// open; close them with [closeScope] before retrying.
   Future<void> close() {
     _closing = true;
     return _closeFuture ??= _close().catchError((
@@ -429,8 +426,8 @@ class ProjectFileStore {
   }
 
   Future<void> _close() async {
-    if (_sessions.isNotEmpty) {
-      throw StateError('Close file store sessions before closing the store.');
+    if (_scopes.isNotEmpty) {
+      throw StateError('Close file store scopes before closing the store.');
     }
     for (final category in categories.where((c) => c.isCache)) {
       await files.deleteDirectory(
@@ -441,7 +438,7 @@ class ProjectFileStore {
   }
 }
 
-/// A session-owned token and the absolute path it grants access to.
+/// A scope-owned token and the absolute path it grants access to.
 ///
 /// Pass [token] to the store to commit or abort a write, or to release a read.
 /// The token is consumed when that operation succeeds.
@@ -452,7 +449,7 @@ class StoredFileAccess {
   const StoredFileAccess({required this.token, required this.absolutePath});
 }
 
-class _FileStoreSession {
+class _FileStoreScope {
   final writes = <String, _PendingFileWrite>{};
   final reads = <String, _StoredObject>{};
   final retentions = <String, _StoredObject>{};

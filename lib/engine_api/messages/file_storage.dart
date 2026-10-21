@@ -37,7 +37,8 @@ class BeginFileWriteRequest extends Request {
   }
 }
 
-/// Grants write access until commit, abort, or engine-session cleanup.
+/// Grants write access until commit, abort, or closure of the engine's file
+/// scope.
 class BeginFileWriteResponse extends Response {
   late String token;
   late String absolutePath;
@@ -97,7 +98,7 @@ class AcquireFileReadRequest extends Request {
   }
 }
 
-/// Grants read access until release or engine-session cleanup.
+/// Grants read access until release or closure of the engine's file scope.
 class AcquireFileReadResponse extends Response {
   late String token;
   late String absolutePath;
@@ -146,7 +147,7 @@ class RetainStoredFileRequest extends Request {
   }
 }
 
-/// Grants retention until release or storage-session cleanup.
+/// Grants retention until release or closure of the engine's file scope.
 class RetainStoredFileResponse extends Response {
   late String token;
 

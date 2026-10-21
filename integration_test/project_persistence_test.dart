@@ -176,7 +176,7 @@ void main() {
     final originalEngineId = original.engine.id;
     final storage = session.services.projectStorage;
     final store = await storage.fileStore;
-    final client = store.openSession();
+    final client = store.openScope();
     final pending = await store.beginWrite(
       client,
       ProjectFileCategory.pluginStates.directoryName,
@@ -185,7 +185,7 @@ void main() {
     );
     await File(pending.absolutePath).writeAsString('snapshot data');
     final relativePath = await store.commitWrite(client, pending.token);
-    await store.closeSession(client);
+    await store.closeScope(client);
     files.selectedSavePath = files.pathFor('saved-melody');
     expect(await _save(session), isTrue);
     final savedPath = files.pathFor('saved-melody/saved-melody.anthem');
@@ -244,10 +244,10 @@ void main() {
     expect(reopened.isDirty, isFalse);
     final reopenedStore = await session.services.projectStorage.fileStore;
     expect(reopenedStore.projectFilePaths, [relativePath]);
-    final reopenedClient = reopenedStore.openSession();
+    final reopenedClient = reopenedStore.openScope();
     final access = reopenedStore.acquireRead(reopenedClient, relativePath);
     expect(await File(access.absolutePath).readAsString(), 'snapshot data');
-    await reopenedStore.closeSession(reopenedClient);
+    await reopenedStore.closeScope(reopenedClient);
     expect(reopened.toJson(), savedPersistentContent);
     expect(reopened.engine.id, isNot(originalEngineId));
     expect(reopened.engine.processId, isNot(originalPid));

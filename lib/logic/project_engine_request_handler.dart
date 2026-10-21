@@ -24,11 +24,11 @@ import 'package:anthem/logic/storage/project_file_store.dart';
 
 /// Dispatches requests from a project's engine to UI services.
 ///
-/// `Engine` owns this dispatcher. File access is tracked separately for each
-/// engine session and released after that engine has stopped accessing files.
+/// `Engine` owns this dispatcher. Each engine session owns a file scope, which
+/// is closed after that engine has stopped accessing files.
 class ProjectEngineRequestHandler {
   final ProjectModel project;
-  Future<({ProjectFileStore store, String sessionId})>? _fileStorageSession;
+  Future<({ProjectFileStore store, String scopeId})>? _fileStorageScope;
 
   ProjectEngineRequestHandler(this.project);
 
@@ -36,7 +36,7 @@ class ProjectEngineRequestHandler {
   ///
   /// Responses retain the request ID. [sessionEnded] completes when the
   /// engine session that sent [request] begins stopping. Asynchronous operations
-  /// can use it to cancel work. File handles remain valid until [closeSession]
+  /// can use it to cancel work. File handles remain valid until [closeFileScope]
   /// runs after process cleanup.
   Future<Response> handleRequest(
     Request request, {
@@ -52,32 +52,31 @@ class ProjectEngineRequestHandler {
         );
   }
 
-  Future<({ProjectFileStore store, String sessionId})>
-  _getFileStorageSession() {
-    return _fileStorageSession ??= _openFileStorageSession().catchError((
+  Future<({ProjectFileStore store, String scopeId})> _getFileStorageScope() {
+    return _fileStorageScope ??= _openFileStorageScope().catchError((
       Object error,
       StackTrace stack,
     ) {
-      _fileStorageSession = null;
+      _fileStorageScope = null;
       Error.throwWithStackTrace(error, stack);
     });
   }
 
-  Future<({ProjectFileStore store, String sessionId})>
-  _openFileStorageSession() async {
+  Future<({ProjectFileStore store, String scopeId})>
+  _openFileStorageScope() async {
     final store = await ServiceRegistry.forProject(project.id)
         .projectStorage
         .fileStore;
-    return (store: store, sessionId: store.openSession());
+    return (store: store, scopeId: store.openScope());
   }
 
   /// Returns null for requests that do not operate on file storage.
   Future<Response?> _handleFileStorageRequest(Request request) async {
     switch (request) {
       case BeginFileWriteRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
+        final (:store, :scopeId) = await _getFileStorageScope();
         final access = await store.beginWrite(
-          sessionId,
+          scopeId,
           request.category,
           baseName: request.baseName,
           extension: request.extension,
@@ -88,58 +87,58 @@ class ProjectEngineRequestHandler {
           absolutePath: access.absolutePath,
         );
       case CommitFileWriteRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
-        final relativePath = await store.commitWrite(sessionId, request.token);
+        final (:store, :scopeId) = await _getFileStorageScope();
+        final relativePath = await store.commitWrite(scopeId, request.token);
         return CommitFileWriteResponse(
           id: request.id,
           relativePath: relativePath,
         );
       case AbortFileWriteRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
-        await store.abortWrite(sessionId, request.token);
+        final (:store, :scopeId) = await _getFileStorageScope();
+        await store.abortWrite(scopeId, request.token);
         return FileStorageSuccessResponse(id: request.id);
       case AcquireFileReadRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
-        final access = store.acquireRead(sessionId, request.relativePath);
+        final (:store, :scopeId) = await _getFileStorageScope();
+        final access = store.acquireRead(scopeId, request.relativePath);
         return AcquireFileReadResponse(
           id: request.id,
           token: access.token,
           absolutePath: access.absolutePath,
         );
       case ReleaseFileReadRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
-        store.releaseRead(sessionId, request.token);
+        final (:store, :scopeId) = await _getFileStorageScope();
+        store.releaseRead(scopeId, request.token);
         return FileStorageSuccessResponse(id: request.id);
       case DeleteStoredFileRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
-        await store.delete(sessionId, request.relativePath);
+        final (:store, :scopeId) = await _getFileStorageScope();
+        await store.delete(scopeId, request.relativePath);
         return FileStorageSuccessResponse(id: request.id);
       case RetainStoredFileRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
+        final (:store, :scopeId) = await _getFileStorageScope();
         return RetainStoredFileResponse(
           id: request.id,
-          token: store.retain(sessionId, request.relativePath),
+          token: store.retain(scopeId, request.relativePath),
         );
       case ReleaseStoredFileRetentionRequest():
-        final (:store, :sessionId) = await _getFileStorageSession();
-        store.releaseRetention(sessionId, request.token);
+        final (:store, :scopeId) = await _getFileStorageScope();
+        store.releaseRetention(scopeId, request.token);
         return FileStorageSuccessResponse(id: request.id);
       default:
         return null;
     }
   }
 
-  /// Closes the engine's storage session after its process has stopped.
-  Future<void> closeSession() async {
-    final opening = _fileStorageSession;
+  /// Closes the engine's file scope after its process has stopped.
+  Future<void> closeFileScope() async {
+    final opening = _fileStorageScope;
     if (opening == null) return;
     // Failed initialization was reported to the request that opened the store.
-    final session = await opening
-        .then<({ProjectFileStore store, String sessionId})?>(
+    final scope = await opening
+        .then<({ProjectFileStore store, String scopeId})?>(
           (value) => value,
           onError: (Object _, StackTrace _) => null,
         );
-    if (session != null) await session.store.closeSession(session.sessionId);
-    _fileStorageSession = null;
+    if (scope != null) await scope.store.closeScope(scope.scopeId);
+    _fileStorageScope = null;
   }
 }

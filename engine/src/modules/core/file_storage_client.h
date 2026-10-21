@@ -37,7 +37,7 @@ template <typename Value> struct FileStorageResult {
 //
 // All calls and callbacks run on the message thread. File I/O belongs off the
 // audio thread. Flush and close files before committing, aborting, or releasing
-// read access. The store tracks read, write, and retention tokens in a session
+// read access. The store tracks read, write, and retention tokens in a file scope
 // owned by this engine process. Successful commit, abort, and release operations
 // consume their tokens. A timeout does not cancel UI work; remaining access is
 // reclaimed after the engine has stopped.

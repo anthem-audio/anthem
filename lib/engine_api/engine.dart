@@ -561,13 +561,13 @@ class Engine {
         // Shutdown can report that a forced termination was necessary even
         // after confirming the process has exited.
         if (connector.processExitCode != null) {
-          await _requestHandler.closeSession();
+          await _requestHandler.closeFileScope();
           _setEngineState(EngineState.stopped);
         }
         rethrow;
       }
     }
-    await _requestHandler.closeSession();
+    await _requestHandler.closeFileScope();
     _setEngineState(EngineState.stopped);
   }
 

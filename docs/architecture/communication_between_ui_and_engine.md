@@ -149,7 +149,7 @@ UI replies bypass startup and render request queues. An engine operation may nee
 
 Timeouts and request cancellation stop the engine from waiting for a reply; they do not cancel the UI operation. Session shutdown is a separate signal that UI handlers can use to cancel their work.
 
-The UI and engine use the same session-based file store API. The UI calls it directly, and the engine request handler forwards IPC operations using a storage session opened for that engine process. The store owns the access tokens and releases them when their session closes. Engine cleanup closes its storage session after connector shutdown confirms that the process can no longer use the files; entering `stopping` alone is too early. Committed files and references held by other sessions survive engine restarts.
+The UI and engine use the same file store API. File scopes group read, write, and retention tokens for cleanup. The UI calls the store directly, and the engine request handler forwards IPC operations using a file scope owned by that engine session. Engine cleanup closes its file scope after connector shutdown confirms that the process can no longer use the files; entering `stopping` alone is too early. Committed files and references held by other scopes survive engine restarts.
 
 ## Adding a UI-to-engine request and response
 

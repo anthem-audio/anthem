@@ -92,20 +92,20 @@ void main() {
     final engine = _EngineWithDelayedDisposal(project);
     project.engine = engine;
     final store = await registry.projectStorage.fileStore;
-    final sessionId = store.openSession();
+    final scopeId = store.openScope();
     final write = await store.beginWrite(
-      sessionId,
+      scopeId,
       ProjectFileCategory.pluginStates.directoryName,
     );
-    final relativePath = await store.commitWrite(sessionId, write.token);
-    final read = store.acquireRead(sessionId, relativePath);
-    store.releaseRead(sessionId, read.token);
-    final cached = await store.beginWrite(sessionId, cache.directoryName);
-    final cacheRelativePath = await store.commitWrite(sessionId, cached.token);
-    final cacheRead = store.acquireRead(sessionId, cacheRelativePath);
+    final relativePath = await store.commitWrite(scopeId, write.token);
+    final read = store.acquireRead(scopeId, relativePath);
+    store.releaseRead(scopeId, read.token);
+    final cached = await store.beginWrite(scopeId, cache.directoryName);
+    final cacheRelativePath = await store.commitWrite(scopeId, cached.token);
+    final cacheRead = store.acquireRead(scopeId, cacheRelativePath);
     final cachePath = cacheRead.absolutePath;
-    store.releaseRead(sessionId, cacheRead.token);
-    await store.closeSession(sessionId);
+    store.releaseRead(scopeId, cacheRead.token);
+    await store.closeScope(scopeId);
 
     final closing = controller.closeProjectWithoutSaving(project.id);
     expect(controller.closeProjectWithoutSaving(project.id), same(closing));
@@ -126,13 +126,13 @@ void main() {
     'failed storage cleanup preserves the project and can be retried',
     () async {
       final store = await registry.projectStorage.fileStore;
-      final sessionId = store.openSession();
+      final scopeId = store.openScope();
       final write = await store.beginWrite(
-        sessionId,
+        scopeId,
         ProjectFileCategory.pluginStates.directoryName,
       );
-      final relativePath = await store.commitWrite(sessionId, write.token);
-      final read = store.acquireRead(sessionId, relativePath);
+      final relativePath = await store.commitWrite(scopeId, write.token);
+      final read = store.acquireRead(scopeId, relativePath);
       await expectLater(
         controller.closeProjectWithoutSaving(project.id),
         throwsStateError,
@@ -140,7 +140,7 @@ void main() {
       expect(await File(read.absolutePath).exists(), isTrue);
       expect(ServiceRegistry.maybeForProject(project.id), same(registry));
       expect(AnthemStore.instance.projects[project.id], same(project));
-      await store.closeSession(sessionId);
+      await store.closeScope(scopeId);
       await controller.closeProjectWithoutSaving(project.id);
       expect(await Directory(storage.rootDirectory).exists(), isFalse);
     },
@@ -162,15 +162,15 @@ void main() {
         rootDirectory: path.join(parent.path, 'saved project'),
       );
       final store = await registry.projectStorage.fileStore;
-      final sessionId = store.openSession();
+      final scopeId = store.openScope();
       final write = await store.beginWrite(
-        sessionId,
+        scopeId,
         ProjectFileCategory.pluginStates.directoryName,
       );
-      final relativePath = await store.commitWrite(sessionId, write.token);
-      final read = store.acquireRead(sessionId, relativePath);
-      store.releaseRead(sessionId, read.token);
-      await store.closeSession(sessionId);
+      final relativePath = await store.commitWrite(scopeId, write.token);
+      final read = store.acquireRead(scopeId, relativePath);
+      store.releaseRead(scopeId, read.token);
+      await store.closeScope(scopeId);
       final document = await File(
         path.join(storage.rootDirectory, 'project.anthem'),
       ).writeAsString('document');

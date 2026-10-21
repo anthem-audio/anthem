@@ -22,16 +22,18 @@ import 'dart:io';
 
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/format.dart';
-import 'package:anthem/model/project.dart';
 
-Future<void> writeProjectFileToPath(String path, ProjectModel project) async {
+Future<void> writeProjectFileToPath(
+  String path,
+  Map<String, dynamic> projectJson,
+) async {
   final output = File(path).openWrite()..add(projectFileHeader);
 
   try {
     final gzipSink = gzip.encoder.startChunkedConversion(output);
     final jsonSink = JsonUtf8Encoder().startChunkedConversion(gzipSink);
 
-    jsonSink.add(project.toJson());
+    jsonSink.add(projectJson);
     jsonSink.close();
 
     await output.done;

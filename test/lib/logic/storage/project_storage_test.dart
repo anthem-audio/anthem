@@ -61,35 +61,32 @@ void main() {
         categories: [pluginStates, cache],
       );
       final store = await storage.fileStore;
-      final sessionId = store.openSession();
+      final scopeId = store.openScope();
       final write = await store.beginWrite(
-        sessionId,
+        scopeId,
         pluginStates.directoryName,
         baseName: 'Bass',
         extension: 'wav',
       );
       await File(write.absolutePath).writeAsString('plugin state');
-      final relativePath = await store.commitWrite(sessionId, write.token);
+      final relativePath = await store.commitWrite(scopeId, write.token);
       final decoded = await store.beginWrite(
-        sessionId,
+        scopeId,
         cache.directoryName,
         baseName: 'Bass',
         extension: 'wav',
       );
-      final cacheRelativePath = await store.commitWrite(
-        sessionId,
-        decoded.token,
-      );
-      final cacheRead = store.acquireRead(sessionId, cacheRelativePath);
-      store.releaseRead(sessionId, cacheRead.token);
+      final cacheRelativePath = await store.commitWrite(scopeId, decoded.token);
+      final cacheRead = store.acquireRead(scopeId, cacheRelativePath);
+      store.releaseRead(scopeId, cacheRead.token);
       expect(await storage.fileStore, same(store));
       expect(store.projectFilePaths, [relativePath]);
-      final read = store.acquireRead(sessionId, relativePath);
-      store.releaseRead(sessionId, read.token);
+      final read = store.acquireRead(scopeId, relativePath);
+      store.releaseRead(scopeId, read.token);
       // Ending one engine's access leaves files available to its replacement.
       expect(await File(read.absolutePath).exists(), isTrue);
       expect(await File(cacheRead.absolutePath).exists(), isTrue);
-      await store.closeSession(sessionId);
+      await store.closeScope(scopeId);
       await storage.close();
       expect(await File(read.absolutePath).exists(), isTrue);
       expect(await File(cacheRead.absolutePath).exists(), isFalse);
@@ -113,13 +110,13 @@ void main() {
       expect(await Directory(unused.rootDirectory).exists(), isFalse);
       try {
         final store = await temporary.fileStore;
-        final sessionId = store.openSession();
+        final scopeId = store.openScope();
         final write = await store.beginWrite(
-          sessionId,
+          scopeId,
           pluginStates.directoryName,
         );
-        final relativePath = await store.commitWrite(sessionId, write.token);
-        await store.closeSession(sessionId);
+        final relativePath = await store.commitWrite(scopeId, write.token);
+        await store.closeScope(scopeId);
         await temporary.close();
         final recovered = await ProjectFileStore.open(
           temporary.rootDirectory,
@@ -142,10 +139,10 @@ void main() {
     final temporary = ProjectStorage.temporary();
     final opening = temporary.fileStore;
     final store = await opening;
-    final sessionId = store.openSession();
-    final write = await store.beginWrite(sessionId, pluginStates.directoryName);
-    final committing = store.commitWrite(sessionId, write.token);
-    final ending = store.closeSession(sessionId);
+    final scopeId = store.openScope();
+    final write = await store.beginWrite(scopeId, pluginStates.directoryName);
+    final committing = store.commitWrite(scopeId, write.token);
+    final ending = store.closeScope(scopeId);
     final closing = ending.then((_) => temporary.discard());
     await committing;
     await closing;
@@ -159,7 +156,7 @@ void main() {
     final store = await opening;
     await closing;
     expect(await Directory(store.rootDirectory).exists(), isTrue);
-    expect(() => store.openSession(), throwsStateError);
+    expect(() => store.openScope(), throwsStateError);
   });
 
   test(
@@ -167,16 +164,13 @@ void main() {
     () async {
       final temporary = ProjectStorage.temporary();
       final store = await temporary.fileStore;
-      final sessionId = store.openSession();
-      final write = await store.beginWrite(
-        sessionId,
-        pluginStates.directoryName,
-      );
-      final relativePath = await store.commitWrite(sessionId, write.token);
-      final read = store.acquireRead(sessionId, relativePath);
+      final scopeId = store.openScope();
+      final write = await store.beginWrite(scopeId, pluginStates.directoryName);
+      final relativePath = await store.commitWrite(scopeId, write.token);
+      final read = store.acquireRead(scopeId, relativePath);
       await expectLater(temporary.discard(), throwsStateError);
       expect(await File(read.absolutePath).exists(), isTrue);
-      await store.closeSession(sessionId);
+      await store.closeScope(scopeId);
       await temporary.discard();
       expect(await Directory(temporary.rootDirectory).exists(), isFalse);
     },
@@ -190,9 +184,9 @@ void main() {
       await expectLater(storage.fileStore, throwsA(isA<FileSystemException>()));
       await blocker.delete();
       final store = await storage.fileStore;
-      final sessionId = store.openSession();
+      final scopeId = store.openScope();
       expect(store.relativePaths, isEmpty);
-      await store.closeSession(sessionId);
+      await store.closeScope(scopeId);
     },
   );
 
@@ -231,20 +225,20 @@ void main() {
     );
     try {
       final source = await temporary.fileStore;
-      final sourceSession = source.openSession();
+      final sourceScope = source.openScope();
       for (final category in [pluginStates, cache]) {
         final write = await source.beginWrite(
-          sourceSession,
+          sourceScope,
           category.directoryName,
           baseName: 'Bass',
           extension: 'bin',
         );
         await File(write.absolutePath).writeAsString(category.directoryName);
-        await source.commitWrite(sourceSession, write.token);
+        await source.commitWrite(sourceScope, write.token);
       }
       final relativePaths = source.projectFilePaths;
       for (final relativePath in relativePaths) {
-        final read = source.acquireRead(sourceSession, relativePath);
+        final read = source.acquireRead(sourceScope, relativePath);
         try {
           final destination = File(
             path.join(storage.rootDirectory, relativePath),
@@ -252,27 +246,27 @@ void main() {
           await destination.parent.create(recursive: true);
           await File(read.absolutePath).copy(destination.path);
         } finally {
-          source.releaseRead(sourceSession, read.token);
+          source.releaseRead(sourceScope, read.token);
         }
       }
       final saved = await storage.fileStore;
-      final savedSession = saved.openSession();
+      final savedScope = saved.openScope();
       expect(saved.relativePaths, unorderedEquals(relativePaths));
       expect(
         saved.relativePaths,
         isNot(contains(startsWith('${cache.directoryName}/'))),
       );
-      await source.closeSession(sourceSession);
+      await source.closeScope(sourceScope);
       await temporary.discard();
       for (final relativePath in relativePaths) {
-        final read = saved.acquireRead(savedSession, relativePath);
+        final read = saved.acquireRead(savedScope, relativePath);
         expect(
           await File(read.absolutePath).readAsString(),
           relativePath.split('/').first,
         );
-        saved.releaseRead(savedSession, read.token);
+        saved.releaseRead(savedScope, read.token);
       }
-      await saved.closeSession(savedSession);
+      await saved.closeScope(savedScope);
     } finally {
       await temporary.discard();
     }

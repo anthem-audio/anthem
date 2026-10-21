@@ -503,13 +503,17 @@ class ProjectController {
 
     Future<void> finishClosing({required bool save}) async {
       try {
-        final shouldClose =
-            !save ||
-            await mainWindowController.saveProject(
-              project.id,
-              false,
-              dialogController: dialogController,
-            );
+        var shouldClose = true;
+        if (save) {
+          shouldClose = await mainWindowController.saveProject(
+            project.id,
+            false,
+            dialogController: dialogController,
+          );
+          if (project.isDirty) {
+            shouldClose = false;
+          }
+        }
         if (shouldClose) {
           await mainWindowController.closeProjectWithoutSaving(project.id);
         }

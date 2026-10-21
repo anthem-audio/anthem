@@ -197,8 +197,8 @@ void main() {
     );
     expect(write.error, isNull);
     final store = await fixture.storage.fileStore;
-    final uiSession = store.openSession();
-    addTearDown(() => store.closeSession(uiSession));
+    final uiScope = store.openScope();
+    addTearDown(() => store.closeScope(uiScope));
     expect(store.relativePaths, isEmpty);
     final committed = await fixture.send(
       TestFileStorageOperation.commitWrite,
@@ -229,7 +229,7 @@ void main() {
       )).error,
       isNull,
     );
-    final retained = store.retain(uiSession, committed.relativePath!);
+    final retained = store.retain(uiScope, committed.relativePath!);
     expect(
       (await fixture.send(
         TestFileStorageOperation.deleteFile,
@@ -237,14 +237,14 @@ void main() {
       )).error,
       contains('still in use'),
     );
-    store.releaseRetention(uiSession, retained);
+    store.releaseRetention(uiScope, retained);
     final engineRetention = await fixture.send(
       TestFileStorageOperation.retainFile,
       relativePath: committed.relativePath!,
     );
     expect(engineRetention.error, isNull);
     expect(
-      () => store.delete(uiSession, committed.relativePath!),
+      () => store.delete(uiScope, committed.relativePath!),
       throwsStateError,
     );
     expect(
@@ -299,15 +299,15 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 45)));
 
   test(
-    'UI writes are available to the engine after the UI session closes',
+    'UI writes are available to the engine after the UI file scope closes',
     () async {
       final fixture = await _StorageFixture.create();
       await fixture.engine.start(initializeAudio: false);
       final store = await fixture.storage.fileStore;
-      final uiSession = store.openSession();
-      addTearDown(() => store.closeSession(uiSession));
+      final uiScope = store.openScope();
+      addTearDown(() => store.closeScope(uiScope));
       final write = await store.beginWrite(
-        uiSession,
+        uiScope,
         'plugin states',
         baseName: 'Created by UI',
       );
@@ -319,17 +319,17 @@ void main() {
         )).error,
         contains('Unknown file write token'),
       );
-      final relativePath = await store.commitWrite(uiSession, write.token);
+      final relativePath = await store.commitWrite(uiScope, write.token);
       final read = await fixture.send(
         TestFileStorageOperation.acquireRead,
         relativePath: relativePath,
       );
       expect(read.error, isNull);
       expect(read.data, 'shared state');
-      store.retain(uiSession, relativePath);
-      final pending = await store.beginWrite(uiSession, 'plugin states');
+      store.retain(uiScope, relativePath);
+      final pending = await store.beginWrite(uiScope, 'plugin states');
 
-      await store.closeSession(uiSession);
+      await store.closeScope(uiScope);
       expect(await File(pending.absolutePath).exists(), isFalse);
       expect(await File(read.absolutePath!).readAsString(), 'shared state');
       // The engine's read token still prevents deletion after UI cleanup.
@@ -372,9 +372,9 @@ void main() {
     );
     final relativePath = committed.relativePath!;
     final store = await fixture.storage.fileStore;
-    final uiSession = store.openSession();
-    addTearDown(() => store.closeSession(uiSession));
-    final retained = store.retain(uiSession, relativePath);
+    final uiScope = store.openScope();
+    addTearDown(() => store.closeScope(uiScope));
+    final retained = store.retain(uiScope, relativePath);
     final engineRetention = await fixture.send(
       TestFileStorageOperation.retainFile,
       relativePath: relativePath,
@@ -399,7 +399,7 @@ void main() {
     expect(await File(unfinished.absolutePath!).exists(), isFalse);
     expect(await File(read.absolutePath!).readAsString(), 'saved state');
     expect(
-      () => store.delete(uiSession, relativePath),
+      () => store.delete(uiScope, relativePath),
       throwsStateError,
     ); // Project retention survives.
     await fixture.engine.start(initializeAudio: false);
@@ -433,7 +433,7 @@ void main() {
       TestFileStorageOperation.releaseRead,
       token: reread.token!,
     );
-    store.releaseRetention(uiSession, retained);
+    store.releaseRetention(uiScope, retained);
     expect(
       (await fixture.send(
         TestFileStorageOperation.deleteFile,
@@ -468,8 +468,8 @@ void main() {
       );
       final pending = await fixture.send(TestFileStorageOperation.beginWrite);
       final store = await fixture.storage.fileStore;
-      final uiSession = store.openSession();
-      addTearDown(() => store.closeSession(uiSession));
+      final uiScope = store.openScope();
+      addTearDown(() => store.closeScope(uiScope));
       final gate = fixture.connector.shutdownGate = Completer<void>();
       final stopping = fixture.engine.stop();
       try {
@@ -478,7 +478,7 @@ void main() {
         expect(fixture.engine.engineState, EngineState.stopping);
         expect(await File(pending.absolutePath!).exists(), isTrue);
         expect(
-          () => store.delete(uiSession, committed.relativePath!),
+          () => store.delete(uiScope, committed.relativePath!),
           throwsStateError,
         );
       } finally {
@@ -486,7 +486,7 @@ void main() {
         await stopping;
       }
       expect(await File(pending.absolutePath!).exists(), isFalse);
-      await store.delete(uiSession, committed.relativePath!);
+      await store.delete(uiScope, committed.relativePath!);
     },
     timeout: const Timeout(Duration(seconds: 30)),
   );

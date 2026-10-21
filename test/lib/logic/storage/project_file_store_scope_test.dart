@@ -35,17 +35,17 @@ void main() {
   setUp(() async {
     storage = ProjectStorage.temporary();
     store = await storage.fileStore;
-    first = store.openSession();
-    second = store.openSession();
+    first = store.openScope();
+    second = store.openScope();
   });
 
   tearDown(() async {
-    await store.closeSession(first);
-    await store.closeSession(second);
+    await store.closeScope(first);
+    await store.closeScope(second);
     await storage.discard();
   });
 
-  test('tokens can only be used by the session that acquired them', () async {
+  test('tokens can only be used by the scope that acquired them', () async {
     final write = await store.beginWrite(first, 'plugin states');
     expect(() => store.commitWrite(second, write.token), throwsStateError);
     expect(() => store.abortWrite(second, write.token), throwsStateError);
@@ -63,7 +63,7 @@ void main() {
   });
 
   test(
-    'closing one session preserves files and access owned by another',
+    'closing one scope preserves files and access owned by another',
     () async {
       final write = await store.beginWrite(first, 'plugin states');
       await File(write.absolutePath).writeAsString('saved state', flush: true);
@@ -74,7 +74,7 @@ void main() {
       final otherRead = store.acquireRead(second, relativePath);
       final otherReference = store.retain(second, relativePath);
 
-      await store.closeSession(first);
+      await store.closeScope(first);
       expect(await File(pending.absolutePath).exists(), isFalse);
       expect(await File(otherRead.absolutePath).readAsString(), 'saved state');
       expect(() => store.acquireRead(first, relativePath), throwsStateError);
@@ -83,16 +83,16 @@ void main() {
       expect(() => store.delete(second, relativePath), throwsStateError);
       store.releaseRetention(second, otherReference);
       await store.delete(second, relativePath);
-      await store.closeSession(first);
+      await store.closeScope(first);
     },
   );
 
-  test('replacement sessions use fresh tokens for existing files', () async {
+  test('replacement scopes use fresh tokens for existing files', () async {
     final write = await store.beginWrite(first, 'plugin states');
     final relativePath = await store.commitWrite(first, write.token);
     final read = store.acquireRead(first, relativePath);
-    await store.closeSession(first);
-    first = store.openSession();
+    await store.closeScope(first);
+    first = store.openScope();
     expect(() => store.releaseRead(first, read.token), throwsStateError);
     final replacement = store.acquireRead(first, relativePath);
     expect(replacement.token, isNot(read.token));
@@ -103,8 +103,8 @@ void main() {
     'closing waits for a write grant even if its result is unused',
     () async {
       final opening = store.beginWrite(first, 'plugin states');
-      final closing = store.closeSession(first);
-      expect(store.closeSession(first), same(closing));
+      final closing = store.closeScope(first);
+      expect(store.closeScope(first), same(closing));
       expect(() => store.beginWrite(first, 'plugin states'), throwsStateError);
       final write = await opening;
       await closing;
@@ -125,7 +125,7 @@ void main() {
       await File(pending.absolutePath).delete();
       await Directory(pending.absolutePath).create();
       await expectLater(
-        store.closeSession(first),
+        store.closeScope(first),
         throwsA(isA<FileSystemException>()),
       );
       expect(await File(another.absolutePath).exists(), isFalse);
@@ -135,7 +135,7 @@ void main() {
       expect(() => store.beginWrite(first, 'plugin states'), throwsStateError);
       await Directory(pending.absolutePath).delete();
       await File(pending.absolutePath).writeAsString('retry');
-      await store.closeSession(first);
+      await store.closeScope(first);
       expect(await File(pending.absolutePath).exists(), isFalse);
     },
   );
@@ -147,10 +147,10 @@ void main() {
       store.commitWrite(first, write.token),
       throwsA(isA<FileSystemException>()),
     );
-    await store.closeSession(first);
+    await store.closeScope(first);
     await failedCommit;
     expect(store.relativePaths, isEmpty);
-    // The failed write's reserved name was released during session cleanup.
+    // The failed write's reserved name was released during scope cleanup.
     final replacement = await store.beginWrite(second, 'plugin states');
     await store.commitWrite(second, replacement.token);
   });

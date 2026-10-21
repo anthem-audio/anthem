@@ -95,7 +95,7 @@ class ProjectStorage {
   /// Waits for initialization, then deletes cache categories. Required project
   /// data is preserved, including data in a temporary root that may be needed
   /// for recovery. All clients must finish file I/O and close their store
-  /// sessions first. Outstanding sessions prevent cleanup; close them and retry.
+  /// scopes first. Outstanding scopes prevent cleanup; close them and retry.
   /// Closing an unused owner does not access the filesystem.
   Future<void> close() {
     _closing = true;

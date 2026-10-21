@@ -36,6 +36,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' hide TextBox;
 import 'package:logging/logging.dart';
@@ -378,14 +379,21 @@ class MainWindowController {
       );
 
       final storage = ServiceRegistry.forProject(projectId).projectStorage;
-      await writeProjectDirectory(
-        path!,
-        project,
-        await storage.fileStore,
-        create: createDirectory,
-      );
+      var changedDuringSave = false;
+      void onModelChange(ModelChangeEvent _) => changedDuringSave = true;
+      project.addRawFieldChangedListener(onModelChange);
+      try {
+        await writeProjectDirectory(
+          path!,
+          project,
+          await storage.fileStore,
+          create: createDirectory,
+        );
+      } finally {
+        project.removeRawFieldChangedListener(onModelChange);
+      }
 
-      project.isDirty = false;
+      project.isDirty = changedDuringSave;
       project.filePath = path;
       return true;
     }
