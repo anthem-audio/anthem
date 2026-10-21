@@ -52,20 +52,24 @@ if (IS_WASM)
 
   add_compile_options(
     -pthread
+    "SHELL:-sWASM_WORKERS=1"
 
     # "SHELL:-fsanitize=address"
   )
   
   add_link_options(
     -pthread
-    # The value 3 here maps to 3 threads in the engine:
+    "SHELL:-sWASM_WORKERS=1"
+    "SHELL:-sAUDIO_WORKLET=1"
+    # The value "3" here maps to 3 threads in the engine:
     # - Message thread
-    # - Audio thread (or render thread)
     # - Comms thread
+    # - JUCE timers
+    # Audio rendering runs in the AudioWorklet, outside the pthread pool.
     "SHELL:-sPTHREAD_POOL_SIZE=3"
     "SHELL:-sPROXY_TO_PTHREAD=1"
 
-    "SHELL:-INITIAL_HEAP=268435456" # 256MB
+    "SHELL:-sINITIAL_MEMORY=268435456" # 256MB; pthreads import shared memory.
     "SHELL:-sALLOW_MEMORY_GROWTH=1"
 
     "SHELL:-sMODULARIZE=1"

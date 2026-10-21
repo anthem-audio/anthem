@@ -13,6 +13,7 @@
 
 ## Fixed
 
+- Reduced audio latency in web builds
 - Steep curves at the start of automation clips now render correctly at all zoom levels
 - Fixed VST3 plugin selection on Linux
 - Fixed the left panel width at 200 pixels
