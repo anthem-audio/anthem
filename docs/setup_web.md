@@ -10,7 +10,7 @@ Follow the setup instructions for your platform:
 - [macOS](./setup_macos.md)
 - [Linux](./setup_linux.md)
 
-After this, install Emscripten. On Windows, install it under WSL2; the development scripts expect this, and will use Emscripten under WSL2 to build the engine when using the `--wasm` flag. See below for instructions.
+After this, install Emscripten 6.0.13 or newer. The AudioWorklet backend requires mixed pthread/Wasm Worker support. On Windows, install it under WSL2; the development scripts expect this, and will use Emscripten under WSL2 to build the engine when using the `--wasm` flag. See below for instructions.
 
 ### Instructions
 
@@ -25,3 +25,17 @@ You can do this with the following steps:
 1. Make sure the engine is built using the steps above.
 2. Run `flutter build web --wasm`.
 3. Run `dart run anthem:cli flutter_run_web_with_proxy --serve-existing-build`.
+
+### Audio processing
+
+The engine's control threads and its AudioWorklet share WebAssembly memory. The
+worklet invokes the existing C++ audio callback directly, using the AudioContext's
+sample rate and render quantum. It reuses the context when audio is stopped and
+started, and keeps its stack alive for the lifetime of the engine module.
+
+Use JUCE's platform timing functions in audio-thread code. In an AudioWorklet,
+`std::chrono::steady_clock` (also used by `high_resolution_clock` in this
+toolchain) requests an unavailable monotonic clock and can abort. Emscripten's
+clock used by the JUCE web port falls back to `Date.now()` where
+`performance.now()` is unavailable, so web CPU-burden measurements have coarser
+resolution than native measurements.
