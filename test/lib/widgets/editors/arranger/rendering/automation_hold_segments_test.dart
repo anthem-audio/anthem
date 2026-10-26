@@ -670,7 +670,7 @@ List<AutomationHoldSegment> _buildSegments(List<_ClipSpec> clipSpecs) {
 
     return buildAutomationHoldSegments(project: project, clips: clips);
   } finally {
-    project.dispose();
+    addTearDown(project.dispose);
   }
 }
 
@@ -680,7 +680,7 @@ double _evaluatePoints(List<_PointSpec> pointSpecs, double tick) {
     final points = _createAutomationPoints(project, pointSpecs);
     return evaluateAutomationHoldValueAtSourceTick(points, tick);
   } finally {
-    project.dispose();
+    addTearDown(project.dispose);
   }
 }
 
@@ -806,9 +806,9 @@ class _AutomationHoldPaintFixture {
   ArrangerViewModel get viewModel =>
       ServiceRegistry.forProject(project.id).arrangerViewModel;
 
-  void dispose() {
+  Future<void> dispose() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   }
 }
 

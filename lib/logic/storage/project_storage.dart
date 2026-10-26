@@ -17,15 +17,17 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/storage/project_file_store.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/logic/storage/project_asset_references.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:path/path.dart' as path;
 
-import 'file_store_io_stub.dart'
-    if (dart.library.io) 'file_store_io.dart'
+import 'asset_store_io_stub.dart'
+    if (dart.library.io) 'asset_store_io.dart'
     as files;
 
-/// Manages files for a project.
+/// Manages a project's stored assets.
 ///
 /// A loaded project uses its saved folder as the root. A new project uses a
 /// temporary root. Saving copies required files to the chosen folder; the open
@@ -42,52 +44,106 @@ class ProjectStorage {
   /// Root chosen by the project owner. It is created on first file access.
   final String rootDirectory;
 
-  final List<ProjectFileCategory> categories;
+  final List<ProjectAssetCategory> categories;
 
   /// Whether this owner may discard the root when the project closes.
   ///
   /// Explicit roots belong to the user and are preserved. Temporary roots are
-  /// allocated by [ProjectStorage.temporary] for unsaved projects.
+  /// allocated or adopted by [ProjectStorage.temporary] for unsaved projects.
   final bool isTemporary;
 
-  Future<ProjectFileStore>? _fileStore;
-  bool _initializationStarted = false;
+  Future<ProjectAssetStore>? _initializationFuture;
+  ProjectAssetStore? _openedStore;
+  final ProjectModel _project;
+  ProjectAssetReferences? _references;
   bool _closing = false;
   Future<void>? _closeFuture;
   Future<void>? _discardFuture;
 
   ProjectStorage({
     required String rootDirectory,
-    Iterable<ProjectFileCategory> categories = ProjectFileCategory.defaults,
-  }) : this._(rootDirectory, categories, false);
+    required ProjectModel project,
+    Iterable<ProjectAssetCategory> categories = ProjectAssetCategory.defaults,
+  }) : this._(rootDirectory, categories, false, project);
 
-  /// Chooses a fresh temporary root without creating any files or directories.
+  /// Owns a temporary root, deleting it when [discard] is called.
+  ///
+  /// If [rootDirectory] is omitted, chooses a fresh path without creating it.
+  /// Otherwise, takes ownership of the supplied directory and its contents.
   factory ProjectStorage.temporary({
-    Iterable<ProjectFileCategory> categories = ProjectFileCategory.defaults,
-  }) =>
-      ProjectStorage._(files.temporaryProjectDirectoryPath(), categories, true);
+    required ProjectModel project,
+    String? rootDirectory,
+    Iterable<ProjectAssetCategory> categories = ProjectAssetCategory.defaults,
+  }) => ProjectStorage._(
+    rootDirectory ?? files.temporaryProjectDirectoryPath(),
+    categories,
+    true,
+    project,
+  );
 
   ProjectStorage._(
     String root,
-    Iterable<ProjectFileCategory> categories,
+    Iterable<ProjectAssetCategory> categories,
     this.isTemporary,
+    this._project,
   ) : rootDirectory = path.normalize(path.absolute(root)),
       categories = List.unmodifiable(categories);
 
-  /// Files shared by the UI and engine for the lifetime of the project.
+  /// Assets shared by the UI and engine for the lifetime of the project.
   ///
   /// Engine restarts leave the store intact. Each category controls whether its
   /// files must accompany a save or can be discarded and regenerated.
-  Future<ProjectFileStore> get fileStore {
+  Future<ProjectAssetStore> get assetStore {
     if (_closing) throw StateError('Project storage is closing or closed.');
-    _initializationStarted = true;
-    return _fileStore ??=
-        ProjectFileStore.open(rootDirectory, categories: categories).catchError(
-          (Object error, StackTrace stackTrace) {
-            _fileStore = null;
-            Error.throwWithStackTrace(error, stackTrace);
-          },
-        );
+    return _initializationFuture ??= _initialize();
+  }
+
+  Future<ProjectAssetStore> _initialize() async {
+    try {
+      final store = _openedStore ??= await ProjectAssetStore.open(
+        rootDirectory,
+        categories: categories,
+      );
+      _references ??= ProjectAssetReferences(_project.fileRetentions, store);
+      return store;
+    } catch (_) {
+      _initializationFuture = null;
+      rethrow;
+    }
+  }
+
+  Future<ProjectAssetReferences> get references async {
+    await assetStore;
+    return _references!;
+  }
+
+  ProjectAssetReferences get _openedReferences {
+    final references = _references;
+    if (_closing || references == null) {
+      throw StateError(
+        'Open project storage before accessing file retentions.',
+      );
+    }
+    return references;
+  }
+
+  /// Retains an asset for the current project and returns its retention ID.
+  String retainAssetForProject(String relativePath) =>
+      _openedReferences.retainAssetForProject(relativePath);
+
+  /// Releases a project-owned claim without deleting its asset.
+  void releaseAssetFromProject(String retentionId) =>
+      _openedReferences.releaseAssetFromProject(retentionId);
+
+  /// Resolves a live retention to its project-relative file path.
+  String resolveRetention(String retentionId) =>
+      _openedReferences.store.resolveRetention(retentionId);
+
+  /// Retains assets in an already opened store until the claim is disposed.
+  ///
+  /// Files must have been created or loaded through this storage first.
+  ProjectAssetRetention retainAssets(Iterable<String> paths) {
+    return _openedReferences.retainAssets(paths);
   }
 
   /// Closes storage after all engine and UI file access has ended.
@@ -109,15 +165,20 @@ class ProjectStorage {
   }
 
   Future<void> _close() async {
-    final storeFuture = _fileStore;
-    if (storeFuture == null) return;
+    final initializationFuture = _initializationFuture;
+    if (initializationFuture == null && _openedStore == null) return;
     // Initialization failures are reported to the caller that opened the store.
     // Cleanup remains possible when initialization did not produce a store.
-    final store = await storeFuture.then<ProjectFileStore?>(
-      (value) => value,
-      onError: (Object _, StackTrace _) => null,
-    );
-    if (store != null) await store.close();
+    final store = initializationFuture == null
+        ? _openedStore
+        : await initializationFuture.then<ProjectAssetStore?>(
+            (value) => value,
+            onError: (Object _, StackTrace _) => _openedStore,
+          );
+    if (store != null) {
+      await _references?.close();
+      await store.close();
+    }
   }
 
   /// Closes an unsaved project's storage and deletes its temporary root.
@@ -140,6 +201,6 @@ class ProjectStorage {
 
   Future<void> _discard() async {
     await close();
-    if (_initializationStarted) await files.deleteDirectory(rootDirectory);
+    await files.deleteDirectory(rootDirectory);
   }
 }

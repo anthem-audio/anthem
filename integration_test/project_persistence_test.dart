@@ -24,7 +24,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/project_file/format.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -33,7 +32,7 @@ import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../test/helpers/prealpha_1_project.dart';
+import '../test/fixtures/prealpha_1_project.dart';
 
 import 'support/app_test_session.dart';
 import 'support/piano_roll_test_driver.dart';
@@ -175,17 +174,6 @@ void main() {
     final originalPid = original.engine.processId;
     final originalEngineId = original.engine.id;
     final storage = session.services.projectStorage;
-    final store = await storage.fileStore;
-    final client = store.openScope();
-    final pending = await store.beginWrite(
-      client,
-      ProjectFileCategory.pluginStates.directoryName,
-      baseName: 'Test state',
-      extension: 'bin',
-    );
-    await File(pending.absolutePath).writeAsString('snapshot data');
-    final relativePath = await store.commitWrite(client, pending.token);
-    await store.closeScope(client);
     files.selectedSavePath = files.pathFor('saved-melody');
     expect(await _save(session), isTrue);
     final savedPath = files.pathFor('saved-melody/saved-melody.anthem');
@@ -242,12 +230,6 @@ void main() {
     expect(reopened!.id, original.id);
     expect(reopened.filePath, savedPath);
     expect(reopened.isDirty, isFalse);
-    final reopenedStore = await session.services.projectStorage.fileStore;
-    expect(reopenedStore.projectFilePaths, [relativePath]);
-    final reopenedClient = reopenedStore.openScope();
-    final access = reopenedStore.acquireRead(reopenedClient, relativePath);
-    expect(await File(access.absolutePath).readAsString(), 'snapshot data');
-    await reopenedStore.closeScope(reopenedClient);
     expect(reopened.toJson(), savedPersistentContent);
     expect(reopened.engine.id, isNot(originalEngineId));
     expect(reopened.engine.processId, isNot(originalPid));
@@ -413,16 +395,12 @@ void main() {
       await session.start();
       await files.useTemporaryProjectsDirectory();
       final original = session.project;
-      final ids = await _prepareEditedProject(session);
       final legacy = File(files.pathFor('Old.song.anthem'));
       await legacy.writeAsBytes([
         ...projectFileHeader,
-        ...gzip.encode(
-          utf8.encode(jsonEncode(createPrealpha1ProjectJson(original))),
-        ),
+        ...gzip.encode(utf8.encode(prealpha1ProjectJson)),
       ]);
       final originalBytes = await legacy.readAsBytes();
-      final expected = original.toJson();
       await waitForFuture(
         tester,
         ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
@@ -435,8 +413,7 @@ void main() {
       files.selectedOpenPath = legacy.path;
       final imported = await session.openProjectFromFile();
       expect(imported, isNotNull);
-      expect(imported!.toJson(), expected);
-      expect(imported.filePath, isNull);
+      expect(imported!.filePath, isNull);
       expect(imported.name, 'New Project');
       expect(imported.isDirty, isTrue);
       expect(session.services.projectStorage.isTemporary, isTrue);
@@ -451,12 +428,7 @@ void main() {
       expect(imported.name, 'Converted');
       expect(imported.isDirty, isFalse);
       expect(await legacy.readAsBytes(), originalBytes);
-      await _verifyContent(
-        session,
-        trackId: ids.trackId,
-        patternId: ids.patternId,
-        noteId: ids.noteId,
-      );
+      await _verifyContent(session, trackId: 2, patternId: 16, noteId: 0);
       await session.dispose();
     },
   );

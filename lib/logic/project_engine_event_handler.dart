@@ -42,7 +42,7 @@ class ProjectEngineEventHandler {
 
   ProjectEngineEventHandler(this.project);
 
-  /// Applies plugin parameter, state-change, and loading notifications.
+  /// Applies plugin parameter and state-change notifications.
   void handleEvent(IpcEvent event) {
     switch (event) {
       case PluginChangedEvent e:
@@ -56,19 +56,6 @@ class ProjectEngineEventHandler {
         return;
       case PluginParameterSnapshotEvent e:
         _handlePluginParameterSnapshot(e);
-        return;
-      case PluginLoadedEvent e:
-        final node = project.processingGraph.nodes[e.nodeId];
-        if (node == null) {
-          return;
-        }
-
-        final completer = node.pluginLoadedCompleter;
-
-        // Ignore repeated loading notifications.
-        if (completer.isCompleted) return;
-
-        completer.complete();
         return;
       default:
         return;

@@ -57,8 +57,8 @@ void main() {
     project.processingGraph.addNode(node);
   });
 
-  tearDown(() {
-    project.dispose();
+  tearDown(() async {
+    await project.dispose();
   });
 
   test('SetParameterValueCommand executes and rolls back', () {

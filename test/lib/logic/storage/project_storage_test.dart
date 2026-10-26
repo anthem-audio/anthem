@@ -20,29 +20,39 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/logic/storage/project_storage.dart';
-import 'package:anthem/logic/storage/project_file_store.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
+import 'package:anthem/model/project.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
-import 'package:test/test.dart';
 
-const pluginStates = ProjectFileCategory.pluginStates;
-const cache = ProjectFileCategory('test cache', isCache: true);
+const pluginStates = ProjectAssetCategory.pluginStates;
+const cache = ProjectAssetCategory('test cache', isCache: true);
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   late Directory parent;
   late ProjectStorage storage;
+  late ProjectModel project;
 
   setUp(() async {
+    project = ProjectModel.create();
     parent = await Directory.systemTemp.createTemp(
       'anthem_project_storage_test_',
     );
-    storage = ProjectStorage(rootDirectory: path.join(parent.path, 'project'));
+    storage = ProjectStorage(
+      rootDirectory: path.join(parent.path, 'project'),
+      project: project,
+    );
   });
 
   tearDown(() async {
+    await project.dispose();
     await storage.close();
     await parent.delete(recursive: true);
   });
@@ -50,17 +60,85 @@ void main() {
   test('an unused explicit root is never created', () async {
     await storage.close();
     expect(await parent.list().toList(), isEmpty);
-    expect(() => storage.fileStore, throwsStateError);
+    expect(() => storage.assetStore, throwsStateError);
   });
+
+  test(
+    'a prepared temporary directory is adopted and its files are discovered',
+    () async {
+      final directory = await Directory(path.join(parent.path, 'prepared'))
+          .create();
+      final file = File(path.join(directory.path, 'plugin states', '1.bin'));
+      await file.parent.create();
+      await file.writeAsBytes([1, 2, 3]);
+      final node = NodeModel.create(idAllocator: project.idAllocator)
+        ..processorStateRetentionId = 'restored-claim';
+      project.fileRetentions = jsonEncode({
+        'restored-claim': 'plugin states/1.bin',
+      });
+      project.processingGraph.addNode(node);
+      final temporary = ProjectStorage.temporary(
+        project: project,
+        rootDirectory: directory.path,
+      );
+      try {
+        final store = await temporary.assetStore;
+        expect(store.projectAssetPaths, ['plugin states/1.bin']);
+        final snapshot = (await temporary.references).snapshot();
+        expect(
+          await File(snapshot.reads.values.single.absolutePath).readAsBytes(),
+          [1, 2, 3],
+        );
+        await snapshot.close();
+      } finally {
+        await temporary.discard();
+      }
+      expect(await directory.exists(), isFalse);
+    },
+  );
+
+  test(
+    'discard removes an adopted temporary directory before storage opens',
+    () async {
+      final directory = await Directory(path.join(parent.path, 'prepared'))
+          .create();
+      await File(path.join(directory.path, 'data')).writeAsString('prepared');
+      await ProjectStorage.temporary(
+        project: project,
+        rootDirectory: directory.path,
+      ).discard();
+      expect(await directory.exists(), isFalse);
+    },
+  );
+
+  test(
+    'reference initialization can be retried using the already opened store',
+    () async {
+      final node = NodeModel.create(idAllocator: project.idAllocator)
+        ..processorStateRetentionId = 'missing-claim';
+      project.fileRetentions = jsonEncode({
+        'missing-claim': 'plugin states/missing.bin',
+      });
+      project.processingGraph.addNode(node);
+      await expectLater(storage.assetStore, throwsStateError);
+      // Reopening the same directory would fail: the first attempt owns its store.
+      // Removing the invalid model reference lets that store finish initialization.
+      node.processorStateRetentionId = null;
+      project.fileRetentions = '{}';
+      final store = await storage.assetStore;
+      expect(store.rootDirectory, storage.rootDirectory);
+    },
+  );
 
   test(
     'explicit roots preserve project data and clean up cache categories',
     () async {
       storage = ProjectStorage(
+        project: project,
         rootDirectory: storage.rootDirectory,
         categories: [pluginStates, cache],
       );
-      final store = await storage.fileStore;
+      final store = await storage.assetStore;
       final scopeId = store.openScope();
       final write = await store.beginWrite(
         scopeId,
@@ -77,10 +155,14 @@ void main() {
         extension: 'wav',
       );
       final cacheRelativePath = await store.commitWrite(scopeId, decoded.token);
+      expect(
+        () => storage.retainAssetForProject(cacheRelativePath),
+        throwsStateError,
+      );
       final cacheRead = store.acquireRead(scopeId, cacheRelativePath);
       store.releaseRead(scopeId, cacheRead.token);
-      expect(await storage.fileStore, same(store));
-      expect(store.projectFilePaths, [relativePath]);
+      expect(await storage.assetStore, same(store));
+      expect(store.projectAssetPaths, [relativePath]);
       final read = store.acquireRead(scopeId, relativePath);
       store.releaseRead(scopeId, read.token);
       // Ending one engine's access leaves files available to its replacement.
@@ -91,7 +173,7 @@ void main() {
       expect(await File(read.absolutePath).exists(), isTrue);
       expect(await File(cacheRead.absolutePath).exists(), isFalse);
       expect(() => storage.discard(), throwsStateError);
-      final recovered = await ProjectFileStore.open(
+      final recovered = await ProjectAssetStore.open(
         storage.rootDirectory,
         categories: storage.categories,
       );
@@ -103,13 +185,13 @@ void main() {
   test(
     'temporary roots are lazy and can be kept for recovery before discard',
     () async {
-      final temporary = ProjectStorage.temporary();
-      final unused = ProjectStorage.temporary();
+      final temporary = ProjectStorage.temporary(project: project);
+      final unused = ProjectStorage.temporary(project: project);
       expect(await Directory(temporary.rootDirectory).exists(), isFalse);
       await unused.discard();
       expect(await Directory(unused.rootDirectory).exists(), isFalse);
       try {
-        final store = await temporary.fileStore;
+        final store = await temporary.assetStore;
         final scopeId = store.openScope();
         final write = await store.beginWrite(
           scopeId,
@@ -118,14 +200,14 @@ void main() {
         final relativePath = await store.commitWrite(scopeId, write.token);
         await store.closeScope(scopeId);
         await temporary.close();
-        final recovered = await ProjectFileStore.open(
+        final recovered = await ProjectAssetStore.open(
           temporary.rootDirectory,
           categories: temporary.categories,
         );
         expect(recovered.relativePaths, [relativePath]);
         await recovered.close();
-        final another = ProjectStorage.temporary();
-        await another.fileStore;
+        final another = ProjectStorage.temporary(project: project);
+        await another.assetStore;
         await another.discard();
         expect(await Directory(temporary.rootDirectory).exists(), isTrue);
       } finally {
@@ -136,8 +218,8 @@ void main() {
   );
 
   test('discard waits for initialization and an in-flight write', () async {
-    final temporary = ProjectStorage.temporary();
-    final opening = temporary.fileStore;
+    final temporary = ProjectStorage.temporary(project: project);
+    final opening = temporary.assetStore;
     final store = await opening;
     final scopeId = store.openScope();
     final write = await store.beginWrite(scopeId, pluginStates.directoryName);
@@ -147,11 +229,11 @@ void main() {
     await committing;
     await closing;
     expect(await Directory(temporary.rootDirectory).exists(), isFalse);
-    expect(() => temporary.fileStore, throwsStateError);
+    expect(() => temporary.assetStore, throwsStateError);
   });
 
   test('close waits for initialization already in progress', () async {
-    final opening = storage.fileStore;
+    final opening = storage.assetStore;
     final closing = storage.close();
     final store = await opening;
     await closing;
@@ -162,8 +244,8 @@ void main() {
   test(
     'temporary cleanup preserves data until live access is released',
     () async {
-      final temporary = ProjectStorage.temporary();
-      final store = await temporary.fileStore;
+      final temporary = ProjectStorage.temporary(project: project);
+      final store = await temporary.assetStore;
       final scopeId = store.openScope();
       final write = await store.beginWrite(scopeId, pluginStates.directoryName);
       final relativePath = await store.commitWrite(scopeId, write.token);
@@ -181,9 +263,12 @@ void main() {
     () async {
       final blocker = await File(storage.rootDirectory)
           .writeAsString('not a directory');
-      await expectLater(storage.fileStore, throwsA(isA<FileSystemException>()));
+      await expectLater(
+        storage.assetStore,
+        throwsA(isA<FileSystemException>()),
+      );
       await blocker.delete();
-      final store = await storage.fileStore;
+      final store = await storage.assetStore;
       final scopeId = store.openScope();
       expect(store.relativePaths, isEmpty);
       await store.closeScope(scopeId);
@@ -197,7 +282,10 @@ void main() {
           .writeAsString('keep');
       final blocker = await File(storage.rootDirectory)
           .writeAsString('keep too');
-      await expectLater(storage.fileStore, throwsA(isA<FileSystemException>()));
+      await expectLater(
+        storage.assetStore,
+        throwsA(isA<FileSystemException>()),
+      );
       await storage.close();
       expect(await unrelated.readAsString(), 'keep');
       expect(await blocker.readAsString(), 'keep too');
@@ -207,24 +295,31 @@ void main() {
   test(
     'failed temporary initialization can discard its incomplete root',
     () async {
-      final temporary = ProjectStorage.temporary();
+      final temporary = ProjectStorage.temporary(project: project);
       final blocker = File(
         path.join(temporary.rootDirectory, pluginStates.directoryName),
       );
       await blocker.parent.create();
       await blocker.writeAsString('conflict');
-      await expectLater(temporary.fileStore, throwsFormatException);
+      await expectLater(temporary.assetStore, throwsFormatException);
       await temporary.discard();
       expect(await Directory(temporary.rootDirectory).exists(), isFalse);
     },
   );
 
   test('first save can copy project categories without changing relative file paths', () async {
+    final destinationProject = ProjectModel.create();
+    addTearDown(destinationProject.dispose);
+    storage = ProjectStorage(
+      project: destinationProject,
+      rootDirectory: storage.rootDirectory,
+    );
     final temporary = ProjectStorage.temporary(
+      project: project,
       categories: [pluginStates, cache],
     );
     try {
-      final source = await temporary.fileStore;
+      final source = await temporary.assetStore;
       final sourceScope = source.openScope();
       for (final category in [pluginStates, cache]) {
         final write = await source.beginWrite(
@@ -236,7 +331,7 @@ void main() {
         await File(write.absolutePath).writeAsString(category.directoryName);
         await source.commitWrite(sourceScope, write.token);
       }
-      final relativePaths = source.projectFilePaths;
+      final relativePaths = source.projectAssetPaths;
       for (final relativePath in relativePaths) {
         final read = source.acquireRead(sourceScope, relativePath);
         try {
@@ -249,7 +344,7 @@ void main() {
           source.releaseRead(sourceScope, read.token);
         }
       }
-      final saved = await storage.fileStore;
+      final saved = await storage.assetStore;
       final savedScope = saved.openScope();
       expect(saved.relativePaths, unorderedEquals(relativePaths));
       expect(

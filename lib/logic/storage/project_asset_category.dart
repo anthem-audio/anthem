@@ -17,24 +17,25 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-/// A directory containing one kind of project file.
+/// A directory containing one kind of project asset.
 ///
 /// [directoryName] is a single folder name relative to the project root. It is
 /// part of each file's relative path, so changing it also changes those paths.
-class ProjectFileCategory {
+class ProjectAssetCategory {
   final String directoryName;
 
   /// Whether these files can be regenerated from the project's saved data.
   ///
-  /// Cache files are excluded from `ProjectFileStore.projectFilePaths` and deleted
-  /// when the store closes. Required project data must use a non-cache category.
+  /// Cache assets are excluded from `ProjectAssetStore.projectAssetPaths` and
+  /// deleted when the store closes. Required project data must use a non-cache
+  /// category.
   final bool isCache;
 
-  const ProjectFileCategory(this.directoryName, {this.isCache = false});
+  const ProjectAssetCategory(this.directoryName, {this.isCache = false});
 
   // Add categories as other kinds of project data are supported. For now, only
   // plugin states need a directory.
-  static const pluginStates = ProjectFileCategory('plugin states');
+  static const pluginStates = ProjectAssetCategory('plugin states');
 
   static const defaults = [pluginStates];
 }

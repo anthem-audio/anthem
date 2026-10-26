@@ -17,9 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/project_file/codec.dart';
+import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as path;
 import 'package:anthem/logic/commands/parameter_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -44,7 +48,7 @@ Future<void> _prepareRack(AppTestSession session, Id trackId) async {
   // Prerequisite setup: isolate the plugins from the default built-in device.
   for (final device
       in session.project.tracks[trackId]!.requireProcessing.devices.toList()) {
-    session.services.deviceController.removeDevice(
+    await session.services.deviceController.removeDevice(
       trackId: trackId,
       deviceId: device.id,
     );
@@ -63,16 +67,33 @@ void _showRack(AppTestSession session, Id trackId) {
 NodePortModel _parameter(NodeModel node, String name) => node.controlInputPorts
     .singleWhere((port) => port.isAvailable && port.config.name == name);
 
-Future<String> _liveState(AppTestSession session, NodeModel node) async {
-  final state = await waitForFuture(
+/// Captures state and hashes the file's bytes for equality assertions.
+Future<String> _captureStateHash(AppTestSession session, NodeModel node) async {
+  await waitForFuture(
     session.tester,
-    session.project.engine.processingGraphApi.getPluginState(node.id),
-    conditionDescription: 'live serialized state of plugin ${node.id}',
+    node.updateStateFromEngine(),
+    conditionDescription: 'capture state file of plugin ${node.id}',
     collectTimeoutDiagnostics: () => session.sessionDiagnostics,
     checkHealth: session.checkEngine,
   );
-  expect(state, isNotEmpty, reason: 'A real VST3 instance must provide state.');
-  return state;
+  expect(
+    node.processorStateRetentionId,
+    isNotNull,
+    reason: 'A real VST3 instance must provide state.',
+  );
+  final store = await session.services.projectStorage.assetStore;
+  final scope = store.openScope();
+  try {
+    final read = store.acquireRead(
+      scope,
+      store.resolveRetention(node.processorStateRetentionId!),
+    );
+    return sha256
+        .convert(await File(read.absolutePath).readAsBytes())
+        .toString();
+  } finally {
+    await store.closeScope(scope);
+  }
 }
 
 void _setParameter(
@@ -97,18 +118,15 @@ Future<void> _verifyPlugin(
   NodeModel node, {
   required bool instrument,
 }) async {
-  await waitForFuture(
+  await waitUntil(
     session.tester,
-    node.pluginLoadedCompleter.future,
-    conditionDescription: 'real VST3 instance ${node.id} loaded',
+    conditionDescription: 'plugin ${node.id} initialization completed',
+    isReady: () =>
+        node.initializationState != NodeInitializationState.uninitialized,
     collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+    checkHealth: session.checkEngine,
   );
-  await waitForFuture(
-    session.tester,
-    node.stateRestoredCompleter.future,
-    conditionDescription: 'plugin ${node.id} restored its opaque state',
-    collectTimeoutDiagnostics: () => session.sessionDiagnostics,
-  );
+  expect(node.initializationState, NodeInitializationState.ready);
   expect(node.processor, isA<VST3ProcessorModel>());
   expect(
     node.audioInputPorts.where((port) => port.isAvailable),
@@ -125,14 +143,14 @@ Future<void> _verifyPlugin(
     node.controlInputPorts
         .where((port) => port.isAvailable)
         .map((port) => port.config.name),
-    unorderedEquals(['Gain', 'Invert', 'Bypass']),
+    unorderedEquals(['Gain', 'Invert', 'State size', 'Bypass']),
   );
   expect(
     node.controlInputPorts
         .where((port) => port.isAvailable)
         .map((port) => port.id)
         .toSet(),
-    hasLength(3),
+    hasLength(4),
   );
   await session.waitForEngineModel(
     conditionDescription: 'engine discovered plugin ${node.id} ports',
@@ -157,7 +175,7 @@ Future<void> _verifyPlugin(
           (engineNode['controlInputPorts'] as List)
                   .where((port) => port['isAvailable'] == true)
                   .length ==
-              3;
+              4;
     },
   );
 }
@@ -222,7 +240,7 @@ void main() {
         expect(retiredNodeIds, isNot(contains(added.node.id)));
         expect(_parameter(added.node, 'Gain').parameterValue, 0.25);
         expect(_parameter(added.node, 'Invert').parameterValue, 0);
-        await _liveState(session, added.node);
+        await _captureStateHash(session, added.node);
         await tester.pump();
         expect(find.byType(Vst3Device), findsOneWidget);
         await session.writeSessionDiagnostics(
@@ -231,12 +249,18 @@ void main() {
             'deviceId': added.device.id,
             'nodeId': added.node.id,
             'pluginPath': fixture.path,
-            'pluginState': await _liveState(session, added.node),
+            'pluginState': await _captureStateHash(session, added.node),
           },
         );
-        session.services.deviceController.removeDevice(
-          trackId: trackId,
-          deviceId: added.device.id,
+        await waitForFuture(
+          tester,
+          session.services.deviceController.removeDevice(
+            trackId: trackId,
+            deviceId: added.device.id,
+          ),
+          conditionDescription: 'capture and remove plugin ${added.node.id}',
+          collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+          checkHealth: session.checkEngine,
         );
         await publishPluginGraph(session);
         expect(
@@ -261,6 +285,103 @@ void main() {
       }
     }
     expect(files.pluginSelectionCount, 4);
+    await session.dispose();
+  });
+
+  testAppScenario('undo and deletion capture plugin state before removing it', (
+    tester,
+  ) async {
+    final fixtures = loadTestPlugins();
+    final files = await TestPluginFileSelector.install(
+      'plugin-removal',
+      fixtures,
+    );
+    final session = AppTestSession(tester, name: 'plugin-removal');
+    await session.start();
+    final trackId = session.project.trackOrder.first;
+    await _prepareRack(session, trackId);
+    final added = await _addPlugin(
+      session,
+      files,
+      trackId,
+      fixtures.instrument,
+      instrument: true,
+    );
+    await _captureStateHash(session, added.node);
+    final initialRetentionId = added.node.processorStateRetentionId;
+
+    // Change the plugin without adding a parameter command to host history.
+    // Undo therefore reaches device addition while this state is still live.
+    session.project.engine.processingGraphApi.setPluginParameterValue(
+      added.node.id,
+      _parameter(added.node, 'Gain').id,
+      0.73,
+    );
+    await waitUntil(
+      tester,
+      conditionDescription: 'plugin gain changed without a host undo command',
+      isReady: () =>
+          (_parameter(added.node, 'Gain').parameterValue! - 0.73).abs() <
+          0.0001,
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      checkHealth: session.checkEngine,
+    );
+    await waitForFuture(
+      tester,
+      session.project.undo(),
+      conditionDescription: 'undo addition after capturing live plugin state',
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      checkHealth: session.checkEngine,
+    );
+    expect(
+      session.project.processingGraph.nodes,
+      isNot(contains(added.node.id)),
+    );
+    expect(added.node.processorStateRetentionId, isNull);
+    await publishPluginGraph(session);
+    await session.project.redo();
+    await publishPluginGraph(session);
+    await _verifyPlugin(session, added.node, instrument: true);
+    expect(
+      _parameter(added.node, 'Gain').parameterValue,
+      closeTo(0.73, 0.0001),
+    );
+    await _captureStateHash(session, added.node);
+    expect(added.node.processorStateRetentionId, isNot(initialRetentionId));
+
+    session.project.engine.processingGraphApi.setPluginParameterValue(
+      added.node.id,
+      _parameter(added.node, 'Gain').id,
+      0.41,
+    );
+    await waitUntil(
+      tester,
+      conditionDescription: 'plugin gain changed before explicit deletion',
+      isReady: () =>
+          (_parameter(added.node, 'Gain').parameterValue! - 0.41).abs() <
+          0.0001,
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      checkHealth: session.checkEngine,
+    );
+    await waitForFuture(
+      tester,
+      session.services.deviceController.removeDevice(
+        trackId: trackId,
+        deviceId: added.device.id,
+      ),
+      conditionDescription: 'capture plugin state before explicit deletion',
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      checkHealth: session.checkEngine,
+    );
+    expect(added.node.processorStateRetentionId, isNull);
+    await publishPluginGraph(session);
+    await session.project.undo();
+    await publishPluginGraph(session);
+    await _verifyPlugin(session, added.node, instrument: true);
+    expect(
+      _parameter(added.node, 'Gain').parameterValue,
+      closeTo(0.41, 0.0001),
+    );
     await session.dispose();
   });
 
@@ -317,7 +438,7 @@ void main() {
       await publishPluginGraph(session);
       final connectionIds = cached.connections.toSet();
       expect(connectionIds, isNotEmpty);
-      added.node.processorState = await _liveState(session, added.node);
+      await _captureStateHash(session, added.node);
       await waitForFuture(
         tester,
         session.services.projectEngineController.stop(),
@@ -409,19 +530,20 @@ void main() {
       fixtures.effect,
       instrument: false,
     );
+    _setParameter(session, instrument.node, 'State size', 1);
     final expectedStates = <Id, String>{};
     for (final fixture in [
       (node: instrument.node, gain: 0.625),
       (node: effect.node, gain: 0.75),
     ]) {
-      final baseline = await _liveState(session, fixture.node);
+      final baseline = await _captureStateHash(session, fixture.node);
       _setParameter(session, fixture.node, 'Gain', 0.5);
-      await _liveState(
+      await _captureStateHash(
         session,
         fixture.node,
       ); // Flush through the real VST3 host.
       _setParameter(session, fixture.node, 'Gain', 0.25);
-      final cycled = await _liveState(session, fixture.node);
+      final cycled = await _captureStateHash(session, fixture.node);
       expect(_parameter(fixture.node, 'Gain').parameterValue, 0.25);
       expect(
         cycled,
@@ -431,9 +553,65 @@ void main() {
       );
       _setParameter(session, fixture.node, 'Gain', fixture.gain);
       _setParameter(session, fixture.node, 'Invert', 1);
-      expectedStates[fixture.node.id] = await _liveState(session, fixture.node);
+      expectedStates[fixture.node.id] = await _captureStateHash(
+        session,
+        fixture.node,
+      );
     }
-    expect(original.isDirty, isTrue);
+    final firstRetentionId = instrument.node.processorStateRetentionId;
+    original.isDirty = false;
+    expect(
+      await _captureStateHash(session, instrument.node),
+      expectedStates[instrument.node.id],
+    );
+    expect(instrument.node.processorStateRetentionId, firstRetentionId);
+    expect(
+      original.isDirty,
+      isFalse,
+      reason: 'Unchanged capture must reuse the state file.',
+    );
+    final workingStore = await session.services.projectStorage.assetStore;
+    expect(
+      await File(
+        path.join(
+          workingStore.rootDirectory,
+          workingStore.resolveRetention(firstRetentionId!),
+        ),
+      ).length(),
+      greaterThan(1024 * 1024),
+    );
+    final previousEffectRetentionId = effect.node.processorStateRetentionId;
+    final pending = Directory(
+      path.join(workingStore.rootDirectory, '.pending'),
+    );
+    final parkedPending = await pending.rename('${pending.path}-parked');
+    final blockedPending = File(pending.path);
+    await blockedPending.writeAsString('block new state writes');
+    try {
+      _setParameter(session, effect.node, 'Gain', 0.875);
+      Object? captureError;
+      try {
+        await waitForFuture(
+          tester,
+          effect.node.updateStateFromEngine(),
+          conditionDescription: 'failed state write returns an error',
+          collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+          checkHealth: session.checkEngine,
+        );
+      } catch (error) {
+        captureError = error;
+      }
+      expect(captureError, isA<StateError>());
+      expect(effect.node.processorStateRetentionId, previousEffectRetentionId);
+    } finally {
+      await blockedPending.delete();
+      await parkedPending.rename(pending.path);
+    }
+    _setParameter(session, effect.node, 'Gain', 0.75);
+    expectedStates[effect.node.id] = await _captureStateHash(
+      session,
+      effect.node,
+    );
     await files.projectFiles.useTemporaryProjectsDirectory();
     files.projectFiles.selectedSavePath = files.projectFiles.pathFor(
       'plugin-state',
@@ -456,14 +634,59 @@ void main() {
       'plugin-state/plugin-state.anthem',
     );
     expect(original.isDirty, isFalse);
+    final savedJson = await readProjectFile(savedPath);
+    for (final fixture in [instrument.node, effect.node]) {
+      final savedNode =
+          savedJson['processingGraph']['nodes'][fixture.id.toString()] as Map;
+      expect(savedNode, isNot(contains('processorState')));
+      expect(
+        savedNode['processorStateRetentionId'],
+        fixture.processorStateRetentionId,
+      );
+      expect(
+        await File(
+          path.join(
+            path.dirname(savedPath),
+            jsonDecode(
+                  savedJson['fileRetentions'],
+                )[fixture.processorStateRetentionId]
+                as String,
+          ),
+        ).exists(),
+        isTrue,
+      );
+    }
+    expect(
+      await File(savedPath).length(),
+      lessThan(64 * 1024),
+      reason: 'The document must not embed plugin state.',
+    );
     for (final entry in expectedStates.entries) {
       expect(
-        original.processingGraph.nodes[entry.key]!.processorState,
+        await _captureStateHash(
+          session,
+          original.processingGraph.nodes[entry.key]!,
+        ),
         entry.value,
       );
     }
+    final savedArtifact = Directory(
+      path.join(session.artifacts.path, 'saved-plugin-project'),
+    );
+    await savedArtifact.create();
     await File(savedPath)
-        .copy('${session.artifacts.path}/saved-plugin-project.anthem');
+        .copy(path.join(savedArtifact.path, 'plugin-state.anthem'));
+    for (final node in [instrument.node, effect.node]) {
+      final relativePath =
+          jsonDecode(
+                savedJson['fileRetentions'],
+              )[node.processorStateRetentionId]
+              as String;
+      final destination = File(path.join(savedArtifact.path, relativePath));
+      await destination.parent.create(recursive: true);
+      await File(path.join(path.dirname(savedPath), relativePath))
+          .copy(destination.path);
+    }
     await session.writeSessionDiagnostics(
       'saved',
       additionalDiagnostics: {
@@ -499,15 +722,25 @@ void main() {
     expect(reopened.isDirty, isFalse);
     _showRack(session, trackId);
     await startOfflinePluginProcessing(session);
+    final reopenedStore = await session.services.projectStorage.assetStore;
+    final storedFileCount = reopenedStore.relativePaths.length;
     for (final fixture in [
       (id: instrument.node.id, instrument: true, gain: 0.625),
       (id: effect.node.id, instrument: false, gain: 0.75),
     ]) {
       final restored = reopened.processingGraph.nodes[fixture.id]!;
       await _verifyPlugin(session, restored, instrument: fixture.instrument);
+      final previousStateRetentionId = restored.processorStateRetentionId;
+      await waitForFuture(
+        tester,
+        restored.updateStateFromEngine(),
+        conditionDescription: 'unchanged plugin state reuses its saved file',
+        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      );
+      expect(restored.processorStateRetentionId, previousStateRetentionId);
       expect(restored, isNot(same(original.processingGraph.nodes[fixture.id])));
       expect(
-        await _liveState(session, restored),
+        await _captureStateHash(session, restored),
         expectedStates[fixture.id],
         reason: 'A fresh native instance must restore both parameters and opaque revision state.',
       );
@@ -529,6 +762,7 @@ void main() {
       [instrument.device.id, effect.device.id],
     );
     expect(reopened.isDirty, isFalse);
+    expect(reopenedStore.relativePaths.length, storedFileCount);
     await tester.pump();
     expect(find.byType(Vst3Device), findsNWidgets(2));
     expect(

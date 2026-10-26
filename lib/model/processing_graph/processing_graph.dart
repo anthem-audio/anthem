@@ -34,8 +34,8 @@ part 'processing_graph.g.dart';
 ///
 /// This is used by undo/redo commands and by logic that needs to prepare a set
 /// of nodes and connections before adding them to the graph. Keeping the
-/// original model objects around also preserves transient state such as
-/// third-party plugin state.
+/// original model objects preserves their cached values and UI state. Commands
+/// manage file retentions separately while nodes are removed from the graph.
 class ProcessingGraphFragment {
   final List<NodeModel> nodes;
   final List<NodeConnectionModel> connections;
@@ -147,6 +147,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes the given nodes from the graph while capturing all removed nodes
   /// and connections so they can be restored later.
+  ///
+  /// The caller manages the removed nodes' file retentions.
   ProcessingGraphFragment removeNodesAndCapture(Iterable<Id> nodeIds) {
     final fragment = captureNodes(nodeIds);
     if (fragment.isEmpty) {
@@ -158,6 +160,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     }
 
     for (final node in fragment.nodes) {
+      node.resetEngineInitialization();
       nodes.remove(node.id);
     }
 
@@ -165,6 +168,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 
   /// Restores a fragment into the graph.
+  ///
+  /// Restore the nodes' project file retentions before inserting the fragment.
   void restoreGraphFragment(ProcessingGraphFragment fragment) {
     for (final node in fragment.nodes) {
       if (nodes[node.id] != null) {
@@ -199,6 +204,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes a node from the graph, and removes all connections to and from the
   /// node.
+  ///
+  /// The caller must release any project file retentions owned by the node.
   void removeNode(Id nodeId) {
     final node = nodes[nodeId];
 

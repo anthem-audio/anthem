@@ -1,6 +1,6 @@
 # Processor state storage investigation
 
-Investigated on 2026-10-09. This records findings and decisions for future work. The desktop file store, engine storage requests, and folder-based project save/load are implemented. File-backed processor state remains follow-on work.
+Investigated on 2026-10-09. This records findings and decisions for future work. Desktop file storage, engine storage requests, folder-based project save/load, and file-backed VST state are implemented. Preset operations are next.
 
 ## Scope
 
@@ -15,7 +15,7 @@ require a database, chunk deduplication or a new native state framework up front
 
 ## Agreed storage direction
 
-Use a per-project file store managed by the UI. On desktop, the engine requests access through IPC and reads or writes the files directly. IPC carries relative file paths, absolute access paths and access tokens, rather than the stored bytes. Permanent file references are category-qualified paths relative to the project root, such as `plugin states/Preset 01.bin`, so moving a project does not invalidate them. UUID filenames are the default; callers can supply a base name and extension for readable numbered names. Once committed, the name remains stable even if the source track is renamed.
+Use a per-project asset store managed by the UI. On desktop, the engine requests access through IPC and reads or writes the files directly. IPC carries relative file paths, absolute access paths and access tokens, rather than the stored bytes. Permanent file references are category-qualified paths relative to the project root, such as `plugin states/Preset 01.bin`, so moving a project does not invalidate them. UUID filenames are the default; callers can supply a base name and extension for readable numbered names. Once committed, the name remains stable even if the source track is renamed.
 
 Use a project directory containing the JSON document and asset files. This keeps
 the files accessible for inspection and extraction. Define the directory layout
@@ -76,26 +76,13 @@ Relevant code:
 
 ### VST3 processors
 
-`NodeModel.processorState` stores an opaque, base64-encoded snapshot. JUCE supplies
-the snapshot through `getStateInformation`; restoring it uses
-`setStateInformation`. Saved control-port parameter values are UI mirrors, rather
-than an additional source replayed over restored plugin state.
+`NodeModel.processorStateRetentionId` identifies a project-owned claim on an opaque binary file in the `plugin states` category. The asset store exports the project scope’s retention IDs and relative paths as a JSON string in `ProjectModel.fileRetentions`; commands and saved documents retain independent runtime claims. Commands replace node claims with their own during removal and create new project claims on restoration. JUCE supplies the bytes through `getStateInformation`; restoring them uses `setStateInformation`. Saved control-port values are UI mirrors, rather than an additional source replayed over restored plugin state.
 
-The current initialization work delivers saved state to the engine with the node
-model. The engine restores it once per processor lifetime before reporting final
-ports and current parameter values. Audio-session re-preparation does not replay
-saved state over live edits.
+The engine obtains write access from the UI, writes and closes the file, and commits it before returning its relative path. Unchanged captures reuse the previous file after comparing byte length and SHA-256 against the asset store's cached fingerprint. Capture failures leave the previous model reference intact. Initialization obtains read access to the saved file, restores it, then prepares the plugin again before reporting final ports and values. Audio-session re-preparation does not replay saved state over live edits.
 
-State capture is debounced by one second after plugin changes and also occurs
-before saving. Dart assigns a new blob only if it differs from the previous blob.
-Because `processorState` is now included in model synchronization, each changed
-blob is echoed back to the engine. That echo changes the stored engine model
-field; it does not restore the running plugin again.
+State capture is debounced after plugin changes and also occurs before saving. Only file references travel through ordinary IPC and model synchronization. JUCE still allocates a complete `MemoryBlock` during capture and restoration; this implementation does not provide VST stream-based capture or eliminate that engine-side allocation. The engine obtains file access before capturing state. Capture, hashing and writing run synchronously on the message thread, and the complete buffer is released before waiting for commit or access-release replies. Callers can submit captures together without retaining complete buffers across those waits.
 
-Removing `@hideFromCpp` enabled initialization to read saved state, but also
-enabled these unnecessary incremental echoes. Keeping a field in engine
-snapshots while excluding its incremental updates was suggested as a smaller
-interim change. That would reduce echoes without solving large state storage.
+Prealpha.1 imports extract their embedded JUCE-encoded state into a temporary directory using migration-local file writes. The migration updates the raw JSON before the current model and project storage are constructed. That legacy import necessarily decodes the old payload in Dart. Current-format projects contain only file references.
 
 Relevant code:
 
@@ -160,38 +147,18 @@ Two relevant extensions are currently in CLAP's **draft** directory:
 
 ## Memory and transport costs in Anthem
 
-The current VST3 capture path has two base64 layers:
+The previous embedded-state path used two base64 layers:
 
-1. JUCE captures component and controller state in memory, encodes each as base64
-   inside XML, then writes the XML into a `MemoryBlock`.
-2. Anthem base64-encodes that result for its JSON response and stores the string
-   in Dart. Changed strings are currently echoed through model synchronization.
+1. JUCE captures component and controller state in memory, encodes each as base64 inside XML, then writes the XML into a `MemoryBlock`.
+2. Anthem encoded that block again for its JSON response and retained the result in Dart, including incremental model synchronization.
 
-Ignoring XML overhead and additional controller state, two base64 layers expand
-the original VST state by approximately `(4 / 3)^2`, or **1.78 times**. This is an
-encoding-size calculation, not a measured peak-memory figure. Capture, encoding,
-IPC and parsing also create temporary buffers.
+Ignoring XML overhead and additional controller state, two base64 layers expand the original VST state by approximately `(4 / 3)^2`, or **1.78 times**. This is an encoding-size calculation, not a measured peak-memory figure. The file-backed path removes the outer Anthem encoding, the payload in Dart, and its IPC transfers. JUCE's internal encoding remains.
 
-See [JUCE's VST3 wrapper](engine/include/JUCE/modules/juce_audio_processors_headless/format_types/juce_VST3PluginFormatImpl.h)
-(`getStateInformation` and `appendStateFrom`) and
-[Anthem's state command handler](engine/src/modules/command_handlers/processing_graph_command_handler.cpp).
+See [JUCE's VST3 wrapper](engine/include/JUCE/modules/juce_audio_processors_headless/format_types/juce_VST3PluginFormatImpl.h) (`getStateInformation` and `appendStateFrom`) and [Anthem's state storage](engine/src/modules/core/processor_state_storage.cpp).
 
-Desktop project saving already streams JSON into gzip, but that does not remove
-the large strings retained in the model or the capture/IPC costs. Saving refreshes
-all plugin states using `Future.wait`, which is another consideration when
-measuring memory with multiple instances.
-[Project-file writer](lib/logic/project_file/io_io.dart).
+Desktop project saving streams JSON into gzip. Plugin capture now writes state files directly in the engine. A capture buffer exists only during the synchronous capture/hash/write operation; pending IPC replies retain metadata rather than opaque bytes. In the Linux integration fixture, a 1 MiB plugin payload produced a 1,398,406-byte JUCE state file alongside a 1,778-byte project document. These are file sizes, not memory measurements. [Controlled fixture](engine/test_plugins/test_plugin.cpp), [persistence scenario](integration_test/plugin_test.dart).
 
-A file store would reduce persistent duplicate snapshots and large IPC transfers.
-It would not remove a plugin's own live working data. Nor would it immediately
-remove all capture-time allocations: the JUCE API currently used by Anthem
-requires a complete `MemoryBlock`. True VST streaming would be separate adapter
-work; CLAP's stream interface accommodates it directly.
-
-**Follow-up to retain:** moving snapshots to files removes the outer Anthem
-base64/JSON transfer and the payload stored in Dart. It does not remove JUCE's
-complete capture buffer or its internal base64/XML encoding. Measure those costs
-after the storage change; direct VST3 stream support is separate adapter work.
+**Follow-up to retain:** file storage does not remove a plugin's own working data, JUCE's complete capture/restoration buffers, or its internal base64/XML encoding. Measure those engine-side costs separately. True VST3 streaming would require adapter work; CLAP's stream interface accommodates it directly.
 
 ## Candidate storage contract
 
@@ -206,9 +173,7 @@ The processor or its adapter owns the encoding. The UI can retain a reference
 without understanding the contents or receiving the complete payload. Native,
 VST3 and CLAP processors can share this contract while using different encodings.
 
-The agreed file store resolves stable identifiers to runtime paths. A small
-manifest can record any persistent metadata needed by the store; permanent
-absolute paths do not belong in project files.
+The asset store resolves category-qualified relative paths to runtime filesystem paths. Permanent absolute paths do not belong in project files.
 
 Important properties to settle before implementing:
 
@@ -265,7 +230,7 @@ native processor state. Ordinary copies reference the same mutable tree;
 independent copies require `createCopy()`.
 [ValueTree documentation](https://docs.juce.com/master/classjuce_1_1ValueTree.html).
 
-It does not supply a shared file store, automatic schema migrations or integration
+It does not supply a shared asset store, automatic schema migrations or integration
 with Anthem's Dart command history. It therefore does not by itself solve the
 storage, versioning or cross-process ownership questions above. Serialization
 alone is not a strong reason to replace existing typed models and reflect-cpp.
@@ -282,9 +247,9 @@ not prescribe one internal representation for every processor.
 
 ## Implementation sequence
 
-Stages 1 and 2 provide desktop file storage and engine access through IPC. Stage 3 introduces folder projects, then connects processor-state capture and restoration to this store. The folder save/load checkpoint is implemented; file-backed snapshots are next.
+Stages 1 and 2 provide desktop file storage and engine access through IPC. Stage 3 introduces folder projects, then connects processor-state capture and restoration to this store. Folder save/load and file-backed VST snapshots are implemented; preset operations and undoable state restoration are next.
 
-1. Build the desktop file store and its tests: relative file paths, temporary writes,
+1. Build the desktop asset store and its tests: relative file paths, temporary writes,
    commit/abort, read access, retention and deletion, and separate unsaved-project
    and regenerable cache categories. This stage leaves the current project format
    and plugin capture path intact.
@@ -313,7 +278,7 @@ The desktop store supports configurable category folders. Only `plugin states` i
 
 `ProjectStorage` accepts an explicit root, which it preserves on close. `ProjectStorage.temporary()` chooses a fresh temporary root for an unsaved project, creating directories only when files are first needed. Temporary storage can be closed while keeping required data for recovery, or discarded after saving elsewhere or explicit user dismissal. An explicit root cannot be discarded through this API. Cache categories are deleted on close in either case.
 
-First save can copy the completed, non-cache files listed by `ProjectFileStore.projectFilePaths` to a stable root without changing their relative paths. Consumers must finish using the old absolute paths before the temporary root is discarded. Desktop Save and Save As now perform this transfer. The open project keeps its existing storage root so that active engine and UI read paths remain valid; temporary roots are discarded when that project closes.
+First save can copy the completed, non-cache files listed by `ProjectAssetStore.projectAssetPaths` to a stable root without changing their relative paths. Consumers must finish using the old absolute paths before the temporary root is discarded. Desktop Save and Save As now perform this transfer. The open project keeps its existing storage root so that active engine and UI read paths remain valid; temporary roots are discarded when that project closes.
 
 ## Web storage and portable archives
 
@@ -325,15 +290,17 @@ Import into a separate staging directory and activate the project only after loa
 
 Verify import, editing, ZIP download, and reopening the downloaded project on desktop before accepting the web backend. Include quota exhaustion partway through import, cancellation, cleanup failures, and failed export. Define conservative supported-size limits from these measurements rather than assuming every project fits browser storage or memory.
 
-## Initial file store
+## Initial asset store
 
-[`ProjectFileStore`](lib/logic/storage/project_file_store.dart) groups read, write, and retention tokens into file scopes. UI clients call its API directly; the engine's IPC handler forwards requests using a file scope owned by that engine session. Read tokens prevent deletion during file access; retention tokens keep files available for project state or history. Writes are published after the writer closes its temporary file.
+[`ProjectAssetStore`](lib/logic/storage/project_asset_store.dart) groups read, write, and retention tokens into file scopes. UI clients call its API directly; the engine's IPC handler forwards requests using a file scope owned by that engine session. Read tokens prevent deletion during file access; retention tokens keep files available for project state or history. Writes are published after the writer closes its temporary file.
+
+Committed files may have a cached content fingerprint containing their byte length and SHA-256 digest. Writers can supply it when committing; otherwise the store calculates it in chunks when first requested. Read requests can include this metadata, allowing the engine to compare a new snapshot without rereading the previous file on every capture. Fingerprints are not saved in a separate index: reopening starts a new cache, and deleting a file discards its metadata even if the path is reused. The cache assumes committed files are not edited in place while the store is open.
 
 A client must finish file I/O and close OS file handles before closing its file scope. The store waits for accepted operations, aborts unfinished writes, and releases that scope's tokens. Committed files and other scopes' access remain. Deletion is explicit, and reopening preserves unreferenced objects and abandoned writes.
 
 [`ProjectStorage`](lib/logic/storage/project_storage.dart) owns the store for the lifetime of an open project. An engine session closes its file scope after its process stops; UI access and project/history references can last until project closure. Project close waits for engine disposal, and all file scopes must close before the store can close. Explicit roots are preserved and temporary roots are discarded. Recovery discovery and retention policy remain future work.
 
-Plugin capture and the project document still use embedded state. The engine can begin, commit, and abort writes; acquire and release reads; retain and release references; and request deletion of unused files. The C++ client and production UI dispatcher are exercised together in real-engine tests, including startup, render request holds, process exit, restart, and a lost access reply. Saved object references have not been added to the project model yet. The desktop filesystem backend has an explicit unsupported boundary on web, tested with both JavaScript and Dart WebAssembly compilation. An OPFS backend and Emscripten filesystem access are deferred to a separate stage so that import cleanup, quota failures, engine restarts, and ZIP download can be verified together.
+The engine can begin, commit, and abort writes; acquire and release reads; retain and release references; and request deletion of unused files. The C++ client and production UI dispatcher are exercised together in real-engine tests, including startup, render request holds, process exit, restart, and a lost access reply. The node model now stores relative state-file references. The desktop filesystem backend has an explicit unsupported boundary on web, tested with both JavaScript and Dart WebAssembly compilation. An OPFS backend and Emscripten filesystem access are deferred to a separate stage so that import cleanup, quota failures, engine restarts, and ZIP download can be verified together.
 
 ## Folder project checkpoint
 
@@ -341,16 +308,20 @@ Desktop Save As asks for a new project folder name and location, initially using
 
 The document keeps the existing compressed JSON encoding and container header. Open reads `savedInSoftwareVersion` before migrations update it: versions before `prealpha.2` are imported as unsaved projects, while `prealpha.2` and later use the selected document's parent directory as storage. This cutoff is fixed at the first folder-based release, independently of the running software version. Unreleased development files are not a separate compatibility target.
 
-First save and Save As assemble a new folder before publishing it. Ordinary Save copies all completed, non-cache files when the working root differs from the saved folder, replacing existing destination copies, then replaces the document with a completed temporary file. Saving in place leaves stored files where they are. Pending writes are excluded. No unused saved files are deleted during Save.
+First save and Save As assemble a new folder before publishing it. Ordinary Save copies files referenced by the current model when the working root differs from the saved folder, replacing existing destination copies, then replaces the document with a completed temporary file. Saving in place leaves stored files where they are. Pending writes are excluded. No unused saved files are deleted during Save.
 
-Save As changes the save destination while keeping the open file store at its existing root, so active engine and UI read paths remain valid. Newly written files remain in that working root and are copied on subsequent saves. Temporary roots are discarded when the project closes; reopening uses the saved folder as the store root. Moving the live store to a new root would require coordinating existing readers and is deferred.
+Save As changes the save destination while keeping the open asset store at its existing root, so active engine and UI read paths remain valid. Newly written files remain in that working root and are copied on subsequent saves. Temporary roots are discarded when the project closes; reopening uses the saved folder as the store root. Moving the live store to a new root would require coordinating existing readers and is deferred.
 
-Older standalone `.anthem` files open as unsaved projects and show a notice to save as a folder. The original file is preserved. JSON migrations still run before model deserialization. VST state remains embedded until the next checkpoint connects capture and restoration to the file store. Web still offers document-only downloads during development. Current-version projects require folder storage and cannot yet be opened in the browser; ZIP import/export and OPFS storage remain a separate checkpoint to complete before release.
+Older standalone `.anthem` files open as unsaved projects and show a notice to save as a folder. The original file is preserved. JSON migrations still run before model deserialization. Web still offers document-only downloads during development. Current-version projects require folder storage and cannot yet be opened in the browser; ZIP import/export and OPFS storage remain a separate checkpoint to complete before release.
 
-## Deferred file ownership
+## File ownership
 
-Each save captures the project JSON and the store's completed, non-cache files before yielding to further edits. Read access protects those files until the save ends. Files committed during the save are included on the next save, and edits during copying keep the project marked as unsaved. Replacing destination copies on every save also handles a deleted file's path being reused for different contents.
+Each save captures the project JSON and its current file references together. Read access protects those files until the save ends. Later captures are included on the next save, and edits during copying keep the project marked as unsaved. Replacing destination copies on every save also handles a deleted file's path being reused for different contents.
 
-Production plugin state is still embedded in the model, and no production feature writes project assets yet. Current-project ownership, saved-document ownership, garbage collection, and incremental-copy tracking are deferred until there is a concrete use case. Opening storage only discovers files; it does not assign them to a project scope.
+`ProjectAssetReferences` retains files for the current model and saved documents. Opening storage discovers files without assigning every file to the project.
 
-File-backed plugin state must introduce model references and their ownership together. Use file scopes to retain files needed by the current project, undo history, and saved documents, and derive save selection from the current project's references. Protect the previous saved state through unsaved edits, failed saves, and Save As before allowing production code to delete or reuse referenced files. Add garbage collection and incremental copying when their use cases can be tested through this complete workflow.
+Commands explicitly retain the files needed while their nodes are removed, and release their claims when those nodes return or the commands are discarded. Device and track removal capture current plugin state before detaching nodes; a capture failure leaves those nodes in the project.
+
+Saves select only the current model's references. A successful save updates that document's retained references; failed saves preserve its previous references. Save As retains the original document's references as well.
+
+Deletion remains explicit. Garbage collection, recovery discovery, and incremental-copy tracking are deferred until their use cases can be tested through a complete workflow. Preset loads and arbitrary opaque-state undo are separate work; existing device and track undo commands retain the state files of their captured nodes.

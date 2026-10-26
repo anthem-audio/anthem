@@ -139,7 +139,7 @@ Asynchronous UI operations can use `sessionEnded` to cancel work when their engi
 
 ## Requests made by the engine
 
-Engine requests allow the engine to use services owned by the UI over the same JSON channel. The file store uses this channel to grant read and write access. The UI owns the store, while the engine reads and writes granted paths directly. File contents stay out of these storage messages.
+Engine requests allow the engine to use services owned by the UI over the same JSON channel. The asset store uses this channel to grant read and write access. The UI owns the store, while the engine reads and writes granted paths directly. File contents stay out of these storage messages.
 
 The engine sends requests through `Engine::uiRequests`. To add an operation, define its `Request` and `Response` in the messages library and regenerate code, as in the example below. Add a case to [`ProjectEngineRequestHandler`](../../lib/logic/project_engine_request_handler.dart) to forward the request to the relevant application module.
 
@@ -149,7 +149,7 @@ UI replies bypass startup and render request queues. An engine operation may nee
 
 Timeouts and request cancellation stop the engine from waiting for a reply; they do not cancel the UI operation. Session shutdown is a separate signal that UI handlers can use to cancel their work.
 
-The UI and engine use the same file store API. File scopes group read, write, and retention tokens for cleanup. The UI calls the store directly, and the engine request handler forwards IPC operations using a file scope owned by that engine session. Engine cleanup closes its file scope after connector shutdown confirms that the process can no longer use the files; entering `stopping` alone is too early. Committed files and references held by other scopes survive engine restarts.
+The UI and engine use the same asset store API. File scopes group read, write, and retention tokens for cleanup. The UI calls the store directly, and the engine request handler forwards IPC operations using a file scope owned by that engine session. Engine cleanup closes its file scope after connector shutdown confirms that the process can no longer use the files; entering `stopping` alone is too early. Committed files and references held by other scopes survive engine restarts.
 
 ## Adding a UI-to-engine request and response
 

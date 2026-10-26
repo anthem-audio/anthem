@@ -40,9 +40,9 @@ void main() {
     () async {
       final project = ProjectModel.create();
       ServiceRegistry.initializeProject(project);
-      addTearDown(() {
+      addTearDown(() async {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
-        project.dispose();
       });
       final track = project.tracks[project.trackOrder.single]!;
       final node = track.requireProcessing.utilityNode!;

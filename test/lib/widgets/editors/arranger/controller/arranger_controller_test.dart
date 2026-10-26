@@ -268,7 +268,7 @@ void main() {
   });
 
   group('automation target resolution', () {
-    test('uses node owner metadata for track and device parameters', () {
+    test('uses node owner metadata for track and device parameters', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
@@ -344,9 +344,9 @@ void main() {
           ),
         );
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
@@ -379,7 +379,7 @@ void main() {
       },
     );
 
-    test('parameter touches update existing automation target', () {
+    test('parameter touches update existing automation target', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
@@ -428,13 +428,13 @@ void main() {
           equals(UtilityProcessorModel.gainPortId),
         );
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
-    test('parameter touches update last tweaked automation target', () {
+    test('parameter touches update last tweaked automation target', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
@@ -483,13 +483,13 @@ void main() {
           equals(UtilityProcessorModel.gainPortId),
         );
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
-    test('direct parameter changes do not update automation target', () {
+    test('direct parameter changes do not update automation target', () async {
       fixture.dispose();
 
       final project = ProjectModel.create();
@@ -517,15 +517,15 @@ void main() {
 
         expect(viewModel.lastTweakedAutomationTarget, isNull);
       } finally {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
         AnthemStore.instance.projects.remove(project.id);
-        project.dispose();
       }
     });
 
     test(
       'non-parameter control port changes do not update automation target',
-      () {
+      () async {
         fixture.dispose();
 
         final project = ProjectModel.create();
@@ -556,9 +556,9 @@ void main() {
 
           expect(viewModel.lastTweakedAutomationTarget, isNull);
         } finally {
+          await project.dispose();
           ServiceRegistry.removeProject(project.id);
           AnthemStore.instance.projects.remove(project.id);
-          project.dispose();
         }
       },
     );

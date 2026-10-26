@@ -59,6 +59,9 @@ public:
   explicit GraphProcessor(EngineRuntimeServices& engineRuntimeServices);
   ~GraphProcessor();
 
+  // Starts graph workers and periodic cleanup of retired graphs.
+  void initialize();
+
   void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig,
       GraphWorkerSchedulingMode workerSchedulingMode = GraphWorkerSchedulingMode::realtime);
 

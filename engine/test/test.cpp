@@ -19,9 +19,11 @@
 
 #include "console_logger.h"
 #include "modules/core/engine_api_message_test.h"
+#include "modules/core/engine_test.h"
 #include "modules/core/file_storage_client_test.h"
 #include "modules/core/global_visualization_sources_test.h"
 #include "modules/core/ipc_request_client_test.h"
+#include "modules/core/processor_state_storage_test.h"
 #include "modules/core/sequencer_test.h"
 #include "modules/core/spsc_record_ring_buffer_test.h"
 #include "modules/core/visualization_broker_test.h"
@@ -61,6 +63,13 @@ int main(int /* argc */, char** /* argv */) {
 
   juce::UnitTestRunner runner;
   runner.runAllTests();
+
+  // Tests may use the engine singleton without running the application loop.
+  // Release its services before JUCE and the visualization broker are destroyed.
+  if (anthem::Engine::hasInstance()) {
+    anthem::Engine::getInstance().shutdown();
+    anthem::Engine::cleanup();
+  }
 
   int resultCount = runner.getNumResults();
   int failureCount = 0;

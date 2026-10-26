@@ -83,7 +83,7 @@ final projectViewModelService = ServiceDef<ProjectViewModel>(
 );
 
 final projectStorageService = ServiceDef<ProjectStorage>(
-  create: (_, _) => ProjectStorage.temporary(),
+  create: (project, _) => ProjectStorage.temporary(project: project),
 );
 
 final projectControllerService = ServiceDef<ProjectController>(

@@ -20,33 +20,41 @@
 @TestOn('browser')
 library;
 
-import 'package:anthem/logic/storage/project_file_store.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
-import 'package:test/test.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
+import 'package:anthem/model/project.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late ProjectModel project;
+  setUp(() => project = ProjectModel.create());
+  tearDown(() => project.dispose());
   test('desktop storage has an explicit unsupported boundary on web', () async {
     await expectLater(
-      ProjectFileStore.open(
+      ProjectAssetStore.open(
         'project',
-        categories: ProjectFileCategory.defaults,
+        categories: ProjectAssetCategory.defaults,
       ),
       throwsUnsupportedError,
     );
-    final storage = ProjectStorage(rootDirectory: 'project');
-    await expectLater(storage.fileStore, throwsUnsupportedError);
+    final storage = ProjectStorage(rootDirectory: 'project', project: project);
+    await expectLater(storage.assetStore, throwsUnsupportedError);
     await storage.close();
   });
 
   test(
     'closing storage before first use does not access the filesystem',
     () async {
-      await ProjectStorage(rootDirectory: 'project').close();
+      await ProjectStorage(rootDirectory: 'project', project: project).close();
     },
   );
 
   test('temporary desktop roots are explicitly unsupported on web', () {
-    expect(() => ProjectStorage.temporary(), throwsUnsupportedError);
+    expect(
+      () => ProjectStorage.temporary(project: project),
+      throwsUnsupportedError,
+    );
   });
 }

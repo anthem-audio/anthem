@@ -55,14 +55,14 @@ class ProjectController {
 
   ProjectController(this.project, this.viewModel);
 
-  void undo() {
-    if (cancelTempoTap?.call() ?? false) return;
-    project.undo();
+  Future<void> undo() {
+    if (cancelTempoTap?.call() ?? false) return Future.value();
+    return project.undo();
   }
 
-  void redo() {
-    if (cancelTempoTap?.call() ?? false) return;
-    project.redo();
+  Future<void> redo() {
+    if (cancelTempoTap?.call() ?? false) return Future.value();
+    return project.redo();
   }
 
   bool onShortcut(LogicalKeySet shortcut) {
@@ -156,12 +156,8 @@ class ProjectController {
       if (node == null) continue;
       if (!result.success) {
         node.markInitializationFailed();
-        for (final port in node.getAllPorts()) {
-          port.isAvailable = false;
-        }
         continue;
       }
-      node.markStateRestored();
 
       final portConfiguration = result.portConfiguration;
 
@@ -177,6 +173,7 @@ class ProjectController {
       }
 
       _applyNodeParameterValues(result.nodeId, result.parameterValues);
+      node.markInitialized();
     }
 
     if (affectedTrackIds.isEmpty) {

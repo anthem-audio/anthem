@@ -118,6 +118,7 @@ public:
   TransportTest() : juce::UnitTest("TransportTest", "Anthem") {}
 
   void runTest() override {
+    testMaintenanceStartsExplicitly();
     testJumpSnapshotExcludesNotesEndingAtBoundary();
     testJumpSnapshotKeepsSustainedNotesActive();
     testJumpSnapshotExcludesNotesStartingAtBoundary();
@@ -137,6 +138,15 @@ public:
     testTimingParamsReflectTransportConfig();
     testJumpToWrapsSeekTargetIntoLoop();
     testActiveTrackChangeRebuildsJumpPayloadOnlyForPatterns();
+  }
+
+  void testMaintenanceStartsExplicitly() {
+    beginTest("Transport construction leaves periodic cleanup stopped until requested");
+    Transport transport(std::make_unique<FakeProjectView>(), std::make_unique<FakeClock>());
+    expect(!transport.isTimerRunning());
+    transport.startMaintenanceTimer();
+    expect(transport.isTimerRunning());
+    expectEquals(transport.getTimerInterval(), 100);
   }
 
   void testJumpSnapshotExcludesNotesEndingAtBoundary() {

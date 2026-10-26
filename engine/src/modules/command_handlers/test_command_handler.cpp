@@ -51,6 +51,8 @@ std::optional<Response> handleTestCommand(Request& request) {
       if (result.value) {
         response.token = result.value->token;
         response.absolutePath = result.value->absolutePath;
+        if (result.value->fingerprint)
+          response.fingerprint = std::make_shared<FileFingerprint>(*result.value->fingerprint);
         const juce::File file(juce::String::fromUTF8(result.value->absolutePath.c_str()));
         if (command.operation == TestFileStorageOperation::beginWrite) {
           juce::FileOutputStream output(file);
@@ -83,18 +85,22 @@ std::optional<Response> handleTestCommand(Request& request) {
             command.category, std::move(access), command.baseName, command.extension);
         break;
       case TestFileStorageOperation::commitWrite:
-        storage.commitWrite(command.token, [reply](FileStorageResult<std::string> result) {
-          TestFileStorageResponse response{};
-          response.relativePath = std::move(result.value);
-          response.error = std::move(result.error);
-          reply(std::move(response));
-        });
+        storage.commitWrite(
+            command.token,
+            [reply](FileStorageResult<std::string> result) {
+              TestFileStorageResponse response{};
+              response.relativePath = std::move(result.value);
+              response.error = std::move(result.error);
+              reply(std::move(response));
+            },
+            command.fingerprint ? std::optional<FileFingerprint>(**command.fingerprint)
+                                : std::nullopt);
         break;
       case TestFileStorageOperation::abortWrite:
         storage.abortWrite(command.token, std::move(done));
         break;
       case TestFileStorageOperation::acquireRead:
-        storage.acquireRead(command.relativePath, std::move(access));
+        storage.acquireRead(command.relativePath, std::move(access), command.includeFingerprint);
         break;
       case TestFileStorageOperation::releaseRead:
         storage.releaseRead(command.token, std::move(done));
@@ -112,6 +118,14 @@ std::optional<Response> handleTestCommand(Request& request) {
         break;
       case TestFileStorageOperation::releaseRetention:
         storage.releaseRetention(command.token, std::move(done));
+        break;
+      case TestFileStorageOperation::resolveRetention:
+        storage.resolveRetention(command.token, [reply](FileStorageResult<std::string> result) {
+          TestFileStorageResponse response{};
+          response.relativePath = std::move(result.value);
+          response.error = std::move(result.error);
+          reply(std::move(response));
+        });
         break;
     }
     return std::nullopt;

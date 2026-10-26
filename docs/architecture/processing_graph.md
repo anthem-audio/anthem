@@ -18,7 +18,7 @@ Processor initialization happens before the graph is compiled and sent to the au
 
 For a new native processor, the Dart factory chooses the initial parameter values. A regular track's utility processor, for example, starts with its gain at −10 dB. These values are stored on the node's control input ports. When a project is reopened, those ports contain the values from the project file instead. The regular model synchronization sends them to the engine. When the engine compiles the graph, it uses these values to initialize the parameters that the processor reads during audio processing.
 
-A VST can also have settings that are not exposed as parameters. A synthesizer patch, for example, may contain plugin-specific data that Anthem cannot describe through control ports. Anthem stores the data returned by the plugin's state capture API in `NodeModel.processorState`, encoded as Base64. The engine passes that data back to the plugin when restoring it.
+A VST can also have settings that are not exposed as parameters. A synthesizer patch, for example, may contain plugin-specific data that Anthem cannot describe through control ports. The engine writes the data returned by the plugin's state capture API to the project asset store. Identical snapshots reuse the previous file path, using a content fingerprint cached by the store. `NodeModel.processorStateRetentionId` identifies a retention claim in the project asset store. The asset store exports the project-owned claims as a JSON string saved in `ProjectModel.fileRetentions`; opening storage restores those claims. Engine requests resolve the ID when they need the file. The project model and IPC messages do not contain the opaque bytes. The engine reads that file when restoring the plugin.
 
 Saved VST parameter values on control ports let the UI show the last known values before the plugin loads. The saved plugin state is what restores the plugin itself. After restoration, the engine reads the plugin's current parameter values and updates the UI's copies.
 
@@ -27,7 +27,7 @@ Saved VST parameter values on control ports let the UI show the last known value
 For a VST with saved plugin state, initialization runs in this order:
 
 1. Create and prepare the plugin instance.
-2. Restore the saved data from `processorState`.
+2. Resolve `processorStateRetentionId`, read the file, and restore the saved state.
 3. Prepare the plugin again, since restoration may have changed its audio bus layout.
 4. Return the final port descriptions and parameter values to the UI.
 
@@ -35,7 +35,7 @@ This order prevents the UI from applying the factory patch's values or port layo
 
 The saved data is restored once for each processor instance. If the audio session restarts with a different sample rate or buffer size, the existing processor is prepared again and keeps its live settings. Starting a fresh engine process creates new processors, which restore the latest state held by the project model.
 
-Anthem only captures live plugin state after initialization succeeds. If a plugin cannot load, saving the project preserves its previous `processorState` data. See [the initialization session](../../engine/src/modules/core/processing_graph_node_initialization_session.cpp) for the engine implementation.
+Anthem only captures live plugin state after initialization succeeds. If a plugin cannot load, saving the project preserves its previous state-file reference. See [the initialization session](../../engine/src/modules/core/processing_graph_node_initialization_session.cpp) for the engine implementation.
 
 ### Updating cached port descriptions
 
@@ -79,6 +79,8 @@ Project files store the graph's connections and each port's list of connection I
 ## Project file compatibility
 
 Loading a file saved by an older Anthem version requires a migration before constructing the model. The project loading workflow calls [`migrateProjectJson`](../../lib/logic/project_file/migrations/migrate_project_json.dart) to bring the JSON into the current format. Model `fromJson` methods then read that format without converting older schemas.
+
+For standalone prealpha.1 files, the migration writes embedded plugin state into a temporary directory and replaces the JSON blobs with retention IDs and a serialized map of those IDs to relative file paths. It uses the historical format directly, before the current model or asset store exists. After migration, normal project storage opens the prepared directory. A failed import deletes that directory and preserves the original file.
 
 The `prealpha.2` migration preserves the old parameter defaults as project reset values and moves visual baselines into `ParameterPresentationModel`. For native processors, it clears the old factory defaults so the engine can supply them during initialization. Existing parameter values are preserved.
 

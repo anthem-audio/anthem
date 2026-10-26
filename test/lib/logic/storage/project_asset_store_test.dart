@@ -23,21 +23,22 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:anthem/logic/storage/project_file_store.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
+import 'package:anthem/logic/storage/file_fingerprint.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-const testFiles = ProjectFileCategory('test files');
-const pluginStates = ProjectFileCategory.pluginStates;
-const cache = ProjectFileCategory('test cache', isCache: true);
+const testFiles = ProjectAssetCategory('test files');
+const pluginStates = ProjectAssetCategory.pluginStates;
+const cache = ProjectAssetCategory('test cache', isCache: true);
 
-Future<ProjectFileStore> openStore(String root) =>
-    ProjectFileStore.open(root, categories: [testFiles, pluginStates, cache]);
+Future<ProjectAssetStore> openStore(String root) =>
+    ProjectAssetStore.open(root, categories: [testFiles, pluginStates, cache]);
 
 void main() {
   late Directory directory;
-  late ProjectFileStore store;
+  late ProjectAssetStore store;
   late String scopeId;
 
   setUp(() async {
@@ -489,7 +490,7 @@ void main() {
       await store.commitWrite(scopeId, second.token),
       'plugin states/Preset 01',
     );
-    expect(store.projectFilePaths, unorderedEquals(store.relativePaths));
+    expect(store.projectAssetPaths, unorderedEquals(store.relativePaths));
   });
 
   test(
@@ -505,7 +506,7 @@ void main() {
       final cachedPath = await store.commitWrite(scopeId, write.token);
       final read = store.acquireRead(scopeId, cachedPath);
       expect(store.relativePaths, unorderedEquals([savedPath, cachedPath]));
-      expect(store.projectFilePaths, [savedPath]);
+      expect(store.projectAssetPaths, [savedPath]);
       // Cleanup must wait for cache readers too.
       await expectLater(store.close(), throwsStateError);
       expect(await File(read.absolutePath).exists(), isTrue);
@@ -523,14 +524,14 @@ void main() {
     () async {
       await store.closeScope(scopeId);
       await store.close();
-      const custom = ProjectFileCategory('sample maps');
+      const custom = ProjectAssetCategory('sample maps');
       final root = store.rootDirectory;
       final document = File(path.join(root, 'project.anthem'));
       await document.writeAsString('project document');
       final unknown = File(path.join(root, 'unknown', 'preserve.bin'));
       await unknown.parent.create();
       await unknown.writeAsString('unrecognized data');
-      store = await ProjectFileStore.open(root, categories: [custom]);
+      store = await ProjectAssetStore.open(root, categories: [custom]);
       scopeId = store.openScope();
       final write = await store.beginWrite(
         scopeId,
@@ -541,7 +542,7 @@ void main() {
       final relativePath = await store.commitWrite(scopeId, write.token);
       await store.closeScope(scopeId);
       await store.close();
-      store = await ProjectFileStore.open(root, categories: [custom]);
+      store = await ProjectAssetStore.open(root, categories: [custom]);
       scopeId = store.openScope();
       expect(store.relativePaths, [relativePath]);
       expect(relativePath, 'sample maps/Map 01.json');
@@ -559,17 +560,17 @@ void main() {
     () async {
       final root = path.join(directory.path, 'invalid');
       for (final categories in [
-        [const ProjectFileCategory('../test files')],
-        [const ProjectFileCategory('test files/nested')],
-        [const ProjectFileCategory(r'test files\nested')],
-        [const ProjectFileCategory('.pending')],
-        [const ProjectFileCategory('CON')],
-        [const ProjectFileCategory('name.')],
-        [testFiles, const ProjectFileCategory('Test files')],
+        [const ProjectAssetCategory('../test files')],
+        [const ProjectAssetCategory('test files/nested')],
+        [const ProjectAssetCategory(r'test files\nested')],
+        [const ProjectAssetCategory('.pending')],
+        [const ProjectAssetCategory('CON')],
+        [const ProjectAssetCategory('name.')],
+        [testFiles, const ProjectAssetCategory('Test files')],
         [testFiles, testFiles],
       ]) {
         await expectLater(
-          ProjectFileStore.open(root, categories: categories),
+          ProjectAssetStore.open(root, categories: categories),
           throwsArgumentError,
         );
         expect(await Directory(root).exists(), isFalse);
@@ -611,5 +612,114 @@ void main() {
     skip: Platform.isWindows
         ? 'Creating symbolic links requires Windows privileges.'
         : false,
+  );
+
+  test('fingerprints use SHA-256 and byte length, including empty and chunked files', () async {
+    for (final bytes in [
+      <int>[],
+      utf8.encode('abc'),
+      List<int>.generate(200000, (i) => i % 256),
+    ]) {
+      final write = await store.beginWrite(scopeId, testFiles.directoryName);
+      await File(write.absolutePath).writeAsBytes(bytes, flush: true);
+      final file = await store.commitWrite(scopeId, write.token);
+      final read = store.acquireRead(scopeId, file);
+      final fingerprint = await store.getFingerprint(scopeId, read.token);
+      expect(fingerprint.byteLength, bytes.length);
+      expect(fingerprint.sha256, FileFingerprint.fromBytes(bytes).sha256);
+      if (bytes.length == 3) {
+        expect(
+          fingerprint.sha256,
+          'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+        );
+      }
+      expect(
+        await store.getFingerprint(scopeId, read.token),
+        same(fingerprint),
+      );
+      store.releaseRead(scopeId, read.token);
+      expect(() => store.getFingerprint(scopeId, read.token), throwsStateError);
+    }
+  });
+
+  test('a writer-supplied fingerprint is cached at commit', () async {
+    final bytes = utf8.encode('state supplied by a writer');
+    final fingerprint = FileFingerprint.fromBytes(bytes);
+    final write = await store.beginWrite(scopeId, testFiles.directoryName);
+    await File(write.absolutePath).writeAsBytes(bytes, flush: true);
+    final file = await store.commitWrite(
+      scopeId,
+      write.token,
+      fingerprint: fingerprint,
+    );
+    final read = store.acquireRead(scopeId, file);
+    expect(await store.getFingerprint(scopeId, read.token), same(fingerprint));
+    await File(read.absolutePath).delete();
+    await expectLater(
+      store.getFingerprint(scopeId, read.token),
+      throwsA(isA<FileSystemException>()),
+    );
+    store.releaseRead(scopeId, read.token);
+  });
+
+  test('deleting and reusing a path discards its old fingerprint', () async {
+    final file = await writeObject(name: 'State', value: 'before');
+    final read = store.acquireRead(scopeId, file);
+    final original = await store.getFingerprint(scopeId, read.token);
+    store.releaseRead(scopeId, read.token);
+    await store.delete(scopeId, file);
+    final replacement = await writeObject(name: 'State', value: 'after!');
+    expect(replacement, file);
+    final nextRead = store.acquireRead(scopeId, replacement);
+    final next = await store.getFingerprint(scopeId, nextRead.token);
+    expect(next.byteLength, original.byteLength);
+    expect(next.sha256, isNot(original.sha256));
+    expect(
+      next.sha256,
+      FileFingerprint.fromBytes(utf8.encode('after!')).sha256,
+    );
+    store.releaseRead(scopeId, nextRead.token);
+  });
+
+  test(
+    'reopening recalculates fingerprints after files were edited while closed',
+    () async {
+      final file = await writeObject(value: 'before');
+      final read = store.acquireRead(scopeId, file);
+      final original = await store.getFingerprint(scopeId, read.token);
+      final absolutePath = read.absolutePath;
+      store.releaseRead(scopeId, read.token);
+      await store.closeScope(scopeId);
+      await store.close();
+      await File(absolutePath).writeAsString('after!', flush: true);
+      store = await openStore(store.rootDirectory);
+      scopeId = store.openScope();
+      final reopenedRead = store.acquireRead(scopeId, file);
+      final fingerprint = await store.getFingerprint(
+        scopeId,
+        reopenedRead.token,
+      );
+      expect(fingerprint.byteLength, original.byteLength);
+      expect(
+        fingerprint.sha256,
+        FileFingerprint.fromBytes(utf8.encode('after!')).sha256,
+      );
+      expect(fingerprint.sha256, isNot(original.sha256));
+      store.releaseRead(scopeId, reopenedRead.token);
+    },
+  );
+
+  test(
+    'closing a scope waits for fingerprint reads before releasing its access',
+    () async {
+      final file = await writeObject(value: 'a' * (1024 * 1024));
+      final read = store.acquireRead(scopeId, file);
+      final pending = store.getFingerprint(scopeId, read.token);
+      final closing = store.closeScope(scopeId);
+      expect((await pending).byteLength, 1024 * 1024);
+      await closing;
+      scopeId = store.openScope();
+      await store.delete(scopeId, file);
+    },
   );
 }

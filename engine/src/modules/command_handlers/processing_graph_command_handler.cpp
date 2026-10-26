@@ -130,84 +130,26 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     return std::optional(PublishProcessingGraphResponse{.success = true,
         .error = std::nullopt,
         .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
-  } else if (rfl::holds_alternative<GetPluginStateRequest>(request.variant())) {
-    juce::Logger::writeToLog("Handling GetPluginStateRequest...");
-
-    auto& getPluginStateRequest = rfl::get<GetPluginStateRequest>(request.variant());
-
-    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
-    auto nodeIter = nodes.find(getPluginStateRequest.nodeId);
-    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
-
-    auto errorResponse = std::optional(GetPluginStateResponse{.state = "",
-        .isValid = false,
-        .responseBase = ResponseBase{.id = getPluginStateRequest.requestBase.get().id}});
-
-    if (node == nullptr) {
-      juce::Logger::writeToLog(
-          "Node " + toIdString(getPluginStateRequest.nodeId) + " not found in processing graph.");
-      return errorResponse;
+  } else if (rfl::holds_alternative<CapturePluginStateRequest>(request.variant())) {
+    const auto& capture = rfl::get<CapturePluginStateRequest>(request.variant());
+    const auto requestId = capture.requestBase.get().id;
+    auto& nodes = *engine.project->processingGraph()->nodes();
+    const auto node = nodes.find(capture.nodeId);
+    if (node == nodes.end()) {
+      return std::optional(CapturePluginStateResponse{.relativePath = std::nullopt,
+          .error = "Processing graph node not found.",
+          .responseBase = ResponseBase{.id = requestId}});
     }
-
-    auto processor = node->getProcessor();
-
-    if (!processor) {
-      juce::Logger::writeToLog(
-          "Node " + toIdString(getPluginStateRequest.nodeId) + " does not have a processor.");
-      return errorResponse;
-    }
-
-    juce::MemoryBlock state;
-    processor.value()->getState(state);
-
-    std::string stateString = "";
-
-    if (state.getSize() > 0) {
-      stateString = state.toBase64Encoding().toStdString();
-    }
-
-    return std::optional(GetPluginStateResponse{.state = stateString,
-        .isValid = true,
-        .responseBase = ResponseBase{.id = getPluginStateRequest.requestBase.get().id}});
-  } else if (rfl::holds_alternative<SetPluginStateRequest>(request.variant())) {
-    juce::Logger::writeToLog("Handling SetPluginStateRequest...");
-
-    auto& setPluginStateRequest = rfl::get<SetPluginStateRequest>(request.variant());
-
-    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
-    auto nodeIter = nodes.find(setPluginStateRequest.nodeId);
-    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
-
-    if (node == nullptr) {
-      juce::Logger::writeToLog(
-          "Node " + toIdString(setPluginStateRequest.nodeId) + " not found in processing graph.");
-      return std::nullopt;
-    }
-
-    auto processor = node->getProcessor();
-
-    if (!processor) {
-      juce::Logger::writeToLog(
-          "Node " + toIdString(setPluginStateRequest.nodeId) + " does not have a processor.");
-      return std::nullopt;
-    }
-
-    if (setPluginStateRequest.state.empty()) {
-      juce::Logger::writeToLog(
-          "Received empty state for node " + toIdString(setPluginStateRequest.nodeId));
-      return std::nullopt;
-    }
-
-    juce::MemoryBlock state;
-    state.fromBase64Encoding(setPluginStateRequest.state);
-
-    try {
-      processor.value()->setState(state);
-      return std::nullopt;
-    } catch (std::runtime_error& e) {
-      juce::Logger::writeToLog("Error setting plugin state: " + std::string(e.what()));
-      return std::nullopt;
-    }
+    engine.processorStateStorage.capture(
+        node->second, [requestId](FileStorageResult<std::string> result) {
+          Response response = CapturePluginStateResponse{
+              .relativePath = result.value && !result.value->empty() ? result.value : std::nullopt,
+              .error = std::move(result.error),
+              .responseBase = ResponseBase{.id = requestId}};
+          auto message = rfl::json::write(response);
+          Engine::getInstance().comms.send(message);
+        });
+    return std::nullopt;
   } else if (rfl::holds_alternative<SetPluginParameterValueRequest>(request.variant())) {
     auto& setPluginParameterValueRequest =
         rfl::get<SetPluginParameterValueRequest>(request.variant());

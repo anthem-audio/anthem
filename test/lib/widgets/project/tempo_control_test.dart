@@ -51,10 +51,10 @@ void main() {
     AnthemStore.instance.activeProjectId = project.id;
   });
 
-  tearDown(() {
+  tearDown(() async {
     AnthemStore.instance.projects.remove(project.id);
     AnthemStore.instance.activeProjectId = '';
-    project.dispose();
+    await project.dispose();
   });
 
   Future<void> pump(WidgetTester tester, {VoidCallback? outsideAction}) async {
@@ -320,7 +320,7 @@ void main() {
     await _enterTapMode(tester);
     await _tapAt(tester, Duration.zero);
     await _tapAt(tester, const Duration(milliseconds: 500));
-    project.dispose();
+    await tester.runAsync(project.dispose);
     AnthemStore.instance.projects.remove(project.id);
     await tester.pump(const Duration(seconds: 3));
     expect(project.sequence.beatsPerMinuteRaw, 12800);
@@ -337,9 +337,9 @@ void main() {
     await _tapAt(tester, const Duration(milliseconds: 500));
     final previousProject = project;
     final previousController = controller;
-    addTearDown(() {
+    addTearDown(() async {
       AnthemStore.instance.projects.remove(previousProject.id);
-      previousProject.dispose();
+      await previousProject.dispose();
     });
     project = ProjectModel.create();
     project.sequence.beatsPerMinuteRaw = 9600;

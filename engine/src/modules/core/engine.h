@@ -40,6 +40,7 @@
 #include "modules/core/engine_runtime_services.h"
 #include "modules/core/file_storage_client.h"
 #include "modules/core/ipc_request_client.h"
+#include "modules/core/processor_state_storage.h"
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/core/visualization/visualization_comms.h"
 #include "modules/processing_graph/graph_processor.h"
@@ -138,6 +139,9 @@ public:
   // Requests file access from the UI without transporting file contents.
   FileStorageClient fileStorage;
 
+  // Stores opaque processor snapshots without sending their bytes through IPC.
+  ProcessorStateStorage processorStateStorage;
+
   // Lifetime note: the audio and render controllers store non-owning
   // references to the members above. Keep those referenced members declared
   // before the controllers so C++ destruction tears down the controllers first.
@@ -155,8 +159,10 @@ public:
   // Handles command messages from the UI.
   CommandHandler commandHandler;
 
+  // Constructs the services and connects their dependencies without starting them.
   Engine();
 
+  // Starts background work and initializes the communication channels.
   void initialize();
 
   // Singleton instance getter

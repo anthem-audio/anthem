@@ -76,11 +76,13 @@ class _TestEngineConnector extends EngineConnectorBase {
 
   @override
   void sendBytes(Uint8List bytes) {
-    sentRequests.add(
-      IpcMessage.fromJson(
-        jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
-      ),
+    final message = IpcMessage.fromJson(
+      jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
     );
+    sentRequests.add(message);
+    if (message is Exit) {
+      emitMessage(ExitReply(id: message.id));
+    }
   }
 
   @override
@@ -190,9 +192,9 @@ void main() {
     );
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   });
 
   test(

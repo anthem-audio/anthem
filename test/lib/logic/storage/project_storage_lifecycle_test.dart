@@ -27,7 +27,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,7 +48,7 @@ class _EngineWithDelayedDisposal extends Engine {
   }
 }
 
-const cache = ProjectFileCategory('test cache', isCache: true);
+const cache = ProjectAssetCategory('test cache', isCache: true);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +65,8 @@ void main() {
     );
     project = ProjectModel.create();
     storage = ProjectStorage.temporary(
-      categories: [ProjectFileCategory.pluginStates, cache],
+      project: project,
+      categories: [ProjectAssetCategory.pluginStates, cache],
     );
     AnthemStore.instance.projects[project.id] = project;
     AnthemStore.instance.projectOrder.add(project.id);
@@ -91,11 +92,11 @@ void main() {
     await project.engine.dispose();
     final engine = _EngineWithDelayedDisposal(project);
     project.engine = engine;
-    final store = await registry.projectStorage.fileStore;
+    final store = await registry.projectStorage.assetStore;
     final scopeId = store.openScope();
     final write = await store.beginWrite(
       scopeId,
-      ProjectFileCategory.pluginStates.directoryName,
+      ProjectAssetCategory.pluginStates.directoryName,
     );
     final relativePath = await store.commitWrite(scopeId, write.token);
     final read = store.acquireRead(scopeId, relativePath);
@@ -125,11 +126,11 @@ void main() {
   test(
     'failed storage cleanup preserves the project and can be retried',
     () async {
-      final store = await registry.projectStorage.fileStore;
+      final store = await registry.projectStorage.assetStore;
       final scopeId = store.openScope();
       final write = await store.beginWrite(
         scopeId,
-        ProjectFileCategory.pluginStates.directoryName,
+        ProjectAssetCategory.pluginStates.directoryName,
       );
       final relativePath = await store.commitWrite(scopeId, write.token);
       final read = store.acquireRead(scopeId, relativePath);
@@ -159,13 +160,14 @@ void main() {
     'closing a saved root preserves its document and project files',
     () async {
       storage = ProjectStorage(
+        project: project,
         rootDirectory: path.join(parent.path, 'saved project'),
       );
-      final store = await registry.projectStorage.fileStore;
+      final store = await registry.projectStorage.assetStore;
       final scopeId = store.openScope();
       final write = await store.beginWrite(
         scopeId,
-        ProjectFileCategory.pluginStates.directoryName,
+        ProjectAssetCategory.pluginStates.directoryName,
       );
       final relativePath = await store.commitWrite(scopeId, write.token);
       final read = store.acquireRead(scopeId, relativePath);

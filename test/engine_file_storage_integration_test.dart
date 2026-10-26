@@ -21,6 +21,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/engine_api/engine.dart';
@@ -29,6 +30,7 @@ import 'package:anthem/engine_api/engine_connector_desktop.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
+import 'package:anthem/logic/storage/file_fingerprint.dart';
 import 'package:anthem/model/project.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
@@ -69,7 +71,7 @@ class _StorageConnector extends EngineConnector {
 
 class _StorageFixture {
   final ProjectModel project;
-  final storage = ProjectStorage.temporary();
+  final ProjectStorage storage;
   final messages = StreamController<IpcMessage>.broadcast();
   final readyHeld = Completer<EngineReadyCheckResponse>();
   bool holdStartup;
@@ -77,7 +79,8 @@ class _StorageFixture {
   void Function(IpcMessage)? _deliver;
 
   Engine get engine => project.engine;
-  _StorageFixture._(this.project, this.holdStartup);
+  _StorageFixture._(this.project, this.holdStartup)
+    : storage = ProjectStorage.temporary(project: project);
 
   static Future<_StorageFixture> create({bool holdStartup = false}) async {
     final suffix = Platform.isWindows ? '.exe' : '';
@@ -151,6 +154,8 @@ class _StorageFixture {
     String data = '',
     String token = '',
     String relativePath = '',
+    FileFingerprint? fingerprint,
+    bool includeFingerprint = false,
   }) async {
     final id = connector.getRequestId();
     final response = messages.stream.firstWhere(
@@ -166,6 +171,8 @@ class _StorageFixture {
         data: data,
         token: token,
         relativePath: relativePath,
+        fingerprint: fingerprint,
+        includeFingerprint: includeFingerprint,
       ),
     );
     return await response.timeout(const Duration(seconds: 10))
@@ -173,16 +180,120 @@ class _StorageFixture {
   }
 
   Future<void> dispose() async {
-    await engine.dispose();
+    await project.dispose();
     await storage.discard();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
     await messages.close();
   }
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test(
+    'project retention IDs resolve over IPC after an engine restart',
+    () async {
+      final fixture = await _StorageFixture.create();
+      await fixture.engine.start(initializeAudio: false);
+      final store = await fixture.storage.assetStore;
+      final writer = store.openScope();
+      final write = await store.beginWrite(writer, 'plugin states');
+      await File(write.absolutePath).writeAsString('project-owned state');
+      final path = await store.commitWrite(writer, write.token);
+      final retentionId = fixture.storage.retainAssetForProject(path);
+      await store.closeScope(writer);
+      for (var start = 0; start < 2; start++) {
+        final resolved = await fixture.send(
+          TestFileStorageOperation.resolveRetention,
+          token: retentionId,
+        );
+        expect(resolved.error, isNull);
+        expect(resolved.relativePath, path);
+        if (start == 0) {
+          await fixture.engine.stop();
+          expect(fixture.storage.resolveRetention(retentionId), path);
+          await fixture.engine.start(initializeAudio: false);
+        }
+      }
+      fixture.storage.releaseAssetFromProject(retentionId);
+      expect(
+        (await fixture.send(
+          TestFileStorageOperation.resolveRetention,
+          token: retentionId,
+        )).error,
+        contains('Unknown file retention'),
+      );
+    },
+  );
+
+  test('engine writer fingerprints are returned through read metadata without changing the file', () async {
+    final fixture = await _StorageFixture.create();
+    await fixture.engine.start(initializeAudio: false);
+    const contents = 'state with Unicode Ω';
+    final fingerprint = FileFingerprint.fromBytes(utf8.encode(contents));
+    final write = await fixture.send(
+      TestFileStorageOperation.beginWrite,
+      data: contents,
+    );
+    final committed = await fixture.send(
+      TestFileStorageOperation.commitWrite,
+      token: write.token!,
+      fingerprint: fingerprint,
+    );
+    expect(committed.error, isNull);
+    final read = await fixture.send(
+      TestFileStorageOperation.acquireRead,
+      relativePath: committed.relativePath!,
+      includeFingerprint: true,
+    );
+    expect(read.error, isNull);
+    expect(read.fingerprint!.byteLength, fingerprint.byteLength);
+    expect(read.fingerprint!.sha256, fingerprint.sha256);
+    expect(read.data, contents);
+    await fixture.send(
+      TestFileStorageOperation.releaseRead,
+      token: read.token!,
+    );
+    final ordinaryRead = await fixture.send(
+      TestFileStorageOperation.acquireRead,
+      relativePath: committed.relativePath!,
+    );
+    expect(ordinaryRead.fingerprint, isNull);
+    await fixture.send(
+      TestFileStorageOperation.releaseRead,
+      token: ordinaryRead.token!,
+    );
+  });
+
+  test(
+    'a missing file fails metadata access without leaving a read token behind',
+    () async {
+      final fixture = await _StorageFixture.create();
+      await fixture.engine.start(initializeAudio: false);
+      final bytes = utf8.encode('cached contents');
+      final store = await fixture.storage.assetStore;
+      final scope = store.openScope();
+      addTearDown(() => store.closeScope(scope));
+      final write = await store.beginWrite(scope, 'plugin states');
+      await File(write.absolutePath).writeAsBytes(bytes);
+      final relativePath = await store.commitWrite(scope, write.token);
+      final access = store.acquireRead(scope, relativePath);
+      await store.getFingerprint(scope, access.token);
+      store.releaseRead(scope, access.token);
+      final file = File(access.absolutePath);
+      await file.delete();
+
+      final failed = await fixture.send(
+        TestFileStorageOperation.acquireRead,
+        relativePath: relativePath,
+        includeFingerprint: true,
+      );
+      expect(failed.error, isNotNull);
+      expect(failed.token, isNull);
+      await file.writeAsBytes(bytes, flush: true);
+      await store.delete(scope, relativePath);
+    },
+  );
 
   test('the engine writes and reads through production storage requests during startup and render holds', () async {
     final fixture = await _StorageFixture.create(holdStartup: true);
@@ -196,7 +307,7 @@ void main() {
       data: 'opaque state Ω\u0000tail',
     );
     expect(write.error, isNull);
-    final store = await fixture.storage.fileStore;
+    final store = await fixture.storage.assetStore;
     final uiScope = store.openScope();
     addTearDown(() => store.closeScope(uiScope));
     expect(store.relativePaths, isEmpty);
@@ -212,9 +323,15 @@ void main() {
     final read = await fixture.send(
       TestFileStorageOperation.acquireRead,
       relativePath: committed.relativePath!,
+      includeFingerprint: true,
     );
     expect(read.error, isNull);
     expect(read.data, 'opaque state Ω\u0000tail');
+    final expected = FileFingerprint.fromBytes(
+      utf8.encode('opaque state Ω\u0000tail'),
+    );
+    expect(read.fingerprint!.byteLength, expected.byteLength);
+    expect(read.fingerprint!.sha256, expected.sha256);
     expect(
       (await fixture.send(
         TestFileStorageOperation.deleteFile,
@@ -303,7 +420,7 @@ void main() {
     () async {
       final fixture = await _StorageFixture.create();
       await fixture.engine.start(initializeAudio: false);
-      final store = await fixture.storage.fileStore;
+      final store = await fixture.storage.assetStore;
       final uiScope = store.openScope();
       addTearDown(() => store.closeScope(uiScope));
       final write = await store.beginWrite(
@@ -371,7 +488,7 @@ void main() {
       token: write.token!,
     );
     final relativePath = committed.relativePath!;
-    final store = await fixture.storage.fileStore;
+    final store = await fixture.storage.assetStore;
     final uiScope = store.openScope();
     addTearDown(() => store.closeScope(uiScope));
     final retained = store.retain(uiScope, relativePath);
@@ -467,7 +584,7 @@ void main() {
         relativePath: committed.relativePath!,
       );
       final pending = await fixture.send(TestFileStorageOperation.beginWrite);
-      final store = await fixture.storage.fileStore;
+      final store = await fixture.storage.assetStore;
       final uiScope = store.openScope();
       addTearDown(() => store.closeScope(uiScope));
       final gate = fixture.connector.shutdownGate = Completer<void>();

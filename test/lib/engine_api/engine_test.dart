@@ -1564,25 +1564,6 @@ void main() {
       verifyNever(project.push(any));
     });
 
-    test('PluginLoadedEvent completes the node plugin completer', () async {
-      final node = MockNodeModel();
-      final pluginLoadedCompleter = Completer<void>();
-      when(node.pluginLoadedCompleter).thenReturn(pluginLoadedCompleter);
-      nodes[1] = node;
-
-      await _startEngineThroughInit(
-        engine,
-        () => connector,
-        audioConfig: startupAudioConfig,
-      );
-
-      connector.emitMessage(PluginLoadedEvent(nodeId: 1));
-
-      await pluginLoadedCompleter.future;
-
-      expect(pluginLoadedCompleter.isCompleted, isTrue);
-    });
-
     test(
       'audio and render notifications survive restart and close on disposal',
       () async {

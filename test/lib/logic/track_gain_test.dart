@@ -70,9 +70,9 @@ void main() {
     ServiceRegistry.initializeProject(project);
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   });
 
   test('new projects start the regular track at -10 dB and master at 0 dB', () {

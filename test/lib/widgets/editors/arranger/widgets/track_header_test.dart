@@ -64,7 +64,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
       await fixture.pump(tester);
 
@@ -107,7 +107,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       fixture.addToneGeneratorAutomationLane(
@@ -135,7 +135,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
@@ -182,7 +182,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       const deviceName = 'Very Long Device Name That Needs More Space';
@@ -208,7 +208,7 @@ void main() {
         final fixture = _TrackHeaderTestFixture.create();
         addTearDown(() async {
           await tester.pumpWidget(const SizedBox.shrink());
-          fixture.dispose();
+          await fixture.dispose();
           AnthemStore.instance.projects.remove(fixture.project.id);
         });
         final project = fixture.project;
@@ -273,7 +273,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       const deviceName = 'Tone Generator';
@@ -312,7 +312,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 40);
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       const deviceName = 'Very Long Device Name That Needs More Space';
@@ -349,7 +349,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -383,7 +383,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -444,7 +444,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -465,7 +465,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -496,7 +496,7 @@ void main() {
     final fixture = _TrackHeaderTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
       AnthemStore.instance.projects.remove(fixture.project.id);
     });
     final project = fixture.project;
@@ -542,7 +542,7 @@ void main() {
     final fixture = _TrackHeaderTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
     await fixture.pump(tester);
 
@@ -561,7 +561,7 @@ void main() {
     final fixture = _TrackHeaderTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
     await fixture.pump(tester);
 
@@ -766,9 +766,9 @@ class _TrackHeaderTestFixture {
     await tester.pump();
   }
 
-  void dispose() {
+  Future<void> dispose() async {
     _screenOverlayController.clear();
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   }
 }

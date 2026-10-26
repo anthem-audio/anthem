@@ -20,7 +20,7 @@
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/logic/storage/project_file_store.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 
 /// Dispatches requests from a project's engine to UI services.
 ///
@@ -28,7 +28,7 @@ import 'package:anthem/logic/storage/project_file_store.dart';
 /// is closed after that engine has stopped accessing files.
 class ProjectEngineRequestHandler {
   final ProjectModel project;
-  Future<({ProjectFileStore store, String scopeId})>? _fileStorageScope;
+  Future<({ProjectAssetStore store, String scopeId})>? _fileStorageScope;
 
   ProjectEngineRequestHandler(this.project);
 
@@ -52,7 +52,7 @@ class ProjectEngineRequestHandler {
         );
   }
 
-  Future<({ProjectFileStore store, String scopeId})> _getFileStorageScope() {
+  Future<({ProjectAssetStore store, String scopeId})> _getFileStorageScope() {
     return _fileStorageScope ??= _openFileStorageScope().catchError((
       Object error,
       StackTrace stack,
@@ -62,17 +62,23 @@ class ProjectEngineRequestHandler {
     });
   }
 
-  Future<({ProjectFileStore store, String scopeId})>
+  Future<({ProjectAssetStore store, String scopeId})>
   _openFileStorageScope() async {
     final store = await ServiceRegistry.forProject(project.id)
         .projectStorage
-        .fileStore;
+        .assetStore;
     return (store: store, scopeId: store.openScope());
   }
 
   /// Returns null for requests that do not operate on file storage.
   Future<Response?> _handleFileStorageRequest(Request request) async {
     switch (request) {
+      case ResolveFileRetentionRequest():
+        final (:store, scopeId: _) = await _getFileStorageScope();
+        return ResolveFileRetentionResponse(
+          id: request.id,
+          relativePath: store.resolveRetention(request.retentionId),
+        );
       case BeginFileWriteRequest():
         final (:store, :scopeId) = await _getFileStorageScope();
         final access = await store.beginWrite(
@@ -88,7 +94,11 @@ class ProjectEngineRequestHandler {
         );
       case CommitFileWriteRequest():
         final (:store, :scopeId) = await _getFileStorageScope();
-        final relativePath = await store.commitWrite(scopeId, request.token);
+        final relativePath = await store.commitWrite(
+          scopeId,
+          request.token,
+          fingerprint: request.fingerprint,
+        );
         return CommitFileWriteResponse(
           id: request.id,
           relativePath: relativePath,
@@ -100,11 +110,20 @@ class ProjectEngineRequestHandler {
       case AcquireFileReadRequest():
         final (:store, :scopeId) = await _getFileStorageScope();
         final access = store.acquireRead(scopeId, request.relativePath);
-        return AcquireFileReadResponse(
-          id: request.id,
-          token: access.token,
-          absolutePath: access.absolutePath,
-        );
+        try {
+          final fingerprint = request.includeFingerprint
+              ? await store.getFingerprint(scopeId, access.token)
+              : null;
+          return AcquireFileReadResponse(
+            id: request.id,
+            token: access.token,
+            absolutePath: access.absolutePath,
+            fingerprint: fingerprint,
+          );
+        } catch (_) {
+          store.releaseRead(scopeId, access.token);
+          rethrow;
+        }
       case ReleaseFileReadRequest():
         final (:store, :scopeId) = await _getFileStorageScope();
         store.releaseRead(scopeId, request.token);
@@ -134,7 +153,7 @@ class ProjectEngineRequestHandler {
     if (opening == null) return;
     // Failed initialization was reported to the request that opened the store.
     final scope = await opening
-        .then<({ProjectFileStore store, String scopeId})?>(
+        .then<({ProjectAssetStore store, String scopeId})?>(
           (value) => value,
           onError: (Object _, StackTrace _) => null,
         );

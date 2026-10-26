@@ -20,32 +20,36 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/project_file/directory.dart';
 import 'package:anthem/logic/project_file/version.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
-import 'package:anthem/logic/storage/project_file_store.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 
-const _cache = ProjectFileCategory('test cache', isCache: true);
-const _states = ProjectFileCategory.pluginStates;
+const _cache = ProjectAssetCategory('test cache', isCache: true);
+const _states = ProjectAssetCategory.pluginStates;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory parent;
   late ProjectStorage storage;
-  late ProjectFileStore store;
+  late ProjectAssetStore store;
   late ProjectModel project;
   late String scope;
+  final nodes = <String, NodeModel>{};
 
   Future<String> write(
     String content, {
-    ProjectFileCategory category = _states,
+    ProjectAssetCategory category = _states,
   }) async {
     final pending = await store.beginWrite(
       scope,
@@ -54,21 +58,45 @@ void main() {
       extension: 'bin',
     );
     await File(pending.absolutePath).writeAsString(content);
-    return store.commitWrite(scope, pending.token);
+    final relativePath = await store.commitWrite(scope, pending.token);
+    if (!category.isCache) {
+      final node =
+          VST3ProcessorModel.create(
+              idAllocator: project.idAllocator,
+              vst3Path: '/test.vst3',
+            ).createNode()
+            ..processorStateRetentionId = storage.retainAssetForProject(
+              relativePath,
+            );
+      project.processingGraph.addNode(node);
+      nodes[relativePath] = node;
+    }
+    return relativePath;
+  }
+
+  void removeState(String relativePath) {
+    final node = nodes.remove(relativePath)!;
+    storage.releaseAssetFromProject(node.processorStateRetentionId!);
+    node.processorStateRetentionId = null;
+    project.processingGraph.removeNode(node.id);
   }
 
   setUp(() async {
     parent = await Directory.systemTemp.createTemp('anthem_project_directory_');
-    storage = ProjectStorage.temporary(categories: [_states, _cache]);
-    store = await storage.fileStore;
-    scope = store.openScope();
+    nodes.clear();
     project = ProjectModel.create();
+    storage = ProjectStorage.temporary(
+      project: project,
+      categories: [_states, _cache],
+    );
+    store = await storage.assetStore;
+    scope = store.openScope();
   });
 
   tearDown(() async {
     await store.closeScope(scope);
+    await project.dispose();
     await storage.discard();
-    project.dispose();
     await parent.delete(recursive: true);
   });
 
@@ -81,12 +109,21 @@ void main() {
     final root = path.join(parent.path, 'Song');
     final document = path.join(root, 'Song.anthem');
 
-    await writeProjectDirectory(document, project, store, create: true);
+    final result = await writeProjectDirectory(
+      document,
+      project,
+      storage,
+      create: true,
+    );
+    expect(result.changedDuringSave, isFalse);
     expect(await File(read.absolutePath).readAsString(), 'required state');
     expect(
       (await readProjectFile(document))['savedInSoftwareVersion'],
       currentProjectFileSoftwareVersion,
     );
+    expect(jsonDecode(project.fileRetentions), {
+      nodes[relativePath]!.processorStateRetentionId!: relativePath,
+    });
     expect(await readProjectFile(document), project.toJson());
     expect(
       await Directory(path.join(root, _cache.directoryName)).exists(),
@@ -104,13 +141,13 @@ void main() {
     // Relative paths remain valid independently of both the live store and
     // the name/location of the saved project directory.
     final moved = await Directory(root).rename(path.join(parent.path, 'Moved'));
-    final reopened = await ProjectFileStore.open(
+    final reopened = await ProjectAssetStore.open(
       moved.path,
-      categories: ProjectFileCategory.defaults,
+      categories: ProjectAssetCategory.defaults,
     );
     final client = reopened.openScope();
     try {
-      expect(reopened.projectFilePaths, [relativePath]);
+      expect(reopened.projectAssetPaths, [relativePath]);
       final savedRead = reopened.acquireRead(client, relativePath);
       expect(
         await File(savedRead.absolutePath).readAsString(),
@@ -125,15 +162,15 @@ void main() {
   test('Save As and subsequent saves preserve the original snapshot', () async {
     final first = await write('first');
     final original = path.join(parent.path, 'Original', 'Original.anthem');
-    await writeProjectDirectory(original, project, store, create: true);
+    await writeProjectDirectory(original, project, storage, create: true);
     final originalBytes = await File(original).readAsBytes();
     final second = await write('second');
     project.sequence.beatsPerMinuteRaw = 14000;
     final copy = path.join(parent.path, 'Copy', 'Copy.anthem');
-    await writeProjectDirectory(copy, project, store, create: true);
+    await writeProjectDirectory(copy, project, storage, create: true);
     final third = await write('third');
     project.sequence.beatsPerMinuteRaw = 15000;
-    await writeProjectDirectory(copy, project, store, create: false);
+    await writeProjectDirectory(copy, project, storage, create: false);
 
     expect(await File(original).readAsBytes(), originalBytes);
     expect(
@@ -165,7 +202,9 @@ void main() {
   test('reusing a deleted filename replaces an obsolete saved copy', () async {
     final old = await write('old contents');
     final document = path.join(parent.path, 'Song', 'Song.anthem');
-    await writeProjectDirectory(document, project, store, create: true);
+    await writeProjectDirectory(document, project, storage, create: true);
+    removeState(old);
+    await writeProjectDirectory(document, project, storage, create: false);
     await store.delete(scope, old);
     expect(store.relativePaths, isEmpty);
 
@@ -173,57 +212,23 @@ void main() {
     expect(replacement, old);
     final destination = File(path.join(path.dirname(document), old));
     expect(await destination.readAsString(), 'old contents');
-    await writeProjectDirectory(document, project, store, create: false);
+    await writeProjectDirectory(document, project, storage, create: false);
     expect(await destination.readAsString(), 'replacement contents');
   });
-
-  test(
-    'save captures the document and protects its files before later edits',
-    () async {
-      final first = await write('first');
-      project.sequence.beatsPerMinuteRaw = 14000;
-      final document = path.join(parent.path, 'Song', 'Song.anthem');
-
-      final saving = writeProjectDirectory(
-        document,
-        project,
-        store,
-        create: true,
-      );
-      expect(() => store.delete(scope, first), throwsStateError);
-      project.sequence.beatsPerMinuteRaw = 15000;
-      final later = await write('later');
-      await saving;
-
-      expect(
-        (await readProjectFile(document))['sequence']['beatsPerMinuteRaw'],
-        14000,
-      );
-      expect(
-        await File(path.join(path.dirname(document), first)).readAsString(),
-        'first',
-      );
-      expect(
-        await File(path.join(path.dirname(document), later)).exists(),
-        isFalse,
-      );
-      await store.delete(scope, first);
-    },
-  );
 
   test(
     'ordinary Save replaces destination copies and restores missing files',
     () async {
       final relativePath = await write('state');
       final document = path.join(parent.path, 'Song', 'Song.anthem');
-      await writeProjectDirectory(document, project, store, create: true);
+      await writeProjectDirectory(document, project, storage, create: true);
       final saved = File(path.join(path.dirname(document), relativePath));
       await saved.writeAsString('outdated destination contents');
-      await writeProjectDirectory(document, project, store, create: false);
+      await writeProjectDirectory(document, project, storage, create: false);
       expect(await saved.readAsString(), 'state');
 
       await saved.delete();
-      await writeProjectDirectory(document, project, store, create: false);
+      await writeProjectDirectory(document, project, storage, create: false);
       expect(await saved.readAsString(), 'state');
     },
   );
@@ -231,15 +236,26 @@ void main() {
   test('a reopened project can Save As and save in place', () async {
     final saved = await write('original');
     final document = path.join(parent.path, 'Original', 'Original.anthem');
-    await writeProjectDirectory(document, project, store, create: true);
+    await writeProjectDirectory(document, project, storage, create: true);
+    final reopenedProject = ProjectModel.fromJson(
+      await readProjectFile(document),
+    );
+    addTearDown(reopenedProject.dispose);
     final reopenedStorage = ProjectStorage(
       rootDirectory: path.dirname(document),
+      project: reopenedProject,
       categories: [_states],
     );
-    final reopened = await reopenedStorage.fileStore;
+    final reopened = await reopenedStorage.assetStore;
+    await (await reopenedStorage.references).registerSavedDocument(document);
     try {
       final copy = path.join(parent.path, 'Copy', 'Copy.anthem');
-      await writeProjectDirectory(copy, project, reopened, create: true);
+      await writeProjectDirectory(
+        copy,
+        reopenedProject,
+        reopenedStorage,
+        create: true,
+      );
       expect(
         await File(path.join(path.dirname(copy), saved)).readAsString(),
         'original',
@@ -248,9 +264,14 @@ void main() {
         await File(path.join(path.dirname(document), saved)).readAsString(),
         'original',
       );
-      expect(reopened.projectFilePaths, [saved]);
+      expect(reopened.projectAssetPaths, [saved]);
       // In-place save needs no asset copy and keeps the source readable.
-      await writeProjectDirectory(document, project, reopened, create: false);
+      await writeProjectDirectory(
+        document,
+        reopenedProject,
+        reopenedStorage,
+        create: false,
+      );
       expect(
         await File(path.join(path.dirname(document), saved)).readAsString(),
         'original',
@@ -260,35 +281,68 @@ void main() {
     }
   });
 
+  test('an in-place save rejects a state file removed from disk', () async {
+    final file = await write('saved state');
+    final document = path.join(parent.path, 'Original', 'Original.anthem');
+    await writeProjectDirectory(document, project, storage, create: true);
+    final before = await File(document).readAsBytes();
+    final savedProject = ProjectModel.fromJson(await readProjectFile(document));
+    addTearDown(savedProject.dispose);
+    final savedStorage = ProjectStorage(
+      rootDirectory: path.dirname(document),
+      project: savedProject,
+    );
+    try {
+      await savedStorage.assetStore;
+      await File(path.join(path.dirname(document), file)).delete();
+      savedProject.sequence.beatsPerMinuteRaw = 15000;
+      await expectLater(
+        writeProjectDirectory(
+          document,
+          savedProject,
+          savedStorage,
+          create: false,
+        ),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(await File(document).readAsBytes(), before);
+    } finally {
+      await savedStorage.close();
+    }
+  });
+
   test(
     'document publication failure releases reads and permits retry',
     () async {
       final original = await write('original');
       final document = path.join(parent.path, 'Song', 'Song.anthem');
-      await writeProjectDirectory(document, project, store, create: true);
+      await writeProjectDirectory(document, project, storage, create: true);
       final backup = await File(document).rename('$document.backup');
       final blocker = Directory(document);
       await blocker.create();
       await File(path.join(blocker.path, 'keep')).writeAsString('block rename');
       final replacement = await write('first attempt');
       await expectLater(
-        writeProjectDirectory(document, project, store, create: false),
+        writeProjectDirectory(document, project, storage, create: false),
         throwsA(isA<FileSystemException>()),
       );
       expect(
         await File(path.join(store.rootDirectory, original)).readAsString(),
         'original',
       );
+      removeState(replacement);
       await store.delete(scope, replacement);
       final retry = await write('retry');
       expect(retry, replacement);
       await blocker.delete(recursive: true);
       await backup.rename(document);
-      await writeProjectDirectory(document, project, store, create: false);
+      await writeProjectDirectory(document, project, storage, create: false);
       expect(
         await File(path.join(path.dirname(document), retry)).readAsString(),
         'retry',
       );
+      removeState(original);
+      await writeProjectDirectory(document, project, storage, create: false);
       await store.delete(scope, original);
     },
   );
@@ -302,7 +356,7 @@ void main() {
       store.releaseRead(scope, read.token);
       final document = path.join(parent.path, 'Failed', 'Failed.anthem');
       await expectLater(
-        writeProjectDirectory(document, project, store, create: true),
+        writeProjectDirectory(document, project, storage, create: true),
         throwsA(isA<FileSystemException>()),
       );
       expect(await parent.list().toList(), isEmpty);
@@ -317,7 +371,7 @@ void main() {
     () async {
       await write('original');
       final document = path.join(parent.path, 'Song', 'Song.anthem');
-      await writeProjectDirectory(document, project, store, create: true);
+      await writeProjectDirectory(document, project, storage, create: true);
       final previous = await File(document).readAsBytes();
       final missing = await write('missing');
       final read = store.acquireRead(scope, missing);
@@ -325,7 +379,7 @@ void main() {
       store.releaseRead(scope, read.token);
       project.sequence.beatsPerMinuteRaw = 15000;
       await expectLater(
-        writeProjectDirectory(document, project, store, create: false),
+        writeProjectDirectory(document, project, storage, create: false),
         throwsA(isA<FileSystemException>()),
       );
       expect(await File(document).readAsBytes(), previous);
@@ -354,7 +408,7 @@ void main() {
           writeProjectDirectory(
             path.join(root, 'Song.anthem'),
             project,
-            store,
+            storage,
             create: true,
           ),
           throwsA(isA<FileSystemException>()),

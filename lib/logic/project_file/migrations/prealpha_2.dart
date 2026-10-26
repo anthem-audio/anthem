@@ -17,9 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/migrations/migration.dart';
 import 'package:anthem/logic/project_file/version.dart';
+import 'package:path/path.dart' as path;
 
 const prealpha2ProjectFileMigration = ProjectFileMigration(
   targetVersion: ProjectFileVersion(
@@ -31,7 +36,10 @@ const prealpha2ProjectFileMigration = ProjectFileMigration(
   migrate: _migrateToPrealpha2,
 );
 
-void _migrateToPrealpha2(ProjectJson projectJson) {
+Future<void> _migrateToPrealpha2(
+  ProjectJson projectJson,
+  String? projectDirectory,
+) async {
   final sequenceValue = projectJson['sequence'];
   if (sequenceValue is! Map<String, dynamic>) {
     throw const FormatException('Expected sequence to be a JSON object.');
@@ -68,6 +76,67 @@ void _migrateToPrealpha2(ProjectJson projectJson) {
   sequenceValue.remove('arrangementOrder');
 
   _migrateParameterMetadata(projectJson);
+  final nodes = projectJson['processingGraph']['nodes'] as Map<String, dynamic>;
+  final retentions = <String, dynamic>{};
+  var stateFileNumber = 1;
+  for (final node in nodes.values.cast<Map<String, dynamic>>()) {
+    final state = node.remove('processorState');
+    if (state == null || state == '') {
+      node.remove('processorStateRetentionId');
+      continue;
+    }
+    if (state is! String) {
+      throw const FormatException('Expected a plugin state string.');
+    }
+    final bytes = _decodeJuceMemoryBlock(state);
+    if (projectDirectory == null) {
+      throw const ProjectDirectoryRequiresDesktopException();
+    }
+    // These paths belong to the prealpha.2 file format. Write them before the
+    // current model and asset store are opened, independently of their APIs.
+    final stateNumber = stateFileNumber++;
+    final relativePath = 'plugin states/$stateNumber.bin';
+    final file = File(
+      path.joinAll([projectDirectory, ...relativePath.split('/')]),
+    );
+    await file.parent.create(recursive: true);
+    await file.create(exclusive: true);
+    await file.writeAsBytes(bytes, flush: true);
+    final retentionId = 'migrated-plugin-state-$stateNumber';
+    retentions[retentionId] = relativePath;
+    node['processorStateRetentionId'] = retentionId;
+  }
+  projectJson['fileRetentions'] = jsonEncode(retentions);
+}
+
+// JUCE's legacy MemoryBlock encoding is not standard Base64. It prefixes the
+// byte count and encodes six-bit groups starting at the least significant bit.
+Uint8List _decodeJuceMemoryBlock(String encoded) {
+  const alphabet =
+      '.ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+';
+  final dot = encoded.indexOf('.');
+  if (dot <= 0 || !RegExp(r'^\d+$').hasMatch(encoded.substring(0, dot))) {
+    throw const FormatException('Invalid legacy plugin state encoding.');
+  }
+  final length = int.tryParse(encoded.substring(0, dot));
+  final data = encoded.substring(dot + 1);
+  if (length == null || data.length != (length * 8 + 5) ~/ 6) {
+    throw const FormatException('Invalid legacy plugin state length.');
+  }
+  final bytes = Uint8List(length);
+  for (var index = 0; index < data.length; index++) {
+    final value = alphabet.indexOf(data[index]);
+    if (value < 0) {
+      throw const FormatException('Invalid legacy plugin state character.');
+    }
+    final bit = index * 6;
+    final offset = bit ~/ 8;
+    if (offset < length) bytes[offset] |= value << (bit % 8);
+    if (bit % 8 > 2 && offset + 1 < length) {
+      bytes[offset + 1] |= value >> (8 - bit % 8);
+    }
+  }
+  return bytes;
 }
 
 void _migrateParameterMetadata(ProjectJson projectJson) {

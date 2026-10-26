@@ -36,7 +36,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' hide TextBox;
 import 'package:logging/logging.dart';
@@ -55,9 +54,14 @@ String projectFileLoadErrorMarkdown(Object error) {
   }
 
   return switch (error) {
+    ProjectFileMigrationException(
+      cause: ProjectDirectoryRequiresDesktopException error,
+    ) =>
+      projectFileLoadErrorMarkdown(error),
     ProjectDirectoryRequiresDesktopException() =>
-      'Open this project folder in the desktop version of Anthem. '
-          'The web version does not yet support importing project folders.',
+      'Open this project in the desktop version of Anthem. '
+          'The web version does not yet support importing project folders '
+          'or plugin state files.',
     ProjectSavedInNewerVersionException error =>
       'This project was saved in a newer version of Anthem '
           '(${version(error.savedVersion)}). You are running Anthem '
@@ -125,7 +129,9 @@ class MainWindowController {
     store.projectOrder.add(project.id);
     store.activeProjectId = project.id;
     final registry = ServiceRegistry.initializeProject(project);
-    if (storage != null) registry.register(storage);
+    if (storage != null) {
+      registry.register(storage);
+    }
     return registry;
   }
 
@@ -173,7 +179,7 @@ class MainWindowController {
       return;
     }
 
-    await project.engine.dispose();
+    await project.dispose();
     final storage = ServiceRegistry.maybeForProject(projectId)
         ?.get<ProjectStorage>();
     if (storage != null) {
@@ -184,9 +190,6 @@ class MainWindowController {
       }
     }
     ServiceRegistry.removeProject(projectId);
-
-    // Clean up project resources
-    project.dispose();
 
     // Remove project from model
     store.projects.remove(projectId);
@@ -215,6 +218,7 @@ class MainWindowController {
 
     final ProjectModel project;
     ProjectStorage? storage;
+    Directory? temporaryDirectory;
     final bool needsFolderSave;
 
     try {
@@ -225,21 +229,55 @@ class MainWindowController {
       // Projects used a single file before prealpha.2.
       needsFolderSave =
           savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2');
-      migrateProjectJson(projectJson);
-      if (!needsFolderSave) {
-        if (kIsWeb) {
-          throw const ProjectDirectoryRequiresDesktopException();
-        }
-        storage = ProjectStorage(rootDirectory: paths.dirname(file.path));
-        await storage.fileStore;
+      if (kIsWeb && !needsFolderSave) {
+        throw const ProjectDirectoryRequiresDesktopException();
       }
-
-      project = ProjectModel.fromJson(
+      if (!kIsWeb && needsFolderSave) {
+        temporaryDirectory = await Directory.systemTemp.createTemp(
+          'anthem_project_',
+        );
+      }
+      await migrateProjectJson(
+        projectJson,
+        projectDirectory: kIsWeb
+            ? null
+            : temporaryDirectory?.path ?? paths.dirname(file.path),
+      );
+      final loaded = ProjectModel.fromJson(
         projectJson,
         enginePathOverride: engineExecutable,
       );
+      try {
+        if (!kIsWeb) {
+          storage = needsFolderSave
+              ? ProjectStorage.temporary(
+                  project: loaded,
+                  rootDirectory: temporaryDirectory!.path,
+                )
+              : ProjectStorage(
+                  project: loaded,
+                  rootDirectory: paths.dirname(file.path),
+                );
+          await storage.assetStore;
+          if (!needsFolderSave) {
+            await (await storage.references).registerSavedDocument(file.path);
+          }
+        }
+      } catch (_) {
+        await loaded.dispose();
+        rethrow;
+      }
+      project = loaded;
     } catch (error, stackTrace) {
-      await storage?.close();
+      if (storage != null) {
+        if (storage.isTemporary) {
+          await storage.discard();
+        } else {
+          await storage.close();
+        }
+      } else if (temporaryDirectory != null) {
+        await temporaryDirectory.delete(recursive: true);
+      }
       _log.warning('Could not load project file.', error, stackTrace);
       dialogController.showMarkdownDialog(
         title: 'Could not open project',
@@ -276,6 +314,7 @@ class MainWindowController {
     required DialogController dialogController,
   }) async {
     final project = AnthemStore.instance.projects[projectId]!;
+    await project.waitForPendingCommands();
 
     String? path;
     var createDirectory = false;
@@ -371,29 +410,20 @@ class MainWindowController {
       project.isDirty = false;
       return true;
     } else {
-      // Load the latest for all plugin states before saving
-      await Future.wait(
-        project.processingGraph.nodes.values.map((node) {
-          return node.updateStateFromEngine();
-        }),
-      );
+      await Future.wait([
+        for (final node in project.processingGraph.nodes.values.toList())
+          node.updateStateFromEngine(),
+      ]);
 
       final storage = ServiceRegistry.forProject(projectId).projectStorage;
-      var changedDuringSave = false;
-      void onModelChange(ModelChangeEvent _) => changedDuringSave = true;
-      project.addRawFieldChangedListener(onModelChange);
-      try {
-        await writeProjectDirectory(
-          path!,
-          project,
-          await storage.fileStore,
-          create: createDirectory,
-        );
-      } finally {
-        project.removeRawFieldChangedListener(onModelChange);
-      }
+      final result = await writeProjectDirectory(
+        path!,
+        project,
+        storage,
+        create: createDirectory,
+      );
 
-      project.isDirty = changedDuringSave;
+      project.isDirty = result.changedDuringSave;
       project.filePath = path;
       return true;
     }

@@ -19,6 +19,8 @@
 
 import 'dart:async';
 
+import 'package:anthem/logic/service_registry.dart';
+
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
@@ -40,11 +42,26 @@ import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
+import 'package:logging/logging.dart';
 
 import 'processors/master_output.dart';
 import 'processors/tone_generator.dart';
 
 part 'node.g.dart';
+
+final _log = Logger('processing_graph_node');
+
+/// Initialization status of a node's processor in the current engine.
+enum NodeInitializationState {
+  /// Initialization has not completed for the current processor instance.
+  uninitialized,
+
+  /// Initialization succeeded and its ports and parameter values were applied.
+  ready,
+
+  /// Initialization failed. A later attempt may retry it.
+  failed,
+}
 
 @AnthemModel(serializable: true, generateModelSync: true)
 class NodeOwnerModel extends _NodeOwnerModel
@@ -237,34 +254,31 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// to handle that.
   bool isThirdPartyPlugin;
 
-  /// Serialized state of the processor.
+  /// ID of this node's retention claim on its opaque processor state file.
   ///
-  /// This is currently only used for third-party plugins, where arbitrary state
-  /// from the plugin needs to be serialized into the project model. For these
-  /// plugins, this opaque state is the only state restored into the plugin on
-  /// engine start; mirrored control port parameter values are not replayed.
-  String processorState = '';
+  /// Null means the node has no state file retained by the project. The engine
+  /// resolves the ID through project storage and restores the file before
+  /// reporting ports and values. Cached parameter values are not replayed into
+  /// the plugin.
+  @anthemObservable
+  String? processorStateRetentionId;
 
-  /// Whether the plugin has been loaded in the engine, if applicable.
-  ///
-  /// This is currently only used for third-party plugins, where the plugin
-  /// needs to be loaded in the engine before we can send or receive state.
+  @anthemObservable
   @hide
-  Completer<void> pluginLoadedCompleter = Completer<void>();
+  NodeInitializationState _initializationState =
+      NodeInitializationState.uninitialized;
 
-  /// Whether the engine has finished restoring this processor's saved state.
+  /// The processor's runtime initialization status, independent of graph playback.
   ///
-  /// When a node is first created, it has a blank state. However, if a node is
-  /// loaded from a project, it may have a state that was serialized from a
-  /// previous session, saved in [processorState]. Before we can ever load the
-  /// live state from the plugin in the engine, initialization must restore the
-  /// supplied state; otherwise we will overwrite our state and the plugin will
-  /// remain in its initial state.
-  ///
-  /// On engine restart, initialization restores the latest captured state
-  /// before state capture can resume.
+  /// A ready processor has restored any saved state and supplied its current
+  /// ports and parameter values. State capture must wait for this confirmation
+  /// so it cannot replace saved state with the plugin's initial patch.
+  /// Removing the node or stopping the engine resets this status.
+  NodeInitializationState get initializationState => _initializationState;
+
+  /// Invalidates captures from before a reset or failed initialization.
   @hide
-  Completer<void> stateRestoredCompleter = Completer<void>();
+  int _initializationGeneration = 0;
 
   @hide
   TimerDebouncedAction? _stateUpdateDebouncedAction;
@@ -289,58 +303,104 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   /// processor. This is debounced to avoid excessive requests.
   void scheduleDebouncedStateUpdate() async {
     _stateUpdateDebouncedAction ??= TimerDebouncedAction(() async {
-      await updateStateFromEngine();
+      try {
+        await updateStateFromEngine();
+      } catch (error, stack) {
+        _log.warning(
+          'Could not capture processor state for node $id.',
+          error,
+          stack,
+        );
+      }
     }, Duration(seconds: 1));
     _stateUpdateDebouncedAction!.execute();
   }
 
+  @hide
+  Future<void>? _stateCaptureCompletion;
+
+  /// Captures the current state, preserving the previous reference on failure.
+  /// Concurrent callers are serialized so a save captures edits made while an
+  /// earlier background capture was in progress.
   Future<void> updateStateFromEngine() async {
+    while (_stateCaptureCompletion != null) {
+      await _stateCaptureCompletion;
+    }
+    // Waiting callers need a completion signal, independent of the outcome.
+    // This capture reports errors only through its own returned future.
+    final completion = Completer<void>();
+    _stateCaptureCompletion = completion.future;
+    try {
+      await _captureState();
+    } finally {
+      _stateCaptureCompletion = null;
+      completion.complete();
+    }
+  }
+
+  Future<void> _captureState() async {
     // An unavailable or still-initializing plugin cannot supply authoritative
-    // live state. Keep its saved blob, including when saving the project.
-    if (!isThirdPartyPlugin ||
-        !project.engine.isRunning ||
-        !stateRestoredCompleter.isCompleted) {
+    // live state. Keep its saved file reference, including when saving the project.
+    if (!isThirdPartyPlugin) return;
+    final owner = project;
+    if (!identical(owner.processingGraph.nodes[id], this) ||
+        !owner.engine.isRunning ||
+        initializationState != NodeInitializationState.ready) {
       return;
     }
 
-    final newState = await project.engine.processingGraphApi.getPluginState(id);
-    if (newState != processorState) {
-      processorState = newState;
-
-      // Mark project as dirty
-      project.isDirty = true;
+    final generation = _initializationGeneration;
+    final path = await owner.engine.processingGraphApi.capturePluginState(id);
+    if (generation != _initializationGeneration ||
+        !identical(owner.processingGraph.nodes[id], this)) {
+      return;
     }
+    final previous = processorStateRetentionId;
+    if (path == null && previous == null) return;
+    final storage = ServiceRegistry.forProject(owner.id).projectStorage;
+    if (previous != null && path == storage.resolveRetention(previous)) return;
+
+    // Acquire the new claim before releasing the old one. Saved documents and
+    // commands may hold other claims on the same file.
+    final replacement = path == null
+        ? null
+        : storage.retainAssetForProject(path);
+    processorStateRetentionId = replacement;
+    if (previous != null) storage.releaseAssetFromProject(previous);
+    owner.isDirty = true;
   }
 
-  /// Records the engine's confirmation that saved processor state is restored.
+  /// Records successful initialization after applying the engine's results.
   ///
-  /// Call this after successful engine initialization to allow state capture.
-  void markStateRestored() {
-    if (!stateRestoredCompleter.isCompleted) {
-      stateRestoredCompleter.complete();
-    }
+  /// The processor has restored any saved state and can supply live captures.
+  void markInitialized() {
+    _initializationState = NodeInitializationState.ready;
   }
 
+  /// Records a failed attempt and revokes the processor's port confirmations.
   void markInitializationFailed() {
-    stateRestoredCompleter = Completer<void>();
+    _invalidateInitialization(NodeInitializationState.failed);
+  }
+
+  /// Clears runtime confirmations before a new processor instance is created.
+  ///
+  /// Used when the engine stops or this node leaves the graph. Saved state
+  /// remains available, but capture must wait for the next restoration.
+  void resetEngineInitialization() {
+    lastChangedControlPortId = null;
+    _invalidateInitialization(NodeInitializationState.uninitialized);
+  }
+
+  void _invalidateInitialization(NodeInitializationState state) {
+    _initializationGeneration++;
+    for (final port in (this as NodeModel).getAllPorts()) {
+      port.isAvailable = false;
+    }
+    _initializationState = state;
   }
 
   void handleEngineStateChange(EngineState state) {
-    if (state == EngineState.stopped) {
-      lastChangedControlPortId = null;
-      if (isThirdPartyPlugin) {
-        for (final port in (this as NodeModel).getAllPorts()) {
-          port.isAvailable = false;
-        }
-      }
-    }
-
-    if (!isThirdPartyPlugin) return;
-
-    if (state == EngineState.stopped) {
-      stateRestoredCompleter = Completer<void>();
-      pluginLoadedCompleter = Completer<void>();
-    }
+    if (state == EngineState.stopped) resetEngineInitialization();
   }
 
   @Union([

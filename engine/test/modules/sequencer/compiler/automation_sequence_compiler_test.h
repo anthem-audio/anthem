@@ -149,7 +149,6 @@ class AutomationSequenceCompilerTest : public juce::UnitTest {
     Engine::cleanup();
 
     auto& engine = Engine::getInstance();
-    engine.automationSequenceStore = std::make_unique<RuntimeAutomationSequenceStore>();
     engine.project = std::make_shared<Project>(ProjectModelImpl{
         .sequence = makeSequencer(patterns, arrangement),
         .processingGraph = nullptr,

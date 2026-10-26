@@ -307,8 +307,7 @@ void main() {
       final engine = project.engine;
       expect(ServiceRegistry.maybeForProject(project.id), isNull);
       addTearDown(() async {
-        await engine.dispose();
-        project.dispose();
+        await project.dispose();
         await replies.close();
       });
 
@@ -414,8 +413,7 @@ void main() {
         final project = ProjectModel.create(executable);
         final engine = project.engine;
         addTearDown(() async {
-          await engine.dispose();
-          project.dispose();
+          await project.dispose();
         });
 
         await engine.start(initializeAudio: false);
@@ -666,9 +664,8 @@ void main() {
         }
       }
     } finally {
-      await project.engine.dispose();
+      await project.dispose();
       ServiceRegistry.removeProject(project.id);
-      project.dispose();
     }
   });
 
@@ -795,52 +792,61 @@ void main() {
           4,
         );
       } finally {
-        await reopened.engine.dispose();
+        await reopened.dispose();
         ServiceRegistry.removeProject(reopened.id);
-        reopened.dispose();
       }
     } finally {
-      await original.engine.dispose();
+      await original.dispose();
       ServiceRegistry.removeProject(original.id);
-      original.dispose();
     }
   });
 
-  test('failed plugin initialization preserves saved state during capture', () async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    final project = ProjectModel.create(
-      enginePath!.toFilePath(windows: Platform.isWindows),
-    );
-    final node = VST3ProcessorModel.create(
-      idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
-      vst3Path: '/missing-anthem-integration-fixture.vst3',
-    ).createNode();
-    const savedState = 'saved opaque plugin state';
-    node.processorState = savedState;
-    // A failed re-prepare must also revoke a previous successful capture gate.
-    node.markStateRestored();
-    project.processingGraph.addNode(node);
-    final services = ServiceRegistry.initializeProject(project);
-    try {
-      await services.projectEngineController.start(startAudio: false);
-      await project.engine.renderApi.startRenderAudioSession(
-        sampleRate: 48000,
-        blockSize: 128,
-        outputChannelCount: 2,
+  test(
+    'failed plugin initialization preserves saved state during capture',
+    () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final project = ProjectModel.create(
+        enginePath!.toFilePath(windows: Platform.isWindows),
       );
-      await services.projectController.publishProcessingGraph();
-      expect(project.engine.isRunning, isTrue);
-      expect(node.stateRestoredCompleter.isCompleted, isFalse);
-      expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);
-      await node.updateStateFromEngine();
-      expect(node.processorState, savedState);
-      expect(node.toJson()['processorState'], savedState);
-    } finally {
-      await project.engine.dispose();
-      ServiceRegistry.removeProject(project.id);
-      project.dispose();
-    }
-  });
+      final node = VST3ProcessorModel.create(
+        idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
+        vst3Path: '/missing-anthem-integration-fixture.vst3',
+      ).createNode();
+
+      // A failed re-prepare must also revoke a previous successful initialization.
+      node.markInitialized();
+      project.processingGraph.addNode(node);
+      final services = ServiceRegistry.initializeProject(project);
+      final store = await services.projectStorage.assetStore;
+      final scope = store.openScope();
+      final write = await store.beginWrite(scope, 'plugin states');
+      await File(write.absolutePath).writeAsBytes([1, 2, 3]);
+      final savedState = await store.commitWrite(scope, write.token);
+      await store.closeScope(scope);
+      final storage = ServiceRegistry.forProject(project.id).projectStorage;
+      final retentionId = storage.retainAssetForProject(savedState);
+      node.processorStateRetentionId = retentionId;
+      try {
+        await services.projectEngineController.start(startAudio: false);
+        await project.engine.renderApi.startRenderAudioSession(
+          sampleRate: 48000,
+          blockSize: 128,
+          outputChannelCount: 2,
+        );
+        await services.projectController.publishProcessingGraph();
+        expect(project.engine.isRunning, isTrue);
+        expect(node.initializationState, NodeInitializationState.failed);
+        expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);
+        await node.updateStateFromEngine();
+        expect(node.processorStateRetentionId, retentionId);
+        expect(node.toJson()['processorStateRetentionId'], retentionId);
+      } finally {
+        await project.dispose();
+        await services.projectStorage.discard();
+        ServiceRegistry.removeProject(project.id);
+      }
+    },
+  );
 
   group('Model sync tests', () {
     late ProjectModel project;

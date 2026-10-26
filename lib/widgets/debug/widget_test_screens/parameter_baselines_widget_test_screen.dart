@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'dart:ui';
 
 import 'package:anthem/model/pattern/automation_point.dart';
@@ -62,7 +64,7 @@ class _ParameterBaselinesWidgetTestScreenState
 
   @override
   void dispose() {
-    project.dispose();
+    unawaited(project.dispose());
     super.dispose();
   }
 

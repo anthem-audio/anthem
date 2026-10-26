@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:math';
 
 import 'package:anthem/helpers/id.dart';
@@ -28,6 +29,10 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
+import 'package:mobx/mobx.dart';
+
+import 'capture_live_plugin_states.dart';
+import 'command_processor_state_retention.dart';
 
 class DeviceAddRemoveCommand extends Command {
   final bool _isAdd;
@@ -36,6 +41,13 @@ class DeviceAddRemoveCommand extends Command {
   late final DeviceModel _device;
   int? _index;
   ProcessingGraphFragment? _graphFragment;
+
+  final _processorStateRetention = CommandProcessorStateRetention();
+
+  @override
+  void dispose() {
+    _processorStateRetention.dispose();
+  }
 
   DeviceAddRemoveCommand.add({
     required ProjectModel project,
@@ -77,21 +89,15 @@ class DeviceAddRemoveCommand extends Command {
   }
 
   @override
-  void execute(ProjectModel project) {
-    if (_isAdd) {
-      _add(project);
-    } else {
-      _remove(project);
-    }
+  FutureOr<void> execute(ProjectModel project) {
+    if (!_isAdd) return _remove(project);
+    _add(project);
   }
 
   @override
-  void rollback(ProjectModel project) {
-    if (_isAdd) {
-      _remove(project);
-    } else {
-      _add(project);
-    }
+  FutureOr<void> rollback(ProjectModel project) {
+    if (_isAdd) return _remove(project);
+    _add(project);
   }
 
   void _add(ProjectModel project) {
@@ -124,14 +130,39 @@ class DeviceAddRemoveCommand extends Command {
       graphFragment: graphFragment,
     );
 
+    final storage = ServiceRegistry.forProject(project.id).projectStorage;
+    _processorStateRetention.restoreProjectClaims(storage);
+
     if (!graphFragment.isEmpty) {
       project.processingGraph.restoreGraphFragment(graphFragment);
     }
+    _processorStateRetention.dispose();
 
     _rebuildTrackRoutingAndPublish(project, trackId);
   }
 
-  void _remove(ProjectModel project) {
+  FutureOr<void> _remove(ProjectModel project) {
+    final nodes = _device.nodeIds
+        .map((id) => project.processingGraph.nodes[id])
+        .nonNulls
+        .toList();
+
+    final storage = ServiceRegistry.forProject(project.id).projectStorage;
+
+    void detach() {
+      _processorStateRetention.retainForRemoval(storage, nodes);
+      _detach(project);
+      _processorStateRetention.releaseProjectClaims(storage);
+    }
+
+    final capture = captureLivePluginStates(project, nodes);
+    if (capture != null) {
+      return capture.then((_) => runInAction(detach));
+    }
+    detach();
+  }
+
+  void _detach(ProjectModel project) {
     final track = _getTrack(project, trackId, 'DeviceAddRemoveCommand._remove');
     final processing = track.requireProcessing;
     final index = processing.devices.indexWhere(

@@ -103,15 +103,6 @@ class ProcessingGraphApi {
     }
   }
 
-  /// Pushes a serialized plugin state blob into the engine for the given node.
-  void setPluginState(Id nodeId, String state) {
-    final id = _engine._getRequestId();
-
-    final request = SetPluginStateRequest(id: id, nodeId: nodeId, state: state);
-
-    _engine._requestNoReply(request);
-  }
-
   /// Sets a normalized third-party plugin parameter value immediately.
   void setPluginParameterValue(Id nodeId, int controlPortId, double value) {
     if (!_engine.isRunning) {
@@ -133,16 +124,22 @@ class ProcessingGraphApi {
     );
   }
 
-  /// Reads the current serialized plugin state blob from the engine.
-  Future<String> getPluginState(Id nodeId) async {
-    final id = _engine._getRequestId();
-
-    final request = GetPluginStateRequest(id: id, nodeId: nodeId);
-
-    final response =
-        (await _engine._request(request)) as GetPluginStateResponse;
-
-    return response.state;
+  /// Captures the plugin's opaque state into the project's asset store.
+  ///
+  /// Returns its relative path, or null if the plugin supplies no opaque state.
+  /// Unchanged contents reuse the previous file. Capture failures throw without
+  /// replacing the model's existing reference.
+  Future<String?> capturePluginState(Id nodeId) async {
+    final request = CapturePluginStateRequest(
+      id: _engine._getRequestId(),
+      nodeId: nodeId,
+    );
+    final response = await _engine._request(
+      request,
+      timeout: const Duration(seconds: 30),
+    ) as CapturePluginStateResponse;
+    if (response.error != null) throw StateError(response.error!);
+    return response.relativePath;
   }
 
   /// Opens the native plugin editor window for the given third-party plugin

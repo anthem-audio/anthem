@@ -221,9 +221,9 @@ Future<_PumpedDevice> _pumpDevice(
 }) async {
   final project = ProjectModel.create();
   ServiceRegistry.initializeProject(project);
-  addTearDown(() {
+  addTearDown(() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   });
   project.engineState = engineState;
 

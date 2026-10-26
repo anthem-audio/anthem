@@ -17,13 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/storage/project_file_store.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/model/project.dart';
 
-Future<void> writeProjectDirectory(
+Future<({bool changedDuringSave})> writeProjectDirectory(
   String documentPath,
   ProjectModel project,
-  ProjectFileStore store, {
+  ProjectStorage storage, {
   required bool create,
 }) {
   throw UnsupportedError('Project directories require desktop file storage.');

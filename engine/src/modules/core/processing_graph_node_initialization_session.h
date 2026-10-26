@@ -82,6 +82,10 @@ private:
       const std::weak_ptr<Node>& weakGraphNode,
       const std::weak_ptr<Processor>& weakProcessor,
       std::optional<ProcessorPrepareResult> prepareResult);
+  void completeStateRestoration(int64_t nodeId,
+      const std::weak_ptr<Node>& weakGraphNode,
+      const std::weak_ptr<Processor>& weakProcessor,
+      std::optional<std::string> error);
   void initializeProcessorNode(
       const NodeInitializationWorkItem& workItem, const std::shared_ptr<Processor>& processor);
   void initializeNode(const NodeInitializationWorkItem& workItem);

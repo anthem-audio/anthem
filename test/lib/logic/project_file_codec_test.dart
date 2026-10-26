@@ -28,10 +28,9 @@ import 'package:anthem/logic/project_file/gzip.dart';
 import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
 import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/model/model.dart';
-import 'package:anthem/model/processing_graph/parameter_presentation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../helpers/prealpha_1_project.dart';
+import '../../fixtures/prealpha_1_project.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -47,7 +46,8 @@ void main() {
 
   group('project file codec', () {
     test('encodes and decodes a project', () async {
-      final project = ProjectModel.create();
+      final project = ProjectModel.create()
+        ..fileRetentions = '{"claim":"plugin states/State 01.bin"}';
       addTearDown(project.dispose);
 
       final projectJson = project.toJson();
@@ -60,6 +60,9 @@ void main() {
         currentProjectFileSoftwareVersion,
       );
       expect(decodedJson, equals(projectJson));
+      final restored = ProjectModel.fromJson(decodedJson);
+      addTearDown(restored.dispose);
+      expect(restored.fileRetentions, project.fileRetentions);
     });
 
     test('rejects an unsupported container header', () async {
@@ -91,90 +94,141 @@ void main() {
       expect(await readProjectFile(path), equals(project.toJson()));
     });
 
-    test(
-      'preserves the stored version and schema until explicit migration',
-      () async {
-        final project = ProjectModel.create();
-        addTearDown(project.dispose);
+    test('preserves the stored version and schema until explicit migration', () async {
+      final oldProjectJson =
+          jsonDecode(prealpha1ProjectJson) as Map<String, dynamic>;
+      // Add a fixed legacy VST node to exercise opaque-state extraction and
+      // migration of plugin parameter metadata alongside the native ports.
+      oldProjectJson['processingGraph']['nodes']['17'] = {
+        'id': 17,
+        'audioInputPorts': <dynamic>[],
+        'audioOutputPorts': [
+          {
+            'id': 0,
+            'nodeId': 17,
+            'config': {'dataType': 'audio'},
+            'connections': [18],
+          },
+        ],
+        'eventInputPorts': <dynamic>[],
+        'eventOutputPorts': <dynamic>[],
+        'controlInputPorts': [
+          {
+            'id': 7,
+            'nodeId': 17,
+            'config': {
+              'dataType': 'control',
+              'parameterConfig': {
+                'id': 7,
+                'defaultValue': 0.2,
+                'displayMode': 'pluginText',
+                'normalizedVisualBaseline': 0.75,
+              },
+            },
+            'connections': <dynamic>[],
+            'parameterValue': 0.123,
+          },
+        ],
+        'controlOutputPorts': <dynamic>[],
+        'isThirdPartyPlugin': true,
+        'processor': {
+          'VST3ProcessorModel': {'nodeId': 17, 'vst3Path': '/test/plugin.vst3'},
+        },
+        'processorState': '3.AHv.',
+      };
+      oldProjectJson['processingGraph']['connections']['18'] = {
+        'id': 18,
+        'sourceNodeId': 17,
+        'sourcePortId': 0,
+        'destinationNodeId': 4,
+        'destinationPortId': 0,
+        'dataType': 'audio',
+      };
+      oldProjectJson['processingGraph']['nodes']['4']['audioInputPorts'][0]['connections'] =
+          [18];
+      oldProjectJson['idCounter'] = 19;
+      final bytes = await encodeProjectJson(oldProjectJson);
 
-        final utility =
-            project.processingGraph.nodes[project
-                .tracks[project.trackOrder.single]!
-                .requireProcessing
-                .utilityNodeId]!;
-        final gain = utility.getPortById(UtilityProcessorModel.gainPortId)
-          ..parameterValue = 0.321;
-        gain.presentation.normalizedVisualBaseline = 0.25;
-        final plugin = VST3ProcessorModel.create(
-          idAllocator: project.idAllocator,
-          vst3Path: '/test/plugin.vst3',
-        ).createNode()..processorState = 'c2F2ZWQgcGx1Z2luIHN0YXRl';
-        plugin.controlInputPorts.add(
-          NodePortModel(
-            id: 7,
-            nodeId: plugin.id,
-            config: NodePortConfigModel(
-              dataType: NodePortDataType.control,
-              parameterConfig: ParameterConfigModel(
-                id: 7,
-                factoryDefaultValue: 0.2,
-                displayMode: ParameterDisplayMode.pluginText,
-              ),
-            ),
-            initialParameterValue: 0.123,
-            parameterResetValue: 0.2,
-            presentation: ParameterPresentationModel(
-              normalizedVisualBaseline: 0.75,
-            ),
-          ),
-        );
-        project.processingGraph.addNode(plugin);
-        project.processingGraph.addConnection(
-          NodeConnectionModel(
-            idAllocator: project.idAllocator,
-            sourceNodeId: plugin.id,
-            sourcePortId: VST3ProcessorModel.audioOutputPortId,
-            destinationNodeId: utility.id,
-            destinationPortId: UtilityProcessorModel.audioInputPortId,
-            dataType: NodePortDataType.audio,
-          ),
-        );
+      final decodedJson = await decodeProjectFileBytes(bytes);
+      expect(decodedJson, oldProjectJson);
+      final savedVersion = readSavedProjectVersion(decodedJson);
+      expect(savedVersion.toString(), '0.0.0-prealpha.1');
+      final extracted = await Directory.systemTemp.createTemp(
+        'anthem_extracted_project_',
+      );
+      addTearDown(() => extracted.delete(recursive: true));
+      await migrateProjectJson(decodedJson, projectDirectory: extracted.path);
+      expect(
+        await File('${extracted.path}/plugin states/1.bin').readAsBytes(),
+        [1, 2, 3],
+      );
+      expect(
+        savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2'),
+        isTrue,
+      );
+      expect(readSavedProjectVersion(decodedJson), currentProjectFileVersion);
+      final decodedProject = ProjectModel.fromJson(decodedJson);
+      addTearDown(decodedProject.dispose);
+      expect(decodedProject.sequence.arrangement.id, 0);
+      expect(decodedProject.tracks[2]!.name, 'Persistence track');
+      expect(decodedProject.sequence.beatsPerMinuteRaw, 13700);
+      expect(decodedProject.sequence.patterns[16]!.notes[0]!.key, 67);
+      final gain = decodedProject.processingGraph.nodes[4]!.getPortById(2);
+      expect(gain.parameterValue, 0.321);
+      expect(gain.parameterResetValue, 0.65625);
+      expect(gain.presentation.normalizedVisualBaseline, 0.25);
+      expect(gain.config.parameterConfig!.factoryDefaultValue, isNull);
+      final plugin = decodedProject.processingGraph.nodes[17]!;
+      expect(
+        jsonDecode(
+          decodedProject.fileRetentions,
+        )[plugin.processorStateRetentionId],
+        'plugin states/1.bin',
+      );
+      final pluginParameter = plugin.getPortById(7);
+      expect(pluginParameter.parameterValue, 0.123);
+      expect(pluginParameter.parameterResetValue, 0.2);
+      expect(pluginParameter.config.parameterConfig!.factoryDefaultValue, 0.2);
+      expect(
+        pluginParameter.config.parameterConfig!.displayMode,
+        ParameterDisplayMode.pluginText,
+      );
+      expect(pluginParameter.presentation.normalizedVisualBaseline, 0.75);
+      final connection = decodedProject.processingGraph.connections[18]!;
+      expect(connection.sourceNodeId, plugin.id);
+      expect(connection.destinationNodeId, 4);
+      expect(plugin.getPortById(0).connections, [18]);
+      expect(
+        decodedProject.processingGraph.nodes[4]!.getPortById(0).connections,
+        [18],
+      );
+      expect(
+        decodedProject.toJson()['processingGraph']['nodes']['17'],
+        isNot(contains('processorState')),
+      );
+      expect(
+        await decodeProjectFileBytes(await encodeProjectFile(decodedProject)),
+        decodedProject.toJson(),
+      );
 
-        final oldProjectJson = createPrealpha1ProjectJson(project);
-        final bytes = await encodeProjectJson(oldProjectJson);
-        final expectedJson = project.toJson();
+      final tempDir = await Directory.systemTemp.createTemp(
+        'anthem_project_file_migration_test_',
+      );
+      addTearDown(() => tempDir.delete(recursive: true));
+      final path = '${tempDir.path}${Platform.pathSeparator}project.anthem';
+      await File(path).writeAsBytes(bytes);
 
-        final decodedJson = await decodeProjectFileBytes(bytes);
-        expect(decodedJson, oldProjectJson);
-        final savedVersion = readSavedProjectVersion(decodedJson);
-        expect(savedVersion.toString(), '0.0.0-prealpha.1');
-        migrateProjectJson(decodedJson);
-        expect(
-          savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2'),
-          isTrue,
-        );
-        expect(readSavedProjectVersion(decodedJson), currentProjectFileVersion);
-        expect(decodedJson, equals(expectedJson));
-        final decodedProject = ProjectModel.fromJson(decodedJson);
-        addTearDown(decodedProject.dispose);
-        expect(
-          decodedProject.sequence.arrangement.id,
-          project.sequence.arrangement.id,
-        );
-        expect(decodedProject.toJson(), expectedJson);
-
-        final tempDir = await Directory.systemTemp.createTemp(
-          'anthem_project_file_migration_test_',
-        );
-        addTearDown(() => tempDir.delete(recursive: true));
-        final path = '${tempDir.path}${Platform.pathSeparator}project.anthem';
-        await File(path).writeAsBytes(bytes);
-
-        final storedJson = await readProjectFile(path);
-        expect(storedJson, oldProjectJson);
-        expect(migrateProjectJson(storedJson), expectedJson);
-      },
-    );
+      final storedJson = await readProjectFile(path);
+      expect(storedJson, oldProjectJson);
+      expect(
+        await migrateProjectJson(
+          storedJson,
+          projectDirectory: '${tempDir.path}/extracted',
+        ),
+        decodedJson,
+      );
+      expect(await readProjectFile(path), oldProjectJson);
+    });
 
     test('rejects files without an Anthem project file header', () async {
       final bytes = utf8.encode('{"id":"not-compressed"}');

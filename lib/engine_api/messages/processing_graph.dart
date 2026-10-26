@@ -279,41 +279,27 @@ class PluginParameterSnapshotEvent extends IpcEvent {
   });
 }
 
-class GetPluginStateRequest extends Request {
+class CapturePluginStateRequest extends Request {
   late Id nodeId;
 
-  GetPluginStateRequest.uninitialized();
+  CapturePluginStateRequest.uninitialized();
 
-  GetPluginStateRequest({required int id, required this.nodeId}) {
+  CapturePluginStateRequest({required int id, required this.nodeId}) {
     super.id = id;
   }
 }
 
-class GetPluginStateResponse extends Response {
-  late String state;
-  late bool isValid;
+/// Captured plugin state is stored in a project file, outside the IPC payload.
+class CapturePluginStateResponse extends Response {
+  String? relativePath;
+  String? error;
 
-  GetPluginStateResponse.uninitialized();
+  CapturePluginStateResponse.uninitialized();
 
-  GetPluginStateResponse({
+  CapturePluginStateResponse({
     required int id,
-    required this.state,
-    required this.isValid,
-  }) {
-    super.id = id;
-  }
-}
-
-class SetPluginStateRequest extends Request {
-  late Id nodeId;
-  late String state;
-
-  SetPluginStateRequest.uninitialized();
-
-  SetPluginStateRequest({
-    required int id,
-    required this.nodeId,
-    required this.state,
+    required this.relativePath,
+    required this.error,
   }) {
     super.id = id;
   }
@@ -344,18 +330,6 @@ class OpenPluginWindowRequest extends Request {
   OpenPluginWindowRequest({required int id, required this.nodeId}) {
     super.id = id;
   }
-}
-
-/// An event that is fired when a third-party plugin is loaded for the given
-/// node.
-///
-/// This will only fire for nodes that load third-party plugins.
-class PluginLoadedEvent extends IpcEvent {
-  late Id nodeId;
-
-  PluginLoadedEvent.uninitialized();
-
-  PluginLoadedEvent({required this.nodeId});
 }
 
 @AnthemModel(serializable: true, generateCpp: true)

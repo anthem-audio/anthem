@@ -26,6 +26,7 @@ namespace anthem {
 struct FileStorageAccess {
   std::string token;
   std::string absolutePath;
+  std::optional<FileFingerprint> fingerprint = std::nullopt;
 };
 
 template <typename Value> struct FileStorageResult {
@@ -54,9 +55,14 @@ public:
       AccessCompletion onComplete,
       std::optional<std::string> baseName = std::nullopt,
       std::optional<std::string> extension = std::nullopt);
-  int64_t commitWrite(std::string token, RelativePathCompletion onComplete);
+  int64_t commitWrite(std::string token,
+      RelativePathCompletion onComplete,
+      std::optional<FileFingerprint> fingerprint = std::nullopt);
   int64_t abortWrite(std::string token, Completion onComplete);
-  int64_t acquireRead(std::string relativePath, AccessCompletion onComplete);
+  int64_t acquireRead(
+      std::string relativePath, AccessCompletion onComplete, bool includeFingerprint = false);
+  // Resolves a project or command claim without creating read access.
+  int64_t resolveRetention(std::string retentionId, RelativePathCompletion onComplete);
   int64_t releaseRead(std::string token, Completion onComplete);
   int64_t deleteFile(std::string relativePath, Completion onComplete);
   int64_t retainFile(std::string relativePath, TokenCompletion onComplete);

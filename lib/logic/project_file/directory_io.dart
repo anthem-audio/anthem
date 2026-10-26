@@ -20,8 +20,9 @@
 import 'dart:io';
 
 import 'package:anthem/logic/project_file/io.dart';
-import 'package:anthem/logic/storage/project_file_store.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem_codegen/include.dart';
 import 'package:path/path.dart' as path;
 
 /// Saves completed, non-cache files alongside the project document.
@@ -32,24 +33,29 @@ import 'package:path/path.dart' as path;
 /// Additional data files from an interrupted save may remain unreferenced.
 ///
 /// The open store keeps its root and read paths until the project closes.
-/// Copies every file in [ProjectFileStore.projectFilePaths]. Existing copies in
-/// another folder are replaced; files in the open store's root stay in place.
-Future<void> writeProjectDirectory(
+/// Files come from the current project scope. Existing copies in another
+/// folder are replaced; files in the open store's root stay in place.
+///
+/// Reports whether the project changed after its save snapshot was prepared.
+Future<({bool changedDuringSave})> writeProjectDirectory(
   String documentPath,
   ProjectModel project,
-  ProjectFileStore store, {
+  ProjectStorage storage, {
   required bool create,
 }) async {
-  final projectJson = project.toJson();
-  final scope = store.openScope();
+  final store = await storage.assetStore;
+  final references = await storage.references;
+  final snapshot = references.snapshot();
   final root = path.dirname(documentPath);
   Directory? staging;
+  var changedDuringSave = false;
+  void onModelChange(ModelChangeEvent _) => changedDuringSave = true;
   try {
-    // Acquire all reads before yielding, so deletion cannot interrupt a save.
-    final reads = {
-      for (final relativePath in store.projectFilePaths)
-        relativePath: store.acquireRead(scope, relativePath),
-    };
+    // Updating the saved file claims is preparation for this save. Start
+    // tracking subsequent edits only after those claims are in the model.
+    project.fileRetentions = snapshot.serializedRetentions;
+    project.addRawFieldChangedListener(onModelChange);
+    final projectJson = project.toJson();
     if (create &&
         await FileSystemEntity.type(root, followLinks: false) !=
             FileSystemEntityType.notFound) {
@@ -59,8 +65,20 @@ Future<void> writeProjectDirectory(
         !create && await FileSystemEntity.identical(store.rootDirectory, root);
     staging = await Directory(create ? path.dirname(root) : root)
         .createTemp('.anthem-save-');
-    for (final entry in reads.entries) {
-      if (savingInPlace) continue;
+    for (final entry in snapshot.reads.entries) {
+      if (savingInPlace) {
+        if (await FileSystemEntity.type(
+              entry.value.absolutePath,
+              followLinks: false,
+            ) !=
+            FileSystemEntityType.file) {
+          throw FileSystemException(
+            'Missing project data file.',
+            entry.value.absolutePath,
+          );
+        }
+        continue;
+      }
       final destination = File(path.join(root, entry.key));
       final staged = File(path.join(staging.path, entry.key));
       await staged.parent.create(recursive: true);
@@ -94,10 +112,16 @@ Future<void> writeProjectDirectory(
     } else {
       await File(document).rename(documentPath);
     }
+    await snapshot.markSaved(documentPath);
   } finally {
-    await store.closeScope(scope);
-    if (staging != null && await staging.exists()) {
-      await staging.delete(recursive: true);
+    try {
+      await snapshot.close();
+      if (staging != null && await staging.exists()) {
+        await staging.delete(recursive: true);
+      }
+    } finally {
+      project.removeRawFieldChangedListener(onModelChange);
     }
   }
+  return (changedDuringSave: changedDuringSave);
 }

@@ -247,26 +247,17 @@ void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nod
 
   try {
     if (!processor->hasRestoredProjectState) {
-      const auto& savedState = graphNode->processorState();
-      if (!savedState.empty()) {
-        juce::MemoryBlock state;
-        if (!state.fromBase64Encoding(savedState)) {
-          throw std::runtime_error("Invalid saved processor state encoding.");
-        }
-        processor->setState(state);
-      }
-      processor->hasRestoredProjectState = true;
-      if (!savedState.empty()) {
-        // Restoring plugin state can change its bus layout. Re-prepare before
-        // reporting the final descriptors and values, with no factory snapshot
-        // becoming visible to the UI in between.
-        processor->prepareToProcess(
+      if (graphNode->processorStateRetentionId().has_value()) {
+        engine.processorStateStorage.restore(graphNode,
+            processor,
             [self = shared_from_this(), nodeId, weakGraphNode, weakProcessor](
-                std::optional<ProcessorPrepareResult> result) {
-              self->completeProcessorNode(nodeId, weakGraphNode, weakProcessor, std::move(result));
+                std::optional<std::string> error) {
+              self->completeStateRestoration(
+                  nodeId, weakGraphNode, weakProcessor, std::move(error));
             });
         return;
       }
+      processor->hasRestoredProjectState = true;
     }
     if (!prepareResult.has_value() || !prepareResult->portConfiguration.has_value()) {
       throw std::runtime_error("Processor preparation did not supply a port configuration.");
@@ -280,6 +271,38 @@ void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nod
   }
 
   finishPendingNode();
+}
+
+void ProcessingGraphNodeInitializationSession::completeStateRestoration(int64_t nodeId,
+    const std::weak_ptr<Node>& weakGraphNode,
+    const std::weak_ptr<Processor>& weakProcessor,
+    std::optional<std::string> error) {
+  auto node = weakGraphNode.lock();
+  auto processor = weakProcessor.lock();
+  if (!isStillCurrentGraphNode(nodeId, node) || processor == nullptr) {
+    completeProcessorNode(nodeId, weakGraphNode, weakProcessor, std::nullopt);
+    return;
+  }
+  if (error) {
+    processor->isPrepared = false;
+    addResult(makeNodeInitializationResult(nodeId, false, *error));
+    finishPendingNode();
+    return;
+  }
+
+  processor->hasRestoredProjectState = true;
+  // Restored state can change the bus layout. Report ports and values only
+  // after the plugin has been prepared again with its saved state applied.
+  try {
+    processor->prepareToProcess([self = shared_from_this(), nodeId, weakGraphNode, weakProcessor](
+                                    std::optional<ProcessorPrepareResult> result) {
+      self->completeProcessorNode(nodeId, weakGraphNode, weakProcessor, std::move(result));
+    });
+  } catch (const std::exception& exception) {
+    processor->isPrepared = false;
+    addResult(makeNodeInitializationResult(nodeId, false, exception.what()));
+    finishPendingNode();
+  }
 }
 
 void ProcessingGraphNodeInitializationSession::initializeProcessorNode(

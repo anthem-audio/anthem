@@ -163,6 +163,7 @@ target_link_libraries(AnthemEngineLib
 
     reflectcpp
     brickworks::brickworks
+    juce::juce_cryptography
     anthem::record_ring_buffer
 )
 

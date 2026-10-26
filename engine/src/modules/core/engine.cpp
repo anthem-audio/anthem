@@ -30,28 +30,33 @@ namespace anthem {
 
 std::unique_ptr<Engine> Engine::instance = nullptr;
 
-Engine::Engine() : uiRequests(comms), fileStorage(uiRequests) {}
+Engine::Engine()
+  : sequenceStore(std::make_unique<RuntimeSequenceStore>()),
+    automationSequenceStore(std::make_unique<RuntimeAutomationSequenceStore>()),
+    transport(std::make_unique<Transport>(
+        createTransportProjectView(*this), createTransportClock(*this))),
+    engineRuntimeServices(std::make_unique<EngineRuntimeServices>(
+        *transport, *sequenceStore, *automationSequenceStore)),
+    graphProcessor(std::make_unique<GraphProcessor>(*engineRuntimeServices)),
+    globalVisualizationSources(std::make_unique<GlobalVisualizationSources>()), uiRequests(comms),
+    fileStorage(uiRequests), processorStateStorage(fileStorage),
+    audioBlockProcessor(std::make_unique<AudioBlockProcessor>(*transport,
+        *sequenceStore,
+        *automationSequenceStore,
+        *graphProcessor,
+        *globalVisualizationSources)),
+    audioSessionController(std::make_unique<AudioSessionController>(project,
+        *graphProcessor,
+        *transport,
+        comms,
+        *audioBlockProcessor,
+        [this]() { resetInitializedProcessingGraphNodes(); })),
+    renderController(std::make_unique<RenderController>(
+        *audioSessionController, *audioBlockProcessor, *transport, comms)) {}
 
 void Engine::initialize() {
-  this->sequenceStore = std::make_unique<RuntimeSequenceStore>();
-  this->automationSequenceStore = std::make_unique<RuntimeAutomationSequenceStore>();
-  transport =
-      std::make_unique<Transport>(createTransportProjectView(*this), createTransportClock(*this));
-  this->engineRuntimeServices =
-      std::make_unique<EngineRuntimeServices>(*transport, *sequenceStore, *automationSequenceStore);
-  this->graphProcessor = std::make_unique<GraphProcessor>(*engineRuntimeServices);
-  globalVisualizationSources = std::make_unique<GlobalVisualizationSources>();
-  audioBlockProcessor = std::make_unique<AudioBlockProcessor>(*transport,
-      *sequenceStore,
-      *automationSequenceStore,
-      *graphProcessor,
-      *globalVisualizationSources);
-  audioSessionController = std::make_unique<AudioSessionController>(
-      project, *graphProcessor, *transport, comms, *audioBlockProcessor, [this]() {
-        resetInitializedProcessingGraphNodes();
-      });
-  renderController = std::make_unique<RenderController>(
-      *audioSessionController, *audioBlockProcessor, *transport, comms);
+  transport->startMaintenanceTimer();
+  graphProcessor->initialize();
 
 #ifndef __EMSCRIPTEN__
   juce::addDefaultFormatsToManager(audioPluginFormatManager);
@@ -60,18 +65,14 @@ void Engine::initialize() {
 #endif // #ifndef __EMSCRIPTEN__
 
   bootstrapResult.error = visualizationComms.init();
+  VisualizationBroker::getInstance().start();
   comms.init();
 }
 
 void Engine::shutdown() {
   uiRequests.close();
-  if (renderController != nullptr) {
-    renderController->stopRenderThread();
-  }
-
-  if (audioSessionController != nullptr) {
-    audioSessionController->stopAudio();
-  }
+  renderController->stopRenderThread();
+  audioSessionController->stopAudio();
   VisualizationBroker::getInstance().dispose();
 }
 

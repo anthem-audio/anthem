@@ -52,12 +52,16 @@ ProjectFileVersion readSavedProjectVersion(ProjectJson projectJson) {
 ///
 /// The input map is mutated and returned. Callers must discard it if a
 /// migration throws.
-ProjectJson migrateProjectJson(
+///
+/// Migrations that create files write them into [projectDirectory]. For an
+/// import, prepare a temporary directory and delete it if loading fails.
+Future<ProjectJson> migrateProjectJson(
   ProjectJson projectJson, {
   List<ProjectFileMigration> migrations = projectFileMigrations,
+  String? projectDirectory,
   ProjectFileVersion? currentVersion,
   ProjectFileVersion oldestSupportedVersion = oldestSupportedProjectFileVersion,
-}) {
+}) async {
   final resolvedCurrentVersion = currentVersion ?? currentProjectFileVersion;
 
   final savedVersion = readSavedProjectVersion(projectJson);
@@ -94,7 +98,7 @@ ProjectJson migrateProjectJson(
     }
 
     try {
-      migration.migrate(projectJson);
+      await migration.migrate(projectJson, projectDirectory);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
         ProjectFileMigrationException(

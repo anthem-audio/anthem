@@ -544,13 +544,6 @@ void VST3Processor::tryInitializePlugin(ProcessorPrepareCallback complete) {
         writeVST3Log(*selfShared, "Plugin listener attached.");
 
         complete(selfShared->buildPrepareResultForPlugin());
-
-        writeVST3Log(*selfShared, "Sending PluginLoadedEvent to UI.");
-
-        IpcEvent event = PluginLoadedEvent{.nodeId = selfShared->nodeId()};
-
-        auto eventString = rfl::json::write(event);
-        Engine::getInstance().comms.send(eventString);
       });
 }
 

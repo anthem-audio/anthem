@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2021 - 2023 Joshua Wade
+  Copyright (C) 2021 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/model/project.dart';
 
 /// Base class for a command.
@@ -24,11 +26,14 @@ import 'package:anthem/model/project.dart';
 /// Anthem uses the command pattern for undo/redo. All undo-able changes to the
 /// model should be performed via commands.
 abstract class Command {
-  /// Executes this command and returns a list of `StateChange`s describing
-  /// the resulting changes.
-  void execute(ProjectModel project);
+  /// Applies the change, completing when any required file I/O has finished.
+  FutureOr<void> execute(ProjectModel project);
 
-  /// Undoes this command and returns a list of `StateChange`s describing the
-  /// resulting changes.
-  void rollback(ProjectModel project);
+  /// Reverses the change, completing when any required file I/O has finished.
+  FutureOr<void> rollback(ProjectModel project);
+
+  /// Releases resources when this command can no longer be undone or redone.
+  ///
+  /// Undoing a command does not dispose it: redo may still need its resources.
+  void dispose() {}
 }

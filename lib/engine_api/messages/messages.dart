@@ -20,6 +20,7 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/storage/file_fingerprint.dart';
 import 'package:anthem_codegen/include.dart';
 
 part 'file_storage.dart';

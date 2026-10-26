@@ -40,7 +40,9 @@ struct GraphProcessor::RuntimeGraphHandoff {
 GraphProcessor::GraphProcessor(EngineRuntimeServices& engineRuntimeServices)
   : executor(std::make_unique<GraphExecutor>()), engineRuntimeServices(&engineRuntimeServices),
     clearDeletionQueueTimedCallback(
-        juce::TimedCallback([this]() { this->clearRetiredRuntimeGraphs(); })) {
+        juce::TimedCallback([this]() { this->clearRetiredRuntimeGraphs(); })) {}
+
+void GraphProcessor::initialize() {
   executor->prepare();
   clearDeletionQueueTimedCallback.startTimer(2000);
 }

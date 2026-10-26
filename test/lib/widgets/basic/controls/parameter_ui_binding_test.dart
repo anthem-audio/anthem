@@ -198,7 +198,7 @@ _createParameterProject({
   return (project: project, node: node, port: port);
 }
 
-void _disposeProject(ProjectModel project) {
+Future<void> _disposeProject(ProjectModel project) async {
+  await project.dispose();
   ServiceRegistry.removeProject(project.id);
-  project.dispose();
 }

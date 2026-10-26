@@ -31,6 +31,7 @@ import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobx/mobx.dart';
 
 class _RecordingProcessingGraphApi extends Fake implements ProcessingGraphApi {
   final calls = <String>[];
@@ -76,9 +77,9 @@ void main() {
     ServiceRegistry.initializeProject(project);
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   });
 
   group('editor and transport selection', () {
@@ -258,7 +259,20 @@ void main() {
         ),
       ];
       project.engine.processingGraphApi = api;
+      String? nameWhenReady;
+      int? portCountWhenReady;
+      final disposeReaction = reaction((_) => node.initializationState, (
+        state,
+      ) {
+        if (state == NodeInitializationState.ready) {
+          nameWhenReady = previousPort.config.name;
+          portCountWhenReady = node.controlInputPorts.length;
+        }
+      });
+      addTearDown(disposeReaction.call);
       await controller.publishProcessingGraph();
+      expect(nameWhenReady, 'New name');
+      expect(portCountWhenReady, 2);
       final refreshedPort = node.getPortById(100);
       expect(refreshedPort, same(previousPort));
       expect(refreshedPort.config.name, 'New name');
@@ -335,6 +349,7 @@ void main() {
         ),
       ];
       await controller.publishProcessingGraph();
+      expect(destination.initializationState, NodeInitializationState.ready);
       expect(port.isAvailable, isFalse);
       expect(destination.controlInputPorts.single, same(port));
       expect(
@@ -541,6 +556,7 @@ void main() {
           ];
         project.engine.processingGraphApi = api;
         await controller.publishProcessingGraph();
+        expect(node.initializationState, NodeInitializationState.failed);
         expect(ports.every((port) => !port.isAvailable), isTrue);
         expect(
           project.processingGraph.connections.keys,

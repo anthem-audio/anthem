@@ -20,21 +20,25 @@
 @TestOn('vm')
 library;
 
+import 'dart:convert';
 import 'dart:io';
 
-import 'package:anthem/logic/storage/project_file_store.dart';
-import 'package:anthem/logic/storage/project_storage.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:test/test.dart';
 
 void main() {
-  late ProjectStorage storage;
-  late ProjectFileStore store;
+  late Directory directory;
+  late ProjectAssetStore store;
   late String first;
   late String second;
 
   setUp(() async {
-    storage = ProjectStorage.temporary();
-    store = await storage.fileStore;
+    directory = await Directory.systemTemp.createTemp('anthem_file_scope_');
+    store = await ProjectAssetStore.open(
+      directory.path,
+      categories: ProjectAssetCategory.defaults,
+    );
     first = store.openScope();
     second = store.openScope();
   });
@@ -42,7 +46,127 @@ void main() {
   tearDown(() async {
     await store.closeScope(first);
     await store.closeScope(second);
-    await storage.discard();
+    await store.close();
+    await directory.delete(recursive: true);
+  });
+
+  test(
+    'serialized scopes restore retention IDs and exclude runtime access',
+    () async {
+      final write = await store.beginWrite(first, 'plugin states');
+      await File(write.absolutePath).writeAsString('durable state');
+      final file = await store.commitWrite(first, write.token);
+      final projectScope = store.openScope();
+      final id = store.retain(projectScope, file);
+      final anotherId = store.retain(projectScope, file);
+      final commandClaim = store.retain(second, file);
+      final read = store.acquireRead(projectScope, file);
+      final pending = await store.beginWrite(projectScope, 'plugin states');
+      final serialized = store.serializeRetentions(projectScope);
+      expect(jsonDecode(serialized), {id: file, anotherId: file});
+      expect(store.resolveRetention(id), file);
+      expect(store.resolveRetention(commandClaim), file);
+      await store.closeScope(projectScope);
+      expect(await File(pending.absolutePath).exists(), isFalse);
+      expect(() => store.resolveRetention(id), throwsStateError);
+
+      final restored = store.openScope(serializedRetentions: serialized);
+      try {
+        expect(store.resolveRetention(id), file);
+        expect(() => store.releaseRead(restored, read.token), throwsStateError);
+        store.releaseRetention(second, commandClaim);
+        expect(() => store.delete(first, file), throwsStateError);
+        store.releaseRetention(restored, id);
+        expect(() => store.delete(first, file), throwsStateError);
+        store.releaseRetention(restored, anotherId);
+        await store.delete(first, file);
+      } finally {
+        await store.closeScope(restored);
+      }
+    },
+  );
+
+  test('serialized claims cannot be restored into two live scopes', () async {
+    final write = await store.beginWrite(first, 'plugin states');
+    final file = await store.commitWrite(first, write.token);
+    final scope = store.openScope();
+    final id = store.retain(scope, file);
+    final serialized = store.serializeRetentions(scope);
+    try {
+      expect(
+        () => store.openScope(serializedRetentions: serialized),
+        throwsStateError,
+      );
+    } finally {
+      await store.closeScope(scope);
+    }
+    final reopened = store.openScope(serializedRetentions: serialized);
+    expect(store.resolveRetention(id), file);
+    await store.closeScope(reopened);
+  });
+
+  test('failed scope restoration does not leave partial ownership', () async {
+    final write = await store.beginWrite(first, 'plugin states');
+    final file = await store.commitWrite(first, write.token);
+    expect(
+      () => store.openScope(
+        serializedRetentions: jsonEncode({
+          'valid': file,
+          'missing': 'plugin states/missing.bin',
+        }),
+      ),
+      throwsStateError,
+    );
+    expect(() => store.resolveRetention('valid'), throwsStateError);
+    final serialized = jsonEncode({'valid': file});
+    final restored = store.openScope(serializedRetentions: serialized);
+    try {
+      expect(
+        () => store.openScope(serializedRetentions: serialized),
+        throwsStateError,
+      );
+      store.releaseRetention(restored, 'valid');
+      expect(jsonDecode(store.serializeRetentions(restored)), isEmpty);
+      // Releasing the live claim does not alter the previously captured JSON.
+      expect(jsonDecode(serialized), {'valid': file});
+      await store.delete(first, file);
+    } finally {
+      await store.closeScope(restored);
+    }
+  });
+
+  for (final invalid in ['{', '[]', 'null', '{"claim": 1}']) {
+    test('invalid serialized retentions are rejected: $invalid', () {
+      expect(
+        () => store.openScope(serializedRetentions: invalid),
+        throwsFormatException,
+      );
+    });
+  }
+
+  test('cache claims cannot be serialized or restored', () async {
+    final root = await Directory.systemTemp.createTemp('anthem_cache_scope_');
+    final caches = await ProjectAssetStore.open(
+      root.path,
+      categories: [const ProjectAssetCategory('cache', isCache: true)],
+    );
+    final scope = caches.openScope();
+    try {
+      final write = await caches.beginWrite(scope, 'cache');
+      final file = await caches.commitWrite(scope, write.token);
+      final id = caches.retain(scope, file);
+      expect(() => caches.serializeRetentions(scope), throwsStateError);
+      caches.releaseRetention(scope, id);
+      expect(
+        () => caches.openScope(serializedRetentions: jsonEncode({id: file})),
+        throwsStateError,
+      );
+      await caches.delete(scope, file);
+    } finally {
+      await caches.closeScope(scope);
+      await caches.close();
+      await root.delete(recursive: true);
+    }
   });
 
   test('tokens can only be used by the scope that acquired them', () async {

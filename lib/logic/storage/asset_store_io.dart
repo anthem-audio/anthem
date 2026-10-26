@@ -19,8 +19,11 @@
 
 import 'dart:io';
 
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
+
+import 'file_fingerprint.dart';
 
 Future<void> createDirectory(String directory) async {
   await Directory(directory).create(recursive: true);
@@ -66,4 +69,16 @@ Future<void> deleteDirectory(String directory) async {
   if (await Directory(directory).exists()) {
     await Directory(directory).delete(recursive: true);
   }
+}
+
+Future<int> fileLength(String file) => File(file).length();
+
+Future<FileFingerprint> readFingerprint(String file) async {
+  var byteLength = 0;
+  final contents = File(file).openRead().map((chunk) {
+    byteLength += chunk.length;
+    return chunk;
+  });
+  final digest = await crypto.sha256.bind(contents).first;
+  return FileFingerprint(byteLength: byteLength, sha256: digest.toString());
 }

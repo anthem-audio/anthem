@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/model/model.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,6 +31,7 @@ void main() {
     addTearDown(project.dispose);
     for (final node in createNativeProcessorTestNodes(project)) {
       project.processingGraph.addNode(node);
+      expect(node.initializationState, NodeInitializationState.uninitialized);
       expect(node.getAllPorts(), isNotEmpty);
       expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);
       for (final port in [...node.audioInputPorts, ...node.audioOutputPorts]) {
@@ -45,12 +47,35 @@ void main() {
       for (final port in node.getAllPorts()) {
         port.isAvailable = true;
       }
+      final engineJson = node.toJson(forEngine: true);
+      node.markInitialized();
+      expect(node.toJson(forEngine: true), engineJson);
       final restored = NodeModel.fromJson(node.toJson());
+      expect(
+        restored.initializationState,
+        NodeInitializationState.uninitialized,
+      );
       expect(restored.getAllPorts().every((port) => !port.isAvailable), isTrue);
       expect(
         restored.controlInputPorts.map((port) => port.parameterValue),
         node.controlInputPorts.map((port) => port.parameterValue),
       );
+    }
+  });
+
+  test('stopping the engine revokes native port confirmations without losing settings', () {
+    final project = ProjectModel.create();
+    addTearDown(project.dispose);
+    for (final node in createNativeProcessorTestNodes(project)) {
+      final saved = node.toJson();
+      for (final port in node.getAllPorts()) {
+        port.isAvailable = true;
+      }
+      node.markInitialized();
+      node.handleEngineStateChange(EngineState.stopped);
+      expect(node.initializationState, NodeInitializationState.uninitialized);
+      expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);
+      expect(node.toJson(), saved);
     }
   });
 }
