@@ -28,6 +28,7 @@ import 'package:anthem/model/arrangement/clip.dart';
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
@@ -741,6 +742,14 @@ class _AutomationHoldPaintFixture {
 
     final parentTrack = project.tracks[project.trackOrder.first]!;
     final utilityNode = parentTrack.requireProcessing.utilityNode!;
+    for (final port in utilityNode.controlInputPorts) {
+      port.config.parameterConfig = ParameterConfigModel(
+        id: port.id,
+        normalizedVisualBaseline: port.id == UtilityProcessorModel.balancePortId
+            ? 0.5
+            : 0.0,
+      );
+    }
     utilityNode.getPortById(portId).parameterValue = 0.35;
     final viewModel = ServiceRegistry.forProject(project.id).arrangerViewModel;
 

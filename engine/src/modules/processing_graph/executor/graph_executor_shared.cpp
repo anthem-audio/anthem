@@ -148,6 +148,7 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
     return;
   }
 
+  node.nodeProcessContext->rt_updateParameterControl();
   node.nodeProcessContext->clearBuffers();
 
   for (const auto& connectionTransferAction : node.connectionTransferActions) {

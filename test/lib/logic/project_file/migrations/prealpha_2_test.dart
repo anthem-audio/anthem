@@ -22,11 +22,17 @@ library;
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
+import 'package:anthem/logic/project_file/version.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/project.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+
+import '../../../../fixtures/prealpha_1_project.dart';
 
 Map<String, dynamic> _projectWithArrangements(
   Map<String, dynamic> arrangements, {
@@ -92,14 +98,149 @@ Map<String, dynamic> _projectWithNode(Map<String, dynamic> node) {
   return project;
 }
 
+Future<Uint8List> _privateStateBytes(File file) async {
+  final bytes = await file.readAsBytes();
+  expect(ascii.decode(bytes.sublist(0, 8)), 'ANTHST01');
+  final metadataLength = ByteData.sublistView(
+    bytes,
+    8,
+    12,
+  ).getUint32(0, Endian.little);
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(12, 12 + metadataLength))) as Map;
+  expect(metadata['version'], 1);
+  return bytes.sublist(12 + metadataLength);
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   late Directory directory;
   setUp(() async {
     directory = await Directory.systemTemp.createTemp('anthem_migration_');
   });
   tearDown(() => directory.delete(recursive: true));
 
+  Future<Map<String, dynamic>> migrateMetadata(
+    Map<String, dynamic> json,
+  ) async {
+    final storage = await directory.createTemp('metadata_');
+    return migrateProjectJson(json, projectDirectory: storage.path);
+  }
+
   group('prealpha.2 project-file migration', () {
+    test('migrates a complete legacy project into the current model', () async {
+      final projectJson =
+          jsonDecode(prealpha1ProjectJson) as Map<String, dynamic>;
+      // Add a fixed legacy VST node to exercise opaque-state extraction and
+      // migration of plugin parameter metadata alongside the native ports.
+      projectJson['processingGraph']['nodes']['17'] = {
+        'id': 17,
+        'audioInputPorts': <dynamic>[],
+        'audioOutputPorts': [
+          {
+            'id': 0,
+            'nodeId': 17,
+            'config': {'dataType': 'audio'},
+            'connections': [18],
+          },
+        ],
+        'eventInputPorts': <dynamic>[],
+        'eventOutputPorts': <dynamic>[],
+        'controlInputPorts': [
+          {
+            'id': 7,
+            'nodeId': 17,
+            'config': {
+              'dataType': 'control',
+              'parameterConfig': {
+                'id': 7,
+                'defaultValue': 0.2,
+                'displayMode': 'pluginText',
+                'normalizedVisualBaseline': 0.75,
+              },
+            },
+            'connections': <dynamic>[],
+            'parameterValue': 0.123,
+          },
+        ],
+        'controlOutputPorts': <dynamic>[],
+        'isThirdPartyPlugin': true,
+        'processor': {
+          'VST3ProcessorModel': {'nodeId': 17, 'vst3Path': '/test/plugin.vst3'},
+        },
+        'processorState': '3.AHv.',
+      };
+      projectJson['processingGraph']['connections']['18'] = {
+        'id': 18,
+        'sourceNodeId': 17,
+        'sourcePortId': 0,
+        'destinationNodeId': 4,
+        'destinationPortId': 0,
+        'dataType': 'audio',
+      };
+      projectJson['processingGraph']['nodes']['4']['audioInputPorts'][0]['connections'] =
+          [18];
+      projectJson['idCounter'] = 19;
+      await migrateProjectJson(projectJson, projectDirectory: directory.path);
+      final pluginRetention =
+          projectJson['processingGraph']['nodes']['17']['processorStateRetentionId'];
+      final pluginPath =
+          (jsonDecode(projectJson['fileRetentions']) as Map)[pluginRetention]
+              as String;
+      expect(
+        await _privateStateBytes(File(path.join(directory.path, pluginPath))),
+        [1, 2, 3],
+      );
+      expect(readSavedProjectVersion(projectJson), currentProjectFileVersion);
+      final decodedProject = ProjectModel.fromJson(projectJson);
+      addTearDown(decodedProject.dispose);
+      expect(decodedProject.sequence.arrangement.id, 0);
+      expect(decodedProject.tracks[2]!.name, 'Persistence track');
+      expect(decodedProject.sequence.beatsPerMinuteRaw, 13700);
+      expect(decodedProject.sequence.patterns[16]!.notes[0]!.key, 67);
+      final gain = decodedProject.processingGraph.nodes[4]!.getPortById(2);
+      expect(gain.parameterValue, 0.321);
+      expect(gain.parameterResetValue, 0.65625);
+      expect(gain.config.parameterConfig!.normalizedVisualBaseline, 0.25);
+      expect(gain.config.parameterConfig!.factoryDefaultValue, isNull);
+      final plugin = decodedProject.processingGraph.nodes[17]!;
+      expect(
+        jsonDecode(
+          decodedProject.fileRetentions,
+        )[plugin.processorStateRetentionId],
+        pluginPath,
+      );
+      final pluginParameter = plugin.getPortById(7);
+      expect(pluginParameter.parameterValue, 0.123);
+      expect(pluginParameter.parameterResetValue, 0.2);
+      expect(pluginParameter.config.parameterConfig!.factoryDefaultValue, 0.2);
+      expect(
+        pluginParameter.config.parameterConfig!.displayMode,
+        ParameterDisplayMode.pluginText,
+      );
+      expect(
+        pluginParameter.config.parameterConfig!.normalizedVisualBaseline,
+        0.75,
+      );
+      final connection = decodedProject.processingGraph.connections[18]!;
+      expect(connection.sourceNodeId, plugin.id);
+      expect(connection.destinationNodeId, 4);
+      expect(plugin.getPortById(0).connections, [18]);
+      expect(
+        decodedProject.processingGraph.nodes[4]!.getPortById(0).connections,
+        [18],
+      );
+      expect(
+        decodedProject.toJson()['processingGraph']['nodes']['17'],
+        isNot(contains('processorState')),
+      );
+      final currentJson = decodedProject.toJson();
+      final restored = ProjectModel.fromJson(currentJson);
+      addTearDown(restored.dispose);
+      expect(restored.toJson(), currentJson);
+    });
+
     test('extracts JUCE state bytes before model deserialization', () async {
       // Produced by juce::MemoryBlock::toBase64Encoding for bytes 1, 2, 3.
       final node = _oldNode()..['processorState'] = '3.AHv.';
@@ -110,8 +251,9 @@ void main() {
         'plugin states/1.bin',
       );
       expect(
-        await File(path.join(directory.path, 'plugin states', '1.bin'))
-            .readAsBytes(),
+        await _privateStateBytes(
+          File(path.join(directory.path, 'plugin states', '1.bin')),
+        ),
         [1, 2, 3],
       );
       expect(
@@ -128,8 +270,9 @@ void main() {
         projectDirectory: directory.path,
       );
       expect(
-        await File(path.join(directory.path, 'plugin states', '1.bin'))
-            .readAsBytes(),
+        await _privateStateBytes(
+          File(path.join(directory.path, 'plugin states', '1.bin')),
+        ),
         [0, 255, 128, 64, 127, 255, 0, 128],
       );
     });
@@ -151,8 +294,9 @@ void main() {
         'plugin states/2.bin',
       );
       expect(
-        await File(path.join(directory.path, 'plugin states', '2.bin'))
-            .readAsBytes(),
+        await _privateStateBytes(
+          File(path.join(directory.path, 'plugin states', '2.bin')),
+        ),
         [0, 255, 128, 64, 127, 255, 0, 128],
       );
     });
@@ -366,7 +510,7 @@ void main() {
     });
 
     test(
-      'preserves routing and automation while splitting parameter metadata',
+      'preserves routing and automation while migrating parameter metadata',
       () async {
         final port = _oldParameterPort(
           metadata: {'normalizedVisualBaseline': 0.25, 'unitLabel': '%'},
@@ -384,7 +528,7 @@ void main() {
         project['processingGraph']['connections'] = connections;
         project['sequence']['patterns'] = patterns;
 
-        await migrateProjectJson(project);
+        await migrateMetadata(project);
 
         final parameter = port['config']['parameterConfig'] as Map;
         expect(parameter, {
@@ -392,13 +536,16 @@ void main() {
           'factoryDefaultValue': 0.2,
           'displayMode': 'percent',
           'unitLabel': '%',
+          'normalizedVisualBaseline': 0.25,
         });
         expect(port['parameterValue'], 0.1);
         expect(port['parameterResetValue'], 0.2);
-        expect(port['presentation'], {'normalizedVisualBaseline': 0.25});
+        expect(port, isNot(contains('presentation')));
         expect(port['connections'], [17]);
         expect(node, isNot(contains('processorState')));
-        expect(node['processorStateRetentionId'], isNull);
+        expect(node['processorStateRetentionId'], isNotNull);
+        expect(node['initialParameterValues'], isEmpty);
+        expect(node, isNot(contains('isThirdPartyPlugin')));
         expect(project['processingGraph']['connections'], same(connections));
         expect(project['sequence']['patterns'], same(patterns));
       },
@@ -412,7 +559,7 @@ void main() {
         processor: 'UtilityProcessorModel',
         isThirdPartyPlugin: false,
       )..['controlInputPorts'] = [port];
-      await migrateProjectJson(_projectWithNode(node));
+      await migrateMetadata(_projectWithNode(node));
 
       expect(port['parameterValue'], 0.321);
       expect(port['parameterResetValue'], tenDbBelowUnity);
@@ -439,20 +586,18 @@ void main() {
           );
           final node = _oldNode(processor: processor, isThirdPartyPlugin: false)
             ..['controlInputPorts'] = [port];
-          await migrateProjectJson(_projectWithNode(node));
-          expect(port['presentation'], {
-            'normalizedVisualBaseline': baseline ?? 0.5,
-          });
-          expect(port['parameterResetValue'], 0.5);
+          await migrateMetadata(_projectWithNode(node));
           expect(
-            port['config']['parameterConfig'],
-            isNot(contains('normalizedVisualBaseline')),
+            port['config']['parameterConfig']['normalizedVisualBaseline'],
+            baseline ?? 0.5,
           );
+          expect(port['parameterResetValue'], 0.5);
+          expect(port, isNot(contains('presentation')));
         }
       });
     }
 
-    test('adds presentation metadata to every port group without changing channels or connections', () async {
+    test('keeps non-parameter ports free of parameter metadata', () async {
       final node = _oldNode();
       final ports = <Map<String, dynamic>>[];
       for (final (group, type) in [
@@ -472,9 +617,9 @@ void main() {
         node[group] = [port];
         ports.add(port);
       }
-      await migrateProjectJson(_projectWithNode(node));
+      await migrateMetadata(_projectWithNode(node));
       for (final port in ports) {
-        expect(port['presentation'], {'normalizedVisualBaseline': 0.0});
+        expect(port, isNot(contains('presentation')));
         expect(port['connections'], [17]);
         expect(port, isNot(contains('parameterResetValue')));
         if (port['config']['dataType'] == 'audio') {
@@ -490,10 +635,10 @@ void main() {
           processor: processor,
           isThirdPartyPlugin: processor != null,
         )..['controlInputPorts'] = [port];
-        await migrateProjectJson(_projectWithNode(node));
+        await migrateMetadata(_projectWithNode(node));
         expect(port['config']['parameterConfig']['factoryDefaultValue'], 0.2);
         expect(port['parameterResetValue'], 0.2);
-        expect(port['presentation'], {'normalizedVisualBaseline': 0.0});
+        expect(port, isNot(contains('presentation')));
       }
     });
 
@@ -513,7 +658,7 @@ void main() {
           );
           final node = _oldNode()..['controlInputPorts'] = [port];
           await expectLater(
-            migrateProjectJson(_projectWithNode(node)),
+            migrateMetadata(_projectWithNode(node)),
             throwsA(
               isA<ProjectFileMigrationException>().having(
                 (error) => error.cause,
@@ -528,7 +673,7 @@ void main() {
           port['config']['parameterConfig']['defaultValue'] = value;
           final node = _oldNode()..['controlInputPorts'] = [port];
           await expectLater(
-            migrateProjectJson(_projectWithNode(node)),
+            migrateMetadata(_projectWithNode(node)),
             throwsA(
               isA<ProjectFileMigrationException>().having(
                 (error) => error.cause,

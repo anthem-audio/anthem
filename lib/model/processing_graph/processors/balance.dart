@@ -20,7 +20,6 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
@@ -65,14 +64,7 @@ class BalanceProcessorModel extends _BalanceProcessorModel
     processor: this,
     audioInputPortIds: [audioInputPortId],
     audioOutputPortIds: [audioOutputPortId],
-    parameters: [
-      NativeParameterPreset(
-        id: balancePortId,
-        value: 0.5,
-        displayMode: ParameterDisplayMode.pan,
-        normalizedVisualBaseline: 0.5,
-      ),
-    ],
+    controlInputPortIds: [balancePortId],
   );
 
   static const int audioInputPortId = _BalanceProcessorModel.audioInputPortId;

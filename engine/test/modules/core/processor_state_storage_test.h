@@ -20,8 +20,10 @@
 #pragma once
 
 #include "modules/core/comms.h"
+#include "modules/core/processor_state_snapshot.h"
 #include "modules/core/processor_state_storage.h"
 
+#include <cstring>
 #include <juce_cryptography/juce_cryptography.h>
 #include <stdexcept>
 
@@ -57,12 +59,13 @@ public:
     auto processor = std::make_shared<StorageTestProcessor>();
     const auto node = std::make_shared<Node>(NodeModelImpl{
         .id = 1,
-        .isThirdPartyPlugin = false,
         .processorStateRetentionId = "previous-retention",
         .processor =
             rfl::Field<"UtilityProcessorModel", std::shared_ptr<UtilityProcessor>>(processor),
     });
-    expect(file.replaceWithData(processor->state.getData(), processor->state.getSize()));
+    ProcessorStateSnapshot(*processor).write(file);
+    const auto storedFingerprint = ProcessorStateSnapshot(*processor).fingerprint();
+    processor->captureCount = 0;
 
     beginTest(
         "An initialized processor can reuse its state file while its audio session is stopped");
@@ -81,8 +84,8 @@ public:
       expect(requests.handleResponse(AcquireFileReadResponse{
           .token = "read",
           .absolutePath = file.getFullPathName().toStdString(),
-          .fingerprint = std::make_shared<FileFingerprint>(FileFingerprint{.byteLength = 10,
-              .sha256 = juce::SHA256(processor->state).toHexString().toStdString()}),
+          .fingerprint = std::make_shared<FileFingerprint>(FileFingerprint{
+              .byteLength = storedFingerprint.byteLength, .sha256 = storedFingerprint.sha256}),
           .responseBase = ResponseBase{.id = 1},
       }));
       expectEquals(processor->captureCount, 0);
@@ -133,7 +136,9 @@ public:
         expectEquals(processor->captureCount, count + static_cast<int>(id) + 1);
         juce::MemoryBlock written;
         expect(destination.loadFileAsData(written));
-        expect(written == processor->state);
+        StorageTestProcessor restored;
+        ProcessorStateSnapshot(destination).restore(restored);
+        expect(restored.state == processor->state);
       }
       expectEquals(completed, 0);
       for (int64_t id = 2; id < 4; ++id) {
@@ -163,7 +168,8 @@ public:
       expect(requests.handleResponse(AcquireFileReadResponse{
           .token = "read",
           .absolutePath = file.getFullPathName().toStdString(),
-          .fingerprint = std::make_shared<FileFingerprint>(FileFingerprint{.byteLength = 10,
+          .fingerprint = std::make_shared<FileFingerprint>(FileFingerprint{
+              .byteLength = storedFingerprint.byteLength,
               .sha256 =
                   juce::SHA256(juce::MemoryBlock("other data", 10)).toHexString().toStdString()}),
           .responseBase = ResponseBase{.id = 1},
@@ -227,7 +233,7 @@ public:
           .responseBase = ResponseBase{.id = 1},
       }));
       expect(result && !result->error && result->value && result->value->empty());
-      expectEquals(file.getSize(), static_cast<juce::int64>(10));
+      expectEquals(file.getSize(), static_cast<juce::int64>(storedFingerprint.byteLength));
       processor->state = juce::MemoryBlock("test state", 10);
     }
 
@@ -286,6 +292,80 @@ public:
         expect(processor->state == juce::MemoryBlock("test state", 10));
     }
     expect(file.deleteFile());
+
+    beginTest("Native base values are durable without a private payload");
+    {
+      UtilityProcessor native(UtilityProcessorModelImpl{.nodeId = 2});
+      native.restoreParameterValues(
+          {{UtilityProcessor::gainPortId, 0.321}, {UtilityProcessor::balancePortId, 0.75}});
+      ProcessorStateSnapshot snapshot(native);
+      expect(!snapshot.isEmpty());
+      snapshot.write(file);
+      UtilityProcessor restored(UtilityProcessorModelImpl{.nodeId = 2});
+      ProcessorStateSnapshot(file).restore(restored);
+      expectWithinAbsoluteError(
+          restored.getParameter(UtilityProcessor::gainPortId)->value.load(), 0.321f, 0.0001f);
+      expectWithinAbsoluteError(
+          restored.getParameter(UtilityProcessor::balancePortId)->value.load(), 0.75f, 0.0001f);
+      expectEquals(
+          ProcessorStateSnapshot(restored).fingerprint().sha256, snapshot.fingerprint().sha256);
+      expect(file.deleteFile());
+    }
+
+    beginTest("Common bases override effective values embedded in private state");
+    {
+      StorageTestProcessor original;
+      original.restoreParameterValues({{UtilityProcessor::gainPortId, 0.25}});
+      original.state = juce::MemoryBlock("automated", 9);
+      ProcessorStateSnapshot(original).write(file);
+      StorageTestProcessor restored;
+      ProcessorStateSnapshot(file).restore(restored);
+      expect(restored.state == original.state);
+      expectWithinAbsoluteError(
+          restored.getParameter(UtilityProcessor::gainPortId)->value.load(), 0.25f, 0.0001f);
+      expect(file.deleteFile());
+    }
+
+    beginTest("Invalid snapshot metadata is rejected before restoring processor state");
+    for (const auto* metadata : {R"({"version":2,"parameters":{}})",
+             R"({"version":1,"parameters":{"bad-id":0.5}})",
+             R"({"version":1,"parameters":{"0":1.1}})",
+             R"({"version":1,"parameters":{"0":-0.1}})",
+             "not JSON"}) {
+      {
+        juce::FileOutputStream output(file);
+        expect(output.openedOk());
+        output.write("ANTHST01", 8);
+        const auto length = std::strlen(metadata);
+        output.writeInt(static_cast<int>(length));
+        output.write(metadata, length);
+      }
+      bool rejected = false;
+      try {
+        ProcessorStateSnapshot invalid(file);
+      } catch (const std::exception&) {
+        rejected = true;
+      }
+      expect(rejected);
+      expect(file.deleteFile());
+    }
+
+    beginTest("Truncated and oversized snapshot metadata is rejected");
+    for (const auto length : {0, -1, 100, 16 * 1024 * 1024 + 1}) {
+      {
+        juce::FileOutputStream output(file);
+        output.write("ANTHST01", 8);
+        output.writeInt(length);
+      }
+      bool rejected = false;
+      try {
+        ProcessorStateSnapshot invalid(file);
+      } catch (const std::exception&) {
+        rejected = true;
+      }
+      expect(rejected);
+      expect(file.deleteFile());
+    }
 
     beginTest("Legacy migration fixture matches JUCE's encoding");
     const unsigned char legacyBytes[] = {1, 2, 3};

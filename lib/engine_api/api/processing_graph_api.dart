@@ -103,41 +103,43 @@ class ProcessingGraphApi {
     }
   }
 
-  /// Sets a normalized third-party plugin parameter value immediately.
-  void setPluginParameterValue(Id nodeId, int controlPortId, double value) {
-    if (!_engine.isRunning) {
-      return;
+  /// Updates an engine-owned base value and returns the accepted setting.
+  Future<ProcessingGraphParameterValue> setParameterValue(
+    Id nodeId,
+    int controlPortId,
+    double value,
+  ) async {
+    if (!_engine.isRunning) throw StateError('The engine is not running.');
+    final response = await _engine._request(
+      SetProcessorParameterValueRequest(
+        id: _engine._getRequestId(),
+        nodeId: nodeId,
+        controlPortId: controlPortId,
+        value: value,
+      ),
+    ) as SetProcessorParameterValueResponse;
+    if (response.error != null || response.parameterValue == null) {
+      throw StateError(
+        response.error ?? 'The engine returned no accepted parameter value.',
+      );
     }
-
-    final id = _engine._getRequestId();
-
-    final request = SetPluginParameterValueRequest(
-      id: id,
-      nodeId: nodeId,
-      controlPortId: controlPortId,
-      value: value,
-    );
-
-    _engine._requestNoReply(
-      request,
-      startupBehavior: StartupSendBehavior.dropDuringStartup,
-    );
+    return response.parameterValue!;
   }
 
-  /// Captures the plugin's opaque state into the project's asset store.
+  /// Captures base parameters and private state into the project's asset store.
   ///
-  /// Returns its relative path, or null if the plugin supplies no opaque state.
+  /// Returns its relative path, or null if the processor has no stored state.
   /// Unchanged contents reuse the previous file. Capture failures throw without
   /// replacing the model's existing reference.
-  Future<String?> capturePluginState(Id nodeId) async {
-    final request = CapturePluginStateRequest(
+  Future<String?> captureProcessorState(Id nodeId) async {
+    final request = CaptureProcessorStateRequest(
       id: _engine._getRequestId(),
       nodeId: nodeId,
     );
     final response = await _engine._request(
       request,
       timeout: const Duration(seconds: 30),
-    ) as CapturePluginStateResponse;
+    ) as CaptureProcessorStateResponse;
     if (response.error != null) throw StateError(response.error!);
     return response.relativePath;
   }

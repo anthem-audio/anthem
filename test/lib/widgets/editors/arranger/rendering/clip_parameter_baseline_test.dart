@@ -50,6 +50,11 @@ void main() {
         UtilityProcessorModel.balancePortId,
         UtilityProcessorModel.gainPortId,
       ]) {
+        node.getPortById(portId).config.parameterConfig = ParameterConfigModel(
+          id: portId,
+          normalizedVisualBaseline:
+              portId == UtilityProcessorModel.balancePortId ? 0.5 : 0.0,
+        );
         AutomationLaneAddRemoveCommand.add(
           project: project,
           parentTrackId: track.id,
@@ -131,7 +136,8 @@ void main() {
       expect(percentages, orderedEquals(pixels));
       node
               .getPortById(UtilityProcessorModel.balancePortId)
-              .presentation
+              .config
+              .parameterConfig!
               .normalizedVisualBaseline =
           0.1;
       final offCenter = await _paintClips(project, clips);

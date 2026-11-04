@@ -21,20 +21,16 @@ import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/messages/messages.dart'
-    show
-        ProcessingGraphNodeInitializationResult,
-        ProcessingGraphNodePortConfiguration,
-        ProcessingGraphParameterValue,
-        ProcessingGraphPortConfiguration;
+    show ProcessingGraphNodeInitializationResult;
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/devices/device_port_defaults.dart';
 import 'package:anthem/logic/live_event_manager.dart';
+import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider_controller.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
-import 'package:anthem_codegen/include.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -162,17 +158,13 @@ class ProjectController {
       final portConfiguration = result.portConfiguration;
 
       if (portConfiguration != null) {
-        final didChange = _applyNodePortConfiguration(
-          result.nodeId,
-          portConfiguration,
-        );
-
-        if (didChange) {
+        final routingChanged = node.applyPortConfiguration(portConfiguration);
+        if (routingChanged) {
           affectedTrackIds.addAll(_updateDeviceDefaultsForNode(result.nodeId));
         }
       }
 
-      _applyNodeParameterValues(result.nodeId, result.parameterValues);
+      applyReportedParameterValues(node, result.parameterValues);
       node.markInitialized();
     }
 
@@ -183,254 +175,6 @@ class ProjectController {
     final serviceRegistry = ServiceRegistry.forProject(project.id);
     for (final trackId in affectedTrackIds) {
       serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
-    }
-  }
-
-  bool _applyNodePortConfiguration(
-    Id nodeId,
-    ProcessingGraphNodePortConfiguration portConfiguration,
-  ) {
-    final node = project.processingGraph.nodes[nodeId];
-    if (node == null) {
-      return false;
-    }
-
-    final portGroups =
-        <
-          ({
-            AnthemObservableList<NodePortModel> currentPorts,
-            List<ProcessingGraphPortConfiguration> newPortConfigurations,
-            NodePortDataType dataType,
-          })
-        >[
-          (
-            currentPorts: node.audioInputPorts,
-            newPortConfigurations: portConfiguration.audioInputPorts,
-            dataType: .audio,
-          ),
-          (
-            currentPorts: node.audioOutputPorts,
-            newPortConfigurations: portConfiguration.audioOutputPorts,
-            dataType: .audio,
-          ),
-          (
-            currentPorts: node.eventInputPorts,
-            newPortConfigurations: portConfiguration.eventInputPorts,
-            dataType: .event,
-          ),
-          (
-            currentPorts: node.eventOutputPorts,
-            newPortConfigurations: portConfiguration.eventOutputPorts,
-            dataType: .event,
-          ),
-          (
-            currentPorts: node.controlInputPorts,
-            newPortConfigurations: portConfiguration.controlInputPorts,
-            dataType: .control,
-          ),
-          (
-            currentPorts: node.controlOutputPorts,
-            newPortConfigurations: portConfiguration.controlOutputPorts,
-            dataType: .control,
-          ),
-        ];
-
-    final didChange = portGroups.any(
-      (group) => !_portListMatches(
-        group.currentPorts,
-        group.newPortConfigurations,
-        group.dataType,
-      ),
-    );
-
-    if (!didChange) {
-      return false;
-    }
-
-    for (final portGroup in portGroups) {
-      _reconcilePorts(
-        portGroup.currentPorts,
-        portGroup.newPortConfigurations,
-        portGroup.dataType,
-        nodeId,
-      );
-    }
-
-    return true;
-  }
-
-  bool _portListMatches(
-    AnthemObservableList<NodePortModel> currentPorts,
-    List<ProcessingGraphPortConfiguration> configuredPorts,
-    NodePortDataType dataType,
-  ) {
-    // Compare processor metadata only. Matching ports keep their identity,
-    // instance state, presentation settings and saved connections.
-    final availablePorts = currentPorts
-        .where((port) => port.isAvailable)
-        .toList();
-    if (availablePorts.length != configuredPorts.length) {
-      return false;
-    }
-
-    for (var i = 0; i < availablePorts.length; i++) {
-      final currentPort = availablePorts[i];
-      final configuredPort = configuredPorts[i];
-      final currentParameterConfig = currentPort.config.parameterConfig;
-      if (currentPort.id != configuredPort.id ||
-          currentPort.config.dataType != dataType ||
-          currentPort.config.name != configuredPort.name ||
-          currentPort.config.channelCount != configuredPort.channelCount ||
-          currentParameterConfig?.id !=
-              _parameterConfigIdForPort(configuredPort) ||
-          currentParameterConfig?.factoryDefaultValue !=
-              configuredPort.parameterDefaultValue ||
-          currentParameterConfig?.displayMode !=
-              _parameterDisplayModeForPort(configuredPort) ||
-          currentParameterConfig?.unitLabel !=
-              configuredPort.parameterUnitLabel) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  int? _parameterConfigIdForPort(ProcessingGraphPortConfiguration port) {
-    return port.parameterDefaultValue == null ? null : port.id;
-  }
-
-  ParameterDisplayMode? _parameterDisplayModeForPort(
-    ProcessingGraphPortConfiguration port,
-  ) {
-    if (port.parameterDefaultValue == null) {
-      return null;
-    }
-
-    return switch (port.parameterDisplayMode) {
-      'gainDb' => ParameterDisplayMode.gainDb,
-      'pan' => ParameterDisplayMode.pan,
-      'pluginText' => ParameterDisplayMode.pluginText,
-      _ => ParameterDisplayMode.percent,
-    };
-  }
-
-  ParameterConfigModel? _parameterConfigForPort(
-    ProcessingGraphPortConfiguration port,
-  ) {
-    final defaultValue = port.parameterDefaultValue;
-    if (defaultValue == null) {
-      return null;
-    }
-
-    return ParameterConfigModel(
-      id: port.id,
-      factoryDefaultValue: defaultValue,
-      displayMode: _parameterDisplayModeForPort(port),
-      unitLabel: port.parameterUnitLabel,
-    );
-  }
-
-  void _applyNodeParameterValues(
-    Id nodeId,
-    List<ProcessingGraphParameterValue> parameterValues,
-  ) {
-    final node = project.processingGraph.nodes[nodeId];
-    if (node == null) {
-      return;
-    }
-
-    final parameterPortsById = {
-      for (final port in node.controlInputPorts)
-        if (port.config.parameterConfig != null) port.id: port,
-    };
-
-    for (final parameterValue in parameterValues) {
-      final port = parameterPortsById[parameterValue.controlPortId];
-      if (port == null) {
-        continue;
-      }
-
-      final value = parameterValue.value.clamp(0.0, 1.0).toDouble();
-      if (port.parameterValue != value) {
-        port.parameterValue = value;
-      }
-
-      if (port.parameterDisplayText != parameterValue.displayText) {
-        port.parameterDisplayText = parameterValue.displayText;
-      }
-    }
-  }
-
-  /// Updates one of a node's port lists from the engine's initialization result.
-  ///
-  /// The list may already contain ports created by a Dart factory or loaded from
-  /// a project file. Match these ports by ID and update their metadata, such as
-  /// names, channel counts and factory defaults, in place. Keeping the same port
-  /// objects preserves their parameter values, reset overrides, presentation
-  /// settings and connections. A factory default fills in a parameter value only
-  /// when that parameter has no value yet.
-  ///
-  /// Add newly reported ports. Keep ports that the engine did not report, but
-  /// mark them unavailable so their saved state and routing can recover if they
-  /// return. Reported ports come first, in engine order; unavailable ports follow
-  /// in their previous order.
-  void _reconcilePorts(
-    AnthemObservableList<NodePortModel> target,
-    List<ProcessingGraphPortConfiguration> configuredPorts,
-    NodePortDataType dataType,
-    Id nodeId,
-  ) {
-    final existing = {for (final port in target) port.id: port};
-    final discoveredIds = {for (final port in configuredPorts) port.id};
-    final ordered = <NodePortModel>[];
-    for (final descriptor in configuredPorts) {
-      final port =
-          existing[descriptor.id] ??
-          NodePortModel(
-            nodeId: nodeId,
-            id: descriptor.id,
-            config: NodePortConfigModel(
-              dataType: dataType,
-              parameterConfig: _parameterConfigForPort(descriptor),
-            ),
-          );
-      port.config.dataType = dataType;
-      port.config.name = descriptor.name;
-      port.config.channelCount = descriptor.channelCount;
-      final parameter = port.config.parameterConfig;
-      if (descriptor.parameterDefaultValue == null) {
-        port.config.parameterConfig = null;
-      } else if (parameter == null) {
-        port.config.parameterConfig = _parameterConfigForPort(descriptor);
-      } else {
-        parameter.id = descriptor.id;
-        parameter.factoryDefaultValue = descriptor.parameterDefaultValue!;
-        parameter.displayMode = _parameterDisplayModeForPort(descriptor);
-        parameter.unitLabel = descriptor.parameterUnitLabel;
-      }
-      if (descriptor.parameterDefaultValue != null) {
-        port.parameterValue ??= descriptor.parameterDefaultValue;
-      }
-      port.isAvailable = true;
-      ordered.add(port);
-    }
-    for (final port in target) {
-      if (!discoveredIds.contains(port.id)) {
-        port.isAvailable = false;
-        ordered.add(port);
-      }
-    }
-    for (var index = 0; index < ordered.length; index++) {
-      if (index >= target.length) {
-        target.add(ordered[index]);
-      } else if (!identical(target[index], ordered[index])) {
-        // Move rather than replace: generated model ownership must remain
-        // attached to exactly one list position.
-        final currentIndex = target.indexOf(ordered[index]);
-        if (currentIndex >= 0) target.removeAt(currentIndex);
-        target.insert(index, ordered[index]);
-      }
     }
   }
 

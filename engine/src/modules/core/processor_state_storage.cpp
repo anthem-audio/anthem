@@ -19,22 +19,13 @@
 
 #include "processor_state_storage.h"
 
+#include "processor_state_snapshot.h"
+
 #include <juce_cryptography/juce_cryptography.h>
 #include <stdexcept>
 
 namespace anthem {
 namespace {
-
-std::optional<std::string> writeStateFile(const juce::File& file, const juce::MemoryBlock& state) {
-  juce::FileOutputStream output(file);
-  if (!output.openedOk() || !output.setPosition(0) || output.truncate().failed() ||
-      !output.write(state.getData(), state.getSize()))
-    return "Could not write captured processor state.";
-  output.flush();
-  if (output.getStatus().failed())
-    return "Could not flush captured processor state.";
-  return std::nullopt;
-}
 
 // File grants are acquired before capture. The complete state buffer exists
 // only during captureAndWrite(), which does not wait for IPC replies.
@@ -89,16 +80,11 @@ private:
     if (!processor || !(*processor)->hasRestoredProjectState)
       return {.value = std::nullopt, .error = "The processor is not initialized."};
     try {
-      juce::MemoryBlock state;
-      (*processor)->getState(state);
-      FileFingerprint fingerprint{
-          .byteLength = static_cast<int64_t>(state.getSize()),
-          .sha256 = juce::SHA256(state).toHexString().toStdString(),
-      };
-      if (state.getSize() != 0 && !matchesPrevious(fingerprint)) {
-        if (auto error = writeStateFile(destination, state))
-          return {.value = std::nullopt, .error = std::move(error)};
-      }
+      ProcessorStateSnapshot state(**processor);
+      auto fingerprint =
+          state.isEmpty() ? FileFingerprint{.byteLength = 0, .sha256 = ""} : state.fingerprint();
+      if (!state.isEmpty() && !matchesPrevious(fingerprint))
+        state.write(destination);
       return {.value = std::move(fingerprint), .error = std::nullopt};
     } catch (const std::exception& error) {
       return {.value = std::nullopt, .error = error.what()};
@@ -205,10 +191,8 @@ void ProcessorStateStorage::restore(const std::shared_ptr<Node>& node,
               }
               std::optional<std::string> error;
               try {
-                juce::MemoryBlock state;
-                if (!juce::File(access.value->absolutePath).loadFileAsData(state))
-                  throw std::runtime_error("Could not read saved processor state.");
-                processor->setState(state);
+                ProcessorStateSnapshot state(juce::File(access.value->absolutePath));
+                state.restore(*processor);
               } catch (const std::exception& exception) {
                 error = exception.what();
               }

@@ -20,17 +20,17 @@
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project.dart';
 
-/// Captures the current state of initialized plugins in [nodes].
+/// Captures the current state of initialized processors in [nodes].
 ///
 /// Returns null when no capture is needed, so commands can remain synchronous.
-Future<void>? captureLivePluginStates(
+Future<void>? captureLiveProcessorStates(
   ProjectModel project,
   Iterable<NodeModel> nodes,
 ) {
   if (!project.engine.isRunning) return null;
   final captures = [
     for (final node in nodes)
-      if (node.isThirdPartyPlugin &&
+      if (node.processor != null &&
           node.initializationState == NodeInitializationState.ready)
         node.updateStateFromEngine(),
   ];

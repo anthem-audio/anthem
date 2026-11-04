@@ -463,12 +463,6 @@ void buildSampleBufferSlotInitialization(RuntimeGraph& runtimeGraph,
   }
 }
 
-void publishRuntimeContexts(RuntimeGraph& runtimeGraph) {
-  for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
-    runtimeNode.sourceNode->runtimeContext = runtimeNode.nodeProcessContext;
-  }
-}
-
 RuntimeNode& addConnectionToRuntimeGraph(RuntimeGraph& runtimeGraph,
     UniqueDestinationMap& uniqueDestinationIdsBySource,
     RuntimeNode::Id inputPortNodeId,
@@ -1388,8 +1382,6 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
     getAndSetPriority(runtimeNode);
   }
 
-  publishRuntimeContexts(runtimeGraph);
-
   return runtimeGraphStorage;
 }
 
@@ -1405,16 +1397,6 @@ RuntimeGraph::~RuntimeGraph() {
 void RuntimeGraph::cleanup() {
   if (hasCleanedUp) {
     return;
-  }
-
-  for (auto& [_, runtimeNode] : nodes) {
-    if (runtimeNode.sourceNode == nullptr || !runtimeNode.sourceNode->runtimeContext.has_value()) {
-      continue;
-    }
-
-    if (runtimeNode.sourceNode->runtimeContext.value() == runtimeNode.nodeProcessContext) {
-      runtimeNode.sourceNode->runtimeContext.reset();
-    }
   }
 
   if (graphProcessContext != nullptr) {

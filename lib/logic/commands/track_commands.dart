@@ -31,10 +31,9 @@ import 'package:anthem/model/processing_graph/processors/sequence_automation_pro
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem/model/track.dart';
-import 'package:meta/meta.dart';
 import 'package:mobx/mobx.dart';
 
-import 'capture_live_plugin_states.dart';
+import 'capture_live_processor_states.dart';
 import 'command_processor_state_retention.dart';
 
 class TrackDescriptorForCommand {
@@ -267,7 +266,7 @@ class AutomationLaneAddRemoveCommand extends Command {
       _processorStateRetention.releaseProjectClaims(storage);
     }
 
-    final capture = captureLivePluginStates(project, nodes);
+    final capture = captureLiveProcessorStates(project, nodes);
     if (capture != null) {
       return capture.then((_) => runInAction(detach));
     }
@@ -705,7 +704,7 @@ class TrackAddRemoveCommand extends Command {
       _processorStateRetention.releaseProjectClaims(storage);
     }
 
-    final capture = captureLivePluginStates(project, nodes);
+    final capture = captureLiveProcessorStates(project, nodes);
     if (capture != null) {
       return capture.then((_) => runInAction(detach));
     }
@@ -1240,7 +1239,7 @@ class TrackGroupUngroupCommand extends Command {
     project.processingGraph.restoreGraphFragment(_groupTrackGraphFragment);
     _processorStateRetention.dispose();
 
-    updateTrackParents(project, project.tracks[_parentTrack]);
+    _updateTrackParents(project, project.tracks[_parentTrack]);
 
     trackController.rerouteTracks([
       ..._childrenToAddToGroup.map((child) => child.$1),
@@ -1266,7 +1265,7 @@ class TrackGroupUngroupCommand extends Command {
       _processorStateRetention.releaseProjectClaims(storage);
     }
 
-    final capture = captureLivePluginStates(project, nodes);
+    final capture = captureLiveProcessorStates(project, nodes);
     if (capture != null) {
       return capture.then((_) => runInAction(detach));
     }
@@ -1303,7 +1302,7 @@ class TrackGroupUngroupCommand extends Command {
       parentTrackList.insert(originalIndex, trackId);
     }
 
-    updateTrackParents(project, project.tracks[_parentTrack]);
+    _updateTrackParents(project, project.tracks[_parentTrack]);
 
     trackController.rerouteTracks(
       _childrenToAddToGroup.map((child) => child.$1),
@@ -1321,15 +1320,14 @@ class TrackGroupUngroupCommand extends Command {
 /// Updates the parentTrackId field for all children of [track].
 ///
 /// If [track] is null, this will update all tracks in the project.
-@visibleForTesting
-void updateTrackParents(ProjectModel project, [TrackModel? track]) {
+void _updateTrackParents(ProjectModel project, [TrackModel? track]) {
   if (track == null) {
     for (final trackId in project.trackOrder.nonObservableInner.followedBy(
       project.sendTrackOrder.nonObservableInner,
     )) {
       final childTrack = project.tracks[trackId]!;
       childTrack.parentTrackId = null;
-      updateTrackParents(project, childTrack);
+      _updateTrackParents(project, childTrack);
     }
 
     return;
@@ -1340,7 +1338,7 @@ void updateTrackParents(ProjectModel project, [TrackModel? track]) {
   for (final childTrackId in track.childTracks.nonObservableInner) {
     final childTrack = project.tracks[childTrackId]!;
     childTrack.parentTrackId = track.id;
-    updateTrackParents(project, childTrack);
+    _updateTrackParents(project, childTrack);
   }
 }
 

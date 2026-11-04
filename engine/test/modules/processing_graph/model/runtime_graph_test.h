@@ -90,7 +90,6 @@ class RuntimeGraphTest : public juce::UnitTest {
     node->controlInputPorts()->push_back(graph_test_helpers::makePort(controlInputPortId(nodeId),
         nodeId,
         NodePortDataType::control,
-        inputHasParameter ? std::optional<double>(0.25) : std::nullopt,
         inputHasParameter ? std::optional<std::shared_ptr<ParameterConfigModel>>(
                                 graph_test_helpers::makeParameterConfig(nodeId * 100 + 1, 0.25))
                           : std::nullopt));
@@ -189,6 +188,8 @@ class RuntimeGraphTest : public juce::UnitTest {
 
   static std::unique_ptr<RuntimeGraph> buildRuntimeGraph(
       ProcessingGraphModel& graph, EngineRuntimeServices& rtServices) {
+    for (auto& [_, node] : *graph.nodes())
+      graph_test_helpers::prepareTestParameters(node);
     return RuntimeGraph::fromProcessingGraph(graph,
         rtServices,
         GraphBufferLayout{
@@ -290,7 +291,6 @@ public:
       node->controlInputPorts()->push_back(graph_test_helpers::makePort(controlInputPortId(id),
           id,
           NodePortDataType::control,
-          0.25,
           graph_test_helpers::makeParameterConfig(id, 0.25)));
       node->controlOutputPorts()->push_back(
           graph_test_helpers::makePort(controlOutputPortId(id), id, NodePortDataType::control));
@@ -464,11 +464,6 @@ public:
         "Runtime nodes should keep their source graph nodes alive.");
     expect(thirdNode.sourceNode == thirdGraphNode,
         "Runtime nodes should keep their source graph nodes alive.");
-    expect(firstGraphNode->runtimeContext.has_value(),
-        "The source node should point at the new runtime context.");
-    expect(firstGraphNode->runtimeContext.value() == firstNode.nodeProcessContext,
-        "The source node should point at the active runtime context.");
-
     expectEquals(static_cast<int>(firstNode.outgoingConnections.size()), 1);
     expectEquals(static_cast<int>(secondNode.outgoingConnections.size()), 1);
     expectEquals(static_cast<int>(thirdNode.outgoingConnections.size()), 0);
@@ -625,20 +620,20 @@ public:
     auto graph = graph_test_helpers::makeProcessingGraph();
 
     auto sourceNode = graph_test_helpers::makeNode(1);
-    sourceNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
-        outputPortId(1), 1, NodePortDataType::audio, std::nullopt, std::nullopt, 1));
+    sourceNode->audioOutputPorts()->push_back(
+        graph_test_helpers::makePort(outputPortId(1), 1, NodePortDataType::audio, std::nullopt, 1));
     graph->nodes()->insert_or_assign(1, sourceNode);
 
     auto wideningNode = graph_test_helpers::makeNode(2);
-    wideningNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
-        inputPortId(2), 2, NodePortDataType::audio, std::nullopt, std::nullopt, 1));
-    wideningNode->audioOutputPorts()->push_back(graph_test_helpers::makePort(
-        outputPortId(2), 2, NodePortDataType::audio, std::nullopt, std::nullopt, 2));
+    wideningNode->audioInputPorts()->push_back(
+        graph_test_helpers::makePort(inputPortId(2), 2, NodePortDataType::audio, std::nullopt, 1));
+    wideningNode->audioOutputPorts()->push_back(
+        graph_test_helpers::makePort(outputPortId(2), 2, NodePortDataType::audio, std::nullopt, 2));
     graph->nodes()->insert_or_assign(2, wideningNode);
 
     auto destinationNode = graph_test_helpers::makeNode(3);
-    destinationNode->audioInputPorts()->push_back(graph_test_helpers::makePort(
-        inputPortId(3), 3, NodePortDataType::audio, std::nullopt, std::nullopt, 2));
+    destinationNode->audioInputPorts()->push_back(
+        graph_test_helpers::makePort(inputPortId(3), 3, NodePortDataType::audio, std::nullopt, 2));
     graph->nodes()->insert_or_assign(3, destinationNode);
 
     addConnection(*graph, 100, 1, 2);

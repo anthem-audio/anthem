@@ -32,6 +32,7 @@ import 'package:anthem/model/shared/anthem_color.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 
@@ -154,12 +155,18 @@ abstract class _TrackProcessingModel
 
     // Leave headroom on source tracks. Groups, returns, and the master keep
     // unity gain so routing through them does not add another attenuation.
-    final initialGainDb =
-        track.type == TrackType.normal && !track.isMasterTrack && !isSendTrack
-        ? -10.0
-        : 0.0;
     final utilityNode = UtilityProcessorModel.create(idAllocator: idAllocator)
-        .createNode(initialGainDb: initialGainDb);
+        .createNode();
+    if (track.type == TrackType.normal &&
+        !track.isMasterTrack &&
+        !isSendTrack) {
+      final gain = gainDbToParameterValue(-10.0);
+      utilityNode.initialParameterValues[UtilityProcessorModel.gainPortId] =
+          gain;
+      final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
+      port.parameterValue = gain;
+      port.parameterResetValue = gain;
+    }
     utilityNode.owner = NodeOwnerModel(trackId: trackId);
     utilityNodeId = utilityNode.id;
     project.processingGraph.addNode(utilityNode);

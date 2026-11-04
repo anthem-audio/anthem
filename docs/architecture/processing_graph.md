@@ -8,44 +8,56 @@ Connections can be defined from any input to any output of the same data type. A
 
 ## Processor initialization and port discovery
 
-When a device is added, Anthem creates a node in the Dart project model to represent it. The node records which processor to use, its initial parameter values, and the ports that the UI expects to connect. Opening a project reconstructs this information from the project file, including the settings saved by the user.
+When a device is added, Anthem creates a node in the Dart project model to represent it. The node records which processor to use, any explicit creation overrides, and stable port IDs used for routing. The engine supplies the processor's initial state and descriptions. Opening a project reconstructs cached descriptions, values and routing from the project file.
 
 The engine still needs to load and prepare the processor before it can process audio. It also needs to establish which ports exist and how many channels each audio port has. A saved port description may no longer match the installed plugin, and channel counts can depend on the active audio configuration. For example, the project can contain a connection to the master output before the engine knows whether the output device has two or four channels.
 
-Processor initialization happens before the graph is compiled and sent to the audio thread. It gives the UI the current port descriptions and, for plugins, the parameter values after restoring the saved patch.
+Processor initialization happens before the graph is compiled and sent to the audio thread. It gives the UI the current port descriptions and base parameter values after applying creation settings or restoring a snapshot.
 
-### Initial settings and saved settings
+### Parameter ownership and saved settings
 
-For a new native processor, the Dart factory chooses the initial parameter values. A regular track's utility processor, for example, starts with its gain at −10 dB. These values are stored on the node's control input ports. When a project is reopened, those ports contain the values from the project file instead. The regular model synchronization sends them to the engine. When the engine compiles the graph, it uses these values to initialize the parameters that the processor reads during audio processing.
+The engine owns each processor's base parameter values. These are the editable settings that Anthem preserves while automation controls the values used for processing. Both native processors and plugin hosts use the same parameter storage and editing API. Parameter storage belongs to the processor instance and survives graph recompilation.
 
-A VST can also have settings that are not exposed as parameters. A synthesizer patch, for example, may contain plugin-specific data that Anthem cannot describe through control ports. The engine writes the data returned by the plugin's state capture API to the project asset store. Identical snapshots reuse the previous file path, using a content fingerprint cached by the store. `NodeModel.processorStateRetentionId` identifies a retention claim in the project asset store. The asset store exports the project-owned claims as a JSON string saved in `ProjectModel.fileRetentions`; opening storage restores those claims. Engine requests resolve the ID when they need the file. The project model and IPC messages do not contain the opaque bytes. The engine reads that file when restoring the plugin.
+For a new processor, the engine initializes its own factory state. The application may supply one-time overrides in `NodeModel.initialParameterValues`. A regular track's utility processor, for example, starts with its gain at −10 dB instead of the processor's unity-gain default. The engine applies overrides during initialization when no saved snapshot exists. They remain on the node until the first state snapshot is retained, so a restart before that capture can still create the processor with the intended settings. Creation overrides are independent of preset save/load and do not implicitly change reset targets.
 
-Saved VST parameter values on control ports let the UI show the last known values before the plugin loads. The saved plugin state is what restores the plugin itself. After restoration, the engine reads the plugin's current parameter values and updates the UI's copies.
+Processor snapshots contain the base parameter values and any additional processor-specific state. A VST's private payload comes from JUCE and can include settings that Anthem cannot describe as parameters. Native processors currently need only the common parameter data. The engine writes snapshots to the project asset store; opaque bytes do not pass through the Dart model or IPC.
 
-### Restoring a plugin before reporting its ports
+`NodeModel.processorStateRetentionId` identifies a retention claim on a snapshot file. The asset store exports project-owned claims as a JSON string saved in `ProjectModel.fileRetentions`. Engine storage requests resolve the retention when they need the file. Identical snapshots reuse the previous file path using a cached content fingerprint. A VST's opaque payload may include automated values, so captures at different playback positions can still produce different bytes even when the base settings have not changed.
 
-For a VST with saved plugin state, initialization runs in this order:
+`NodePortModel.parameterValue` is the UI's last confirmed base value. It remains MobX-observable and can be saved as a preview, but it is excluded from engine model synchronization. Controls send edits through the engine API and display a pending value while waiting for confirmation. The response updates the observable cache with the accepted value. A rejected request clears its pending value. Undo records accepted changes, including the earlier part of a drag whose final request was rejected. Effective automation values use the visualization channel.
 
-1. Create and prepare the plugin instance.
-2. Resolve `processorStateRetentionId`, read the file, and restore the saved state.
-3. Prepare the plugin again, since restoration may have changed its audio bus layout.
-4. Return the final port descriptions and parameter values to the UI.
+### Plugin change reporting
 
-This order prevents the UI from applying the factory patch's values or port layout while the saved patch is still being restored. A new plugin without saved state only needs the first preparation before its results are returned.
+JUCE can call plugin listeners on processing, editor or other plugin threads. VST3 callbacks use a table of direct parameter pointers built during initial preparation and retained unchanged until the plugin is destroyed. Ordinary metadata refreshes and re-preparation reuse those bindings; a changed parameter layout requires reloading the plugin. Parameter changes update the processor's atomic base values immediately, so state capture does not depend on notification delivery. Callback operations do not allocate, post JUCE messages or change shared ownership; their atomics must be lock-free. A message-thread timer drains notifications, formats parameter text and sends IPC. Gesture boundaries carry their captured values so a complete gesture between timer ticks still produces the correct undo command.
 
-The saved data is restored once for each processor instance. If the audio session restarts with a different sample rate or buffer size, the existing processor is prepared again and keeps its live settings. Starting a fresh engine process creates new processors, which restore the latest state held by the project model.
+Notifications use `RecoverableNotificationQueue`, which wraps the existing single-writer ring buffer. Each callback makes one atomic attempt to claim the writer; if it is busy or the buffer is full, the callback requests recovery and returns without waiting or retrying. Recovery discards stale notifications, sends current values and clears unfinished UI gestures for that node. Intermediate undo history can be lost during recovery, but parameter state is retained. Callbacks overlapping a recovery request another snapshot so their changes are not lost behind the recovery snapshot.
 
-Anthem only captures live plugin state after initialization succeeds. If a plugin cannot load, saving the project preserves its previous state-file reference. See [the initialization session](../../engine/src/modules/core/processing_graph_node_initialization_session.cpp) for the engine implementation.
+### Restoring a processor before reporting its ports
+
+For a processor with a saved snapshot, initialization runs in this order:
+
+1. Create and prepare the processor, establishing its parameter storage and provisional port descriptions.
+2. Resolve `processorStateRetentionId`, read the snapshot, and restore its processor-specific payload followed by its base parameter values.
+3. Prepare the processor again, since restoration may have changed its audio bus layout.
+4. Return the final port descriptions and base parameter values to the UI.
+
+This sequence finishes before the processor is published for audio processing. A new processor without a snapshot receives its explicit creation settings after the first preparation. Initial restoration needs no suspension handshake.
+
+Saved state is restored once for each processor instance. If the audio session restarts with a different sample rate or buffer size, the existing processor is prepared again and keeps its live settings. A fresh engine process creates new processors and restores the latest retained snapshots. Cached UI values are never replayed as processor state.
+
+Anthem captures state only after initialization succeeds. If a processor cannot load, saving preserves its previous state-file reference. See [the initialization session](../../engine/src/modules/core/processing_graph_node_initialization_session.cpp) for the engine implementation.
 
 ### Updating cached port descriptions
 
 Both native processors and VSTs return port descriptions through the same initialization response. Native C++ processors declare their ports in `prepareToProcess`. VST processors obtain their descriptions from JUCE. The response includes port names, audio channel counts, and parameter factory defaults and formatting information.
 
-Before initialization, the UI can use the port IDs and parameter formatting provided by a Dart factory, or the descriptions cached in a project file. This lets it show controls and record connections while the engine is stopped. These ports start with `isAvailable` set to false. New native audio ports have no channel count yet, and their parameter factory defaults are filled in by the engine during initialization.
+Native factories supply stable routing endpoints without duplicating parameter defaults or formatting. These ports start with `isAvailable` set to false and have no discovered channel counts or parameter descriptions. Known routing can be recorded before discovery; graph compilation uses confirmed endpoints. New controls wait for reported values, while opened projects can display their saved descriptions and last-confirmed values even when the engine is unavailable. This does not introduce a separate offline parameter-editing path.
 
-When the response arrives, `ProjectController._reconcilePorts` matches existing ports by ID and updates their descriptions in place. It keeps the same port objects, preserving their values, reset settings, visual settings and connections. Newly reported ports are added. A parameter's factory default is used only if it has no value yet; it does not replace a value supplied by the Dart factory or loaded from the project. Native values already exist in the synchronized model, so they do not need to be returned by the engine.
+When the response arrives, `NodeModel.applyPortConfiguration` matches existing ports by ID. Every reported port goes through `NodePortModel.applyConfiguration`, which updates descriptions in place, including visual baselines. New and existing ports use the same metadata-update path. Existing configuration objects, values, reset overrides and connections are preserved. Newly reported ports are added. A factory default can fill an empty UI preview while initialization is pending. The engine then reports the confirmed base values for both native processors and plugin hosts.
 
-Port IDs must remain stable across software versions so saved connections and automation can refer to the same ports. Native IDs are defined as constants in the private Dart processor model class and exported to C++ through model codegen. See [model constants](../codegen/project_models/authoring_and_annotations.md#constants-are-supported).
+Port additions, availability changes, type corrections and reordering trigger a refresh of device defaults and routing. Metadata-only changes, such as a new name or visual baseline, update the cached descriptions without rebuilding routing. Repeated identical reports leave the models and connections unchanged.
+
+Port IDs, parameter meanings and normalized value mappings must remain compatible across software versions. An incompatible native successor needs a new processor identity, with the old processor retained as legacy. Runtime channel counts may still vary. Native IDs are defined as constants in the private Dart processor model class and exported to C++ through model codegen. See [model constants](../codegen/project_models/authoring_and_annotations.md#constants-are-supported).
 
 ### Parameter values, defaults and visual settings
 
@@ -55,12 +67,13 @@ The model stores these values separately:
 
 | Field | Purpose |
 | --- | --- |
-| `NodePortModel.parameterValue` | The current value used by a native processor, or the last known value read from a VST. |
+| `NodePortModel.parameterValue` | The last base value confirmed by the engine, cached for display. |
+| `NodePortModel.pendingParameterValue` | A requested base value displayed while an edit awaits confirmation. |
 | `ParameterConfigModel.factoryDefaultValue` | The processor's own default, reported by the engine. |
 | `NodePortModel.parameterResetValue` | An optional project-specific reset value. If absent, reset uses the factory default when known. |
-| `ParameterPresentationModel.normalizedVisualBaseline` | The value from which knob arcs and automation shading extend. |
+| `ParameterConfigModel.normalizedVisualBaseline` | The processor-reported value from which knob arcs and automation shading extend. |
 
-Port names and channel counts belong to `NodePortConfigModel`, which also holds the parameter configuration. Visual settings belong to the project and are not sent to the engine. For example, a pan parameter can have a visual baseline of 0.5 so its knob arc and automation shading extend from the center. Updating the processor's port descriptions preserves that choice.
+Port names and channel counts belong to `NodePortConfigModel`, which also holds the parameter configuration. Visual baselines are processor metadata: native pan parameters report 0.5 so knob arcs and automation shading extend from the center. The project caches these descriptions for display without the engine. Explicit reset targets remain project choices, independent of factory defaults and visual baselines.
 
 ## Unavailable ports and saved routing
 
@@ -80,9 +93,9 @@ Project files store the graph's connections and each port's list of connection I
 
 Loading a file saved by an older Anthem version requires a migration before constructing the model. The project loading workflow calls [`migrateProjectJson`](../../lib/logic/project_file/migrations/migrate_project_json.dart) to bring the JSON into the current format. Model `fromJson` methods then read that format without converting older schemas.
 
-For standalone prealpha.1 files, the migration writes embedded plugin state into a temporary directory and replaces the JSON blobs with retention IDs and a serialized map of those IDs to relative file paths. It uses the historical format directly, before the current model or asset store exists. After migration, normal project storage opens the prepared directory. A failed import deletes that directory and preserves the original file.
+For standalone prealpha.1 files, the migration writes common snapshots containing saved parameter values and any embedded plugin state into a temporary directory. It replaces the JSON blobs with retention IDs and a serialized map of those IDs to relative file paths. It uses the historical format directly, before the current model or asset store exists. After migration, normal project storage opens the prepared directory. A failed import deletes that directory and preserves the original file.
 
-The `prealpha.2` migration preserves the old parameter defaults as project reset values and moves visual baselines into `ParameterPresentationModel`. For native processors, it clears the old factory defaults so the engine can supply them during initialization. Existing parameter values are preserved.
+The `prealpha.2` migration preserves the old parameter defaults as project reset values and retains visual baselines in the cached parameter descriptions. For native processors, it clears the old factory defaults so the engine can supply them during initialization. Existing parameter values are preserved.
 
 ## Pre-calculating processing steps
 
@@ -140,7 +153,7 @@ In Anthem, all control inputs on nodes also function as parameters. Parameters a
 
 If a control input port has a connection, the control values that come through on that connection will always override the static parameter value. Otherwise, the control input will take on the static value provided through the parameter.
 
-During playback, if the static value on a port is changed, it will override any connection value until playback is stopped and starts again.
+Editing the base value preserves that setting for when control disconnects. An active control connection continues to determine the effective value used for processing.
 
 ## Events
 

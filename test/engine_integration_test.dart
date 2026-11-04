@@ -25,6 +25,9 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/device_commands.dart';
+import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/logic/project_file/directory.dart';
+import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
@@ -651,7 +654,10 @@ void main() {
           expect(port.channelCount, expectedWidth, reason: name);
         }
         for (final port in node.controlInputPorts) {
-          if (port.config.parameterConfig == null) continue;
+          final descriptor = config.controlInputPorts.singleWhere(
+            (description) => description.id == port.id,
+          );
+          if (descriptor.parameterDefaultValue == null) continue;
           expect(
             config.controlInputPorts
                 .singleWhere((description) => description.id == port.id)
@@ -659,8 +665,20 @@ void main() {
             isNotNull,
             reason: name,
           );
-          // Discovery supplies processor descriptions, not an echo of creation state.
-          expect(result.parameterValues, isEmpty, reason: name);
+          final value = result.parameterValues.singleWhere(
+            (value) => value.controlPortId == port.id,
+          );
+          expect(
+            value.value,
+            closeTo(
+              node.initialParameterValues[port.id] ??
+                  config.controlInputPorts
+                      .singleWhere((description) => description.id == port.id)
+                      .parameterDefaultValue!,
+              0.000001,
+            ),
+            reason: name,
+          );
         }
       }
     } finally {
@@ -706,10 +724,13 @@ void main() {
     );
     final utility = original.processingGraph.nodes[utilityId]!;
     // Engine declarations must not echo stale or edited project metadata.
-    gain.config.parameterConfig!
-      ..factoryDefaultValue = 0.123
-      ..displayMode = ParameterDisplayMode.percent
-      ..unitLabel = 'stale';
+    gain.config.parameterConfig = ParameterConfigModel(
+      id: gain.id,
+      factoryDefaultValue: 0.123,
+      displayMode: ParameterDisplayMode.percent,
+      unitLabel: 'stale',
+      normalizedVisualBaseline: 0.75,
+    );
     for (final port in [
       ...utility.audioInputPorts,
       ...utility.audioOutputPorts,
@@ -752,6 +773,7 @@ void main() {
         ParameterDisplayMode.gainDb,
       );
       expect(gain.config.parameterConfig!.unitLabel, 'dB');
+      expect(gain.config.parameterConfig!.normalizedVisualBaseline, 0.0);
       expect(utility.audioOutputPorts.single.config.channelCount, 2);
       expect(
         original.processingGraph
@@ -763,20 +785,39 @@ void main() {
         2,
       );
       expect(original.processingGraph.connections.keys.toSet(), connectionIds);
-      gain.parameterValue = 0.321;
-      final saved = original.toJson();
+      await original.execute(
+        SetParameterValueCommand(
+          nodeId: utility.id,
+          controlPortId: gain.id,
+          oldValue: gain.parameterValue!,
+          newValue: 0.321,
+        ),
+      );
+      await utility.updateStateFromEngine();
+      final directory = await Directory.systemTemp.createTemp(
+        'anthem-native-snapshot-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final document = '${directory.path}/Native/Native.anthem';
+      await writeProjectDirectory(
+        document,
+        original,
+        services.projectStorage,
+        create: true,
+      );
+      final saved = await readProjectFile(document);
       await services.projectEngineController.stop();
       ServiceRegistry.removeProject(original.id);
       final reopened = ProjectModel.fromJson(
         saved,
         enginePathOverride: executable,
-      );
+      )..filePath = document;
       ServiceRegistry.initializeProject(reopened);
       try {
         await prepare(reopened, outputChannelCount: 4);
         final restoredGain = reopened.processingGraph.nodes[utilityId]!
             .getPortById(UtilityProcessorModel.gainPortId);
-        expect(restoredGain.parameterValue, 0.321);
+        expect(restoredGain.parameterValue, closeTo(0.321, 0.000001));
         expect(restoredGain.parameterResetTarget, resetValue);
         expect(
           restoredGain.config.parameterConfig!.factoryDefaultValue,

@@ -43,6 +43,7 @@
 #include "modules/processors/sequence_automation_provider_test.h"
 #include "modules/processors/sequence_note_provider_test.h"
 #include "modules/processors/utility_test.h"
+#include "modules/processors/vst3_processor_reporting_test.h"
 #include "modules/render/render_tail_detector_test.h"
 #include "modules/sequencer/compiler/automation_sequence_compiler_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
@@ -52,6 +53,7 @@
 #include "modules/sequencer/runtime/transport_test.h"
 #include "modules/util/arena_allocator_test.h"
 #include "modules/util/note_tracker_test.h"
+#include "modules/util/recoverable_notification_queue_test.h"
 #include "modules/util/ring_buffer_test.h"
 
 #include <juce_core/juce_core.h>

@@ -50,7 +50,6 @@ inline std::shared_ptr<ParameterConfigModel> makeParameterConfig(int64_t id, dou
 inline std::shared_ptr<NodePort> makePort(int64_t id,
     int64_t nodeId,
     NodePortDataType dataType,
-    std::optional<double> parameterValue = std::nullopt,
     std::optional<std::shared_ptr<ParameterConfigModel>> parameterConfig = std::nullopt,
     std::optional<int64_t> channelCount = std::nullopt) {
   const auto connections = std::make_shared<ModelVector<int64_t>>();
@@ -64,7 +63,6 @@ inline std::shared_ptr<NodePort> makePort(int64_t id,
       }),
       .connections = connections,
       .isAvailable = true,
-      .parameterValue = parameterValue,
   });
 }
 
@@ -79,7 +77,7 @@ inline std::shared_ptr<Node> makeGainNode(int64_t nodeId) {
       .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .isThirdPartyPlugin = false,
+      .initialParameterValues = std::make_shared<ModelUnorderedMap<int64_t, double>>(),
       .processor = NodeProcessorVariant(rfl::make_field<"GainProcessorModel">(gainProcessor)),
   });
 }
@@ -96,7 +94,7 @@ inline std::shared_ptr<Node> makeToneGeneratorNode(int64_t nodeId) {
       .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .isThirdPartyPlugin = false,
+      .initialParameterValues = std::make_shared<ModelUnorderedMap<int64_t, double>>(),
       .processor = NodeProcessorVariant(rfl::make_field<"ToneGeneratorProcessorModel">(processor)),
   });
 }
@@ -110,7 +108,7 @@ inline std::shared_ptr<Node> makeNode(int64_t nodeId) {
       .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .isThirdPartyPlugin = false,
+      .initialParameterValues = std::make_shared<ModelUnorderedMap<int64_t, double>>(),
       .processor = std::nullopt,
   });
 }
@@ -127,7 +125,7 @@ inline std::shared_ptr<Node> makeMasterOutputNode(int64_t nodeId) {
       .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
       .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .isThirdPartyPlugin = false,
+      .initialParameterValues = std::make_shared<ModelUnorderedMap<int64_t, double>>(),
       .processor = NodeProcessorVariant(rfl::make_field<"MasterOutputProcessorModel">(processor)),
   });
 }
@@ -235,10 +233,29 @@ inline NodeProcessContext::BufferBindings createStandaloneBufferBindings(
   return bindings;
 }
 
+// Parameter fixtures need an instance-owned store even when no DSP is run.
+inline void prepareTestParameters(std::shared_ptr<Node>& node) {
+  ProcessorPrepareResult result{.portConfiguration = ProcessorNodePortConfiguration{}};
+  for (const auto& port : *node->controlInputPorts()) {
+    const auto& config = port->config()->parameterConfig();
+    if (config && (*config)->factoryDefaultValue())
+      result.portConfiguration->controlInputPorts.push_back(
+          {.id = port->id(), .parameterDefaultValue = (*config)->factoryDefaultValue()});
+  }
+  if (result.portConfiguration->controlInputPorts.empty())
+    return;
+  if (!node->getProcessor()) {
+    auto processor = std::make_shared<GainProcessor>(GainProcessorModelImpl{.nodeId = node->id()});
+    node->processor() = NodeProcessorVariant(rfl::make_field<"GainProcessorModel">(processor));
+  }
+  (*node->getProcessor())->reconcileParameters(result);
+}
+
 inline NodeProcessContext& createStandaloneNodeProcessContext(
     GraphProcessContext& graphProcessContext,
     GraphProcessContext::Builder& contextBuilder,
     std::shared_ptr<Node>& graphNode) {
+  prepareTestParameters(graphNode);
   return contextBuilder.createNodeProcessContext(
       graphNode, createStandaloneBufferBindings(graphNode, graphProcessContext, contextBuilder));
 }

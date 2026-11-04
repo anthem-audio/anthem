@@ -51,7 +51,6 @@ class VST3ProcessorModel extends _VST3ProcessorModel
   @override
   NodeModel createNode() {
     return NodeModel(
-      isThirdPartyPlugin: true,
       id: nodeId,
       processor: this,
       eventInputPorts: AnthemObservableList.of([

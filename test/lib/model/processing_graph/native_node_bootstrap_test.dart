@@ -38,11 +38,9 @@ void main() {
         expect(port.config.channelCount, isNull);
       }
       for (final port in node.controlInputPorts) {
-        final parameter = port.config.parameterConfig;
-        if (parameter == null) continue;
-        expect(parameter.factoryDefaultValue, isNull);
-        expect(port.parameterValue, isNotNull);
-        expect(port.parameterResetTarget, port.parameterValue);
+        expect(port.config.parameterConfig, isNull);
+        expect(port.parameterValue, isNull);
+        expect(port.parameterResetValue, isNull);
       }
       for (final port in node.getAllPorts()) {
         port.isAvailable = true;

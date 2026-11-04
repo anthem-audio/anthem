@@ -29,6 +29,9 @@ import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_connector_desktop.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/logic/storage/file_fingerprint.dart';
 import 'package:anthem/model/project.dart';
@@ -189,6 +192,95 @@ class _StorageFixture {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('native parameters survive graph publication and engine restart through snapshots', () async {
+    final fixture = await _StorageFixture.create();
+    final project = fixture.project;
+    final services = ServiceRegistry.forProject(project.id);
+    Future<void> initialize() async {
+      await fixture.engine.start(initializeAudio: false);
+      await fixture.engine.renderApi.startRenderAudioSession(
+        sampleRate: 48000,
+        blockSize: 128,
+        outputChannelCount: 2,
+      );
+      await services.projectController.publishProcessingGraph();
+    }
+
+    await initialize();
+    final track = project.tracks[project.trackOrder.first]!;
+    final node =
+        project.processingGraph.nodes[track.requireProcessing.utilityNodeId]!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    expect(port.parameterValue, closeTo(gainDbToParameterValue(-10), 0.0001));
+    expect(
+      port.config.parameterConfig!.factoryDefaultValue,
+      closeTo(gainParameterZeroDbNormalized, 0.0001),
+    );
+    expect(port.parameterResetTarget, gainDbToParameterValue(-10));
+    expect(
+      node
+          .getPortById(UtilityProcessorModel.balancePortId)
+          .config
+          .parameterConfig!
+          .normalizedVisualBaseline,
+      0.5,
+    );
+    final master = project
+        .tracks[project.sendTrackOrder.single]!
+        .requireProcessing
+        .utilityNode!;
+    expect(master.initialParameterValues, isEmpty);
+    expect(
+      master.getPortById(UtilityProcessorModel.gainPortId).parameterValue,
+      closeTo(gainParameterZeroDbNormalized, 0.0001),
+    );
+
+    // Creation overrides survive loss of the engine before the first capture.
+    expect(node.processorStateRetentionId, isNull);
+    await fixture.engine.stop();
+    expect(port.parameterValue, closeTo(gainDbToParameterValue(-10), 0.0001));
+    expect(port.config.parameterConfig!.displayMode, isNotNull);
+    expect(node.initialParameterValues[port.id], gainDbToParameterValue(-10));
+    await initialize();
+    expect(port.parameterValue, closeTo(gainDbToParameterValue(-10), 0.0001));
+    await project.execute(
+      SetParameterValueCommand(
+        nodeId: node.id,
+        controlPortId: port.id,
+        oldValue: port.parameterValue!,
+        newValue: 0.37,
+      ),
+    );
+    expect(port.parameterValue, closeTo(0.37, 0.0001));
+    await node.updateStateFromEngine();
+    final retention = node.processorStateRetentionId;
+    expect(retention, isNotNull);
+    expect(node.initialParameterValues, isEmpty);
+
+    // A stale UI preview cannot overwrite the live setting on graph rebuild.
+    port.parameterValue = 0.99;
+    await services.projectController.publishProcessingGraph();
+    await node.updateStateFromEngine();
+    expect(node.processorStateRetentionId, retention);
+
+    await fixture.engine.stopAudio();
+    await fixture.engine.renderApi.startRenderAudioSession(
+      sampleRate: 96000,
+      blockSize: 256,
+      outputChannelCount: 2,
+    );
+    await services.projectController.publishProcessingGraph();
+    expect(port.parameterValue, closeTo(0.37, 0.0001));
+
+    // A retained snapshot takes precedence over any remaining creation input.
+    node.initialParameterValues[port.id] = 0.8;
+    await fixture.engine.stop();
+    await initialize();
+    expect(port.parameterValue, closeTo(0.37, 0.0001));
+    await node.updateStateFromEngine();
+    expect(node.processorStateRetentionId, retention);
+  }, timeout: const Timeout(Duration(seconds: 60)));
 
   test(
     'project retention IDs resolve over IPC after an engine restart',

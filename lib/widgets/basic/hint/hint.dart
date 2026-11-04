@@ -50,6 +50,22 @@ class _HintState extends State<Hint> {
   int? overrideHintId;
 
   @override
+  void didUpdateWidget(covariant Hint oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (hintId != null) HintStore.instance.updateHint(hintId!, widget.hint);
+    if (overrideHintId != null) {
+      HintStore.instance.updateHint(overrideHintId!, widget.hint);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (hintId != null) HintStore.instance.removeHint(hintId!);
+    if (overrideHintId != null) HintStore.instance.removeHint(overrideHintId!);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MouseRegion(
       onEnter: (e) {

@@ -23,6 +23,7 @@
 
 #include "generated/lib/model/processing_graph/processors/vst3_processor.h"
 #include "modules/processing_graph/processor/processor.h"
+#include "modules/util/recoverable_notification_queue.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
@@ -147,6 +148,38 @@ class VST3Processor : public Processor,
                       public VST3ProcessorModelBase,
                       public juce::AudioProcessorListener {
 private:
+  friend class VST3ProcessorReportingTest;
+
+  struct ParameterBinding {
+    int64_t portId = -1;
+    ProcessorParameter* parameter = nullptr;
+    juce::AudioProcessorParameter* pluginParameter = nullptr;
+    bool operator==(const ParameterBinding&) const = default;
+  };
+  struct ParameterBindings {
+    std::vector<ParameterBinding> parameters;
+    const ParameterBinding* forJuceIndex(int index) const noexcept;
+  };
+  enum class PluginNotificationKind { value, gestureBegin, gestureEnd, processorChanged };
+  struct PluginNotification {
+    PluginNotificationKind kind;
+    int64_t portId = -1;
+    float value = 0.0f;
+    uint64_t controlRevision = 0;
+    uint32_t changeFlags = 0;
+  };
+  struct PluginReportingState {
+    // Built before the first successful preparation, then retained unchanged
+    // until the plugin and its callback threads have been destroyed.
+    std::optional<ParameterBindings> bindings;
+    RecoverableNotificationQueue<PluginNotification, 1024> notifications;
+    juce::TimedCallback timer;
+    explicit PluginReportingState(VST3Processor& processor);
+  };
+  // Created after model decoding has moved this processor to its final address.
+  // It is never replaced while the plugin can call its listener.
+  std::unique_ptr<PluginReportingState> reportingState;
+
   juce::PluginDescription pluginDescription;
 
   std::unique_ptr<juce::AudioPluginInstance> pluginInstance;
@@ -162,9 +195,10 @@ private:
   int pluginInputChannelCount = 0;
   int pluginOutputChannelCount = 0;
 
-  // Built during plugin preparation, then read without mutation from both the
-  // audio thread and the message thread.
+  // Prepared outside processing. The plugin-parameter map is also read by the
+  // audio thread; callbacks use immutable direct bindings for this instance.
   std::unordered_map<int64_t, juce::AudioProcessorParameter*> parametersByPortId;
+  std::vector<int64_t> parameterPortIdsByIndex;
 
   std::unique_ptr<PluginEditorWindow> editorWindow;
 
@@ -173,10 +207,12 @@ private:
   void bringPluginWindowToFront();
   void hidePluginGUI();
   ProcessorPrepareResult buildPrepareResultForPlugin();
-  void sendPluginParameterChangedEvent(
+  void sendProcessorParameterChangedEvent(
       int64_t controlPortId, juce::AudioProcessorParameter& parameter, float value);
-  void sendPluginParameterGestureEvent(int64_t controlPortId, bool isStarting);
-  void sendPluginParameterSnapshotEvent();
+  void sendProcessorParameterGestureEvent(int64_t controlPortId, bool isStarting, float value);
+  void sendProcessorParameterSnapshotEvent(bool resetGestures = false);
+  void recordParameterGesture(int parameterIndex, bool isStarting);
+  void drainPluginNotifications();
 public:
   VST3Processor(const VST3ProcessorModelImpl& _impl);
   ~VST3Processor() override;
@@ -195,8 +231,12 @@ public:
   void tryInitializePlugin(ProcessorPrepareCallback complete);
 
   std::optional<std::string> openPluginWindow();
-  std::optional<std::string> setPluginParameterValue(int64_t controlPortId, double value);
-
+  std::optional<std::string> getParameterDisplayText(int64_t id, float value) const override;
+protected:
+  void parametersReconciled() override;
+  float normalizeParameterValue(int64_t id, float value) const override;
+  void applyParameterValue(int64_t id, float value) override;
+public:
   void audioProcessorParameterChanged(
       juce::AudioProcessor* processor, int parameterIndex, float newValue) override;
   void audioProcessorParameterChangeGestureBegin(

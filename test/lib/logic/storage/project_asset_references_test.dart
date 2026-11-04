@@ -40,7 +40,7 @@ class _OfflineGraphApi extends Fake implements ProcessingGraphApi {
   Future<String?> Function()? capture;
 
   @override
-  Future<String?> capturePluginState(int nodeId) => capture!();
+  Future<String?> captureProcessorState(int nodeId) => capture!();
 
   @override
   Future<ProcessingGraphNodeInitialization> initializeNodes() async =>

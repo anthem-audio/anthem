@@ -18,85 +18,66 @@
 - [Setup on Windows](./setup_windows.md)
 - [Setup for web development](./setup_web.md)
 - [Testing](./testing.md)
+- [Desktop integration tests](./integration_testing.md)
 
 ## Introduction
 
-Anthem is a modern, multi-workflow digital audio workstation (DAW) designed for creating and editing audio content. It works on Windows, macOS, and Linux.
+Anthem is a digital audio workstation (DAW) for creating and editing audio content. It works on Windows, macOS, Linux, and web.
 
-Anthem is developed and maintained by volunteers, with a focus on maintainability, beautiful UI design, and strong usability. This has influenced several key architectural decisions, including:
+Anthem focuses on maintainability, beautiful UI design, and usability. Its two main components are:
 
-- **UI with Flutter**: Anthem's UI is built using Flutter, which provides:
-  - An effective abstraction for building UIs
-  - A time-saving developer experience, with features like hot-reload that improve iteration time
-  - A flexible and performant language (Dart) that doesn't get in the way when trying to build complex UIs
-  - A mature platform that allows us to focus on solving the problems we care about, instead of building or fixing the tools we're using
-  - A rendering system that is fast-by-default, and tools for further optimizing performance
-
-- **Audio engine with JUCE**: The audio engine is based on JUCE, which provides a mature API with platform integration for authoring audio software.
+- **The UI**, written in Dart with Flutter, provides the interface and manages projects. Flutter supports a shared UI across platforms and fast iteration during development.
+- **The audio engine**, written in C++ with JUCE, handles sequencing, audio processing, and platform audio integration.
 
 ## Getting Started
 
-The setup guides below give instructions for setting up Anthem development on your preferred platform.
+Follow the setup guide for your platform:
 
-- [Setup instructions for Windows](./setup_windows.md)
-- [Setup instructions for Linux](./setup_linux.md)
-- [Setup instructions for macOS](./setup_macos.md)
-- [Desktop integration tests](./integration_testing.md)
+- [Windows](./setup_windows.md)
+- [Linux](./setup_linux.md)
+- [macOS](./setup_macos.md)
+- [Web development](./setup_web.md), after the relevant desktop setup
+
+See [Testing](./testing.md) and [Desktop integration tests](./integration_testing.md) for verification instructions.
 
 ## Architecture
 
-Anthem has two main components, the UI and the engine, which live in separate processes on desktop. Commands and replies use a local TCP socket with JSON messages; visualization updates use a separate bounded shared-memory record ring. On web, both channels live in shared WebAssembly memory.
+The UI manages editing and project state; the engine maintains the runtime data and processors needed for playback and rendering. On desktop, they run in separate processes. On web, the engine runs as WebAssembly and communicates with the UI through shared WebAssembly memory.
 
-The project model is created in Dart, and augmented using code generation. We generate the following code based on the project model:
-- Serialization and deserialization methods, for saving project files based on the project model
-- C++ models that match the Dart models, so the engine can read from the project model directly from memory
-- Methods on the Dart model to automatically generate model update messages, and methods on the generated C++ model to handle these messages, so the C++ model is always up-to-date
+A simplified path from editing to playback is:
 
-We also use code generation to significantly reduce boilerplate and duplicate code for communication between the UI and engine. The message classes in `lib/engine_api/messages/` have matching generated C++ classes, and can be trivially serialized to and from JSON on both ends. See [Message Flow](#Message-Flow) below for more on how this is used. For a deep dive, see [Communication Between UI and Engine](./architecture/communication_between_ui_and_engine.md).
+1. The UI changes the project model in response to a user action. Relevant model changes are synchronized to a corresponding model in the engine.
+2. The engine prepares sequences and the processing graph for playback. The sequencer supplies timed note and automation events to the graph.
+3. The graph routes events, control values, and audio through processors, such as instruments and effects, to the output.
+4. The engine sends responses, events, and visualization data back to the UI so it can display results and live feedback.
 
-### Authority
+### Project state and synchronization
 
-The UI is considered authoritative. It owns the project model, and it is the only one allowed to mutate it. Decisions originate from the UI whenever possible, which is the vast majority of the time; the engine simply exists to produce audio based on the project.
+The UI owns the Dart project model, which describes the project's arrangement, processing graph, routing, and presentation. It manages editing, saving, and loading. Undoable edits use commands, and MobX observables keep the interface up to date when the model changes.
+
+Generated synchronization code sends relevant model changes one way, from Dart to the engine's corresponding C++ model. The engine owns live processor state. See [State Synchronization](./architecture/state_synchronization.md) and [parameter ownership](./architecture/processing_graph.md#parameter-ownership-and-saved-settings).
+
+Anthem's code generator uses Dart model and message definitions to produce serialization code, corresponding C++ types, and synchronization code for applicable project models. This reduces duplicated definitions across the two languages. See the [Codegen Overview](./codegen/overview.md).
+
+### Sequencing and audio processing
+
+The project contains sequences of musical events and clips that refer to other sequences. The sequencer supplies events at the appropriate time as the transport advances. See [Sequencer](./architecture/sequencer.md).
+
+The processing graph connects processors using audio, note/event, and control data. It routes the sequencer's events through instruments and effects and ultimately to the audio output. The engine compiles sequences and graph instructions outside the audio thread, separating the editable project model from the data used for real-time playback. See [Processing Graph](./architecture/processing_graph.md).
 
 ### Message Flow
 
-When the UI wants communicate with the engine, it will send a message to the engine over a TCP socket. A typical round-trip for a message looks like this:
-
-1. A function in the Dart API for the engine is called, e.g. `Engine.projectApi.myCommand()`, which returns a `Future<SomeValue>`.
-
-2. The `myCommand()` function constructs an `MyCommandRequest` message with JSON and sends it to the engine via the engine connector. The engine connector uses a socket connection to send the JSON to the engine as a UTF8-encoded string.
-
-3. The engine process has an event loop, provided by JUCE. There is a messaging thread in the engine that will block while waiting for new messages on the message queue, and will register tasks with the JUCE event scheduler to handle each message. When the engine receives the MyCommandRequest message, it handles the message, and sends back a `MyCommandResponse`.
-
-4. The UI listens for replies via the socket connection. When the socket receives a message, it decodes the reply as a `MyCommandResponse` message, and uses the decoded object to complete the future.
-
-Note that the UI sends an ID with each request, and if the engine gives a response, the response will contain the same ID. This allows the UI to align requests and responses.
+The Dart engine API handles asynchronous requests, responses, and events between the UI and engine. On desktop, JSON commands and replies use a local TCP connection, while frequent visualization updates use a separate shared-memory channel. On web, both channels use shared WebAssembly memory. See [Communication Between UI and Engine](./architecture/communication_between_ui_and_engine.md) for details.
 
 ## Project structure
 
-The following is an overview of the the folder structure in the Anthem repository:
+The main directories are:
 
-- **`assets`**: Contains icons and other assets used by the UI. The engine executable is copied here as well, as a way to include it in the Flutter build.
-- **`bin`**: Contains the `anthem:cli` scripts, used for running code generation and building the engine, among other things. Run `dart run anthem:cli -h` for info.
-- **`codegen`**: Contains custom code generation libraries for Anthem, written in Dart. These libraries allow us to define models in Dart, which are then mirrored as C++ models in the engine. JSON serialization and deserialization code is also generated, along with code for automatically synchronizing the two models at runtime.
-- **`docs`**: Contains documentation for the project.
-- **`engine`**: Contains source code for the Anthem engine. The code in this folder is built into an executable that is run as a separate process from the Flutter UI.
-  - **`generated`**: Contains files generated by the Anthem code generator.
-  - **`include`**: Contains dependencies of the engine, including JUCE and reflect-cpp.
-  - **`src`**: Contains the source code for the Anthem engine.
-    - **`command_handlers`**: Contains code for processing commands that come from the UI.
-    - **`modules`**: Contains various engine modules.
-      - **`core`**: Contains the core application code, which sets up the runtime and includes the other modules.
-      - **`processing_graph`**: Contains the code for the graph that drives Anthem's audio processing.
-      - **`processors`**: Contains internal plugins for Anthem.
-      - **`utils`**: Utilities used by other modules.
-- **`lib`**: Contains the UI for Anthem.
-  - **`engine_api`**: Contains an API for interacting with the engine. This API abstracts the low-level communication details and provides a set of `async` functions to the rest of the UI.
-  - **`helpers`**: Contains miscellaneous helper functions used by multiple other places in the UI, such as an ID generator.
-  - **`logic`**: Contains "business logic" for the UI - primarily core functionality to mutate the project model based on user actions.
-  - **`model`**: Contains the MobX model used by the rest of the UI. This model also describes the project file structure, and can be serialized to JSON to store and load Anthem project files. This also serves as the source for the codegen to generate C++ models.
-  - **`widgets`**: Contains the Flutter widgets that make up the UI.
-- **`linux`**: Contains Flutter platform code for Linux.
-- **`macos`**: Contains Flutter platform code for macOS.
-- **`scripts`**: Contains scripts for developing, such as build scripts.
-- **`windows`**: Contains Flutter platform code for Windows.
+- **`lib`**: Dart application code, including the project model (`model`), editing and project logic (`logic`), engine API (`engine_api`), and Flutter UI (`widgets`).
+- **`engine`**: C++ engine source, generated code, dependencies, and tests. `engine/src/modules` contains the sequencer, processing graph, processors, and other engine subsystems.
+- **`codegen`**: Dart and C++ code generators and their tests.
+- **`assets`**: UI assets and resources packaged with the application, including the desktop engine executable.
+- **`bin`**: The `anthem:cli` development commands, including code generation and engine builds. Run `dart run anthem:cli -h` for options.
+- **`docs`**: Project documentation, including architecture, setup, and testing guides.
+- **`test`** and **`integration_test`**: Dart/Flutter tests and desktop integration scenarios. Engine tests live in `engine/test`.
+- **`linux`**, **`macos`**, **`windows`**, and **`web`**: Platform-specific application and build files.

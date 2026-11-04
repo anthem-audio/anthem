@@ -31,7 +31,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/track.dart';
 import 'package:mobx/mobx.dart';
 
-import 'capture_live_plugin_states.dart';
+import 'capture_live_processor_states.dart';
 import 'command_processor_state_retention.dart';
 
 class DeviceAddRemoveCommand extends Command {
@@ -155,7 +155,7 @@ class DeviceAddRemoveCommand extends Command {
       _processorStateRetention.releaseProjectClaims(storage);
     }
 
-    final capture = captureLivePluginStates(project, nodes);
+    final capture = captureLiveProcessorStates(project, nodes);
     if (capture != null) {
       return capture.then((_) => runInAction(detach));
     }

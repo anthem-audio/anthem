@@ -25,14 +25,14 @@
 
 namespace anthem {
 
-// Captures and restores opaque processor state through the project file store.
+// Captures and restores base values and private state through project storage.
 // Calls and completions run on the message thread, never the audio thread.
 class ProcessorStateStorage {
 public:
   explicit ProcessorStateStorage(FileStorageClient& files) : files(files) {}
 
   // Returns the previous path if the captured bytes are unchanged. An empty
-  // path means the processor supplied no opaque state.
+  // path means the processor has no parameters or private state.
   void capture(
       const std::shared_ptr<Node>& node, FileStorageClient::RelativePathCompletion complete);
   void restore(const std::shared_ptr<Node>& node,

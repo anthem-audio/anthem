@@ -23,39 +23,58 @@ import 'package:anthem/logic/commands/parameter_commands.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/logic/parameter_controller.dart';
 
-class _PluginParameterGestureSession {
+class _ProcessorParameterGestureSession {
   final double oldValue;
 
-  const _PluginParameterGestureSession({required this.oldValue});
+  const _ProcessorParameterGestureSession({required this.oldValue});
 }
 
-/// Applies plugin events from the engine to a project's model and undo history.
+/// Applies processor reports to the UI cache and undo history.
 ///
 /// `Engine` creates and owns this handler for its project and notifies it when
 /// the engine stops so unfinished parameter gestures can be discarded.
 class ProjectEngineEventHandler {
   final ProjectModel project;
 
-  final Map<(Id, int), _PluginParameterGestureSession>
-  _pluginParameterGestureSessions = {};
+  final Map<(Id, int), _ProcessorParameterGestureSession>
+  _processorParameterGestureSessions = {};
 
   ProjectEngineEventHandler(this.project);
 
-  /// Applies plugin parameter and state-change notifications.
+  /// Applies parameter reports and plugin state-change notifications.
   void handleEvent(IpcEvent event) {
     switch (event) {
       case PluginChangedEvent e:
-        _scheduleNodeStateUpdate(e.nodeId);
+        _scheduleProcessorStateCapture(e.nodeId);
         return;
-      case PluginParameterChangedEvent e:
-        _handlePluginParameterChanged(e);
+      case ProcessorParameterChangedEvent e:
+        _handleParameterChanged(e);
         return;
-      case PluginParameterGestureEvent e:
-        _handlePluginParameterGesture(e);
+      case ProcessorParameterGestureEvent e:
+        _handleParameterGesture(e);
         return;
-      case PluginParameterSnapshotEvent e:
-        _handlePluginParameterSnapshot(e);
+      case ProcessorParameterSnapshotEvent e:
+        _handleParameterSnapshot(e);
+        return;
+      case ProcessorParameterResyncEvent e:
+        _processorParameterGestureSessions.removeWhere(
+          (key, _) => key.$1 == e.nodeId,
+        );
+        final node = project.processingGraph.nodes[e.nodeId];
+        if (node == null) return;
+        for (final parameter in e.parameterValues) {
+          final port = _findParameterPort(node, parameter.controlPortId);
+          _applyParameterValue(
+            node,
+            parameter.controlPortId,
+            parameter.value,
+            parameter.displayText,
+            markTouched: port?.parameterValue != parameter.value,
+          );
+        }
+        _scheduleProcessorStateCapture(e.nodeId);
         return;
       default:
         return;
@@ -64,14 +83,14 @@ class ProjectEngineEventHandler {
 
   /// Discards unfinished parameter gestures from the stopped engine.
   void handleEngineStopped() {
-    _pluginParameterGestureSessions.clear();
+    _processorParameterGestureSessions.clear();
   }
 
-  void _scheduleNodeStateUpdate(Id nodeId) {
+  void _scheduleProcessorStateCapture(Id nodeId) {
     project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 
-  NodePortModel? _findPluginParameterPort(NodeModel node, int controlPortId) {
+  NodePortModel? _findParameterPort(NodeModel node, int controlPortId) {
     for (final port in node.controlInputPorts) {
       if (port.id == controlPortId && port.config.parameterConfig != null) {
         return port;
@@ -81,40 +100,32 @@ class ProjectEngineEventHandler {
     return null;
   }
 
-  void _applyPluginParameterValue(
+  void _applyParameterValue(
     NodeModel node,
     int controlPortId,
     double rawValue,
     String? displayText, {
     required bool markTouched,
   }) {
-    final value = rawValue.clamp(0.0, 1.0).toDouble();
-    final port = _findPluginParameterPort(node, controlPortId);
-
-    if (port == null) {
-      return;
-    }
-
-    if (markTouched) {
-      node.touchControlInputParameter(port);
-    }
-
-    if (port.parameterValue != value) {
-      port.parameterValue = value;
-    }
-
-    if (port.parameterDisplayText != displayText) {
-      port.parameterDisplayText = displayText;
-    }
+    final port = _findParameterPort(node, controlPortId);
+    if (port == null) return;
+    if (markTouched) node.touchControlInputParameter(port);
+    applyReportedParameterValues(node, [
+      ProcessingGraphParameterValue(
+        controlPortId: controlPortId,
+        value: rawValue,
+        displayText: displayText,
+      ),
+    ]);
   }
 
-  void _handlePluginParameterChanged(PluginParameterChangedEvent event) {
+  void _handleParameterChanged(ProcessorParameterChangedEvent event) {
     final node = project.processingGraph.nodes[event.nodeId];
     if (node == null) {
       return;
     }
 
-    _applyPluginParameterValue(
+    _applyParameterValue(
       node,
       event.controlPortId,
       event.value,
@@ -122,36 +133,45 @@ class ProjectEngineEventHandler {
       markTouched: true,
     );
 
-    _scheduleNodeStateUpdate(event.nodeId);
+    _scheduleProcessorStateCapture(event.nodeId);
   }
 
-  void _handlePluginParameterGesture(PluginParameterGestureEvent event) {
+  void _handleParameterGesture(ProcessorParameterGestureEvent event) {
     final node = project.processingGraph.nodes[event.nodeId];
     if (node == null) {
       return;
     }
 
-    final port = _findPluginParameterPort(node, event.controlPortId);
+    final port = _findParameterPort(node, event.controlPortId);
     if (port == null) {
       return;
     }
 
     final key = (event.nodeId, event.controlPortId);
 
+    _applyParameterValue(
+      node,
+      event.controlPortId,
+      event.value,
+      event.displayText,
+      markTouched: false,
+    );
+
     if (event.isStarting) {
       node.touchControlInputParameter(port);
-      _pluginParameterGestureSessions[key] = _PluginParameterGestureSession(
-        oldValue: SetParameterValueCommand.effectiveParameterValue(port),
-      );
+      _processorParameterGestureSessions[key] =
+          _ProcessorParameterGestureSession(
+            oldValue: port.parameterValueOrResetTarget,
+          );
       return;
     }
 
-    final session = _pluginParameterGestureSessions.remove(key);
+    final session = _processorParameterGestureSessions.remove(key);
     if (session == null) {
       return;
     }
 
-    final newValue = SetParameterValueCommand.effectiveParameterValue(port);
+    final newValue = port.parameterValueOrResetTarget;
     if (session.oldValue == newValue) {
       return;
     }
@@ -166,14 +186,14 @@ class ProjectEngineEventHandler {
     );
   }
 
-  void _handlePluginParameterSnapshot(PluginParameterSnapshotEvent event) {
+  void _handleParameterSnapshot(ProcessorParameterSnapshotEvent event) {
     final node = project.processingGraph.nodes[event.nodeId];
     if (node == null) {
       return;
     }
 
     for (final parameterValue in event.parameterValues) {
-      _applyPluginParameterValue(
+      _applyParameterValue(
         node,
         parameterValue.controlPortId,
         parameterValue.value,

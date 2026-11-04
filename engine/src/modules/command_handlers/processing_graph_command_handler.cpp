@@ -130,19 +130,19 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     return std::optional(PublishProcessingGraphResponse{.success = true,
         .error = std::nullopt,
         .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
-  } else if (rfl::holds_alternative<CapturePluginStateRequest>(request.variant())) {
-    const auto& capture = rfl::get<CapturePluginStateRequest>(request.variant());
+  } else if (rfl::holds_alternative<CaptureProcessorStateRequest>(request.variant())) {
+    const auto& capture = rfl::get<CaptureProcessorStateRequest>(request.variant());
     const auto requestId = capture.requestBase.get().id;
     auto& nodes = *engine.project->processingGraph()->nodes();
     const auto node = nodes.find(capture.nodeId);
     if (node == nodes.end()) {
-      return std::optional(CapturePluginStateResponse{.relativePath = std::nullopt,
+      return std::optional(CaptureProcessorStateResponse{.relativePath = std::nullopt,
           .error = "Processing graph node not found.",
           .responseBase = ResponseBase{.id = requestId}});
     }
     engine.processorStateStorage.capture(
         node->second, [requestId](FileStorageResult<std::string> result) {
-          Response response = CapturePluginStateResponse{
+          Response response = CaptureProcessorStateResponse{
               .relativePath = result.value && !result.value->empty() ? result.value : std::nullopt,
               .error = std::move(result.error),
               .responseBase = ResponseBase{.id = requestId}};
@@ -150,50 +150,26 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
           Engine::getInstance().comms.send(message);
         });
     return std::nullopt;
-  } else if (rfl::holds_alternative<SetPluginParameterValueRequest>(request.variant())) {
-    auto& setPluginParameterValueRequest =
-        rfl::get<SetPluginParameterValueRequest>(request.variant());
-
-#ifdef __EMSCRIPTEN__
-    juce::Logger::writeToLog(
-        "Ignoring SetPluginParameterValueRequest because plugins are not available on this "
-        "platform.");
-#else
-    auto& nodes = *Engine::getInstance().project->processingGraph()->nodes();
-    auto nodeIter = nodes.find(setPluginParameterValueRequest.nodeId);
-    auto node = nodeIter != nodes.end() ? nodeIter->second : nullptr;
-
-    if (node == nullptr) {
-      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
-                               " not found in processing graph.");
-      return std::nullopt;
+  } else if (rfl::holds_alternative<SetProcessorParameterValueRequest>(request.variant())) {
+    const auto& edit = rfl::get<SetProcessorParameterValueRequest>(request.variant());
+    SetProcessorParameterValueResponse response{.parameterValue = std::nullopt,
+        .error = std::nullopt,
+        .responseBase = ResponseBase{.id = edit.requestBase.get().id}};
+    auto& nodes = *engine.project->processingGraph()->nodes();
+    const auto node = nodes.find(edit.nodeId);
+    const auto processor = node == nodes.end() ? std::nullopt : node->second->getProcessor();
+    if (!processor || !(*processor)->isPrepared || !(*processor)->hasRestoredProjectState) {
+      response.error = "The processor is not ready for parameter edits.";
+    } else if (auto error = (*processor)->setParameterValue(edit.controlPortId, edit.value)) {
+      response.error = std::move(error);
+    } else {
+      const auto value = (*processor)->getParameter(edit.controlPortId)->value.load();
+      response.parameterValue = std::make_shared<ProcessingGraphParameterValue>(
+          ProcessingGraphParameterValue{.controlPortId = edit.controlPortId,
+              .value = value,
+              .displayText = (*processor)->getParameterDisplayText(edit.controlPortId, value)});
     }
-
-    auto processor = node->getProcessor();
-
-    if (!processor) {
-      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
-                               " does not have a processor.");
-      return std::nullopt;
-    }
-
-    auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor.value());
-
-    if (vst3Processor == nullptr) {
-      juce::Logger::writeToLog("Node " + toIdString(setPluginParameterValueRequest.nodeId) +
-                               " is not a VST3 processor.");
-      return std::nullopt;
-    }
-
-    auto error = vst3Processor->setPluginParameterValue(
-        setPluginParameterValueRequest.controlPortId, setPluginParameterValueRequest.value);
-
-    if (error.has_value()) {
-      juce::Logger::writeToLog("Error setting plugin parameter value: " + error.value());
-    }
-#endif
-
-    return std::nullopt;
+    return Response(std::move(response));
   } else if (rfl::holds_alternative<OpenPluginWindowRequest>(request.variant())) {
     juce::Logger::writeToLog("Handling OpenPluginWindowRequest...");
 

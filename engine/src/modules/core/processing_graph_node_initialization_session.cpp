@@ -56,6 +56,7 @@ std::shared_ptr<ProcessingGraphPortConfiguration> makePortConfiguration(
       .parameterDefaultValue = portConfiguration.parameterDefaultValue,
       .parameterDisplayMode = portConfiguration.parameterDisplayMode,
       .parameterUnitLabel = portConfiguration.parameterUnitLabel,
+      .parameterNormalizedVisualBaseline = portConfiguration.parameterNormalizedVisualBaseline,
   });
 }
 
@@ -246,6 +247,9 @@ void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nod
   }
 
   try {
+    if (!prepareResult || !prepareResult->portConfiguration)
+      throw std::runtime_error("Processor preparation did not supply a port configuration.");
+    processor->reconcileParameters(*prepareResult);
     if (!processor->hasRestoredProjectState) {
       if (graphNode->processorStateRetentionId().has_value()) {
         engine.processorStateStorage.restore(graphNode,
@@ -257,11 +261,13 @@ void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nod
             });
         return;
       }
+      std::map<int64_t, double> initialValues;
+      for (const auto& [id, value] : *graphNode->initialParameterValues())
+        initialValues.emplace(id, value);
+      processor->restoreParameterValues(initialValues);
       processor->hasRestoredProjectState = true;
     }
-    if (!prepareResult.has_value() || !prepareResult->portConfiguration.has_value()) {
-      throw std::runtime_error("Processor preparation did not supply a port configuration.");
-    }
+    prepareResult->parameterValues = processor->getParameterValues();
     processor->isPrepared = true;
     markNodeInitialized(nodeId, graphNode);
     addResult(makeNodeInitializationResult(nodeId, *prepareResult));

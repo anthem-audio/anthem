@@ -21,7 +21,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
@@ -64,14 +63,7 @@ class GainProcessorModel extends _GainProcessorModel
     processor: this,
     audioInputPortIds: [audioInputPortId],
     audioOutputPortIds: [audioOutputPortId],
-    parameters: [
-      NativeParameterPreset(
-        id: gainPortId,
-        value: gainParameterZeroDbNormalized,
-        displayMode: ParameterDisplayMode.gainDb,
-        unitLabel: 'dB',
-      ),
-    ],
+    controlInputPortIds: [gainPortId],
   );
 
   static const int audioInputPortId = _GainProcessorModel.audioInputPortId;

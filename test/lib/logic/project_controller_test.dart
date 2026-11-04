@@ -17,8 +17,6 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/processing_graph/parameter_presentation.dart';
-
 import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
@@ -32,6 +30,8 @@ import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobx/mobx.dart';
+
+import '../../helpers/parameter_engine.dart';
 
 class _RecordingProcessingGraphApi extends Fake implements ProcessingGraphApi {
   final calls = <String>[];
@@ -204,15 +204,12 @@ void main() {
       },
     );
 
-    test('port refresh preserves visual baselines and defaults new plugin ports to minimum', () async {
+    test('port refresh updates processor baselines and defaults new plugin ports to minimum', () async {
       final nodeId = project.allocateId();
       final node = NodeModel(
         id: nodeId,
         controlInputPorts: AnthemObservableList.of([
           NodePortModel(
-            presentation: ParameterPresentationModel(
-              normalizedVisualBaseline: 0.25,
-            ),
             nodeId: nodeId,
             id: 100,
             config: NodePortConfigModel(
@@ -220,6 +217,7 @@ void main() {
               name: 'Previous name',
               parameterConfig: ParameterConfigModel(
                 id: 100,
+                normalizedVisualBaseline: 0.25,
                 factoryDefaultValue: 0.5,
                 displayMode: ParameterDisplayMode.pluginText,
               ),
@@ -246,6 +244,7 @@ void main() {
                 id: 100,
                 name: 'New name',
                 parameterDefaultValue: 0.5,
+                parameterNormalizedVisualBaseline: 0.5,
                 parameterDisplayMode: 'pluginText',
               ),
               ProcessingGraphPortConfiguration(
@@ -276,9 +275,54 @@ void main() {
       final refreshedPort = node.getPortById(100);
       expect(refreshedPort, same(previousPort));
       expect(refreshedPort.config.name, 'New name');
-      expect(refreshedPort.presentation.normalizedVisualBaseline, 0.25);
-      expect(node.getPortById(101).presentation.normalizedVisualBaseline, 0.0);
+      expect(
+        refreshedPort.config.parameterConfig!.normalizedVisualBaseline,
+        0.5,
+      );
+      expect(
+        node.getPortById(101).config.parameterConfig!.normalizedVisualBaseline,
+        0.0,
+      );
     });
+
+    test(
+      'metadata-only reports and repeated reports preserve rack connections',
+      () async {
+        final graph = project.processingGraph;
+        final track = project.tracks[project.trackOrder.first]!;
+        final processing = track.requireProcessing;
+        final created = DeviceFactories.utility(
+          idAllocator: project.idAllocator,
+        );
+        graph.restoreGraphFragment(created.graphFragment);
+        processing.devices.add(created.device);
+        final node = graph.nodes[created.device.nodeIds.single]!;
+        final api = _RecordingProcessingGraphApi();
+        final report = testUtilityInitialization(node);
+        api.results = [report];
+        project.engine.processingGraphApi = api;
+        await controller.publishProcessingGraph();
+        final connectionIds = processing.deviceRoutingConnectionIds.toList();
+        expect(connectionIds, isNotEmpty);
+        final descriptor = report.portConfiguration!.controlInputPorts.first;
+        final port = node.getPortById(descriptor.id);
+        final parameter = port.config.parameterConfig!;
+        final value = port.parameterValue;
+        descriptor.name = 'Updated gain';
+        descriptor.parameterNormalizedVisualBaseline = 0.25;
+        descriptor.parameterDefaultValue = 0.6;
+        await controller.publishProcessingGraph();
+        expect(port.config.name, 'Updated gain');
+        expect(port.config.parameterConfig, same(parameter));
+        expect(parameter.normalizedVisualBaseline, 0.25);
+        expect(parameter.factoryDefaultValue, 0.6);
+        expect(port.parameterValue, value);
+        expect(processing.deviceRoutingConnectionIds, connectionIds);
+
+        await controller.publishProcessingGraph();
+        expect(processing.deviceRoutingConnectionIds, connectionIds);
+      },
+    );
 
     test('missing discovered ports keep routing, values and presentation and recover by ID', () async {
       final sourceId = project.allocateId();
@@ -289,13 +333,11 @@ void main() {
         isAvailable: true,
         initialParameterValue: 0.7,
         parameterResetValue: 0.3,
-        presentation: ParameterPresentationModel(
-          normalizedVisualBaseline: 0.25,
-        ),
         config: NodePortConfigModel(
           dataType: NodePortDataType.control,
           parameterConfig: ParameterConfigModel(
             id: 10,
+            normalizedVisualBaseline: 0.25,
             factoryDefaultValue: 0.5,
           ),
         ),
@@ -360,7 +402,7 @@ void main() {
       expect(project.processingGraph.isConnectionResolved(connection), isFalse);
       expect(port.parameterValue, 0.7);
       expect(port.parameterResetTarget, 0.3);
-      expect(port.presentation.normalizedVisualBaseline, 0.25);
+      expect(port.config.parameterConfig!.normalizedVisualBaseline, 0.25);
       final saved = project.processingGraph.toJson();
       final reopened = ProcessingGraphModel.fromJson(saved);
       expect(reopened.toJson(), saved);
@@ -401,7 +443,7 @@ void main() {
       expect(port.parameterValue, 0.6);
       expect(port.parameterResetTarget, 0.3);
       expect(port.config.parameterConfig!.factoryDefaultValue, 0.9);
-      expect(port.presentation.normalizedVisualBaseline, 0.25);
+      expect(port.config.parameterConfig!.normalizedVisualBaseline, 0.0);
       expect(
         project.processingGraph.connections[connection.id],
         same(connection),

@@ -1,6 +1,6 @@
 # Processor state storage investigation
 
-Investigated on 2026-10-09. This records findings and decisions for future work. Desktop file storage, engine storage requests, folder-based project save/load, and file-backed VST state are implemented. Preset operations are next.
+Investigated on 2026-10-09; implementation notes revised on 2026-11-01. This records findings and decisions for future work. Desktop file storage, engine storage requests, folder-based project save/load, and file-backed VST state are implemented. Native and hosted processors now share engine-owned parameter values and file-backed snapshots. Native initialization uses engine defaults and descriptions with independent creation overrides. Live state application and preset operations are the next steps.
 
 ## Scope
 
@@ -8,10 +8,7 @@ Investigate a common state capture, restoration and preset mechanism for native,
 VST3 and future CLAP processors, without requiring large opaque state to pass
 through the Dart project model and ordinary model synchronization.
 
-Native sample/wavetable asset management, immutable assets and small snapshots
-that reference those assets are **deferred until there is a specific use-case**.
-Do not introduce that machinery as part of this investigation. Likewise, do not
-require a database, chunk deduplication or a new native state framework up front.
+Native sample/wavetable asset management, immutable assets and small snapshots that reference those assets are **deferred until there is a specific use-case**. Do not introduce that machinery as part of this investigation. Likewise, do not require a database or chunk deduplication up front. The next stage includes a basic native parameter-state encoding; additional private-state schemas should follow concrete processor requirements.
 
 ## Agreed storage direction
 
@@ -51,46 +48,30 @@ also require a platform boundary; they cannot be assumed to work unchanged on we
 
 ## Current Anthem behavior
 
-### Native processors
+### Shared parameters and snapshots
 
-Native instance settings are represented by processor model fields and control
-input ports' `parameterValue` fields. New nodes receive creation presets; loaded
-nodes receive saved project values. Both reach the engine through regular
-generated model serialization and synchronization.
+Native processors and plugin hosts keep their base parameter values in the engine. Explicit edit requests return the accepted value and display text. The Dart model keeps an observable display cache and a transient pending value, rather than sending parameter values through ordinary model synchronization. Runtime graphs borrow the processor's parameter storage, so rebuilding a graph preserves live settings.
 
-During preparation, the engine reports supported ports, factory defaults and
-channel counts. Discovery preserves supplied parameter values and fills missing
-values. Graph publication initializes runtime parameter bindings from those port
-values. Subsequent edits update the bindings through model synchronization.
+Automation supplies effective processing values without replacing the base settings. For VSTs, the adapter applies effective values to JUCE and ignores automated parameter reports when updating the base. Removing a control connection returns processing to the base value. The current adapter still uses the first control sample of each block; sample-accurate delivery is deferred.
 
-Native processors do not currently implement opaque `getState`/`setState` data.
-This is adequate for existing native settings, but does not establish a general
-mechanism for future private processor data that the UI need not understand.
+A snapshot contains normalized base parameters and an optional private payload. Existing native processors need only the common parameters; VSTs add JUCE's opaque bytes. `NodeModel.processorStateRetentionId` identifies the project-owned file claim. `ProjectModel.fileRetentions` stores the asset store's serialized project claims; commands and saved documents retain independent runtime claims.
 
-Relevant code:
+The engine obtains access before capture, then captures, hashes and writes synchronously on the message thread. Unchanged snapshots reuse the previous file using its byte length and SHA-256. The complete buffer is released before waiting for storage replies. Failed captures preserve the previous reference. Debounced edits, Save, and removal commands use this same capture path for native processors and plugin hosts.
 
-- [Creation presets](lib/model/processing_graph/processors/native_node_bootstrap.dart)
-- [Discovery reconciliation](lib/logic/project_controller.dart)
-- [Runtime parameter bindings](engine/src/modules/processing_graph/runtime/node_process_context.cpp)
-- [Processor state interface](engine/src/modules/processing_graph/processor/processor.h)
+Initialization restores the private payload followed by the common base values, prepares the processor again, and reports its final ports and values before graph publication. Creation settings apply once when no saved snapshot exists. Re-preparation of an existing instance does not replay saved state over live edits.
 
-### VST3 processors
+JUCE still allocates a complete `MemoryBlock` during capture and restoration. File storage removes the opaque payload from Dart and ordinary IPC, but does not eliminate that engine-side allocation or JUCE's internal encoding. Streaming VST state remains separate work.
 
-`NodeModel.processorStateRetentionId` identifies a project-owned claim on an opaque binary file in the `plugin states` category. The asset store exports the project scope’s retention IDs and relative paths as a JSON string in `ProjectModel.fileRetentions`; commands and saved documents retain independent runtime claims. Commands replace node claims with their own during removal and create new project claims on restoration. JUCE supplies the bytes through `getStateInformation`; restoring them uses `setStateInformation`. Saved control-port values are UI mirrors, rather than an additional source replayed over restored plugin state.
-
-The engine obtains write access from the UI, writes and closes the file, and commits it before returning its relative path. Unchanged captures reuse the previous file after comparing byte length and SHA-256 against the asset store's cached fingerprint. Capture failures leave the previous model reference intact. Initialization obtains read access to the saved file, restores it, then prepares the plugin again before reporting final ports and values. Audio-session re-preparation does not replay saved state over live edits.
-
-State capture is debounced after plugin changes and also occurs before saving. Only file references travel through ordinary IPC and model synchronization. JUCE still allocates a complete `MemoryBlock` during capture and restoration; this implementation does not provide VST stream-based capture or eliminate that engine-side allocation. The engine obtains file access before capturing state. Capture, hashing and writing run synchronously on the message thread, and the complete buffer is released before waiting for commit or access-release replies. Callers can submit captures together without retaining complete buffers across those waits.
-
-Prealpha.1 imports extract their embedded JUCE-encoded state into a temporary directory using migration-local file writes. The migration updates the raw JSON before the current model and project storage are constructed. That legacy import necessarily decodes the old payload in Dart. Current-format projects contain only file references.
+Prealpha.1 imports construct common snapshots from their saved parameters and embedded plugin state using migration-local file writes. The raw JSON is migrated before the current model and storage are constructed. Legacy import necessarily decodes the old payload in Dart; current-format projects contain only file references.
 
 Relevant code:
 
-- [State capture](lib/model/processing_graph/node.dart)
-- [Model synchronization](lib/model/project.dart)
+- [Parameter ownership](engine/src/modules/processing_graph/processor/processor.cpp)
+- [UI edit coordination](lib/logic/parameter_controller.dart)
+- [Common snapshot encoding](engine/src/modules/core/processor_state_snapshot.cpp)
+- [Storage access and capture](engine/src/modules/core/processor_state_storage.cpp)
 - [Initialization and restoration](engine/src/modules/core/processing_graph_node_initialization_session.cpp)
-- [VST3 state delegation](engine/src/modules/processors/vst3_processor.cpp)
-- [Capture before saving](lib/logic/main_window_controller.dart)
+- [VST3 adapter](engine/src/modules/processors/vst3_processor.cpp)
 
 ## Evidence about plugin state
 
@@ -156,7 +137,7 @@ Ignoring XML overhead and additional controller state, two base64 layers expand 
 
 See [JUCE's VST3 wrapper](engine/include/JUCE/modules/juce_audio_processors_headless/format_types/juce_VST3PluginFormatImpl.h) (`getStateInformation` and `appendStateFrom`) and [Anthem's state storage](engine/src/modules/core/processor_state_storage.cpp).
 
-Desktop project saving streams JSON into gzip. Plugin capture now writes state files directly in the engine. A capture buffer exists only during the synchronous capture/hash/write operation; pending IPC replies retain metadata rather than opaque bytes. In the Linux integration fixture, a 1 MiB plugin payload produced a 1,398,406-byte JUCE state file alongside a 1,778-byte project document. These are file sizes, not memory measurements. [Controlled fixture](engine/test_plugins/test_plugin.cpp), [persistence scenario](integration_test/plugin_test.dart).
+Desktop project saving streams JSON into gzip. Plugin capture now writes state files directly in the engine. A capture buffer exists only during the synchronous capture/hash/write operation; pending IPC replies retain metadata rather than opaque bytes. In the Linux integration fixture, a 1 MiB plugin payload produced approximately 1.4 MiB of JUCE state stored outside the project document. The common snapshot adds a small metadata header. These are file sizes, not memory measurements. [Controlled fixture](engine/test_plugins/test_plugin.cpp), [persistence scenario](integration_test/plugin_test.dart).
 
 **Follow-up to retain:** file storage does not remove a plugin's own working data, JUCE's complete capture/restoration buffers, or its internal base64/XML encoding. Measure those engine-side costs separately. True VST3 streaming would require adapter work; CLAP's stream interface accommodates it directly.
 
@@ -247,7 +228,7 @@ not prescribe one internal representation for every processor.
 
 ## Implementation sequence
 
-Stages 1 and 2 provide desktop file storage and engine access through IPC. Stage 3 introduces folder projects, then connects processor-state capture and restoration to this store. Folder save/load and file-backed VST snapshots are implemented; preset operations and undoable state restoration are next.
+Stages 1–3 and the first combined checkpoint of stage 4 are implemented. The remaining stage 4 checkpoints cover live state application and presets.
 
 1. Build the desktop asset store and its tests: relative file paths, temporary writes,
    commit/abort, read access, retention and deletion, and separate unsaved-project
@@ -259,8 +240,7 @@ Stages 1 and 2 provide desktop file storage and engine access through IPC. Stage
    Handle project-file changes in versioned migrations, keeping model
    `fromJson()` current-schema-only. Replace payloads in the model and IPC with
    small state references.
-4. Add preset operations and undoable state restoration through the common
-   interface, with explicit reconciliation of UI-visible values.
+4. Give native processors and plugin hosts one engine-owned state contract. Use it for parameter editing, project restoration, presets, and undoable state restoration, with explicit reconciliation of UI-visible values.
 5. Integrate CLAP when hosting support is implemented. Treat draft resource and
    undo extensions as optional capabilities.
 
@@ -269,8 +249,108 @@ restoration with bounded configurable state sizes. Verify project reopen, engine
 restart, Save As, missing plugins, failed writes and undo retention. Avoid starting
 with a gigabyte allocation on this development machine.
 
-Native private-state encoding, audio assets, deduplication and true VST streaming
-can be separate work when a specific use-case or measurement justifies them.
+Native private-state encoding beyond the current parameters, audio assets, deduplication, and true VST streaming can be separate work when a specific use-case or measurement justifies them.
+
+## Stage 4: common processor state
+
+Parameter editing, capture and startup restoration now use the shared contract below. Live state application and presets remain planned. Editing requires a running engine and a ready processor for both native processors and plugin hosts.
+
+### Ownership and snapshots
+
+The engine owns a processor's live settings and supplies its port and parameter descriptions, including factory defaults, formatting and visual baselines. Dart owns the project structure, routing, explicit reset overrides, state-file references, and undo history. Descriptions and parameter values cached in Dart let saved projects display controls before initialization or when the engine is unavailable; updating a value cache must not itself change engine settings. Initial values chosen when creating a device are a separate, one-time input. Host bindings, such as the track assigned to a sequencer provider, remain synchronized graph configuration.
+
+One engine parameter system maintains base values for native processors and plugin hosts. A base value is the stored, editable setting; an effective value is the result of applying automation and modulation. Processing uses effective values without writing them back into the base values. Native processors consume these values directly, while the VST adapter delivers them to JUCE. Parameter editing, control routing, and the policy for accepting processor-originated changes belong to the shared system.
+
+Parameter storage belongs to the processor instance, and runtime contexts borrow stable bindings that outlive individual compiled graphs. Graph publication and audio-configuration changes can then preserve live settings without reconstructing them from a potentially stale UI cache. Reconcile parameter descriptions by stable control-port ID, preserving existing base values and initializing new ones before control signals are applied. Missing ports keep their saved values through the existing unavailable-port handling.
+
+Each snapshot stores a schema version, normalized base parameter values keyed by stable control-port IDs, and any processor-specific state. Existing native processors need only the common parameter data; private durable settings can be added when a processor needs them. The VST adapter includes JUCE's opaque state. Restore processor-specific state first, then apply the common base values before automation resumes. The engine captures and restores both parts together through the asset-storage machinery. Node and track IDs, connections, cached descriptions and values, and reset overrides remain project data. Temporary DSP data, such as the tone generator's running phase, is not automatically preset state.
+
+The preset identifies which processor it belongs to, independently of the node where it is applied. The engine owns the common snapshot format, and each processor owns the encoding and version handling of its private payload. Dart does not need to decode state files, and this does not require another shared definition file or additional Dart model code generation.
+
+### Observable parameter state in the UI
+
+Keep observable parameter fields on `NodePortModel` as the UI's view of engine state. One handler applies initialization snapshots, accepted edits, and processor-originated changes to those fields. Existing controls continue reading through `ParameterUiBinding` and rebuilding through MobX. Editing goes through the common engine API; changing a cached value must not send a model update back to the engine. A separate parameter registry or state-management system is not needed for this checkpoint.
+
+Distinguish the confirmed base value, the effective value used for visualization, and any pending edit. During a drag, show the pending value immediately while awaiting confirmation. Reconcile it with the accepted value or discard it on rejection; an older reply must not overwrite a newer edit. Keep this coordination in the existing parameter-editing machinery, and finish the undo gesture once its final accepted value is known.
+
+Use `@hideFromCpp` for a cached value retained in project JSON as a last-known preview; that preview is not a restoration source. Use `@hide` for transient observable state, including pending edits and runtime display data. Effective-value visualization should use the existing visualization transport at a suitable display rate. Visualization reports must not mark the project dirty or create history entries. Preserve cached displays when the engine stops, with editing governed by the existing readiness state.
+
+### Base values, automation, and modulation
+
+Keep today's behavior in which an incoming control signal replaces the base value during processing. Future modulation may combine a base value with several signals in other ways; that evaluation must remain shared by native processors and plugin hosts. Do not make the presence of a connection an inherent prohibition on editing a base value. Distinguish explicit base-value edits from reports of effective values so richer modulation can allow base edits while control signals continue. The modulation algorithms themselves are future work.
+
+For current absolute automation, preserve a controlled parameter's known base value when the processor reports value changes; accept reported changes for uncontrolled parameters. When control disconnects, processing must return to the base value. Late notifications from earlier automated processing must not overwrite it after disconnection. Apply the same policy to native processors and plugin hosts, and keep base-value reports distinguishable from effective-value reports in the UI and history handling.
+
+A preset loaded through Anthem explicitly replaces the base values from its snapshot. A preset loaded inside a processor's own editor may change parameters while automation continues, without giving Anthem an accurate snapshot of the new unautomated settings. Use the same notification policy for this case: preserve known bases for controlled parameters and accept changes for uncontrolled parameters. Do not attempt to reconstruct the hidden preset's original values from a scan taken during automation.
+
+Opaque state may contain the effective parameter values at capture time, so its bytes can differ at different playback positions. Preserve the bytes as supplied and store the common base values alongside them; applying those base values after restoration provides the intended settings. Accept that unchanged base values do not guarantee an identical opaque snapshot or matching content fingerprint.
+
+The current VST adapter delivers only the first control sample of each block. Sample-accurate VST automation is deferred while waiting for JUCE support; evaluate a future JUCE release before considering a custom implementation. This stage preserves the current delivery resolution. Richer modulation and improvements to VST automation delivery must use the shared parameter semantics above. Any required JUCE integration change needs discussion before implementation.
+
+### Cleanup included in the combined checkpoint
+
+| Previous handling | Replacement |
+| --- | --- |
+| Parameter commands synchronized model values and sent a separate VST edit. | All edits use the processor API and apply its accepted value to the UI cache. |
+| `NodePort` forwarded synchronized values into the current runtime context. | UI previews are excluded from C++ synchronization; the forwarding path is removed. |
+| `NodeProcessContext` allocated parameter values each time the graph was compiled. | Contexts borrow stable processor-owned values. |
+| Parameter requests cast to `VST3Processor` and were excluded on WASM. | Dispatch uses the common processor contract, including discrete-value normalization. |
+| Initialization and notifications separately applied reported values. | Both use the same observable-cache update function. |
+| UI gestures and plugin-editor gestures used separate value-changing paths. | Both record the same accepted-value command; UI gestures await replies, while plugin gestures use reported boundaries. |
+| Capture and removal helpers excluded native processors. | All ready processors use the common snapshot and retention machinery; stateless processors can return no state. |
+
+The removed `NodeModel.isThirdPartyPlugin` flag also made [`ProcessingGraphModel.addConnection`](lib/model/processing_graph/processing_graph.dart) validate native endpoints immediately while permitting unresolved plugin endpoints. Both kinds depend on engine discovery, so unavailable ports now represent unresolved endpoints consistently. Native factories can still have tests for their expected port IDs. Historical migrations may continue reading the old field as part of the old schema.
+
+These changes reuse the current command, IPC, port-reconciliation, and storage machinery. Plugin-editor windows and format availability remain capabilities of particular processors; they do not need a uniform implementation to share state handling.
+
+### Creation, restoration, and edits
+
+- **Creation:** create the processor, prepare it, and apply explicit initial settings once when there is no saved snapshot. A regular track's −10 dB Utility gain must survive this transition. Keep those inputs available until a committed snapshot replaces them, so a restart before the first capture still has the intended defaults. Factory defaults and project reset targets remain separate. Do not infer creation settings from every subsequent UI cache update.
+- **Project open or engine restart:** during initialization, obtain read access to the retained snapshot, read and restore it, prepare again if necessary, then report the final ports and values. Complete this sequence before the processor's first graph publication. The processor cannot yet be executing, so initialization needs no suspension request or audio-thread acknowledgement. Initial restoration happens once per processor instance; changing sample rate or rebuilding a graph must not replay a snapshot over live edits.
+- **Parameter edits:** use the same processor operation for native controls, hosted-plugin controls, and parameter undo/redo. Retain the small old/new-value commands for ordinary edits. Complete a gesture once its final accepted value is known; reports of that edit must not create another history entry. An unavailable engine or processor must reject the edit before changing history; a stopped engine is not an alternate native editing mode.
+- **Preset application and state undo/redo:** retain a before snapshot, apply the replacement, obtain the resulting ports and values, and update routing through the existing discovery/publish path. Keep the before and after snapshots for history. Updating the model's saved snapshot reference after a capture must not itself trigger another restoration.
+
+### Native initialization
+
+Native and hosted processors use the same engine-originated initialization reports. Dart factories retain stable routing endpoints without duplicating native factory values or formatting; `NativeParameterPreset` is removed. Creation overrides remain a small optional map of normalized parameter values, independent of preset save/load. They require no preset object, file, exported binary, shared initialization schema or additional code generator.
+
+The engine initializes its factory state, restores a saved snapshot when present, and otherwise applies creation overrides once. Retain those overrides until the first successfully retained snapshot. Ordinary source tracks request a Utility gain of −10 dB and separately choose −10 dB as the project reset target; groups, returns and the master use the processor's unity-gain default. An arbitrary creation override does not implicitly change a reset target.
+
+Fixed visual properties such as `normalizedVisualBaseline` belong in the parameter description, alongside display mode and units. Cache those descriptions and confirmed parameter values in the saved project so controls remain inspectable without the engine. New controls can wait for discovery where their descriptions are not yet known. Preserve explicit project reset targets independently of description refreshes.
+
+Stable native port IDs and data types can still be used to construct routing before discovery, including the default project. Availability and runtime channel counts are confirmed before audio publication. Do not introduce a blanket running-engine requirement for graph structure changes or redesign all routing around deferred creation. Operations that need live state continue to enforce their actual readiness requirements. A new project may assume a functioning engine; offline native creation does not justify another metadata path.
+
+Native processor IDs, port IDs, parameter meanings and normalized mappings are compatibility contracts. An incompatible successor should use a new processor identity while retaining the previous implementation as legacy. Runtime channel counts may still vary, and private state requires compatible or versioned decoding. No legacy-processor framework is needed for this cleanup.
+
+Verify engine defaults without overrides, contextual creation and independent reset targets, cached display after save/load without engine startup, pending controls, saved routing, snapshot precedence and restart before capture, and preservation of live settings through graph recompilation and audio re-preparation. Update the current unreleased migration when moving parameter metadata; keep detailed snapshot assertions in their owning tests. This work does not change the snapshot format, implement presets or add live-state suspension.
+
+### Live state replacement
+
+Live state replacement needs per-node suspension. Acquire read access to the state file first. Immediately before processing the affected node, its audio or worker thread consumes the suspension request and acknowledges that the processor will no longer run. Deliver requests and acknowledgements without blocking or allocating on those threads. The node must still complete scheduler bookkeeping and produce cleared outputs while suspended; other nodes can continue. After acknowledgement, the message thread can replace state and prepare the processor. If the ports changed, reconcile them and wait until a runtime graph with compatible buffer bindings is active before resuming. A state change that preserves the port layout does not itself require graph replacement. Use the same suspension mechanism for state replacement and port reconfiguration, coordinating overlapping operations so one cannot resume a processor still needed by another.
+
+Suspension belongs to the processor instance and must survive replacement of its compiled graph context. Disconnected nodes are still scheduled in the current executor, so disconnected routing does not need a separate suspension path. Initial restoration follows the initialization sequence above. If an audio session stops while a suspension request is pending, its shutdown must finish or cancel that request without waiting for another processing callback, after all processing calls have finished. Node removal must also cancel pending operations. Define how suspension interacts with an active offline render as part of this work.
+
+Investigate how JUCE handles plugin-initiated I/O changes before implementing this coordination. Any required change to JUCE or its integration must be discussed with the engineer before implementation; investigation alone does not authorize that change.
+
+Preserve the checks for stale node instances, engine restarts, unavailable ports, missing plugins, and failed captures. These express real lifetimes and failures. If restoration partially changes a processor before failing, attempt to restore the retained before snapshot; if that also fails, keep its state files and leave the processor unavailable rather than reporting success. Serialize state operations with edits to the affected processor, and ignore obsolete completions after replacement or restart. A failed history operation must leave its history position available for retry.
+
+After engine loss, preserve the last committed snapshot and any initial settings still needed to create a new instance. A UI parameter cache cannot reconstruct private processor data, so it must not silently replace that snapshot. Project structure can still be copied or saved using retained state; loss of edits newer than the last successful capture remains a recovery concern for native and hosted processors alike.
+
+### Compatibility and platform boundaries
+
+Project restoration uses the common snapshot format. The prealpha.1 migration converts its saved native parameter values and embedded VST state into that format, including saved VST parameter values where available. Keep these writes and JSON conversions inside the migration, before constructing the current model or opening the current asset store. Target the existing unreleased `prealpha.2` format; earlier development versions of `prealpha.2` do not need another compatibility path. Test native gain and balance as well as VST state, and keep current `fromJson()` generated and current-schema-only.
+
+The generic parameter contract must work for native processors on WASM. File-backed browser persistence still depends on the separate web storage and ZIP checkpoint. File-backed captures and removal undo that retains snapshots also depend on that backend; unsupported storage must fail before mutating nodes or advancing history. Until that exists, do not present a document-only export as a complete project containing processor snapshots. Automatic engine restart, broader engine-status UI, and arbitrary plugin-editor undo boundaries remain separate work; this stage should provide one consistent readiness/error policy that those features can use.
+
+### Review checkpoints
+
+The first checkpoint combines live parameter ownership, the common editing API, snapshot capture, startup restoration, and migration. These are implemented together so review does not depend on a temporary native/VST split.
+
+The base-value and automation capture policy is agreed above. Before implementing live state application in the second checkpoint, investigate JUCE's plugin-initiated reconfiguration path and discuss any required integration change with the engineer. Offline-render coordination also needs verification in that checkpoint. Sample-accurate VST automation and richer modulation are deferred and do not block these checkpoints.
+
+1. **Engine-owned parameters and common snapshots.** Establish lifetime-stable base values for native processors and plugin hosts, the common parameter API, explicit initial settings, and common reports. Retain the observable UI view and add pending-edit reconciliation. Implement the shared snapshot encoding for base values and processor-specific state, broaden capture and restoration, and update the historical migration before removing the old model-driven edit and persistence paths. Remove type-based capture gates and the remaining stored type flag. Verify accepted values, reactive controls, rejected and out-of-order edits, gestures, uncontrolled processor edits, controlled-value notifications, disconnection and late notifications, −10 dB creation defaults, graph recompilation, and native requests on WASM. Verify mixed native/VST project reopen, engine restart, Save As, missing processors, stateless nodes, unchanged snapshots, and capture failures. Cover capture during automation, restoration of saved bases, parameter-description refreshes, and processor-internal preset changes under the agreed notification policy.
+2. **Undoable live state application.** Establish audio-processing coordination, result reconciliation, and recovery after a failed apply. Build one command that retains before/after snapshots. Test repeated undo/redo, disposal of discarded history, changes to ports, concurrent edits, stale replies, and offline-render coordination for both native and VST processors.
+3. **Preset save/load.** Add processor identity and format version to the preset envelope, import its state into project storage, and use the state-application command. Test incompatible presets, invalid state, and file failures before connecting the workflow to user controls. Preserve the working processor and retained recovery state on failure.
 
 ## Category folders and project roots
 

@@ -170,6 +170,7 @@ class ProcessingGraphPortConfiguration extends _ProcessingGraphPortConfiguration
     super.parameterDefaultValue,
     super.parameterDisplayMode,
     super.parameterUnitLabel,
+    super.parameterNormalizedVisualBaseline,
   });
 
   factory ProcessingGraphPortConfiguration.fromJson(
@@ -184,6 +185,7 @@ abstract class _ProcessingGraphPortConfiguration {
   double? parameterDefaultValue;
   String? parameterDisplayMode;
   String? parameterUnitLabel;
+  double? parameterNormalizedVisualBaseline;
 
   _ProcessingGraphPortConfiguration({
     required this.id,
@@ -192,6 +194,7 @@ abstract class _ProcessingGraphPortConfiguration {
     this.parameterDefaultValue,
     this.parameterDisplayMode,
     this.parameterUnitLabel,
+    this.parameterNormalizedVisualBaseline,
   });
 }
 
@@ -237,15 +240,15 @@ class PluginChangedEvent extends IpcEvent {
   });
 }
 
-class PluginParameterChangedEvent extends IpcEvent {
+class ProcessorParameterChangedEvent extends IpcEvent {
   late Id nodeId;
   late int controlPortId;
   late double value;
   String? displayText;
 
-  PluginParameterChangedEvent.uninitialized();
+  ProcessorParameterChangedEvent.uninitialized();
 
-  PluginParameterChangedEvent({
+  ProcessorParameterChangedEvent({
     required this.nodeId,
     required this.controlPortId,
     required this.value,
@@ -253,50 +256,68 @@ class PluginParameterChangedEvent extends IpcEvent {
   });
 }
 
-class PluginParameterGestureEvent extends IpcEvent {
+class ProcessorParameterGestureEvent extends IpcEvent {
   late Id nodeId;
   late int controlPortId;
   late bool isStarting;
+  late double value;
+  String? displayText;
 
-  PluginParameterGestureEvent.uninitialized();
+  ProcessorParameterGestureEvent.uninitialized();
 
-  PluginParameterGestureEvent({
+  ProcessorParameterGestureEvent({
     required this.nodeId,
     required this.controlPortId,
     required this.isStarting,
+    required this.value,
+    this.displayText,
   });
 }
 
-class PluginParameterSnapshotEvent extends IpcEvent {
+class ProcessorParameterSnapshotEvent extends IpcEvent {
   late Id nodeId;
   late List<ProcessingGraphParameterValue> parameterValues;
 
-  PluginParameterSnapshotEvent.uninitialized() : parameterValues = [];
+  ProcessorParameterSnapshotEvent.uninitialized() : parameterValues = [];
 
-  PluginParameterSnapshotEvent({
+  ProcessorParameterSnapshotEvent({
     required this.nodeId,
     required this.parameterValues,
   });
 }
 
-class CapturePluginStateRequest extends Request {
+/// Restores the UI cache after callback notifications could not be retained.
+/// Any unfinished parameter gestures for this node must be discarded.
+class ProcessorParameterResyncEvent extends IpcEvent {
+  late Id nodeId;
+  late List<ProcessingGraphParameterValue> parameterValues;
+
+  ProcessorParameterResyncEvent.uninitialized() : parameterValues = [];
+
+  ProcessorParameterResyncEvent({
+    required this.nodeId,
+    required this.parameterValues,
+  });
+}
+
+class CaptureProcessorStateRequest extends Request {
   late Id nodeId;
 
-  CapturePluginStateRequest.uninitialized();
+  CaptureProcessorStateRequest.uninitialized();
 
-  CapturePluginStateRequest({required int id, required this.nodeId}) {
+  CaptureProcessorStateRequest({required int id, required this.nodeId}) {
     super.id = id;
   }
 }
 
-/// Captured plugin state is stored in a project file, outside the IPC payload.
-class CapturePluginStateResponse extends Response {
+/// Returns a processor snapshot asset path without transferring its contents.
+class CaptureProcessorStateResponse extends Response {
   String? relativePath;
   String? error;
 
-  CapturePluginStateResponse.uninitialized();
+  CaptureProcessorStateResponse.uninitialized();
 
-  CapturePluginStateResponse({
+  CaptureProcessorStateResponse({
     required int id,
     required this.relativePath,
     required this.error,
@@ -305,18 +326,33 @@ class CapturePluginStateResponse extends Response {
   }
 }
 
-class SetPluginParameterValueRequest extends Request {
+class SetProcessorParameterValueRequest extends Request {
   late Id nodeId;
   late int controlPortId;
   late double value;
 
-  SetPluginParameterValueRequest.uninitialized();
+  SetProcessorParameterValueRequest.uninitialized();
 
-  SetPluginParameterValueRequest({
+  SetProcessorParameterValueRequest({
     required int id,
     required this.nodeId,
     required this.controlPortId,
     required this.value,
+  }) {
+    super.id = id;
+  }
+}
+
+class SetProcessorParameterValueResponse extends Response {
+  ProcessingGraphParameterValue? parameterValue;
+  String? error;
+
+  SetProcessorParameterValueResponse.uninitialized();
+
+  SetProcessorParameterValueResponse({
+    required int id,
+    this.parameterValue,
+    this.error,
   }) {
     super.id = id;
   }

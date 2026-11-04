@@ -33,11 +33,6 @@ public:
 
   NodePort(NodePort&&) noexcept = default;
   NodePort& operator=(NodePort&&) = default;
-
-  void initialize(
-      std::shared_ptr<ModelBase> selfModel, std::shared_ptr<ModelBase> parentModel) override;
-private:
-  void sendParameterValueToAudioThreadIfBound(double value);
 };
 
 } // namespace anthem

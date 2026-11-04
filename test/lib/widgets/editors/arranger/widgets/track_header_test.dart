@@ -24,6 +24,7 @@ import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -366,10 +367,10 @@ void main() {
 
       expect(slider.axis, anthem.SliderAxis.vertical);
       expect(slider.width, 15);
-      expect(slider.parameter?.node.id, target.nodeId);
-      expect(slider.parameter?.port.id, target.portId);
+      expect(slider.parameterBinding?.node.id, target.nodeId);
+      expect(slider.parameterBinding?.port.id, target.portId);
       expect(
-        slider.parameter?.automationVisualizationId,
+        slider.parameterBinding?.automationVisualizationId,
         lane
             .requireAutomationProcessing
             .controlValueVisualizationProcessor
@@ -661,6 +662,14 @@ class _TrackHeaderTestFixture {
       node.owner = NodeOwnerModel(trackId: track.id, deviceId: device.id);
     }
     project.processingGraph.restoreGraphFragment(createResult.graphFragment);
+    final port = createResult.graphFragment.nodes.single.getPortById(
+      ToneGeneratorProcessorModel.frequencyPortId,
+    );
+    port.config.parameterConfig = ParameterConfigModel(
+      id: port.id,
+      factoryDefaultValue: 0.5,
+    );
+    port.parameterValue = 0.5;
 
     final parameterName =
         'Parameter ${ToneGeneratorProcessorModel.frequencyPortId}';

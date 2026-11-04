@@ -22,6 +22,8 @@ import 'dart:async';
 import 'package:anthem/logic/service_registry.dart';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show ProcessingGraphNodePortConfiguration, ProcessingGraphPortConfiguration;
 import 'package:anthem/helpers/debounced_action.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
@@ -107,9 +109,11 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? audioOutputPorts,
     AnthemObservableList<NodePortModel>? eventOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
-    super.isThirdPartyPlugin = false,
+    AnthemObservableMap<int, double>? initialParameterValues,
     super.owner,
   }) : super(
+         initialParameterValues:
+             initialParameterValues ?? AnthemObservableMap(),
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
          eventInputPorts: eventInputPorts ?? AnthemObservableList(),
          controlInputPorts: controlInputPorts ?? AnthemObservableList(),
@@ -127,10 +131,12 @@ class NodeModel extends _NodeModel
     AnthemObservableList<NodePortModel>? audioOutputPorts,
     AnthemObservableList<NodePortModel>? eventOutputPorts,
     AnthemObservableList<NodePortModel>? controlOutputPorts,
-    super.isThirdPartyPlugin = false,
+    AnthemObservableMap<int, double>? initialParameterValues,
     super.owner,
   }) : super(
          id: idAllocator.allocateId(),
+         initialParameterValues:
+             initialParameterValues ?? AnthemObservableMap(),
          audioInputPorts: audioInputPorts ?? AnthemObservableList(),
          eventInputPorts: eventInputPorts ?? AnthemObservableList(),
          controlInputPorts: controlInputPorts ?? AnthemObservableList(),
@@ -149,12 +155,94 @@ class NodeModel extends _NodeModel
         eventOutputPorts: AnthemObservableList(),
         controlOutputPorts: AnthemObservableList(),
         processor: null,
-        isThirdPartyPlugin: false,
+        initialParameterValues: AnthemObservableMap(),
         owner: null,
       );
 
   factory NodeModel.fromJson(Map<String, dynamic> json) =>
       _$NodeModelAnthemModelMixin.fromJson(json);
+
+  /// Refreshes every reported port while preserving saved state and routing.
+  /// Returns whether port structure changed and device routing needs refreshing;
+  /// metadata-only changes do not require a routing rebuild.
+  bool applyPortConfiguration(
+    ProcessingGraphNodePortConfiguration configuration,
+  ) => runInAction(() {
+    var routingChanged = false;
+    for (final (ports, descriptors, dataType) in [
+      (audioInputPorts, configuration.audioInputPorts, NodePortDataType.audio),
+      (
+        audioOutputPorts,
+        configuration.audioOutputPorts,
+        NodePortDataType.audio,
+      ),
+      (eventInputPorts, configuration.eventInputPorts, NodePortDataType.event),
+      (
+        eventOutputPorts,
+        configuration.eventOutputPorts,
+        NodePortDataType.event,
+      ),
+      (
+        controlInputPorts,
+        configuration.controlInputPorts,
+        NodePortDataType.control,
+      ),
+      (
+        controlOutputPorts,
+        configuration.controlOutputPorts,
+        NodePortDataType.control,
+      ),
+    ]) {
+      if (_reconcilePorts(ports, descriptors, dataType)) routingChanged = true;
+    }
+    return routingChanged;
+  });
+
+  /// Reported ports come first, in engine order. Missing ports retain their
+  /// objects, descriptions, values and connections, and follow as unavailable.
+  bool _reconcilePorts(
+    AnthemObservableList<NodePortModel> target,
+    List<ProcessingGraphPortConfiguration> descriptors,
+    NodePortDataType dataType,
+  ) {
+    var routingChanged = false;
+    final existing = {for (final port in target) port.id: port};
+    final reportedIds = {for (final descriptor in descriptors) descriptor.id};
+    final ordered = <NodePortModel>[];
+    for (final descriptor in descriptors) {
+      final port =
+          existing[descriptor.id] ??
+          NodePortModel(
+            nodeId: id,
+            id: descriptor.id,
+            config: NodePortConfigModel(dataType: dataType),
+          );
+      if (!port.isAvailable || port.type != dataType) routingChanged = true;
+      port.applyConfiguration(descriptor, dataType);
+      port.isAvailable = true;
+      ordered.add(port);
+    }
+    for (final port in target) {
+      if (!reportedIds.contains(port.id)) {
+        if (port.isAvailable) routingChanged = true;
+        port.isAvailable = false;
+        ordered.add(port);
+      }
+    }
+    for (var index = 0; index < ordered.length; index++) {
+      if (index >= target.length) {
+        target.add(ordered[index]);
+        routingChanged = true;
+      } else if (!identical(target[index], ordered[index])) {
+        // Move rather than replace: a model must belong to one list position.
+        final currentIndex = target.indexOf(ordered[index]);
+        if (currentIndex >= 0) target.removeAt(currentIndex);
+        target.insert(index, ordered[index]);
+        routingChanged = true;
+      }
+    }
+    return routingChanged;
+  }
 
   AnthemObservableList<NodePortModel> getInputPortsByType(
     NodePortDataType dataType,
@@ -247,19 +335,15 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   AnthemObservableList<NodePortModel> eventOutputPorts;
   AnthemObservableList<NodePortModel> controlOutputPorts;
 
-  /// Whether this node is a third-party plugin.
-  ///
-  /// If this is a third-party plugin, its processor will need to save and load
-  /// serialized plugin state, so if this is true then it will trigger machinery
-  /// to handle that.
-  bool isThirdPartyPlugin;
+  /// One-time creation settings, retained until the first snapshot is captured.
+  /// Ordinary parameter edits and engine reports never update these values.
+  AnthemObservableMap<int, double> initialParameterValues;
 
-  /// ID of this node's retention claim on its opaque processor state file.
+  /// ID of this node's retention claim on its processor snapshot file.
   ///
   /// Null means the node has no state file retained by the project. The engine
   /// resolves the ID through project storage and restores the file before
-  /// reporting ports and values. Cached parameter values are not replayed into
-  /// the plugin.
+  /// reporting ports and values. Cached UI values are not used for restoration.
   @anthemObservable
   String? processorStateRetentionId;
 
@@ -339,9 +423,9 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   }
 
   Future<void> _captureState() async {
-    // An unavailable or still-initializing plugin cannot supply authoritative
+    // An unavailable or still-initializing processor cannot supply authoritative
     // live state. Keep its saved file reference, including when saving the project.
-    if (!isThirdPartyPlugin) return;
+    if (processor == null) return;
     final owner = project;
     if (!identical(owner.processingGraph.nodes[id], this) ||
         !owner.engine.isRunning ||
@@ -350,7 +434,9 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     }
 
     final generation = _initializationGeneration;
-    final path = await owner.engine.processingGraphApi.capturePluginState(id);
+    final path = await owner.engine.processingGraphApi.captureProcessorState(
+      id,
+    );
     if (generation != _initializationGeneration ||
         !identical(owner.processingGraph.nodes[id], this)) {
       return;
@@ -366,6 +452,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
         ? null
         : storage.retainAssetForProject(path);
     processorStateRetentionId = replacement;
+    initialParameterValues.clear();
     if (previous != null) storage.releaseAssetFromProject(previous);
     owner.isDirty = true;
   }
@@ -393,8 +480,11 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   void _invalidateInitialization(NodeInitializationState state) {
     _initializationGeneration++;
+    _stateUpdateDebouncedAction?.dispose();
+    _stateUpdateDebouncedAction = null;
     for (final port in (this as NodeModel).getAllPorts()) {
       port.isAvailable = false;
+      port.pendingParameterValue = null;
     }
     _initializationState = state;
   }
@@ -429,7 +519,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     required this.eventOutputPorts,
     required this.controlOutputPorts,
     required this.processor,
-    required this.isThirdPartyPlugin,
+    required this.initialParameterValues,
     required this.owner,
   });
 }

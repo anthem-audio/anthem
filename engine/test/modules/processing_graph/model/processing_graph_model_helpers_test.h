@@ -40,59 +40,14 @@ class ProcessingGraphModelHelpersTest : public juce::UnitTest {
     node->initialize(node, std::shared_ptr<ModelBase>());
     return node;
   }
-
-  static std::shared_ptr<Node> makeInitializedNodeWithControlParameter(
-      int64_t nodeId, double parameterValue) {
-    auto node = makeInitializedNode(nodeId);
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(kControlPortId,
-        nodeId,
-        NodePortDataType::control,
-        parameterValue,
-        graph_test_helpers::makeParameterConfig(101, parameterValue)));
-    return node;
-  }
-
-  static std::shared_ptr<NodePort> makeStandaloneInitializedParameterPort(
-      int64_t nodeId, double parameterValue) {
-    auto port = graph_test_helpers::makePort(kControlPortId,
-        nodeId,
-        NodePortDataType::control,
-        parameterValue,
-        graph_test_helpers::makeParameterConfig(101, parameterValue));
-    port->initialize(port, std::shared_ptr<ModelBase>());
-    return port;
-  }
-
-  static ModelUpdateRequest makeParameterValueUpdateRequest(double value) {
-    auto fieldAccesses = std::make_shared<std::vector<std::shared_ptr<FieldAccess>>>();
-    fieldAccesses->push_back(std::make_shared<FieldAccess>(FieldAccess{
-        .fieldType = FieldType::raw,
-        .fieldName = std::make_optional<std::string>("parameterValue"),
-        .serializedMapKey = std::nullopt,
-        .listIndex = std::nullopt,
-    }));
-
-    return ModelUpdateRequest{
-        .updateKind = FieldUpdateKind::set,
-        .fieldAccesses = fieldAccesses,
-        .serializedValue = rfl::json::write(std::optional<double>(value)),
-        .requestBase = RequestBase{.id = 1},
-    };
-  }
-
-  static void applyParameterValueUpdate(NodePort& port, double value) {
-    auto request = makeParameterValueUpdateRequest(value);
-    port.handleModelUpdate(request, 0);
-  }
 public:
   ProcessingGraphModelHelpersTest() : juce::UnitTest("ProcessingGraphModelHelpersTest", "Anthem") {}
 
   void runTest() override {
     testGetPortByIdFindsAllPortKinds();
     testGetProcessorReturnsExpectedProcessorOrNullopt();
-    testNodePortParameterUpdatesPropagateToRuntimeContext();
-    testNodePortParameterUpdatesStayLocalWithoutRuntimeContext();
-    testNodePortParameterUpdatesStayLocalWithoutNodeAncestry();
+    testProcessorOwnedParameterBindings();
+    testControlledParameterReports();
   }
 
   void testGetPortByIdFindsAllPortKinds() {
@@ -103,11 +58,8 @@ public:
         graph_test_helpers::makePort(1, 10, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(2, 10, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(3,
-        10,
-        NodePortDataType::control,
-        0.25,
-        graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
+        3, 10, NodePortDataType::control, graph_test_helpers::makeParameterConfig(101, 0.25)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(4, 10, NodePortDataType::control));
     node->eventInputPorts()->push_back(
@@ -139,89 +91,49 @@ public:
         "The returned processor should preserve its concrete processor type.");
   }
 
-  void testNodePortParameterUpdatesPropagateToRuntimeContext() {
-    beginTest("NodePort parameter updates propagate into the node runtime context");
-
-    juce::ScopedJuceInitialiser_GUI juceInitialiser;
-
-    auto node = makeInitializedNodeWithControlParameter(10, 0.25);
-
-    EngineRuntimeServices rtServices;
-    GraphProcessContext graphContext(rtServices,
-        GraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 16,
-        });
-    GraphProcessContext::Builder contextBuilder(graphContext);
-    contextBuilder.reserve(1, 0, 1, 0);
-
-    auto& nodeContext =
-        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
-    node->runtimeContext = std::make_optional(&nodeContext);
-
-    auto& port = *node->controlInputPorts()->at(0);
-
-    applyParameterValueUpdate(port, 0.75);
-
-    expectWithinAbsoluteError(nodeContext.getParameterValue(kControlPortId),
-        0.75f,
-        0.0001f,
-        "Parameter updates should be forwarded to the runtime context.");
-    expect(port.parameterValue().has_value(), "The model parameter value should also update.");
-    expectWithinAbsoluteError(static_cast<float>(port.parameterValue().value()),
-        0.75f,
-        0.0001f,
-        "The model should keep the latest parameter value.");
-
-    graphContext.cleanup();
+  void testProcessorOwnedParameterBindings() {
+    beginTest("Compiled contexts retain the same processor-owned base values");
+    auto node = graph_test_helpers::makeGainNode(10);
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(kControlPortId,
+        10,
+        NodePortDataType::control,
+        graph_test_helpers::makeParameterConfig(kControlPortId, 0.25)));
+    graph_test_helpers::prepareTestParameters(node);
+    const auto processor = *node->getProcessor();
+    expect(!processor->setParameterValue(kControlPortId, 0.75));
+    EngineRuntimeServices services;
+    GraphProcessContext first(services, {.numAudioChannels = 2, .blockSize = 16});
+    GraphProcessContext::Builder firstBuilder(first);
+    firstBuilder.reserve(1, 0, 1, 0);
+    auto& before =
+        graph_test_helpers::createStandaloneNodeProcessContext(first, firstBuilder, node);
+    expectWithinAbsoluteError(before.getParameterValue(kControlPortId), 0.75f, 0.0001f);
+    GraphProcessContext second(services, {.numAudioChannels = 2, .blockSize = 16});
+    GraphProcessContext::Builder secondBuilder(second);
+    secondBuilder.reserve(1, 0, 1, 0);
+    auto& after =
+        graph_test_helpers::createStandaloneNodeProcessContext(second, secondBuilder, node);
+    expect(!processor->setParameterValue(kControlPortId, 0.6));
+    expectWithinAbsoluteError(before.getParameterValue(kControlPortId), 0.6f, 0.0001f);
+    expectWithinAbsoluteError(after.getParameterValue(kControlPortId), 0.6f, 0.0001f);
+    first.cleanup();
+    second.cleanup();
   }
 
-  void testNodePortParameterUpdatesStayLocalWithoutRuntimeContext() {
-    beginTest("NodePort parameter updates stay local when the node has no runtime context");
-
-    auto node = makeInitializedNodeWithControlParameter(10, 0.25);
-
-    EngineRuntimeServices rtServices;
-    GraphProcessContext graphContext(rtServices,
-        GraphBufferLayout{
-            .numAudioChannels = 2,
-            .blockSize = 16,
-        });
-    GraphProcessContext::Builder contextBuilder(graphContext);
-    contextBuilder.reserve(1, 0, 1, 0);
-
-    auto& nodeContext =
-        graph_test_helpers::createStandaloneNodeProcessContext(graphContext, contextBuilder, node);
-    auto& port = *node->controlInputPorts()->at(0);
-
-    applyParameterValueUpdate(port, 0.75);
-
-    expectWithinAbsoluteError(nodeContext.getParameterValue(kControlPortId),
-        0.25f,
-        0.0001f,
-        "Without a runtime context, the audio-thread parameter binding should remain unchanged.");
-    expect(port.parameterValue().has_value(), "The model parameter value should still update.");
-    expectWithinAbsoluteError(static_cast<float>(port.parameterValue().value()),
-        0.75f,
-        0.0001f,
-        "The model should still store the new parameter value.");
-
-    graphContext.cleanup();
-  }
-
-  void testNodePortParameterUpdatesStayLocalWithoutNodeAncestry() {
-    beginTest("NodePort parameter updates stay local when the port is not attached to a node");
-
-    auto port = makeStandaloneInitializedParameterPort(10, 0.25);
-
-    applyParameterValueUpdate(*port, 0.6);
-
-    expect(port->parameterValue().has_value(),
-        "The standalone port should still store the updated model value.");
-    expectWithinAbsoluteError(static_cast<float>(port->parameterValue().value()),
-        0.6f,
-        0.0001f,
-        "Broken ancestry should prevent runtime propagation without blocking the model update.");
+  void testControlledParameterReports() {
+    beginTest("Automation and delayed reports preserve the base value");
+    GainProcessor processor(GainProcessorModelImpl{.nodeId = 10});
+    processor.restoreParameterValues({{kControlPortId, 0.25}});
+    const auto parameter = processor.getParameter(kControlPortId);
+    expect(parameter->acceptChange(0.5f, 0));
+    parameter->rt_setControlled(true);
+    const auto controlled = parameter->controlRevision.load();
+    expect(!parameter->acceptChange(0.9f, controlled));
+    parameter->rt_setControlled(false);
+    expect(!parameter->acceptChange(0.9f, controlled));
+    expect(!parameter->acceptChange(0.8f, 0));
+    expectWithinAbsoluteError(parameter->value.load(), 0.5f, 0.0001f);
+    expect(parameter->acceptChange(0.6f, parameter->controlRevision.load()));
   }
 };
 

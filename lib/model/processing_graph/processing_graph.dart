@@ -238,21 +238,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
       );
     }
 
-    final source = nodes[connection.sourceNodeId]!;
-    final destination = nodes[connection.destinationNodeId]!;
-    // These are defensive checks for connections to native processors. The
-    // lookups throw if no port matches the ID, data type and direction.
-    // Plugin ports may not have been discovered yet, so connections to them
-    // are retained as unresolved.
-    if (!source.isThirdPartyPlugin) {
-      source.getOutputPortById(connection.dataType, connection.sourcePortId);
-    }
-    if (!destination.isThirdPartyPlugin) {
-      destination.getInputPortById(
-        connection.dataType,
-        connection.destinationPortId,
-      );
-    }
+    // Cached endpoints remain valid routing references until discovery confirms
+    // their availability. Compilation selects the usable connections.
     connections[connection.id] = connection;
     _attachConnection(connection);
   }

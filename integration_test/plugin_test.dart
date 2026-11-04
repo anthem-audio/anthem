@@ -19,6 +19,12 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:anthem/engine_api/messages/messages.dart';
+import 'package:anthem/model/processing_graph/node_connection.dart';
+import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/project_file/codec.dart';
@@ -30,7 +36,6 @@ import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
-import 'package:anthem/model/processing_graph/parameter_presentation.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/processors/vst3_processor.dart';
@@ -96,18 +101,18 @@ Future<String> _captureStateHash(AppTestSession session, NodeModel node) async {
   }
 }
 
-void _setParameter(
+Future<void> _setParameter(
   AppTestSession session,
   NodeModel node,
   String name,
   double value,
 ) {
   final port = _parameter(node, name);
-  session.project.execute(
+  return session.project.execute(
     SetParameterValueCommand(
       nodeId: node.id,
       controlPortId: port.id,
-      oldValue: SetParameterValueCommand.effectiveParameterValue(port),
+      oldValue: port.parameterValueOrResetTarget,
       newValue: value,
     ),
   );
@@ -207,6 +212,64 @@ Future<({DeviceModel device, NodeModel node})> _addPlugin(
   expect((node.processor as VST3ProcessorModel).vst3Path, pluginPath);
   await _verifyPlugin(session, node, instrument: instrument);
   return (device: device, node: node);
+}
+
+/// Renders a tone through the track chain and measures its output.
+Future<double> _renderRms(
+  AppTestSession session,
+  TestPluginFileSelector files,
+  int renderId,
+) async {
+  final outputPath = files.projectFiles.pathFor('render-$renderId.wav');
+  final completion = session.project.engine.renderApi.events.firstWhere(
+    (event) =>
+        event is RenderCompletedEvent && event.renderId == renderId ||
+        event is RenderFailedEvent && event.renderId == renderId,
+  );
+  await waitForFuture(
+    session.tester,
+    session.project.engine.renderApi.renderAudio(
+      renderId: renderId,
+      outputPath: outputPath,
+      format: RenderAudioFormat.wav,
+      startTick: 0,
+      endTick: 96,
+      includeTail: false,
+      bitDepth: 32,
+      qualityOptionIndex: 0,
+      sampleFormat: RenderAudioSampleFormat.floatingPoint,
+    ),
+    conditionDescription: 'start parameter-state audio render',
+    collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+    checkHealth: session.checkEngine,
+  );
+  final result = await waitForFuture(
+    session.tester,
+    completion,
+    conditionDescription: 'complete parameter-state audio render',
+    collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+    checkHealth: session.checkEngine,
+  );
+  expect(result, isA<RenderCompletedEvent>());
+  final bytes = await File(outputPath).readAsBytes();
+  final data = ByteData.sublistView(bytes);
+  expect(ascii.decode(bytes.sublist(0, 4)), 'RIFF');
+  expect(ascii.decode(bytes.sublist(8, 12)), 'WAVE');
+  for (var offset = 12; offset + 8 <= bytes.length;) {
+    final length = data.getUint32(offset + 4, Endian.little);
+    if (ascii.decode(bytes.sublist(offset, offset + 4)) == 'data') {
+      expect(length, greaterThan(0));
+      var squares = 0.0;
+      final end = offset + 8 + length;
+      for (var sample = offset + 8; sample < end; sample += 4) {
+        final value = data.getFloat32(sample, Endian.little);
+        squares += value * value;
+      }
+      return math.sqrt(squares / (length ~/ 4));
+    }
+    offset += 8 + length + (length % 2);
+  }
+  throw StateError('Rendered WAV has no audio data.');
 }
 
 void main() {
@@ -312,11 +375,12 @@ void main() {
 
     // Change the plugin without adding a parameter command to host history.
     // Undo therefore reaches device addition while this state is still live.
-    session.project.engine.processingGraphApi.setPluginParameterValue(
-      added.node.id,
-      _parameter(added.node, 'Gain').id,
-      0.73,
-    );
+    await ServiceRegistry.forProject(session.project.id).parameterController
+        .setValue(
+          node: added.node,
+          port: _parameter(added.node, 'Gain'),
+          value: 0.73,
+        );
     await waitUntil(
       tester,
       conditionDescription: 'plugin gain changed without a host undo command',
@@ -349,11 +413,12 @@ void main() {
     await _captureStateHash(session, added.node);
     expect(added.node.processorStateRetentionId, isNot(initialRetentionId));
 
-    session.project.engine.processingGraphApi.setPluginParameterValue(
-      added.node.id,
-      _parameter(added.node, 'Gain').id,
-      0.41,
-    );
+    await ServiceRegistry.forProject(session.project.id).parameterController
+        .setValue(
+          node: added.node,
+          port: _parameter(added.node, 'Gain'),
+          value: 0.41,
+        );
     await waitUntil(
       tester,
       conditionDescription: 'plugin gain changed before explicit deletion',
@@ -418,13 +483,11 @@ void main() {
           parameterConfig: ParameterConfigModel(
             id: missingId,
             factoryDefaultValue: 0.5,
+            normalizedVisualBaseline: 0.25,
           ),
         ),
         initialParameterValue: 0.456,
         parameterResetValue: 0.3,
-        presentation: ParameterPresentationModel(
-          normalizedVisualBaseline: 0.25,
-        ),
       );
       added.node.controlInputPorts.add(cached);
       final command = AutomationLaneAddRemoveCommand.add(
@@ -461,7 +524,7 @@ void main() {
       expect(cached.connections.toSet(), connectionIds);
       expect(cached.parameterValue, 0.456);
       expect(cached.parameterResetTarget, 0.3);
-      expect(cached.presentation.normalizedVisualBaseline, 0.25);
+      expect(cached.config.parameterConfig!.normalizedVisualBaseline, 0.25);
       expect(
         project.tracks[command.lane.id]!.automationTarget!.portId,
         missingId,
@@ -503,6 +566,89 @@ void main() {
     },
   );
 
+  testAppScenario(
+    'VST automation preserves the base value across capture and restart',
+    (tester) async {
+      final fixtures = loadTestPlugins();
+      final files = await TestPluginFileSelector.install(
+        'plugin-base-value',
+        fixtures,
+      );
+      final session = AppTestSession(tester, name: 'plugin-base-value');
+      await session.start();
+      final project = session.project;
+      final trackId = project.trackOrder.first;
+      await startOfflinePluginProcessing(session);
+      await waitForFuture(
+        tester,
+        session.services.deviceController.addDevice(
+          trackId: trackId,
+          type: DeviceType.toneGenerator,
+        ),
+        conditionDescription: 'add tone source for the effect',
+        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+        checkHealth: session.checkEngine,
+      );
+      await publishPluginGraph(session);
+      final effect = await _addPlugin(
+        session,
+        files,
+        trackId,
+        fixtures.effect,
+        instrument: false,
+      );
+      final gain = _parameter(effect.node, 'Gain');
+      expect(gain.parameterValue, 0.25);
+      final baseRms = await _renderRms(session, files, 1);
+      expect(baseRms, greaterThan(0.001));
+
+      final provider = SequenceAutomationProviderProcessorModel.create(
+        idAllocator: project.idAllocator,
+        trackId: trackId,
+        emptyValue: 0.8,
+      ).createNode();
+      project.processingGraph.addNode(provider);
+      final connection = NodeConnectionModel(
+        idAllocator: project.idAllocator,
+        sourceNodeId: provider.id,
+        sourcePortId:
+            SequenceAutomationProviderProcessorModel.controlOutputPortId,
+        destinationNodeId: effect.node.id,
+        destinationPortId: gain.id,
+        dataType: NodePortDataType.control,
+      );
+      project.processingGraph.addConnection(connection);
+      await publishPluginGraph(session);
+      final controlledRms = await _renderRms(session, files, 2);
+      expect(controlledRms / baseRms, closeTo(3.2, 0.02));
+      expect(gain.parameterValue, 0.25);
+      await _captureStateHash(session, effect.node);
+      final savedRetention = effect.node.processorStateRetentionId;
+
+      project.processingGraph.removeConnection(connection.id);
+      await publishPluginGraph(session);
+      final disconnectedRms = await _renderRms(session, files, 3);
+      expect(disconnectedRms / baseRms, closeTo(1, 0.01));
+      expect(effect.node.processorStateRetentionId, savedRetention);
+      await waitForFuture(
+        tester,
+        session.services.projectEngineController.stop(),
+        conditionDescription: 'stop engine after capturing automated plugin',
+        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      );
+      await waitForFuture(
+        tester,
+        session.services.projectEngineController.start(startAudio: false),
+        conditionDescription: 'restore snapshot captured during automation',
+        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      );
+      await startOfflinePluginProcessing(session);
+      expect(gain.parameterValue, 0.25);
+      final restoredRms = await _renderRms(session, files, 4);
+      expect(restoredRms / baseRms, closeTo(1, 0.01));
+    },
+  );
+
   testAppScenario('save and reopen actual VST3 parameters and opaque state', (
     tester,
   ) async {
@@ -530,19 +676,19 @@ void main() {
       fixtures.effect,
       instrument: false,
     );
-    _setParameter(session, instrument.node, 'State size', 1);
+    await _setParameter(session, instrument.node, 'State size', 1);
     final expectedStates = <Id, String>{};
     for (final fixture in [
       (node: instrument.node, gain: 0.625),
       (node: effect.node, gain: 0.75),
     ]) {
       final baseline = await _captureStateHash(session, fixture.node);
-      _setParameter(session, fixture.node, 'Gain', 0.5);
+      await _setParameter(session, fixture.node, 'Gain', 0.5);
       await _captureStateHash(
         session,
         fixture.node,
       ); // Flush through the real VST3 host.
-      _setParameter(session, fixture.node, 'Gain', 0.25);
+      await _setParameter(session, fixture.node, 'Gain', 0.25);
       final cycled = await _captureStateHash(session, fixture.node);
       expect(_parameter(fixture.node, 'Gain').parameterValue, 0.25);
       expect(
@@ -551,8 +697,8 @@ void main() {
         reason:
             'Gain is back at default, but the opaque revision counter changed.',
       );
-      _setParameter(session, fixture.node, 'Gain', fixture.gain);
-      _setParameter(session, fixture.node, 'Invert', 1);
+      await _setParameter(session, fixture.node, 'Gain', fixture.gain);
+      await _setParameter(session, fixture.node, 'Invert', 1);
       expectedStates[fixture.node.id] = await _captureStateHash(
         session,
         fixture.node,
@@ -588,7 +734,7 @@ void main() {
     final blockedPending = File(pending.path);
     await blockedPending.writeAsString('block new state writes');
     try {
-      _setParameter(session, effect.node, 'Gain', 0.875);
+      await _setParameter(session, effect.node, 'Gain', 0.875);
       Object? captureError;
       try {
         await waitForFuture(
@@ -607,7 +753,7 @@ void main() {
       await blockedPending.delete();
       await parkedPending.rename(pending.path);
     }
-    _setParameter(session, effect.node, 'Gain', 0.75);
+    await _setParameter(session, effect.node, 'Gain', 0.75);
     expectedStates[effect.node.id] = await _captureStateHash(
       session,
       effect.node,

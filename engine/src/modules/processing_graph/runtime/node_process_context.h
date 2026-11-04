@@ -78,7 +78,8 @@ public:
 
   struct InputParameterBinding {
     int64_t portId;
-    std::unique_ptr<std::atomic<float>> value;
+    std::shared_ptr<ProcessorParameter> parameter;
+    std::optional<size_t> controlBufferIndex;
   };
 
   struct InputControlSignal {
@@ -98,15 +99,9 @@ public:
       return rt_buffer.getReadPointer(0)[sample];
     }
   };
-
-  struct ConnectedInputControlPort {
-    int64_t portId;
-    size_t bufferIndex;
-  };
 private:
   JUCE_LEAK_DETECTOR(NodeProcessContext)
 
-  InputParameterBinding& findInputParameterBinding(int64_t id);
   const InputParameterBinding& findInputParameterBinding(int64_t id) const;
 
   PortAudioBufferSlotSliceMap inputAudioBuffers;
@@ -121,7 +116,6 @@ private:
 
   std::vector<AudioBufferSlotSlice> rt_audioBuffersToClear;
   std::vector<size_t> rt_eventBuffersToClear;
-  std::vector<ConnectedInputControlPort> rt_connectedInputControlPorts;
 
   std::vector<InputParameterBinding> inputParameters;
 
@@ -147,9 +141,7 @@ public:
     return graphNode.lock();
   }
 
-  bool hasParameterBinding(int64_t id) const;
-
-  void setParameterValue(int64_t id, float value);
+  void rt_updateParameterControl();
   float getParameterValue(int64_t id) const;
 
   void clearBuffers();
@@ -162,6 +154,7 @@ public:
   bool hasAudioProcessBuffer() const;
 
   InputControlSignal getInputControlSignal(int64_t id) const;
+  InputControlSignal rt_getInputParameterSignal(const InputParameterBinding& binding) const;
   AudioBufferView getInputControlBuffer(int64_t id) const;
   AudioBufferView rt_getInputControlBufferByIndex(size_t index) const;
   AudioBufferView getOutputControlBuffer(int64_t id);
@@ -171,10 +164,6 @@ public:
 
   const std::vector<InputParameterBinding>& rt_getInputParameterBindings() const {
     return inputParameters;
-  }
-
-  const std::vector<ConnectedInputControlPort>& rt_getConnectedInputControlPorts() const {
-    return rt_connectedInputControlPorts;
   }
 
   LiveNoteId rt_allocateLiveNoteId();

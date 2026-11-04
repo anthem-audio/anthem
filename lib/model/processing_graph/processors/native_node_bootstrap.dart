@@ -20,16 +20,14 @@
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
-import 'package:anthem/model/processing_graph/parameter_config.dart';
-import 'package:anthem/model/processing_graph/parameter_presentation.dart';
 import 'package:anthem_codegen/include.dart';
 
 import 'processor.dart';
 
-/// Constructs routing endpoints and a creation preset before engine discovery.
+/// Constructs stable routing endpoints before engine discovery.
 ///
 /// Port IDs are an agreed contract with the C++ processor. Availability, channel
-/// counts and factory defaults are supplied by that processor during preparation.
+/// counts and parameter descriptions are supplied during preparation.
 NodeModel createNativeNode({
   required Processor processor,
   List<int> audioInputPortIds = const [],
@@ -38,7 +36,7 @@ NodeModel createNativeNode({
   List<int> eventOutputPortIds = const [],
   List<int> controlInputPortIds = const [],
   List<int> controlOutputPortIds = const [],
-  List<NativeParameterPreset> parameters = const [],
+  Map<int, double> initialParameterValues = const {},
 }) {
   AnthemObservableList<NodePortModel> ports(
     List<int> ids,
@@ -52,55 +50,15 @@ NodeModel createNativeNode({
       ),
   ]);
 
-  final controlInputs = ports(controlInputPortIds, NodePortDataType.control);
-  controlInputs.addAll([
-    for (final preset in parameters)
-      NodePortModel(
-        nodeId: processor.nodeId,
-        id: preset.id,
-        config: NodePortConfigModel(
-          dataType: NodePortDataType.control,
-          parameterConfig: ParameterConfigModel(
-            id: preset.id,
-            displayMode: preset.displayMode,
-            unitLabel: preset.unitLabel,
-          ),
-        ),
-        initialParameterValue: preset.value,
-        parameterResetValue: preset.value,
-        presentation: ParameterPresentationModel(
-          normalizedVisualBaseline: preset.normalizedVisualBaseline,
-        ),
-      ),
-  ]);
-
   return NodeModel(
     id: processor.nodeId,
+    initialParameterValues: AnthemObservableMap.of(initialParameterValues),
     processor: processor,
     audioInputPorts: ports(audioInputPortIds, NodePortDataType.audio),
     audioOutputPorts: ports(audioOutputPortIds, NodePortDataType.audio),
     eventInputPorts: ports(eventInputPortIds, NodePortDataType.event),
     eventOutputPorts: ports(eventOutputPortIds, NodePortDataType.event),
-    controlInputPorts: controlInputs,
+    controlInputPorts: ports(controlInputPortIds, NodePortDataType.control),
     controlOutputPorts: ports(controlOutputPortIds, NodePortDataType.control),
   );
-}
-
-/// Project-owned initial/reset value and provisional formatting for a control.
-/// Factory defaults are populated by discovery independently of this preset.
-class NativeParameterPreset {
-  final int id;
-  final double value;
-  final ParameterDisplayMode displayMode;
-  final String? unitLabel;
-  final double normalizedVisualBaseline;
-
-  const NativeParameterPreset({
-    required this.id,
-    required this.value,
-    this.displayMode = ParameterDisplayMode.percent,
-    this.unitLabel,
-    this.normalizedVisualBaseline = 0.0,
-  }) : assert(value >= 0 && value <= 1),
-       assert(normalizedVisualBaseline >= 0 && normalizedVisualBaseline <= 1);
 }

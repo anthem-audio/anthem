@@ -81,14 +81,37 @@ Future<void> _migrateToPrealpha2(
   var stateFileNumber = 1;
   for (final node in nodes.values.cast<Map<String, dynamic>>()) {
     final state = node.remove('processorState');
-    if (state == null || state == '') {
+    final parameters = <String, double>{};
+    for (final port
+        in (node['controlInputPorts'] as List).cast<Map<String, dynamic>>()) {
+      final config = port['config'] as Map<String, dynamic>;
+      if (config['parameterConfig'] == null) continue;
+      final value = port['parameterValue'] ?? port['parameterResetValue'];
+      if (value is! num || !value.isFinite || value < 0 || value > 1) {
+        throw const FormatException('Invalid saved parameter value.');
+      }
+      parameters['${port['id']}'] = value.toDouble();
+    }
+    node.remove('isThirdPartyPlugin');
+    node['initialParameterValues'] = <String, double>{};
+    if ((state == null || state == '') &&
+        (node['processor'] == null || parameters.isEmpty)) {
       node.remove('processorStateRetentionId');
       continue;
     }
-    if (state is! String) {
+    if (state != null && state is! String) {
       throw const FormatException('Expected a plugin state string.');
     }
-    final bytes = _decodeJuceMemoryBlock(state);
+    final bytes = state == null || state == ''
+        ? Uint8List(0)
+        : _decodeJuceMemoryBlock(state as String);
+    // Version 1 snapshots contain a JSON header followed by raw private state.
+    // This migration encodes the historical data without using current models.
+    final metadata = utf8.encode(
+      jsonEncode({'version': 1, 'parameters': parameters}),
+    );
+    final prefix = ByteData(12)..setUint32(8, metadata.length, Endian.little);
+    prefix.buffer.asUint8List().setRange(0, 8, ascii.encode('ANTHST01'));
     if (projectDirectory == null) {
       throw const ProjectDirectoryRequiresDesktopException();
     }
@@ -101,7 +124,15 @@ Future<void> _migrateToPrealpha2(
     );
     await file.parent.create(recursive: true);
     await file.create(exclusive: true);
-    await file.writeAsBytes(bytes, flush: true);
+    final output = file.openWrite();
+    try {
+      output.add(prefix.buffer.asUint8List());
+      output.add(metadata);
+      output.add(bytes);
+      await output.flush();
+    } finally {
+      await output.close();
+    }
     final retentionId = 'migrated-plugin-state-$stateNumber';
     retentions[retentionId] = relativePath;
     node['processorStateRetentionId'] = retentionId;
@@ -226,7 +257,7 @@ void _migrateParameterMetadata(ProjectJson projectJson) {
           }
 
           if (parameter.containsKey('normalizedVisualBaseline')) {
-            final savedBaseline = parameter.remove('normalizedVisualBaseline');
+            final savedBaseline = parameter['normalizedVisualBaseline'];
             if (savedBaseline is! num ||
                 !savedBaseline.isFinite ||
                 savedBaseline < 0 ||
@@ -241,8 +272,8 @@ void _migrateParameterMetadata(ProjectJson projectJson) {
               port['id'] == panPortId) {
             baseline = 0.5;
           }
+          parameter['normalizedVisualBaseline'] = baseline;
         }
-        port['presentation'] = {'normalizedVisualBaseline': baseline};
       }
     }
   }

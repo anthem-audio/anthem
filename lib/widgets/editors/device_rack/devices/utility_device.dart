@@ -80,7 +80,7 @@ class _GainControl extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Knob(
-          parameter: gainParameter,
+          parameterBinding: gainParameter,
           min: 0,
           max: 1,
           width: 26,
@@ -115,7 +115,7 @@ class _BalanceControl extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Knob(
-          parameter: balanceParameter,
+          parameterBinding: balanceParameter,
           min: -1,
           max: 1,
           width: 26,

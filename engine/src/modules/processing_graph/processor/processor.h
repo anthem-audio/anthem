@@ -19,9 +19,11 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <juce_core/juce_core.h>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -39,6 +41,7 @@ struct ProcessorPortConfiguration {
   std::optional<double> parameterDefaultValue = std::nullopt;
   std::optional<std::string> parameterDisplayMode = std::nullopt;
   std::optional<std::string> parameterUnitLabel = std::nullopt;
+  double parameterNormalizedVisualBaseline = 0.0;
 };
 
 struct ProcessorParameterValue {
@@ -63,6 +66,26 @@ struct ProcessorPrepareResult {
   std::vector<ProcessorParameterValue> parameterValues;
 };
 
+// Base settings outlive compiled graphs. Control ownership is recorded at the
+// processing boundary so delayed plugin reports cannot become base-value edits.
+struct ProcessorParameter {
+  static_assert(std::atomic<float>::is_always_lock_free);
+  static_assert(std::atomic<uint64_t>::is_always_lock_free);
+  explicit ProcessorParameter(float value) : value(value) {}
+  std::atomic<float> value;
+  std::atomic<uint64_t> controlRevision{0};
+
+  void rt_setControlled(bool controlled) {
+    const auto previous = controlRevision.load(std::memory_order_relaxed);
+    if (static_cast<bool>(previous & 1) != controlled)
+      controlRevision.store(previous + 1, std::memory_order_release);
+  }
+
+  // May be called by a plugin on either its processing or editor thread. Only
+  // reports from the same uncontrolled period may update the base setting.
+  bool acceptChange(float requestedValue, uint64_t revision) noexcept;
+};
+
 // Processors may complete preparation synchronously or asynchronously.
 // Successful preparation must include the processor's port configuration.
 // Descriptions come from the processor, independently of cached UI metadata.
@@ -75,10 +98,15 @@ using ProcessorPrepareCallback = std::function<void(std::optional<ProcessorPrepa
 // several internal processing modules that interact with the processing graph.
 class Processor {
 public:
+  static_assert(std::atomic<bool>::is_always_lock_free);
   // The name of the processor.
   std::string name;
 
   Processor(std::string name) : name(name) {}
+
+  // Model decoding moves processors into their final instances before preparation.
+  Processor(Processor&& other) noexcept;
+  Processor& operator=(Processor&& other) noexcept;
 
   virtual ~Processor() = default;
 
@@ -89,23 +117,47 @@ public:
   virtual void prepareToProcess(ProcessorPrepareCallback complete) = 0;
 
   // This flag must be set after prepareToProcess() is called. It is set by the
-  // caller, not by the processor itself.
-  bool isPrepared = false;
+  // caller, not by the processor itself. Plugin callbacks can read readiness
+  // from other threads.
+  std::atomic<bool> isPrepared{false};
 
   // Instance state is restored once per processor lifetime. Audio-session
   // re-preparation must retain the live state rather than replaying a saved blob.
-  bool hasRestoredProjectState = false;
+  std::atomic<bool> hasRestoredProjectState{false};
 
   // This method is called by the processing graph to process audio, event and
   // control data. It is called once per processing block. Processors with audio
   // output ports must fully replace every sample in each output buffer.
   virtual void process(NodeProcessContext& context, int numSamples) = 0;
 
+  // Reconcile discovered parameters without replacing existing base settings.
+  void reconcileParameters(const ProcessorPrepareResult& result);
+  void restoreParameterValues(const std::map<int64_t, double>& values);
+  std::shared_ptr<ProcessorParameter> getParameter(int64_t id) const;
+  std::vector<ProcessorParameterValue> getParameterValues() const;
+  std::optional<std::string> setParameterValue(int64_t id, double value);
+
+  virtual std::optional<std::string> getParameterDisplayText(int64_t, float) const {
+    return std::nullopt;
+  }
+
+  // Processor-specific state supplements the common base parameter values.
   // Gets the state of the processor
   virtual void getState(juce::MemoryBlock& /*target*/) {}
 
   // Loads the state of the processor from a value exported by getState()
   virtual void setState(const juce::MemoryBlock& /*state*/) {}
+protected:
+  // Called on the message thread after common parameter storage is established,
+  // before callbacks and audio processing are allowed to use the processor.
+  virtual void parametersReconciled() {}
+
+  virtual float normalizeParameterValue(int64_t, float value) const {
+    return value;
+  }
+  virtual void applyParameterValue(int64_t, float) {}
+private:
+  std::map<int64_t, std::shared_ptr<ProcessorParameter>> parameters;
 };
 
 } // namespace anthem

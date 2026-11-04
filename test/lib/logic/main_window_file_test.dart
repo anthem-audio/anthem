@@ -510,17 +510,13 @@ void main() {
     expect(path.isWithin(work.path, storage.rootDirectory), isTrue);
     expect(imported.filePath, isNull);
     expect(imported.isDirty, isTrue);
-    expect(
-      storage.resolveRetention(
-        imported.processingGraph.nodes[17]!.processorStateRetentionId!,
-      ),
-      'plugin states/1.bin',
+    final snapshotPath = storage.resolveRetention(
+      imported.processingGraph.nodes[17]!.processorStateRetentionId!,
     );
-    expect(
-      await File(path.join(storage.rootDirectory, 'plugin states', '1.bin'))
-          .readAsBytes(),
-      [1, 2, 3],
-    );
+    final snapshotBytes = await File(
+      path.join(storage.rootDirectory, snapshotPath),
+    ).readAsBytes();
+    expect(snapshotBytes, isNotEmpty);
     expect(await readProjectFile(original.path), json);
     final savedRoot = path.join(directory.path, 'Saved');
     selector.saveLocation = FileSaveLocation(savedRoot);
@@ -540,11 +536,11 @@ void main() {
       ServiceRegistry.forProject(reopenedId!).projectStorage.resolveRetention(
         reopened.processingGraph.nodes[17]!.processorStateRetentionId!,
       ),
-      'plugin states/1.bin',
+      snapshotPath,
     );
     expect(
-      await File(path.join(savedRoot, 'plugin states', '1.bin')).readAsBytes(),
-      [1, 2, 3],
+      await File(path.join(savedRoot, snapshotPath)).readAsBytes(),
+      snapshotBytes,
     );
   });
 

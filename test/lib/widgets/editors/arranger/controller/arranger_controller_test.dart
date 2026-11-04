@@ -31,6 +31,7 @@ import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/sequence_automation_provider.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
@@ -293,6 +294,7 @@ void main() {
         ServiceRegistry.forProject(project.id).arrangerController;
         final track = project.tracks[project.trackOrder.first]!;
         final utilityNode = track.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -317,6 +319,7 @@ void main() {
         final device = track.requireProcessing.devices.single;
         final deviceNode =
             project.processingGraph.nodes[device.nodeIds.single]!;
+        _describeTestParameters(deviceNode);
         final frequencyPort = deviceNode.getPortById(
           ToneGeneratorProcessorModel.frequencyPortId,
         );
@@ -400,6 +403,7 @@ void main() {
             .arrangerController;
         final parentTrack = project.tracks[project.trackOrder.first]!;
         final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -453,9 +457,9 @@ void main() {
       try {
         final services = ServiceRegistry.forProject(project.id);
         final controller = services.arrangerController;
-        final parameterController = services.parameterController;
         final parentTrack = project.tracks[project.trackOrder.first]!;
         final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -466,8 +470,7 @@ void main() {
 
         expect(target, isNotNull);
 
-        parameterController.beginChange(node: utilityNode, port: utilityPort);
-        parameterController.commitChange(node: utilityNode, port: utilityPort);
+        utilityNode.touchControlInputParameter(utilityPort);
 
         expect(viewModel.lastTweakedAutomationTarget, isNotNull);
         expect(
@@ -509,6 +512,7 @@ void main() {
         ServiceRegistry.forProject(project.id).arrangerController;
         final parentTrack = project.tracks[project.trackOrder.first]!;
         final utilityNode = parentTrack.requireProcessing.utilityNode!;
+        _describeTestParameters(utilityNode);
         final utilityPort = utilityNode.getPortById(
           UtilityProcessorModel.gainPortId,
         );
@@ -545,6 +549,7 @@ void main() {
           ServiceRegistry.forProject(project.id).arrangerController;
           final parentTrack = project.tracks[project.trackOrder.first]!;
           final utilityNode = parentTrack.requireProcessing.utilityNode!;
+          _describeTestParameters(utilityNode);
           final nonParameterPort = NodePortModel(
             nodeId: utilityNode.id,
             id: 999,
@@ -623,6 +628,7 @@ void main() {
     );
 
     final utilityNode = parentTrack.requireProcessing.utilityNode!;
+    _describeTestParameters(utilityNode);
     final port = utilityNode.getPortById(UtilityProcessorModel.gainPortId);
     if (parameterValue != null) {
       port.parameterValue = parameterValue;
@@ -1083,4 +1089,10 @@ void main() {
       },
     );
   });
+}
+
+void _describeTestParameters(NodeModel node) {
+  for (final port in node.controlInputPorts) {
+    port.config.parameterConfig = ParameterConfigModel(id: port.id);
+  }
 }

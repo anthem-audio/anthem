@@ -280,6 +280,7 @@ if (NOT IS_WASM)
   # -------------------------------------------------------------------
   add_executable(AnthemTest
     test/test.cpp
+    test/allocation_tracker.cpp
   )
 
   target_include_directories(AnthemTest

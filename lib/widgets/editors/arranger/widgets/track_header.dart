@@ -441,7 +441,7 @@ class _TrackContentRow extends StatelessObserverWidget {
         ),
         if (track.isAutomationLane && automationParameter != null)
           Slider(
-            parameter: automationParameter,
+            parameterBinding: automationParameter,
             axis: .vertical,
             width: _trackMeterWidth,
             height: contentLayout.height,
@@ -459,7 +459,7 @@ class _TrackContentRow extends StatelessObserverWidget {
                 if (headerSize != TrackHeaderSize.compact &&
                     gainParameter != null)
                   Slider(
-                    parameter: gainParameter,
+                    parameterBinding: gainParameter,
                     min: 0,
                     max: 1,
                     height: 20,
@@ -470,7 +470,7 @@ class _TrackContentRow extends StatelessObserverWidget {
                 if (headerSize == TrackHeaderSize.tall &&
                     balanceParameter != null)
                   Slider(
-                    parameter: balanceParameter,
+                    parameterBinding: balanceParameter,
                     min: -1,
                     max: 1,
                     height: 20,
