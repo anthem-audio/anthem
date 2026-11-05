@@ -27,6 +27,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -58,6 +59,7 @@ void main() {
     );
     node = NodeModel(
       id: id,
+      processor: GainProcessorModel(nodeId: id),
       controlInputPorts: AnthemObservableList.of([port]),
     );
     project.processingGraph.addNode(node);

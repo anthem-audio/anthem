@@ -30,8 +30,7 @@ Future<void>? captureLiveProcessorStates(
   if (!project.engine.isRunning) return null;
   final captures = [
     for (final node in nodes)
-      if (node.processor != null &&
-          node.initializationState == NodeInitializationState.ready)
+      if (node.initializationState == NodeInitializationState.ready)
         node.updateStateFromEngine(),
   ];
   if (captures.isEmpty) return null;

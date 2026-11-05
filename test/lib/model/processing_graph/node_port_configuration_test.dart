@@ -21,12 +21,28 @@ import 'package:anthem/engine_api/messages/messages.dart'
     show ProcessingGraphNodePortConfiguration, ProcessingGraphPortConfiguration;
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('constructed and deserialized nodes keep their processor instance', () {
+    final original = NodeModel(id: 1, processor: GainProcessorModel(nodeId: 1));
+    final restored = NodeModel.fromJson(original.toJson());
+    expect(restored.toJson(), original.toJson());
+
+    for (final node in [original, restored]) {
+      final processor = node.processor;
+      expect(
+        () => node.processor = GainProcessorModel(nodeId: 1),
+        throwsA(isA<Error>()),
+      );
+      expect(node.processor, same(processor));
+    }
+  });
+
   test('metadata refresh preserves port state without a routing change', () {
-    final node = NodeModel(id: 1);
+    final node = NodeModel(id: 1, processor: GainProcessorModel(nodeId: 1));
     expect(
       node.applyPortConfiguration(
         _configuration(
@@ -92,7 +108,7 @@ void main() {
   });
 
   test('repeated reports emit no model changes or routing changes', () {
-    final node = NodeModel(id: 1);
+    final node = NodeModel(id: 1, processor: GainProcessorModel(nodeId: 1));
     node.isTopLevelModel = true;
     node.setParentPropertiesOnChildren();
     final configuration = _configuration(
@@ -120,7 +136,7 @@ void main() {
   test(
     'port disappearance, recovery and reordering preserve saved objects',
     () {
-      final node = NodeModel(id: 1);
+      final node = NodeModel(id: 1, processor: GainProcessorModel(nodeId: 1));
       ProcessingGraphNodePortConfiguration ports(List<int> ids) =>
           _configuration(
             controls: [

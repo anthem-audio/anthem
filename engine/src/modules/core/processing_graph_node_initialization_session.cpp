@@ -141,10 +141,7 @@ void ProcessingGraphNodeInitializationSession::pruneInitializedNodeTracker() {
     if (graphNodeIter == graphNodes.end() || initializedNode == nullptr ||
         initializedNode != graphNodeIter->second) {
       if (initializedNode != nullptr) {
-        auto processor = initializedNode->getProcessor();
-        if (processor.has_value()) {
-          processor.value()->isPrepared = false;
-        }
+        initializedNode->getProcessor()->isPrepared = false;
       }
 
       iter = engine.initializedProcessingGraphNodes.erase(iter);
@@ -206,15 +203,6 @@ void ProcessingGraphNodeInitializationSession::addResult(
 void ProcessingGraphNodeInitializationSession::markNodeInitialized(
     int64_t nodeId, const std::shared_ptr<Node>& graphNode) {
   engine.initializedProcessingGraphNodes[nodeId] = graphNode;
-}
-
-void ProcessingGraphNodeInitializationSession::initializeNodeWithoutProcessor(
-    const NodeInitializationWorkItem& workItem) {
-  // A graph node without a processor has no process preparation step, but it
-  // still participates in delta tracking so it won't be reported as new on
-  // every initialization request.
-  markNodeInitialized(workItem.nodeId, workItem.graphNode);
-  addResult(makeNodeInitializationResult(workItem.nodeId, true));
 }
 
 void ProcessingGraphNodeInitializationSession::completeProcessorNode(int64_t nodeId,
@@ -342,13 +330,7 @@ void ProcessingGraphNodeInitializationSession::initializeProcessorNode(
 
 void ProcessingGraphNodeInitializationSession::initializeNode(
     const NodeInitializationWorkItem& workItem) {
-  auto processor = workItem.graphNode->getProcessor();
-  if (!processor.has_value()) {
-    initializeNodeWithoutProcessor(workItem);
-    return;
-  }
-
-  initializeProcessorNode(workItem, processor.value());
+  initializeProcessorNode(workItem, workItem.graphNode->getProcessor());
 }
 
 void ProcessingGraphNodeInitializationSession::initializeDiff(

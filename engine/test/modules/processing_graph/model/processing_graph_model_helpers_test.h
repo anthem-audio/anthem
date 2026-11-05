@@ -45,7 +45,7 @@ public:
 
   void runTest() override {
     testGetPortByIdFindsAllPortKinds();
-    testGetProcessorReturnsExpectedProcessorOrNullopt();
+    testGetProcessorReturnsExpectedProcessor();
     testProcessorOwnedParameterBindings();
     testControlledParameterReports();
   }
@@ -76,18 +76,13 @@ public:
     expect(!node->getPortById(9999).has_value(), "Missing port IDs should return nullopt.");
   }
 
-  void testGetProcessorReturnsExpectedProcessorOrNullopt() {
-    beginTest("Node::getProcessor returns the wrapped processor instance when present");
+  void testGetProcessorReturnsExpectedProcessor() {
+    beginTest("Node::getProcessor returns the wrapped processor instance");
 
-    auto processorlessNode = graph_test_helpers::makeNode(10);
     auto gainNode = graph_test_helpers::makeGainNode(20);
-
-    auto missingProcessor = processorlessNode->getProcessor();
     auto processor = gainNode->getProcessor();
 
-    expect(!missingProcessor.has_value(), "Nodes without processors should return nullopt.");
-    expect(processor.has_value(), "Nodes with processors should return a processor instance.");
-    expect(dynamic_cast<GainProcessor*>(processor.value().get()) != nullptr,
+    expect(dynamic_cast<GainProcessor*>(processor.get()) != nullptr,
         "The returned processor should preserve its concrete processor type.");
   }
 
@@ -99,7 +94,7 @@ public:
         NodePortDataType::control,
         graph_test_helpers::makeParameterConfig(kControlPortId, 0.25)));
     graph_test_helpers::prepareTestParameters(node);
-    const auto processor = *node->getProcessor();
+    const auto processor = node->getProcessor();
     expect(!processor->setParameterValue(kControlPortId, 0.75));
     EngineRuntimeServices services;
     GraphProcessContext first(services, {.numAudioChannels = 2, .blockSize = 16});

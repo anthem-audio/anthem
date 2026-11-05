@@ -114,9 +114,6 @@ public:
   // reaching through the engine singleton.
   std::unique_ptr<EngineRuntimeServices> engineRuntimeServices;
 
-  // Executes the processing graph on the audio thread.
-  std::unique_ptr<GraphProcessor> graphProcessor;
-
   // Class for coordinating global visualization that is sent back to the UI,
   // such as CPU burden and transport location.
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
@@ -141,6 +138,10 @@ public:
 
   // Stores opaque processor snapshots without sending their bytes through IPC.
   ProcessorStateStorage processorStateStorage;
+
+  // Owns graph execution, publication, and node suspension. Declared after
+  // storage so pending operations are cancelled before their services are destroyed.
+  std::unique_ptr<GraphProcessor> graphProcessor;
 
   // Lifetime note: the audio and render controllers store non-owning
   // references to the members above. Keep those referenced members declared

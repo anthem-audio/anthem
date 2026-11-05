@@ -37,9 +37,9 @@ Engine::Engine()
         createTransportProjectView(*this), createTransportClock(*this))),
     engineRuntimeServices(std::make_unique<EngineRuntimeServices>(
         *transport, *sequenceStore, *automationSequenceStore)),
-    graphProcessor(std::make_unique<GraphProcessor>(*engineRuntimeServices)),
     globalVisualizationSources(std::make_unique<GlobalVisualizationSources>()), uiRequests(comms),
     fileStorage(uiRequests), processorStateStorage(fileStorage),
+    graphProcessor(std::make_unique<GraphProcessor>(*engineRuntimeServices, project)),
     audioBlockProcessor(std::make_unique<AudioBlockProcessor>(*transport,
         *sequenceStore,
         *automationSequenceStore,
@@ -70,6 +70,7 @@ void Engine::initialize() {
 }
 
 void Engine::shutdown() {
+  graphProcessor->shutdown();
   uiRequests.close();
   renderController->stopRenderThread();
   audioSessionController->stopAudio();
@@ -83,10 +84,7 @@ void Engine::resetInitializedProcessingGraphNodes() {
       continue;
     }
 
-    auto processor = initializedNode->getProcessor();
-    if (processor.has_value()) {
-      processor.value()->isPrepared = false;
-    }
+    initializedNode->getProcessor()->isPrepared = false;
   }
 
   initializedProcessingGraphNodes.clear();

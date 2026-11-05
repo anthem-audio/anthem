@@ -157,17 +157,17 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
         .responseBase = ResponseBase{.id = edit.requestBase.get().id}};
     auto& nodes = *engine.project->processingGraph()->nodes();
     const auto node = nodes.find(edit.nodeId);
-    const auto processor = node == nodes.end() ? std::nullopt : node->second->getProcessor();
-    if (!processor || !(*processor)->isPrepared || !(*processor)->hasRestoredProjectState) {
+    const auto processor = node == nodes.end() ? nullptr : node->second->getProcessor();
+    if (!processor || !processor->isPrepared || !processor->hasRestoredProjectState) {
       response.error = "The processor is not ready for parameter edits.";
-    } else if (auto error = (*processor)->setParameterValue(edit.controlPortId, edit.value)) {
+    } else if (auto error = processor->setParameterValue(edit.controlPortId, edit.value)) {
       response.error = std::move(error);
     } else {
-      const auto value = (*processor)->getParameter(edit.controlPortId)->value.load();
+      const auto value = processor->getParameter(edit.controlPortId)->value.load();
       response.parameterValue = std::make_shared<ProcessingGraphParameterValue>(
           ProcessingGraphParameterValue{.controlPortId = edit.controlPortId,
               .value = value,
-              .displayText = (*processor)->getParameterDisplayText(edit.controlPortId, value)});
+              .displayText = processor->getParameterDisplayText(edit.controlPortId, value)});
     }
     return Response(std::move(response));
   } else if (rfl::holds_alternative<OpenPluginWindowRequest>(request.variant())) {
@@ -190,13 +190,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
 
     auto processor = node->getProcessor();
 
-    if (!processor) {
-      juce::Logger::writeToLog(
-          "Node " + toIdString(openPluginWindowRequest.nodeId) + " does not have a processor.");
-      return std::nullopt;
-    }
-
-    auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor.value());
+    auto vst3Processor = std::dynamic_pointer_cast<VST3Processor>(processor);
 
     if (vst3Processor == nullptr) {
       juce::Logger::writeToLog(
@@ -226,15 +220,7 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
       return std::nullopt;
     }
 
-    auto processorOpt = node->getProcessor();
-
-    if (!processorOpt) {
-      juce::Logger::writeToLog("Node " + toIdString(sendLiveEventRequest.liveEventProviderNodeId) +
-                               " does not have a processor.");
-      return std::nullopt;
-    }
-
-    auto& processor = processorOpt.value();
+    auto processor = node->getProcessor();
 
     // Check if processor is a live event provider
     auto liveEventProvider = std::dynamic_pointer_cast<LiveEventProviderProcessor>(processor);

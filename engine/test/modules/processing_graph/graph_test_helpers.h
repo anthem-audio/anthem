@@ -37,8 +37,7 @@ namespace anthem {
 
 namespace graph_test_helpers {
 
-using NodeProcessorVariant =
-    typename std::remove_cvref_t<decltype(std::declval<NodeModelImpl>().processor)>::value_type;
+using NodeProcessorVariant = std::remove_cvref_t<decltype(std::declval<NodeModelImpl>().processor)>;
 
 inline std::shared_ptr<ParameterConfigModel> makeParameterConfig(int64_t id, double defaultValue) {
   return std::make_shared<ParameterConfigModel>(ParameterConfigModelImpl{
@@ -66,8 +65,10 @@ inline std::shared_ptr<NodePort> makePort(int64_t id,
   });
 }
 
-inline std::shared_ptr<Node> makeGainNode(int64_t nodeId) {
-  auto gainProcessor = std::make_shared<GainProcessor>(GainProcessorModelImpl{.nodeId = nodeId});
+inline std::shared_ptr<Node> makeGainNode(
+    int64_t nodeId, std::shared_ptr<GainProcessor> gainProcessor = nullptr) {
+  if (!gainProcessor)
+    gainProcessor = std::make_shared<GainProcessor>(GainProcessorModelImpl{.nodeId = nodeId});
 
   return std::make_shared<Node>(NodeModelImpl{
       .id = nodeId,
@@ -99,18 +100,9 @@ inline std::shared_ptr<Node> makeToneGeneratorNode(int64_t nodeId) {
   });
 }
 
+// Routing fixtures use an unprepared gain processor and do not run DSP.
 inline std::shared_ptr<Node> makeNode(int64_t nodeId) {
-  return std::make_shared<Node>(NodeModelImpl{
-      .id = nodeId,
-      .audioInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .eventInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .controlInputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .audioOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .eventOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .controlOutputPorts = std::make_shared<ModelVector<std::shared_ptr<NodePort>>>(),
-      .initialParameterValues = std::make_shared<ModelUnorderedMap<int64_t, double>>(),
-      .processor = std::nullopt,
-  });
+  return makeGainNode(nodeId);
 }
 
 inline std::shared_ptr<Node> makeMasterOutputNode(int64_t nodeId) {
@@ -244,11 +236,7 @@ inline void prepareTestParameters(std::shared_ptr<Node>& node) {
   }
   if (result.portConfiguration->controlInputPorts.empty())
     return;
-  if (!node->getProcessor()) {
-    auto processor = std::make_shared<GainProcessor>(GainProcessorModelImpl{.nodeId = node->id()});
-    node->processor() = NodeProcessorVariant(rfl::make_field<"GainProcessorModel">(processor));
-  }
-  (*node->getProcessor())->reconcileParameters(result);
+  node->getProcessor()->reconcileParameters(result);
 }
 
 inline NodeProcessContext& createStandaloneNodeProcessContext(

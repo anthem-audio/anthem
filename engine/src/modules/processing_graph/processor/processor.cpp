@@ -28,13 +28,14 @@ namespace anthem {
 Processor::Processor(Processor&& other) noexcept
   : name(std::move(other.name)), isPrepared(other.isPrepared.load()),
     hasRestoredProjectState(other.hasRestoredProjectState.load()),
-    parameters(std::move(other.parameters)) {}
+    parameters(std::move(other.parameters)), processingState(std::move(other.processingState)) {}
 
 Processor& Processor::operator=(Processor&& other) noexcept {
   name = std::move(other.name);
   isPrepared = other.isPrepared.load();
   hasRestoredProjectState = other.hasRestoredProjectState.load();
   parameters = std::move(other.parameters);
+  processingState = std::move(other.processingState);
   return *this;
 }
 

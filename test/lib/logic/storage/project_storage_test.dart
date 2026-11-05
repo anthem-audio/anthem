@@ -28,6 +28,7 @@ import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 
@@ -71,8 +72,11 @@ void main() {
       final file = File(path.join(directory.path, 'plugin states', '1.bin'));
       await file.parent.create();
       await file.writeAsBytes([1, 2, 3]);
-      final node = NodeModel.create(idAllocator: project.idAllocator)
-        ..processorStateRetentionId = 'restored-claim';
+      final nodeId = project.allocateId();
+      final node = NodeModel(
+        id: nodeId,
+        processor: GainProcessorModel(nodeId: nodeId),
+      )..processorStateRetentionId = 'restored-claim';
       project.fileRetentions = jsonEncode({
         'restored-claim': 'plugin states/1.bin',
       });
@@ -114,8 +118,11 @@ void main() {
   test(
     'reference initialization can be retried using the already opened store',
     () async {
-      final node = NodeModel.create(idAllocator: project.idAllocator)
-        ..processorStateRetentionId = 'missing-claim';
+      final nodeId = project.allocateId();
+      final node = NodeModel(
+        id: nodeId,
+        processor: GainProcessorModel(nodeId: nodeId),
+      )..processorStateRetentionId = 'missing-claim';
       project.fileRetentions = jsonEncode({
         'missing-claim': 'plugin states/missing.bin',
       });

@@ -77,10 +77,10 @@ private:
 
   FileStorageResult<FileFingerprint> captureAndWrite(const juce::File& destination) {
     const auto processor = node->getProcessor();
-    if (!processor || !(*processor)->hasRestoredProjectState)
+    if (!processor->hasRestoredProjectState)
       return {.value = std::nullopt, .error = "The processor is not initialized."};
     try {
-      ProcessorStateSnapshot state(**processor);
+      ProcessorStateSnapshot state(*processor);
       auto fingerprint =
           state.isEmpty() ? FileFingerprint{.byteLength = 0, .sha256 = ""} : state.fingerprint();
       if (!state.isEmpty() && !matchesPrevious(fingerprint))
@@ -160,7 +160,7 @@ private:
 void ProcessorStateStorage::capture(
     const std::shared_ptr<Node>& node, FileStorageClient::RelativePathCompletion complete) {
   auto processor = node->getProcessor();
-  if (!processor || !(*processor)->hasRestoredProjectState) {
+  if (!processor->hasRestoredProjectState) {
     complete({.value = std::nullopt, .error = "The processor is not initialized."});
     return;
   }

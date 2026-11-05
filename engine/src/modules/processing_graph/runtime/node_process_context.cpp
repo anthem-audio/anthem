@@ -43,19 +43,16 @@ NodeProcessContext::NodeProcessContext(std::shared_ptr<Node>& graphNode,
   rt_eventBuffersToClear = std::move(bufferBindings.rt_eventBuffersToClear);
 
   const auto processor = graphNode->getProcessor();
-  if (processor) {
-    for (const auto& port : *graphNode->controlInputPorts()) {
-      if (!port->isAvailable() || !port->config()->parameterConfig())
-        continue;
-      const auto parameter = (*processor)->getParameter(port->id());
-      if (!parameter)
-        throw std::runtime_error("Processor has no base value for a confirmed parameter.");
-      const auto buffer = inputControlBuffers.find(port->id());
-      inputParameters.push_back({.portId = port->id(),
-          .parameter = parameter,
-          .controlBufferIndex =
-              buffer == inputControlBuffers.end() ? std::nullopt : buffer->second});
-    }
+  for (const auto& port : *graphNode->controlInputPorts()) {
+    if (!port->isAvailable() || !port->config()->parameterConfig())
+      continue;
+    const auto parameter = processor->getParameter(port->id());
+    if (!parameter)
+      throw std::runtime_error("Processor has no base value for a confirmed parameter.");
+    const auto buffer = inputControlBuffers.find(port->id());
+    inputParameters.push_back({.portId = port->id(),
+        .parameter = parameter,
+        .controlBufferIndex = buffer == inputControlBuffers.end() ? std::nullopt : buffer->second});
   }
 }
 
@@ -99,6 +96,15 @@ void NodeProcessContext::clearBuffers() {
   for (const auto bufferIndex : rt_eventBuffersToClear) {
     graphProcessContext->getEventBuffer(bufferIndex)->clear();
   }
+}
+
+void NodeProcessContext::rt_clearOutputs() {
+  for (const auto& [_, slice] : outputAudioBuffers)
+    graphProcessContext->rt_getAudioBufferView(slice).clear();
+  for (const auto& [_, index] : outputControlBuffers)
+    graphProcessContext->rt_getControlBufferView(index).clear();
+  for (const auto& [_, index] : outputEventBuffers)
+    graphProcessContext->getEventBuffer(index)->clear();
 }
 
 size_t NodeProcessContext::getBufferIndex(

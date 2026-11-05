@@ -20,8 +20,11 @@
 #include "graph_processor.h"
 
 #include "modules/core/engine_runtime_services.h"
+#include "modules/core/project.h"
 #include "modules/processing_graph/executor/graph_executor.h"
 #include "modules/util/intentionally_leak.h"
+
+#include <utility>
 
 namespace anthem {
 
@@ -37,10 +40,12 @@ struct GraphProcessor::RuntimeGraphHandoff {
   uint64_t audioProcessingConfigGeneration;
 };
 
-GraphProcessor::GraphProcessor(EngineRuntimeServices& engineRuntimeServices)
+GraphProcessor::GraphProcessor(
+    EngineRuntimeServices& engineRuntimeServices, const std::shared_ptr<Project>& project)
   : executor(std::make_unique<GraphExecutor>()), engineRuntimeServices(&engineRuntimeServices),
     clearDeletionQueueTimedCallback(
-        juce::TimedCallback([this]() { this->clearRetiredRuntimeGraphs(); })) {}
+        juce::TimedCallback([this]() { this->clearRetiredRuntimeGraphs(); })),
+    project(project), nodePauseTimer([this]() { pollNodePauses(); }) {}
 
 void GraphProcessor::initialize() {
   executor->prepare();
@@ -48,7 +53,7 @@ void GraphProcessor::initialize() {
 }
 
 GraphProcessor::~GraphProcessor() {
-  clearDeletionQueueTimedCallback.stopTimer();
+  shutdown();
 
   while (auto nextHandoff = pendingRuntimeGraphHandoffsQueue.read()) {
     delete nextHandoff.value();
@@ -58,6 +63,102 @@ GraphProcessor::~GraphProcessor() {
 
   delete rt_activeRuntimeGraphHandoff;
   rt_activeRuntimeGraphHandoff = nullptr;
+}
+
+void GraphProcessor::shutdown() {
+  if (isShutdown)
+    return;
+  isShutdown = true;
+  nodePauseTimer.stopTimer();
+  clearDeletionQueueTimedCallback.stopTimer();
+  auto cancelled = std::exchange(nodePauseRequests, {});
+  for (auto& request : cancelled) {
+    if (auto pause = request.pause.lock())
+      pause->cancel();
+    if (request.complete)
+      request.complete(nullptr, "Graph processor has shut down.");
+  }
+}
+
+std::shared_ptr<Node> GraphProcessor::findNode(int64_t nodeId) const {
+  if (!project || !project->processingGraph())
+    return nullptr;
+  const auto& nodes = *project->processingGraph()->nodes();
+  const auto node = nodes.find(nodeId);
+  return node == nodes.end() ? nullptr : node->second;
+}
+
+void GraphProcessor::pauseNode(int64_t nodeId, PauseNodeCallback complete) {
+  if (isShutdown) {
+    complete(nullptr, "Graph processor has shut down.");
+    return;
+  }
+  const auto node = findNode(nodeId);
+  const auto processor = node ? node->getProcessor() : nullptr;
+  if (!node) {
+    complete(nullptr, "Processing graph node not found.");
+    return;
+  }
+  if (dynamic_cast<MasterOutputProcessor*>(processor.get()) != nullptr) {
+    complete(nullptr, "The master output node cannot be paused.");
+    return;
+  }
+  auto pause = processor->pauseProcessing();
+  nodePauseRequests.push_back({.nodeId = nodeId,
+      .node = node,
+      .pause = pause,
+      .pending = std::move(pause),
+      .complete = std::move(complete)});
+  nodePauseTimer.startTimer(5);
+  pollNodePauses();
+}
+
+void GraphProcessor::pollNodePauses() {
+  if (isShutdown)
+    return;
+  struct Completed {
+    PauseNodeCallback complete;
+    std::shared_ptr<NodeProcessingPause> pause;
+    std::optional<std::string> error;
+    int64_t nodeId = 0;
+    std::weak_ptr<Node> node;
+  };
+  std::vector<Completed> completed;
+  for (auto it = nodePauseRequests.begin(); it != nodePauseRequests.end();) {
+    auto pause = it->pause.lock();
+    if (!pause || !pause->isValid()) {
+      if (it->complete)
+        completed.push_back({std::move(it->complete), nullptr, "Node pause was cancelled."});
+      it = nodePauseRequests.erase(it);
+      continue;
+    }
+    const auto node = findNode(it->nodeId);
+    if (!node || node != it->node.lock()) {
+      pause->cancel();
+      if (it->complete)
+        completed.push_back({std::move(it->complete), nullptr, "Processing graph node changed."});
+      it = nodePauseRequests.erase(it);
+      continue;
+    }
+    if (it->complete && pause->isPaused())
+      completed.push_back({.complete = std::move(it->complete),
+          .pause = std::move(it->pending),
+          .nodeId = it->nodeId,
+          .node = it->node});
+    ++it;
+  }
+  if (nodePauseRequests.empty())
+    nodePauseTimer.stopTimer();
+  // Callers can release claims, request more pauses, or shut down graph processing.
+  for (auto& result : completed) {
+    const auto node = isShutdown ? nullptr : findNode(result.nodeId);
+    if (result.pause && (!node || node != result.node.lock()))
+      result.pause->cancel();
+    if (isShutdown || (result.pause && !result.pause->isValid()))
+      result.complete(nullptr, "Node pause was cancelled.");
+    else
+      result.complete(std::move(result.pause), std::move(result.error));
+  }
 }
 
 void GraphProcessor::prepareForAudioProcessingConfig(

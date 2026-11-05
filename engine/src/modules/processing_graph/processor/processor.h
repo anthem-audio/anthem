@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include "modules/processing_graph/runtime/node_processing_state.h"
+
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -33,6 +35,7 @@ namespace anthem {
 
 class GraphNode;
 class NodeProcessContext;
+class GraphProcessor;
 
 struct ProcessorPortConfiguration {
   int64_t id;
@@ -130,6 +133,13 @@ public:
   // output ports must fully replace every sample in each output buffer.
   virtual void process(NodeProcessContext& context, int numSamples) = 0;
 
+  bool rt_tryAcquireProcessingAccess() noexcept {
+    return processingState->rt_tryAcquireProcessingAccess();
+  }
+  void rt_releaseProcessingAccess() noexcept {
+    processingState->rt_releaseProcessingAccess();
+  }
+
   // Reconcile discovered parameters without replacing existing base settings.
   void reconcileParameters(const ProcessorPrepareResult& result);
   void restoreParameterValues(const std::map<int64_t, double>& values);
@@ -157,7 +167,14 @@ protected:
   }
   virtual void applyParameterValue(int64_t, float) {}
 private:
+  friend class GraphProcessor;
+
+  // Pause requests go through the graph processor's special-node policy.
+  std::shared_ptr<NodeProcessingPause> pauseProcessing() {
+    return std::make_shared<NodeProcessingPause>(processingState);
+  }
   std::map<int64_t, std::shared_ptr<ProcessorParameter>> parameters;
+  std::shared_ptr<NodeProcessingState> processingState = std::make_shared<NodeProcessingState>();
 };
 
 } // namespace anthem

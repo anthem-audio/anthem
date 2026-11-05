@@ -30,6 +30,7 @@
 #include "modules/core/visualization_record_test.h"
 #include "modules/processing_graph/model/processing_graph_model_helpers_test.h"
 #include "modules/processing_graph/model/runtime_graph_test.h"
+#include "modules/processing_graph/node_processing_test.h"
 #include "modules/processing_graph/processor/event_buffer_test.h"
 #include "modules/processing_graph/runtime/graph_process_context_test.h"
 #include "modules/processing_graph/runtime/node_process_context_test.h"

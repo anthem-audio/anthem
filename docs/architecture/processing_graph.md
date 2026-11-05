@@ -10,7 +10,9 @@ Connections can be defined from any input to any output of the same data type. A
 
 When a device is added, Anthem creates a node in the Dart project model to represent it. The node records which processor to use, any explicit creation overrides, and stable port IDs used for routing. The engine supplies the processor's initial state and descriptions. Opening a project reconstructs cached descriptions, values and routing from the project file.
 
-The engine still needs to load and prepare the processor before it can process audio. It also needs to establish which ports exist and how many channels each audio port has. A saved port description may no longer match the installed plugin, and channel counts can depend on the active audio configuration. For example, the project can contain a connection to the master output before the engine knows whether the output device has two or four channels.
+Each node has a non-nullable, write-once processor reference. Changing processor type or instance requires replacing the whole node; modifying the processor's state does not.
+
+The engine still needs to load and prepare the processor before it can process audio. It also needs to establish which ports exist and how many channels each audio port has. A saved port description may no longer match the installed plugin, and channel counts can depend on the active audio configuration. For example, the project can contain a connection to the master output before the engine knows whether the output device has two or four channels. An unprepared processor is omitted from the runtime graph's processing pointer, preserving the existing unavailable-plugin behavior.
 
 Processor initialization happens before the graph is compiled and sent to the audio thread. It gives the UI the current port descriptions and base parameter values after applying creation settings or restoring a snapshot.
 
@@ -31,6 +33,20 @@ Processor snapshots contain the base parameter values and any additional process
 JUCE can call plugin listeners on processing, editor or other plugin threads. VST3 callbacks use a table of direct parameter pointers built during initial preparation and retained unchanged until the plugin is destroyed. Ordinary metadata refreshes and re-preparation reuse those bindings; a changed parameter layout requires reloading the plugin. Parameter changes update the processor's atomic base values immediately, so state capture does not depend on notification delivery. Callback operations do not allocate, post JUCE messages or change shared ownership; their atomics must be lock-free. A message-thread timer drains notifications, formats parameter text and sends IPC. Gesture boundaries carry their captured values so a complete gesture between timer ticks still produces the correct undo command.
 
 Notifications use `RecoverableNotificationQueue`, which wraps the existing single-writer ring buffer. Each callback makes one atomic attempt to claim the writer; if it is busy or the buffer is full, the callback requests recovery and returns without waiting or retrying. Recovery discards stale notifications, sends current values and clears unfinished UI gestures for that node. Intermediate undo history can be lost during recovery, but parameter state is retained. Callbacks overlapping a recovery request another snapshot so their changes are not lost behind the recovery snapshot.
+
+### Pausing node processing
+
+`GraphProcessor::pauseNode` asynchronously supplies a `NodeProcessingPause` claim once the processor is no longer in use by processing threads. Its callback runs on the message thread. Independent claims can overlap; the node resumes only after every claim is released or destroyed. Claim ownership and release belong on the message thread. `GraphProcessor` tracks pause requests and holds a reference to the engine's current project pointer. It looks up nodes directly on the message thread, including after project replacement.
+
+The pause gate belongs to the processor instance and survives replacement of compiled graphs. A single lock-free atomic coordinates access and pause requests. `rt_tryAcquireProcessingAccess()` checks availability and reserves access; it does not perform DSP. After using the processor, `rt_releaseProcessingAccess()` releases that access. If access was acquired first, pause acknowledgement waits for its release. If the pause request arrived first, acquiring access fails immediately. An already-idle processor needs no additional audio callback to acknowledge suspension. Releasing the last pause claim permits access again without requiring a separate resume acknowledgement. Processing threads never wait, allocate, post messages, or change shared ownership for this protocol.
+
+The executor clears a paused node's audio and control outputs and empties its event outputs, then completes ordinary scheduling and buffer-release bookkeeping. It does not invoke the processor. Downstream and disconnected nodes continue to run. The master output is a special endpoint and cannot be paused; its configuration changes through audio-session stop/start coordination. It continues processing while upstream nodes are paused, so output readers use its buffer normally.
+
+`GraphProcessor` polls acknowledgements and node identity on the message thread. Removing or replacing a node cancels its pending requests and invalidates its delivered claims. Runtime graphs retain their source nodes until message-thread retirement, which also keeps their processor instances alive. Removed nodes stay stopped while an older runtime graph still refers to them.
+
+Final graph-processor shutdown stops pause polling and cancels pending requests and held claims. Clearing a runtime graph preserves pause claims. Audio-session shutdown needs no extra handshake: after the last processing call exits, a pending pause can complete without another block, and held claims remain valid across audio-session restart.
+
+This is an engine primitive for later state loading and reconfiguration. Snapshot ownership, state replacement, undo, and presets are separate operations built on it.
 
 ### Restoring a processor before reporting its ports
 

@@ -102,7 +102,7 @@ class NodeModel extends _NodeModel
     with _$NodeModel, _$NodeModelAnthemModelMixin {
   NodeModel({
     required super.id,
-    super.processor,
+    required super.processor,
     AnthemObservableList<NodePortModel>? audioInputPorts,
     AnthemObservableList<NodePortModel>? eventInputPorts,
     AnthemObservableList<NodePortModel>? controlInputPorts,
@@ -124,7 +124,7 @@ class NodeModel extends _NodeModel
 
   NodeModel.create({
     required ProjectEntityIdAllocator idAllocator,
-    super.processor,
+    required super.processor,
     AnthemObservableList<NodePortModel>? audioInputPorts,
     AnthemObservableList<NodePortModel>? eventInputPorts,
     AnthemObservableList<NodePortModel>? controlInputPorts,
@@ -146,7 +146,7 @@ class NodeModel extends _NodeModel
        );
 
   NodeModel.uninitialized()
-    : super(
+    : super.uninitialized(
         id: -1,
         audioInputPorts: AnthemObservableList(),
         eventInputPorts: AnthemObservableList(),
@@ -154,7 +154,6 @@ class NodeModel extends _NodeModel
         audioOutputPorts: AnthemObservableList(),
         eventOutputPorts: AnthemObservableList(),
         controlOutputPorts: AnthemObservableList(),
-        processor: null,
         initialParameterValues: AnthemObservableMap(),
         owner: null,
       );
@@ -425,7 +424,6 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
   Future<void> _captureState() async {
     // An unavailable or still-initializing processor cannot supply authoritative
     // live state. Keep its saved file reference, including when saving the project.
-    if (processor == null) return;
     final owner = project;
     if (!identical(owner.processingGraph.nodes[id], this) ||
         !owner.engine.isRunning ||
@@ -493,6 +491,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     if (state == EngineState.stopped) resetEngineInitialization();
   }
 
+  /// The processor used by this node.
   @Union([
     BalanceProcessorModel,
     ControlValueVisualizationProcessorModel,
@@ -508,7 +507,7 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     UtilityProcessorModel,
     VST3ProcessorModel,
   ])
-  Processor? processor;
+  late final Processor processor;
 
   _NodeModel({
     required this.id,
@@ -519,6 +518,17 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     required this.eventOutputPorts,
     required this.controlOutputPorts,
     required this.processor,
+    required this.initialParameterValues,
+    required this.owner,
+  });
+  _NodeModel.uninitialized({
+    required this.id,
+    required this.audioInputPorts,
+    required this.eventInputPorts,
+    required this.controlInputPorts,
+    required this.audioOutputPorts,
+    required this.eventOutputPorts,
+    required this.controlOutputPorts,
     required this.initialParameterValues,
     required this.owner,
   });

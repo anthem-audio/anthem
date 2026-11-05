@@ -21,16 +21,23 @@
 
 #include "modules/core/audio_processing_config.h"
 #include "modules/processing_graph/model/runtime_graph.h"
+#include "modules/processing_graph/runtime/node_processing_state.h"
 #include "modules/util/ring_buffer.h"
 
 #include <cstdint>
+#include <functional>
 #include <juce_events/juce_events.h>
 #include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace anthem {
 
 class GraphExecutor;
 class EngineRuntimeServices;
+class Project;
+class Node;
 
 enum class GraphWorkerSchedulingMode {
   realtime,
@@ -38,8 +45,18 @@ enum class GraphWorkerSchedulingMode {
 };
 
 class GraphProcessor {
+public:
+  using PauseNodeCallback =
+      std::function<void(std::shared_ptr<NodeProcessingPause>, std::optional<std::string>)>;
 private:
   struct RuntimeGraphHandoff;
+  struct NodePauseRequest {
+    int64_t nodeId;
+    std::weak_ptr<Node> node;
+    std::weak_ptr<NodeProcessingPause> pause;
+    std::shared_ptr<NodeProcessingPause> pending;
+    PauseNodeCallback complete;
+  };
 
   // Owned by the audio thread until a newer runtime graph is swapped in.
   RuntimeGraphHandoff* rt_activeRuntimeGraphHandoff = nullptr;
@@ -55,12 +72,28 @@ private:
   std::unique_ptr<GraphExecutor> executor;
   EngineRuntimeServices* engineRuntimeServices = nullptr;
   juce::TimedCallback clearDeletionQueueTimedCallback;
+  const std::shared_ptr<Project>& project;
+  std::vector<NodePauseRequest> nodePauseRequests;
+  juce::TimedCallback nodePauseTimer;
+  bool isShutdown = false;
+
+  std::shared_ptr<Node> findNode(int64_t nodeId) const;
+  void pollNodePauses();
 public:
-  explicit GraphProcessor(EngineRuntimeServices& engineRuntimeServices);
+  GraphProcessor(
+      EngineRuntimeServices& engineRuntimeServices, const std::shared_ptr<Project>& project);
   ~GraphProcessor();
 
   // Starts graph workers and periodic cleanup of retired graphs.
   void initialize();
+
+  // Final message-thread shutdown cancels pause requests and stops maintenance.
+  // Audio-session stop/start uses clearRuntimeGraph() and retains pause claims.
+  void shutdown();
+
+  // Supplies a pause claim once processing is quiescent. The master output
+  // cannot be paused. Requests and callback delivery belong on the message thread.
+  void pauseNode(int64_t nodeId, PauseNodeCallback complete);
 
   void prepareForAudioProcessingConfig(const AudioProcessingConfig& audioProcessingConfig,
       GraphWorkerSchedulingMode workerSchedulingMode = GraphWorkerSchedulingMode::realtime);

@@ -208,6 +208,7 @@ void main() {
       final nodeId = project.allocateId();
       final node = NodeModel(
         id: nodeId,
+        processor: GainProcessorModel(nodeId: nodeId),
         controlInputPorts: AnthemObservableList.of([
           NodePortModel(
             nodeId: nodeId,
@@ -624,6 +625,7 @@ void main() {
         final nodeId = project.allocateId();
         final node = NodeModel(
           id: nodeId,
+          processor: GainProcessorModel(nodeId: nodeId),
           controlInputPorts: AnthemObservableList.of([
             NodePortModel(
               nodeId: nodeId,

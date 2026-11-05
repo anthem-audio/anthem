@@ -266,8 +266,9 @@ String _generateGettersAndSetters({
     // Setter
 
     var setter = StringBuffer();
+    final isWriteOnce = fieldInfo.fieldElement.isFinal;
 
-    if (shouldGenerateDartChangeTracking) {
+    if (shouldGenerateDartChangeTracking && !isWriteOnce) {
       setter.write('''
 ${fieldInfo.typeInfo.dartName}? \$oldValue;
 try {
@@ -283,7 +284,9 @@ if (\$oldValue is AnthemModelBase) {
 ''');
     }
 
-    setter.write('super.$fieldName = \$value;\n');
+    if (!isWriteOnce) {
+      setter.write('super.$fieldName = \$value;\n');
+    }
 
     if (shouldGenerateDartChangeTracking) {
       // If the field is a custom model type, we need to tell it about its
@@ -356,7 +359,7 @@ ${first ? '' : 'else '}if (\$value is ${subtype.dartName}) {
       setter.write('''
 notifyFieldChanged(
   operation: RawFieldUpdate(
-    oldValue: \$oldValue,
+    oldValue: ${isWriteOnce ? 'null' : '\$oldValue'},
     newValue: \$value,
     newValueSerialized: $valueGetter,
   ),
@@ -375,6 +378,10 @@ notifyFieldChanged(
     result.write(
       'set $fieldName(${fieldInfo.typeInfo.dartName}$typeQ \$value) {\n',
     );
+    if (isWriteOnce) {
+      // Let Dart reject reassignment before attachment or notification effects.
+      result.write('super.$fieldName = \$value;\n');
+    }
     if (fieldInfo.isObservable) {
       result.write(
         wrapCodeWithMobXSetter(fieldName, fieldInfo, setter.toString()),

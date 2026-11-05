@@ -80,8 +80,7 @@ struct RuntimeNode {
 
   // Keeps the source graph node alive while this runtime graph is active.
   //
-  // Note that this cannot be accessed from real-time threads, since shared_ptr
-  // is not real-time safe.
+  // Ownership is acquired and released only on the message thread.
   std::shared_ptr<anthem::Node> sourceNode;
 
   // Higher values should be processed first when this node is ready.
@@ -93,7 +92,8 @@ struct RuntimeNode {
   // Raw audio-thread-safe view into graph-owned buffers for this node.
   anthem::NodeProcessContext* nodeProcessContext = nullptr;
 
-  // Raw pointer to the processor owned by the source node.
+  // Borrowed from sourceNode.
+  // Null when the processor has not successfully prepared.
   anthem::Processor* processor = nullptr;
 
   // Mutable state that is reset for each processing block.

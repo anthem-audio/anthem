@@ -242,7 +242,6 @@ public:
     testDisconnectedControlParameterUsesParameterSignal();
     testConnectedControlParameterDoesNotOverwriteAliasedSignal();
     testSingleThreadedExecutorHandlesControlFanIn();
-    testSingleThreadedExecutorProcessesNodesWithoutProcessors();
     testCalculatesLinearPriorities();
     testCalculatesDiamondPriorities();
     testCalculatesDisconnectedComponentPriorities();
@@ -558,7 +557,7 @@ public:
     auto sourceNode = graph_test_helpers::makeToneGeneratorNode(1);
     sourceNode->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(outputPortId(1), 1, NodePortDataType::audio));
-    sourceNode->getProcessor().value()->isPrepared = true;
+    sourceNode->getProcessor()->isPrepared = true;
     graph->nodes()->insert_or_assign(1, sourceNode);
 
     EngineRuntimeServices rtServices;
@@ -583,9 +582,8 @@ public:
     graph->nodes()->insert_or_assign(1, sourceNode);
 
     auto processor = sourceNode->getProcessor();
-    expect(processor.has_value(), "The test node should have a processor.");
 
-    processor.value()->isPrepared = false;
+    processor->isPrepared = false;
 
     EngineRuntimeServices rtServices;
     auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
@@ -600,14 +598,14 @@ public:
         "Unprepared processor outputs should keep allocation-time clearing.");
 
     runtimeGraph.reset();
-    processor.value()->isPrepared = true;
+    processor->isPrepared = true;
 
     auto preparedRuntimeGraph = buildRuntimeGraph(*graph, rtServices);
 
     sourceOutputBufferIndex = preparedRuntimeGraph->nodes.at(1).nodeProcessContext->getBufferIndex(
         NodePortDataType::audio, NodeProcessContext::BufferDirection::output, outputPortId(1));
 
-    expect(preparedRuntimeGraph->nodes.at(1).processor == processor.value().get(),
+    expect(preparedRuntimeGraph->nodes.at(1).processor == processor.get(),
         "Prepared processors should be installed in the runtime graph.");
     expect(!preparedRuntimeGraph->graphProcessContext->getSampleBufferSlotClearOnAllocate(
                sourceOutputBufferIndex),
@@ -1079,57 +1077,6 @@ public:
           0.5f + static_cast<float>(sample) * 0.1f,
           0.0001f,
           "Control fan-in should keep the most recent connection value.");
-    }
-  }
-
-  void testSingleThreadedExecutorProcessesNodesWithoutProcessors() {
-    beginTest("Single-threaded executor passes audio through nodes without processors");
-
-    auto graph = graph_test_helpers::makeProcessingGraph();
-    addAudioSourceGraphNode(*graph, 1);
-    addGraphNode(*graph, 2);
-    addGraphNode(*graph, 3);
-    addConnection(*graph, 100, 1, 2);
-    addConnection(*graph, 101, 2, 3);
-
-    EngineRuntimeServices rtServices;
-    auto runtimeGraph = buildRuntimeGraph(*graph, rtServices);
-
-    GraphExecutorState state(*runtimeGraph);
-    rt_prepareGraphForBlock(state);
-    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(1));
-
-    auto firstOutputBuffer =
-        runtimeGraph->nodes.at(1).nodeProcessContext->getOutputAudioBuffer(outputPortId(1));
-
-    for (int channel = 0; channel < firstOutputBuffer.getNumChannels(); ++channel) {
-      for (int sample = 0; sample < 4; ++sample) {
-        firstOutputBuffer.setSample(channel, sample, static_cast<float>(sample + 1));
-      }
-    }
-
-    rt_processNode(state, runtimeGraph->nodes.at(1), 4);
-    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(1));
-
-    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(2));
-    rt_processNode(state, runtimeGraph->nodes.at(2), 4);
-    rt_finishNodeProcessing(state, runtimeGraph->nodes.at(2));
-
-    rt_prepareNodeForProcessing(state, runtimeGraph->nodes.at(3));
-    rt_processNode(state, runtimeGraph->nodes.at(3), 4);
-
-    auto secondInputBuffer =
-        runtimeGraph->nodes.at(2).nodeProcessContext->getInputAudioBuffer(inputPortId(2));
-    auto thirdInputBuffer =
-        runtimeGraph->nodes.at(3).nodeProcessContext->getInputAudioBuffer(inputPortId(3));
-
-    for (int channel = 0; channel < secondInputBuffer.getNumChannels(); ++channel) {
-      for (int sample = 0; sample < 4; ++sample) {
-        expectWithinAbsoluteError(
-            secondInputBuffer.getSample(channel, sample), static_cast<float>(sample + 1), 0.0001f);
-        expectWithinAbsoluteError(
-            thirdInputBuffer.getSample(channel, sample), static_cast<float>(sample + 1), 0.0001f);
-      }
     }
   }
 

@@ -145,6 +145,7 @@ public:
   float getParameterValue(int64_t id) const;
 
   void clearBuffers();
+  void rt_clearOutputs();
   size_t getBufferIndex(NodePortDataType dataType, BufferDirection direction, int64_t id) const;
 
   AudioBufferView getInputAudioBuffer(int64_t id) const;

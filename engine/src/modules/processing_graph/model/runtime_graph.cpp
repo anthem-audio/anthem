@@ -226,13 +226,9 @@ bool hasSingleAudioInputAndOutput(anthem::Node& graphNode) {
          graphNode.availableAudioOutputPorts().size() == 1;
 }
 
-std::optional<std::shared_ptr<Processor>> getPreparedProcessor(anthem::Node& graphNode) {
-  auto processor = graphNode.getProcessor();
-  if (!processor.has_value() || processor.value() == nullptr || !processor.value()->isPrepared) {
-    return std::nullopt;
-  }
-
-  return processor;
+Processor* getPreparedProcessor(anthem::Node& graphNode) {
+  const auto processor = graphNode.getProcessor();
+  return processor->isPrepared ? processor.get() : nullptr;
 }
 
 void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
@@ -293,10 +289,7 @@ void createNodeProcessContexts(RuntimeGraph& runtimeGraph,
         runtimeNode.sourceNode, std::move(bufferBindingsIter->second));
     runtimeNode.nodeProcessContext = &nodeProcessContext;
 
-    auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
-    if (processor.has_value()) {
-      runtimeNode.processor = processor.value().get();
-    }
+    runtimeNode.processor = getPreparedProcessor(*runtimeNode.sourceNode);
   }
 }
 
@@ -444,7 +437,7 @@ void buildSampleBufferSlotInitialization(RuntimeGraph& runtimeGraph,
     }
 
     const auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
-    if (!processor.has_value()) {
+    if (processor == nullptr) {
       continue;
     }
 
