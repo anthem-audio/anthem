@@ -76,6 +76,8 @@ private:
   std::vector<NodePauseRequest> nodePauseRequests;
   juce::TimedCallback nodePauseTimer;
   bool isShutdown = false;
+  uint64_t nextPublicationId = 0;
+  std::atomic<uint64_t> activePublicationId{0};
 
   std::shared_ptr<Node> findNode(int64_t nodeId) const;
   void pollNodePauses();
@@ -100,7 +102,13 @@ public:
 
   // Transfers ownership of a newly built runtime graph from the main thread to
   // the audio thread.
-  void publishRuntimeGraph(RuntimeGraph* runtimeGraph, uint64_t audioProcessingConfigGeneration);
+  uint64_t publishRuntimeGraph(
+      RuntimeGraph* runtimeGraph, uint64_t audioProcessingConfigGeneration);
+
+  // Acknowledged by the audio thread after it adopts a publication.
+  bool isPublicationActive(uint64_t id) const {
+    return id != 0 && activePublicationId.load(std::memory_order_acquire) >= id;
+  }
 
   // Clears all runtime graph state. This must only be called while the audio
   // thread is stopped.

@@ -65,6 +65,8 @@ enum NodeInitializationState {
   failed,
 }
 
+enum _ProcessorStateOperation { idle, snapshot, restoringSnapshot }
+
 @AnthemModel(serializable: true, generateModelSync: true)
 class NodeOwnerModel extends _NodeOwnerModel
     with _$NodeOwnerModel, _$NodeOwnerModelAnthemModelMixin {
@@ -353,13 +355,65 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
   /// The processor's runtime initialization status, independent of graph playback.
   ///
-  /// A ready processor has restored any saved state and supplied its current
-  /// ports and parameter values. State capture must wait for this confirmation
-  /// so it cannot replace saved state with the plugin's initial patch.
+  /// Successful initialization supplies port descriptions and base values for
+  /// this engine instance. Temporary state operations restrict editing and event
+  /// handling separately, without discarding that initialization result.
   /// Removing the node or stopping the engine resets this status.
   NodeInitializationState get initializationState => _initializationState;
 
-  /// Invalidates captures from before a reset or failed initialization.
+  @anthemObservable
+  @hide
+  _ProcessorStateOperation _processorStateOperation =
+      _ProcessorStateOperation.idle;
+
+  bool get isProcessorStateOperationPending =>
+      _processorStateOperation != _ProcessorStateOperation.idle;
+
+  /// User parameter edits wait until the processor is ready and state work ends.
+  bool get canEditParameters =>
+      _initializationState == NodeInitializationState.ready &&
+      !isProcessorStateOperationPending;
+
+  /// Unsolicited processor events can update the cache outside restoration.
+  /// Explicit initialization and state-load replies apply their results directly.
+  bool get canHandleProcessorEvents =>
+      _initializationState == NodeInitializationState.ready &&
+      _processorStateOperation != _ProcessorStateOperation.restoringSnapshot;
+
+  void beginProcessorStateOperation() {
+    if (isProcessorStateOperationPending) {
+      throw StateError('A processor state operation is already in progress.');
+    }
+    _processorStateOperation = _ProcessorStateOperation.snapshot;
+  }
+
+  void beginProcessorStateRestoration() {
+    if (!isProcessorStateOperationPending) {
+      throw StateError('No processor state operation is in progress.');
+    }
+    runInAction(() {
+      _processorStateOperation = _ProcessorStateOperation.restoringSnapshot;
+      _invalidateStateCaptures();
+      lastChangedControlPortId = null;
+      for (final port in (this as NodeModel).getAllPorts()) {
+        port.pendingParameterValue = null;
+      }
+    });
+  }
+
+  void finishProcessorStateRestoration() {
+    if (_processorStateOperation !=
+        _ProcessorStateOperation.restoringSnapshot) {
+      throw StateError('The processor is not restoring state.');
+    }
+    _processorStateOperation = _ProcessorStateOperation.snapshot;
+  }
+
+  void finishProcessorStateOperation() {
+    _processorStateOperation = _ProcessorStateOperation.idle;
+  }
+
+  /// Invalidates captures from before processor state or initialization changes.
   @hide
   int _initializationGeneration = 0;
 
@@ -432,13 +486,19 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     }
 
     final generation = _initializationGeneration;
-    final path = await owner.engine.processingGraphApi.captureProcessorState(
-      id,
-    );
+    final path = await ServiceRegistry.forProject(owner.id)
+        .processingGraphController
+        .captureProcessorState(id);
     if (generation != _initializationGeneration ||
         !identical(owner.processingGraph.nodes[id], this)) {
       return;
     }
+    adoptProcessorState(path);
+  }
+
+  /// Replaces the current project's claim, retaining the replacement first.
+  void adoptProcessorState(String? path) {
+    final owner = project;
     final previous = processorStateRetentionId;
     if (path == null && previous == null) return;
     final storage = ServiceRegistry.forProject(owner.id).projectStorage;
@@ -476,10 +536,14 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
     _invalidateInitialization(NodeInitializationState.uninitialized);
   }
 
-  void _invalidateInitialization(NodeInitializationState state) {
+  void _invalidateStateCaptures() {
     _initializationGeneration++;
     _stateUpdateDebouncedAction?.dispose();
     _stateUpdateDebouncedAction = null;
+  }
+
+  void _invalidateInitialization(NodeInitializationState state) {
+    _invalidateStateCaptures();
     for (final port in (this as NodeModel).getAllPorts()) {
       port.isAvailable = false;
       port.pendingParameterValue = null;

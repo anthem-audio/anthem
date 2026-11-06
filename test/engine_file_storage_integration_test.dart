@@ -29,17 +29,20 @@ import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/engine_connector_desktop.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/commands/parameter_commands.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/logic/storage/file_fingerprint.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/processing_graph/node.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 
 class _StorageConnector extends EngineConnector {
   bool dropNextWriteReply = false;
+  final sentMessages = <IpcMessage>[];
   Completer<void>? shutdownGate;
   final shutdownEntered = Completer<void>();
   final droppedWriteReply = Completer<BeginFileWriteResponse>();
@@ -63,6 +66,7 @@ class _StorageConnector extends EngineConnector {
 
   @override
   void sendMessage(IpcMessage message) {
+    sentMessages.add(message);
     if (dropNextWriteReply && message is BeginFileWriteResponse) {
       dropNextWriteReply = false;
       droppedWriteReply.complete(message);
@@ -78,10 +82,14 @@ class _StorageFixture {
   final messages = StreamController<IpcMessage>.broadcast();
   final readyHeld = Completer<EngineReadyCheckResponse>();
   bool holdStartup;
+  bool holdSnapshotReply = false;
+  final snapshotReplyHeld = Completer<LoadProcessorSnapshotResponse>();
   late _StorageConnector connector;
   void Function(IpcMessage)? _deliver;
 
   Engine get engine => project.engine;
+  ProcessingGraphController get graph =>
+      ServiceRegistry.forProject(project.id).processingGraphController;
   _StorageFixture._(this.project, this.holdStartup)
     : storage = ProjectStorage.temporary(project: project);
 
@@ -135,6 +143,10 @@ class _StorageFixture {
       onConnectionClosed: onConnectionClosed,
       onMessage: (message) {
         messages.add(message);
+        if (holdSnapshotReply && message is LoadProcessorSnapshotResponse) {
+          snapshotReplyHeld.complete(message);
+          return;
+        }
         if (holdStartup && message is EngineReadyCheckResponse) {
           readyHeld.complete(message);
           return;
@@ -193,6 +205,322 @@ class _StorageFixture {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  Future<void> initializeSnapshots(_StorageFixture fixture) async {
+    await fixture.engine.start(initializeAudio: false);
+    await fixture.engine.renderApi.startRenderAudioSession(
+      sampleRate: 48000,
+      blockSize: 128,
+      outputChannelCount: 2,
+    );
+    await ServiceRegistry.forProject(fixture.project.id)
+        .processingGraphController
+        .publish();
+  }
+
+  test('retained snapshots support repeated live loads and survive engine sessions', () async {
+    final fixture = await _StorageFixture.create();
+    await initializeSnapshots(fixture);
+    final services = ServiceRegistry.forProject(fixture.project.id);
+    final track = fixture.project.tracks[fixture.project.trackOrder.first]!;
+    final node = track.requireProcessing.utilityNode!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    final api = fixture.graph;
+    Future<void> set(double value) => services.parameterController.setValue(
+      node: node,
+      port: port,
+      value: value,
+    );
+    await set(0.3);
+    await node.updateStateFromEngine();
+    final savedReference = node.processorStateRetentionId;
+    final snapshot = await api.saveSnapshot(node.id);
+    addTearDown(snapshot.dispose);
+    expect(snapshot.isDisposed, isFalse);
+    expect(node.processorStateRetentionId, savedReference);
+    final resetTarget = port.parameterResetTarget;
+    for (var i = 0; i < 2; ++i) {
+      await set(0.7);
+      await api.loadSnapshot(node.id, snapshot);
+      expect(port.parameterValue, closeTo(0.3, 0.0001));
+      expect(port.parameterResetTarget, resetTarget);
+      expect(node.initializationState, NodeInitializationState.ready);
+      expect(
+        fixture.storage.resolveRetention(node.processorStateRetentionId!),
+        snapshot.relativePath,
+      );
+      expect(snapshot.isDisposed, isFalse);
+    }
+    await fixture.engine.stop();
+    await initializeSnapshots(fixture);
+    await set(0.6);
+    await api.loadSnapshot(node.id, snapshot);
+    expect(port.parameterValue, closeTo(0.3, 0.0001));
+    snapshot.dispose();
+    snapshot.dispose();
+    expect(snapshot.isDisposed, isTrue);
+    expect(() => api.loadSnapshot(node.id, snapshot), throwsStateError);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('snapshot replacement excludes publication and other-node captures through completion', () async {
+    final fixture = await _StorageFixture.create();
+    await initializeSnapshots(fixture);
+    final services = ServiceRegistry.forProject(fixture.project.id);
+    final processing = fixture
+        .project
+        .tracks[fixture.project.trackOrder.first]!
+        .requireProcessing;
+    final node = processing.utilityNode!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    await services.parameterController.setValue(
+      node: node,
+      port: port,
+      value: 0.3,
+    );
+    final snapshot = await fixture.graph.saveSnapshot(node.id);
+    addTearDown(snapshot.dispose);
+    await services.parameterController.setValue(
+      node: node,
+      port: port,
+      value: 0.7,
+    );
+    fixture.holdSnapshotReply = true;
+    final loading = fixture.graph.loadSnapshot(node.id, snapshot);
+    final paused = await fixture.snapshotReplyHeld.future;
+    expect(node.canHandleProcessorEvents, isFalse);
+    final firstQueuedRequest = fixture.connector.sentMessages.length;
+    final capture = fixture.graph.captureProcessorState(
+      processing.dbMeterNode!.id,
+    );
+    final publishing = services.processingGraphController.publish();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(
+      fixture.connector.sentMessages
+          .skip(firstQueuedRequest)
+          .whereType<Request>(),
+      isEmpty,
+    );
+    fixture.holdSnapshotReply = false;
+    fixture._deliver!(paused);
+    await loading;
+    await capture;
+    await publishing;
+    final operations = fixture.connector.sentMessages
+        .skip(firstQueuedRequest)
+        .where(
+          (message) =>
+              message is FinishProcessorSnapshotLoadRequest ||
+              message is CaptureProcessorStateRequest ||
+              message is InitializeProcessingGraphNodesRequest ||
+              message is PublishProcessingGraphRequest,
+        )
+        .map((message) => message.runtimeType)
+        .toList();
+    expect(operations, [
+      FinishProcessorSnapshotLoadRequest,
+      CaptureProcessorStateRequest,
+      InitializeProcessingGraphNodesRequest,
+      PublishProcessingGraphRequest,
+    ]);
+    expect(port.parameterValue, closeTo(0.3, 0.0001));
+    expect(node.canEditParameters, isTrue);
+  });
+
+  test(
+    'engine loss during a load restores its fresh recovery file on restart',
+    () async {
+      final fixture = await _StorageFixture.create();
+      await initializeSnapshots(fixture);
+      final services = ServiceRegistry.forProject(fixture.project.id);
+      final node = fixture
+          .project
+          .tracks[fixture.project.trackOrder.first]!
+          .requireProcessing
+          .utilityNode!;
+      final port = node.getPortById(UtilityProcessorModel.gainPortId);
+      await services.parameterController.setValue(
+        node: node,
+        port: port,
+        value: 0.3,
+      );
+      final snapshot = await fixture.graph.saveSnapshot(node.id);
+      addTearDown(snapshot.dispose);
+      await services.parameterController.setValue(
+        node: node,
+        port: port,
+        value: 0.7,
+      );
+      fixture.holdSnapshotReply = true;
+      final loading = fixture.graph.loadSnapshot(node.id, snapshot);
+      final failed = expectLater(loading, throwsStateError);
+      final response = await fixture.snapshotReplyHeld.future;
+      expect(response.result!.success, isTrue);
+      final recovery = node.processorStateRetentionId;
+      expect(recovery, isNotNull);
+      await fixture.engine.stop();
+      await failed;
+      fixture.holdSnapshotReply = false;
+      await initializeSnapshots(fixture);
+      expect(node.processorStateRetentionId, recovery);
+      expect(port.parameterValue, closeTo(0.7, 0.0001));
+      await fixture.graph.loadSnapshot(node.id, snapshot);
+      expect(port.parameterValue, closeTo(0.3, 0.0001));
+    },
+  );
+
+  test(
+    'snapshot operations reject a render hold without leaving a busy node',
+    () async {
+      final fixture = await _StorageFixture.create();
+      await initializeSnapshots(fixture);
+      final node = fixture
+          .project
+          .tracks[fixture.project.trackOrder.first]!
+          .requireProcessing
+          .utilityNode!;
+      final api = fixture.graph;
+      final snapshot = await api.saveSnapshot(node.id);
+      addTearDown(snapshot.dispose);
+      fixture.engine.holdRequestsForRender();
+      try {
+        await expectLater(api.saveSnapshot(node.id), throwsStateError);
+        await expectLater(
+          api.loadSnapshot(node.id, snapshot),
+          throwsStateError,
+        );
+        expect(node.isProcessorStateOperationPending, isFalse);
+      } finally {
+        fixture.engine.releaseRequestsHeldForRender();
+      }
+    },
+  );
+
+  test('stateless processors still yield reusable snapshot handles', () async {
+    final fixture = await _StorageFixture.create();
+    await initializeSnapshots(fixture);
+    final node = fixture
+        .project
+        .tracks[fixture.project.trackOrder.first]!
+        .requireProcessing
+        .dbMeterNode!;
+    expect(node.controlInputPorts, isEmpty);
+    final api = fixture.graph;
+    final snapshot = await api.saveSnapshot(node.id);
+    addTearDown(snapshot.dispose);
+    await api.loadSnapshot(node.id, snapshot);
+    expect(node.initializationState, NodeInitializationState.ready);
+    expect(snapshot.isDisposed, isFalse);
+  });
+
+  test('caller ownership protects a snapshot independently of engine and project state', () async {
+    final fixture = await _StorageFixture.create();
+    await initializeSnapshots(fixture);
+    final services = ServiceRegistry.forProject(fixture.project.id);
+    final node = fixture
+        .project
+        .tracks[fixture.project.trackOrder.first]!
+        .requireProcessing
+        .utilityNode!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    await services.parameterController.setValue(
+      node: node,
+      port: port,
+      value: 0.3,
+    );
+    final snapshot = await fixture.graph.saveSnapshot(node.id);
+    addTearDown(snapshot.dispose);
+    await services.parameterController.setValue(
+      node: node,
+      port: port,
+      value: 0.7,
+    );
+    await node.updateStateFromEngine();
+    await fixture.engine.stop();
+    final store = await fixture.storage.assetStore;
+    final scope = store.openScope();
+    addTearDown(() => store.closeScope(scope));
+    expect(() => store.delete(scope, snapshot.relativePath), throwsStateError);
+    snapshot.dispose();
+    await store.delete(scope, snapshot.relativePath);
+  });
+
+  test(
+    'loading borrows its own claim before the caller disposes the handle',
+    () async {
+      final fixture = await _StorageFixture.create();
+      await initializeSnapshots(fixture);
+      final services = ServiceRegistry.forProject(fixture.project.id);
+      final node = fixture
+          .project
+          .tracks[fixture.project.trackOrder.first]!
+          .requireProcessing
+          .utilityNode!;
+      final port = node.getPortById(UtilityProcessorModel.gainPortId);
+      await services.parameterController.setValue(
+        node: node,
+        port: port,
+        value: 0.3,
+      );
+      final snapshot = await fixture.graph.saveSnapshot(node.id);
+      addTearDown(snapshot.dispose);
+      await services.parameterController.setValue(
+        node: node,
+        port: port,
+        value: 0.7,
+      );
+      fixture.connector.dropNextWriteReply = true;
+      final loading = fixture.graph.loadSnapshot(node.id, snapshot);
+      final write = await fixture.connector.droppedWriteReply.future;
+      snapshot.dispose();
+      fixture.connector.sendMessage(write);
+      await loading;
+      expect(port.parameterValue, closeTo(0.3, 0.0001));
+      expect(node.initializationState, NodeInitializationState.ready);
+    },
+  );
+
+  test('invalid snapshot files preserve current values and a retained recovery reference', () async {
+    final fixture = await _StorageFixture.create();
+    await initializeSnapshots(fixture);
+    final services = ServiceRegistry.forProject(fixture.project.id);
+    final node = fixture
+        .project
+        .tracks[fixture.project.trackOrder.first]!
+        .requireProcessing
+        .utilityNode!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    await services.parameterController.setValue(
+      node: node,
+      port: port,
+      value: 0.3,
+    );
+    final snapshot = await fixture.graph.saveSnapshot(node.id);
+    addTearDown(snapshot.dispose);
+    await services.parameterController.setValue(
+      node: node,
+      port: port,
+      value: 0.7,
+    );
+    final store = await fixture.storage.assetStore;
+    final scope = store.openScope();
+    final read = store.acquireRead(scope, snapshot.relativePath);
+    await File(read.absolutePath).writeAsString('invalid');
+    store.releaseRead(scope, read.token);
+    await store.closeScope(scope);
+    await expectLater(
+      fixture.graph.loadSnapshot(node.id, snapshot),
+      throwsStateError,
+    );
+    expect(port.parameterValue, closeTo(0.7, 0.0001));
+    expect(node.initializationState, NodeInitializationState.ready);
+    expect(node.canEditParameters, isTrue);
+    expect(node.canHandleProcessorEvents, isTrue);
+    expect(port.isAvailable, isTrue);
+    expect(node.processorStateRetentionId, isNotNull);
+    await fixture.engine.stop();
+    await initializeSnapshots(fixture);
+    expect(port.parameterValue, closeTo(0.7, 0.0001));
+  });
+
   test('native parameters survive graph publication and engine restart through snapshots', () async {
     final fixture = await _StorageFixture.create();
     final project = fixture.project;
@@ -204,7 +532,7 @@ void main() {
         blockSize: 128,
         outputChannelCount: 2,
       );
-      await services.projectController.publishProcessingGraph();
+      await services.processingGraphController.publish();
     }
 
     await initialize();
@@ -260,7 +588,7 @@ void main() {
 
     // A stale UI preview cannot overwrite the live setting on graph rebuild.
     port.parameterValue = 0.99;
-    await services.projectController.publishProcessingGraph();
+    await services.processingGraphController.publish();
     await node.updateStateFromEngine();
     expect(node.processorStateRetentionId, retention);
 
@@ -270,7 +598,7 @@ void main() {
       blockSize: 256,
       outputChannelCount: 2,
     );
-    await services.projectController.publishProcessingGraph();
+    await services.processingGraphController.publish();
     expect(port.parameterValue, closeTo(0.37, 0.0001));
 
     // A retained snapshot takes precedence over any remaining creation input.

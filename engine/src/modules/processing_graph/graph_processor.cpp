@@ -31,13 +31,16 @@ namespace anthem {
 struct GraphProcessor::RuntimeGraphHandoff {
   RuntimeGraphHandoff(RuntimeGraph* runtimeGraph,
       std::unique_ptr<GraphExecutor::RuntimeState> executorState,
-      uint64_t audioProcessingConfigGeneration)
+      uint64_t audioProcessingConfigGeneration,
+      uint64_t publicationId)
     : runtimeGraph(runtimeGraph), executorState(std::move(executorState)),
-      audioProcessingConfigGeneration(audioProcessingConfigGeneration) {}
+      audioProcessingConfigGeneration(audioProcessingConfigGeneration),
+      publicationId(publicationId) {}
 
   std::unique_ptr<RuntimeGraph> runtimeGraph;
   std::unique_ptr<GraphExecutor::RuntimeState> executorState;
   uint64_t audioProcessingConfigGeneration;
+  uint64_t publicationId;
 };
 
 GraphProcessor::GraphProcessor(
@@ -186,24 +189,26 @@ void GraphProcessor::prepareForAudioProcessingConfig(
   resetRtServices();
 }
 
-void GraphProcessor::publishRuntimeGraph(
+uint64_t GraphProcessor::publishRuntimeGraph(
     RuntimeGraph* runtimeGraph, uint64_t audioProcessingConfigGeneration) {
   if (runtimeGraph == nullptr) {
-    return;
+    return 0;
   }
 
   auto executorState = executor->createRuntimeStateForGraph(*runtimeGraph);
   auto* handoff = new RuntimeGraphHandoff(
-      runtimeGraph, std::move(executorState), audioProcessingConfigGeneration);
+      runtimeGraph, std::move(executorState), audioProcessingConfigGeneration, ++nextPublicationId);
 
   if (!pendingRuntimeGraphHandoffsQueue.add(handoff)) {
     jassertfalse;
     delete handoff;
-    return;
+    return 0;
   }
+  return handoff->publicationId;
 }
 
 void GraphProcessor::clearRuntimeGraph() {
+  activePublicationId.store(0, std::memory_order_release);
   while (auto nextHandoff = pendingRuntimeGraphHandoffsQueue.read()) {
     delete nextHandoff.value();
   }
@@ -228,6 +233,8 @@ void GraphProcessor::rt_processGraphUpdates() {
     }
 
     rt_activeRuntimeGraphHandoff = nextHandoff.value();
+    activePublicationId.store(
+        rt_activeRuntimeGraphHandoff->publicationId, std::memory_order_release);
     nextHandoff = pendingRuntimeGraphHandoffsQueue.read();
   }
 }

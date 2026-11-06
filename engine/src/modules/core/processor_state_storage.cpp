@@ -19,6 +19,8 @@
 
 #include "processor_state_storage.h"
 
+#include "engine.h"
+#include "modules/processors/master_output.h"
 #include "processor_state_snapshot.h"
 
 #include <juce_cryptography/juce_cryptography.h>
@@ -33,9 +35,12 @@ class StateCapture : public std::enable_shared_from_this<StateCapture> {
 public:
   StateCapture(FileStorageClient& files,
       std::shared_ptr<Node> node,
-      FileStorageClient::RelativePathCompletion complete)
+      FileStorageClient::RelativePathCompletion complete,
+      Engine* engine = nullptr,
+      bool includeEmpty = false)
     : files(files), node(std::move(node)),
-      previousRetentionId(this->node->processorStateRetentionId()), complete(std::move(complete)) {}
+      previousRetentionId(this->node->processorStateRetentionId()), complete(std::move(complete)),
+      engine(engine), includeEmpty(includeEmpty) {}
 
   void start() {
     if (!previousRetentionId) {
@@ -68,6 +73,10 @@ private:
   std::optional<FileStorageAccess> previousRead;
   FileStorageClient::RelativePathCompletion complete;
 
+  Engine* engine;
+  bool includeEmpty;
+  std::shared_ptr<NodeProcessingPause> pause;
+
   bool matchesPrevious(const FileFingerprint& fingerprint) const {
     if (!previousRead || !previousRead->fingerprint)
       return false;
@@ -77,13 +86,23 @@ private:
 
   FileStorageResult<FileFingerprint> captureAndWrite(const juce::File& destination) {
     const auto processor = node->getProcessor();
+    if (engine && (!engine->project ||
+                      engine->project->processingGraph()->nodes()->find(node->id()) ==
+                          engine->project->processingGraph()->nodes()->end() ||
+                      engine->project->processingGraph()->nodes()->at(node->id()) != node ||
+                      engine->renderController->isRendering()))
+      return {.value = std::nullopt, .error = "Snapshot capture was interrupted."};
     if (!processor->hasRestoredProjectState)
       return {.value = std::nullopt, .error = "The processor is not initialized."};
     try {
       ProcessorStateSnapshot state(*processor);
-      auto fingerprint =
-          state.isEmpty() ? FileFingerprint{.byteLength = 0, .sha256 = ""} : state.fingerprint();
-      if (!state.isEmpty() && !matchesPrevious(fingerprint))
+      // The independent bytes no longer need processor access. Disk I/O and
+      // hashing can proceed while the node processes its next block.
+      pause.reset();
+      auto fingerprint = (!includeEmpty && state.isEmpty())
+                             ? FileFingerprint{.byteLength = 0, .sha256 = ""}
+                             : state.fingerprint();
+      if ((includeEmpty || !state.isEmpty()) && !matchesPrevious(fingerprint))
         state.write(destination);
       return {.value = std::move(fingerprint), .error = std::nullopt};
     } catch (const std::exception& error) {
@@ -101,8 +120,24 @@ private:
   void beginWrite() {
     files.beginWrite(
         "plugin states",
-        [self = shared_from_this()](
-            FileStorageResult<FileStorageAccess> access) { self->write(std::move(access)); },
+        [self = shared_from_this()](FileStorageResult<FileStorageAccess> access) {
+          if (!self->engine || access.error) {
+            self->write(std::move(access));
+            return;
+          }
+          self->engine->graphProcessor->pauseNode(self->node->id(),
+              [self, access = std::move(access)](std::shared_ptr<NodeProcessingPause> pause,
+                  std::optional<std::string> error) mutable {
+                if (error) {
+                  self->releasePreviousRead([self, token = access.value->token, error](auto) {
+                    self->abortAndComplete(token, {.value = std::nullopt, .error = error});
+                  });
+                  return;
+                }
+                self->pause = std::move(pause);
+                self->write(std::move(access));
+              });
+        },
         std::nullopt,
         std::string("bin"));
   }
@@ -130,6 +165,7 @@ private:
 
     // captureAndWrite closes the stream and frees the buffer before returning.
     auto captured = captureAndWrite(juce::File(access.value->absolutePath));
+    pause.reset();
     releasePreviousRead(
         [self = shared_from_this(), token = access.value->token, captured = std::move(captured)](
             std::optional<std::string> error) mutable {
@@ -157,14 +193,70 @@ private:
 
 } // namespace
 
-void ProcessorStateStorage::capture(
-    const std::shared_ptr<Node>& node, FileStorageClient::RelativePathCompletion complete) {
+void ProcessorStateStorage::capture(const std::shared_ptr<Node>& node,
+    FileStorageClient::RelativePathCompletion complete,
+    Engine* engine) {
+  if (activity->closed || isBusy(node->id()) ||
+      (engine && engine->renderController->isRendering())) {
+    complete({.value = std::nullopt, .error = "A processor state operation is in progress."});
+    return;
+  }
   auto processor = node->getProcessor();
+  // The master endpoint is stateless and cannot participate in node pauses.
+  if (engine && std::dynamic_pointer_cast<MasterOutputProcessor>(processor)) {
+    complete({.value = std::string(), .error = std::nullopt});
+    return;
+  }
   if (!processor->hasRestoredProjectState) {
     complete({.value = std::nullopt, .error = "The processor is not initialized."});
     return;
   }
-  std::make_shared<StateCapture>(files, node, std::move(complete))->start();
+  ++activity->captures[node->id()];
+  std::make_shared<StateCapture>(
+      files,
+      node,
+      [activity = activity, id = node->id(), complete = std::move(complete)](
+          FileStorageResult<std::string> result) mutable {
+        if (--activity->captures[id] == 0)
+          activity->captures.erase(id);
+        complete(std::move(result));
+      },
+      engine)
+      ->start();
+}
+
+void ProcessorStateStorage::saveSnapshot(Engine& engine,
+    const std::shared_ptr<Node>& node,
+    FileStorageClient::TokenCompletion complete) {
+  if (activity->closed || isBusy(node->id()) || activity->captures.contains(node->id()) ||
+      engine.renderController->isRendering()) {
+    complete({.value = std::nullopt,
+        .error = "Cannot save a snapshot during another state operation or render."});
+    return;
+  }
+  activity->saves.insert(node->id());
+  std::make_shared<StateCapture>(
+      files,
+      node,
+      [activity = activity, &files = files, id = node->id(), complete = std::move(complete)](
+          FileStorageResult<std::string> result) mutable {
+        if (result.error || activity->closed) {
+          activity->saves.erase(id);
+          complete({.value = std::nullopt,
+              .error = result.error ? result.error : "Processor state storage is closed."});
+          return;
+        }
+        files.retainFile(*result.value,
+            [activity, id, complete = std::move(complete)](
+                FileStorageResult<std::string> retained) mutable {
+              activity->saves.erase(id);
+              // Ownership passes to the caller; do not use or release this token again.
+              complete(std::move(retained));
+            });
+      },
+      &engine,
+      true)
+      ->start();
 }
 
 void ProcessorStateStorage::restore(const std::shared_ptr<Node>& node,

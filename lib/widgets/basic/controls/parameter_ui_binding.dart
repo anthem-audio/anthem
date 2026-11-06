@@ -140,7 +140,7 @@ class ParameterUiBinding {
   }
 
   bool get canEdit =>
-      node.initializationState == NodeInitializationState.ready &&
+      node.canEditParameters &&
       port.isAvailable &&
       node.project.engine.isRunning;
 

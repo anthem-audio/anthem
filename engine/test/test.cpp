@@ -23,6 +23,7 @@
 #include "modules/core/file_storage_client_test.h"
 #include "modules/core/global_visualization_sources_test.h"
 #include "modules/core/ipc_request_client_test.h"
+#include "modules/core/processor_snapshot_load_test.h"
 #include "modules/core/processor_state_storage_test.h"
 #include "modules/core/sequencer_test.h"
 #include "modules/core/spsc_record_ring_buffer_test.h"

@@ -154,6 +154,10 @@ class ProjectAssetRetention {
 
   ProjectAssetRetention._(this._owner, this._tokens);
 
+  /// IDs that storage clients can resolve while this claim remains alive.
+  List<String> get retentionIds => List.unmodifiable(_tokens);
+  bool get isDisposed => _owner._closed || _tokens.isEmpty;
+
   /// Releases this claim without deleting the files. May be called repeatedly.
   void dispose() {
     if (!_owner._closed) {

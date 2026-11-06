@@ -19,6 +19,8 @@
 
 #include "modules/core/processing_graph_node_initialization_session.h"
 
+#include "processor_description.h"
+
 #include <exception>
 #include <memory>
 #include <optional>
@@ -28,99 +30,6 @@
 #include <vector>
 
 namespace anthem {
-
-namespace {
-std::shared_ptr<ProcessingGraphNodeInitializationResult> makeNodeInitializationResult(
-    int64_t nodeId,
-    bool success,
-    std::optional<std::string> error = std::nullopt,
-    std::optional<std::shared_ptr<ProcessingGraphNodePortConfiguration>> portConfiguration =
-        std::nullopt) {
-  return std::make_shared<ProcessingGraphNodeInitializationResult>(
-      ProcessingGraphNodeInitializationResult{
-          .nodeId = nodeId,
-          .success = success,
-          .error = std::move(error),
-          .portConfiguration = std::move(portConfiguration),
-          .parameterValues =
-              std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>(),
-      });
-}
-
-std::shared_ptr<ProcessingGraphPortConfiguration> makePortConfiguration(
-    const ProcessorPortConfiguration& portConfiguration) {
-  return std::make_shared<ProcessingGraphPortConfiguration>(ProcessingGraphPortConfiguration{
-      .id = portConfiguration.id,
-      .name = portConfiguration.name,
-      .channelCount = portConfiguration.channelCount,
-      .parameterDefaultValue = portConfiguration.parameterDefaultValue,
-      .parameterDisplayMode = portConfiguration.parameterDisplayMode,
-      .parameterUnitLabel = portConfiguration.parameterUnitLabel,
-      .parameterNormalizedVisualBaseline = portConfiguration.parameterNormalizedVisualBaseline,
-  });
-}
-
-std::shared_ptr<std::vector<std::shared_ptr<ProcessingGraphPortConfiguration>>>
-makePortConfigurationList(const std::vector<ProcessorPortConfiguration>& portConfigurations) {
-  auto result = std::make_shared<std::vector<std::shared_ptr<ProcessingGraphPortConfiguration>>>();
-  result->reserve(portConfigurations.size());
-
-  for (const auto& portConfiguration : portConfigurations) {
-    result->push_back(makePortConfiguration(portConfiguration));
-  }
-
-  return result;
-}
-
-std::shared_ptr<ProcessingGraphNodePortConfiguration> makeNodePortConfiguration(
-    const ProcessorNodePortConfiguration& portConfiguration) {
-  return std::make_shared<ProcessingGraphNodePortConfiguration>(
-      ProcessingGraphNodePortConfiguration{
-          .audioInputPorts = makePortConfigurationList(portConfiguration.audioInputPorts),
-          .audioOutputPorts = makePortConfigurationList(portConfiguration.audioOutputPorts),
-          .eventInputPorts = makePortConfigurationList(portConfiguration.eventInputPorts),
-          .eventOutputPorts = makePortConfigurationList(portConfiguration.eventOutputPorts),
-          .controlInputPorts = makePortConfigurationList(portConfiguration.controlInputPorts),
-          .controlOutputPorts = makePortConfigurationList(portConfiguration.controlOutputPorts),
-      });
-}
-
-std::shared_ptr<ProcessingGraphParameterValue> makeParameterValue(
-    const ProcessorParameterValue& parameterValue) {
-  return std::make_shared<ProcessingGraphParameterValue>(ProcessingGraphParameterValue{
-      .controlPortId = parameterValue.controlPortId,
-      .value = parameterValue.value,
-      .displayText = parameterValue.displayText,
-  });
-}
-
-std::shared_ptr<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>> makeParameterValueList(
-    const std::vector<ProcessorParameterValue>& parameterValues) {
-  auto result = std::make_shared<std::vector<std::shared_ptr<ProcessingGraphParameterValue>>>();
-  result->reserve(parameterValues.size());
-
-  for (const auto& parameterValue : parameterValues) {
-    result->push_back(makeParameterValue(parameterValue));
-  }
-
-  return result;
-}
-
-std::shared_ptr<ProcessingGraphNodeInitializationResult> makeNodeInitializationResult(
-    int64_t nodeId, const ProcessorPrepareResult& prepareResult) {
-  std::optional<std::shared_ptr<ProcessingGraphNodePortConfiguration>> portConfiguration =
-      std::nullopt;
-
-  if (prepareResult.portConfiguration.has_value()) {
-    portConfiguration = makeNodePortConfiguration(*prepareResult.portConfiguration);
-  }
-
-  auto result = makeNodeInitializationResult(
-      nodeId, prepareResult.success, prepareResult.error, std::move(portConfiguration));
-  result->parameterValues = makeParameterValueList(prepareResult.parameterValues);
-  return result;
-}
-} // namespace
 
 ProcessingGraphNodeInitializationSession::ProcessingGraphNodeInitializationSession(
     Engine& engine, InitializeProcessingGraphNodesCallback complete)
@@ -167,6 +76,10 @@ ProcessingGraphNodeInitializationSession::collectInitializationDiff() {
           nodeId, false, "Processing graph cannot initialize a null node."));
       continue;
     }
+
+    // A live snapshot load owns preparation until its graph is reconciled.
+    if (engine.processorStateStorage.isBusy(nodeId))
+      continue;
 
     auto initializedNodeIter = engine.initializedProcessingGraphNodes.find(nodeId);
     if (initializedNodeIter != engine.initializedProcessingGraphNodes.end() &&

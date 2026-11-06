@@ -249,7 +249,7 @@ class AutomationLaneAddRemoveCommand extends Command {
     _processorStateRetention.dispose();
     serviceRegistry.arrangerViewModel.registerTrack(lane.id);
 
-    _publishProcessingGraphIfEngineRunning(project);
+    ServiceRegistry.forProject(project.id).processingGraphController.publish();
   }
 
   FutureOr<void> _remove(ProjectModel project) {
@@ -299,7 +299,7 @@ class AutomationLaneAddRemoveCommand extends Command {
       project.engine.sequencerApi.cleanUpTrack(lane.id);
     }
 
-    _publishProcessingGraphIfEngineRunning(project);
+    ServiceRegistry.forProject(project.id).processingGraphController.publish();
   }
 
   void _createAutomationProviderGraph(ProjectModel project) {
@@ -687,7 +687,7 @@ class TrackAddRemoveCommand extends Command {
       ..clear()
       ..addAll(_tracks.map((t) => t.trackModel.id));
 
-    serviceRegistry.projectController.publishProcessingGraph();
+    serviceRegistry.processingGraphController.publish();
   }
 
   FutureOr<void> _remove(ProjectModel project) {
@@ -788,17 +788,8 @@ class TrackAddRemoveCommand extends Command {
       }
     }
 
-    serviceRegistry.projectController.publishProcessingGraph();
+    serviceRegistry.processingGraphController.publish();
   }
-}
-
-void _publishProcessingGraphIfEngineRunning(ProjectModel project) {
-  if (!project.engine.isRunning) {
-    return;
-  }
-
-  ServiceRegistry.forProject(project.id).projectController
-      .publishProcessingGraph();
 }
 
 Set<Id> _collectAutomationLaneNodeIdsForTrack(
@@ -1251,7 +1242,7 @@ class TrackGroupUngroupCommand extends Command {
       serviceRegistry.arrangerViewModel.registerTrack(lane.id);
     }
 
-    serviceRegistry.projectController.publishProcessingGraph();
+    serviceRegistry.processingGraphController.publish();
   }
 
   FutureOr<void> _ungroup(ProjectModel project) {
@@ -1313,7 +1304,7 @@ class TrackGroupUngroupCommand extends Command {
       serviceRegistry.arrangerViewModel.unregisterTrack(lane.id);
     }
 
-    serviceRegistry.projectController.publishProcessingGraph();
+    serviceRegistry.processingGraphController.publish();
   }
 }
 

@@ -30,12 +30,15 @@ import 'package:flutter_test/flutter_test.dart';
 class ParameterTestEngine extends Fake implements Engine {
   @override
   final ProjectModel project;
-  ParameterTestEngine(this.project);
+  ParameterTestEngine(this.project, {ParameterTestApi? processingGraphApi})
+    : processingGraphApi = processingGraphApi ?? ParameterTestApi();
+  @override
+  final Future<void> sessionEnded = Future.value();
   bool running = true;
   @override
   bool get isRunning => running;
   @override
-  final ParameterTestApi processingGraphApi = ParameterTestApi();
+  final ParameterTestApi processingGraphApi;
   @override
   final SequencerApi sequencerApi = _ParameterTestSequencerApi();
   @override
@@ -63,6 +66,9 @@ class ParameterTestApi extends Fake implements ProcessingGraphApi {
       );
   @override
   Future<String?> captureProcessorState(int nodeId) async => null;
+
+  @override
+  Future<void> waitForPendingParameterEdits(int nodeId) async {}
 }
 
 ParameterTestEngine installParameterTestEngine(ProjectModel project) {
@@ -95,6 +101,9 @@ ParameterTestEngine installParameterTestEngine(ProjectModel project) {
 }
 
 class _ParameterTestSequencerApi extends Fake implements SequencerApi {
+  @override
+  void cleanUpTrack(int trackId) {}
+
   @override
   void compileArrangement({
     List<int>? tracksToRebuild,

@@ -54,6 +54,9 @@ class ParameterController {
 
   ParameterController(this.project);
 
+  bool hasActiveChanges(Id nodeId) =>
+      _activeChanges.keys.any((key) => key.$1 == nodeId);
+
   /// Applies confirmed base values without sending edits back to the engine.
   void applyEngineValues(
     Id nodeId,
@@ -230,7 +233,7 @@ class ParameterController {
       );
     }
     if (!project.engine.isRunning ||
-        node.initializationState != NodeInitializationState.ready ||
+        !node.canEditParameters ||
         !port.isAvailable) {
       throw StateError('The processor is not ready for parameter edits.');
     }

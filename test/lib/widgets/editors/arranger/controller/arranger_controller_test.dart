@@ -52,9 +52,6 @@ class MockProjectController extends Mock implements ProjectController {
   void openPatternInPianoRoll(Id patternID) {
     super.noSuchMethod(Invocation.method(#openPatternInPianoRoll, [patternID]));
   }
-
-  @override
-  Future<void> publishProcessingGraph() => Future<void>.value();
 }
 
 class MockTrackController extends Mock implements TrackController {

@@ -72,6 +72,29 @@ void main() {
   });
 
   test(
+    'node state operations reject edits before changing the pending value',
+    () {
+      var requests = 0;
+      engine.processingGraphApi.onEdit = (_, id, value) async {
+        requests++;
+        return ProcessingGraphParameterValue(controlPortId: id, value: value);
+      };
+      node.beginProcessorStateOperation();
+      for (var phase = 0; phase < 2; phase++) {
+        expect(
+          () => controller.setValue(node: node, port: port, value: 0.75),
+          throwsStateError,
+        );
+        expect(port.parameterValue, 0.25);
+        expect(port.pendingParameterValue, isNull);
+        if (phase == 0) node.beginProcessorStateRestoration();
+      }
+      expect(requests, 0);
+      node.finishProcessorStateOperation();
+    },
+  );
+
+  test(
     'commands preserve their target while displaying accepted engine values',
     () async {
       final requests = <double>[];

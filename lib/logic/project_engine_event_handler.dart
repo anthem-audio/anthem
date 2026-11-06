@@ -31,7 +31,7 @@ class _ProcessorParameterGestureSession {
   const _ProcessorParameterGestureSession({required this.oldValue});
 }
 
-/// Applies processor reports to the UI cache and undo history.
+/// Applies processor events to the UI cache and undo history.
 ///
 /// `Engine` creates and owns this handler for its project and notifies it when
 /// the engine stops so unfinished parameter gestures can be discarded.
@@ -43,27 +43,35 @@ class ProjectEngineEventHandler {
 
   ProjectEngineEventHandler(this.project);
 
-  /// Applies parameter reports and plugin state-change notifications.
+  void discardProcessorGestures(Id nodeId) {
+    _processorParameterGestureSessions.removeWhere(
+      (key, _) => key.$1 == nodeId,
+    );
+  }
+
+  /// Applies processor events only when the node can handle them.
   void handleEvent(IpcEvent event) {
+    if (event is! ProcessorEvent) return;
+    final node = project.processingGraph.nodes[event.nodeId];
+    if (node == null || !node.canHandleProcessorEvents) return;
+
     switch (event) {
-      case PluginChangedEvent e:
-        _scheduleProcessorStateCapture(e.nodeId);
+      case PluginChangedEvent():
+        node.scheduleDebouncedStateUpdate();
         return;
       case ProcessorParameterChangedEvent e:
-        _handleParameterChanged(e);
+        _handleParameterChanged(node, e);
         return;
       case ProcessorParameterGestureEvent e:
-        _handleParameterGesture(e);
+        _handleParameterGesture(node, e);
         return;
       case ProcessorParameterSnapshotEvent e:
-        _handleParameterSnapshot(e);
+        _handleParameterSnapshot(node, e);
         return;
       case ProcessorParameterResyncEvent e:
         _processorParameterGestureSessions.removeWhere(
           (key, _) => key.$1 == e.nodeId,
         );
-        final node = project.processingGraph.nodes[e.nodeId];
-        if (node == null) return;
         for (final parameter in e.parameterValues) {
           final port = _findParameterPort(node, parameter.controlPortId);
           _applyParameterValue(
@@ -74,9 +82,7 @@ class ProjectEngineEventHandler {
             markTouched: port?.parameterValue != parameter.value,
           );
         }
-        _scheduleProcessorStateCapture(e.nodeId);
-        return;
-      default:
+        node.scheduleDebouncedStateUpdate();
         return;
     }
   }
@@ -84,10 +90,6 @@ class ProjectEngineEventHandler {
   /// Discards unfinished parameter gestures from the stopped engine.
   void handleEngineStopped() {
     _processorParameterGestureSessions.clear();
-  }
-
-  void _scheduleProcessorStateCapture(Id nodeId) {
-    project.processingGraph.nodes[nodeId]?.scheduleDebouncedStateUpdate();
   }
 
   NodePortModel? _findParameterPort(NodeModel node, int controlPortId) {
@@ -119,12 +121,10 @@ class ProjectEngineEventHandler {
     ]);
   }
 
-  void _handleParameterChanged(ProcessorParameterChangedEvent event) {
-    final node = project.processingGraph.nodes[event.nodeId];
-    if (node == null) {
-      return;
-    }
-
+  void _handleParameterChanged(
+    NodeModel node,
+    ProcessorParameterChangedEvent event,
+  ) {
     _applyParameterValue(
       node,
       event.controlPortId,
@@ -133,15 +133,13 @@ class ProjectEngineEventHandler {
       markTouched: true,
     );
 
-    _scheduleProcessorStateCapture(event.nodeId);
+    node.scheduleDebouncedStateUpdate();
   }
 
-  void _handleParameterGesture(ProcessorParameterGestureEvent event) {
-    final node = project.processingGraph.nodes[event.nodeId];
-    if (node == null) {
-      return;
-    }
-
+  void _handleParameterGesture(
+    NodeModel node,
+    ProcessorParameterGestureEvent event,
+  ) {
     final port = _findParameterPort(node, event.controlPortId);
     if (port == null) {
       return;
@@ -186,12 +184,10 @@ class ProjectEngineEventHandler {
     );
   }
 
-  void _handleParameterSnapshot(ProcessorParameterSnapshotEvent event) {
-    final node = project.processingGraph.nodes[event.nodeId];
-    if (node == null) {
-      return;
-    }
-
+  void _handleParameterSnapshot(
+    NodeModel node,
+    ProcessorParameterSnapshotEvent event,
+  ) {
     for (final parameterValue in event.parameterValues) {
       _applyParameterValue(
         node,

@@ -43,6 +43,9 @@ class _OfflineGraphApi extends Fake implements ProcessingGraphApi {
   Future<String?> captureProcessorState(int nodeId) => capture!();
 
   @override
+  Future<void> waitForPendingParameterEdits(int nodeId) async {}
+
+  @override
   Future<ProcessingGraphNodeInitialization> initializeNodes() async =>
       ProcessingGraphNodeInitialization(didInitialize: false, results: []);
 }
@@ -55,6 +58,9 @@ class _RunningEngine extends Fake implements Engine {
 
   @override
   bool get isRunning => true;
+
+  @override
+  final Future<void> sessionEnded = Future.value();
 
   @override
   Future<void> dispose() async {}

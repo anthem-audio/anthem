@@ -20,12 +20,8 @@
 import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
-import 'package:anthem/engine_api/messages/messages.dart'
-    show ProcessingGraphNodeInitializationResult;
 import 'package:anthem/helpers/id.dart';
-import 'package:anthem/logic/devices/device_port_defaults.dart';
 import 'package:anthem/logic/live_event_manager.dart';
-import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
@@ -45,9 +41,6 @@ class ProjectController {
 
   /// Installed while tapping. Returns true if a pending tempo edit was cancelled.
   bool Function()? cancelTempoTap;
-
-  bool _needsProcessingGraphPublish = false;
-  Future<void>? _processingGraphPublishFuture;
 
   ProjectController(this.project, this.viewModel);
 
@@ -96,105 +89,6 @@ class ProjectController {
     if (project.engineState == EngineState.running &&
         project.engine.isAudioReady) {
       project.sequence.isPlaying = !project.sequence.isPlaying;
-    }
-  }
-
-  Future<void> publishProcessingGraph() {
-    _needsProcessingGraphPublish = true;
-
-    return _processingGraphPublishFuture ??=
-        _runProcessingGraphPublishQueue(forRender: false).whenComplete(() {
-          _processingGraphPublishFuture = null;
-        });
-  }
-
-  Future<void> publishProcessingGraphForRender() async {
-    _needsProcessingGraphPublish = true;
-
-    await _runProcessingGraphPublishQueue(forRender: true);
-  }
-
-  Future<void> _runProcessingGraphPublishQueue({
-    required bool forRender,
-  }) async {
-    try {
-      while (_needsProcessingGraphPublish) {
-        _needsProcessingGraphPublish = false;
-
-        final initialization = forRender
-            ? await project.engine.processingGraphApi.initializeNodesForRender()
-            : await project.engine.processingGraphApi.initializeNodes();
-
-        if (!initialization.didInitialize) {
-          break;
-        }
-
-        _applyNodePortConfigurations(initialization.results);
-
-        if (forRender) {
-          await project.engine.processingGraphApi.publishForRender();
-        } else {
-          await project.engine.processingGraphApi.publish();
-        }
-      }
-    } finally {
-      _needsProcessingGraphPublish = false;
-    }
-  }
-
-  void _applyNodePortConfigurations(
-    List<ProcessingGraphNodeInitializationResult> results,
-  ) {
-    final affectedTrackIds = <Id>{};
-
-    for (final result in results) {
-      final node = project.processingGraph.nodes[result.nodeId];
-      if (node == null) continue;
-      if (!result.success) {
-        node.markInitializationFailed();
-        continue;
-      }
-
-      final portConfiguration = result.portConfiguration;
-
-      if (portConfiguration != null) {
-        final routingChanged = node.applyPortConfiguration(portConfiguration);
-        if (routingChanged) {
-          affectedTrackIds.addAll(_updateDeviceDefaultsForNode(result.nodeId));
-        }
-      }
-
-      applyReportedParameterValues(node, result.parameterValues);
-      node.markInitialized();
-    }
-
-    if (affectedTrackIds.isEmpty) {
-      return;
-    }
-
-    final serviceRegistry = ServiceRegistry.forProject(project.id);
-    for (final trackId in affectedTrackIds) {
-      serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
-    }
-  }
-
-  Iterable<Id> _updateDeviceDefaultsForNode(Id nodeId) sync* {
-    final devicePortDefaults = DevicePortDefaults(project.processingGraph);
-
-    for (final track in project.tracks.values) {
-      if (!track.hasProcessing) {
-        continue;
-      }
-      final processing = track.requireProcessing;
-
-      for (final device in processing.devices) {
-        if (!device.nodeIds.contains(nodeId)) {
-          continue;
-        }
-
-        devicePortDefaults.refreshDeviceDefaultPorts(device);
-        yield track.id;
-      }
     }
   }
 

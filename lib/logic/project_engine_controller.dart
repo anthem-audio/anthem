@@ -21,7 +21,7 @@ import 'dart:async';
 
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/disposable_service.dart';
-import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:logging/logging.dart';
 
@@ -29,7 +29,7 @@ final _log = Logger('project_engine_controller');
 
 class ProjectEngineController implements DisposableService {
   final ProjectModel project;
-  final ProjectController projectController;
+  final ProcessingGraphController processingGraphController;
 
   late final StreamSubscription<EngineState> _engineStateSubscription;
   late final StreamSubscription<String?> _audioSessionInvalidatedSubscription;
@@ -42,7 +42,7 @@ class ProjectEngineController implements DisposableService {
 
   bool _didFinishStartupForCurrentProcess = false;
 
-  ProjectEngineController(this.project, this.projectController) {
+  ProjectEngineController(this.project, this.processingGraphController) {
     _engineStateSubscription = project.engine.engineStateStream.listen((state) {
       if (state == EngineState.stopped) {
         _handleProcessStopped();
@@ -75,7 +75,7 @@ class ProjectEngineController implements DisposableService {
     if (startAudio) {
       try {
         await this.startAudio();
-        await projectController.publishProcessingGraph();
+        await processingGraphController.publish();
       } catch (error, stackTrace) {
         _log.warning(
           'Could not start audio session for project ${project.id} during engine startup.',
@@ -206,7 +206,7 @@ class ProjectEngineController implements DisposableService {
     try {
       await stopAudio();
       await startAudio();
-      await projectController.publishProcessingGraph();
+      await processingGraphController.publish();
     } catch (error, stackTrace) {
       _log.warning(
         'Could not restart audio session for project ${project.id}'

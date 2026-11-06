@@ -46,7 +46,7 @@ The executor clears a paused node's audio and control outputs and empties its ev
 
 Final graph-processor shutdown stops pause polling and cancels pending requests and held claims. Clearing a runtime graph preserves pause claims. Audio-session shutdown needs no extra handshake: after the last processing call exits, a pending pause can complete without another block, and held claims remain valid across audio-session restart.
 
-This is an engine primitive for later state loading and reconfiguration. Snapshot ownership, state replacement, undo, and presets are separate operations built on it.
+Live snapshot loading uses this suspension primitive. Snapshot ownership, state replacement, undo, and presets remain separate concerns.
 
 ### Restoring a processor before reporting its ports
 
@@ -62,6 +62,34 @@ This sequence finishes before the processor is published for audio processing. A
 Saved state is restored once for each processor instance. If the audio session restarts with a different sample rate or buffer size, the existing processor is prepared again and keeps its live settings. A fresh engine process creates new processors and restores the latest retained snapshots. Cached UI values are never replayed as processor state.
 
 Anthem captures state only after initialization succeeds. If a processor cannot load, saving preserves its previous state-file reference. See [the initialization session](../../engine/src/modules/core/processing_graph_node_initialization_session.cpp) for the engine implementation.
+
+### Retained snapshots and live replacement
+
+`ProcessingGraphController.saveSnapshot(nodeId)` returns a `ProcessorSnapshot`. The caller owns its retention and releases it with `dispose()`. Saving does not change the node's project-owned snapshot reference. The handle remains usable across engine restarts while its project stays open. It currently belongs to the same processor model instance; preset identity, interchange and undo commands are later layers.
+
+The engine's save response hands its retention token to the UI; the engine must not use or release that token afterward. The UI calls `adoptReturnedFileRetention` to replace the temporary engine-session claim with a caller-owned retention. If the response is never received or adopted, engine-session cleanup releases the temporary claim. Call this helper only for tokens explicitly handed to the UI; it must not revoke claims still in use by the engine.
+
+`loadSnapshot(nodeId, snapshot)` borrows the handle and can be called repeatedly. It acquires its own claim before waiting, so the caller can dispose its handle while loading. Opaque state stays in files and never crosses IPC.
+
+Live loading proceeds as follows:
+
+1. Save a fresh recovery snapshot and adopt it as the node's project-owned saved state. Failure or engine loss after this point preserves the pre-load state for restart.
+2. Resolve and validate both files, then wait for the node's processing pause. Disable processor notifications while restoring state and preparing its current ports.
+3. Return the port descriptions and base values. Dart applies them using the same reconciliation and routing path as initialization.
+4. Publish the reconciled runtime graph. The engine holds the pause until the audio thread acknowledges that publication, then resumes the node. An idle offline session has no processing thread; its first render block adopts the pending graph before processing.
+5. Replace the project's recovery reference with a claim on the requested snapshot. The caller's original claim remains independent.
+
+A restoration or preparation failure attempts to restore the recovery file and reconcile its ports before resuming, then reports the original error. A reconciliation or publication failure also attempts recovery. If processor recovery fails, the node stays unavailable and paused; restart the engine to restore its retained recovery file. If the UI cannot confirm recovery or a load times out, it stops the engine session so an ambiguous completion cannot leave it processing unconfirmed state. Invalid input files fail before the processor is changed. Removal, audio-session changes, shutdown and timeouts interrupt pending loads rather than resume an unconfirmed configuration.
+
+`ProcessingGraphController` is a project-scoped service owned by `ServiceRegistry`. It serializes complete publication and state workflows in one FIFO queue. A publication includes node initialization, applying discovered descriptions and routing, and submitting the compiled graph. A state load holds its turn through recovery capture, restoration, model reconciliation, graph activation and resume. Project captures and explicit snapshot saves use the same queue. Offline rendering owns one queue turn through audio-session setup, rendering and restoration; its internal publications run within that turn, so render request holds cannot block preceding graph work. Inner steps call the engine API directly; they do not queue work behind the operation that is awaiting them.
+
+Adjacent queued publication requests coalesce, but requests separated by a state operation keep their order. Model edits still synchronize immediately when the engine is running. Offline edits need no publication; engine startup synchronizes and publishes the current project. Engine shutdown and engine-to-UI file-service replies do not wait for this queue. Queued work is tied to its original engine session and cannot run against a restarted engine. A failed operation releases the queue for subsequent work. Callers use `ProcessingGraphController.publish()` directly; `ProcessingGraphApi` provides the individual protocol requests.
+
+State operations wait for outstanding parameter edits, and explicit snapshot saves/loads reject new edits while active. Finish any active parameter gesture before loading. Ordinary project captures share that serialization. Save/load and active offline rendering exclude each other so a temporary pause cannot alter a render's output.
+
+`NodeModel.canEditParameters` and `canHandleProcessorEvents` express the node’s runtime policy. Controls and parameter controllers share the editing policy. Unsolicited processor events inherit `ProcessorEvent`, carrying a node ID; `ProjectEngineEventHandler` resolves the node and checks its event policy once before dispatch. Snapshot capture permits these events, while restoration suppresses them. Explicit initialization and state-load responses apply their results directly, and node removal remains available.
+
+VST restoration uses JUCE's existing message-thread state and restart handling, followed by preparation and port discovery. Audio bus layouts can change during restoration. The stable parameter-binding contract still applies: a changed VST parameter list requires reloading the plugin. JUCE does not reliably expose a plugin's internal refusal to restore state; Anthem can report exceptions and preparation failures, but cannot detect a plugin that silently ignores its state.
 
 ### Updating cached port descriptions
 

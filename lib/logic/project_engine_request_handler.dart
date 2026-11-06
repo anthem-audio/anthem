@@ -21,6 +21,7 @@ import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_asset_store.dart';
+import 'package:anthem/logic/storage/project_asset_references.dart';
 
 /// Dispatches requests from a project's engine to UI services.
 ///
@@ -144,6 +145,26 @@ class ProjectEngineRequestHandler {
         return FileStorageSuccessResponse(id: request.id);
       default:
         return null;
+    }
+  }
+
+  /// Adopts a file retention explicitly handed to the UI in an engine response.
+  /// The engine must no longer use or release the supplied token. Its session
+  /// scope protects the file until adoption or session cleanup. Adoption creates
+  /// a caller-owned retention and releases that temporary session claim.
+  /// The caller must dispose the returned retention when finished.
+  Future<({String relativePath, ProjectAssetRetention retention})>
+  adoptReturnedFileRetention(String token) async {
+    final (:store, :scopeId) = await _getFileStorageScope();
+    final relativePath = store.resolveRetention(token);
+    final retention = ServiceRegistry.forProject(project.id).projectStorage
+        .retainAssets([relativePath]);
+    try {
+      store.releaseRetention(scopeId, token);
+      return (relativePath: relativePath, retention: retention);
+    } catch (_) {
+      retention.dispose();
+      rethrow;
     }
   }
 

@@ -221,18 +221,25 @@ class PublishProcessingGraphResponse extends Response {
   }
 }
 
-class PluginChangedEvent extends IpcEvent {
+/// An unsolicited event about a processing graph node's processor.
+sealed class ProcessorEvent extends IpcEvent {
   late Id nodeId;
 
+  ProcessorEvent.uninitialized();
+
+  ProcessorEvent({required this.nodeId});
+}
+
+class PluginChangedEvent extends ProcessorEvent {
   late bool latencyChanged;
   late bool parameterInfoChanged;
   late bool programChanged;
   late bool nonParameterStateChanged;
 
-  PluginChangedEvent.uninitialized();
+  PluginChangedEvent.uninitialized() : super.uninitialized();
 
   PluginChangedEvent({
-    required this.nodeId,
+    required super.nodeId,
     required this.latencyChanged,
     required this.parameterInfoChanged,
     required this.programChanged,
@@ -240,33 +247,31 @@ class PluginChangedEvent extends IpcEvent {
   });
 }
 
-class ProcessorParameterChangedEvent extends IpcEvent {
-  late Id nodeId;
+class ProcessorParameterChangedEvent extends ProcessorEvent {
   late int controlPortId;
   late double value;
   String? displayText;
 
-  ProcessorParameterChangedEvent.uninitialized();
+  ProcessorParameterChangedEvent.uninitialized() : super.uninitialized();
 
   ProcessorParameterChangedEvent({
-    required this.nodeId,
+    required super.nodeId,
     required this.controlPortId,
     required this.value,
     this.displayText,
   });
 }
 
-class ProcessorParameterGestureEvent extends IpcEvent {
-  late Id nodeId;
+class ProcessorParameterGestureEvent extends ProcessorEvent {
   late int controlPortId;
   late bool isStarting;
   late double value;
   String? displayText;
 
-  ProcessorParameterGestureEvent.uninitialized();
+  ProcessorParameterGestureEvent.uninitialized() : super.uninitialized();
 
   ProcessorParameterGestureEvent({
-    required this.nodeId,
+    required super.nodeId,
     required this.controlPortId,
     required this.isStarting,
     required this.value,
@@ -274,28 +279,30 @@ class ProcessorParameterGestureEvent extends IpcEvent {
   });
 }
 
-class ProcessorParameterSnapshotEvent extends IpcEvent {
-  late Id nodeId;
+class ProcessorParameterSnapshotEvent extends ProcessorEvent {
   late List<ProcessingGraphParameterValue> parameterValues;
 
-  ProcessorParameterSnapshotEvent.uninitialized() : parameterValues = [];
+  ProcessorParameterSnapshotEvent.uninitialized()
+    : parameterValues = [],
+      super.uninitialized();
 
   ProcessorParameterSnapshotEvent({
-    required this.nodeId,
+    required super.nodeId,
     required this.parameterValues,
   });
 }
 
 /// Restores the UI cache after callback notifications could not be retained.
 /// Any unfinished parameter gestures for this node must be discarded.
-class ProcessorParameterResyncEvent extends IpcEvent {
-  late Id nodeId;
+class ProcessorParameterResyncEvent extends ProcessorEvent {
   late List<ProcessingGraphParameterValue> parameterValues;
 
-  ProcessorParameterResyncEvent.uninitialized() : parameterValues = [];
+  ProcessorParameterResyncEvent.uninitialized()
+    : parameterValues = [],
+      super.uninitialized();
 
   ProcessorParameterResyncEvent({
-    required this.nodeId,
+    required super.nodeId,
     required this.parameterValues,
   });
 }
@@ -444,6 +451,76 @@ class SendLiveEventRequest extends Request {
     required int id,
     required this.liveEventProviderNodeId,
     required this.event,
+  }) {
+    super.id = id;
+  }
+}
+
+/// Saves an independently retained snapshot, including for stateless processors.
+class SaveProcessorSnapshotRequest extends Request {
+  late Id nodeId;
+  SaveProcessorSnapshotRequest.uninitialized();
+  SaveProcessorSnapshotRequest({required int id, required this.nodeId}) {
+    super.id = id;
+  }
+}
+
+class SaveProcessorSnapshotResponse extends Response {
+  /// Handed to the UI on success; the engine will not use or release this token.
+  /// The session scope retains it until the UI adopts it or the session closes.
+  String? retentionId;
+  String? error;
+  SaveProcessorSnapshotResponse.uninitialized();
+  SaveProcessorSnapshotResponse({
+    required int id,
+    this.retentionId,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
+/// Begins a paused state replacement. The recovery file is retained by the UI.
+class LoadProcessorSnapshotRequest extends Request {
+  late Id nodeId;
+  late String retentionId;
+  late String recoveryRetentionId;
+  LoadProcessorSnapshotRequest.uninitialized();
+  LoadProcessorSnapshotRequest({
+    required int id,
+    required this.nodeId,
+    required this.retentionId,
+    required this.recoveryRetentionId,
+  }) {
+    super.id = id;
+  }
+}
+
+class LoadProcessorSnapshotResponse extends Response {
+  int? operationId;
+  ProcessingGraphNodeInitializationResult? result;
+  String? error;
+  LoadProcessorSnapshotResponse.uninitialized();
+  LoadProcessorSnapshotResponse({
+    required int id,
+    this.operationId,
+    this.result,
+    this.error,
+  }) {
+    super.id = id;
+  }
+}
+
+/// Reconciled model updates precede this request. Rollback restores the recovery
+/// state and returns its description; otherwise publish and await activation.
+class FinishProcessorSnapshotLoadRequest extends Request {
+  late int operationId;
+  late bool rollback;
+  FinishProcessorSnapshotLoadRequest.uninitialized();
+  FinishProcessorSnapshotLoadRequest({
+    required int id,
+    required this.operationId,
+    this.rollback = false,
   }) {
     super.id = id;
   }

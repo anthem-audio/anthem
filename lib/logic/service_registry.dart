@@ -26,6 +26,7 @@ import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
@@ -92,15 +93,24 @@ final projectControllerService = ServiceDef<ProjectController>(
   disposePriority: 100,
 );
 
+final processingGraphControllerService = ServiceDef<ProcessingGraphController>(
+  create: (project, _) => ProcessingGraphController(project),
+  disposePriority: 100,
+);
+
 final projectEngineControllerService = ServiceDef<ProjectEngineController>(
-  create: (project, registry) =>
-      ProjectEngineController(project, registry.use(projectControllerService)),
+  create: (project, registry) => ProjectEngineController(
+    project,
+    registry.use(processingGraphControllerService),
+  ),
   disposePriority: 110,
 );
 
 final projectRenderControllerService = ServiceDef<ProjectRenderController>(
-  create: (project, registry) =>
-      ProjectRenderController(project, registry.use(projectControllerService)),
+  create: (project, registry) => ProjectRenderController(
+    project,
+    registry.use(processingGraphControllerService),
+  ),
   disposePriority: 100,
 );
 
@@ -275,6 +285,8 @@ class ServiceRegistry {
   }
 
   ProjectController get projectController => use(projectControllerService);
+  ProcessingGraphController get processingGraphController =>
+      use(processingGraphControllerService);
   ProjectStorage get projectStorage => use(projectStorageService);
   ProjectEngineController get projectEngineController =>
       use(projectEngineControllerService);

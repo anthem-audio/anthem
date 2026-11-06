@@ -235,7 +235,7 @@ void _rebuildTrackRoutingAndPublish(ProjectModel project, Id trackId) {
 
   serviceRegistry.deviceController.rebuildTrackDeviceRouting(trackId);
   serviceRegistry.trackController.rerouteTracks([trackId]);
-  serviceRegistry.projectController.publishProcessingGraph();
+  serviceRegistry.processingGraphController.publish();
 }
 
 TrackModel _getTrack(ProjectModel project, Id trackId, String caller) {

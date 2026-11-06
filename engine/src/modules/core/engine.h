@@ -192,7 +192,7 @@ public:
   // initializedProcessingGraphNodes. Nodes already present in the tracker are
   // left alone; new or replaced nodes are prepared and reported individually.
   void initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete);
-  void publishProcessingGraph();
+  uint64_t publishProcessingGraph();
 };
 
 } // namespace anthem

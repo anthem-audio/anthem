@@ -756,8 +756,8 @@ void main() {
         blockSize: 128,
         outputChannelCount: outputChannelCount,
       );
-      await ServiceRegistry.forProject(project.id).projectController
-          .publishProcessingGraph();
+      await ServiceRegistry.forProject(project.id).processingGraphController
+          .publish();
     }
 
     try {
@@ -874,7 +874,7 @@ void main() {
           blockSize: 128,
           outputChannelCount: 2,
         );
-        await services.projectController.publishProcessingGraph();
+        await services.processingGraphController.publish();
         expect(project.engine.isRunning, isTrue);
         expect(node.initializationState, NodeInitializationState.failed);
         expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);

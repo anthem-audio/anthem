@@ -36,6 +36,23 @@ import '../../../../helpers/parameter_engine.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('ParameterUiBinding follows the node editing policy during state operations', () async {
+    final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
+    addTearDown(() => _disposeProject(project));
+    installParameterTestEngine(project);
+    final binding = ParameterUiBinding(node: node, port: port);
+    expect(binding.canEdit, isTrue);
+    node.beginProcessorStateOperation();
+    expect(binding.canEdit, isFalse);
+    binding.beginChange();
+    binding.updateChange(0.75);
+    await binding.resetToDefault();
+    expect(port.parameterValue, 0.5);
+    expect(port.pendingParameterValue, isNull);
+    node.finishProcessorStateOperation();
+    expect(binding.canEdit, isTrue);
+  });
+
   test('ParameterUiBinding commits parameter changes to undo stack', () async {
     final (:project, :node, :port) = _createParameterProject(defaultValue: 0.5);
     addTearDown(() => _disposeProject(project));

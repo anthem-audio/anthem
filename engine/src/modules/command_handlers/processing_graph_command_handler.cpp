@@ -130,6 +130,53 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     return std::optional(PublishProcessingGraphResponse{.success = true,
         .error = std::nullopt,
         .responseBase = ResponseBase{.id = publishProcessingGraphRequest.requestBase.get().id}});
+  } else if (rfl::holds_alternative<SaveProcessorSnapshotRequest>(request.variant())) {
+    const auto& save = rfl::get<SaveProcessorSnapshotRequest>(request.variant());
+    const auto requestId = save.requestBase.get().id;
+    const auto found = engine.project->processingGraph()->nodes()->find(save.nodeId);
+    auto send = [requestId](FileStorageResult<std::string> result) {
+      Response response = SaveProcessorSnapshotResponse{.retentionId = std::move(result.value),
+          .error = std::move(result.error),
+          .responseBase = ResponseBase{.id = requestId}};
+      auto message = rfl::json::write(response);
+      Engine::getInstance().comms.send(message);
+    };
+    if (found == engine.project->processingGraph()->nodes()->end())
+      send({.value = std::nullopt, .error = "Processing graph node not found."});
+    else
+      engine.processorStateStorage.saveSnapshot(engine, found->second, std::move(send));
+    return std::nullopt;
+  } else if (rfl::holds_alternative<LoadProcessorSnapshotRequest>(request.variant()) ||
+             rfl::holds_alternative<FinishProcessorSnapshotLoadRequest>(request.variant())) {
+    const bool beginning = rfl::holds_alternative<LoadProcessorSnapshotRequest>(request.variant());
+    const auto requestId =
+        beginning
+            ? rfl::get<LoadProcessorSnapshotRequest>(request.variant()).requestBase.get().id
+            : rfl::get<FinishProcessorSnapshotLoadRequest>(request.variant()).requestBase.get().id;
+    auto send = [requestId](ProcessorSnapshotLoadResult result) {
+      Response response = LoadProcessorSnapshotResponse{.operationId = result.operationId,
+          .result = result.result ? std::optional(result.result) : std::nullopt,
+          .error = std::move(result.error),
+          .responseBase = ResponseBase{.id = requestId}};
+      auto message = rfl::json::write(response);
+      Engine::getInstance().comms.send(message);
+    };
+    if (beginning) {
+      const auto& load = rfl::get<LoadProcessorSnapshotRequest>(request.variant());
+      const auto found = engine.project->processingGraph()->nodes()->find(load.nodeId);
+      if (found == engine.project->processingGraph()->nodes()->end())
+        send({.operationId = std::nullopt,
+            .result = nullptr,
+            .error = "Processing graph node not found."});
+      else
+        engine.processorStateStorage.loadSnapshot(
+            engine, found->second, load.retentionId, load.recoveryRetentionId, std::move(send));
+    } else {
+      const auto& finish = rfl::get<FinishProcessorSnapshotLoadRequest>(request.variant());
+      engine.processorStateStorage.finishSnapshotLoad(
+          finish.operationId, finish.rollback, std::move(send));
+    }
+    return std::nullopt;
   } else if (rfl::holds_alternative<CaptureProcessorStateRequest>(request.variant())) {
     const auto& capture = rfl::get<CaptureProcessorStateRequest>(request.variant());
     const auto requestId = capture.requestBase.get().id;
@@ -141,14 +188,16 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
           .responseBase = ResponseBase{.id = requestId}});
     }
     engine.processorStateStorage.capture(
-        node->second, [requestId](FileStorageResult<std::string> result) {
+        node->second,
+        [requestId](FileStorageResult<std::string> result) {
           Response response = CaptureProcessorStateResponse{
               .relativePath = result.value && !result.value->empty() ? result.value : std::nullopt,
               .error = std::move(result.error),
               .responseBase = ResponseBase{.id = requestId}};
           auto message = rfl::json::write(response);
           Engine::getInstance().comms.send(message);
-        });
+        },
+        &engine);
     return std::nullopt;
   } else if (rfl::holds_alternative<SetProcessorParameterValueRequest>(request.variant())) {
     const auto& edit = rfl::get<SetProcessorParameterValueRequest>(request.variant());
@@ -158,7 +207,8 @@ std::optional<Response> handleProcessingGraphCommand(Request& request) {
     auto& nodes = *engine.project->processingGraph()->nodes();
     const auto node = nodes.find(edit.nodeId);
     const auto processor = node == nodes.end() ? nullptr : node->second->getProcessor();
-    if (!processor || !processor->isPrepared || !processor->hasRestoredProjectState) {
+    if (!processor || !processor->isPrepared || !processor->hasRestoredProjectState ||
+        engine.processorStateStorage.isBusy(edit.nodeId)) {
       response.error = "The processor is not ready for parameter edits.";
     } else if (auto error = processor->setParameterValue(edit.controlPortId, edit.value)) {
       response.error = std::move(error);

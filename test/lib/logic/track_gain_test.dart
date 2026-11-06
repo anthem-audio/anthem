@@ -32,7 +32,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/parameter_engine.dart';
 
-class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
+class _FakeProcessingGraphApi extends ParameterTestApi {
   final ProjectModel project;
   _FakeProcessingGraphApi(this.project);
   @override
@@ -52,6 +52,9 @@ class _FakeProcessingGraphApi extends Fake implements ProcessingGraphApi {
 
   @override
   Future<String?> captureProcessorState(int nodeId) async => null;
+
+  @override
+  Future<void> waitForPendingParameterEdits(int nodeId) async {}
 }
 
 NodePortModel _gainPort(ProjectModel project, Id trackId) => project
@@ -67,8 +70,8 @@ Future<void> _expectGain(
   required double defaultDb,
 }) async {
   if (project.engine.processingGraphApi is _FakeProcessingGraphApi) {
-    await ServiceRegistry.forProject(project.id).projectController
-        .publishProcessingGraph();
+    await ServiceRegistry.forProject(project.id).processingGraphController
+        .publish();
   }
   final port = _gainPort(project, trackId);
   expect(gainParameterValueToDb(port.parameterValue!), closeTo(valueDb, 1e-9));
@@ -85,10 +88,14 @@ void main() {
 
   setUp(() async {
     project = ProjectModel.create();
-    project.engine.processingGraphApi = _FakeProcessingGraphApi(project);
+    await project.engine.dispose();
+    project.engine = ParameterTestEngine(
+      project,
+      processingGraphApi: _FakeProcessingGraphApi(project),
+    );
     ServiceRegistry.initializeProject(project);
-    await ServiceRegistry.forProject(project.id).projectController
-        .publishProcessingGraph();
+    await ServiceRegistry.forProject(project.id).processingGraphController
+        .publish();
   });
 
   tearDown(() async {
@@ -164,8 +171,8 @@ void main() {
       final firstId = project.trackOrder.single;
       controller.addTrack();
       final secondId = project.trackOrder.last;
-      await ServiceRegistry.forProject(project.id).projectController
-          .publishProcessingGraph();
+      await ServiceRegistry.forProject(project.id).processingGraphController
+          .publish();
       _gainPort(project, firstId).parameterValue = gainDbToParameterValue(-4);
       _gainPort(project, secondId).parameterValue = gainDbToParameterValue(-7);
 
@@ -192,8 +199,8 @@ void main() {
   test('undoing and redoing track creation retains its edited gain', () async {
     ServiceRegistry.forProject(project.id).trackController.addTrack();
     final trackId = project.trackOrder.last;
-    await ServiceRegistry.forProject(project.id).projectController
-        .publishProcessingGraph();
+    await ServiceRegistry.forProject(project.id).processingGraphController
+        .publish();
     _gainPort(project, trackId).parameterValue = gainDbToParameterValue(-6);
 
     await project.undo();
@@ -213,7 +220,7 @@ void main() {
     final masterId = project.sendTrackOrder.last;
 
     await project.waitForPendingCommands();
-    await services.projectController.publishProcessingGraph();
+    await services.processingGraphController.publish();
     installParameterTestEngine(project);
     for (final (trackId, defaultDb) in [
       (regularId, -10.0),
@@ -255,14 +262,14 @@ void main() {
       controller.addSendTrack();
       final sendId = project.sendTrackOrder.first;
       final masterId = project.sendTrackOrder.last;
-      await ServiceRegistry.forProject(project.id).projectController
-          .publishProcessingGraph();
+      await ServiceRegistry.forProject(project.id).processingGraphController
+          .publish();
       _gainPort(project, regularId).parameterValue = gainDbToParameterValue(-6);
       _gainPort(project, groupId).parameterValue = gainDbToParameterValue(-2);
       _gainPort(project, sendId).parameterValue = gainDbToParameterValue(-4);
 
-      await ServiceRegistry.forProject(project.id).projectController
-          .publishProcessingGraph();
+      await ServiceRegistry.forProject(project.id).processingGraphController
+          .publish();
       final restored = ProjectModel.fromJson(project.toJson());
       addTearDown(restored.dispose);
 
@@ -280,8 +287,8 @@ void main() {
     port.parameterResetValue = gainParameterZeroDbNormalized;
     port.parameterValue = gainDbToParameterValue(-5);
 
-    await ServiceRegistry.forProject(project.id).projectController
-        .publishProcessingGraph();
+    await ServiceRegistry.forProject(project.id).processingGraphController
+        .publish();
     final restored = ProjectModel.fromJson(project.toJson());
     addTearDown(restored.dispose);
 
@@ -299,8 +306,8 @@ void main() {
     );
 
     await project.waitForPendingCommands();
-    await ServiceRegistry.forProject(project.id).projectController
-        .publishProcessingGraph();
+    await ServiceRegistry.forProject(project.id).processingGraphController
+        .publish();
     final device = project.tracks[trackId]!.requireProcessing.devices.single;
     final gain = project.processingGraph.nodes[device.nodeIds.single]!
         .getPortById(UtilityProcessorModel.gainPortId);

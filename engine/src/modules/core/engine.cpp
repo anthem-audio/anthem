@@ -70,8 +70,9 @@ void Engine::initialize() {
 }
 
 void Engine::shutdown() {
-  graphProcessor->shutdown();
+  processorStateStorage.close();
   uiRequests.close();
+  graphProcessor->shutdown();
   renderController->stopRenderThread();
   audioSessionController->stopAudio();
   VisualizationBroker::getInstance().dispose();
@@ -96,12 +97,12 @@ void Engine::initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallba
   session->run();
 }
 
-void Engine::publishProcessingGraph() {
+uint64_t Engine::publishProcessingGraph() {
   auto audioProcessingConfigSnapshot =
       audioSessionController->getCurrentAudioProcessingConfigSnapshot();
   jassert(audioProcessingConfigSnapshot.has_value());
   if (!audioProcessingConfigSnapshot.has_value()) {
-    return;
+    return 0;
   }
 
   const auto& audioProcessingConfig = audioProcessingConfigSnapshot->config;
@@ -115,7 +116,7 @@ void Engine::publishProcessingGraph() {
           .blockSize = audioProcessingConfig.blockSize,
       });
 
-  graphProcessor->publishRuntimeGraph(
+  return graphProcessor->publishRuntimeGraph(
       runtimeGraph.release(), audioProcessingConfigSnapshot->generation);
 }
 
