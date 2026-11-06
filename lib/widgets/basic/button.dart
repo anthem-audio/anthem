@@ -65,6 +65,30 @@ class ButtonTheme {
     required this.border,
     required this.content,
   });
+
+  /// Overrides colors for the untoggled states of this theme.
+  ButtonTheme withColors({
+    Color? background,
+    Color? backgroundHover,
+    Color? backgroundPress,
+    Color? foreground,
+  }) => ButtonTheme(
+    background: ButtonThemeColors(
+      idle: background ?? this.background.idle,
+      hover: backgroundHover ?? this.background.hover,
+      press: backgroundPress ?? this.background.press,
+      toggleActive: this.background.toggleActive,
+    ),
+    border: border,
+    content: foreground == null
+        ? content
+        : ButtonThemeColors(
+            idle: foreground,
+            hover: foreground,
+            press: foreground,
+            toggleActive: content.toggleActive,
+          ),
+  );
 }
 
 final _textColors = ButtonThemeColors(
@@ -119,7 +143,6 @@ final buttonOutlineTheme = ButtonTheme(
   content: _textColors,
 );
 
-@visibleForTesting
 ButtonTheme getButtonTheme(ButtonVariant variant) {
   switch (variant) {
     case ButtonVariant.main:
@@ -135,6 +158,7 @@ ButtonTheme getButtonTheme(ButtonVariant variant) {
 
 class Button extends StatefulWidget {
   final ButtonVariant? variant;
+  final ButtonTheme? theme;
 
   final String? text;
   final IconDef? icon;
@@ -169,6 +193,7 @@ class Button extends StatefulWidget {
   const Button({
     super.key,
     this.variant,
+    this.theme,
     this.text,
     this.icon,
     this.contentBuilder,
@@ -246,8 +271,7 @@ class _ButtonState extends State<Button> {
   @override
   Widget build(BuildContext context) {
     final groupStyle = context.watch<ButtonGroupChildStyle?>();
-    final variant = widget.variant ?? ButtonVariant.main;
-    final theme = getButtonTheme(variant);
+    final theme = widget.theme ?? getButtonTheme(widget.variant ?? .main);
 
     final toggled = (widget.toggleState ?? false);
 

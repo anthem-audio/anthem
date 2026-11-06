@@ -74,7 +74,9 @@ class ProjectFooter extends StatelessWidget {
 
             Observer(
               builder: (context) {
-                const contentPadding = EdgeInsets.symmetric(vertical: 4);
+                // Account for the group border to keep the same 16 px icon
+                // canvas as the standalone buttons.
+                const contentPadding = EdgeInsets.symmetric(vertical: 3);
 
                 return ButtonGroup(
                   children: [

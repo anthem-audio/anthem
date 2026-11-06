@@ -29,72 +29,68 @@ class IconDef {
 }
 
 class Icons {
-  static IconDef add = const IconDef('assets/icons_old/scrollbar/add.svg');
-  static IconDef anthem = const IconDef('assets/icons_old/main/anthem.svg');
-  static IconDef arrowDown = const IconDef(
-    'assets/icons/misc/dropdown_arrow___down.svg',
-  );
-  static IconDef audio = const IconDef('assets/icons_old/audio.svg');
+  static IconDef add = const IconDef('assets/icons/general/add.svg');
+  static IconDef anthem = const IconDef('assets/icons/brand/anthem.svg');
+  static IconDef arrowDown = const IconDef('assets/icons/arrows/dropdown.svg');
+  static IconDef audio = const IconDef('assets/icons/track/audio.svg');
   static IconDef automationEditor = const IconDef(
-    'assets/icons/bottom_bar/automation_editor.svg',
+    'assets/icons/panels/automation-editor.svg',
   );
   static IconDef automationMatrixPanel = const IconDef(
-    'assets/icons_old/bottom_bar/automation_panel.svg',
+    'assets/icons/general/automation.svg',
   );
   static IconDef browserPanel = const IconDef(
-    'assets/icons/bottom_bar/browser_panel.svg',
+    'assets/icons/panels/browser.svg',
   );
-  static IconDef deviceRack = const IconDef(
-    'assets/icons/bottom_bar/instruments_effects_panel.svg',
+  static IconDef deviceRack = const IconDef('assets/icons/panels/devices.svg');
+  static IconDef close = const IconDef('assets/icons/window/close-small.svg');
+  static IconDef closeWindow = const IconDef('assets/icons/window/close.svg');
+  static IconDef pianoRoll = const IconDef('assets/icons/panels/details.svg');
+  static IconDef hamburger = const IconDef('assets/icons/general/menu.svg');
+  static IconDef file = const IconDef('assets/icons/general/file.svg');
+  static IconDef folder = const IconDef('assets/icons/general/folder.svg');
+  static IconDef kebab = const IconDef(
+    'assets/icons/general/more-vertical.svg',
   );
-  static IconDef close = const IconDef('assets/icons/small/close.svg');
-  static IconDef pianoRoll = const IconDef(
-    'assets/icons/bottom_bar/detail_editor.svg',
-  );
-  static IconDef hamburger = const IconDef('assets/icons/misc/hamburgner.svg');
-  static IconDef file = const IconDef('assets/icons_old/file.svg');
-  static IconDef folder = const IconDef('assets/icons/icon/folder.svg');
-  static IconDef kebab = const IconDef('assets/icons/misc.svg');
-  static IconDef maximize = const IconDef('assets/icons/small/maximize.svg');
-  static IconDef midi = const IconDef(
-    'assets/icons_old/arranger/clip/note.svg',
-  );
-  static IconDef minimize = const IconDef('assets/icons/small/minimize.svg');
-  static IconDef mixer = const IconDef('assets/icons/bottom_bar/mixer.svg');
-  static IconDef mute = const IconDef('assets/icons/arranger/mute.svg');
+  static IconDef maximize = const IconDef('assets/icons/window/maximize.svg');
+  static IconDef midi = const IconDef('assets/icons/clips/midi.svg');
+  static IconDef minimize = const IconDef('assets/icons/window/minimize.svg');
+  static IconDef mixer = const IconDef('assets/icons/panels/mixer.svg');
+  static IconDef mute = const IconDef('assets/icons/mixer/mute.svg');
   static IconDef openPluginWindow = const IconDef(
-    'assets/icons/icon/expanded_device.svg',
+    'assets/icons/devices/open-plugin-window.svg',
   );
   static IconDef patternPickerAudio = const IconDef(
-    'assets/icons/arranger/clip/audio.svg',
+    'assets/icons/clips/audio.svg',
   );
   static IconDef patternPickerAutomation = const IconDef(
-    'assets/icons/arranger/clip/automations.svg',
+    'assets/icons/clips/automation.svg',
   );
   static IconDef patternPickerHybrid = const IconDef(
-    'assets/icons/arranger/clip/hybrid.svg',
+    'assets/icons/clips/hybrid.svg',
   );
   static IconDef patternPickerMidi = const IconDef(
-    'assets/icons/arranger/clip/note.svg',
+    'assets/icons/clips/midi.svg',
   );
   static IconDef pianoRollStems = const IconDef(
-    'assets/icons/note_editor/control.svg',
+    'assets/icons/piano-roll/control.svg',
   );
-  static IconDef play = const IconDef('assets/icons/main_toolbar/play.svg');
-  static IconDef plugin = const IconDef('assets/icons_old/plugin.svg');
+  static IconDef play = const IconDef('assets/icons/playback/play.svg');
+  static IconDef record = const IconDef('assets/icons/playback/record.svg');
+  static IconDef plugin = const IconDef('assets/icons/general/plugin.svg');
   static IconDef projectPanel = const IconDef(
-    'assets/icons_old/bottom_bar/project_panel_2.svg',
+    'assets/icons/panels/project.svg',
   );
   static IconDef redo = const IconDef('assets/icons/edit/redo.svg');
   static IconDef restoreDown = const IconDef(
-    'assets/icons/small/restore_down.svg',
+    'assets/icons/window/restore-down.svg',
   );
-  static IconDef save = const IconDef('assets/icons_old/edit/save.svg');
-  static IconDef solo = const IconDef('assets/icons/arranger/solo.svg');
-  static IconDef stop = const IconDef('assets/icons/main_toolbar/stop.svg');
+  static IconDef save = const IconDef('assets/icons/edit/save.svg');
+  static IconDef solo = const IconDef('assets/icons/mixer/solo.svg');
+  static IconDef stop = const IconDef('assets/icons/playback/stop.svg');
   static IconDef undo = const IconDef('assets/icons/edit/undo.svg');
   static IconDef arrowDownThin = const IconDef(
-    'assets/icons/small/arrow_down.svg',
+    'assets/icons/arrows/down-small.svg',
   );
   static _ScrollbarIcons scrollbar = _ScrollbarIcons();
   static _TrackIcons track = _TrackIcons();
@@ -103,16 +99,10 @@ class Icons {
 }
 
 class _ScrollbarIcons {
-  IconDef arrowDown = const IconDef(
-    'assets/icons_old/scrollbar/arrow_down.svg',
-  );
-  IconDef arrowLeft = const IconDef(
-    'assets/icons_old/scrollbar/arrow_left.svg',
-  );
-  IconDef arrowRight = const IconDef(
-    'assets/icons_old/scrollbar/arrow_right.svg',
-  );
-  IconDef arrowUp = const IconDef('assets/icons_old/scrollbar/arrow_up.svg');
+  IconDef arrowDown = const IconDef('assets/icons/arrows/down.svg');
+  IconDef arrowLeft = const IconDef('assets/icons/arrows/left.svg');
+  IconDef arrowRight = const IconDef('assets/icons/arrows/right.svg');
+  IconDef arrowUp = const IconDef('assets/icons/arrows/up.svg');
 }
 
 class _TrackIcons {
@@ -134,9 +124,7 @@ class _TrackIcons {
   IconDef folderOpen = const IconDef('assets/icons/track/folder-open.svg');
   IconDef instrument = const IconDef('assets/icons/track/instrument.svg');
   IconDef master = const IconDef('assets/icons/track/master.svg');
-  IconDef showSendTracks = const IconDef(
-    'assets/icons/track/show-send-tracks.svg',
-  );
+  IconDef showSendTracks = const IconDef('assets/icons/track/fx.svg');
 }
 
 class _ToolIcons {
@@ -148,20 +136,28 @@ class _ToolIcons {
 
 class _MainToolbarIcons {
   IconDef typingKeyboardToPianoKeyboard = const IconDef(
-    'assets/icons_old/main_toolbar/typing_keyboard_to_piano_keyboard.svg',
+    'assets/icons/playback/piano-keyboard.svg',
   );
 }
 
 class SvgIcon extends StatelessWidget {
   final IconDef icon;
   final Color color;
+  final double? size;
 
-  const SvgIcon({super.key, required this.icon, required this.color});
+  const SvgIcon({
+    super.key,
+    required this.icon,
+    required this.color,
+    this.size,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SvgPicture.asset(
       icon.path,
+      width: size,
+      height: size,
       colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
     );
   }

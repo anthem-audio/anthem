@@ -179,7 +179,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
           padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
             width: 32,
-            height: 20,
+            height: 32,
             contentPadding: const EdgeInsets.all(2),
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
@@ -195,7 +195,7 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
           padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
             width: 32,
-            height: 20,
+            height: 32,
             contentPadding: const EdgeInsets.all(2),
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
@@ -215,13 +215,13 @@ class _WindowButtonsState extends State<_WindowButtons> with WindowListener {
           padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Button(
             width: 32,
-            height: 20,
+            height: 32,
             contentPadding: const EdgeInsets.all(2),
             borderRadius: BorderRadius.circular(4),
             variant: ButtonVariant.ghost,
             hideBorder: true,
             backgroundHover: Color(0xFFBA322B),
-            icon: Icons.close,
+            icon: Icons.closeWindow,
             onPress: () {
               windowManager.close();
             },

@@ -119,15 +119,16 @@ class _PlayStopButtonGroup extends StatelessObserverWidget {
   @override
   Widget build(BuildContext context) {
     final projectModel = Provider.of<ProjectModel>(context);
+    const iconPadding = EdgeInsets.symmetric(horizontal: 3, vertical: 1);
 
     return ButtonGroup(
       children: [
         Button(
           icon: Icons.play,
           toggleState: projectModel.sequence.isPlaying,
-          height: 24,
-          width: 24,
-          contentPadding: EdgeInsets.all(3),
+          height: 22,
+          width: 26,
+          contentPadding: iconPadding,
           hint: [HintSection('click', 'Play')],
           onPress: () {
             if (projectModel.engineState != EngineState.running) {
@@ -139,9 +140,9 @@ class _PlayStopButtonGroup extends StatelessObserverWidget {
         ),
         Button(
           icon: Icons.stop,
-          height: 24,
-          width: 24,
-          contentPadding: EdgeInsets.all(3),
+          height: 22,
+          width: 26,
+          contentPadding: iconPadding,
           hint: [HintSection('click', 'Stop')],
           onPress: () {
             projectModel.sequence.isPlaying = false;

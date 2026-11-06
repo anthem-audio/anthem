@@ -20,10 +20,7 @@
 import 'package:anthem/widgets/editors/arranger/helpers.dart';
 import 'package:flutter/widgets.dart';
 
-const trackHeaderContentPadding = EdgeInsets.symmetric(
-  horizontal: 4,
-  vertical: 4,
-);
+const trackHeaderContentPadding = EdgeInsets.fromLTRB(8, 4, 4, 4);
 
 const _compactContentHeight = 20.0;
 const _mediumRegularContentHeight = 44.0;

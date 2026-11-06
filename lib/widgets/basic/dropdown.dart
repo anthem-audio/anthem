@@ -197,6 +197,7 @@ class _DropdownState extends State<Dropdown> {
                       child: SvgIcon(
                         icon: selectedItem.icon!,
                         color: contentColor,
+                        size: 16,
                       ),
                     ),
                   if (text != null) const SizedBox(width: 2),
@@ -205,7 +206,7 @@ class _DropdownState extends State<Dropdown> {
                   else
                     ?textWidget,
                   if (!widget.horizontalExpand) SizedBox(width: 4),
-                  SvgIcon(icon: Icons.arrowDown, color: contentColor),
+                  SvgIcon(icon: Icons.arrowDown, color: contentColor, size: 12),
                   SizedBox(width: 2),
                 ],
               );

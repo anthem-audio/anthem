@@ -102,7 +102,7 @@ class TrackColorIndicator extends StatelessObserverWidget {
                   ),
                 ),
                 Positioned(
-                  left: trackHeaderContentPadding.left,
+                  left: 4,
                   top: top,
                   child: Row(
                     spacing: _buttonSpacing,

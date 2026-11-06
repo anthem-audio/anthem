@@ -548,6 +548,13 @@ class _TrackDbMeter extends StatelessWidget {
 class _TrackControlButtons extends StatelessWidget {
   const _TrackControlButtons();
 
+  static final _theme = getButtonTheme(.main).withColors(
+    background: const Color(0xFF696969),
+    backgroundHover: const Color(0xFF6F6F6F),
+    backgroundPress: const Color(0xFF555555),
+    foreground: const Color(0xFFE3E3E3),
+  );
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -560,29 +567,25 @@ class _TrackControlButtons extends StatelessWidget {
             children: [
               Button(
                 consumePress: true,
-                contentBuilder: (context, color) {
-                  return Center(
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: .circular(5),
-                      ),
-                    ),
-                  );
-                },
+                theme: _theme,
+                contentPadding: EdgeInsets.zero,
+                contentBuilder: (context, color) => FittedBox(
+                  // Figma centers the 20 px canvas in the 18 px group
+                  // interior. Only transparent padding extends outside.
+                  fit: BoxFit.none,
+                  child: SvgIcon(icon: Icons.record, color: color, size: 20),
+                ),
               ),
-              Button(
-                consumePress: true,
-                contentPadding: .all(4),
-                icon: Icons.solo,
-              ),
-              Button(
-                consumePress: true,
-                contentPadding: .all(4),
-                icon: Icons.mute,
-              ),
+              for (final icon in [Icons.solo, Icons.mute])
+                Button(
+                  consumePress: true,
+                  theme: _theme,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 4.5,
+                  ),
+                  icon: icon,
+                ),
             ],
           ),
         ),
