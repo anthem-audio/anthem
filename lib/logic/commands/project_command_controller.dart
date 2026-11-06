@@ -29,6 +29,7 @@ import 'journal_commands.dart';
 ///
 /// Commands run in submission order. When no operation is pending, synchronous
 /// commands run immediately. Discarding a command releases its resources.
+/// Execute and push take ownership of submitted commands, including rejection.
 class ProjectCommandController {
   final ProjectModel _project;
   final List<Command> _commands = [];
@@ -44,10 +45,17 @@ class ProjectCommandController {
   /// Waits for queued command work, including failed operations, to finish.
   Future<void> waitForPendingCommands() => _pendingCommands ?? Future.value();
 
-  Future<void> _runCommand(FutureOr<void> Function() operation) {
-    if (_closed) throw StateError('Command history is closed.');
+  Future<void> _runCommand(
+    FutureOr<void> Function() operation, {
+    Command? command,
+  }) {
+    if (_closed) {
+      command?.dispose();
+      throw StateError('Command history is closed.');
+    }
     FutureOr<void> run() {
       if (_disposed) {
+        command?.dispose();
         throw StateError('The command controller has been disposed.');
       }
       return runInAction(operation);
@@ -98,7 +106,7 @@ class ProjectCommandController {
       command.dispose();
       rethrow;
     }
-  });
+  }, command: command);
 
   /// Adds an already applied command to history, or executes it first.
   Future<void> push(Command command, {bool execute = false}) {
@@ -106,7 +114,7 @@ class ProjectCommandController {
     return _runCommand(() {
       _pushCommand(command);
       _project.isDirty = true;
-    });
+    }, command: command);
   }
 
   void _pushCommand(Command command) {

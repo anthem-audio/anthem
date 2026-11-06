@@ -65,11 +65,23 @@ Anthem captures state only after initialization succeeds. If a processor cannot 
 
 ### Retained snapshots and live replacement
 
-`ProcessingGraphController.saveSnapshot(nodeId)` returns a `ProcessorSnapshot`. The caller owns its retention and releases it with `dispose()`. Saving does not change the node's project-owned snapshot reference. The handle remains usable across engine restarts while its project stays open. It currently belongs to the same processor model instance; preset identity, interchange and undo commands are later layers.
+`ProcessingGraphController.saveSnapshot(nodeId)` returns a `ProcessorSnapshot`. The caller owns its retention and releases it with `dispose()`. Saving does not change the node's project-owned snapshot reference. The handle remains usable across engine restarts while its project stays open. It currently belongs to the same processor model instance; preset identity and interchange are later layers.
 
 The engine's save response hands its retention token to the UI; the engine must not use or release that token afterward. The UI calls `adoptReturnedFileRetention` to replace the temporary engine-session claim with a caller-owned retention. If the response is never received or adopted, engine-session cleanup releases the temporary claim. Call this helper only for tokens explicitly handed to the UI; it must not revoke claims still in use by the engine.
 
 `loadSnapshot(nodeId, snapshot)` borrows the handle and can be called repeatedly. It acquires its own claim before waiting, so the caller can dispose its handle while loading. Opaque state stays in files and never crosses IPC.
+
+`replaceSnapshot(nodeId, snapshot)` performs the same load and returns an independently owned handle to the previous state. It reuses the recovery snapshot already captured inside the load operation, so capture and replacement share one queue turn. Callers dispose that handle when finished. `loadSnapshot` is the convenience form that disposes it automatically. `ProcessorSnapshot.retain()` creates another independently owned handle to the same file without copying its bytes.
+
+For an undoable load, execute a `LoadProcessorSnapshotCommand` through the project:
+
+```dart
+await project.execute(
+  LoadProcessorSnapshotCommand(nodeId: nodeId, snapshot: snapshot),
+);
+```
+
+The command retains its target at construction, so the caller can dispose its handle independently. On first execution, it keeps the previous state returned by `replaceSnapshot`; undo loads that state and redo loads the original target. Removing the command from history releases both handles. The node's current project-owned state remains independently retained. Failed execution does not add a history entry; failed undo or redo keeps its position for retry. Recovery and engine synchronization remain in the controller.
 
 Live loading proceeds as follows:
 

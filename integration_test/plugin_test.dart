@@ -31,6 +31,7 @@ import 'package:anthem/logic/project_file/codec.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as path;
 import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/logic/commands/processor_state_commands.dart';
 import 'package:anthem/logic/commands/track_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
@@ -649,78 +650,121 @@ void main() {
     },
   );
 
-  testAppScenario(
-    'retained VST snapshots restore live parameters and private state',
-    (tester) async {
-      final fixtures = loadTestPlugins();
-      final files = await TestPluginFileSelector.install(
-        'plugin-snapshot-load',
-        fixtures,
-      );
-      final session = AppTestSession(tester, name: 'plugin-snapshot-load');
-      await session.start();
-      final project = session.project;
-      final trackId = project.trackOrder.first;
-      await startOfflinePluginProcessing(session);
-      await waitForFuture(
-        tester,
-        session.services.deviceController.addDevice(
-          trackId: trackId,
-          type: DeviceType.toneGenerator,
-        ),
-        conditionDescription: 'add tone source for snapshot test',
-        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
-        checkHealth: session.checkEngine,
-      );
-      await publishPluginGraph(session);
-      final effect = await _addPlugin(
-        session,
-        files,
-        trackId,
-        fixtures.effect,
-        instrument: false,
-      );
-      final api = session.services.processingGraphController;
-      final baseline = await _captureStateHash(session, effect.node);
-      final baseRms = await _renderRms(session, files, 1);
-      expect(baseRms, greaterThan(0.001));
-      final snapshot = await waitForFuture(
-        tester,
-        api.saveSnapshot(effect.node.id),
-        conditionDescription: 'save independently retained VST state',
-        collectTimeoutDiagnostics: () => session.sessionDiagnostics,
-        checkHealth: session.checkEngine,
-      );
-      addTearDown(snapshot.dispose);
-      for (var iteration = 0; iteration < 2; ++iteration) {
-        await _setParameter(session, effect.node, 'Gain', 0.75);
-        expect(await _captureStateHash(session, effect.node), isNot(baseline));
-        expect(
-          await _renderRms(session, files, 2 + iteration * 2) / baseRms,
-          closeTo(3, 0.02),
+  for (final undoable in [false, true]) {
+    final scenarioName = undoable
+        ? 'plugin-snapshot-undo'
+        : 'plugin-snapshot-load';
+    testAppScenario(
+      undoable
+          ? 'undoable VST snapshots restore live parameters and private state'
+          : 'retained VST snapshots restore live parameters and private state',
+      (tester) async {
+        final fixtures = loadTestPlugins();
+        final files = await TestPluginFileSelector.install(
+          scenarioName,
+          fixtures,
         );
+        final session = AppTestSession(tester, name: scenarioName);
+        await session.start();
+        final project = session.project;
+        final trackId = project.trackOrder.first;
+        await startOfflinePluginProcessing(session);
         await waitForFuture(
           tester,
-          api.loadSnapshot(effect.node.id, snapshot),
-          conditionDescription:
-              'replace live VST state and reconcile its graph',
+          session.services.deviceController.addDevice(
+            trackId: trackId,
+            type: DeviceType.toneGenerator,
+          ),
+          conditionDescription: 'add tone source for snapshot test',
           collectTimeoutDiagnostics: () => session.sessionDiagnostics,
           checkHealth: session.checkEngine,
         );
-        expect(_parameter(effect.node, 'Gain').parameterValue, 0.25);
-        expect(
-          await _captureStateHash(session, effect.node),
-          baseline,
-          reason: 'Loading must restore the private revision counter as well as values.',
+        await publishPluginGraph(session);
+        final effect = await _addPlugin(
+          session,
+          files,
+          trackId,
+          fixtures.effect,
+          instrument: false,
         );
-        expect(
-          await _renderRms(session, files, 3 + iteration * 2) / baseRms,
-          closeTo(1, 0.01),
+        final api = session.services.processingGraphController;
+        final baseline = await _captureStateHash(session, effect.node);
+        final baseRms = await _renderRms(session, files, 1);
+        expect(baseRms, greaterThan(0.001));
+        final snapshot = await waitForFuture(
+          tester,
+          api.saveSnapshot(effect.node.id),
+          conditionDescription: 'save independently retained VST state',
+          collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+          checkHealth: session.checkEngine,
         );
-        expect(snapshot.isDisposed, isFalse);
-      }
-    },
-  );
+        addTearDown(snapshot.dispose);
+        for (var iteration = 0; iteration < 2; ++iteration) {
+          await _setParameter(session, effect.node, 'Gain', 0.75);
+          final changed = await _captureStateHash(session, effect.node);
+          expect(changed, isNot(baseline));
+          expect(
+            await _renderRms(session, files, 2 + iteration * 2) / baseRms,
+            closeTo(3, 0.02),
+          );
+          await waitForFuture(
+            tester,
+            undoable
+                ? project.execute(
+                    LoadProcessorSnapshotCommand(
+                      nodeId: effect.node.id,
+                      snapshot: snapshot,
+                    ),
+                  )
+                : api.loadSnapshot(effect.node.id, snapshot),
+            conditionDescription:
+                'replace live VST state and reconcile its graph',
+            collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+            checkHealth: session.checkEngine,
+          );
+          expect(_parameter(effect.node, 'Gain').parameterValue, 0.25);
+          expect(
+            await _captureStateHash(session, effect.node),
+            baseline,
+            reason: 'Loading must restore the private revision counter as well as values.',
+          );
+          expect(
+            await _renderRms(session, files, 3 + iteration * 2) / baseRms,
+            closeTo(1, 0.01),
+          );
+          if (undoable) {
+            await waitForFuture(
+              tester,
+              project.undo(),
+              conditionDescription: 'undo the VST snapshot load',
+              collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+              checkHealth: session.checkEngine,
+            );
+            expect(_parameter(effect.node, 'Gain').parameterValue, 0.75);
+            expect(await _captureStateHash(session, effect.node), changed);
+            expect(
+              await _renderRms(session, files, 10 + iteration * 2) / baseRms,
+              closeTo(3, 0.02),
+            );
+            await waitForFuture(
+              tester,
+              project.redo(),
+              conditionDescription: 'redo the VST snapshot load',
+              collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+              checkHealth: session.checkEngine,
+            );
+            expect(_parameter(effect.node, 'Gain').parameterValue, 0.25);
+            expect(await _captureStateHash(session, effect.node), baseline);
+            expect(
+              await _renderRms(session, files, 11 + iteration * 2) / baseRms,
+              closeTo(1, 0.01),
+            );
+          }
+          expect(snapshot.isDisposed, isFalse);
+        }
+      },
+    );
+  }
 
   testAppScenario('save and reopen actual VST3 parameters and opaque state', (
     tester,

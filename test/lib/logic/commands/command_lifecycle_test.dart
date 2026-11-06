@@ -281,4 +281,16 @@ void main() {
     expect(originalCommand.rollbacks, 1);
     expect(reopenedCommand.rollbacks, 1);
   });
+  test(
+    'closed history disposes commands rejected by execute and push',
+    () async {
+      await project.dispose();
+      final execution = _Command();
+      expect(() => project.execute(execution), throwsStateError);
+      expect(execution.disposals, 1);
+      final pushed = _Command();
+      expect(() => project.push(pushed), throwsStateError);
+      expect(pushed.disposals, 1);
+    },
+  );
 }

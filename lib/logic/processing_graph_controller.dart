@@ -46,6 +46,20 @@ class ProcessorSnapshot {
   );
 
   bool get isDisposed => _retention.isDisposed;
+
+  /// Returns an independently owned handle to the same snapshot file.
+  /// Dispose each handle separately; retaining does not copy the file's bytes.
+  ProcessorSnapshot retain() {
+    if (isDisposed) throw StateError('The snapshot has been disposed.');
+    final storage = ServiceRegistry.forProject(_project.id).projectStorage;
+    return ProcessorSnapshot._(
+      _project,
+      _processor,
+      relativePath,
+      storage.retainAssets([relativePath]),
+    );
+  }
+
   void dispose() => _retention.dispose();
 }
 
@@ -238,7 +252,18 @@ class ProcessingGraphController implements DisposableService {
   /// snapshot becomes the node's saved state before replacement starts. Failed
   /// loads recover that state; unrecoverable failures leave the node unavailable
   /// until the engine is restarted. No undo command is created here.
-  Future<void> loadSnapshot(Id nodeId, ProcessorSnapshot snapshot) {
+  Future<void> loadSnapshot(Id nodeId, ProcessorSnapshot snapshot) =>
+      replaceSnapshot(nodeId, snapshot).then((previous) => previous.dispose());
+
+  /// Loads [snapshot] and returns an owned snapshot of the previous live state.
+  /// This is the recovery snapshot already captured before replacement. Capture
+  /// and loading share one queue turn, so other state operations cannot run in
+  /// between. Dispose the returned handle when it is no longer needed.
+  /// Failures recover as in [loadSnapshot] and return no handle.
+  Future<ProcessorSnapshot> replaceSnapshot(
+    Id nodeId,
+    ProcessorSnapshot snapshot,
+  ) {
     final node = _engine.project.processingGraph.nodes[nodeId];
     if (node == null ||
         !identical(snapshot._project, project) ||
@@ -261,14 +286,14 @@ class ProcessingGraphController implements DisposableService {
       node.beginProcessorStateOperation();
       try {
         await _engine.processingGraphApi.waitForPendingParameterEdits(nodeId);
-        return await _loadSnapshot(node, snapshot, borrowed, session);
+        return await _replaceSnapshot(node, snapshot, borrowed, session);
       } finally {
         node.finishProcessorStateOperation();
       }
     }).whenComplete(borrowed.dispose);
   }
 
-  Future<void> _loadSnapshot(
+  Future<ProcessorSnapshot> _replaceSnapshot(
     NodeModel node,
     ProcessorSnapshot snapshot,
     ProjectAssetRetention borrowed,
@@ -362,6 +387,7 @@ class ProcessingGraphController implements DisposableService {
       }
       if (response.error != null) throw StateError(response.error!);
       node.adoptProcessorState(snapshot.relativePath);
+      return recovery.retain();
     } catch (error) {
       if (!stateAvailable &&
           error is TimeoutException &&

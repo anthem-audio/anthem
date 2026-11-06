@@ -31,6 +31,8 @@ import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/logic/commands/processor_state_commands.dart';
+import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
@@ -39,6 +41,13 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+
+class _NoopCommand extends Command {
+  @override
+  void execute(ProjectModel project) {}
+  @override
+  void rollback(ProjectModel project) {}
+}
 
 class _StorageConnector extends EngineConnector {
   bool dropNextWriteReply = false;
@@ -260,6 +269,139 @@ void main() {
     expect(snapshot.isDisposed, isTrue);
     expect(() => api.loadSnapshot(node.id, snapshot), throwsStateError);
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test(
+    'snapshot commands support undo and redo across engine restarts',
+    () async {
+      final fixture = await _StorageFixture.create();
+      await initializeSnapshots(fixture);
+      final project = fixture.project;
+      final parameter = ServiceRegistry.forProject(project.id)
+          .parameterController;
+      final node = project
+          .tracks[project.trackOrder.first]!
+          .requireProcessing
+          .utilityNode!;
+      final port = node.getPortById(UtilityProcessorModel.gainPortId);
+      await parameter.setValue(node: node, port: port, value: 0.3);
+      final target = await fixture.graph.saveSnapshot(node.id);
+      final targetPath = target.relativePath;
+      final load = LoadProcessorSnapshotCommand(
+        nodeId: node.id,
+        snapshot: target,
+      );
+      target.dispose();
+      await parameter.setValue(node: node, port: port, value: 0.7);
+      final reset = port.parameterResetTarget;
+      final captures = fixture.connector.sentMessages
+          .whereType<SaveProcessorSnapshotRequest>()
+          .length;
+      await project.execute(load);
+      expect(
+        fixture.connector.sentMessages
+            .whereType<SaveProcessorSnapshotRequest>()
+            .length,
+        captures + 1,
+        reason: 'Undo uses the recovery capture rather than capturing twice.',
+      );
+      for (var i = 0; i < 2; i++) {
+        expect(port.parameterValue, closeTo(0.3, 0.0001));
+        expect(
+          fixture.storage.resolveRetention(node.processorStateRetentionId!),
+          targetPath,
+        );
+        await project.undo();
+        expect(port.parameterValue, closeTo(0.7, 0.0001));
+        await project.redo();
+      }
+      await fixture.engine.stop();
+      await initializeSnapshots(fixture);
+      await project.undo();
+      expect(port.parameterValue, closeTo(0.7, 0.0001));
+      await project.redo();
+      expect(port.parameterValue, closeTo(0.3, 0.0001));
+      expect(port.parameterResetTarget, reset);
+    },
+  );
+
+  test('discarding snapshot redo history releases its file and preserves the project state', () async {
+    final fixture = await _StorageFixture.create();
+    await initializeSnapshots(fixture);
+    final project = fixture.project;
+    final parameter = ServiceRegistry.forProject(project.id)
+        .parameterController;
+    final node = project
+        .tracks[project.trackOrder.first]!
+        .requireProcessing
+        .utilityNode!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    await parameter.setValue(node: node, port: port, value: 0.3);
+    final target = await fixture.graph.saveSnapshot(node.id);
+    final targetPath = target.relativePath;
+    final load = LoadProcessorSnapshotCommand(
+      nodeId: node.id,
+      snapshot: target,
+    );
+    target.dispose();
+    await parameter.setValue(node: node, port: port, value: 0.7);
+    await project.execute(load);
+    await project.undo();
+    final beforePath = fixture.storage.resolveRetention(
+      node.processorStateRetentionId!,
+    );
+    expect(beforePath, isNot(targetPath));
+    await fixture.engine.stop();
+    final store = await fixture.storage.assetStore;
+    final scope = store.openScope();
+    addTearDown(() => store.closeScope(scope));
+    expect(() => store.delete(scope, targetPath), throwsStateError);
+    await project.execute(_NoopCommand());
+    await store.delete(scope, targetPath);
+    expect(() => store.delete(scope, beforePath), throwsStateError);
+  });
+
+  test('failed snapshot commands preserve live state and the previous history entry', () async {
+    final fixture = await _StorageFixture.create();
+    await initializeSnapshots(fixture);
+    final project = fixture.project;
+    final parameter = ServiceRegistry.forProject(project.id)
+        .parameterController;
+    final node = project
+        .tracks[project.trackOrder.first]!
+        .requireProcessing
+        .utilityNode!;
+    final port = node.getPortById(UtilityProcessorModel.gainPortId);
+    await parameter.setValue(node: node, port: port, value: 0.3);
+    final target = await fixture.graph.saveSnapshot(node.id);
+    final targetPath = target.relativePath;
+    final load = LoadProcessorSnapshotCommand(
+      nodeId: node.id,
+      snapshot: target,
+    );
+    target.dispose();
+    await parameter.setValue(node: node, port: port, value: 0.6);
+    await project.execute(
+      SetParameterValueCommand(
+        nodeId: node.id,
+        controlPortId: port.id,
+        oldValue: 0.6,
+        newValue: 0.7,
+      ),
+    );
+    final store = await fixture.storage.assetStore;
+    final scope = store.openScope();
+    addTearDown(() => store.closeScope(scope));
+    final read = store.acquireRead(scope, targetPath);
+    await File(read.absolutePath).writeAsString('invalid');
+    store.releaseRead(scope, read.token);
+    await expectLater(project.execute(load), throwsStateError);
+    expect(port.parameterValue, closeTo(0.7, 0.0001));
+    expect(node.canEditParameters, isTrue);
+    await project.undo();
+    expect(port.parameterValue, closeTo(0.6, 0.0001));
+    await fixture.engine.stop();
+    await store.delete(scope, targetPath);
+  });
 
   test('snapshot replacement excludes publication and other-node captures through completion', () async {
     final fixture = await _StorageFixture.create();
