@@ -112,6 +112,11 @@ class ProjectStorage {
     }
   }
 
+  /// Manages asset claims for the open project, independent snapshot handles,
+  /// undo history, and saved documents.
+  ///
+  /// Its `snapshot()` method captures only current-project references, excluding
+  /// files held solely by history, independent handles, or saved documents.
   Future<ProjectAssetReferences> get references async {
     await assetStore;
     return _references!;

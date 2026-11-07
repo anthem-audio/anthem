@@ -147,6 +147,21 @@ Project files store the graph's connections and each port's list of connection I
 
 ## Project file compatibility
 
+Desktop projects save as a directory containing an `.anthem` document and its
+referenced assets. **Export to zip...** captures current processor state and
+packages a document named `project.anthem` with those assets at the ZIP root,
+preserving relative paths. It excludes caches and files retained only by undo
+history or independent snapshot handles. Export leaves the save location and
+unsaved-change status unchanged.
+
+The normal project picker also accepts ZIP files containing one root-level
+`.anthem` document. Import extracts into a fresh temporary directory and loads
+through the normal migration and storage paths. It opens an unsaved copy with a
+new project ID, so the source can remain open. A later Save creates a project
+folder; closing discards the temporary directory. Failed imports remove their
+temporary files and leave the ZIP unchanged. ZIP support currently uses desktop
+storage; browser storage and web import/export remain subsequent work.
+
 Loading a file saved by an older Anthem version requires a migration before constructing the model. The project loading workflow calls [`migrateProjectJson`](../../lib/logic/project_file/migrations/migrate_project_json.dart) to bring the JSON into the current format. Model `fromJson` methods then read that format without converting older schemas.
 
 For standalone prealpha.1 files, the migration writes common snapshots containing saved parameter values and any embedded plugin state into a temporary directory. It replaces the JSON blobs with retention IDs and a serialized map of those IDs to relative file paths. It uses the historical format directly, before the current model or asset store exists. After migration, normal project storage opens the prepared directory. A failed import deletes that directory and preserves the original file.

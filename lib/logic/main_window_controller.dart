@@ -21,6 +21,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:anthem/helpers/logging/anthem_logging.dart';
+import 'package:anthem/logic/project_file/archive.dart';
 import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/project_file/directory.dart';
 import 'package:anthem/logic/project_file/errors.dart';
@@ -44,8 +45,9 @@ import 'package:path/path.dart' as paths;
 final _log = Logger('main_window_controller');
 const _projectFileType = XTypeGroup(
   label: 'Anthem projects',
-  extensions: ['anthem'],
+  extensions: ['anthem', 'zip'],
 );
+const _projectZipType = XTypeGroup(label: 'ZIP archives', extensions: ['zip']);
 
 @visibleForTesting
 String projectFileLoadErrorMarkdown(Object error) {
@@ -219,20 +221,28 @@ class MainWindowController {
     final ProjectModel project;
     ProjectStorage? storage;
     Directory? temporaryDirectory;
+    final isArchive = paths.extension(file.name).toLowerCase() == '.zip';
     final bool needsFolderSave;
+    final bool isLegacy;
 
     try {
+      var documentPath = file.path;
+      if (isArchive) {
+        final extracted = await extractProjectArchive(file.path);
+        temporaryDirectory = Directory(extracted.rootDirectory);
+        documentPath = extracted.documentPath;
+      }
       final projectJson = kIsWeb
           ? await decodeProjectFileBytes(await file.readAsBytes())
-          : await readProjectFile(file.path);
+          : await readProjectFile(documentPath);
       final savedVersion = readSavedProjectVersion(projectJson);
       // Projects used a single file before prealpha.2.
-      needsFolderSave =
-          savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2');
+      isLegacy = savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2');
+      needsFolderSave = isArchive || isLegacy;
       if (kIsWeb && !needsFolderSave) {
         throw const ProjectDirectoryRequiresDesktopException();
       }
-      if (!kIsWeb && needsFolderSave) {
+      if (!kIsWeb && needsFolderSave && temporaryDirectory == null) {
         temporaryDirectory = await Directory.systemTemp.createTemp(
           'anthem_project_',
         );
@@ -243,6 +253,8 @@ class MainWindowController {
             ? null
             : temporaryDirectory?.path ?? paths.dirname(file.path),
       );
+      // An archive opens as an unsaved copy, including alongside its source.
+      if (isArchive) projectJson['id'] = getProjectId();
       final loaded = ProjectModel.fromJson(
         projectJson,
         enginePathOverride: engineExecutable,
@@ -295,7 +307,7 @@ class MainWindowController {
       startAudio: startAudio,
       storage: storage,
     );
-    if (needsFolderSave && !kIsWeb) {
+    if (isLegacy && !isArchive && !kIsWeb) {
       dialogController.showMarkdownDialog(
         title: 'Save this project as a folder',
         markdown:
@@ -410,10 +422,7 @@ class MainWindowController {
       project.isDirty = false;
       return true;
     } else {
-      await Future.wait([
-        for (final node in project.processingGraph.nodes.values.toList())
-          node.updateStateFromEngine(),
-      ]);
+      await _captureProjectState(project);
 
       final storage = ServiceRegistry.forProject(projectId).projectStorage;
       final result = await writeProjectDirectory(
@@ -426,6 +435,49 @@ class MainWindowController {
       project.isDirty = result.changedDuringSave;
       project.filePath = path;
       return true;
+    }
+  }
+
+  Future<void> _captureProjectState(ProjectModel project) async {
+    await project.waitForPendingCommands();
+    await Future.wait([
+      for (final node in project.processingGraph.nodes.values.toList())
+        node.updateStateFromEngine(),
+    ]);
+  }
+
+  /// Exports a portable copy without changing the project's normal save target.
+  Future<bool> exportProjectZip(
+    ProjectId projectId, {
+    required DialogController dialogController,
+  }) async {
+    if (kIsWeb) return false;
+    final project = AnthemStore.instance.projects[projectId]!;
+    var archivePath = (await getSaveLocation(
+      suggestedName: '${project.name}.zip',
+      confirmButtonText: 'Export',
+      acceptedTypeGroups: [_projectZipType],
+    ))?.path;
+    if (archivePath == null) return false;
+    if (!archivePath.toLowerCase().endsWith('.zip')) archivePath += '.zip';
+    try {
+      await _captureProjectState(project);
+      await writeProjectArchive(
+        archivePath,
+        project,
+        ServiceRegistry.forProject(projectId).projectStorage,
+      );
+      return true;
+    } catch (error, stackTrace) {
+      _log.warning('Could not export project ZIP.', error, stackTrace);
+      dialogController.showMarkdownDialog(
+        title: 'Export to zip',
+        markdown:
+            'Could not export project:\n\n'
+            '${escapeDialogMarkdown(error.toString())}',
+        buttons: [DialogButton.ok()],
+      );
+      return false;
     }
   }
 
