@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2025 Joshua Wade
+  Copyright (C) 2025 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -21,7 +21,7 @@ import 'dart:io';
 
 import 'package:build/build.dart';
 
-/// Generates the path to the debug build of the engine, for local development.
+/// Generates the path to the staged desktop engine for local development.
 ///
 /// This is done with a code generator so that it can be cross-platform. dart:io
 /// has a property at `Platform.script` that gives the location to main.dart and
@@ -42,7 +42,7 @@ class DebugEnginePathGeneratorBuilder extends Builder {
     final inputId = buildStep.inputId;
     final outputId = inputId.changeExtension('.debug_engine_path.g.dart');
 
-    // Get the path where the debug engine will be located after build
+    // Start from the Dart source and find the checkout root.
     var uri = Uri.file(buildStep.inputId.path).resolve('../');
 
     // Traverse up the directory structure until we find a pubspec.yaml file
@@ -53,12 +53,9 @@ class DebugEnginePathGeneratorBuilder extends Builder {
       uri = uri.resolve('../');
     }
 
-    // "uri" is now the root of the project
-    final projectRoot = uri;
-
-    // Create the path to the debug engine executable
-    var enginePath = projectRoot.resolve(
-      './engine/build/AnthemEngine_artefacts/Debug/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
+    // Each successful desktop engine build stages its executable here.
+    final enginePath = uri.resolve(
+      'assets/engine/AnthemEngine${Platform.isWindows ? '.exe' : ''}',
     );
 
     // Write the path to the output file

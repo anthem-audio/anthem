@@ -56,6 +56,13 @@ class _BuildEngineCommand extends Command<dynamic> {
   String get description => 'Builds the Anthem engine.';
 
   _BuildEngineCommand() {
+    argParser.addOption(
+      'backend',
+      allowed: ['cpp', 'rust'],
+      defaultsTo: 'cpp',
+      help: 'Engine backend to build.',
+    );
+
     argParser.addFlag(
       'release',
       abbr: 'r',
@@ -79,9 +86,7 @@ class _BuildEngineCommand extends Command<dynamic> {
     argParser.addFlag(
       'wasm',
       defaultsTo: false,
-      help:
-          'Builds the engine with a WebAssembly target, and copies the output to the Flutter web directory. '
-          'This is only tested on Linux, though it is likely also possible on macOS. Windows users should use WSL2 for this.',
+      help: 'Builds the engine for WebAssembly. Uses Emscripten under WSL2 on Windows.',
     );
 
     argParser.addFlag(
@@ -93,7 +98,7 @@ class _BuildEngineCommand extends Command<dynamic> {
     argParser.addOption(
       'jobs',
       abbr: 'j',
-      help: 'Maximum number of parallel build jobs to pass to CMake. Use 1 for single-threaded compilation.',
+      help: 'Maximum number of parallel build jobs. Use 1 for single-threaded compilation.',
     );
 
     if (Platform.isWindows) {
@@ -129,6 +134,33 @@ class _BuildEngineCommand extends Command<dynamic> {
       return;
     }
 
+    final packageRootPath = getPackageRootPath();
+    if (argResults!['backend'] == 'rust') {
+      if (addressSanitizer || skipConfiguration || useClang) {
+        usageException(
+          '--address-sanitizer, --skip-configuration, and --clang '
+          'apply to the C++ backend.',
+        );
+      }
+
+      if (wasm) {
+        await _buildRustWebEngine(
+          packageRootPath,
+          release: release,
+          jobs: jobs,
+        );
+        return;
+      }
+
+      final engineBinaryPath = await _buildRustEngine(
+        packageRootPath,
+        release: release,
+        jobs: jobs,
+      );
+      await _stageDesktopEngine(packageRootPath, engineBinaryPath);
+      return;
+    }
+
     if (release && addressSanitizer) {
       print(
         Colorize(
@@ -150,7 +182,6 @@ class _BuildEngineCommand extends Command<dynamic> {
     print(Colorize('Building the Anthem engine...\n\n')..lightGreen());
 
     // Check for generated files. If there aren't any, provide an error.
-    final packageRootPath = getPackageRootPath();
     final generatedCppFiles = Directory.fromUri(
       packageRootPath.resolve('engine/src/generated/'),
     ).listSync(recursive: true);
@@ -231,33 +262,126 @@ Some things to keep in mind:
 
       print(Colorize('Copy complete.').lightGreen());
     } else {
-      print(
-        Colorize('Copying engine binary to Flutter assets directory...')
-          ..lightGreen(),
-      );
       final engineBinaryPath = _resolveExistingEngineBinaryLocation(
         buildDirectoryName: buildDirectoryName,
         debug: debug,
       );
-      final flutterAssetsDirPath = packageRootPath.resolve('assets/engine/');
-
-      // Create the engine directory in assets if it doesn't exist
-      final flutterAssetsDir = Directory.fromUri(flutterAssetsDirPath);
-      if (!flutterAssetsDir.existsSync()) {
-        flutterAssetsDir.createSync(recursive: true);
-      }
-
-      // Copy the engine binary to the Flutter assets directory
-      final flutterEngineBinaryPath = flutterAssetsDirPath.resolve(
-        'AnthemEngine${Platform.isWindows ? '.exe' : ''}',
-      );
-      File.fromUri(engineBinaryPath).copySync(
-        flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
-      );
-
-      print(Colorize('Copy complete.').lightGreen());
+      await _stageDesktopEngine(packageRootPath, engineBinaryPath);
     }
   }
+}
+
+Future<void> _buildRustWebEngine(
+  Uri packageRootPath, {
+  required bool release,
+  required int? jobs,
+}) async {
+  final crateDirectory = Directory.fromUri(
+    packageRootPath.resolve('engine-rust/'),
+  );
+  final profile = release ? 'release' : 'debug';
+  final outputDirectory = 'build/rust-web/$profile';
+  final arguments = [
+    'build-web.sh',
+    profile,
+    if (jobs != null) ...['--jobs', '$jobs'],
+  ];
+
+  print(Colorize('Building the Rust engine for WebAssembly...')..lightGreen());
+  if (Platform.isWindows) {
+    await _runInheritedProcess('wsl', [
+      '--cd',
+      crateDirectory.path,
+      '--exec',
+      'bash',
+      '-lc',
+      'exec bash ${arguments.map(_bashQuote).join(' ')}',
+    ]);
+  } else {
+    await _runInheritedProcess(
+      'bash',
+      arguments,
+      workingDirectory: crateDirectory.path,
+    );
+  }
+  print(
+    Colorize('Built the Rust web engine in $outputDirectory')..lightGreen(),
+  );
+}
+
+Future<Uri> _buildRustEngine(
+  Uri packageRootPath, {
+  required bool release,
+  required int? jobs,
+}) async {
+  final cargo = findExecutable('cargo');
+  if (cargo == null) {
+    stderr.writeln('Error: Cargo was not found on PATH.');
+    exit(1);
+  }
+
+  print(Colorize('Building the Rust engine...')..lightGreen());
+  const binaryName = 'anthem-engine';
+  final process = await Process.start(
+    cargo,
+    [
+      'build',
+      '--locked',
+      '--bin',
+      binaryName,
+      '--message-format=json-render-diagnostics',
+      if (release) '--release',
+      if (jobs != null) ...['--jobs', '$jobs'],
+    ],
+    workingDirectory: Directory.fromUri(packageRootPath.resolve('engine-rust/'))
+        .path,
+  );
+
+  final diagnostics = stderr.addStream(process.stderr);
+  String? executable;
+  final messages = process.stdout
+      .transform(utf8.decoder)
+      .transform(const LineSplitter());
+  await for (final message in messages) {
+    if (jsonDecode(message) case {
+      'reason': 'compiler-artifact',
+      'target': {'name': binaryName, 'kind': ['bin']},
+      'executable': final String path,
+    }) {
+      executable = path;
+    }
+  }
+  await diagnostics;
+
+  final buildExitCode = await process.exitCode;
+  if (buildExitCode != 0) exit(buildExitCode);
+  if (executable == null) {
+    stderr.writeln('Error: Cargo did not report a Rust engine executable.');
+    exit(1);
+  }
+  return File(executable).uri;
+}
+
+Future<void> _stageDesktopEngine(
+  Uri packageRootPath,
+  Uri engineBinaryPath,
+) async {
+  final assets = await Directory.fromUri(
+    packageRootPath.resolve('assets/engine/'),
+  ).create(recursive: true);
+  final binaryName = 'AnthemEngine${Platform.isWindows ? '.exe' : ''}';
+  final destination = File.fromUri(assets.uri.resolve(binaryName));
+  final staging = await assets.createTemp('.stage-');
+  try {
+    // Prepare the executable before replacing the previous build.
+    final temporary = File.fromUri(staging.uri.resolve(binaryName));
+    await File.fromUri(engineBinaryPath).copy(temporary.path);
+    await _makeExecutable(temporary.uri);
+    await temporary.rename(destination.path);
+  } finally {
+    await staging.delete(recursive: true);
+  }
+  print(Colorize('Staged engine at ${destination.path}')..lightGreen());
 }
 
 class _BuildTestPluginsCommand extends Command<void> {
@@ -802,24 +926,6 @@ Future<void> _buildCmakeTarget(
   int? jobs,
   List<String> configurationArguments = const [],
 }) async {
-  if (addressSanitizer && !wasm) {
-    print(
-      Colorize(
-        'WARNING: Address sanitizer is enabled. The UI will not automatically run this build. You will need to modify engine_connector.dart to do one of the following:',
-      )..yellow(),
-    );
-    print(
-      Colorize(
-        ' - Use the `./engine/build_asan/...` directory as the engine binary location.',
-      )..yellow(),
-    );
-    print(
-      Colorize(
-        ' - Not actually run the engine binary, but instead just output the arguments to the console, to allow you to start it manually.',
-      )..yellow(),
-    );
-  }
-
   final packageRootPath = getPackageRootPath();
 
   final buildDirPath = packageRootPath.resolve('engine/$buildDirectoryName/');

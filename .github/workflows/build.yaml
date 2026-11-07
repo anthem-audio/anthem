@@ -259,3 +259,20 @@ jobs:
           wrangler pages deploy build/web --project-name=anthem-audio --branch=${{ github.ref_name }} --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+  build-rust-wasm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Emscripten
+        uses: emscripten-core/setup-emsdk@v16
+
+      - name: Install Rust web toolchain
+        run: bash engine-rust/build-web.sh --install-toolchain
+
+      - name: Build the threaded Rust web engine
+        run: bash engine-rust/build-web.sh release

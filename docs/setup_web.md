@@ -26,6 +26,27 @@ You can do this with the following steps:
 2. Run `flutter build web --wasm`.
 3. Run `dart run anthem:cli flutter_run_web_with_proxy --serve-existing-build`.
 
+### Experimental Rust engine
+
+Install Rust with rustup in the same environment as Emscripten. On Windows,
+install Rust inside WSL2 and make sure `cargo` and `emcc` are on the login
+shell's `PATH`. From the repository root, install the pinned nightly and the
+Rust standard library sources that the threaded Emscripten build recompiles.
+
+```sh
+bash engine-rust/build-web.sh --install-toolchain
+```
+
+Build the Rust web engine with the Anthem CLI.
+
+```sh
+dart run anthem:cli engine build --backend rust --debug --wasm
+```
+
+The CLI stages the artifacts in `build/rust-web/debug` or `build/rust-web/release`
+according to the selected profile. Flutter integration requires the Rust module's
+IPC interface.
+
 ### Audio processing
 
 The engine's control threads and its AudioWorklet share WebAssembly memory. The
