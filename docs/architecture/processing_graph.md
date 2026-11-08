@@ -24,7 +24,7 @@ For a new processor, the engine initializes its own factory state. The applicati
 
 Processor snapshots contain the base parameter values and any additional processor-specific state. A VST's private payload comes from JUCE and can include settings that Anthem cannot describe as parameters. Native processors currently need only the common parameter data. The engine writes snapshots to the project asset store; opaque bytes do not pass through the Dart model or IPC.
 
-`NodeModel.processorStateRetentionId` identifies a retention claim on a snapshot file. The asset store exports project-owned claims as a JSON string saved in `ProjectModel.fileRetentions`. Engine storage requests resolve the retention when they need the file. Identical snapshots reuse the previous file path using a cached content fingerprint. A VST's opaque payload may include automated values, so captures at different playback positions can still produce different bytes even when the base settings have not changed.
+`NodeModel.processorStateRetentionId` identifies a retention claim on a snapshot file. Save preparation exports the `ProjectStorage.projectFiles` scope as a JSON string in the saved document's `fileRetentions` field. The live model retains the manifest read during loading; ownership changes are recorded in the scope. Engine storage requests resolve the retention when they need the file. Identical snapshots reuse the previous file path using a cached content fingerprint. A VST's opaque payload may include automated values, so captures at different playback positions can still produce different bytes even when the base settings have not changed.
 
 `NodePortModel.parameterValue` is the UI's last confirmed base value. It remains MobX-observable and can be saved as a preview, but it is excluded from engine model synchronization. Controls send edits through the engine API and display a pending value while waiting for confirmation. The response updates the observable cache with the accepted value. A rejected request clears its pending value. Undo records accepted changes, including the earlier part of a drag whose final request was rejected. Effective automation values use the visualization channel.
 
@@ -146,6 +146,8 @@ Device rack connections are generated from device order and each device's defaul
 Project files store the graph's connections and each port's list of connection IDs. Graph mutation methods update both together. `fromJson` reads those records as stored, assuming they are consistent.
 
 ## Project file compatibility
+
+See [Project File Storage](./project_storage.md) for scope ownership, save preparation, and engine file access.
 
 Desktop projects save as a directory containing an `.anthem` document and its
 referenced assets. **Export to zip...** captures current processor state and

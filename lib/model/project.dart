@@ -189,20 +189,9 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// resulting audio to the audio output device.
   late ProcessingGraphModel processingGraph;
 
-  /// Contains a serialized snapshot of all assets (e.g. audio, plugin
-  /// states) that are owned by this project and stored in the project folder.
-  ///
-  /// While the application is running, files can be held for multiple reasons.
-  /// For example, say the user records an audio clip, then deletes it. The
-  /// recording will save an audio file in the project data, but deleting it
-  /// will not immediately delete the file because it is still needed so the
-  /// user can undo that deletion action.
-  ///
-  /// When we save the project, we ask the machinery owned by [ProjectStorage]
-  /// to capture only the assets that are used by the current project, not
-  /// including undo/redo or any other use, and save them out here. These are
-  /// the only assets relevant on project load, and it means we don't have to do
-  /// a complex search of the project model to find them.
+  /// Serialized asset-reference manifest read from a project document.
+  /// Live ownership belongs to ProjectStorage.projectFiles. Save preparation
+  /// writes a fresh manifest into the captured document JSON.
   @hideFromCpp
   String fileRetentions = '{}';
 

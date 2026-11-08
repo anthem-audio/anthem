@@ -5,6 +5,7 @@
 - Architecture
   - [Communication Between UI and Engine](./architecture/communication_between_ui_and_engine.md)
   - [Processing Graph](./architecture/processing_graph.md)
+  - [Project File Storage](./architecture/project_storage.md)
   - [Sequencer](./architecture/sequencer.md)
   - [State Synchronization](./architecture/state_synchronization.md)
 - Codegen

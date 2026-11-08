@@ -100,7 +100,7 @@ class _StorageFixture {
   ProcessingGraphController get graph =>
       ServiceRegistry.forProject(project.id).processingGraphController;
   _StorageFixture._(this.project, this.holdStartup)
-    : storage = ProjectStorage.temporary(project: project);
+    : storage = ProjectStorage.temporary();
 
   static Future<_StorageFixture> create({bool holdStartup = false}) async {
     final suffix = Platform.isWindows ? '.exe' : '';
@@ -353,11 +353,11 @@ void main() {
     await fixture.engine.stop();
     final store = await fixture.storage.assetStore;
     final scope = store.openScope();
-    addTearDown(() => store.closeScope(scope));
-    expect(() => store.delete(scope, targetPath), throwsStateError);
+    addTearDown(() => scope.close());
+    expect(() => scope.delete(targetPath), throwsStateError);
     await project.execute(_NoopCommand());
-    await store.delete(scope, targetPath);
-    expect(() => store.delete(scope, beforePath), throwsStateError);
+    await scope.delete(targetPath);
+    expect(() => scope.delete(beforePath), throwsStateError);
   });
 
   test('failed snapshot commands preserve live state and the previous history entry', () async {
@@ -390,17 +390,17 @@ void main() {
     );
     final store = await fixture.storage.assetStore;
     final scope = store.openScope();
-    addTearDown(() => store.closeScope(scope));
-    final read = store.acquireRead(scope, targetPath);
+    addTearDown(() => scope.close());
+    final read = scope.acquireRead(targetPath);
     await File(read.absolutePath).writeAsString('invalid');
-    store.releaseRead(scope, read.token);
+    scope.releaseRead(read.token);
     await expectLater(project.execute(load), throwsStateError);
     expect(port.parameterValue, closeTo(0.7, 0.0001));
     expect(node.canEditParameters, isTrue);
     await project.undo();
     expect(port.parameterValue, closeTo(0.6, 0.0001));
     await fixture.engine.stop();
-    await store.delete(scope, targetPath);
+    await scope.delete(targetPath);
   });
 
   test('snapshot replacement excludes publication and other-node captures through completion', () async {
@@ -579,10 +579,10 @@ void main() {
     await fixture.engine.stop();
     final store = await fixture.storage.assetStore;
     final scope = store.openScope();
-    addTearDown(() => store.closeScope(scope));
-    expect(() => store.delete(scope, snapshot.relativePath), throwsStateError);
+    addTearDown(() => scope.close());
+    expect(() => scope.delete(snapshot.relativePath), throwsStateError);
     snapshot.dispose();
-    await store.delete(scope, snapshot.relativePath);
+    await scope.delete(snapshot.relativePath);
   });
 
   test(
@@ -644,10 +644,10 @@ void main() {
     );
     final store = await fixture.storage.assetStore;
     final scope = store.openScope();
-    final read = store.acquireRead(scope, snapshot.relativePath);
+    final read = scope.acquireRead(snapshot.relativePath);
     await File(read.absolutePath).writeAsString('invalid');
-    store.releaseRead(scope, read.token);
-    await store.closeScope(scope);
+    scope.releaseRead(read.token);
+    await scope.close();
     await expectLater(
       fixture.graph.loadSnapshot(node.id, snapshot),
       throwsStateError,
@@ -759,11 +759,11 @@ void main() {
       await fixture.engine.start(initializeAudio: false);
       final store = await fixture.storage.assetStore;
       final writer = store.openScope();
-      final write = await store.beginWrite(writer, 'plugin states');
+      final write = await writer.beginWrite('plugin states');
       await File(write.absolutePath).writeAsString('project-owned state');
-      final path = await store.commitWrite(writer, write.token);
-      final retentionId = fixture.storage.retainAssetForProject(path);
-      await store.closeScope(writer);
+      final path = await writer.commitWrite(write.token);
+      final retentionId = fixture.storage.projectFiles.retain(path);
+      await writer.close();
       for (var start = 0; start < 2; start++) {
         final resolved = await fixture.send(
           TestFileStorageOperation.resolveRetention,
@@ -777,7 +777,7 @@ void main() {
           await fixture.engine.start(initializeAudio: false);
         }
       }
-      fixture.storage.releaseAssetFromProject(retentionId);
+      fixture.storage.projectFiles.releaseRetention(retentionId);
       expect(
         (await fixture.send(
           TestFileStorageOperation.resolveRetention,
@@ -835,13 +835,13 @@ void main() {
       final bytes = utf8.encode('cached contents');
       final store = await fixture.storage.assetStore;
       final scope = store.openScope();
-      addTearDown(() => store.closeScope(scope));
-      final write = await store.beginWrite(scope, 'plugin states');
+      addTearDown(() => scope.close());
+      final write = await scope.beginWrite('plugin states');
       await File(write.absolutePath).writeAsBytes(bytes);
-      final relativePath = await store.commitWrite(scope, write.token);
-      final access = store.acquireRead(scope, relativePath);
-      await store.getFingerprint(scope, access.token);
-      store.releaseRead(scope, access.token);
+      final relativePath = await scope.commitWrite(write.token);
+      final access = scope.acquireRead(relativePath);
+      await scope.getFingerprint(access.token);
+      scope.releaseRead(access.token);
       final file = File(access.absolutePath);
       await file.delete();
 
@@ -853,7 +853,7 @@ void main() {
       expect(failed.error, isNotNull);
       expect(failed.token, isNull);
       await file.writeAsBytes(bytes, flush: true);
-      await store.delete(scope, relativePath);
+      await scope.delete(relativePath);
     },
   );
 
@@ -871,7 +871,7 @@ void main() {
     expect(write.error, isNull);
     final store = await fixture.storage.assetStore;
     final uiScope = store.openScope();
-    addTearDown(() => store.closeScope(uiScope));
+    addTearDown(() => uiScope.close());
     expect(store.relativePaths, isEmpty);
     final committed = await fixture.send(
       TestFileStorageOperation.commitWrite,
@@ -908,7 +908,7 @@ void main() {
       )).error,
       isNull,
     );
-    final retained = store.retain(uiScope, committed.relativePath!);
+    final retained = uiScope.retain(committed.relativePath!);
     expect(
       (await fixture.send(
         TestFileStorageOperation.deleteFile,
@@ -916,16 +916,13 @@ void main() {
       )).error,
       contains('still in use'),
     );
-    store.releaseRetention(uiScope, retained);
+    uiScope.releaseRetention(retained);
     final engineRetention = await fixture.send(
       TestFileStorageOperation.retainFile,
       relativePath: committed.relativePath!,
     );
     expect(engineRetention.error, isNull);
-    expect(
-      () => store.delete(uiScope, committed.relativePath!),
-      throwsStateError,
-    );
+    expect(() => uiScope.delete(committed.relativePath!), throwsStateError);
     expect(
       (await fixture.send(
         TestFileStorageOperation.releaseRetention,
@@ -984,9 +981,8 @@ void main() {
       await fixture.engine.start(initializeAudio: false);
       final store = await fixture.storage.assetStore;
       final uiScope = store.openScope();
-      addTearDown(() => store.closeScope(uiScope));
-      final write = await store.beginWrite(
-        uiScope,
+      addTearDown(() => uiScope.close());
+      final write = await uiScope.beginWrite(
         'plugin states',
         baseName: 'Created by UI',
       );
@@ -998,17 +994,17 @@ void main() {
         )).error,
         contains('Unknown file write token'),
       );
-      final relativePath = await store.commitWrite(uiScope, write.token);
+      final relativePath = await uiScope.commitWrite(write.token);
       final read = await fixture.send(
         TestFileStorageOperation.acquireRead,
         relativePath: relativePath,
       );
       expect(read.error, isNull);
       expect(read.data, 'shared state');
-      store.retain(uiScope, relativePath);
-      final pending = await store.beginWrite(uiScope, 'plugin states');
+      uiScope.retain(relativePath);
+      final pending = await uiScope.beginWrite('plugin states');
 
-      await store.closeScope(uiScope);
+      await uiScope.close();
       expect(await File(pending.absolutePath).exists(), isFalse);
       expect(await File(read.absolutePath!).readAsString(), 'shared state');
       // The engine's read token still prevents deletion after UI cleanup.
@@ -1052,8 +1048,8 @@ void main() {
     final relativePath = committed.relativePath!;
     final store = await fixture.storage.assetStore;
     final uiScope = store.openScope();
-    addTearDown(() => store.closeScope(uiScope));
-    final retained = store.retain(uiScope, relativePath);
+    addTearDown(() => uiScope.close());
+    final retained = uiScope.retain(relativePath);
     final engineRetention = await fixture.send(
       TestFileStorageOperation.retainFile,
       relativePath: relativePath,
@@ -1078,7 +1074,7 @@ void main() {
     expect(await File(unfinished.absolutePath!).exists(), isFalse);
     expect(await File(read.absolutePath!).readAsString(), 'saved state');
     expect(
-      () => store.delete(uiScope, relativePath),
+      () => uiScope.delete(relativePath),
       throwsStateError,
     ); // Project retention survives.
     await fixture.engine.start(initializeAudio: false);
@@ -1112,7 +1108,7 @@ void main() {
       TestFileStorageOperation.releaseRead,
       token: reread.token!,
     );
-    store.releaseRetention(uiScope, retained);
+    uiScope.releaseRetention(retained);
     expect(
       (await fixture.send(
         TestFileStorageOperation.deleteFile,
@@ -1148,7 +1144,7 @@ void main() {
       final pending = await fixture.send(TestFileStorageOperation.beginWrite);
       final store = await fixture.storage.assetStore;
       final uiScope = store.openScope();
-      addTearDown(() => store.closeScope(uiScope));
+      addTearDown(() => uiScope.close());
       final gate = fixture.connector.shutdownGate = Completer<void>();
       final stopping = fixture.engine.stop();
       try {
@@ -1156,16 +1152,13 @@ void main() {
         await fixture.connector.shutdownEntered.future;
         expect(fixture.engine.engineState, EngineState.stopping);
         expect(await File(pending.absolutePath!).exists(), isTrue);
-        expect(
-          () => store.delete(uiScope, committed.relativePath!),
-          throwsStateError,
-        );
+        expect(() => uiScope.delete(committed.relativePath!), throwsStateError);
       } finally {
         gate.complete();
         await stopping;
       }
       expect(await File(pending.absolutePath!).exists(), isFalse);
-      await store.delete(uiScope, committed.relativePath!);
+      await uiScope.delete(committed.relativePath!);
     },
     timeout: const Timeout(Duration(seconds: 30)),
   );

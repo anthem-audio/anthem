@@ -27,7 +27,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/project_engine_event_handler.dart';
 import 'package:anthem/logic/project_engine_request_handler.dart';
 import 'package:anthem/model/project.dart';
-import 'package:anthem/logic/storage/project_asset_references.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 
@@ -420,7 +420,7 @@ class Engine {
   /// scope protects the file until adoption or session cleanup. Adoption creates
   /// a caller-owned retention and releases that temporary session claim.
   /// The caller must dispose the returned retention when finished.
-  Future<({String relativePath, ProjectAssetRetention retention})>
+  Future<({String relativePath, AssetRetention retention})>
   adoptReturnedFileRetention(String token) =>
       _requestHandler.adoptReturnedFileRetention(token);
 

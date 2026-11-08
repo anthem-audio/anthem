@@ -55,7 +55,7 @@ class ProjectAssetStore {
   final String _rootKey;
   final Map<String, _StoredObject> _objects = {};
   final Set<String> _reservedNames = {};
-  final Map<String, _AssetStoreScope> _scopes = {};
+  final Set<AssetScope> _scopes = {};
   bool _closing = false;
   Future<void>? _closeFuture;
 
@@ -150,331 +150,44 @@ class ProjectAssetStore {
     ),
   );
 
-  /// Opens a scope for read, write, and retention tokens.
+  /// Opens an independently owned scope, optionally restoring reference IDs.
+  /// Closing a scope releases its access without deleting committed files.
   ///
-  /// The caller chooses the lifetime. [closeScope] releases the scope's read
-  /// and retention tokens and aborts unfinished writes.
-  ///
-  /// With [serializedRetentions], restores claims previously exported by
-  /// [serializeRetentions], preserving their IDs. The restored claims must
-  /// reference existing, non-cache files and have IDs unused by other scopes.
-  String openScope({String? serializedRetentions}) {
+  /// When [allowCacheFiles] is false, this scope cannot retain cache files.
+  /// Reading and writing cache files is still allowed.
+  AssetScope openScope({
+    Map<String, String> references = const {},
+    bool allowCacheFiles = true,
+  }) {
     _requireOpen();
-    final scope = _AssetStoreScope();
-    if (serializedRetentions != null) {
-      final decoded = jsonDecode(serializedRetentions);
-      if (decoded is! Map<String, dynamic> ||
-          decoded.values.any((value) => value is! String)) {
-        throw const FormatException(
-          'Expected an object of retention IDs and file paths.',
-        );
-      }
-      scope.retentions.addAll(Map<String, String>.from(decoded));
-    }
-    final restoredObjects = <_StoredObject>[];
-    for (final entry in scope.retentions.entries) {
+    final scope = AssetScope._(this, allowCacheFiles);
+    final objects = <_StoredObject>[];
+    for (final entry in references.entries) {
       if (entry.key.isEmpty ||
-          _scopes.values.any((s) => s.retentions.containsKey(entry.key))) {
+          _scopes.any((s) => s._retentions.containsKey(entry.key))) {
         throw StateError('Duplicate or empty retention ID: ${entry.key}');
       }
       final object = _objectForAccess(entry.value);
-      _checkPersistentCategory(entry.value);
-      restoredObjects.add(object);
+      scope._checkRetentionCategory(entry.value);
+      objects.add(object);
     }
-    // Resolve every claim before changing live ownership, so a failed open can
-    // be retried without leaving partial retentions behind.
-    for (final object in restoredObjects) {
+    // Publish ownership only after every reference has been resolved.
+    scope._retentions.addAll(references);
+    for (final object in objects) {
       object.retainers++;
     }
-    final scopeId = _uuid.v4();
-    _scopes[scopeId] = scope;
-    return scopeId;
-  }
-
-  /// Serializes a scope's retention IDs and file paths as JSON.
-  ///
-  /// Read and write tokens are excluded. Throws [StateError] if the scope
-  /// retains cache files, which cannot accompany a saved project.
-  String serializeRetentions(String scopeId) {
-    final scope = _scopeForAccess(scopeId);
-    for (final relativePath in scope.retentions.values) {
-      _checkPersistentCategory(relativePath);
-    }
-    return jsonEncode(scope.retentions);
-  }
-
-  /// Resolves a live retention ID to its project-relative file path.
-  ///
-  /// The retention may belong to any scope. Reading still requires a separate
-  /// read token owned by the reader's scope.
-  String resolveRetention(String retentionId) {
-    _requireOpen();
-    for (final scope in _scopes.values) {
-      final relativePath = scope.retentions[retentionId];
-      if (relativePath != null) return relativePath;
-    }
-    throw StateError('Unknown file retention: $retentionId');
-  }
-
-  /// Distinct paths retained by [scopeId], excluding reads and pending writes.
-  Iterable<String> retainedAssetPaths(String scopeId) sync* {
-    final paths = _scopeForAccess(scopeId).retentions.values.toSet();
-    for (final relativePath in _objects.keys) {
-      if (paths.contains(relativePath)) yield relativePath;
-    }
-  }
-
-  /// Reserves an object name and creates a private file for the writer.
-  ///
-  /// With [baseName], names are numbered, for example `Bass 01.wav`. Without it,
-  /// a UUID is used. [extension] is optional and may begin with a dot. [category]
-  /// is the directory name of a registered category. Names are reserved before
-  /// file creation, including against other pending writes.
-  Future<StoredFileAccess> beginWrite(
-    String scopeId,
-    String category, {
-    String? baseName,
-    String? extension,
-  }) {
-    final scope = _scopeForAccess(scopeId);
-    if (!_categoriesByName.containsKey(category)) {
-      throw ArgumentError('Unknown file category: $category');
-    }
-    final suffix = _extensionSuffix(extension);
-    final stem = baseName == null ? null : _sanitizeBaseName(baseName);
-    var number = 1;
-    late String relativePath;
-    do {
-      final name = stem == null
-          ? '${_uuid.v4()}$suffix'
-          : '$stem ${(number++).toString().padLeft(2, '0')}$suffix';
-      relativePath = p.posix.join(category, name);
-    } while (!_reservedNames.add(relativePath.toLowerCase()));
-
-    final token = _uuid.v4();
-    final write = _PendingFileWrite(
-      relativePath,
-      p.join(_pendingDirectory, '${_uuid.v4()}.tmp'),
-    );
-    return _runOperation(scope, () async {
-      try {
-        await files.createFile(write.absolutePath);
-        scope.writes[token] = write;
-        return StoredFileAccess(token: token, absolutePath: write.absolutePath);
-      } catch (_) {
-        _reservedNames.remove(relativePath.toLowerCase());
-        rethrow;
-      }
-    });
-  }
-
-  /// Publishes a finished write and returns its relative path.
-  ///
-  /// Flush and close the file first. Success consumes [token]; a failed commit
-  /// leaves it available for retry or abort. Tokens belong to [scopeId].
-  ///
-  /// [fingerprint] may be supplied by the writer to avoid hashing the file on
-  /// its first metadata request. It must describe the bytes actually written.
-  Future<String> commitWrite(
-    String scopeId,
-    String token, {
-    FileFingerprint? fingerprint,
-  }) {
-    final scope = _scopeForAccess(scopeId);
-    final write = _writeForAccess(scope, token);
-    write.busy = true;
-    return _runOperation(scope, () async {
-      try {
-        final destination = _absolutePath(write.relativePath);
-        if (await files.entryExists(destination)) {
-          throw StateError('A file already exists at $destination');
-        }
-        await files.renameFile(write.absolutePath, destination);
-        _objects[write.relativePath] = _StoredObject(
-          write.relativePath,
-          fingerprint,
-        );
-        scope.writes.remove(token);
-        return write.relativePath;
-      } finally {
-        write.busy = false;
-      }
-    });
-  }
-
-  /// Removes an unfinished file and consumes its write token.
-  ///
-  /// Close the file first. A failed abort leaves the token available for retry.
-  Future<void> abortWrite(String scopeId, String token) {
-    final scope = _scopeForAccess(scopeId);
-    final write = _writeForAccess(scope, token);
-    return _runOperation(scope, () => _abortWrite(scope, token, write));
-  }
-
-  _PendingFileWrite _writeForAccess(_AssetStoreScope scope, String token) {
-    final write = scope.writes[token];
-    if (write == null) throw StateError('Unknown file write token.');
-    if (write.busy) throw StateError('The write is already in progress.');
-    return write;
-  }
-
-  Future<void> _abortWrite(
-    _AssetStoreScope scope,
-    String token,
-    _PendingFileWrite write,
-  ) async {
-    write.busy = true;
-    try {
-      if (await files.entryExists(write.absolutePath)) {
-        await files.deleteFile(write.absolutePath);
-      }
-      scope.writes.remove(token);
-      _reservedNames.remove(write.relativePath.toLowerCase());
-    } finally {
-      write.busy = false;
-    }
-  }
-
-  /// Prevents deletion until [releaseRead] or [closeScope] releases access.
-  StoredFileAccess acquireRead(String scopeId, String relativePath) {
-    final scope = _scopeForAccess(scopeId);
-    final object = _objectForAccess(relativePath);
-    final token = _uuid.v4();
-    object.readers++;
-    scope.reads[token] = object;
-    return StoredFileAccess(
-      token: token,
-      absolutePath: _absolutePath(relativePath),
-    );
-  }
-
-  /// Returns the contents fingerprint for an active read token.
-  ///
-  /// Fingerprints are calculated in chunks on first access and cached while the
-  /// store is open. A writer may provide the fingerprint when committing.
-  /// Committed files must not be edited in place outside the store.
-  Future<FileFingerprint> getFingerprint(String scopeId, String readToken) {
-    final scope = _scopeForAccess(scopeId);
-    final object = scope.reads[readToken];
-    if (object == null) throw StateError('Unknown file read token.');
-    object.readers++;
-    return _runOperation(scope, () async {
-      try {
-        final absolutePath = _absolutePath(object.relativePath);
-        // Check that a cached fingerprint still refers to an existing file.
-        final byteLength = await files.fileLength(absolutePath);
-        final cached = object.fingerprint;
-        if (cached != null && cached.byteLength == byteLength) return cached;
-        return object.fingerprint = await files.readFingerprint(absolutePath);
-      } finally {
-        object.readers--;
-      }
-    });
-  }
-
-  /// Consumes a read token after the caller has closed the file.
-  void releaseRead(String scopeId, String token) {
-    final scope = _scopeForAccess(scopeId);
-    final object = scope.reads.remove(token);
-    if (object == null) throw StateError('Unknown file read token.');
-    object.readers--;
-  }
-
-  /// Keeps an object available independently of whether it is being read.
-  ///
-  /// Returns a retention ID owned by [scopeId]. Independent claims on the same
-  /// file have different IDs. Releasing a claim does not delete its file.
-  String retain(String scopeId, String relativePath) {
-    final scope = _scopeForAccess(scopeId);
-    final object = _objectForAccess(relativePath);
-    final token = _uuid.v4();
-    object.retainers++;
-    scope.retentions[token] = relativePath;
-    return token;
-  }
-
-  void _checkPersistentCategory(String relativePath) {
-    if (_categoriesByName[relativePath.split('/').first]!.isCache) {
-      throw StateError('Cache files cannot have serialized retentions.');
-    }
-  }
-
-  /// Consumes a retention token; other references and readers remain valid.
-  void releaseRetention(String scopeId, String token) {
-    final scope = _scopeForAccess(scopeId);
-    final relativePath = scope.retentions.remove(token);
-    if (relativePath == null) throw StateError('Unknown file retention token.');
-    _objects[relativePath]!.retainers--;
-  }
-
-  /// Deletes an unreferenced object, rejecting new access during deletion.
-  ///
-  /// Throws [StateError] if any scope has a read or retention token for the
-  /// object.
-  Future<void> delete(String scopeId, String relativePath) {
-    final scope = _scopeForAccess(scopeId);
-    final object = _objectForAccess(relativePath);
-    if (object.readers != 0 || object.retainers != 0) {
-      throw StateError('Stored object is still in use: $relativePath');
-    }
-    object.deleting = true;
-    return _runOperation(scope, () async {
-      try {
-        await files.deleteFile(_absolutePath(relativePath));
-        _objects.remove(relativePath);
-        _reservedNames.remove(relativePath.toLowerCase());
-      } finally {
-        object.deleting = false;
-      }
-    });
-  }
-
-  _AssetStoreScope _scopeForAccess(String scopeId) {
-    _requireOpen();
-    final scope = _scopes[scopeId];
-    if (scope == null) throw StateError('Unknown asset store scope.');
-    if (scope.closing) throw StateError('The asset store scope is closing.');
+    _scopes.add(scope);
     return scope;
   }
 
-  /// Closes a scope and releases its file access.
-  ///
-  /// The caller must first finish file I/O and close any open files. New
-  /// operations are rejected while operations already in progress finish.
-  /// Remaining writes are aborted, and read and retention tokens are released.
-  /// Committed files and other scopes are unaffected.
-  ///
-  /// If cleanup fails, the scope can be closed again to retry it. Closing an
-  /// already closed scope has no effect.
-  Future<void> closeScope(String scopeId) {
-    final scope = _scopes[scopeId];
-    if (scope == null) return Future.value();
-    scope.closing = true;
-    return scope.closeFuture ??= _closeScope(scopeId, scope).catchError((
-      Object error,
-      StackTrace stack,
-    ) {
-      scope.closeFuture = null;
-      Error.throwWithStackTrace(error, stack);
-    });
-  }
-
-  Future<void> _closeScope(String scopeId, _AssetStoreScope scope) async {
-    await Future.wait(scope.operations);
-    for (final object in scope.reads.values) {
-      object.readers--;
+  /// Resolves a claim in any scope. Reading requires a separate read grant.
+  String resolveRetention(String retentionId) {
+    _requireOpen();
+    for (final scope in _scopes) {
+      final relativePath = scope._retentions[retentionId];
+      if (relativePath != null) return relativePath;
     }
-    scope.reads.clear();
-    for (final relativePath in scope.retentions.values) {
-      _objects[relativePath]!.retainers--;
-    }
-    scope.retentions.clear();
-    await Future.wait(
-      scope.writes.entries.toList().map(
-        (entry) => _abortWrite(scope, entry.key, entry.value),
-      ),
-    );
-    _scopes.remove(scopeId);
+    throw StateError('Unknown file retention: $retentionId');
   }
 
   _StoredObject _objectForAccess(String relativePath) {
@@ -500,24 +213,10 @@ class ProjectAssetStore {
     if (_closing) throw StateError('The asset store is closing or closed.');
   }
 
-  Future<T> _runOperation<T>(
-    _AssetStoreScope scope,
-    Future<T> Function() operation,
-  ) {
-    final future = Future<T>.sync(operation);
-    // Cleanup waits for completion, while the caller receives the result or error.
-    final finished = future.then<void>(
-      (_) {},
-      onError: (Object _, StackTrace _) {},
-    );
-    scope.operations.add(finished);
-    return future.whenComplete(() => scope.operations.remove(finished));
-  }
-
   /// Closes the store, deleting cache categories and preserving other files.
   ///
   /// Rejects new access immediately. Throws [StateError] if any scopes remain
-  /// open; close them with [closeScope] before retrying.
+  /// open; close them with [AssetScope.close] before retrying.
   Future<void> close() {
     _closing = true;
     return _closeFuture ??= _close().catchError((
@@ -542,6 +241,355 @@ class ProjectAssetStore {
   }
 }
 
+/// Owns file grants and retention claims for a caller-chosen lifetime.
+/// File I/O must finish before grants are released or this scope is closed.
+class AssetScope {
+  final ProjectAssetStore _store;
+  final bool allowCacheFiles;
+  final _writes = <String, _PendingFileWrite>{};
+  final _reads = <String, _StoredObject>{};
+  final _retentions = <String, String>{};
+  final _operations = <Future<void>>{};
+  bool _closing = false;
+  Future<void>? _closeFuture;
+
+  AssetScope._(this._store, this.allowCacheFiles);
+
+  bool get isClosed => _closing;
+
+  Map<String, String> get references {
+    _requireOpen();
+    return Map.unmodifiable(_retentions);
+  }
+
+  String resolveRetention(String id) {
+    _requireOpen();
+    return _store.resolveRetention(id);
+  }
+
+  AssetRetention retainAll(Iterable<String> paths) {
+    _requireOpen();
+    final tokens = <String>[];
+    try {
+      for (final file in paths.toSet()) {
+        tokens.add(retain(file));
+      }
+      return AssetRetention._(this, tokens);
+    } catch (_) {
+      for (final token in tokens) {
+        releaseRetention(token);
+      }
+      rethrow;
+    }
+  }
+
+  /// Captures this scope's references and independently pins their files.
+  /// The result survives changes to, or closure of, the source scope.
+  AssetSnapshot snapshot() {
+    final captured = references;
+    final access = _store.openScope();
+    try {
+      final reads = {
+        for (final file in captured.values.toSet())
+          file: access.acquireRead(file),
+      };
+      return AssetSnapshot._(access, captured, Map.unmodifiable(reads));
+    } catch (_) {
+      // Acquiring reads is synchronous, so there is no external I/O to finish.
+      access.close();
+      rethrow;
+    }
+  }
+
+  void _requireOpen() {
+    _store._requireOpen();
+    if (_closing) {
+      throw StateError('The asset scope is closing.');
+    }
+  }
+
+  /// Reserves an object name and creates a private file for the writer.
+  ///
+  /// With [baseName], names are numbered, for example `Bass 01.wav`. Without it,
+  /// a UUID is used. [extension] is optional and may begin with a dot. [category]
+  /// is the directory name of a registered category. Names are reserved before
+  /// file creation, including against other pending writes.
+  Future<StoredFileAccess> beginWrite(
+    String category, {
+    String? baseName,
+    String? extension,
+  }) {
+    _requireOpen();
+    if (!_store._categoriesByName.containsKey(category)) {
+      throw ArgumentError('Unknown file category: $category');
+    }
+    final suffix = _extensionSuffix(extension);
+    final stem = baseName == null ? null : _sanitizeBaseName(baseName);
+    var number = 1;
+    late String relativePath;
+    do {
+      final name = stem == null
+          ? '${ProjectAssetStore._uuid.v4()}$suffix'
+          : '$stem ${(number++).toString().padLeft(2, '0')}$suffix';
+      relativePath = p.posix.join(category, name);
+    } while (!_store._reservedNames.add(relativePath.toLowerCase()));
+
+    final token = ProjectAssetStore._uuid.v4();
+    final write = _PendingFileWrite(
+      relativePath,
+      p.join(_store._pendingDirectory, '${ProjectAssetStore._uuid.v4()}.tmp'),
+    );
+    return _runOperation(() async {
+      try {
+        await files.createFile(write.absolutePath);
+        _writes[token] = write;
+        return StoredFileAccess(token: token, absolutePath: write.absolutePath);
+      } catch (_) {
+        _store._reservedNames.remove(relativePath.toLowerCase());
+        rethrow;
+      }
+    });
+  }
+
+  /// Publishes a finished write and returns its relative path.
+  ///
+  /// Flush and close the file first. Success consumes [token]; a failed commit
+  /// leaves it available for retry or abort. Tokens belong to this scope.
+  ///
+  /// [fingerprint] may be supplied by the writer to avoid hashing the file on
+  /// its first metadata request. It must describe the bytes actually written.
+  Future<String> commitWrite(String token, {FileFingerprint? fingerprint}) {
+    _requireOpen();
+    final write = _writeForAccess(token);
+    write.busy = true;
+    return _runOperation(() async {
+      try {
+        final destination = _store._absolutePath(write.relativePath);
+        if (await files.entryExists(destination)) {
+          throw StateError('A file already exists at $destination');
+        }
+        await files.renameFile(write.absolutePath, destination);
+        _store._objects[write.relativePath] = _StoredObject(
+          write.relativePath,
+          fingerprint,
+        );
+        _writes.remove(token);
+        return write.relativePath;
+      } finally {
+        write.busy = false;
+      }
+    });
+  }
+
+  /// Removes an unfinished file and consumes its write token.
+  ///
+  /// Close the file first. A failed abort leaves the token available for retry.
+  Future<void> abortWrite(String token) {
+    _requireOpen();
+    final write = _writeForAccess(token);
+    return _runOperation(() => _abortWrite(token, write));
+  }
+
+  _PendingFileWrite _writeForAccess(String token) {
+    final write = _writes[token];
+    if (write == null) throw StateError('Unknown file write token.');
+    if (write.busy) throw StateError('The write is already in progress.');
+    return write;
+  }
+
+  Future<void> _abortWrite(String token, _PendingFileWrite write) async {
+    write.busy = true;
+    try {
+      if (await files.entryExists(write.absolutePath)) {
+        await files.deleteFile(write.absolutePath);
+      }
+      _writes.remove(token);
+      _store._reservedNames.remove(write.relativePath.toLowerCase());
+    } finally {
+      write.busy = false;
+    }
+  }
+
+  /// Prevents deletion until [releaseRead] or [close] releases access.
+  StoredFileAccess acquireRead(String relativePath) {
+    _requireOpen();
+    final object = _store._objectForAccess(relativePath);
+    final token = ProjectAssetStore._uuid.v4();
+    object.readers++;
+    _reads[token] = object;
+    return StoredFileAccess(
+      token: token,
+      absolutePath: _store._absolutePath(relativePath),
+    );
+  }
+
+  /// Returns the contents fingerprint for an active read token.
+  ///
+  /// Fingerprints are calculated in chunks on first access and cached while the
+  /// store is open. A writer may provide the fingerprint when committing.
+  /// Committed files must not be edited in place outside the store.
+  Future<FileFingerprint> getFingerprint(String readToken) {
+    _requireOpen();
+    final object = _reads[readToken];
+    if (object == null) throw StateError('Unknown file read token.');
+    object.readers++;
+    return _runOperation(() async {
+      try {
+        final absolutePath = _store._absolutePath(object.relativePath);
+        // Check that a cached fingerprint still refers to an existing file.
+        final byteLength = await files.fileLength(absolutePath);
+        final cached = object.fingerprint;
+        if (cached != null && cached.byteLength == byteLength) return cached;
+        return object.fingerprint = await files.readFingerprint(absolutePath);
+      } finally {
+        object.readers--;
+      }
+    });
+  }
+
+  /// Consumes a read token after the caller has closed the file.
+  void releaseRead(String token) {
+    _requireOpen();
+    final object = _reads.remove(token);
+    if (object == null) throw StateError('Unknown file read token.');
+    object.readers--;
+  }
+
+  /// Keeps an object available independently of whether it is being read.
+  ///
+  /// Returns a retention ID owned by this scope. Independent claims on the same
+  /// file have different IDs. Releasing a claim does not delete its file.
+  String retain(String relativePath) {
+    _requireOpen();
+    final object = _store._objectForAccess(relativePath);
+    _checkRetentionCategory(relativePath);
+    final token = ProjectAssetStore._uuid.v4();
+    object.retainers++;
+    _retentions[token] = relativePath;
+    return token;
+  }
+
+  void _checkRetentionCategory(String relativePath) {
+    if (!allowCacheFiles &&
+        _store._categoriesByName[relativePath.split('/').first]!.isCache) {
+      throw StateError('This scope cannot retain cache files.');
+    }
+  }
+
+  /// Consumes a retention token; other references and readers remain valid.
+  void releaseRetention(String token) {
+    _requireOpen();
+    final relativePath = _retentions.remove(token);
+    if (relativePath == null) throw StateError('Unknown file retention token.');
+    _store._objects[relativePath]!.retainers--;
+  }
+
+  /// Deletes an unreferenced object, rejecting new access during deletion.
+  ///
+  /// Throws [StateError] if any scope has a read or retention token for the
+  /// object.
+  Future<void> delete(String relativePath) {
+    _requireOpen();
+    final object = _store._objectForAccess(relativePath);
+    if (object.readers != 0 || object.retainers != 0) {
+      throw StateError('Stored object is still in use: $relativePath');
+    }
+    object.deleting = true;
+    return _runOperation(() async {
+      try {
+        await files.deleteFile(_store._absolutePath(relativePath));
+        _store._objects.remove(relativePath);
+        _store._reservedNames.remove(relativePath.toLowerCase());
+      } finally {
+        object.deleting = false;
+      }
+    });
+  }
+
+  /// Closes a scope and releases its file access.
+  ///
+  /// The caller must first finish file I/O and close any open files. New
+  /// operations are rejected while operations already in progress finish.
+  /// Remaining writes are aborted, and read and retention tokens are released.
+  /// Committed files and other scopes are unaffected.
+  ///
+  /// If cleanup fails, the scope can be closed again to retry it. Closing an
+  /// already closed scope has no effect.
+  Future<void> close() {
+    if (!_store._scopes.contains(this)) return Future.value();
+    _closing = true;
+    return _closeFuture ??= _closeScope().catchError((
+      Object error,
+      StackTrace stack,
+    ) {
+      _closeFuture = null;
+      Error.throwWithStackTrace(error, stack);
+    });
+  }
+
+  Future<void> _closeScope() async {
+    await Future.wait(_operations);
+    for (final object in _reads.values) {
+      object.readers--;
+    }
+    _reads.clear();
+    for (final relativePath in _retentions.values) {
+      _store._objects[relativePath]!.retainers--;
+    }
+    _retentions.clear();
+    await Future.wait(
+      _writes.entries.toList().map(
+        (entry) => _abortWrite(entry.key, entry.value),
+      ),
+    );
+    _store._scopes.remove(this);
+  }
+
+  Future<T> _runOperation<T>(Future<T> Function() operation) {
+    final future = Future<T>.sync(operation);
+    // Cleanup waits for completion, while the caller receives the result or error.
+    final finished = future.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace _) {},
+    );
+    _operations.add(finished);
+    return future.whenComplete(() => _operations.remove(finished));
+  }
+}
+
+/// An independently disposable group of claims in an owning scope.
+class AssetRetention {
+  final AssetScope _scope;
+  final List<String> _tokens;
+  AssetRetention._(this._scope, this._tokens);
+
+  bool get isDisposed => _scope.isClosed || _tokens.isEmpty;
+  List<String> get retentionIds => List.unmodifiable(_tokens);
+
+  AssetRetention retain() {
+    if (isDisposed) throw StateError('The retention has been disposed.');
+    return _scope.retainAll(_tokens.map((token) => _scope._retentions[token]!));
+  }
+
+  void dispose() {
+    if (!_scope.isClosed) {
+      for (final token in _tokens) {
+        _scope.releaseRetention(token);
+      }
+    }
+    _tokens.clear();
+  }
+}
+
+/// Frozen reference IDs and file reads, owned independently of the source scope.
+class AssetSnapshot {
+  final AssetScope _scope;
+  final Map<String, String> references;
+  final Map<String, StoredFileAccess> reads;
+  AssetSnapshot._(this._scope, this.references, this.reads);
+  Future<void> close() => _scope.close();
+}
+
 /// A scope-owned token and the absolute path it grants access to.
 ///
 /// Pass [token] to the store to commit or abort a write, or to release a read.
@@ -551,15 +599,6 @@ class StoredFileAccess {
   final String absolutePath;
 
   const StoredFileAccess({required this.token, required this.absolutePath});
-}
-
-class _AssetStoreScope {
-  final writes = <String, _PendingFileWrite>{};
-  final reads = <String, _StoredObject>{};
-  final retentions = <String, String>{};
-  final operations = <Future<void>>{};
-  bool closing = false;
-  Future<void>? closeFuture;
 }
 
 class _PendingFileWrite {

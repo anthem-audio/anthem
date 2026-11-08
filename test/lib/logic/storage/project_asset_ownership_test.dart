@@ -21,7 +21,6 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/engine_api/engine.dart';
@@ -71,12 +70,12 @@ void main() {
   late ProjectModel project;
   late ProjectStorage storage;
   late ProjectAssetStore store;
-  late String scope;
+  late AssetScope scope;
 
   setUp(() async {
     project = ProjectModel.create();
     project.engine.processingGraphApi = _OfflineGraphApi();
-    storage = ProjectStorage.temporary(project: project);
+    storage = ProjectStorage.temporary();
     ServiceRegistry.initializeProject(
       project,
       overrides: ProjectServiceFactoryOverrides([
@@ -88,28 +87,24 @@ void main() {
   });
 
   tearDown(() async {
-    await store.closeScope(scope);
+    await scope.close();
     await project.dispose();
     await storage.discard();
     ServiceRegistry.removeProject(project.id);
   });
 
   Future<String> state() async {
-    final write = await store.beginWrite(
-      scope,
-      'plugin states',
-      extension: 'bin',
-    );
+    final write = await scope.beginWrite('plugin states', extension: 'bin');
     await File(write.absolutePath).writeAsBytes([1, 2, 3]);
-    return store.commitWrite(scope, write.token);
+    return scope.commitWrite(write.token);
   }
 
   void useState(NodeModel node, String? relativePath) {
     final previous = node.processorStateRetentionId;
     node.processorStateRetentionId = relativePath == null
         ? null
-        : storage.retainAssetForProject(relativePath);
-    if (previous != null) storage.releaseAssetFromProject(previous);
+        : storage.projectFiles.retain(relativePath);
+    if (previous != null) storage.projectFiles.releaseRetention(previous);
   }
 
   String? statePath(NodeModel node) => node.processorStateRetentionId == null
@@ -141,85 +136,6 @@ void main() {
     return api;
   }
 
-  test(
-    'snapshots use project-scope claims without inspecting model consumers',
-    () async {
-      final file = await state();
-      final runtimeOnly = await state();
-      final id = storage.retainAssetForProject(file);
-      final command = storage.retainAssets([runtimeOnly]);
-      try {
-        final snapshot = (await storage.references).snapshot();
-        try {
-          expect(snapshot.reads.keys, [file]);
-          expect(jsonDecode(snapshot.serializedRetentions), {id: file});
-          expect(project.toJson()['fileRetentions'], '{}');
-          expect(
-            project.toJson(forEngine: true, forProjectFile: false),
-            isNot(contains('fileRetentions')),
-          );
-        } finally {
-          await snapshot.close();
-        }
-      } finally {
-        command.dispose();
-        storage.releaseAssetFromProject(id);
-      }
-    },
-  );
-
-  test(
-    'current references protect files and snapshots exclude unreferenced files',
-    () async {
-      final file = await state();
-      await state();
-      final node = project.processingGraph.nodes.values.first;
-      useState(node, file);
-      expect(() => store.delete(scope, file), throwsStateError);
-      final snapshot = (await storage.references).snapshot();
-      expect(snapshot.reads.keys, [file]);
-      useState(node, null);
-      expect(() => store.delete(scope, file), throwsStateError);
-      await snapshot.close();
-      await store.delete(scope, file);
-    },
-  );
-
-  test(
-    'an open save snapshot retains the earlier files after later edits',
-    () async {
-      final first = await state();
-      final second = await state();
-      final node = project.processingGraph.nodes.values.first;
-      useState(node, first);
-      final references = await storage.references;
-      final snapshot = references.snapshot();
-      useState(node, second);
-      expect((jsonDecode(snapshot.serializedRetentions) as Map).values, [
-        first,
-      ]);
-      final current = references.snapshot();
-      expect((jsonDecode(current.serializedRetentions) as Map).values, [
-        second,
-      ]);
-      await current.close();
-      expect(snapshot.reads.keys, [first]);
-      expect(() => store.delete(scope, first), throwsStateError);
-      await snapshot.markSaved('/projects/Original/Original.anthem');
-      await snapshot.close();
-      expect(() => store.delete(scope, first), throwsStateError);
-      final next = references.snapshot();
-      await next.markSaved('/projects/Copy/Copy.anthem');
-      await next.close();
-      expect(() => store.delete(scope, first), throwsStateError);
-      // Saving over the original document replaces only that document's pins.
-      await references.registerSavedDocument(
-        '/projects/Original/Original.anthem',
-      );
-      await store.delete(scope, first);
-    },
-  );
-
   test('removing a device retains its state for undo and redo, but excludes it from saves', () async {
     final file = await state();
     final track = project.tracks[project.trackOrder.first]!;
@@ -244,7 +160,7 @@ void main() {
         deviceId: device.id,
       ),
     );
-    final removed = (await storage.references).snapshot();
+    final removed = storage.projectFiles.snapshot();
     expect(removed.reads, isEmpty);
     expect(node.processorStateRetentionId, isNull);
     expect(
@@ -252,13 +168,13 @@ void main() {
       throwsStateError,
     );
     await removed.close();
-    expect(() => store.delete(scope, file), throwsStateError);
+    expect(() => scope.delete(file), throwsStateError);
     project.undo();
     expect(statePath(project.processingGraph.nodes[node.id]!), file);
     expect(node.processorStateRetentionId, isNot(originalRetentionId));
     project.redo();
     expect(project.processingGraph.nodes, isNot(contains(node.id)));
-    expect(() => store.delete(scope, file), throwsStateError);
+    expect(() => scope.delete(file), throwsStateError);
     project.undo();
     project.undo();
     project.execute(
@@ -268,7 +184,7 @@ void main() {
         device: DeviceDescriptorForCommand(type: DeviceType.utility),
       ),
     );
-    await store.delete(scope, file);
+    await scope.delete(file);
   });
 
   test(
@@ -297,7 +213,7 @@ void main() {
       );
       expect(node.processorStateRetentionId, restoredId);
       expect(storage.resolveRetention(restoredId!), file);
-      expect(() => store.delete(scope, file), throwsStateError);
+      expect(() => scope.delete(file), throwsStateError);
     },
   );
 
@@ -320,7 +236,7 @@ void main() {
     );
     expect(storage.resolveRetention(firstId!), file);
     expect(second.processorStateRetentionId, isNull);
-    expect(() => store.delete(scope, file), throwsStateError);
+    expect(() => scope.delete(file), throwsStateError);
     await project.undo();
     expect(statePath(second), file);
     expect(second.processorStateRetentionId, isNot(secondId));
@@ -344,13 +260,13 @@ void main() {
     expect(project.processingGraph.nodes, isNot(contains(node.id)));
     expect(node.processorStateRetentionId, isNull);
     expect(node.initializationState, NodeInitializationState.uninitialized);
-    await store.delete(scope, original);
-    expect(() => store.delete(scope, latest), throwsStateError);
+    await scope.delete(original);
+    expect(() => scope.delete(latest), throwsStateError);
     await project.redo();
     useState(node, subsequent);
     // A live device's changing files are not owned by its addition command.
-    await store.delete(scope, latest);
-    expect(() => store.delete(scope, subsequent), throwsStateError);
+    await scope.delete(latest);
+    expect(() => scope.delete(subsequent), throwsStateError);
   });
 
   test(
@@ -364,11 +280,11 @@ void main() {
       await expectLater(project.undo(), throwsStateError);
       expect(project.processingGraph.nodes, contains(node.id));
       expect(statePath(node), file);
-      expect(() => store.delete(scope, file), throwsStateError);
+      expect(() => scope.delete(file), throwsStateError);
       api.capture = () async => file;
       await project.undo();
       expect(project.processingGraph.nodes, isNot(contains(node.id)));
-      expect(() => store.delete(scope, file), throwsStateError);
+      expect(() => scope.delete(file), throwsStateError);
     },
   );
 
@@ -390,7 +306,7 @@ void main() {
       );
       expect(project.processingGraph.nodes, isNot(contains(node.id)));
       expect(node.processorStateRetentionId, isNull);
-      expect(() => store.delete(scope, file), throwsStateError);
+      expect(() => scope.delete(file), throwsStateError);
       await project.undo();
       expect(statePath(project.processingGraph.nodes[node.id]!), file);
     },
@@ -406,11 +322,11 @@ void main() {
         ids: [project.trackOrder.first],
       ),
     );
-    expect(() => store.delete(scope, file), throwsStateError);
+    expect(() => scope.delete(file), throwsStateError);
     project.commitUndoGroup();
-    expect(() => store.delete(scope, file), throwsStateError);
+    expect(() => scope.delete(file), throwsStateError);
     await project.dispose();
-    await store.delete(scope, file);
+    await scope.delete(file);
   });
 
   test(

@@ -26,12 +26,14 @@ import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/device_commands.dart';
 import 'package:anthem/logic/commands/parameter_commands.dart';
-import 'package:anthem/logic/project_file/directory.dart';
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/directory.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
@@ -793,18 +795,20 @@ void main() {
           newValue: 0.321,
         ),
       );
-      await utility.updateStateFromEngine();
       final directory = await Directory.systemTemp.createTemp(
         'anthem-native-snapshot-',
       );
       addTearDown(() => directory.delete(recursive: true));
       final document = '${directory.path}/Native/Native.anthem';
-      await writeProjectDirectory(
-        document,
+      final prepared = await PreparedProjectSave.prepare(
         original,
         services.projectStorage,
-        create: true,
       );
+      try {
+        await writeProjectDirectory(document, prepared, create: true);
+      } finally {
+        await prepared.close();
+      }
       final saved = await readProjectFile(document);
       await services.projectEngineController.stop();
       ServiceRegistry.removeProject(original.id);
@@ -812,7 +816,16 @@ void main() {
         saved,
         enginePathOverride: executable,
       )..filePath = document;
-      ServiceRegistry.initializeProject(reopened);
+      final reopenedServices = ServiceRegistry.initializeProject(reopened);
+      final reopenedStorage = ProjectStorage(
+        rootDirectory: '${directory.path}/Native',
+      );
+      await reopenedStorage.restoreProjectFiles(
+        Map<String, String>.from(
+          jsonDecode(saved['fileRetentions'] as String) as Map,
+        ),
+      );
+      reopenedServices.register(reopenedStorage);
       try {
         await prepare(reopened, outputChannelCount: 4);
         final restoredGain = reopened.processingGraph.nodes[utilityId]!
@@ -834,6 +847,7 @@ void main() {
         );
       } finally {
         await reopened.dispose();
+        await reopenedStorage.close();
         ServiceRegistry.removeProject(reopened.id);
       }
     } finally {
@@ -860,12 +874,12 @@ void main() {
       final services = ServiceRegistry.initializeProject(project);
       final store = await services.projectStorage.assetStore;
       final scope = store.openScope();
-      final write = await store.beginWrite(scope, 'plugin states');
+      final write = await scope.beginWrite('plugin states');
       await File(write.absolutePath).writeAsBytes([1, 2, 3]);
-      final savedState = await store.commitWrite(scope, write.token);
-      await store.closeScope(scope);
+      final savedState = await scope.commitWrite(write.token);
+      await scope.close();
       final storage = ServiceRegistry.forProject(project.id).projectStorage;
-      final retentionId = storage.retainAssetForProject(savedState);
+      final retentionId = storage.projectFiles.retain(savedState);
       node.processorStateRetentionId = retentionId;
       try {
         await services.projectEngineController.start(startAudio: false);

@@ -90,15 +90,14 @@ Future<String> _captureStateHash(AppTestSession session, NodeModel node) async {
   final store = await session.services.projectStorage.assetStore;
   final scope = store.openScope();
   try {
-    final read = store.acquireRead(
-      scope,
+    final read = scope.acquireRead(
       store.resolveRetention(node.processorStateRetentionId!),
     );
     return sha256
         .convert(await File(read.absolutePath).readAsBytes())
         .toString();
   } finally {
-    await store.closeScope(scope);
+    await scope.close();
   }
 }
 

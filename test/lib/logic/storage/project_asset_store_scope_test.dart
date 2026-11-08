@@ -20,7 +20,6 @@
 @TestOn('vm')
 library;
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/logic/storage/project_asset_store.dart';
@@ -30,8 +29,8 @@ import 'package:test/test.dart';
 void main() {
   late Directory directory;
   late ProjectAssetStore store;
-  late String first;
-  late String second;
+  late AssetScope first;
+  late AssetScope second;
 
   setUp(() async {
     directory = await Directory.systemTemp.createTemp('anthem_file_scope_');
@@ -44,181 +43,171 @@ void main() {
   });
 
   tearDown(() async {
-    await store.closeScope(first);
-    await store.closeScope(second);
+    await first.close();
+    await second.close();
     await store.close();
     await directory.delete(recursive: true);
   });
 
   test(
-    'serialized scopes restore retention IDs and exclude runtime access',
+    'restored scope references preserve IDs and exclude runtime access',
     () async {
-      final write = await store.beginWrite(first, 'plugin states');
+      final write = await first.beginWrite('plugin states');
       await File(write.absolutePath).writeAsString('durable state');
-      final file = await store.commitWrite(first, write.token);
+      final file = await first.commitWrite(write.token);
       final projectScope = store.openScope();
-      final id = store.retain(projectScope, file);
-      final anotherId = store.retain(projectScope, file);
-      final commandClaim = store.retain(second, file);
-      final read = store.acquireRead(projectScope, file);
-      final pending = await store.beginWrite(projectScope, 'plugin states');
-      final serialized = store.serializeRetentions(projectScope);
-      expect(jsonDecode(serialized), {id: file, anotherId: file});
+      final id = projectScope.retain(file);
+      final anotherId = projectScope.retain(file);
+      final commandClaim = second.retain(file);
+      final read = projectScope.acquireRead(file);
+      final pending = await projectScope.beginWrite('plugin states');
+      final captured = projectScope.references;
+      expect(captured, {id: file, anotherId: file});
       expect(store.resolveRetention(id), file);
       expect(store.resolveRetention(commandClaim), file);
-      await store.closeScope(projectScope);
+      await projectScope.close();
       expect(await File(pending.absolutePath).exists(), isFalse);
       expect(() => store.resolveRetention(id), throwsStateError);
 
-      final restored = store.openScope(serializedRetentions: serialized);
+      final restored = store.openScope(references: captured);
       try {
         expect(store.resolveRetention(id), file);
-        expect(() => store.releaseRead(restored, read.token), throwsStateError);
-        store.releaseRetention(second, commandClaim);
-        expect(() => store.delete(first, file), throwsStateError);
-        store.releaseRetention(restored, id);
-        expect(() => store.delete(first, file), throwsStateError);
-        store.releaseRetention(restored, anotherId);
-        await store.delete(first, file);
+        expect(() => restored.releaseRead(read.token), throwsStateError);
+        second.releaseRetention(commandClaim);
+        expect(() => first.delete(file), throwsStateError);
+        restored.releaseRetention(id);
+        expect(() => first.delete(file), throwsStateError);
+        restored.releaseRetention(anotherId);
+        await first.delete(file);
       } finally {
-        await store.closeScope(restored);
+        await restored.close();
       }
     },
   );
 
-  test('serialized claims cannot be restored into two live scopes', () async {
-    final write = await store.beginWrite(first, 'plugin states');
-    final file = await store.commitWrite(first, write.token);
+  test('reference IDs cannot be restored into two live scopes', () async {
+    final write = await first.beginWrite('plugin states');
+    final file = await first.commitWrite(write.token);
     final scope = store.openScope();
-    final id = store.retain(scope, file);
-    final serialized = store.serializeRetentions(scope);
+    final id = scope.retain(file);
+    final captured = scope.references;
     try {
-      expect(
-        () => store.openScope(serializedRetentions: serialized),
-        throwsStateError,
-      );
+      expect(() => store.openScope(references: captured), throwsStateError);
     } finally {
-      await store.closeScope(scope);
+      await scope.close();
     }
-    final reopened = store.openScope(serializedRetentions: serialized);
+    final reopened = store.openScope(references: captured);
     expect(store.resolveRetention(id), file);
-    await store.closeScope(reopened);
+    await reopened.close();
   });
 
   test('failed scope restoration does not leave partial ownership', () async {
-    final write = await store.beginWrite(first, 'plugin states');
-    final file = await store.commitWrite(first, write.token);
+    final write = await first.beginWrite('plugin states');
+    final file = await first.commitWrite(write.token);
     expect(
       () => store.openScope(
-        serializedRetentions: jsonEncode({
-          'valid': file,
-          'missing': 'plugin states/missing.bin',
-        }),
+        references: {'valid': file, 'missing': 'plugin states/missing.bin'},
       ),
       throwsStateError,
     );
     expect(() => store.resolveRetention('valid'), throwsStateError);
-    final serialized = jsonEncode({'valid': file});
-    final restored = store.openScope(serializedRetentions: serialized);
+    final captured = {'valid': file};
+    final restored = store.openScope(references: captured);
     try {
-      expect(
-        () => store.openScope(serializedRetentions: serialized),
-        throwsStateError,
-      );
-      store.releaseRetention(restored, 'valid');
-      expect(jsonDecode(store.serializeRetentions(restored)), isEmpty);
-      // Releasing the live claim does not alter the previously captured JSON.
-      expect(jsonDecode(serialized), {'valid': file});
-      await store.delete(first, file);
+      expect(() => store.openScope(references: captured), throwsStateError);
+      restored.releaseRetention('valid');
+      expect(restored.references, isEmpty);
+      // Releasing the live claim does not alter the previously captured mapping.
+      expect(captured, {'valid': file});
+      await first.delete(file);
     } finally {
-      await store.closeScope(restored);
+      await restored.close();
     }
   });
 
-  for (final invalid in ['{', '[]', 'null', '{"claim": 1}']) {
-    test('invalid serialized retentions are rejected: $invalid', () {
-      expect(
-        () => store.openScope(serializedRetentions: invalid),
-        throwsFormatException,
-      );
-    });
-  }
-
-  test('cache claims cannot be serialized or restored', () async {
+  test('scopes can independently constrain retention of cache files', () async {
     final root = await Directory.systemTemp.createTemp('anthem_cache_scope_');
     final caches = await ProjectAssetStore.open(
       root.path,
       categories: [const ProjectAssetCategory('cache', isCache: true)],
     );
     final scope = caches.openScope();
+    final document = caches.openScope(allowCacheFiles: false);
     try {
-      final write = await caches.beginWrite(scope, 'cache');
-      final file = await caches.commitWrite(scope, write.token);
-      final id = caches.retain(scope, file);
-      expect(() => caches.serializeRetentions(scope), throwsStateError);
-      caches.releaseRetention(scope, id);
+      final write = await scope.beginWrite('cache');
+      final file = await scope.commitWrite(write.token);
+      final id = scope.retain(file);
+      expect(() => document.retain(file), throwsStateError);
       expect(
-        () => caches.openScope(serializedRetentions: jsonEncode({id: file})),
+        () => caches.openScope(
+          references: {'restored': file},
+          allowCacheFiles: false,
+        ),
         throwsStateError,
       );
-      await caches.delete(scope, file);
+      final snapshot = scope.snapshot();
+      expect(snapshot.references, {id: file});
+      await snapshot.close();
+      scope.releaseRetention(id);
+      await scope.delete(file);
     } finally {
-      await caches.closeScope(scope);
+      await document.close();
+      await scope.close();
       await caches.close();
       await root.delete(recursive: true);
     }
   });
 
   test('tokens can only be used by the scope that acquired them', () async {
-    final write = await store.beginWrite(first, 'plugin states');
-    expect(() => store.commitWrite(second, write.token), throwsStateError);
-    expect(() => store.abortWrite(second, write.token), throwsStateError);
-    final relativePath = await store.commitWrite(first, write.token);
-    final read = store.acquireRead(first, relativePath);
-    final retained = store.retain(first, relativePath);
-    expect(() => store.releaseRead(second, read.token), throwsStateError);
-    expect(() => store.releaseRetention(second, retained), throwsStateError);
-    expect(() => store.releaseRead(first, retained), throwsStateError);
-    expect(() => store.releaseRetention(first, read.token), throwsStateError);
-    expect(() => store.delete(second, relativePath), throwsStateError);
-    store.releaseRead(first, read.token);
-    store.releaseRetention(first, retained);
-    await store.delete(second, relativePath);
+    final write = await first.beginWrite('plugin states');
+    expect(() => second.commitWrite(write.token), throwsStateError);
+    expect(() => second.abortWrite(write.token), throwsStateError);
+    final relativePath = await first.commitWrite(write.token);
+    final read = first.acquireRead(relativePath);
+    final retained = first.retain(relativePath);
+    expect(() => second.releaseRead(read.token), throwsStateError);
+    expect(() => second.releaseRetention(retained), throwsStateError);
+    expect(() => first.releaseRead(retained), throwsStateError);
+    expect(() => first.releaseRetention(read.token), throwsStateError);
+    expect(() => second.delete(relativePath), throwsStateError);
+    first.releaseRead(read.token);
+    first.releaseRetention(retained);
+    await second.delete(relativePath);
   });
 
   test(
     'closing one scope preserves files and access owned by another',
     () async {
-      final write = await store.beginWrite(first, 'plugin states');
+      final write = await first.beginWrite('plugin states');
       await File(write.absolutePath).writeAsString('saved state', flush: true);
-      final relativePath = await store.commitWrite(first, write.token);
-      store.acquireRead(first, relativePath);
-      store.retain(first, relativePath);
-      final pending = await store.beginWrite(first, 'plugin states');
-      final otherRead = store.acquireRead(second, relativePath);
-      final otherReference = store.retain(second, relativePath);
+      final relativePath = await first.commitWrite(write.token);
+      first.acquireRead(relativePath);
+      first.retain(relativePath);
+      final pending = await first.beginWrite('plugin states');
+      final otherRead = second.acquireRead(relativePath);
+      final otherReference = second.retain(relativePath);
 
-      await store.closeScope(first);
+      await first.close();
       expect(await File(pending.absolutePath).exists(), isFalse);
       expect(await File(otherRead.absolutePath).readAsString(), 'saved state');
-      expect(() => store.acquireRead(first, relativePath), throwsStateError);
-      expect(() => store.delete(second, relativePath), throwsStateError);
-      store.releaseRead(second, otherRead.token);
-      expect(() => store.delete(second, relativePath), throwsStateError);
-      store.releaseRetention(second, otherReference);
-      await store.delete(second, relativePath);
-      await store.closeScope(first);
+      expect(() => first.acquireRead(relativePath), throwsStateError);
+      expect(() => second.delete(relativePath), throwsStateError);
+      second.releaseRead(otherRead.token);
+      expect(() => second.delete(relativePath), throwsStateError);
+      second.releaseRetention(otherReference);
+      await second.delete(relativePath);
+      await first.close();
     },
   );
 
   test('replacement scopes use fresh tokens for existing files', () async {
-    final write = await store.beginWrite(first, 'plugin states');
-    final relativePath = await store.commitWrite(first, write.token);
-    final read = store.acquireRead(first, relativePath);
-    await store.closeScope(first);
+    final write = await first.beginWrite('plugin states');
+    final relativePath = await first.commitWrite(write.token);
+    final read = first.acquireRead(relativePath);
+    await first.close();
     first = store.openScope();
-    expect(() => store.releaseRead(first, read.token), throwsStateError);
-    final replacement = store.acquireRead(first, relativePath);
+    expect(() => first.releaseRead(read.token), throwsStateError);
+    final replacement = first.acquireRead(relativePath);
     expect(replacement.token, isNot(read.token));
     expect(replacement.absolutePath, read.absolutePath);
   });
@@ -226,10 +215,10 @@ void main() {
   test(
     'closing waits for a write grant even if its result is unused',
     () async {
-      final opening = store.beginWrite(first, 'plugin states');
-      final closing = store.closeScope(first);
-      expect(store.closeScope(first), same(closing));
-      expect(() => store.beginWrite(first, 'plugin states'), throwsStateError);
+      final opening = first.beginWrite('plugin states');
+      final closing = first.close();
+      expect(first.close(), same(closing));
+      expect(() => first.beginWrite('plugin states'), throwsStateError);
       final write = await opening;
       await closing;
       expect(await File(write.absolutePath).exists(), isFalse);
@@ -240,42 +229,93 @@ void main() {
   test(
     'failed write cleanup releases other access and can be retried',
     () async {
-      final committed = await store.beginWrite(first, 'plugin states');
-      final relativePath = await store.commitWrite(first, committed.token);
-      final read = store.acquireRead(first, relativePath);
-      store.retain(first, relativePath);
-      final pending = await store.beginWrite(first, 'plugin states');
-      final another = await store.beginWrite(first, 'plugin states');
+      final committed = await first.beginWrite('plugin states');
+      final relativePath = await first.commitWrite(committed.token);
+      final read = first.acquireRead(relativePath);
+      first.retain(relativePath);
+      final pending = await first.beginWrite('plugin states');
+      final another = await first.beginWrite('plugin states');
       await File(pending.absolutePath).delete();
       await Directory(pending.absolutePath).create();
-      await expectLater(
-        store.closeScope(first),
-        throwsA(isA<FileSystemException>()),
-      );
+      await expectLater(first.close(), throwsA(isA<FileSystemException>()));
       expect(await File(another.absolutePath).exists(), isFalse);
       // One failed abort must not retain unrelated read or retention tokens.
-      await store.delete(second, relativePath);
+      await second.delete(relativePath);
       expect(await File(read.absolutePath).exists(), isFalse);
-      expect(() => store.beginWrite(first, 'plugin states'), throwsStateError);
+      expect(() => first.beginWrite('plugin states'), throwsStateError);
       await Directory(pending.absolutePath).delete();
       await File(pending.absolutePath).writeAsString('retry');
-      await store.closeScope(first);
+      await first.close();
       expect(await File(pending.absolutePath).exists(), isFalse);
     },
   );
 
   test('closing waits for failed operations and still cleans up', () async {
-    final write = await store.beginWrite(first, 'plugin states');
+    final write = await first.beginWrite('plugin states');
     await File(write.absolutePath).delete();
     final failedCommit = expectLater(
-      store.commitWrite(first, write.token),
+      first.commitWrite(write.token),
       throwsA(isA<FileSystemException>()),
     );
-    await store.closeScope(first);
+    await first.close();
     await failedCommit;
     expect(store.relativePaths, isEmpty);
     // The failed write's reserved name was released during scope cleanup.
-    final replacement = await store.beginWrite(second, 'plugin states');
-    await store.commitWrite(second, replacement.token);
+    final replacement = await second.beginWrite('plugin states');
+    await second.commitWrite(replacement.token);
   });
+  test(
+    'a snapshot pins the selected scope after its references change or close',
+    () async {
+      final write = await first.beginWrite('plugin states');
+      final file = await first.commitWrite(write.token);
+      final owner = store.openScope();
+      final id = owner.retain(file);
+      final snapshot = owner.snapshot();
+      owner.releaseRetention(id);
+      await owner.close();
+      expect(snapshot.references, {id: file});
+      expect(() => store.resolveRetention(id), throwsStateError);
+      expect(() => second.delete(file), throwsStateError);
+      // The frozen IDs can restore a new document scope without reusing read tokens.
+      final restored = store.openScope(references: snapshot.references);
+      expect(restored.resolveRetention(id), file);
+      await restored.close();
+      await snapshot.close();
+      await second.delete(file);
+    },
+  );
+
+  test('retention handles clone independently and invalidate with their owner scope', () async {
+    final write = await first.beginWrite('plugin states');
+    final file = await first.commitWrite(write.token);
+    final owner = store.openScope();
+    final handle = owner.retainAll([file, file]);
+    final clone = handle.retain();
+    expect(clone.retentionIds, isNot(handle.retentionIds));
+    expect(handle.retentionIds, hasLength(1));
+    handle.dispose();
+    handle.dispose();
+    expect(clone.isDisposed, isFalse);
+    expect(() => second.delete(file), throwsStateError);
+    await owner.close();
+    expect(clone.isDisposed, isTrue);
+    expect(clone.retain, throwsStateError);
+    clone.dispose();
+    await second.delete(file);
+  });
+
+  test(
+    'a failed retention group leaves the scope with no partial claims',
+    () async {
+      final write = await first.beginWrite('plugin states');
+      final file = await first.commitWrite(write.token);
+      expect(
+        () => second.retainAll([file, 'plugin states/missing.bin']),
+        throwsStateError,
+      );
+      expect(second.references, isEmpty);
+      await first.delete(file);
+    },
+  );
 }

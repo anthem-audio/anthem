@@ -17,7 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/storage/project_asset_references.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 
@@ -26,7 +26,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 /// The command performs node removal and restoration, and disposes these claims
 /// when the nodes are restored or the command leaves history.
 class CommandProcessorStateRetention {
-  ProjectAssetRetention? _retention;
+  AssetRetention? _retention;
   Map<NodeModel, String> _states = {};
 
   /// Retains [nodes]' state files for the command before removing the nodes.
@@ -52,7 +52,7 @@ class CommandProcessorStateRetention {
   /// Releases the removed nodes' project claims and clears their retention IDs.
   void releaseProjectClaims(ProjectStorage storage) {
     for (final node in _states.keys) {
-      storage.releaseAssetFromProject(node.processorStateRetentionId!);
+      storage.projectFiles.releaseRetention(node.processorStateRetentionId!);
       node.processorStateRetentionId = null;
     }
   }
@@ -60,7 +60,7 @@ class CommandProcessorStateRetention {
   /// Assigns new project claims to the nodes before they rejoin the graph.
   void restoreProjectClaims(ProjectStorage storage) {
     for (final entry in _states.entries) {
-      entry.key.processorStateRetentionId = storage.retainAssetForProject(
+      entry.key.processorStateRetentionId = storage.projectFiles.retain(
         entry.value,
       );
     }

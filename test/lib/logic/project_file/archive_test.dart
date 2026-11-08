@@ -25,8 +25,9 @@ import 'dart:io';
 
 import 'package:anthem/logic/project_file/archive.dart';
 import 'package:anthem/logic/project_file/codec.dart';
-import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/directory.dart';
+import 'package:anthem/logic/project_file/errors.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
@@ -43,13 +44,12 @@ void main() {
   late ProjectModel project;
   late ProjectStorage storage;
   late ProjectAssetStore store;
-  late String scope;
+  late AssetScope scope;
 
   setUp(() async {
     directory = await Directory.systemTemp.createTemp('anthem_archive_test_');
     project = ProjectModel.create();
     storage = ProjectStorage.temporary(
-      project: project,
       categories: [ProjectAssetCategory.pluginStates, cache],
     );
     store = await storage.assetStore;
@@ -57,7 +57,7 @@ void main() {
   });
 
   tearDown(() async {
-    await store.closeScope(scope);
+    await scope.close();
     await project.dispose();
     await storage.discard();
     await directory.delete(recursive: true);
@@ -67,9 +67,9 @@ void main() {
     List<int> bytes, {
     String category = 'plugin states',
   }) async {
-    final write = await store.beginWrite(scope, category, extension: 'bin');
+    final write = await scope.beginWrite(category, extension: 'bin');
     await File(write.absolutePath).writeAsBytes(bytes);
-    return store.commitWrite(scope, write.token);
+    return scope.commitWrite(write.token);
   }
 
   Future<File> zip(Iterable<ArchiveFile> entries) async {
@@ -97,13 +97,18 @@ void main() {
       addTearDown(history.dispose);
       await asset([6, 7]);
       await asset([8, 9], category: cache.directoryName);
-      final id = storage.retainAssetForProject(current);
+      final id = storage.projectFiles.retain(current);
       project.processingGraph.nodes.values.first.processorStateRetentionId = id;
       project.filePath = path.join(directory.path, 'Original.anthem');
       project.isDirty = true;
       final before = project.toJson();
       final output = path.join(directory.path, 'portable.zip');
-      await writeProjectArchive(output, project, storage);
+      final prepared = await PreparedProjectSave.prepare(project, storage);
+      try {
+        await writeProjectArchive(output, prepared);
+      } finally {
+        await prepared.close();
+      }
       expect(project.toJson(), before);
       expect(project.isDirty, isTrue);
       expect(project.filePath, path.join(directory.path, 'Original.anthem'));
@@ -119,10 +124,12 @@ void main() {
         await readProjectFile(extracted.documentPath),
       );
       final importedStorage = ProjectStorage.temporary(
-        project: imported,
         rootDirectory: extracted.rootDirectory,
       );
       try {
+        await importedStorage.restoreProjectFiles(
+          Map<String, String>.from(jsonDecode(imported.fileRetentions) as Map),
+        );
         final importedStore = await importedStorage.assetStore;
         expect(importedStore.projectAssetPaths, [current]);
         expect(jsonDecode(imported.fileRetentions), {id: current});
@@ -135,13 +142,21 @@ void main() {
           'fileRetentions': jsonEncode({id: current}),
         });
         final saved = path.join(directory.path, 'Saved', 'Saved.anthem');
-        await writeProjectDirectory(
-          saved,
+        final folderSave = await PreparedProjectSave.prepare(
           imported,
           importedStorage,
-          create: true,
         );
-        expect(await readProjectFile(saved), imported.toJson());
+        try {
+          final result = await writeProjectDirectory(
+            saved,
+            folderSave,
+            create: true,
+          );
+          expect(result.usesWorkingStore, isFalse);
+          expect(await readProjectFile(saved), folderSave.projectJson);
+        } finally {
+          await folderSave.close();
+        }
         expect(
           await File(path.join(path.dirname(saved), current)).readAsBytes(),
           [1, 2, 3, 255],
@@ -155,31 +170,64 @@ void main() {
     },
   );
 
+  test('failed export preserves an existing ZIP and cleans staging', () async {
+    final current = await asset([1, 2, 3]);
+    final id = storage.projectFiles.retain(current);
+    final prepared = await PreparedProjectSave.prepare(project, storage);
+    addTearDown(prepared.close);
+    await File(prepared.assets.reads[current]!.absolutePath).delete();
+    final output = await File(path.join(directory.path, 'existing.zip'))
+        .writeAsBytes([42, 43]);
+    await expectLater(
+      writeProjectArchive(output.path, prepared),
+      throwsA(anything),
+    );
+    expect(await output.readAsBytes(), [42, 43]);
+    storage.projectFiles.releaseRetention(id);
+    await prepared.close();
+    await scope.close();
+    await storage.close();
+    expect(
+      (await directory.list().toList()).map(
+        (entry) => path.basename(entry.path),
+      ),
+      ['existing.zip'],
+    );
+  });
+
   test(
-    'failed export preserves an existing ZIP and releases its file reads',
+    'ZIP output consumes the prepared document and files after later edits',
     () async {
-      final current = await asset([1, 2, 3]);
-      final id = storage.retainAssetForProject(current);
-      final read = store.acquireRead(scope, current);
-      await File(read.absolutePath).delete();
-      store.releaseRead(scope, read.token);
-      final output = await File(path.join(directory.path, 'existing.zip'))
-          .writeAsBytes([42, 43]);
-      await expectLater(
-        writeProjectArchive(output.path, project, storage),
-        throwsA(anything),
+      final original = await asset([1, 2, 3]);
+      final id = storage.projectFiles.retain(original);
+      final prepared = await PreparedProjectSave.prepare(project, storage);
+      addTearDown(prepared.close);
+      storage.projectFiles.releaseRetention(id);
+      final replacement = await asset([4, 5, 6]);
+      storage.projectFiles.retain(replacement);
+      project.sequence.beatsPerMinuteRaw = 15000;
+
+      final output = path.join(directory.path, 'frozen.zip');
+      await writeProjectArchive(output, prepared);
+      await prepared.close();
+      await scope.delete(original);
+      final archive = ZipDecoder().decodeBytes(
+        await File(output).readAsBytes(),
       );
-      expect(await output.readAsBytes(), [42, 43]);
-      storage.releaseAssetFromProject(id);
-      // Closing must not be blocked by reads left over from the failed export.
-      await store.closeScope(scope);
-      await storage.close();
-      expect(
-        (await directory.list().toList()).map(
-          (entry) => path.basename(entry.path),
-        ),
-        ['existing.zip'],
-      );
+      expect(archive.files.map((entry) => entry.name).toSet(), {
+        'project.anthem',
+        original,
+      });
+      expect(archive.findFile(original)!.content, [1, 2, 3]);
+      final extracted = await extractProjectArchive(output);
+      try {
+        expect(
+          await readProjectFile(extracted.documentPath),
+          prepared.projectJson,
+        );
+      } finally {
+        await Directory(extracted.rootDirectory).delete(recursive: true);
+      }
     },
   );
 

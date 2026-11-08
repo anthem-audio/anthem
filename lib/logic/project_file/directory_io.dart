@@ -20,9 +20,9 @@
 import 'dart:io';
 
 import 'package:anthem/logic/project_file/io.dart';
-import 'package:anthem/logic/storage/project_storage.dart';
-import 'package:anthem/model/project.dart';
-import 'package:anthem_codegen/include.dart';
+
+import 'project_save.dart';
+
 import 'package:path/path.dart' as path;
 
 /// Saves completed, non-cache files alongside the project document.
@@ -36,32 +36,25 @@ import 'package:path/path.dart' as path;
 /// Files come from the current project scope. Existing copies in another
 /// folder are replaced; files in the open store's root stay in place.
 ///
-/// Reports whether the project changed after its save snapshot was prepared.
-Future<({bool changedDuringSave})> writeProjectDirectory(
+/// Reports whether the document shares the working store's backing files.
+Future<({bool usesWorkingStore})> writeProjectDirectory(
   String documentPath,
-  ProjectModel project,
-  ProjectStorage storage, {
+  PreparedProjectSave prepared, {
   required bool create,
 }) async {
-  final store = await storage.assetStore;
-  final references = await storage.references;
-  final snapshot = references.snapshot();
+  final store = await prepared.storage.assetStore;
+  final snapshot = prepared.assets;
   final root = path.dirname(documentPath);
   Directory? staging;
-  var changedDuringSave = false;
-  void onModelChange(ModelChangeEvent _) => changedDuringSave = true;
+  var savingInPlace = false;
   try {
-    // Updating the saved file claims is preparation for this save. Start
-    // tracking subsequent edits only after those claims are in the model.
-    project.fileRetentions = snapshot.serializedRetentions;
-    project.addRawFieldChangedListener(onModelChange);
-    final projectJson = project.toJson();
+    final projectJson = prepared.projectJson;
     if (create &&
         await FileSystemEntity.type(root, followLinks: false) !=
             FileSystemEntityType.notFound) {
       throw FileSystemException('Choose a new project folder name.', root);
     }
-    final savingInPlace =
+    savingInPlace =
         !create && await FileSystemEntity.identical(store.rootDirectory, root);
     staging = await Directory(create ? path.dirname(root) : root)
         .createTemp('.anthem-save-');
@@ -112,16 +105,10 @@ Future<({bool changedDuringSave})> writeProjectDirectory(
     } else {
       await File(document).rename(documentPath);
     }
-    await snapshot.markSaved(documentPath);
   } finally {
-    try {
-      await snapshot.close();
-      if (staging != null && await staging.exists()) {
-        await staging.delete(recursive: true);
-      }
-    } finally {
-      project.removeRawFieldChangedListener(onModelChange);
+    if (staging != null && await staging.exists()) {
+      await staging.delete(recursive: true);
     }
   }
-  return (changedDuringSave: changedDuringSave);
+  return (usesWorkingStore: savingInPlace);
 }

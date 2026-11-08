@@ -18,12 +18,14 @@
 */
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:anthem/helpers/logging/anthem_logging.dart';
 import 'package:anthem/logic/project_file/archive.dart';
 import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/project_file/directory.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
 import 'package:anthem/logic/project_file/version.dart';
@@ -133,6 +135,13 @@ class MainWindowController {
     final registry = ServiceRegistry.initializeProject(project);
     if (storage != null) {
       registry.register(storage);
+      final documentPath = project.filePath;
+      if (documentPath != null && !storage.isTemporary) {
+        registry.savedProjectFiles.record(
+          documentPath,
+          storage.projectFiles.references.values,
+        );
+      }
     }
     return registry;
   }
@@ -263,17 +272,12 @@ class MainWindowController {
         if (!kIsWeb) {
           storage = needsFolderSave
               ? ProjectStorage.temporary(
-                  project: loaded,
                   rootDirectory: temporaryDirectory!.path,
                 )
-              : ProjectStorage(
-                  project: loaded,
-                  rootDirectory: paths.dirname(file.path),
-                );
-          await storage.assetStore;
-          if (!needsFolderSave) {
-            await (await storage.references).registerSavedDocument(file.path);
-          }
+              : ProjectStorage(rootDirectory: paths.dirname(file.path));
+          await storage.restoreProjectFiles(
+            Map<String, String>.from(jsonDecode(loaded.fileRetentions) as Map),
+          );
         }
       } catch (_) {
         await loaded.dispose();
@@ -422,28 +426,27 @@ class MainWindowController {
       project.isDirty = false;
       return true;
     } else {
-      await _captureProjectState(project);
-
-      final storage = ServiceRegistry.forProject(projectId).projectStorage;
-      final result = await writeProjectDirectory(
-        path!,
+      final services = ServiceRegistry.forProject(projectId);
+      final prepared = await PreparedProjectSave.prepare(
         project,
-        storage,
-        create: createDirectory,
+        services.projectStorage,
       );
-
-      project.isDirty = result.changedDuringSave;
-      project.filePath = path;
-      return true;
+      try {
+        final result = await writeProjectDirectory(
+          path!,
+          prepared,
+          create: createDirectory,
+        );
+        if (result.usesWorkingStore) {
+          services.savedProjectFiles.record(path, prepared.assets.reads.keys);
+        }
+        project.isDirty = prepared.changedDuringSave;
+        project.filePath = path;
+        return true;
+      } finally {
+        await prepared.close();
+      }
     }
-  }
-
-  Future<void> _captureProjectState(ProjectModel project) async {
-    await project.waitForPendingCommands();
-    await Future.wait([
-      for (final node in project.processingGraph.nodes.values.toList())
-        node.updateStateFromEngine(),
-    ]);
   }
 
   /// Exports a portable copy without changing the project's normal save target.
@@ -461,12 +464,15 @@ class MainWindowController {
     if (archivePath == null) return false;
     if (!archivePath.toLowerCase().endsWith('.zip')) archivePath += '.zip';
     try {
-      await _captureProjectState(project);
-      await writeProjectArchive(
-        archivePath,
+      final prepared = await PreparedProjectSave.prepare(
         project,
         ServiceRegistry.forProject(projectId).projectStorage,
       );
+      try {
+        await writeProjectArchive(archivePath, prepared);
+      } finally {
+        await prepared.close();
+      }
       return true;
     } catch (error, stackTrace) {
       _log.warning('Could not export project ZIP.', error, stackTrace);

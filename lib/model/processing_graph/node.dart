@@ -506,12 +506,10 @@ abstract class _NodeModel with Store, AnthemModelBase, ProjectModelGetterMixin {
 
     // Acquire the new claim before releasing the old one. Saved documents and
     // commands may hold other claims on the same file.
-    final replacement = path == null
-        ? null
-        : storage.retainAssetForProject(path);
+    final replacement = path == null ? null : storage.projectFiles.retain(path);
     processorStateRetentionId = replacement;
     initialParameterValues.clear();
-    if (previous != null) storage.releaseAssetFromProject(previous);
+    if (previous != null) storage.projectFiles.releaseRetention(previous);
     owner.isDirty = true;
   }
 

@@ -25,7 +25,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/devices/device_port_defaults.dart';
 import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
-import 'package:anthem/logic/storage/project_asset_references.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/project.dart';
 
@@ -36,7 +36,7 @@ class ProcessorSnapshot {
   final ProjectModel _project;
   final Object _processor;
   final String relativePath;
-  final ProjectAssetRetention _retention;
+  final AssetRetention _retention;
 
   ProcessorSnapshot._(
     this._project,
@@ -51,12 +51,11 @@ class ProcessorSnapshot {
   /// Dispose each handle separately; retaining does not copy the file's bytes.
   ProcessorSnapshot retain() {
     if (isDisposed) throw StateError('The snapshot has been disposed.');
-    final storage = ServiceRegistry.forProject(_project.id).projectStorage;
     return ProcessorSnapshot._(
       _project,
       _processor,
       relativePath,
-      storage.retainAssets([relativePath]),
+      _retention.retain(),
     );
   }
 
@@ -296,7 +295,7 @@ class ProcessingGraphController implements DisposableService {
   Future<ProcessorSnapshot> _replaceSnapshot(
     NodeModel node,
     ProcessorSnapshot snapshot,
-    ProjectAssetRetention borrowed,
+    AssetRetention borrowed,
     Future<void> session,
   ) async {
     final nodeId = node.id;

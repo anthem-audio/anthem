@@ -30,6 +30,7 @@ import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -84,7 +85,12 @@ final projectViewModelService = ServiceDef<ProjectViewModel>(
 );
 
 final projectStorageService = ServiceDef<ProjectStorage>(
-  create: (project, _) => ProjectStorage.temporary(project: project),
+  create: (project, _) => ProjectStorage.temporary(),
+);
+
+final savedProjectFilesService = ServiceDef<SavedProjectFiles>(
+  create: (_, registry) =>
+      SavedProjectFiles(registry.use(projectStorageService)),
 );
 
 final projectControllerService = ServiceDef<ProjectController>(
@@ -288,6 +294,7 @@ class ServiceRegistry {
   ProcessingGraphController get processingGraphController =>
       use(processingGraphControllerService);
   ProjectStorage get projectStorage => use(projectStorageService);
+  SavedProjectFiles get savedProjectFiles => use(savedProjectFilesService);
   ProjectEngineController get projectEngineController =>
       use(projectEngineControllerService);
   ProjectRenderController get projectRenderController =>

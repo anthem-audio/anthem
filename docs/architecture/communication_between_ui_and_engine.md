@@ -151,6 +151,10 @@ Timeouts and request cancellation stop the engine from waiting for a reply; they
 
 The UI and engine use the same asset store API. File scopes group read, write, and retention tokens for cleanup. The UI calls the store directly, and the engine request handler forwards IPC operations using a file scope owned by that engine session. Engine cleanup closes its file scope after connector shutdown confirms that the process can no longer use the files; entering `stopping` alone is too early. Committed files and references held by other scopes survive engine restarts.
 
+Engine storage requests dispatch to an `AssetScope` owned by the engine session.
+The same scope API serves local Dart clients; C++ remains an asynchronous client
+of the authoritative UI store. See [Project File Storage](./project_storage.md).
+
 ## Adding a UI-to-engine request and response
 
 The following example adds an operation handled by the engine.

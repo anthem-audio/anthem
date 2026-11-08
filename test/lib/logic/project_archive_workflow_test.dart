@@ -27,6 +27,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_file/archive.dart';
 import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
@@ -94,7 +95,7 @@ void main() {
     );
     controller = _Controller();
     source = ProjectModel.create();
-    sourceStorage = ProjectStorage.temporary(project: source);
+    sourceStorage = ProjectStorage.temporary();
     controller.registerProject(source, storage: sourceStorage);
     recordingDialog = RecordingDialog();
     dialogs = DialogController()..initialize(recordingDialog);
@@ -111,18 +112,14 @@ void main() {
     final store = await sourceStorage.assetStore;
     final scope = store.openScope();
     try {
-      final write = await store.beginWrite(
-        scope,
-        'plugin states',
-        extension: 'bin',
-      );
+      final write = await scope.beginWrite('plugin states', extension: 'bin');
       await File(write.absolutePath).writeAsBytes([4, 2, 6]);
-      final file = await store.commitWrite(scope, write.token);
+      final file = await scope.commitWrite(write.token);
       source.processingGraph.nodes.values.first.processorStateRetentionId =
-          sourceStorage.retainAssetForProject(file);
+          sourceStorage.projectFiles.retain(file);
       return file;
     } finally {
-      await store.closeScope(scope);
+      await scope.close();
     }
   }
 
@@ -165,7 +162,12 @@ void main() {
     () async {
       final asset = await sourceState();
       final zip = path.join(directory.path, 'portable.zip');
-      await writeProjectArchive(zip, source, sourceStorage);
+      final prepared = await PreparedProjectSave.prepare(source, sourceStorage);
+      try {
+        await writeProjectArchive(zip, prepared);
+      } finally {
+        await prepared.close();
+      }
       final originalBytes = await File(zip).readAsBytes();
       selector.selectedFile = XFile(zip);
       final id = await controller.loadProject(dialogController: dialogs);
@@ -216,7 +218,12 @@ void main() {
     () async {
       await sourceState();
       final zip = path.join(directory.path, 'portable.zip');
-      await writeProjectArchive(zip, source, sourceStorage);
+      final prepared = await PreparedProjectSave.prepare(source, sourceStorage);
+      try {
+        await writeProjectArchive(zip, prepared);
+      } finally {
+        await prepared.close();
+      }
       final archive = ZipDecoder().decodeBytes(await File(zip).readAsBytes());
       final documentName = '${source.id}.anthem';
       final incomplete = Archive()

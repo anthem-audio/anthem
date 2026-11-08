@@ -39,7 +39,7 @@ void main() {
       ),
       throwsUnsupportedError,
     );
-    final storage = ProjectStorage(rootDirectory: 'project', project: project);
+    final storage = ProjectStorage(rootDirectory: 'project');
     await expectLater(storage.assetStore, throwsUnsupportedError);
     await storage.close();
   });
@@ -47,14 +47,11 @@ void main() {
   test(
     'closing storage before first use does not access the filesystem',
     () async {
-      await ProjectStorage(rootDirectory: 'project', project: project).close();
+      await ProjectStorage(rootDirectory: 'project').close();
     },
   );
 
   test('temporary desktop roots are explicitly unsupported on web', () {
-    expect(
-      () => ProjectStorage.temporary(project: project),
-      throwsUnsupportedError,
-    );
+    expect(() => ProjectStorage.temporary(), throwsUnsupportedError);
   });
 }

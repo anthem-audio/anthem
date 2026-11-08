@@ -18,13 +18,12 @@
 */
 
 import 'package:anthem/logic/project_file/errors.dart';
-import 'package:anthem/logic/storage/project_storage.dart';
-import 'package:anthem/model/project.dart';
+
+import 'project_save.dart';
 
 Future<void> writeProjectArchive(
   String archivePath,
-  ProjectModel project,
-  ProjectStorage storage,
+  PreparedProjectSave prepared,
 ) => throw const ProjectDirectoryRequiresDesktopException();
 
 Future<({String rootDirectory, String documentPath})> extractProjectArchive(

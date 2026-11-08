@@ -22,34 +22,28 @@ import 'dart:isolate';
 
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/io.dart';
-import 'package:anthem/logic/storage/project_storage.dart';
-import 'package:anthem/model/project.dart';
+
+import 'project_save.dart';
+
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as path;
 
 /// Exports one project document and its referenced assets at the ZIP root.
 ///
-/// Callers capture live processor state before exporting. Read claims hold the
+/// Preparation captures live processor state. Its read claims hold the
 /// captured files through compression, independently of subsequent edits. Cache
 /// files and assets retained only by history or other snapshots are excluded.
 /// Export does not change the project's save location or dirty status.
 Future<void> writeProjectArchive(
   String archivePath,
-  ProjectModel project,
-  ProjectStorage storage,
+  PreparedProjectSave prepared,
 ) async {
-  final snapshot = (await storage.references).snapshot();
-  try {
-    final projectJson = project.toJson()
-      ..['fileRetentions'] = snapshot.serializedRetentions;
-    final assets = {
-      for (final entry in snapshot.reads.entries)
-        entry.key: entry.value.absolutePath,
-    };
-    await Isolate.run(() => _writeArchive(archivePath, projectJson, assets));
-  } finally {
-    await snapshot.close();
-  }
+  final assets = {
+    for (final entry in prepared.assets.reads.entries)
+      entry.key: entry.value.absolutePath,
+  };
+  final projectJson = prepared.projectJson;
+  await Isolate.run(() => _writeArchive(archivePath, projectJson, assets));
 }
 
 Future<void> _writeArchive(

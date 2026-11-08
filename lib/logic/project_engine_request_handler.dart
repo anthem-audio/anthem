@@ -21,7 +21,6 @@ import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_asset_store.dart';
-import 'package:anthem/logic/storage/project_asset_references.dart';
 
 /// Dispatches requests from a project's engine to UI services.
 ///
@@ -29,7 +28,7 @@ import 'package:anthem/logic/storage/project_asset_references.dart';
 /// is closed after that engine has stopped accessing files.
 class ProjectEngineRequestHandler {
   final ProjectModel project;
-  Future<({ProjectAssetStore store, String scopeId})>? _fileStorageScope;
+  Future<AssetScope>? _fileStorageScope;
 
   ProjectEngineRequestHandler(this.project);
 
@@ -53,7 +52,7 @@ class ProjectEngineRequestHandler {
         );
   }
 
-  Future<({ProjectAssetStore store, String scopeId})> _getFileStorageScope() {
+  Future<AssetScope> _getFileStorageScope() {
     return _fileStorageScope ??= _openFileStorageScope().catchError((
       Object error,
       StackTrace stack,
@@ -63,27 +62,21 @@ class ProjectEngineRequestHandler {
     });
   }
 
-  Future<({ProjectAssetStore store, String scopeId})>
-  _openFileStorageScope() async {
-    final store = await ServiceRegistry.forProject(project.id)
-        .projectStorage
-        .assetStore;
-    return (store: store, scopeId: store.openScope());
-  }
+  Future<AssetScope> _openFileStorageScope() =>
+      ServiceRegistry.forProject(project.id).projectStorage.openScope();
 
   /// Returns null for requests that do not operate on file storage.
   Future<Response?> _handleFileStorageRequest(Request request) async {
     switch (request) {
       case ResolveFileRetentionRequest():
-        final (:store, scopeId: _) = await _getFileStorageScope();
+        final scope = await _getFileStorageScope();
         return ResolveFileRetentionResponse(
           id: request.id,
-          relativePath: store.resolveRetention(request.retentionId),
+          relativePath: scope.resolveRetention(request.retentionId),
         );
       case BeginFileWriteRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
-        final access = await store.beginWrite(
-          scopeId,
+        final scope = await _getFileStorageScope();
+        final access = await scope.beginWrite(
           request.category,
           baseName: request.baseName,
           extension: request.extension,
@@ -94,9 +87,8 @@ class ProjectEngineRequestHandler {
           absolutePath: access.absolutePath,
         );
       case CommitFileWriteRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
-        final relativePath = await store.commitWrite(
-          scopeId,
+        final scope = await _getFileStorageScope();
+        final relativePath = await scope.commitWrite(
           request.token,
           fingerprint: request.fingerprint,
         );
@@ -105,15 +97,15 @@ class ProjectEngineRequestHandler {
           relativePath: relativePath,
         );
       case AbortFileWriteRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
-        await store.abortWrite(scopeId, request.token);
+        final scope = await _getFileStorageScope();
+        await scope.abortWrite(request.token);
         return FileStorageSuccessResponse(id: request.id);
       case AcquireFileReadRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
-        final access = store.acquireRead(scopeId, request.relativePath);
+        final scope = await _getFileStorageScope();
+        final access = scope.acquireRead(request.relativePath);
         try {
           final fingerprint = request.includeFingerprint
-              ? await store.getFingerprint(scopeId, access.token)
+              ? await scope.getFingerprint(access.token)
               : null;
           return AcquireFileReadResponse(
             id: request.id,
@@ -122,26 +114,26 @@ class ProjectEngineRequestHandler {
             fingerprint: fingerprint,
           );
         } catch (_) {
-          store.releaseRead(scopeId, access.token);
+          scope.releaseRead(access.token);
           rethrow;
         }
       case ReleaseFileReadRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
-        store.releaseRead(scopeId, request.token);
+        final scope = await _getFileStorageScope();
+        scope.releaseRead(request.token);
         return FileStorageSuccessResponse(id: request.id);
       case DeleteStoredFileRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
-        await store.delete(scopeId, request.relativePath);
+        final scope = await _getFileStorageScope();
+        await scope.delete(request.relativePath);
         return FileStorageSuccessResponse(id: request.id);
       case RetainStoredFileRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
+        final scope = await _getFileStorageScope();
         return RetainStoredFileResponse(
           id: request.id,
-          token: store.retain(scopeId, request.relativePath),
+          token: scope.retain(request.relativePath),
         );
       case ReleaseStoredFileRetentionRequest():
-        final (:store, :scopeId) = await _getFileStorageScope();
-        store.releaseRetention(scopeId, request.token);
+        final scope = await _getFileStorageScope();
+        scope.releaseRetention(request.token);
         return FileStorageSuccessResponse(id: request.id);
       default:
         return null;
@@ -153,14 +145,14 @@ class ProjectEngineRequestHandler {
   /// scope protects the file until adoption or session cleanup. Adoption creates
   /// a caller-owned retention and releases that temporary session claim.
   /// The caller must dispose the returned retention when finished.
-  Future<({String relativePath, ProjectAssetRetention retention})>
+  Future<({String relativePath, AssetRetention retention})>
   adoptReturnedFileRetention(String token) async {
-    final (:store, :scopeId) = await _getFileStorageScope();
-    final relativePath = store.resolveRetention(token);
+    final scope = await _getFileStorageScope();
+    final relativePath = scope.resolveRetention(token);
     final retention = ServiceRegistry.forProject(project.id).projectStorage
         .retainAssets([relativePath]);
     try {
-      store.releaseRetention(scopeId, token);
+      scope.releaseRetention(token);
       return (relativePath: relativePath, retention: retention);
     } catch (_) {
       retention.dispose();
@@ -173,12 +165,11 @@ class ProjectEngineRequestHandler {
     final opening = _fileStorageScope;
     if (opening == null) return;
     // Failed initialization was reported to the request that opened the store.
-    final scope = await opening
-        .then<({ProjectAssetStore store, String scopeId})?>(
-          (value) => value,
-          onError: (Object _, StackTrace _) => null,
-        );
-    if (scope != null) await scope.store.closeScope(scope.scopeId);
+    final scope = await opening.then<AssetScope?>(
+      (value) => value,
+      onError: (Object _, StackTrace _) => null,
+    );
+    if (scope != null) await scope.close();
     _fileStorageScope = null;
   }
 }

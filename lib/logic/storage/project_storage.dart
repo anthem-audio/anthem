@@ -17,147 +17,131 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/logic/storage/project_asset_store.dart';
-import 'package:anthem/model/project.dart';
-import 'package:anthem/logic/storage/project_asset_references.dart';
-import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:path/path.dart' as path;
 
+import 'project_asset_category.dart';
+import 'project_asset_store.dart';
 import 'asset_store_io_stub.dart'
     if (dart.library.io) 'asset_store_io.dart'
     as files;
 
-/// Manages a project's stored assets.
+/// Provides file storage for an open project.
 ///
-/// A loaded project uses its saved folder as the root. A new project uses a
-/// temporary root. Saving copies required files to the chosen folder; the open
-/// store keeps its root until project closure so existing read paths stay valid.
+/// A project can reference files, such as processor snapshots, in addition to
+/// the data serialized in its document. This class owns the working directory
+/// containing those files and opens its [ProjectAssetStore] on first use.
+/// Constructing an instance does not create or scan the directory.
 ///
-/// These files will be used to store audio clips from the project, and
-/// plugin states. The reason for storing plugin states as separate files is
-/// that they may be very large; storing such large state blobs in the project
-/// file means we also must hold them in memory in both the UI and the engine,
-/// and sync them over IPC when they change. Some plugins store audio clips in
-/// their plugin state, so there is no reason to put these directly in the
-/// in-memory project model.
+/// [projectFiles] holds the retention claims that belong to the current
+/// document. Saving uses these claims to determine which files to include.
+/// [retainAssets] keeps files needed independently of the document, such as
+/// undo history or processor snapshots held by UI code. Clients that manage
+/// their own file access, including engine sessions, obtain a scope through
+/// [openScope] and are responsible for closing it.
+///
+/// For a new project, await [assetStore] before accessing the initially empty
+/// [projectFiles] scope. When opening an existing project, the loader calls
+/// [restoreProjectFiles] with the saved reference mapping before using that
+/// scope. Opening [assetStore] discovers files without restoring document
+/// references.
+///
+/// [rootDirectory] stays fixed for the lifetime of this object. Saving to
+/// another directory copies the required files, so the engine can continue
+/// using its existing working paths after Save As.
+///
+/// [close] releases project-owned scopes and closes the store, preserving
+/// project data files and clearing caches. Callers must finish file I/O and
+/// close any independently owned scopes or snapshots before closing storage.
+/// For directories created or adopted through [ProjectStorage.temporary],
+/// [discard] also removes the working directory. Directories supplied to the
+/// regular constructor are preserved.
 class ProjectStorage {
-  /// Root chosen by the project owner. It is created on first file access.
   final String rootDirectory;
-
   final List<ProjectAssetCategory> categories;
-
-  /// Whether this owner may discard the root when the project closes.
-  ///
-  /// Explicit roots belong to the user and are preserved. Temporary roots are
-  /// allocated or adopted by [ProjectStorage.temporary] for unsaved projects.
   final bool isTemporary;
-
-  Future<ProjectAssetStore>? _initializationFuture;
-  ProjectAssetStore? _openedStore;
-  final ProjectModel _project;
-  ProjectAssetReferences? _references;
+  Future<ProjectAssetStore>? _opening;
+  ProjectAssetStore? _store;
+  AssetScope? _projectFiles;
+  AssetScope? _runtimeFiles;
   bool _closing = false;
   Future<void>? _closeFuture;
   Future<void>? _discardFuture;
 
   ProjectStorage({
     required String rootDirectory,
-    required ProjectModel project,
     Iterable<ProjectAssetCategory> categories = ProjectAssetCategory.defaults,
-  }) : this._(rootDirectory, categories, false, project);
+  }) : this._(rootDirectory, categories, false);
 
-  /// Owns a temporary root, deleting it when [discard] is called.
-  ///
-  /// If [rootDirectory] is omitted, chooses a fresh path without creating it.
-  /// Otherwise, takes ownership of the supplied directory and its contents.
+  /// Allocates or adopts a temporary root, removed only by [discard].
   factory ProjectStorage.temporary({
-    required ProjectModel project,
     String? rootDirectory,
     Iterable<ProjectAssetCategory> categories = ProjectAssetCategory.defaults,
   }) => ProjectStorage._(
     rootDirectory ?? files.temporaryProjectDirectoryPath(),
     categories,
     true,
-    project,
   );
 
   ProjectStorage._(
     String root,
     Iterable<ProjectAssetCategory> categories,
     this.isTemporary,
-    this._project,
   ) : rootDirectory = path.normalize(path.absolute(root)),
       categories = List.unmodifiable(categories);
 
-  /// Assets shared by the UI and engine for the lifetime of the project.
-  ///
-  /// Engine restarts leave the store intact. Each category controls whether its
-  /// files must accompany a save or can be discarded and regenerated.
+  /// Opens the file registry without restoring any document references.
   Future<ProjectAssetStore> get assetStore {
     if (_closing) throw StateError('Project storage is closing or closed.');
-    return _initializationFuture ??= _initialize();
+    return _opening ??=
+        ProjectAssetStore.open(rootDirectory, categories: categories)
+            .then((store) => _store = store)
+            .catchError((Object error, StackTrace stack) {
+              _opening = null;
+              Error.throwWithStackTrace(error, stack);
+            });
   }
 
-  Future<ProjectAssetStore> _initialize() async {
-    try {
-      final store = _openedStore ??= await ProjectAssetStore.open(
-        rootDirectory,
-        categories: categories,
-      );
-      _references ??= ProjectAssetReferences(_project.fileRetentions, store);
-      return store;
-    } catch (_) {
-      _initializationFuture = null;
-      rethrow;
+  ProjectAssetStore get _openedStore {
+    if (_closing || _store == null) {
+      throw StateError('Open project storage before accessing its scopes.');
     }
+    return _store!;
   }
 
-  /// Manages asset claims for the open project, independent snapshot handles,
-  /// undo history, and saved documents.
-  ///
-  /// Its `snapshot()` method captures only current-project references, excluding
-  /// files held solely by history, independent handles, or saved documents.
-  Future<ProjectAssetReferences> get references async {
-    await assetStore;
-    return _references!;
-  }
+  /// The claims included in saved project documents.
+  /// New projects start empty. Loaded documents restore this scope before use.
+  AssetScope get projectFiles =>
+      _projectFiles ??= _openedStore.openScope(allowCacheFiles: false);
 
-  ProjectAssetReferences get _openedReferences {
-    final references = _references;
-    if (_closing || references == null) {
-      throw StateError(
-        'Open project storage before accessing file retentions.',
-      );
+  /// Restores document claims before any project-file references are created.
+  /// Failed restoration leaves the open store available for retry or cleanup.
+  Future<void> restoreProjectFiles(Map<String, String> references) async {
+    final store = await assetStore;
+    if (_projectFiles != null) {
+      throw StateError('Project references have already been initialized.');
     }
-    return references;
+    _projectFiles = store.openScope(
+      references: references,
+      allowCacheFiles: false,
+    );
   }
 
-  /// Retains an asset for the current project and returns its retention ID.
-  String retainAssetForProject(String relativePath) =>
-      _openedReferences.retainAssetForProject(relativePath);
+  /// Creates a scope whose caller owns its cleanup, such as an engine session.
+  Future<AssetScope> openScope() async => (await assetStore).openScope();
 
-  /// Releases a project-owned claim without deleting its asset.
-  void releaseAssetFromProject(String retentionId) =>
-      _openedReferences.releaseAssetFromProject(retentionId);
+  String resolveRetention(String id) => _openedStore.resolveRetention(id);
 
-  /// Resolves a live retention to its project-relative file path.
-  String resolveRetention(String retentionId) =>
-      _openedReferences.store.resolveRetention(retentionId);
-
-  /// Retains assets in an already opened store until the claim is disposed.
-  ///
-  /// Files must have been created or loaded through this storage first.
-  ProjectAssetRetention retainAssets(Iterable<String> paths) {
-    return _openedReferences.retainAssets(paths);
+  /// Keeps files alive independently of membership in the current document.
+  /// Handles are disposed individually or invalidated when storage closes.
+  AssetRetention retainAssets(Iterable<String> paths) {
+    final scope = _runtimeFiles ??= _openedStore.openScope();
+    return scope.retainAll(paths);
   }
 
-  /// Closes storage after all engine and UI file access has ended.
-  ///
-  /// Waits for initialization, then deletes cache categories. Required project
-  /// data is preserved, including data in a temporary root that may be needed
-  /// for recovery. All clients must finish file I/O and close their store
-  /// scopes first. Outstanding scopes prevent cleanup; close them and retry.
-  /// Closing an unused owner does not access the filesystem.
+  /// Releases project-owned scopes and closes the store, preserving data files.
+  /// Callers must finish I/O and close external scopes and snapshots first.
+  /// If any remain open, closing fails and can be retried after their cleanup.
+  /// An unused owner never accesses the filesystem.
   Future<void> close() {
     _closing = true;
     return _closeFuture ??= _close().catchError((
@@ -170,27 +154,16 @@ class ProjectStorage {
   }
 
   Future<void> _close() async {
-    final initializationFuture = _initializationFuture;
-    if (initializationFuture == null && _openedStore == null) return;
-    // Initialization failures are reported to the caller that opened the store.
-    // Cleanup remains possible when initialization did not produce a store.
-    final store = initializationFuture == null
-        ? _openedStore
-        : await initializationFuture.then<ProjectAssetStore?>(
-            (value) => value,
-            onError: (Object _, StackTrace _) => _openedStore,
-          );
-    if (store != null) {
-      await _references?.close();
-      await store.close();
+    final opening = _opening;
+    if (opening != null) {
+      await opening.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     }
+    await _projectFiles?.close();
+    await _runtimeFiles?.close();
+    await _store?.close();
   }
 
-  /// Closes an unsaved project's storage and deletes its temporary root.
-  ///
-  /// Call after the project has been saved elsewhere or explicitly discarded.
-  /// This can follow [close] if temporary data was initially kept for recovery.
-  /// Throws [StateError] for an explicit root, which must be preserved on close.
+  /// Closes storage and removes a temporary root after save or explicit discard.
   Future<void> discard() {
     if (!isTemporary) {
       throw StateError('Cannot discard an explicit project root.');

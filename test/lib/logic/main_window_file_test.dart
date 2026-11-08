@@ -27,6 +27,7 @@ import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/project_file/codec.dart';
 import 'package:anthem/logic/project_file/format.dart';
 import 'package:anthem/logic/project_file/gzip.dart';
+import 'package:anthem/logic/project_file/io.dart';
 import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_asset_store.dart';
@@ -332,20 +333,20 @@ void main() {
     test(
       editDuringSave
           ? 'edits during file copying remain unsaved and preserve the save snapshot'
-          : 'saving file claims updates the model without leaving the project dirty',
+          : 'saving captures file claims without mutating the live manifest',
       () async {
         final storage = ServiceRegistry.forProject(project.id).projectStorage;
         final store = await storage.assetStore;
         final scope = store.openScope();
         late String relativePath;
         try {
-          final write = await store.beginWrite(scope, 'plugin states');
+          final write = await scope.beginWrite('plugin states');
           await File(write.absolutePath).writeAsString('plugin state');
-          relativePath = await store.commitWrite(scope, write.token);
+          relativePath = await scope.commitWrite(write.token);
         } finally {
-          await store.closeScope(scope);
+          await scope.close();
         }
-        final retentionId = storage.retainAssetForProject(relativePath);
+        final retentionId = storage.projectFiles.retain(relativePath);
         final root = path.join(directory.path, 'Snapshot');
         selector.saveLocation = FileSaveLocation(root);
         final previousTempo = project.sequence.beatsPerMinuteRaw;
@@ -362,10 +363,9 @@ void main() {
         );
         try {
           await paused.started.future.timeout(const Duration(seconds: 10));
-          expect(jsonDecode(project.fileRetentions), {
-            retentionId: relativePath,
-          });
-          final snapshotJson = project.toJson();
+          expect(project.fileRetentions, '{}');
+          final snapshotJson = project.toJson()
+            ..['fileRetentions'] = jsonEncode({retentionId: relativePath});
           if (editDuringSave) {
             project.sequence.beatsPerMinuteRaw = previousTempo + 100;
           }
@@ -602,6 +602,71 @@ void main() {
     );
     expect(project.filePath, previousPath);
     expect(project.isDirty, isTrue);
+  });
+
+  test('in-place save replaces document protection only after successful publication', () async {
+    final root = await Directory(path.join(directory.path, 'Shared')).create();
+    final original = 'plugin states/original.bin';
+    final originalFile = File(path.join(root.path, original));
+    await originalFile.parent.create();
+    await originalFile.writeAsString('original state');
+    final node = project.processingGraph.nodes.values.first;
+    final document = File(path.join(root.path, 'Shared.anthem'));
+    final saved = project.toJson();
+    saved['fileRetentions'] = jsonEncode({'loaded-state': original});
+    saved['processingGraph']['nodes']['${node.id}']['processorStateRetentionId'] =
+        'loaded-state';
+    await writeProjectFileToPath(document.path, saved);
+    final opening = _ControllerWithoutEngine();
+    selector.selectedFile = XFile(document.path);
+    final id = (await opening.loadProject(dialogController: dialogs))!;
+    addTearDown(() => opening.closeProjectWithoutSaving(id));
+    final loaded = AnthemStore.instance.projects[id]!;
+    final storage = ServiceRegistry.forProject(id).projectStorage;
+    final writer = await storage.openScope();
+    addTearDown(writer.close);
+    final loadedNode = loaded.processingGraph.nodes[node.id]!;
+    storage.projectFiles.releaseRetention(
+      loadedNode.processorStateRetentionId!,
+    );
+    loadedNode.processorStateRetentionId = null;
+    expect(() => writer.delete(original), throwsStateError);
+
+    final pending = await writer.beginWrite('plugin states', extension: 'bin');
+    await File(pending.absolutePath).writeAsString('replacement state');
+    final replacement = await writer.commitWrite(pending.token);
+    loadedNode.processorStateRetentionId = storage.projectFiles.retain(
+      replacement,
+    );
+    final backup = await document.rename('${document.path}.backup');
+    final blocker = await Directory(document.path).create();
+    await File(path.join(blocker.path, 'keep'))
+        .writeAsString('prevent publication');
+    await expectLater(
+      opening.saveProject(id, false, dialogController: dialogs),
+      throwsA(isA<FileSystemException>()),
+    );
+    expect(() => writer.delete(original), throwsStateError);
+    storage.projectFiles.releaseRetention(
+      loadedNode.processorStateRetentionId!,
+    );
+    loadedNode.processorStateRetentionId = null;
+    // Failed saves must close their prepared data without retaining new files.
+    await writer.delete(replacement);
+
+    await blocker.delete(recursive: true);
+    await backup.rename(document.path);
+    expect(
+      await opening.saveProject(id, false, dialogController: dialogs),
+      isTrue,
+    );
+    expect(
+      jsonDecode(
+        (await readProjectFile(document.path))['fileRetentions'] as String,
+      ),
+      isEmpty,
+    );
+    await writer.delete(original);
   });
 
   test('cancelling log export does not write or show an error', () async {

@@ -65,7 +65,6 @@ void main() {
     );
     project = ProjectModel.create();
     storage = ProjectStorage.temporary(
-      project: project,
       categories: [ProjectAssetCategory.pluginStates, cache],
     );
     AnthemStore.instance.projects[project.id] = project;
@@ -94,19 +93,18 @@ void main() {
     project.engine = engine;
     final store = await registry.projectStorage.assetStore;
     final scopeId = store.openScope();
-    final write = await store.beginWrite(
-      scopeId,
+    final write = await scopeId.beginWrite(
       ProjectAssetCategory.pluginStates.directoryName,
     );
-    final relativePath = await store.commitWrite(scopeId, write.token);
-    final read = store.acquireRead(scopeId, relativePath);
-    store.releaseRead(scopeId, read.token);
-    final cached = await store.beginWrite(scopeId, cache.directoryName);
-    final cacheRelativePath = await store.commitWrite(scopeId, cached.token);
-    final cacheRead = store.acquireRead(scopeId, cacheRelativePath);
+    final relativePath = await scopeId.commitWrite(write.token);
+    final read = scopeId.acquireRead(relativePath);
+    scopeId.releaseRead(read.token);
+    final cached = await scopeId.beginWrite(cache.directoryName);
+    final cacheRelativePath = await scopeId.commitWrite(cached.token);
+    final cacheRead = scopeId.acquireRead(cacheRelativePath);
     final cachePath = cacheRead.absolutePath;
-    store.releaseRead(scopeId, cacheRead.token);
-    await store.closeScope(scopeId);
+    scopeId.releaseRead(cacheRead.token);
+    await scopeId.close();
 
     final closing = controller.closeProjectWithoutSaving(project.id);
     expect(controller.closeProjectWithoutSaving(project.id), same(closing));
@@ -128,12 +126,11 @@ void main() {
     () async {
       final store = await registry.projectStorage.assetStore;
       final scopeId = store.openScope();
-      final write = await store.beginWrite(
-        scopeId,
+      final write = await scopeId.beginWrite(
         ProjectAssetCategory.pluginStates.directoryName,
       );
-      final relativePath = await store.commitWrite(scopeId, write.token);
-      final read = store.acquireRead(scopeId, relativePath);
+      final relativePath = await scopeId.commitWrite(write.token);
+      final read = scopeId.acquireRead(relativePath);
       await expectLater(
         controller.closeProjectWithoutSaving(project.id),
         throwsStateError,
@@ -141,7 +138,7 @@ void main() {
       expect(await File(read.absolutePath).exists(), isTrue);
       expect(ServiceRegistry.maybeForProject(project.id), same(registry));
       expect(AnthemStore.instance.projects[project.id], same(project));
-      await store.closeScope(scopeId);
+      await scopeId.close();
       await controller.closeProjectWithoutSaving(project.id);
       expect(await Directory(storage.rootDirectory).exists(), isFalse);
     },
@@ -160,19 +157,17 @@ void main() {
     'closing a saved root preserves its document and project files',
     () async {
       storage = ProjectStorage(
-        project: project,
         rootDirectory: path.join(parent.path, 'saved project'),
       );
       final store = await registry.projectStorage.assetStore;
       final scopeId = store.openScope();
-      final write = await store.beginWrite(
-        scopeId,
+      final write = await scopeId.beginWrite(
         ProjectAssetCategory.pluginStates.directoryName,
       );
-      final relativePath = await store.commitWrite(scopeId, write.token);
-      final read = store.acquireRead(scopeId, relativePath);
-      store.releaseRead(scopeId, read.token);
-      await store.closeScope(scopeId);
+      final relativePath = await scopeId.commitWrite(write.token);
+      final read = scopeId.acquireRead(relativePath);
+      scopeId.releaseRead(read.token);
+      await scopeId.close();
       final document = await File(
         path.join(storage.rootDirectory, 'project.anthem'),
       ).writeAsString('document');
