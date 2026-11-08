@@ -44,9 +44,12 @@
 // *must* be referenced here in order to be usable in the C++ code.
 
 @GenerateCppModuleFile()
+@GenerateRustModels([ProjectModel])
 library;
 
 import 'package:anthem_codegen/include.dart';
+
+import 'project.dart';
 
 export 'arrangement/arrangement.dart';
 export 'arrangement/clip.dart';

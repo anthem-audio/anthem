@@ -1,0 +1,30 @@
+[
+  {
+    "version": 1,
+    "id": 10,
+    "routing": {
+      "String": "parent"
+    },
+    "__type": "FixtureParent",
+    "parentValue": "base"
+  },
+  {
+    "version": 2,
+    "id": 11,
+    "routing": {
+      "int": 9
+    },
+    "__type": "FixtureChild",
+    "parentValue": "inherited",
+    "childValue": true
+  },
+  {
+    "version": 3,
+    "__type": "FixtureEvent",
+    "values": [
+      1,
+      2,
+      3
+    ]
+  }
+]

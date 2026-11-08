@@ -168,6 +168,19 @@ class GenerateCppModuleFile {
   const GenerateCppModuleFile();
 }
 
+/// Generates a Rust module for these model roots and all engine-visible children.
+///
+/// Apply this to a library. If [roots] is empty, all serializable Anthem model
+/// classes in the library are included. Field visibility follows the existing
+/// engine JSON contract, including [hideFromCpp]. Each class's
+/// [AnthemModel.generateModelSync] setting determines whether references to it
+/// use shared model handles or owned values.
+class GenerateRustModels {
+  final List<Type> roots;
+
+  const GenerateRustModels([this.roots = const []]);
+}
+
 /// An annotation that marks a class to be hidden from serialization or C++
 /// generation.
 class Hide {

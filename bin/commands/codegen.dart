@@ -126,6 +126,7 @@ class _CodegenCleanCommand extends Command<dynamic> {
         print('  - codegen/**/*.g.part');
       }
       print('  - engine/src/generated');
+      print('  - engine-rust/src/generated');
       print('This will also run');
       print('    dart run build_runner clean');
       print('Are you sure you want to delete all generated files? (y/n)');
@@ -168,15 +169,20 @@ class _CodegenCleanCommand extends Command<dynamic> {
       }
     }
 
-    try {
-      final engineGeneratedFolder = Directory.fromUri(
-        getPackageRootPath().resolve('engine/src/generated/'),
-      );
+    for (final generatedPath in [
+      'engine/src/generated/',
+      'engine-rust/src/generated/',
+    ]) {
+      try {
+        final engineGeneratedFolder = Directory.fromUri(
+          getPackageRootPath().resolve(generatedPath),
+        );
 
-      deleteCount += engineGeneratedFolder.listSync(recursive: true).length;
+        deleteCount += engineGeneratedFolder.listSync(recursive: true).length;
 
-      engineGeneratedFolder.deleteSync(recursive: true);
-    } on PathNotFoundException catch (_) {}
+        engineGeneratedFolder.deleteSync(recursive: true);
+      } on PathNotFoundException catch (_) {}
+    }
 
     print('Deleted $deleteCount files.');
 

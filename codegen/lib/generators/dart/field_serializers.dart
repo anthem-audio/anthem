@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -104,13 +104,23 @@ String createSerializerForMap({
   final nullablePrefix = type.isNullable ? '$accessor == null ? null : ' : '';
   final excl = type.isNullable ? '!' : '';
   final nonObservableInner = type.isObservable ? '.nonObservableInner' : '';
+  final key = createSerializerForField(
+    type: type.keyType,
+    accessor: 'entry.key',
+    alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields,
+  );
+  // Parentheses ensure nullable enum access becomes the string "null", rather
+  // than short-circuiting the rest of the access chain to a null map key.
+  final keyExpression = type.keyType is StringModelType
+      ? key
+      : '($key).toString()';
 
   return '''
 ${nullablePrefix}Map.fromEntries(
   $accessor$excl$nonObservableInner.entries.map(
     (entry) {
       return MapEntry(
-        ${createSerializerForField(type: type.keyType, accessor: 'entry.key', alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields)}${type.keyType is StringModelType ? '' : '.toString()'},
+        $keyExpression,
         ${createSerializerForField(type: type.valueType, accessor: 'entry.value', alwaysIncludeEngineOnlyFields: alwaysIncludeEngineOnlyFields)},
       );
     },

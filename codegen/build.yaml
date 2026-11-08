@@ -31,3 +31,9 @@ builders:
     }
     build_to: source
     auto_apply: dependents
+  rustModelBuilder:
+    import: 'package:anthem_codegen/codegen.dart'
+    builder_factories: ['rustModelBuilder']
+    build_extensions: {'.dart': ['.rs']}
+    build_to: source
+    auto_apply: dependents

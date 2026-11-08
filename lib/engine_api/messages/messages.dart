@@ -19,6 +19,9 @@
 
 // ignore_for_file: non_constant_identifier_names
 
+@GenerateRustModels()
+library;
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem_codegen/include.dart';
 

@@ -274,6 +274,8 @@ String _createGetterForKeyField({
       DoubleModelType() => "$getter == 'null' ? null : double.parse($getter)",
       NumModelType() => "$getter == 'null' ? null : num.parse($getter)",
       BoolModelType() => "$getter == 'null' ? null : bool.parse($getter)",
+      EnumModelType(enumName: final name) =>
+        "$getter == 'null' ? null : $name.values.firstWhere((value) => value.name == $getter)",
       _ => 'null',
     };
   }
@@ -284,6 +286,8 @@ String _createGetterForKeyField({
     DoubleModelType() => 'double.parse($getter)',
     NumModelType() => 'num.parse($getter)',
     BoolModelType() => 'bool.parse($getter)',
+    EnumModelType(enumName: final name) =>
+      '$name.values.firstWhere((value) => value.name == $getter)',
     _ => 'null',
   };
 }

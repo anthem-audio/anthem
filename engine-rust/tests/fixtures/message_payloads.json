@@ -1,0 +1,30 @@
+[
+  {
+    "id": "float",
+    "valueType": "doubleValue",
+    "values": {
+      "List<double>": [
+        0.125,
+        0.25
+      ]
+    },
+    "sampleTimestamps": [
+      64,
+      128
+    ]
+  },
+  {
+    "id": "integer",
+    "valueType": "intValue",
+    "values": {
+      "List<int>": [
+        -2,
+        3
+      ]
+    },
+    "sampleTimestamps": [
+      64,
+      128
+    ]
+  }
+]

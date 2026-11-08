@@ -40,6 +40,7 @@ bash engine-rust/build-web.sh --install-toolchain
 Build the Rust web engine with the Anthem CLI.
 
 ```sh
+dart run anthem:cli codegen generate --root-only
 dart run anthem:cli engine build --backend rust --debug --wasm
 ```
 

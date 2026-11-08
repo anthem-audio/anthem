@@ -262,11 +262,20 @@ jobs:
 
   build-rust-wasm:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - name: Check out code
         uses: actions/checkout@v7
+
+      - name: Initialize project and generate models
+        uses: ./.github/actions/shared-init
+
+      - name: Verify Dart snapshot fixtures
+        run: flutter test test/codegen
+
+      - name: Test the native Rust engine
+        run: cargo test --manifest-path engine-rust/Cargo.toml --locked
 
       - name: Set up Emscripten
         uses: emscripten-core/setup-emsdk@v16

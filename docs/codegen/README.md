@@ -11,6 +11,7 @@ This section documents Anthem's `codegen/` module: why it exists, how it is stru
 - [Dart Sync Runtime (`AnthemModelBase` and Collections)](./project_models/dart_sync_runtime.md)
 - [Change Events and Listeners](./project_models/change_events_and_listeners.md)
 - [Engine-Side Change Application (Generated C++)](./project_models/engine_side_change_application.md)
+- [Rust Model Snapshots](./project_models/rust_snapshots.md)
 - [Change Message Shape Reference](./project_models/change_message_shape_reference.md)
 
 ## Planned Additions

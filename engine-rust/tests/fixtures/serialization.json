@@ -1,0 +1,214 @@
+[
+  {
+    "integerValue": 9223372036854775807,
+    "doubleValue": -0.125,
+    "numberValue": 7,
+    "boolValue": true,
+    "stringValue": "Rust ↔ Dart 🎵\n\"quoted\"",
+    "mode": "sampleAndHold",
+    "color": {
+      "a": 128,
+      "r": 12,
+      "g": 34,
+      "b": 56
+    },
+    "nestedList": [
+      [
+        1,
+        null,
+        -3
+      ],
+      []
+    ],
+    "children": {
+      "42": {
+        "type": 3,
+        "name": "nested"
+      }
+    },
+    "enumMap": {
+      "sampleAndHold": [
+        "one",
+        "two"
+      ]
+    },
+    "boolMap": {
+      "true": 1,
+      "false": 0
+    },
+    "nestedMap": {
+      "values": {
+        "-1": 2
+      }
+    },
+    "engineOnly": "engine state"
+  },
+  {
+    "integerValue": 9223372036854775807,
+    "doubleValue": -0.125,
+    "numberValue": 7,
+    "boolValue": true,
+    "stringValue": "Rust ↔ Dart 🎵\n\"quoted\"",
+    "optionalValue": "present",
+    "mode": "sampleAndHold",
+    "color": {
+      "a": 128,
+      "r": 12,
+      "g": 34,
+      "b": 56
+    },
+    "nestedList": [
+      [
+        1,
+        null,
+        -3
+      ],
+      []
+    ],
+    "optionalList": [
+      5
+    ],
+    "optionalMap": {
+      "value": 8
+    },
+    "children": {
+      "42": {
+        "type": 3,
+        "name": "nested"
+      }
+    },
+    "enumMap": {
+      "sampleAndHold": [
+        "one",
+        "two"
+      ]
+    },
+    "boolMap": {
+      "true": 1,
+      "false": 0
+    },
+    "nestedMap": {
+      "values": {
+        "-1": 2
+      }
+    },
+    "selection": {
+      "FixtureChild": {
+        "type": 3,
+        "name": "nested"
+      }
+    },
+    "engineOnly": "engine state"
+  },
+  {
+    "integerValue": 9223372036854775807,
+    "doubleValue": -0.125,
+    "numberValue": 7,
+    "boolValue": true,
+    "stringValue": "Rust ↔ Dart 🎵\n\"quoted\"",
+    "optionalValue": "present",
+    "mode": "sampleAndHold",
+    "color": {
+      "a": 128,
+      "r": 12,
+      "g": 34,
+      "b": 56
+    },
+    "nestedList": [
+      [
+        1,
+        null,
+        -3
+      ],
+      []
+    ],
+    "optionalList": [
+      5
+    ],
+    "optionalMap": {
+      "value": 8
+    },
+    "children": {
+      "42": {
+        "type": 3,
+        "name": "nested"
+      }
+    },
+    "enumMap": {
+      "sampleAndHold": [
+        "one",
+        "two"
+      ]
+    },
+    "boolMap": {
+      "true": 1,
+      "false": 0
+    },
+    "nestedMap": {
+      "values": {
+        "-1": 2
+      }
+    },
+    "selection": {
+      "String": "union string"
+    },
+    "engineOnly": "engine state"
+  },
+  {
+    "integerValue": 9223372036854775807,
+    "doubleValue": -0.125,
+    "numberValue": 2.5,
+    "boolValue": true,
+    "stringValue": "Rust ↔ Dart 🎵\n\"quoted\"",
+    "optionalValue": "present",
+    "mode": "sampleAndHold",
+    "color": {
+      "a": 128,
+      "r": 12,
+      "g": 34,
+      "b": 56
+    },
+    "nestedList": [
+      [
+        1,
+        null,
+        -3
+      ],
+      []
+    ],
+    "optionalList": [
+      5
+    ],
+    "optionalMap": {
+      "value": 8
+    },
+    "children": {
+      "42": {
+        "type": 3,
+        "name": "nested"
+      }
+    },
+    "sharedChild": {
+      "value": 7
+    },
+    "enumMap": {
+      "sampleAndHold": [
+        "one",
+        "two"
+      ]
+    },
+    "boolMap": {
+      "true": 1,
+      "false": 0
+    },
+    "nestedMap": {
+      "values": {
+        "-1": 2
+      }
+    },
+    "selection": {
+      "int": -9007199254740993
+    },
+    "engineOnly": "engine state"
+  }
+]

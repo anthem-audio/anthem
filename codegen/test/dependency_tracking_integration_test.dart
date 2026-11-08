@@ -94,6 +94,98 @@ void main() {
     timeout: const Timeout(Duration(minutes: 6)),
   );
 
+  test('rebuilds Rust models when a transitive model field changes', () async {
+    final codegenPackageRoot = _findCodegenPackageRoot();
+    final fixturePackage = await _TempCodegenPackage.create(
+      codegenPackageRoot: codegenPackageRoot,
+    );
+    addTearDown(fixturePackage.dispose);
+    await fixturePackage.writeFiles({
+      'lib/root.dart':
+          '@GenerateRustModels([RootModel])\nlibrary;\n$_rootLibrary',
+      'lib/imported.dart': _generatedImportedValue,
+    });
+    await fixturePackage.pubGet();
+    await fixturePackage.build();
+
+    const output = 'engine-rust/src/generated/lib/root.rs';
+    final initial = await fixturePackage.readFile(output);
+    expect(initial, contains('pub r#label: String'));
+    expect(initial, contains('pub r#child: Option<ImportedValue>'));
+
+    await fixturePackage.writeFile(
+      'lib/imported.dart',
+      _generatedImportedValue
+          .replaceFirst('late String label;', 'late int label;')
+          .replaceFirst('generateCpp: true', 'generateModelSync: true')
+          .replaceFirst(
+            'class _ImportedValue {',
+            'abstract class _ImportedValue with AnthemModelBase {',
+          ),
+    );
+    await fixturePackage.build();
+    final updated = await fixturePackage.readFile(output);
+    expect(updated, isNot(initial));
+    expect(updated, contains('r#label: i64'));
+    expect(updated, isNot(contains('pub r#label:')));
+    expect(
+      updated,
+      contains('pub r#child: Option<crate::model::ModelRef<ImportedValue>>'),
+    );
+    expect(updated, isNot(contains('label: String')));
+  }, timeout: const Timeout(Duration(minutes: 6)));
+
+  test(
+    'rebuilds Rust messages when a part changes or adds a subtype',
+    () async {
+      final fixturePackage = await _TempCodegenPackage.create(
+        codegenPackageRoot: _findCodegenPackageRoot(),
+      );
+      addTearDown(fixturePackage.dispose);
+      const library = r'''
+@GenerateRustModels()
+library;
+import 'package:anthem_codegen/include.dart';
+part 'definitions.dart';
+part 'messages.g.dart';
+@AnthemModel.ipc()
+sealed class Event extends _Event with _$EventAnthemModelMixin {
+  Event();
+  factory Event.fromJson(Map<String, dynamic> json) =>
+      _$EventAnthemModelMixin.fromJson(json);
+}
+class _Event {}
+''';
+      const definition = '''
+part of 'messages.dart';
+class Changed extends Event {
+  late int value;
+  Changed.uninitialized();
+}
+''';
+      await fixturePackage.writeFiles({
+        'lib/messages.dart': library,
+        'lib/definitions.dart': definition,
+      });
+      await fixturePackage.pubGet();
+      await fixturePackage.build();
+      const output = 'engine-rust/src/generated/lib/messages.rs';
+      final initial = await fixturePackage.readFile(output);
+      expect(initial, contains('r#value: i64'));
+      expect(initial, isNot(contains('Added {')));
+      await fixturePackage.writeFile(
+        'lib/definitions.dart',
+        '${definition.replaceFirst('late int value;', 'late String value;')}\n'
+            'class Added extends Event { Added.uninitialized(); }\n',
+      );
+      await fixturePackage.build();
+      final updated = await fixturePackage.readFile(output);
+      expect(updated, contains('r#value: String'));
+      expect(updated, contains('Added {'));
+    },
+    timeout: const Timeout(Duration(minutes: 6)),
+  );
+
   test(
     'rebuilds generated module headers when exported libraries change',
     () async {
@@ -395,5 +487,7 @@ targets:
       anthem_codegen:anthemDartModelGeneratorBuilder:
         enabled: true
       anthem_codegen:cppModelBuilder:
+        enabled: true
+      anthem_codegen:rustModelBuilder:
         enabled: true
 ''';

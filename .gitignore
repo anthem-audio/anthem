@@ -57,6 +57,7 @@ app.*.map.json
 /engine/build*/
 /engine/src/generated/
 /engine-rust/target/
+/engine-rust/src/generated/
 /web/engine/
 
 # Flatpak generated outputs

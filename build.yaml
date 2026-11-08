@@ -5,6 +5,14 @@ targets:
         generate_for:
           - lib/*
           - lib/**/*
+          - test/fixtures/rust_model_fixture.dart
+          - test/fixtures/rust_message_fixture.dart
+      anthem_codegen:rustModelBuilder:
+        generate_for:
+          - lib/model/model.dart
+          - lib/engine_api/messages/messages.dart
+          - test/fixtures/rust_model_fixture.dart
+          - test/fixtures/rust_message_fixture.dart
       anthem_codegen:cppModelBuilder:
         generate_for:
           - lib/*

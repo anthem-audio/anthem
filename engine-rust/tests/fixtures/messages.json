@@ -1,0 +1,105 @@
+[
+  {
+    "id": 42,
+    "__type": "Heartbeat"
+  },
+  {
+    "id": 42,
+    "__type": "HeartbeatReply"
+  },
+  {
+    "id": 1,
+    "__type": "EngineReadyCheckResponse",
+    "success": true
+  },
+  {
+    "id": 2,
+    "__type": "EngineReadyCheckResponse",
+    "success": false,
+    "error": "initialization failed"
+  },
+  {
+    "id": 3,
+    "__type": "StartAudioResponse",
+    "success": true,
+    "audioConfig": {
+      "sampleRate": 48000.0,
+      "blockSize": 256,
+      "inputChannelCount": 0,
+      "outputChannelCount": 2
+    }
+  },
+  {
+    "id": 4,
+    "__type": "StartRenderAudioSessionRequest",
+    "sampleRate": 48000.0,
+    "blockSize": 256,
+    "outputChannelCount": 2
+  },
+  {
+    "id": 5,
+    "__type": "BeginFileWriteRequest",
+    "category": "plugin states",
+    "baseName": "voice",
+    "extension": "bin"
+  },
+  {
+    "id": 6,
+    "__type": "ModelInitRequest",
+    "serializedModel": "{\"tracks\":{}}"
+  },
+  {
+    "id": 7,
+    "__type": "ModelUpdateRequest",
+    "updateKind": "set",
+    "fieldAccesses": [
+      {
+        "fieldType": "raw",
+        "fieldName": "sequence"
+      },
+      {
+        "fieldType": "raw",
+        "fieldName": "beatsPerMinuteRaw"
+      }
+    ],
+    "serializedValue": "12800"
+  },
+  {
+    "id": 8,
+    "__type": "SetVisualizationSubscriptionsRequest",
+    "subscriptions": [
+      {
+        "id": "meter",
+        "valueType": "doubleValue"
+      }
+    ]
+  },
+  {
+    "id": 9,
+    "__type": "TestSampleGainCurveResponse",
+    "dbValues": [
+      -6.0,
+      0.0
+    ],
+    "isNegativeInfinity": [
+      false,
+      false
+    ]
+  },
+  {
+    "__type": "PluginParameterChangedEvent",
+    "nodeId": 123,
+    "controlPortId": 4,
+    "value": 0.75,
+    "displayText": "-3 dB"
+  },
+  {
+    "__type": "PluginLoadedEvent",
+    "nodeId": 123
+  },
+  {
+    "__type": "RenderFailedEvent",
+    "renderId": 456,
+    "error": "cancelled"
+  }
+]
