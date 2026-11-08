@@ -27,6 +27,7 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/project_engine_event_handler.dart';
 import 'package:anthem/logic/project_engine_request_handler.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem_codegen/include.dart' show ModelChangeEvent;
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 

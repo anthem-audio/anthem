@@ -129,8 +129,16 @@ impl MessageThread {
 
     /// Runs jobs on the message thread until shutdown or disconnection.
     pub fn run(self) {
+        self.run_until(|| false);
+    }
+
+    /// Checks for a fatal engine condition between jobs, before dispatching more work.
+    pub(crate) fn run_until(self, should_stop: impl Fn() -> bool) {
         let mut scheduled = BTreeMap::new();
         loop {
+            if should_stop() {
+                break;
+            }
             let mut due_job = None;
             // This loop pulls in all schedule updates. It sets the earliest one
             // to due_job, and puts the rest in the schedule map.

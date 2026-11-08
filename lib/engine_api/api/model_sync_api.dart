@@ -21,7 +21,7 @@ part of 'package:anthem/engine_api/engine.dart';
 
 /// Provides an API for syncing the model state between the UI and the engine.
 ///
-/// Anthem uses codegen to generate C++ model classes which match the
+/// Anthem uses codegen to generate engine model classes which match the
 /// developer-defined Dart model, including serialization and deserialization
 /// mechanisms on both sides. On top of this, the Dart model is observable and
 /// produces a stream of changes that can be used to update the engine when the
@@ -47,21 +47,12 @@ class ModelSyncApi {
     )) as ModelInitResponse;
   }
 
-  /// Updates the engine model with the given field update.
-  void updateModel({
-    required FieldUpdateKind updateKind,
-    required List<FieldAccess> fieldAccesses,
-    String? serializedValue,
-  }) {
-    final id = _engine._getRequestId();
-
-    final request = ModelUpdateRequest(
-      id: id,
-      updateKind: updateKind,
-      fieldAccesses: fieldAccesses,
-      serializedValue: serializedValue,
+  /// Updates the engine model with the given Dart model change.
+  void updateModelFromChange(ModelChangeEvent change) {
+    final request = ModelUpdateRequest.fromChange(
+      id: _engine._getRequestId(),
+      change: change,
     );
-
     _engine._requestNoReply(
       request,
       startupBehavior: StartupSendBehavior.queueDuringStartup,

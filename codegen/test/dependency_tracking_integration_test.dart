@@ -186,6 +186,36 @@ class Changed extends Event {
     timeout: const Timeout(Duration(minutes: 6)),
   );
 
+  test('C++ sync deserializes escaped string map keys as JSON', () async {
+    final fixturePackage = await _TempCodegenPackage.create(
+      codegenPackageRoot: _findCodegenPackageRoot(),
+    );
+    addTearDown(fixturePackage.dispose);
+    await fixturePackage.writeFiles({
+      'lib/root.dart': _rootLibrary
+          .replaceFirst(
+            '@AnthemModel(serializable: true, generateCpp: true)',
+            '@AnthemModel.syncedModel()',
+          )
+          .replaceFirst(
+            'class _RootModel {',
+            'abstract class _RootModel with AnthemModelBase {',
+          )
+          .replaceFirst(
+            'ImportedValue? child;',
+            'AnthemObservableMap<String, int> values = AnthemObservableMap();',
+          ),
+      'lib/imported.dart': _generatedImportedValue,
+    });
+    await fixturePackage.pubGet();
+    await fixturePackage.build();
+    final cpp = await fixturePackage.readFile(
+      'engine/src/generated/lib/root.cpp',
+    );
+    expect(cpp, contains('rfl::json::read<std::string>'));
+    expect(cpp, isNot(contains('.substr(1,')));
+  }, timeout: const Timeout(Duration(minutes: 6)));
+
   test(
     'rebuilds generated module headers when exported libraries change',
     () async {

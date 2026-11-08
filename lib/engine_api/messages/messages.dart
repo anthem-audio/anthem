@@ -22,8 +22,11 @@
 @GenerateRustModels()
 library;
 
+import 'dart:convert';
+
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem_codegen/include.dart';
+import 'package:anthem_codegen/include.dart' as model;
 
 part 'file_storage.dart';
 part 'model_sync.dart';

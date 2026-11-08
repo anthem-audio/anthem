@@ -77,6 +77,50 @@ class ModelUpdateRequest extends Request {
   }) {
     super.id = id;
   }
+
+  /// Converts a [ModelChangeEvent], which is Dart-internal, to a
+  /// [ModelUpdateRequest], which can be sent to the engine.
+  factory ModelUpdateRequest.fromChange({
+    required int id,
+    required model.ModelChangeEvent change,
+  }) {
+    return ModelUpdateRequest(
+      id: id,
+      updateKind: switch (change.operation) {
+        model.RawFieldUpdate() ||
+        model.ListUpdate() ||
+        model.MapPut() => FieldUpdateKind.set,
+        model.ListInsert() => FieldUpdateKind.add,
+        model.ListRemove() || model.MapRemove() => FieldUpdateKind.remove,
+      },
+      fieldAccesses: [
+        for (final access in change.fieldAccessors)
+          FieldAccess(
+            fieldType: switch (access.fieldType) {
+              model.FieldType.raw => FieldType.raw,
+              model.FieldType.list => FieldType.list,
+              model.FieldType.map => FieldType.map,
+            },
+            fieldName: access.fieldName,
+            listIndex: access.index,
+            serializedMapKey: access.key == null
+                ? null
+                : jsonEncode(
+                    access.key is Enum ? (access.key as Enum).name : access.key,
+                  ),
+          ),
+      ],
+      // Values are already converted to JSON-compatible Dart values by codegen.
+      // jsonEncode also escapes quotes, backslashes, and newlines in strings.
+      serializedValue: switch (change.operation) {
+        model.RawFieldUpdate op => jsonEncode(op.newValueSerialized),
+        model.ListInsert op => jsonEncode(op.valueSerialized),
+        model.ListUpdate op => jsonEncode(op.newValueSerialized),
+        model.MapPut op => jsonEncode(op.newValueSerialized),
+        _ => null,
+      },
+    );
+  }
 }
 
 class ModelInitRequest extends Request {

@@ -31,6 +31,7 @@ import 'package:anthem/logic/render/render_range.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
 import 'package:anthem/widgets/project/project_view_model.dart';
+import 'package:anthem_codegen/include.dart' as changes;
 import 'package:flutter_test/flutter_test.dart';
 
 class _TestEngineConnector extends EngineConnectorBase {
@@ -535,12 +536,19 @@ void main() {
       );
       await _flushMicrotasks();
 
-      project.engine.modelSyncApi.updateModel(
-        updateKind: FieldUpdateKind.set,
-        fieldAccesses: [
-          FieldAccess(fieldType: FieldType.raw, fieldName: 'name'),
-        ],
-        serializedValue: '"Queued until render cleanup"',
+      project.engine.modelSyncApi.updateModelFromChange(
+        changes.ModelChangeEvent(
+          fieldAccessors: [
+            changes.FieldAccessor(
+              fieldType: changes.FieldType.raw,
+              fieldName: 'name',
+            ),
+          ],
+          operation: changes.RawFieldUpdate(
+            newValue: 'Queued until render cleanup',
+            newValueSerialized: 'Queued until render cleanup',
+          ),
+        ),
       );
       await _flushMicrotasks();
 

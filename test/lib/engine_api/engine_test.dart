@@ -36,6 +36,7 @@ import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart'
     show AnthemObservableList, AnthemObservableMap;
+import 'package:anthem_codegen/include.dart' as changes;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -534,12 +535,19 @@ void main() {
         await _flushMicrotasks();
 
         engine.visualizationApi.setUpdateInterval(12.5);
-        engine.modelSyncApi.updateModel(
-          updateKind: FieldUpdateKind.set,
-          fieldAccesses: [
-            FieldAccess(fieldType: FieldType.raw, fieldName: 'name'),
-          ],
-          serializedValue: '"Queued update"',
+        engine.modelSyncApi.updateModelFromChange(
+          changes.ModelChangeEvent(
+            fieldAccessors: [
+              changes.FieldAccessor(
+                fieldType: changes.FieldType.raw,
+                fieldName: 'name',
+              ),
+            ],
+            operation: changes.RawFieldUpdate(
+              newValue: 'Queued update',
+              newValueSerialized: 'Queued update',
+            ),
+          ),
         );
 
         expect(
@@ -1180,12 +1188,19 @@ void main() {
             .whereType<PublishProcessingGraphRequest>()
             .length;
 
-        engine.modelSyncApi.updateModel(
-          updateKind: FieldUpdateKind.set,
-          fieldAccesses: [
-            FieldAccess(fieldType: FieldType.raw, fieldName: 'name'),
-          ],
-          serializedValue: '"Queued during render"',
+        engine.modelSyncApi.updateModelFromChange(
+          changes.ModelChangeEvent(
+            fieldAccessors: [
+              changes.FieldAccessor(
+                fieldType: changes.FieldType.raw,
+                fieldName: 'name',
+              ),
+            ],
+            operation: changes.RawFieldUpdate(
+              newValue: 'Queued during render',
+              newValueSerialized: 'Queued during render',
+            ),
+          ),
         );
         final publishFuture = engine.processingGraphApi.publish();
         await _flushMicrotasks();

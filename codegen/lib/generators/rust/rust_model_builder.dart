@@ -77,6 +77,7 @@ class _RustModels {
   final _sealed = <String, ModelClassInfo>{};
   final _enums = <String, EnumElement>{};
   final _unions = <String, UnionModelType>{};
+  final _syncValues = <String>{};
 
   /// Checks which fields should be included when generating Rust code, based on
   /// the @Hide annotation.
@@ -113,34 +114,42 @@ class _RustModels {
     if (model.annotation?.serializable != true) {
       throw StateError('$name must be a serializable Anthem model.');
     }
+    final synced = model.annotation!.generateModelSync;
+    if (synced) _syncValues.add(name);
     if (model.isSealed) {
       _sealed[name] = model;
-      _collectFields(name, _fields(model));
+      _collectFields(name, _fields(model), synced: synced);
       for (final subclass in model.sealedSubclasses) {
-        _collectFields(subclass.name, _variantFields(model, subclass));
+        _collectFields(
+          subclass.name,
+          _variantFields(model, subclass),
+          synced: synced,
+        );
       }
     } else {
       _models[name] = model;
-      _collectFields(name, _fields(model));
+      _collectFields(name, _fields(model), synced: synced);
     }
   }
 
   void _collectFields(
     String name,
-    Iterable<MapEntry<String, ModelFieldInfo>> fields,
-  ) {
+    Iterable<MapEntry<String, ModelFieldInfo>> fields, {
+    bool synced = false,
+  }) {
     final identifiers = <String>{};
     for (final field in fields) {
       if (!identifiers.add(_identifier(field.key))) {
         throw StateError('Rust field name collision in $name: ${field.key}.');
       }
-      _collectType(field.value.typeInfo, _context(name, field));
+      _collectType(field.value.typeInfo, _context(name, field), synced: synced);
     }
   }
 
-  void _collectType(ModelType type, String context) {
+  void _collectType(ModelType type, String context, {bool synced = false}) {
     switch (type) {
       case CustomModelType():
+        if (synced) _syncValues.add(type.dartName);
         // When deserializing a model (e.g. ProjectModel), Rust will need to have
         // access to the types of all fields in that model, but also of all
         // fields in any child models. This means that we need to recursively
@@ -148,13 +157,14 @@ class _RustModels {
         // module.
         collectModel(type.modelClassInfo);
       case EnumModelType():
+        if (synced) _syncValues.add(type.enumName);
         final previous = _enums[type.enumName];
         if (previous != null && previous != type.enumElement) {
           throw StateError('Rust enum name collision: ${type.enumName}.');
         }
         _enums[type.enumName] = type.enumElement;
       case ListModelType():
-        _collectType(type.itemType, '${context}Item');
+        _collectType(type.itemType, '${context}Item', synced: synced);
       case MapModelType():
         if (type.keyType.isNullable ||
             type.keyType is DoubleModelType ||
@@ -163,12 +173,13 @@ class _RustModels {
             '$context: Rust maps require non-null string, integer, boolean, or enum keys.',
           );
         }
-        _collectType(type.keyType, '${context}Key');
-        _collectType(type.valueType, '${context}Item');
+        _collectType(type.keyType, '${context}Key', synced: synced);
+        _collectType(type.valueType, '${context}Item', synced: synced);
       case UnionModelType():
+        if (synced) _syncValues.add(context);
         _unions[context] = type;
         for (final subtype in type.subTypes) {
-          _collectType(subtype, '$context${_variant(subtype)}');
+          _collectType(subtype, '$context${_variant(subtype)}', synced: synced);
         }
       case UnknownModelType():
         throw StateError(
@@ -179,7 +190,7 @@ class _RustModels {
     }
   }
 
-  String _type(ModelType type, String context) {
+  String _type(ModelType type, String context, {bool synced = false}) {
     final value = switch (type) {
       StringModelType() => 'String',
       IntModelType() => 'i64',
@@ -192,9 +203,10 @@ class _RustModels {
         type.modelClassInfo.annotation!.generateModelSync
             ? 'crate::model::ModelRef<${type.dartName}>'
             : type.dartName,
-      ListModelType() => 'Vec<${_type(type.itemType, '${context}Item')}>',
+      ListModelType() =>
+        '${synced ? 'crate::model::ModelList' : 'Vec'}<${_type(type.itemType, '${context}Item', synced: synced)}>',
       MapModelType() =>
-        'std::collections::HashMap<${_type(type.keyType, '${context}Key')}, ${_type(type.valueType, '${context}Item')}>',
+        '${synced ? 'crate::model::ModelMap' : 'std::collections::HashMap'}<${_type(type.keyType, '${context}Key')}, ${_type(type.valueType, '${context}Item', synced: synced)}>',
       UnionModelType() => context,
       UnknownModelType() => throw StateError('Unsupported type in $context.'),
     };
@@ -232,6 +244,9 @@ class _RustModels {
         result.writeln('  $variant,');
       }
       result.writeln('}\n');
+      if (_syncValues.contains(name)) {
+        result.writeln('impl crate::model::sync::ModelValue for $name {}\n');
+      }
     }
     final unions = _unions.keys.toList()..sort();
     for (final name in unions) {
@@ -245,9 +260,12 @@ class _RustModels {
         }
         _writePlatformGate(result, subtype);
         result.writeln('  #[serde(rename = ${_string(subtype.dartName)})]');
-        result.writeln('  $variant(${_type(subtype, '$name$variant')}),');
+        result.writeln(
+          '  $variant(${_type(subtype, '$name$variant', synced: _syncValues.contains(name))}),',
+        );
       }
       result.writeln('}\n');
+      if (_syncValues.contains(name)) _writeUnionSync(result, name);
     }
     final sealed = _sealed.keys.toList()..sort();
     for (final name in sealed) {
@@ -353,6 +371,7 @@ class _RustModels {
         name,
         _fields(model),
         public: !model.annotation!.generateModelSync,
+        synced: model.annotation!.generateModelSync,
       );
       result.writeln('}\n');
       if (model.annotation!.skipOnWasm) {
@@ -393,12 +412,13 @@ class _RustModels {
         final copiesValue = _copiesValue(field.value.typeInfo);
         final borrow = copiesValue ? '' : '&';
         result.writeln(
-          '  pub fn $identifier(&self) -> $borrow${_type(field.value.typeInfo, _context(name, field))} {',
+          '  pub fn $identifier(&self) -> $borrow${_type(field.value.typeInfo, _context(name, field), synced: model.annotation!.generateModelSync)} {',
         );
         result.writeln('    ${borrow}self.$identifier');
         result.writeln('  }');
       }
       result.writeln('}\n');
+      if (_syncValues.contains(name)) _writeModelSync(result, name, model);
     }
     return result.toString();
   }
@@ -409,6 +429,7 @@ class _RustModels {
     Iterable<MapEntry<String, ModelFieldInfo>> fields, {
     String indent = '  ',
     bool public = false,
+    bool synced = false,
   }) {
     for (final field in fields.where((field) => !field.value.isModelConstant)) {
       final type = field.value.typeInfo;
@@ -420,9 +441,81 @@ class _RustModels {
         );
       }
       result.writeln(
-        '$indent${public ? 'pub ' : ''}${_identifier(field.key)}: ${_type(type, _context(owner, field))},',
+        '$indent${public ? 'pub ' : ''}${_identifier(field.key)}: ${_type(type, _context(owner, field), synced: synced)},',
       );
     }
+  }
+
+  void _writeModelSync(StringBuffer result, String name, ModelClassInfo model) {
+    if (model.annotation!.skipOnWasm) result.writeln(_desktopGate);
+    result.writeln('impl crate::model::sync::ModelValue for $name {');
+    if (model.annotation!.generateModelSync) {
+      result.writeln(
+        '  fn apply_update(&mut self, update: crate::model::sync::ModelUpdate<\'_>) -> crate::model::sync::SyncResult {',
+      );
+
+      // If this is the last accessor in the chain, then the provided JSON is
+      // the new value for the entire model. Deserialization happens before the
+      // assignment; the old model stays alive until the outer borrow is released.
+      result.writeln(
+        '    // 1. Decode and replace the model if the path ends here.',
+      );
+      result.writeln(
+        '    if update.path.is_empty() { return crate::model::sync::replace(self, update); }',
+      );
+
+      // If the request is for a field on a child model or collection, forward
+      // it to that value. Each collection handles its own elements, so this
+      // dispatch does not need to know how deeply the collections are nested.
+      result.writeln(
+        '    // 2. Apply the update, or forward it to the field that owns it.',
+      );
+      result.writeln('    let field = update.field()?;');
+      result.writeln('    let result = match field {');
+      for (final field in _fields(
+        model,
+      ).where((field) => !field.value.isModelConstant)) {
+        _writePlatformGate(result, field.value.typeInfo);
+        result.writeln(
+          '      ${_string(field.key)} => crate::model::sync::ModelValue::apply_update(&mut self.${_identifier(field.key)}, update.next()),',
+        );
+      }
+      result.writeln(
+        '      _ => Err(crate::model::sync::SyncError::new("Unknown or hidden model field")),',
+      );
+      result.writeln('    };');
+      result.writeln(
+        '    // 3. Return before cleanup or callbacks. Ancestor borrows are still active here.',
+      );
+      result.writeln(
+        '    result.map_err(|error| error.at(format_args!("$name.{}", field)))',
+      );
+      result.writeln('  }');
+    }
+    result.writeln('}\n');
+  }
+
+  void _writeUnionSync(StringBuffer result, String name) {
+    result.writeln('impl crate::model::sync::ModelValue for $name {');
+    result.writeln(
+      '  fn apply_update(&mut self, update: crate::model::sync::ModelUpdate<\'_>) -> crate::model::sync::SyncResult {',
+    );
+    result.writeln(
+      '    // Replace the entire union, or forward into its active value.',
+    );
+    result.writeln(
+      '    if update.path.is_empty() { return crate::model::sync::replace(self, update); }',
+    );
+    result.writeln('    match self {');
+    for (final subtype in _unions[name]!.subTypes) {
+      _writePlatformGate(result, subtype);
+      result.writeln(
+        '      Self::${_variant(subtype)}(value) => crate::model::sync::ModelValue::apply_update(value, update),',
+      );
+    }
+    result.writeln('    }');
+    result.writeln('  }');
+    result.writeln('}\n');
   }
 }
 

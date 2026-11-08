@@ -7,9 +7,12 @@ use std::rc::Rc;
 /// A shared model instance. Reads borrow it only for the duration of the callback.
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
-pub struct ModelRef<T>(Rc<RefCell<T>>);
+pub struct ModelRef<T>(pub(super) Rc<RefCell<T>>);
 
 impl<T> ModelRef<T> {
+    pub fn new(value: T) -> Self {
+        Self(Rc::new(RefCell::new(value)))
+    }
     pub fn with<R>(&self, read: impl FnOnce(&T) -> R) -> R {
         read(&self.0.borrow())
     }

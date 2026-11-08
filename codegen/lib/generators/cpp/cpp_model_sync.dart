@@ -1028,24 +1028,24 @@ void _writeKeyDeserialize({
 
   switch (keyType) {
     case StringModelType():
-      if (keyType.isNullable) {
-        writer.writeLine('std::optional<std::string> $outputVariable;');
-        writer.writeLine('if ($serializedKeyValue == "null") {');
-        writer.incrementWhitespace();
-        writer.writeLine('$outputVariable = std::nullopt;');
-        writer.decrementWhitespace();
-        writer.writeLine('} else {');
-        writer.incrementWhitespace();
-        writer.writeLine(
-          '$outputVariable = std::optional<std::string>($serializedKeyValue.substr(1, $serializedKeyValue.size() - 2));',
-        );
-        writer.decrementWhitespace();
-        writer.writeLine('}');
-      } else {
-        writer.writeLine(
-          'auto $outputVariable = $serializedKeyValue.substr(1, $serializedKeyValue.size() - 2);',
-        );
-      }
+      // String keys are JSON strings, so removing the surrounding quotes is
+      // not sufficient. Deserialize them to preserve escaped characters.
+      final result = writer.nextIdentifier('mapKeyResult');
+      final type = keyType.isNullable
+          ? 'std::optional<std::string>'
+          : 'std::string';
+      writer.writeLine(
+        'auto $result = rfl::json::read<$type>($serializedKeyValue);',
+      );
+      writer.writeLine('if (!$result.has_value()) {');
+      writer.incrementWhitespace();
+      writer.writeLine(
+        'std::cout << "Error deserializing map key: " << $result.error().what() << \'\\n\';',
+      );
+      writer.writeLine('return;');
+      writer.decrementWhitespace();
+      writer.writeLine('}');
+      writer.writeLine('auto $outputVariable = std::move($result.value());');
       break;
     case IntModelType():
       if (keyType.isNullable) {

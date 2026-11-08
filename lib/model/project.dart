@@ -396,63 +396,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
         return;
       }
 
-      String? serializeMapKey(dynamic key) {
-        return switch (key) {
-          null => null,
-          int i => '$i',
-          double d => '$d',
-          String s => '"$s"',
-          bool b => '$b',
-          _ => throw AssertionError('Invalid map key type'),
-        };
-      }
-
-      // Values will already be in JSON format, but we need to convert to
-      // string. This is just like the above but with the addition of
-      // Map<String, dynamic> and List<dynamic>.
-      String serializeValue(dynamic value) {
-        return switch (value) {
-          null => 'null',
-          int i => '$i',
-          double d => '$d',
-          String s => '"$s"',
-          bool b => '$b',
-          Map<String, dynamic> m => jsonEncode(m),
-          List<dynamic> l => jsonEncode(l),
-          _ => throw AssertionError('Invalid value type: ${value.runtimeType}'),
-        };
-      }
-
-      final convertedAccesses = change.fieldAccessors.map((access) {
-        return message_api.FieldAccess(
-          fieldName: access.fieldName,
-          fieldType: switch (access.fieldType) {
-            FieldType.raw => message_api.FieldType.raw,
-            FieldType.list => message_api.FieldType.list,
-            FieldType.map => message_api.FieldType.map,
-          },
-          listIndex: access.index,
-          serializedMapKey: serializeMapKey(access.key),
-        );
-      }).toList();
-
-      engine.modelSyncApi.updateModel(
-        updateKind: switch (change.operation) {
-          RawFieldUpdate() ||
-          ListUpdate() ||
-          MapPut() => message_api.FieldUpdateKind.set,
-          ListInsert() => message_api.FieldUpdateKind.add,
-          ListRemove() || MapRemove() => message_api.FieldUpdateKind.remove,
-        },
-        fieldAccesses: convertedAccesses,
-        serializedValue: switch (change.operation) {
-          RawFieldUpdate op => serializeValue(op.newValueSerialized),
-          ListInsert op => serializeValue(op.valueSerialized),
-          ListUpdate op => serializeValue(op.newValueSerialized),
-          MapPut op => serializeValue(op.newValueSerialized),
-          _ => null,
-        },
-      );
+      engine.modelSyncApi.updateModelFromChange(change);
     };
 
     // Hook up the model change stream to the engine

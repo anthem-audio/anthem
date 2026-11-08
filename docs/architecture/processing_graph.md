@@ -82,9 +82,9 @@ Loading a file saved by an older Anthem version requires a migration before cons
 
 The `prealpha.2` migration preserves the old parameter defaults as project reset values and moves visual baselines into `ParameterPresentationModel`. For native processors, it clears the old factory defaults so the engine can supply them during initialization. Existing parameter values are preserved.
 
-## Pre-calculating processing steps
+## Publishing processing steps
 
-The processing graph is stored in the main thread and compiled into a set of parallelizable processing instructions. When the graph topology is updated, these instructions are recompiled and pushed to the audio thread, at which point the audio thread releases its old instructions and allows them to be deallocated by the main thread.
+The processing graph is stored in the main thread and published as a set of parallelizable processing instructions. When the graph topology is updated, these instructions are rebuilt and published to the audio thread, at which point the audio thread releases its old instructions and allows them to be deallocated by the main thread.
 
 This is done for two reasons. First, it is non-trivial to traverse this graph. Pre-computing the processing instructions on the main thread saves the audio thread a lot of work. Second, pre-processing these steps opens the door to a fully generic multithreaded solution to audio processing in the future.
 
@@ -114,15 +114,20 @@ Consider the following graph:
 |________________|
 ```
 
-Each input port (in this case, just a single input) contains a buffer that is the same length as the block size, plus (in the future) an amount to account for any plugin delay compensation that is needed.
+Each input port is bound to a buffer that is the same length as the block size, plus (in the future) an amount to account for any plugin delay compensation that is needed. The binding is chosen when the runtime graph is published:
 
-The compiler will produce the following steps for this graph:
+- If an input port has no connections, it can point at shared empty input storage.
+- If an input port has exactly one connection, it can point directly at the source output buffer.
+- If an input port has multiple connections, it gets a merge buffer. During destination node processing, each sample in the merge buffer is written once with the sum of the corresponding samples from every incoming source.
 
-1. Write zeros to the `AudioInput1` buffer on `Processor1`
-2. Run the process method on `SourceNode1`, which will generate an output on its `AudioOutput1` buffer
-3. Add the result of `SourceNode1`'s `AudioOutput1` buffer to the `AudioInput1` buffer on `Processor1`, and write this result back to the `AudioInput1` buffer
-4. Same as step 2, but for `SourceNode2`
-5. Same as step 3, but for `SourceNode2`
+For the graph above, publishing will produce the following effective steps:
+
+1. Bind `Processor1.AudioInput1` to a merge buffer because the input has fan-in.
+2. Run the process method on `SourceNode1`, which will generate an output on its `AudioOutput1` buffer.
+3. Same as step 2, but for `SourceNode2`.
+4. For each sample in the merge buffer, sum the corresponding samples from `SourceNode1.AudioOutput1` and `SourceNode2.AudioOutput1`, then write the result once.
+
+For a single connection, such as `SourceNode1.AudioOutput1 -> Processor1.AudioInput1`, the destination input can be bound directly to the source output buffer, so no connection copy is needed.
 
 ## Control values
 

@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Joshua Wade
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-@GenerateRustModels([RustModelFixture])
+@GenerateRustModels([RustModelFixture, RustSyncFixture])
 library;
 
 import 'dart:ui';
@@ -92,4 +92,29 @@ class FixtureSyncedChild extends _FixtureSyncedChild
 
 abstract class _FixtureSyncedChild with AnthemModelBase {
   int value = 7;
+}
+
+@AnthemModel(serializable: true, generateModelSync: true)
+class RustSyncFixture extends _RustSyncFixture
+    with _$RustSyncFixtureAnthemModelMixin {
+  RustSyncFixture();
+
+  factory RustSyncFixture.fromJson(Map<String, dynamic> json) =>
+      _$RustSyncFixtureAnthemModelMixin.fromJson(json);
+}
+
+abstract class _RustSyncFixture with AnthemModelBase {
+  AnthemObservableList<
+    AnthemObservableMap<String, AnthemObservableList<FixtureSyncedChild>>
+  >
+  nested = .new();
+  int? optional;
+  String text = '';
+  FixtureMode mode = FixtureMode.smooth;
+
+  @Union([FixtureSyncedChild, String, int])
+  Object? selection;
+
+  @hideFromCpp
+  String uiOnly = '';
 }

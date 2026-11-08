@@ -309,8 +309,10 @@ if (isTopLevelModel || parent != null) {
 ''');
       } else if (fieldInfo.typeInfo case UnionModelType typeInfo) {
         var first = true;
+        // Null is a valid replacement for a nullable union. It has no child
+        // model to attach, but still needs to produce the normal field update.
         setter.write('''
-var setterReceivedValidType = false;
+var setterReceivedValidType = ${typeInfo.isNullable ? '\$value == null' : 'false'};
 ''');
         for (final subtype in typeInfo.subTypes) {
           setter.write('''

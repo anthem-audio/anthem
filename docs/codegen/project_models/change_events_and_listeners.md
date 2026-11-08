@@ -232,7 +232,7 @@ Conversion steps:
    - `ListInsert.valueSerialized`
    - `ListUpdate.newValueSerialized`
    - `MapPut.newValueSerialized`
-5. send `ModelUpdateRequest` via `engine.modelSyncApi.updateModel(...)`
+5. send `ModelUpdateRequest` via `engine.modelSyncApi.updateModelFromChange(...)`
 
 Map keys are serialized to strings for transport (`serializedMapKey`) and deserialized on the C++ side according to the expected key type.
 
