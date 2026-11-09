@@ -25,9 +25,7 @@ import 'package:uuid/uuid.dart';
 import 'project_asset_category.dart';
 import 'file_fingerprint.dart';
 
-import 'asset_store_io_stub.dart'
-    if (dart.library.io) 'asset_store_io.dart'
-    as files;
+import 'asset_file_io.dart' as files;
 
 /// Coordinates access to one project's stored assets.
 ///
@@ -83,7 +81,7 @@ class ProjectAssetStore {
         );
       }
     }
-    final requestedRoot = p.normalize(p.absolute(rootDirectory));
+    final requestedRoot = files.absolutePath(rootDirectory);
     await files.createDirectory(requestedRoot);
     final root = await files.resolveDirectory(requestedRoot);
     final key = p.style == p.Style.windows ? root.toLowerCase() : root;
@@ -425,8 +423,8 @@ class AssetScope {
 
   /// Returns the contents fingerprint for an active read token.
   ///
-  /// Fingerprints are calculated in chunks on first access and cached while the
-  /// store is open. A writer may provide the fingerprint when committing.
+  /// Fingerprints are calculated on first access and cached while the store is
+  /// open. A writer may provide the fingerprint when committing.
   /// Committed files must not be edited in place outside the store.
   Future<FileFingerprint> getFingerprint(String readToken) {
     _requireOpen();

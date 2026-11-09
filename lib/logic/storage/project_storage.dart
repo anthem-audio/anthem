@@ -17,13 +17,9 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:path/path.dart' as path;
-
 import 'project_asset_category.dart';
 import 'project_asset_store.dart';
-import 'asset_store_io_stub.dart'
-    if (dart.library.io) 'asset_store_io.dart'
-    as files;
+import 'asset_file_io.dart' as files;
 
 /// Provides file storage for an open project.
 ///
@@ -86,7 +82,7 @@ class ProjectStorage {
     String root,
     Iterable<ProjectAssetCategory> categories,
     this.isTemporary,
-  ) : rootDirectory = path.normalize(path.absolute(root)),
+  ) : rootDirectory = files.absolutePath(root),
       categories = List.unmodifiable(categories);
 
   /// Opens the file registry without restoring any document references.

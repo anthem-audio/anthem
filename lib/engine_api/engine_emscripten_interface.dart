@@ -26,6 +26,8 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
 import 'package:anthem/engine_api/wasm_visualization_record_ring_buffer.dart';
+import 'package:anthem/helpers/emscripten_module.dart';
+import 'package:anthem/logic/storage/browser_file_system.dart';
 import 'package:flutter/scheduler.dart';
 
 class _PendingOutgoingMessage {
@@ -53,6 +55,13 @@ class EngineEmscriptenInterface {
 
   void Function(Uint8List bytes)? onMessageReceived;
   final void Function()? onPollVisualization;
+  final void Function()? onExit;
+  final Completer<void> _exited = Completer<void>();
+  JSObject? _mountedModule;
+  int? exitCode;
+
+  Future<void> get exited => _exited.future;
+  bool get hasModule => _mountedModule != null;
 
   Ticker? _readTicker;
   Timer? _readFallbackTimer;
@@ -68,20 +77,37 @@ class EngineEmscriptenInterface {
     this.exportName, {
     this.onMessageReceived,
     this.onPollVisualization,
+    this.onExit,
   });
 
   Future<void> init() async {
     _ensureActive();
-    final constructorAny = globalContext.getProperty(exportName.toJS);
-    if (!constructorAny.isA<JSFunction>()) {
-      throw Exception(
-        'EngineEmscriptenInterface: $exportName is not a function',
+    final files = await BrowserFileSystem.instance;
+    final constructor = await loadEmscriptenFactory(exportName);
+    _ensureActive();
+    final options = JSObject()
+      ..setProperty(
+        'preRun'.toJS,
+        [
+          ((JSObject module) {
+            _ensureActive();
+            files.mount(module);
+            _mountedModule = module;
+          }).toJS,
+        ].toJS,
+      )
+      ..setProperty(
+        'onExit'.toJS,
+        ((JSNumber status) {
+          exitCode = status.toDartInt;
+          final mounted = _mountedModule;
+          if (mounted != null) files.unmount(mounted);
+          if (!_exited.isCompleted) _exited.complete();
+          onExit?.call();
+        }).toJS,
       );
-    }
 
-    final constructor = constructorAny as JSFunction;
-
-    final appInstancePromiseAny = constructor.callAsFunction();
+    final appInstancePromiseAny = constructor.callAsFunction(null, options);
     if (!appInstancePromiseAny.isA<JSPromise>()) {
       throw Exception(
         'EngineEmscriptenInterface: $exportName did not return a Promise',
@@ -416,7 +442,7 @@ class EngineEmscriptenInterface {
 
   var _introBytesSkipped = 0;
   void _tryRead() {
-    if (_disposed) return;
+    if (_disposed || exitCode != null) return;
     var size = readBuffer.size();
     if (size == 0) return;
 

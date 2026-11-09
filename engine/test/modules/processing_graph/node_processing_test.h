@@ -292,10 +292,15 @@ public:
     nodes.insert_or_assign(1, node);
     processor = node->getProcessor();
     GraphProcessor released(services, project);
-    released.pauseNode(
-        1, [&](auto pause, auto error) { expect(!error && pause && pause->isPaused()); });
+    int completions = 0;
+    released.pauseNode(1, [&](auto pause, auto error) {
+      ++completions;
+      expect(!error && pause && pause->isPaused());
+    });
     expect(processor->rt_tryAcquireProcessingAccess());
     processor->rt_releaseProcessingAccess();
+    released.shutdown();
+    expectEquals(completions, 1, "A delivered pause cannot complete again during shutdown");
   }
 
   void testProjectReplacement() {

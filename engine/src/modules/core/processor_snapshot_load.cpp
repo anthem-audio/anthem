@@ -23,6 +23,7 @@
 #include "processor_state_storage.h"
 
 #include <stdexcept>
+#include <utility>
 
 namespace anthem {
 
@@ -75,7 +76,7 @@ public:
   void reply(std::optional<std::string> error = std::nullopt) {
     if (!complete)
       return;
-    auto callback = std::move(complete);
+    auto callback = std::exchange(complete, {});
     callback({.operationId = mutated ? std::optional(id) : std::nullopt,
         .result = description,
         .error = std::move(error)});

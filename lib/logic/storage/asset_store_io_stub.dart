@@ -17,10 +17,12 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:typed_data';
+
 import 'file_fingerprint.dart';
 
 Never _unsupported() => throw UnsupportedError(
-  'Project asset storage requires a desktop filesystem.',
+  'Project asset storage is not supported on this platform.',
 );
 
 Future<void> createDirectory(String directory) async => _unsupported();
@@ -38,3 +40,7 @@ Future<void> deleteDirectory(String directory) async => _unsupported();
 
 Future<int> fileLength(String file) async => _unsupported();
 Future<FileFingerprint> readFingerprint(String file) async => _unsupported();
+
+String absolutePath(String file) => _unsupported();
+Future<Uint8List> readFile(String file) async => _unsupported();
+Future<void> writeFile(String file, List<int> bytes) async => _unsupported();

@@ -20,6 +20,29 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
 endif()
 
 if (IS_WASM)
+  # JUCE's Wasm platform header does not define these architecture properties.
+  # In particular, its binary stream writers otherwise assume big-endian data.
+  add_compile_definitions(JUCE_32BIT=1 JUCE_LITTLE_ENDIAN=1)
+
+  # Keep browser project files independent of each audio engine's lifetime.
+  # Invoke emcc directly so this module does not inherit the engine's threading
+  # and AudioWorklet options.
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.js
+           ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.wasm
+    COMMAND ${CMAKE_C_COMPILER}
+      ${CMAKE_CURRENT_SOURCE_DIR}/browser_file_system/runtime.c
+      --no-entry -O2
+      -sFORCE_FILESYSTEM=1 -sMODULARIZE=1
+      -sEXPORT_NAME=AnthemFileSystem -sEXPORTED_RUNTIME_METHODS=FS
+      -o ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.js
+    DEPENDS browser_file_system/runtime.c
+    VERBATIM
+  )
+  add_custom_target(AnthemFileSystem DEPENDS
+    ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.js
+    ${CMAKE_CURRENT_BINARY_DIR}/AnthemFileSystem.wasm)
+
   set(EXPORTED_FUNCTIONS
     _main
     _isCommsReady
@@ -53,12 +76,17 @@ if (IS_WASM)
   add_compile_options(
     -pthread
     "SHELL:-sWASM_WORKERS=1"
+    # Snapshot readers catch malformed-file errors. Use JS-based exceptions:
+    # native Wasm exceptions unwind JUCE's live application during its
+    # emscripten_set_main_loop(..., simulate_infinite_loop=true) startup.
+    "$<$<COMPILE_LANGUAGE:CXX>:-fexceptions>"
 
     # "SHELL:-fsanitize=address"
   )
   
   add_link_options(
     -pthread
+    -fexceptions
     "SHELL:-sWASM_WORKERS=1"
     "SHELL:-sAUDIO_WORKLET=1"
     # The value "3" here maps to 3 threads in the engine:
@@ -76,8 +104,10 @@ if (IS_WASM)
     "SHELL:-sEXIT_RUNTIME=1"
 
     "SHELL:-sEXPORT_NAME=AnthemEngine"
+    "SHELL:-sFORCE_FILESYSTEM=1"
+    -lproxyfs.js
     "SHELL:-sEXPORTED_FUNCTIONS='[${EXPORTED_FUNCTIONS_STRING}]'"
-    "SHELL:-sEXPORTED_RUNTIME_METHODS='[\"HEAPU8\", \"HEAPU32\", \"HEAP32\", \"HEAPF32\"]'"
+    "SHELL:-sEXPORTED_RUNTIME_METHODS='[\"HEAPU8\", \"HEAPU32\", \"HEAP32\", \"HEAPF32\", \"FS\", \"PROXYFS\"]'"
   )
 
   if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -240,6 +270,7 @@ if (IS_WASM)
   add_executable(AnthemEngine
     ${APP_MAIN}
   )
+  add_dependencies(AnthemEngine AnthemFileSystem)
 else()
   juce_add_console_app(AnthemEngine ANTHEM_ENGINE "Anthem Engine" VERSION "${PROJECT_VERSION}")
 

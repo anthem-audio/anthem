@@ -18,6 +18,7 @@
 */
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:path/path.dart' as path;
@@ -81,4 +82,12 @@ Future<FileFingerprint> readFingerprint(String file) async {
   });
   final digest = await crypto.sha256.bind(contents).first;
   return FileFingerprint(byteLength: byteLength, sha256: digest.toString());
+}
+
+String absolutePath(String file) => path.normalize(path.absolute(file));
+
+Future<Uint8List> readFile(String file) => File(file).readAsBytes();
+
+Future<void> writeFile(String file, List<int> bytes) async {
+  await File(file).writeAsBytes(bytes, flush: true);
 }

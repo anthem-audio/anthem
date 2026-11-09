@@ -144,7 +144,7 @@ void GraphProcessor::pollNodePauses() {
       continue;
     }
     if (it->complete && pause->isPaused())
-      completed.push_back({.complete = std::move(it->complete),
+      completed.push_back({.complete = std::exchange(it->complete, {}),
           .pause = std::move(it->pending),
           .nodeId = it->nodeId,
           .node = it->node});

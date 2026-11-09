@@ -47,6 +47,23 @@ request handler dispatches to the same scope API used by local callers. Ownershi
 is authoritative in Dart; it is not replicated into the engine. The engine scope
 closes only after the engine has stopped accessing its files.
 
+## Browser working storage
+
+On web, a small Emscripten module hosts the working filesystem independently of
+the audio engine. Dart's file adapter accesses this filesystem directly. Each
+engine session mounts it through PROXYFS before starting C++, using the same
+absolute paths as Dart. Project directories live under `/anthem/projects`;
+ownership and retention remain in the existing Dart scopes.
+
+Stopping an engine waits for its Emscripten runtime to exit before releasing the
+engine's file scope. The working files, project references, and undo history
+remain available to a replacement engine. Closing the project releases its
+claims and removes its temporary working directory.
+
+This backend uses MEMFS. Working files occupy memory and do not survive a page
+reload. Browser ZIP import and download are a separate persistence step; the
+existing browser document download does not include these files yet.
+
 ## Saving and exporting
 
 `PreparedProjectSave` waits for pending commands, captures live processor state,
