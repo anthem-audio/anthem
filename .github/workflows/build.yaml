@@ -290,7 +290,7 @@ jobs:
         run: dart run anthem:cli engine build --backend rust --release --wasm
 
       - name: Test Dart against the threaded Rust web engine
-        run: dart run anthem:cli engine runtime-test --wasm --release --skip-build
+        run: dart run anthem:cli engine runtime-test --wasm --release --skip-build --audio
 
       - name: Upload runtime integration diagnostics
         if: always()

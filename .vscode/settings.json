@@ -98,7 +98,8 @@
     "unmaximize",
     "Unregisters",
     "vsync",
-    "wakeup"
+    "wakeup",
+    "worklet"
   ],
   "C_Cpp.autoAddFileAssociations": false,
   "search.exclude": {

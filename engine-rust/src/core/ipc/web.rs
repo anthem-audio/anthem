@@ -182,6 +182,7 @@ pub extern "C" fn requestEngineShutdown() {
     // The browser may cancel before Rust main has installed its message queue.
     // Startup checks this flag after installation, so that request is not lost.
     SHUTDOWN_REQUESTED.store(true, Ordering::Release);
+    crate::audio::web::request_shutdown();
     let _ = runtime::post(|| services::with::<Application, _>(Application::shutdown));
 }
 

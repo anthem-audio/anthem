@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Joshua Wade
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+mod audio;
 mod test_requests;
 
 use std::future::Future;
@@ -29,6 +30,11 @@ pub(crate) fn dispatch(request: Request) -> Result<(), String> {
             success: true,
             error: None,
         }),
+        Request::StartAudioRequest { id } => {
+            reply_async(audio::start(id));
+            Ok(())
+        }
+        Request::StopAudioRequest { id } => reply(audio::stop(id)),
         request @ (Request::ModelInitRequest { .. }
         | Request::ModelUpdateRequest { .. }
         | Request::GetSerializedModelFromEngineRequest { .. }) => {

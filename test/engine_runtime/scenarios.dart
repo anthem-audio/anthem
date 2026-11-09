@@ -20,6 +20,7 @@ class RuntimeSession {
   late final EngineConnectorBase connector;
   final _pending = <int, Completer<Response>>{};
   final responses = <int>[];
+  final events = <IpcEvent>[];
   FutureOr<Response> Function(TestUiEchoRequest)? onEcho;
 
   RuntimeSession(
@@ -37,6 +38,8 @@ class RuntimeSession {
         Future<Response>.sync(() => onEcho!(message))
             .then(connector.sendMessage),
       );
+    } else if (message is IpcEvent) {
+      events.add(message);
     }
   }
 
@@ -317,7 +320,12 @@ Future<void> runRuntimeScenarios(Future<RuntimeSession> Function() open) async {
         );
 
         final unsupported = await session.request(
-          StartAudioRequest(id: session.connector.getRequestId()),
+          StartRenderAudioSessionRequest(
+            id: session.connector.getRequestId(),
+            sampleRate: 48000,
+            blockSize: 128,
+            outputChannelCount: 2,
+          ),
         );
         check(
           unsupported is RequestErrorResponse &&

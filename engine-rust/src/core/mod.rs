@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 mod application;
+pub(crate) mod audio_session;
 pub mod ipc;
 pub mod model_sync;
 pub mod runtime;
@@ -39,10 +40,12 @@ impl EngineRuntime {
         registry.register(Application::new(self.handle));
         registry.register(model_sync::ProjectSlot::default());
         registry.register(ipc::Ipc::default());
+        registry.register(audio_session::AudioSession::default());
         let _services = registry.install();
 
         self.message_thread
             .run_until(|| services::with::<Application, _>(Application::has_failed));
+        services::with::<audio_session::AudioSession, _>(audio_session::AudioSession::stop);
         services::with::<Application, _>(Application::fatal_error).map_or(Ok(()), Err)
     }
 }
@@ -57,7 +60,12 @@ pub fn run() -> ExitCode {
         .expect("Could not queue IPC startup");
     let result = runtime.run();
     #[cfg(target_os = "emscripten")]
-    ipc::transport::finished(result.is_err());
+    let result = {
+        let audio_shutdown = crate::audio::web::shutdown().map_err(EngineFailure::new);
+        let result = result.and(audio_shutdown);
+        ipc::transport::finished(result.is_err());
+        result
+    };
     if let Err(error) = result {
         eprintln!("Engine stopped: {error}");
         return ExitCode::FAILURE;

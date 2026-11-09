@@ -38,6 +38,11 @@ class EngineRuntimeTestCommand extends Command<void> {
         negatable: false,
         help: 'Reuse the existing engine build.',
       )
+      ..addFlag(
+        'audio',
+        negatable: false,
+        help: 'Also exercise start and stop with an audio output.',
+      )
       ..addOption(
         'compiler',
         allowed: ['js', 'wasm', 'both'],
@@ -51,6 +56,7 @@ class EngineRuntimeTestCommand extends Command<void> {
     final root = getPackageRootPath().toFilePath();
     final wasm = argResults!['wasm'] as bool;
     final release = argResults!['release'] as bool;
+    final audio = argResults!['audio'] as bool;
     if (!(argResults!['skip-build'] as bool)) {
       await _run(Platform.resolvedExecutable, [
         'run',
@@ -75,7 +81,10 @@ class EngineRuntimeTestCommand extends Command<void> {
         'flutter',
         ['test', '--no-pub', 'test/engine_runtime/native.dart'],
         root,
-        environment: {'ANTHEM_RUST_ENGINE': engine},
+        environment: {
+          'ANTHEM_RUST_ENGINE': engine,
+          if (audio) 'ANTHEM_TEST_AUDIO': '1',
+        },
       );
       return;
     }
@@ -90,13 +99,14 @@ class EngineRuntimeTestCommand extends Command<void> {
         'web',
         '--no-pub',
         if (target == 'wasm') '--wasm',
+        if (audio) '--dart-define=ANTHEM_TEST_AUDIO=true',
         '--no-web-resources-cdn',
         '--target',
         'test/engine_runtime/browser.dart',
         '--output',
         output,
       ], root);
-      await runBrowserRuntimeTests(output, target: target);
+      await runBrowserRuntimeTests(output, target: target, audio: audio);
     }
   }
 }
@@ -126,6 +136,7 @@ Future<void> _run(
 Future<void> runBrowserRuntimeTests(
   String directory, {
   required String target,
+  bool audio = false,
 }) async {
   final result = Completer<Map<String, dynamic>>();
   final files = createStaticHandler(directory, defaultDocument: 'index.html');
@@ -159,6 +170,10 @@ Future<void> runBrowserRuntimeTests(
       '--headless',
       '--enable-logging=stderr',
       '--disable-dev-shm-usage',
+      if (audio) ...[
+        '--autoplay-policy=no-user-gesture-required',
+        '--disable-audio-output',
+      ],
       '--no-first-run',
       '--no-default-browser-check',
       '--user-data-dir=${profile.absolute.path}',

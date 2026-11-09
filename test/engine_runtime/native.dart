@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:anthem/engine_api/engine_connector_desktop.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'audio.dart';
 import 'scenarios.dart';
 
 void main() {
@@ -15,16 +16,18 @@ void main() {
     final engine =
         Platform.environment['ANTHEM_RUST_ENGINE'] ??
         'engine-rust/target/debug/anthem-engine${Platform.isWindows ? '.exe' : ''}';
-    await runRuntimeScenarios(
-      () async => RuntimeSession(
-        (receive) => EngineConnector(
-          ++id,
-          kDebugMode: false,
-          noHeartbeat: true,
-          enginePathOverride: File(engine).absolute.path,
-          onMessage: receive,
-        ),
+    RuntimeSession open() => RuntimeSession(
+      (receive) => EngineConnector(
+        ++id,
+        kDebugMode: false,
+        noHeartbeat: true,
+        enginePathOverride: File(engine).absolute.path,
+        onMessage: receive,
       ),
     );
+    await runRuntimeScenarios(() async => open());
+    if (Platform.environment['ANTHEM_TEST_AUDIO'] == '1') {
+      await runAudioLifecycle(open());
+    }
   }, timeout: const Timeout(Duration(minutes: 3)));
 }

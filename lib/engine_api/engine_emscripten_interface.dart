@@ -83,7 +83,16 @@ class EngineEmscriptenInterface {
 
     final constructor = constructorAny as JSFunction;
 
-    final appInstancePromiseAny = constructor.callAsFunction();
+    // The worklet loads the same script as the main module. Resolve the
+    // linker's filename to the public filename used by index.html.
+    JSString locateFile(JSString filename, JSString directory) {
+      final name = filename.toDart;
+      return '${directory.toDart}${name == 'anthem_engine.js' ? 'AnthemEngine.js' : name}'
+          .toJS;
+    }
+
+    final options = JSObject()..setProperty('locateFile'.toJS, locateFile.toJS);
+    final appInstancePromiseAny = constructor.callAsFunction(null, options);
     if (!appInstancePromiseAny.isA<JSPromise>()) {
       throw Exception(
         'EngineEmscriptenInterface: $exportName did not return a Promise',

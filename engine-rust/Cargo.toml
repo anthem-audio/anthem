@@ -11,3 +11,7 @@ tokio = { version = "1.54.1", features = ["rt", "sync", "time", "macros"] }
 
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
 tokio = { version = "1.54.1", features = ["net", "io-util"] }
+cpal = "0.18.2"
+
+[build-dependencies]
+cc = "1"

@@ -19,8 +19,12 @@ scenario with both JavaScript and WebAssembly by default; `--compiler js` or
 The scenarios cover project initialization and edits, serialization queries,
 messages larger than the web ring, nested requests while a Rust task awaits a
 UI reply, timeout recovery, pending-task shutdown, fatal sync failures, and fresh
-sessions. They require no audio device. Full UI and audio integration remains
-in the application integration suite.
+sessions. These checks require no audio device.
+
+Add `--audio` to exercise audio start, stop, restart, and engine shutdown with an
+active stream. Native tests require a default output device. The browser runner
+enables autoplay and uses Chrome's fake output stream. It checks that the Rust
+AudioWorklet renders blocks while a session is active and stops on request.
 
 ## Browser unit and widget tests
 
