@@ -82,7 +82,7 @@ class DeviceController {
 
     if (descriptor == null) return;
 
-    project.execute(
+    await project.execute(
       DeviceAddRemoveCommand.add(
         project: project,
         trackId: trackId,
@@ -145,10 +145,10 @@ class DeviceController {
     );
   }
 
-  void removeDevice({required Id trackId, required Id deviceId}) {
+  Future<void> removeDevice({required Id trackId, required Id deviceId}) async {
     _requireDeviceTrack(trackId, 'removeDevice');
 
-    project.execute(
+    await project.execute(
       DeviceAddRemoveCommand.remove(
         project: project,
         trackId: trackId,

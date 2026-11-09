@@ -23,8 +23,12 @@ source_directory="target/$target/$profile"
 output_directory="../build/rust-web/$profile"
 mkdir -p "$output_directory"
 
-# Prepare both files before replacing the staged build, which may contain Cargo hard links.
+# Prepare all files before replacing the staged build, which may contain Cargo hard links.
 staging_directory=$(mktemp -d "$output_directory/.stage.XXXXXXXX")
 trap 'rm -f "$staging_directory/"*; rmdir "$staging_directory"' EXIT
+emcc ../engine/browser_file_system/runtime.c --no-entry -O2 \
+    -sFORCE_FILESYSTEM=1 -sMODULARIZE=1 \
+    -sEXPORT_NAME=AnthemFileSystem -sEXPORTED_RUNTIME_METHODS=FS \
+    -o "$staging_directory/AnthemFileSystem.js"
 cp "$source_directory/anthem-engine.js" "$source_directory/anthem_engine.wasm" "$staging_directory/"
 mv -f "$staging_directory/"* "$output_directory/"

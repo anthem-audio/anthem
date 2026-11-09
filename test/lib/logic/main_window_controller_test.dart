@@ -25,9 +25,19 @@ import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:anthem/logic/service_registry.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 
 import '../../helpers/file_dialog_test_helpers.dart';
+
+class _NoDocumentsProvider extends PathProviderPlatform {
+  @override
+  Future<String?> getApplicationDocumentsPath() async => null;
+}
 
 ProjectFileVersion _version(String value) {
   return ProjectFileVersion.parse(value);
@@ -35,6 +45,20 @@ ProjectFileVersion _version(String value) {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    final original = SharedPreferencesAsyncPlatform.instance;
+    final originalPaths = PathProviderPlatform.instance;
+    PathProviderPlatform.instance = _NoDocumentsProvider();
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    ServiceRegistry.setSessionPreferences(SharedPreferencesAsync());
+    addTearDown(() {
+      ServiceRegistry.setSessionPreferences(null);
+      SharedPreferencesAsyncPlatform.instance = original;
+      PathProviderPlatform.instance = originalPaths;
+    });
+  });
 
   test('cancelling project selection does not show a load error', () async {
     final originalSelector = FileSelectorPlatform.instance;
@@ -74,6 +98,19 @@ void main() {
   );
 
   group('projectFileLoadErrorMarkdown', () {
+    test('explains when legacy plugin state requires desktop storage', () {
+      expect(
+        projectFileLoadErrorMarkdown(
+          ProjectFileMigrationException(
+            fromVersion: _version('0.0.0-prealpha.1'),
+            targetVersion: _version('0.0.0-prealpha.2'),
+            cause: const ProjectDirectoryRequiresDesktopException(),
+          ),
+        ),
+        contains('desktop version'),
+      );
+    });
+
     test('explains that a project was saved by a newer Anthem version', () {
       final message = projectFileLoadErrorMarkdown(
         ProjectSavedInNewerVersionException(

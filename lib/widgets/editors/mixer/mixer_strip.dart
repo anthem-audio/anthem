@@ -238,7 +238,7 @@ class _MeterSection extends StatelessObserverWidget {
                 Expanded(child: MeterScale()),
                 SizedBox(width: 11, child: _TrackDbMeter(track: track)),
                 Slider(
-                  parameter: gainParameter,
+                  parameterBinding: gainParameter,
                   width: 26,
                   axis: .vertical,
                   noBackground: true,

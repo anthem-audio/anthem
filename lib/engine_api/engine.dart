@@ -26,6 +26,7 @@ import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/logic/project_engine_event_handler.dart';
 import 'package:anthem/logic/project_engine_request_handler.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem_codegen/include.dart' show ModelChangeEvent;
 import 'package:flutter/foundation.dart';
@@ -415,6 +416,19 @@ class Engine {
     visualizationApi = VisualizationApi(this);
   }
 
+  /// Adopts a file retention explicitly handed to the UI in an engine response.
+  /// The engine must no longer use or release the supplied token. Its session
+  /// scope protects the file until adoption or session cleanup. Adoption creates
+  /// a caller-owned retention and releases that temporary session claim.
+  /// The caller must dispose the returned retention when finished.
+  Future<({String relativePath, AssetRetention retention})>
+  adoptReturnedFileRetention(String token) =>
+      _requestHandler.adoptReturnedFileRetention(token);
+
+  /// Clears unfinished plugin gestures before replacing a processor's state.
+  void discardProcessorGestures(Id nodeId) =>
+      _eventHandler.discardProcessorGestures(nodeId);
+
   void _onMessage(IpcMessage message) {
     if (message is Request) {
       if (_engineState == EngineState.stopping) {
@@ -562,13 +576,13 @@ class Engine {
         // Shutdown can report that a forced termination was necessary even
         // after confirming the process has exited.
         if (connector.processExitCode != null) {
-          await _requestHandler.closeSession();
+          await _requestHandler.closeFileScope();
           _setEngineState(EngineState.stopped);
         }
         rethrow;
       }
     }
-    await _requestHandler.closeSession();
+    await _requestHandler.closeFileScope();
     _setEngineState(EngineState.stopped);
   }
 

@@ -24,6 +24,7 @@ import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/device.dart';
 import 'package:anthem/model/processing_graph/node.dart';
+import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/tone_generator.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -64,7 +65,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
       await fixture.pump(tester);
 
@@ -107,7 +108,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       fixture.addToneGeneratorAutomationLane(
@@ -135,7 +136,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       fixture.arrangerViewModel.automationExpandedByTrackId[fixture.trackId] =
@@ -182,7 +183,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       const deviceName = 'Very Long Device Name That Needs More Space';
@@ -208,7 +209,7 @@ void main() {
         final fixture = _TrackHeaderTestFixture.create();
         addTearDown(() async {
           await tester.pumpWidget(const SizedBox.shrink());
-          fixture.dispose();
+          await fixture.dispose();
           AnthemStore.instance.projects.remove(fixture.project.id);
         });
         final project = fixture.project;
@@ -273,7 +274,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       const deviceName = 'Tone Generator';
@@ -312,7 +313,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create(baseTrackHeight: 40);
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       const deviceName = 'Very Long Device Name That Needs More Space';
@@ -349,7 +350,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -366,10 +367,10 @@ void main() {
 
       expect(slider.axis, anthem.SliderAxis.vertical);
       expect(slider.width, 15);
-      expect(slider.parameter?.node.id, target.nodeId);
-      expect(slider.parameter?.port.id, target.portId);
+      expect(slider.parameterBinding?.node.id, target.nodeId);
+      expect(slider.parameterBinding?.port.id, target.portId);
       expect(
-        slider.parameter?.automationVisualizationId,
+        slider.parameterBinding?.automationVisualizationId,
         lane
             .requireAutomationProcessing
             .controlValueVisualizationProcessor
@@ -383,7 +384,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -444,7 +445,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -465,7 +466,7 @@ void main() {
       final fixture = _TrackHeaderTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final laneInfo = fixture.addToneGeneratorAutomationLane(
@@ -496,7 +497,7 @@ void main() {
     final fixture = _TrackHeaderTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
       AnthemStore.instance.projects.remove(fixture.project.id);
     });
     final project = fixture.project;
@@ -542,7 +543,7 @@ void main() {
     final fixture = _TrackHeaderTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
     await fixture.pump(tester);
 
@@ -561,7 +562,7 @@ void main() {
     final fixture = _TrackHeaderTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
     await fixture.pump(tester);
 
@@ -661,6 +662,14 @@ class _TrackHeaderTestFixture {
       node.owner = NodeOwnerModel(trackId: track.id, deviceId: device.id);
     }
     project.processingGraph.restoreGraphFragment(createResult.graphFragment);
+    final port = createResult.graphFragment.nodes.single.getPortById(
+      ToneGeneratorProcessorModel.frequencyPortId,
+    );
+    port.config.parameterConfig = ParameterConfigModel(
+      id: port.id,
+      factoryDefaultValue: 0.5,
+    );
+    port.parameterValue = 0.5;
 
     final parameterName =
         'Parameter ${ToneGeneratorProcessorModel.frequencyPortId}';
@@ -766,9 +775,9 @@ class _TrackHeaderTestFixture {
     await tester.pump();
   }
 
-  void dispose() {
+  Future<void> dispose() async {
     _screenOverlayController.clear();
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   }
 }

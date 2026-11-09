@@ -74,7 +74,7 @@ class TemporaryProjectFileSelector extends FileSelectorPlatform {
 
   void _checkProjectFilter(List<XTypeGroup>? groups) {
     expectSync(groups, hasLength(1));
-    expectSync(groups!.single.extensions, ['anthem']);
+    expectSync(groups!.single.extensions, ['anthem', 'zip']);
   }
 
   @override
@@ -97,8 +97,12 @@ class TemporaryProjectFileSelector extends FileSelectorPlatform {
     SaveDialogOptions options = const SaveDialogOptions(),
   }) async {
     saveCount++;
-    expectSync(acceptedTypeGroups, isEmpty);
-    expectSync(options.confirmButtonText, 'Create project folder');
+    if (options.confirmButtonText == 'Export') {
+      expectSync(acceptedTypeGroups!.single.extensions, ['zip']);
+    } else {
+      expectSync(acceptedTypeGroups, isEmpty);
+      expectSync(options.confirmButtonText, 'Create project folder');
+    }
     expectSync(options.suggestedName, isNotEmpty);
     final selectedPath = selectedSavePath;
     return selectedPath == null

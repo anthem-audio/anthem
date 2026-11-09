@@ -21,23 +21,25 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/commands/parameter_commands.dart';
 import 'package:anthem/logic/commands/sequence_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/project_file/format.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
 import 'package:anthem/model/pattern/note.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/widgets/editors/shared/helpers/types.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-import '../test/helpers/prealpha_1_project.dart';
+import '../test/fixtures/prealpha_1_project.dart';
 
 import 'support/app_test_session.dart';
 import 'support/piano_roll_test_driver.dart';
 import 'support/temporary_project_file_selector.dart';
+import 'support/test_plugins.dart';
 import 'support/waits.dart';
 
 const _trackName = 'Persistence track';
@@ -161,6 +163,85 @@ void _expectSameOpenProject(AppTestSession session, ProjectModel original) {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  testAppScenario('export a project ZIP and reopen its processor state', (
+    tester,
+  ) async {
+    final files = await TemporaryProjectFileSelector.install('project-zip');
+    final session = AppTestSession(tester, name: 'project-zip');
+    await session.start();
+    final original = session.project;
+    final ids = await _prepareEditedProject(session);
+    await startOfflinePluginProcessing(session);
+    final nodeId =
+        original.tracks[ids.trackId]!.requireProcessing.utilityNodeId!;
+    final port = original.processingGraph.nodes[nodeId]!.getPortById(
+      UtilityProcessorModel.gainPortId,
+    );
+    await waitForFuture(
+      tester,
+      original.execute(
+        SetParameterValueCommand(
+          nodeId: nodeId,
+          controlPortId: port.id,
+          oldValue: port.parameterValueOrResetTarget,
+          newValue: 0.75,
+        ),
+      ),
+      conditionDescription: 'edit a live processor before ZIP export',
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      checkHealth: session.checkEngine,
+    );
+    final zipPath = files.pathFor('portable.zip');
+    files.selectedSavePath = zipPath;
+    await tester.tap(find.text('File'));
+    await tester.pump();
+    expect(find.text('Export to zip...'), findsOneWidget);
+    await tester.tap(find.text('Export to zip...'));
+    await waitUntil(
+      tester,
+      conditionDescription: 'project ZIP export is published',
+      isReady: () => File(zipPath).existsSync(),
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+      checkHealth: session.checkEngine,
+      timeout: const Duration(seconds: 60),
+    );
+    expect(original.filePath, isNull);
+    expect(original.isDirty, isTrue);
+    final originalBytes = await File(zipPath).readAsBytes();
+    final originalStorage = session.services.projectStorage;
+    await waitForFuture(
+      tester,
+      ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
+        original.id,
+      ),
+      conditionDescription: 'close the source project before ZIP import',
+      collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+    );
+    expect(await Directory(originalStorage.rootDirectory).exists(), isFalse);
+    files.selectedOpenPath = zipPath;
+    final imported = await session.openProjectFromFile();
+    expect(imported, isNotNull);
+    expect(imported!.id, isNot(original.id));
+    expect(imported.filePath, isNull);
+    expect(imported.isDirty, isTrue);
+    expect(session.services.projectStorage.isTemporary, isTrue);
+    await startOfflinePluginProcessing(session);
+    expect(
+      imported.processingGraph.nodes[nodeId]!
+          .getPortById(UtilityProcessorModel.gainPortId)
+          .parameterValue,
+      0.75,
+    );
+    await _verifyContent(
+      session,
+      trackId: ids.trackId,
+      patternId: ids.patternId,
+      noteId: ids.noteId,
+    );
+    expect(await File(zipPath).readAsBytes(), originalBytes);
+    await session.dispose();
+  });
+
   testAppScenario('save an edited project, close it, and reopen its file', (
     tester,
   ) async {
@@ -175,17 +256,6 @@ void main() {
     final originalPid = original.engine.processId;
     final originalEngineId = original.engine.id;
     final storage = session.services.projectStorage;
-    final store = await storage.fileStore;
-    final client = store.openSession();
-    final pending = await store.beginWrite(
-      client,
-      ProjectFileCategory.pluginStates.directoryName,
-      baseName: 'Test state',
-      extension: 'bin',
-    );
-    await File(pending.absolutePath).writeAsString('snapshot data');
-    final relativePath = await store.commitWrite(client, pending.token);
-    await store.closeSession(client);
     files.selectedSavePath = files.pathFor('saved-melody');
     expect(await _save(session), isTrue);
     final savedPath = files.pathFor('saved-melody/saved-melody.anthem');
@@ -242,12 +312,6 @@ void main() {
     expect(reopened!.id, original.id);
     expect(reopened.filePath, savedPath);
     expect(reopened.isDirty, isFalse);
-    final reopenedStore = await session.services.projectStorage.fileStore;
-    expect(reopenedStore.projectFilePaths, [relativePath]);
-    final reopenedClient = reopenedStore.openSession();
-    final access = reopenedStore.acquireRead(reopenedClient, relativePath);
-    expect(await File(access.absolutePath).readAsString(), 'snapshot data');
-    await reopenedStore.closeSession(reopenedClient);
     expect(reopened.toJson(), savedPersistentContent);
     expect(reopened.engine.id, isNot(originalEngineId));
     expect(reopened.engine.processId, isNot(originalPid));
@@ -413,16 +477,12 @@ void main() {
       await session.start();
       await files.useTemporaryProjectsDirectory();
       final original = session.project;
-      final ids = await _prepareEditedProject(session);
       final legacy = File(files.pathFor('Old.song.anthem'));
       await legacy.writeAsBytes([
         ...projectFileHeader,
-        ...gzip.encode(
-          utf8.encode(jsonEncode(createPrealpha1ProjectJson(original))),
-        ),
+        ...gzip.encode(utf8.encode(prealpha1ProjectJson)),
       ]);
       final originalBytes = await legacy.readAsBytes();
-      final expected = original.toJson();
       await waitForFuture(
         tester,
         ServiceRegistry.mainWindowController.closeProjectWithoutSaving(
@@ -435,8 +495,7 @@ void main() {
       files.selectedOpenPath = legacy.path;
       final imported = await session.openProjectFromFile();
       expect(imported, isNotNull);
-      expect(imported!.toJson(), expected);
-      expect(imported.filePath, isNull);
+      expect(imported!.filePath, isNull);
       expect(imported.name, 'New Project');
       expect(imported.isDirty, isTrue);
       expect(session.services.projectStorage.isTemporary, isTrue);
@@ -451,12 +510,7 @@ void main() {
       expect(imported.name, 'Converted');
       expect(imported.isDirty, isFalse);
       expect(await legacy.readAsBytes(), originalBytes);
-      await _verifyContent(
-        session,
-        trackId: ids.trackId,
-        patternId: ids.patternId,
-        noteId: ids.noteId,
-      );
+      await _verifyContent(session, trackId: 2, patternId: 16, noteId: 0);
       await session.dispose();
     },
   );

@@ -34,6 +34,10 @@
 #include <type_traits>
 #include <utility>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 namespace anthem {
 
 void HeartbeatThread::markMessageReceived() {
@@ -243,7 +247,18 @@ void CommandHandler::handleRequest(Request request) {
 
     Engine::getInstance().shutdown();
     Engine::getInstance().comms.closeSocketThread();
+#ifdef __EMSCRIPTEN__
+    // JUCE's browser loop yields out of main, so quit cannot return through
+    // application shutdown. Destroy the engine after this handler returns, then exit
+    // the runtime to terminate its workers and notify the host.
+    juce::MessageManager::callAsync([]() {
+      juce::JUCEApplicationBase::getInstance()->shutdown();
+      juce::shutdownJuce_GUI();
+      emscripten_force_exit(0);
+    });
+#else
     juce::JUCEApplicationBase::quit();
+#endif
   }
 }
 

@@ -87,15 +87,19 @@
     ]
   },
   {
-    "__type": "PluginParameterChangedEvent",
+    "__type": "ProcessorParameterChangedEvent",
     "nodeId": 123,
     "controlPortId": 4,
     "value": 0.75,
     "displayText": "-3 dB"
   },
   {
-    "__type": "PluginLoadedEvent",
-    "nodeId": 123
+    "__type": "PluginChangedEvent",
+    "nodeId": 123,
+    "latencyChanged": false,
+    "parameterInfoChanged": true,
+    "programChanged": false,
+    "nonParameterStateChanged": false
   },
   {
     "__type": "RenderFailedEvent",

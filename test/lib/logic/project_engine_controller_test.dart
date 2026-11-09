@@ -24,13 +24,12 @@ import 'dart:typed_data';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
-import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/render/render_range.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/model.dart';
-import 'package:anthem/widgets/project/project_view_model.dart';
 import 'package:anthem_codegen/include.dart' as changes;
 import 'package:flutter_test/flutter_test.dart';
 
@@ -77,11 +76,13 @@ class _TestEngineConnector extends EngineConnectorBase {
 
   @override
   void sendBytes(Uint8List bytes) {
-    sentRequests.add(
-      IpcMessage.fromJson(
-        jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
-      ),
+    final message = IpcMessage.fromJson(
+      jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
     );
+    sentRequests.add(message);
+    if (message is Exit) {
+      emitMessage(ExitReply(id: message.id));
+    }
   }
 
   @override
@@ -145,7 +146,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late ProjectModel project;
-  late ProjectController projectController;
+  late ProcessingGraphController processingGraphController;
   late ProjectEngineController projectEngineController;
   late ProjectRenderController projectRenderController;
   late _TestEngineConnector connector;
@@ -181,19 +182,18 @@ void main() {
     processingGraphApi = _RecordingProcessingGraphApi();
     project.engine.processingGraphApi = processingGraphApi;
 
-    projectController = ProjectController(project, ProjectViewModel());
     final services = ServiceRegistry.initializeProject(project);
-    services.register<ProjectController>(projectController);
+    processingGraphController = services.processingGraphController;
     projectEngineController = services.projectEngineController;
     projectRenderController = ProjectRenderController(
       project,
-      projectController,
+      services.processingGraphController,
     );
   });
 
-  tearDown(() {
+  tearDown(() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   });
 
   test(
@@ -605,7 +605,12 @@ void main() {
       );
       expect(
         progressStatusTexts,
-        orderedEquals(['Rendering...', 'Rendering 50%...', 'Render complete.']),
+        orderedEquals([
+          'Preparing render...',
+          'Rendering...',
+          'Rendering 50%...',
+          'Render complete.',
+        ]),
       );
       await progressSubscription.cancel();
     },
@@ -940,6 +945,70 @@ void main() {
       orderedEquals(['initializeForRender', 'publishForRender']),
     );
   });
+
+  test(
+    'engine shutdown ends a render and releases graph coordination',
+    () async {
+      final starting = projectEngineController.start(startAudio: false);
+      connector.completeInit();
+      await _flushMicrotasks();
+      final ready = _latestRequest<EngineReadyCheckRequest>(connector)!;
+      connector.emitMessage(
+        EngineReadyCheckResponse(id: ready.id, success: true),
+      );
+      await _flushMicrotasks();
+      final model = _latestRequest<ModelInitRequest>(connector)!;
+      connector.emitMessage(ModelInitResponse(id: model.id, success: true));
+      await starting;
+
+      final task = projectRenderController.startRender(
+        ProjectRenderRequest(
+          outputPath: '/tmp/render.wav',
+          format: RenderAudioFormat.wav,
+          range: const RenderTickRange(startTick: 0, endTick: 384),
+          includeTail: false,
+          sampleRate: 48000,
+          bitDepth: 32,
+          qualityOptionIndex: 0,
+          sampleFormat: RenderAudioSampleFormat.floatingPoint,
+        ),
+      );
+      final failed = expectLater(task.result, throwsStateError);
+      final stoppingAudio = await _waitForRequest<StopAudioRequest>(connector);
+      connector.emitMessage(
+        StopAudioResponse(id: stoppingAudio.id, success: true),
+      );
+      final renderSession =
+          await _waitForRequest<StartRenderAudioSessionRequest>(connector);
+      connector.emitMessage(
+        StartRenderAudioSessionResponse(
+          id: renderSession.id,
+          success: true,
+          audioConfig: AudioProcessingConfigDto(
+            sampleRate: 48000,
+            blockSize: 512,
+            inputChannelCount: 0,
+            outputChannelCount: 2,
+          ),
+        ),
+      );
+      final rendering = await _waitForRequest<RenderAudioRequest>(connector);
+      connector.emitMessage(
+        RenderAudioResponse(
+          id: rendering.id,
+          success: true,
+          renderId: task.renderId,
+        ),
+      );
+      await _flushMicrotasks();
+      final queued = processingGraphController.publish();
+      final cancelled = expectLater(queued, throwsStateError);
+      await project.engine.stop();
+      await failed;
+      await cancelled;
+      expect(project.engine.areRequestsHeldForRender, isFalse);
+    },
+  );
 
   test('explicit startAudio throws when audio fails', () async {
     final startFuture = projectEngineController.start(startAudio: false);

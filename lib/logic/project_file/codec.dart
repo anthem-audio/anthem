@@ -57,7 +57,7 @@ Future<Map<String, dynamic>> decodeProjectFileBytes(List<int> bytes) async {
 
 /// Writes a project to an Anthem project file.
 Future<void> writeProjectFile(String path, ProjectModel project) async {
-  await writeProjectFileToPath(path, project);
+  await writeProjectFileToPath(path, project.toJson());
 }
 
 /// Reads the stored JSON without migrating it.

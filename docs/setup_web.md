@@ -18,6 +18,11 @@ After this, install Emscripten 6.0.13 or newer. The AudioWorklet backend require
 2. Run `dart run anthem:cli engine build --debug --wasm` to build the engine.
 3. Run `dart run anthem:cli flutter_run_web_with_proxy`. This runs Flutter with WebAssembly behind the proxy that supplies the COOP/COEP headers needed by the engine's shared memory. Use `--no-wasm` to run the Flutter UI with JavaScript instead.
 
+The engine build also generates `AnthemFileSystem.js` and
+`AnthemFileSystem.wasm`. This module keeps browser working files available
+across engine restarts. Both modules are loaded on demand, and the build command
+copies them into `web/engine` and the ignored `test/.engine` browser fixtures.
+
 If you want to test against non-Chromium browsers, or if you want to test a production build in any browser, you will need to create a production web build for the main Flutter application, and then run it behind a proxy that inserts response headers that are necessary for the engine to run correctly.
 
 You can do this with the following steps:

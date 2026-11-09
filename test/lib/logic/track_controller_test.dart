@@ -79,9 +79,9 @@ void main() {
     test('can exclude or include descendants of collapsed groups', () {
       final project = ProjectModel.create();
       ServiceRegistry.initializeProject(project);
-      addTearDown(() {
+      addTearDown(() async {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
-        project.dispose();
       });
 
       final childTrackId = project.trackOrder.first;
@@ -633,7 +633,7 @@ void main() {
 
       trackController.rerouteTracks(tracks.keys);
 
-      when(project.execute(any)).thenAnswer((invocation) {
+      when(project.execute(any)).thenAnswer((invocation) async {
         final command = invocation.positionalArguments[0] as Command;
         command.execute(project);
       });
@@ -926,7 +926,7 @@ void main() {
       arrangementA.clips[clipOnOtherShared.id] = clipOnOtherShared;
       arrangementA.clips[clipOnChildOrphan.id] = clipOnChildOrphan;
 
-      when(project.execute(any)).thenAnswer((invocation) {
+      when(project.execute(any)).thenAnswer((invocation) async {
         final command = invocation.positionalArguments[0] as Command;
         command.execute(project);
       });

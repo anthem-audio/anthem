@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/model/pattern/automation_point.dart';
 import 'package:anthem/model/pattern/pattern.dart';
 import 'package:anthem/model/project.dart';
@@ -84,7 +86,7 @@ class _AutomationCurveBoundsWidgetTestScreenState
 
   @override
   void dispose() {
-    project.dispose();
+    unawaited(project.dispose());
     super.dispose();
   }
 

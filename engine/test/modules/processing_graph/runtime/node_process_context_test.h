@@ -49,11 +49,8 @@ class NodeProcessContextTest : public juce::UnitTest {
         graph_test_helpers::makePort(1, nodeId, NodePortDataType::audio));
     node->audioOutputPorts()->push_back(
         graph_test_helpers::makePort(2, nodeId, NodePortDataType::audio));
-    node->controlInputPorts()->push_back(graph_test_helpers::makePort(3,
-        nodeId,
-        NodePortDataType::control,
-        0.25,
-        graph_test_helpers::makeParameterConfig(101, 0.25)));
+    node->controlInputPorts()->push_back(graph_test_helpers::makePort(
+        3, nodeId, NodePortDataType::control, graph_test_helpers::makeParameterConfig(101, 0.25)));
     node->controlOutputPorts()->push_back(
         graph_test_helpers::makePort(4, nodeId, NodePortDataType::control));
     node->eventInputPorts()->push_back(
@@ -76,6 +73,7 @@ public:
   void runTest() override {
     testPortToBufferBinding();
     testParameterReadAndLiveNoteIdPassthrough();
+    testDisconnectedControlInput();
     testClearBuffersClearsOnlyDocumentedBuffers();
     testMissingPortLookupsThrow();
   }
@@ -141,7 +139,7 @@ public:
     expectWithinAbsoluteError(context.getParameterValue(3),
         0.25f,
         0.0001f,
-        "Parameter values should be seeded from the port model.");
+        "Parameter reads should use processor-owned base values.");
     expectEquals(static_cast<int>(context.rt_getInputParameterBindings().size()),
         1,
         "One control input should create one parameter binding.");
@@ -152,6 +150,22 @@ public:
         1,
         "Live note allocation should remain monotonic across calls.");
 
+    graphContext.cleanup();
+  }
+
+  void testDisconnectedControlInput() {
+    beginTest("Disconnected control inputs without parameters return zero");
+    auto node = graph_test_helpers::makeNode(10);
+    node->controlInputPorts()->push_back(
+        graph_test_helpers::makePort(3, 10, NodePortDataType::control));
+    EngineRuntimeServices services;
+    GraphProcessContext graphContext(services, {.numAudioChannels = 2, .blockSize = 16});
+    NodeProcessContext::BufferBindings bindings;
+    bindings.inputControlBuffers.emplace(3, std::nullopt);
+    NodeProcessContext context(node, graphContext, std::move(bindings));
+    const auto signal = context.getInputControlSignal(3);
+    expect(!signal.hasBuffer());
+    expectEquals(signal.getSample(0), 0.0f);
     graphContext.cleanup();
   }
 

@@ -21,8 +21,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:anthem/logic/commands/command.dart';
-import 'package:anthem/logic/commands/command_stack.dart';
-import 'package:anthem/logic/commands/journal_commands.dart';
+import 'package:anthem/logic/commands/project_command_controller.dart';
 import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/helpers/id.dart';
@@ -190,6 +189,12 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   /// resulting audio to the audio output device.
   late ProcessingGraphModel processingGraph;
 
+  /// Serialized asset-reference manifest read from a project document.
+  /// Live ownership belongs to ProjectStorage.projectFiles. Save preparation
+  /// writes a fresh manifest into the captured document JSON.
+  @hideFromCpp
+  String fileRetentions = '{}';
+
   /// The version of Anthem that last saved this project file.
   @hideFromCpp
   String savedInSoftwareVersion = currentProjectFileSoftwareVersion;
@@ -259,16 +264,10 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
   @hide
   ProjectLayoutKind layout = ProjectLayoutKind.arrange;
 
-  // Undo / redo & etc
+  // Command execution and undo/redo.
 
   @hide
-  late final CommandStack _commandStack;
-
-  @hide
-  List<Command> _undoGroupAccumulator = [];
-
-  @hide
-  bool _undoGroupActive = false;
+  late final ProjectCommandController _commandController;
 
   // Engine
 
@@ -296,7 +295,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     // work correctly if we don't set this.
     isTopLevelModel = true;
 
-    _commandStack = CommandStack(this as ProjectModel);
+    _commandController = ProjectCommandController(this as ProjectModel);
   }
 
   @hide
@@ -311,7 +310,7 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     // work correctly if we don't set this.
     isTopLevelModel = true;
 
-    _commandStack = CommandStack(this as ProjectModel);
+    _commandController = ProjectCommandController(this as ProjectModel);
   }
 
   @hide
@@ -405,106 +404,53 @@ abstract class _ProjectModel extends Hydratable with Store, AnthemModelBase {
     );
   }
 
-  /// Executes the given command on the project and pushes it to the undo/redo
-  /// queue.
-  void execute(Command command, {bool push = true}) {
-    command.execute(this as ProjectModel);
-
-    if (push) {
-      if (_undoGroupActive) {
-        _undoGroupAccumulator.add(command);
-      } else {
-        _commandStack.push(command);
-      }
-    }
-
-    // If we receive an action that can be undone, then we will consider the
-    // project dirty.
-    isDirty = true;
-  }
-
-  /// Pushes the given command to the undo/redo queue without executing it
-  /// (unless [execute] is set to true).
-  void push(Command command, {bool execute = false}) {
-    if (execute) {
-      command.execute(this as ProjectModel);
-    }
-
-    if (_undoGroupActive) {
-      _undoGroupAccumulator.add(command);
-    } else {
-      _commandStack.push(command);
-    }
-
-    // If we receive an action that can be undone, then we will consider the
-    // project dirty.
-    isDirty = true;
-  }
-
-  void _assertUndoGroupInactive() {
-    if (_undoGroupActive) {
-      throw AssertionError("Journal page was active but shouldn't have been.");
-    }
-  }
-
-  /// Undoes the last command in the undo/redo queue.
-  void undo() {
-    if (!_commandStack.canUndo) return;
-    _assertUndoGroupInactive();
-    _commandStack.undo();
-    isDirty = true;
-  }
-
-  /// Redoes the next command in the undo/redo queue.
-  void redo() {
-    if (!_commandStack.canRedo) return;
-    _assertUndoGroupInactive();
-    _commandStack.redo();
-    isDirty = true;
-  }
-
-  /// Starts an undo group.
+  /// Executes a command and optionally keeps it for undo and redo.
   ///
-  /// Once this is called, any commands that are submitted via [execute] or
-  /// [push] will be grouped into a single undo/redo action.
-  ///
-  /// After the desired actions have been added to the group, [commitUndoGroup]
-  /// can be called to finalize the composite undo/redo action.
-  void startUndoGroup() {
-    _undoGroupActive = true;
-  }
+  /// Ordinary commands run immediately. Commands that need file I/O are
+  /// awaited before later command operations run. A command executed with
+  /// [push] set to false is disposed after execution.
+  Future<void> execute(Command command, {bool push = true}) =>
+      _commandController.execute(command, push: push);
 
-  /// Commits an undo group.
-  ///
-  /// See [startUndoGroup] for details.
-  void commitUndoGroup() {
-    if (!_undoGroupActive) return;
-    if (_undoGroupAccumulator.isEmpty) {
-      _undoGroupActive = false;
-      return;
-    }
+  /// Adds an already applied command to history, or executes it first.
+  Future<void> push(Command command, {bool execute = false}) =>
+      _commandController.push(command, execute: execute);
 
-    final accumulator = _undoGroupAccumulator;
-    _undoGroupAccumulator = [];
-    _undoGroupActive = false;
+  /// Undoes the last command, waiting for any required state capture.
+  Future<void> undo() => _commandController.undo();
 
-    if (accumulator.length == 1) {
-      _commandStack.push(accumulator.first);
-      return;
-    }
+  /// Redoes the next command, waiting for any required state capture.
+  Future<void> redo() => _commandController.redo();
 
-    final command = JournalPageCommand(accumulator);
-    _commandStack.push(command);
-  }
+  /// Starts grouping commands into one undo/redo action.
+  Future<void> startUndoGroup() => _commandController.startUndoGroup();
+
+  /// Transfers the commands in the open group to the undo/redo history.
+  Future<void> commitUndoGroup() => _commandController.commitUndoGroup();
+
+  /// Waits for queued command work, including failed operations, to finish.
+  Future<void> waitForPendingCommands() =>
+      _commandController.waitForPendingCommands();
 
   @hide
-  bool _isDisposed = false;
+  Future<void>? _disposeFuture;
 
-  void dispose() {
-    if (_isDisposed) return;
-    _isDisposed = true;
+  /// Finishes pending commands, stops the engine, and releases model resources.
+  ///
+  /// Concurrent calls share the same future. If cleanup fails, a later call can
+  /// retry it. Project storage must stay open until disposal completes.
+  Future<void> dispose() => _disposeFuture ??= _dispose().catchError((
+    Object error,
+    StackTrace stack,
+  ) {
+    _disposeFuture = null;
+    Error.throwWithStackTrace(error, stack);
+  });
+
+  Future<void> _dispose() async {
+    await _commandController.close();
+    await engine.dispose();
     sequence.dispose();
     visualizationProvider.dispose();
-    engine.dispose();
   }
 }

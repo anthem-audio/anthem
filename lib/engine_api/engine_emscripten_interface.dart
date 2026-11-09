@@ -26,6 +26,8 @@ import 'dart:typed_data';
 
 import 'package:anthem/engine_api/wasm_shared_memory_ring_buffer.dart';
 import 'package:anthem/engine_api/wasm_visualization_record_ring_buffer.dart';
+import 'package:anthem/helpers/emscripten_module.dart';
+import 'package:anthem/logic/storage/browser_file_system.dart';
 import 'package:flutter/scheduler.dart';
 
 class _PendingOutgoingMessage {
@@ -53,6 +55,12 @@ class EngineEmscriptenInterface {
   void Function(Uint8List bytes)? onMessageReceived;
   final void Function()? onPollVisualization;
   final void Function()? onExit;
+  final Completer<void> _exited = Completer<void>();
+  void Function()? _unmountWorkingFiles;
+  int? _runtimeExitCode;
+
+  Future<void> get exited => _exited.future;
+  bool get hasModule => _unmountWorkingFiles != null;
 
   Ticker? _readTicker;
   Timer? _readFallbackTimer;
@@ -74,24 +82,39 @@ class EngineEmscriptenInterface {
 
   Future<void> init() async {
     _ensureActive();
-    final constructorAny = globalContext.getProperty(exportName.toJS);
-    if (!constructorAny.isA<JSFunction>()) {
-      throw Exception(
-        'EngineEmscriptenInterface: $exportName is not a function',
-      );
-    }
-
-    final constructor = constructorAny as JSFunction;
+    final files = await BrowserFileSystem.instance;
+    final constructor = await loadEmscriptenFactory(exportName);
+    _ensureActive();
 
     // The worklet loads the same script as the main module. Resolve the
-    // linker's filename to the public filename used by index.html.
+    // linker's filename to the public filename used by the browser.
     JSString locateFile(JSString filename, JSString directory) {
       final name = filename.toDart;
       return '${directory.toDart}${name == 'anthem_engine.js' ? 'AnthemEngine.js' : name}'
           .toJS;
     }
 
-    final options = JSObject()..setProperty('locateFile'.toJS, locateFile.toJS);
+    final options = JSObject()
+      ..setProperty('locateFile'.toJS, locateFile.toJS)
+      ..setProperty(
+        'preRun'.toJS,
+        [
+          ((JSObject module) {
+            _ensureActive();
+            files.mount(module);
+            _unmountWorkingFiles = () => files.unmount(module);
+          }).toJS,
+        ].toJS,
+      )
+      ..setProperty(
+        'onExit'.toJS,
+        ((JSNumber status) {
+          _runtimeExitCode = status.toDartInt;
+          _finishExit();
+          onExit?.call();
+        }).toJS,
+      );
+
     final appInstancePromiseAny = constructor.callAsFunction(null, options);
     if (!appInstancePromiseAny.isA<JSPromise>()) {
       throw Exception(
@@ -432,16 +455,17 @@ class EngineEmscriptenInterface {
 
   void _poll() {
     if (_disposed) return;
+    // If the engine reports exit, the last reply is already in the ring.
+    final didExit = exitCode != null;
     _tryRead();
     if (_disposed) return;
     onPollVisualization?.call();
-    // Drain the final reply before reporting the module's exit to its owner.
-    if (exitCode != null) onExit?.call();
+    if (didExit) onExit?.call();
   }
 
   var _introBytesSkipped = 0;
   void _tryRead() {
-    if (_disposed) return;
+    if (_disposed || _runtimeExitCode != null) return;
     var size = readBuffer.size();
     if (size == 0) return;
 
@@ -506,10 +530,14 @@ class EngineEmscriptenInterface {
     if (_disposed) throw StateError('The engine interface has been disposed.');
   }
 
+  bool get supportsShutdownRequest =>
+      _hasAppInstance &&
+      appInstance.hasProperty('_requestEngineShutdown'.toJS).toDart;
+
   int? get exitCode {
     if (!_hasAppInstance ||
         !appInstance.hasProperty('_hasEngineExited'.toJS).toDart) {
-      return null;
+      return _runtimeExitCode;
     }
     final exited = appInstance
         .callMethod<JSNumber>('_hasEngineExited'.toJS)
@@ -523,10 +551,7 @@ class EngineEmscriptenInterface {
       _shutdownFuture ??= _shutdown(timeout);
 
   Future<void> _shutdown(Duration timeout) async {
-    if (!_hasAppInstance ||
-        !appInstance.hasProperty('_requestEngineShutdown'.toJS).toDart) {
-      return;
-    }
+    if (!supportsShutdownRequest) return;
     try {
       appInstance.callMethod<JSAny?>('_requestEngineShutdown'.toJS);
       final deadline = Stopwatch()..start();
@@ -541,7 +566,14 @@ class EngineEmscriptenInterface {
       // terminated. Forced disposal also releases workers after the deadline.
       final threads = appInstance.getProperty<JSObject>('PThread'.toJS);
       threads.callMethod<JSAny?>('terminateAllThreads'.toJS);
+      _finishExit();
     }
+  }
+
+  void _finishExit() {
+    _unmountWorkingFiles?.call();
+    _unmountWorkingFiles = null;
+    if (!_exited.isCompleted) _exited.complete();
   }
 
   void dispose() {

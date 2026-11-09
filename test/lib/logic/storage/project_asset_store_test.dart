@@ -23,33 +23,34 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:anthem/logic/storage/project_file_store.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
+import 'package:anthem/logic/storage/project_asset_store.dart';
+import 'package:anthem/logic/storage/file_fingerprint.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
 
-const testFiles = ProjectFileCategory('test files');
-const pluginStates = ProjectFileCategory.pluginStates;
-const cache = ProjectFileCategory('test cache', isCache: true);
+const testFiles = ProjectAssetCategory('test files');
+const pluginStates = ProjectAssetCategory.pluginStates;
+const cache = ProjectAssetCategory('test cache', isCache: true);
 
-Future<ProjectFileStore> openStore(String root) =>
-    ProjectFileStore.open(root, categories: [testFiles, pluginStates, cache]);
+Future<ProjectAssetStore> openStore(String root) =>
+    ProjectAssetStore.open(root, categories: [testFiles, pluginStates, cache]);
 
 void main() {
   late Directory directory;
-  late ProjectFileStore store;
-  late String sessionId;
+  late ProjectAssetStore store;
+  late AssetScope scopeId;
 
   setUp(() async {
     directory = await Directory.systemTemp.createTemp(
       'anthem_file_store_test_',
     );
     store = await openStore(path.join(directory.path, 'store'));
-    sessionId = store.openSession();
+    scopeId = store.openScope();
   });
 
   tearDown(() async {
-    await store.closeSession(sessionId);
+    await scopeId.close();
     await store.close();
     await directory.delete(recursive: true);
   });
@@ -59,21 +60,19 @@ void main() {
     String? extension,
     String value = 'state',
   }) async {
-    final write = await store.beginWrite(
-      sessionId,
+    final write = await scopeId.beginWrite(
       testFiles.directoryName,
       baseName: name,
       extension: extension,
     );
     await File(write.absolutePath).writeAsString(value, flush: true);
-    return store.commitWrite(sessionId, write.token);
+    return scopeId.commitWrite(write.token);
   }
 
   test(
     'uncommitted data is private; commit publishes a complete file',
     () async {
-      final write = await store.beginWrite(
-        sessionId,
+      final write = await scopeId.beginWrite(
         testFiles.directoryName,
         baseName: 'Bass',
         extension: 'wav',
@@ -82,17 +81,17 @@ void main() {
           .writeAsString('completed data', flush: true);
       expect(store.relativePaths, isEmpty);
       expect(
-        () => store.acquireRead(sessionId, 'test files/Bass 01.wav'),
+        () => scopeId.acquireRead('test files/Bass 01.wav'),
         throwsStateError,
       );
-      final relativePath = await store.commitWrite(sessionId, write.token);
+      final relativePath = await scopeId.commitWrite(write.token);
       expect(relativePath, 'test files/Bass 01.wav');
       expect(await File(write.absolutePath).exists(), isFalse);
-      final read = store.acquireRead(sessionId, relativePath);
+      final read = scopeId.acquireRead(relativePath);
       expect(await File(read.absolutePath).readAsString(), 'completed data');
-      store.releaseRead(sessionId, read.token);
-      expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
-      expect(() => store.abortWrite(sessionId, write.token), throwsStateError);
+      scopeId.releaseRead(read.token);
+      expect(() => scopeId.commitWrite(write.token), throwsStateError);
+      expect(() => scopeId.abortWrite(write.token), throwsStateError);
     },
   );
 
@@ -100,35 +99,32 @@ void main() {
     'pending writes reserve names without case-sensitive collisions',
     () async {
       final writes = await Future.wait([
-        store.beginWrite(
-          sessionId,
+        scopeId.beginWrite(
           testFiles.directoryName,
           baseName: 'Bass',
           extension: 'wav',
         ),
-        store.beginWrite(
-          sessionId,
+        scopeId.beginWrite(
           testFiles.directoryName,
           baseName: 'Bass',
           extension: '.WAV',
         ),
-        store.beginWrite(
-          sessionId,
+        scopeId.beginWrite(
           testFiles.directoryName,
           baseName: 'bass',
           extension: 'wav',
         ),
       ]);
       expect(
-        await store.commitWrite(sessionId, writes[2].token),
+        await scopeId.commitWrite(writes[2].token),
         'test files/bass 03.wav',
       );
       expect(
-        await store.commitWrite(sessionId, writes[0].token),
+        await scopeId.commitWrite(writes[0].token),
         'test files/Bass 01.wav',
       );
       expect(
-        await store.commitWrite(sessionId, writes[1].token),
+        await scopeId.commitWrite(writes[1].token),
         'test files/Bass 02.wav',
       );
       expect(store.relativePaths, hasLength(3));
@@ -178,11 +174,8 @@ void main() {
     () async {
       for (final extension in ['../wav', 'a/b', 'wav ', '.', 'x:y']) {
         expect(
-          () => store.beginWrite(
-            sessionId,
-            testFiles.directoryName,
-            extension: extension,
-          ),
+          () =>
+              scopeId.beginWrite(testFiles.directoryName, extension: extension),
           throwsArgumentError,
         );
       }
@@ -202,37 +195,27 @@ void main() {
         'test files/a/b',
         r'test files\other',
       ]) {
-        expect(
-          () => store.acquireRead(sessionId, relativePath),
-          throwsArgumentError,
-        );
-        expect(
-          () => store.retain(sessionId, relativePath),
-          throwsArgumentError,
-        );
-        expect(
-          () => store.delete(sessionId, relativePath),
-          throwsArgumentError,
-        );
+        expect(() => scopeId.acquireRead(relativePath), throwsArgumentError);
+        expect(() => scopeId.retain(relativePath), throwsArgumentError);
+        expect(() => scopeId.delete(relativePath), throwsArgumentError);
       }
       expect(
-        () => store.acquireRead(sessionId, 'test files/unknown.wav'),
+        () => scopeId.acquireRead('test files/unknown.wav'),
         throwsStateError,
       );
     },
   );
 
   test('abort removes temporary files and releases a reserved name', () async {
-    final write = await store.beginWrite(
-      sessionId,
+    final write = await scopeId.beginWrite(
       testFiles.directoryName,
       baseName: 'Bass',
       extension: 'wav',
     );
-    await store.abortWrite(sessionId, write.token);
-    expect(() => store.abortWrite(sessionId, write.token), throwsStateError);
+    await scopeId.abortWrite(write.token);
+    expect(() => scopeId.abortWrite(write.token), throwsStateError);
     expect(await File(write.absolutePath).exists(), isFalse);
-    expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
+    expect(() => scopeId.commitWrite(write.token), throwsStateError);
     expect(store.relativePaths, isEmpty);
     expect(
       await writeObject(name: 'Bass', extension: 'wav'),
@@ -244,8 +227,7 @@ void main() {
     final pending = Directory(path.join(store.rootDirectory, '.pending'));
     await pending.delete();
     await expectLater(
-      store.beginWrite(
-        sessionId,
+      scopeId.beginWrite(
         testFiles.directoryName,
         baseName: 'Bass',
         extension: 'wav',
@@ -263,28 +245,22 @@ void main() {
     'reads and retained references independently prevent deletion',
     () async {
       final relativePath = await writeObject();
-      final firstRead = store.acquireRead(sessionId, relativePath);
-      final secondRead = store.acquireRead(sessionId, relativePath);
-      final projectReference = store.retain(sessionId, relativePath);
-      final undoReference = store.retain(sessionId, relativePath);
-      expect(() => store.delete(sessionId, relativePath), throwsStateError);
-      store.releaseRead(sessionId, firstRead.token);
-      expect(
-        () => store.releaseRead(sessionId, firstRead.token),
-        throwsStateError,
-      );
-      expect(() => store.delete(sessionId, relativePath), throwsStateError);
-      store.releaseRead(sessionId, secondRead.token);
-      expect(() => store.delete(sessionId, relativePath), throwsStateError);
-      store.releaseRetention(sessionId, projectReference);
-      expect(() => store.delete(sessionId, relativePath), throwsStateError);
-      store.releaseRetention(sessionId, undoReference);
-      expect(
-        () => store.releaseRetention(sessionId, undoReference),
-        throwsStateError,
-      );
+      final firstRead = scopeId.acquireRead(relativePath);
+      final secondRead = scopeId.acquireRead(relativePath);
+      final projectReference = scopeId.retain(relativePath);
+      final undoReference = scopeId.retain(relativePath);
+      expect(() => scopeId.delete(relativePath), throwsStateError);
+      scopeId.releaseRead(firstRead.token);
+      expect(() => scopeId.releaseRead(firstRead.token), throwsStateError);
+      expect(() => scopeId.delete(relativePath), throwsStateError);
+      scopeId.releaseRead(secondRead.token);
+      expect(() => scopeId.delete(relativePath), throwsStateError);
+      scopeId.releaseRetention(projectReference);
+      expect(() => scopeId.delete(relativePath), throwsStateError);
+      scopeId.releaseRetention(undoReference);
+      expect(() => scopeId.releaseRetention(undoReference), throwsStateError);
       expect(await File(firstRead.absolutePath).exists(), isTrue);
-      await store.delete(sessionId, relativePath);
+      await scopeId.delete(relativePath);
       expect(await File(firstRead.absolutePath).exists(), isFalse);
       expect(store.relativePaths, isEmpty);
     },
@@ -294,21 +270,17 @@ void main() {
     'deletion reserves the object before awaiting filesystem work',
     () async {
       final relativePath = await writeObject();
-      final deleting = store.delete(sessionId, relativePath);
-      expect(
-        () => store.acquireRead(sessionId, relativePath),
-        throwsStateError,
-      );
-      expect(() => store.retain(sessionId, relativePath), throwsStateError);
-      expect(() => store.delete(sessionId, relativePath), throwsStateError);
+      final deleting = scopeId.delete(relativePath);
+      expect(() => scopeId.acquireRead(relativePath), throwsStateError);
+      expect(() => scopeId.retain(relativePath), throwsStateError);
+      expect(() => scopeId.delete(relativePath), throwsStateError);
       await deleting;
       expect(store.relativePaths, isEmpty);
     },
   );
 
   test('failed commit preserves existing data and remains abortable', () async {
-    final write = await store.beginWrite(
-      sessionId,
+    final write = await scopeId.beginWrite(
       testFiles.directoryName,
       baseName: 'Bass',
       extension: 'wav',
@@ -318,58 +290,48 @@ void main() {
     );
     await existing.writeAsString('existing data');
     await File(write.absolutePath).writeAsString('new data');
-    await expectLater(
-      store.commitWrite(sessionId, write.token),
-      throwsStateError,
-    );
+    await expectLater(scopeId.commitWrite(write.token), throwsStateError);
     expect(await existing.readAsString(), 'existing data');
     expect(await File(write.absolutePath).readAsString(), 'new data');
-    await store.abortWrite(sessionId, write.token);
+    await scopeId.abortWrite(write.token);
     expect(store.relativePaths, isEmpty);
   });
 
   test('filesystem failures allow commit and deletion to be retried', () async {
-    final write = await store.beginWrite(
-      sessionId,
+    final write = await scopeId.beginWrite(
       testFiles.directoryName,
       baseName: 'Bass',
     );
     await File(write.absolutePath).delete();
     await expectLater(
-      store.commitWrite(sessionId, write.token),
+      scopeId.commitWrite(write.token),
       throwsA(isA<FileSystemException>()),
     );
     await File(write.absolutePath).writeAsString('retry');
-    final relativePath = await store.commitWrite(sessionId, write.token);
-    final read = store.acquireRead(sessionId, relativePath);
+    final relativePath = await scopeId.commitWrite(write.token);
+    final read = scopeId.acquireRead(relativePath);
     final objectPath = read.absolutePath;
-    store.releaseRead(sessionId, read.token);
+    scopeId.releaseRead(read.token);
     await File(objectPath).delete();
     await expectLater(
-      store.delete(sessionId, relativePath),
+      scopeId.delete(relativePath),
       throwsA(isA<FileSystemException>()),
     );
-    final retained = store.retain(sessionId, relativePath);
-    store.releaseRetention(sessionId, retained);
+    final retained = scopeId.retain(relativePath);
+    scopeId.releaseRetention(retained);
     await File(objectPath).writeAsString('retry');
-    await store.delete(sessionId, relativePath);
+    await scopeId.delete(relativePath);
   });
 
   test('commit and abort cannot both operate on the same write', () async {
-    final write = await store.beginWrite(sessionId, testFiles.directoryName);
-    final committing = store.commitWrite(sessionId, write.token);
-    expect(() => store.abortWrite(sessionId, write.token), throwsStateError);
-    expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
+    final write = await scopeId.beginWrite(testFiles.directoryName);
+    final committing = scopeId.commitWrite(write.token);
+    expect(() => scopeId.abortWrite(write.token), throwsStateError);
+    expect(() => scopeId.commitWrite(write.token), throwsStateError);
     await committing;
-    final abortedWrite = await store.beginWrite(
-      sessionId,
-      testFiles.directoryName,
-    );
-    final aborting = store.abortWrite(sessionId, abortedWrite.token);
-    expect(
-      () => store.commitWrite(sessionId, abortedWrite.token),
-      throwsStateError,
-    );
+    final abortedWrite = await scopeId.beginWrite(testFiles.directoryName);
+    final aborting = scopeId.abortWrite(abortedWrite.token);
+    expect(() => scopeId.commitWrite(abortedWrite.token), throwsStateError);
     await aborting;
   });
 
@@ -381,16 +343,16 @@ void main() {
         extension: 'wav',
         value: 'saved data',
       );
-      await store.closeSession(sessionId);
+      await scopeId.close();
       await store.close();
       final movedPath = path.join(directory.path, 'moved');
       await Directory(store.rootDirectory).rename(movedPath);
       store = await openStore(movedPath);
-      sessionId = store.openSession();
-      final read = store.acquireRead(sessionId, relativePath);
+      scopeId = store.openScope();
+      final read = scopeId.acquireRead(relativePath);
       expect(await File(read.absolutePath).readAsString(), 'saved data');
       expect(path.isWithin(movedPath, read.absolutePath), isTrue);
-      store.releaseRead(sessionId, read.token);
+      scopeId.releaseRead(read.token);
       expect(
         await writeObject(name: 'bass', extension: 'wav'),
         'test files/bass 02.wav',
@@ -406,13 +368,13 @@ void main() {
         path.join(store.rootDirectory, '.pending', 'abandoned.tmp'),
       );
       await abandoned.writeAsString('incomplete');
-      await store.closeSession(sessionId);
+      await scopeId.close();
       await store.close();
       store = await openStore(store.rootDirectory);
-      sessionId = store.openSession();
+      scopeId = store.openScope();
       expect(store.relativePaths, contains(relativePath));
       expect(await abandoned.readAsString(), 'incomplete');
-      store.releaseRetention(sessionId, store.retain(sessionId, relativePath));
+      scopeId.releaseRetention(scopeId.retain(relativePath));
     },
   );
 
@@ -434,30 +396,30 @@ void main() {
       throwsStateError,
     );
     final root = store.rootDirectory;
-    await store.closeSession(sessionId);
+    await scopeId.close();
     await store.close();
     store = await openStore(root);
-    sessionId = store.openSession();
+    scopeId = store.openScope();
   });
 
-  test('close refuses outstanding sessions and can be retried', () async {
+  test('close refuses outstanding scopes and can be retried', () async {
     final relativePath = await writeObject();
-    final read = store.acquireRead(sessionId, relativePath);
-    store.retain(sessionId, relativePath);
-    final pending = await store.beginWrite(sessionId, testFiles.directoryName);
+    final read = scopeId.acquireRead(relativePath);
+    scopeId.retain(relativePath);
+    final pending = await scopeId.beginWrite(testFiles.directoryName);
     await expectLater(store.close(), throwsStateError);
-    expect(() => store.acquireRead(sessionId, relativePath), throwsStateError);
-    expect(() => store.openSession(), throwsStateError);
-    await store.closeSession(sessionId);
+    expect(() => scopeId.acquireRead(relativePath), throwsStateError);
+    expect(() => store.openScope(), throwsStateError);
+    await scopeId.close();
     await store.close();
     expect(await File(read.absolutePath).exists(), isTrue);
     expect(await File(pending.absolutePath).exists(), isFalse);
   });
 
-  test('session close waits for an in-flight commit', () async {
-    final write = await store.beginWrite(sessionId, testFiles.directoryName);
-    final committing = store.commitWrite(sessionId, write.token);
-    final closing = store.closeSession(sessionId);
+  test('scope close waits for an in-flight commit', () async {
+    final write = await scopeId.beginWrite(testFiles.directoryName);
+    final committing = scopeId.commitWrite(write.token);
+    final closing = scopeId.close();
     final relativePath = await committing;
     await closing;
     await store.close();
@@ -468,61 +430,52 @@ void main() {
   });
 
   test(
-    'session close waits for beginWrite and aborts the returned write',
+    'scope close waits for beginWrite and aborts the returned write',
     () async {
-      final writing = store.beginWrite(sessionId, testFiles.directoryName);
-      final closing = store.closeSession(sessionId);
+      final writing = scopeId.beginWrite(testFiles.directoryName);
+      final closing = scopeId.close();
       final write = await writing;
       await closing;
       expect(await File(write.absolutePath).exists(), isFalse);
-      expect(() => store.commitWrite(sessionId, write.token), throwsStateError);
+      expect(() => scopeId.commitWrite(write.token), throwsStateError);
     },
   );
 
   test('names are reserved within a category, not across categories', () async {
-    final first = await store.beginWrite(
-      sessionId,
+    final first = await scopeId.beginWrite(
       testFiles.directoryName,
       baseName: 'Preset',
     );
-    final second = await store.beginWrite(
-      sessionId,
+    final second = await scopeId.beginWrite(
       pluginStates.directoryName,
       baseName: 'Preset',
     );
-    expect(
-      await store.commitWrite(sessionId, first.token),
-      'test files/Preset 01',
-    );
-    expect(
-      await store.commitWrite(sessionId, second.token),
-      'plugin states/Preset 01',
-    );
-    expect(store.projectFilePaths, unorderedEquals(store.relativePaths));
+    expect(await scopeId.commitWrite(first.token), 'test files/Preset 01');
+    expect(await scopeId.commitWrite(second.token), 'plugin states/Preset 01');
+    expect(store.projectAssetPaths, unorderedEquals(store.relativePaths));
   });
 
   test(
     'cache files are usable but excluded from saved project files',
     () async {
       final savedPath = await writeObject(name: 'Bass', extension: 'wav');
-      final write = await store.beginWrite(
-        sessionId,
+      final write = await scopeId.beginWrite(
         cache.directoryName,
         baseName: 'Bass',
         extension: 'wav',
       );
-      final cachedPath = await store.commitWrite(sessionId, write.token);
-      final read = store.acquireRead(sessionId, cachedPath);
+      final cachedPath = await scopeId.commitWrite(write.token);
+      final read = scopeId.acquireRead(cachedPath);
       expect(store.relativePaths, unorderedEquals([savedPath, cachedPath]));
-      expect(store.projectFilePaths, [savedPath]);
+      expect(store.projectAssetPaths, [savedPath]);
       // Cleanup must wait for cache readers too.
       await expectLater(store.close(), throwsStateError);
       expect(await File(read.absolutePath).exists(), isTrue);
-      await store.closeSession(sessionId);
+      await scopeId.close();
       await store.close();
       expect(await File(read.absolutePath).exists(), isFalse);
       store = await openStore(store.rootDirectory);
-      sessionId = store.openSession();
+      scopeId = store.openScope();
       expect(store.relativePaths, [savedPath]);
     },
   );
@@ -530,34 +483,33 @@ void main() {
   test(
     'custom categories are recovered while unrelated files stay untouched',
     () async {
-      await store.closeSession(sessionId);
+      await scopeId.close();
       await store.close();
-      const custom = ProjectFileCategory('sample maps');
+      const custom = ProjectAssetCategory('sample maps');
       final root = store.rootDirectory;
       final document = File(path.join(root, 'project.anthem'));
       await document.writeAsString('project document');
       final unknown = File(path.join(root, 'unknown', 'preserve.bin'));
       await unknown.parent.create();
       await unknown.writeAsString('unrecognized data');
-      store = await ProjectFileStore.open(root, categories: [custom]);
-      sessionId = store.openSession();
-      final write = await store.beginWrite(
-        sessionId,
+      store = await ProjectAssetStore.open(root, categories: [custom]);
+      scopeId = store.openScope();
+      final write = await scopeId.beginWrite(
         custom.directoryName,
         baseName: 'Map',
         extension: 'json',
       );
-      final relativePath = await store.commitWrite(sessionId, write.token);
-      await store.closeSession(sessionId);
+      final relativePath = await scopeId.commitWrite(write.token);
+      await scopeId.close();
       await store.close();
-      store = await ProjectFileStore.open(root, categories: [custom]);
-      sessionId = store.openSession();
+      store = await ProjectAssetStore.open(root, categories: [custom]);
+      scopeId = store.openScope();
       expect(store.relativePaths, [relativePath]);
       expect(relativePath, 'sample maps/Map 01.json');
       expect(await document.readAsString(), 'project document');
       expect(await unknown.readAsString(), 'unrecognized data');
       expect(
-        () => store.beginWrite(sessionId, testFiles.directoryName),
+        () => scopeId.beginWrite(testFiles.directoryName),
         throwsArgumentError,
       );
     },
@@ -568,17 +520,17 @@ void main() {
     () async {
       final root = path.join(directory.path, 'invalid');
       for (final categories in [
-        [const ProjectFileCategory('../test files')],
-        [const ProjectFileCategory('test files/nested')],
-        [const ProjectFileCategory(r'test files\nested')],
-        [const ProjectFileCategory('.pending')],
-        [const ProjectFileCategory('CON')],
-        [const ProjectFileCategory('name.')],
-        [testFiles, const ProjectFileCategory('Test files')],
+        [const ProjectAssetCategory('../test files')],
+        [const ProjectAssetCategory('test files/nested')],
+        [const ProjectAssetCategory(r'test files\nested')],
+        [const ProjectAssetCategory('.pending')],
+        [const ProjectAssetCategory('CON')],
+        [const ProjectAssetCategory('name.')],
+        [testFiles, const ProjectAssetCategory('Test files')],
         [testFiles, testFiles],
       ]) {
         await expectLater(
-          ProjectFileStore.open(root, categories: categories),
+          ProjectAssetStore.open(root, categories: categories),
           throwsArgumentError,
         );
         expect(await Directory(root).exists(), isFalse);
@@ -620,5 +572,107 @@ void main() {
     skip: Platform.isWindows
         ? 'Creating symbolic links requires Windows privileges.'
         : false,
+  );
+
+  test('fingerprints use SHA-256 and byte length, including empty and chunked files', () async {
+    for (final bytes in [
+      <int>[],
+      utf8.encode('abc'),
+      List<int>.generate(200000, (i) => i % 256),
+    ]) {
+      final write = await scopeId.beginWrite(testFiles.directoryName);
+      await File(write.absolutePath).writeAsBytes(bytes, flush: true);
+      final file = await scopeId.commitWrite(write.token);
+      final read = scopeId.acquireRead(file);
+      final fingerprint = await scopeId.getFingerprint(read.token);
+      expect(fingerprint.byteLength, bytes.length);
+      expect(fingerprint.sha256, FileFingerprint.fromBytes(bytes).sha256);
+      if (bytes.length == 3) {
+        expect(
+          fingerprint.sha256,
+          'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+        );
+      }
+      expect(await scopeId.getFingerprint(read.token), same(fingerprint));
+      scopeId.releaseRead(read.token);
+      expect(() => scopeId.getFingerprint(read.token), throwsStateError);
+    }
+  });
+
+  test('a writer-supplied fingerprint is cached at commit', () async {
+    final bytes = utf8.encode('state supplied by a writer');
+    final fingerprint = FileFingerprint.fromBytes(bytes);
+    final write = await scopeId.beginWrite(testFiles.directoryName);
+    await File(write.absolutePath).writeAsBytes(bytes, flush: true);
+    final file = await scopeId.commitWrite(
+      write.token,
+      fingerprint: fingerprint,
+    );
+    final read = scopeId.acquireRead(file);
+    expect(await scopeId.getFingerprint(read.token), same(fingerprint));
+    await File(read.absolutePath).delete();
+    await expectLater(
+      scopeId.getFingerprint(read.token),
+      throwsA(isA<FileSystemException>()),
+    );
+    scopeId.releaseRead(read.token);
+  });
+
+  test('deleting and reusing a path discards its old fingerprint', () async {
+    final file = await writeObject(name: 'State', value: 'before');
+    final read = scopeId.acquireRead(file);
+    final original = await scopeId.getFingerprint(read.token);
+    scopeId.releaseRead(read.token);
+    await scopeId.delete(file);
+    final replacement = await writeObject(name: 'State', value: 'after!');
+    expect(replacement, file);
+    final nextRead = scopeId.acquireRead(replacement);
+    final next = await scopeId.getFingerprint(nextRead.token);
+    expect(next.byteLength, original.byteLength);
+    expect(next.sha256, isNot(original.sha256));
+    expect(
+      next.sha256,
+      FileFingerprint.fromBytes(utf8.encode('after!')).sha256,
+    );
+    scopeId.releaseRead(nextRead.token);
+  });
+
+  test(
+    'reopening recalculates fingerprints after files were edited while closed',
+    () async {
+      final file = await writeObject(value: 'before');
+      final read = scopeId.acquireRead(file);
+      final original = await scopeId.getFingerprint(read.token);
+      final absolutePath = read.absolutePath;
+      scopeId.releaseRead(read.token);
+      await scopeId.close();
+      await store.close();
+      await File(absolutePath).writeAsString('after!', flush: true);
+      store = await openStore(store.rootDirectory);
+      scopeId = store.openScope();
+      final reopenedRead = scopeId.acquireRead(file);
+      final fingerprint = await scopeId.getFingerprint(reopenedRead.token);
+      expect(fingerprint.byteLength, original.byteLength);
+      expect(
+        fingerprint.sha256,
+        FileFingerprint.fromBytes(utf8.encode('after!')).sha256,
+      );
+      expect(fingerprint.sha256, isNot(original.sha256));
+      scopeId.releaseRead(reopenedRead.token);
+    },
+  );
+
+  test(
+    'closing a scope waits for fingerprint reads before releasing its access',
+    () async {
+      final file = await writeObject(value: 'a' * (1024 * 1024));
+      final read = scopeId.acquireRead(file);
+      final pending = scopeId.getFingerprint(read.token);
+      final closing = scopeId.close();
+      expect((await pending).byteLength, 1024 * 1024);
+      await closing;
+      scopeId = store.openScope();
+      await scopeId.delete(file);
+    },
   );
 }

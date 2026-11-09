@@ -215,15 +215,12 @@ Future<void> runRuntimeScenarios(Future<RuntimeSession> Function() open) async {
             project.trackOrder.reversed,
           );
         });
-        final node = project.processingGraph.nodes.values.firstWhere(
-          (node) => node.processor != null,
-        );
-        final processor = node.processor;
+        final node = project.processingGraph.nodes.values.first;
         await update(() {
-          node.processor = null;
+          node.processorStateRetentionId = 'processor-state-test';
         });
         await update(() {
-          node.processor = processor;
+          node.processorStateRetentionId = null;
         });
         // Larger than the web ring: framing must survive partial writes and wraps.
         await update(() {

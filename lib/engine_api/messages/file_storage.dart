@@ -37,7 +37,8 @@ class BeginFileWriteRequest extends Request {
   }
 }
 
-/// Grants write access until commit, abort, or engine-session cleanup.
+/// Grants write access until commit, abort, or closure of the engine's file
+/// scope.
 class BeginFileWriteResponse extends Response {
   late String token;
   late String absolutePath;
@@ -57,9 +58,16 @@ class BeginFileWriteResponse extends Response {
 class CommitFileWriteRequest extends Request {
   late String token;
 
+  /// Optional metadata calculated by the writer from the completed contents.
+  FileFingerprint? fingerprint;
+
   CommitFileWriteRequest.uninitialized();
 
-  CommitFileWriteRequest({required int id, required this.token}) {
+  CommitFileWriteRequest({
+    required int id,
+    required this.token,
+    this.fingerprint,
+  }) {
     super.id = id;
   }
 }
@@ -90,17 +98,27 @@ class AbortFileWriteRequest extends Request {
 class AcquireFileReadRequest extends Request {
   late String relativePath;
 
+  /// Requests cached content metadata, hashing the file on first access.
+  bool includeFingerprint = false;
+
   AcquireFileReadRequest.uninitialized();
 
-  AcquireFileReadRequest({required int id, required this.relativePath}) {
+  AcquireFileReadRequest({
+    required int id,
+    required this.relativePath,
+    this.includeFingerprint = false,
+  }) {
     super.id = id;
   }
 }
 
-/// Grants read access until release or engine-session cleanup.
+/// Grants read access until release or closure of the engine's file scope.
 class AcquireFileReadResponse extends Response {
   late String token;
   late String absolutePath;
+
+  /// Present when [AcquireFileReadRequest.includeFingerprint] was requested.
+  FileFingerprint? fingerprint;
 
   AcquireFileReadResponse.uninitialized();
 
@@ -108,6 +126,7 @@ class AcquireFileReadResponse extends Response {
     required int id,
     required this.token,
     required this.absolutePath,
+    this.fingerprint,
   }) {
     super.id = id;
   }
@@ -146,7 +165,7 @@ class RetainStoredFileRequest extends Request {
   }
 }
 
-/// Grants retention until release or storage-session cleanup.
+/// Grants retention until release or closure of the engine's file scope.
 class RetainStoredFileResponse extends Response {
   late String token;
 
@@ -173,6 +192,27 @@ class FileStorageSuccessResponse extends Response {
   FileStorageSuccessResponse.uninitialized();
 
   FileStorageSuccessResponse({required int id}) {
+    super.id = id;
+  }
+}
+
+/// Resolves a live retention owned by any scope to its project-relative path.
+class ResolveFileRetentionRequest extends Request {
+  late String retentionId;
+
+  ResolveFileRetentionRequest.uninitialized();
+
+  ResolveFileRetentionRequest({required int id, required this.retentionId}) {
+    super.id = id;
+  }
+}
+
+class ResolveFileRetentionResponse extends Response {
+  late String relativePath;
+
+  ResolveFileRetentionResponse.uninitialized();
+
+  ResolveFileRetentionResponse({required int id, required this.relativePath}) {
     super.id = id;
   }
 }

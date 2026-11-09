@@ -84,6 +84,7 @@ enum TestFileStorageOperation {
   deleteFile,
   retainFile,
   releaseRetention,
+  resolveRetention,
 }
 
 /// Runs a storage operation through the C++ client.
@@ -99,6 +100,8 @@ class TestFileStorageRequest extends Request {
   String data = '';
   String token = '';
   String relativePath = '';
+  FileFingerprint? fingerprint;
+  bool includeFingerprint = false;
 
   TestFileStorageRequest.uninitialized();
   TestFileStorageRequest({
@@ -110,6 +113,8 @@ class TestFileStorageRequest extends Request {
     this.data = '',
     this.token = '',
     this.relativePath = '',
+    this.fingerprint,
+    this.includeFingerprint = false,
   }) {
     super.id = id;
   }
@@ -121,6 +126,7 @@ class TestFileStorageResponse extends Response {
   String? relativePath;
   String? data;
   String? error;
+  FileFingerprint? fingerprint;
 
   TestFileStorageResponse.uninitialized();
   TestFileStorageResponse({
@@ -130,6 +136,7 @@ class TestFileStorageResponse extends Response {
     this.relativePath,
     this.data,
     this.error,
+    this.fingerprint,
   }) {
     super.id = id;
   }

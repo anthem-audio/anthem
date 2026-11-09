@@ -28,6 +28,27 @@ AudioWorklet renders blocks while a session is active and stops on request.
 
 ## Browser unit and widget tests
 
+Build the browser engine and filesystem runtime before running the Flutter
+browser suites:
+
+```sh
+dart run anthem:cli engine build --debug --wasm
+```
+
+For test runs, debug metadata can be stripped from the fixture copy to reduce
+browser memory use. The app copy in `web/engine` retains its debug information:
+
+```sh
+emstrip test/.engine/AnthemEngine.wasm
+```
+
+The storage suites use these real modules to verify shared file access,
+snapshot ownership, and engine restarts. Engine integration requires shared
+memory, which Flutter's WebAssembly test harness enables through cross-origin
+isolation. The JavaScript harness currently omits the necessary iframe header;
+engine tests are skipped there when SharedArrayBuffer is unavailable. File
+storage tests run with both compilers.
+
 The same `flutter_test` command handles desktop and browser testing. `--web`
 selects only the browser suites; without it, the command runs VM/host tests.
 
@@ -76,9 +97,9 @@ Console output defaults to `expanded`; `--reporter compact` and
 
 The web CI job runs `flutter_test --web --widgets` with both targets and uploads
 the JSON logs, including when a test fails. Each Flutter package/target pair
-has a separate JSON log. All selected tests execute in Chrome. This command
-does not build or launch the complete app or engine and does not add integration
-tests.
+has a separate JSON log. All selected tests execute in Chrome. The command does
+not build the app or engine. The storage integration suite starts already-built
+engine modules inside the browser test harness.
 
 ## Desktop and host tests
 

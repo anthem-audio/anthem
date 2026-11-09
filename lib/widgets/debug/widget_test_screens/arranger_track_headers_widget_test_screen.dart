@@ -17,6 +17,8 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/shared/anthem_color.dart';
@@ -104,8 +106,9 @@ class _ArrangerTrackHeadersWidgetTestScreenState
 
   @override
   void dispose() {
-    ServiceRegistry.removeProject(project.id);
-    project.dispose();
+    unawaited(
+      project.dispose().then((_) => ServiceRegistry.removeProject(project.id)),
+    );
     super.dispose();
   }
 

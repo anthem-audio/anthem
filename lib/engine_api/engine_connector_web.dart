@@ -17,11 +17,13 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine_emscripten_interface.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/visualization_record.dart';
+import 'package:anthem/engine_api/messages/messages.dart';
 import 'package:flutter/foundation.dart';
 
 class EngineConnector extends EngineConnectorBase {
@@ -41,8 +43,48 @@ class EngineConnector extends EngineConnectorBase {
 
   bool _isInitialized = false;
   bool _disposed = false;
+  bool _exitSent = false;
+  Future<void>? _shutdown;
 
   final List<Uint8List> _pendingMessages = [];
+
+  @override
+  int? get processExitCode => engineInterface.exitCode;
+
+  @override
+  void sendMessage(IpcMessage message) {
+    if (message is Exit) _exitSent = true;
+    super.sendMessage(message);
+  }
+
+  /// Waits for the runtime to exit before the engine releases its file scope.
+  /// During startup cancellation, finish connecting and send the exit request
+  /// here because Engine has not yet completed its startup handshake. A timeout
+  /// ends the caller's wait; cleanup continues until the runtime exits.
+  @override
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) =>
+      (_shutdown ??= _shutdownRuntime().catchError((
+        Object error,
+        StackTrace stack,
+      ) {
+        _shutdown = null;
+        Error.throwWithStackTrace(error, stack);
+      })).timeout(timeout);
+
+  Future<void> _shutdownRuntime() async {
+    final initialized = await onInit;
+    if (engineInterface.supportsShutdownRequest) {
+      await engineInterface.shutdown();
+    } else {
+      if (initialized && !_exitSent && engineInterface.exitCode == null) {
+        sendMessage(Exit(id: getRequestId()));
+      }
+      if (engineInterface.hasModule) {
+        await engineInterface.exited;
+      }
+    }
+    dispose();
+  }
 
   EngineConnector(
     int id, {
@@ -81,19 +123,6 @@ class EngineConnector extends EngineConnectorBase {
       sendBytes(message);
     }
     _pendingMessages.clear();
-  }
-
-  @override
-  int? get processExitCode => engineInterface.exitCode;
-
-  @override
-  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
-    try {
-      await engineInterface.shutdown(timeout: timeout);
-    } finally {
-      dispose();
-      await onInit.timeout(timeout);
-    }
   }
 
   @override

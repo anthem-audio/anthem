@@ -22,12 +22,13 @@ import 'package:anthem/logic/commands/command.dart';
 import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/project.dart';
+import 'package:anthem/logic/service_registry.dart';
 
-class ParameterValueTarget {
+class _ParameterValueTarget {
   final NodeModel node;
   final NodePortModel port;
 
-  const ParameterValueTarget({required this.node, required this.port});
+  const _ParameterValueTarget({required this.node, required this.port});
 }
 
 class SetParameterValueCommand extends Command {
@@ -41,12 +42,12 @@ class SetParameterValueCommand extends Command {
     required this.controlPortId,
     required double oldValue,
     required double newValue,
-  }) : oldValue = normalizeValue(oldValue),
-       newValue = normalizeValue(newValue);
+  }) : oldValue = oldValue.clamp(0.0, 1.0).toDouble(),
+       newValue = newValue.clamp(0.0, 1.0).toDouble();
 
   @override
-  void execute(ProjectModel project) {
-    applyParameterValue(
+  Future<void> execute(ProjectModel project) async {
+    await _applyParameterValue(
       project,
       nodeId: nodeId,
       controlPortId: controlPortId,
@@ -55,8 +56,8 @@ class SetParameterValueCommand extends Command {
   }
 
   @override
-  void rollback(ProjectModel project) {
-    applyParameterValue(
+  Future<void> rollback(ProjectModel project) async {
+    await _applyParameterValue(
       project,
       nodeId: nodeId,
       controlPortId: controlPortId,
@@ -64,15 +65,7 @@ class SetParameterValueCommand extends Command {
     );
   }
 
-  static double normalizeValue(double value) {
-    return value.clamp(0.0, 1.0).toDouble();
-  }
-
-  static double effectiveParameterValue(NodePortModel port) {
-    return normalizeValue(port.parameterValue ?? port.parameterResetTarget);
-  }
-
-  static ParameterValueTarget resolveTarget(
+  static _ParameterValueTarget _resolveTarget(
     ProjectModel project, {
     required Id nodeId,
     required int controlPortId,
@@ -100,37 +93,21 @@ class SetParameterValueCommand extends Command {
       );
     }
 
-    return ParameterValueTarget(node: node, port: port);
+    return _ParameterValueTarget(node: node, port: port);
   }
 
-  static void applyParameterValue(
+  static Future<double> _applyParameterValue(
     ProjectModel project, {
     required Id nodeId,
     required int controlPortId,
     required double value,
-    bool sendToPlugin = true,
   }) {
-    final target = resolveTarget(
+    final target = _resolveTarget(
       project,
       nodeId: nodeId,
       controlPortId: controlPortId,
     );
-    final normalizedValue = normalizeValue(value);
-
-    if (target.port.parameterValue != normalizedValue) {
-      target.port.parameterValue = normalizedValue;
-    }
-
-    if (!sendToPlugin ||
-        !target.node.isThirdPartyPlugin ||
-        !project.engine.isRunning) {
-      return;
-    }
-
-    project.engine.processingGraphApi.setPluginParameterValue(
-      target.node.id,
-      target.port.id,
-      normalizedValue,
-    );
+    return ServiceRegistry.forProject(project.id).parameterController
+        .setValue(node: target.node, port: target.port, value: value);
   }
 }

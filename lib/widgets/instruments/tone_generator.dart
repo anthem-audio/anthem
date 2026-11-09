@@ -55,7 +55,7 @@ class _ToneGeneratorState extends State<ToneGenerator> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Knob(
-                parameter: frequencyParameter,
+                parameterBinding: frequencyParameter,
                 min: 20,
                 max: 1200,
                 width: 26,
@@ -63,7 +63,7 @@ class _ToneGeneratorState extends State<ToneGenerator> {
               ),
               Text('Pitch', style: TextStyle(color: AnthemTheme.text.main)),
               Knob(
-                parameter: amplitudeParameter,
+                parameterBinding: amplitudeParameter,
                 min: 0,
                 max: 1,
                 width: 26,

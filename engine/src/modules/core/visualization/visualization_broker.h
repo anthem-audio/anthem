@@ -135,6 +135,9 @@ public:
     return instance;
   }
 
+  // Starts publishing visualization updates at the configured interval.
+  void start();
+
   void setSubscriptions(
       const std::vector<std::shared_ptr<VisualizationSubscriptionSpec>>& newSubscriptions);
   void setUpdateInterval(double updateIntervalMs);

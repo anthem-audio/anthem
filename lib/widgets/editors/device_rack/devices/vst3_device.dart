@@ -445,13 +445,16 @@ class _Vst3ParameterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final parameter = ParameterUiBinding(node: node, port: port);
+    final binding = ParameterUiBinding(node: node, port: port);
     final name = port.config.name ?? 'Parameter ${port.id}';
 
     return _ParameterRowFrame(
       child: Observer(
         builder: (context) {
-          final value = port.parameterValue ?? port.parameterResetTarget;
+          final value = port.pendingParameterValue ?? port.parameterValue;
+          final valueText = value == null
+              ? binding.missingValueMessage!
+              : formatParameterDisplayValue(port, value);
 
           return Row(
             children: [
@@ -459,11 +462,10 @@ class _Vst3ParameterRow extends StatelessWidget {
                 width: 34,
                 child: Center(
                   child: Knob(
-                    parameter: parameter,
+                    parameterBinding: binding,
                     width: _knobSize,
                     height: _knobSize,
-                    hoverHintOverride: (_) =>
-                        _formatParameterHint(name, port, value),
+                    hoverHintOverride: (_) => '$name: $valueText',
                     hint: (value) => _formatParameterHint(name, port, value),
                   ),
                 ),
@@ -486,7 +488,7 @@ class _Vst3ParameterRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      formatParameterDisplayValue(port, value),
+                      valueText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

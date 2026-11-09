@@ -34,8 +34,8 @@ part 'processing_graph.g.dart';
 ///
 /// This is used by undo/redo commands and by logic that needs to prepare a set
 /// of nodes and connections before adding them to the graph. Keeping the
-/// original model objects around also preserves transient state such as
-/// third-party plugin state.
+/// original model objects preserves their cached values and UI state. Commands
+/// manage file retentions separately while nodes are removed from the graph.
 class ProcessingGraphFragment {
   final List<NodeModel> nodes;
   final List<NodeConnectionModel> connections;
@@ -147,6 +147,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes the given nodes from the graph while capturing all removed nodes
   /// and connections so they can be restored later.
+  ///
+  /// The caller manages the removed nodes' file retentions.
   ProcessingGraphFragment removeNodesAndCapture(Iterable<Id> nodeIds) {
     final fragment = captureNodes(nodeIds);
     if (fragment.isEmpty) {
@@ -158,6 +160,7 @@ class ProcessingGraphModel extends _ProcessingGraphModel
     }
 
     for (final node in fragment.nodes) {
+      node.resetEngineInitialization();
       nodes.remove(node.id);
     }
 
@@ -165,6 +168,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
   }
 
   /// Restores a fragment into the graph.
+  ///
+  /// Restore the nodes' project file retentions before inserting the fragment.
   void restoreGraphFragment(ProcessingGraphFragment fragment) {
     for (final node in fragment.nodes) {
       if (nodes[node.id] != null) {
@@ -199,6 +204,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
 
   /// Removes a node from the graph, and removes all connections to and from the
   /// node.
+  ///
+  /// The caller must release any project file retentions owned by the node.
   void removeNode(Id nodeId) {
     final node = nodes[nodeId];
 
@@ -231,21 +238,8 @@ class ProcessingGraphModel extends _ProcessingGraphModel
       );
     }
 
-    final source = nodes[connection.sourceNodeId]!;
-    final destination = nodes[connection.destinationNodeId]!;
-    // These are defensive checks for connections to native processors. The
-    // lookups throw if no port matches the ID, data type and direction.
-    // Plugin ports may not have been discovered yet, so connections to them
-    // are retained as unresolved.
-    if (!source.isThirdPartyPlugin) {
-      source.getOutputPortById(connection.dataType, connection.sourcePortId);
-    }
-    if (!destination.isThirdPartyPlugin) {
-      destination.getInputPortById(
-        connection.dataType,
-        connection.destinationPortId,
-      );
-    }
+    // Cached endpoints remain valid routing references until discovery confirms
+    // their availability. Compilation selects the usable connections.
     connections[connection.id] = connection;
     _attachConnection(connection);
   }

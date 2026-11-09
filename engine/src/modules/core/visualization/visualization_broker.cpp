@@ -71,9 +71,10 @@ void VisualizationProviderRegistration::release() {
   provider = nullptr;
 }
 
-VisualizationBroker::VisualizationBroker() {
-  this->updateIntervalMs = 15.0;
-  this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
+VisualizationBroker::VisualizationBroker() : updateIntervalMs(15.0) {}
+
+void VisualizationBroker::start() {
+  startTimerHz(static_cast<int>(1000.0 / updateIntervalMs));
 }
 
 void VisualizationBroker::setSubscriptions(
@@ -87,8 +88,9 @@ void VisualizationBroker::setUpdateInterval(double newUpdateIntervalMs) {
     return;
   this->updateIntervalMs = std::clamp(newUpdateIntervalMs, 1000.0 / 240.0, 1000.0);
 
-  this->stopTimer();
-  this->startTimerHz(static_cast<int>(1000.0 / this->updateIntervalMs));
+  if (isTimerRunning()) {
+    startTimerHz(static_cast<int>(1000.0 / updateIntervalMs));
+  }
 }
 
 void VisualizationBroker::suppressOutboundUpdates() {

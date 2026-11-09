@@ -25,6 +25,7 @@ library;
 import 'dart:convert';
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/storage/file_fingerprint.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem_codegen/include.dart' as model;
 

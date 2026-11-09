@@ -40,6 +40,7 @@
 #include "modules/core/engine_runtime_services.h"
 #include "modules/core/file_storage_client.h"
 #include "modules/core/ipc_request_client.h"
+#include "modules/core/processor_state_storage.h"
 #include "modules/core/visualization/global_visualization_sources.h"
 #include "modules/core/visualization/visualization_comms.h"
 #include "modules/processing_graph/graph_processor.h"
@@ -113,9 +114,6 @@ public:
   // reaching through the engine singleton.
   std::unique_ptr<EngineRuntimeServices> engineRuntimeServices;
 
-  // Executes the processing graph on the audio thread.
-  std::unique_ptr<GraphProcessor> graphProcessor;
-
   // Class for coordinating global visualization that is sent back to the UI,
   // such as CPU burden and transport location.
   std::unique_ptr<GlobalVisualizationSources> globalVisualizationSources;
@@ -138,6 +136,13 @@ public:
   // Requests file access from the UI without transporting file contents.
   FileStorageClient fileStorage;
 
+  // Stores opaque processor snapshots without sending their bytes through IPC.
+  ProcessorStateStorage processorStateStorage;
+
+  // Owns graph execution, publication, and node suspension. Declared after
+  // storage so pending operations are cancelled before their services are destroyed.
+  std::unique_ptr<GraphProcessor> graphProcessor;
+
   // Lifetime note: the audio and render controllers store non-owning
   // references to the members above. Keep those referenced members declared
   // before the controllers so C++ destruction tears down the controllers first.
@@ -155,8 +160,10 @@ public:
   // Handles command messages from the UI.
   CommandHandler commandHandler;
 
+  // Constructs the services and connects their dependencies without starting them.
   Engine();
 
+  // Starts background work and initializes the communication channels.
   void initialize();
 
   // Singleton instance getter
@@ -185,7 +192,7 @@ public:
   // initializedProcessingGraphNodes. Nodes already present in the tracker are
   // left alone; new or replaced nodes are prepared and reported individually.
   void initializeProcessingGraphNodes(InitializeProcessingGraphNodesCallback complete);
-  void publishProcessingGraph();
+  uint64_t publishProcessingGraph();
 };
 
 } // namespace anthem

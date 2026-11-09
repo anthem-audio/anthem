@@ -90,6 +90,8 @@ then restarts the real engine. Discovery must retain the same port object, saved
 connection IDs, automation target, value, reset target, and visual baseline while
 excluding the unavailable endpoint from runtime routing.
 
+A base-value scenario renders the default tone through the effect fixture before and during automation. It captures state while the effective gain differs from the base, disconnects automation, then restarts the engine. Output levels must return to the base setting both after disconnection and after restoring the snapshot.
+
 The plugin persistence scenario changes Gain and Invert through Anthem's
 parameter commands, then saves, closes, and reopens the project with a fresh
 engine. The fixtures also serialize a revision counter that is not a parameter:
@@ -100,8 +102,7 @@ The test preserves device/node identities and retains `saved-plugin-project.anth
 
 These scenarios start an offline processing session at 48 kHz, 128 samples per
 block, and two output channels. This supplies real plugin preparation without
-opening a hardware audio device. They do not yet assert rendered audio samples
-or native plugin editor visibility, interaction, or DPI behavior.
+opening a hardware audio device. The base-value scenario also checks rendered WAV samples. Native plugin editor visibility, interaction, and DPI behavior remain outside these scenarios.
 
 ## Building and selecting test plugins
 

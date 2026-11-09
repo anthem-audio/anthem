@@ -64,8 +64,14 @@ int64_t FileStorageClient::beginWrite(std::string category,
       });
 }
 
-int64_t FileStorageClient::commitWrite(std::string token, RelativePathCompletion onComplete) {
-  CommitFileWriteRequest request{.token = std::move(token), .requestBase = RequestBase{}};
+int64_t FileStorageClient::commitWrite(std::string token,
+    RelativePathCompletion onComplete,
+    std::optional<FileFingerprint> fingerprint) {
+  CommitFileWriteRequest request{.token = std::move(token),
+      .fingerprint = fingerprint
+                         ? std::optional(std::make_shared<FileFingerprint>(std::move(*fingerprint)))
+                         : std::nullopt,
+      .requestBase = RequestBase{}};
   return requests.request(
       std::move(request), [onComplete = std::move(onComplete)](IpcRequestResult ipcResult) {
         auto response = extractStorageResponse<CommitFileWriteResponse>(std::move(ipcResult));
@@ -86,19 +92,42 @@ int64_t FileStorageClient::abortWrite(std::string token, Completion onComplete) 
       });
 }
 
-int64_t FileStorageClient::acquireRead(std::string relativePath, AccessCompletion onComplete) {
-  AcquireFileReadRequest request{
-      .relativePath = std::move(relativePath), .requestBase = RequestBase{}};
+int64_t FileStorageClient::acquireRead(
+    std::string relativePath, AccessCompletion onComplete, bool includeFingerprint) {
+  AcquireFileReadRequest request{.relativePath = std::move(relativePath),
+      .includeFingerprint = includeFingerprint,
+      .requestBase = RequestBase{}};
   return requests.request(
-      std::move(request), [onComplete = std::move(onComplete)](IpcRequestResult ipcResult) {
+      std::move(request),
+      [onComplete = std::move(onComplete)](IpcRequestResult ipcResult) {
         auto response = extractStorageResponse<AcquireFileReadResponse>(std::move(ipcResult));
         if (response.error) {
           onComplete({.value = std::nullopt, .error = std::move(response.error)});
           return;
         }
         onComplete({.value = FileStorageAccess{std::move(response.value->token),
-                        std::move(response.value->absolutePath)},
+                        std::move(response.value->absolutePath),
+                        response.value->fingerprint
+                            ? std::optional<FileFingerprint>(**response.value->fingerprint)
+                            : std::nullopt},
             .error = std::nullopt});
+      },
+      // The first fingerprint request may need to hash the complete file.
+      std::chrono::seconds(includeFingerprint ? 30 : 5));
+}
+
+int64_t FileStorageClient::resolveRetention(
+    std::string retentionId, RelativePathCompletion onComplete) {
+  ResolveFileRetentionRequest request{
+      .retentionId = std::move(retentionId), .requestBase = RequestBase{}};
+  return requests.request(
+      std::move(request), [onComplete = std::move(onComplete)](IpcRequestResult ipcResult) {
+        auto response = extractStorageResponse<ResolveFileRetentionResponse>(std::move(ipcResult));
+        if (response.error) {
+          onComplete({.value = std::nullopt, .error = std::move(response.error)});
+          return;
+        }
+        onComplete({.value = std::move(response.value->relativePath), .error = std::nullopt});
       });
 }
 

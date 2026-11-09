@@ -81,13 +81,19 @@ void main() {
         dbValues: [-6.0, 0.0],
         isNegativeInfinity: [false, false],
       ),
-      PluginParameterChangedEvent(
+      ProcessorParameterChangedEvent(
         nodeId: 123,
         controlPortId: 4,
         value: 0.75,
         displayText: '-3 dB',
       ),
-      PluginLoadedEvent(nodeId: 123),
+      PluginChangedEvent(
+        nodeId: 123,
+        latencyChanged: false,
+        parameterInfoChanged: true,
+        programChanged: false,
+        nonParameterStateChanged: false,
+      ),
       RenderFailedEvent(renderId: 456, error: 'cancelled'),
     ];
     final snapshots = [

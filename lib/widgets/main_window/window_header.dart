@@ -438,6 +438,17 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
           ),
           if (!kIsWeb)
             AnthemMenuItem(
+              text: 'Export to zip...',
+              hint: 'Export the active project and its assets to a ZIP file',
+              onSelected: () {
+                mainWindowController.exportProjectZip(
+                  activeProject.id,
+                  dialogController: dialogController,
+                );
+              },
+            ),
+          if (!kIsWeb)
+            AnthemMenuItem(
               text: 'Render...',
               hint: 'Render the active project',
               disabled: activeProject.engineState != EngineState.running,

@@ -40,7 +40,7 @@ void main() {
     final fixture = _TrackHeadersTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
 
     final phantomLane = fixture.showPhantomAutomationLane();
@@ -88,7 +88,7 @@ void main() {
     final fixture = _TrackHeadersTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
 
     await fixture.pump(tester);
@@ -136,7 +136,7 @@ void main() {
       final fixture = _TrackHeadersTestFixture.create();
       addTearDown(() async {
         await tester.pumpWidget(const SizedBox.shrink());
-        fixture.dispose();
+        await fixture.dispose();
       });
 
       final groupTrackId = fixture.createScrollableGroup();
@@ -160,7 +160,7 @@ void main() {
     final fixture = _TrackHeadersTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
 
     final groupTrackId = fixture.createScrollableGroup();
@@ -207,7 +207,7 @@ void main() {
     final fixture = _TrackHeadersTestFixture.create();
     addTearDown(() async {
       await tester.pumpWidget(const SizedBox.shrink());
-      fixture.dispose();
+      await fixture.dispose();
     });
 
     final groupTrackId = fixture.createScrollableGroup();
@@ -345,8 +345,8 @@ class _TrackHeadersTestFixture {
     await tester.pump(const Duration(milliseconds: 1));
   }
 
-  void dispose() {
+  Future<void> dispose() async {
+    await project.dispose();
     ServiceRegistry.removeProject(project.id);
-    project.dispose();
   }
 }

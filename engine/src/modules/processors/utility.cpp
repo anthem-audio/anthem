@@ -59,6 +59,7 @@ void UtilityProcessor::prepareToProcess(ProcessorPrepareCallback complete) {
                   .id = balancePortId,
                   .parameterDefaultValue = 0.5,
                   .parameterDisplayMode = "pan",
+                  .parameterNormalizedVisualBaseline = 0.5,
               },
           },
   };

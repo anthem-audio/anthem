@@ -21,7 +21,6 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
@@ -67,30 +66,13 @@ class UtilityProcessorModel extends _UtilityProcessorModel
   factory UtilityProcessorModel.fromJson(Map<String, dynamic> json) =>
       _$UtilityProcessorModelAnthemModelMixin.fromJson(json);
 
-  /// [initialGainDb] sets both the initial gain and its reset default.
   @override
-  NodeModel createNode({double initialGainDb = 0.0}) {
-    final initialGain = gainDbToParameterValue(initialGainDb);
-    return createNativeNode(
-      processor: this,
-      audioInputPortIds: [audioInputPortId],
-      audioOutputPortIds: [audioOutputPortId],
-      parameters: [
-        NativeParameterPreset(
-          id: gainPortId,
-          value: initialGain,
-          displayMode: ParameterDisplayMode.gainDb,
-          unitLabel: 'dB',
-        ),
-        NativeParameterPreset(
-          id: balancePortId,
-          value: 0.5,
-          displayMode: ParameterDisplayMode.pan,
-          normalizedVisualBaseline: 0.5,
-        ),
-      ],
-    );
-  }
+  NodeModel createNode() => createNativeNode(
+    processor: this,
+    audioInputPortIds: [audioInputPortId],
+    audioOutputPortIds: [audioOutputPortId],
+    controlInputPortIds: [gainPortId, balancePortId],
+  );
 
   static const int audioInputPortId = _UtilityProcessorModel.audioInputPortId;
   static const int audioOutputPortId = _UtilityProcessorModel.audioOutputPortId;

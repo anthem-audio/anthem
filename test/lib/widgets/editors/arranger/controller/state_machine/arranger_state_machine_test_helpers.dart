@@ -24,6 +24,7 @@ import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:anthem/model/track.dart';
@@ -286,6 +287,7 @@ class ArrangerStateMachineTestFixture {
     project.processingGraph.addNode(
       NodeModel(
         id: target.nodeId,
+        processor: GainProcessorModel(nodeId: target.nodeId),
         owner: NodeOwnerModel(trackId: target.ownerTrackId),
         controlInputPorts: AnthemObservableList.of([
           NodePortModel(

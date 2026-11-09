@@ -40,9 +40,9 @@ void main() {
     () async {
       final project = ProjectModel.create();
       ServiceRegistry.initializeProject(project);
-      addTearDown(() {
+      addTearDown(() async {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
-        project.dispose();
       });
       final track = project.tracks[project.trackOrder.single]!;
       final node = track.requireProcessing.utilityNode!;
@@ -50,6 +50,11 @@ void main() {
         UtilityProcessorModel.balancePortId,
         UtilityProcessorModel.gainPortId,
       ]) {
+        node.getPortById(portId).config.parameterConfig = ParameterConfigModel(
+          id: portId,
+          normalizedVisualBaseline:
+              portId == UtilityProcessorModel.balancePortId ? 0.5 : 0.0,
+        );
         AutomationLaneAddRemoveCommand.add(
           project: project,
           parentTrackId: track.id,
@@ -131,7 +136,8 @@ void main() {
       expect(percentages, orderedEquals(pixels));
       node
               .getPortById(UtilityProcessorModel.balancePortId)
-              .presentation
+              .config
+              .parameterConfig!
               .normalizedVisualBaseline =
           0.1;
       final offCenter = await _paintClips(project, clips);

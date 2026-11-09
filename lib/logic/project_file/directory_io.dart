@@ -19,9 +19,10 @@
 
 import 'dart:io';
 
-import 'package:anthem/logic/project_file/codec.dart';
-import 'package:anthem/logic/storage/project_file_store.dart';
-import 'package:anthem/model/project.dart';
+import 'package:anthem/logic/project_file/io.dart';
+
+import 'project_save.dart';
+
 import 'package:path/path.dart' as path;
 
 /// Saves completed, non-cache files alongside the project document.
@@ -32,36 +33,46 @@ import 'package:path/path.dart' as path;
 /// Additional data files from an interrupted save may remain unreferenced.
 ///
 /// The open store keeps its root and read paths until the project closes.
-Future<void> writeProjectDirectory(
+/// Files come from the current project scope. Existing copies in another
+/// folder are replaced; files in the open store's root stay in place.
+///
+/// Reports whether the document shares the working store's backing files.
+Future<({bool usesWorkingStore})> writeProjectDirectory(
   String documentPath,
-  ProjectModel project,
-  ProjectFileStore store, {
+  PreparedProjectSave prepared, {
   required bool create,
 }) async {
+  final store = await prepared.storage.assetStore;
+  final snapshot = prepared.assets;
   final root = path.dirname(documentPath);
-  if (create &&
-      await FileSystemEntity.type(root, followLinks: false) !=
-          FileSystemEntityType.notFound) {
-    throw FileSystemException('Choose a new project folder name.', root);
-  }
-
-  final session = store.openSession();
   Directory? staging;
+  var savingInPlace = false;
   try {
+    final projectJson = prepared.projectJson;
+    if (create &&
+        await FileSystemEntity.type(root, followLinks: false) !=
+            FileSystemEntityType.notFound) {
+      throw FileSystemException('Choose a new project folder name.', root);
+    }
+    savingInPlace =
+        !create && await FileSystemEntity.identical(store.rootDirectory, root);
     staging = await Directory(create ? path.dirname(root) : root)
         .createTemp('.anthem-save-');
-    // Acquire all reads before yielding, so deletion cannot interrupt a save.
-    final reads = {
-      for (final relativePath in store.projectFilePaths)
-        relativePath: store.acquireRead(session, relativePath),
-    };
-    for (final entry in reads.entries) {
-      final destination = File(path.join(root, entry.key));
-      if (!create && await destination.exists()) {
-        // Committed files are immutable. A previous save may already have
-        // copied this file, or the open store may be rooted here itself.
+    for (final entry in snapshot.reads.entries) {
+      if (savingInPlace) {
+        if (await FileSystemEntity.type(
+              entry.value.absolutePath,
+              followLinks: false,
+            ) !=
+            FileSystemEntityType.file) {
+          throw FileSystemException(
+            'Missing project data file.',
+            entry.value.absolutePath,
+          );
+        }
         continue;
       }
+      final destination = File(path.join(root, entry.key));
       final staged = File(path.join(staging.path, entry.key));
       await staged.parent.create(recursive: true);
       await File(entry.value.absolutePath).copy(staged.path);
@@ -84,7 +95,7 @@ Future<void> writeProjectDirectory(
     }
 
     final document = path.join(staging.path, path.basename(documentPath));
-    await writeProjectFile(document, project);
+    await writeProjectFileToPath(document, projectJson);
     if (create) {
       if (await FileSystemEntity.type(root, followLinks: false) !=
           FileSystemEntityType.notFound) {
@@ -95,9 +106,9 @@ Future<void> writeProjectDirectory(
       await File(document).rename(documentPath);
     }
   } finally {
-    await store.closeSession(session);
     if (staging != null && await staging.exists()) {
       await staging.delete(recursive: true);
     }
   }
+  return (usesWorkingStore: savingInPlace);
 }

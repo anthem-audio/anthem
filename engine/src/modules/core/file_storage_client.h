@@ -26,6 +26,7 @@ namespace anthem {
 struct FileStorageAccess {
   std::string token;
   std::string absolutePath;
+  std::optional<FileFingerprint> fingerprint = std::nullopt;
 };
 
 template <typename Value> struct FileStorageResult {
@@ -37,7 +38,7 @@ template <typename Value> struct FileStorageResult {
 //
 // All calls and callbacks run on the message thread. File I/O belongs off the
 // audio thread. Flush and close files before committing, aborting, or releasing
-// read access. The store tracks read, write, and retention tokens in a session
+// read access. The store tracks read, write, and retention tokens in a file scope
 // owned by this engine process. Successful commit, abort, and release operations
 // consume their tokens. A timeout does not cancel UI work; remaining access is
 // reclaimed after the engine has stopped.
@@ -54,9 +55,14 @@ public:
       AccessCompletion onComplete,
       std::optional<std::string> baseName = std::nullopt,
       std::optional<std::string> extension = std::nullopt);
-  int64_t commitWrite(std::string token, RelativePathCompletion onComplete);
+  int64_t commitWrite(std::string token,
+      RelativePathCompletion onComplete,
+      std::optional<FileFingerprint> fingerprint = std::nullopt);
   int64_t abortWrite(std::string token, Completion onComplete);
-  int64_t acquireRead(std::string relativePath, AccessCompletion onComplete);
+  int64_t acquireRead(
+      std::string relativePath, AccessCompletion onComplete, bool includeFingerprint = false);
+  // Resolves a project or command claim without creating read access.
+  int64_t resolveRetention(std::string retentionId, RelativePathCompletion onComplete);
   int64_t releaseRead(std::string token, Completion onComplete);
   int64_t deleteFile(std::string relativePath, Completion onComplete);
   int64_t retainFile(std::string relativePath, TokenCompletion onComplete);

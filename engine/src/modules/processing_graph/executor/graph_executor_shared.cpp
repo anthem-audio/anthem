@@ -148,6 +148,17 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
     return;
   }
 
+  auto* processor = node.processor;
+  if (processor && !processor->rt_tryAcquireProcessingAccess()) {
+    node.nodeProcessContext->rt_clearOutputs();
+    return;
+  }
+  const juce::ScopeGuard releaseProcessingAccess{[processor]() {
+    if (processor)
+      processor->rt_releaseProcessingAccess();
+  }};
+
+  node.nodeProcessContext->rt_updateParameterControl();
   node.nodeProcessContext->clearBuffers();
 
   for (const auto& connectionTransferAction : node.connectionTransferActions) {

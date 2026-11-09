@@ -48,6 +48,9 @@ public:
     invert = new juce::AudioParameterBool(juce::ParameterID("invert", 1), "Invert", false);
     addParameter(gain);
     addParameter(invert);
+    stateSize =
+        new juce::AudioParameterInt(juce::ParameterID("stateSize", 1), "State size", 0, 1024, 0);
+    addParameter(stateSize);
   }
 
   const juce::String getName() const override {
@@ -141,6 +144,7 @@ public:
     object->setProperty("gain", gain->get());
     object->setProperty("invert", invert->get());
     object->setProperty("revision", stateRevision.load(std::memory_order_relaxed));
+    object->setProperty("padding", juce::String::repeatedString("x", stateSize->get() * 1024));
     const auto json = juce::JSON::toString(juce::var(object), true);
     data.replaceAll(json.toRawUTF8(), json.getNumBytesAsUTF8());
   }
@@ -153,6 +157,8 @@ public:
     }
     gain->setValueNotifyingHost(static_cast<float>(state["gain"]));
     invert->setValueNotifyingHost(static_cast<bool>(state["invert"]) ? 1.0f : 0.0f);
+    stateSize->setValueNotifyingHost(
+        stateSize->convertTo0to1(state["padding"].toString().length() / 1024));
     stateRevision.store(static_cast<int>(state["revision"]), std::memory_order_relaxed);
   }
 private:
@@ -167,6 +173,7 @@ private:
   std::atomic<int> stateRevision{0};
   RevisionGain* gain = nullptr;
   juce::AudioParameterBool* invert = nullptr;
+  juce::AudioParameterInt* stateSize = nullptr;
   double rt_sampleRate = 48000.0;
   double rt_phase = 0.0;
   int rt_note = -1;

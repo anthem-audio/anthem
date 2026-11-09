@@ -27,7 +27,7 @@ import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
-import 'package:anthem/logic/storage/project_file_category.dart';
+import 'package:anthem/logic/storage/project_asset_category.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -48,7 +48,7 @@ class _EngineWithDelayedDisposal extends Engine {
   }
 }
 
-const cache = ProjectFileCategory('test cache', isCache: true);
+const cache = ProjectAssetCategory('test cache', isCache: true);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +65,7 @@ void main() {
     );
     project = ProjectModel.create();
     storage = ProjectStorage.temporary(
-      categories: [ProjectFileCategory.pluginStates, cache],
+      categories: [ProjectAssetCategory.pluginStates, cache],
     );
     AnthemStore.instance.projects[project.id] = project;
     AnthemStore.instance.projectOrder.add(project.id);
@@ -91,21 +91,20 @@ void main() {
     await project.engine.dispose();
     final engine = _EngineWithDelayedDisposal(project);
     project.engine = engine;
-    final store = await registry.projectStorage.fileStore;
-    final sessionId = store.openSession();
-    final write = await store.beginWrite(
-      sessionId,
-      ProjectFileCategory.pluginStates.directoryName,
+    final store = await registry.projectStorage.assetStore;
+    final scopeId = store.openScope();
+    final write = await scopeId.beginWrite(
+      ProjectAssetCategory.pluginStates.directoryName,
     );
-    final relativePath = await store.commitWrite(sessionId, write.token);
-    final read = store.acquireRead(sessionId, relativePath);
-    store.releaseRead(sessionId, read.token);
-    final cached = await store.beginWrite(sessionId, cache.directoryName);
-    final cacheRelativePath = await store.commitWrite(sessionId, cached.token);
-    final cacheRead = store.acquireRead(sessionId, cacheRelativePath);
+    final relativePath = await scopeId.commitWrite(write.token);
+    final read = scopeId.acquireRead(relativePath);
+    scopeId.releaseRead(read.token);
+    final cached = await scopeId.beginWrite(cache.directoryName);
+    final cacheRelativePath = await scopeId.commitWrite(cached.token);
+    final cacheRead = scopeId.acquireRead(cacheRelativePath);
     final cachePath = cacheRead.absolutePath;
-    store.releaseRead(sessionId, cacheRead.token);
-    await store.closeSession(sessionId);
+    scopeId.releaseRead(cacheRead.token);
+    await scopeId.close();
 
     final closing = controller.closeProjectWithoutSaving(project.id);
     expect(controller.closeProjectWithoutSaving(project.id), same(closing));
@@ -125,14 +124,13 @@ void main() {
   test(
     'failed storage cleanup preserves the project and can be retried',
     () async {
-      final store = await registry.projectStorage.fileStore;
-      final sessionId = store.openSession();
-      final write = await store.beginWrite(
-        sessionId,
-        ProjectFileCategory.pluginStates.directoryName,
+      final store = await registry.projectStorage.assetStore;
+      final scopeId = store.openScope();
+      final write = await scopeId.beginWrite(
+        ProjectAssetCategory.pluginStates.directoryName,
       );
-      final relativePath = await store.commitWrite(sessionId, write.token);
-      final read = store.acquireRead(sessionId, relativePath);
+      final relativePath = await scopeId.commitWrite(write.token);
+      final read = scopeId.acquireRead(relativePath);
       await expectLater(
         controller.closeProjectWithoutSaving(project.id),
         throwsStateError,
@@ -140,7 +138,7 @@ void main() {
       expect(await File(read.absolutePath).exists(), isTrue);
       expect(ServiceRegistry.maybeForProject(project.id), same(registry));
       expect(AnthemStore.instance.projects[project.id], same(project));
-      await store.closeSession(sessionId);
+      await scopeId.close();
       await controller.closeProjectWithoutSaving(project.id);
       expect(await Directory(storage.rootDirectory).exists(), isFalse);
     },
@@ -161,16 +159,15 @@ void main() {
       storage = ProjectStorage(
         rootDirectory: path.join(parent.path, 'saved project'),
       );
-      final store = await registry.projectStorage.fileStore;
-      final sessionId = store.openSession();
-      final write = await store.beginWrite(
-        sessionId,
-        ProjectFileCategory.pluginStates.directoryName,
+      final store = await registry.projectStorage.assetStore;
+      final scopeId = store.openScope();
+      final write = await scopeId.beginWrite(
+        ProjectAssetCategory.pluginStates.directoryName,
       );
-      final relativePath = await store.commitWrite(sessionId, write.token);
-      final read = store.acquireRead(sessionId, relativePath);
-      store.releaseRead(sessionId, read.token);
-      await store.closeSession(sessionId);
+      final relativePath = await scopeId.commitWrite(write.token);
+      final read = scopeId.acquireRead(relativePath);
+      scopeId.releaseRead(read.token);
+      await scopeId.close();
       final document = await File(
         path.join(storage.rootDirectory, 'project.anthem'),
       ).writeAsString('document');

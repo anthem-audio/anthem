@@ -21,6 +21,7 @@ import 'dart:math';
 
 import 'package:anthem/theme.dart';
 import 'package:anthem/visualization/visualization.dart';
+import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:anthem/widgets/basic/shortcuts/shortcut_provider.dart';
@@ -62,7 +63,7 @@ class Slider extends StatefulWidget {
   final bool usePointerLock;
 
   final double? value;
-  final ParameterUiBinding? parameter;
+  final ParameterUiBinding? parameterBinding;
   final double min;
   final double max;
 
@@ -86,7 +87,7 @@ class Slider extends StatefulWidget {
     this.noBackground = false,
     this.usePointerLock = true,
     this.value,
-    this.parameter,
+    this.parameterBinding,
     this.onValueChanged,
     this.onValueChangeStart,
     this.onValueChangeEnd,
@@ -96,7 +97,7 @@ class Slider extends StatefulWidget {
     this.hoverHintOverride,
     this.hint,
   }) : min = min ?? (type == SliderType.pan ? -1 : 0),
-       assert(value != null || parameter != null),
+       assert(value != null || parameterBinding != null),
        assert(borderRadius >= 0);
 
   @override
@@ -136,23 +137,8 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
   double rawToScaled(double rawValue) =>
       rawValue * (widget.max - widget.min) + widget.min;
 
-  double currentValue([double? automationParameterValue]) {
-    final parameter = widget.parameter;
-    if (parameter == null) {
-      return widget.value!;
-    }
-
-    if (automationParameterValue != null) {
-      return parameter.uiValueForNormalizedParameterValue(
-        automationParameterValue,
-      );
-    }
-
-    return parameter.uiValue;
-  }
-
   bool get canUpdateValue =>
-      widget.parameter != null || widget.onValueChanged != null;
+      widget.parameterBinding != null || widget.onValueChanged != null;
 
   MouseCursor get cursor => switch (widget.axis) {
     SliderAxis.horizontal => SystemMouseCursors.resizeLeftRight,
@@ -175,7 +161,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     });
 
     lastValue = value;
-    widget.parameter?.beginChange();
+    widget.parameterBinding?.beginChange();
     widget.onValueChangeStart?.call();
     setHint(hover: false);
 
@@ -195,7 +181,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
     }
 
     animationHelper!.update();
-    widget.parameter?.commitChange();
+    widget.parameterBinding?.commitChange();
     widget.onValueChangeEnd?.call(lastValue);
   }
 
@@ -219,7 +205,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       return;
     }
 
-    widget.parameter?.updateChange(newValue);
+    widget.parameterBinding?.updateChange(newValue);
     widget.onValueChanged?.call(newValue);
     lastValue = newValue;
   }
@@ -344,19 +330,13 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
       ],
     );
 
-    Widget buildControl({double? automationParameterValue}) {
-      final value = currentValue(automationParameterValue);
-
-      void resetParameterToDefault() {
-        final parameter = widget.parameter;
-        if (parameter == null) {
-          return;
-        }
-
-        parameter.resetToDefault();
-        lastValue = currentValue(automationParameterValue);
-        setHint(hover: false);
-      }
+    Widget buildControl({double? automatedNormalizedValue}) {
+      final binding = widget.parameterBinding;
+      final value = binding == null
+          ? widget.value!
+          : binding.displayValue(
+              automatedNormalizedValue: automatedNormalizedValue,
+            );
 
       final control = SizedBox(
         width: widget.width,
@@ -368,7 +348,7 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
 
             return CustomPaint(
               painter: _SliderPainter(
-                value: scaledToRaw(value),
+                value: value == null ? null : scaledToRaw(value),
                 axis: widget.axis,
                 type: widget.type,
                 handleType: widget.handleType,
@@ -381,6 +361,24 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
           },
         ),
       );
+
+      if (value == null) {
+        return Hint(
+          hint: [HintSection('', binding!.missingValueMessage!)],
+          child: control,
+        );
+      }
+
+      void resetParameterToDefault() {
+        if (binding == null) return;
+        binding.resetToDefault();
+        lastValue =
+            binding.displayValue(
+              automatedNormalizedValue: automatedNormalizedValue,
+            ) ??
+            value;
+        setHint(hover: false);
+      }
 
       return MouseRegion(
         cursor: cursor,
@@ -410,21 +408,21 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
         child: inputController.build(
           child: control,
           value: value,
-          onDoubleClick: widget.parameter == null
+          onDoubleClick: widget.parameterBinding == null
               ? null
               : resetParameterToDefault,
         ),
       );
     }
 
-    if (widget.parameter == null) {
+    if (widget.parameterBinding == null) {
       return buildControl();
     }
 
     return Observer(
       builder: (_) {
         final automationVisualizationId =
-            widget.parameter!.automationVisualizationId;
+            widget.parameterBinding!.automationVisualizationId;
         if (automationVisualizationId == null) {
           return buildControl();
         }
@@ -433,11 +431,13 @@ class _SliderState extends State<Slider> with TickerProviderStateMixin {
           config: VisualizationSubscriptionConfig.latestDouble(
             automationVisualizationId,
           ),
-          builder: (context, value, engineTime) {
+          builder: (context, automatedNormalizedValue, engineTime) {
             return Observer(
               warnWhenNoObservables: false,
               builder: (_) => buildControl(
-                automationParameterValue: engineTime == null ? null : value,
+                automatedNormalizedValue: engineTime == null
+                    ? null
+                    : automatedNormalizedValue,
               ),
             );
           },
@@ -742,7 +742,7 @@ class _DirectSliderInputController implements _SliderInputController {
 }
 
 class _SliderPainter extends CustomPainter {
-  final double value;
+  final double? value;
   final SliderAxis axis;
   final SliderType type;
   final SliderHandleType handleType;
@@ -778,8 +778,6 @@ class _SliderPainter extends CustomPainter {
   }
 
   void _paintLineHandleSlider(Canvas canvas, Size size) {
-    final clampedValue = value.clamp(0.0, 1.0).toDouble();
-
     final handlePaint = Paint()
       ..color = Color.lerp(
         AnthemTheme.control.active,
@@ -814,6 +812,15 @@ class _SliderPainter extends CustomPainter {
       innerRect,
       innerContentRadius,
     );
+
+    if (value == null) {
+      if (!noBackground) {
+        canvas.drawRRect(innerContentClipRRect, trackBackgroundPaint);
+        canvas.drawRRect(borderRRect, trackBorderPaint);
+      }
+      return;
+    }
+    final clampedValue = value!.clamp(0.0, 1.0).toDouble();
 
     final handleCenter = switch (axis) {
       SliderAxis.horizontal when noBackground => Offset(
@@ -933,7 +940,6 @@ class _SliderPainter extends CustomPainter {
   }
 
   void _paintCompactHandleSlider(Canvas canvas, Size size) {
-    final clampedValue = value.clamp(0.0, 1.0).toDouble();
     final handleMainAxisSize = _mainAxisSizeForHandleType(handleType);
     final trackRect = switch (axis) {
       SliderAxis.horizontal => Rect.fromLTWH(
@@ -960,6 +966,15 @@ class _SliderPainter extends CustomPainter {
     final activeFillPaint = Paint()
       ..color = AnthemTheme.control.activeBackground
       ..style = PaintingStyle.fill;
+
+    if (value == null) {
+      if (!noBackground) {
+        canvas.drawRect(trackRect, trackBackgroundPaint);
+        canvas.drawRect(trackRect, trackBorderPaint);
+      }
+      return;
+    }
+    final clampedValue = value!.clamp(0.0, 1.0).toDouble();
 
     final handleCenter = switch (axis) {
       SliderAxis.horizontal => Offset(

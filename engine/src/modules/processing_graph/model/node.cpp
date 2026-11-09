@@ -138,12 +138,8 @@ std::optional<std::shared_ptr<NodePort>> Node::getOutputPortById(
   return std::nullopt;
 }
 
-std::optional<std::shared_ptr<Processor>> Node::getProcessor() {
+std::shared_ptr<Processor> Node::getProcessor() {
   auto& processor = this->processor();
-
-  if (!processor.has_value()) {
-    return std::nullopt;
-  }
 
   return rfl::visit(
       [](auto const& field) -> std::shared_ptr<Processor> {
@@ -161,7 +157,7 @@ std::optional<std::shared_ptr<Processor>> Node::getProcessor() {
 
         return std::static_pointer_cast<Processor>(field.value());
       },
-      *processor);
+      processor);
 }
 
 } // namespace anthem

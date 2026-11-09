@@ -235,6 +235,12 @@ Some things to keep in mind:
       );
 
       final paths = [
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemFileSystem.js',
+        ),
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemFileSystem.wasm',
+        ),
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.js'),
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.wasm'),
         packageRootPath.resolve(
@@ -244,6 +250,10 @@ Some things to keep in mind:
 
       final flutterWebDirPath = packageRootPath.resolve('web/engine/');
       final flutterWebDir = Directory.fromUri(flutterWebDirPath);
+      final browserTestDir = Directory.fromUri(
+        packageRootPath.resolve('test/.engine/'),
+      );
+      browserTestDir.createSync(recursive: true);
 
       if (!flutterWebDir.existsSync()) {
         flutterWebDir.createSync(recursive: true);
@@ -259,6 +269,11 @@ Some things to keep in mind:
         }
         File.fromUri(path).copySync(
           flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
+        );
+        File.fromUri(path).copySync(
+          browserTestDir.uri
+              .resolve(fileName)
+              .toFilePath(windows: Platform.isWindows),
         );
       }
 
@@ -313,12 +328,17 @@ Future<void> _buildRustWebEngine(
     packageRootPath.resolve('web/engine/'),
   );
   await webDirectory.create(recursive: true);
-  await File.fromUri(
-    packageRootPath.resolve('$outputDirectory/anthem-engine.js'),
-  ).copy('${webDirectory.path}/AnthemEngine.js');
-  await File.fromUri(
-    packageRootPath.resolve('$outputDirectory/anthem_engine.wasm'),
-  ).copy('${webDirectory.path}/anthem_engine.wasm');
+  const artifacts = {
+    'anthem-engine.js': 'AnthemEngine.js',
+    'anthem_engine.wasm': 'anthem_engine.wasm',
+    'AnthemFileSystem.js': 'AnthemFileSystem.js',
+    'AnthemFileSystem.wasm': 'AnthemFileSystem.wasm',
+  };
+  for (final artifact in artifacts.entries) {
+    await File.fromUri(
+      packageRootPath.resolve('$outputDirectory/${artifact.key}'),
+    ).copy('${webDirectory.path}/${artifact.value}');
+  }
 }
 
 Future<Uri> _buildRustEngine(
