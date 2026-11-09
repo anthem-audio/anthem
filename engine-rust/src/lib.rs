@@ -4,3 +4,4 @@
 pub mod core;
 pub mod messages;
 pub mod model;
+mod request_handlers;

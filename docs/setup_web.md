@@ -45,8 +45,21 @@ dart run anthem:cli engine build --backend rust --debug --wasm
 ```
 
 The CLI stages the artifacts in `build/rust-web/debug` or `build/rust-web/release`
-according to the selected profile. Flutter integration requires the Rust module's
-IPC interface.
+and copies the module into `web/engine`, where Flutter loads it. Building an
+engine selects that build for subsequent Flutter runs.
+
+Run the Dart-to-engine runtime scenarios in headless Chrome with:
+
+```sh
+dart run anthem:cli engine runtime-test --wasm
+```
+
+This builds the Rust engine, then runs the same project-sync and asynchronous
+request scenarios with Dart compiled to JavaScript and WebAssembly. Use
+`--skip-build` to reuse an engine build, `--release` for a release engine, or
+`--compiler js` / `--compiler wasm` to select one Dart compiler. The test server
+provides the cross-origin isolation headers needed by shared memory. Chrome
+must be installed; `CHROME_EXECUTABLE` can select its location.
 
 ### Audio processing
 

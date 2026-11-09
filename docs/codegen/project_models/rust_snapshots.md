@@ -90,29 +90,49 @@ call this constructor. Strings and string keys are JSON encoded, including
 escapes. Nullable union setters accept `null` and emit a normal replacement
 message.
 
-The standalone engine still has no IPC transport. Its executable and the
-runtime test use the same `EngineRuntime`; the test supplies work through the
-existing message-thread queue, without a separate engine application or test
-startup mode.
+The executable runs `EngineRuntime` with a Tokio current-thread runtime and a
+`LocalSet`. Ordinary jobs are consumed in order; asynchronous tasks suspend
+without blocking later jobs. `runtime::spawn_local(...)` starts work on the
+message thread, including tasks that retain `Rc` handles. `services::get<T>()`
+returns an owned service handle when a task needs to retain it across an await.
+Model borrows must end before awaiting.
+
+Native IPC uses a TCP connection to Dart. Web IPC uses shared-memory byte rings,
+with a reader worker waking the message thread when Dart publishes data.
+Engine-to-UI requests await a one-shot response with a timeout; cancellation
+removes their pending entry. Shutdown flushes the Exit reply and cancels local
+tasks before services are removed. Web clients wait for that cleanup before
+terminating the module's workers.
 
 ## Compatibility tests
 
 `flutter test test/codegen` checks committed JSON fixtures against the Dart
-serializer, including a complete new project, messages in all three roles, and
+serializer, including messages in all three roles and
 models with additional serialization and inheritance cases. Run the Rust checks with
 `cargo test --manifest-path engine-rust/Cargo.toml --locked`; they load those
 fixtures using the generated types, verify typed access, and compare serialized
 JSON values. A codegen integration test also checks that changing an imported
 Dart model invalidates and regenerates its aggregate Rust output.
 
-The sync fixture captures real Dart project edits and an additional nested
-`List<Map<String, List<Model>>>` model using that production encoder. Rust tests
-replay the project requests from a worker thread through `EngineRuntime`, query
-the installed model, and compare complete project JSON. They also compare the
-nested model after every update, exercise invalid updates, and verify fatal
-shutdown from sync and other subsystems with later jobs already queued. This
-covers the runtime and model
-pipeline in process; it does not exercise a UI or IPC connection.
+The focused sync fixture covers a nested `List<Map<String, List<Model>>>` model
+that is not present in the project schema. Rust tests compare it after every
+update and check invalid paths, operations, and values. Application lifecycle
+tests separately verify that the first fatal error is preserved and later
+queued jobs do not run.
+
+Project edits are tested end-to-end using the real Dart project, encoder,
+connector, and Rust executable/module. The same scenarios run natively and in
+Chrome, with Dart compiled to JavaScript and WebAssembly. They cover model
+initialization, collections, optionals, unions, escaped strings, large messages,
+concurrent asynchronous requests, timeout recovery, shutdown, fatal sync errors,
+and fresh sessions. The former project-update JSON fixture and in-process
+project replay, along with the project serialization snapshot, were retired
+in favor of these transport tests. Run:
+
+```sh
+dart run anthem:cli engine runtime-test
+dart run anthem:cli engine runtime-test --wasm
+```
 
 After an intentional fixture change, regenerate the JSON using PowerShell:
 
@@ -128,5 +148,5 @@ On Bash:
 ANTHEM_UPDATE_RUST_FIXTURES=1 flutter test test/codegen
 ```
 
-CI checks both Dart fixtures and native Rust tests, then builds the project
-models with the pinned threaded Emscripten toolchain.
+CI checks Dart fixtures and native Rust tests, then runs the runtime scenarios
+against native and pinned threaded Emscripten builds.

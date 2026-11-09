@@ -277,6 +277,9 @@ jobs:
       - name: Test the native Rust engine
         run: cargo test --manifest-path engine-rust/Cargo.toml --locked
 
+      - name: Test Dart against the native Rust engine
+        run: dart run anthem:cli engine runtime-test
+
       - name: Set up Emscripten
         uses: emscripten-core/setup-emsdk@v16
 
@@ -284,4 +287,17 @@ jobs:
         run: bash engine-rust/build-web.sh --install-toolchain
 
       - name: Build the threaded Rust web engine
-        run: bash engine-rust/build-web.sh release
+        run: dart run anthem:cli engine build --backend rust --release --wasm
+
+      - name: Test Dart against the threaded Rust web engine
+        run: dart run anthem:cli engine runtime-test --wasm --release --skip-build
+
+      - name: Upload runtime integration diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rust-runtime-integration
+          path: |
+            build/engine-runtime-tests/*/result.json
+            build/engine-runtime-tests/*/chrome.log
+          if-no-files-found: ignore

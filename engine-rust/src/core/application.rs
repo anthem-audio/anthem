@@ -54,6 +54,7 @@ impl Application {
         };
         if first {
             eprintln!("Fatal engine error: {failure}");
+            self.message_thread.wake();
         }
         failure
     }

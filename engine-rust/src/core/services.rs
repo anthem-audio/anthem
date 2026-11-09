@@ -56,6 +56,12 @@ impl Drop for ServiceScope {
 }
 
 pub fn with<T: 'static, R>(access: impl FnOnce(&T) -> R) -> R {
+    access(&get::<T>())
+}
+
+/// Returns an owned service handle for work that must outlive a scoped lookup.
+/// A task can retain this handle across awaits without borrowing the registry.
+pub fn get<T: 'static>() -> Rc<T> {
     let service = SERVICES.with_borrow(|slot| {
         let registry = slot
             .as_ref()
@@ -67,8 +73,8 @@ pub fn with<T: 'static, R>(access: impl FnOnce(&T) -> R) -> R {
             .clone()
     });
 
-    // Release the registry borrow before invoking code that may look up services.
-    access(service.downcast_ref::<T>().unwrap())
+    // Release the registry borrow before the caller uses the service.
+    service.downcast::<T>().unwrap_or_else(|_| unreachable!())
 }
 
 #[cfg(test)]

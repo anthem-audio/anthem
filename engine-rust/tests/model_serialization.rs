@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Joshua Wade
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use anthem_engine::model::{self, ProjectModel, ToneGeneratorProcessorModel};
+use anthem_engine::model;
 use serde_json::Value;
 
 #[path = "../src/generated/test/fixtures/rust_model_fixture.rs"]
@@ -49,28 +49,6 @@ fn mixes_owned_records_and_shared_models_in_one_module() {
     );
     assert_eq!(model.children()[&43].r#type(), 4);
     assert_eq!(model.children()[&43].name(), "owned");
-}
-
-#[test]
-fn round_trips_the_full_dart_project() {
-    let snapshot: Value = serde_json::from_str(include_str!("fixtures/project.json")).unwrap();
-    let model: ProjectModel = serde_json::from_value(snapshot.clone()).unwrap();
-    assert_eq!(serde_json::to_value(&model).unwrap(), snapshot);
-    model.sequence().with(|sequence| {
-        assert!(sequence.beats_per_minute_raw() > 0);
-    });
-    assert!(!model.tracks().is_empty());
-    assert_eq!(ToneGeneratorProcessorModel::AUDIO_OUTPUT_PORT_ID, 0);
-}
-
-#[test]
-fn cloned_handles_refer_to_the_same_model() {
-    let snapshot: Value = serde_json::from_str(include_str!("fixtures/project.json")).unwrap();
-    let model: ProjectModel = serde_json::from_value(snapshot).unwrap();
-    let sequence = model.sequence().clone();
-    model.sequence().with(|original| {
-        sequence.with(|cloned| assert!(std::ptr::eq(original, cloned)));
-    });
 }
 
 #[test]

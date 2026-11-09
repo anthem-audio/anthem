@@ -7,3 +7,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
+tokio = { version = "1.54.1", features = ["rt", "sync", "time", "macros"] }
+
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
+tokio = { version = "1.54.1", features = ["net", "io-util"] }

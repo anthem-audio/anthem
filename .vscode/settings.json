@@ -34,6 +34,7 @@
     "endl",
     "flac",
     "frameless",
+    "futex",
     "fuzzywuzzy",
     "grayscale",
     "ifdef",
@@ -96,7 +97,8 @@
     "Ungroups",
     "unmaximize",
     "Unregisters",
-    "vsync"
+    "vsync",
+    "wakeup"
   ],
   "C_Cpp.autoAddFileAssociations": false,
   "search.exclude": {

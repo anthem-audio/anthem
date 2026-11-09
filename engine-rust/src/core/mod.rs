@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 mod application;
+pub mod ipc;
 pub mod model_sync;
 pub mod runtime;
 pub mod services;
@@ -37,6 +38,7 @@ impl EngineRuntime {
         let mut registry = ServiceRegistry::default();
         registry.register(Application::new(self.handle));
         registry.register(model_sync::ProjectSlot::default());
+        registry.register(ipc::Ipc::default());
         let _services = registry.install();
 
         self.message_thread
@@ -47,22 +49,19 @@ impl EngineRuntime {
 
 /// Starts the engine's message thread and installs its services.
 pub fn run() -> ExitCode {
-    // Exercise message-thread startup until IPC supplies work.
     let (runtime, handle) = EngineRuntime::new();
+    // Queue startup before the handle is installed. The job runs once the
+    // services and local task scheduler are ready.
     handle
-        .post(|| services::with::<Application, _>(Application::shutdown))
-        .unwrap();
-    if let Err(error) = runtime.run() {
+        .post(ipc::start)
+        .expect("Could not queue IPC startup");
+    let result = runtime.run();
+    #[cfg(target_os = "emscripten")]
+    ipc::transport::finished(result.is_err());
+    if let Err(error) = result {
         eprintln!("Engine stopped: {error}");
         return ExitCode::FAILURE;
     }
 
-    #[cfg(not(target_os = "emscripten"))]
-    {
-        eprintln!("The Rust engine runtime started. Engine IPC is not implemented yet.");
-        ExitCode::FAILURE
-    }
-
-    #[cfg(target_os = "emscripten")]
     ExitCode::SUCCESS
 }

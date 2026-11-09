@@ -28,6 +28,7 @@ import 'package:colorize/colorize.dart';
 
 import '../cli_helpers.dart';
 import '../integration_test/test_plugin_manifest.dart';
+import 'engine_runtime_test.dart';
 
 class EngineCommand extends Command<dynamic> {
   @override
@@ -45,6 +46,7 @@ class EngineCommand extends Command<dynamic> {
     addSubcommand(_FormatEngineCommand());
     addSubcommand(_LintEngineCommand());
     addSubcommand(_EngineUnitTestCommand());
+    addSubcommand(EngineRuntimeTestCommand());
   }
 }
 
@@ -307,6 +309,16 @@ Future<void> _buildRustWebEngine(
   print(
     Colorize('Built the Rust web engine in $outputDirectory')..lightGreen(),
   );
+  final webDirectory = Directory.fromUri(
+    packageRootPath.resolve('web/engine/'),
+  );
+  await webDirectory.create(recursive: true);
+  await File.fromUri(
+    packageRootPath.resolve('$outputDirectory/anthem-engine.js'),
+  ).copy('${webDirectory.path}/AnthemEngine.js');
+  await File.fromUri(
+    packageRootPath.resolve('$outputDirectory/anthem_engine.wasm'),
+  ).copy('${webDirectory.path}/anthem_engine.wasm');
 }
 
 Future<Uri> _buildRustEngine(

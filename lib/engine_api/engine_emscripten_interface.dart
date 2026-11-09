@@ -46,13 +46,13 @@ class EngineEmscriptenInterface {
 
   late final WasmSharedMemoryRingBuffer readBuffer;
   late final WasmSharedMemoryRingBuffer writeBuffer;
-  late final WasmVisualizationRecordRingBufferReader
-  visualizationRingBufferReader;
+  WasmVisualizationRecordRingBufferReader? visualizationRingBufferReader;
 
   final Queue<_PendingOutgoingMessage> _outgoingMessages = ListQueue();
 
   void Function(Uint8List bytes)? onMessageReceived;
   final void Function()? onPollVisualization;
+  final void Function()? onExit;
 
   Ticker? _readTicker;
   Timer? _readFallbackTimer;
@@ -60,7 +60,8 @@ class EngineEmscriptenInterface {
   Timer? _sendTimer;
   Completer<void>? _readyCompleter;
   bool _disposed = false;
-  bool _hasVisualizationReader = false;
+  bool _hasAppInstance = false;
+  Future<void>? _shutdownFuture;
   final Completer<void> _introMessageReceivedCompleter = Completer<void>();
   final Stopwatch _sinceReadTick = Stopwatch()..start();
 
@@ -68,6 +69,7 @@ class EngineEmscriptenInterface {
     this.exportName, {
     this.onMessageReceived,
     this.onPollVisualization,
+    this.onExit,
   });
 
   Future<void> init() async {
@@ -90,13 +92,19 @@ class EngineEmscriptenInterface {
 
     final appInstancePromise = appInstancePromiseAny as JSPromise;
     final appInstanceAny = await appInstancePromise.toDart;
-    _ensureActive();
     if (!appInstanceAny.isA<JSObject>()) {
       throw Exception(
         'EngineEmscriptenInterface: $exportName Promise did not resolve to an object',
       );
     }
     appInstance = appInstanceAny as JSObject;
+    _hasAppInstance = true;
+    if (_disposed) {
+      // Construction can finish after startup was cancelled. The newly created
+      // module still owns workers, even though this interface is no longer used.
+      await _shutdown(const Duration(seconds: 5));
+      _ensureActive();
+    }
 
     final completer = Completer<void>();
     _readyCompleter = completer;
@@ -273,10 +281,11 @@ class EngineEmscriptenInterface {
       ticketPtr: writeBufferTicketPtr.toDartInt,
     );
 
-    visualizationRingBufferReader = WasmVisualizationRecordRingBufferReader(
-      appInstance,
-    );
-    _hasVisualizationReader = true;
+    if (appInstance.hasProperty('_tryAcquireVisualizationRecord'.toJS).toDart) {
+      visualizationRingBufferReader = WasmVisualizationRecordRingBufferReader(
+        appInstance,
+      );
+    }
 
     _setUpReadTicker();
     await _introMessageReceivedCompleter.future;
@@ -400,18 +409,25 @@ class EngineEmscriptenInterface {
     // startup or any other period where frames are not being produced yet.
     _readTicker = Ticker((elapsed) {
       _sinceReadTick.reset();
-      _tryRead();
-      onPollVisualization?.call();
+      _poll();
     });
 
     _readFallbackTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
       if (_sinceReadTick.elapsedMilliseconds >= 16) {
-        _tryRead();
-        onPollVisualization?.call();
+        _poll();
       }
     });
 
     _readTicker!.start();
+  }
+
+  void _poll() {
+    if (_disposed) return;
+    _tryRead();
+    if (_disposed) return;
+    onPollVisualization?.call();
+    // Drain the final reply before reporting the module's exit to its owner.
+    if (exitCode != null) onExit?.call();
   }
 
   var _introBytesSkipped = 0;
@@ -481,6 +497,44 @@ class EngineEmscriptenInterface {
     if (_disposed) throw StateError('The engine interface has been disposed.');
   }
 
+  int? get exitCode {
+    if (!_hasAppInstance ||
+        !appInstance.hasProperty('_hasEngineExited'.toJS).toDart) {
+      return null;
+    }
+    final exited = appInstance
+        .callMethod<JSNumber>('_hasEngineExited'.toJS)
+        .toDartInt;
+    return exited == 0
+        ? null
+        : appInstance.callMethod<JSNumber>('_getEngineExitCode'.toJS).toDartInt;
+  }
+
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) =>
+      _shutdownFuture ??= _shutdown(timeout);
+
+  Future<void> _shutdown(Duration timeout) async {
+    if (!_hasAppInstance ||
+        !appInstance.hasProperty('_requestEngineShutdown'.toJS).toDart) {
+      return;
+    }
+    try {
+      appInstance.callMethod<JSAny?>('_requestEngineShutdown'.toJS);
+      final deadline = Stopwatch()..start();
+      while (exitCode == null) {
+        if (deadline.elapsed >= timeout) {
+          throw TimeoutException('Engine shutdown timed out.', timeout);
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+    } finally {
+      // The runtime has released its tasks and services before its workers are
+      // terminated. Forced disposal also releases workers after the deadline.
+      final threads = appInstance.getProperty<JSObject>('PThread'.toJS);
+      threads.callMethod<JSAny?>('terminateAllThreads'.toJS);
+    }
+  }
+
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -489,7 +543,8 @@ class EngineEmscriptenInterface {
     _readFallbackTimer?.cancel();
     _readTicker?.dispose();
     _outgoingMessages.clear();
-    if (_hasVisualizationReader) visualizationRingBufferReader.close();
+    visualizationRingBufferReader?.close();
+    unawaited(shutdown().catchError((Object _) {}));
     final ready = _readyCompleter;
     if (ready != null && !ready.isCompleted) {
       ready.completeError(StateError('Engine initialization was cancelled.'));

@@ -1,5 +1,27 @@
 # Testing
 
+## Rust runtime integration
+
+The runtime scenarios use the real Dart models, encoder, connector, and Rust
+engine over TCP on native and shared WebAssembly memory in Chrome:
+
+```sh
+dart run anthem:cli engine runtime-test
+dart run anthem:cli engine runtime-test --wasm
+```
+
+Both commands build a debug Rust engine. `--release` selects release builds and
+`--skip-build` reuses an existing engine build. Browser tests compile the Dart
+scenario with both JavaScript and WebAssembly by default; `--compiler js` or
+`--compiler wasm` selects one. Browser output is written under
+`build/engine-runtime-tests/<compiler>/`, including results and Chrome logs.
+
+The scenarios cover project initialization and edits, serialization queries,
+messages larger than the web ring, nested requests while a Rust task awaits a
+UI reply, timeout recovery, pending-task shutdown, fatal sync failures, and fresh
+sessions. They require no audio device. Full UI and audio integration remains
+in the application integration suite.
+
 ## Browser unit and widget tests
 
 The same `flutter_test` command handles desktop and browser testing. `--web`

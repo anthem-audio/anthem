@@ -2,10 +2,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::collections::BTreeMap;
+use std::future::Future;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::task::{JoinHandle, LocalSet};
+
+#[cfg(test)]
+use std::sync::mpsc as test_mpsc;
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
 
@@ -20,6 +25,15 @@ pub fn post(job: impl FnOnce() + Send + 'static) -> Result<(), MessageThreadClos
         .clone()
         .ok_or(MessageThreadClosed)?;
     handle.post(job)
+}
+
+/// Starts an async task on the message thread. Call this from that thread;
+/// callers on other threads can post a closure that creates the task here.
+pub fn spawn_local<F: Future + 'static>(task: F) -> JoinHandle<F::Output>
+where
+    F::Output: 'static,
+{
+    tokio::task::spawn_local(task)
 }
 
 enum Event {
@@ -58,8 +72,8 @@ impl Drop for MessageThreadScope {
 
 #[derive(Clone)]
 pub struct MessageThreadHandle {
-    inbox: Sender<Event>,
-    schedule: Sender<ScheduleUpdate>,
+    inbox: UnboundedSender<Event>,
+    schedule: UnboundedSender<ScheduleUpdate>,
     next_job_id: Arc<AtomicU64>,
 }
 
@@ -106,17 +120,21 @@ impl MessageThreadHandle {
     pub fn shutdown(&self) {
         let _ = self.inbox.send(Event::Shutdown);
     }
+
+    pub(crate) fn wake(&self) {
+        let _ = self.inbox.send(Event::Wake);
+    }
 }
 
 pub struct MessageThread {
-    inbox: Receiver<Event>,
-    schedule: Receiver<ScheduleUpdate>,
+    inbox: UnboundedReceiver<Event>,
+    schedule: UnboundedReceiver<ScheduleUpdate>,
 }
 
 impl MessageThread {
     pub fn new() -> (Self, MessageThreadHandle) {
-        let (send, inbox) = mpsc::channel();
-        let (update_schedule, schedule) = mpsc::channel();
+        let (send, inbox) = mpsc::unbounded_channel();
+        let (update_schedule, schedule) = mpsc::unbounded_channel();
         (
             Self { inbox, schedule },
             MessageThreadHandle {
@@ -134,8 +152,21 @@ impl MessageThread {
 
     /// Checks for a fatal engine condition between jobs, before dispatching more work.
     pub(crate) fn run_until(self, should_stop: impl Fn() -> bool) {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Could not create the message-thread runtime");
+        // Drop local tasks while the caller's message-thread services are still
+        // installed. Their cancellation guards can safely release service state.
+        let tasks = LocalSet::new();
+        runtime.block_on(tasks.run_until(self.dispatch(should_stop)));
+    }
+
+    async fn dispatch(mut self, should_stop: impl Fn() -> bool) {
         let mut scheduled = BTreeMap::new();
         loop {
+            // Give ready async tasks a turn even when ordinary jobs keep arriving.
+            tokio::task::yield_now().await;
             if should_stop() {
                 break;
             }
@@ -150,7 +181,7 @@ impl MessageThread {
             //
             // By pulling out the earliest incoming work into due_job, we can
             // prevent allocating into the schedule map in this common case.
-            for update in self.schedule.try_iter() {
+            while let Ok(update) = self.schedule.try_recv() {
                 match update {
                     ScheduleUpdate::Add(id, job) if due_job.is_none() && id.0 <= Instant::now() => {
                         due_job = Some((id, job));
@@ -186,19 +217,18 @@ impl MessageThread {
                 continue;
             }
 
-            let event = match deadline {
-                Some(deadline) => self
-                    .inbox
-                    .recv_timeout(deadline.saturating_duration_since(Instant::now())),
-                None => self
-                    .inbox
-                    .recv()
-                    .map_err(|_| RecvTimeoutError::Disconnected),
+            let event = if let Some(deadline) = deadline {
+                tokio::select! {
+                    event = self.inbox.recv() => event,
+                    _ = tokio::time::sleep_until(deadline.into()) => Some(Event::Wake),
+                }
+            } else {
+                self.inbox.recv().await
             };
             match event {
-                Ok(Event::Job(job)) => job(),
-                Ok(Event::Shutdown) | Err(RecvTimeoutError::Disconnected) => break,
-                Ok(Event::Wake) | Err(RecvTimeoutError::Timeout) => {}
+                Some(Event::Job(job)) if !should_stop() => job(),
+                Some(Event::Shutdown) | None => break,
+                _ => {}
             }
         }
     }
@@ -209,6 +239,7 @@ mod tests {
     use super::*;
     use std::thread;
     use std::time::Duration;
+    use test_mpsc as mpsc;
 
     #[test]
     fn global_post_routes_worker_jobs_and_cleans_up_between_sessions() {

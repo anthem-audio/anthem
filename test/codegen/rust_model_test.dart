@@ -4,7 +4,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:anthem/model/project.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../fixtures/rust_model_fixture.dart';
@@ -45,12 +44,6 @@ void main() {
     expect(cases.first, isNot(contains('uiOnly')));
     expect(cases.first['engineOnly'], 'engine state');
     _checkFixture('serialization', cases);
-  });
-
-  test('Rust project fixture matches a new Dart project', () {
-    final project = ProjectModel.create();
-    final snapshot = project.toJson(forEngine: true, forProjectFile: false);
-    _checkFixture('project', snapshot);
   });
 }
 

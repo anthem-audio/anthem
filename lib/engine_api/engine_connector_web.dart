@@ -31,7 +31,13 @@ class EngineConnector extends EngineConnectorBase {
       onReceive(bytes);
     },
     onPollVisualization: pollVisualizationRecords,
+    onExit: () {
+      dispose();
+      _onExit?.call();
+    },
   );
+
+  final void Function()? _onExit;
 
   bool _isInitialized = false;
   bool _disposed = false;
@@ -43,7 +49,7 @@ class EngineConnector extends EngineConnectorBase {
     required super.kDebugMode,
     super.onMessage,
     super.onConnectionClosed,
-    void Function()? onExit,
+    this._onExit,
     super.noHeartbeat = false,
     String? enginePathOverride,
   }) {
@@ -52,12 +58,14 @@ class EngineConnector extends EngineConnectorBase {
         .then((_) {
           if (_disposed) return false;
           final reader = engineInterface.visualizationRingBufferReader;
-          visualizationRecordConsumer = VisualizationRecordConsumer(
-            tryAcquire: reader.tryAcquire,
-            release: reader.release,
-            onRecord: handleVisualizationRecord,
-            availableBytes: () => reader.availableBytes,
-          );
+          if (reader != null) {
+            visualizationRecordConsumer = VisualizationRecordConsumer(
+              tryAcquire: reader.tryAcquire,
+              release: reader.release,
+              onRecord: handleVisualizationRecord,
+              availableBytes: () => reader.availableBytes,
+            );
+          }
           _init();
           return true;
         })
@@ -73,6 +81,19 @@ class EngineConnector extends EngineConnectorBase {
       sendBytes(message);
     }
     _pendingMessages.clear();
+  }
+
+  @override
+  int? get processExitCode => engineInterface.exitCode;
+
+  @override
+  Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
+    try {
+      await engineInterface.shutdown(timeout: timeout);
+    } finally {
+      dispose();
+      await onInit.timeout(timeout);
+    }
   }
 
   @override
