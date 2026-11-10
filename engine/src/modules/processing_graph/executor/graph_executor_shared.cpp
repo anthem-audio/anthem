@@ -149,7 +149,7 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
   }
 
   auto* processor = node.processor;
-  if (processor && !processor->rt_tryAcquireProcessingAccess()) {
+  if (processor != nullptr && !processor->rt_tryAcquireProcessingAccess()) {
     node.nodeProcessContext->rt_clearOutputs();
     return;
   }

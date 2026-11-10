@@ -79,11 +79,26 @@ Future<void> verifyFailureArtifacts(
       '${entry.key}: shutdown is for a different engine.',
     );
     final screenshot = report['screenshot'] as Map;
+    require(
+      screenshot['status'] == 'saved',
+      '${entry.key}: screenshot capture failed.',
+    );
+    final bytes = await File('${root.path}/failure.png').readAsBytes();
+    const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+    require(
+      bytes.length > 24 &&
+          List.generate(
+            8,
+            (i) => bytes[i] == pngSignature[i],
+          ).every((same) => same),
+      '${entry.key}: invalid PNG.',
+    );
+    final dimensions = ByteData.sublistView(bytes, 16, 24);
+    require(
+      dimensions.getUint32(0) == 1280 && dimensions.getUint32(4) == 800,
+      '${entry.key}: screenshot does not cover the Flutter surface.',
+    );
     if (entry.key == 'startup-failure-probe') {
-      require(
-        screenshot['status'] == 'unavailable' && screenshot['reason'] != null,
-        'Startup probe must explain why no frame exists.',
-      );
       require(
         session['enginePid'] == null,
         'Missing executable unexpectedly started a child.',
@@ -92,25 +107,6 @@ Future<void> verifyFailureArtifacts(
       require(
         stopped['enginePid'] != null && stopped['engineExitCode'] == 0,
         '${entry.key}: engine did not finish normal shutdown successfully.',
-      );
-      require(
-        screenshot['status'] == 'saved',
-        '${entry.key}: screenshot capture failed.',
-      );
-      final bytes = await File('${root.path}/failure.png').readAsBytes();
-      const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
-      require(
-        bytes.length > 24 &&
-            List.generate(
-              8,
-              (i) => bytes[i] == pngSignature[i],
-            ).every((same) => same),
-        '${entry.key}: invalid PNG.',
-      );
-      final dimensions = ByteData.sublistView(bytes, 16, 24);
-      require(
-        dimensions.getUint32(0) == 1280 && dimensions.getUint32(4) == 800,
-        '${entry.key}: screenshot does not cover the Flutter surface.',
       );
       if (entry.key == 'unresponsive-engine-probe') {
         require(

@@ -235,10 +235,10 @@ underlying Flutter process must exit nonzero; the command returns success only a
 verifying the original failures, required screenshots and snapshots, and actual
 child exits in `stopped.json`. The probes exercise a failed note assertion with
 held input and a broken diagnostic collector, framework and unawaited errors,
-an unresponsive engine, and startup without a frame. Windows runs the four other
-probes and explicitly skips suspension: Dart does not support SIGSTOP/SIGCONT
-there. A unique run ID rejects stale
-artifacts when reusing an output directory. `verification.json` records the
+an unresponsive engine, and engine startup failure with the UI already mounted.
+Windows runs the four other probes and explicitly skips suspension: Dart does
+not support SIGSTOP/SIGCONT there. A unique run ID rejects stale artifacts when
+reusing an output directory. `verification.json` records the
 verified cases.
 
 The Build workflow runs the normal suite and failure handling checks in the Linux

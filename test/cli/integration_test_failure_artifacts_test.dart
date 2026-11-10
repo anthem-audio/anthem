@@ -49,8 +49,8 @@ void main() {
       'unresponsive-engine-probe': 'Intentional unresponsive engine probe',
       'startup-failure-probe': 'Engine startup failed',
     }.entries) {
-      final early = entry.key == 'startup-failure-probe';
-      final pid = early ? null : childPid++;
+      final startupFailure = entry.key == 'startup-failure-probe';
+      final pid = startupFailure ? null : childPid++;
       final root = Directory('${directory.path}/${entry.key}');
       await root.create();
       await File('${root.path}/failure.json').writeAsString(
@@ -67,11 +67,9 @@ void main() {
             'heldPointerCount': 1,
             'heldKeys': ['Shift Left'],
           },
-          'screenshot': {
-            'status': early ? 'unavailable' : 'saved',
-            'reason': early ? 'No mounted Flutter frame.' : null,
-          },
-          'engineModel': entry.key == 'unresponsive-engine-probe' || early
+          'screenshot': {'status': 'saved'},
+          'engineModel':
+              entry.key == 'unresponsive-engine-probe' || startupFailure
               ? {'error': 'Request timed out'}
               : {
                   'tracks': <String, Object?>{},
@@ -92,13 +90,11 @@ void main() {
           'enginePid': pid,
           'engineState': 'stopped',
           'cleanupError': null,
-          'engineExitCode': early ? null : 0,
+          'engineExitCode': startupFailure ? null : 0,
         }),
       );
-      if (!early) {
-        await File('${root.path}/failure.png')
-            .writeAsBytes(png!.buffer.asUint8List());
-      }
+      await File('${root.path}/failure.png')
+          .writeAsBytes(png!.buffer.asUint8List());
     }
   });
   tearDown(() async => directory.delete(recursive: true));
@@ -116,14 +112,17 @@ void main() {
     await file.writeAsString(jsonEncode(data));
   }
 
-  test('accepts evidence from all failures including an unavailable engine and frame', () async {
-    await verify();
-    final result = jsonDecode(
-      await File('${directory.path}/verification.json').readAsString(),
-    ) as Map;
-    expect(result['status'], 'passed');
-    expect(result['verified'], hasLength(5));
-  });
+  test(
+    'accepts failure evidence including a mounted UI without an engine',
+    () async {
+      await verify();
+      final result = jsonDecode(
+        await File('${directory.path}/verification.json').readAsString(),
+      ) as Map;
+      expect(result['status'], 'passed');
+      expect(result['verified'], hasLength(5));
+    },
+  );
   test('rejects a probe process that passed', () async {
     await expectLater(verify(exitCode: 0), throwsStateError);
   });
@@ -205,6 +204,15 @@ void main() {
   test('rejects a corrupt screenshot', () async {
     await File('${directory.path}/assertion-probe/failure.png')
         .writeAsBytes([1, 2, 3]);
+    await expectLater(verify(), throwsStateError);
+  });
+  test('requires a frame even when engine startup fails', () async {
+    await change('startup-failure-probe', 'failure', (data) {
+      data['screenshot'] = {
+        'status': 'unavailable',
+        'reason': 'No mounted Flutter frame.',
+      };
+    });
     await expectLater(verify(), throwsStateError);
   });
 }

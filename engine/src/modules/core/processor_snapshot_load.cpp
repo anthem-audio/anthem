@@ -181,8 +181,10 @@ public:
     mutated = true;
     try {
       {
-        ProcessorStateSnapshot state(
-            juce::File((recovery ? recoveryRead : targetRead).value().absolutePath));
+        const auto& read = recovery ? recoveryRead : targetRead;
+        if (!read)
+          throw std::runtime_error("Processor state read access is unavailable.");
+        ProcessorStateSnapshot state(juce::File(read->absolutePath));
         state.restore(*processor);
       }
       processor->prepareToProcess(

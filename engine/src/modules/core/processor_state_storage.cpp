@@ -157,16 +157,18 @@ private:
   }
 
   void write(FileStorageResult<FileStorageAccess> access) {
-    if (access.error) {
-      releasePreviousRead([self = shared_from_this(), error = std::move(access.error)](
-                              const std::optional<std::string>&) {
-        self->complete({.value = std::nullopt, .error = error});
-      });
+    if (access.error || !access.value) {
+      releasePreviousRead(
+          [self = shared_from_this(),
+              error = access.error.value_or("File storage returned no write access.")](
+              const std::optional<std::string>&) {
+            self->complete({.value = std::nullopt, .error = error});
+          });
       return;
     }
 
     // captureAndWrite closes the stream and frees the buffer before returning.
-    const auto& grant = access.value.value();
+    const auto& grant = *access.value;
     auto captured = captureAndWrite(juce::File(grant.absolutePath));
     pause.reset();
     releasePreviousRead(

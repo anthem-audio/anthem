@@ -34,10 +34,37 @@ runs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        choco install llvm --version=22.1.0 -y
+        $ErrorActionPreference = 'Stop'
+        $llvmVersion = '22.1.8'
+        $llvmArch = if ($env:RUNNER_ARCH -eq 'ARM64') { 'woa64' } else { 'win64' }
+        $llvmSha256 = if ($env:RUNNER_ARCH -eq 'ARM64') {
+          '76f44ef1ba6eeb5a65904e9500f042f588fade49952778ce48f0374daa934396'
+        } else {
+          '16e5709785fef73c854646241c4a92c5cd574318d1b33c63330dd7721903e55c'
+        }
+        $llvmInstaller = Join-Path $env:RUNNER_TEMP "LLVM-$llvmVersion-$llvmArch.exe"
+        $llvmDirectory = Join-Path $env:RUNNER_TEMP "llvm-$llvmVersion"
+        Invoke-WebRequest "https://github.com/llvm/llvm-project/releases/download/llvmorg-$llvmVersion/LLVM-$llvmVersion-$llvmArch.exe" -OutFile $llvmInstaller
+        if ((Get-FileHash $llvmInstaller -Algorithm SHA256).Hash -ne $llvmSha256) {
+          throw 'LLVM installer checksum does not match the pinned release.'
+        }
+        $installation = Start-Process $llvmInstaller -ArgumentList "/S /D=$llvmDirectory" -Wait -PassThru
+        if ($installation.ExitCode -ne 0) {
+          throw "LLVM installation failed with exit code $($installation.ExitCode)."
+        }
+        $llvmBin = Join-Path $llvmDirectory 'bin'
+        foreach ($tool in @('clang', 'clang-format', 'clang-tidy')) {
+          $versionOutput = & (Join-Path $llvmBin "$tool.exe") --version
+          if ($LASTEXITCODE -ne 0 -or ($versionOutput -join [Environment]::NewLine) -notmatch [regex]::Escape($llvmVersion)) {
+            throw "$tool does not report the pinned LLVM version $llvmVersion."
+          }
+        }
         choco install ninja -y
-        Add-Content $env:GITHUB_ENV 'ANTHEM_LLVM_BIN=C:\Program Files\LLVM\bin'
-        Add-Content $env:GITHUB_PATH 'C:\Program Files\LLVM\bin'
+        if ($LASTEXITCODE -ne 0) {
+          throw "Ninja installation failed with exit code $LASTEXITCODE."
+        }
+        Add-Content $env:GITHUB_ENV "ANTHEM_LLVM_BIN=$llvmBin"
+        Add-Content $env:GITHUB_PATH $llvmBin
         Add-Content $env:GITHUB_PATH 'C:\ProgramData\chocolatey\bin'
 
     - name: Print LLVM tool versions
