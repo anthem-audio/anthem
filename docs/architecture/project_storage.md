@@ -61,8 +61,10 @@ remain available to a replacement engine. Closing the project releases its
 claims and removes its temporary working directory.
 
 This backend uses MEMFS. Working files occupy memory and do not survive a page
-reload. Browser ZIP import and download are a separate persistence step; the
-existing browser document download does not include these files yet.
+reload. Downloading a project creates a ZIP containing its document and the
+assets referenced by that document. Opening a ZIP extracts it into a fresh
+temporary working directory and restores the document's file claims before
+starting the engine. Closing the imported project removes that directory.
 
 ## Saving and exporting
 
@@ -83,3 +85,21 @@ own copies. Those outputs require no additional claims on the source store.
 Documents already sharing the source root remain protected until overwritten or
 project closure. Project and snapshot formats, including persisted retention
 IDs, are unchanged by this separation of responsibilities.
+
+Native ZIP writers stream files to disk in an isolate. Browser downloads encode
+the same layout into bytes using the captured document and asset reads. Both
+import paths run one Dart extraction workflow that validates paths, checks file
+lengths and CRCs, and removes temporary files on failure.
+
+Native imports use the Dart ZIP decoder and file streams in an isolate. Browser
+imports use a JavaScript worker with a pinned zip.js bundle, packaged as ordinary
+Flutter assets under `lib/logic/project_file/web`. It supplies ZIP metadata to the Dart workflow
+and decompresses each file when requested. Input range reads and output transfers
+are limited to 64 KiB; each output chunk waits for a filesystem write before the
+worker sends another. Browser imports stream entry contents into the UI-owned
+filesystem instead of buffering the ZIP or a whole decompressed entry. Extracted
+working files still occupy MEMFS. Legacy single-file projects can also be
+migrated into temporary storage on either platform.
+
+A successful browser download clears the dirty flag only if the project did
+not change after save preparation. Exporting a copy leaves it unchanged.

@@ -27,6 +27,11 @@ import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:anthem/engine_api/engine.dart';
+import 'package:anthem/helpers/id.dart';
+import 'package:anthem/logic/project_file/archive.dart';
+import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/engine_api/engine_connector_web.dart';
 import 'package:anthem/logic/commands/processor_state_commands.dart';
 import 'package:anthem/logic/service_registry.dart';
@@ -37,6 +42,7 @@ import 'package:anthem/model/project.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/browser_engine_test_helpers.dart';
+import '../../helpers/browser_asset_test_helpers.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +52,7 @@ void main() {
       : 'The browser engine requires shared memory; use Flutter --wasm '
             'to run it in an isolated test iframe.';
   setUpAll(() async {
+    useBrowserPackageAssets();
     await loadBrowserModule('AnthemFileSystem');
     await loadBrowserModule('AnthemEngine', usesWorkers: true);
   });
@@ -131,6 +138,74 @@ void main() {
         expect(port.parameterValue, closeTo(0.3, 0.000001));
       } finally {
         await reader.close();
+      }
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+    skip: skipEngineTests,
+  );
+
+  test(
+    'project ZIP restores captured processor state after source files are removed',
+    () async {
+      await start();
+      final node = project
+          .tracks[project.trackOrder.first]!
+          .requireProcessing
+          .utilityNode!;
+      final port = node.getPortById(UtilityProcessorModel.gainPortId);
+      await services.parameterController.setValue(
+        node: node,
+        port: port,
+        value: 0.35,
+      );
+      final prepared = await PreparedProjectSave.prepare(
+        project,
+        services.projectStorage,
+      );
+      late final Uint8List zip;
+      try {
+        await services.parameterController.setValue(
+          node: node,
+          port: port,
+          value: 0.85,
+        );
+        zip = await encodeProjectArchive(prepared);
+      } finally {
+        await prepared.close();
+      }
+      await project.engine.stop();
+      await services.projectStorage.discard();
+      final extracted = await extractProjectArchiveBytes(zip);
+      final storage = ProjectStorage.temporary(
+        rootDirectory: extracted.rootDirectory,
+      );
+      ProjectModel? imported;
+      try {
+        final json = await decodeProjectFileBytes(
+          await files.readFile(extracted.documentPath),
+        );
+        json['id'] = getProjectId();
+        imported = ProjectModel.fromJson(json);
+        await storage.restoreProjectFiles(
+          Map<String, String>.from(jsonDecode(imported.fileRetentions) as Map),
+        );
+        final registry = ServiceRegistry.initializeProject(imported)
+          ..register(storage);
+        await registry.projectEngineController.start(startAudio: false);
+        await imported.engine.renderApi.startRenderAudioSession(
+          sampleRate: 48000,
+          blockSize: 128,
+          outputChannelCount: 2,
+        );
+        await registry.processingGraphController.publish();
+        final restored = imported.processingGraph.nodes[node.id]!.getPortById(
+          UtilityProcessorModel.gainPortId,
+        );
+        expect(restored.parameterValue, closeTo(0.35, 0.000001));
+      } finally {
+        await imported?.dispose();
+        await storage.discard();
+        if (imported != null) ServiceRegistry.removeProject(imported.id);
       }
     },
     timeout: const Timeout(Duration(seconds: 60)),

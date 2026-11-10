@@ -23,7 +23,11 @@ import 'dart:isolate';
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/io.dart';
 
+import 'package:file_selector/file_selector.dart' show XFile;
+
 import 'project_save.dart';
+import 'archive_extraction.dart';
+import 'archive_format.dart';
 
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as path;
@@ -89,8 +93,11 @@ Future<void> _writeArchive(
 /// directory and must adopt it into temporary project storage or delete it if
 /// loading fails. Extraction failures remove the directory automatically.
 Future<({String rootDirectory, String documentPath})> extractProjectArchive(
-  String archivePath,
-) => Isolate.run(() => _extractArchive(archivePath));
+  XFile archive,
+) {
+  final archivePath = archive.path;
+  return Isolate.run(() => _extractArchive(archivePath));
+}
 
 Future<({String rootDirectory, String documentPath})> _extractArchive(
   String archivePath,
@@ -101,97 +108,112 @@ Future<({String rootDirectory, String documentPath})> _extractArchive(
   } on FileSystemException catch (error, stack) {
     throw ProjectFileReadException(cause: error, causeStackTrace: stack);
   }
-  Directory? directory;
-  try {
-    final paths = <String>{};
-    final spellings = <String, String>{};
-    final archive = ZipDecoder().decodeStream(
-      input,
-      callback: (entry) {
-        final name = entry.isDirectory && entry.name.endsWith('/')
-            ? entry.name.substring(0, entry.name.length - 1)
-            : entry.name;
-        final parts = name.split('/');
-        if (entry.isSymbolicLink ||
-            entry.mode & 0xf000 == 0xa000 ||
-            parts.any((part) => !_isPortableName(part)) ||
-            !paths.add(name.toLowerCase())) {
-          throw const FormatException('Invalid or duplicate archive path.');
-        }
-        // Check implicit parent folders too, so casing is unambiguous on all OSes.
-        for (var i = 1; i <= parts.length; i++) {
-          final prefix = parts.take(i).join('/');
-          final previous = spellings.putIfAbsent(
-            prefix.toLowerCase(),
-            () => prefix,
-          );
-          if (previous != prefix) {
-            throw const FormatException('Archive paths differ only by case.');
-          }
-        }
-      },
-    );
-    final documents = archive.files.where(
-      (entry) =>
-          entry.isFile &&
-          !entry.name.contains('/') &&
-          entry.name.toLowerCase().endsWith('.anthem'),
-    );
-    if (documents.length != 1) {
-      throw const FormatException(
-        'Expected one project document at the ZIP root.',
-      );
-    }
-    directory = await Directory.systemTemp.createTemp('anthem_project_import_');
-    for (final entry in archive) {
-      final destination = path.joinAll([
-        directory.path,
-        ...entry.name.split('/'),
-      ]);
-      if (entry.isDirectory) {
-        await Directory(destination).create(recursive: true);
-        continue;
-      }
-      final file = File(destination);
-      await file.parent.create(recursive: true);
-      await file.create(exclusive: true);
-      final output = OutputFileStream(destination);
-      try {
-        entry.writeContent(output);
-      } finally {
-        await output.close();
-      }
-      // The decoder's verify option does not check CRCs in archive 4.x.
-      var crc = 0;
-      var length = 0;
-      await for (final chunk in file.openRead()) {
-        crc = getCrc32(chunk, crc);
-        length += chunk.length;
-      }
-      if (length != entry.size || crc != entry.crc32) {
-        throw const FormatException('Damaged file in project archive.');
-      }
-    }
-    return (
-      rootDirectory: directory.path,
-      documentPath: path.join(directory.path, documents.single.name),
-    );
-  } catch (error, stack) {
-    if (directory != null) await directory.delete(recursive: true);
-    throw InvalidProjectFileException(cause: error, causeStackTrace: stack);
-  } finally {
-    await input.close();
-  }
+  return _extractStream(input);
 }
 
-bool _isPortableName(String name) =>
-    name.isNotEmpty &&
-    name != '.' &&
-    name != '..' &&
-    !name.endsWith('.') &&
-    !name.endsWith(' ') &&
-    !RegExp(r'[\\/:*?"<>|\x00-\x1f]').hasMatch(name) &&
-    !RegExp(
-      r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)',
-      caseSensitive: false,
-    ).hasMatch(name);
+/// Extracts an archive that is already in memory, using the same workflow as
+/// path imports. Selected files should use [extractProjectArchive] instead.
+Future<({String rootDirectory, String documentPath})>
+extractProjectArchiveBytes(List<int> bytes) =>
+    Isolate.run(() => _extractStream(InputMemoryStream(bytes)));
+
+Future<({String rootDirectory, String documentPath})> _extractStream(
+  InputStream input,
+) async {
+  final destination = _FileDestination();
+  final document = await extractProjectArchiveContents(
+    _FileSource(input),
+    destination,
+  );
+  return (
+    rootDirectory: destination.directory!.path,
+    documentPath: path.join(destination.directory!.path, document),
+  );
+}
+
+class _FileSource implements ProjectArchiveSource {
+  final InputStream _input;
+  final _entries = <ArchiveFile>[];
+
+  _FileSource(this._input);
+
+  @override
+  Future<List<ProjectArchiveEntry>> readEntries() async {
+    // Collect in the callback: ZipDecoder merges duplicate filenames in its
+    // returned Archive, but project validation must see every original entry.
+    ZipDecoder().decodeStream(_input, callback: _entries.add);
+    return [
+      for (final entry in _entries)
+        (
+          name: entry.name,
+          isDirectory: entry.isDirectory,
+          isSymbolicLink: entry.isSymbolicLink || entry.mode & 0xf000 == 0xa000,
+          length: entry.size,
+          crc32: entry.crc32!,
+        ),
+    ];
+  }
+
+  @override
+  Future<void> writeFile(int entryIndex, OutputStream output) async {
+    final entry = _entries[entryIndex];
+    try {
+      entry.writeContent(output);
+    } finally {
+      entry.clear();
+    }
+  }
+
+  @override
+  Future<void> close() => _input.close();
+}
+
+class _FileDestination implements ProjectArchiveDestination {
+  Directory? directory;
+  File? _file;
+  OutputFileStream? _output;
+
+  String _path(String relative) =>
+      path.joinAll([directory!.path, ...relative.split('/')]);
+
+  @override
+  Future<void> create() async {
+    directory = await Directory.systemTemp.createTemp('anthem_project_import_');
+  }
+
+  @override
+  Future<void> createDirectory(String relativePath) async {
+    await Directory(_path(relativePath)).create(recursive: true);
+  }
+
+  @override
+  Future<OutputStream> createFile(String relativePath) async {
+    final file = _file = File(_path(relativePath));
+    await file.parent.create(recursive: true);
+    await file.create(exclusive: true);
+    return _output = OutputFileStream(file.path);
+  }
+
+  @override
+  Future<ArchiveFileIntegrity> finishFile() async {
+    await _output!.close();
+    _output = null;
+    var crc32 = 0;
+    var length = 0;
+    await for (final chunk in _file!.openRead()) {
+      crc32 = getCrc32(chunk, crc32);
+      length += chunk.length;
+    }
+    return (length: length, crc32: crc32);
+  }
+
+  @override
+  Future<void> discard() async {
+    try {
+      await _output?.close();
+    } finally {
+      _output = null;
+      await directory?.delete(recursive: true);
+    }
+  }
+}

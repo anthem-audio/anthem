@@ -34,6 +34,7 @@ import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/model/project.dart';
 import 'package:archive/archive_io.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:file_selector/file_selector.dart' show XFile;
 import 'package:path/path.dart' as path;
 
 const cache = ProjectAssetCategory('test cache', isCache: true);
@@ -119,7 +120,7 @@ void main() {
         'project.anthem',
         current,
       });
-      final extracted = await extractProjectArchive(output);
+      final extracted = await extractProjectArchive(XFile(output));
       final imported = ProjectModel.fromJson(
         await readProjectFile(extracted.documentPath),
       );
@@ -167,6 +168,40 @@ void main() {
       }
       expect(await Directory(extracted.rootDirectory).exists(), isFalse);
       expect(await File(output).exists(), isTrue);
+    },
+  );
+
+  test(
+    'byte archives and streamed native archives use the same format',
+    () async {
+      final current = await asset([5, 4, 3, 2, 1]);
+      storage.projectFiles.retain(current);
+      final prepared = await PreparedProjectSave.prepare(project, storage);
+      addTearDown(prepared.close);
+      final downloaded = await encodeProjectArchive(prepared);
+      final input = await File(path.join(directory.path, 'download.zip'))
+          .writeAsBytes(downloaded);
+      final streamed = path.join(directory.path, 'native.zip');
+      await writeProjectArchive(streamed, prepared);
+      final imports = [
+        await extractProjectArchive(XFile(input.path)),
+        await extractProjectArchiveBytes(await File(streamed).readAsBytes()),
+      ];
+      for (final imported in imports) {
+        try {
+          expect(
+            await readProjectFile(imported.documentPath),
+            prepared.projectJson,
+          );
+          expect(
+            await File(path.join(imported.rootDirectory, current))
+                .readAsBytes(),
+            [5, 4, 3, 2, 1],
+          );
+        } finally {
+          await Directory(imported.rootDirectory).delete(recursive: true);
+        }
+      }
     },
   );
 
@@ -219,7 +254,7 @@ void main() {
         original,
       });
       expect(archive.findFile(original)!.content, [1, 2, 3]);
-      final extracted = await extractProjectArchive(output);
+      final extracted = await extractProjectArchive(XFile(output));
       try {
         expect(
           await readProjectFile(extracted.documentPath),
@@ -239,7 +274,7 @@ void main() {
         ArchiveFile.bytes('Song.anthem', await encodeProjectFile(project)),
         ArchiveFile.bytes('plugin states/state.bin', [1, 2, 3]),
       ]);
-      final extracted = await extractProjectArchive(input.path);
+      final extracted = await extractProjectArchive(XFile(input.path));
       try {
         expect(path.basename(extracted.documentPath), 'Song.anthem');
         expect(await readProjectFile(extracted.documentPath), project.toJson());
@@ -259,7 +294,7 @@ void main() {
         for (final name in names) ArchiveFile.bytes(name, [1, 2, 3]),
       ]);
       await expectLater(
-        extractProjectArchive(input.path),
+        extractProjectArchive(XFile(input.path)),
         throwsA(isA<InvalidProjectFileException>()),
       );
     }
@@ -284,7 +319,7 @@ void main() {
           for (final name in names) ArchiveFile.bytes(name, [1, 2, 3]),
         ]);
         await expectLater(
-          extractProjectArchive(input.path),
+          extractProjectArchive(XFile(input.path)),
           throwsA(isA<InvalidProjectFileException>()),
           reason: '$names',
         );
@@ -300,7 +335,7 @@ void main() {
       link,
     ]);
     await expectLater(
-      extractProjectArchive(input.path),
+      extractProjectArchive(XFile(input.path)),
       throwsA(isA<InvalidProjectFileException>()),
     );
   });
@@ -319,7 +354,7 @@ void main() {
           .replaceAll('plugin states/b.bin', 'plugin states/a.bin');
       await input.writeAsBytes(latin1.encode(contents));
       await expectLater(
-        extractProjectArchive(input.path),
+        extractProjectArchive(XFile(input.path)),
         throwsA(isA<InvalidProjectFileException>()),
       );
     },
@@ -352,7 +387,7 @@ void main() {
         .writeAsBytes(bytes);
     final before = await importDirectories();
     await expectLater(
-      extractProjectArchive(input.path),
+      extractProjectArchive(XFile(input.path)),
       throwsA(isA<InvalidProjectFileException>()),
     );
     expect(await importDirectories(), before);
@@ -360,7 +395,7 @@ void main() {
 
   test('reports an unreadable ZIP as a file read failure', () async {
     await expectLater(
-      extractProjectArchive(path.join(directory.path, 'missing.zip')),
+      extractProjectArchive(XFile(path.join(directory.path, 'missing.zip'))),
       throwsA(isA<ProjectFileReadException>()),
     );
   });

@@ -17,4 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-export 'archive_stub.dart' if (dart.library.io) 'archive_io.dart';
+export 'archive_stub.dart'
+    if (dart.library.io) 'archive_io.dart'
+    if (dart.library.js_interop) 'archive_web.dart';
+export 'archive_bytes.dart';
