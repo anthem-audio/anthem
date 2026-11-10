@@ -192,7 +192,7 @@ void ProcessingGraphNodeInitializationSession::completeStateRestoration(int64_t 
   }
   if (error) {
     processor->isPrepared = false;
-    addResult(makeNodeInitializationResult(nodeId, false, *error));
+    addResult(makeNodeInitializationResult(nodeId, false, std::move(error)));
     finishPendingNode();
     return;
   }

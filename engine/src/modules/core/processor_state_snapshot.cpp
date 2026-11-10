@@ -44,7 +44,8 @@ public:
   SnapshotInputStream(const juce::MemoryBlock& prefix, const juce::MemoryBlock& payload)
     : parts{&prefix, &payload} {}
   juce::int64 getTotalLength() override {
-    return static_cast<juce::int64>(parts[0]->getSize() + parts[1]->getSize());
+    return static_cast<juce::int64>(parts[0]->getSize()) +
+           static_cast<juce::int64>(parts[1]->getSize());
   }
   juce::int64 getPosition() override {
     return position;

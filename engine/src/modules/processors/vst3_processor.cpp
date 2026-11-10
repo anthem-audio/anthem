@@ -131,7 +131,7 @@ const VST3Processor::ParameterBinding* VST3Processor::ParameterBindings::forJuce
   if (index < 0 || static_cast<size_t>(index) >= parameters.size())
     return nullptr;
   const auto& binding = parameters[static_cast<size_t>(index)];
-  return binding.parameter ? &binding : nullptr;
+  return binding.parameter != nullptr ? &binding : nullptr;
 }
 
 void VST3Processor::parametersReconciled() {
@@ -803,10 +803,10 @@ void VST3Processor::hidePluginGUI() {
 
 void VST3Processor::audioProcessorParameterChanged(
     juce::AudioProcessor* /*processor*/, int parameterIndex, float newValue) {
-  if (!reportingState || !isPrepared || !hasRestoredProjectState)
+  if (!reportingState || !isPrepared || !hasRestoredProjectState || !reportingState->bindings)
     return;
   const auto* binding = reportingState->bindings->forJuceIndex(parameterIndex);
-  if (!binding)
+  if (binding == nullptr)
     return;
   const auto generation = reportingState->notifications.currentGeneration();
   const auto revision = binding->parameter->controlRevision.load(std::memory_order_acquire);
@@ -819,10 +819,10 @@ void VST3Processor::audioProcessorParameterChanged(
 }
 
 void VST3Processor::recordParameterGesture(int parameterIndex, bool isStarting) {
-  if (!reportingState || !isPrepared || !hasRestoredProjectState)
+  if (!reportingState || !isPrepared || !hasRestoredProjectState || !reportingState->bindings)
     return;
   const auto* binding = reportingState->bindings->forJuceIndex(parameterIndex);
-  if (!binding)
+  if (binding == nullptr)
     return;
   const auto generation = reportingState->notifications.currentGeneration();
   const auto revision = binding->parameter->controlRevision.load(std::memory_order_acquire);
@@ -848,7 +848,7 @@ void VST3Processor::audioProcessorParameterChangeGestureEnd(
 
 void VST3Processor::audioProcessorChanged(
     juce::AudioProcessor* /*processor*/, const juce::AudioProcessor::ChangeDetails& details) {
-  if (!reportingState || !isPrepared || !hasRestoredProjectState)
+  if (!reportingState || !isPrepared || !hasRestoredProjectState || !reportingState->bindings)
     return;
   const auto generation = reportingState->notifications.currentGeneration();
   uint32_t flags = (details.latencyChanged ? latencyChangedFlag : 0) |
@@ -857,7 +857,7 @@ void VST3Processor::audioProcessorChanged(
                    (details.nonParameterStateChanged ? nonParameterStateChangedFlag : 0);
   if (details.programChanged || details.parameterInfoChanged) {
     for (const auto& binding : reportingState->bindings->parameters) {
-      if (binding.parameter &&
+      if (binding.parameter != nullptr &&
           binding.parameter->acceptChange(binding.pluginParameter->getValue(),
               binding.parameter->controlRevision.load(std::memory_order_acquire)))
         flags |= parameterSnapshotFlag;

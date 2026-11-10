@@ -104,12 +104,12 @@ public:
     if (targetRead) {
       auto token = std::move(targetRead->token);
       targetRead.reset();
-      files.releaseRead(std::move(token), [](auto) {});
+      files.releaseRead(std::move(token), [](const auto&) {});
     }
     if (recoveryRead) {
       auto token = std::move(recoveryRead->token);
       recoveryRead.reset();
-      files.releaseRead(std::move(token), [](auto) {});
+      files.releaseRead(std::move(token), [](const auto&) {});
     }
   }
   void read(std::string retentionId, FileStorageClient::AccessCompletion callback) {
@@ -182,7 +182,7 @@ public:
     try {
       {
         ProcessorStateSnapshot state(
-            juce::File(recovery ? recoveryRead->absolutePath : targetRead->absolutePath));
+            juce::File((recovery ? recoveryRead : targetRead).value().absolutePath));
         state.restore(*processor);
       }
       processor->prepareToProcess(
@@ -211,7 +211,7 @@ public:
       restoreFailed(recovery, error.what());
     }
   }
-  void restoreFailed(bool recovery, std::string error) {
+  void restoreFailed(bool recovery, const std::string& error) {
     if (recovery) {
       fail("Snapshot recovery failed: " + error);
       return;
@@ -220,7 +220,8 @@ public:
     restore(true);
   }
   void finish(bool rollback, ProcessorSnapshotLoadCompletion callback) {
-    if (complete || (phase != Phase::awaitingModel && !(rollback && phase == Phase::failed))) {
+    const bool canFinish = phase == Phase::awaitingModel || (rollback && phase == Phase::failed);
+    if (complete || !canFinish) {
       callback({.operationId = id,
           .result = nullptr,
           .error = "Snapshot load is not awaiting reconciliation."});
@@ -239,7 +240,7 @@ public:
     try {
       node->getProcessor()->isPrepared = true;
       publication = engine.publishProcessingGraph();
-      if (!publication)
+      if (publication == 0)
         throw std::runtime_error("The processing graph could not be published.");
       phase = Phase::awaitingGraph;
       deadline = juce::Time::getMillisecondCounterHiRes() + 10000;

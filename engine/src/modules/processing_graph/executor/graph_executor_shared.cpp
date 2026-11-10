@@ -154,7 +154,7 @@ void rt_processNode(GraphExecutorState& state, RuntimeNode& node, int numSamples
     return;
   }
   const juce::ScopeGuard releaseProcessingAccess{[processor]() {
-    if (processor)
+    if (processor != nullptr)
       processor->rt_releaseProcessingAccess();
   }};
 

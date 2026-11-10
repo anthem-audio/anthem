@@ -103,7 +103,7 @@ void CommandHandler::processNextCommand() {
     return;
   }
 
-  message.value().visit([this](auto&& value) {
+  message.value().visit([this](auto& value) {
     using Message = std::decay_t<decltype(value)>;
     if constexpr (std::is_constructible_v<Request, Message>) {
       handleRequest(Request{std::move(value)});

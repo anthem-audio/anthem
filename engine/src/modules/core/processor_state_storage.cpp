@@ -86,11 +86,12 @@ private:
 
   FileStorageResult<FileFingerprint> captureAndWrite(const juce::File& destination) {
     const auto processor = node->getProcessor();
-    if (engine && (!engine->project ||
-                      engine->project->processingGraph()->nodes()->find(node->id()) ==
-                          engine->project->processingGraph()->nodes()->end() ||
-                      engine->project->processingGraph()->nodes()->at(node->id()) != node ||
-                      engine->renderController->isRendering()))
+    if (engine != nullptr &&
+        (!engine->project ||
+            engine->project->processingGraph()->nodes()->find(node->id()) ==
+                engine->project->processingGraph()->nodes()->end() ||
+            engine->project->processingGraph()->nodes()->at(node->id()) != node ||
+            engine->renderController->isRendering()))
       return {.value = std::nullopt, .error = "Snapshot capture was interrupted."};
     if (!processor->hasRestoredProjectState)
       return {.value = std::nullopt, .error = "The processor is not initialized."};
@@ -127,11 +128,12 @@ private:
           }
           self->engine->graphProcessor->pauseNode(self->node->id(),
               [self, access = std::move(access)](std::shared_ptr<NodeProcessingPause> pause,
-                  std::optional<std::string> error) mutable {
+                  const std::optional<std::string>& error) mutable {
                 if (error) {
-                  self->releasePreviousRead([self, token = access.value->token, error](auto) {
-                    self->abortAndComplete(token, {.value = std::nullopt, .error = error});
-                  });
+                  self->releasePreviousRead(
+                      [self, token = access.value->token, error](const auto&) {
+                        self->abortAndComplete(token, {.value = std::nullopt, .error = error});
+                      });
                   return;
                 }
                 self->pause = std::move(pause);
@@ -156,19 +158,20 @@ private:
 
   void write(FileStorageResult<FileStorageAccess> access) {
     if (access.error) {
-      releasePreviousRead(
-          [self = shared_from_this(), error = std::move(access.error)](std::optional<std::string>) {
-            self->complete({.value = std::nullopt, .error = error});
-          });
+      releasePreviousRead([self = shared_from_this(), error = std::move(access.error)](
+                              const std::optional<std::string>&) {
+        self->complete({.value = std::nullopt, .error = error});
+      });
       return;
     }
 
     // captureAndWrite closes the stream and frees the buffer before returning.
-    auto captured = captureAndWrite(juce::File(access.value->absolutePath));
+    const auto& grant = access.value.value();
+    auto captured = captureAndWrite(juce::File(grant.absolutePath));
     pause.reset();
     releasePreviousRead(
-        [self = shared_from_this(), token = access.value->token, captured = std::move(captured)](
-            std::optional<std::string> error) mutable {
+        [self = shared_from_this(), token = grant.token, captured = std::move(captured)](
+            const std::optional<std::string>& error) mutable {
           if (captured.error || error) {
             self->abortAndComplete(
                 token, {.value = std::nullopt, .error = captured.error ? captured.error : error});
@@ -197,13 +200,13 @@ void ProcessorStateStorage::capture(const std::shared_ptr<Node>& node,
     FileStorageClient::RelativePathCompletion complete,
     Engine* engine) {
   if (activity->closed || isBusy(node->id()) ||
-      (engine && engine->renderController->isRendering())) {
+      (engine != nullptr && engine->renderController->isRendering())) {
     complete({.value = std::nullopt, .error = "A processor state operation is in progress."});
     return;
   }
   auto processor = node->getProcessor();
   // The master endpoint is stateless and cannot participate in node pauses.
-  if (engine && std::dynamic_pointer_cast<MasterOutputProcessor>(processor)) {
+  if (engine != nullptr && std::dynamic_pointer_cast<MasterOutputProcessor>(processor)) {
     complete({.value = std::string(), .error = std::nullopt});
     return;
   }

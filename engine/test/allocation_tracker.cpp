@@ -43,7 +43,7 @@ void* operator new[](std::size_t size) {
   return ::operator new(size);
 }
 void operator delete(void* pointer) noexcept {
-  if (pointer && anthem::test::trackingAllocations)
+  if (pointer != nullptr && anthem::test::trackingAllocations)
     ++anthem::test::deallocationCount;
   std::free(pointer);
 }
@@ -67,7 +67,7 @@ void* operator new(std::size_t size, std::align_val_t alignment) {
   if (posix_memalign(&result, bytes, size == 0 ? 1 : size) != 0)
     result = nullptr;
 #endif
-  if (result)
+  if (result != nullptr)
     return result;
   throw std::bad_alloc();
 }
@@ -75,7 +75,7 @@ void* operator new[](std::size_t size, std::align_val_t alignment) {
   return ::operator new(size, alignment);
 }
 void operator delete(void* pointer, std::align_val_t) noexcept {
-  if (pointer && anthem::test::trackingAllocations)
+  if (pointer != nullptr && anthem::test::trackingAllocations)
     ++anthem::test::deallocationCount;
 #ifdef _WIN32
   _aligned_free(pointer);
