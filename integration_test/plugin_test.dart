@@ -17,6 +17,7 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -221,32 +222,36 @@ Future<double> _renderRms(
   int renderId,
 ) async {
   final outputPath = files.projectFiles.pathFor('render-$renderId.wav');
-  final completion = session.project.engine.renderApi.events.firstWhere(
-    (event) =>
-        event is RenderCompletedEvent && event.renderId == renderId ||
-        event is RenderFailedEvent && event.renderId == renderId,
-  );
-  await waitForFuture(
-    session.tester,
-    session.project.engine.renderApi.renderAudio(
-      renderId: renderId,
-      outputPath: outputPath,
-      format: RenderAudioFormat.wav,
-      startTick: 0,
-      endTick: 96,
-      includeTail: false,
-      bitDepth: 32,
-      qualityOptionIndex: 0,
-      sampleFormat: RenderAudioSampleFormat.floatingPoint,
-    ),
-    conditionDescription: 'start parameter-state audio render',
-    collectTimeoutDiagnostics: () => session.sessionDiagnostics,
-    checkHealth: session.checkEngine,
-  );
   final result = await waitForFuture(
     session.tester,
-    completion,
-    conditionDescription: 'complete parameter-state audio render',
+    session.services.processingGraphController.runRender((_) async {
+      final completion = Completer<IpcEvent>();
+      final subscription = session.project.engine.renderApi.events.listen((
+        event,
+      ) {
+        if (event is RenderCompletedEvent && event.renderId == renderId ||
+            event is RenderFailedEvent && event.renderId == renderId) {
+          completion.complete(event);
+        }
+      });
+      try {
+        await session.project.engine.renderApi.renderAudio(
+          renderId: renderId,
+          outputPath: outputPath,
+          format: RenderAudioFormat.wav,
+          startTick: 0,
+          endTick: 96,
+          includeTail: false,
+          bitDepth: 32,
+          qualityOptionIndex: 0,
+          sampleFormat: RenderAudioSampleFormat.floatingPoint,
+        );
+        return await completion.future;
+      } finally {
+        await subscription.cancel();
+      }
+    }),
+    conditionDescription: 'render parameter-state audio',
     collectTimeoutDiagnostics: () => session.sessionDiagnostics,
     checkHealth: session.checkEngine,
   );

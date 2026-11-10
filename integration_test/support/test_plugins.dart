@@ -97,7 +97,10 @@ class TestPluginFileSelector extends FileSelectorPlatform {
     String? initialDirectory,
     String? confirmButtonText,
   }) async {
-    if (acceptedTypeGroups?.single.extensions?.single == 'vst3') {
+    if (acceptedTypeGroups?.any(
+          (group) => group.extensions?.contains('vst3') ?? false,
+        ) ??
+        false) {
       expect(
         Platform.isLinux,
         isFalse,

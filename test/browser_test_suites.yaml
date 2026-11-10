@@ -16,7 +16,7 @@ flutter:
   - test/lib
   - codegen/test
 
-# These suites exercise desktop filesystem operations or host build tooling.
+# These suites require desktop files, host build tools, or a built asset bundle.
 # Native IPC, native engine integration, and repository checks are outside the
 # Flutter roots above and continue to run in the existing desktop CI job.
 exclude:
@@ -24,4 +24,7 @@ exclude:
   - test/lib/logic/project_file_codec_test.dart
   - test/lib/logic/main_window_file_test.dart
   - test/lib/widgets/main_window/render_dialog_controller_test.dart
+  # Flutter's browser test server does not build the AssetManifest used here.
+  # The native suite checks every bundled SVG with the same decoder.
+  - test/lib/widgets/basic/icon_test.dart
   - codegen/test/dependency_tracking_integration_test.dart
