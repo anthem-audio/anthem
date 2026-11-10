@@ -96,6 +96,12 @@ std::optional<Response> handleAudioSessionCommand(Request& request) {
   if (rfl::holds_alternative<RenderAudioRequest>(request.variant())) {
     auto& requestAsRenderAudio = rfl::get<RenderAudioRequest>(request.variant());
 
+    if (engine.processorStateStorage.hasPendingOperations()) {
+      return Response(RenderAudioResponse{.success = false,
+          .error = "A processor snapshot operation is in progress.",
+          .renderId = requestAsRenderAudio.renderId,
+          .responseBase = ResponseBase{.id = requestAsRenderAudio.requestBase.get().id}});
+    }
     juce::Logger::writeToLog("Starting render...");
     auto renderResult = engine.renderController->startRender(RenderStartOptions{
         .renderId = requestAsRenderAudio.renderId,

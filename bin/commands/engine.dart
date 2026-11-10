@@ -202,6 +202,12 @@ Some things to keep in mind:
       );
 
       final paths = [
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemFileSystem.js',
+        ),
+        packageRootPath.resolve(
+          'engine/$buildDirectoryName/AnthemFileSystem.wasm',
+        ),
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.js'),
         packageRootPath.resolve('engine/$buildDirectoryName/AnthemEngine.wasm'),
         packageRootPath.resolve(
@@ -211,6 +217,10 @@ Some things to keep in mind:
 
       final flutterWebDirPath = packageRootPath.resolve('web/engine/');
       final flutterWebDir = Directory.fromUri(flutterWebDirPath);
+      final browserTestDir = Directory.fromUri(
+        packageRootPath.resolve('test/.engine/'),
+      );
+      browserTestDir.createSync(recursive: true);
 
       if (!flutterWebDir.existsSync()) {
         flutterWebDir.createSync(recursive: true);
@@ -226,6 +236,11 @@ Some things to keep in mind:
         }
         File.fromUri(path).copySync(
           flutterEngineBinaryPath.toFilePath(windows: Platform.isWindows),
+        );
+        File.fromUri(path).copySync(
+          browserTestDir.uri
+              .resolve(fileName)
+              .toFilePath(windows: Platform.isWindows),
         );
       }
 

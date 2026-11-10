@@ -24,8 +24,8 @@ absolute fixture paths. Nothing is copied to user or system plugin directories.
 Both plugins expose automatable Gain (normalized 0–1, default 0.25) and Invert
 (default false), plus a native JUCE generic editor. JUCE's VST3 wrapper also
 exposes its Bypass parameter, which the host-discovery assertions include.
-State is versioned JSON
-containing those values and an opaque revision counter. Gain edits increment
+State is versioned JSON containing those values and an opaque revision counter.
+The State size parameter adds 0–1024 KiB of padding for bounded storage tests. Gain edits increment
 the counter; state restoration restores its saved value. The counter is not
 exposed as a parameter, so resetting the knobs alone cannot reconstruct it.
 This is fixture state, not a change to the Anthem project format.

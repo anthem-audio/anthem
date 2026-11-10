@@ -26,9 +26,11 @@ import 'package:anthem/logic/disposable_service.dart';
 import 'package:anthem/logic/main_window_controller.dart';
 import 'package:anthem/logic/parameter_controller.dart';
 import 'package:anthem/logic/project_controller.dart';
+import 'package:anthem/logic/processing_graph_controller.dart';
 import 'package:anthem/logic/project_engine_controller.dart';
 import 'package:anthem/logic/render/project_render_controller.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/track_controller.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/model/store.dart';
@@ -83,7 +85,12 @@ final projectViewModelService = ServiceDef<ProjectViewModel>(
 );
 
 final projectStorageService = ServiceDef<ProjectStorage>(
-  create: (_, _) => ProjectStorage.temporary(),
+  create: (project, _) => ProjectStorage.temporary(),
+);
+
+final savedProjectFilesService = ServiceDef<SavedProjectFiles>(
+  create: (_, registry) =>
+      SavedProjectFiles(registry.use(projectStorageService)),
 );
 
 final projectControllerService = ServiceDef<ProjectController>(
@@ -92,15 +99,24 @@ final projectControllerService = ServiceDef<ProjectController>(
   disposePriority: 100,
 );
 
+final processingGraphControllerService = ServiceDef<ProcessingGraphController>(
+  create: (project, _) => ProcessingGraphController(project),
+  disposePriority: 100,
+);
+
 final projectEngineControllerService = ServiceDef<ProjectEngineController>(
-  create: (project, registry) =>
-      ProjectEngineController(project, registry.use(projectControllerService)),
+  create: (project, registry) => ProjectEngineController(
+    project,
+    registry.use(processingGraphControllerService),
+  ),
   disposePriority: 110,
 );
 
 final projectRenderControllerService = ServiceDef<ProjectRenderController>(
-  create: (project, registry) =>
-      ProjectRenderController(project, registry.use(projectControllerService)),
+  create: (project, registry) => ProjectRenderController(
+    project,
+    registry.use(processingGraphControllerService),
+  ),
   disposePriority: 100,
 );
 
@@ -275,7 +291,10 @@ class ServiceRegistry {
   }
 
   ProjectController get projectController => use(projectControllerService);
+  ProcessingGraphController get processingGraphController =>
+      use(processingGraphControllerService);
   ProjectStorage get projectStorage => use(projectStorageService);
+  SavedProjectFiles get savedProjectFiles => use(savedProjectFilesService);
   ProjectEngineController get projectEngineController =>
       use(projectEngineControllerService);
   ProjectRenderController get projectRenderController =>

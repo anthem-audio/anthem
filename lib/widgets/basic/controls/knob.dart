@@ -20,6 +20,7 @@
 import 'dart:math';
 
 import 'package:anthem/visualization/visualization.dart';
+import 'package:anthem/widgets/basic/hint/hint.dart';
 import 'package:anthem/widgets/basic/hint/hint_store.dart';
 import 'package:anthem/widgets/basic/lazy_follower.dart';
 import 'package:anthem/widgets/basic/visualization_builder.dart';
@@ -40,7 +41,7 @@ class Knob extends StatefulWidget {
   final KnobType type;
 
   final double? value;
-  final ParameterUiBinding? parameter;
+  final ParameterUiBinding? parameterBinding;
   final double min;
   final double max;
 
@@ -65,7 +66,7 @@ class Knob extends StatefulWidget {
     this.height,
     this.type = KnobType.normal,
     this.value,
-    this.parameter,
+    this.parameterBinding,
     this.normalizedVisualBaseline,
     this.onValueChanged,
     this.onValueChangeStart,
@@ -76,7 +77,7 @@ class Knob extends StatefulWidget {
     this.hoverHintOverride,
     this.hint,
   }) : min = min ?? (type == KnobType.pan ? -1 : 0),
-       assert(value != null || parameter != null),
+       assert(value != null || parameterBinding != null),
        assert(
          normalizedVisualBaseline == null ||
              (normalizedVisualBaseline >= 0 && normalizedVisualBaseline <= 1),
@@ -101,21 +102,6 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
       (value - widget.min) / (widget.max - widget.min);
   double rawToScaled(double rawValue) =>
       rawValue * (widget.max - widget.min) + widget.min;
-
-  double currentValue([double? automationParameterValue]) {
-    final parameter = widget.parameter;
-    if (parameter == null) {
-      return widget.value!;
-    }
-
-    if (automationParameterValue != null) {
-      return parameter.uiValueForNormalizedParameterValue(
-        automationParameterValue,
-      );
-    }
-
-    return parameter.uiValue;
-  }
 
   int? currentHintId;
 
@@ -173,25 +159,57 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
       sizeMultiplierHelper.setTarget(pressed ? 0.9 : 1);
     }
 
-    Widget buildControl({double? automationParameterValue}) {
-      final value = currentValue(automationParameterValue);
-      final parameter = widget.parameter;
+    Widget buildControl({double? automatedNormalizedValue}) {
+      final binding = widget.parameterBinding;
+      final value = binding == null
+          ? widget.value!
+          : binding.displayValue(
+              automatedNormalizedValue: automatedNormalizedValue,
+            );
       final visualBaseline =
           widget.normalizedVisualBaseline ??
-          (parameter != null
-              ? scaledToRaw(parameter.uiVisualBaseline)
+          (binding != null
+              ? scaledToRaw(binding.uiVisualBaseline)
               : widget.type == KnobType.pan
               ? 0.5
               : 0.0);
 
-      void resetParameterToDefault() {
-        final parameter = widget.parameter;
-        if (parameter == null) {
-          return;
-        }
+      final control = SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: AnimatedBuilder(
+          animation: animationHelper!.animationController,
+          builder: (context, _) {
+            final [sizeMultiplierHelper, trackSizeHelper] =
+                animationHelper!.items;
 
-        parameter.resetToDefault();
-        lastValue = currentValue(automationParameterValue);
+            return CustomPaint(
+              painter: _KnobPainter(
+                value: value == null ? null : scaledToRaw(value),
+                visualBaseline: visualBaseline,
+                sizeMultiplier: sizeMultiplierHelper.animation.value,
+                trackSize: trackSizeHelper.animation.value,
+              ),
+            );
+          },
+        ),
+      );
+
+      if (value == null) {
+        return Hint(
+          hint: [HintSection('', binding!.missingValueMessage!)],
+          child: control,
+        );
+      }
+
+      void resetParameterToDefault() {
+        if (binding == null) return;
+        binding.resetToDefault();
+        lastValue =
+            binding.displayValue(
+              automatedNormalizedValue: automatedNormalizedValue,
+            ) ??
+            value;
         setHint(hover: false);
       }
 
@@ -220,7 +238,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           }
         },
         child: ControlMouseHandler(
-          onDoubleClick: widget.parameter == null
+          onDoubleClick: widget.parameterBinding == null
               ? null
               : resetParameterToDefault,
           onStart: () {
@@ -236,7 +254,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             );
 
             lastValue = value;
-            widget.parameter?.beginChange();
+            widget.parameterBinding?.beginChange();
             widget.onValueChangeStart?.call();
 
             setHint(hover: false);
@@ -255,56 +273,38 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
             }
             animationHelper!.update();
 
-            widget.parameter?.commitChange();
+            widget.parameterBinding?.commitChange();
             widget.onValueChangeEnd?.call(lastValue);
           },
           onChange: (e) {
-            if (widget.parameter == null && widget.onValueChanged == null) {
+            if (widget.parameterBinding == null &&
+                widget.onValueChanged == null) {
               return;
             }
 
             final result = dragController.applyRawDelta(e.delta.dy / 300);
             if (result.changed) {
               final newValue = rawToScaled(result.rawValue);
-              widget.parameter?.updateChange(newValue);
+              widget.parameterBinding?.updateChange(newValue);
               widget.onValueChanged?.call(newValue);
               lastValue = newValue;
             }
 
             setHint(hover: false);
           },
-          child: SizedBox(
-            width: widget.width,
-            height: widget.height,
-            child: AnimatedBuilder(
-              animation: animationHelper!.animationController,
-              builder: (context, _) {
-                final [sizeMultiplierHelper, trackSizeHelper] =
-                    animationHelper!.items;
-
-                return CustomPaint(
-                  painter: _KnobPainter(
-                    value: scaledToRaw(value),
-                    visualBaseline: visualBaseline,
-                    sizeMultiplier: sizeMultiplierHelper.animation.value,
-                    trackSize: trackSizeHelper.animation.value,
-                  ),
-                );
-              },
-            ),
-          ),
+          child: control,
         ),
       );
     }
 
-    if (widget.parameter == null) {
+    if (widget.parameterBinding == null) {
       return buildControl();
     }
 
     return Observer(
       builder: (_) {
         final automationVisualizationId =
-            widget.parameter!.automationVisualizationId;
+            widget.parameterBinding!.automationVisualizationId;
         if (automationVisualizationId == null) {
           return buildControl();
         }
@@ -313,11 +313,13 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
           config: VisualizationSubscriptionConfig.latestDouble(
             automationVisualizationId,
           ),
-          builder: (context, value, engineTime) {
+          builder: (context, automatedNormalizedValue, engineTime) {
             return Observer(
               warnWhenNoObservables: false,
               builder: (_) => buildControl(
-                automationParameterValue: engineTime == null ? null : value,
+                automatedNormalizedValue: engineTime == null
+                    ? null
+                    : automatedNormalizedValue,
               ),
             );
           },
@@ -334,7 +336,7 @@ class _KnobState extends State<Knob> with TickerProviderStateMixin {
 }
 
 class _KnobPainter extends CustomPainter {
-  final double value;
+  final double? value;
   final double visualBaseline;
   final double sizeMultiplier;
   final double trackSize;
@@ -366,11 +368,13 @@ class _KnobPainter extends CustomPainter {
       radius: multipliedSize.width / 2 - (0.5 + trackSize * 0.5),
     );
 
-    final startAngle = pi / 2 + visualBaseline * pi * 2;
-    final valueAngle = (value - visualBaseline) * pi * 2;
+    if (value != null) {
+      final startAngle = pi / 2 + visualBaseline * pi * 2;
+      final valueAngle = (value! - visualBaseline) * pi * 2;
 
-    // Inner arc
-    canvas.drawArc(arcRect, startAngle, valueAngle, false, trackFillPaint);
+      // Inner arc
+      canvas.drawArc(arcRect, startAngle, valueAngle, false, trackFillPaint);
+    }
 
     // Borders
     canvas.drawCircle(center, multipliedSize.width / 2, trackBorderPaint);

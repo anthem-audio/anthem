@@ -58,9 +58,9 @@ void main() {
       project = ProjectModel.create();
       project.engine.processingGraphApi = _UnstartedProcessingGraphApi();
       ServiceRegistry.initializeProject(project);
-      addTearDown(() {
+      addTearDown(() async {
+        await project.dispose();
         ServiceRegistry.removeProject(project.id);
-        project.dispose();
       });
       recordingDialog = RecordingDialog();
       ServiceRegistry.dialogController.initialize(recordingDialog);
@@ -120,99 +120,104 @@ void main() {
     });
   }, skip: kIsWeb);
 
-  test('rack routing skips incompatible devices in the sparse audio chain', () {
-    final project = ProjectModel.create();
-    ServiceRegistry.initializeProject(project);
+  test(
+    'rack routing skips incompatible devices in the sparse audio chain',
+    () async {
+      final project = ProjectModel.create();
+      ServiceRegistry.initializeProject(project);
 
-    try {
-      final track = project.tracks[project.trackOrder.first]!;
-      final idAllocator = project.idAllocator;
+      try {
+        final track = project.tracks[project.trackOrder.first]!;
+        final idAllocator = project.idAllocator;
 
-      final toneGenerator = DeviceFactories.toneGenerator(
-        idAllocator: idAllocator,
-      );
-      project.processingGraph.restoreGraphFragment(toneGenerator.graphFragment);
+        final toneGenerator = DeviceFactories.toneGenerator(
+          idAllocator: idAllocator,
+        );
+        project.processingGraph.restoreGraphFragment(
+          toneGenerator.graphFragment,
+        );
 
-      final gainNodeB = GainProcessorModel.create(idAllocator: idAllocator)
-          .createNode();
-      final audioDeviceB = _audioDevice(
-        project: project,
-        node: gainNodeB,
-        name: 'Gain B',
-      );
-      project.processingGraph.addNode(gainNodeB);
+        final gainNodeB = GainProcessorModel.create(idAllocator: idAllocator)
+            .createNode();
+        final audioDeviceB = _audioDevice(
+          project: project,
+          node: gainNodeB,
+          name: 'Gain B',
+        );
+        project.processingGraph.addNode(gainNodeB);
 
-      final unchainableSourceC = DeviceFactories.toneGenerator(
-        idAllocator: idAllocator,
-      );
-      final nodeC = unchainableSourceC.graphFragment.nodes.single;
-      project.processingGraph.restoreGraphFragment(
-        unchainableSourceC.graphFragment,
-      );
+        final unchainableSourceC = DeviceFactories.toneGenerator(
+          idAllocator: idAllocator,
+        );
+        final nodeC = unchainableSourceC.graphFragment.nodes.single;
+        project.processingGraph.restoreGraphFragment(
+          unchainableSourceC.graphFragment,
+        );
 
-      final gainNodeD = GainProcessorModel.create(idAllocator: idAllocator)
-          .createNode();
-      final audioDeviceD = _audioDevice(
-        project: project,
-        node: gainNodeD,
-        name: 'Gain D',
-      );
-      project.processingGraph.addNode(gainNodeD);
+        final gainNodeD = GainProcessorModel.create(idAllocator: idAllocator)
+            .createNode();
+        final audioDeviceD = _audioDevice(
+          project: project,
+          node: gainNodeD,
+          name: 'Gain D',
+        );
+        project.processingGraph.addNode(gainNodeD);
 
-      final processing = track.requireProcessing;
-      processing.devices.addAll([
-        toneGenerator.device,
-        audioDeviceB,
-        unchainableSourceC.device,
-        audioDeviceD,
-      ]);
+        final processing = track.requireProcessing;
+        processing.devices.addAll([
+          toneGenerator.device,
+          audioDeviceB,
+          unchainableSourceC.device,
+          audioDeviceD,
+        ]);
 
-      ServiceRegistry.forProject(project.id).deviceController
-          .rebuildTrackDeviceRouting(track.id);
+        ServiceRegistry.forProject(project.id).deviceController
+            .rebuildTrackDeviceRouting(track.id);
 
-      expect(
-        _connectionsMatching(
-          project,
-          sourceNodeId: toneGenerator.graphFragment.nodes.single.id,
-          sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
-          destinationNodeId: gainNodeB.id,
-          destinationPortId: GainProcessorModel.audioInputPortId,
-        ),
-        hasLength(1),
-      );
-      expect(
-        _connectionsMatching(
-          project,
-          sourceNodeId: gainNodeB.id,
-          sourcePortId: GainProcessorModel.audioOutputPortId,
-          destinationNodeId: gainNodeD.id,
-          destinationPortId: GainProcessorModel.audioInputPortId,
-        ),
-        hasLength(1),
-      );
-      expect(
-        _connectionsMatching(
-          project,
-          sourceNodeId: gainNodeD.id,
-          sourcePortId: GainProcessorModel.audioOutputPortId,
-          destinationNodeId: processing.utilityNodeId!,
-          destinationPortId: UtilityProcessorModel.audioInputPortId,
-        ),
-        hasLength(1),
-      );
-      expect(
-        project.processingGraph.connections.values.where(
-          (connection) =>
-              connection.destinationNodeId == nodeC.id ||
-              connection.sourceNodeId == nodeC.id,
-        ),
-        isEmpty,
-      );
-    } finally {
-      ServiceRegistry.removeProject(project.id);
-      project.dispose();
-    }
-  });
+        expect(
+          _connectionsMatching(
+            project,
+            sourceNodeId: toneGenerator.graphFragment.nodes.single.id,
+            sourcePortId: ToneGeneratorProcessorModel.audioOutputPortId,
+            destinationNodeId: gainNodeB.id,
+            destinationPortId: GainProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          _connectionsMatching(
+            project,
+            sourceNodeId: gainNodeB.id,
+            sourcePortId: GainProcessorModel.audioOutputPortId,
+            destinationNodeId: gainNodeD.id,
+            destinationPortId: GainProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          _connectionsMatching(
+            project,
+            sourceNodeId: gainNodeD.id,
+            sourcePortId: GainProcessorModel.audioOutputPortId,
+            destinationNodeId: processing.utilityNodeId!,
+            destinationPortId: UtilityProcessorModel.audioInputPortId,
+          ),
+          hasLength(1),
+        );
+        expect(
+          project.processingGraph.connections.values.where(
+            (connection) =>
+                connection.destinationNodeId == nodeC.id ||
+                connection.sourceNodeId == nodeC.id,
+          ),
+          isEmpty,
+        );
+      } finally {
+        await project.dispose();
+        ServiceRegistry.removeProject(project.id);
+      }
+    },
+  );
 }
 
 /// Unit tests stop at the project model; plugin initialization is exercised in

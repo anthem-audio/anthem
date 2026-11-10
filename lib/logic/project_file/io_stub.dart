@@ -17,9 +17,10 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/model/project.dart';
-
-Future<void> writeProjectFileToPath(String path, ProjectModel project) {
+Future<void> writeProjectFileToPath(
+  String path,
+  Map<String, dynamic> projectJson,
+) {
   throw UnsupportedError('Project file path writes are not supported.');
 }
 

@@ -77,11 +77,14 @@ private:
   bool isStillCurrentGraphNode(int64_t nodeId, const std::shared_ptr<Node>& graphNode) const;
   void addResult(std::shared_ptr<ProcessingGraphNodeInitializationResult> result);
   void markNodeInitialized(int64_t nodeId, const std::shared_ptr<Node>& graphNode);
-  void initializeNodeWithoutProcessor(const NodeInitializationWorkItem& workItem);
   void completeProcessorNode(int64_t nodeId,
       const std::weak_ptr<Node>& weakGraphNode,
       const std::weak_ptr<Processor>& weakProcessor,
       std::optional<ProcessorPrepareResult> prepareResult);
+  void completeStateRestoration(int64_t nodeId,
+      const std::weak_ptr<Node>& weakGraphNode,
+      const std::weak_ptr<Processor>& weakProcessor,
+      std::optional<std::string> error);
   void initializeProcessorNode(
       const NodeInitializationWorkItem& workItem, const std::shared_ptr<Processor>& processor);
   void initializeNode(const NodeInitializationWorkItem& workItem);

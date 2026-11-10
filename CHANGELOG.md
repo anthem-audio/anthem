@@ -3,6 +3,8 @@
 ## New
 
 - Desktop projects are now saved in folders; older project files can be opened and saved in the new format
+- Third-party plugin states are now stored as separate files, outside of the main project file
+- Added project ZIP export and browser save/load with bundled plugin state files
 - Updated arranger design
 - Added user-facing errors when a project file fails to load
 - Removed support for multiple arrangements per project

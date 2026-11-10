@@ -46,29 +46,6 @@ class Processor;
 
 class Node : public NodeModelBase {
 public:
-  // This holds a pointer to the associated runtime context for this node, if
-  // one exists. This is used to send live control updates to the audio thread,
-  // via a vector of atomic floats.
-  //
-  // This doesn't risk a use-after-free as of this writing. The lifecycle of the
-  // object in this pointer is as follows:
-  //    1. When the graph is published, contexts are generated and owned by the
-  //       published runtime graph object. The runtimeContext field of each
-  //       AnthemGraphNode is also set during publishing.
-  //    2. After publishing is finished, the resulting object is sent to the
-  //       audio thread.
-  //    3. If and when a new graph is published, this field is updated with a
-  //       fresh context during publishing and before the published result
-  //       is sent to the audio thread.
-  //    4. After the audio thread receives the new published result, it will
-  //       send back the old published result for the main thread to
-  //       deallocate.
-  //
-  // This field is always updated with a new pointer before the graph update is
-  // sent to the audio thread, and the old pointer will not be freed until this
-  // happens, so there is no risk of use-after-free.
-  std::optional<NodeProcessContext*> runtimeContext;
-
   Node(const NodeModelImpl& _impl) : NodeModelBase(_impl) {}
   ~Node() {}
 
@@ -108,7 +85,7 @@ public:
   std::optional<std::shared_ptr<NodePort>> getInputPortById(NodePortDataType dataType, int64_t id);
   std::optional<std::shared_ptr<NodePort>> getOutputPortById(NodePortDataType dataType, int64_t id);
 
-  std::optional<std::shared_ptr<Processor>> getProcessor();
+  std::shared_ptr<Processor> getProcessor();
 private:
   std::vector<std::shared_ptr<NodePort>> audioInputAvailable;
   std::vector<std::shared_ptr<NodePort>> audioOutputAvailable;

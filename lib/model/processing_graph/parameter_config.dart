@@ -49,7 +49,8 @@ class ParameterConfigModel extends _ParameterConfigModel
     super.factoryDefaultValue,
     super.displayMode = ParameterDisplayMode.percent,
     super.unitLabel,
-  });
+    super.normalizedVisualBaseline = 0.0,
+  }) : assert(normalizedVisualBaseline >= 0 && normalizedVisualBaseline <= 1);
 
   ParameterConfigModel.uninitialized()
     : super(id: 0, displayMode: ParameterDisplayMode.percent);
@@ -80,10 +81,15 @@ abstract class _ParameterConfigModel
   @anthemObservable
   String? unitLabel;
 
+  /// Processor-declared value from which knob arcs and automation fill extend.
+  @anthemObservable
+  double normalizedVisualBaseline;
+
   _ParameterConfigModel({
     required this.id,
     this.factoryDefaultValue,
     this.displayMode,
     this.unitLabel,
+    this.normalizedVisualBaseline = 0.0,
   });
 }

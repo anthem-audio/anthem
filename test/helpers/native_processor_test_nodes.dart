@@ -18,6 +18,7 @@
 */
 
 import 'package:anthem/model/model.dart';
+import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:anthem/model/processing_graph/processors/db_meter.dart';
 
@@ -48,6 +49,7 @@ List<NodeModel> createNativeProcessorTestNodes(ProjectModel project) => [
   SimpleMidiGeneratorProcessorModel(nodeId: project.allocateId()).createNode(),
   SimpleVolumeLfoProcessorModel(nodeId: project.allocateId()).createNode(),
   ToneGeneratorProcessorModel(nodeId: project.allocateId()).createNode(),
-  UtilityProcessorModel(nodeId: project.allocateId())
-      .createNode(initialGainDb: -10),
+  UtilityProcessorModel(nodeId: project.allocateId()).createNode()
+    ..initialParameterValues[UtilityProcessorModel.gainPortId] =
+        gainDbToParameterValue(-10),
 ];

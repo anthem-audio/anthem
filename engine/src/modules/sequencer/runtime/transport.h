@@ -212,6 +212,9 @@ public:
       std::unique_ptr<TransportProjectView> projectView, std::unique_ptr<TransportClock> clock);
   ~Transport();
 
+  // Starts periodic cleanup of configurations and events retired by the audio thread.
+  void startMaintenanceTimer();
+
   void setIsPlaying(bool isPlaying);
   void setActiveSequenceId(const std::optional<int64_t>& sequenceId);
   void setActiveTrackId(const std::optional<int64_t>& trackId);

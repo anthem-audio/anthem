@@ -160,7 +160,8 @@ void paintClipList({
         yDrawPositionPixels: (automationBounds.top, automationBounds.bottom),
         points: lane.points,
         normalizedVisualBaseline:
-            parameterPort?.presentation.normalizedVisualBaseline ?? 0.0,
+            parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
+            0.0,
         strokeWidth: 2.0,
         timeViewStart: timeViewStart,
         timeViewEnd: timeViewEnd,

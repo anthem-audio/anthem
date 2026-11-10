@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2024 - 2025 Joshua Wade
+  Copyright (C) 2024 - 2026 Joshua Wade
 
   This file is part of Anthem.
 
@@ -63,11 +63,16 @@ String wrapCodeWithMobXSetter(
   ModelFieldInfo fieldInfo,
   String code,
 ) {
+  if (fieldInfo.fieldElement.isFinal) {
+    // The backing assignment already succeeded. Even null initializes the field.
+    return '''_\$${fieldName}Atom.reportWrite(\$value, null, () {
+  $code
+}, equals: (_, _) => false);''';
+  }
+
   String valueSetter;
 
-  // If the field is late, we need to report that the old value is null. The
-  // only way to tell if the field is previously unset is to catch the error
-  // that is thrown when trying to access it.
+  // A late field may still be unset when its old value is read.
   if (fieldInfo.fieldElement.isLate) {
     valueSetter =
         '''try {

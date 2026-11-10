@@ -161,7 +161,6 @@ class SequenceCompilerTest : public juce::UnitTest {
     }
 
     auto& engine = Engine::getInstance();
-    engine.sequenceStore = std::make_unique<RuntimeSequenceStore>();
     engine.project = std::make_shared<Project>(ProjectModelImpl{
         .sequence = makeSequencer(patterns, arrangement),
         .processingGraph = nullptr,

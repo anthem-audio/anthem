@@ -17,10 +17,16 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
+import 'dart:async';
+
 import 'package:anthem/logic/project_file/version.dart';
 
 typedef ProjectJson = Map<String, dynamic>;
-typedef ProjectFileMigrationCallback = void Function(ProjectJson projectJson);
+
+typedef ProjectFileMigrationCallback = FutureOr<void> Function(
+  ProjectJson projectJson,
+  String? projectDirectory,
+);
 
 /// A raw-JSON migration that produces the project schema used by
 /// [targetVersion].

@@ -226,13 +226,9 @@ bool hasSingleAudioInputAndOutput(anthem::Node& graphNode) {
          graphNode.availableAudioOutputPorts().size() == 1;
 }
 
-std::optional<std::shared_ptr<Processor>> getPreparedProcessor(anthem::Node& graphNode) {
-  auto processor = graphNode.getProcessor();
-  if (!processor.has_value() || processor.value() == nullptr || !processor.value()->isPrepared) {
-    return std::nullopt;
-  }
-
-  return processor;
+Processor* getPreparedProcessor(anthem::Node& graphNode) {
+  const auto processor = graphNode.getProcessor();
+  return processor->isPrepared ? processor.get() : nullptr;
 }
 
 void reserveRuntimeGraphStorage(RuntimeGraph& runtimeGraph,
@@ -293,10 +289,7 @@ void createNodeProcessContexts(RuntimeGraph& runtimeGraph,
         runtimeNode.sourceNode, std::move(bufferBindingsIter->second));
     runtimeNode.nodeProcessContext = &nodeProcessContext;
 
-    auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
-    if (processor.has_value()) {
-      runtimeNode.processor = processor.value().get();
-    }
+    runtimeNode.processor = getPreparedProcessor(*runtimeNode.sourceNode);
   }
 }
 
@@ -444,7 +437,7 @@ void buildSampleBufferSlotInitialization(RuntimeGraph& runtimeGraph,
     }
 
     const auto processor = getPreparedProcessor(*runtimeNode.sourceNode);
-    if (!processor.has_value()) {
+    if (processor == nullptr) {
       continue;
     }
 
@@ -460,12 +453,6 @@ void buildSampleBufferSlotInitialization(RuntimeGraph& runtimeGraph,
   for (size_t slotIndex = 0; slotIndex < slotHasFullInitializer.size(); ++slotIndex) {
     contextBuilder.setSampleBufferSlotClearOnAllocate(
         slotIndex, !slotHasFullInitializer[slotIndex]);
-  }
-}
-
-void publishRuntimeContexts(RuntimeGraph& runtimeGraph) {
-  for (auto& [_, runtimeNode] : runtimeGraph.nodes) {
-    runtimeNode.sourceNode->runtimeContext = runtimeNode.nodeProcessContext;
   }
 }
 
@@ -1388,8 +1375,6 @@ std::unique_ptr<RuntimeGraph> RuntimeGraph::fromProcessingGraph(
     getAndSetPriority(runtimeNode);
   }
 
-  publishRuntimeContexts(runtimeGraph);
-
   return runtimeGraphStorage;
 }
 
@@ -1405,16 +1390,6 @@ RuntimeGraph::~RuntimeGraph() {
 void RuntimeGraph::cleanup() {
   if (hasCleanedUp) {
     return;
-  }
-
-  for (auto& [_, runtimeNode] : nodes) {
-    if (runtimeNode.sourceNode == nullptr || !runtimeNode.sourceNode->runtimeContext.has_value()) {
-      continue;
-    }
-
-    if (runtimeNode.sourceNode->runtimeContext.value() == runtimeNode.nodeProcessContext) {
-      runtimeNode.sourceNode->runtimeContext.reset();
-    }
   }
 
   if (graphProcessContext != nullptr) {

@@ -57,6 +57,45 @@ public:
       expect(relativePath == std::optional<std::string>("plugin states/state.bin"));
     }
 
+    beginTest("A serialized retention ID resolves to a relative file path");
+    {
+      IpcRequestClient requests(comms);
+      FileStorageClient storage(requests);
+      std::optional<std::string> path;
+      const auto resolve = storage.resolveRetention("project-claim", [&](auto result) {
+        expect(!result.error);
+        path = result.value;
+      });
+      requests.handleResponse(ResolveFileRetentionResponse{
+          .relativePath = "plugin states/state.bin", .responseBase = ResponseBase{.id = resolve}});
+      expect(path == std::optional<std::string>("plugin states/state.bin"));
+    }
+
+    beginTest("Requested read fingerprints are delivered with the access grant");
+    {
+      IpcRequestClient requests(comms);
+      FileStorageClient storage(requests);
+      std::optional<FileStorageAccess> access;
+      const auto read = storage.acquireRead(
+          "plugin states/state.bin",
+          [&](auto result) {
+            expect(!result.error);
+            access = std::move(result.value);
+          },
+          true);
+      requests.handleResponse(AcquireFileReadResponse{.token = "read-token",
+          .absolutePath = "/project/plugin states/state.bin",
+          .fingerprint = std::make_shared<FileFingerprint>(FileFingerprint{.byteLength = 3,
+              .sha256 = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"}),
+          .responseBase = ResponseBase{.id = read}});
+      expect(access && access->fingerprint);
+      if (access && access->fingerprint) {
+        expectEquals(access->fingerprint->byteLength, static_cast<int64_t>(3));
+        expectEquals(access->fingerprint->sha256,
+            std::string("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"));
+      }
+    }
+
     beginTest("Retained references return tokens that can be released");
     {
       IpcRequestClient requests(comms);

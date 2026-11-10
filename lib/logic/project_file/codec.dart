@@ -30,9 +30,13 @@ import 'package:anthem/model/project.dart';
 ///
 /// The file container is a small Anthem-specific header followed by a gzip
 /// frame containing the UTF-8 JSON project model.
-Future<Uint8List> encodeProjectFile(ProjectModel project) async {
+Future<Uint8List> encodeProjectFile(ProjectModel project) =>
+    encodeProjectJson(project.toJson());
+
+/// Encodes an already captured document, independently of later model edits.
+Future<Uint8List> encodeProjectJson(Map<String, dynamic> projectJson) async {
   final output = BytesBuilder(copy: false)..add(projectFileHeader);
-  final json = Uint8List.fromList(JsonUtf8Encoder().convert(project.toJson()));
+  final json = Uint8List.fromList(JsonUtf8Encoder().convert(projectJson));
   final compressedJson = await compressGzip(json);
 
   output.add(compressedJson);
@@ -57,7 +61,7 @@ Future<Map<String, dynamic>> decodeProjectFileBytes(List<int> bytes) async {
 
 /// Writes a project to an Anthem project file.
 Future<void> writeProjectFile(String path, ProjectModel project) async {
-  await writeProjectFileToPath(path, project);
+  await writeProjectFileToPath(path, project.toJson());
 }
 
 /// Reads the stored JSON without migrating it.

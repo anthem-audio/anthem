@@ -25,10 +25,15 @@ import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/gain_parameter_mapping.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/logic/commands/device_commands.dart';
+import 'package:anthem/logic/commands/parameter_commands.dart';
+import 'package:anthem/logic/project_file/codec.dart';
+import 'package:anthem/logic/project_file/directory.dart';
+import 'package:anthem/logic/project_file/project_save.dart';
 import 'package:anthem/logic/commands/pattern_commands.dart';
 import 'package:anthem/logic/commands/pattern_note_commands.dart';
 import 'package:anthem/logic/devices/device_factory.dart';
 import 'package:anthem/logic/service_registry.dart';
+import 'package:anthem/logic/storage/project_storage.dart';
 import 'package:anthem/engine_api/engine.dart';
 import 'package:anthem/engine_api/engine_connector_base.dart';
 import 'package:anthem/engine_api/messages/messages.dart';
@@ -307,8 +312,7 @@ void main() {
       final engine = project.engine;
       expect(ServiceRegistry.maybeForProject(project.id), isNull);
       addTearDown(() async {
-        await engine.dispose();
-        project.dispose();
+        await project.dispose();
         await replies.close();
       });
 
@@ -414,8 +418,7 @@ void main() {
         final project = ProjectModel.create(executable);
         final engine = project.engine;
         addTearDown(() async {
-          await engine.dispose();
-          project.dispose();
+          await project.dispose();
         });
 
         await engine.start(initializeAudio: false);
@@ -653,7 +656,10 @@ void main() {
           expect(port.channelCount, expectedWidth, reason: name);
         }
         for (final port in node.controlInputPorts) {
-          if (port.config.parameterConfig == null) continue;
+          final descriptor = config.controlInputPorts.singleWhere(
+            (description) => description.id == port.id,
+          );
+          if (descriptor.parameterDefaultValue == null) continue;
           expect(
             config.controlInputPorts
                 .singleWhere((description) => description.id == port.id)
@@ -661,14 +667,25 @@ void main() {
             isNotNull,
             reason: name,
           );
-          // Discovery supplies processor descriptions, not an echo of creation state.
-          expect(result.parameterValues, isEmpty, reason: name);
+          final value = result.parameterValues.singleWhere(
+            (value) => value.controlPortId == port.id,
+          );
+          expect(
+            value.value,
+            closeTo(
+              node.initialParameterValues[port.id] ??
+                  config.controlInputPorts
+                      .singleWhere((description) => description.id == port.id)
+                      .parameterDefaultValue!,
+              0.000001,
+            ),
+            reason: name,
+          );
         }
       }
     } finally {
-      await project.engine.dispose();
+      await project.dispose();
       ServiceRegistry.removeProject(project.id);
-      project.dispose();
     }
   });
 
@@ -709,10 +726,13 @@ void main() {
     );
     final utility = original.processingGraph.nodes[utilityId]!;
     // Engine declarations must not echo stale or edited project metadata.
-    gain.config.parameterConfig!
-      ..factoryDefaultValue = 0.123
-      ..displayMode = ParameterDisplayMode.percent
-      ..unitLabel = 'stale';
+    gain.config.parameterConfig = ParameterConfigModel(
+      id: gain.id,
+      factoryDefaultValue: 0.123,
+      displayMode: ParameterDisplayMode.percent,
+      unitLabel: 'stale',
+      normalizedVisualBaseline: 0.75,
+    );
     for (final port in [
       ...utility.audioInputPorts,
       ...utility.audioOutputPorts,
@@ -738,8 +758,8 @@ void main() {
         blockSize: 128,
         outputChannelCount: outputChannelCount,
       );
-      await ServiceRegistry.forProject(project.id).projectController
-          .publishProcessingGraph();
+      await ServiceRegistry.forProject(project.id).processingGraphController
+          .publish();
     }
 
     try {
@@ -755,6 +775,7 @@ void main() {
         ParameterDisplayMode.gainDb,
       );
       expect(gain.config.parameterConfig!.unitLabel, 'dB');
+      expect(gain.config.parameterConfig!.normalizedVisualBaseline, 0.0);
       expect(utility.audioOutputPorts.single.config.channelCount, 2);
       expect(
         original.processingGraph
@@ -766,20 +787,50 @@ void main() {
         2,
       );
       expect(original.processingGraph.connections.keys.toSet(), connectionIds);
-      gain.parameterValue = 0.321;
-      final saved = original.toJson();
+      await original.execute(
+        SetParameterValueCommand(
+          nodeId: utility.id,
+          controlPortId: gain.id,
+          oldValue: gain.parameterValue!,
+          newValue: 0.321,
+        ),
+      );
+      final directory = await Directory.systemTemp.createTemp(
+        'anthem-native-snapshot-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final document = '${directory.path}/Native/Native.anthem';
+      final prepared = await PreparedProjectSave.prepare(
+        original,
+        services.projectStorage,
+      );
+      try {
+        await writeProjectDirectory(document, prepared, create: true);
+      } finally {
+        await prepared.close();
+      }
+      final saved = await readProjectFile(document);
       await services.projectEngineController.stop();
       ServiceRegistry.removeProject(original.id);
       final reopened = ProjectModel.fromJson(
         saved,
         enginePathOverride: executable,
+      )..filePath = document;
+      final reopenedServices = ServiceRegistry.initializeProject(reopened);
+      final reopenedStorage = ProjectStorage(
+        rootDirectory: '${directory.path}/Native',
       );
-      ServiceRegistry.initializeProject(reopened);
+      await reopenedStorage.restoreProjectFiles(
+        Map<String, String>.from(
+          jsonDecode(saved['fileRetentions'] as String) as Map,
+        ),
+      );
+      reopenedServices.register(reopenedStorage);
       try {
         await prepare(reopened, outputChannelCount: 4);
         final restoredGain = reopened.processingGraph.nodes[utilityId]!
             .getPortById(UtilityProcessorModel.gainPortId);
-        expect(restoredGain.parameterValue, 0.321);
+        expect(restoredGain.parameterValue, closeTo(0.321, 0.000001));
         expect(restoredGain.parameterResetTarget, resetValue);
         expect(
           restoredGain.config.parameterConfig!.factoryDefaultValue,
@@ -795,52 +846,62 @@ void main() {
           4,
         );
       } finally {
-        await reopened.engine.dispose();
+        await reopened.dispose();
+        await reopenedStorage.close();
         ServiceRegistry.removeProject(reopened.id);
-        reopened.dispose();
       }
     } finally {
-      await original.engine.dispose();
+      await original.dispose();
       ServiceRegistry.removeProject(original.id);
-      original.dispose();
     }
   });
 
-  test('failed plugin initialization preserves saved state during capture', () async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    final project = ProjectModel.create(
-      enginePath!.toFilePath(windows: Platform.isWindows),
-    );
-    final node = VST3ProcessorModel.create(
-      idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
-      vst3Path: '/missing-anthem-integration-fixture.vst3',
-    ).createNode();
-    const savedState = 'saved opaque plugin state';
-    node.processorState = savedState;
-    // A failed re-prepare must also revoke a previous successful capture gate.
-    node.markStateRestored();
-    project.processingGraph.addNode(node);
-    final services = ServiceRegistry.initializeProject(project);
-    try {
-      await services.projectEngineController.start(startAudio: false);
-      await project.engine.renderApi.startRenderAudioSession(
-        sampleRate: 48000,
-        blockSize: 128,
-        outputChannelCount: 2,
+  test(
+    'failed plugin initialization preserves saved state during capture',
+    () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      final project = ProjectModel.create(
+        enginePath!.toFilePath(windows: Platform.isWindows),
       );
-      await services.projectController.publishProcessingGraph();
-      expect(project.engine.isRunning, isTrue);
-      expect(node.stateRestoredCompleter.isCompleted, isFalse);
-      expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);
-      await node.updateStateFromEngine();
-      expect(node.processorState, savedState);
-      expect(node.toJson()['processorState'], savedState);
-    } finally {
-      await project.engine.dispose();
-      ServiceRegistry.removeProject(project.id);
-      project.dispose();
-    }
-  });
+      final node = VST3ProcessorModel.create(
+        idAllocator: ProjectEntityIdAllocator.test(project.allocateId),
+        vst3Path: '/missing-anthem-integration-fixture.vst3',
+      ).createNode();
+
+      // A failed re-prepare must also revoke a previous successful initialization.
+      node.markInitialized();
+      project.processingGraph.addNode(node);
+      final services = ServiceRegistry.initializeProject(project);
+      final store = await services.projectStorage.assetStore;
+      final scope = store.openScope();
+      final write = await scope.beginWrite('plugin states');
+      await File(write.absolutePath).writeAsBytes([1, 2, 3]);
+      final savedState = await scope.commitWrite(write.token);
+      await scope.close();
+      final storage = ServiceRegistry.forProject(project.id).projectStorage;
+      final retentionId = storage.projectFiles.retain(savedState);
+      node.processorStateRetentionId = retentionId;
+      try {
+        await services.projectEngineController.start(startAudio: false);
+        await project.engine.renderApi.startRenderAudioSession(
+          sampleRate: 48000,
+          blockSize: 128,
+          outputChannelCount: 2,
+        );
+        await services.processingGraphController.publish();
+        expect(project.engine.isRunning, isTrue);
+        expect(node.initializationState, NodeInitializationState.failed);
+        expect(node.getAllPorts().every((port) => !port.isAvailable), isTrue);
+        await node.updateStateFromEngine();
+        expect(node.processorStateRetentionId, retentionId);
+        expect(node.toJson()['processorStateRetentionId'], retentionId);
+      } finally {
+        await project.dispose();
+        await services.projectStorage.discard();
+        ServiceRegistry.removeProject(project.id);
+      }
+    },
+  );
 
   group('Model sync tests', () {
     late ProjectModel project;

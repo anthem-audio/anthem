@@ -166,8 +166,10 @@ Transport::Transport(
   rt_playheadJumpEvent = nullptr;
   rt_playheadJumpEventForSeek = nullptr;
   rt_playheadJumpEventForStart = nullptr;
+}
 
-  this->startTimer(100);
+void Transport::startMaintenanceTimer() {
+  startTimer(100);
 }
 
 Transport::~Transport() {

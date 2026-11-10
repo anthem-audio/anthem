@@ -99,12 +99,9 @@ std::shared_ptr<MasterOutputProcessor> getMasterOutputProcessor() {
     return nullptr;
   }
 
-  auto masterOutputProcessorOpt = masterOutputNodeIter->second->getProcessor();
-  if (!masterOutputProcessorOpt.has_value()) {
-    return nullptr;
-  }
+  auto masterOutputModelProcessor = masterOutputNodeIter->second->getProcessor();
 
-  return std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputProcessorOpt.value());
+  return std::dynamic_pointer_cast<MasterOutputProcessor>(masterOutputModelProcessor);
 }
 
 bool containsInt(std::initializer_list<int64_t> values, int64_t value) {

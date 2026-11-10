@@ -427,7 +427,9 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
             ),
           AnthemMenuItem(
             text: kIsWeb ? 'Download project...' : 'Save as...',
-            hint: 'Save the active project to a new location',
+            hint: kIsWeb
+                ? 'Download the active project and its assets as a ZIP file'
+                : 'Save the active project to a new location',
             onSelected: () {
               mainWindowController.saveProject(
                 activeProject.id,
@@ -436,6 +438,17 @@ class _ApplicationMenuState extends State<_ApplicationMenu> {
               );
             },
           ),
+          if (!kIsWeb)
+            AnthemMenuItem(
+              text: 'Export to zip...',
+              hint: 'Export the active project and its assets to a ZIP file',
+              onSelected: () {
+                mainWindowController.exportProjectZip(
+                  activeProject.id,
+                  dialogController: dialogController,
+                );
+              },
+            ),
           if (!kIsWeb)
             AnthemMenuItem(
               text: 'Render...',

@@ -19,15 +19,19 @@
 
 #include "console_logger.h"
 #include "modules/core/engine_api_message_test.h"
+#include "modules/core/engine_test.h"
 #include "modules/core/file_storage_client_test.h"
 #include "modules/core/global_visualization_sources_test.h"
 #include "modules/core/ipc_request_client_test.h"
+#include "modules/core/processor_snapshot_load_test.h"
+#include "modules/core/processor_state_storage_test.h"
 #include "modules/core/sequencer_test.h"
 #include "modules/core/spsc_record_ring_buffer_test.h"
 #include "modules/core/visualization_broker_test.h"
 #include "modules/core/visualization_record_test.h"
 #include "modules/processing_graph/model/processing_graph_model_helpers_test.h"
 #include "modules/processing_graph/model/runtime_graph_test.h"
+#include "modules/processing_graph/node_processing_test.h"
 #include "modules/processing_graph/processor/event_buffer_test.h"
 #include "modules/processing_graph/runtime/graph_process_context_test.h"
 #include "modules/processing_graph/runtime/node_process_context_test.h"
@@ -41,6 +45,7 @@
 #include "modules/processors/sequence_automation_provider_test.h"
 #include "modules/processors/sequence_note_provider_test.h"
 #include "modules/processors/utility_test.h"
+#include "modules/processors/vst3_processor_reporting_test.h"
 #include "modules/render/render_tail_detector_test.h"
 #include "modules/sequencer/compiler/automation_sequence_compiler_test.h"
 #include "modules/sequencer/compiler/sequence_compiler_test.h"
@@ -50,6 +55,7 @@
 #include "modules/sequencer/runtime/transport_test.h"
 #include "modules/util/arena_allocator_test.h"
 #include "modules/util/note_tracker_test.h"
+#include "modules/util/recoverable_notification_queue_test.h"
 #include "modules/util/ring_buffer_test.h"
 
 #include <juce_core/juce_core.h>
@@ -61,6 +67,13 @@ int main(int /* argc */, char** /* argv */) {
 
   juce::UnitTestRunner runner;
   runner.runAllTests();
+
+  // Tests may use the engine singleton without running the application loop.
+  // Release its services before JUCE and the visualization broker are destroyed.
+  if (anthem::Engine::hasInstance()) {
+    anthem::Engine::getInstance().shutdown();
+    anthem::Engine::cleanup();
+  }
 
   int resultCount = runner.getNumResults();
   int failureCount = 0;

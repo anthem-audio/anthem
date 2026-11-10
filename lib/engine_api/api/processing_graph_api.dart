@@ -29,13 +29,62 @@ class ProcessingGraphNodeInitialization {
   });
 }
 
-/// This class is an API for the processing graph in the Anthem Engine. It can
-/// be used to add and remove nodes, and to connect and disconnect existing
-/// nodes.
+/// Individual processing-graph requests to the engine. Application workflows
+/// are coordinated by ProcessingGraphController.
 class ProcessingGraphApi {
   final Engine _engine;
 
   ProcessingGraphApi(this._engine);
+
+  final _pendingEdits = <Id, Set<Future<ProcessingGraphParameterValue>>>{};
+
+  /// Waits for already submitted edits before capturing/replacing state.
+  Future<void> waitForPendingParameterEdits(Id nodeId) =>
+      Future.wait(_pendingEdits[nodeId]?.toList() ?? []).then((_) {});
+
+  /// Captures a snapshot and hands its retention token to the UI.
+  /// The engine will not use or release the token after returning it. Adopt it
+  /// with Engine.adoptReturnedFileRetention to retain it beyond this session.
+  /// Application callers should use ProcessingGraphController.saveSnapshot.
+  Future<String> saveSnapshot(Id nodeId) async {
+    final response = await _engine._request(
+      SaveProcessorSnapshotRequest(id: _engine._getRequestId(), nodeId: nodeId),
+      timeout: const Duration(seconds: 30),
+    ) as SaveProcessorSnapshotResponse;
+    if (response.error != null || response.retentionId == null) {
+      throw StateError(response.error ?? 'No snapshot retention was returned.');
+    }
+    return response.retentionId!;
+  }
+
+  /// Begins replacement and returns descriptions while the node stays paused.
+  /// The caller must reconcile the model, then finish or recover the operation.
+  Future<LoadProcessorSnapshotResponse> loadSnapshot(
+    Id nodeId, {
+    required String retentionId,
+    required String recoveryRetentionId,
+  }) async => await _engine._request(
+    LoadProcessorSnapshotRequest(
+      id: _engine._getRequestId(),
+      nodeId: nodeId,
+      retentionId: retentionId,
+      recoveryRetentionId: recoveryRetentionId,
+    ),
+    timeout: const Duration(seconds: 30),
+  ) as LoadProcessorSnapshotResponse;
+
+  /// Publishes the reconciled graph and resumes, or restores recovery state.
+  Future<LoadProcessorSnapshotResponse> finishSnapshotLoad(
+    int operationId, {
+    bool rollback = false,
+  }) async => await _engine._request(
+    FinishProcessorSnapshotLoadRequest(
+      id: _engine._getRequestId(),
+      operationId: operationId,
+      rollback: rollback,
+    ),
+    timeout: const Duration(seconds: 30),
+  ) as LoadProcessorSnapshotResponse;
 
   /// Initializes any processing graph nodes that have not been initialized by
   /// the engine yet.
@@ -103,46 +152,71 @@ class ProcessingGraphApi {
     }
   }
 
-  /// Pushes a serialized plugin state blob into the engine for the given node.
-  void setPluginState(Id nodeId, String state) {
-    final id = _engine._getRequestId();
-
-    final request = SetPluginStateRequest(id: id, nodeId: nodeId, state: state);
-
-    _engine._requestNoReply(request);
-  }
-
-  /// Sets a normalized third-party plugin parameter value immediately.
-  void setPluginParameterValue(Id nodeId, int controlPortId, double value) {
-    if (!_engine.isRunning) {
-      return;
+  /// Updates an engine-owned base value and returns the accepted setting.
+  Future<ProcessingGraphParameterValue> setParameterValue(
+    Id nodeId,
+    int controlPortId,
+    double value,
+  ) {
+    final node = _engine.project.processingGraph.nodes[nodeId];
+    if (node == null || !node.canEditParameters) {
+      return Future.error(
+        StateError('The processor is not ready for parameter edits.'),
+      );
+    }
+    final pending = _setParameterValue(nodeId, controlPortId, value);
+    final edits = _pendingEdits.putIfAbsent(nodeId, () => {});
+    edits.add(pending);
+    void remove() {
+      edits.remove(pending);
+      if (edits.isEmpty) _pendingEdits.remove(nodeId);
     }
 
-    final id = _engine._getRequestId();
-
-    final request = SetPluginParameterValueRequest(
-      id: id,
-      nodeId: nodeId,
-      controlPortId: controlPortId,
-      value: value,
+    pending.then<void>(
+      (_) => remove(),
+      onError: (Object _, StackTrace _) => remove(),
     );
-
-    _engine._requestNoReply(
-      request,
-      startupBehavior: StartupSendBehavior.dropDuringStartup,
-    );
+    return pending;
   }
 
-  /// Reads the current serialized plugin state blob from the engine.
-  Future<String> getPluginState(Id nodeId) async {
-    final id = _engine._getRequestId();
+  Future<ProcessingGraphParameterValue> _setParameterValue(
+    Id nodeId,
+    int controlPortId,
+    double value,
+  ) async {
+    if (!_engine.isRunning) throw StateError('The engine is not running.');
+    final response = await _engine._request(
+      SetProcessorParameterValueRequest(
+        id: _engine._getRequestId(),
+        nodeId: nodeId,
+        controlPortId: controlPortId,
+        value: value,
+      ),
+    ) as SetProcessorParameterValueResponse;
+    if (response.error != null || response.parameterValue == null) {
+      throw StateError(
+        response.error ?? 'The engine returned no accepted parameter value.',
+      );
+    }
+    return response.parameterValue!;
+  }
 
-    final request = GetPluginStateRequest(id: id, nodeId: nodeId);
-
-    final response =
-        (await _engine._request(request)) as GetPluginStateResponse;
-
-    return response.state;
+  /// Captures base parameters and private state into the project's asset store.
+  ///
+  /// Returns its relative path, or null if the processor has no stored state.
+  /// Unchanged contents reuse the previous file. Capture failures throw without
+  /// replacing the model's existing reference.
+  Future<String?> captureProcessorState(Id nodeId) async {
+    final request = CaptureProcessorStateRequest(
+      id: _engine._getRequestId(),
+      nodeId: nodeId,
+    );
+    final response = await _engine._request(
+      request,
+      timeout: const Duration(seconds: 30),
+    ) as CaptureProcessorStateResponse;
+    if (response.error != null) throw StateError(response.error!);
+    return response.relativePath;
   }
 
   /// Opens the native plugin editor window for the given third-party plugin

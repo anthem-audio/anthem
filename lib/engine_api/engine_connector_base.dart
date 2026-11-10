@@ -48,11 +48,13 @@ abstract class EngineConnectorBase {
 
   late final Future<bool> onInit;
 
-  /// Desktop process observations. In-process connectors have no child PID.
+  /// Child process ID, when the connector owns a separate process.
   int? get processId => null;
+
+  /// Exit status once the connector confirms that its runtime has exited.
   int? get processExitCode => null;
 
-  /// Releases the connector and waits for any owned process to exit.
+  /// Closes the connection and waits until its runtime has stopped using files.
   Future<void> shutdown({Duration timeout = const Duration(seconds: 5)}) async {
     dispose();
   }

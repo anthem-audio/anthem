@@ -31,19 +31,19 @@ ProjectFileVersion _version(String value) {
 
 void main() {
   group('migrateProjectJson', () {
-    test('short-circuits a project saved in the current version', () {
+    test('short-circuits a project saved in the current version', () async {
       var migrationWasCalled = false;
       final projectJson = <String, dynamic>{
         _savedVersionKey: currentProjectFileSoftwareVersion,
       };
 
-      final result = migrateProjectJson(
+      final result = await migrateProjectJson(
         projectJson,
         migrations: [
           ProjectFileMigration(
             // This would fail registry validation if the registry were read.
             targetVersion: _version('0.0.0-prealpha.3'),
-            migrate: (_) => migrationWasCalled = true,
+            migrate: (_, _) => migrationWasCalled = true,
           ),
         ],
       );
@@ -52,18 +52,24 @@ void main() {
       expect(migrationWasCalled, isFalse);
     });
 
-    test('retags a compatible old project when no migration is needed', () {
-      final projectJson = <String, dynamic>{
-        _savedVersionKey: '0.0.0-prealpha.1',
-      };
+    test(
+      'retags a compatible old project when no migration is needed',
+      () async {
+        final projectJson = <String, dynamic>{
+          _savedVersionKey: '0.0.0-prealpha.1',
+        };
 
-      final result = migrateProjectJson(projectJson, migrations: const []);
+        final result = await migrateProjectJson(
+          projectJson,
+          migrations: const [],
+        );
 
-      expect(result, same(projectJson));
-      expect(result[_savedVersionKey], currentProjectFileSoftwareVersion);
-    });
+        expect(result, same(projectJson));
+        expect(result[_savedVersionKey], currentProjectFileSoftwareVersion);
+      },
+    );
 
-    test('applies every later migration in registry order', () {
+    test('applies every later migration in registry order', () async {
       final versionsSeenByMigrations = <String>[];
       final projectJson = <String, dynamic>{
         _savedVersionKey: '0.0.0-prealpha.1',
@@ -72,28 +78,28 @@ void main() {
       final migrations = [
         ProjectFileMigration(
           targetVersion: _version('0.0.0-prealpha.2'),
-          migrate: (json) {
+          migrate: (json, _) {
             versionsSeenByMigrations.add(json[_savedVersionKey] as String);
             (json['migrationSteps'] as List<int>).add(2);
           },
         ),
         ProjectFileMigration(
           targetVersion: _version('0.0.0-prealpha.3'),
-          migrate: (json) {
+          migrate: (json, _) {
             versionsSeenByMigrations.add(json[_savedVersionKey] as String);
             (json['migrationSteps'] as List<int>).add(3);
           },
         ),
         ProjectFileMigration(
           targetVersion: _version('0.0.0-prealpha.4'),
-          migrate: (json) {
+          migrate: (json, _) {
             versionsSeenByMigrations.add(json[_savedVersionKey] as String);
             (json['migrationSteps'] as List<int>).add(4);
           },
         ),
       ];
 
-      migrateProjectJson(
+      await migrateProjectJson(
         projectJson,
         migrations: migrations,
         currentVersion: _version('0.0.0-prealpha.4'),
@@ -108,7 +114,7 @@ void main() {
       expect(projectJson[_savedVersionKey], '0.0.0-prealpha.4');
     });
 
-    test('skips a migration matching the saved version', () {
+    test('skips a migration matching the saved version', () async {
       final appliedVersions = <String>[];
       final migrations = [
         for (final value in [
@@ -118,11 +124,11 @@ void main() {
         ])
           ProjectFileMigration(
             targetVersion: _version(value),
-            migrate: (_) => appliedVersions.add(value),
+            migrate: (_, _) => appliedVersions.add(value),
           ),
       ];
 
-      migrateProjectJson(
+      await migrateProjectJson(
         <String, dynamic>{_savedVersionKey: '0.0.0-prealpha.2'},
         migrations: migrations,
         currentVersion: _version('0.0.0-prealpha.4'),
@@ -131,17 +137,17 @@ void main() {
       expect(appliedVersions, ['0.0.0-prealpha.3', '0.0.0-prealpha.4']);
     });
 
-    test('uses numeric extra ordering to select migrations', () {
+    test('uses numeric extra ordering to select migrations', () async {
       final appliedVersions = <String>[];
       final migrations = [
         for (final value in ['0.0.0-prealpha.2', '0.0.0-prealpha.10'])
           ProjectFileMigration(
             targetVersion: _version(value),
-            migrate: (_) => appliedVersions.add(value),
+            migrate: (_, _) => appliedVersions.add(value),
           ),
       ];
 
-      migrateProjectJson(
+      await migrateProjectJson(
         <String, dynamic>{_savedVersionKey: '0.0.0-prealpha.2'},
         migrations: migrations,
         currentVersion: _version('0.0.0-prealpha.10'),
@@ -150,22 +156,22 @@ void main() {
       expect(appliedVersions, ['0.0.0-prealpha.10']);
     });
 
-    test('rejects missing, non-string, and malformed versions', () {
+    test('rejects missing, non-string, and malformed versions', () async {
       for (final projectJson in <Map<String, dynamic>>[
         {},
         {_savedVersionKey: 1},
         {_savedVersionKey: 'not-a-version'},
       ]) {
-        expect(
-          () => migrateProjectJson(projectJson),
+        await expectLater(
+          migrateProjectJson(projectJson),
           throwsA(isA<InvalidProjectFileException>()),
         );
       }
     });
 
-    test('rejects versions outside the supported range', () {
-      expect(
-        () => migrateProjectJson(<String, dynamic>{
+    test('rejects versions outside the supported range', () async {
+      await expectLater(
+        migrateProjectJson(<String, dynamic>{
           _savedVersionKey: '0.0.0-prealpha.0',
         }),
         throwsA(
@@ -182,8 +188,8 @@ void main() {
               ),
         ),
       );
-      expect(
-        () => migrateProjectJson(<String, dynamic>{
+      await expectLater(
+        migrateProjectJson(<String, dynamic>{
           _savedVersionKey: '0.0.0-prealpha.3',
         }),
         throwsA(
@@ -202,23 +208,23 @@ void main() {
       );
     });
 
-    test('wraps migration errors with source and target versions', () {
+    test('wraps migration errors with source and target versions', () async {
       final cause = StateError('migration failed');
       final projectJson = <String, dynamic>{
         _savedVersionKey: '0.0.0-prealpha.1',
       };
 
-      expect(
-        () => migrateProjectJson(
+      await expectLater(
+        migrateProjectJson(
           projectJson,
           migrations: [
             ProjectFileMigration(
               targetVersion: _version('0.0.0-prealpha.2'),
-              migrate: (_) {},
+              migrate: (_, _) {},
             ),
             ProjectFileMigration(
               targetVersion: _version('0.0.0-prealpha.3'),
-              migrate: (_) => throw cause,
+              migrate: (_, _) => throw cause,
             ),
           ],
           currentVersion: _version('0.0.0-prealpha.3'),
@@ -241,8 +247,8 @@ void main() {
       expect(projectJson[_savedVersionKey], '0.0.0-prealpha.2');
     });
 
-    test('rejects unordered and duplicate migrations', () {
-      void noOp(Map<String, dynamic> _) {}
+    test('rejects unordered and duplicate migrations', () async {
+      void noOp(Map<String, dynamic> _, String? _) {}
 
       for (final migrations in [
         [
@@ -266,8 +272,8 @@ void main() {
           ),
         ],
       ]) {
-        expect(
-          () => migrateProjectJson(
+        await expectLater(
+          migrateProjectJson(
             <String, dynamic>{_savedVersionKey: '0.0.0-prealpha.1'},
             migrations: migrations,
             currentVersion: _version('0.0.0-prealpha.3'),
@@ -277,14 +283,14 @@ void main() {
       }
     });
 
-    test('rejects migrations newer than the current version', () {
-      expect(
-        () => migrateProjectJson(
+    test('rejects migrations newer than the current version', () async {
+      await expectLater(
+        migrateProjectJson(
           <String, dynamic>{_savedVersionKey: '0.0.0-prealpha.1'},
           migrations: [
             ProjectFileMigration(
               targetVersion: _version('0.0.0-prealpha.3'),
-              migrate: (_) {},
+              migrate: (_, _) {},
             ),
           ],
         ),

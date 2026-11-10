@@ -62,7 +62,7 @@ Future<void> startOfflinePluginProcessing(AppTestSession session) async {
 
 Future<void> publishPluginGraph(AppTestSession session) => waitForFuture(
   session.tester,
-  session.services.projectController.publishProcessingGraph(),
+  session.services.processingGraphController.publish(),
   conditionDescription:
       'plugin initialization, discovered ports, and graph publication',
   collectTimeoutDiagnostics: () => session.sessionDiagnostics,

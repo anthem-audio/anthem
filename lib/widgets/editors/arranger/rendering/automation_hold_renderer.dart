@@ -96,7 +96,8 @@ void paintAutomationHoldSegments({
           contentTop: contentBounds.contentTop,
           contentBottom: contentBounds.contentBottom,
           normalizedVisualBaseline:
-              parameterPort?.presentation.normalizedVisualBaseline ?? 0.0,
+              parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
+              0.0,
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
         );
@@ -130,7 +131,8 @@ void paintAutomationHoldSegments({
           contentTop: contentBounds.contentTop,
           contentBottom: contentBounds.contentBottom,
           normalizedVisualBaseline:
-              parameterPort?.presentation.normalizedVisualBaseline ?? 0.0,
+              parameterPort?.config.parameterConfig?.normalizedVisualBaseline ??
+              0.0,
           timeViewStart: timeViewStart,
           timeViewEnd: timeViewEnd,
         );

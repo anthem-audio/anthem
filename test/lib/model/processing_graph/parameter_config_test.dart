@@ -17,19 +17,14 @@
   along with Anthem. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import 'package:anthem/helpers/project_entity_id_allocator.dart';
-import 'package:anthem/model/processing_graph/node.dart';
 import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
-import 'package:anthem/model/processing_graph/parameter_presentation.dart';
-import 'package:anthem/model/processing_graph/processors/balance.dart';
-import 'package:anthem/model/processing_graph/processors/utility.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('presentation, factory default, instance value and reset target are independent', () {
+  test('cached descriptions and values round-trip independently of reset overrides', () {
     for (final mode in ParameterDisplayMode.values) {
       for (final baseline in [0.0, 0.25, 0.5, 1.0]) {
         final port = NodePortModel(
@@ -41,122 +36,62 @@ void main() {
               id: 1,
               factoryDefaultValue: 0.75,
               displayMode: mode,
+              normalizedVisualBaseline: baseline,
             ),
-          ),
-          presentation: ParameterPresentationModel(
-            normalizedVisualBaseline: baseline,
           ),
           initialParameterValue: 0.1,
           parameterResetValue: 0.2,
         );
         final restored = NodePortModel.fromJson(port.toJson());
-        expect(restored.presentation.normalizedVisualBaseline, baseline);
+        expect(
+          restored.config.parameterConfig!.normalizedVisualBaseline,
+          baseline,
+        );
+        expect(restored.config.parameterConfig!.displayMode, mode);
+        expect(restored.config.parameterConfig!.factoryDefaultValue, 0.75);
         expect(restored.parameterValue, 0.1);
         expect(restored.parameterResetTarget, 0.2);
-        expect(restored.config.parameterConfig!.factoryDefaultValue, 0.75);
         final engineJson = port.toJson(forEngine: true, forProjectFile: false);
-        expect(engineJson, isNot(contains('presentation')));
+        expect(engineJson, isNot(contains('parameterValue')));
         expect(engineJson, isNot(contains('parameterResetValue')));
-        expect(engineJson, isNot(contains('resolvedConnections')));
-        expect(port.toJson(), isNot(contains('resolvedConnections')));
+        expect(port.toJson(), isNot(contains('presentation')));
         expect(port.toJson(), isNot(contains('isAvailable')));
+        restored.pendingParameterValue = 0.9;
+        expect(restored.parameterValueOrResetTarget, 0.1);
+        restored.parameterValue = null;
+        expect(restored.parameterValueOrResetTarget, 0.2);
+        restored.parameterResetValue = null;
+        expect(restored.parameterValueOrResetTarget, 0.75);
       }
     }
   });
 
-  test('port import requires current presentation metadata', () {
+  test('pending endpoints need no parameter description to round-trip', () {
     final port = NodePortModel(
       id: 1,
       nodeId: 2,
       config: NodePortConfigModel(dataType: NodePortDataType.control),
     );
-    final json = port.toJson()..remove('presentation');
-    expect(() => NodePortModel.fromJson(json), throwsA(isA<TypeError>()));
+    final restored = NodePortModel.fromJson(port.toJson());
+    expect(restored.config.parameterConfig, isNull);
+    expect(restored.parameterValue, isNull);
+    expect(restored.parameterResetValue, isNull);
   });
 
-  test('presentation validates saved values', () {
-    for (final value in [
-      -0.1,
-      1.1,
-      double.nan,
-      double.infinity,
-      'center',
-      null,
-    ]) {
-      expect(
-        () => ParameterPresentationModel.fromJson({
-          'normalizedVisualBaseline': value,
-        }),
-        throwsFormatException,
+  test(
+    'project reset overrides remain excluded from engine synchronization',
+    () {
+      final port = NodePortModel(
+        id: 1,
+        nodeId: 2,
+        config: NodePortConfigModel(dataType: NodePortDataType.control),
       );
-    }
-    expect(
-      () => ParameterPresentationModel.fromJson({}),
-      throwsFormatException,
-    );
-  });
-
-  test('presentation changes stay in the UI', () {
-    final port = NodePortModel(
-      id: 1,
-      nodeId: 2,
-      config: NodePortConfigModel(dataType: NodePortDataType.control),
-    );
-    port.isTopLevelModel = true;
-    port.setParentPropertiesOnChildren();
-    final changes = <ModelChangeEvent>[];
-    port.addRawFieldChangedListener(changes.add);
-    port.presentation.normalizedVisualBaseline = 0.25;
-    port.parameterResetValue = 0.2;
-    expect(changes, hasLength(2));
-    expect(changes.every((change) => !change.sendToEngine), isTrue);
-  });
-
-  for (final utility in [true, false]) {
-    NodeModel makeNode() {
-      var id = 0;
-      final allocator = ProjectEntityIdAllocator.test(() => ++id);
-      return utility
-          ? UtilityProcessorModel.create(idAllocator: allocator).createNode()
-          : BalanceProcessorModel.create(idAllocator: allocator).createNode();
-    }
-
-    final panId = utility
-        ? UtilityProcessorModel.balancePortId
-        : BalanceProcessorModel.balancePortId;
-    test(
-      'native pan presentation round-trips in the current schema ($utility)',
-      () {
-        final node = makeNode();
-        expect(
-          node
-              .getInputPortById(NodePortDataType.control, panId)
-              .presentation
-              .normalizedVisualBaseline,
-          0.5,
-        );
-        final json = node.toJson();
-        final restored = NodeModel.fromJson(json);
-        expect(
-          restored
-              .getInputPortById(NodePortDataType.control, panId)
-              .presentation
-              .normalizedVisualBaseline,
-          0.5,
-        );
-        node
-                .getInputPortById(NodePortDataType.control, panId)
-                .presentation
-                .normalizedVisualBaseline =
-            0.0;
-        expect(
-          NodeModel.fromJson(node.toJson())
-              .getInputPortById(NodePortDataType.control, panId)
-              .presentation
-              .normalizedVisualBaseline,
-          0.0,
-        );
-      },
-    );
-  }
+      port.isTopLevelModel = true;
+      port.setParentPropertiesOnChildren();
+      final changes = <ModelChangeEvent>[];
+      port.addRawFieldChangedListener(changes.add);
+      port.parameterResetValue = 0.2;
+      expect(changes.single.sendToEngine, isFalse);
+    },
+  );
 }

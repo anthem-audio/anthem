@@ -18,12 +18,14 @@
 */
 
 import 'package:anthem/helpers/id.dart';
+import 'package:anthem/engine_api/messages/messages.dart'
+    show ProcessingGraphPortConfiguration;
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
 import 'package:mobx/mobx.dart';
 
 import 'node_port_config.dart';
-import 'parameter_presentation.dart';
+import 'parameter_config.dart';
 
 part 'node_port.g.dart';
 
@@ -41,11 +43,7 @@ class NodePortModel extends _NodePortModel
     super.parameterResetValue,
     super.isAvailable = false,
     double? initialParameterValue,
-    ParameterPresentationModel? presentation,
-  }) : super(
-         connections: AnthemObservableList(),
-         presentation: presentation ?? ParameterPresentationModel(),
-       ) {
+  }) : super(connections: AnthemObservableList()) {
     if (config.parameterConfig != null) {
       parameterValue =
           initialParameterValue ?? config.parameterConfig!.factoryDefaultValue;
@@ -58,14 +56,52 @@ class NodePortModel extends _NodePortModel
         nodeId: -1,
         config: NodePortConfigModel.uninitialized(),
         connections: AnthemObservableList(),
-        presentation: ParameterPresentationModel(),
       );
 
   factory NodePortModel.fromJson(Map<String, dynamic> json) =>
       _$NodePortModelAnthemModelMixin.fromJson(json);
 
+  /// Applies engine metadata to a new or existing port. Matching parameter
+  /// descriptions are updated in place; instance settings and connections are
+  /// retained. A factory default fills an unknown parameter value as a preview.
+  void applyConfiguration(
+    ProcessingGraphPortConfiguration descriptor,
+    NodePortDataType dataType,
+  ) => runInAction(() {
+    config.dataType = dataType;
+    config.name = descriptor.name;
+    config.channelCount = descriptor.channelCount;
+    final defaultValue = descriptor.parameterDefaultValue;
+    if (defaultValue == null) {
+      config.parameterConfig = null;
+      return;
+    }
+
+    final parameter = config.parameterConfig ??= ParameterConfigModel(
+      id: descriptor.id,
+    );
+    // Unlike observable metadata, the generated ID setter always notifies.
+    if (parameter.id != descriptor.id) parameter.id = descriptor.id;
+    parameter.factoryDefaultValue = defaultValue;
+    parameter.displayMode = switch (descriptor.parameterDisplayMode) {
+      'gainDb' => ParameterDisplayMode.gainDb,
+      'pan' => ParameterDisplayMode.pan,
+      'pluginText' => ParameterDisplayMode.pluginText,
+      _ => ParameterDisplayMode.percent,
+    };
+    parameter.unitLabel = descriptor.parameterUnitLabel;
+    parameter.normalizedVisualBaseline =
+        descriptor.parameterNormalizedVisualBaseline ?? 0.0;
+    parameterValue ??= defaultValue;
+  });
+
   double get parameterResetTarget =>
       parameterResetValue ?? config.parameterConfig?.factoryDefaultValue ?? 0.0;
+
+  /// Cached base value, falling back to the reset target when none is known.
+  /// Pending edits are excluded so undo history uses the earlier setting.
+  double get parameterValueOrResetTarget =>
+      (parameterValue ?? parameterResetTarget).clamp(0.0, 1.0).toDouble();
 
   NodePortDataType get type => config.dataType;
 }
@@ -94,18 +130,16 @@ abstract class _NodePortModel
   @hideFromCpp
   double? parameterResetValue;
 
-  @hideFromCpp
-  ParameterPresentationModel presentation;
-
-  /// The normalized value of the parameter, if this port is a control input
-  /// port.
-  ///
-  /// For third-party plugin parameters, this mirrors the latest value known to
-  /// Anthem for UI and automation workflows. It is not restored into the plugin
-  /// on engine start; the plugin's opaque processor state is the restore
-  /// source.
+  /// The last base value confirmed by the engine, normalized to [0, 1].
+  /// Saved for display before initialization; processor snapshots restore it.
   @anthemObservable
+  @hideFromCpp
   double? parameterValue;
+
+  /// The current requested base value while the engine confirms an edit.
+  @anthemObservable
+  @hide
+  double? pendingParameterValue;
 
   /// Runtime display text for the current parameter value, usually supplied by
   /// third-party plugins.
@@ -118,7 +152,6 @@ abstract class _NodePortModel
     required this.nodeId,
     required this.config,
     required this.connections,
-    required this.presentation,
     this.isAvailable = false,
     this.parameterResetValue,
     this.parameterDisplayText,

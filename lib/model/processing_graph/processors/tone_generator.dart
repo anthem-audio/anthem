@@ -20,7 +20,6 @@
 import 'package:anthem/helpers/id.dart';
 import 'package:anthem/helpers/project_entity_id_allocator.dart';
 import 'package:anthem/model/processing_graph/node.dart';
-import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processors/processor.dart';
 import 'package:anthem/model/project_model_getter_mixin.dart';
 import 'package:anthem_codegen/include.dart';
@@ -61,18 +60,7 @@ class ToneGeneratorProcessorModel extends _ToneGeneratorProcessorModel
     processor: this,
     audioOutputPortIds: [audioOutputPortId],
     eventInputPortIds: [eventInputPortId],
-    parameters: [
-      NativeParameterPreset(
-        id: frequencyPortId,
-        value: frequencyToParameterValue(440.0),
-        displayMode: ParameterDisplayMode.percent,
-      ),
-      NativeParameterPreset(
-        id: amplitudePortId,
-        value: 0.75,
-        displayMode: ParameterDisplayMode.percent,
-      ),
-    ],
+    controlInputPortIds: [frequencyPortId, amplitudePortId],
   );
 
   static const int audioOutputPortId =

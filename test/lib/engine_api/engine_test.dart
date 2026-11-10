@@ -32,6 +32,7 @@ import 'package:anthem/model/processing_graph/node_port.dart';
 import 'package:anthem/model/processing_graph/node_port_config.dart';
 import 'package:anthem/model/processing_graph/parameter_config.dart';
 import 'package:anthem/model/processing_graph/processing_graph.dart';
+import 'package:anthem/model/processing_graph/processors/gain.dart';
 import 'package:anthem/model/project.dart';
 import 'package:anthem/visualization/visualization.dart';
 import 'package:anthem_codegen/include.dart'
@@ -1298,8 +1299,161 @@ void main() {
       expect(receivedResponses.single, isA<StopAudioResponse>());
     });
 
+    for (final state in ['uninitialized', 'failed', 'restoring']) {
+      test(
+        'processor events have no side effects while node is $state',
+        () async {
+          final port = NodePortModel(
+            nodeId: 1,
+            id: 100,
+            config: NodePortConfigModel(
+              dataType: NodePortDataType.control,
+              parameterConfig: ParameterConfigModel(
+                id: 100,
+                factoryDefaultValue: 0.25,
+              ),
+            ),
+            initialParameterValue: 0.25,
+          );
+          final node = NodeModel(
+            id: 1,
+            processor: GainProcessorModel(nodeId: 1),
+            controlInputPorts: AnthemObservableList.of([port]),
+          );
+          if (state == 'failed') node.markInitializationFailed();
+          if (state == 'restoring') {
+            node.markInitialized();
+            node.beginProcessorStateOperation();
+            node.beginProcessorStateRestoration();
+          }
+          nodes[1] = node;
+          await _startEngineThroughInit(
+            engine,
+            () => connector,
+            audioConfig: startupAudioConfig,
+          );
+          final events = <ProcessorEvent>[
+            PluginChangedEvent(
+              nodeId: 1,
+              latencyChanged: false,
+              parameterInfoChanged: false,
+              programChanged: false,
+              nonParameterStateChanged: true,
+            ),
+            ProcessorParameterChangedEvent(
+              nodeId: 1,
+              controlPortId: 100,
+              value: 0.75,
+            ),
+            ProcessorParameterSnapshotEvent(
+              nodeId: 1,
+              parameterValues: [
+                ProcessingGraphParameterValue(controlPortId: 100, value: 0.75),
+              ],
+            ),
+            ProcessorParameterResyncEvent(
+              nodeId: 1,
+              parameterValues: [
+                ProcessingGraphParameterValue(controlPortId: 100, value: 0.75),
+              ],
+            ),
+            ProcessorParameterGestureEvent(
+              nodeId: 1,
+              controlPortId: 100,
+              value: 0.25,
+              isStarting: true,
+            ),
+            ProcessorParameterGestureEvent(
+              nodeId: 1,
+              controlPortId: 100,
+              value: 0.75,
+              isStarting: false,
+            ),
+          ];
+          for (final event in events) {
+            final decoded =
+                IpcMessage.fromJson(event.toJson()) as ProcessorEvent;
+            expect(decoded.nodeId, 1);
+            connector.emitMessage(decoded);
+          }
+          expect(port.parameterValue, 0.25);
+          expect(node.lastChangedControlPortId, isNull);
+          verifyNever(project.push(any));
+          node.finishProcessorStateOperation();
+        },
+      );
+    }
+
+    test('snapshot capture permits processor events while parameter edits are blocked', () async {
+      final port = NodePortModel(
+        nodeId: 1,
+        id: 100,
+        config: NodePortConfigModel(
+          dataType: NodePortDataType.control,
+          parameterConfig: ParameterConfigModel(
+            id: 100,
+            factoryDefaultValue: 0.25,
+          ),
+        ),
+        initialParameterValue: 0.25,
+      );
+      final node = NodeModel(
+        id: 1,
+        processor: GainProcessorModel(nodeId: 1),
+        controlInputPorts: AnthemObservableList.of([port]),
+      );
+      node.markInitialized();
+      node.beginProcessorStateOperation();
+      nodes[1] = node;
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+      await expectLater(
+        engine.processingGraphApi.setParameterValue(1, 100, 0.9),
+        throwsStateError,
+      );
+      expect(
+        connector.sentRequests.whereType<SetProcessorParameterValueRequest>(),
+        isEmpty,
+      );
+      connector.emitMessage(
+        ProcessorParameterSnapshotEvent(
+          nodeId: 1,
+          parameterValues: [
+            ProcessingGraphParameterValue(controlPortId: 100, value: 0.75),
+          ],
+        ),
+      );
+      expect(port.parameterValue, 0.75);
+      expect(node.canEditParameters, isFalse);
+      node.beginProcessorStateRestoration();
+      connector.emitMessage(
+        ProcessorParameterSnapshotEvent(
+          nodeId: 1,
+          parameterValues: [
+            ProcessingGraphParameterValue(controlPortId: 100, value: 0.5),
+          ],
+        ),
+      );
+      expect(port.parameterValue, 0.75);
+      node.finishProcessorStateRestoration();
+      connector.emitMessage(
+        ProcessorParameterSnapshotEvent(
+          nodeId: 1,
+          parameterValues: [
+            ProcessingGraphParameterValue(controlPortId: 100, value: 0.5),
+          ],
+        ),
+      );
+      expect(port.parameterValue, 0.5);
+      node.finishProcessorStateOperation();
+    });
+
     test('plugin change events schedule a node state update', () async {
       final node = MockNodeModel();
+      when(node.canHandleProcessorEvents).thenReturn(true);
       when(node.controlInputPorts).thenReturn(
         AnthemObservableList.of([
           NodePortModel(
@@ -1333,7 +1487,11 @@ void main() {
         ),
       );
       connector.emitMessage(
-        PluginParameterChangedEvent(nodeId: 1, controlPortId: 100, value: 0.75),
+        ProcessorParameterChangedEvent(
+          nodeId: 1,
+          controlPortId: 100,
+          value: 0.75,
+        ),
       );
 
       verify(node.touchControlInputParameter(any)).called(1);
@@ -1342,6 +1500,7 @@ void main() {
 
     test('plugin parameter snapshots update values without scheduling state update', () async {
       final node = MockNodeModel();
+      when(node.canHandleProcessorEvents).thenReturn(true);
       final port = NodePortModel(
         nodeId: 1,
         id: 100,
@@ -1365,7 +1524,7 @@ void main() {
       );
 
       connector.emitMessage(
-        PluginParameterSnapshotEvent(
+        ProcessorParameterSnapshotEvent(
           nodeId: 1,
           parameterValues: [
             ProcessingGraphParameterValue(
@@ -1385,6 +1544,7 @@ void main() {
 
     test('plugin parameter gestures push one undo command', () async {
       final node = MockNodeModel();
+      when(node.canHandleProcessorEvents).thenReturn(true);
       final port = NodePortModel(
         nodeId: 1,
         id: 100,
@@ -1408,20 +1568,26 @@ void main() {
       );
 
       connector.emitMessage(
-        PluginParameterGestureEvent(
+        ProcessorParameterGestureEvent(
           nodeId: 1,
           controlPortId: 100,
           isStarting: true,
+          value: port.parameterValueOrResetTarget,
         ),
       );
       connector.emitMessage(
-        PluginParameterChangedEvent(nodeId: 1, controlPortId: 100, value: 0.75),
+        ProcessorParameterChangedEvent(
+          nodeId: 1,
+          controlPortId: 100,
+          value: 0.75,
+        ),
       );
       connector.emitMessage(
-        PluginParameterGestureEvent(
+        ProcessorParameterGestureEvent(
           nodeId: 1,
           controlPortId: 100,
           isStarting: false,
+          value: port.parameterValueOrResetTarget,
         ),
       );
 
@@ -1438,6 +1604,7 @@ void main() {
       'restarting the engine discards unfinished plugin parameter gestures',
       () async {
         final node = MockNodeModel();
+        when(node.canHandleProcessorEvents).thenReturn(true);
         final port = NodePortModel(
           nodeId: 1,
           id: 100,
@@ -1460,14 +1627,15 @@ void main() {
           audioConfig: startupAudioConfig,
         );
         connector.emitMessage(
-          PluginParameterGestureEvent(
+          ProcessorParameterGestureEvent(
             nodeId: 1,
             controlPortId: 100,
             isStarting: true,
+            value: port.parameterValueOrResetTarget,
           ),
         );
         connector.emitMessage(
-          PluginParameterChangedEvent(
+          ProcessorParameterChangedEvent(
             nodeId: 1,
             controlPortId: 100,
             value: 0.75,
@@ -1483,33 +1651,36 @@ void main() {
         );
 
         connector.emitMessage(
-          PluginParameterGestureEvent(
+          ProcessorParameterGestureEvent(
             nodeId: 1,
             controlPortId: 100,
             isStarting: false,
+            value: port.parameterValueOrResetTarget,
           ),
         );
         verifyNever(project.push(any));
 
         connector.emitMessage(
-          PluginParameterGestureEvent(
+          ProcessorParameterGestureEvent(
             nodeId: 1,
             controlPortId: 100,
             isStarting: true,
+            value: port.parameterValueOrResetTarget,
           ),
         );
         connector.emitMessage(
-          PluginParameterChangedEvent(
+          ProcessorParameterChangedEvent(
             nodeId: 1,
             controlPortId: 100,
             value: 0.5,
           ),
         );
         connector.emitMessage(
-          PluginParameterGestureEvent(
+          ProcessorParameterGestureEvent(
             nodeId: 1,
             controlPortId: 100,
             isStarting: false,
+            value: port.parameterValueOrResetTarget,
           ),
         );
 
@@ -1520,6 +1691,141 @@ void main() {
         expect(command.newValue, 0.5);
       },
     );
+
+    test('gesture boundaries carry values captured before dispatch', () async {
+      final port = NodePortModel(
+        nodeId: 1,
+        id: 100,
+        config: NodePortConfigModel(
+          dataType: NodePortDataType.control,
+          parameterConfig: ParameterConfigModel(id: 100),
+        ),
+        initialParameterValue: 0.9,
+      );
+      final node = MockNodeModel();
+      when(node.canHandleProcessorEvents).thenReturn(true);
+      when(node.controlInputPorts).thenReturn(AnthemObservableList.of([port]));
+      nodes[1] = node;
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+      connector.emitMessage(
+        ProcessorParameterGestureEvent(
+          nodeId: 1,
+          controlPortId: 100,
+          isStarting: true,
+          value: 0.25,
+        ),
+      );
+      connector.emitMessage(
+        ProcessorParameterGestureEvent(
+          nodeId: 1,
+          controlPortId: 100,
+          isStarting: false,
+          value: 0.75,
+          displayText: '75%',
+        ),
+      );
+      final command =
+          verify(project.push(captureAny)).captured.single
+              as SetParameterValueCommand;
+      expect(command.oldValue, 0.25);
+      expect(command.newValue, 0.75);
+      expect(port.parameterValue, 0.75);
+      expect(port.parameterDisplayText, '75%');
+    });
+
+    test('callback recovery resets only the affected node gestures', () async {
+      final ports = <int, NodePortModel>{};
+      for (final id in [1, 2]) {
+        final port = NodePortModel(
+          nodeId: id,
+          id: 100,
+          config: NodePortConfigModel(
+            dataType: NodePortDataType.control,
+            parameterConfig: ParameterConfigModel(id: 100),
+          ),
+          initialParameterValue: 0.25,
+        );
+        ports[id] = port;
+        final node = MockNodeModel();
+        when(node.canHandleProcessorEvents).thenReturn(true);
+        when(node.controlInputPorts)
+            .thenReturn(AnthemObservableList.of([port]));
+        nodes[id] = node;
+      }
+      await _startEngineThroughInit(
+        engine,
+        () => connector,
+        audioConfig: startupAudioConfig,
+      );
+      for (final id in [1, 2]) {
+        connector.emitMessage(
+          ProcessorParameterGestureEvent(
+            nodeId: id,
+            controlPortId: 100,
+            isStarting: true,
+            value: 0.25,
+          ),
+        );
+      }
+      connector.emitMessage(
+        ProcessorParameterResyncEvent(
+          nodeId: 1,
+          parameterValues: [
+            ProcessingGraphParameterValue(
+              controlPortId: 100,
+              value: 0.8,
+              displayText: '80%',
+            ),
+          ],
+        ),
+      );
+      connector.emitMessage(
+        ProcessorParameterGestureEvent(
+          nodeId: 1,
+          controlPortId: 100,
+          isStarting: false,
+          value: 0.8,
+          displayText: '80%',
+        ),
+      );
+      verifyNever(project.push(any));
+      expect(ports[1]!.parameterValue, 0.8);
+      expect(ports[1]!.parameterDisplayText, '80%');
+      verify(nodes[1]!.scheduleDebouncedStateUpdate()).called(1);
+      connector.emitMessage(
+        ProcessorParameterGestureEvent(
+          nodeId: 2,
+          controlPortId: 100,
+          isStarting: false,
+          value: 0.6,
+        ),
+      );
+      final otherCommand =
+          verify(project.push(captureAny)).captured.single
+              as SetParameterValueCommand;
+      expect(otherCommand.nodeId, 2);
+      expect(otherCommand.oldValue, 0.25);
+      expect(otherCommand.newValue, 0.6);
+      for (final (starting, value) in [(true, 0.8), (false, 0.9)]) {
+        connector.emitMessage(
+          ProcessorParameterGestureEvent(
+            nodeId: 1,
+            controlPortId: 100,
+            isStarting: starting,
+            value: value,
+          ),
+        );
+      }
+      final recoveredCommand =
+          verify(project.push(captureAny)).captured.single
+              as SetParameterValueCommand;
+      expect(recoveredCommand.oldValue, 0.8);
+      expect(recoveredCommand.newValue, 0.9);
+    });
 
     test('plugin parameter gesture start touches parameter', () async {
       final port = NodePortModel(
@@ -1535,8 +1841,10 @@ void main() {
       );
       final node = NodeModel(
         id: 1,
+        processor: GainProcessorModel(nodeId: 1),
         controlInputPorts: AnthemObservableList.of([port]),
       );
+      node.markInitialized();
       nodes[1] = node;
 
       await _startEngineThroughInit(
@@ -1546,41 +1854,24 @@ void main() {
       );
 
       connector.emitMessage(
-        PluginParameterGestureEvent(
+        ProcessorParameterGestureEvent(
           nodeId: 1,
           controlPortId: 100,
           isStarting: true,
+          value: port.parameterValueOrResetTarget,
         ),
       );
       connector.emitMessage(
-        PluginParameterGestureEvent(
+        ProcessorParameterGestureEvent(
           nodeId: 1,
           controlPortId: 100,
           isStarting: false,
+          value: port.parameterValueOrResetTarget,
         ),
       );
 
       expect(node.lastChangedControlPortId, equals(100));
       verifyNever(project.push(any));
-    });
-
-    test('PluginLoadedEvent completes the node plugin completer', () async {
-      final node = MockNodeModel();
-      final pluginLoadedCompleter = Completer<void>();
-      when(node.pluginLoadedCompleter).thenReturn(pluginLoadedCompleter);
-      nodes[1] = node;
-
-      await _startEngineThroughInit(
-        engine,
-        () => connector,
-        audioConfig: startupAudioConfig,
-      );
-
-      connector.emitMessage(PluginLoadedEvent(nodeId: 1));
-
-      await pluginLoadedCompleter.future;
-
-      expect(pluginLoadedCompleter.isCompleted, isTrue);
     });
 
     test(
