@@ -1,4 +1,4 @@
-# 0.0.0-prealpha.2 (Unreleased)
+# 0.0.0-prealpha.2
 
 ## New
 
