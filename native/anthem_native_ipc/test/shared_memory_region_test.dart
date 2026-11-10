@@ -24,26 +24,50 @@ import 'package:anthem_native_ipc/anthem_native_ipc.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('two mappings expose the same bytes', () {
-    final creator = SharedMemoryRegion.create(4096);
-    final opener = SharedMemoryRegion.open(
-      identifier: creator.identifier,
-      size: creator.size,
-    );
+  // Include the engine's ring size: 16 MiB of records plus 128 bytes of cursors.
+  for (final size in [1, 4096, 4097, (1 << 24) + 128]) {
+    test('two mappings expose exactly $size shared bytes', () {
+      final creator = SharedMemoryRegion.create(size);
+      addTearDown(creator.close);
+      final opener = SharedMemoryRegion.open(
+        identifier: creator.identifier,
+        size: size,
+      );
+      addTearDown(opener.close);
+
+      expect(creator.size, size);
+      expect(creator.bytes, hasLength(size));
+      expect(opener.size, size);
+      expect(opener.bytes, hasLength(size));
+      expect(opener.bytes.first, 0);
+      expect(opener.bytes.last, 0);
+
+      creator.bytes[0] = 123;
+      expect(opener.bytes.first, 123);
+
+      opener.bytes[size - 1] = 45;
+      expect(creator.bytes.last, 45);
+    });
+  }
+
+  test('a smaller view exposes only the requested prefix', () {
+    final creator = SharedMemoryRegion.create(4097);
     addTearDown(creator.close);
-    addTearDown(opener.close);
+    final prefix = SharedMemoryRegion.open(
+      identifier: creator.identifier,
+      size: 17,
+    );
+    addTearDown(prefix.close);
 
-    expect(creator.bytes, everyElement(0));
-
-    creator.bytes[17] = 123;
-    expect(opener.bytes[17], 123);
-
-    opener.bytes[2048] = 45;
-    expect(creator.bytes[2048], 45);
+    expect(prefix.size, 17);
+    expect(prefix.bytes, hasLength(17));
+    prefix.bytes[16] = 73;
+    expect(creator.bytes[16], 73);
+    expect(() => prefix.bytes[17], throwsRangeError);
   });
 
   test('a child process can open and update a mapping', () async {
-    final creator = SharedMemoryRegion.create(4096);
+    final creator = SharedMemoryRegion.create(4097);
     addTearDown(creator.close);
     creator.bytes[0] = 37;
 
@@ -74,7 +98,7 @@ void main() {
       0,
       reason: 'stdout: ${result.stdout}\nstderr: ${result.stderr}',
     );
-    expect(creator.bytes[1], 91);
+    expect(creator.bytes.last, 91);
   });
 
   test('existing mappings remain valid after the identifier is removed', () {
@@ -113,8 +137,8 @@ void main() {
     );
   });
 
-  test('open rejects a mismatched size', () {
-    final creator = SharedMemoryRegion.create(4096);
+  test('open rejects a view larger than the backing storage', () {
+    final creator = SharedMemoryRegion.create(1 << 20);
     addTearDown(creator.close);
 
     expect(

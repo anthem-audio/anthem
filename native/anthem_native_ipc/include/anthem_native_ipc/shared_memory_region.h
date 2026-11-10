@@ -39,9 +39,13 @@ public:
   /// Opens an existing shared memory region and maps it into the current
   /// process.
   ///
-  /// The supplied size must exactly match the size used by the creator. Throws
-  /// std::invalid_argument for invalid arguments and std::system_error if the
-  /// platform operation fails.
+  /// The supplied size determines the length of bytes(). The backing region
+  /// must contain at least that many bytes; the OS may have rounded its length
+  /// up to a page boundary. Callers must agree on the size of their shared data
+  /// independently of the OS allocation size.
+  ///
+  /// Throws std::invalid_argument for invalid arguments and std::system_error
+  /// if the platform operation fails.
   static SharedMemoryRegion open(std::string_view identifier, std::size_t size);
 
   SharedMemoryRegion(SharedMemoryRegion&&) noexcept;

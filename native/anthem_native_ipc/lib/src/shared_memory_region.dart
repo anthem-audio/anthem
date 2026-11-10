@@ -59,6 +59,10 @@ final class SharedMemoryRegion implements Finalizable {
   }
 
   /// Opens a shared memory region created by another owner.
+  ///
+  /// [size] sets the length of the mapped [bytes] view. The backing region must
+  /// be large enough for this view, but may include additional OS page padding.
+  /// Callers must agree on their shared data size independently of that padding.
   factory SharedMemoryRegion.open({
     required String identifier,
     required int size,

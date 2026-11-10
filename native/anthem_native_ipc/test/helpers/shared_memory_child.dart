@@ -40,7 +40,7 @@ void main(List<String> arguments) {
       return;
     }
 
-    region.bytes[1] = 91;
+    region.bytes[region.size - 1] = 91;
   } finally {
     region.close();
   }

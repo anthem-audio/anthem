@@ -153,9 +153,11 @@ SharedMemoryRegion SharedMemoryRegion::open(std::string_view identifier, std::si
     throwPosixError("fstat", error);
   }
 
-  if (info.st_size < 0 || static_cast<std::uint64_t>(info.st_size) != size) {
+  // macOS rounds the backing object's length up to a page boundary. Map only
+  // the requested bytes, and reject regions too small to contain that view.
+  if (info.st_size < 0 || static_cast<std::uint64_t>(info.st_size) < size) {
     closeDescriptor(descriptor);
-    throw std::invalid_argument("Shared memory region size does not match the creator's size: "
+    throw std::invalid_argument("Shared memory region is too small for the requested view: "
                                 "requested " +
                                 std::to_string(size) + " bytes, OS reports " +
                                 std::to_string(info.st_size) + " bytes, page size " +
