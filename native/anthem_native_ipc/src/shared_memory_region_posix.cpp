@@ -155,7 +155,12 @@ SharedMemoryRegion SharedMemoryRegion::open(std::string_view identifier, std::si
 
   if (info.st_size < 0 || static_cast<std::uint64_t>(info.st_size) != size) {
     closeDescriptor(descriptor);
-    throw std::invalid_argument("Shared memory region size does not match the creator's size.");
+    throw std::invalid_argument("Shared memory region size does not match the creator's size: "
+                                "requested " +
+                                std::to_string(size) + " bytes, OS reports " +
+                                std::to_string(info.st_size) + " bytes, page size " +
+                                std::to_string(sysconf(_SC_PAGESIZE)) + " bytes, identifier " +
+                                identifierString + ".");
   }
 
   auto data = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, descriptor, 0);
