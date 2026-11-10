@@ -85,6 +85,9 @@ flutter:
 
   assets:
   - assets/engine/
+  - packages/anthem/logic/project_file/web/project_archive_worker.js
+  - packages/anthem/logic/project_file/web/vendor/zipjs/zip-native.min.js
+  - packages/anthem/logic/project_file/web/vendor/zipjs/LICENSE
 
   - assets/icons/arrows/
   - assets/icons/brand/

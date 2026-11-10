@@ -43,11 +43,19 @@ emstrip test/.engine/AnthemEngine.wasm
 ```
 
 The storage suites use these real modules to verify shared file access,
-snapshot ownership, and engine restarts. Engine integration requires shared
-memory, which Flutter's WebAssembly test harness enables through cross-origin
-isolation. The JavaScript harness currently omits the necessary iframe header;
-engine tests are skipped there when SharedArrayBuffer is unavailable. File
-storage tests run with both compilers.
+snapshot ownership, engine restarts, and processor-state ZIP round trips.
+Browser file tests also exercise download links, reopening archives, dirty-state
+tracking, legacy migration, and failed-import cleanup. Archive worker tests check
+bounded Blob reads and output chunks, acknowledgement backpressure, and cleanup
+after a failed filesystem write. The worker and its pinned zip.js dependency
+are ordinary Flutter assets; tests use those same checked-in scripts without a
+worker build or generated fixtures. The browser asset helper routes package
+asset loads through Flutter's package-file server, since the test runner does
+not build the application's asset bundle. Engine integration requires shared
+memory, which Flutter's WebAssembly test harness enables through
+cross-origin isolation. The JavaScript harness currently omits the necessary
+iframe header; engine tests are skipped there when SharedArrayBuffer is
+unavailable. File storage tests run with both compilers.
 
 The same `flutter_test` command handles desktop and browser testing. `--web`
 selects only the browser suites; without it, the command runs VM/host tests.

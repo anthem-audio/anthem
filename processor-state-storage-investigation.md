@@ -228,7 +228,9 @@ not prescribe one internal representation for every processor.
 
 ## Implementation sequence
 
-Stages 1–3, the engine-owned parameter checkpoint, and generic node suspension are implemented. Retained snapshot save/load comes next, followed by undo and presets. Each layer is implemented and reviewed independently.
+Stages 1–4, generic node suspension, retained snapshot save/load, and undoable state restoration are implemented. Project storage uses shared asset scopes, and desktop and browser projects support ZIP import and export. This completes the processor-state and storage work for prealpha.2.
+
+User-facing preset management and CLAP integration remain future features. The deferred native asset and private-state work described above is outside this release's scope.
 
 1. Build the desktop asset store and its tests: relative file paths, temporary writes,
    commit/abort, read access, retention and deletion, and separate unsaved-project

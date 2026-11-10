@@ -19,6 +19,8 @@
 
 import 'package:anthem/logic/project_file/errors.dart';
 
+import 'package:file_selector/file_selector.dart' show XFile;
+
 import 'project_save.dart';
 
 Future<void> writeProjectArchive(
@@ -26,6 +28,10 @@ Future<void> writeProjectArchive(
   PreparedProjectSave prepared,
 ) => throw const ProjectDirectoryRequiresDesktopException();
 
+Future<({String rootDirectory, String documentPath})>
+extractProjectArchiveBytes(List<int> bytes) =>
+    throw const ProjectDirectoryRequiresDesktopException();
+
 Future<({String rootDirectory, String documentPath})> extractProjectArchive(
-  String archivePath,
+  XFile archive,
 ) => throw const ProjectDirectoryRequiresDesktopException();

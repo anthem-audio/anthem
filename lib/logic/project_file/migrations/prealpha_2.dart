@@ -18,12 +18,12 @@
 */
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:anthem/logic/project_file/errors.dart';
 import 'package:anthem/logic/project_file/migrations/migration.dart';
 import 'package:anthem/logic/project_file/version.dart';
+import 'package:anthem/logic/storage/asset_file_io.dart' as files;
 import 'package:path/path.dart' as path;
 
 const prealpha2ProjectFileMigration = ProjectFileMigration(
@@ -119,20 +119,14 @@ Future<void> _migrateToPrealpha2(
     // current model and asset store are opened, independently of their APIs.
     final stateNumber = stateFileNumber++;
     final relativePath = 'plugin states/$stateNumber.bin';
-    final file = File(
-      path.joinAll([projectDirectory, ...relativePath.split('/')]),
-    );
-    await file.parent.create(recursive: true);
-    await file.create(exclusive: true);
-    final output = file.openWrite();
-    try {
-      output.add(prefix.buffer.asUint8List());
-      output.add(metadata);
-      output.add(bytes);
-      await output.flush();
-    } finally {
-      await output.close();
-    }
+    final file = path.joinAll([projectDirectory, ...relativePath.split('/')]);
+    await files.createDirectory(path.dirname(file));
+    await files.createFile(file);
+    final output = BytesBuilder(copy: false)
+      ..add(prefix.buffer.asUint8List())
+      ..add(metadata)
+      ..add(bytes);
+    await files.writeFile(file, output.takeBytes());
     final retentionId = 'migrated-plugin-state-$stateNumber';
     retentions[retentionId] = relativePath;
     node['processorStateRetentionId'] = retentionId;

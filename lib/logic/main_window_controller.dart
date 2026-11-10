@@ -31,6 +31,7 @@ import 'package:anthem/logic/project_file/migrations/migrate_project_json.dart';
 import 'package:anthem/logic/project_file/version.dart';
 import 'package:anthem/logic/service_registry.dart';
 import 'package:anthem/logic/storage/project_storage.dart';
+import 'package:anthem/logic/storage/asset_file_io.dart' as asset_files;
 import 'package:anthem/theme.dart';
 import 'package:anthem/widgets/basic/dialog/dialog_controller.dart';
 import 'package:anthem/widgets/basic/text_box.dart';
@@ -63,9 +64,9 @@ String projectFileLoadErrorMarkdown(Object error) {
     ) =>
       projectFileLoadErrorMarkdown(error),
     ProjectDirectoryRequiresDesktopException() =>
-      'Open this project in the desktop version of Anthem. '
-          'The web version does not yet support importing project folders '
-          'or plugin state files.',
+      'Export this project as a ZIP in the desktop version of Anthem, '
+          'then open the ZIP here. A project document alone does not '
+          'include its associated files.',
     ProjectSavedInNewerVersionException error =>
       'This project was saved in a newer version of Anthem '
           '(${version(error.savedVersion)}). You are running Anthem '
@@ -213,8 +214,8 @@ class MainWindowController {
   }
 
   /// Returns the ID of the loaded project, or null if the project load failed
-  /// or was cancelled. Engine selection and audio startup are runtime options;
-  /// native selection, decoding, and migration use the normal file workflow.
+  /// or was cancelled. Decoding, migration, and restoring file claims finish
+  /// before the engine starts. ZIPs open as unsaved copies in temporary storage.
   Future<ProjectId?> loadProject({
     required DialogController dialogController,
     String? engineExecutable,
@@ -229,38 +230,36 @@ class MainWindowController {
 
     final ProjectModel project;
     ProjectStorage? storage;
-    Directory? temporaryDirectory;
     final isArchive = paths.extension(file.name).toLowerCase() == '.zip';
-    final bool needsFolderSave;
+    final bool opensAsCopy;
     final bool isLegacy;
 
     try {
       var documentPath = file.path;
       if (isArchive) {
-        final extracted = await extractProjectArchive(file.path);
-        temporaryDirectory = Directory(extracted.rootDirectory);
+        final extracted = await extractProjectArchive(file);
+        storage = ProjectStorage.temporary(
+          rootDirectory: extracted.rootDirectory,
+        );
         documentPath = extracted.documentPath;
       }
       final projectJson = kIsWeb
-          ? await decodeProjectFileBytes(await file.readAsBytes())
+          ? await decodeProjectFileBytes(
+              isArchive
+                  ? await asset_files.readFile(documentPath)
+                  : await file.readAsBytes(),
+            )
           : await readProjectFile(documentPath);
       final savedVersion = readSavedProjectVersion(projectJson);
       // Projects used a single file before prealpha.2.
       isLegacy = savedVersion < ProjectFileVersion.parse('0.0.0-prealpha.2');
-      needsFolderSave = isArchive || isLegacy;
-      if (kIsWeb && !needsFolderSave) {
-        throw const ProjectDirectoryRequiresDesktopException();
-      }
-      if (!kIsWeb && needsFolderSave && temporaryDirectory == null) {
-        temporaryDirectory = await Directory.systemTemp.createTemp(
-          'anthem_project_',
-        );
-      }
+      opensAsCopy = kIsWeb || isArchive || isLegacy;
+      storage ??= opensAsCopy
+          ? ProjectStorage.temporary()
+          : ProjectStorage(rootDirectory: paths.dirname(file.path));
       await migrateProjectJson(
         projectJson,
-        projectDirectory: kIsWeb
-            ? null
-            : temporaryDirectory?.path ?? paths.dirname(file.path),
+        projectDirectory: storage.rootDirectory,
       );
       // An archive opens as an unsaved copy, including alongside its source.
       if (isArchive) projectJson['id'] = getProjectId();
@@ -269,16 +268,13 @@ class MainWindowController {
         enginePathOverride: engineExecutable,
       );
       try {
-        if (!kIsWeb) {
-          storage = needsFolderSave
-              ? ProjectStorage.temporary(
-                  rootDirectory: temporaryDirectory!.path,
-                )
-              : ProjectStorage(rootDirectory: paths.dirname(file.path));
-          await storage.restoreProjectFiles(
-            Map<String, String>.from(jsonDecode(loaded.fileRetentions) as Map),
-          );
+        final references = Map<String, String>.from(
+          jsonDecode(loaded.fileRetentions) as Map,
+        );
+        if (kIsWeb && !isArchive && !isLegacy && references.isNotEmpty) {
+          throw const ProjectDirectoryRequiresDesktopException();
         }
+        await storage.restoreProjectFiles(references);
       } catch (_) {
         await loaded.dispose();
         rethrow;
@@ -291,8 +287,6 @@ class MainWindowController {
         } else {
           await storage.close();
         }
-      } else if (temporaryDirectory != null) {
-        await temporaryDirectory.delete(recursive: true);
       }
       _log.warning('Could not load project file.', error, stackTrace);
       dialogController.showMarkdownDialog(
@@ -303,8 +297,8 @@ class MainWindowController {
       return null;
     }
 
-    project.filePath = needsFolderSave ? null : file.path;
-    project.isDirty = needsFolderSave;
+    project.filePath = opensAsCopy ? null : file.path;
+    project.isDirty = opensAsCopy;
 
     final id = await openProject(
       project,
@@ -331,121 +325,130 @@ class MainWindowController {
   }) async {
     final project = AnthemStore.instance.projects[projectId]!;
     await project.waitForPendingCommands();
+    if (kIsWeb) {
+      return _downloadProjectZip(project, dialogController, markSaved: true);
+    }
 
     String? path;
     var createDirectory = false;
-
-    if (!kIsWeb) {
-      if (alwaysUseFilePicker || project.filePath == null) {
-        final initialDirectory = await _projectSaveDirectory(project);
-        final folder = (await getSaveLocation(
-          initialDirectory: initialDirectory,
-          suggestedName: project.name,
-          confirmButtonText: 'Create project folder',
-        ))?.path;
-        if (folder != null) {
-          final root = paths.normalize(paths.absolute(folder));
-          path = paths.join(root, '${paths.basename(root)}.anthem');
-          createDirectory =
-              project.filePath == null ||
-              !paths.equals(root, paths.dirname(project.filePath!));
-          if (!createDirectory) path = project.filePath;
-        }
-      } else {
-        path = project.filePath;
+    if (alwaysUseFilePicker || project.filePath == null) {
+      final initialDirectory = await _projectSaveDirectory(project);
+      final folder = (await getSaveLocation(
+        initialDirectory: initialDirectory,
+        suggestedName: project.name,
+        confirmButtonText: 'Create project folder',
+      ))?.path;
+      if (folder != null) {
+        final root = paths.normalize(paths.absolute(folder));
+        path = paths.join(root, '${paths.basename(root)}.anthem');
+        createDirectory =
+            project.filePath == null ||
+            !paths.equals(root, paths.dirname(project.filePath!));
+        if (!createDirectory) path = project.filePath;
       }
+    } else {
+      path = project.filePath;
+    }
+    if (path == null) return false;
+
+    final services = ServiceRegistry.forProject(projectId);
+    final prepared = await PreparedProjectSave.prepare(
+      project,
+      services.projectStorage,
+    );
+    try {
+      final result = await writeProjectDirectory(
+        path,
+        prepared,
+        create: createDirectory,
+      );
+      if (result.usesWorkingStore) {
+        services.savedProjectFiles.record(path, prepared.assets.reads.keys);
+      }
+      project.isDirty = prepared.changedDuringSave;
+      project.filePath = path;
+      return true;
+    } finally {
+      await prepared.close();
+    }
+  }
+
+  Future<bool> _downloadProjectZip(
+    ProjectModel project,
+    DialogController dialogController, {
+    required bool markSaved,
+  }) async {
+    final controller = TextEditingController(text: project.name);
+    final completed = Completer<String?>();
+    void cancel() {
+      if (!completed.isCompleted) completed.complete(null);
     }
 
-    if (!kIsWeb && path == null) return false;
-
-    if (kIsWeb) {
-      // Dialog to ask for filename
-
-      final controller = TextEditingController();
-      final completer = Completer<String?>();
-
-      dialogController.showDialog(
-        content: SizedBox(
-          width: 300,
-          height: 70,
-          child: Column(
-            spacing: 12,
-            children: [
-              Text(
-                'Enter a file name for the project:',
-                style: TextStyle(fontSize: 13, color: AnthemTheme.text.main),
-              ),
-              SizedBox(
-                width: 161,
-                child: Center(
-                  child: TextBox(height: 26, controller: controller),
-                ),
-              ),
-            ],
-          ),
+    dialogController.showDialog(
+      content: SizedBox(
+        width: 300,
+        height: 70,
+        child: Column(
+          spacing: 12,
+          children: [
+            Text(
+              'Enter a file name for the project:',
+              style: TextStyle(fontSize: 13, color: AnthemTheme.text.main),
+            ),
+            SizedBox(
+              width: 161,
+              child: Center(child: TextBox(height: 26, controller: controller)),
+            ),
+          ],
         ),
-        title: 'Save',
-        buttons: [
-          DialogButton.cancel(),
-          DialogButton(
-            text: 'Download',
-            onPress: () {
-              completer.complete(controller.text);
-            },
-          ),
-        ],
-        onDismiss: () {
-          completer.complete(null);
-        },
-      );
+      ),
+      title: 'Download project',
+      buttons: [
+        DialogButton.cancel(onPress: cancel),
+        DialogButton(
+          text: 'Download',
+          onPress: () => completed.complete(controller.text),
+        ),
+      ],
+      onDismiss: cancel,
+    );
+    final String? selectedName;
+    try {
+      selectedName = await completed.future;
+    } finally {
+      controller.dispose();
+    }
+    if (selectedName == null) return false;
+    var name = selectedName.trim();
+    if (name.isEmpty) name = project.name;
+    if (!name.toLowerCase().endsWith('.zip')) name += '.zip';
 
-      final fileName = await completer.future;
-      if (fileName == null) return false;
-
-      try {
-        final bytes = await encodeProjectFile(project);
-        await XFile.fromData(
-          bytes,
-          name: '$fileName.anthem',
-          mimeType: 'application/octet-stream',
-        ).saveTo('$fileName.anthem');
-      } catch (error, stackTrace) {
-        _log.warning('Could not save project file.', error, stackTrace);
-
-        dialogController.showMarkdownDialog(
-          title: 'Save',
-          markdown:
-              'Could not save project:\n\n'
-              '${escapeDialogMarkdown(error.toString())}',
-          buttons: [DialogButton.ok()],
-        );
-
-        return false;
-      }
-
-      project.isDirty = false;
-      return true;
-    } else {
-      final services = ServiceRegistry.forProject(projectId);
+    try {
       final prepared = await PreparedProjectSave.prepare(
         project,
-        services.projectStorage,
+        ServiceRegistry.forProject(project.id).projectStorage,
       );
       try {
-        final result = await writeProjectDirectory(
-          path!,
-          prepared,
-          create: createDirectory,
-        );
-        if (result.usesWorkingStore) {
-          services.savedProjectFiles.record(path, prepared.assets.reads.keys);
-        }
-        project.isDirty = prepared.changedDuringSave;
-        project.filePath = path;
-        return true;
+        final bytes = await encodeProjectArchive(prepared);
+        await XFile.fromData(
+          bytes,
+          name: name,
+          mimeType: 'application/zip',
+        ).saveTo(name);
+        if (markSaved) project.isDirty = prepared.changedDuringSave;
       } finally {
         await prepared.close();
       }
+      return true;
+    } catch (error, stackTrace) {
+      _log.warning('Could not download project ZIP.', error, stackTrace);
+      dialogController.showMarkdownDialog(
+        title: 'Download project',
+        markdown:
+            'Could not download project:\n\n${escapeDialogMarkdown(error.toString())}',
+        buttons: [DialogButton.ok()],
+      );
+      return false;
     }
   }
 
@@ -454,8 +457,10 @@ class MainWindowController {
     ProjectId projectId, {
     required DialogController dialogController,
   }) async {
-    if (kIsWeb) return false;
     final project = AnthemStore.instance.projects[projectId]!;
+    if (kIsWeb) {
+      return _downloadProjectZip(project, dialogController, markSaved: false);
+    }
     var archivePath = (await getSaveLocation(
       suggestedName: '${project.name}.zip',
       confirmButtonText: 'Export',
