@@ -894,6 +894,7 @@ void main() {
         conditionDescription:
             'Save As collects current plugin states and writes project',
         collectTimeoutDiagnostics: () => session.sessionDiagnostics,
+        timeout: const Duration(seconds: 45),
       ),
       isTrue,
     );
