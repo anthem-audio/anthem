@@ -112,7 +112,7 @@ public:
       files.releaseRead(std::move(token), [](const auto&) {});
     }
   }
-  void read(std::string retentionId, FileStorageClient::AccessCompletion callback) {
+  template <typename Callback> void read(std::string retentionId, Callback callback) {
     files.resolveRetention(std::move(retentionId),
         [self = shared_from_this(), callback = std::move(callback)](
             FileStorageResult<std::string> path) mutable {
