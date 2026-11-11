@@ -63,7 +63,8 @@ class LengthPrefixedJsonDecoder {
   /// messages, or any combination of those. Decoded messages are delivered
   /// synchronously through [onMessage].
   void add(Uint8List chunk) {
-    // Dart 3.12's WASM UTF-8 JSON parser ignores a typed-data view's offset
+    // Work around https://github.com/dart-lang/sdk/issues/64460.
+    // The WASM UTF-8 JSON parser ignores a typed-data view's offset
     // when it copies a number split across chunks. Pass a zero-offset view
     // of the backing buffer with adjusted slice bounds to avoid that bug
     // without copying the bytes.
